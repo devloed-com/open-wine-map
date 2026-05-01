@@ -1,0 +1,47 @@
+__pycache__/
+*.pyc
+.venv/
+.ruff_cache/
+.pytest_cache/
+.DS_Store
+
+# unrelated projects coexisting in this checkout
+wine-wiki/
+
+# raw/ holds downloaded datasets, the pdftotext cache, the cahier-extracted
+# JSON, the Wikipedia grape lexicon cache, and the manual translation cache —
+# all reproducible from scripts/00…02c. None of it is committed.
+raw/
+
+# build-output binaries that may sneak in elsewhere
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.pmtiles
+*.zip
+
+# stage 02c round-trip work files (todo.json emitted by --emit-todo,
+# done*.json returned by the translator) — ephemeral
+todo.json
+done*.json
+
+# generated wiki — stage 03 emits one .md per appellation/DGC + indices;
+# wiki/concepts/ is hand-authored and tracked
+wiki/*.md
+wiki/_index.json
+wiki/map.html
+wiki/map.*.html
+wiki/map-data/
+
+# obsidian / editor scratch
+.obsidian/
+
+# local agent state (settings.json is shared, settings.local.json is per-user)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# gettext catalogs — UI-localisation layer; not committed in the minimal
+# bootstrap. Stage 04 falls back to the FR source when these are absent.
+locale/
