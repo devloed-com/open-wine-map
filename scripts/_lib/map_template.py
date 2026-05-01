@@ -105,6 +105,15 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "translation_attribution": _("Traduction automatique depuis {source}"),
         "translation_source_label": _("le cahier des charges"),
         "dgc_of": _("Dénomination géographique complémentaire de"),
+        "about_link_label": _("À propos"),
+        "about_h": _("À propos d'open wine map"),
+        "about_made_by_html": _("Réalisé avec ♡ par {devloed}."),
+        "about_data_html": _(
+            "Données publiques de l'INAO ({inao}) et de l'IGN ({ign}). "
+            "Détails et licences dans le {readme}."
+        ),
+        "about_contrib_html": _("Suggestions et pull requests bienvenues sur {github}."),
+        "about_future_html": _("Sera progressivement étendu à d'autres pays."),
     }
 
 
@@ -156,6 +165,40 @@ _BASSIN_COLOURS: dict[str, str] = {
     "CHAMPAGNE": "#d9d9d9",
     "VIN DOUX NATURELS": "#8dd3c7",
 }
+
+
+_GITHUB_URL = "https://github.com/devloed-com/open-wine-map"
+_DEVLOED_URL = "https://devloed.com"
+_INAO_URL = "https://www.inao.gouv.fr/"
+_IGN_URL = "https://www.ign.fr/"
+
+
+def _ext_link(url: str, label: str) -> str:
+    return f'<a href="{url}" target="_blank" rel="noopener">{label}</a>'
+
+
+def _build_about_dialog(labels: dict[str, str]) -> str:
+    devloed = _ext_link(_DEVLOED_URL, "devloed.com")
+    github = _ext_link(_GITHUB_URL, "GitHub")
+    inao = _ext_link(_INAO_URL, "INAO")
+    ign = _ext_link(_IGN_URL, "IGN")
+    readme = _ext_link(_GITHUB_URL + "#public-data-sources", "README")
+    paragraphs = [
+        labels["about_made_by_html"].format(devloed=devloed),
+        labels["about_data_html"].format(inao=inao, ign=ign, readme=readme),
+        labels["about_contrib_html"].format(github=github),
+        labels["about_future_html"],
+    ]
+    body = "\n      ".join(f"<p>{p}</p>" for p in paragraphs)
+    return (
+        f'<dialog id="about-dialog" aria-labelledby="about-dialog-h">\n'
+        f'  <button class="close" type="button" aria-label="{labels["close_aria"]}">×</button>\n'
+        f'  <div class="about-body">\n'
+        f'    <h1 id="about-dialog-h">{labels["about_h"]}</h1>\n'
+        f"      {body}\n"
+        f'  </div>\n'
+        f'</dialog>'
+    )
 
 
 _LOCALES_DISPLAY = (("fr", "FR"), ("en", "EN"), ("es", "ES"), ("nl", "NL"))
@@ -357,6 +400,8 @@ def render(
         lang_attr=locale,
         labels=labels,
         lang_switcher_html=_lang_switcher(locale),
+        about_dialog_html=_build_about_dialog(labels),
+        github_url=_GITHUB_URL,
         source_block=source_block,
         aocs_json=json.dumps(aocs, ensure_ascii=False),
         styles_json=json.dumps(facet_styles, ensure_ascii=False),
@@ -554,6 +599,18 @@ _TEMPLATE = """<!doctype html>
     .facet input[type=checkbox] {{ width:18px; height:18px }}
     #actions button {{ min-height:36px }}
   }}
+  #sidebar-footer {{ padding:12px 16px 16px; margin-top:8px; border-top:1px solid #2a2a2a; font-size:11px; color:#888; text-align:center }}
+  #sidebar-footer a {{ color:#888; text-decoration:none }}
+  #sidebar-footer a:hover {{ color:#fff; text-decoration:underline }}
+  #sidebar-footer .sep {{ margin:0 6px; color:#444 }}
+  #about-dialog {{ width:520px; max-width:calc(100vw - 32px); padding:0; border:1px solid #ccc; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:#fff; color:#222 }}
+  #about-dialog::backdrop {{ background:rgba(0,0,0,0.45) }}
+  #about-dialog .close {{ position:absolute; top:10px; right:10px; background:#eee; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:#666 }}
+  #about-dialog .close:hover {{ background:#ddd; color:#000 }}
+  #about-dialog .about-body {{ padding:24px 28px; line-height:1.55 }}
+  #about-dialog h1 {{ font-size:20px; margin:0 0 14px; padding-bottom:8px; border-bottom:2px solid #7a1f3a }}
+  #about-dialog p {{ margin:0 0 10px }}
+  #about-dialog a {{ color:#7a1f3a }}
   #grape-tooltip {{ position:fixed; max-width:340px; background:#fff; color:#222; border:1px solid #ddd; border-radius:4px; padding:10px 12px; font-size:12px; line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); pointer-events:none; z-index:1000; display:none }}
   #grape-tooltip .ext {{ margin:0 0 6px }}
   #grape-tooltip .thumb {{ float:right; width:96px; height:auto; margin:0 0 6px 10px; border-radius:3px; background:#f3f3f3 }}
@@ -640,6 +697,12 @@ _TEMPLATE = """<!doctype html>
       </div>
     </details>
 
+    <div id="sidebar-footer">
+      <a href="#" id="about-link">{labels[about_link_label]}</a>
+      <span class="sep">·</span>
+      <a href="{github_url}" target="_blank" rel="noopener">GitHub</a>
+    </div>
+
   </div>
 
   <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}">☰</button>
@@ -650,6 +713,8 @@ _TEMPLATE = """<!doctype html>
     <button class="close" type="button" aria-label="{labels[close_aria]}">×</button>
     <div class="body" id="panel-body"></div>
   </div>
+
+  {about_dialog_html}
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -725,6 +790,24 @@ _TEMPLATE = """<!doctype html>
   const sidebarToggle = document.getElementById('sidebar-toggle');
   if (sidebarToggle) {{
     sidebarToggle.addEventListener('click', () => sidebarEl.classList.toggle('open'));
+  }}
+
+  // About dialog. Native <dialog>; backdrop click closes.
+  const aboutDialog = document.getElementById('about-dialog');
+  const aboutLink = document.getElementById('about-link');
+  if (aboutDialog && aboutLink) {{
+    aboutLink.addEventListener('click', e => {{
+      e.preventDefault();
+      if (typeof aboutDialog.showModal === 'function') aboutDialog.showModal();
+      else aboutDialog.setAttribute('open', '');
+    }});
+    aboutDialog.querySelector('.close').addEventListener('click', () => aboutDialog.close());
+    aboutDialog.addEventListener('click', e => {{
+      const r = aboutDialog.getBoundingClientRect();
+      const inside = e.clientX >= r.left && e.clientX <= r.right
+                  && e.clientY >= r.top  && e.clientY <= r.bottom;
+      if (!inside) aboutDialog.close();
+    }});
   }}
 
   let viewMode = 'simple';
