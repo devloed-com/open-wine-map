@@ -216,6 +216,7 @@ def render_stub_page(record: dict) -> str:
         f"title: {name}",
         f"type: {sec_type.lower()}",
         f"slug: {slug}",
+        f"country: {record.get('country') or 'fr'}",
         f"region: {record.get('comite_regional') or ''}",
         f"signe_fr: {record.get('signe_fr') or ''}",
         f"signe_ue: {record.get('signe_ue') or ''}",
@@ -325,6 +326,7 @@ def render_page(record: dict) -> str:
         f"title: {name}",
         f"type: {sec_type.lower()}",
         f"slug: {slug}",
+        f"country: {record.get('country') or 'fr'}",
         f"region: {record.get('comite_regional') or ''}",
         f"signe_fr: {record.get('signe_fr') or ''}",
         f"signe_ue: {record.get('signe_ue') or ''}",
@@ -533,6 +535,7 @@ def main() -> int:
 
     wiki_idx = {
         r["slug"]: {
+            "country": r.get("country") or "fr",
             "id_appellation": r["id_appellation"],
             "id_denomination_geo": r.get("id_denomination_geo") or "",
             "name": r["name"],

@@ -836,6 +836,7 @@ def main() -> int:
             else:
                 mvt_kind = raw_kind if raw_kind != "STUB" else "AOC"
         common_props = {
+            "country": record.get("country") or "fr",
             "id_appellation": record["id_appellation"],
             "id_denomination_geo": record.get("id_denomination_geo") or "",
             "slug": record["slug"],
@@ -1144,6 +1145,7 @@ def emit_html(
         bbox_villages = village_bbox_by_slug.get(slug)
 
         aocs[slug] = {
+            "country": p.get("country") or "fr",
             "name": p["name"],
             "kind": p["kind"],
             "region": p["region"],

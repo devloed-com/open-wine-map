@@ -621,6 +621,7 @@ def _stub_common(name: str, id_app: str, id_denom: str, slug_str: str, meta: dic
                  categories: list[str], stub_reason: str) -> dict:
     m = meta or {}
     return {
+        "country": "fr",
         "name": name,
         "kind": "STUB",
         "header": "",
@@ -648,6 +649,7 @@ def _stub_common(name: str, id_app: str, id_denom: str, slug_str: str, meta: dic
 
 def _stub_index_entry(record: dict, parent_slug: str = "") -> dict:
     return {
+        "country": "fr",
         "id_appellation": record["id_appellation"],
         "id_denomination_geo": record["id_denomination_geo"],
         "name": record["name"],
@@ -1045,6 +1047,7 @@ def main() -> int:
                 no_segment += 1
             continue
 
+        record["country"] = "fr"
         record["id_appellation"] = id_app
         record["slug"] = slug_map[id_app]
         source_filename = rescue_pdf or meta["filename"]
@@ -1125,6 +1128,7 @@ def main() -> int:
         out_path = OUT_DIR / f"{record['slug']}.json"
         out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2))
         index[record.get("id_denomination_geo") or id_app] = {
+            "country": "fr",
             "id_appellation": id_app,
             "id_denomination_geo": record.get("id_denomination_geo") or "",
             "name": meta["name"],
@@ -1170,6 +1174,7 @@ def main() -> int:
             dgc_path = OUT_DIR / f"{dgc_slug}.json"
             dgc_path.write_text(json.dumps(dgc_record, ensure_ascii=False, indent=2))
             index[d["id_denomination_geo"]] = {
+                "country": "fr",
                 "id_appellation": id_app,
                 "id_denomination_geo": d["id_denomination_geo"],
                 "name": dgc_name,
