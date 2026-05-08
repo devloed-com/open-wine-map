@@ -1,0 +1,283 @@
+{
+  "_README": "Hand-curated interprofession / syndicat websites per appellation. Resolution order: by_slug[slug] → by_slug[parent_slug] → by_bassin[region]. `label` is shown verbatim (proper noun, not translated). Add freely; no code change required. URLs are probed before commit — broken entries are removed rather than left rotting.",
+  "by_slug": {
+    "bordeaux": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "bordeaux-superieur": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "cadillac": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "cerons": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "cotes-de-bordeaux": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "cotes-de-bordeaux-saint-macaire": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "cotes-de-bourg-bourg-et-bourgeais": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "cremant-de-bordeaux": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "entre-deux-mers": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "graves-de-vayres": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "graves-superieures": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "lalande-de-pomerol": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "listrac-medoc": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "loupiac": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "lussac-saint-emilion": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "margaux": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "montagne-saint-emilion": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "moulis-ou-moulis-en-medoc": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "pauillac": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "premieres-cotes-de-bordeaux": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "puisseguin-saint-emilion": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "saint-estephe": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "saint-georges-saint-emilion": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "saint-julien": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "sainte-croix-du-mont": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "graves": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "pomerol": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB"
+    },
+    "saint-emilion": {
+      "url": "https://www.vins-saint-emilion.com/",
+      "label": "Conseil des Vins de Saint-Émilion"
+    },
+    "saint-emilion-grand-cru": {
+      "url": "https://www.vins-saint-emilion.com/",
+      "label": "Conseil des Vins de Saint-Émilion"
+    },
+    "medoc": {
+      "url": "https://www.medoc-bordeaux.com/",
+      "label": "Conseil des Vins du Médoc"
+    },
+    "haut-medoc": {
+      "url": "https://www.medoc-bordeaux.com/",
+      "label": "Conseil des Vins du Médoc"
+    },
+    "sauternes": {
+      "url": "https://www.sauternes-barsac.com/",
+      "label": "Syndicat Viticole de Sauternes & Barsac"
+    },
+    "barsac": {
+      "url": "https://www.sauternes-barsac.com/",
+      "label": "Syndicat Viticole de Sauternes & Barsac"
+    },
+    "pessac-leognan": {
+      "url": "https://www.pessac-leognan.com/",
+      "label": "Syndicat Viticole de Pessac-Léognan"
+    },
+    "fronsac": {
+      "url": "https://www.vins-fronsac.com/",
+      "label": "Syndicat Viticole de Fronsac"
+    },
+    "canon-fronsac": {
+      "url": "https://www.vins-fronsac.com/",
+      "label": "Syndicat Viticole de Fronsac"
+    },
+    "chablis": {
+      "url": "https://www.chablis.fr/",
+      "label": "BIVB — Chablis"
+    },
+    "petit-chablis": {
+      "url": "https://www.chablis.fr/",
+      "label": "BIVB — Chablis"
+    },
+    "chablis-grand-cru": {
+      "url": "https://www.chablis.fr/",
+      "label": "BIVB — Chablis"
+    },
+    "chateauneuf-du-pape": {
+      "url": "https://www.chateauneuf.com/",
+      "label": "Fédération des Producteurs de Châteauneuf-du-Pape"
+    },
+    "gigondas": {
+      "url": "https://www.gigondas-vin.com/",
+      "label": "Syndicat des Vignerons de Gigondas"
+    },
+    "sancerre": {
+      "url": "https://www.vins-centre-loire.com/",
+      "label": "BIVC — Vins du Centre-Loire"
+    },
+    "pouilly-fume": {
+      "url": "https://www.vins-centre-loire.com/",
+      "label": "BIVC — Vins du Centre-Loire"
+    },
+    "cahors": {
+      "url": "https://www.vindecahors.fr/",
+      "label": "UIVC — Union Interprofessionnelle du Vin de Cahors"
+    },
+    "madiran": {
+      "url": "https://madiran-pacherenc.com/",
+      "label": "Syndicat de Madiran et Pacherenc du Vic-Bilh"
+    },
+    "bergerac": {
+      "url": "https://www.vins-bergeracduras.fr/",
+      "label": "IVBD — Vins de Bergerac & Duras"
+    },
+    "cotes-de-bergerac": {
+      "url": "https://www.vins-bergeracduras.fr/",
+      "label": "IVBD — Vins de Bergerac & Duras"
+    },
+    "monbazillac": {
+      "url": "https://www.vins-bergeracduras.fr/",
+      "label": "IVBD — Vins de Bergerac & Duras"
+    },
+    "montravel": {
+      "url": "https://www.vins-bergeracduras.fr/",
+      "label": "IVBD — Vins de Bergerac & Duras"
+    },
+    "cotes-de-montravel": {
+      "url": "https://www.vins-bergeracduras.fr/",
+      "label": "IVBD — Vins de Bergerac & Duras"
+    },
+    "haut-montravel": {
+      "url": "https://www.vins-bergeracduras.fr/",
+      "label": "IVBD — Vins de Bergerac & Duras"
+    },
+    "pecharmant": {
+      "url": "https://www.vins-bergeracduras.fr/",
+      "label": "IVBD — Vins de Bergerac & Duras"
+    },
+    "rosette": {
+      "url": "https://www.vins-bergeracduras.fr/",
+      "label": "IVBD — Vins de Bergerac & Duras"
+    },
+    "saussignac": {
+      "url": "https://www.vins-bergeracduras.fr/",
+      "label": "IVBD — Vins de Bergerac & Duras"
+    },
+    "cotes-de-duras": {
+      "url": "https://www.vins-bergeracduras.fr/",
+      "label": "IVBD — Vins de Bergerac & Duras"
+    },
+    "jurancon": {
+      "url": "https://www.vins-jurancon.fr/",
+      "label": "Syndicat des Vignerons de Jurançon"
+    },
+    "gaillac": {
+      "url": "https://www.vins-gaillac.com/",
+      "label": "Maison des Vins de Gaillac"
+    },
+    "gaillac-premieres-cotes": {
+      "url": "https://www.vins-gaillac.com/",
+      "label": "Maison des Vins de Gaillac"
+    }
+  },
+  "by_bassin": {
+    "BOURGOGNE": {
+      "url": "https://www.vins-bourgogne.fr/",
+      "label": "BIVB"
+    },
+    "CHAMPAGNE": {
+      "url": "https://www.champagne.fr/",
+      "label": "Comité Champagne"
+    },
+    "ALSACE ET EST": {
+      "url": "https://www.vinsalsace.com/",
+      "label": "CIVA"
+    },
+    "VAL DE LOIRE": {
+      "url": "https://www.vinsvaldeloire.fr/",
+      "label": "InterLoire"
+    },
+    "VALLEE DU RHÔNE": {
+      "url": "https://www.vins-rhone.com/",
+      "label": "Inter Rhône"
+    },
+    "LANGUEDOC-ROUSSILLON": {
+      "url": "https://www.languedoc-wines.com/",
+      "label": "CIVL"
+    },
+    "PROVENCE-CORSE": {
+      "url": "https://www.vinsdeprovence.com/",
+      "label": "CIVP"
+    },
+    "COGNAC": {
+      "url": "https://www.cognac.fr/",
+      "label": "BNIC"
+    },
+    "ARMAGNAC": {
+      "url": "https://www.armagnac.fr/",
+      "label": "BNIA"
+    },
+    "SUD-OUEST": {
+      "url": "https://www.vignobles-sudouest.fr/",
+      "label": "IVSO — Interprofession des Vins du Sud-Ouest"
+    },
+    "TOULOUSE-PYRENEES": {
+      "url": "https://www.vignobles-sudouest.fr/",
+      "label": "IVSO — Interprofession des Vins du Sud-Ouest"
+    }
+  }
+}

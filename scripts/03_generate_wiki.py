@@ -30,8 +30,16 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parent.parent
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 INDEX_IN = EXTRACTED / "_index.json"
+TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 WIKI = ROOT / "wiki"
 WIKI_INDEX = WIKI / "_index.json"
+
+SUBSECTION_LABEL_FR = {
+    "facteurs_naturels": "Facteurs naturels",
+    "facteurs_humains": "Facteurs humains",
+    "produit": "Caractéristiques du produit",
+    "interactions": "Lien terroir / vin",
+}
 
 
 def fmt_communes(by_dept: dict[str, list[str]]) -> str:
@@ -107,6 +115,56 @@ def render_grapes_block(grapes: dict) -> str:
     return "\n\n".join(lines) if lines else "_(aucun cépage détecté)_"
 
 
+def load_terroir_facts(slug: str, parent_slug: str = "") -> dict | None:
+    """Return the per-AOC terroir-facts cache, falling back to parent for DGCs.
+    Returns None when no cache exists (stage 02d not yet run for this AOC)."""
+    p = TERROIR_FACTS / f"{slug}.json"
+    if p.exists():
+        try:
+            return json.loads(p.read_text())
+        except Exception:  # noqa: BLE001
+            return None
+    if parent_slug:
+        pp = TERROIR_FACTS / f"{parent_slug}.json"
+        if pp.exists():
+            try:
+                return json.loads(pp.read_text())
+            except Exception:  # noqa: BLE001
+                return None
+    return None
+
+
+def _render_fact_line(f: dict, wiki_url: str) -> str:
+    line = f"- {f['bullet']}"
+    if f.get("provenance") != "wiki":
+        return line
+    if wiki_url:
+        return line + f" _([via Wikipedia · CC BY-SA 4.0]({wiki_url}))_"
+    return line + " _(via Wikipedia · CC BY-SA 4.0)_"
+
+
+def render_facts_block(facts_data: dict) -> str:
+    """Render the Faits notables section as grouped sub-section bullets with
+    per-bullet provenance markers."""
+    facts = facts_data.get("facts") or []
+    if not facts:
+        return ""
+    by_sub: dict[str, list[dict]] = defaultdict(list)
+    for f in facts:
+        by_sub[f.get("subsection") or "facteurs_naturels"].append(f)
+    wiki_url = facts_data.get("wiki_source_url") or ""
+    out: list[str] = []
+    for sub_key in ("facteurs_naturels", "facteurs_humains", "produit", "interactions"):
+        sub_facts = by_sub.get(sub_key) or []
+        if not sub_facts:
+            continue
+        out.append(f"**{SUBSECTION_LABEL_FR[sub_key]}**")
+        out.append("")
+        out.extend(_render_fact_line(f, wiki_url) for f in sub_facts)
+        out.append("")
+    return "\n".join(out).rstrip()
+
+
 def render_styles_block(styles: list[str], categories: list[str]) -> str:
     if not styles and not categories:
         return "_(non extrait)_"
@@ -122,7 +180,104 @@ def render_styles_block(styles: list[str], categories: list[str]) -> str:
     return "\n\n".join(out)
 
 
+def render_stub_page(record: dict) -> str:
+    """Placeholder page for an AOC whose cahier des charges couldn't be
+    fetched/parsed. Lists the SIQO metadata we *do* have plus a pointer
+    to INAO's product page so users can find the source manually.
+    `stub_reason` distinguishes 'no-pdf' (INAO didn't link a PDF) from
+    'no-extract' (the PDF was a JORF modification arrêté missing this
+    AOC's cahier text)."""
+    name = record["name"]
+    slug = record["slug"]
+    src = record.get("source") or {}
+    categories = record.get("categories") or []
+    sec_type = (record.get("signe_fr") or "").strip() or (
+        record.get("signe_ue") or "AOP"
+    ).strip()
+    is_dgc = bool(record.get("is_dgc"))
+    parent_slug = record.get("parent_slug") or ""
+    parent_name = record.get("parent_name") or ""
+    reason = record.get("stub_reason", "no-pdf")
+    reason_text = {
+        "no-pdf": (
+            "INAO ne référence pas (encore) de PDF de cahier des charges "
+            "via BO Agri pour cette appellation."
+        ),
+        "no-extract": (
+            "Le PDF référencé par INAO ne contient pas le cahier des charges "
+            "de cette appellation (arrêté de modification couvrant d'autres "
+            "AOC). Le texte original est publié au JORF — Légifrance — mais "
+            "n'est pas encore récupéré par le pipeline."
+        ),
+    }.get(reason, "Cahier des charges non disponible.")
+
+    fm_lines = [
+        "---",
+        f"title: {name}",
+        f"type: {sec_type.lower()}",
+        f"slug: {slug}",
+        f"region: {record.get('comite_regional') or ''}",
+        f"signe_fr: {record.get('signe_fr') or ''}",
+        f"signe_ue: {record.get('signe_ue') or ''}",
+        f"categorie: {record.get('categorie') or ''}",
+        f"categories: {json.dumps(categories, ensure_ascii=False)}",
+        "stub: true",
+        f"stub_reason: {reason}",
+    ]
+    if is_dgc:
+        fm_lines += [
+            "is_dgc: true",
+            f"parent_slug: {parent_slug}",
+            f"parent_name: {parent_name}",
+        ]
+    legifrance_ids = src.get("legifrance_jorftext_ids") or []
+    fm_lines += [
+        "sources:",
+        f"  show_texte: {src.get('show_texte_url', '')}",
+        f"  product: {src.get('product_url', '')}",
+        f"  legifrance_jorftext_ids: {json.dumps(legifrance_ids, ensure_ascii=False)}",
+        "---",
+        "",
+        f"# {name}",
+        "",
+        "> ⚠️ **Cahier des charges non disponible.** " + reason_text,
+        "",
+    ]
+    if is_dgc and parent_slug:
+        fm_lines += [
+            f"_Dénomination géographique complémentaire de [[{parent_slug}|{parent_name}]]._",
+            "",
+        ]
+    body = [
+        "## Métadonnées SIQO",
+        "",
+        f"- **Type** — {sec_type}",
+        f"- **Région INAO** — {record.get('comite_regional') or '_(non renseignée)_'}",
+        f"- **Catégorie** — {record.get('categorie') or '_(non renseignée)_'}",
+        f"- **id_appellation** — `{record['id_appellation']}`",
+        f"- **id_denomination_geo** — `{record['id_denomination_geo']}`",
+        "",
+        "## Sources",
+        "",
+    ]
+    if src.get("product_url"):
+        body.append(f"- INAO produit (catalogue): <{src['product_url']}>")
+    if src.get("show_texte_url"):
+        body.append(f"- INAO show_texte: <{src['show_texte_url']}>")
+    for jid in legifrance_ids:
+        body.append(
+            f"- Légifrance (texte original): "
+            f"<https://www.legifrance.gouv.fr/jorf/id/{jid}>"
+        )
+    if not (src.get("product_url") or src.get("show_texte_url") or legifrance_ids):
+        body.append("_Aucune source publique n'a pu être résolue automatiquement._")
+    body.append("")
+    return "\n".join(fm_lines + body)
+
+
 def render_page(record: dict) -> str:
+    if record.get("kind") == "STUB":
+        return render_stub_page(record)
     name = record["name"]
     slug = record["slug"]
     sections = record.get("sections", {})
@@ -156,6 +311,9 @@ def render_page(record: dict) -> str:
     styles = record.get("styles") or []
     categories = record.get("categories") or []
 
+    facts_data = load_terroir_facts(slug, parent_slug)
+    facts_block = render_facts_block(facts_data) if facts_data else ""
+
     src = record["source"]
     cahier_relpath = f"raw/inao/cahiers/{src['filename']}"
     fetched_date = src["fetched_at"][:10]
@@ -183,6 +341,9 @@ def render_page(record: dict) -> str:
             f"parent_slug: {parent_slug}",
             f"parent_name: {parent_name}",
         ]
+    homologated_at = src.get("homologated_at", "")
+    latest_pdf = src.get("latest_known_pdf", "")
+    latest_date = src.get("latest_known_homologated_at", "")
     fm_lines += [
         "sources:",
         f"  cahier: {cahier_relpath}",
@@ -190,12 +351,27 @@ def render_page(record: dict) -> str:
         f"  boagri: {src['boagri_url']}",
         f"  product: {src['product_url']}",
         f"  pdf_sha256: {src['pdf_sha256']}",
+        f"  homologated_at: {homologated_at}",
         f"last_updated: {fetched_date}",
         "---",
         "",
         f"# {name}",
         "",
     ]
+    # Surface a "newer cahier exists" hint when the corpus indexes a more
+    # recently homologated copy of this AOC's cahier in a different PDF.
+    # This is a watch-flag for re-running the pipeline against the
+    # historique crawl, not an error.
+    if (
+        latest_pdf and latest_pdf != src["filename"]
+        and latest_date and latest_date > (homologated_at or "")
+    ):
+        fm_lines += [
+            f"> ℹ️ Une publication plus récente du cahier ({latest_date}) "
+            f"a été détectée dans `{latest_pdf[:16]}` mais l'extraction a "
+            f"utilisé la version courante. Re-run stage 02 to refresh.",
+            "",
+        ]
     if is_dgc and parent_slug:
         fm_lines += [
             f"_Dénomination géographique complémentaire de [[{parent_slug}|{parent_name}]]._",
@@ -238,6 +414,18 @@ def render_page(record: dict) -> str:
         "",
         rendements,
         "",
+    ]
+    if facts_block:
+        cahier_relpath_attr = f"raw/inao/cahiers/{src['filename']}"
+        body += [
+            "## Terroir",
+            "",
+            facts_block,
+            "",
+            f"_Faits dégagés du Lien au terroir par interprétation automatique — voir la source : [{src['filename']}]({cahier_relpath_attr})._",
+            "",
+        ]
+    body += [
         "## Lien au terroir",
         "",
         lien,
@@ -245,6 +433,7 @@ def render_page(record: dict) -> str:
         "## Sources",
         "",
         f"- Cahier des charges (PDF): [`{cahier_relpath}`]({cahier_relpath}) — sha256 `{src['pdf_sha256'][:16]}…`",
+        (f"- Cahier homologué le **{homologated_at}**" if homologated_at else "- _(date d'homologation non extraite)_"),
         f"- INAO show_texte: <{src['show_texte_url']}>",
         f"- BO Agri (PDF source): <{src['boagri_url']}>",
         f"- INAO produit (catalogue): <{src['product_url']}>",
@@ -284,11 +473,17 @@ def render_index(records: list[dict]) -> str:
         for r in sorted(parents_in_region, key=lambda x: x["name"].lower()):
             n_geo = sum(len(v) for v in r["aire"]["aire_geographique"].values())
             kind = r.get("kind", "AOC")
-            lines.append(
-                f"- [[{r['slug']}|{r['name']}]] — {kind}, {n_geo} commune(s) en aire géographique"
-            )
+            if kind == "STUB":
+                lines.append(
+                    f"- [[{r['slug']}|{r['name']}]] — _stub ({r.get('stub_reason', '')})_"
+                )
+            else:
+                lines.append(
+                    f"- [[{r['slug']}|{r['name']}]] — {kind}, {n_geo} commune(s) en aire géographique"
+                )
             for child in sorted(children_by_parent.get(r["slug"], []), key=lambda x: x["name"].lower()):
-                lines.append(f"  - [[{child['slug']}|{child['name']}]] — DGC")
+                marker = " _(stub)_" if child.get("kind") == "STUB" else ""
+                lines.append(f"  - [[{child['slug']}|{child['name']}]] — DGC{marker}")
         lines.append("")
     return "\n".join(lines)
 
@@ -352,6 +547,8 @@ def main() -> int:
             "grapes_principal": (r.get("grapes") or {}).get("principal") or [],
             "grapes_accessory": (r.get("grapes") or {}).get("accessory") or [],
             "grapes_observation": (r.get("grapes") or {}).get("observation") or [],
+            "stub": r.get("kind") == "STUB",
+            "stub_reason": r.get("stub_reason", ""),
             "page": f"{r['slug']}.md",
         }
         for r in records

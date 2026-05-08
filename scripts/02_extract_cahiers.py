@@ -592,6 +592,247 @@ def extract_one(name: str, text: str) -> dict | None:
     }
 
 
+EMPTY_AIRE = {
+    "code_officiel_geographique_annee": "",
+    "aire_geographique": {},
+    "aire_proximite_immediate": {},
+}
+
+
+def _stub_source(meta: dict | None) -> dict:
+    m = meta or {}
+    return {
+        "filename": m.get("filename", ""),
+        "pdf_sha256": m.get("sha256", ""),
+        "boagri_url": m.get("boagri_url", ""),
+        "boagri_url_candidates": m.get("boagri_url_candidates", []),
+        "show_texte_url": m.get("show_texte_url", ""),
+        "product_url": m.get("product_url", ""),
+        "legifrance_jorftext_ids": m.get("legifrance_jorftext_ids", []),
+        "fetched_at": m.get("fetched_at", ""),
+        "rescued_from_pdf": "",
+        "homologated_at": "",
+        "latest_known_pdf": "",
+        "latest_known_homologated_at": "",
+    }
+
+
+def _stub_common(name: str, id_app: str, id_denom: str, slug_str: str, meta: dict | None,
+                 categories: list[str], stub_reason: str) -> dict:
+    m = meta or {}
+    return {
+        "name": name,
+        "kind": "STUB",
+        "header": "",
+        "is_bundle_member": False,
+        "bundle_size": 0,
+        "sections": {},
+        "section_titles": {},
+        "section_roles": {},
+        "aire": dict(EMPTY_AIRE),
+        "lien_au_terroir": "",
+        "id_appellation": id_app,
+        "id_denomination_geo": id_denom,
+        "slug": slug_str,
+        "stub_reason": stub_reason,
+        "source": _stub_source(meta),
+        "signe_fr": m.get("signe_fr", ""),
+        "signe_ue": m.get("signe_ue", ""),
+        "categorie": m.get("categorie", ""),
+        "categories": categories,
+        "comite_regional": m.get("comite_regional", ""),
+        "grapes": {"principal": [], "accessory": [], "observation": [], "details": []},
+        "styles": [],
+    }
+
+
+def _stub_index_entry(record: dict, parent_slug: str = "") -> dict:
+    return {
+        "id_appellation": record["id_appellation"],
+        "id_denomination_geo": record["id_denomination_geo"],
+        "name": record["name"],
+        "slug": record["slug"],
+        "filename": f"{record['slug']}.json",
+        "is_dgc": bool(record.get("is_dgc")),
+        "parent_slug": parent_slug,
+        "communes_count": 0,
+        "sections_present": [],
+        "grapes_count": 0,
+        "styles": [],
+        "categories": record["categories"],
+        "stub_reason": record["stub_reason"],
+    }
+
+
+def _emit_parent_stub(id_app: str, parent_denom: dict, parent_slug: str,
+                      meta: dict | None, categories: list[str], out_dir: Path) -> dict:
+    name = parent_denom["appellation"]
+    stub_reason = "no-pdf" if not meta else "no-extract"
+    record = _stub_common(name, id_app, parent_denom["id_denomination_geo"],
+                          parent_slug, meta, categories, stub_reason)
+    record["is_dgc"] = False
+    (out_dir / f"{parent_slug}.json").write_text(
+        json.dumps(record, ensure_ascii=False, indent=2)
+    )
+    return record
+
+
+def _emit_dgc_stub(id_app: str, parent_denom: dict, parent_slug: str, dgc: dict,
+                   meta: dict | None, categories: list[str], out_dir: Path) -> dict:
+    dgc_slug = slug(dgc["denomination"])
+    stub_reason = "no-pdf" if not meta else "no-extract"
+    record = _stub_common(dgc["denomination"], id_app, dgc["id_denomination_geo"],
+                          dgc_slug, meta, categories, stub_reason)
+    record["is_dgc"] = True
+    record["parent_id_appellation"] = id_app
+    record["parent_id_denomination_geo"] = parent_denom["id_denomination_geo"]
+    record["parent_slug"] = parent_slug
+    record["parent_name"] = parent_denom["appellation"]
+    (out_dir / f"{dgc_slug}.json").write_text(
+        json.dumps(record, ensure_ascii=False, indent=2)
+    )
+    return record
+
+
+def emit_stub_records(
+    siqo_denoms: dict[str, list[dict]],
+    siqo_categories: dict[str, list[str]],
+    manifest: dict,
+    index: dict,
+    slug_map: dict[str, str],
+    out_dir: Path,
+) -> int:
+    """Emit placeholder JSONs for SIQO denominations stage 02 couldn't
+    extract from a cahier — either because stage 01 didn't resolve a PDF
+    (`stub_reason="no-pdf"`) or because the resolved PDF didn't contain
+    the cahier text (`stub_reason="no-extract"`). Stubs let stage 03
+    render a "cahier non disponible" page so every appellation in SIQO
+    is at least searchable.
+
+    Stub records share the same schema as extracted ones (so stage 03's
+    `_index.json` consumers don't need to special-case them), but their
+    `kind == "STUB"`, `aire`/`grapes`/`styles` are empty, and
+    `stub_reason` records why they're missing. Re-running stage 01 +
+    stage 02 promotes a stub to a full record automatically.
+    """
+    written = 0
+    extracted_app_ids = {entry.get("id_appellation") for entry in index.values()}
+    for id_app, denoms in siqo_denoms.items():
+        if not denoms:
+            continue
+        meta = manifest.get(id_app)
+        parent_denom = next(
+            (d for d in denoms if d["denomination"] == d["appellation"]), denoms[0]
+        )
+        parent_slug = slug_map.get(id_app) or slug(parent_denom["appellation"])
+        categories = siqo_categories.get(id_app, []) or denoms[0]["categories"]
+
+        if id_app not in extracted_app_ids:
+            record = _emit_parent_stub(
+                id_app, parent_denom, parent_slug, meta, categories, out_dir
+            )
+            index[parent_denom["id_denomination_geo"] or id_app] = (
+                _stub_index_entry(record, parent_slug="")
+            )
+            written += 1
+
+        for d in denoms:
+            if d["denomination"] == d["appellation"]:
+                continue
+            if d["id_denomination_geo"] in index:
+                continue
+            dgc_categories = d["categories"] or categories
+            record = _emit_dgc_stub(
+                id_app, parent_denom, parent_slug, d, meta, dgc_categories, out_dir
+            )
+            index[d["id_denomination_geo"]] = _stub_index_entry(record, parent_slug)
+            written += 1
+    return written
+
+
+# Each cahier carries its homologation date next to the title in one of
+# three forms:
+#   "homologué par le décret n°2011-1724 du 30 novembre 2011"
+#   "homologué par l'arrêté du 30 novembre 2011"
+#   "homologué par le décret n°2011-1724 du 30/11/2011"
+# We extract that date so the cross-bundle rescue can pick the most
+# recent cahier when the same AOC appears in multiple PDFs (an older
+# JORF homologation + a later modification arrêté re-publishing the
+# updated cahier). Stored as ISO YYYY-MM-DD; missing dates compare last.
+_FR_MONTHS = {
+    "janvier": 1, "février": 2, "fevrier": 2, "mars": 3, "avril": 4,
+    "mai": 5, "juin": 6, "juillet": 7, "août": 8, "aout": 8,
+    "septembre": 9, "octobre": 10, "novembre": 11,
+    "décembre": 12, "decembre": 12,
+}
+_HOMOL_LONG_RE = re.compile(
+    r"homologu[ée]\s+par\s+(?:le\s+d[ée]cret|l['’]arr[êe]t[ée])\s+"
+    r"(?:n[°º]?\s*\S+\s+)?du\s+(\d{1,2})\s+"
+    r"(janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[ûu]t|"
+    r"septembre|octobre|novembre|d[ée]cembre)\s+(\d{4})",
+    re.IGNORECASE,
+)
+_HOMOL_NUMERIC_RE = re.compile(
+    r"homologu[ée]\s+par\s+(?:le\s+d[ée]cret|l['’]arr[êe]t[ée])\s+"
+    r"(?:n[°º]?\s*\S+\s+)?du\s+(\d{1,2})[\s/-](\d{1,2})[\s/-](\d{4})",
+    re.IGNORECASE,
+)
+
+
+def homologation_date(segment: str) -> str | None:
+    """Best-effort ISO YYYY-MM-DD for the homologation date stamped in a
+    cahier segment. Returns None when no date can be parsed."""
+    head = segment[:1500]
+    m = _HOMOL_LONG_RE.search(head)
+    if m:
+        day = int(m.group(1))
+        month = _FR_MONTHS.get(m.group(2).lower().replace("é", "e").replace("û", "u"))
+        year = int(m.group(3))
+        if month:
+            return f"{year:04d}-{month:02d}-{day:02d}"
+    m = _HOMOL_NUMERIC_RE.search(head)
+    if m:
+        day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if 1 <= month <= 12:
+            return f"{year:04d}-{month:02d}-{day:02d}"
+    return None
+
+
+def build_global_segment_index(
+    cahiers_dir: Path,
+) -> dict[str, tuple[str, str, str]]:
+    """Scan every PDF in `cahiers_dir`, bundle-split it, and return a dict
+    mapping normalised cahier name → (pdf_filename, segment_text, date_iso).
+
+    INAO routinely lands an appellation on a "modification arrêté" PDF that
+    doesn't actually carry the cahier we want — but a sibling AOC's PDF
+    often does (BO Agri JORF issues bundle many cahiers). One pass over
+    the corpus lets us rescue those cases by matching the cahier header
+    name across PDFs. Scanning the directory (not just the manifest)
+    means PDFs that stage 01 fetched as fallback candidates also feed
+    the rescue index.
+
+    When the same cahier name appears in multiple PDFs (the same cahier
+    text often gets re-published in subsequent modification arrêtés), we
+    keep the entry with the latest homologation date — the most recent
+    publication is authoritative. Entries with no parsable date sort
+    earliest, so any dated entry beats them.
+    """
+    index: dict[str, tuple[str, str, str]] = {}
+    for pdf_path in sorted(cahiers_dir.glob("*.pdf")):
+        try:
+            text = pdftotext(pdf_path)
+        except subprocess.CalledProcessError:
+            continue
+        for header_name, segment in split_bundle(text).items():
+            key = normalize_name(header_name)
+            date_iso = homologation_date(segment) or ""
+            existing = index.get(key)
+            if existing is None or date_iso > existing[2]:
+                index[key] = (pdf_path.name, segment, date_iso)
+    return index
+
+
 def _disambiguate_slugs(items: list[tuple[str, dict]]) -> dict[str, str]:
     """Map id_appellation → unique slug for *parent* denominations.
 
@@ -733,7 +974,14 @@ def main() -> int:
     manifest = json.loads(MANIFEST_PATH.read_text())
     siqo_categories = load_siqo_categories()
     siqo_denoms = load_siqo_denominations()
-    items = sorted(manifest.items(), key=lambda kv: kv[1]["name"].lower())
+    # Skip manifest entries with no filename — stage 01 may record an entry
+    # for an AOC whose only source is a Légifrance JORFTEXT (Cloudflare-walled
+    # so we couldn't download a PDF). The stub-emission pass at the end
+    # picks those up by id_appellation.
+    items = sorted(
+        ((k, v) for k, v in manifest.items() if v.get("filename")),
+        key=lambda kv: kv[1]["name"].lower(),
+    )
     if args.only:
         needles = [s.lower() for s in args.only]
         items = [(k, v) for k, v in items if any(n in v["name"].lower() for n in needles)]
@@ -742,7 +990,8 @@ def main() -> int:
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     index: dict[str, dict] = {}
-    extracted = no_segment = no_sections = errors = dgc_emitted = 0
+    extracted = no_segment = no_sections = errors = dgc_emitted = rescued = 0
+    global_segments = build_global_segment_index(CAHIERS)
 
     # Pre-compute disambiguated slugs so name collisions (e.g. AOC spirit
     # "Calvados" vs IGP wine "Calvados") don't overwrite each other on
@@ -767,6 +1016,21 @@ def main() -> int:
             continue
 
         record = extract_one(meta["name"], text)
+        rescue_pdf: str | None = None
+        rescue_date: str = ""
+        if record is None:
+            rescue = global_segments.get(normalize_name(meta["name"]))
+            if rescue and rescue[0] != meta["filename"]:
+                rescue_pdf, rescue_segment, rescue_date = rescue
+                record = extract_one(meta["name"], rescue_segment)
+                if record is not None:
+                    print(
+                        f"[rescue] {meta['name']} ({id_app}) "
+                        f"-> segment from {rescue_pdf[:16]} "
+                        f"({rescue_date or 'no-date'})",
+                        file=sys.stderr,
+                    )
+                    rescued += 1
         if record is None:
             segments = split_bundle(text)
             if not segments:
@@ -783,13 +1047,35 @@ def main() -> int:
 
         record["id_appellation"] = id_app
         record["slug"] = slug_map[id_app]
+        source_filename = rescue_pdf or meta["filename"]
+        source_sha = (
+            rescue_pdf.removesuffix(".pdf") if rescue_pdf else meta["sha256"]
+        )
+        # Date the cahier we ended up using. Rescue path already carries
+        # the homologation date from build_global_segment_index; for the
+        # assigned-PDF path we re-split and parse the segment we used.
+        # Stored as ISO YYYY-MM-DD; downstream consumers (wiki/map) can
+        # surface it as "Cahier homologué le …" and use it to detect
+        # when a newer publication exists for the same AOC.
+        if rescue_pdf:
+            homologated_at = rescue_date
+        else:
+            seg_for_date = find_segment(split_bundle(text), meta["name"]) or text
+            homologated_at = homologation_date(seg_for_date) or ""
+        latest_known = global_segments.get(normalize_name(meta["name"]))
+        latest_pdf = latest_known[0] if latest_known else ""
+        latest_date = latest_known[2] if latest_known else ""
         record["source"] = {
-            "filename": meta["filename"],
-            "pdf_sha256": meta["sha256"],
+            "filename": source_filename,
+            "pdf_sha256": source_sha,
             "boagri_url": meta["boagri_url"],
             "show_texte_url": meta["show_texte_url"],
             "product_url": meta["product_url"],
             "fetched_at": meta["fetched_at"],
+            "rescued_from_pdf": rescue_pdf or "",
+            "homologated_at": homologated_at,
+            "latest_known_pdf": latest_pdf,
+            "latest_known_homologated_at": latest_date,
         }
         record["signe_fr"] = meta.get("signe_fr", "")
         record["signe_ue"] = meta.get("signe_ue", "")
@@ -899,10 +1185,15 @@ def main() -> int:
             }
             dgc_emitted += 1
 
+    stubs = emit_stub_records(
+        siqo_denoms, siqo_categories, manifest, index, slug_map, OUT_DIR
+    )
+
     INDEX_PATH.write_text(json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True))
     print(
-        f"[done] extracted={extracted} dgcs={dgc_emitted} "
-        f"no-segment={no_segment} no-sections={no_sections} errors={errors}",
+        f"[done] extracted={extracted} dgcs={dgc_emitted} rescued={rescued} "
+        f"stubs={stubs} no-segment={no_segment} no-sections={no_sections} "
+        f"errors={errors}",
         file=sys.stderr,
     )
     return 0 if errors == 0 else 2

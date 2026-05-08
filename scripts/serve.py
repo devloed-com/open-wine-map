@@ -7,7 +7,7 @@ tiles). We wrap SimpleHTTPRequestHandler to honour Range and return 206.
 
 Run:
     uv run python scripts/serve.py
-    # then open http://127.0.0.1:8765/map.html
+    # then open http://127.0.0.1:8765/map/
 """
 from __future__ import annotations
 

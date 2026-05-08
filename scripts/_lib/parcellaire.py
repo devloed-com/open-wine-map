@@ -27,10 +27,22 @@ import geopandas as gpd
 from shapely.validation import make_valid
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-SHAPEFILE = ROOT / "raw" / "inao" / "parcellaire" / "2026-04-13_delim-parcellaire-aoc-shp.shp"
+SHAPEFILE_DIR = ROOT / "raw" / "inao" / "parcellaire"
 PATCH_CSV = Path(__file__).resolve().parent / "inao-shapefile-patch.csv"
 CACHE_GEOJSON = ROOT / "wiki" / "map-data" / "aoc-parcels.geojson"
 CACHE_DENOM_GEOJSON = ROOT / "wiki" / "map-data" / "aoc-parcels-denom.geojson"
+
+
+def resolve_shapefile() -> Path | None:
+    """Pick the .shp for the most recent INAO release present in
+    SHAPEFILE_DIR. INAO ships the file as
+    `<YYYY-MM-DD>_delim-parcellaire-aoc-shp.shp`, so a lexicographic sort
+    of any matching filenames yields newest-last. Returns None when no
+    matching shapefile is on disk."""
+    if not SHAPEFILE_DIR.is_dir():
+        return None
+    matches = sorted(SHAPEFILE_DIR.glob("*delim-parcellaire-aoc-shp.shp"))
+    return matches[-1] if matches else None
 
 
 def apply_patches(gdf: "gpd.GeoDataFrame") -> "gpd.GeoDataFrame":
@@ -107,12 +119,17 @@ def build_aoc_polygons(force: bool = False) -> tuple[dict[str, dict], dict[str, 
         by_denom = {str(f["properties"]["id_denom"]): f for f in fc_denom["features"]}
         return by_app, by_denom
 
-    if not SHAPEFILE.exists():
-        print(f"  no shapefile at {SHAPEFILE.relative_to(ROOT)}", file=sys.stderr)
+    shapefile = resolve_shapefile()
+    if shapefile is None:
+        print(
+            f"  no shapefile in {SHAPEFILE_DIR.relative_to(ROOT)}/ — "
+            f"unzip raw/inao/parcellaire.zip into that directory.",
+            file=sys.stderr,
+        )
         return {}, {}
 
-    print(f"  loading {SHAPEFILE.relative_to(ROOT)} (~600 MB)…", file=sys.stderr)
-    gdf = gpd.read_file(SHAPEFILE)
+    print(f"  loading {shapefile.relative_to(ROOT)} (~600 MB)…", file=sys.stderr)
+    gdf = gpd.read_file(shapefile)
     gdf = apply_patches(gdf)
 
     print(f"  unioning {len(gdf)} parcels into AOC polygons…", file=sys.stderr)

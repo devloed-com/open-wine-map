@@ -47,6 +47,11 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
     return {
         "page_title": _("open wine map — carte des appellations"),
         "subtitle": _("carte des appellations françaises"),
+        "meta_description": _(
+            "Carte interactive des appellations viticoles françaises "
+            "(AOC, AOP, IGP) — communes, cépages, styles et liens au "
+            "terroir, à partir des données publiques INAO et IGN."
+        ),
         "loading": _("Chargement…"),
         "search_h": _("Recherche"),
         "search_placeholder": _("nom d'appellation…"),
@@ -78,20 +83,52 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "count_total": _("{n} appellations"),
         "count_filtered": _("{n} / {total} appellations"),
         "close_aria": _("Fermer"),
+        "remove_filter_aria": _("Retirer le filtre {label}"),
+        "sidebar_aria": _("Filtres et options de la carte"),
+        "lang_switcher_aria": _("Langue"),
+        "map_aria": _("Carte des appellations viticoles"),
         "panel_styles_h": _("Styles"),
-        "panel_categories_h": _("Catégories INAO"),
         "panel_observation_h": _("Variétés d'intérêt"),
         "panel_sources_h": _("Sources"),
+        "panel_facts_h": _("Terroir"),
+        "facts_sub_facteurs_naturels": _("Facteurs naturels"),
+        "facts_sub_facteurs_humains": _("Facteurs humains"),
+        "facts_sub_produit": _("Caractéristiques du produit"),
+        "facts_sub_interactions": _("Lien terroir / vin"),
+        "facts_attribution": _(
+            "Faits dégagés du Lien au terroir par interprétation automatique — voir la {source}."
+        ),
+        "facts_attribution_source_label": _("source"),
+        "facts_wiki_marker": _("via Wikipedia · CC BY-SA 4.0"),
         "meta_no_region": _("sans région"),
-        "meta_geom_parcellaire": _("géométrie parcellaire"),
         "meta_communes_inao": _("{n} commune(s) INAO"),
         "meta_communes": _("{n} commune(s)"),
+        "meta_geom_approx": _("aire approchée"),
+        "meta_geom_approx_communal": _("aire approchée (à l'échelle communale)"),
+        "geom_approx_within": _(
+            "Aire approchée — pas de données parcellaires précises pour cette dénomination ; "
+            "polygone hérité de {umbrella}."
+        ),
+        "geom_approx_parent": _(
+            "Aire approchée — pas de données parcellaires précises pour cette dénomination ; "
+            "polygone hérité de l'appellation parente."
+        ),
+        "geom_approx_aires": _(
+            "Aire approchée — pas de données parcellaires disponibles ; "
+            "affichée comme l'emprise de la commune où se situe la dénomination."
+        ),
+        "geom_approx_cadastre": _(
+            "Aire issue du lieu-dit cadastral « {lieu_dit} » "
+            "(commune de {commune}, {source})."
+        ),
+        "geom_approx_cadastre_source_label": _("cadastre.data.gouv.fr"),
         "stack_header": _("{n} appellations à ce point — du plus spécifique au plus large"),
         "src_cahier": _("Cahier des charges (BO Agri, PDF)"),
         "src_homologated": _("homologué"),
         "src_jorf": _("JORF"),
         "src_show_texte": _("Texte officiel INAO (show_texte)"),
         "src_product": _("Fiche produit INAO"),
+        "src_syndicate": _("Site officiel de l'interprofession"),
         "legend_h": _("Légende couleurs"),
         "legend_bassin_h": _("Bassin viticole"),
         "legend_area_hint": _("Plus l'aire est petite, plus la teinte est dense."),
@@ -107,13 +144,32 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "dgc_of": _("Dénomination géographique complémentaire de"),
         "about_link_label": _("À propos"),
         "about_h": _("À propos d'open wine map"),
+        "about_lead_html": _(
+            "Carte de référence des appellations viticoles françaises "
+            "(AOC, AOP, IGP), générée automatiquement à partir des données "
+            "publiques."
+        ),
         "about_made_by_html": _("Réalisé avec ♡ par {devloed}."),
         "about_data_html": _(
-            "Données publiques de l'INAO ({inao}) et de l'IGN ({ign}). "
+            "Sources : INAO ({inao}) pour les cahiers des charges et les "
+            "aires parcellaires, IGN ({ign}) pour le fond cartographique, "
+            "Wikipedia ({wikipedia}) pour quelques compléments narratifs "
+            "(CC BY-SA 4.0). Tout extrait Wikipedia est signalé sur place. "
             "Détails et licences dans le {readme}."
         ),
         "about_contrib_html": _("Suggestions et pull requests bienvenues sur {github}."),
-        "about_future_html": _("Sera progressivement étendu à d'autres pays."),
+        "feedback_issue_label": _("ticket GitHub"),
+        "feedback_email_label": _("e-mail"),
+        "feedback_copied_label": _("E-mail copié dans le presse-papiers"),
+        "sidebar_disclaimer_html": _(
+            "Carte générée automatiquement — des erreurs sont possibles. "
+            "Signalez-les via {issue} ou {email}."
+        ),
+        "about_roadmap_html": _(
+            "Priorité actuelle : affiner la couverture française — précision "
+            "des aires, qualité des extraits, climats et lieux-dits. "
+            "L'extension à d'autres pays viticoles viendra ensuite."
+        ),
     }
 
 
@@ -167,14 +223,37 @@ _BASSIN_COLOURS: dict[str, str] = {
 }
 
 
+_SITE_BASE_URL = "https://www.openwinemap.com"
+_OG_LOCALES = {"fr": "fr_FR", "en": "en_US", "es": "es_ES", "nl": "nl_NL"}
 _GITHUB_URL = "https://github.com/devloed-com/open-wine-map"
+_GITHUB_NEW_ISSUE_URL = _GITHUB_URL + "/issues/new"
 _DEVLOED_URL = "https://devloed.com"
 _INAO_URL = "https://www.inao.gouv.fr/"
 _IGN_URL = "https://www.ign.fr/"
+_WIKIPEDIA_URL = "https://fr.wikipedia.org/"
+_FEEDBACK_USER = "winemap+feedback"
+_FEEDBACK_DOMAIN = "devloed.com"
 
 
 def _ext_link(url: str, label: str) -> str:
     return f'<a href="{url}" target="_blank" rel="noopener">{label}</a>'
+
+
+def _feedback_email_anchor(label: str) -> str:
+    return (
+        f'<a href="#" class="feedback-mail" '
+        f'data-u="{_FEEDBACK_USER}" data-d="{_FEEDBACK_DOMAIN}">{label}</a>'
+    )
+
+
+def _build_sidebar_disclaimer(labels: dict[str, str]) -> str:
+    issue = _ext_link(_GITHUB_NEW_ISSUE_URL, labels["feedback_issue_label"])
+    email = _feedback_email_anchor(labels["feedback_email_label"])
+    return (
+        f'<div id="sidebar-disclaimer">'
+        f'{labels["sidebar_disclaimer_html"].format(issue=issue, email=email)}'
+        f'</div>'
+    )
 
 
 def _build_about_dialog(labels: dict[str, str]) -> str:
@@ -182,12 +261,16 @@ def _build_about_dialog(labels: dict[str, str]) -> str:
     github = _ext_link(_GITHUB_URL, "GitHub")
     inao = _ext_link(_INAO_URL, "INAO")
     ign = _ext_link(_IGN_URL, "IGN")
+    wikipedia = _ext_link(_WIKIPEDIA_URL, "fr.wikipedia.org")
     readme = _ext_link(_GITHUB_URL + "#public-data-sources", "README")
     paragraphs = [
+        labels["about_lead_html"],
         labels["about_made_by_html"].format(devloed=devloed),
-        labels["about_data_html"].format(inao=inao, ign=ign, readme=readme),
+        labels["about_data_html"].format(
+            inao=inao, ign=ign, wikipedia=wikipedia, readme=readme
+        ),
+        labels["about_roadmap_html"],
         labels["about_contrib_html"].format(github=github),
-        labels["about_future_html"],
     ]
     body = "\n      ".join(f"<p>{p}</p>" for p in paragraphs)
     return (
@@ -204,15 +287,18 @@ def _build_about_dialog(labels: dict[str, str]) -> str:
 _LOCALES_DISPLAY = (("fr", "FR"), ("en", "EN"), ("es", "ES"), ("nl", "NL"))
 
 
-def _lang_switcher(active: str) -> str:
+def _lang_switcher(active: str, aria_label: str) -> str:
     parts = []
     for code, label in _LOCALES_DISPLAY:
-        path = "map.html" if code == "fr" else f"map.{code}.html"
-        cls = " active" if code == active else ""
+        path = "/" if code == "en" else f"/{code}/"
+        is_active = code == active
+        cls = " active" if is_active else ""
+        current_attr = ' aria-current="page"' if is_active else ""
         parts.append(
-            f'<a href="{path}" data-href="{path}" data-lang="{code}" class="lang{cls}">{label}</a>'
+            f'<a href="{path}" data-href="{path}" data-lang="{code}" '
+            f'class="lang{cls}"{current_attr}>{label}</a>'
         )
-    return '<div id="lang-switcher">' + "".join(parts) + "</div>"
+    return f'<nav id="lang-switcher" aria-label="{aria_label}">' + "".join(parts) + "</nav>"
 
 
 def _bassin_match_expr() -> str:
@@ -262,30 +348,55 @@ def _build_source_block(
             + "    map.addLayer({\n"
             + f"      id: 'appellations-fill{suffix}', type: 'fill', source: '{source_id}',\n"
             + layer_meta
+            # Smaller polygons (DGCs, lieux-dits, grand crus) must render
+            # on top of their containing parent so the user can see them.
+            # MapLibre's fill-sort-key sorts ascending; -area makes the
+            # smallest polygon get the highest sort key (drawn last/on top).
+            + "      layout: {\n"
+            + "        'fill-sort-key': ['-', 0, ['get', 'area']]\n"
+            + "      },\n"
             + "      paint: {\n"
             + "        'fill-color': [\n"
             + "          'case',\n"
-            + "          ['boolean', ['feature-state', 'selected'], false], '#d97706',\n"
-            + "          ['==', ['get', 'kind'], 'IGP'], '#5a7a4a',\n"
-            + "          '#7a1f3a'\n"
+            + "          ['==', ['get', 'kind'], 'IGP'], '#6e7546',\n"
+            + "          '#934050'\n"
             + "        ],\n"
             + "        'fill-opacity': [\n"
             + "          'case',\n"
-            + "          ['boolean', ['feature-state', 'selected'], false], 0.55,\n"
+            + "          ['boolean', ['feature-state', 'selected'], false], 0.60,\n"
             + "          ['interpolate', ['linear'], ['get', 'area'],\n"
             + f"            {area_q1}, 0.50,\n"
             + f"            {area_q3}, 0.20]\n"
             + "        ]\n"
             + "      }\n"
             + "    });\n"
+            # Halo line drawn under the outline so the cream selection stroke
+            # has a dark edge against the cream basemap. Width 0 / fully
+            # transparent unless `selected` feature-state is set.
+            + "    map.addLayer({\n"
+            + f"      id: 'appellations-halo{suffix}', type: 'line', source: '{source_id}',\n"
+            + layer_meta
+            + "      layout: {\n"
+            + "        'line-sort-key': ['-', 0, ['get', 'area']],\n"
+            + "        'line-join': 'round'\n"
+            + "      },\n"
+            + "      paint: {\n"
+            + "        'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#1a0810', 'rgba(0,0,0,0)'],\n"
+            + "        'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 4.5, 0],\n"
+            + "        'line-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.85, 0]\n"
+            + "      }\n"
+            + "    });\n"
             + "    map.addLayer({\n"
             + f"      id: 'appellations-outline{suffix}', type: 'line', source: '{source_id}',\n"
             + layer_meta
+            + "      layout: {\n"
+            + "        'line-sort-key': ['-', 0, ['get', 'area']]\n"
+            + "      },\n"
             + "      paint: {\n"
-            + "        'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#d97706', '#3a0e1c'],\n"
+            + "        'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#fff8e8', '#2a1014'],\n"
             + "        'line-width': [\n"
             + "          'case',\n"
-            + "          ['boolean', ['feature-state', 'selected'], false], 2.0,\n"
+            + "          ['boolean', ['feature-state', 'selected'], false], 2.5,\n"
             + "          ['interpolate', ['linear'], ['get', 'area'],\n"
             + f"            {area_q1}, 1.2,\n"
             + f"            {area_q3}, 0.3]\n"
@@ -299,12 +410,14 @@ def _build_source_block(
             "    map.addSource('appellations', {\n"
             "      type: 'vector',\n"
             f"      url: 'pmtiles://{layer_url}',\n"
+            "      promoteId: 'slug',\n"
             "    });\n"
         )
         vil_decl = (
             "    map.addSource('appellations-villages', {\n"
             "      type: 'vector',\n"
             f"      url: 'pmtiles://{villages_layer_url}',\n"
+            "      promoteId: 'slug',\n"
             "    });\n"
         )
         layer_meta = "      'source-layer': 'appellations',\n"
@@ -352,10 +465,11 @@ def render(
     facet_regions: list[tuple[str, int]],
     locale: str = "fr",
     grapes_info: dict | None = None,
+    styles_info: dict | None = None,
     area_q1: float = 0.0,
     area_q3: float = 1.0,
 ) -> str:
-    """Render the full map.html for one locale.
+    """Render the full map page (index.html) for one locale.
 
     `aocs` is a {slug: {name, kind, region, ...}} dict serialised inline.
     `facet_*` lists are pre-sorted (by frequency desc, then alpha) and
@@ -396,12 +510,23 @@ def render(
         "other": ["dry", "tranquille"],
     }
 
+    canonical_path = "/" if locale == "en" else f"/{locale}/"
+    canonical_url = f"{_SITE_BASE_URL}{canonical_path}"
+    og_locale = _OG_LOCALES[locale]
+    og_alt_locales_html = "\n".join(
+        f'<meta property="og:locale:alternate" content="{_OG_LOCALES[other]}">'
+        for other in ("fr", "en", "es", "nl") if other != locale
+    )
+
     return _TEMPLATE.format(
         lang_attr=locale,
         labels=labels,
-        lang_switcher_html=_lang_switcher(locale),
+        canonical_url=canonical_url,
+        og_locale=og_locale,
+        og_alt_locales_html=og_alt_locales_html,
+        lang_switcher_html=_lang_switcher(locale, labels["lang_switcher_aria"]),
         about_dialog_html=_build_about_dialog(labels),
-        github_url=_GITHUB_URL,
+        sidebar_disclaimer_html=_build_sidebar_disclaimer(labels),
         source_block=source_block,
         aocs_json=json.dumps(aocs, ensure_ascii=False),
         styles_json=json.dumps(facet_styles, ensure_ascii=False),
@@ -415,7 +540,9 @@ def render(
         simple_style_buckets_json=json.dumps(simple_style_buckets, ensure_ascii=False),
         labels_json=json.dumps(labels, ensure_ascii=False),
         grapes_info_json=json.dumps(grapes_info or {}, ensure_ascii=False),
+        styles_info_json=json.dumps(styles_info or {}, ensure_ascii=False),
         region_labels_json=json.dumps(region_labels, ensure_ascii=False),
+        source_type=source_type,
     )
 
 
@@ -425,14 +552,31 @@ _TEMPLATE = """<!doctype html>
 <meta charset="utf-8">
 <title>{labels[page_title]}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="{labels[meta_description]}">
+<link rel="canonical" href="{canonical_url}">
+<link rel="alternate" hreflang="en" href="https://www.openwinemap.com/">
+<link rel="alternate" hreflang="fr" href="https://www.openwinemap.com/fr/">
+<link rel="alternate" hreflang="es" href="https://www.openwinemap.com/es/">
+<link rel="alternate" hreflang="nl" href="https://www.openwinemap.com/nl/">
+<link rel="alternate" hreflang="x-default" href="https://www.openwinemap.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="open wine map">
+<meta property="og:title" content="{labels[page_title]}">
+<meta property="og:description" content="{labels[meta_description]}">
+<meta property="og:url" content="{canonical_url}">
+<meta property="og:locale" content="{og_locale}">
+{og_alt_locales_html}
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{labels[page_title]}">
+<meta name="twitter:description" content="{labels[meta_description]}">
 <script>
   // Locale auto-detect — runs before MapLibre or any layout work so the
   // redirect happens before paint. Sticky manual choice always wins; the
-  // browser language is consulted only on the FR root with no prior choice.
+  // browser language is consulted only on the EN root with no prior choice.
   (function () {{
     var here = "{lang_attr}";
     var supported = {{ fr: 1, en: 1, es: 1, nl: 1 }};
-    function pathFor(code) {{ return code === 'fr' ? 'map.html' : 'map.' + code + '.html'; }}
+    function pathFor(code) {{ return code === 'en' ? '/' : '/' + code + '/'; }}
     function go(code) {{
       if (code === here) return;
       var hash = window.location.hash || '';
@@ -441,12 +585,12 @@ _TEMPLATE = """<!doctype html>
     var saved = null;
     try {{ saved = localStorage.getItem('lang_choice'); }} catch (e) {{}}
     if (saved && supported[saved] && saved !== here) {{ go(saved); return; }}
-    if (here === 'fr' && !saved) {{
+    if (here === 'en' && !saved) {{
       var langs = (navigator.languages && navigator.languages.length)
         ? navigator.languages : [navigator.language || navigator.userLanguage || ''];
       for (var i = 0; i < langs.length; i++) {{
         var code = String(langs[i]).slice(0, 2).toLowerCase();
-        if (code === 'fr') return;
+        if (code === 'en') return;
         if (supported[code]) {{ go(code); return; }}
       }}
     }}
@@ -469,24 +613,25 @@ _TEMPLATE = """<!doctype html>
   #sidebar .subtitle {{ font-size:11px; color:#888; padding:0 16px 10px; border-bottom:1px solid #333 }}
   #sidebar h2 {{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#888; padding:14px 16px 4px; margin:0 }}
   #sidebar input[type=text] {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; border-radius:3px; font-size:13px }}
-  #sidebar input[type=text]:focus {{ outline:none; border-color:#7a1f3a }}
+  #sidebar input[type=text]:focus {{ outline:none; border-color:#934050 }}
+  #sidebar input[type=text]:focus-visible {{ outline:2px solid #fff8e8; outline-offset:1px; border-color:#934050 }}
   #lang-switcher {{ display:flex; gap:2px; padding:6px 12px 8px; border-bottom:1px solid #333 }}
   #lang-switcher a {{ color:#888; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; text-decoration:none; padding:3px 8px; border-radius:3px }}
   #lang-switcher a:hover {{ color:#fff }}
-  #lang-switcher a.active {{ color:#d97706; background:#2a2a2a }}
+  #lang-switcher a.active {{ color:#fff8e8; background:#2a2a2a; font-weight:700 }}
   #mode-toggle {{ display:flex; gap:0; padding:8px 16px; border-bottom:1px solid #333 }}
   #mode-toggle .mode-btn {{ flex:1; background:#222; color:#888; border:1px solid #444; padding:6px 8px; cursor:pointer; font-size:12px; letter-spacing:0.04em }}
   #mode-toggle .mode-btn:first-child {{ border-radius:3px 0 0 3px }}
   #mode-toggle .mode-btn:last-child {{ border-radius:0 3px 3px 0; border-left:none }}
   #mode-toggle .mode-btn:hover {{ color:#fff }}
-  #mode-toggle .mode-btn.active {{ background:#7a1f3a; color:#fff; border-color:#7a1f3a }}
+  #mode-toggle .mode-btn.active {{ background:#934050; color:#fff; border-color:#934050 }}
   #sidebar [data-modes="simple"].mode-hidden, #sidebar [data-modes="advanced"].mode-hidden {{ display:none }}
   html.mode-simple #sidebar [data-modes="advanced"] {{ display:none }}
   html.mode-advanced #sidebar [data-modes="simple"] {{ display:none }}
   #igp-toggle {{ padding:8px 16px; border-top:1px solid #2a2a2a }}
   #igp-toggle label {{ display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12.5px; color:#ddd }}
   #igp-toggle label:hover {{ color:#fff }}
-  #igp-toggle input {{ accent-color:#5a7a4a }}
+  #igp-toggle input {{ accent-color:#6e7546 }}
   #spirits-toggle {{ padding:6px 16px 10px }}
   #spirits-toggle label {{ display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12.5px; color:#ddd }}
   #spirits-toggle label:hover {{ color:#fff }}
@@ -496,21 +641,21 @@ _TEMPLATE = """<!doctype html>
   #active-filters-chips {{ display:flex; flex-wrap:wrap; gap:4px; flex:1 }}
   #active-filters-chips:empty {{ display:none }}
   .filter-chip {{ display:inline-flex; align-items:center; gap:4px; padding:2px 4px 2px 8px; background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:11px; font-size:11px; line-height:1.3 }}
-  .filter-chip.region-chip {{ border-color:#7a1f3a }}
+  .filter-chip.region-chip {{ border-color:#934050; box-shadow:inset 0 0 0 1px #934050; font-weight:600 }}
   .filter-chip button {{ background:none; border:none; color:#888; cursor:pointer; padding:0 4px; font-size:14px; line-height:1; border-radius:50% }}
   .filter-chip button:hover {{ color:#fff; background:#444 }}
   #active-filters #reset {{ background:transparent; color:#888; border:none; padding:2px 6px; cursor:pointer; font-size:11px; text-decoration:underline; flex:0 0 auto }}
   #active-filters #reset:hover {{ color:#fff }}
   #active-filters-chips:empty + #reset {{ display:none }}
   .facet-search {{ width:calc(100% - 32px); margin:4px 16px 6px; padding:5px 8px; box-sizing:border-box; background:#1f1f1f; color:#eee; border:1px solid #3a3a3a; border-radius:3px; font-size:12px }}
-  .facet-search:focus {{ outline:none; border-color:#7a1f3a }}
-  #sidebar > details > summary .facet-badge {{ display:inline-block; margin-left:6px; padding:1px 6px; background:#7a1f3a; color:#fff; border-radius:8px; font-size:10px; font-weight:600 }}
+  .facet-search:focus {{ outline:none; border-color:#934050 }}
+  #sidebar > details > summary .facet-badge {{ display:inline-block; margin-left:6px; padding:1px 6px; background:#934050; color:#fff; border-radius:8px; font-size:10px; font-weight:600 }}
   #sidebar > details > summary .facet-badge:empty {{ display:none }}
   #sidebar > details > summary {{ display:flex; align-items:center }}
   #sidebar > details > summary .facet-label {{ flex:1 }}
   .facet .region-group > summary {{ display:flex; align-items:center; gap:6px }}
-  .facet .region-group > summary .region-select {{ accent-color:#7a1f3a; cursor:pointer; flex:0 0 auto }}
-  .facet .region-group > summary .region-select:checked, .facet .region-group > summary .region-select:indeterminate {{ accent-color:#7a1f3a }}
+  .facet .region-group > summary .region-select {{ accent-color:#934050; cursor:pointer; flex:0 0 auto }}
+  .facet .region-group > summary .region-select:checked, .facet .region-group > summary .region-select:indeterminate {{ accent-color:#934050 }}
   #status {{ padding:8px 16px; font-size:11px; color:#aaa; background:#222; border-bottom:1px solid #333 }}
   details {{ margin:0 }}
   summary {{ cursor:pointer; padding:8px 16px; color:#bbb; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; user-select:none; border-top:1px solid #2a2a2a }}
@@ -539,22 +684,29 @@ _TEMPLATE = """<!doctype html>
   #panel .close {{ position:sticky; top:0; float:right; margin:8px 12px; background:#eee; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:#666; z-index:2 }}
   #panel .close:hover {{ background:#ddd; color:#000 }}
   #panel .body {{ padding:16px 24px 40px; line-height:1.55; color:#222 }}
-  #panel .body h1 {{ font-size:22px; margin:8px 0 10px; padding-bottom:6px; border-bottom:2px solid #7a1f3a }}
-  #panel .body h2 {{ font-size:13px; text-transform:uppercase; letter-spacing:0.04em; color:#7a1f3a; margin:18px 0 6px }}
+  #panel .body h1 {{ font-size:22px; margin:8px 0 10px; padding-bottom:6px; border-bottom:2px solid #934050 }}
+  #panel .body h2 {{ font-size:13px; text-transform:uppercase; letter-spacing:0.04em; color:#934050; margin:18px 0 6px }}
   #panel .body p {{ margin:0 0 8px }}
   #panel .meta {{ color:#666; font-size:12px; margin-bottom:8px }}
   #panel .translation-attr {{ font-size:10.5px; color:#888; font-style:italic; margin:0 0 8px }}
   #panel .translation-attr a {{ color:#888 }}
   #panel .stack-header {{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#888; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #eee }}
+  #panel .approx-line {{ font-size:11.5px; color:#7a5a1a; background:#fbf3df; border-left:2px solid #d6b35a; padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
+  #panel .approx-line a.parent-link {{ color:#7a5a1a; text-decoration:underline }}
   #panel .aoc-card + .aoc-card {{ margin-top:24px; padding-top:20px; border-top:1px dashed #ccc }}
-  #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid #7a1f3a }}
+  #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid #934050 }}
   #panel .aoc-card.subordinate h1 {{ font-size:16px; color:#444; border-bottom-color:#ccc }}
   #panel .sources {{ margin:4px 0 0; padding-left:18px; font-size:12px; color:#444 }}
   #panel .sources li {{ margin:3px 0 }}
   #panel .sources code {{ font-size:11px; color:#888 }}
+  #panel .facts-sub-h {{ font-size:11px; font-weight:600; color:#555; margin:8px 0 2px; text-transform:none; letter-spacing:0 }}
+  #panel ul.facts {{ margin:0 0 6px; padding-left:18px; font-size:13px; color:#222 }}
+  #panel ul.facts li {{ margin:2px 0 }}
+  #panel ul.facts .wiki-attr {{ font-size:10.5px; color:#888; font-style:italic }}
+  #panel ul.facts .wiki-attr a {{ color:#888 }}
   #panel .pills {{ margin:0 0 4px }}
   .pill {{ display:inline-block; padding:2px 8px; margin:2px 4px 2px 0; background:#eee; border-radius:10px; font-size:11px; color:#333; text-decoration:none }}
-  .pill.style {{ background:#fdebe5; color:#7a1f3a }}
+  .pill.style {{ background:#fdebe5; color:#934050 }}
   .pill.style.style--red, .pill.style.style--clairet, .pill.style.style--primeur {{ background:#f3d6d6; color:#7a1620 }}
   .pill.style.style--white, .pill.style.style--dry, .pill.style.style--tranquille {{ background:#f6efd1; color:#5a4a10 }}
   .pill.style.style--rose {{ background:#fbdce5; color:#7a3050 }}
@@ -570,6 +722,11 @@ _TEMPLATE = """<!doctype html>
   .pill.grape.observation {{ background:#fff8d8; color:#7a5a00 }}
   a.pill.grape.observation:hover {{ background:#f5ecc0 }}
   a.pill.grape.has-info {{ border-bottom:1px dotted currentColor; padding-bottom:1px }}
+  .pill.style {{ cursor:default }}
+  a.pill.style {{ text-decoration:none }}
+  a.pill.style:hover {{ text-decoration:underline; opacity:0.85 }}
+  .pill.style.has-info {{ border-bottom:1px dotted currentColor; padding-bottom:1px }}
+  a.pill.style.has-info {{ cursor:pointer }}
   .fr-marker {{ display:inline-block; margin-left:4px; font-size:10px; color:#999; font-style:italic; vertical-align:baseline }}
   #grape-tooltip .fr-marker {{ font-size:10px; color:#888 }}
   #sidebar-toggle {{ display:none; position:fixed; top:8px; right:8px; z-index:30; width:44px; height:44px; background:#1a1a1a; color:#eee; border:1px solid #444; border-radius:4px; font-size:18px; cursor:pointer; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.2) }}
@@ -579,8 +736,8 @@ _TEMPLATE = """<!doctype html>
   #legend .legend-body {{ padding:4px 16px 12px; font-size:11.5px; color:#bbb; line-height:1.5 }}
   #legend .swatch-row {{ display:flex; align-items:center; gap:6px; margin:3px 0 }}
   #legend .sw {{ display:inline-block; width:14px; height:14px; border-radius:3px; flex:0 0 14px; border:1px solid rgba(255,255,255,0.1) }}
-  #legend .sw.aoc {{ background:#7a1f3a }}
-  #legend .sw.igp {{ background:#5a7a4a }}
+  #legend .sw.aoc {{ background:#934050 }}
+  #legend .sw.igp {{ background:#6e7546 }}
   #legend .sw.principal {{ background:#e8eef5 }}
   #legend .sw.accessory {{ background:#f0f0f0 }}
   #legend .sw.observation {{ background:#fff8d8 }}
@@ -603,37 +760,60 @@ _TEMPLATE = """<!doctype html>
   #sidebar-footer a {{ color:#888; text-decoration:none }}
   #sidebar-footer a:hover {{ color:#fff; text-decoration:underline }}
   #sidebar-footer .sep {{ margin:0 6px; color:#444 }}
+  #sidebar-disclaimer {{ padding:0 4px 10px; margin-bottom:10px; border-bottom:1px solid #222; font-size:11px; line-height:1.5; color:#888 }}
+  #sidebar-disclaimer a {{ color:#aaa; text-decoration:underline; text-underline-offset:2px }}
+  #sidebar-disclaimer a:hover {{ color:#fff }}
+  .feedback-copied {{ display:inline-block; margin-left:6px; padding:2px 6px; border-radius:3px; background:#7a1f3a; color:#fff; font-size:10.5px; opacity:0; transform:translateY(-1px); transition:opacity 180ms ease, transform 180ms ease; pointer-events:none }}
+  .feedback-copied.visible {{ opacity:1; transform:translateY(0) }}
   #about-dialog {{ width:520px; max-width:calc(100vw - 32px); padding:0; border:1px solid #ccc; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:#fff; color:#222 }}
   #about-dialog::backdrop {{ background:rgba(0,0,0,0.45) }}
   #about-dialog .close {{ position:absolute; top:10px; right:10px; background:#eee; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:#666 }}
   #about-dialog .close:hover {{ background:#ddd; color:#000 }}
   #about-dialog .about-body {{ padding:24px 28px; line-height:1.55 }}
-  #about-dialog h1 {{ font-size:20px; margin:0 0 14px; padding-bottom:8px; border-bottom:2px solid #7a1f3a }}
+  #about-dialog h1 {{ font-size:20px; margin:0 0 14px; padding-bottom:8px; border-bottom:2px solid #934050 }}
   #about-dialog p {{ margin:0 0 10px }}
-  #about-dialog a {{ color:#7a1f3a }}
+  #about-dialog a {{ color:#934050 }}
   #grape-tooltip {{ position:fixed; max-width:340px; background:#fff; color:#222; border:1px solid #ddd; border-radius:4px; padding:10px 12px; font-size:12px; line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); pointer-events:none; z-index:1000; display:none }}
   #grape-tooltip .ext {{ margin:0 0 6px }}
   #grape-tooltip .thumb {{ float:right; width:96px; height:auto; margin:0 0 6px 10px; border-radius:3px; background:#f3f3f3 }}
   #grape-tooltip .src {{ color:#888; font-size:10.5px; clear:both }}
   #grape-tooltip .src a {{ color:#888 }}
-  #panel .body a {{ color:#7a1f3a }}
+  #panel .body a {{ color:#934050 }}
   .maplibregl-popup {{ max-width:320px !important }}
   .maplibregl-popup-content {{ font-size:13px; padding:10px 12px !important }}
-  .maplibregl-popup-content h3 {{ margin:0 0 4px; font-size:14px; color:#7a1f3a }}
+  .maplibregl-popup-content h3 {{ margin:0 0 4px; font-size:14px; color:#934050 }}
   .maplibregl-popup-content .meta {{ color:#777; font-size:11px }}
+  /* Visible focus indicators (WCAG 2.4.7). Light outline on the dark sidebar,
+     burgundy outline on the light panel/dialog. */
+  #sidebar a:focus-visible,
+  #sidebar button:focus-visible,
+  #sidebar summary:focus-visible,
+  #sidebar input[type=checkbox]:focus-visible,
+  #sidebar-toggle:focus-visible {{ outline:2px solid #fff8e8; outline-offset:2px; border-radius:3px }}
+  #panel button:focus-visible,
+  #panel a:focus-visible,
+  #about-dialog button:focus-visible,
+  #about-dialog a:focus-visible {{ outline:2px solid #934050; outline-offset:2px; border-radius:3px }}
+  .maplibregl-popup-content a:focus-visible {{ outline:2px solid #934050; outline-offset:2px }}
 </style>
+<!-- Privacy-friendly analytics by Plausible -->
+<script async src="https://analytics.dev.devloed.com/js/pa-QAprx84urDZKvC3I6r6bc.js"></script>
+<script>
+  window.plausible=window.plausible||function(){{(plausible.q=plausible.q||[]).push(arguments)}},plausible.init=plausible.init||function(i){{plausible.o=i||{{}}}};
+  plausible.init()
+</script>
 </head>
 <body>
 <div id="app">
-  <div id="sidebar">
+  <aside id="sidebar" aria-label="{labels[sidebar_aria]}">
     <h1>open wine map</h1>
     <div class="subtitle">{labels[subtitle]}</div>
     {lang_switcher_html}
     <div id="status">{labels[loading]}</div>
 
     <div id="mode-toggle" role="group" aria-label="{labels[view_mode_h]}">
-      <button type="button" data-mode="simple" class="mode-btn active">{labels[view_mode_simple]}</button>
-      <button type="button" data-mode="advanced" class="mode-btn">{labels[view_mode_advanced]}</button>
+      <button type="button" data-mode="simple" class="mode-btn active" aria-pressed="true">{labels[view_mode_simple]}</button>
+      <button type="button" data-mode="advanced" class="mode-btn" aria-pressed="false">{labels[view_mode_advanced]}</button>
     </div>
 
     <div id="active-filters" aria-label="{labels[active_filters_aria]}">
@@ -669,7 +849,7 @@ _TEMPLATE = """<!doctype html>
       <div class="facet" id="facet-accessory"></div>
     </details>
 
-    <details data-facet="appellations">
+    <details open data-facet="appellations">
       <summary><span class="facet-label">{labels[facet_appellations_h]}</span><span class="facet-badge"></span></summary>
       <input type="text" id="q" class="facet-search" placeholder="{labels[search_appellation_placeholder]}" autocomplete="off">
       <div class="facet facet-appellations" id="facet-appellations"></div>
@@ -683,7 +863,7 @@ _TEMPLATE = """<!doctype html>
       <label><input type="checkbox" id="show-spirits"> <span class="name">{labels[show_spirits_label]}</span></label>
     </div>
 
-    <details id="legend">
+    <details id="legend" open>
       <summary>{labels[legend_h]}</summary>
       <div class="legend-body">
         <div class="legend-h">{labels[legend_bassin_h]}</div>
@@ -698,16 +878,17 @@ _TEMPLATE = """<!doctype html>
     </details>
 
     <div id="sidebar-footer">
-      <a href="#" id="about-link">{labels[about_link_label]}</a>
-      <span class="sep">·</span>
-      <a href="{github_url}" target="_blank" rel="noopener">GitHub</a>
+      {sidebar_disclaimer_html}
+      <div id="sidebar-footer-links">
+        <a href="#" id="about-link">{labels[about_link_label]}</a>
+      </div>
     </div>
 
-  </div>
+  </aside>
 
   <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}">☰</button>
 
-  <div id="map"></div>
+  <main id="map" aria-label="{labels[map_aria]}"></main>
 
   <div id="panel">
     <button class="close" type="button" aria-label="{labels[close_aria]}">×</button>
@@ -732,8 +913,10 @@ _TEMPLATE = """<!doctype html>
   const SIMPLE_STYLE_BUCKETS = {simple_style_buckets_json};
   const LABELS = {labels_json};
   const GRAPES_INFO = {grapes_info_json};
+  const STYLES_INFO = {styles_info_json};
   const REGION_LABELS = {region_labels_json};
   const LANG = "{lang_attr}";
+  const SOURCE_TYPE = "{source_type}";
 
   function grapeName(slug) {{
     const info = GRAPES_INFO[slug];
@@ -809,6 +992,41 @@ _TEMPLATE = """<!doctype html>
       if (!inside) aboutDialog.close();
     }});
   }}
+
+  // Defeat naive scrapers: the address never appears as a contiguous
+  // string in rendered HTML. We arm the anchor's href on first
+  // interaction (mousedown/focus/touchstart, all of which fire before
+  // the click that actually navigates), so the browser handles the
+  // mailto: protocol natively. We also copy the address to the
+  // clipboard on click so the link still works for users without a
+  // configured mailto handler (Firefox silently drops navigation in
+  // that case).
+  document.querySelectorAll('a.feedback-mail').forEach(a => {{
+    const address = () => a.dataset.u + '@' + a.dataset.d;
+    const arm = () => {{
+      if (a.dataset.u && a.dataset.d) {{
+        a.href = 'mailto:' + address() + '?subject=open%20wine%20map';
+      }}
+    }};
+    a.addEventListener('mousedown', arm);
+    a.addEventListener('focus', arm);
+    a.addEventListener('touchstart', arm, {{ passive: true }});
+    a.addEventListener('click', () => {{
+      const addr = address();
+      if (navigator.clipboard && navigator.clipboard.writeText) {{
+        navigator.clipboard.writeText(addr).catch(() => {{}});
+      }}
+      const toast = document.createElement('span');
+      toast.className = 'feedback-copied';
+      toast.textContent = LABELS.feedback_copied_label;
+      a.insertAdjacentElement('afterend', toast);
+      requestAnimationFrame(() => toast.classList.add('visible'));
+      setTimeout(() => {{
+        toast.classList.remove('visible');
+        toast.addEventListener('transitionend', () => toast.remove(), {{ once: true }});
+      }}, 1800);
+    }});
+  }});
 
   let viewMode = 'simple';
   try {{ viewMode = localStorage.getItem('view_mode') || 'simple'; }} catch (e) {{}}
@@ -963,7 +1181,8 @@ _TEMPLATE = """<!doctype html>
     }}
     el.innerHTML = chips.map(c => {{
       const cls = c.kind === 'region' ? 'filter-chip region-chip' : 'filter-chip';
-      return `<span class="${{cls}}" data-kind="${{escapeAttr(c.kind)}}" data-key="${{escapeAttr(c.key)}}"><span>${{escapeHtml(c.label)}}</span><button type="button" aria-label="${{escapeAttr(LABELS.close_aria)}}">×</button></span>`;
+      const removeAria = fmt(LABELS.remove_filter_aria, {{ label: c.label }});
+      return `<span class="${{cls}}" data-kind="${{escapeAttr(c.kind)}}" data-key="${{escapeAttr(c.key)}}"><span>${{escapeHtml(c.label)}}</span><button type="button" aria-label="${{escapeAttr(removeAria)}}">×</button></span>`;
     }}).join('');
   }}
 
@@ -1238,7 +1457,9 @@ _TEMPLATE = """<!doctype html>
     document.documentElement.classList.toggle('mode-simple', viewMode === 'simple');
     document.documentElement.classList.toggle('mode-advanced', viewMode === 'advanced');
     document.querySelectorAll('#mode-toggle .mode-btn').forEach(b => {{
-      b.classList.toggle('active', b.dataset.mode === viewMode);
+      const on = b.dataset.mode === viewMode;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
     }});
     document.querySelectorAll('#sidebar [data-modes]').forEach(el => {{
       const modes = el.dataset.modes.split(/\\s+/);
@@ -1348,6 +1569,10 @@ _TEMPLATE = """<!doctype html>
     if (sources.product) {{
       links.push(`<li><a href="${{escapeAttr(sources.product)}}" target="_blank" rel="noopener">${{LABELS.src_product}}</a></li>`);
     }}
+    if (sources.syndicate && sources.syndicate.url) {{
+      const syLabel = sources.syndicate.label ? ' — ' + escapeHtml(sources.syndicate.label) : '';
+      links.push(`<li><a href="${{escapeAttr(sources.syndicate.url)}}" target="_blank" rel="noopener">${{LABELS.src_syndicate}}</a>${{syLabel}}</li>`);
+    }}
     return '<h2>' + LABELS.panel_sources_h + '</h2><ul class="sources">' + links.join('') + '</ul>';
   }}
 
@@ -1376,12 +1601,63 @@ _TEMPLATE = """<!doctype html>
     return `<p class="translation-attr">${{escapeHtml(pre)}}${{sourceHtml}}${{escapeHtml(post)}}</p>`;
   }}
 
+  const FACTS_SUB_ORDER = ['facteurs_naturels', 'facteurs_humains', 'produit', 'interactions'];
+  const FACTS_SUB_LABELS = {{
+    facteurs_naturels: LABELS.facts_sub_facteurs_naturels,
+    facteurs_humains: LABELS.facts_sub_facteurs_humains,
+    produit: LABELS.facts_sub_produit,
+    interactions: LABELS.facts_sub_interactions,
+  }};
+
+  function renderTerroirFacts(r) {{
+    const tf = r.terroir_facts;
+    if (!tf || !tf.facts || !tf.facts.length) return '';
+    const wikiUrl = tf.wiki_source_url || '';
+    const wikiAttr = wikiUrl
+      ? ` <span class="wiki-attr">(<a href="${{escapeAttr(wikiUrl)}}" target="_blank" rel="noopener">${{escapeHtml(LABELS.facts_wiki_marker)}}</a>)</span>`
+      : ` <span class="wiki-attr">(${{escapeHtml(LABELS.facts_wiki_marker)}})</span>`;
+    const grouped = {{}};
+    for (const f of tf.facts) {{
+      const k = f.subsection || 'facteurs_naturels';
+      (grouped[k] = grouped[k] || []).push(f);
+    }}
+    const blocks = FACTS_SUB_ORDER.flatMap(k => {{
+      const facts = grouped[k];
+      if (!facts || !facts.length) return [];
+      const items = facts.map(f => {{
+        const marker = f.provenance === 'wiki' ? wikiAttr : '';
+        return `<li>${{escapeHtml(f.bullet)}}${{marker}}</li>`;
+      }}).join('');
+      return [`<div class="facts-sub-h">${{escapeHtml(FACTS_SUB_LABELS[k] || k)}}</div><ul class="facts">${{items}}</ul>`];
+    }});
+    if (!blocks.length) return '';
+    const cahierUrl = tf.cahier_source_pdf_url || '';
+    const labelText = LABELS.facts_attribution_source_label;
+    const sourceHtml = cahierUrl
+      ? `<a href="${{escapeAttr(cahierUrl)}}" target="_blank" rel="noopener">${{escapeHtml(labelText)}}</a>`
+      : escapeHtml(labelText);
+    const tpl = LABELS.facts_attribution;
+    const placeholder = '{{source}}';
+    const idx = tpl.indexOf(placeholder);
+    const pre = idx >= 0 ? tpl.slice(0, idx) : (tpl + ' ');
+    const post = idx >= 0 ? tpl.slice(idx + placeholder.length) : '';
+    const attribution = `<p class="translation-attr">${{escapeHtml(pre)}}${{sourceHtml}}${{escapeHtml(post)}}</p>`;
+    return `<h2>${{LABELS.panel_facts_h}}</h2>${{blocks.join('')}}${{attribution}}`;
+  }}
+
   function renderAocCard(slug, isPrimary) {{
     const r = AOCS[slug];
     if (!r) return '';
     const styleChips = (r.styles || []).map(s => {{
       const safe = escapeAttr(s);
-      return `<span class="pill style style--${{safe}}">${{STYLE_LABELS[s] || s}}</span>`;
+      const info = STYLES_INFO[s];
+      const has = !!(info && info.extract);
+      const cls = ['pill', 'style', `style--${{safe}}`, has ? 'has-info' : ''].filter(Boolean).join(' ');
+      const label = STYLE_LABELS[s] || s;
+      if (has && info.page_url) {{
+        return `<a class="${{cls}}" data-slug="${{safe}}" href="${{escapeAttr(info.page_url)}}" target="_blank" rel="noopener">${{label}}</a>`;
+      }}
+      return `<span class="${{cls}}" data-slug="${{safe}}">${{label}}</span>`;
     }}).join('');
     const grapePill = (g, cls) => {{
       const info = GRAPES_INFO[g];
@@ -1393,62 +1669,139 @@ _TEMPLATE = """<!doctype html>
     const principal = (r.grapes_principal || []).map(g => grapePill(g, '')).join('');
     const accessory = (r.grapes_accessory || []).map(g => grapePill(g, 'accessory')).join('');
     const observation = (r.grapes_observation || []).map(g => grapePill(g, 'observation')).join('');
-    const cats = (r.categories || []).join(', ');
-    const isTranslated = !!r.summary_translation;
-    const summaryMarker = isTranslated ? '' : frMarker();
-    const summary = r.summary ? `<p>${{escapeHtml(r.summary)}}${{summaryMarker}}</p>${{translationAttribution(r.summary_translation)}}` : '';
     const klass = isPrimary ? 'aoc-card' : 'aoc-card subordinate';
-    let metaTail;
-    if (r.geom_source === 'parcellaire') {{
-      metaTail = ' · ' + LABELS.meta_geom_parcellaire;
-    }} else if (r.geom_source === 'aires-csv') {{
+    let metaTail = '';
+    if (r.geom_source === 'aires-csv' || r.geom_source === 'dgc-village-override') {{
       metaTail = ' · ' + fmt(LABELS.meta_communes_inao, {{ n: r.communes_matched || 0 }});
-    }} else {{
+    }} else if (
+      r.geom_source !== 'parcellaire' && r.geom_source !== 'parcellaire-dgc' &&
+      r.geom_source !== 'aires-csv-dgc' && r.geom_source !== 'cadastre-lieu-dit-dgc' &&
+      r.geom_source !== 'sibling-dgc' && r.geom_source !== 'parent-appellation'
+    ) {{
       metaTail = ' · ' + fmt(LABELS.meta_communes, {{ n: r.communes_matched || 0 }});
     }}
-    const region = regionLabel(r.region);
+    const region = r.region ? regionLabel(r.region) : '';
+    const regionSeg = region ? ` · ${{escapeHtml(region)}}` : '';
     const dgcLine = r.is_dgc && r.parent_slug
       ? `<div class="dgc-line">${{escapeHtml(LABELS.dgc_of)}} <a class="parent-link" data-slug="${{escapeAttr(r.parent_slug)}}" href="#">${{escapeHtml(r.parent_name || r.parent_slug)}}</a></div>`
+      : '';
+    let approxLine = '';
+    if (r.geom_source === 'sibling-dgc' && r.geom_fallback_slug) {{
+      const u = `<a class="parent-link" data-slug="${{escapeAttr(r.geom_fallback_slug)}}" href="#">${{escapeHtml(r.geom_fallback_name || r.geom_fallback_slug)}}</a>`;
+      approxLine = `<div class="approx-line">${{fmt(LABELS.geom_approx_within, {{ umbrella: u }})}}</div>`;
+    }} else if (r.geom_source === 'parent-appellation') {{
+      approxLine = `<div class="approx-line">${{escapeHtml(LABELS.geom_approx_parent)}}</div>`;
+    }} else if (r.geom_source === 'aires-csv-dgc') {{
+      approxLine = `<div class="approx-line">${{escapeHtml(LABELS.geom_approx_aires)}}</div>`;
+    }} else if (r.geom_source === 'cadastre-lieu-dit-dgc' && r.cadastre_lieu_dit) {{
+      const src = `<a href="https://cadastre.data.gouv.fr/" target="_blank" rel="noopener">${{escapeHtml(LABELS.geom_approx_cadastre_source_label)}}</a>`;
+      approxLine = `<div class="approx-line">${{fmt(LABELS.geom_approx_cadastre, {{ lieu_dit: escapeHtml(r.cadastre_lieu_dit), commune: escapeHtml(r.cadastre_commune || ''), source: src }})}}</div>`;
+    }}
+    const factsBlock = renderTerroirFacts(r);
+    const isTranslated = !!r.summary_translation;
+    const summaryMarker = isTranslated ? '' : frMarker();
+    const summary = (!factsBlock && r.summary)
+      ? `<p>${{escapeHtml(r.summary)}}${{summaryMarker}}</p>${{translationAttribution(r.summary_translation)}}`
       : '';
     return `
       <div class="${{klass}}">
         <h1>${{escapeHtml(r.name)}}</h1>
-        <div class="meta">${{r.kind}} · ${{escapeHtml(region)}}${{metaTail}}</div>
+        <div class="meta">${{r.kind}}${{regionSeg}}${{metaTail}}</div>
         ${{dgcLine}}
-        ${{summary}}
+        ${{approxLine}}
         ${{styleChips ? '<h2>' + LABELS.panel_styles_h + '</h2><div class="pills">' + styleChips + '</div>' : ''}}
-        ${{cats ? '<h2>' + LABELS.panel_categories_h + '</h2><p>' + escapeHtml(cats) + '</p>' : ''}}
         ${{principal ? '<h2>' + LABELS.facet_principal_h + '</h2><div class="pills">' + principal + '</div>' : ''}}
         ${{accessory ? '<h2>' + LABELS.facet_accessory_h + '</h2><div class="pills">' + accessory + '</div>' : ''}}
         ${{observation ? '<h2>' + LABELS.panel_observation_h + '</h2><div class="pills">' + observation + '</div>' : ''}}
+        ${{factsBlock || summary}}
         ${{renderSources(slug, r.sources)}}
       </div>
     `;
   }}
 
+  function bboxArea(b) {{
+    if (!b || b.length < 4) return Infinity;
+    const w = b[2] - b[0], h = b[3] - b[1];
+    return w > 0 && h > 0 ? w * h : Infinity;
+  }}
+
+  function localityRank(slug) {{
+    // Sort key: bounding-box area of the rendered geometry, mode-aware.
+    // Bbox area penalises spread-out multipolygons (parent cuvée
+    // covering every premier-cru fragment in a region) so a localised
+    // climat outranks a scattered parent even when the parent's total
+    // polygon area is smaller.
+    const r = AOCS[slug];
+    if (!r) return Infinity;
+    const primary = viewMode === 'advanced' ? r.bbox : r.bbox_villages;
+    const fallback = viewMode === 'advanced' ? r.bbox_villages : r.bbox;
+    const a = bboxArea(primary);
+    return Number.isFinite(a) ? a : bboxArea(fallback);
+  }}
+
   function renderPanelStack(slugs) {{
     if (!slugs.length) return;
-    // Most-specific first: smaller polygon = grand cru / lieu-dit before
-    // the regional appellation that contains it. AOCS[slug].area is in
-    // raw degree² (computed at build time) — relative ordering is what
-    // matters, the unit doesn't.
     const sorted = slugs
       .filter(s => AOCS[s])
-      .sort((a, b) => (AOCS[a].area || 0) - (AOCS[b].area || 0));
+      .sort((a, b) => localityRank(a) - localityRank(b));
+    if (!sorted.length) return;
     const header = sorted.length > 1
       ? `<div class="stack-header">${{fmt(LABELS.stack_header, {{ n: sorted.length }})}}</div>`
       : '';
     panelBody.innerHTML = header + sorted.map((s, i) => renderAocCard(s, i === 0)).join('');
     panel.classList.add('open');
+    setSelection(sorted.slice(0, 1));
   }}
 
   function escapeHtml(s) {{
     return String(s).replace(/[&<>"']/g, c => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[c]));
   }}
 
-  document.querySelector('#panel .close').addEventListener('click', () => panel.classList.remove('open'));
+  // ----- selection highlight + persistence (across reload / language switch) -----
+  // Selection is mirrored into both `appellations` (advanced/parcellaire) and
+  // `appellations-villages` (simple/commune) sources so the highlight follows
+  // the user across mode toggles. setFeatureState calls before map.on('load')
+  // throw because the source isn't registered yet — we swallow and re-apply
+  // at the end of map.on('load').
+  let selectedSlugs = [];
 
-  // ----- grape tooltip (Wikipedia, CC BY-SA 4.0) -----
+  function setSelectedState(slug, selected) {{
+    for (const source of ['appellations', 'appellations-villages']) {{
+      const opts = {{ source: source, id: slug }};
+      if (SOURCE_TYPE === 'pmtiles') opts.sourceLayer = 'appellations';
+      try {{ map.setFeatureState(opts, {{ selected: selected }}); }} catch (e) {{}}
+    }}
+  }}
+
+  function setSelection(slugs) {{
+    for (const s of selectedSlugs) setSelectedState(s, false);
+    selectedSlugs = slugs.slice();
+    for (const s of selectedSlugs) setSelectedState(s, true);
+    try {{
+      if (selectedSlugs.length) localStorage.setItem('selected_slugs', JSON.stringify(selectedSlugs));
+      else localStorage.removeItem('selected_slugs');
+    }} catch (e) {{}}
+  }}
+
+  // Restore previously open detail panel after a language switch / reload.
+  (function () {{
+    let saved = null;
+    try {{ saved = localStorage.getItem('selected_slugs'); }} catch (e) {{}}
+    if (!saved) return;
+    let slugs;
+    try {{ slugs = JSON.parse(saved); }} catch (e) {{ return; }}
+    if (!Array.isArray(slugs) || !slugs.length) return;
+    const valid = slugs.filter(s => AOCS[s]);
+    if (!valid.length) return;
+    renderPanelStack(valid);
+  }})();
+
+  document.querySelector('#panel .close').addEventListener('click', () => {{
+    panel.classList.remove('open');
+    setSelection([]);
+  }});
+
+  // ----- pill tooltip (Wikipedia, CC BY-SA 4.0) — grapes + styles -----
   const grapeTip = document.createElement('div');
   grapeTip.id = 'grape-tooltip';
   document.body.appendChild(grapeTip);
@@ -1461,24 +1814,42 @@ _TEMPLATE = """<!doctype html>
     grapeTip.style.left = left + 'px';
   }}
 
+  function resolvePillInfo(el) {{
+    if (el.matches('a.pill.grape.has-info')) {{
+      const info = GRAPES_INFO[el.dataset.slug];
+      if (!info || !info.extract) return null;
+      return {{ info, url: info.page_url || grapeUrl(el.dataset.slug) }};
+    }}
+    if (el.matches('.pill.style.has-info')) {{
+      const info = STYLES_INFO[el.dataset.slug];
+      if (!info || !info.extract) return null;
+      return {{ info, url: info.page_url || '' }};
+    }}
+    return null;
+  }}
+
   panel.addEventListener('mouseover', e => {{
-    const a = e.target.closest('a.pill.grape.has-info');
-    if (!a) return;
-    const info = GRAPES_INFO[a.dataset.slug];
-    if (!info || !info.extract) return;
-    const url = escapeAttr(info.page_url || grapeUrl(a.dataset.slug));
+    const el = e.target.closest('a.pill.grape.has-info, .pill.style.has-info');
+    if (!el) return;
+    const resolved = resolvePillInfo(el);
+    if (!resolved) return;
+    const {{ info, url }} = resolved;
+    const safeUrl = escapeAttr(url);
     const thumb = info.thumbnail
       ? `<img class="thumb" src="${{escapeAttr(info.thumbnail)}}" alt="">` : '';
     const fallback = (LANG !== 'fr' && info.lang_fallback)
       ? ` <span class="fr-marker">${{escapeHtml(LABELS.fr_marker)}}</span>` : '';
+    const srcLink = url
+      ? `<a href="${{safeUrl}}" target="_blank" rel="noopener">Wikipedia</a>`
+      : 'Wikipedia';
     grapeTip.innerHTML = thumb + `<p class="ext">${{escapeHtml(info.extract)}}${{fallback}}</p>` +
-      `<div class="src">via <a href="${{url}}" target="_blank" rel="noopener">Wikipedia</a> · CC BY-SA 4.0 · image: Wikimedia Commons</div>`;
+      `<div class="src">via ${{srcLink}} · CC BY-SA 4.0${{info.thumbnail ? ' · image: Wikimedia Commons' : ''}}</div>`;
     grapeTip.style.display = 'block';
-    positionGrapeTip(a);
+    positionGrapeTip(el);
   }});
 
   panel.addEventListener('mouseout', e => {{
-    if (e.target.closest('a.pill.grape.has-info')) grapeTip.style.display = 'none';
+    if (e.target.closest('a.pill.grape.has-info, .pill.style.has-info')) grapeTip.style.display = 'none';
   }});
 
   panel.addEventListener('click', e => {{
@@ -1507,21 +1878,49 @@ _TEMPLATE = """<!doctype html>
         map.getCanvas().style.cursor = '';
         hoveredSlug = null;
       }});
-      map.on('click', id, e => {{
-        if (!e.features.length) return;
-        // queryRenderedFeatures at the click point returns one feature per
-        // overlapping polygon (e.g. Chambertin grand cru AND its parent
-        // Gevrey-Chambertin AOC AND Bourgogne). Dedupe by slug — a single
-        // AOC can produce multiple tile fragments along seams.
-        const seen = new Set();
-        const slugs = [];
-        for (const f of e.features) {{
-          const s = f.properties.slug;
-          if (s && !seen.has(s)) {{ seen.add(s); slugs.push(s); }}
-        }}
-        renderPanelStack(slugs);
-      }});
     }}
+
+    // Single map-level click handler. Per-layer click handlers fired multiple
+    // times at boundaries (fill + outline), and the last handler's
+    // setSelection won — making the same spot select different things. Hit-
+    // testing once at the click point gives one deterministic feature set,
+    // and an empty hit becomes "click outside → deselect".
+    map.on('click', e => {{
+      // 4-pixel bbox around the click — vineyard polygons (grand-cru
+      // climats, narrow premier-cru slivers) are often sub-pixel thin at
+      // typical zoom; a point-only hit-test misses them.
+      const r = 4;
+      const bbox = [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
+      const features = map.queryRenderedFeatures(bbox, {{
+        layers: ['appellations-fill', 'appellations-fill-villages'],
+      }});
+      if (!features.length) {{
+        panel.classList.remove('open');
+        setSelection([]);
+        return;
+      }}
+      // Dedupe by slug, and drop DGCs that share another AOC's polygon
+      // (geom_source = parent-appellation / sibling-dgc). They're returned
+      // because the underlying geometry was inherited, but they have no
+      // distinct shape to click on — selecting one gold-outlines the whole
+      // parent and clutters the panel stack with siblings nobody pointed at.
+      const seen = new Set();
+      const slugs = [];
+      for (const f of features) {{
+        const s = f.properties.slug;
+        if (!s || seen.has(s)) continue;
+        seen.add(s);
+        const rec = AOCS[s];
+        const src = rec && rec.geom_source;
+        if (src === 'parent-appellation' || src === 'sibling-dgc') continue;
+        slugs.push(s);
+      }}
+      renderPanelStack(slugs);
+    }});
+
+    // Re-apply feature-state for any selection restored from localStorage
+    // before sources existed. Safe no-op when nothing is selected.
+    for (const s of selectedSlugs) setSelectedState(s, true);
 
     applyMode();
     applyFilter();

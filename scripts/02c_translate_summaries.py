@@ -38,9 +38,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -49,13 +49,13 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from _lib import cache, providers, roundtrip  # noqa: E402
 from _lib.summaries import derive_summary, summary_sha  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 CACHE_ROOT = ROOT / "raw" / "translations" / "summaries"
+TERROIR_FACTS_DIR = ROOT / "raw" / "terroir-facts"
 TARGET_LOCALES = ("en", "es", "nl")
-DEFAULT_MODEL = "claude-haiku-4-5"
-DEFAULT_BATCH = 10
 
 LOCALE_NAME = {
     "en": "English",
@@ -76,61 +76,19 @@ Style:
 Output ONLY the translated paragraph. No preface, no closing remarks, no JSON wrapper."""
 
 
-# ---------------------------------------------------------------- providers --
-
-
-class AnthropicProvider:
-    kind = "anthropic-api"
-
-    def __init__(self, model: str):
-        try:
-            import anthropic  # type: ignore
-        except ImportError as e:
-            raise SystemExit(
-                "error: anthropic SDK missing. add it with `uv add anthropic` "
-                "(or use --provider=manual for non-network mode)."
-            ) from e
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise SystemExit("error: ANTHROPIC_API_KEY environment variable is unset.")
-        self.client = anthropic.Anthropic(api_key=api_key)
-        self.model = model
-
-    def translate(self, *, text: str, lang: str) -> str:
-        target_name = LOCALE_NAME[lang]
-        msg = self.client.messages.create(
-            model=self.model,
-            max_tokens=600,
-            system=SYSTEM_PROMPT,
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        f"Translate this French paragraph into {target_name}.\n\n"
-                        f"---\n{text}\n---"
-                    ),
-                }
-            ],
-        )
-        # Concatenate all text blocks (Messages API returns a list).
-        out = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
-        return out.strip()
-
-
-class ManualProvider:
-    kind = "manual"
-
-    def __init__(self):
-        pass
-
-    def translate(self, *, text: str, lang: str) -> str:  # pragma: no cover
-        raise RuntimeError(
-            "manual provider does not perform translation; drop in pre-translated "
-            "JSON files under raw/translations/summaries/<lang>/ and rerun."
-        )
-
-
 # -------------------------------------------------------------------- core --
+
+
+def translate_summary(provider, *, text: str, lang: str) -> str:
+    """Translate one FR paragraph into `lang` using the shared chat()
+    interface. The system prompt and user-message shape live here (per-script
+    concern); the provider just knows how to chat()."""
+    target_name = LOCALE_NAME[lang]
+    user = (
+        f"Translate this French paragraph into {target_name}.\n\n"
+        f"---\n{text}\n---"
+    )
+    return provider.chat(system=SYSTEM_PROMPT, user=user, max_tokens=600, num_ctx=4096)
 
 
 def _cache_path(lang: str, slug: str) -> Path:
@@ -138,20 +96,12 @@ def _cache_path(lang: str, slug: str) -> Path:
 
 
 def _load_existing(lang: str, slug: str) -> dict | None:
-    p = _cache_path(lang, slug)
-    if not p.exists():
-        return None
-    try:
-        return json.loads(p.read_text())
-    except Exception:
-        return None
+    return cache.read_json_or_none(_cache_path(lang, slug))
 
 
 def _write_cache(*, lang: str, slug: str, summary: str, source_text: str,
                  source_pdf_filename: str, source_pdf_url: str,
                  translator: str, translator_kind: str) -> None:
-    p = _cache_path(lang, slug)
-    p.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "slug": slug,
         "lang": lang,
@@ -164,7 +114,16 @@ def _write_cache(*, lang: str, slug: str, summary: str, source_text: str,
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    p.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    cache.write_json(_cache_path(lang, slug), payload)
+
+
+def _terroir_facts_slugs() -> set[str]:
+    """Slugs that have a terroir-facts cache. Stage 04 hides the FR summary
+    when these facts exist (DGCs inherit from parent), so translating a
+    summary for a covered AOC is wasted work."""
+    if not TERROIR_FACTS_DIR.exists():
+        return set()
+    return {p.stem for p in TERROIR_FACTS_DIR.glob("*.json") if p.stem != "manifest"}
 
 
 def _enumerate_jobs(
@@ -172,10 +131,14 @@ def _enumerate_jobs(
     languages: tuple[str, ...],
     *,
     skip_cached: bool = True,
+    skip_facts_covered: bool = True,
 ) -> list[dict]:
     """Build the work list: every (lang, slug) whose cache is missing or stale.
     With `skip_cached=False`, every (lang, slug) pair is included regardless
-    of cache state — used by `--emit-todo --all`."""
+    of cache state — used by `--emit-todo --all`.
+    With `skip_facts_covered=False`, AOCs whose UI shows terroir-facts
+    instead of the FR summary are still translated."""
+    facts_slugs = _terroir_facts_slugs() if skip_facts_covered else set()
     jobs: list[dict] = []
     for f in sorted(extracted_files):
         if f.name == "_index.json":
@@ -185,6 +148,10 @@ def _enumerate_jobs(
         text = derive_summary(rec)
         if not text:
             continue
+        if skip_facts_covered:
+            parent_slug = rec.get("parent_slug") or ""
+            if slug in facts_slugs or (parent_slug and parent_slug in facts_slugs):
+                continue
         sha = summary_sha(text)
         src = rec.get("source") or {}
         pdf_filename = src.get("filename") or ""
@@ -242,8 +209,7 @@ def emit_todo_file(
         for lang in languages:
             payload[lang] = {"items": by_lang[lang]}
             total += len(by_lang[lang])
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    cache.write_json(out_path, payload)
     counts = ", ".join(f"{lang}={len(by_lang[lang])}" for lang in languages)
     print(f"[02c] wrote {out_path} ({total} items: {counts})", file=sys.stderr)
     return 0
@@ -345,15 +311,76 @@ def import_translations_file(
     return 0
 
 
+def _process_one_job(provider, model_id: str, job: dict) -> tuple[bool, str | None]:
+    """Translate one (slug, lang) job + write cache. Returns (ok, error_message)."""
+    try:
+        translated = translate_summary(provider, text=job["source_text"], lang=job["lang"])
+    except Exception as e:  # noqa: BLE001
+        return False, str(e)
+    if not translated:
+        return False, "empty response"
+    _write_cache(
+        lang=job["lang"],
+        slug=job["slug"],
+        summary=translated,
+        source_text=job["source_text"],
+        source_pdf_filename=job["source_pdf_filename"],
+        source_pdf_url=job["source_pdf_url"],
+        translator=model_id,
+        translator_kind=provider.kind,
+    )
+    return True, None
+
+
+def _run_translation_loop(
+    provider, model_id: str, jobs: list[dict], workers: int = 1,
+) -> tuple[int, list[tuple[str, str, str]]]:
+    done = 0
+    skipped: list[tuple[str, str, str]] = []
+    if workers <= 1:
+        for job in tqdm(jobs, desc="translate", leave=False):
+            ok, err = _process_one_job(provider, model_id, job)
+            if ok:
+                done += 1
+            else:
+                skipped.append((job["lang"], job["slug"], err or "unknown"))
+            # Tiny pacing buffer; the API rate-limit is generous but
+            # free-tier spikes can throttle. 50ms is polite without
+            # slowing the wall-clock perceptibly.
+            time.sleep(0.05)
+        return done, skipped
+
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        futures = {ex.submit(_process_one_job, provider, model_id, j): j for j in jobs}
+        for fut in tqdm(as_completed(futures), total=len(jobs), desc="translate", leave=False):
+            job = futures[fut]
+            try:
+                ok, err = fut.result()
+            except Exception as e:  # noqa: BLE001
+                skipped.append((job["lang"], job["slug"], f"worker exception: {e}"))
+                continue
+            if ok:
+                done += 1
+            else:
+                skipped.append((job["lang"], job["slug"], err or "unknown"))
+    return done, skipped
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
-        "--provider", default="anthropic", choices=("anthropic", "manual"),
-        help="translation backend (default: anthropic; set ANTHROPIC_API_KEY)",
+        "--provider", default="anthropic", choices=("anthropic", "ollama", "manual"),
+        help="translation backend (default: anthropic; set ANTHROPIC_API_KEY). "
+             "ollama: local Ollama HTTP API.",
     )
     ap.add_argument(
-        "--model", default=DEFAULT_MODEL,
-        help=f"anthropic model id (default: {DEFAULT_MODEL})",
+        "--model", default=None,
+        help=f"model id (defaults: anthropic={providers.DEFAULT_ANTHROPIC_MODEL}, "
+             f"ollama={providers.DEFAULT_OLLAMA_MODEL})",
+    )
+    ap.add_argument(
+        "--ollama-url", default=providers.DEFAULT_OLLAMA_URL,
+        help=f"Ollama chat endpoint (default: {providers.DEFAULT_OLLAMA_URL})",
     )
     ap.add_argument(
         "--lang", action="append", choices=TARGET_LOCALES, default=None,
@@ -364,45 +391,29 @@ def main() -> int:
         help="translate at most N (slug, lang) pairs (0 = all). Useful for partial runs.",
     )
     ap.add_argument(
+        "--workers", type=int, default=1,
+        help=(
+            "concurrent (slug, lang) pairs to translate (default 1, sequential). "
+            "For Ollama, the server must be started with OLLAMA_NUM_PARALLEL >= "
+            "workers (default 4 in current Ollama) or extra requests just queue. "
+            "For Anthropic, respect your account's RPM/concurrency limits."
+        ),
+    )
+    ap.add_argument(
         "--retry", action="store_true",
         help="alias for default behaviour: skips entries already cached, translates everything else",
     )
-    ap.add_argument(
-        "--emit-todo", metavar="PATH", default=None,
-        help="write a translation-todo JSON file (no API calls) and exit. "
-             "All locales by default; --lang restricts to one (single-locale shape).",
-    )
-    ap.add_argument(
-        "--all", action="store_true",
-        help="with --emit-todo: include entries that already have a cache hit "
-             "(default is to export only missing entries).",
-    )
-    ap.add_argument(
-        "--import", dest="import_path", metavar="PATH", default=None,
-        help="read a filled-in todo JSON and write per-AOC cache files. "
-             "Requires --translator-id.",
-    )
-    ap.add_argument(
-        "--translator-id", default=None,
-        help="identifier recorded as `translator` in cache files when using --import "
-             "(e.g. \"claude.ai · 2026-05-01\" or \"deepl-v2\").",
-    )
-    ap.add_argument(
-        "--translator-kind", default="manual",
-        help="value recorded as `translator_kind` in cache files when using --import "
-             "(default: manual; e.g. deepl-api).",
-    )
+    roundtrip.add_arguments(ap)
     args = ap.parse_args()
 
     if not EXTRACTED.exists():
         print("error: raw/inao/cahier-extracted is missing — run 02_extract_cahiers.py first", file=sys.stderr)
         return 1
 
-    if args.emit_todo and args.import_path:
-        print("error: --emit-todo and --import are mutually exclusive.", file=sys.stderr)
-        return 1
+    rc = roundtrip.validate_emit_import(args)
+    if rc is not None:
+        return rc
 
-    # --- emit-todo path ---
     if args.emit_todo:
         single_lang = bool(args.lang) and len(args.lang) == 1
         languages = tuple(args.lang) if args.lang else TARGET_LOCALES
@@ -413,22 +424,13 @@ def main() -> int:
             single_lang=single_lang,
         )
 
-    # --- import path ---
     if args.import_path:
-        if not args.translator_id:
-            print(
-                "error: --import requires --translator-id (e.g. "
-                "--translator-id 'claude.ai · 2026-05-01').",
-                file=sys.stderr,
-            )
-            return 1
         return import_translations_file(
             Path(args.import_path),
             translator_id=args.translator_id,
             translator_kind=args.translator_kind,
         )
 
-    # --- network / manual-list paths (existing behaviour) ---
     languages = tuple(args.lang) if args.lang else TARGET_LOCALES
     files = list(EXTRACTED.glob("*.json"))
     jobs = _enumerate_jobs(files, languages)
@@ -439,14 +441,18 @@ def main() -> int:
         print("[02c] nothing to do — all caches up to date.", file=sys.stderr)
         return 0
 
+    provider, model_id = providers.make_provider(
+        args.provider, model=args.model, ollama_url=args.ollama_url,
+    )
+    workers = max(1, args.workers)
     print(
         f"[02c] {len(jobs)} translations to fetch "
-        f"(provider={args.provider}, model={args.model if args.provider == 'anthropic' else '-'}, "
-        f"locales={','.join(languages)})",
+        f"(provider={args.provider}, model={model_id}, "
+        f"locales={','.join(languages)}, workers={workers})",
         file=sys.stderr,
     )
 
-    if args.provider == "manual":
+    if provider is None:
         for j in jobs:
             print(f"  missing: {j['lang']}/{j['slug']}.json", file=sys.stderr)
         print(
@@ -457,35 +463,7 @@ def main() -> int:
         )
         return 1
 
-    provider = AnthropicProvider(args.model)
-    translator_id = args.model
-
-    skipped: list[tuple[str, str, str]] = []
-    done = 0
-    for j in tqdm(jobs, desc="translate", leave=False):
-        try:
-            translated = provider.translate(text=j["source_text"], lang=j["lang"])
-        except Exception as e:  # noqa: BLE001
-            skipped.append((j["lang"], j["slug"], str(e)))
-            continue
-        if not translated:
-            skipped.append((j["lang"], j["slug"], "empty response"))
-            continue
-        _write_cache(
-            lang=j["lang"],
-            slug=j["slug"],
-            summary=translated,
-            source_text=j["source_text"],
-            source_pdf_filename=j["source_pdf_filename"],
-            source_pdf_url=j["source_pdf_url"],
-            translator=translator_id,
-            translator_kind=provider.kind,
-        )
-        done += 1
-        # Tiny pacing buffer; the API rate-limit is generous but free-tier
-        # spikes can throttle. 50ms keeps things polite without slowing
-        # the wall-clock perceptibly.
-        time.sleep(0.05)
+    done, skipped = _run_translation_loop(provider, model_id, jobs, workers=workers)
 
     print(f"[02c] translated: {done}, skipped: {len(skipped)}", file=sys.stderr)
     if skipped:

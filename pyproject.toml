@@ -13,6 +13,7 @@ dependencies = [
     "pyogrio>=0.12.1",
     "babel>=2.16",
     "anthropic>=0.40",
+    "lingua-language-detector>=2.2.0",
 ]
 
 [dependency-groups]

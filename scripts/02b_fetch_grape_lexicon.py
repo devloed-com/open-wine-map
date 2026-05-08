@@ -188,7 +188,7 @@ def main() -> int:
                 cached += 1
                 continue
             result = fetch_summary(session, lang, slug)
-            cache.write_text(json.dumps(result, ensure_ascii=False, indent=2))
+            cache.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
             if result.get("missing"):
                 miss += 1
             elif result.get("error"):
@@ -199,7 +199,7 @@ def main() -> int:
         manifest["locales"][lang] = {"ok": ok, "miss": miss, "err": err, "cached": cached}
         print(f"[02b/{lang}] new ok={ok} miss={miss} err={err} cached={cached}", file=sys.stderr)
 
-    MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
+    MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     print(f"[02b] manifest: {MANIFEST.relative_to(ROOT)}", file=sys.stderr)
     return 0
 

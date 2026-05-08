@@ -4,6 +4,12 @@ __pycache__/
 .ruff_cache/
 .pytest_cache/
 .DS_Store
+*.log
+
+# secrets — PISTE / Légifrance OAuth credentials, etc.
+.env
+.env.*
+!.env.example
 
 # unrelated projects coexisting in this checkout
 wine-wiki/
@@ -21,6 +27,7 @@ raw/
 *.cpg
 *.pmtiles
 *.zip
+*.html
 
 # stage 02c round-trip work files (todo.json emitted by --emit-todo,
 # done*.json returned by the translator) — ephemeral
@@ -29,11 +36,8 @@ done*.json
 
 # generated wiki — stage 03 emits one .md per appellation/DGC + indices;
 # wiki/concepts/ is hand-authored and tracked
-wiki/*.md
-wiki/_index.json
-wiki/map.html
-wiki/map.*.html
-wiki/map-data/
+/wiki/**
+!/wiki/concepts/
 
 # obsidian / editor scratch
 .obsidian/

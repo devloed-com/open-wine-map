@@ -1,0 +1,17 @@
+{
+  "_README": "Copy this file to raw/inao/cahiers/manual_overrides.json and edit. Each key is an INAO id_appellation (string). Each entry adds candidate BO Agri PDF URLs to stage 01's resolution result, on top of whatever it scrapes from www2.inao.gouv.fr. Stage 02's cross-bundle rescue then promotes the matching cahier into the wiki. Use this to recover AOCs whose INAO product page links the wrong arrêté (or no arrêté at all). Find the right document_administratif URL by hand via https://info.agriculture.gouv.fr/gedei/site/bo-agri/recherche then paste below.",
+
+  "130": {
+    "name": "Bâtard-Montrachet",
+    "boagri_urls": [
+      "https://info.agriculture.gouv.fr/gedei/site/bo-agri/document_administratif-PASTE-UUID-HERE/telechargement"
+    ],
+    "note": "BO n°XX du JJ mois AAAA, p. NNNN — found via BO Agri search 'Bâtard-Montrachet'."
+  },
+
+  "207": {
+    "name": "Montrachet",
+    "boagri_urls": [],
+    "note": "TODO: find the standalone cahier in BO Agri (the one INAO links is a JORF modification arrêté covering Cassis/Crozes/Gigondas/Languedoc/Lirac/Pommard, no Montrachet)."
+  }
+}
