@@ -68,10 +68,12 @@ SECTION_HDR_RE = re.compile(
     # write "I. Nom de l'appellation"), a dash ("I − Nom"), or both
     # ("I. − Nom"). Title runs to end of line. Requiring at least one of
     # period/dash separates real headers from in-sentence Roman references.
-    rf"^[ \t]*({'|'.join(ROMAN)})[ \t]*(?:\.[ \t]*(?:{DASH}[ \t]*)?|{DASH}[ \t]*)([^\n]+?)\s*$",
+    # Leading whitespace includes \x0c so headers landing right after a page
+    # break (pdftotext emits \x0c at page boundaries) still match.
+    rf"^[ \t\x0c]*({'|'.join(ROMAN)})[ \t]*(?:\.[ \t]*(?:{DASH}[ \t]*)?|{DASH}[ \t]*)([^\n]+?)\s*$",
     re.MULTILINE,
 )
-CHAPITRE_RE = re.compile(r"^[ \t]*CHAPITRE\s+[IVX]+(?:er)?\b", re.MULTILINE | re.IGNORECASE)
+CHAPITRE_RE = re.compile(r"^[ \t]*(?:CHAPITRE|Chapitre)\s+[IVX]+(?:er)?\b", re.MULTILINE)
 
 # A "<département header>: <comma list of communes>" block. The dept name is
 # a short proper-noun token (no commas, no colons) introduced by one of:
