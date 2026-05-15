@@ -133,8 +133,11 @@ def pdftotext(pdf_path: Path) -> str:
         return cached.read_text(encoding="utf-8")
     out = subprocess.run(
         ["pdftotext", "-layout", "-enc", "UTF-8", str(pdf_path), "-"],
-        check=True, capture_output=True, text=True,
+        check=True, capture_output=True, text=True, encoding="utf-8"
     ).stdout
+    if out is None:
+        print(f"Erreur : Impossible d'extraire le texte de {pdf_path}")
+        return "" # Ou gérez l'erreur autrement
     cached.write_text(out, encoding="utf-8")
     return out
 
@@ -1123,7 +1126,7 @@ def main() -> int:
             record["id_denomination_geo"] = parent_denom["id_denomination_geo"]
 
         out_path = OUT_DIR / f"{record['slug']}.json"
-        out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2))
+        out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2),encoding="utf-8")
         index[record.get("id_denomination_geo") or id_app] = {
             "id_appellation": id_app,
             "id_denomination_geo": record.get("id_denomination_geo") or "",
@@ -1168,7 +1171,7 @@ def main() -> int:
             dgc_record["categories"] = dgc_categories
 
             dgc_path = OUT_DIR / f"{dgc_slug}.json"
-            dgc_path.write_text(json.dumps(dgc_record, ensure_ascii=False, indent=2))
+            dgc_path.write_text(json.dumps(dgc_record, ensure_ascii=False, indent=2), encoding="utf-8")
             index[d["id_denomination_geo"]] = {
                 "id_appellation": id_app,
                 "id_denomination_geo": d["id_denomination_geo"],
