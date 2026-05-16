@@ -1,18 +1,24 @@
-"""Translate per-AOC cahier summaries (FR → en/es/nl) for the map UI.
+"""Translate per-appellation summaries into the map-UI locales.
 
-Pipeline stage 02c.
+Pipeline stage 02c. Source language is parameterised via `--source-lang`:
 
-Reads `raw/inao/cahier-extracted/*.json`, derives the same FR summary that
-stage 04 will render (`derive_summary` in `_lib/summaries.py`), and writes
-one machine-translated cache file per AOC per locale to
-`raw/translations/summaries/<lang>/<slug>.json`. The cache file records the
-SHA of the FR input so reruns are idempotent — entries are re-translated
-only when the FR summary actually changed.
+- `fr` (default): reads `raw/inao/cahier-extracted/*.json`, translates the
+  FR summary into en/es/nl. Source attribution is the BO Agri PDF URL.
+- `es`: reads `raw/es/pliegos-extracted/*.json`, translates the ES summary
+  into en/fr/nl. Source attribution is the EUR-Lex HTML URL.
+
+Output: `raw/translations/summaries/<lang>/<slug>.json` (single shared
+cache root; slugs are globally unique, each entry carries `country` +
+`source_lang`). The cache file records the SHA of the source input so
+reruns are idempotent — entries are re-translated only when the source
+summary actually changed.
 
 CLAUDE.md authorises this as a bounded translation layer: each cache file
 carries `source_pdf_url`, `source_pdf_filename`, `source_summary`,
-`source_summary_sha`, `translator`, `translator_kind`, and `fetched_at`,
-and the UI renders an attribution line linking to the cahier des charges.
+`source_summary_sha`, `translator`, `translator_kind`, `fetched_at`,
+`country`, and `source_lang`. The `pdf` in the field names is FR-legacy —
+for ES records the URL is an HTML EUR-Lex page; the UI branches on
+`country` to render the right attribution wording.
 
 Providers
 ---------
@@ -20,6 +26,11 @@ Providers
 `anthropic` — calls the Anthropic Messages API. Requires
 `ANTHROPIC_API_KEY` in the environment. Default model: claude-haiku-4-5
 (fast and accurate for short paragraphs at low cost).
+
+`mistral` — calls the Mistral Chat Completions API. Requires
+`MISTRAL_API_KEY` in the environment. Default model: mistral-large-latest.
+
+`ollama` — local Ollama HTTP API.
 
 `manual` — non-network mode. Lists every (slug, lang) pair with no cache
 entry and exits non-zero. Use when running the pipeline in a fork that
@@ -51,27 +62,43 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import cache, providers, roundtrip  # noqa: E402
 from _lib.summaries import derive_summary, summary_sha  # noqa: E402
+from _lib.translation_glossary import glossary_for  # noqa: E402
 
-EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 CACHE_ROOT = ROOT / "raw" / "translations" / "summaries"
 TERROIR_FACTS_DIR = ROOT / "raw" / "terroir-facts"
-TARGET_LOCALES = ("en", "es", "nl")
 
 LOCALE_NAME = {
     "en": "English",
     "es": "Spanish",
+    "fr": "French",
     "nl": "Dutch",
 }
 
 
-SYSTEM_PROMPT = """You translate short French paragraphs from INAO cahier des charges (French wine appellation specifications) into the target language.
+# Per-source-language config. The source dir, target locales, and prompt
+# document-name vary; the cache shape and SHA logic are country-neutral.
+SOURCE_CONFIG: dict[str, dict] = {
+    "fr": {
+        "source_dir": ROOT / "raw" / "inao" / "cahier-extracted",
+        "source_document": "INAO cahier des charges (French wine appellation specifications)",
+        "target_locales": ("en", "es", "nl"),
+    },
+    "es": {
+        "source_dir": ROOT / "raw" / "es" / "pliegos-extracted",
+        "source_document": "EU Official Journal pliego de condiciones (Spanish wine appellation specifications)",
+        "target_locales": ("en", "fr", "nl"),
+    },
+}
+
+
+SYSTEM_PROMPT_TEMPLATE = """You translate short {source_name} paragraphs from {source_document} into the target language.
 
 Style:
 - Plain prose. No markdown, no list formatting, no quotes around the output.
-- Preserve appellation names, region names, and grape variety names exactly as in the source (do not translate proper nouns; "Pinot noir" stays "Pinot noir", "Côtes du Rhône" stays "Côtes du Rhône").
+- Preserve appellation names, region names, and grape variety names exactly as in the source (do not translate proper nouns; "Pinot noir" stays "Pinot noir", "Côtes du Rhône" stays "Côtes du Rhône", "Tempranillo" stays "Tempranillo").
 - Translate vinification and stylistic vocabulary naturally for a wine-literate reader (sommelier students and enthusiasts).
 - Match the source paragraph's register and length — do not add extra context, footnotes, or explanations.
-- If the source mentions a colour ("rouge", "blanc", "rosé", "tranquille", "mousseux"), translate it.
+- If the source mentions a wine colour or style ("rouge"/"tinto", "blanc"/"blanco", "rosé"/"rosado", "tranquille", "mousseux", "espumoso"), translate it.
 
 Output ONLY the translated paragraph. No preface, no closing remarks, no JSON wrapper."""
 
@@ -79,16 +106,24 @@ Output ONLY the translated paragraph. No preface, no closing remarks, no JSON wr
 # -------------------------------------------------------------------- core --
 
 
-def translate_summary(provider, *, text: str, lang: str) -> str:
-    """Translate one FR paragraph into `lang` using the shared chat()
-    interface. The system prompt and user-message shape live here (per-script
-    concern); the provider just knows how to chat()."""
-    target_name = LOCALE_NAME[lang]
+def translate_summary(provider, *, text: str, source_lang: str, target_lang: str,
+                      source_document: str) -> str:
+    """Translate one paragraph from `source_lang` into `target_lang`. The
+    system prompt is templated per source language; the provider just knows
+    how to chat()."""
+    source_name = LOCALE_NAME[source_lang]
+    target_name = LOCALE_NAME[target_lang]
+    system = SYSTEM_PROMPT_TEMPLATE.format(
+        source_name=source_name, source_document=source_document
+    )
+    glossary = glossary_for(target_lang)
+    if glossary:
+        system = system + "\n\n" + glossary
     user = (
-        f"Translate this French paragraph into {target_name}.\n\n"
+        f"Translate this {source_name} paragraph into {target_name}.\n\n"
         f"---\n{text}\n---"
     )
-    return provider.chat(system=SYSTEM_PROMPT, user=user, max_tokens=600, num_ctx=4096)
+    return provider.chat(system=system, user=user, max_tokens=600, num_ctx=4096)
 
 
 def _cache_path(lang: str, slug: str) -> Path:
@@ -101,8 +136,11 @@ def _load_existing(lang: str, slug: str) -> dict | None:
 
 def _write_cache(*, lang: str, slug: str, summary: str, source_text: str,
                  source_pdf_filename: str, source_pdf_url: str,
-                 translator: str, translator_kind: str) -> None:
+                 translator: str, translator_kind: str,
+                 country: str, source_lang: str) -> None:
     payload = {
+        "country": country,
+        "source_lang": source_lang,
         "slug": slug,
         "lang": lang,
         "summary": summary,
@@ -126,18 +164,29 @@ def _terroir_facts_slugs() -> set[str]:
     return {p.stem for p in TERROIR_FACTS_DIR.glob("*.json") if p.stem != "manifest"}
 
 
+def _source_url_for(record: dict) -> str:
+    """Pick the canonical source-attribution URL for a record. FR records
+    point at BO Agri; ES records point at the EUR-Lex EU-OJ HTML page."""
+    src = record.get("source") or {}
+    if record.get("country") == "es":
+        # `final_url` is the EUR-Lex URL after Spanish-language redirect.
+        return src.get("final_url") or src.get("source_url") or ""
+    return src.get("boagri_url") or ""
+
+
 def _enumerate_jobs(
     extracted_files: list[Path],
     languages: tuple[str, ...],
     *,
+    source_lang: str,
     skip_cached: bool = True,
     skip_facts_covered: bool = True,
 ) -> list[dict]:
     """Build the work list: every (lang, slug) whose cache is missing or stale.
     With `skip_cached=False`, every (lang, slug) pair is included regardless
     of cache state — used by `--emit-todo --all`.
-    With `skip_facts_covered=False`, AOCs whose UI shows terroir-facts
-    instead of the FR summary are still translated."""
+    With `skip_facts_covered=False`, entries whose UI shows terroir-facts
+    instead of the source summary are still translated."""
     facts_slugs = _terroir_facts_slugs() if skip_facts_covered else set()
     jobs: list[dict] = []
     for f in sorted(extracted_files):
@@ -154,8 +203,9 @@ def _enumerate_jobs(
                 continue
         sha = summary_sha(text)
         src = rec.get("source") or {}
+        country = rec.get("country") or source_lang
         pdf_filename = src.get("filename") or ""
-        pdf_url = src.get("boagri_url") or ""
+        pdf_url = _source_url_for(rec)
         for lang in languages:
             if skip_cached:
                 existing = _load_existing(lang, slug)
@@ -165,6 +215,8 @@ def _enumerate_jobs(
                 {
                     "slug": slug,
                     "lang": lang,
+                    "country": country,
+                    "source_lang": source_lang,
                     "source_text": text,
                     "source_pdf_filename": pdf_filename,
                     "source_pdf_url": pdf_url,
@@ -187,14 +239,16 @@ def _job_to_todo_item(j: dict) -> dict:
 def emit_todo_file(
     out_path: Path,
     *,
+    extracted_dir: Path,
     languages: tuple[str, ...],
+    source_lang: str,
     skip_cached: bool,
     single_lang: bool,
 ) -> int:
     """Write a translation-todo JSON file. Single-locale shape when
     `single_lang=True`, otherwise dict-keyed-by-locale."""
-    files = list(EXTRACTED.glob("*.json"))
-    jobs = _enumerate_jobs(files, languages, skip_cached=skip_cached)
+    files = list(extracted_dir.glob("*.json"))
+    jobs = _enumerate_jobs(files, languages, source_lang=source_lang, skip_cached=skip_cached)
     by_lang: dict[str, list[dict]] = {l: [] for l in languages}
     for j in jobs:
         by_lang[j["lang"]].append(_job_to_todo_item(j))
@@ -215,15 +269,17 @@ def emit_todo_file(
     return 0
 
 
-def _normalise_todo_payload(payload: dict) -> list[tuple[str, list[dict]]]:
+def _normalise_todo_payload(
+    payload: dict, target_locales: tuple[str, ...], source_lang: str,
+) -> list[tuple[str, list[dict]]]:
     """Yield (lang, items) pairs from either single-locale or multi-locale shape.
-    `fr` is accepted on import (so a round-trip can carry hand-rewritten FR
-    summaries that fix cahier-extraction quirks); it is never produced by
-    `--emit-todo` or by the network-translation path."""
+    The source language is accepted on import (so a round-trip can carry
+    hand-rewritten source summaries that fix extraction quirks); it is
+    never produced by `--emit-todo` or by the network-translation path."""
     if "items" in payload and "lang" in payload:
         return [(payload["lang"], payload.get("items") or [])]
     out: list[tuple[str, list[dict]]] = []
-    for lang in (*TARGET_LOCALES, "fr"):
+    for lang in (*target_locales, source_lang):
         block = payload.get(lang)
         if isinstance(block, dict) and isinstance(block.get("items"), list):
             out.append((lang, block["items"]))
@@ -233,6 +289,9 @@ def _normalise_todo_payload(payload: dict) -> list[tuple[str, list[dict]]]:
 def import_translations_file(
     in_path: Path,
     *,
+    extracted_dir: Path,
+    source_lang: str,
+    target_locales: tuple[str, ...],
     translator_id: str,
     translator_kind: str,
 ) -> int:
@@ -247,25 +306,28 @@ def import_translations_file(
         print(f"error: could not parse {in_path}: {e}", file=sys.stderr)
         return 1
 
-    blocks = _normalise_todo_payload(payload)
+    blocks = _normalise_todo_payload(payload, target_locales, source_lang)
     if not blocks:
         print(
             "error: file has neither a single-locale shape "
-            "({lang, items}) nor a multi-locale shape ({en|es|nl: {items}}).",
+            f"({{lang, items}}) nor a multi-locale shape "
+            f"({{{'|'.join(target_locales)}: {{items}}}}).",
             file=sys.stderr,
         )
         return 1
 
-    # Build a per-slug map of the *current* FR derivation so we can verify
+    # Build a per-slug map of the *current* source derivation so we can verify
     # that the import file's source_summary_sha is still valid.
     current_sha: dict[str, str] = {}
-    for f in EXTRACTED.glob("*.json"):
+    current_country: dict[str, str] = {}
+    for f in extracted_dir.glob("*.json"):
         if f.name == "_index.json":
             continue
         rec = json.loads(f.read_text())
         text = derive_summary(rec)
         if text:
             current_sha[rec["slug"]] = summary_sha(text)
+            current_country[rec["slug"]] = rec.get("country") or source_lang
 
     wrote: dict[str, int] = {}
     skipped_empty = skipped_sha = skipped_unknown = 0
@@ -298,6 +360,8 @@ def import_translations_file(
                 source_pdf_url=it.get("source_pdf_url") or "",
                 translator=translator_id,
                 translator_kind=translator_kind,
+                country=current_country.get(slug, source_lang),
+                source_lang=source_lang,
             )
             wrote[lang] += 1
 
@@ -311,10 +375,16 @@ def import_translations_file(
     return 0
 
 
-def _process_one_job(provider, model_id: str, job: dict) -> tuple[bool, str | None]:
+def _process_one_job(provider, model_id: str, job: dict, source_document: str) -> tuple[bool, str | None]:
     """Translate one (slug, lang) job + write cache. Returns (ok, error_message)."""
     try:
-        translated = translate_summary(provider, text=job["source_text"], lang=job["lang"])
+        translated = translate_summary(
+            provider,
+            text=job["source_text"],
+            source_lang=job["source_lang"],
+            target_lang=job["lang"],
+            source_document=source_document,
+        )
     except Exception as e:  # noqa: BLE001
         return False, str(e)
     if not translated:
@@ -328,18 +398,21 @@ def _process_one_job(provider, model_id: str, job: dict) -> tuple[bool, str | No
         source_pdf_url=job["source_pdf_url"],
         translator=model_id,
         translator_kind=provider.kind,
+        country=job["country"],
+        source_lang=job["source_lang"],
     )
     return True, None
 
 
 def _run_translation_loop(
-    provider, model_id: str, jobs: list[dict], workers: int = 1,
+    provider, model_id: str, jobs: list[dict], source_document: str,
+    workers: int = 1,
 ) -> tuple[int, list[tuple[str, str, str]]]:
     done = 0
     skipped: list[tuple[str, str, str]] = []
     if workers <= 1:
         for job in tqdm(jobs, desc="translate", leave=False):
-            ok, err = _process_one_job(provider, model_id, job)
+            ok, err = _process_one_job(provider, model_id, job, source_document)
             if ok:
                 done += 1
             else:
@@ -351,7 +424,10 @@ def _run_translation_loop(
         return done, skipped
 
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        futures = {ex.submit(_process_one_job, provider, model_id, j): j for j in jobs}
+        futures = {
+            ex.submit(_process_one_job, provider, model_id, j, source_document): j
+            for j in jobs
+        }
         for fut in tqdm(as_completed(futures), total=len(jobs), desc="translate", leave=False):
             job = futures[fut]
             try:
@@ -369,13 +445,15 @@ def _run_translation_loop(
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
-        "--provider", default="anthropic", choices=("anthropic", "ollama", "manual"),
+        "--provider", default="anthropic", choices=("anthropic", "mistral", "ollama", "manual"),
         help="translation backend (default: anthropic; set ANTHROPIC_API_KEY). "
+             "mistral: Mistral Chat API (set MISTRAL_API_KEY). "
              "ollama: local Ollama HTTP API.",
     )
     ap.add_argument(
         "--model", default=None,
         help=f"model id (defaults: anthropic={providers.DEFAULT_ANTHROPIC_MODEL}, "
+             f"mistral={providers.DEFAULT_MISTRAL_MODEL}, "
              f"ollama={providers.DEFAULT_OLLAMA_MODEL})",
     )
     ap.add_argument(
@@ -383,8 +461,19 @@ def main() -> int:
         help=f"Ollama chat endpoint (default: {providers.DEFAULT_OLLAMA_URL})",
     )
     ap.add_argument(
-        "--lang", action="append", choices=TARGET_LOCALES, default=None,
-        help="restrict to a specific locale (repeatable); default: all 3",
+        "--mistral-url", default=providers.DEFAULT_MISTRAL_URL,
+        help=f"Mistral chat endpoint (default: {providers.DEFAULT_MISTRAL_URL})",
+    )
+    ap.add_argument(
+        "--source-lang", default="fr", choices=sorted(SOURCE_CONFIG),
+        help="source language of the corpus (default: fr). `fr` reads "
+             "raw/inao/cahier-extracted/ and targets en/es/nl; `es` reads "
+             "raw/es/pliegos-extracted/ and targets en/fr/nl.",
+    )
+    ap.add_argument(
+        "--lang", action="append", default=None,
+        help="restrict to a specific target locale (repeatable); default: "
+             "all 3 from the source-lang config",
     )
     ap.add_argument(
         "--limit", type=int, default=0,
@@ -406,9 +495,22 @@ def main() -> int:
     roundtrip.add_arguments(ap)
     args = ap.parse_args()
 
-    if not EXTRACTED.exists():
-        print("error: raw/inao/cahier-extracted is missing — run 02_extract_cahiers.py first", file=sys.stderr)
+    cfg = SOURCE_CONFIG[args.source_lang]
+    extracted_dir: Path = cfg["source_dir"]
+    target_locales: tuple[str, ...] = cfg["target_locales"]
+    source_document: str = cfg["source_document"]
+
+    if not extracted_dir.exists():
+        print(f"error: {extracted_dir} is missing — run the upstream extraction stage first",
+              file=sys.stderr)
         return 1
+
+    if args.lang:
+        invalid = [l for l in args.lang if l not in target_locales]
+        if invalid:
+            print(f"error: --lang values {invalid} not in source-lang `{args.source_lang}` "
+                  f"target locales {target_locales}", file=sys.stderr)
+            return 1
 
     rc = roundtrip.validate_emit_import(args)
     if rc is not None:
@@ -416,10 +518,12 @@ def main() -> int:
 
     if args.emit_todo:
         single_lang = bool(args.lang) and len(args.lang) == 1
-        languages = tuple(args.lang) if args.lang else TARGET_LOCALES
+        languages = tuple(args.lang) if args.lang else target_locales
         return emit_todo_file(
             Path(args.emit_todo),
+            extracted_dir=extracted_dir,
             languages=languages,
+            source_lang=args.source_lang,
             skip_cached=not args.all,
             single_lang=single_lang,
         )
@@ -427,13 +531,16 @@ def main() -> int:
     if args.import_path:
         return import_translations_file(
             Path(args.import_path),
+            extracted_dir=extracted_dir,
+            source_lang=args.source_lang,
+            target_locales=target_locales,
             translator_id=args.translator_id,
             translator_kind=args.translator_kind,
         )
 
-    languages = tuple(args.lang) if args.lang else TARGET_LOCALES
-    files = list(EXTRACTED.glob("*.json"))
-    jobs = _enumerate_jobs(files, languages)
+    languages = tuple(args.lang) if args.lang else target_locales
+    files = list(extracted_dir.glob("*.json"))
+    jobs = _enumerate_jobs(files, languages, source_lang=args.source_lang)
     if args.limit:
         jobs = jobs[: args.limit]
 
@@ -443,11 +550,12 @@ def main() -> int:
 
     provider, model_id = providers.make_provider(
         args.provider, model=args.model, ollama_url=args.ollama_url,
+        mistral_url=args.mistral_url,
     )
     workers = max(1, args.workers)
     print(
         f"[02c] {len(jobs)} translations to fetch "
-        f"(provider={args.provider}, model={model_id}, "
+        f"(source={args.source_lang}, provider={args.provider}, model={model_id}, "
         f"locales={','.join(languages)}, workers={workers})",
         file=sys.stderr,
     )
@@ -463,7 +571,9 @@ def main() -> int:
         )
         return 1
 
-    done, skipped = _run_translation_loop(provider, model_id, jobs, workers=workers)
+    done, skipped = _run_translation_loop(
+        provider, model_id, jobs, source_document, workers=workers,
+    )
 
     print(f"[02c] translated: {done}, skipped: {len(skipped)}", file=sys.stderr)
     if skipped:

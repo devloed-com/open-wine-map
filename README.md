@@ -1,16 +1,21 @@
 # open wine map
 
-A reference wiki + map of French wine appellations, generated mechanically from
-public INAO and IGN data. Every per-AOC fact traces back to a JORF-published
-*cahier des charges* — nothing here is hand-written narrative.
+A reference wiki + map of European wine appellations, generated mechanically
+from public regulator data. France (INAO + JORF) is the canonical pipeline;
+Spain (eAmbrosia + EUR-Lex) is the second country and lives under
+`scripts/es/`. Every per-record fact traces back to a public-source document
+— nothing here is hand-written narrative.
 
 ## Status
 
-The pipeline runs end-to-end across the full French AOC/AOP/IGP corpus,
-emitting per-denomination markdown pages (one per appellation plus one per
-DGC — Muscadet sub-crus, Côtes du Rhône Villages, Alsace grands crus, Chablis
-premier-cru climats, etc.) and a four-locale interactive map (FR / EN / ES /
-NL). The site is deployed at <https://www.openwinemap.com>.
+The FR pipeline runs end-to-end across the full AOC/AOP/IGP corpus, emitting
+per-denomination markdown pages (one per appellation plus one per DGC —
+Muscadet sub-crus, Côtes du Rhône Villages, Alsace grands crus, Chablis
+premier-cru climats, etc.). The ES pipeline covers the ~149 wine GIs in
+eAmbrosia (106 DOP + 43 IGP); coverage is a function of which wines have an
+EU-OJ "documento único" — see `CLAUDE.md` for the curator workflow. Stage 04
+merges both streams into a single four-locale interactive map (FR / EN /
+ES / NL). The site is deployed at <https://www.openwinemap.com>.
 
 ## Setup
 
@@ -36,6 +41,29 @@ Stages are independent and re-runnable. Each writes a manifest, so reruns
 are no-ops when nothing upstream changed. Run them in order from a clean
 checkout to rebuild `wiki/` from scratch.
 
+For the unattended happy path, `scripts/run_pipeline.py` drives every stage
+end-to-end (FR + ES, then stage 04). It forwards `--provider` / `--workers`
+/ `--model` / `--ollama-url` to the LLM stages (02c / 02d / 02e), and
+supports slicing with `--fr` / `--es` / `--from=STAGE` / `--to=STAGE`.
+Stage names are the script path under `scripts/` minus `.py` (e.g.
+`02_extract_cahiers`, `es/02_extract_pliegos`). Use `--list` to preview
+the resolved plan.
+
+```
+.venv/bin/python scripts/run_pipeline.py --provider=ollama --workers=2
+.venv/bin/python scripts/run_pipeline.py --fr --from=02_extract_cahiers --provider=ollama
+.venv/bin/python scripts/run_pipeline.py --es --from=02_extract_pliegos --list
+```
+
+Caveat for stage 01: PDF downloads are content-addressed and skip when the
+sha is already on disk, but the INAO product-page → `show_texte` → BO Agri
+*resolution walk* runs on every invocation (thousands of HTTP requests at
+`--delay 0.8`). This is intentional — it's how newly-published modifying
+arrêtés get discovered — so a rerun against a fully-populated manifest is
+still chatty, just bandwidth-light.
+
+FR pipeline:
+
 ```
 uv run scripts/00_fetch_data.py             # public datasets    → raw/
 uv run scripts/01_scrape_cahiers.py         # cahier PDFs        → raw/inao/cahiers/
@@ -43,11 +71,29 @@ uv run scripts/02_extract_cahiers.py        # PDF → JSON         → raw/inao/
 uv run scripts/02b_fetch_grape_lexicon.py   # Wikipedia (grapes) → raw/wikipedia/grapes/
 uv run scripts/02b_fetch_aoc_lexicon.py     # Wikipedia (AOCs)   → raw/wikipedia/aocs/
 uv run scripts/02b_fetch_style_lexicon.py   # Wikipedia (styles) → raw/wikipedia/styles/
-uv run scripts/02c_translate_summaries.py   # FR → en/es/nl      → raw/translations/summaries/
 uv run scripts/02d_extract_terroir_facts.py # cahier+wiki bullets → raw/terroir-facts/
+uv run scripts/02c_translate_summaries.py   # FR → en/es/nl      → raw/translations/summaries/
 uv run scripts/02e_translate_terroir_facts.py # FR → en/es/nl    → raw/translations/terroir-facts/
 uv run scripts/03_generate_wiki.py          # markdown pages     → wiki/*.md
-uv run scripts/04_build_maps.py             # map + tiles        → wiki/map*.html, wiki/map-data/
+```
+
+ES pipeline (run before stage 04 so its records merge into the map):
+
+```
+uv run scripts/es/00_fetch_data.py          # eAmbrosia + GISCO + SIGPAC → raw/es/
+uv run scripts/es/01_fetch_pliegos.py       # EU-OJ HTML pliegos → raw/es/oj-pages/
+uv run scripts/es/01b_solve_waf.py          # WAF-blocked subset via headless Chromium
+uv run scripts/es/02_extract_pliegos.py     # HTML → JSON        → raw/es/pliegos-extracted/
+uv run scripts/02b_fetch_aoc_lexicon.py --lang es --source raw/es/pliegos-extracted/
+uv run scripts/es/02d_extract_terroir_facts.py
+uv run scripts/es/02e_translate_terroir_facts.py
+uv run scripts/es/03_generate_wiki.py       # markdown pages     → wiki/*.md
+```
+
+Then build the combined map:
+
+```
+uv run scripts/04_build_maps.py             # map + tiles (FR + ES merged) → wiki/index.html, wiki/{fr,es,nl}/, wiki/map-data/
 ```
 
 To preview the built site locally:

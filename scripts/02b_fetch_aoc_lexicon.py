@@ -27,6 +27,14 @@ Per cache file:
 DGCs / subzonas are skipped — they inherit the parent appellation's
 Wikipedia page in stage 02d. (Most do not have their own Wikipedia entry.)
 
+Curator overrides live at `raw/wikipedia/aoc_overrides.json` (schema in the
+sibling README): per `(lang, slug)` either a positive pin
+(`wiki_title` / `page_url` / `verification_quote`) that short-circuits the
+title cascade, or a negative finding (`missing` / `not_aoc_topic`) that
+records the curator's research verdict without hitting the network. Edit
+the override file, then re-run with `--refresh` to invalidate previously
+cached cascade results for affected slugs.
+
 Re-runnable: cached entries are kept; pass --refresh to re-fetch.
 """
 
@@ -34,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -43,6 +52,18 @@ import requests
 from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parent.parent
+OVERRIDES_FILE = ROOT / "raw" / "wikipedia" / "aoc_overrides.json"
+
+# Per-locale overrides loaded from `raw/wikipedia/aoc_overrides.json`. Three
+# shapes per `(lang, slug)`: positive pin (`wiki_title` + `page_url` +
+# `verification_quote`) that skips the cascade and fetches the curator's
+# canonical title directly; `missing` (curator confirmed no Wikipedia page
+# exists for this AOC) and `not_aoc_topic` (a page exists but is tangential)
+# which short-circuit with the curator's verdict. Schema documented in
+# `raw/wikipedia/aoc_overrides.README.md`.
+LANG_OVERRIDES: dict[str, dict[str, dict]] = {}
+if OVERRIDES_FILE.exists():
+    LANG_OVERRIDES = json.loads(OVERRIDES_FILE.read_text())
 
 # Per-language config. `disambiguators_for_kind` returns the suffix priority
 # order for the candidate-title cascade (highest priority first); each suffix
@@ -62,10 +83,15 @@ LANG_CONFIG: dict[str, dict] = {
         ),
     },
     "es": {
+        # Wine-specific vocabulary, matched as whole words (see looks_like_aoc).
+        # We deliberately drop generic short tokens like "do" / "doc" — they
+        # substring-hit on common Spanish words ("estado", "documento") and
+        # admit wrong-topic pages (e.g. the Abadía Retuerta monastery page,
+        # which doesn't mention the wine GI but mentions wine in passing).
         "aoc_keywords": (
-            "denominación", "denominacion", "vino", "vinos", "viñedo", "vinedo",
-            "vinícola", "vinicola", "uva", "uvas", "vendimia", "viticultura",
-            "do", "dop", "doca", "doc",
+            "denominación", "denominacion", "vino", "vinos", "viñedo",
+            "vinedo", "vinícola", "vinicola", "vendimia", "viticultura",
+            "dop", "doca", "igp", "bodega", "bodegas",
         ),
         "default_source": "raw/es/pliegos-extracted",
         # ES: most wine pages disambiguate as `(vino)`. `DOP` and the long form
@@ -92,8 +118,11 @@ def action_url(lang: str) -> str:
 
 
 def looks_like_aoc(data: dict, keywords: tuple[str, ...]) -> bool:
+    """Word-boundary keyword test — substring matching is too permissive.
+    "uva" matches inside "lluvia"; "do" matches inside "estado". Boundary
+    matching avoids those wrong-topic admissions."""
     blob = ((data.get("description") or "") + " " + (data.get("extract") or "")).lower()
-    return any(k in blob for k in keywords)
+    return any(re.search(rf"\b{re.escape(k)}\b", blob) for k in keywords)
 
 
 def slug_to_title(slug: str, name: str) -> str:
@@ -124,7 +153,7 @@ def collect_targets(source_dir: Path) -> list[tuple[str, str, str]]:
         if jp.name.startswith("_") or not jp.is_file():
             continue
         rec = json.loads(jp.read_text())
-        if rec.get("is_dgc"):
+        if rec.get("is_sub_denomination"):
             continue
         slug = rec.get("slug")
         if not slug or slug in seen:
@@ -290,6 +319,60 @@ def _try_candidates(
     return None, last_rejected
 
 
+def _record_from_override(
+    session: requests.Session, lang: str, slug: str, override: dict
+) -> dict:
+    """Apply a curator override. Positive pin: fetch the curator-supplied
+    title directly and enrich without the `looks_like_aoc` keyword filter
+    (the curator already validated via `verification_quote`). Negative
+    findings (`missing`, `not_aoc_topic`) emit the same record shape that
+    cascade-derived entries use, so downstream consumers (02d) treat them
+    identically."""
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    if override.get("missing"):
+        return {
+            "slug": slug,
+            "lang": lang,
+            "missing": True,
+            "override_source": "curator",
+            "note": override.get("note"),
+            "fetched_at": now,
+        }
+    if override.get("not_aoc_topic"):
+        return {
+            "slug": slug,
+            "lang": lang,
+            "error": "not_aoc_topic",
+            "override_source": "curator",
+            "note": override.get("note"),
+            "fetched_at": now,
+        }
+    title = override.get("wiki_title")
+    if not title:
+        return {
+            "slug": slug,
+            "lang": lang,
+            "error": "invalid_override",
+            "override_source": "curator",
+            "fetched_at": now,
+        }
+    data, _ = fetch_summary(session, lang, title)
+    if data is None:
+        return {
+            "slug": slug,
+            "lang": lang,
+            "error": "override_title_unavailable",
+            "override_source": "curator",
+            "attempted_title": title,
+            "fetched_at": now,
+        }
+    record = _record_from(slug, lang, title, data, session)
+    record["override_source"] = "curator"
+    if vq := override.get("verification_quote"):
+        record["verification_quote"] = vq
+    return record
+
+
 def fetch_aoc(
     session: requests.Session,
     cfg: dict,
@@ -300,7 +383,11 @@ def fetch_aoc(
 ) -> dict:
     """Try the kind-appropriate disambig suffixes (with sentence-case variants)
     first, then fall back to opensearch. Reject results whose description+
-    extract doesn't mention wine vocabulary."""
+    extract doesn't mention wine vocabulary. Curator overrides short-circuit
+    the cascade — see `_record_from_override`."""
+    override = (LANG_OVERRIDES or {}).get(lang, {}).get(slug)
+    if override:
+        return _record_from_override(session, lang, slug, override)
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     base = slug_to_title(slug, name)
     disambiguators = cfg["disambiguators_for_kind"](kind)
@@ -349,7 +436,7 @@ def main() -> int:
     args = ap.parse_args()
 
     cfg = LANG_CONFIG[args.lang]
-    source_dir = Path(args.source) if args.source else ROOT / cfg["default_source"]
+    source_dir = (Path(args.source).resolve() if args.source else ROOT / cfg["default_source"])
     out_dir = ROOT / "raw" / "wikipedia" / "aocs" / args.lang
     manifest_path = ROOT / "raw" / "wikipedia" / "aocs" / "manifest.json"
 

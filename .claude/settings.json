@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s *)",
+      "Bash(curl -sL *)",
+      "Bash(curl -sI *)",
+      "Bash(curl -sIL *)",
+      "Bash(curl -sSL *)",
+      "Bash(pdftotext -layout *)",
+      "Bash(pdftoppm -png *)"
+    ]
+  }
+}

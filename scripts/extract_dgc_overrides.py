@@ -216,7 +216,7 @@ def main() -> int:
         # Collect this parent's DGCs (records pointing at parent_slug).
         dgcs = sorted(
             (rec for rec in index.values()
-             if rec.get("is_dgc") and rec.get("parent_slug") == parent_slug),
+             if rec.get("is_sub_denomination") and rec.get("parent_slug") == parent_slug),
             key=lambda r: -len(r["name"]),
         )
         if not dgcs:

@@ -15,15 +15,25 @@ SOFT_MAX_CHARS = 1200
 
 
 def derive_summary(record: dict) -> str:
-    """Trim section I + couleur into a one-paragraph blurb.
+    """Trim source-document text into a one-paragraph blurb.
 
-    Two-tier cap: keep the combined section I + couleur verbatim up to
-    SOFT_MAX_CHARS so the cahier's full intro + style description survives,
-    and only fall back to the legacy MAX_CHARS sentence-boundary cut when
-    the combined text exceeds the soft ceiling. Entries whose existing
-    output already fit under MAX_CHARS keep the same SHA — the cache only
-    re-translates AOCs whose summary was previously clipped mid-clause.
+    For ES records, stage 02 (`scripts/es/02_extract_pliegos.py`) already
+    pre-computes a `summary` field from the EU-OJ single document's
+    description + geographical-area sections, so we just return that
+    verbatim — the FR-specific section I + III concatenation does not
+    apply (ES single-document templates use sections 4/6 or 6/9, routed
+    semantically rather than numerically).
+
+    For FR records, two-tier cap: keep the combined section I + couleur
+    verbatim up to SOFT_MAX_CHARS so the cahier's full intro + style
+    description survives, and only fall back to the legacy MAX_CHARS
+    sentence-boundary cut when the combined text exceeds the soft
+    ceiling. Entries whose existing output already fit under MAX_CHARS
+    keep the same SHA — the cache only re-translates AOCs whose summary
+    was previously clipped mid-clause.
     """
+    if record.get("country") == "es":
+        return record.get("summary", "") or ""
     sections = record.get("sections", {})
     roles = record.get("section_roles") or {}
     # Prefer the routed "nom" role so spiritueux/EDV records (where the

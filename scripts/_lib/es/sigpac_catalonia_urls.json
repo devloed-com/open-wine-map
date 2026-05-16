@@ -1,0 +1,303 @@
+{
+  "01": {
+    "comarca": "Alt Camp",
+    "dataset_id": "vfq3-frsw",
+    "filename": "SIGPAC_01_AltCamp_2025_gpkg.zip",
+    "province_or_zone": "Tarragona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/vfq3-frsw/files/0fe97c69-4fe0-47cd-bd99-e4d0d353721c?download=true&filename=SIGPAC_01_AltCamp_2025_gpkg.zip"
+  },
+  "02": {
+    "comarca": "Alt Empordà",
+    "dataset_id": "g6yw-nq4i",
+    "filename": "SIGPAC_02_AltEmporda_2025_gpkg.zip",
+    "province_or_zone": "Girona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/g6yw-nq4i/files/ded498aa-af2c-4b20-968c-7fcd51a63e06?download=true&filename=SIGPAC_02_AltEmporda_2025_gpkg.zip"
+  },
+  "03": {
+    "comarca": "Alt Penedès",
+    "dataset_id": "yrfc-5qkr",
+    "filename": "SIGPAC_03_AltPenedes_2025_gpkg.zip",
+    "province_or_zone": "Barcelona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/yrfc-5qkr/files/66974d24-9e17-424f-993b-319a013382db?download=true&filename=SIGPAC_03_AltPenedes_2025_gpkg.zip"
+  },
+  "04": {
+    "comarca": "Alt Urgell",
+    "dataset_id": "pe8z-azyx",
+    "filename": "SIGPAC_04_AltUrgell_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/pe8z-azyx/files/3f49a548-4fe2-467d-a452-3881a8f9ae0b?download=true&filename=SIGPAC_04_AltUrgell_2025_gpkg.zip"
+  },
+  "05": {
+    "comarca": "Alta Ribagorça",
+    "dataset_id": "ah8x-nyk8",
+    "filename": "SIGPAC_05_AltaRibagorca_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/ah8x-nyk8/files/92161ae8-5c45-4b0d-baee-c052068de9ba?download=true&filename=SIGPAC_05_AltaRibagorca_2025_gpkg.zip"
+  },
+  "06": {
+    "comarca": "Anoia",
+    "dataset_id": "k33e-54dm",
+    "filename": "SIGPAC_06_Anoia_2025_gpkg.zip",
+    "province_or_zone": "Catalunya Central",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/k33e-54dm/files/5865ac52-5503-4900-ac0f-d20cbd58f16b?download=true&filename=SIGPAC_06_Anoia_2025_gpkg.zip"
+  },
+  "07": {
+    "comarca": "Bages",
+    "dataset_id": "7viz-nt2v",
+    "filename": "SIGPAC_07_Bages_2025_gpkg.zip",
+    "province_or_zone": "Catalunya Central",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/7viz-nt2v/files/aee95b58-7ed0-4cd2-8495-53345db4accb?download=true&filename=SIGPAC_07_Bages_2025_gpkg.zip"
+  },
+  "08": {
+    "comarca": "Baix Camp",
+    "dataset_id": "pvu7-5yf6",
+    "filename": "SIGPAC_08_BaixCamp_2025_gpkg.zip",
+    "province_or_zone": "Tarragona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/pvu7-5yf6/files/15deaec8-95b1-4e48-baf3-ed86e7a83c43?download=true&filename=SIGPAC_08_BaixCamp_2025_gpkg.zip"
+  },
+  "09": {
+    "comarca": "Baix Ebre",
+    "dataset_id": "248n-xf6g",
+    "filename": "SIGPAC_09_BaixEbre_2025_gpkg.zip",
+    "province_or_zone": "Terres de l'Ebre",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/248n-xf6g/files/c91ee2e0-0c8b-4ea5-99ab-00dc1dea6cbf?download=true&filename=SIGPAC_09_BaixEbre_2025_gpkg.zip"
+  },
+  "10": {
+    "comarca": "Baix Empordà",
+    "dataset_id": "6vfz-b9w2",
+    "filename": "SIGPAC_10_BaixEmporda_2025_gpkg.zip",
+    "province_or_zone": "Girona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/6vfz-b9w2/files/6179e5b6-03ae-481c-997f-56055e98bd7f?download=true&filename=SIGPAC_10_BaixEmporda_2025_gpkg.zip"
+  },
+  "11": {
+    "comarca": "Baix Llobregat",
+    "dataset_id": "2d7b-jix6",
+    "filename": "SIGPAC_11_BaixLlobregat_2025_gpkg.zip",
+    "province_or_zone": "Barcelona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/2d7b-jix6/files/555e3ddf-c55f-4476-afd4-71635d201ed9?download=true&filename=SIGPAC_11_BaixLlobregat_2025_gpkg.zip"
+  },
+  "12": {
+    "comarca": "Baix Penedès",
+    "dataset_id": "dscz-vvjh",
+    "filename": "SIGPAC_12_BaixPenedes_2025_gpkg.zip",
+    "province_or_zone": "Tarragona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/dscz-vvjh/files/06fe3da0-2f67-49c1-87ef-870ae6b1bc3f?download=true&filename=SIGPAC_12_BaixPenedes_2025_gpkg.zip"
+  },
+  "13": {
+    "comarca": "Barcelonès",
+    "dataset_id": "qgm9-egwp",
+    "filename": "SIGPAC_13_Barcelones_2025_gpkg.zip",
+    "province_or_zone": "Barcelona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/qgm9-egwp/files/95657964-6b80-481f-935a-bb02e147470a?download=true&filename=SIGPAC_13_Barcelones_2025_gpkg.zip"
+  },
+  "14": {
+    "comarca": "Berguedà",
+    "dataset_id": "dtq4-ermd",
+    "filename": "SIGPAC_14_Bergueda_2025_gpkg.zip",
+    "province_or_zone": "Catalunya Central",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/dtq4-ermd/files/92f29f2b-5e54-4d25-bd27-7632bb0ac1fa?download=true&filename=SIGPAC_14_Bergueda_2025_gpkg.zip"
+  },
+  "15": {
+    "comarca": "Cerdanya",
+    "dataset_id": "3eb9-tjus",
+    "filename": "SIGPAC_15_Cerdanya_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/3eb9-tjus/files/0edfff54-60fe-411c-a24f-22a3bb8b36a9?download=true&filename=SIGPAC_15_Cerdanya_2025_gpkg.zip"
+  },
+  "16": {
+    "comarca": "Conca de Barberà",
+    "dataset_id": "ssw2-icf5",
+    "filename": "SIGPAC_16_ConcaBarbera_2025_gpkg.zip",
+    "province_or_zone": "Tarragona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/ssw2-icf5/files/88ad547d-4286-4142-92d6-08e84326de22?download=true&filename=SIGPAC_16_ConcaBarbera_2025_gpkg.zip"
+  },
+  "17": {
+    "comarca": "Garraf",
+    "dataset_id": "rkjh-gwxs",
+    "filename": "SIGPAC_17_Garraf_2025_gpkg.zip",
+    "province_or_zone": "Barcelona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/rkjh-gwxs/files/0a2a3cc5-243c-4811-aeae-a5b3f4f827d1?download=true&filename=SIGPAC_17_Garraf_2025_gpkg.zip"
+  },
+  "18": {
+    "comarca": "Garrigues",
+    "dataset_id": "ck8c-4eny",
+    "filename": "SIGPAC_18_Garrigues_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/ck8c-4eny/files/298569b5-0c4a-4c51-ae62-4f272895908b?download=true&filename=SIGPAC_18_Garrigues_2025_gpkg.zip"
+  },
+  "19": {
+    "comarca": "Garrotxa",
+    "dataset_id": "cgws-i2yk",
+    "filename": "SIGPAC_19_Garrotxa_2025_gpkg.zip",
+    "province_or_zone": "Girona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/cgws-i2yk/files/9f262d70-ab0b-491f-9d3c-e0f6cf784ed5?download=true&filename=SIGPAC_19_Garrotxa_2025_gpkg.zip"
+  },
+  "20": {
+    "comarca": "Gironès",
+    "dataset_id": "k4hx-zmuu",
+    "filename": "SIGPAC_20_Girones_2025_gpkg.zip",
+    "province_or_zone": "Girona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/k4hx-zmuu/files/5052be53-ae12-4054-b442-2041d9eaf9e8?download=true&filename=SIGPAC_20_Girones_2025_gpkg.zip"
+  },
+  "21": {
+    "comarca": "Maresme",
+    "dataset_id": "wnq9-ib5p",
+    "filename": "SIGPAC_21_Maresme_2025_gpkg.zip",
+    "province_or_zone": "Barcelona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/wnq9-ib5p/files/8575c11c-98b8-4fe4-9b0f-bc8f1e57b9b8?download=true&filename=SIGPAC_21_Maresme_2025_gpkg.zip"
+  },
+  "22": {
+    "comarca": "Montsià",
+    "dataset_id": "aame-n2en",
+    "filename": "SIGPAC_22_Montsia_2025_gpkg.zip",
+    "province_or_zone": "Terres de l'Ebre",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/aame-n2en/files/68d579e3-67ca-4440-8c36-e97ffdaadaca?download=true&filename=SIGPAC_22_Montsia_2025_gpkg.zip"
+  },
+  "23": {
+    "comarca": "Noguera",
+    "dataset_id": "tgvz-h9xr",
+    "filename": "SIGPAC_23_Noguera_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/tgvz-h9xr/files/e3631cb8-a248-491c-bd0e-77cc3d4c77f8?download=true&filename=SIGPAC_23_Noguera_2025_gpkg.zip"
+  },
+  "24": {
+    "comarca": "Osona",
+    "dataset_id": "n9f7-wq5h",
+    "filename": "SIGPAC_24_Osona_2025_gpkg.zip",
+    "province_or_zone": "Catalunya Central",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/n9f7-wq5h/files/f0c38cd2-33b8-4dd5-9710-edf816759bdc?download=true&filename=SIGPAC_24_Osona_2025_gpkg.zip"
+  },
+  "25": {
+    "comarca": "Pallars Jussà",
+    "dataset_id": "j646-dgf4",
+    "filename": "SIGPAC_25_PallarsJussa_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/j646-dgf4/files/c2d447e2-dfa6-4e94-81f2-a99d0602c83b?download=true&filename=SIGPAC_25_PallarsJussa_2025_gpkg.zip"
+  },
+  "26": {
+    "comarca": "Pallars Sobirà",
+    "dataset_id": "femu-g2en",
+    "filename": "SIGPAC_26_PallarsSobira_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/femu-g2en/files/be8eef9e-bce2-4c5b-9cc5-21695d1b5aef?download=true&filename=SIGPAC_26_PallarsSobira_2025_gpkg.zip"
+  },
+  "27": {
+    "comarca": "Pla d'Urgell",
+    "dataset_id": "n4sj-vq6p",
+    "filename": "SIGPAC_27_PlaUrgell_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/n4sj-vq6p/files/c4d627f5-f1fe-40e4-9477-dc215907d666?download=true&filename=SIGPAC_27_PlaUrgell_2025_gpkg.zip"
+  },
+  "28": {
+    "comarca": "Pla de l'Estany",
+    "dataset_id": "358m-5bh2",
+    "filename": "SIGPAC_28_PlaEstany_2025_gpkg.zip",
+    "province_or_zone": "Girona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/358m-5bh2/files/cda76775-03a1-469f-a405-bfd80bcc77ef?download=true&filename=SIGPAC_28_PlaEstany_2025_gpkg.zip"
+  },
+  "29": {
+    "comarca": "Priorat",
+    "dataset_id": "75yv-bnxa",
+    "filename": "SIGPAC_29_Priorat_2025_gpkg.zip",
+    "province_or_zone": "Tarragona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/75yv-bnxa/files/a98708f6-5d0a-4d2f-bd63-db7a800b1cf5?download=true&filename=SIGPAC_29_Priorat_2025_gpkg.zip"
+  },
+  "30": {
+    "comarca": "Ribera d'Ebre",
+    "dataset_id": "6ez6-upfu",
+    "filename": "SIGPAC_30_RiberaEbre_2025_gpkg.zip",
+    "province_or_zone": "Terres de l'Ebre",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/6ez6-upfu/files/31789502-3995-45c0-9d15-60a170296a08?download=true&filename=SIGPAC_30_RiberaEbre_2025_gpkg.zip"
+  },
+  "31": {
+    "comarca": "Ripollès",
+    "dataset_id": "sexb-4xsn",
+    "filename": "SIGPAC_31_Ripolles_2025_gpkg.zip",
+    "province_or_zone": "Girona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/sexb-4xsn/files/9a094633-f9e1-4040-8e10-c582f67e117e?download=true&filename=SIGPAC_31_Ripolles_2025_gpkg.zip"
+  },
+  "32": {
+    "comarca": "Segarra",
+    "dataset_id": "arzy-jbi7",
+    "filename": "SIGPAC_32_Segarra_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/arzy-jbi7/files/8c945d04-bdd4-460a-bd8a-67247bd16b23?download=true&filename=SIGPAC_32_Segarra_2025_gpkg.zip"
+  },
+  "33": {
+    "comarca": "Segrià",
+    "dataset_id": "ay52-ewe6",
+    "filename": "SIGPAC_33_Segria_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/ay52-ewe6/files/a7bb4270-aba8-4a9e-b66c-6780f2edc600?download=true&filename=SIGPAC_33_Segria_2025_gpkg.zip"
+  },
+  "34": {
+    "comarca": "Selva",
+    "dataset_id": "uxxw-7swa",
+    "filename": "SIGPAC_34_Selva_2025_gpkg.zip",
+    "province_or_zone": "Girona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/uxxw-7swa/files/bbe1f824-e5cb-4eec-8b91-5bb5bd5529c4?download=true&filename=SIGPAC_34_Selva_2025_gpkg.zip"
+  },
+  "35": {
+    "comarca": "Solsonès",
+    "dataset_id": "tykm-s5kw",
+    "filename": "SIGPAC_35_Solsones_2025_gpkg.zip",
+    "province_or_zone": "Catalunya Central",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/tykm-s5kw/files/65ee840a-ac26-43be-8e87-c8a2b38e5d6c?download=true&filename=SIGPAC_35_Solsones_2025_gpkg.zip"
+  },
+  "36": {
+    "comarca": "Tarragonès",
+    "dataset_id": "k42v-a33m",
+    "filename": "SIGPAC_36_Tarragones_2025_gpkg.zip",
+    "province_or_zone": "Tarragona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/k42v-a33m/files/b2a74114-5fcf-4987-b2f4-42a174ce7f81?download=true&filename=SIGPAC_36_Tarragones_2025_gpkg.zip"
+  },
+  "37": {
+    "comarca": "Terra Alta",
+    "dataset_id": "e8qp-cwy3",
+    "filename": "SIGPAC_37_TerraAlta_2025_gpkg.zip",
+    "province_or_zone": "Terres de l'Ebre",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/e8qp-cwy3/files/4275cc8b-20f8-4f7e-b655-64293ae0aca4?download=true&filename=SIGPAC_37_TerraAlta_2025_gpkg.zip"
+  },
+  "38": {
+    "comarca": "Urgell",
+    "dataset_id": "5ytz-a6f2",
+    "filename": "SIGPAC_38_Urgell_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/5ytz-a6f2/files/3aa05726-045e-4b17-ab52-d1df9cd168ff?download=true&filename=SIGPAC_38_Urgell_2025_gpkg.zip"
+  },
+  "39": {
+    "comarca": "Val d'Aran",
+    "dataset_id": "uhvw-x8d5",
+    "filename": "SIGPAC_39_VallAran_2025_gpkg.zip",
+    "province_or_zone": "Lleida",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/uhvw-x8d5/files/1bfd5775-2292-4051-bbc0-b700b502c2a9?download=true&filename=SIGPAC_39_VallAran_2025_gpkg.zip"
+  },
+  "40": {
+    "comarca": "Vallès Occidental",
+    "dataset_id": "nk6j-5s9p",
+    "filename": "SIGPAC_40_VallesOccidental_2025_gpkg.zip",
+    "province_or_zone": "Barcelona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/nk6j-5s9p/files/98e42cf2-0b7c-485e-96bb-2182ec4335e6?download=true&filename=SIGPAC_40_VallesOccidental_2025_gpkg.zip"
+  },
+  "41": {
+    "comarca": "Vallès Oriental",
+    "dataset_id": "idjf-ybw7",
+    "filename": "SIGPAC_41_VallesOriental_2025_gpkg.zip",
+    "province_or_zone": "Barcelona",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/idjf-ybw7/files/0366b3a3-e8bf-4a7d-b69f-ad9608444ec5?download=true&filename=SIGPAC_41_VallesOriental_2025_gpkg.zip"
+  },
+  "42": {
+    "comarca": "Moianès",
+    "dataset_id": "jpj2-p45u",
+    "filename": "SIGPAC_42_Moianes_2025_gpkg.zip",
+    "province_or_zone": "Catalunya Central",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/jpj2-p45u/files/9ec3dd53-837e-4a64-9561-8fb5e50f0328?download=true&filename=SIGPAC_42_Moianes_2025_gpkg.zip"
+  },
+  "43": {
+    "comarca": "Lluçanès",
+    "dataset_id": "r6tq-kek8",
+    "filename": "SIGPAC_43_Llucanes_2025_gpkg.zip",
+    "province_or_zone": "Catalunya Central",
+    "url_2025_gpkg": "https://analisi.transparenciacatalunya.cat/api/views/r6tq-kek8/files/7b769349-2ac0-4110-9139-7e88f0e7d57a?download=true&filename=SIGPAC_43_Llucanes_2025_gpkg.zip"
+  }
+}

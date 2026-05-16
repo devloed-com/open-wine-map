@@ -30,6 +30,7 @@ from _lib.wiki import is_grape_summary  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
+ES_EXTRACTED = ROOT / "raw" / "es" / "pliegos-extracted"
 OUT_DIR = ROOT / "raw" / "wikipedia" / "grapes"
 MANIFEST = OUT_DIR / "manifest.json"
 OVERRIDES_FILE = ROOT / "raw" / "wikipedia" / "grape_overrides.json"
@@ -72,16 +73,25 @@ def looks_like_grape(lang: str, data: dict) -> bool:
 
 
 def collect_grape_slugs() -> dict[str, str]:
-    """Scan extracted cahiers, return {slug: display_name}."""
+    """Scan extracted FR cahiers and ES pliegos, return {slug: display_name}.
+
+    Both corpora store grape details in the same shape (slug + name); FR
+    seeds the lexicon and ES adds Iberian-only varieties (Canarian,
+    Galician, Catalan, etc.) that the FR pipeline never sees.
+    """
     slugs: dict[str, str] = {}
-    for jp in EXTRACTED.glob("*.json"):
-        if jp.name.startswith("_"):
-            continue
-        rec = json.loads(jp.read_text())
-        for d in (rec.get("grapes") or {}).get("details") or []:
-            s = d.get("slug")
-            if s:
-                slugs.setdefault(s, d.get("name", s))
+    sources = [EXTRACTED]
+    if ES_EXTRACTED.exists():
+        sources.append(ES_EXTRACTED)
+    for src in sources:
+        for jp in src.glob("*.json"):
+            if jp.name.startswith("_"):
+                continue
+            rec = json.loads(jp.read_text())
+            for d in (rec.get("grapes") or {}).get("details") or []:
+                s = d.get("slug")
+                if s:
+                    slugs.setdefault(s, d.get("name", s))
     return slugs
 
 

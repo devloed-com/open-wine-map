@@ -232,6 +232,588 @@
     "gaillac-premieres-cotes": {
       "url": "https://www.vins-gaillac.com/",
       "label": "Maison des Vins de Gaillac"
+    },
+    "ayles": {
+      "url": "https://www.pagoayles.com/",
+      "label": "Pago de Aylés"
+    },
+    "bolandin": {
+      "url": "https://www.pagodecirsus.com/",
+      "label": "Pago de Cirsus"
+    },
+    "calzadilla": {
+      "url": "https://pagocalzadilla.com/",
+      "label": "Pago Calzadilla"
+    },
+    "campo-de-la-guardia": {
+      "url": "https://martue.com/",
+      "label": "Bodegas Martúe — Pago Campo de la Guardia"
+    },
+    "chozas-carrascal": {
+      "url": "https://www.chozascarrascal.com/",
+      "label": "Chozas Carrascal"
+    },
+    "dehesa-del-carrizal": {
+      "url": "https://www.dehesadelcarrizal.com/",
+      "label": "Dehesa del Carrizal"
+    },
+    "dehesa-penalba": {
+      "url": "https://www.bodegasvizar.es/",
+      "label": "Bodegas Vizar — DOP Dehesa Peñalba"
+    },
+    "dominio-de-valdepusa": {
+      "url": "https://marquesdegrinon.com/",
+      "label": "Marqués de Griñón — Dominio de Valdepusa"
+    },
+    "el-terrerazo": {
+      "url": "https://bodegamustiguillo.com/",
+      "label": "Bodega Mustiguillo — DOP Terrerazo"
+    },
+    "el-vicario": {
+      "url": "https://pagodelvicario.com/",
+      "label": "Pago del Vicario"
+    },
+    "la-jaraba": {
+      "url": "https://lajaraba.com/",
+      "label": "Pago de La Jaraba"
+    },
+    "los-balagueses": {
+      "url": "https://bodegasvegalfaro.es/",
+      "label": "Bodegas Vegalfaro — Pago de los Balagueses"
+    },
+    "los-cerrillos": {
+      "url": "https://bodegasmontalvowilmot.com/",
+      "label": "Bodegas Montalvo Wilmot — DOP Pago Los Cerrillos"
+    },
+    "pago-florentino": {
+      "url": "https://www.arzuaganavarro.com/",
+      "label": "Bodegas Arzuaga — Pago Florentino"
+    },
+    "prado-de-irache": {
+      "url": "https://irache.com/",
+      "label": "Bodegas Irache"
+    },
+    "rio-negro": {
+      "url": "https://www.fincarionegro.com/",
+      "label": "Finca Río Negro"
+    },
+    "tharsys": {
+      "url": "https://pagodetharsys.com/",
+      "label": "Pago de Tharsys"
+    },
+    "urbezo": {
+      "url": "https://www.solardeurbezo.es/",
+      "label": "Solar de Urbezo"
+    },
+    "uruena": {
+      "url": "https://www.heredaduruena.es/",
+      "label": "Pago Heredad de Urueña"
+    },
+    "vallegarcia": {
+      "url": "https://vallegarcia.com/",
+      "label": "Pago Vallegarcía"
+    },
+    "vera-de-estenas": {
+      "url": "https://www.veradeestenas.es/",
+      "label": "Vera de Estenas"
+    },
+    "rioja": {
+      "url": "https://riojawine.com/",
+      "label": "DOCa Rioja"
+    },
+    "cava": {
+      "url": "https://www.cava.wine/",
+      "label": "D.O. Cava"
+    },
+    "ribera-del-duero": {
+      "url": "https://www.riberadelduero.es/",
+      "label": "D.O. Ribera del Duero"
+    },
+    "priorat": {
+      "url": "https://www.doqpriorat.org/",
+      "label": "Consell Regulador de la DOQ Priorat"
+    },
+    "montsant": {
+      "url": "https://www.domontsant.com/",
+      "label": "DO Montsant"
+    },
+    "rias-baixas": {
+      "url": "https://doriasbaixas.com/",
+      "label": "D.O. Rías Baixas"
+    },
+    "jerez-xeres-sherry": {
+      "url": "https://www.sherry.wine/",
+      "label": "Consejo Regulador del Vino de Jerez"
+    },
+    "manzanilla-de-sanlucar": {
+      "url": "https://www.sherry.wine/",
+      "label": "Consejo Regulador del Vino de Jerez"
+    },
+    "penedes": {
+      "url": "https://www.dopenedes.cat/",
+      "label": "DO Penedès"
+    },
+    "toro": {
+      "url": "https://www.dotoro.com/",
+      "label": "D.O. Toro"
+    },
+    "rueda": {
+      "url": "https://www.dorueda.com/",
+      "label": "D.O. Rueda"
+    },
+    "bierzo": {
+      "url": "https://www.crdobierzo.es/",
+      "label": "C.R.D.O. Bierzo"
+    },
+    "navarra": {
+      "url": "https://navarrawine.com/",
+      "label": "D.O. Navarra"
+    },
+    "somontano": {
+      "url": "https://dosomontano.com/",
+      "label": "D.O. Somontano"
+    },
+    "la-mancha": {
+      "url": "https://lamanchawines.com/",
+      "label": "DO La Mancha"
+    },
+    "utiel-requena": {
+      "url": "https://utielrequena.org/",
+      "label": "D.O. Utiel-Requena"
+    },
+    "valencia": {
+      "url": "https://www.dovalencia.info/",
+      "label": "D.O. Valencia"
+    },
+    "alicante": {
+      "url": "https://vinosalicantedop.org/",
+      "label": "Vinos Alicante DOP"
+    },
+    "jumilla": {
+      "url": "https://www.vinosdejumilla.org/",
+      "label": "C.R.D.O.P. Jumilla"
+    },
+    "calatayud": {
+      "url": "https://www.calatayudwine.com/",
+      "label": "D.O.P. Calatayud"
+    },
+    "campo-de-borja": {
+      "url": "https://docampodeborja.com/",
+      "label": "D.O. Campo de Borja"
+    },
+    "carinena": {
+      "url": "https://elvinodelaspiedras.es/",
+      "label": "D.O.P. Cariñena"
+    },
+    "cigales": {
+      "url": "https://do-cigales.es/",
+      "label": "D.O. Cigales"
+    },
+    "conca-de-barbera": {
+      "url": "https://www.doconcadebarbera.com/",
+      "label": "DO Conca de Barberà"
+    },
+    "condado-de-huelva": {
+      "url": "https://docondadodehuelva.es/",
+      "label": "DOP Condado de Huelva"
+    },
+    "costers-del-segre": {
+      "url": "https://www.costersdelsegre.es/",
+      "label": "DO Costers del Segre"
+    },
+    "emporda": {
+      "url": "https://www.doemporda.com/",
+      "label": "DO Empordà"
+    },
+    "ribeira-sacra": {
+      "url": "https://www.ribeirasacra.org/",
+      "label": "Consejo Regulador D.O. Ribeira Sacra"
+    },
+    "ribeiro": {
+      "url": "https://www.ribeiro.wine/",
+      "label": "D.O. Ribeiro"
+    },
+    "valdeorras": {
+      "url": "https://www.dovaldeorras.com/",
+      "label": "D.O. Valdeorras"
+    },
+    "monterrei": {
+      "url": "https://www.domonterrei.wine/",
+      "label": "D.O. Monterrei"
+    },
+    "malaga": {
+      "url": "https://www.vinosypasasdemalaga.com/",
+      "label": "Consejo Regulador de las DOP Málaga, Sierras de Málaga y Pasas de Málaga"
+    },
+    "sierras-de-malaga": {
+      "url": "https://www.vinosypasasdemalaga.com/",
+      "label": "Consejo Regulador de las DOP Málaga, Sierras de Málaga y Pasas de Málaga"
+    },
+    "montilla-moriles": {
+      "url": "https://www.montillamoriles.es/",
+      "label": "DOP Montilla-Moriles"
+    },
+    "manchuela": {
+      "url": "https://do-manchuela.com/",
+      "label": "D.O. Manchuela"
+    },
+    "mentrida": {
+      "url": "https://www.domentrida.es/",
+      "label": "DO Méntrida"
+    },
+    "yecla": {
+      "url": "https://yeclavino.com/",
+      "label": "D.O. Yecla"
+    },
+    "vinos-de-madrid": {
+      "url": "https://vinosdemadrid.es/",
+      "label": "D.O. Vinos de Madrid"
+    },
+    "bullas": {
+      "url": "https://vinosdebullas.es/",
+      "label": "DOP Bullas"
+    },
+    "tacoronte-acentejo": {
+      "url": "https://www.tacovin.com/",
+      "label": "D.O. Tacoronte-Acentejo"
+    },
+    "valle-de-guimar": {
+      "url": "https://vinosvalleguimar.com/",
+      "label": "Consejo Regulador Valle Güímar"
+    },
+    "valle-de-la-orotava": {
+      "url": "https://www.dovalleorotava.com/",
+      "label": "D.O. Valle de la Orotava"
+    },
+    "ycoden-daute-isora": {
+      "url": "https://www.ycoden.com/",
+      "label": "D.O. Ycoden-Daute-Isora"
+    },
+    "abona": {
+      "url": "https://vinosdeabona.com/",
+      "label": "DOP Abona"
+    },
+    "la-palma": {
+      "url": "https://vinoslapalma.com/",
+      "label": "Consejo Regulador D.O. Vinos La Palma"
+    },
+    "el-hierro": {
+      "url": "https://www.doelhierro.es/",
+      "label": "D.O. El Hierro"
+    },
+    "la-gomera": {
+      "url": "https://www.vinoslagomera.com/",
+      "label": "D.O. La Gomera"
+    },
+    "gran-canaria": {
+      "url": "https://www.vinosdegrancanaria.es/",
+      "label": "D.O. Gran Canaria"
+    },
+    "lanzarote": {
+      "url": "https://www.dolanzarote.com/",
+      "label": "D.O. Lanzarote"
+    },
+    "islas-canarias": {
+      "url": "https://www.canarywine.com/",
+      "label": "DOP Islas Canarias"
+    },
+    "cataluna": {
+      "url": "https://incavi.gencat.cat/",
+      "label": "INCAVI — DO Catalunya"
+    },
+    "terra-alta": {
+      "url": "https://www.doterraalta.com/",
+      "label": "DO Terra Alta"
+    },
+    "pla-de-bages": {
+      "url": "https://dopladebages.com/",
+      "label": "DO Pla de Bages"
+    },
+    "binissalem": {
+      "url": "https://www.binissalemdo.com/",
+      "label": "DOP Binissalem"
+    },
+    "pla-i-llevant": {
+      "url": "https://www.doplaillevant.com/",
+      "label": "DOP Pla i Llevant"
+    },
+    "getariako-txakolina": {
+      "url": "https://www.getariakotxakolina.eus/",
+      "label": "Getariako Txakolina"
+    },
+    "bizkaiko-txakolina": {
+      "url": "https://bizkaikotxakolina.eus/",
+      "label": "Bizkaiko Txakolina"
+    },
+    "arabako-txakolina": {
+      "url": "https://txakolidealava.eus/",
+      "label": "Arabako Txakolina CRDO"
+    },
+    "leon": {
+      "url": "https://www.doleon.es/",
+      "label": "D.O. León"
+    },
+    "arlanza": {
+      "url": "https://arlanza.org/",
+      "label": "D.O. Arlanza"
+    },
+    "arribes": {
+      "url": "https://doarribes.es/",
+      "label": "D.O. Arribes"
+    },
+    "granada": {
+      "url": "https://www.dopvinosdegranada.es/",
+      "label": "Consejo Regulador DOP Granada"
+    },
+    "cebreros": {
+      "url": "https://dopcebreros.com/",
+      "label": "DOP Cebreros"
+    },
+    "ribera-del-guadiana": {
+      "url": "https://riberadelguadiana.eu/",
+      "label": "D.O. Ribera del Guadiana"
+    },
+    "ribera-del-jucar": {
+      "url": "https://vinosriberadeljucar.com/",
+      "label": "DOP Ribera del Júcar · Cuenca"
+    },
+    "ucles": {
+      "url": "https://vinosdeucles.es/",
+      "label": "D.O. Uclés"
+    },
+    "valles-de-benavente": {
+      "url": "https://vallesdebenavente.org/",
+      "label": "Consejo Regulador VC Valles de Benavente"
+    },
+    "pago-de-arinzano": {
+      "url": "https://arinzano.com/",
+      "label": "Arínzano — Vino de Pago"
+    },
+    "pago-de-otazu": {
+      "url": "https://otazu.com/",
+      "label": "Otazu — D.O.P. Pago de Otazu"
+    },
+    "abadia-retuerta": {
+      "url": "https://abadia-retuerta.com/",
+      "label": "Abadía Retuerta"
+    },
+    "3-riberas": {
+      "url": "https://www.navarra.es/es/agricultura-y-ganaderia/calidad-agroalimentaria/indicaciones-geograficas-protegidas",
+      "label": "Gobierno de Navarra — IGP 3 Riberas"
+    },
+    "altiplano-de-sierra-nevada": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Altiplano de Sierra Nevada"
+    },
+    "bailen": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Bailén"
+    },
+    "bajo-aragon": {
+      "url": "https://www.aragon.es/calidad-agroalimentaria/figuras-de-calidad-diferenciada/indicaciones-geograficas-protegidas-igp",
+      "label": "Gobierno de Aragón — IGP Bajo Aragón"
+    },
+    "barbanza-e-iria": {
+      "url": "https://agacal.xunta.gal/gl/calidade-alimentaria/produtos-galegos-de-calidade-diferenciada/vinos-con-indicacion-xeografica",
+      "label": "AGACAL — IXP Barbanza e Iria"
+    },
+    "betanzos": {
+      "url": "https://agacal.xunta.gal/gl/calidade-alimentaria/produtos-galegos-de-calidade-diferenciada/vinos-con-indicacion-xeografica",
+      "label": "AGACAL — IXP Betanzos"
+    },
+    "cadiz": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Cádiz"
+    },
+    "campo-de-cartagena": null,
+    "castello": {
+      "url": "https://portalagrari.gva.es/es/industria-i-alimentacio/consejos-reguladores",
+      "label": "GVA Portal Agrari — IGP Castelló"
+    },
+    "castilla": {
+      "url": "https://www.campoyalma.com/vinos-tierra-castilla",
+      "label": "Campo y Alma — IGP Vinos de la Tierra de Castilla"
+    },
+    "castilla-y-leon": {
+      "url": "https://www.tierradesabor.es/figuras-de-calidad/igp-vinos-de-la-tierra-de-castilla-y-leon",
+      "label": "Tierra de Sabor — IGP Vinos de la Tierra de Castilla y León"
+    },
+    "cordoba": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Córdoba"
+    },
+    "costa-de-cantabria": {
+      "url": "https://www.alimentosdecantabria.com/igp-vino-de-la-tierra-costa-de-cantabria",
+      "label": "ODECA — IGP Vino de la Tierra Costa de Cantabria"
+    },
+    "cumbres-del-guadalfeo": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Cumbres del Guadalfeo"
+    },
+    "desierto-de-almeria": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Desierto de Almería"
+    },
+    "extremadura": {
+      "url": "https://www.juntaex.es/w/igp-vino-de-la-tierra",
+      "label": "Junta de Extremadura — IGP Extremadura (Vino de la Tierra)"
+    },
+    "formentera": {
+      "url": "http://www.illesbalearsqualitat.es/iquafront/producte/627",
+      "label": "IQUA — Vi de la Terra de Formentera"
+    },
+    "ibiza": {
+      "url": "http://www.illesbalearsqualitat.es/iquafront/producte/353",
+      "label": "IQUA — Vi de la Terra Eivissa"
+    },
+    "illes-balears": {
+      "url": "http://www.illesbalearsqualitat.es/iquafront/producte/330",
+      "label": "IQUA — Vi de la Terra Illes Balears"
+    },
+    "isla-de-menorca": {
+      "url": "http://www.illesbalearsqualitat.es/iquafront/producte/358",
+      "label": "IQUA — Vi de la Terra Illa de Menorca"
+    },
+    "laderas-del-genil": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Laderas del Genil"
+    },
+    "laujar-alpujarra": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Láujar-Alpujarra"
+    },
+    "liebana": {
+      "url": "https://www.alimentosdecantabria.com/igp-vinos-de-la-tierra-de-liebana",
+      "label": "ODECA — IGP Vinos de la Tierra de Liébana"
+    },
+    "los-palacios": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Los Palacios"
+    },
+    "mallorca": {
+      "url": "https://vtmallorca.com/",
+      "label": "Vi de la Terra Mallorca"
+    },
+    "murcia": null,
+    "norte-de-almeria": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Norte de Almería"
+    },
+    "ribeiras-do-morrazo": {
+      "url": "https://agacal.xunta.gal/gl/calidade-alimentaria/produtos-galegos-de-calidade-diferenciada/vinos-con-indicacion-xeografica",
+      "label": "AGACAL — IXP Ribeiras do Morrazo"
+    },
+    "ribera-del-andarax": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Ribera del Andarax"
+    },
+    "ribera-del-gallego-cinco-villas": {
+      "url": "https://www.aragon.es/calidad-agroalimentaria/figuras-de-calidad-diferenciada/indicaciones-geograficas-protegidas-igp",
+      "label": "Gobierno de Aragón — IGP Ribera del Gállego-Cinco Villas"
+    },
+    "ribera-del-jiloca": {
+      "url": "https://www.aragon.es/calidad-agroalimentaria/figuras-de-calidad-diferenciada/indicaciones-geograficas-protegidas-igp",
+      "label": "Gobierno de Aragón — IGP Ribera del Jiloca"
+    },
+    "ribera-del-queiles": {
+      "url": "https://www.aragon.es/calidad-agroalimentaria/figuras-de-calidad-diferenciada/indicaciones-geograficas-protegidas-igp",
+      "label": "Gobierno de Aragón — IGP Ribera del Queiles"
+    },
+    "serra-de-tramuntana-costa-nord": {
+      "url": "http://www.illesbalearsqualitat.es/iquafront/producte/367",
+      "label": "IQUA — Vi de la Terra Serra de Tramuntana-Costa Nord"
+    },
+    "sierra-norte-de-sevilla": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Sierra Norte de Sevilla"
+    },
+    "sierra-sur-de-jaen": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Sierra Sur de Jaén"
+    },
+    "sierras-de-las-estancias-y-los-filabres": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Sierras de Las Estancias y Los Filabres"
+    },
+    "terras-do-navia": {
+      "url": "https://agacal.xunta.gal/gl/calidade-alimentaria/produtos-galegos-de-calidade-diferenciada/vinos-con-indicacion-xeografica",
+      "label": "AGACAL — IXP Terras do Navia"
+    },
+    "torreperogil": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Torreperogil"
+    },
+    "valdejalon": {
+      "url": "https://www.aragon.es/calidad-agroalimentaria/figuras-de-calidad-diferenciada/indicaciones-geograficas-protegidas-igp",
+      "label": "Gobierno de Aragón — IGP Valdejalón"
+    },
+    "valle-del-cinca": {
+      "url": "https://www.aragon.es/calidad-agroalimentaria/figuras-de-calidad-diferenciada/indicaciones-geograficas-protegidas-igp",
+      "label": "Gobierno de Aragón — IGP Valle del Cinca"
+    },
+    "valle-del-mino-ourense": {
+      "url": "https://agacal.xunta.gal/gl/calidade-alimentaria/produtos-galegos-de-calidade-diferenciada/vinos-con-indicacion-xeografica",
+      "label": "AGACAL — IXP Val do Miño-Ourense"
+    },
+    "valles-de-sadacia": {
+      "url": "https://www.larioja.org/agricultura/es/calidad-agroalimentaria/marcas-calidad-rioja",
+      "label": "Gobierno de La Rioja — IGP Valles de Sadacia"
+    },
+    "villaviciosa-de-cordoba": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-igp.html",
+      "label": "JdA — IGP Villaviciosa de Córdoba"
+    },
+    "tarragona": {
+      "url": "https://incavi.gencat.cat/ca/coneix-el-vi-catala/denominacions-dorigen-catalanes/do-tarragona",
+      "label": "INCAVI — D.O. Tarragona"
+    },
+    "alella": {
+      "url": "https://incavi.gencat.cat/ca/coneix-el-vi-catala/denominacions-dorigen-catalanes/do-alella",
+      "label": "INCAVI — D.O. Alella"
+    },
+    "mondejar": {
+      "url": "https://domondejar.es/",
+      "label": "D.O. Mondéjar"
+    },
+    "cangas": {
+      "url": "https://docangas.es/",
+      "label": "D.O.P. Cangas"
+    },
+    "sierra-de-salamanca": {
+      "url": "https://www.dosierradesalamanca.es/",
+      "label": "D.O.P. Sierra de Salamanca"
+    },
+    "tierra-del-vino-de-zamora": {
+      "url": "https://www.tierradelvino.net/",
+      "label": "D.O. Tierra del Vino de Zamora"
+    },
+    "valtiendas": {
+      "url": "https://dopvaltiendas.com/",
+      "label": "DOP Valtiendas"
+    },
+    "valdepenas": {
+      "url": "https://www.campoyalma.com/valdepenas",
+      "label": "Campo y Alma — DOP Valdepeñas"
+    },
+    "lebrija": {
+      "url": "https://www.juntadeandalucia.es/organismos/agriculturapescaaguaydesarrollorural/areas/industrias-agroalimentarias/calidad/paginas/denominaciones-calidad-vinos-indicacion.html",
+      "label": "JdA — DOP Lebrija (Vino de Calidad)"
+    },
+    "casa-del-blanco": {
+      "url": "https://pagocasadelblanco.es/",
+      "label": "Pago Casa del Blanco"
+    },
+    "finca-elez": {
+      "url": "https://pagofincaelez.com/",
+      "label": "Pago Finca Élez"
+    },
+    "guijoso": {
+      "url": "https://www.campoyalma.com/guijoso_4",
+      "label": "Campo y Alma — DOP Pago Guijoso"
+    },
+    "rosalejo": {
+      "url": "https://eldoze.com/",
+      "label": "Bodegas Eldoze (DOP Rosalejo)"
     }
   },
   "by_bassin": {

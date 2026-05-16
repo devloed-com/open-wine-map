@@ -36,8 +36,24 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
-EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
-WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "fr"
+
+# Per-country source dispatch. Each entry maps the country code carried in
+# the terroir-facts cache to (extracted records dir, wiki cache dir,
+# record-key for the lien text). Keep in sync with stage 02d's two
+# variants — `scripts/02d_extract_terroir_facts.py` (FR) and
+# `scripts/es/02d_extract_terroir_facts.py` (ES).
+EXTRACTED_BY_COUNTRY = {
+    "fr": ROOT / "raw" / "inao" / "cahier-extracted",
+    "es": ROOT / "raw" / "es" / "pliegos-extracted",
+}
+WIKI_BY_COUNTRY = {
+    "fr": ROOT / "raw" / "wikipedia" / "aocs" / "fr",
+    "es": ROOT / "raw" / "wikipedia" / "aocs" / "es",
+}
+LIEN_FIELD_BY_COUNTRY = {
+    "fr": "lien_au_terroir",
+    "es": "link_to_terroir",
+}
 
 FUZZY_THRESHOLD = 0.6
 BULLET_SOFT_CAP = 140
@@ -46,7 +62,7 @@ WIKI_HINT_CHAR_CAP = 1500
 TOP_RE = re.compile(r"\b([1-9])°\s*[-–]\s*([A-ZÀ-Ý][^\n]{5,80})")
 SUB_RE = re.compile(r"\b([a-c])\)\s*[-–]?\s*([A-ZÀ-Ý][^\n]{5,80})")
 
-WIKI_TO_SUBSECTION: dict[str, list[str]] = {
+WIKI_TO_SUBSECTION_FR: dict[str, list[str]] = {
     "facteurs_naturels": [
         "Géologie et orographie", "Géologie", "Climat", "Climatologie",
         "Aire d'appellation", "Vignoble",
@@ -59,7 +75,33 @@ WIKI_TO_SUBSECTION: dict[str, list[str]] = {
     "produit": ["Vins", "Types de chablis", "Types de vins", "Gastronomie"],
     "interactions": [],
 }
-WIKI_TO_SUBSECTION["interactions"] = WIKI_TO_SUBSECTION["facteurs_naturels"]
+WIKI_TO_SUBSECTION_FR["interactions"] = WIKI_TO_SUBSECTION_FR["facteurs_naturels"]
+
+# Spanish Wikipedia headings — mirror scripts/es/02d_extract_terroir_facts.py.
+WIKI_TO_SUBSECTION_ES: dict[str, list[str]] = {
+    "facteurs_naturels": [
+        "Geografía", "Geología", "Geología y orografía", "Suelos",
+        "Clima", "Climatología", "Zona de producción", "Zona geográfica",
+        "Subzonas", "Comarca", "Viñedo", "Localización",
+    ],
+    "facteurs_humains": [
+        "Historia", "Antigüedad", "Edad Media", "Edad Moderna",
+        "Etimología", "Variedades autorizadas", "Variedades de uva",
+        "Elaboración", "Vinificación", "Cultivo de la vid",
+        "Crianza", "Tradición",
+    ],
+    "produit": [
+        "Vinos", "Tipos de vinos", "Características de los vinos",
+        "Gastronomía", "Maridaje",
+    ],
+    "interactions": [],
+}
+WIKI_TO_SUBSECTION_ES["interactions"] = WIKI_TO_SUBSECTION_ES["facteurs_naturels"]
+
+WIKI_TO_SUBSECTION_BY_COUNTRY = {
+    "fr": WIKI_TO_SUBSECTION_FR,
+    "es": WIKI_TO_SUBSECTION_ES,
+}
 
 
 # Helpers duplicated from scripts/02d_extract_terroir_facts.py because the
@@ -106,9 +148,10 @@ def _index_wiki_sections(full: str, headings: list[str]) -> dict[str, str]:
     return section_text
 
 
-def _build_subsection_hint(
+def _build_subsection_hint_fr(
     sub_key: str, wanted: list[str], section_text: dict[str, str]
 ) -> str:
+    """FR wiki-hint format used by `scripts/02d_extract_terroir_facts.py`."""
     chunks: list[str] = []
     if sub_key == "facteurs_naturels" and section_text.get("__intro__"):
         chunks.append(section_text["__intro__"][:400])
@@ -122,18 +165,49 @@ def _build_subsection_hint(
     return joined
 
 
-def load_wiki_hints(slug: str) -> tuple[dict[str, str], dict | None]:
-    cache = WIKI_AOCS / f"{slug}.json"
-    empty = dict.fromkeys(WIKI_TO_SUBSECTION, "")
+def _build_subsection_hint_es(
+    wiki_record: dict, headings: list[str]
+) -> str:
+    """ES wiki-hint format — mirrors `_wiki_hint_for_subsection` in
+    `scripts/es/02d_extract_terroir_facts.py`. Different from the FR
+    builder (lead intro always prepended; `# {h}` separator instead of
+    « {h} » :; raw char-cap, no word-boundary trim) — keeping them in
+    lockstep is what makes the audit's coverage check meaningful for ES
+    `wiki`-only bullets."""
+    full = wiki_record.get("full_text") or ""
+    if not full:
+        return (wiki_record.get("lead_extract") or "")[:WIKI_HINT_CHAR_CAP]
+    section_text = _index_wiki_sections(full, headings)
+    pieces = [section_text["__intro__"]] if section_text.get("__intro__") else []
+    for h in headings:
+        if h in section_text:
+            pieces.append(f"# {h}\n{section_text[h]}")
+    blob = "\n\n".join(pieces).strip()
+    if blob:
+        return blob[:WIKI_HINT_CHAR_CAP]
+    return (wiki_record.get("lead_extract") or "")[:WIKI_HINT_CHAR_CAP]
+
+
+def load_wiki_hints(slug: str, country: str) -> tuple[dict[str, str], dict | None]:
+    wiki_dir = WIKI_BY_COUNTRY[country]
+    headings_map = WIKI_TO_SUBSECTION_BY_COUNTRY[country]
+    cache = wiki_dir / f"{slug}.json"
+    empty = dict.fromkeys(headings_map, "")
     if not cache.exists():
         return empty, None
     data = json.loads(cache.read_text())
     if data.get("missing") or data.get("error"):
         return empty, data
+    if country == "es":
+        out = {
+            sub_key: _build_subsection_hint_es(data, headings)
+            for sub_key, headings in headings_map.items()
+        }
+        return out, data
     section_text = _index_wiki_sections(data.get("full_text", ""), data.get("sections", []))
     out = {
-        sub_key: _build_subsection_hint(sub_key, wanted, section_text)
-        for sub_key, wanted in WIKI_TO_SUBSECTION.items()
+        sub_key: _build_subsection_hint_fr(sub_key, wanted, section_text)
+        for sub_key, wanted in headings_map.items()
     }
     return out, data
 
@@ -141,16 +215,18 @@ def load_wiki_hints(slug: str) -> tuple[dict[str, str], dict | None]:
 # ─────────────────────────────────────────────────────────────── audit ──
 
 
-def load_current_cahier(slug: str) -> tuple[str, str] | None:
-    """Return (lien_text, sha) for the current cahier extract, or None."""
-    p = EXTRACTED / f"{slug}.json"
+def load_current_cahier(slug: str, country: str) -> tuple[str, str] | None:
+    """Return (lien_text, sha) for the current cahier/pliego extract, or None."""
+    extracted_dir = EXTRACTED_BY_COUNTRY[country]
+    field = LIEN_FIELD_BY_COUNTRY[country]
+    p = extracted_dir / f"{slug}.json"
     if not p.exists():
         return None
     try:
         rec = json.loads(p.read_text())
     except Exception:  # noqa: BLE001
         return None
-    lien = (rec.get("lien_au_terroir") or "").strip()
+    lien = (rec.get(field) or "").strip()
     return lien, cahier_sha(lien)
 
 
@@ -159,14 +235,15 @@ def audit_one(cache_path: Path) -> dict:
     findings (drift flags + per-bullet coverage)."""
     data = json.loads(cache_path.read_text())
     slug = data.get("slug") or cache_path.stem
+    country = data.get("country") or "fr"
     facts = data.get("facts") or []
 
-    cur_cahier = load_current_cahier(slug)
+    cur_cahier = load_current_cahier(slug, country)
     cur_lien = cur_cahier[0] if cur_cahier else ""
     cur_lien_sha = cur_cahier[1] if cur_cahier else ""
     cahier_drift = bool(cur_lien_sha) and cur_lien_sha != data.get("cahier_source_sha")
 
-    wiki_hints, wiki_data = load_wiki_hints(slug)
+    wiki_hints, wiki_data = load_wiki_hints(slug, country)
     cur_wiki_rev = (wiki_data or {}).get("revision")
     wiki_drift = (
         cur_wiki_rev is not None and cur_wiki_rev != data.get("wiki_source_revision")

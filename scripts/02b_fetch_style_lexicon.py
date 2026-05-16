@@ -1,12 +1,17 @@
-"""Fetch Wikipedia summaries for distinctive French wine styles.
+"""Fetch Wikipedia summaries for distinctive wine styles.
 
 Pipeline stage 02b — sister stage to `02b_fetch_grape_lexicon.py`. Adds an
 external public-source track (Wikipedia, CC-BY-SA 4.0) for a curated subset
-of style-pill keys whose UI tooltip is genuinely informative (vin jaune,
-crémant, vin doux naturel, vin de paille, sélection de grains nobles,
-vendanges tardives, clairet, primeur, vin de liqueur). Generic categories
-(red / white / rosé / dry / sweet) are intentionally excluded — their
-Wikipedia pages read as general wine education and don't warrant a tooltip.
+of style-pill keys whose UI tooltip is genuinely informative: distinctive
+French and Spanish styles (vin jaune, crémant, vin doux naturel, vin de
+paille, sélection de grains nobles, vendanges tardives, clairet, primeur,
+vin de liqueur, fino, manzanilla, amontillado, oloroso, palo cortado,
+rancio, mistela) plus the taxonomy interior-group nodes that records
+actually carry (fortified, sparkling-quality, late-harvest, raisin-wine,
+oxidative, generoso). Top-level buckets (red / white / rosé / sparkling /
+sweet / other) and generic leaves (dry / tranquille) are intentionally
+excluded — their Wikipedia pages read as general wine education and don't
+warrant a tooltip.
 
 Per CLAUDE.md the cahier corpus stays INAO/JORF-only; Wikipedia is admitted
 as a bounded narrative layer for grape, AOC, and now style descriptions,

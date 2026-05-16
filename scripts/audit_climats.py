@@ -71,7 +71,7 @@ def main() -> int:
         if path.name == "_index.json":
             continue
         d = json.loads(path.read_text())
-        if d.get("is_dgc"):
+        if d.get("is_sub_denomination"):
             siblings_by_app[d.get("id_appellation") or ""].append(d["name"])
 
     rows: list[dict] = []
@@ -79,7 +79,7 @@ def main() -> int:
         if path.name == "_index.json":
             continue
         d = json.loads(path.read_text())
-        if not d.get("is_dgc"):
+        if not d.get("is_sub_denomination"):
             continue
         id_denom = d.get("id_denomination_geo") or ""
         if id_denom in parcels_by_denom:

@@ -53,6 +53,68 @@ GRAPE_ALIAS = {
     "piquepoulnoir": "piquepoul-noir",
     "pousard": "poulsard",
     "roussane": "roussanne",
+    "syrha": "syrah",
+    # ----- ES → canonical (international or FR slug where the variety
+    # is the same trans-Pyrenean grape). Synonym pairs marked with " - "
+    # inside pliegos are split before alias lookup, so every alternative
+    # name lands here individually. Seed list from the 145 ES pliegos +
+    # eAmbrosia synonym table; new tokens surface via
+    # scripts/audit_es_grape_aliases.py.
+    "garnacha": "grenache",
+    "garnacha-tinta": "grenache",
+    "garnacha-noir": "grenache",
+    "garnacha-peluda": "grenache",
+    "lladoner": "grenache",
+    "lladoner-pelut": "grenache",
+    "cannonau": "grenache",
+    "garnacha-blanca": "grenache-blanc",
+    "lladoner-blanco": "grenache-blanc",
+    "garnacha-roja": "grenache-gris",
+    "garnacha-gris": "grenache-gris",
+    "garnacha-tintorera": "alicante-bouschet",
+    "mazuela": "carignan",
+    "mazuelo": "carignan",
+    "carinena": "carignan",
+    "samso": "carignan",
+    "mataro": "mourvedre",
+    "monastrell": "mourvedre",
+    "macabeo": "macabeu",
+    "viura": "macabeu",
+    "ull-de-llebre": "tempranillo",
+    "tinta-del-pais": "tempranillo",
+    "tinto-fino": "tempranillo",
+    "tinta-de-toro": "tempranillo",
+    "cencibel": "tempranillo",
+    "tinta-roriz": "tempranillo",
+    "hondarrabi-beltza": "hondarrabi-beltza",
+    "ondarrabi-beltza": "hondarrabi-beltza",
+    "hondarrabi-zuri": "hondarrabi-zuri",
+    "ondarrabi-zuri": "hondarrabi-zuri",
+    "moscatel-de-alejandria": "muscat-d-alexandrie",
+    "moscatel": "muscat-d-alexandrie",
+    "moscatel-de-grano-menudo": "muscat-a-petits-grains",
+    "subirat-parent": "alarije",
+    "subirant-parent": "alarije",
+    "loureiro-blanco": "loureira",
+    "loureiro": "loureira",
+    "branco-lexitimo": "albarin-blanco",
+    "listan-blanco": "palomino-fino",          # Jerez / Manzanilla synonym; Canarian Listán Blanco uses the longer slug `listan-blanco-de-canarias`.
+    "tardana": "planta-nova",
+    "verdosilla": "merseguera",
+    "mando": "garro",
+    "prensal": "moll",
+    "torneiro": "espadeiro",
+    "gironet": "grenache",
+    "dona-branca": "dona-blanca",              # Galician form
+    "mouraton": "juan-garcia",                 # Bierzo/Valdeorras synonym
+    "turruntes": "albillo-mayor",              # Rioja/Albillo Mayor synonym
+    # ----- Typos / alt-spellings in specific pliegos. Folded here so
+    # GRAPE_ALIAS keeps source data unmodified.
+    "petiti-verdot": "petit-verdot",          # Laujar-Alpujarra
+    "ruby-carbernet": "ruby-cabernet",         # Islas Canarias
+    "pedro-jimenez": "pedro-ximenez",          # Málaga (alt-spelling)
+    "pero-ximen": "pedro-ximenez",             # Málaga (truncated)
+    "chenin-blanco": "chenin",                 # Betanzos (Spanish spelling)
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -102,6 +164,35 @@ DEFAULT_COLOUR: dict[str, str] = {
     "trousseau": "noir",
     "mondeuse": "noir",
     "persan": "noir",
+    # ----- ES varieties (single-colour mutation only) -----
+    "tempranillo": "noir",
+    "graciano": "noir",
+    "bobal": "noir",
+    "mencia": "noir",
+    "monastrell": "noir",   # routed to mourvedre via GRAPE_ALIAS, but the
+                            # raw slug may also surface in audits
+    "alicante-bouschet": "noir",
+    "albarino": "blanc",
+    "godello": "blanc",
+    "verdejo": "blanc",
+    "treixadura": "blanc",
+    "albillo": "blanc",
+    "airen": "blanc",
+    "palomino": "blanc",
+    "pedro-ximenez": "blanc",
+    "macabeu": "blanc",
+    "xarello": "blanc",
+    "parellada": "blanc",
+    "torrontes": "blanc",
+    "loureira": "blanc",
+    "alarije": "blanc",
+    "merseguera": "blanc",
+    "moll": "blanc",
+    "planta-nova": "blanc",
+    "moscatel-de-alejandria": "blanc",
+    "muscat-d-alexandrie": "blanc",
+    "hondarrabi-zuri": "blanc",
+    "hondarrabi-beltza": "noir",
 }
 
 # Slugs that are pure boilerplate after stop-word filtering and should be
@@ -159,7 +250,7 @@ _COLOUR_RE = re.compile(r"\b(B|N|G|Rs|Rg)\b")
 # Words that immediately terminate a grape-name candidate when walking
 # backwards from the colour code. These never occur inside a varietal name.
 _HARD_STOP = {
-    "et", "ou", "issus", "issu", "issue", "issues", "sont", "est",
+    "et", "ou", "en", "issus", "issu", "issue", "issues", "sont", "est",
     "vins", "vin", "raisin", "raisins", "vifa",
     "cépage", "cepage", "cépages", "cepages",
     "principal", "principaux", "accessoire", "accessoires",
@@ -292,8 +383,12 @@ def _tokenise_role_chunk(chunk: str) -> list[dict]:
     cursor = 0
     for m in _COLOUR_RE.finditer(chunk):
         head = chunk[cursor : m.start()]
-        # Don't cross a top-level list separator backwards.
-        head = re.split(r"[,;:]|\s+et\s+", head)[-1]
+        # Don't cross a top-level list separator backwards. French
+        # guillemets «» also terminate the scope — they bracket DGC names
+        # in the Alsace cahier's encépagement table (`« Bergheim »
+        # gewurztraminer Rs`), and crossing them would yield bogus
+        # `bergheim-gewurztraminer` slugs.
+        head = re.split(r"[,;:«»]|\s+et\s+", head)[-1]
         words = _WORD_RE.findall(head)
         name = _name_from_words(words)
         cursor = m.end()

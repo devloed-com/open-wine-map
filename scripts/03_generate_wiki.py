@@ -194,7 +194,7 @@ def render_stub_page(record: dict) -> str:
     sec_type = (record.get("signe_fr") or "").strip() or (
         record.get("signe_ue") or "AOP"
     ).strip()
-    is_dgc = bool(record.get("is_dgc"))
+    is_sub_denomination = bool(record.get("is_sub_denomination"))
     parent_slug = record.get("parent_slug") or ""
     parent_name = record.get("parent_name") or ""
     reason = record.get("stub_reason", "no-pdf")
@@ -225,9 +225,9 @@ def render_stub_page(record: dict) -> str:
         "stub: true",
         f"stub_reason: {reason}",
     ]
-    if is_dgc:
+    if is_sub_denomination:
         fm_lines += [
-            "is_dgc: true",
+            "is_sub_denomination: true",
             f"parent_slug: {parent_slug}",
             f"parent_name: {parent_name}",
         ]
@@ -244,7 +244,7 @@ def render_stub_page(record: dict) -> str:
         "> ⚠️ **Cahier des charges non disponible.** " + reason_text,
         "",
     ]
-    if is_dgc and parent_slug:
+    if is_sub_denomination and parent_slug:
         fm_lines += [
             f"_Dénomination géographique complémentaire de [[{parent_slug}|{parent_name}]]._",
             "",
@@ -284,7 +284,7 @@ def render_page(record: dict) -> str:
     sections = record.get("sections", {})
     aire_geo = record["aire"]["aire_geographique"]
     aire_prox = record["aire"]["aire_proximite_immediate"]
-    is_dgc = bool(record.get("is_dgc"))
+    is_sub_denomination = bool(record.get("is_sub_denomination"))
     parent_slug = record.get("parent_slug") or ""
     parent_name = record.get("parent_name") or ""
 
@@ -337,9 +337,9 @@ def render_page(record: dict) -> str:
         f"grapes_accessory: {json.dumps(grapes.get('accessory') or [], ensure_ascii=False)}",
         f"grapes_observation: {json.dumps(grapes.get('observation') or [], ensure_ascii=False)}",
     ]
-    if is_dgc:
+    if is_sub_denomination:
         fm_lines += [
-            "is_dgc: true",
+            "is_sub_denomination: true",
             f"parent_slug: {parent_slug}",
             f"parent_name: {parent_name}",
         ]
@@ -374,7 +374,7 @@ def render_page(record: dict) -> str:
             f"utilisé la version courante. Re-run stage 02 to refresh.",
             "",
         ]
-    if is_dgc and parent_slug:
+    if is_sub_denomination and parent_slug:
         fm_lines += [
             f"_Dénomination géographique complémentaire de [[{parent_slug}|{parent_name}]]._",
             "",
@@ -450,8 +450,8 @@ def render_index(records: list[dict]) -> str:
     for r in records:
         region = r.get("comite_regional") or "Sans région"
         by_region[region].append(r)
-    parents = sum(1 for r in records if not r.get("is_dgc"))
-    dgcs = sum(1 for r in records if r.get("is_dgc"))
+    parents = sum(1 for r in records if not r.get("is_sub_denomination"))
+    dgcs = sum(1 for r in records if r.get("is_sub_denomination"))
     lines = [
         "# open wine map — index des appellations",
         "",
@@ -468,7 +468,7 @@ def render_index(records: list[dict]) -> str:
         children_by_parent: dict[str, list[dict]] = defaultdict(list)
         parents_in_region: list[dict] = []
         for r in region_records:
-            if r.get("is_dgc") and r.get("parent_slug"):
+            if r.get("is_sub_denomination") and r.get("parent_slug"):
                 children_by_parent[r["parent_slug"]].append(r)
             else:
                 parents_in_region.append(r)
@@ -533,7 +533,7 @@ def main() -> int:
         records.append(record)
         written += 1
 
-    wiki_idx = {
+    fr_idx = {
         r["slug"]: {
             "country": r.get("country") or "fr",
             "id_appellation": r["id_appellation"],
@@ -541,7 +541,7 @@ def main() -> int:
             "name": r["name"],
             "kind": r.get("kind", "AOC"),
             "region": r.get("comite_regional") or "",
-            "is_dgc": bool(r.get("is_dgc")),
+            "is_sub_denomination": bool(r.get("is_sub_denomination")),
             "parent_slug": r.get("parent_slug") or "",
             "parent_name": r.get("parent_name") or "",
             "communes_count": sum(len(v) for v in r["aire"]["aire_geographique"].values()),
@@ -556,7 +556,18 @@ def main() -> int:
         }
         for r in records
     }
-    WIKI_INDEX.write_text(json.dumps(wiki_idx, ensure_ascii=False, indent=2, sort_keys=True))
+    # Merge: keep any non-FR entries (ES added by scripts/es/03_generate_wiki.py),
+    # replace FR entries wholesale. Stage 03 (FR) and stage 03 (ES) can be
+    # run in any order without clobbering each other.
+    existing_idx: dict[str, dict] = {}
+    if WIKI_INDEX.exists():
+        try:
+            existing_idx = json.loads(WIKI_INDEX.read_text())
+        except (ValueError, OSError):
+            existing_idx = {}
+    non_fr_kept = {k: v for k, v in existing_idx.items() if v.get("country") != "fr"}
+    merged = {**non_fr_kept, **fr_idx}
+    WIKI_INDEX.write_text(json.dumps(merged, ensure_ascii=False, indent=2, sort_keys=True))
 
     (WIKI / "index.md").write_text(render_index(records))
     (WIKI / "log.md").write_text(render_log(records))

@@ -24,6 +24,8 @@ wiki-only bullets.
 Providers:
   anthropic  Anthropic Messages API (recommended for production).
              Requires ANTHROPIC_API_KEY. Default model: claude-haiku-4-5.
+  mistral    Mistral Chat Completions API. Requires MISTRAL_API_KEY.
+             Default model: mistral-large-latest.
   ollama     Local Ollama HTTP API (recommended for offline / forks).
              Default model: mistral-small3.2.
   manual     No network calls. With --emit-todo dumps every untreated
@@ -377,7 +379,7 @@ def write_cache(
 def _job_from_record(rec: dict) -> dict | None:
     """Build a per-AOC work entry, or None if the record is a DGC, has no
     slug, or has too little section-X text to be worth processing."""
-    if rec.get("is_dgc"):
+    if rec.get("is_sub_denomination"):
         return None
     slug = rec.get("slug")
     if not slug:
@@ -608,19 +610,25 @@ def write_manifest(*, n_jobs: int, ok: int, err: int, cached: int, translator_id
 def _build_argparser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
-        "--provider", default="ollama", choices=("anthropic", "ollama", "manual"),
+        "--provider", default="ollama", choices=("anthropic", "mistral", "ollama", "manual"),
         help="extraction backend (default: ollama)",
     )
     ap.add_argument(
         "--model", default=None,
         help=(
             "model id (default per provider: "
-            f"anthropic={providers.DEFAULT_ANTHROPIC_MODEL}, ollama={providers.DEFAULT_OLLAMA_MODEL})"
+            f"anthropic={providers.DEFAULT_ANTHROPIC_MODEL}, "
+            f"mistral={providers.DEFAULT_MISTRAL_MODEL}, "
+            f"ollama={providers.DEFAULT_OLLAMA_MODEL})"
         ),
     )
     ap.add_argument(
         "--ollama-url", default=providers.DEFAULT_OLLAMA_URL,
         help="Ollama chat endpoint (default: localhost:11434)",
+    )
+    ap.add_argument(
+        "--mistral-url", default=providers.DEFAULT_MISTRAL_URL,
+        help=f"Mistral chat endpoint (default: {providers.DEFAULT_MISTRAL_URL})",
     )
     ap.add_argument("--limit", type=int, default=0, help="cap on AOCs (0 = all)")
     ap.add_argument(
@@ -658,7 +666,10 @@ def _select_jobs(refresh: bool, limit: int, slugs: list[str] | None) -> list[dic
 
 def _make_provider(args) -> tuple[object | None, str]:
     """Returns (provider, translator_id). provider is None for manual mode."""
-    return providers.make_provider(args.provider, model=args.model, ollama_url=args.ollama_url)
+    return providers.make_provider(
+        args.provider, model=args.model, ollama_url=args.ollama_url,
+        mistral_url=args.mistral_url,
+    )
 
 
 def _print_manual_listing(jobs: list[dict]) -> int:

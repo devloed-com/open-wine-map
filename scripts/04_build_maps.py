@@ -40,48 +40,151 @@ from _lib.aoc_translations import (
 )
 from _lib.appellation_urls import load as load_appellation_urls, resolve as resolve_appellation_url
 from _lib.dgc_village_overrides import DGC_VILLAGE_INSEE
+from _lib.es.baleares import ines_for_island
+from _lib.es.commune_list import (
+    parse_ccaa_wide,
+    parse_commune_list,
+    parse_island_wide,
+    parse_province_wide_list,
+    parse_whole_commune_prefix,
+)
+from _lib.es.geometry import ESPolygonIndex
+from _lib.es.pliego_parcels import parse_polygon_inclusions
+from _lib.es.region import (
+    CCAA_TO_PROVINCE_INES,
+    PROVINCE_TO_INE,
+    derive_ccaa as derive_es_ccaa,
+)
+from _lib.es.sigpac import SigpacIndex
 from _lib.i18n import LOCALES, compile_catalogs
 from _lib.lieu_dit import LieuDitIndex, derive_climat_name
 from _lib.map_template import render as render_map_html
 from _lib.parcellaire import build_aoc_polygons
+from _lib.style_taxonomy import (
+    all_slugs as _taxonomy_all_slugs,
+    descendants as _taxonomy_descendants,
+    descendants_map as _taxonomy_descendants_map,
+    simple_bucket as _taxonomy_simple_bucket,
+    taxonomy_dfs_order as _taxonomy_dfs_order,
+)
 from _lib.summaries import derive_summary, summary_sha
 from _lib.wiki import is_grape_summary
 
 ROOT = Path(__file__).resolve().parent.parent
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
+EXTRACTED_ES = ROOT / "raw" / "es" / "pliegos-extracted"
+NATIONAL_PLIEGOS_ES = ROOT / "raw" / "es" / "national-pliegos-extracted"
+ES_FIGSHARE_GPKG = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
+ES_GISCO_LAU_ZIP = ROOT / "raw" / "es" / "gisco" / "LAU_RG_01M_2024_3035.shp.zip"
+ES_SIGPAC_DIR = ROOT / "raw" / "es" / "sigpac"
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"
 WIKI = ROOT / "wiki"
 SITE_BASE_URL = "https://www.openwinemap.com"
 MAP_DATA = WIKI / "map-data"
+ASSETS_SRC = ROOT / "raw" / "assets"
+ASSETS_OUT = WIKI / "assets"
 GEOJSON_OUT = MAP_DATA / "appellations.geojson"
 PMTILES_OUT = MAP_DATA / "appellations.pmtiles"
 GEOJSON_VILLAGES_OUT = MAP_DATA / "appellations-villages.geojson"
 PMTILES_VILLAGES_OUT = MAP_DATA / "appellations-villages.pmtiles"
 LEXICON_DIR = ROOT / "raw" / "wikipedia" / "grapes"
 STYLE_LEXICON_DIR = ROOT / "raw" / "wikipedia" / "styles"
+STYLE_TRANSLATIONS_DIR = ROOT / "raw" / "translations" / "styles"
 
 
 _DISAMBIG_SUFFIX = re.compile(r"\s*\([^)]*\)\s*$")
 
-# Simple-mode style buckets: collapses the 16 fine-grained INAO style tags into
-# the 6 buckets the default view shows. Keys are fine-grained slugs (matches
-# the set in scripts/_lib/map_template.build_style_labels); values are the
-# simplified bucket. Anything not listed here falls into "other".
+
+# Slug-keyed cache of national-pliego provenance, populated by
+# augment_es_records_with_national_pliegos() and read by _sources_for()
+# later in the build. Needed because the AOC-blob phase re-reads each
+# extracted JSON from disk (where the augmentation isn't persisted) —
+# this lookup gives that phase access to the same provenance the
+# in-memory record carries.
+_ES_NATIONAL_PLIEGO_BY_SLUG: dict[str, dict] = {}
+
+
+def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
+    """In-place merge of national-pliego sidecar varieties into each ES
+    record's `grapes` field. Returns the number of records augmented.
+
+    Mutations per record:
+      - new variety slugs (those NOT already in principal ∪ accessory) are
+        appended to `grapes.accessory`
+      - matching entries are appended to `grapes.details` with
+        `role="accessory"` and `source="national-pliego"` so the UI can
+        distinguish doc-único-canonical varieties from pliego-augmented ones
+      - a top-level `national_pliego` block carries provenance for
+        `_sources_for()` to surface in the panel
+    """
+    _ES_NATIONAL_PLIEGO_BY_SLUG.clear()
+    if not NATIONAL_PLIEGOS_ES.exists():
+        return 0
+    augmented = 0
+    for record in records:
+        if record.get("country") != "es":
+            continue
+        slug = record.get("slug")
+        if not slug:
+            continue
+        sidecar_path = NATIONAL_PLIEGOS_ES / f"{slug}.json"
+        if not sidecar_path.exists():
+            continue
+        sidecar = json.loads(sidecar_path.read_text())
+        new_slugs = list(sidecar.get("delta_vs_oj", {}).get("new_slugs") or [])
+        if not new_slugs:
+            # Still stamp provenance — the pliego was parsed even if it
+            # added nothing new. Skip the merge but keep attribution
+            # consistent for the audit.
+            nat_provenance = {
+                "url": sidecar.get("source", {}).get("url", ""),
+                "sha256": sidecar.get("source", {}).get("sha256", ""),
+                "fetched_at": sidecar.get("source", {}).get("fetched_at", ""),
+                "parser_template": sidecar.get("parser_template", ""),
+                "added_slugs": [],
+            }
+            record["national_pliego"] = nat_provenance
+            _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
+            continue
+        grapes = dict(record.get("grapes") or {})
+        principal = list(grapes.get("principal") or [])
+        accessory = list(grapes.get("accessory") or [])
+        details = list(grapes.get("details") or [])
+        existing = set(principal) | set(accessory)
+        added: list[str] = []
+        slug_to_detail = {d.get("slug"): d for d in sidecar.get("varieties", [])}
+        for s in new_slugs:
+            if s in existing:
+                continue
+            accessory.append(s)
+            existing.add(s)
+            added.append(s)
+            detail = dict(slug_to_detail.get(s) or {"slug": s, "name": s, "colour": ""})
+            detail["role"] = "accessory"
+            detail["source"] = "national-pliego"
+            details.append(detail)
+        grapes["accessory"] = accessory
+        grapes["details"] = details
+        record["grapes"] = grapes
+        nat_provenance = {
+            "url": sidecar.get("source", {}).get("url", ""),
+            "sha256": sidecar.get("source", {}).get("sha256", ""),
+            "fetched_at": sidecar.get("source", {}).get("fetched_at", ""),
+            "parser_template": sidecar.get("parser_template", ""),
+            "added_slugs": added,
+        }
+        record["national_pliego"] = nat_provenance
+        _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
+        if added:
+            augmented += 1
+    return augmented
+
+# Simple-mode style buckets: collapses the fine-grained style tags into the
+# six top-level buckets the default view shows. Derived from the canonical
+# taxonomy in scripts/_lib/style_taxonomy so adding a new tag in one place
+# propagates here automatically.
 SIMPLE_STYLE_BUCKETS: dict[str, str] = {
-    "red": "red",
-    "clairet": "red",
-    "primeur": "red",
-    "white": "white",
-    "rose": "rose",
-    "sparkling": "sparkling",
-    "cremant": "sparkling",
-    "sweet": "sweet",
-    "vdn": "sweet",
-    "vin-de-liqueur": "sweet",
-    "vin-jaune": "sweet",
-    "vin-de-paille": "sweet",
-    "vendanges-tardives": "sweet",
-    "grains-nobles": "sweet",
+    s: _taxonomy_simple_bucket(s) for s in _taxonomy_all_slugs()
 }
 
 
@@ -153,42 +256,72 @@ def merge_grape_lexicon(lang_lex: dict, fr_lex: dict) -> dict:
     return out
 
 
-def load_style_lexicon(lang: str, max_chars: int = 320) -> dict:
-    """Load Wikipedia style data for a locale; returns
-    {slug: {extract, page_url, revision_id, thumbnail?}} for each curated
-    style entry that successfully fetched. Truncates `extract` to ~max_chars
-    at the nearest sentence boundary.
+def _truncate_extract(extract: str, max_chars: int) -> str:
+    extract = (extract or "").strip()
+    if not extract or len(extract) <= max_chars:
+        return extract
+    cut = extract[:max_chars].rsplit(". ", 1)[0]
+    return cut + ("." if not cut.endswith(".") else "") + " […]"
 
-    Unlike the grape lexicon there is no positive-keyword filter: each slug
-    is bound by hand to a Wikipedia title in `style_overrides.json`, so a
-    successful fetch is by construction the right article."""
-    lang_dir = STYLE_LEXICON_DIR / lang
-    if not lang_dir.exists():
-        return {}
+
+def load_style_lexicon(lang: str, max_chars: int = 320) -> dict:
+    """Load wine-style data for a locale; returns
+    {slug: {extract, page_url, revision_id, thumbnail?, translation?}}
+    for each curated entry that has usable text.
+
+    Native Wikipedia fetches (raw/wikipedia/styles/<lang>/) are preferred.
+    When a slug has no native entry in `lang` but a translated entry exists
+    (raw/translations/styles/<lang>/), the translation is used and a
+    `translation` metadata block is attached so the UI can render the
+    "translated from <source-locale> Wikipedia" attribution."""
     out: dict[str, dict] = {}
-    for f in lang_dir.glob("*.json"):
-        d = json.loads(f.read_text())
-        if d.get("missing") or d.get("error"):
-            continue
-        extract = (d.get("extract") or "").strip()
-        if not extract:
-            continue
-        if len(extract) > max_chars:
-            cut = extract[:max_chars].rsplit(". ", 1)[0]
-            extract = cut + ("." if not cut.endswith(".") else "") + " […]"
-        entry: dict = {
-            "extract": extract,
-            "page_url": d.get("page_url"),
-            "revision_id": d.get("revision_id"),
-        }
-        if d.get("thumbnail"):
-            entry["thumbnail"] = d.get("thumbnail")
-        out[d["slug"]] = entry
+    lang_dir = STYLE_LEXICON_DIR / lang
+    if lang_dir.exists():
+        for f in lang_dir.glob("*.json"):
+            d = json.loads(f.read_text())
+            if d.get("missing") or d.get("error"):
+                continue
+            extract = _truncate_extract(d.get("extract") or "", max_chars)
+            if not extract:
+                continue
+            entry: dict = {
+                "extract": extract,
+                "page_url": d.get("page_url"),
+                "revision_id": d.get("revision_id"),
+            }
+            if d.get("thumbnail"):
+                entry["thumbnail"] = d.get("thumbnail")
+            out[d["slug"]] = entry
+
+    tx_dir = STYLE_TRANSLATIONS_DIR / lang
+    if tx_dir.exists():
+        for f in tx_dir.glob("*.json"):
+            d = json.loads(f.read_text())
+            slug = d.get("slug") or f.stem
+            if slug in out:
+                continue  # native fetch wins
+            extract = _truncate_extract(d.get("extract") or "", max_chars)
+            if not extract:
+                continue
+            out[slug] = {
+                "extract": extract,
+                "page_url": d.get("source_page_url") or "",
+                "revision_id": d.get("source_revision_id"),
+                "translation": {
+                    "source_lang": d.get("source_lang") or "",
+                    "source_page_url": d.get("source_page_url") or "",
+                    "source_wikipedia_title": d.get("source_wikipedia_title") or "",
+                    "translator": d.get("translator") or "",
+                    "translator_kind": d.get("translator_kind") or "",
+                },
+            }
     return out
 
 
 def merge_style_lexicon(lang_lex: dict, fr_lex: dict) -> dict:
-    """Same FR-fallback pattern as `merge_grape_lexicon`."""
+    """FR-fallback for slugs the target locale lacks entirely — both as a
+    native fetch and as a translation. Used as a last resort so the UI still
+    renders something rather than an empty pill."""
     if lang_lex is fr_lex:
         return lang_lex
     out: dict[str, dict] = {}
@@ -602,6 +735,7 @@ def main() -> int:
     )
 
     MAP_DATA.mkdir(parents=True, exist_ok=True)
+    copy_brand_assets()
 
     features: list[dict] = []
     village_features: list[dict] = []
@@ -632,19 +766,166 @@ def main() -> int:
         if json_path.name == "_index.json":
             continue
         extracted_records.append(json.loads(json_path.read_text()))
+    # Multi-country: also iterate ES extracted records (raw/es/pliegos-
+    # extracted/). Stubs are skipped at the geometry-resolution step
+    # (no commune list / no Figshare polygon) but kept in the AOCS
+    # blob so the wine remains searchable.
+    if EXTRACTED_ES.exists():
+        for json_path in sorted(EXTRACTED_ES.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text()))
+    # Augment ES records with national-pliego sidecar data — adds the
+    # accessory varieties that the EU-OJ documento único omits. The
+    # sidecar carries provenance (URL + sha256 + fetched_at) which
+    # propagates through _sources_for() so the panel can attribute the
+    # extra varieties to their national pliego PDF.
+    n_aug = augment_es_records_with_national_pliegos(extracted_records)
+    if n_aug:
+        print(
+            f"[load] ES national-pliego augmentation: {n_aug} records enriched",
+            file=sys.stderr,
+        )
     # Process parents first, DGCs second — lets DGCs reuse the parent
-    # geometry that was just resolved.
-    extracted_records.sort(key=lambda r: (bool(r.get("is_dgc")), r["name"].lower()))
+    # geometry that was just resolved (same logic for FR DGCs and ES
+    # subzonas).
+    extracted_records.sort(key=lambda r: (bool(r.get("is_sub_denomination")), r["name"].lower()))
+
+    # Pre-load ES geometry indexes once. ~3 sec; reused across every
+    # ES record's resolution.
+    es_polygons = ESPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        gisco_lau_zip=ES_GISCO_LAU_ZIP,
+    )
+    print(
+        f"[load] ES polygons: {es_polygons.n_pdo_polygons} Figshare PDOs / "
+        f"{es_polygons.n_municipios} GISCO municipios",
+        file=sys.stderr,
+    )
+    # SIGPAC parcel-precision index for ES wines whose pliegos enumerate
+    # polygon inclusions inside shared communes (Priorat ↔ Montsant).
+    # Skipped silently if no SIGPAC gpkg files are present.
+    es_sigpac = SigpacIndex(
+        list(ES_SIGPAC_DIR.glob("SIGPAC_*.gpkg")) if ES_SIGPAC_DIR.exists() else []
+    )
+    if es_sigpac.n_comarques:
+        print(
+            f"[load] SIGPAC: {es_sigpac.n_comarques} comarques / "
+            f"{es_sigpac.n_municipios} municipios with vineyards",
+            file=sys.stderr,
+        )
+    # Curator-supplied geometry research at raw/es/geometry_research.json.
+    # Lets the curator pin an ES wine's geometry by listing INE codes
+    # (and SIGPAC parcels for the future) when the auto-resolution chain
+    # below can't find a polygon — e.g. single-estate Pagos (Abadía Retuerta,
+    # Bolandin, Tharsys, Urbezo) and multi-municipal IGPs whose pliego
+    # commune-list parser doesn't pick up (Campo de Calatrava, Terras do Navia).
+    es_geom_research: dict[str, dict] = {}
+    geom_research_path = ROOT / "raw" / "es" / "geometry_research.json"
+    if geom_research_path.exists():
+        for it in json.loads(geom_research_path.read_text()):
+            es_geom_research[(it.get("name") or "").lower()] = it
+        print(
+            f"[load] ES geometry_research: {len(es_geom_research)} curator entries",
+            file=sys.stderr,
+        )
+    es_hits: Counter[str] = Counter()
+    es_region_by_parent_slug: dict[str, str] = {}
 
     for record in tqdm(extracted_records, desc="union", leave=False):
-        is_dgc = bool(record.get("is_dgc"))
-        # Detailed geometry priority:
-        #   Parents: parcellaire → INAO aires-communes CSV → commune-text
-        #     extraction (fallback union from cahier-named communes).
-        #   DGCs (7-level chain — see resolve_dgc_geometry()):
-        #     parcellaire-dgc → village-override → cadastre-lieu-dit
-        #     → aires-csv-dgc → sibling umbrella → parent → none.
-        if is_dgc:
+        is_sub_denomination = bool(record.get("is_sub_denomination"))
+        country = record.get("country") or "fr"
+
+        # ES branch — Figshare PDO polygon → GISCO commune-union → parent
+        # fallback. Stubs (`stub: True`) skip geometry; they appear in the
+        # AOCS sidebar but not as polygons.
+        if country == "es":
+            geom = None
+            stats = {"matched": 0, "unmatched": 0}
+            geom_source = "none"
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            if record.get("stub"):
+                geom_source = "stub-no-geometry"
+            elif is_sub_denomination and record.get("subzona_communes"):
+                geom, stats = es_polygons.union_communes(record["subzona_communes"])
+                if geom is not None and not geom.is_empty:
+                    geom_source = "gisco-commune-union-subzona"
+                else:
+                    parent_slug = record.get("parent_slug") or ""
+                    parent_geom = parent_geom_by_slug.get(parent_slug)
+                    if parent_geom is not None:
+                        geom = parent_geom
+                        geom_source = "parent-appellation"
+                        stats = {"matched": -1, "unmatched": 0}
+            else:
+                # Curator-research override (geometry_research.json) takes
+                # precedence over the auto-resolution chain. For now we union
+                # GISCO municipios by INE code from the research entry —
+                # parcel-level SIGPAC resolution is a follow-up once the
+                # relevant comarca data is fetched.
+                research = es_geom_research.get((record.get("name") or "").lower())
+                if research:
+                    ines = [
+                        str(m.get("ine_code", "")).strip()
+                        for m in (research.get("municipios") or [])
+                        if m.get("ine_code")
+                    ]
+                    if ines:
+                        rgeom, rstats = es_polygons.union_by_ines(ines)
+                        if rgeom is not None and not rgeom.is_empty:
+                            geom = rgeom
+                            geom_source = "geometry-research-municipios"
+                            stats = rstats
+                # Fall through to the auto-resolution chain only when the
+                # research override didn't yield a polygon.
+                sigpac_geom = (
+                    _resolve_es_sigpac(record, es_sigpac, es_polygons)
+                    if geom is None or geom.is_empty
+                    else None
+                )
+                if sigpac_geom is not None and not sigpac_geom.is_empty:
+                    geom = sigpac_geom
+                    geom_source = "sigpac-hybrid-pliego"
+                    stats = {"matched": -1, "unmatched": 0}
+                elif geom is None or geom.is_empty:
+                    fig = es_polygons.figshare_polygon(record.get("file_number") or "")
+                    if fig is not None and not fig.is_empty:
+                        geom = fig
+                        geom_source = "figshare-pdo"
+                        stats = {"matched": -1, "unmatched": 0}
+                    else:
+                        # IGP fallback chain (Figshare is PDO-only by
+                        # design, so all 43 IGPs miss it). Try the
+                        # province-wide pattern (Extremadura: "all
+                        # municipios of provinces X and Y") then the
+                        # explicit commune-list pattern (Ribeiras do
+                        # Morrazo, Barbanza e Iria, etc.).
+                        igp_geom, igp_source, igp_stats = _resolve_es_igp_fallback(
+                            record, es_polygons,
+                        )
+                        if igp_geom is not None and not igp_geom.is_empty:
+                            geom = igp_geom
+                            geom_source = igp_source
+                            stats = igp_stats
+            es_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            # Stash parent geometry for subzona/DGC fallback.
+            if not is_sub_denomination and geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = True
+        else:
+            _emit_es_features = False
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+
+        if _emit_es_features:
+            # Geometry already resolved above; skip the FR-specific chain.
+            pass
+        elif is_sub_denomination:
             dgc_result = resolve_dgc_geometry(
                 record,
                 parcels_by_denom=parcels_by_denom,
@@ -693,7 +974,12 @@ def main() -> int:
         # commune-blocks instead of parcel-precise outlines. DGCs typically
         # don't have their own row in the aires CSV, so we let them fall
         # back to the parent's village geometry (already computed).
-        if is_dgc:
+        # ES records already had v_geom assigned in the ES branch above
+        # (using the same geom for both detail + village), so skip the
+        # FR-specific village resolution.
+        if _emit_es_features:
+            pass
+        elif is_sub_denomination:
             # Prefer DGC's own parcellaire polygon as the village geometry —
             # it's what makes Clisson visible at low zoom. If none, reuse
             # the commune-level geometry we just resolved (override or
@@ -760,7 +1046,7 @@ def main() -> int:
         if geom is None or geom.is_empty:
             skipped += 1
             continue
-        if not is_dgc:
+        if not is_sub_denomination:
             parent_geom_by_slug[record["slug"]] = geom
             if v_geom is not None and not v_geom.is_empty:
                 parent_village_geom_by_slug[record["slug"]] = v_geom
@@ -793,7 +1079,12 @@ def main() -> int:
         # Pommeau, etc.) and ciders fall outside that set. The map hides
         # non-wine appellations by default — see `showSpirits` in the
         # template for the toggle.
-        is_wine = "1" if categorie.startswith("Vin") else "0"
+        # ES records have no `categorie` — every entry is filtered to
+        # productType=WINE upstream in stage 00, so they're all wines.
+        if record.get("country") == "es":
+            is_wine = "1"
+        else:
+            is_wine = "1" if categorie.startswith("Vin") else "0"
         # When the geometry came from a sibling-DGC umbrella, surface the
         # umbrella's slug/name so the panel can explain "approximate area
         # — within {umbrella}".
@@ -835,17 +1126,41 @@ def main() -> int:
                 mvt_kind = "IGP"
             else:
                 mvt_kind = raw_kind if raw_kind != "STUB" else "AOC"
+        # ES records have `file_number` (e.g. PDO-ES-A0117) instead of FR's
+        # numeric id_appellation; we coalesce so the MVT property carries
+        # *some* stable identifier regardless of country.
+        # Region for ES = Comunidad Autónoma (CCAA), derived from pliego
+        # text + curated overrides (see scripts/_lib/es/region.py). For ES
+        # subzonas (DGCs), inherit the parent's CCAA — looked up from the
+        # already-resolved parent geometry's slug.
+        if record.get("country") == "es":
+            if is_sub_denomination:
+                # Subzonas inherit parent CCAA (already computed when parent
+                # was processed earlier in the loop, since records are
+                # sorted parents-first).
+                parent_slug = record.get("parent_slug") or ""
+                region_value = es_region_by_parent_slug.get(parent_slug, "España")
+            else:
+                region_value = derive_es_ccaa(record)
+                es_region_by_parent_slug[record["slug"]] = region_value
+        else:
+            region_value = record.get("comite_regional", "")
         common_props = {
             "country": record.get("country") or "fr",
-            "id_appellation": record["id_appellation"],
+            "id_appellation": (
+                record.get("id_appellation")
+                or record.get("file_number")
+                or record.get("id_eambrosia")
+                or ""
+            ),
             "id_denomination_geo": record.get("id_denomination_geo") or "",
             "slug": record["slug"],
             "name": record["name"],
             "kind": mvt_kind,
-            "region": record.get("comite_regional", ""),
+            "region": region_value,
             "categorie": categorie,
             "is_wine": is_wine,
-            "is_dgc": "1" if is_dgc else "0",
+            "is_sub_denomination": "1" if is_sub_denomination else "0",
             "parent_slug": record.get("parent_slug") or "",
             "parent_name": record.get("parent_name") or "",
             "geom_fallback_slug": fallback_slug,
@@ -998,10 +1313,211 @@ def main() -> int:
     return 0
 
 
+def _resolve_es_igp_fallback(record: dict, es_polygons: ESPolygonIndex):
+    """Resolve geometry for ES wines that miss Figshare (mostly IGPs +
+    a handful of post-Nov-2021 PDOs). Patterns tried in order:
+
+      1. **Province-wide** — pliego says "todos los términos municipales
+         de las provincias de X y Y" (Extremadura). Union all GISCO
+         municipios in those provinces.
+      2. **CCAA-wide** — "totalidad de los municipios de la Comunidad
+         Autónoma de Castilla y León". Union all province INEs of that
+         CCAA.
+      3. **Island-wide** — "toda la isla de Mallorca" (Balearic IGPs
+         like Mallorca / Menorca / Serra de Tramuntana).
+      4. **Commune-list** — pliego enumerates a flat commune list
+         (Ribeiras do Morrazo, Barbanza e Iria, Bajo Aragón). Union the
+         matching GISCO municipios.
+
+    Each pattern is tried against a chain of candidate texts:
+    `geo_area_brief` first (the canonical stage-02 routed field), then
+    `sections["9"]` (the EU 2024 single-document "Definición breve de
+    la zona geográfica delimitada" section — sometimes mis-routed by
+    stage 02 when section titles collide, e.g. Mallorca / Ribeiras do
+    Morrazo).
+
+    LAST RESORT — **wine-name → province**: when nothing else fires,
+    look up the wine's `name` (and the bracketed-form fallback strip)
+    against `PROVINCE_TO_INE`. Spanish-national-format pliegos for
+    province-named IGPs (Castelló) sometimes describe the geographic
+    area in pure prose without listing communes or saying "todos los
+    municipios de la provincia" — the IGP-covers-the-whole-province
+    relationship is implicit in the name. The wine's name must match
+    a known Spanish province (or co-official alias) exactly.
+
+    Returns (geom, source_label, stats) or (None, "none", {}) when
+    nothing fires."""
+    geo = record.get("geo_area_brief") or ""
+    sec9 = (record.get("sections") or {}).get("9") or ""
+
+    # Try the routed field first, then section 9. Stop on the first
+    # candidate that actually returns a non-empty polygon.
+    candidates = [c for c in (geo, sec9) if c]
+    if not candidates:
+        slug = record.get("slug", "?")
+        print(f"[no-commune-match] {slug}: empty geo_area_brief and section 9", file=sys.stderr)
+        return None, "none", {"matched": 0, "unmatched": 0}
+
+    for text in candidates:
+        provinces = parse_province_wide_list(text)
+        if provinces:
+            ines = [PROVINCE_TO_INE.get(p) for p in provinces if PROVINCE_TO_INE.get(p)]
+            if ines:
+                geom, stats = es_polygons.union_provinces(ines)
+                if geom is not None and not geom.is_empty:
+                    return geom, "gisco-province-wide", {
+                        "matched": stats.get("n_municipios", -1), "unmatched": 0,
+                    }
+
+        ccaa = parse_ccaa_wide(text)
+        if ccaa:
+            ines = list(CCAA_TO_PROVINCE_INES.get(ccaa, ()))
+            if ines:
+                geom, stats = es_polygons.union_provinces(ines)
+                if geom is not None and not geom.is_empty:
+                    return geom, "gisco-ccaa-wide", {
+                        "matched": stats.get("n_municipios", -1), "unmatched": 0,
+                    }
+
+        # Balearic islands: pliego says "toda la isla de Mallorca" /
+        # "todos los municipios de la isla de Menorca" / etc. GISCO LAU
+        # has no per-island metadata, so we lean on the curated INE-list-
+        # per-island in `_lib/es/baleares.py` (bbox-classified once from
+        # the LAU geometry).
+        island = parse_island_wide(text)
+        if island:
+            island_ines = list(ines_for_island(island))
+            if island_ines:
+                polys = []
+                for ine in island_ines:
+                    cand = es_polygons._munis_by_ine.get(ine)
+                    if cand and not cand.geom.is_empty:
+                        polys.append(cand.geom)
+                if polys:
+                    return unary_union(polys), "gisco-island-wide", {
+                        "matched": len(polys), "unmatched": 0,
+                    }
+
+        communes = parse_commune_list(text)
+        if communes:
+            geom, stats = es_polygons.union_communes(communes)
+            if geom is not None and not geom.is_empty:
+                return geom, "gisco-commune-list", stats
+
+    # Last resort: wine-name → province. The IGP/DOP covers the whole
+    # province by name (Castelló = Castellón province). Matched against
+    # PROVINCE_TO_INE's full alias list (Spanish + co-official forms).
+    name = (record.get("name") or "").strip()
+    ine = PROVINCE_TO_INE.get(name)
+    if ine:
+        geom, stats = es_polygons.union_provinces([ine])
+        if geom is not None and not geom.is_empty:
+            slug = record.get("slug", "?")
+            print(
+                f"[gisco-province-by-name] {slug}: name={name!r} → INE {ine} "
+                f"(no commune list anywhere; province-wide by name)",
+                file=sys.stderr,
+            )
+            return geom, "gisco-province-by-name", {
+                "matched": stats.get("n_municipios", -1), "unmatched": 0,
+            }
+
+    slug = record.get("slug", "?")
+    print(
+        f"[no-commune-match] {slug}: "
+        f"geo_area_brief={len(geo)} chars, section9={len(sec9)} chars, "
+        f"no province/ccaa/island/commune-list/name-province pattern fired",
+        file=sys.stderr,
+    )
+    return None, "none", {"matched": 0, "unmatched": 0}
+
+
+def _resolve_es_sigpac(
+    record: dict, sigpac: SigpacIndex, es_polygons: ESPolygonIndex,
+):
+    """Hybrid SIGPAC + GISCO whole-commune resolver for ES wine records
+    that have polygon-list inclusions in their pliego.
+
+    The hybrid is **only invoked when polygon-list inclusions exist**
+    (Priorat / Montsant pattern: pliego enumerates SIGPAC polygon
+    numbers within shared communes). Wines without polygon-list
+    inclusions fall through to Figshare which is more reliable for the
+    PDO commune-precision polygon — running our whole-commune-prefix
+    parser unconditionally would over-trigger on noisy text (Rioja's
+    subzona ALL-CAPS headers parsed as commune names, etc.).
+
+    When polygon-list inclusions ARE present, two passes union into one
+    appellation footprint:
+
+      1. **Whole-commune prefix** (the 9 fully-included Priorat
+         communes / 12 fully-included Montsant communes) → union of
+         GISCO LAU commune polygons.
+      2. **Polygon-list inclusions** (Falset: polígonos 1, 4, 5, 6, 7,
+         21, 25 enteros) → union of SIGPAC vineyard parcels at
+         polygon-precision.
+
+    Returns None when there are no polygon-list inclusions or when
+    SIGPAC isn't loaded for the relevant comarca."""
+    if not sigpac.n_comarques:
+        return None
+    geo = record.get("geo_area_brief") or ""
+    if not geo:
+        return None
+
+    inclusions = parse_polygon_inclusions(geo)
+    if not inclusions:
+        return None
+
+    polys = []
+
+    # Whole-commune prefix → GISCO union (supplements polygon-list when
+    # the pliego mixes both patterns).
+    whole_communes = parse_whole_commune_prefix(geo)
+    if whole_communes:
+        gc_geom, _ = es_polygons.union_communes(whole_communes)
+        if gc_geom is not None and not gc_geom.is_empty:
+            polys.append(gc_geom)
+
+    # Polygon-list inclusions → SIGPAC union
+    for inc in inclusions:
+        g = sigpac.polygons_in_municipi(inc.municipio_norm, inc.polygon_numbers)
+        if g is not None and not g.is_empty:
+            polys.append(g)
+
+    if not polys:
+        return None
+    return unary_union(polys)
+
+
 def _sources_for(record: dict) -> dict:
-    """Pull authoritative source URLs from the extracted record."""
+    """Pull authoritative source URLs from the extracted record. The keys
+    are country-specific: FR records carry BO Agri / show_texte / product
+    URLs; ES records carry the EUR-Lex final URL + the original
+    eAmbrosia publication URL. The UI branches on `country` to render
+    the right attribution wording."""
     src = record.get("source") or {}
+    if record.get("country") == "es":
+        # The AOC-blob phase re-reads the on-disk extracted JSON (which
+        # doesn't carry the augmentation), so fall back to the slug-keyed
+        # cache populated by augment_es_records_with_national_pliegos().
+        nat = record.get("national_pliego") or _ES_NATIONAL_PLIEGO_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
+        return {
+            "country": "es",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+            "national_pliego_url": nat.get("url", ""),
+            "national_pliego_sha256": nat.get("sha256", ""),
+            "national_pliego_fetched_at": nat.get("fetched_at", ""),
+            "national_pliego_added_slugs": nat.get("added_slugs") or [],
+        }
     return {
+        "country": "fr",
         "boagri": src.get("boagri_url") or "",
         "show_texte": src.get("show_texte_url") or "",
         "product": src.get("product_url") or "",
@@ -1125,7 +1641,11 @@ def emit_html(
         simple_styles = sorted({SIMPLE_STYLE_BUCKETS.get(s, "other") for s in styles}) if styles else []
 
         # Extracted JSON has a richer summary + source URLs; pull them.
-        ext_path = EXTRACTED / f"{slug}.json"
+        # Try the FR path first, then the ES path. Slugs are globally
+        # unique across countries (see stage 02 + stage 02es slug derivation),
+        # so at most one path matches.
+        country = p.get("country") or "fr"
+        ext_path = (EXTRACTED_ES if country == "es" else EXTRACTED) / f"{slug}.json"
         summary = ""
         sources: dict = {}
         parent_slug_for_facts = p.get("parent_slug", "") or ""
@@ -1150,7 +1670,7 @@ def emit_html(
             "kind": p["kind"],
             "region": p["region"],
             "is_wine": p.get("is_wine", "1") == "1",
-            "is_dgc": p.get("is_dgc", "0") == "1",
+            "is_sub_denomination": p.get("is_sub_denomination", "0") == "1",
             "parent_slug": p.get("parent_slug", "") or "",
             "parent_name": p.get("parent_name", "") or "",
             "communes_matched": p["communes_matched"],
@@ -1216,12 +1736,39 @@ def emit_html(
         if simple_style_counts.get(s, 0) > 0
     ]
 
+    # Advanced-mode style facet is a taxonomy-driven tree. Per node we emit
+    # `(slug, parent, depth, count)` in declared DFS order; `count` aggregates
+    # the slug itself plus every descendant, so checking a parent reflects
+    # what selecting the whole subtree would yield. Nodes with zero aggregate
+    # count drop out (along with their entire subtree, by definition).
+    taxonomy_order = _taxonomy_dfs_order()
+    descendant_sets = {slug: _taxonomy_descendants(slug) for slug, _, _ in taxonomy_order}
+    panel_only = set(_taxonomy_all_slugs()) - {s for s, _, _ in taxonomy_order}
+    for slug, dset in descendant_sets.items():
+        descendant_sets[slug] = dset - panel_only
+    agg_style_counts: dict[str, int] = {slug: 0 for slug in descendant_sets}
+    for rec in aocs.values():
+        record_styles = set(rec.get("styles") or [])
+        if not record_styles:
+            continue
+        for slug, dset in descendant_sets.items():
+            if record_styles & dset:
+                agg_style_counts[slug] += 1
+    facet_styles_tree = [
+        {"slug": slug, "parent": parent, "depth": depth,
+         "count": agg_style_counts.get(slug, 0)}
+        for slug, parent, depth in taxonomy_order
+        if agg_style_counts.get(slug, 0) > 0
+    ]
+    style_descendants = _taxonomy_descendants_map()
+
     facets = dict(
         layer_url=layer_url,
         villages_layer_url=villages_layer_url,
         source_type=source_type,
         aocs=aocs,
-        facet_styles=sort_facet(style_counts),
+        facet_styles_tree=facet_styles_tree,
+        style_descendants=style_descendants,
         facet_styles_simple=facet_styles_simple,
         facet_principal=sort_facet(principal_counts),
         facet_accessory=sort_facet(accessory_counts),
@@ -1240,31 +1787,41 @@ def emit_html(
             lex = merge_grape_lexicon(load_grape_lexicon(lang), fr_lex)
             styles_lex = merge_style_lexicon(load_style_lexicon(lang), fr_styles_lex)
         translations = load_summary_translations(lang) if use_translations else {}
-        # Locale-specific summary takes precedence; FR summary stays as the
-        # fallback the panel renders with the "(français)" marker. FR uses
-        # the same cache for hand-rewritten summaries but without the
-        # "translation" attribution (it is the canonical language).
-        if lang == "fr":
-            aocs_for_lang = {
-                slug: ({**rec, "summary": translations[slug]["summary"]}
-                       if slug in translations else rec)
-                for slug, rec in aocs.items()
-            }
-        else:
-            aocs_for_lang = {
-                slug: ({**rec, "summary": translations[slug]["summary"],
-                       "summary_translation": {
-                           "translator": translations[slug]["translator"],
-                           "source_pdf_url": translations[slug]["source_pdf_url"],
-                           "source_pdf_filename": translations[slug]["source_pdf_filename"],
-                       }} if slug in translations else rec)
-                for slug, rec in aocs.items()
-            }
-        # Overlay translated terroir-fact bullets when the locale is non-FR
-        # and a per-locale 02e cache exists. FR keeps its native bullets.
+        # The translation overlay is source-language-aware: a record's
+        # canonical text stays untouched only when the current locale matches
+        # its source language (FR for INAO cahiers, ES for EU pliegos).
+        # Otherwise the per-locale 02c cache wins and a `summary_translation`
+        # marker is attached so the panel renders the "machine translated"
+        # attribution. FR also uses its own cache for hand-rewritten
+        # summaries that fix extraction quirks — same provenance as the
+        # cahier, so no marker.
+        aocs_for_lang = {}
+        for slug, rec in aocs.items():
+            src_lang = "es" if rec.get("country") == "es" else "fr"
+            t = translations.get(slug)
+            if not t:
+                aocs_for_lang[slug] = rec
+                continue
+            new_rec = {**rec, "summary": t["summary"]}
+            if lang != src_lang:
+                new_rec["summary_translation"] = {
+                    "translator": t["translator"],
+                    "source_pdf_url": t["source_pdf_url"],
+                    "source_pdf_filename": t["source_pdf_filename"],
+                }
+            aocs_for_lang[slug] = new_rec
+        # Overlay translated terroir-fact bullets only for records whose
+        # source language differs from the current locale (canonical bullets
+        # are already in the source language). The per-locale cache covers
+        # both FR-source records (for en/es/nl) and ES-source records (for
+        # en/fr/nl); we filter the overlay set per-record.
         facts_translations: dict[str, dict] = {}
-        if use_translations and lang != "fr":
-            facts_translations = load_terroir_facts_translations(lang)
+        if use_translations:
+            all_facts_translations = load_terroir_facts_translations(lang)
+            facts_translations = {
+                slug: t for slug, t in all_facts_translations.items()
+                if lang != ("es" if (aocs.get(slug, {}).get("country") == "es") else "fr")
+            }
             if facts_translations:
                 aocs_for_lang = overlay_translated_facts(aocs_for_lang, facts_translations)
         out = (WIKI / "index.html") if lang == "en" else (WIKI / lang / "index.html")
@@ -1318,6 +1875,52 @@ def _sitemap_url_block(loc: str, lastmod: str, alternates: str) -> str:
         f"{alternates}\n"
         f"  </url>"
     )
+
+
+_WEBMANIFEST = {
+    "name": "open wine map",
+    "short_name": "open wine map",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#1a1a1a",
+    "theme_color": "#7A1F2B",
+    "icons": [
+        {"src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png"},
+        {"src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png"},
+        {"src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml"},
+    ],
+}
+
+
+def copy_brand_assets() -> None:
+    """Mirror raw/assets/ into wiki/assets/ and emit /site.webmanifest.
+
+    Source-of-truth assets live in raw/assets/ (gitignored alongside other
+    raw inputs). Stage 04 copies them into the published wiki/ tree on each
+    run so deploy.sh ships them. Skips files that are byte-identical to the
+    existing destination to keep reruns no-op.
+    """
+    if not ASSETS_SRC.exists():
+        print(f"[assets] {ASSETS_SRC.relative_to(ROOT)} missing; skipping", file=sys.stderr)
+        return
+    ASSETS_OUT.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    for src in sorted(ASSETS_SRC.iterdir()):
+        if not src.is_file():
+            continue
+        dst = ASSETS_OUT / src.name
+        if dst.exists() and dst.stat().st_size == src.stat().st_size and dst.read_bytes() == src.read_bytes():
+            continue
+        shutil.copy2(src, dst)
+        copied += 1
+
+    manifest_path = WIKI / "site.webmanifest"
+    manifest_bytes = (json.dumps(_WEBMANIFEST, indent=2) + "\n").encode()
+    if not manifest_path.exists() or manifest_path.read_bytes() != manifest_bytes:
+        manifest_path.write_bytes(manifest_bytes)
+        copied += 1
+    print(f"[assets] mirrored {ASSETS_SRC.relative_to(ROOT)} → {ASSETS_OUT.relative_to(ROOT)} ({copied} updated)", file=sys.stderr)
 
 
 def write_seo_files() -> None:

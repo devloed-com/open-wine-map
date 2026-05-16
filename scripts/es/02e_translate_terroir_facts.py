@@ -1,36 +1,18 @@
-"""Translate per-AOC terroir-fact bullets (FR → en/es/nl).
+"""Translate ES per-AOC terroir-fact bullets (ES → en/fr/nl).
 
-Pipeline stage 02e. Sister stage to 02c (summary translation) and 02d
-(bullet extraction). Same bounded-narrative-layer rules: cache per-source
-SHA, attribution preserved, round-trip flow for forks without API access.
+ES analog of `scripts/02e_translate_terroir_facts.py`. Same bounded-
+narrative-layer rules — cache per source SHA, attribution preserved,
+round-trip flow for forks without API access — but the source language
+is Spanish (the pliego is canonical for ES wines), so the locale set
+becomes en/fr/nl (FR is now a target, not the source).
 
-Reads:  raw/terroir-facts/*.json
+Reads:  raw/terroir-facts/<slug>.json  (where country == 'es')
 Writes: raw/translations/terroir-facts/<lang>/<slug>.json
 
-Per locale cache shape:
-  - slug, lang
-  - facts: list of {bullet, subsection, provenance} mirroring the FR
-    structure but with bullet text in `lang`. Index/order matches the FR
-    cache so render-time overlay is positional.
-  - source_facts_sha: sha256 of the FR bullets joined with "\n"
-  - wiki_source_url, cahier_source_pdf_url: copied from the FR cache so
-    the per-locale UI can render the same attribution links without
-    re-reading the FR file
-  - translator, translator_kind, fetched_at
-
-Providers:
-  anthropic  Anthropic Messages API (recommended for production).
-             Requires ANTHROPIC_API_KEY. Default model: claude-haiku-4-5.
-  mistral    Mistral Chat Completions API. Requires MISTRAL_API_KEY.
-             Default model: mistral-large-latest.
-  ollama     Local Ollama HTTP API. Default model: mistral-small3.2.
-  manual     No network calls. With --emit-todo dumps every untreated
-             (lang, slug) pair into one JSON for offline / external
-             processing. With --import reads back filled-in translations
-             and writes per-locale cache entries.
-
-Re-translates only entries whose source_facts_sha changed (or are
-missing). Pass --refresh to force re-translate everything.
+Per locale cache shape mirrors the FR 02e output (slug, lang, facts,
+source_facts_sha, wiki_source_url, cahier_source_pdf_url, translator,
+translator_kind, fetched_at) plus `country: "es"` and
+`source_lang: "es"` so stage 04 can branch on origin if it ever needs to.
 """
 
 from __future__ import annotations
@@ -46,59 +28,48 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import cache, providers, roundtrip  # noqa: E402
-from _lib.translation_glossary import glossary_for  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
 
-TARGET_LOCALES = ("en", "es", "nl")
-LOCALE_NAME = {"en": "English", "es": "Spanish", "fr": "French", "nl": "Dutch"}
+TARGET_LOCALES = ("en", "fr", "nl")
+LOCALE_NAME = {"en": "English", "fr": "French", "nl": "Dutch"}
 
 
-def build_system_prompt(*, source_lang: str, target_lang: str) -> str:
-    source_name = LOCALE_NAME.get(source_lang, "French")
-    target_name = LOCALE_NAME[target_lang]
-    base = f"""You translate short {source_name} bullets describing a wine appellation's terroir, history, and wine character into {target_name}. The bullets come from regulatory specifications (INAO cahier des charges for French wines, EU Official Journal documento único for Spanish wines) and are aimed at sommelier students and wine enthusiasts.
+SYSTEM_PROMPT = """You translate short Spanish bullets describing a Spanish wine appellation's terroir, history, and wine character into {lang_name}. The bullets come from the EU pliego de condiciones (single document) and are aimed at sommelier students and wine enthusiasts.
 
 Rules:
 - Output a JSON array of strings, one translated bullet per input bullet, in the SAME order. The array length must equal the input list length.
-- Preserve {source_name} proper nouns verbatim: appellation names, region names, commune names, grape variety names, named geological formations (e.g. "Marnes à exogyra virgula", "Calcaire du Barrois", "Poudingue de Jurançon", "tuffeau", "llicorella", "albariza"), named winds (e.g. "Mistral", "Bise", "Tramontane", "foehn", "cierzo", "levante"), local soil/landscape names ("caillottes", "chailloux", "restanques", "chaillées").
-- Geological era labels: translate to the standard {target_name} form if it exists (e.g. Kimméridgien → Kimmeridgian in EN, Kimmeridgiense in ES). When unsure, keep the source-language form.
+- Preserve Spanish proper nouns verbatim: appellation names ("Rioja", "Ribera del Duero", "Priorat"), region names ("La Rioja", "Castilla y León"), commune names, grape variety names ("Tempranillo", "Garnacha", "Albariño", "Mencía", "Bobal", "Monastrell", "Verdejo", "Viura"), named geological formations and soil types ("llicorella", "albariza", "calcáreo-arcilloso"), local landscape names ("ribera", "páramo", "comarca").
+- Geological era labels: translate to the standard {lang_name} form when one exists. When unsure, keep the Spanish form.
 - Translate descriptive vocabulary naturally for a wine-literate reader.
 - Match each source bullet's length and register; do not add commentary, footnotes, or explanations.
 - Output ONLY the JSON array, no preface, no markdown fences."""
-    glossary = glossary_for(target_lang)
-    return base + "\n\n" + glossary if glossary else base
 
 
 # ─────────────────────────────────────────────────────────────── helpers ──
 
 
 def facts_sha(facts: list[dict]) -> str:
-    """SHA over the FR bullet texts joined; used for cache invalidation."""
+    """SHA over the source bullet texts joined; used for cache invalidation."""
     blob = "\n".join((f.get("bullet") or "") for f in facts)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 def parse_array(raw: str, expected_len: int) -> list[str] | None:
-    """Strip ```json fences, parse, validate length. None on failure.
-    Tolerates trailing chatter after the closing ] (some models keep
-    generating beyond the JSON array)."""
+    """Strip ```json fences, parse, validate length. None on failure."""
     cleaned = raw.strip()
     if cleaned.startswith("```"):
         cleaned = cleaned.split("```", 2)[1]
         if cleaned.startswith("json"):
             cleaned = cleaned[4:]
         cleaned = cleaned.rsplit("```", 1)[0].strip()
-    start = cleaned.find("[")
-    if start < 0:
-        return None
     try:
-        arr, _ = json.JSONDecoder().raw_decode(cleaned[start:])
+        arr = json.loads(cleaned)
     except Exception:  # noqa: BLE001
         return None
     if not isinstance(arr, list) or len(arr) != expected_len:
@@ -121,27 +92,29 @@ def write_cache(
     *,
     lang: str,
     slug: str,
-    fr_facts: list[dict],
+    src_facts: list[dict],
     translated_bullets: list[str],
-    fr_data: dict,
+    src_data: dict,
     translator: str,
     translator_kind: str,
 ) -> None:
     facts_out = [
         {
             "bullet": translated_bullets[i],
-            "subsection": fr_facts[i].get("subsection", "facteurs_naturels"),
-            "provenance": fr_facts[i].get("provenance", "cahier"),
+            "subsection": src_facts[i].get("subsection", "facteurs_naturels"),
+            "provenance": src_facts[i].get("provenance", "cahier"),
         }
-        for i in range(len(fr_facts))
+        for i in range(len(src_facts))
     ]
     payload = {
+        "country": "es",
+        "source_lang": "es",
         "slug": slug,
         "lang": lang,
         "facts": facts_out,
-        "source_facts_sha": facts_sha(fr_facts),
-        "wiki_source_url": fr_data.get("wiki_source_url") or "",
-        "cahier_source_pdf_url": fr_data.get("cahier_source_pdf_url") or "",
+        "source_facts_sha": facts_sha(src_facts),
+        "wiki_source_url": src_data.get("wiki_source_url") or "",
+        "cahier_source_pdf_url": src_data.get("cahier_source_pdf_url") or "",
         "translator": translator,
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -157,34 +130,38 @@ def _is_fresh_cache(existing: dict | None, sha: str, expected_len: int) -> bool:
     )
 
 
-def _load_fr_cache(path: Path) -> dict | None:
+def _load_es_source(path: Path) -> dict | None:
+    """Return ES terroir-facts payload for `path` if it has facts; else None."""
     d = cache.read_json_or_none(path)
-    return d if d and d.get("facts") else None
+    if not d or not d.get("facts"):
+        return None
+    if d.get("country") != "es":
+        return None
+    return d
 
 
 def enumerate_jobs(
     languages: tuple[str, ...], *, skip_cached: bool = True
 ) -> list[dict]:
-    """Per-(lang, slug) jobs needing translation. A job is included when the
-    target cache is missing or its source_facts_sha doesn't match the FR
-    cache's current bullets."""
+    """Per-(lang, slug) jobs needing translation. Skips records already cached
+    with a matching source_facts_sha."""
     jobs: list[dict] = []
     for f in sorted(TERROIR_FACTS.glob("*.json")):
         if f.name.startswith("_") or f.name.startswith("manifest"):
             continue
-        fr = _load_fr_cache(f)
-        if fr is None:
+        src = _load_es_source(f)
+        if src is None:
             continue
-        fr_facts = fr["facts"]
-        sha = facts_sha(fr_facts)
+        src_facts = src["facts"]
+        sha = facts_sha(src_facts)
         for lang in languages:
-            if skip_cached and _is_fresh_cache(load_existing(lang, fr["slug"]), sha, len(fr_facts)):
+            if skip_cached and _is_fresh_cache(load_existing(lang, src["slug"]), sha, len(src_facts)):
                 continue
             jobs.append({
-                "slug": fr["slug"],
+                "slug": src["slug"],
                 "lang": lang,
-                "fr_facts": fr_facts,
-                "fr_data": fr,
+                "src_facts": src_facts,
+                "src_data": src,
                 "sha": sha,
             })
     return jobs
@@ -193,21 +170,20 @@ def enumerate_jobs(
 # ──────────────────────────────────────────────────────────── extraction ──
 
 
-def build_user_prompt(fr_facts: list[dict]) -> str:
-    """Numbered list of FR bullets — order is the contract with the model."""
-    lines = [f"{i + 1}. {f.get('bullet', '')}" for i, f in enumerate(fr_facts)]
+def build_user_prompt(src_facts: list[dict]) -> str:
+    """Numbered list of source bullets — order is the contract with the model."""
+    lines = [f"{i + 1}. {f.get('bullet', '')}" for i, f in enumerate(src_facts)]
     return "Translate the following bullets:\n\n" + "\n".join(lines)
 
 
 def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
-    source_lang = (job.get("fr_data") or {}).get("source_lang") or "fr"
-    system = build_system_prompt(source_lang=source_lang, target_lang=job["lang"])
-    user = build_user_prompt(job["fr_facts"])
+    system = SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]])
+    user = build_user_prompt(job["src_facts"])
     try:
         raw = provider.chat(system=system, user=user, max_tokens=2000, num_ctx=8192)
     except Exception as e:  # noqa: BLE001
         return None, f"call: {e}"
-    parsed = parse_array(raw, len(job["fr_facts"]))
+    parsed = parse_array(raw, len(job["src_facts"]))
     if parsed is None:
         return None, f"parse_or_length_mismatch: {raw[:200]!r}"
     return parsed, None
@@ -222,14 +198,16 @@ def emit_todo(out_path: Path, *, languages: tuple[str, ...], skip_cached: bool) 
         {
             "slug": j["slug"],
             "lang": j["lang"],
+            "source_lang": "es",
             "source_facts_sha": j["sha"],
-            "source_bullets": [f.get("bullet", "") for f in j["fr_facts"]],
+            "source_bullets": [f.get("bullet", "") for f in j["src_facts"]],
             "translated_bullets": [],
         }
         for j in jobs
     ]
     payload = {
         "exported_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "source_lang": "es",
         "languages": list(languages),
         "n_items": len(items),
         "items": items,
@@ -237,36 +215,36 @@ def emit_todo(out_path: Path, *, languages: tuple[str, ...], skip_cached: bool) 
     cache.write_json(out_path, payload)
     counts = {l: sum(1 for j in jobs if j["lang"] == l) for l in languages}
     pretty = ", ".join(f"{l}={n}" for l, n in counts.items())
-    print(f"[02e] wrote {out_path} ({len(items)} items: {pretty})", file=sys.stderr)
+    print(f"[02e/es] wrote {out_path} ({len(items)} items: {pretty})", file=sys.stderr)
     return 0
 
 
-def _import_one(it: dict, fr_index: dict, *, translator_id: str, translator_kind: str) -> str:
+def _import_one(it: dict, src_index: dict, *, translator_id: str, translator_kind: str) -> str:
     slug = it.get("slug") or ""
     lang = it.get("lang") or ""
     if lang not in TARGET_LOCALES:
         return "skipped_unknown_lang"
-    fr = fr_index.get(slug)
-    if fr is None:
+    src = src_index.get(slug)
+    if src is None:
         return "skipped_unknown_slug"
-    fr_facts = fr.get("facts") or []
-    if not fr_facts:
+    src_facts = src.get("facts") or []
+    if not src_facts:
         return "skipped_unknown_slug"
-    if it.get("source_facts_sha") and it["source_facts_sha"] != facts_sha(fr_facts):
+    if it.get("source_facts_sha") and it["source_facts_sha"] != facts_sha(src_facts):
         print(
             f"  skip {lang}/{slug}: source SHA mismatch — re-run --emit-todo to refresh",
             file=sys.stderr,
         )
         return "skipped_sha"
     translated = it.get("translated_bullets") or []
-    if len(translated) != len(fr_facts) or any(not (s or "").strip() for s in translated):
+    if len(translated) != len(src_facts) or any(not (s or "").strip() for s in translated):
         return "skipped_empty"
     write_cache(
         lang=lang,
         slug=slug,
-        fr_facts=fr_facts,
+        src_facts=src_facts,
         translated_bullets=[s.strip() for s in translated],
-        fr_data=fr,
+        src_data=src,
         translator=translator_id,
         translator_kind=translator_kind,
     )
@@ -282,7 +260,7 @@ def import_todo(in_path: Path, *, translator_id: str, translator_kind: str) -> i
     except Exception as e:  # noqa: BLE001
         print(f"error: could not parse {in_path}: {e}", file=sys.stderr)
         return 1
-    fr_index: dict[str, dict] = {}
+    src_index: dict[str, dict] = {}
     for f in TERROIR_FACTS.glob("*.json"):
         if f.name.startswith("_") or f.name.startswith("manifest"):
             continue
@@ -290,16 +268,17 @@ def import_todo(in_path: Path, *, translator_id: str, translator_kind: str) -> i
             d = json.loads(f.read_text())
         except Exception:  # noqa: BLE001
             continue
-        fr_index[d["slug"]] = d
+        if d.get("country") == "es":
+            src_index[d["slug"]] = d
     counts = {"wrote": 0, "skipped_sha": 0, "skipped_empty": 0,
               "skipped_unknown_slug": 0, "skipped_unknown_lang": 0}
     for it in payload.get("items") or []:
         outcome = _import_one(
-            it, fr_index, translator_id=translator_id, translator_kind=translator_kind,
+            it, src_index, translator_id=translator_id, translator_kind=translator_kind,
         )
         counts[outcome] += 1
     pretty = ", ".join(f"{k}={v}" for k, v in counts.items() if v)
-    print(f"[02e] {pretty}", file=sys.stderr)
+    print(f"[02e/es] {pretty}", file=sys.stderr)
     return 0
 
 
@@ -309,8 +288,8 @@ def import_todo(in_path: Path, *, translator_id: str, translator_kind: str) -> i
 def _build_argparser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
-        "--provider", default="anthropic", choices=("anthropic", "mistral", "ollama", "manual"),
-        help="translation backend (default: anthropic)",
+        "--provider", default="ollama", choices=("anthropic", "mistral", "ollama", "manual"),
+        help="translation backend (default ollama, mirroring 02c on this machine)",
     )
     ap.add_argument(
         "--model", default=None,
@@ -336,12 +315,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     ap.add_argument("--limit", type=int, default=0, help="cap on jobs (0 = all)")
     ap.add_argument(
         "--workers", type=int, default=1,
-        help=(
-            "concurrent (lang, slug) pairs to translate (default 1). For "
-            "Ollama, the server must be started with OLLAMA_NUM_PARALLEL >= "
-            "workers (current default is 4) or extra requests just queue. "
-            "For Anthropic, respect your account's RPM/concurrency limits."
-        ),
+        help="concurrent (lang, slug) pairs to translate (default 1, keep 1 for Ollama on M1 32GB)",
     )
     ap.add_argument("--refresh", action="store_true", help="re-translate even if cached")
     roundtrip.add_arguments(ap)
@@ -351,7 +325,7 @@ def _build_argparser() -> argparse.ArgumentParser:
 def _check_inputs() -> int:
     if not TERROIR_FACTS.exists():
         print(
-            "error: raw/terroir-facts is missing — run scripts/02d_extract_terroir_facts.py first",
+            "error: raw/terroir-facts is missing — run scripts/es/02d_extract_terroir_facts.py first",
             file=sys.stderr,
         )
         return 1
@@ -384,7 +358,7 @@ def _print_manual_listing(jobs: list[dict]) -> int:
     for j in jobs:
         print(f"  missing: {j['lang']}/{j['slug']}.json", file=sys.stderr)
     print(
-        f"[02e] manual provider: {len(jobs)} entries need translation. "
+        f"[02e/es] manual provider: {len(jobs)} entries need translation. "
         f"Use --emit-todo PATH, fill in translated_bullets, then --import PATH "
         f"--translator-id <id> to write cache files.",
         file=sys.stderr,
@@ -393,16 +367,16 @@ def _print_manual_listing(jobs: list[dict]) -> int:
 
 
 def _process_one_job(provider, model_id: str, job: dict) -> tuple[bool, str | None]:
-    """Translate one (lang, slug) job + write cache. Returns (success, error_message)."""
+    """Translate one (lang, slug) job + write cache. Returns (success, error)."""
     translated, err = translate_one(provider, job)
     if err or translated is None:
         return False, err or "unknown"
     write_cache(
         lang=job["lang"],
         slug=job["slug"],
-        fr_facts=job["fr_facts"],
+        src_facts=job["src_facts"],
         translated_bullets=translated,
-        fr_data=job["fr_data"],
+        src_data=job["src_data"],
         translator=model_id,
         translator_kind=provider.kind,
     )
@@ -415,7 +389,7 @@ def _run_translation_loop(
     done = 0
     skipped: list[tuple[str, str, str]] = []
     if workers <= 1:
-        for job in tqdm(jobs, desc="translate", leave=False):
+        for job in tqdm(jobs, desc="translate-es", leave=False):
             ok, err = _process_one_job(provider, model_id, job)
             if ok:
                 done += 1
@@ -426,7 +400,7 @@ def _run_translation_loop(
 
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futures = {ex.submit(_process_one_job, provider, model_id, j): j for j in jobs}
-        for fut in tqdm(as_completed(futures), total=len(jobs), desc="translate", leave=False):
+        for fut in tqdm(as_completed(futures), total=len(jobs), desc="translate-es", leave=False):
             job = futures[fut]
             try:
                 ok, err = fut.result()
@@ -457,7 +431,7 @@ def main() -> int:
         jobs = jobs[: args.limit]
 
     if not jobs:
-        print("[02e] nothing to do — all caches up to date.", file=sys.stderr)
+        print("[02e/es] nothing to do — all caches up to date.", file=sys.stderr)
         return 0
 
     provider, model_id = _make_provider(args)
@@ -466,19 +440,19 @@ def main() -> int:
 
     workers = max(1, args.workers)
     print(
-        f"[02e] {len(jobs)} translations to fetch "
+        f"[02e/es] {len(jobs)} translations to fetch "
         f"(provider={args.provider}, model={model_id}, "
         f"locales={','.join(languages)}, workers={workers})",
         file=sys.stderr,
     )
     done, skipped = _run_translation_loop(provider, model_id, jobs, workers=workers)
-    print(f"[02e] translated: {done}, skipped: {len(skipped)}", file=sys.stderr)
+    print(f"[02e/es] translated: {done}, skipped: {len(skipped)}", file=sys.stderr)
     if skipped:
         for lang, slug, err in skipped[:20]:
             print(f"  skip {lang}/{slug}: {err[:160]}", file=sys.stderr)
         if len(skipped) > 20:
             print(f"  … and {len(skipped) - 20} more", file=sys.stderr)
-        print("[02e] rerun this stage to retry the skipped entries.", file=sys.stderr)
+        print("[02e/es] rerun this stage to retry the skipped entries.", file=sys.stderr)
     return 0
 
 

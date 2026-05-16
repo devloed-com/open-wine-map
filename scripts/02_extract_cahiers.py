@@ -49,6 +49,8 @@ TEXT_CACHE = CAHIERS / ".text"
 OUT_DIR = ROOT / "raw" / "inao" / "cahier-extracted"
 INDEX_PATH = OUT_DIR / "_index.json"
 SIQO_CSV = ROOT / "raw" / "inao" / "siqo-referentiel.csv"
+TESSDATA_DIR = ROOT / "raw" / "_tools" / "tessdata"
+FRA_TRAINEDDATA_URL = "https://github.com/tesseract-ocr/tessdata_best/raw/main/fra.traineddata"
 
 CAHIER_HEADER_RE = re.compile(
     r"Cahier des charges\s+(?:de|des)\s+(?:"
@@ -128,6 +130,92 @@ def normalize_name(s: str) -> str:
     return re.sub(r"[\W_]+", "", s).lower()
 
 
+# AOC names regularly carry one or more aliases concatenated with " ou ", " et ",
+# or comma-separated lists — e.g. "Cidre de Normandie ou Cidre normand",
+# "Cognac ou Eau-de-vie de Cognac ou Eau-de-vie des Charentes",
+# "Côtes de Bourg, Bourg et Bourgeais". The cahier itself usually carries only
+# one of those variants as its segment header, so a strict normalize-and-equal
+# match between parent name and segment header misses them. Splitting both sides
+# into alias parts and matching on any shared component closes the gap without
+# the false-positive risk of pure substring matching ("Bourgogne" would
+# otherwise match a "Bourgogne Passe-tout-grains" segment).
+_ALIAS_SPLIT_RE = re.compile(r"\s+ou\s+|\s+et\s+|,\s*", flags=re.IGNORECASE)
+
+
+def candidate_keys(name: str) -> list[str]:
+    """Return a list of normalised match keys for `name` — the full normalised
+    form first, followed by aliases split on " ou ", " et ", and commas."""
+    keys: list[str] = []
+    full = normalize_name(name)
+    if full:
+        keys.append(full)
+    for part in _ALIAS_SPLIT_RE.split(name):
+        part = part.strip()
+        if not part:
+            continue
+        k = normalize_name(part)
+        if k and k not in keys:
+            keys.append(k)
+    return keys
+
+
+_FRENCH_WORD_RE = re.compile(
+    r"\b(de|la|le|du|les|des|et|en|pour|par|dans|est|ou|une|un|au|aux)\b",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_glyph_junk(text: str) -> bool:
+    """Some cahier PDFs (CAVB / lr-origine / INAO-extranet 2011 cohort) embed
+    Type 1C subset fonts without a ToUnicode CMap. pdftotext returns the raw
+    glyph codes, which look like ASCII punctuation rather than text. Detect
+    by counting common French function words — real cahiers have these
+    extremely densely; glyph-junk has near zero."""
+    sample = text[:8000]
+    if not sample.strip():
+        return False
+    hits = len(_FRENCH_WORD_RE.findall(sample))
+    return hits < 15
+
+
+def _ensure_fra_traineddata() -> Path:
+    """Return a directory containing fra.traineddata, downloading on first
+    use. Tesseract loads language data from the directory pointed at by
+    TESSDATA_PREFIX (or system defaults). We prefer a project-local cache so
+    the pipeline doesn't depend on the user having brew tesseract-lang."""
+    target = TESSDATA_DIR / "fra.traineddata"
+    if target.exists():
+        return TESSDATA_DIR
+    TESSDATA_DIR.mkdir(parents=True, exist_ok=True)
+    import urllib.request
+    print(f"[ocr] downloading fra.traineddata to {target} (one-time, ~4 MB)", file=sys.stderr)
+    urllib.request.urlretrieve(FRA_TRAINEDDATA_URL, target)
+    return TESSDATA_DIR
+
+
+def _ocr_pdf(pdf_path: Path) -> str:
+    """Rasterise each page at 300 DPI and OCR with tesseract -l fra. Page
+    boundaries marked with \\f to mirror pdftotext output."""
+    import tempfile
+    tessdata = _ensure_fra_traineddata()
+    parts: list[str] = []
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        subprocess.run(
+            ["pdftoppm", "-png", "-r", "300", str(pdf_path), str(td_path / "p")],
+            check=True, capture_output=True,
+        )
+        for img in sorted(td_path.glob("p-*.png")):
+            out_base = img.with_suffix("")
+            subprocess.run(
+                ["tesseract", "-l", "fra", str(img), str(out_base)],
+                check=True, capture_output=True,
+                env={**__import__("os").environ, "TESSDATA_PREFIX": str(tessdata)},
+            )
+            parts.append(out_base.with_suffix(".txt").read_text(encoding="utf-8"))
+    return "\f".join(parts)
+
+
 def pdftotext(pdf_path: Path) -> str:
     TEXT_CACHE.mkdir(parents=True, exist_ok=True)
     cached = TEXT_CACHE / f"{pdf_path.stem}.txt"
@@ -137,6 +225,9 @@ def pdftotext(pdf_path: Path) -> str:
         ["pdftotext", "-layout", "-enc", "UTF-8", str(pdf_path), "-"],
         check=True, capture_output=True, text=True,
     ).stdout
+    if _looks_like_glyph_junk(out):
+        print(f"[ocr] {pdf_path.name}: pdftotext yielded glyph-junk, falling back to OCR", file=sys.stderr)
+        out = _ocr_pdf(pdf_path)
     cached.write_text(out, encoding="utf-8")
     return out
 
@@ -145,25 +236,35 @@ def split_bundle(text: str) -> dict[str, str]:
     """A BO Agri PDF can bundle many cahiers. Split into segments keyed by
     the appellation name from each `Cahier des charges...« NAME »` header.
 
-    Each cahier carries two title occurrences: a sentence-case "preamble"
-    line citing the homologation decret, then the all-caps section title.
-    We collapse same-name runs to the *last* occurrence (the canonical
-    title) and treat that as the segment start. Dedup is by normalized
-    name so case variants ("Mirabelle de Lorraine" / "MIRABELLE DE
-    LORRAINE") collapse together — without this, the preamble occurrence
-    would carve off a tiny segment containing only the homologation
-    boilerplate.
+    Two distinct PDF layouts to reconcile:
+
+    1. **INAO PNO** — each cahier carries two header occurrences: a
+       sentence-case preamble citing the homologation decret, then the
+       all-caps section title. We want the LAST (canonical title) so the
+       segment doesn't lose the cahier body to a tiny preamble carve-off.
+
+    2. **BO Agri "Avis" + cahier annex** — the cahier header repeats on
+       every PDF page as a page-footer (often 6–15 times). We want the
+       FIRST occurrence so the segment covers the whole cahier annex.
+
+    Heuristic: if a name occurs ≥3 times we treat it as page-footer
+    repetition and key the segment to the FIRST occurrence; otherwise we
+    keep the legacy "last" rule.
     """
     matches = list(CAHIER_HEADER_RE.finditer(text))
     if not matches:
         return {}
-    starts: dict[str, int] = {}
+    positions_by_key: dict[str, list[int]] = {}
     canonical: dict[str, str] = {}
     for m in matches:
         name = m.group(1).strip()
         key = normalize_name(name)
-        starts[key] = m.start()
-        canonical[key] = name
+        positions_by_key.setdefault(key, []).append(m.start())
+        canonical[key] = name  # last-seen casing (purely for display)
+    starts: dict[str, int] = {
+        key: (positions[0] if len(positions) >= 3 else positions[-1])
+        for key, positions in positions_by_key.items()
+    }
     ordered = sorted(starts.items(), key=lambda kv: kv[1])
     segments: dict[str, str] = {}
     for i, (key, pos) in enumerate(ordered):
@@ -173,7 +274,8 @@ def split_bundle(text: str) -> dict[str, str]:
 
 
 def find_segment(segments: dict[str, str], target: str) -> str | None:
-    """Match by normalized name, falling back to substring contains.
+    """Match by normalized name, falling back to alias-component matching and
+    finally substring contains.
 
     Cahiers like "Alsace grand cru" carry a single header for 51 individual
     lieux-dits — we accept a substring match in either direction so each
@@ -183,10 +285,14 @@ def find_segment(segments: dict[str, str], target: str) -> str | None:
         return None
     if len(segments) == 1:
         return next(iter(segments.values()))
-    target_key = normalize_name(target)
+    target_keys = candidate_keys(target)
+    if not target_keys:
+        return None
     for name, body in segments.items():
-        if normalize_name(name) == target_key:
+        seg_keys = set(candidate_keys(name))
+        if seg_keys.intersection(target_keys):
             return body
+    target_key = target_keys[0]
     for name, body in segments.items():
         nk = normalize_name(name)
         if target_key in nk or nk in target_key:
@@ -197,12 +303,53 @@ def find_segment(segments: dict[str, str], target: str) -> str | None:
 # IGPs use Arabic-numbered sections (1, 2, 3.1, 3.2, ...) under
 # "Chapitre 1 : Dénomination et conditions de production".
 IGP_SECTION_HDR_RE = re.compile(
-    # Section header in IGP cahiers: "1 Nom de l'IGP" or "1 – Nom..."
-    # (post-2020 templates often interpose an en/em dash after the digit).
-    rf"^[ \t]*(\d+(?:\.\d+)*)\s*(?:{DASH}\s*)?([A-ZÉÈÀÂÔÎÏÛŸ][\wÀ-ÿ '’\-]{{3,80}})\s*$",
+    # Section header in IGP cahiers. Concrete shapes seen in the corpus:
+    #   "1 Nom de l'IGP"                          (pre-2020 INAO template)
+    #   "1. Nom de l'indication géographique"     (post-2020, dot after number)
+    #   "4.1 - Eléments..."                       (cidre IGPs; dot subnumber)
+    #   "4-1- Obligations..."                     (some AOPs hyphen subnumber)
+    #   "4-1-1- Déclaration..."
+    #   "1) DENOMINATION DU PRODUIT"              (BO Agri "Avis" cahier annex
+    #                                              for cidre IGPs)
+    # Allow `.` *or* `-` as subnumber separator inside the captured number,
+    # then any of `. - : )` plus optional dash before the heading.
+    #
+    # Intra-header whitespace is `[ \t]*`, NOT `\s*`. The 2025 BO Agri
+    # MAASA template emits each page as `<centered page number>\n\x0c<page
+    # header>\n…` — a permissive `\s*` would bind the trailing page number
+    # of one page to the "Publié au BO Agri…" header text on the next
+    # page, producing phantom section titles. Restricting to space/tab
+    # keeps the header recognition single-line.
+    # Top-level number is capped at 2 digits (1–99). Real IGP cahiers never
+    # exceed ~12 top-level sections, but the unbounded form picked up 5-digit
+    # postal codes ("11010 Vitoria-Gasteiz") as phantom section markers
+    # whenever a misrouted cahier (e.g. an EU letter-section AOP) flowed
+    # through this parser. Subsection depth stays unbounded (`4.1.2.3`).
+    rf"^[ \t]*(\d{{1,2}}(?:[.\-]\d+)*)[\.\-:\)]*[ \t]*(?:{DASH}[ \t]*)?"
+    rf"([A-ZÉÈÀÂÔÎÏÛŸ][\wÀ-ÿ '’\-]{{3,80}})[ \t]*[:.]?[ \t]*$",
     re.MULTILINE,
 )
-IGP_CHAPITRE_RE = re.compile(r"^\s*Chapitre\s+\d+\s*:", re.MULTILINE | re.IGNORECASE)
+# Match `Chapitre 1 :` (legacy) and `CHAPITRE 1 – DENOMINATION` (post-2020
+# template uses uppercase + em-dash instead of colon).
+IGP_CHAPITRE_RE = re.compile(
+    r"^\s*Chapitre\s+\d+\s*[:\-–—―−]", re.MULTILINE | re.IGNORECASE
+)
+
+
+# Helpers for IGP section-number arithmetic. IGP cahiers number sections as
+# either `4.1` (dot subnumber, most templates) or `4-1` (hyphen subnumber, used
+# by some AOPs like Cornouaille). Hoisted to module scope so
+# extract_igp_sections stays under the cognitive-complexity threshold.
+def _is_subnumber(n: str) -> bool:
+    return ("." in n) or ("-" in n)
+
+
+def _num_parts(n: str) -> list[int]:
+    return [int(p) for p in re.split(r"[.\-]", n) if p]
+
+
+def _subnum_sep(n: str) -> str:
+    return "-" if "-" in n else "."
 
 
 def extract_sections(segment: str) -> tuple[dict[str, str], dict[str, str]]:
@@ -247,7 +394,7 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "couleur": ("couleur",),
     "encepagement": ("encépagement", "encepagement"),
     "rendement": ("rendement",),
-    "lien": ("lien avec", "lien au terroir"),
+    "lien": ("lien avec", "lien au terroir", "lien au territoire"),
     "transformation": ("transformation",),
     "nom": ("nom de l'appellation", "nom de l’appellation"),
 }
@@ -279,8 +426,71 @@ def route_sections(bodies: dict[str, str], titles: dict[str, str]) -> dict[str, 
     return routed
 
 
-def extract_igp_sections(segment: str) -> dict[str, str]:
+_IGP_LIEN_KEYWORDS = ("lien avec", "lien au terroir", "lien au territoire", "lien à l'origine")
+_IGP_LIEN_ABSORB_THRESHOLD = 800
+
+
+def _is_short_lien_parent(num: str, title: str, txt: str) -> bool:
+    """A parent-numbered section whose title is the lien-narrative heading
+    and whose body is too short to be the actual lien content."""
+    if _is_subnumber(num):
+        return False
+    if len(txt) >= _IGP_LIEN_ABSORB_THRESHOLD:
+        return False
+    return any(kw in title.lower() for kw in _IGP_LIEN_KEYWORDS)
+
+
+def _absorb_following_subnumbers(
+    ordered: list[tuple[str, str, str]], parent_idx: int,
+) -> tuple[str, str, str]:
+    """Return a new (num, title, body) for the parent at `parent_idx`, with
+    every following sub-numbered entry's body appended until the next parent.
+    Returns the parent unchanged if no sub-numbered entries follow."""
+    num, title, txt = ordered[parent_idx]
+    merged: list[str] = [txt] if txt else []
+    j = parent_idx + 1
+    while j < len(ordered) and _is_subnumber(ordered[j][0]):
+        _, ch_title, ch_txt = ordered[j]
+        merged.append(f"{ch_title}\n{ch_txt}" if ch_title else ch_txt)
+        j += 1
+    if len(merged) <= 1:
+        return num, title, txt
+    return num, title, "\n\n".join(p for p in merged if p)
+
+
+def _absorb_lien_orphans(
+    ordered: list[tuple[str, str, str]],
+) -> list[tuple[str, str, str]]:
+    """Merge sub-numbered entries that document-order-follow a short Lien
+    parent into that parent's body.
+
+    Some IGP cahiers number the lien-narrative sub-sections inconsistently
+    (e.g. parent `7 – Lien avec la zone géographique` followed by
+    `8-1 Spécificité de la zone` / `8-2 Spécificité du produit` /
+    `8-3 Lien causal…` — the children claim parent "8" but the actual
+    parent is "7"). Without absorption, the parent stays at the bare title
+    fragment and the lien text is dropped on the floor.
+
+    Triggers only when the parent's title matches a lien-narrative keyword
+    AND the parent body is shorter than the absorption threshold —
+    legitimate well-numbered sections are left alone.
+    """
+    out = list(ordered)
+    for i, (num, title, txt) in enumerate(out):
+        if _is_short_lien_parent(num, title, txt):
+            out[i] = _absorb_following_subnumbers(out, i)
+    return out
+
+
+def extract_igp_sections(segment: str) -> tuple[dict[str, str], dict[str, str]]:
     """Slice an IGP cahier into Arabic-numbered sections.
+
+    Returns (bodies, titles). Titles let downstream code route the
+    lien-narrative by keyword rather than positional fallback — IGP
+    cahiers number the lien section as either 7 or 8 depending on the
+    template and other sections sometimes claim that number too, so the
+    older `sections.get("8") or sections.get("7")` lookup picked the
+    wrong section for cahiers like Maures.
 
     Format: `1 Nom de l'IGP`, `2 Mentions...`, with subsections like
     `4.1 Zone géographique`. The top-level "4" usually contains nothing
@@ -288,35 +498,53 @@ def extract_igp_sections(segment: str) -> dict[str, str]:
     keep both parents and children, and when a parent's body is empty we
     backfill it with the concatenated children so downstream lookups
     (which key on `"4"`) don't see an empty string.
+
+    Special case for the lien-narrative section: when the parent's title
+    is "Lien avec la zone géographique" / "Lien au terroir" /
+    "Lien à l'origine" and its body is short (< 800 chars), absorb every
+    sub-numbered section that follows it in document order — even if
+    those children claim a different parent number (the haute-vallée-de-
+    l-Orb cahier numbers them as `8-1`/`8-2`/`8-3` under parent `7 – Lien`).
     """
     chapitre_starts = [m.start() for m in IGP_CHAPITRE_RE.finditer(segment)]
     body = segment[: chapitre_starts[1]] if len(chapitre_starts) >= 2 else segment
 
     matches = list(IGP_SECTION_HDR_RE.finditer(body))
-    raw: dict[str, str] = {}
+
+    ordered: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
     for i, m in enumerate(matches):
         num = m.group(1)
-        if num in raw:
+        if num in seen:
             continue
+        seen.add(num)
+        title = m.group(2).strip()
         start = m.end()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
-        raw[num] = body[start:end].strip()
+        ordered.append((num, title, body[start:end].strip()))
 
-    # Backfill sparse parents from their children.
+    ordered = _absorb_lien_orphans(ordered)
+    raw: dict[str, str] = {num: txt for (num, _, txt) in ordered}
+    titles: dict[str, str] = {num: ttl for (num, ttl, _) in ordered}
+
+    # Backfill sparse parents from their children. Section numbers may use
+    # `.` (most templates) or `-` (some AOPs, e.g. Cornouaille's "4-1-").
     sections: dict[str, str] = {}
     for num, txt in raw.items():
-        if "." in num:
+        if _is_subnumber(num):
             continue
         if txt and len(txt) > 40:
             sections[num] = txt
             continue
+        sep = next((_subnum_sep(k) for k in raw
+                    if k.startswith((num + ".", num + "-"))), ".")
         children = sorted(
-            (k for k in raw if k.startswith(num + ".")),
-            key=lambda k: [int(p) for p in k.split(".")],
+            (k for k in raw if k.startswith(num + sep)),
+            key=_num_parts,
         )
         merged = "\n\n".join(raw[c] for c in children if raw[c])
         sections[num] = merged or txt
-    return sections
+    return sections, titles
 
 
 # Eaux-de-vie / spiritueux cahiers depart from the AOC XII-section template.
@@ -329,11 +557,11 @@ SPIRITUEUX_PARTIE_I_RE = re.compile(
 )
 SPIRITUEUX_PARTIE_II_RE = re.compile(r"Partie\s+II\b", re.IGNORECASE)
 SPIRITUEUX_HDR_LETTER_RE = re.compile(
-    rf"^[ \t]*([A-H])\s*\.\s*(?:{DASH}\s*)?([A-ZÉÈÀÂÔÎÏÛŸ][^\n]{{3,90}}?)\s*$",
+    rf"^[ \t\x0c]*([A-H])\s*\.\s*(?:{DASH}\s*)?([A-ZÉÈÀÂÔÎÏÛŸ][^\n]{{3,90}}?)\s*$",
     re.MULTILINE,
 )
 SPIRITUEUX_HDR_DIGIT_RE = re.compile(
-    rf"^[ \t]*(\d{{1,2}})\s*\.\s*(?:{DASH}\s*)?([A-ZÉÈÀÂÔÎÏÛŸ][^\n]{{3,90}}?)\s*$",
+    rf"^[ \t\x0c]*(\d{{1,2}})\s*\.\s*(?:{DASH}\s*)?([A-ZÉÈÀÂÔÎÏÛŸ][^\n]{{3,90}}?)\s*$",
     re.MULTILINE,
 )
 
@@ -403,6 +631,82 @@ def route_spiritueux(bodies: dict[str, str], titles: dict[str, str]) -> dict[str
     """Map semantic role → spiritueux section body using title keywords."""
     routed: dict[str, str] = {}
     for role, keywords in SPIRITUEUX_ROLE_KEYWORDS.items():
+        for label, title in titles.items():
+            if any(kw in title.lower() for kw in keywords):
+                routed[role] = bodies.get(label, "")
+                break
+    return routed
+
+
+# EU "documento único" letter-section template. Used by Franco-Spanish /
+# cross-border AOPs registered directly under the EU framework (e.g. the
+# cider AOP "Euskal Sagardoa / Sidra del País Vasco / Cidre du Pays Basque").
+# Same A.–H. letter headers as the spiritueux Fiche technique, but without
+# the `Partie I : Fiche technique` wrapper that gates the spiritueux parser.
+# Detection requires A, B, and C to all appear as line-anchored letter
+# headers — they're the first three sections of every EU documento único
+# (Nom, Description, Délimitation), so a cahier missing any of the three
+# isn't this template. Scans the full segment because section B can run
+# many pages before C appears (Euskal Sagardoa's B is ~260 lines).
+EU_LETTER_REQUIRED_PREFIX = {"A", "B", "C"}
+
+EU_LETTER_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "nom": (
+        "nom de l'appellation", "nom de l’appellation",
+        "nom(s) devant", "nom devant",
+    ),
+    "couleur": (
+        "description du produit", "description des produits",
+        "description de la boisson",
+    ),
+    "aire": (
+        "délimitation de l'aire", "délimitation de l’aire",
+        "delimitation de l'aire", "delimitation de l’aire",
+        "aire géographique", "aire geographique",
+        "zone géographique", "zone geographique",
+    ),
+    "lien": (
+        "lien avec l'aire", "lien avec l’aire",
+        "lien avec la zone", "lien avec le milieu",
+        "lien à l'origine", "lien à l’origine",
+        "éléments corroborant le lien", "elements corroborant le lien",
+    ),
+}
+
+
+def is_eu_letter_template(segment: str) -> bool:
+    """An EU documento-único cahier with A./B./C. headers and no Partie I anchor.
+
+    Spiritueux cahiers also use letter headers but they sit under
+    `Partie I : Fiche technique` — keep that branch in charge of them so
+    the existing spiritueux routing still wins.
+    """
+    if SPIRITUEUX_PARTIE_I_RE.search(segment):
+        return False
+    letters = {m.group(1) for m in SPIRITUEUX_HDR_LETTER_RE.finditer(segment)}
+    return EU_LETTER_REQUIRED_PREFIX.issubset(letters)
+
+
+def extract_eu_letter_sections(segment: str) -> tuple[dict[str, str], dict[str, str]]:
+    """Slice an EU letter-section cahier into A.–H. sections."""
+    matches = list(SPIRITUEUX_HDR_LETTER_RE.finditer(segment))
+    bodies: dict[str, str] = {}
+    titles: dict[str, str] = {}
+    for i, m in enumerate(matches):
+        label = m.group(1)
+        if label in bodies:
+            continue
+        title = re.sub(r"\s+", " ", m.group(2)).strip()
+        start = m.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(segment)
+        bodies[label] = segment[start:end].strip()
+        titles[label] = title
+    return bodies, titles
+
+
+def route_eu_letter(bodies: dict[str, str], titles: dict[str, str]) -> dict[str, str]:
+    routed: dict[str, str] = {}
+    for role, keywords in EU_LETTER_ROLE_KEYWORDS.items():
         for label, title in titles.items():
             if any(kw in title.lower() for kw in keywords):
                 routed[role] = bodies.get(label, "")
@@ -548,18 +852,44 @@ def extract_one(name: str, text: str) -> dict | None:
         }
 
     sections, section_titles = extract_sections(segment)
+
+    # EU documento-único letter-section template (Franco-Spanish / cross-
+    # border AOPs). Gated on AOC Roman parser returning <3 sections — every
+    # standard AOC cahier yields 10+ Roman sections, so this only fires for
+    # cahiers that genuinely lack the XII-section template. Without the gate
+    # the detector false-fires on AOC cahiers whose section X bodies start
+    # bullet items "A. ...", "B. ...", "C. ...".
+    if len(sections) < 3 and is_eu_letter_template(segment):
+        eu_sections, eu_titles = extract_eu_letter_sections(segment)
+        if eu_sections:
+            routed = route_eu_letter(eu_sections, eu_titles)
+            aire = extract_aire(routed.get("aire", ""))
+            lien = routed.get("lien", "")
+            return {
+                "name": name,
+                "kind": "AOP",
+                "header": parse_appellation_header(segment),
+                "is_bundle_member": len(segments) > 1,
+                "bundle_size": len(segments),
+                "sections": eu_sections,
+                "section_titles": eu_titles,
+                "section_roles": routed,
+                "aire": aire,
+                "lien_au_terroir": lien,
+            }
+
     kind = "AOC"
     # Some IGP cahiers leak a single Roman "I" via a stray bullet inside the
     # CHAPITRE-1 heading; if the Arabic IGP layout looks more substantial,
     # prefer that. Heuristic: if Arabic returns >= 4 sections, switch.
-    igp_sections = extract_igp_sections(segment)
+    igp_sections, igp_titles = extract_igp_sections(segment)
     if len(igp_sections) >= 4 and len(sections) <= 2:
         sections = igp_sections
-        section_titles = {}
+        section_titles = igp_titles
         kind = "IGP"
     elif not sections:
         sections = igp_sections
-        section_titles = {}
+        section_titles = igp_titles
         kind = "IGP" if sections else "unknown"
     if not sections:
         return None
@@ -569,13 +899,22 @@ def extract_one(name: str, text: str) -> dict | None:
         aire = extract_aire(routed.get("aire", ""))
         lien = routed.get("lien", "")
     else:
-        # IGP layout: aire géographique is usually section 4, terroir lives
-        # in a "Lien" section that's typically 7 or 8 depending on the cahier.
+        # IGP layout: aire géographique is usually section 4. Pick the lien
+        # by title-keyword match — section numbers vary (typically 7 or 8,
+        # but Maures has section 8 for labelling and section 7 for the
+        # lien), so positional fallback alone is fragile.
+        lien_key = next(
+            (k for k, t in igp_titles.items()
+             if any(kw in t.lower() for kw in SECTION_ROLE_KEYWORDS["lien"])),
+            None,
+        )
         routed = {
             "aire": sections.get("4", ""),
             "couleur": sections.get("3", ""),
             "encepagement": sections.get("5", ""),
-            "lien": next((sections.get(k, "") for k in ("8", "7", "9") if sections.get(k)), ""),
+            "lien": sections.get(lien_key, "") if lien_key else next(
+                (sections.get(k, "") for k in ("8", "7", "9") if sections.get(k)), "",
+            ),
         }
         aire = extract_aire(routed["aire"])
         lien = routed["lien"]
@@ -657,7 +996,7 @@ def _stub_index_entry(record: dict, parent_slug: str = "") -> dict:
         "name": record["name"],
         "slug": record["slug"],
         "filename": f"{record['slug']}.json",
-        "is_dgc": bool(record.get("is_dgc")),
+        "is_sub_denomination": bool(record.get("is_sub_denomination")),
         "parent_slug": parent_slug,
         "communes_count": 0,
         "sections_present": [],
@@ -674,7 +1013,7 @@ def _emit_parent_stub(id_app: str, parent_denom: dict, parent_slug: str,
     stub_reason = "no-pdf" if not meta else "no-extract"
     record = _stub_common(name, id_app, parent_denom["id_denomination_geo"],
                           parent_slug, meta, categories, stub_reason)
-    record["is_dgc"] = False
+    record["is_sub_denomination"] = False
     (out_dir / f"{parent_slug}.json").write_text(
         json.dumps(record, ensure_ascii=False, indent=2)
     )
@@ -687,7 +1026,7 @@ def _emit_dgc_stub(id_app: str, parent_denom: dict, parent_slug: str, dgc: dict,
     stub_reason = "no-pdf" if not meta else "no-extract"
     record = _stub_common(dgc["denomination"], id_app, dgc["id_denomination_geo"],
                           dgc_slug, meta, categories, stub_reason)
-    record["is_dgc"] = True
+    record["is_sub_denomination"] = True
     record["parent_id_appellation"] = id_app
     record["parent_id_denomination_geo"] = parent_denom["id_denomination_geo"]
     record["parent_slug"] = parent_slug
@@ -829,11 +1168,14 @@ def build_global_segment_index(
         except subprocess.CalledProcessError:
             continue
         for header_name, segment in split_bundle(text).items():
-            key = normalize_name(header_name)
             date_iso = homologation_date(segment) or ""
-            existing = index.get(key)
-            if existing is None or date_iso > existing[2]:
-                index[key] = (pdf_path.name, segment, date_iso)
+            # Insert under every alias-split key so a parent named
+            # "Cidre de Normandie ou Cidre normand" can rescue from a
+            # segment header that only carries one of the aliases.
+            for key in candidate_keys(header_name):
+                existing = index.get(key)
+                if existing is None or date_iso > existing[2]:
+                    index[key] = (pdf_path.name, segment, date_iso)
     return index
 
 
@@ -970,6 +1312,9 @@ def main() -> int:
     if shutil.which("pdftotext") is None:
         print("error: pdftotext not on PATH (brew install poppler)", file=sys.stderr)
         return 1
+    if shutil.which("tesseract") is None or shutil.which("pdftoppm") is None:
+        print("warning: tesseract / pdftoppm missing — OCR fallback will fail "
+              "on Type 1C-font cahiers (brew install tesseract poppler)", file=sys.stderr)
 
     if not MANIFEST_PATH.exists():
         print(f"error: {MANIFEST_PATH} missing — run scripts/01_scrape_cahiers.py first", file=sys.stderr)
@@ -978,12 +1323,14 @@ def main() -> int:
     manifest = json.loads(MANIFEST_PATH.read_text())
     siqo_categories = load_siqo_categories()
     siqo_denoms = load_siqo_denominations()
-    # Skip manifest entries with no filename — stage 01 may record an entry
-    # for an AOC whose only source is a Légifrance JORFTEXT (Cloudflare-walled
-    # so we couldn't download a PDF). The stub-emission pass at the end
-    # picks those up by id_appellation.
+    # Include manifest entries with no filename too — they can still extract
+    # via the cross-bundle rescue index when a sibling AOC's PDF carries
+    # their cahier (e.g. Légifrance-canonical AOCs whose cookie expired
+    # and whose cahier is in a BO Agri bundle on disk). The extraction loop
+    # below special-cases empty filenames to skip the PDF read and jump
+    # straight to rescue lookup.
     items = sorted(
-        ((k, v) for k, v in manifest.items() if v.get("filename")),
+        manifest.items(),
         key=lambda kv: kv[1]["name"].lower(),
     )
     if args.only:
@@ -1006,25 +1353,34 @@ def main() -> int:
     slug_map = _disambiguate_slugs(items)
 
     for id_app, meta in tqdm(items, desc="extract", leave=False):
-        pdf_path = CAHIERS / meta["filename"]
-        if not pdf_path.exists():
-            print(f"[skip] {meta['name']}: missing {pdf_path.name}", file=sys.stderr)
-            errors += 1
-            continue
+        # Empty filename → no PDF assigned (Légifrance-canonical AOC whose
+        # rendered PDF has been wiped, or stage 01 fell through to
+        # legifrance-only). Try the cross-bundle rescue index directly.
+        if not meta.get("filename"):
+            text = ""
+        else:
+            pdf_path = CAHIERS / meta["filename"]
+            if not pdf_path.exists():
+                print(f"[skip] {meta['name']}: missing {pdf_path.name}", file=sys.stderr)
+                errors += 1
+                continue
+            try:
+                text = pdftotext(pdf_path)
+            except subprocess.CalledProcessError as exc:
+                print(f"[fail] {meta['name']}: pdftotext: {exc}", file=sys.stderr)
+                errors += 1
+                continue
 
-        try:
-            text = pdftotext(pdf_path)
-        except subprocess.CalledProcessError as exc:
-            print(f"[fail] {meta['name']}: pdftotext: {exc}", file=sys.stderr)
-            errors += 1
-            continue
-
-        record = extract_one(meta["name"], text)
+        record = extract_one(meta["name"], text) if text else None
         rescue_pdf: str | None = None
         rescue_date: str = ""
         if record is None:
-            rescue = global_segments.get(normalize_name(meta["name"]))
-            if rescue and rescue[0] != meta["filename"]:
+            rescue = next(
+                (r for k in candidate_keys(meta["name"])
+                 if (r := global_segments.get(k)) is not None),
+                None,
+            )
+            if rescue and rescue[0] != meta.get("filename"):
                 rescue_pdf, rescue_segment, rescue_date = rescue
                 record = extract_one(meta["name"], rescue_segment)
                 if record is not None:
@@ -1067,7 +1423,11 @@ def main() -> int:
         else:
             seg_for_date = find_segment(split_bundle(text), meta["name"]) or text
             homologated_at = homologation_date(seg_for_date) or ""
-        latest_known = global_segments.get(normalize_name(meta["name"]))
+        latest_known = next(
+            (r for k in candidate_keys(meta["name"])
+             if (r := global_segments.get(k)) is not None),
+            None,
+        )
         latest_pdf = latest_known[0] if latest_known else ""
         latest_date = latest_known[2] if latest_known else ""
         record["source"] = {
@@ -1136,7 +1496,7 @@ def main() -> int:
             "name": meta["name"],
             "slug": record["slug"],
             "filename": out_path.name,
-            "is_dgc": False,
+            "is_sub_denomination": False,
             "parent_slug": "",
             "communes_count": sum(len(v) for v in record["aire"]["aire_geographique"].values()),
             "sections_present": sorted(record["sections"]),
@@ -1163,7 +1523,7 @@ def main() -> int:
             dgc_record["name"] = dgc_name
             dgc_record["slug"] = dgc_slug
             dgc_record["id_denomination_geo"] = d["id_denomination_geo"]
-            dgc_record["is_dgc"] = True
+            dgc_record["is_sub_denomination"] = True
             dgc_record["parent_id_appellation"] = id_app
             dgc_record["parent_id_denomination_geo"] = (
                 parent_denom["id_denomination_geo"] if parent_denom else ""
@@ -1182,7 +1542,7 @@ def main() -> int:
                 "name": dgc_name,
                 "slug": dgc_slug,
                 "filename": dgc_path.name,
-                "is_dgc": True,
+                "is_sub_denomination": True,
                 "parent_slug": record["slug"],
                 "communes_count": sum(len(v) for v in dgc_record["aire"]["aire_geographique"].values()),
                 "sections_present": sorted(dgc_record["sections"]),

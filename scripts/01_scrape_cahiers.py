@@ -364,9 +364,7 @@ def _process_app(
         return "missed", 0
     meta, pdf_urls = result
     if has_override_urls:
-        for url in override["boagri_urls"]:
-            if url not in pdf_urls:
-                pdf_urls.append(url)
+        pdf_urls = _prepend_override_urls(override["boagri_urls"], pdf_urls)
         meta["boagri_url_candidates"] = pdf_urls
         meta["manual_override_note"] = override.get("note", "")
 
@@ -377,24 +375,69 @@ def _process_app(
         manifest[app.id_appellation] = meta
         return "legifrance-only", 0
 
-    canonical_url = pdf_urls[0]
-    prior_dest = OUT_DIR / f"{prior.get('sha256', '')}.pdf"
-    if prior.get("boagri_url") == canonical_url and prior_dest.exists():
-        n = _download_alt_candidates(session, app.name, pdf_urls[1:], delay)
+    # Walk pdf_urls in order; first URL that yields a real PDF becomes the
+    # canonical. Earlier we returned "missed" the moment pdf_urls[0] raised
+    # (e.g. BO Agri's modern uploads can be .docx, not PDF), losing whatever
+    # PDF fallback the curator queued.
+    prior_sha = prior.get("sha256", "")
+    prior_url = prior.get("boagri_url", "")
+    # Only treat the prior fetch as cached when it lines up with the *current*
+    # canonical (pdf_urls[0]). When an override has just moved a different URL
+    # into the canonical slot, the prior URL — even if still present as an
+    # alternate — can't reuse the old PDF.
+    if prior_url and pdf_urls and prior_url == pdf_urls[0] and (OUT_DIR / f"{prior_sha}.pdf").exists():
+        rest = [u for u in pdf_urls if u != prior_url]
+        n = _download_alt_candidates(session, app.name, rest, delay)
         return "cached", n
-
-    try:
-        digest, dest = download_pdf(session, canonical_url, OUT_DIR)
-    except (requests.RequestException, RuntimeError) as exc:
-        print(f"[fail] {app.name}: {exc}", file=sys.stderr)
+    download = _download_first_pdf(session, app.name, pdf_urls, delay)
+    if download is None:
         return "missed", 0
-
-    n = _download_alt_candidates(session, app.name, pdf_urls[1:], delay)
+    canonical_url, digest, dest = download
+    rest = [u for u in pdf_urls if u != canonical_url]
+    n = _download_alt_candidates(session, app.name, rest, delay)
+    meta["boagri_url"] = canonical_url
     meta["filename"] = dest.name
     meta["sha256"] = digest
     meta["fetched_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     manifest[app.id_appellation] = meta
     return "fetched", n
+
+
+def _prepend_override_urls(override_urls: list[str], auto_urls: list[str]) -> list[str]:
+    """Override URLs take precedence over show_texte-resolved URLs: the curator
+    drops an override in *because* the auto-resolved doc was wrong (e.g. INAO's
+    product page links a 23-IGP bundle that doesn't actually contain the AOC).
+    Put override candidates first; auto-resolved URLs stay as alternates so
+    stage 02's cross-bundle rescue can fall back if the override is dud."""
+    ordered: list[str] = []
+    for url in override_urls:
+        if url not in ordered:
+            ordered.append(url)
+    for url in auto_urls:
+        if url not in ordered:
+            ordered.append(url)
+    return ordered
+
+
+def _download_first_pdf(
+    session: requests.Session, app_name: str, pdf_urls: list[str], delay: float,
+) -> tuple[str, str, Path] | None:
+    """Try each candidate in order; return (canonical_url, sha256, dest_path)
+    on first success, None if all fail. Useful when the primary URL serves a
+    non-PDF (e.g. BO Agri's modern .docx uploads) and a later candidate is the
+    real cahier PDF."""
+    errors: list[str] = []
+    for i, url in enumerate(pdf_urls):
+        try:
+            digest, dest = download_pdf(session, url, OUT_DIR)
+            return url, digest, dest
+        except (requests.RequestException, RuntimeError) as exc:
+            errors.append(f"{url[:80]}: {exc}")
+            if i + 1 < len(pdf_urls):
+                time.sleep(delay)
+    for err in errors:
+        print(f"[fail] {app_name}: {err}", file=sys.stderr)
+    return None
 
 
 def main() -> int:

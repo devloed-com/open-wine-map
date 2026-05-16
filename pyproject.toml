@@ -21,6 +21,13 @@ dev = [
     "ruff>=0.6",
     "pytest>=8.3",
 ]
+# Optional: only needed by scripts/es/01b_solve_waf.py, the one-off
+# bootstrap that fetches EUR-Lex single-document HTMLs blocked by the
+# AWS WAF JS challenge. After 01b populates raw/es/oj-pages/, the rest
+# of the pipeline never touches Playwright.
+bootstrap = [
+    "playwright>=1.55",
+]
 
 [tool.ruff]
 line-length = 100

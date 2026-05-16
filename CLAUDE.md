@@ -1,8 +1,16 @@
 # open wine map — curation guide for Claude
 
-This project is a reference wiki + map of French wine appellations, generated
-mechanically from public INAO and IGN data. It is **not** a hand-curated
-narrative wiki.
+This project is a reference wiki + map of European wine appellations,
+generated mechanically from public regulator data. It is **not** a
+hand-curated narrative wiki.
+
+The corpus is multi-country: France (canonical, INAO + JORF) is the
+primary pipeline at `scripts/`; Spain (eAmbrosia + EUR-Lex single
+documents) is the second country, with parallel scripts under
+`scripts/es/`. Each per-record JSON carries a top-level `country`
+field (`"fr"` / `"es"`) so stage 04 can merge both streams into a
+single unified map. See "Spain pipeline" below for ES-specific
+details and "Hard rules" for invariants that apply to every country.
 
 ## Hard rules
 
@@ -20,7 +28,7 @@ narrative wiki.
   everything in `wiki/` from scratch. Anything that breaks that contract is a
   bug.
 - **Wikipedia is a bounded secondary source.** Three stages fetch from
-  Wikipedia FR (CC-BY-SA 4.0):
+  Wikipedia (CC-BY-SA 4.0), plus a translation sidecar:
   - Stage 02b/grapes (`scripts/02b_fetch_grape_lexicon.py`) — one short
     summary per grape variety, used in the map sidepanel grape-pill tooltip.
   - Stage 02b/aocs (`scripts/02b_fetch_aoc_lexicon.py`) — per-AOC page
@@ -28,15 +36,33 @@ narrative wiki.
     salience hint for terroir-fact extraction (see the bounded-narrative-
     layer rule below).
   - Stage 02b/styles (`scripts/02b_fetch_style_lexicon.py`) — one short
-    summary per *distinctive* French wine style (vin jaune, crémant, vin
-    doux naturel, vin de paille, sélection de grains nobles, vendanges
-    tardives, clairet, primeur, vin de liqueur), used in the map
-    sidepanel style-pill tooltip. The curated subset and per-locale
-    Wikipedia titles live in
-    `raw/wikipedia/style_overrides.json`; generic categories (red /
-    white / rosé / dry / sweet / sparkling / tranquille) are
-    intentionally excluded — their Wikipedia pages read as general wine
-    education, not a meaningful tooltip.
+    summary per wine-style slug, used in the map sidepanel style-pill
+    tooltip. The curated set covers **every node** in
+    `scripts/_lib/style_taxonomy.py`: top-level buckets (red / white /
+    rosé / sparkling / sweet / other), interior groups (fortified /
+    sparkling-quality / semi-sparkling / late-harvest / raisin-wine /
+    oxidative / generoso), distinctive leaves (vin jaune, crémant, vdn,
+    vin de paille, grains nobles, vendanges tardives, clairet, primeur,
+    vin de liqueur, fino, manzanilla, amontillado, oloroso, palo
+    cortado, rancio, mistela), and the generic leaves (tranquille,
+    dry). Per-locale Wikipedia titles live in
+    `raw/wikipedia/style_overrides.json`. When a target locale has no
+    native Wikipedia article for a slug, the gap is filled by stage
+    02b-translate rather than left blank.
+  - Stage 02b/styles-translate (`scripts/02b_translate_styles.py`) —
+    for every (slug, target-locale) without a native Wikipedia fetch,
+    picks the best source-locale extract (preference EN > FR > ES > NL),
+    translates it into the target locale, and caches the result under
+    `raw/translations/styles/<lang>/<slug>.json` with full source
+    attribution (`source_lang`, `source_page_url`,
+    `source_wikipedia_title`, `source_sha`, `translator`,
+    `translator_kind`). Providers mirror 02c / 02e: `anthropic`,
+    `ollama` (default), or `manual` via `--emit-todo PATH` +
+    `--import PATH --translator-id …`. Cache invalidates per (slug,
+    locale) when the source extract's sha256 changes. The UI renders
+    translated tooltips with "Traduit de Wikipédia en &lt;source&gt; ·
+    CC BY-SA 4.0" (linked to the source article) in place of the
+    `(français)` fallback marker.
   Cahier text, commune lists, region names, and INAO category codes continue to
   come exclusively from INAO/JORF. Each Wikipedia entry caches `revision`,
   `fetched_at`, `page_url`, and `license`; the UI must render attribution
@@ -84,34 +110,44 @@ narrative wiki.
   `scripts/audit_terroir_facts.py` recomputes coverage against the
   current sources and flags drift / erosion.
 
-## Denomination model (DGCs)
+## Denomination model (sub-denominations)
 
 The unit of generation is the **denomination** (`id_denomination_geo` in the
 SIQO referentiel), not the appellation. Most appellations have a single
-denomination — their own name — but some carry several Dénominations
-Géographiques Complémentaires (DGCs):
+denomination — their own name — but some carry several. Two distinct
+regulatory concepts share the same data shape here, and the codebase
+treats them uniformly via the `is_sub_denomination` flag:
 
-- *Muscadet Sèvre et Maine* (id_appellation=100) has 7 DGCs: Clisson,
-  Gorges, Le Pallet, Château-Thébaud, Goulaine, Monnières-Saint-Fiacre,
-  Mouzillon-Tillières.
-- *Côtes du Rhône Villages*, *Coteaux du Layon*, *Alsace grand cru*, *Côtes
-  du Roussillon Villages* and others follow the same pattern.
+- **AOC DGCs (Dénominations Géographiques Complémentaires)** — strictly an
+  AOC/AOP concept. *Muscadet Sèvre et Maine* (id_appellation=100) has 7
+  DGCs: Clisson, Gorges, Le Pallet, Château-Thébaud, Goulaine, Monnières-
+  Saint-Fiacre, Mouzillon-Tillières. *Côtes du Rhône Villages*, *Coteaux
+  du Layon*, *Alsace grand cru*, *Côtes du Roussillon Villages* and
+  others follow the same pattern.
+- **IGP sub-denominations** — *not* DGCs in regulatory terms (IGPs have no
+  DGCs). *IGP Val de Loire* carries department-keyed sub-denominations
+  (Indre-et-Loire, Maine-et-Loire, Sarthe, Vendée, Vienne, Allier, …);
+  several other IGPs do similar. In SIQO they appear as distinct
+  `id_denomination_geo` rows under one `id_appellation`, identical in
+  structure to AOC DGCs, so we lump them together internally.
 
 Stage 02 emits one JSON per (id_appellation, id_denomination_geo) pair. The
 parent denomination (where `denomination == appellation`) gets the canonical
-slug; each DGC gets `slug(denomination)` and carries `is_dgc=true` plus
-`parent_id_appellation`, `parent_slug`, `parent_name`. DGCs share the
-parent's cahier text — INAO publishes one cahier des charges per
-appellation, and DGC sub-sections inside it are not parsed in v1, so DGC
-records inherit `sections` / `aire` / `grapes` / `styles` from the parent.
+slug; each sub-denomination gets `slug(denomination)` and carries
+`is_sub_denomination=true` plus `parent_id_appellation`, `parent_slug`,
+`parent_name`. Sub-denominations share the parent's cahier text — INAO
+publishes one cahier des charges per appellation, and sub-sections inside
+it are not parsed in v1, so sub-denomination records inherit `sections` /
+`aire` / `grapes` / `styles` from the parent.
 
-Stage 04 resolves DGC geometry by `id_denomination_geo` against the INAO
-parcellaire shapefile (the shapefile carries `id_denom` on every parcel
-row); when a DGC has no parcellaire row (~150 of ~1080 SIQO DGCs) it falls
-back to the parent appellation's polygon, so the DGC is still on the map
-and findable. DGCs ride the same `appellations` MVT layer — they're
-filterable through the existing region/style/grape facets like any other
-appellation.
+Stage 04 resolves sub-denomination geometry by `id_denomination_geo`
+against the INAO parcellaire shapefile (the shapefile carries `id_denom`
+on every parcel row); when a sub-denomination has no parcellaire row
+(~150 of ~1080 SIQO denominations) it falls back to the parent
+appellation's polygon, so the sub-denomination is still on the map and
+findable. Sub-denominations ride the same `appellations` MVT layer —
+they're filterable through the existing region/style/grape facets like
+any other appellation.
 
 ## Manual override mechanism
 
@@ -226,11 +262,184 @@ twice with no changes upstream must be a no-op (cache hits).
 | 02b_fetch_grape_lexicon.py | raw/inao/cahier-extracted/*.json | raw/wikipedia/grapes/<lang>/*.json + manifest.json |
 | 02b_fetch_aoc_lexicon.py | raw/inao/cahier-extracted/*.json | raw/wikipedia/aocs/fr/*.json + manifest.json |
 | 02b_fetch_style_lexicon.py | raw/wikipedia/style_overrides.json | raw/wikipedia/styles/<lang>/*.json + manifest.json |
+| 02b_translate_styles.py | raw/wikipedia/styles/<lang>/*.json | raw/translations/styles/<lang>/*.json + manifest.json |
 | 02c_translate_summaries.py | raw/inao/cahier-extracted/*.json | raw/translations/summaries/<lang>/*.json |
 | 02d_extract_terroir_facts.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/aocs/fr/ | raw/terroir-facts/*.json + manifest.json |
 | 02e_translate_terroir_facts.py | raw/terroir-facts/*.json | raw/translations/terroir-facts/<lang>/*.json |
 | 03_generate_wiki.py | raw/inao/cahier-extracted/*.json + raw/terroir-facts/ | wiki/*.md, wiki/_index.json |
-| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/wikipedia/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (homepage × 4 locales) |
+| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (homepage × 4 locales) |
+
+## Spain pipeline (`scripts/es/`)
+
+The Spanish pipeline mirrors the French one numerically (00, 01, 02, …) but
+the data sources differ enough that the scripts are siblings, not
+parameterisations. Common helpers live in `scripts/_lib/`; ES-specific
+helpers under `scripts/_lib/es/` (added as needed).
+
+Spine: **eAmbrosia EU register**
+(`https://webgate.ec.europa.eu/eambrosia-api/api/v1/geographical-indications`).
+Filter `country=ES` + `productType=WINE` + `status=registered` →
+~149 wine GIs (106 DOP + 43 IGP). The corpus is *much* smaller than
+the FR ~390 AOCs — Spanish IGPs (Vinos de la Tierra) often have no
+EU-OJ amendment publications.
+
+Pliego source: **EUR-Lex single-document HTML**, *not* a PDF.
+eAmbrosia's `singleDocument` field is null for every ES wine (verified
+2026-05). The canonical pliego is the EU-OJ "documento único"
+published inline as HTML and reachable via each GI's
+`publications[0].uri` (after Spanish-language URL rewrite — `/oj/spa`,
+or `legal-content/ES/TXT/HTML/?uri=…SPA`). Both the older
+`ti-grseq-1` (sections 1–9) and newer `oj-ti-grseq-1` (sections 1–10)
+templates are parsed; semantic role routing by Spanish title keyword
+(`zona geográfica`, `vínculo`, `variedad`) keeps downstream consumers
+indifferent to which template a given page used. Section 9 (older)
+or 6 (newer) frequently carries the **full subzona-grouped commune
+list** (Rioja Alta / Alavesa / Oriental + commune names), so subzona
+extraction is achievable from this single source — no separate full-
+pliego fetch needed.
+
+WAF caveat: EUR-Lex (CloudFront) returns HTTP 202 + an AWS WAF
+JavaScript challenge for high-volume non-browser clients. Stage 01
+handles ~24 % of wines on first run before the IP gets sticky-
+flagged. The bootstrap script `scripts/es/01b_solve_waf.py` uses
+headless Chromium (Playwright, in the `bootstrap` dependency-group)
+to navigate the remaining URLs — Chromium runs the JS challenge
+automatically. After 01b populates `raw/es/oj-pages/`, the rest of
+the pipeline never touches Playwright.
+
+| Script | Reads | Writes |
+|---|---|---|
+| es/00_fetch_data.py | (network: eAmbrosia + Figshare + GISCO + curated SIGPAC comarques) | raw/es/eambrosia/, raw/es/figshare/, raw/es/gisco/, raw/es/sigpac/ |
+| es/01_fetch_pliegos.py | raw/es/eambrosia/index.json + raw/es/oj-pages/manual_overrides.json | raw/es/oj-pages/*.html (ES single-document HTMLs) + manifest.json |
+| es/01b_solve_waf.py | raw/es/oj-pages/manifest.json | raw/es/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
+| es/02_extract_pliegos.py | raw/es/oj-pages/*.html | raw/es/pliegos-extracted/*.json + _index.json (parents + DGC subzonas) |
+| es/02f_extract_national_pliegos.py | raw/es/pliegos-extracted/*.json + national-pliego PDF URLs from section 9 | raw/es/national-pliegos/*.pdf + raw/es/national-pliegos-extracted/*.json (variety augmentation) |
+| es/03_generate_wiki.py | raw/es/pliegos-extracted/*.json | wiki/<slug>.md (per ES record) + merges ES entries into wiki/_index.json |
+| es/regen_manual_overrides_template.py | raw/es/eambrosia/index.json + raw/es/oj-pages/manifest.json | raw/es/oj-pages/manual_overrides.json (curator queue, preserves filled-in URLs) |
+
+ES-specific notes:
+- `kind` is `"DOP"` / `"IGP"` (Spanish convention), not `"AOC"`.
+- ~44 % of wine GIs have no `publications` URL in eAmbrosia (mostly
+  pre-2014 IGPs and a handful of newer DOPs). They're emitted as
+  stubs (`stub_reason: "no-publication"`) — the same stub mechanism
+  the FR side uses for unparsed cahiers, with a curator workflow
+  documented below.
+- The shared `scripts/02b_fetch_aoc_lexicon.py` is generalised:
+  invoke as `--lang es --source raw/es/pliegos-extracted/` to fetch
+  per-DOP es.wikipedia.org pages (cascades through `(vino)` → `(DOP)`
+  → `(denominación de origen)`).
+
+### National-pliego variety augmentation (stage 02f)
+
+The EU-OJ documento único's section 7 lists only the **principal**
+varieties; secondary/accessory varieties live exclusively in the
+**national pliego de condiciones** PDF linked from section 9 of the
+documento único. Méntrida is the canonical example: doc-único shows
+just *Garnacha Tinta*, while the JCCM national pliego section 6 lists
+17 varieties (Tempranillo, Cabernet Sauvignon, Garnacha Blanca, …).
+
+Stage 02f fetches each section-9 PDF URL, runs a generic Spanish-
+pliego parser ([scripts/_lib/es/national_pliego.py](scripts/_lib/es/national_pliego.py))
+on `pdftotext -layout` output, and writes one sidecar JSON per record
+under `raw/es/national-pliegos-extracted/`. The parser handles the
+heading variants seen across JCCM, INCAVI, AGACAL, ITACyL, Aragón,
+Navarra, GVA, Canarias, Andalucía, Euskadi, Madrid, Extremadura, MAPA
+(numbered or letter-prefixed sections, "Variedades de uvas de
+vinificación" / "Variedad o variedades de uva" / "Variedades de Vitis
+Vinifera" / "Variedades viníferas" / colour-bullet vs bullet-list vs
+two-column layouts). Sidecars carry full provenance (source URL,
+sha256, fetched_at, parser_template).
+
+Stage 04 merges the sidecar's `new_slugs` into each ES record's
+`grapes.accessory` at load time
+(`augment_es_records_with_national_pliegos` in
+[scripts/04_build_maps.py](scripts/04_build_maps.py)); the
+augmentation is in-memory only (the on-disk doc-único record stays
+immutable) and propagates via a slug-keyed cache into
+`_sources_for()`. The map panel renders a "Pliego de condiciones
+(national, PDF)" source link with the count of pliego-added varieties.
+
+Re-runnable per slug or in sweep mode:
+```
+uv run scripts/es/02f_extract_national_pliegos.py --slug mentrida
+uv run scripts/es/02f_extract_national_pliegos.py --all
+```
+Cached PDFs at `raw/es/national-pliegos/<slug>.pdf` are reused unless
+`--refresh` is passed.
+
+When the doc-único's section-9 URL is dead (404, GVA backend timeout,
+BOE-modification-not-pliego, pdftotext-broken PDF), the curator pins a
+working replacement in `raw/es/national-pliegos/manual_overrides.json`
+(slug-keyed: `{pliego_url, source_org, verification_note}`). Stage 02f
+checks this file before the section-9 URL and takes precedence; when an
+override is present the slug-keyed PDF cache is invalidated automatically
+if the existing sidecar's `source.url` disagrees with the override
+(or if no sidecar exists at all, since the cache vintage is unknown).
+Mirrors the FR pattern at `raw/inao/cahiers/manual_overrides.json`.
+
+### ES geometry resolution chain (stage 04)
+
+Per ES record, in priority order (each step records the chosen source
+in `geom_source` so the panel can attribute correctly):
+
+1. **`sigpac-pliego-inclusions`** — for wines whose pliego enumerates
+   SIGPAC polygon inclusions inside one or more municipios (Priorat ↔
+   Montsant: `Falset: polígonos números 1, 4, 5, 6, 7, 21 y 25 enteros`).
+   Resolved by `scripts/_lib/es/pliego_parcels.py` + `scripts/_lib/es/sigpac.py`
+   against per-comarca SIGPAC vineyard parcels (currently only the
+   Priorat comarca is downloaded; add more by editing
+   `SIGPAC_COMARCA_CODIS` in `scripts/es/00_fetch_data.py`). This
+   path eliminates the commune-precision overlap that Figshare 2022
+   produces for shared communes.
+2. **`figshare-pdo`** — exact `file_number` → `PDOid` match against
+   Bétard 2022 EU_PDO.gpkg (CC0). Covers ~99 of the 106 ES PDOs
+   (all pre-Nov-2021 PDOs).
+3. **`gisco-province-wide`** — IGP-fallback A: pliego says "todos los
+   términos municipales de las provincias de X y Y". Union all GISCO
+   municipios in those provinces.
+4. **`gisco-ccaa-wide`** — IGP-fallback B: pliego says "todos los
+   términos municipales del territorio de [CCAA]". Union all GISCO
+   municipios in the CCAA's provinces.
+5. **`gisco-commune-list`** — IGP-fallback C: pliego enumerates a flat
+   commune list. Union the matching GISCO municipios.
+6. **`gisco-commune-union-subzona`** — for ES subzona DGCs, union
+   the per-subzona commune list.
+7. **`parent-appellation`** — DGC inherits parent polygon when
+   commune matching yields nothing.
+8. **`stub-no-geometry`** — wine appears in the AOCS sidebar but no
+   polygon (most pre-2014 IGPs).
+
+### Curator workflow for ES wines without an OJ publication
+
+When eAmbrosia has no `publications` URL for a wine (the dominant
+cause of `stub-no-geometry`), the wine appears in the curation queue
+written by `scripts/es/regen_manual_overrides_template.py` to
+`raw/es/oj-pages/manual_overrides.json`. The file is gitignored.
+
+Workflow:
+
+```
+uv run scripts/es/regen_manual_overrides_template.py
+# → writes raw/es/oj-pages/manual_overrides.json with one entry per
+#   wine that needs a URL, preserving any existing curator inputs.
+uv run scripts/audit_es_coverage.py
+# → prints the curation queue at the bottom of the report.
+# Edit raw/es/oj-pages/manual_overrides.json: for each high-priority
+# entry, find a public, licence-clear pliego URL (BOE PDF, EUR-Lex
+# OJ page, regional gazette HTML, consejo regulador site) and put
+# it in the `url` field. Add a `note` if the source is unusual.
+uv run scripts/es/01_fetch_pliegos.py
+# → re-fetches with the curator URLs taking precedence.
+uv run scripts/es/02_extract_pliegos.py
+uv run scripts/04_build_maps.py
+```
+
+**Caveat**: stage 02's HTML parser currently only understands the
+EU-OJ "documento único" template. BOE PDFs / regional-gazette
+formats won't yield a polygon yet — they need per-source parsers.
+Curator effort still produces value though: the wine moves out of
+the stub bucket, sources become traceable, and the audit shows
+real provenance instead of "no URL anywhere".
 
 ## Internationalisation
 
@@ -260,13 +469,18 @@ because the FR forms are well-known proper nouns with public, stable
 translations.
 
 Catalogs live under `locale/<lang>/LC_MESSAGES/messages.po` and are
-hand-editable. The extraction surface is `scripts/_lib/map_template.py` (the
-`build_labels` and `build_style_labels` functions). Stage 04 calls
-`scripts/_lib/i18n.py:compile_catalogs()` at the start of each run; it rebuilds
-`messages.mo` only when the `.po` is newer (no-op on rerun).
+hand-editable. The extraction surface is the whole of `scripts/_lib/` —
+`map_template.py` carries `build_labels` and `build_style_labels`, and
+`style_taxonomy.py` carries the style-taxonomy msgid anchors
+(`_msgid_anchors_for_babel`) for every node in the slug tree. Always
+extract from the directory, not a single file, or new msgids will be
+silently dropped from `.pot` and pybabel update will mark them obsolete.
+Stage 04 calls `scripts/_lib/i18n.py:compile_catalogs()` at the start of
+each run; it rebuilds `messages.mo` only when the `.po` is newer (no-op
+on rerun).
 
 ```
-uv run pybabel extract -F locale/babel.cfg -o locale/messages.pot scripts/_lib/map_template.py
+uv run pybabel extract -F locale/babel.cfg -o locale/messages.pot scripts/_lib/
 uv run pybabel update -i locale/messages.pot -d locale     # after adding a new msgid
 uv run pybabel init   -i locale/messages.pot -d locale -l <lang>   # to add a new locale
 ```
