@@ -81,6 +81,15 @@ DGC cascading unlock realised in this round: **+106 DGCs** (Beaune climats, Chas
 
 **To retry the cookie-expired ones:** refresh `cf_clearance` in your browser (open <https://www.legifrance.gouv.fr/loda/id/JORFTEXT000024923948>, copy fresh cookie), update `~/.config/openwinemap/legifrance.json`, then `.venv/bin/python scripts/01b_solve_legifrance.py --refresh --only 71 --only 134 --only 211 --only 230 --only 247`.
 
+### SIQO referentiel — 2 wines missing (eAmbrosia has them, INAO doesn't)
+
+❌ Surfaced by 2026-05-17 eAmbrosia FR-wine reconciliation in [VERIFICATION.md](VERIFICATION.md). Both exist in the EU register but not in `raw/inao/siqo-referentiel.csv` — likely retired/merged on the INAO side without flowing through to the EU register.
+
+| eAmbrosia file_number | Name | Verification needed |
+|---|---|---|
+| PDO-FR-A0257 | Cabernet de Saumur | Confirm via INAO product page <https://www.inao.gouv.fr/produit/8125> or Légifrance whether still in force; if active, pin via `manual_overrides.json` |
+| PDO-FR-A0271 | Côtes de Blaye | Often considered merged into the Blaye / Premières Côtes de Blaye family. Verify status. |
+
 ### Geometry — Comté Tolosan cluster
 
 ❌ id=861 + 6 DGCs (Bigorre, Cantal, Coteaux et Terrasses de Montauban, Haute-Garonne, Pyrénées-Atlantiques, Tarn-et-Garonne) silently dropped from `wiki/map-data/appellations.geojson` despite having clean cahier extraction. Not a curator data task — investigate stage 04 in [scripts/04_build_maps.py](scripts/04_build_maps.py) (likely an aires-CSV match miss; potential `dgc_village_overrides.json` add).
@@ -337,6 +346,97 @@ These surfaced in the audit but require code changes, not lookups:
 - **ES role-routing coverage** — 74 parents have an unrouted `name` role, 14 unrouted `geo_area`, 9 unrouted `link_to_terroir`, 4 each for `description` / `grape_varieties`. Section bodies are present, just not labelled with the canonical role. A handful more keyword additions to the stage-02 router would close most of these. Worth a separate pass when stage-04 rendering surfaces specific gaps.
 - **ES stage-01 `--refresh` manifest footgun** — `--refresh --only X` wipes manifest entries for wines outside the `--only` filter. Doesn't block extraction (stage 02 dispatches by file existence) but the manifest stats audit reports incorrect counts. Cosmetic.
 
+## Portugal
+
+### Cadernos — ✅ complete (2026-05-16, v1 land)
+
+All 44 PT wine GIs (30 DOP + 14 IGP) auto-matched against the IVV master indexes ([www.ivv.gov.pt/np4/8617.html](https://www.ivv.gov.pt/np4/8617.html) for DOP, /8616 for IGP) and downloaded as sha-pinned PDFs. Zero stubs at first run.
+
+### Extraction — ✅ structure / ✅ grape-list polish
+
+- 44 parents + 32 sub-regiões extracted (76 records total).
+- Sub-região detection: **Pattern A** (`Sub-região NAME`) covers Vinho Verde (9) + Alentejo (8) + 6 others = 23. **Pattern B** (Douro/Trás-os-Montes-style colon prefix) covers 9 (Douro 3 + Porto 3 + Trás-os-Montes 3). Dão, Beira Interior, Lafões, Távora-Varosa, Algarve don't enumerate sub-regiões in machine-parseable prose — those stay parent-only in v1 (sub-regiões exist in regulatory documents but aren't in the IVV caderno text).
+- ✅ **Grape-list polish** (2026-05-16): [scripts/pt/02_extract_cadernos.py](scripts/pt/02_extract_cadernos.py) rewritten to handle all four IVV layouts cleanly:
+  - **B/N/R/G/T colour-code stripping** — trailing single-letter IVV colour codes (`Boal Branco B` → `boal-branco`, `Bastardo N` → `bastardo`) are now removed before slugification, killing the entire family of `-b` / `-n` / `-r` / `-g` / `-t` suffix slugs.
+  - **PRT tabular dispatch** — Bairrada-style (`PRT52003 Alfrocheiro Tinta-Bastardinha T`) and Pico-style (`PRT50218 Arinto dos Açores Terrantez da Terceira Branco`) rows take a dedicated path that peels off the IVV code, strips the colour column (single letter OR full-word `Branco`/`Tinto`), and extracts the canonical name via an article-pattern regex (`<Cap> de/do/da/dos/das <Cap>`). Pico now yields the correct 3 varieties (was 2); Bairrada's 28 are all clean single-name canonicals (no more `aragonez-tinta-roriz`).
+  - **Sub-região block break** — `Sub-região de/do …` lines stop parent-list parsing. Vinho Verde no longer hoovers up the sub-region tables (was 60 incl. `seguinte` + `sub-regiao-de-amarante`+…, now 46 clean varieties).
+  - **Page-footer / file-number / letter-header filter** — `PDO-PT-A\d+`, `Caderno de Especificações`, `a.` / `b.` / `c. Outras castas` letter-prefix headers are now dropped. Trás-os-Montes was 31 incl. `pdo-pt-a1466`, now 33 clean.
+  - **Prose filter expanded** — `_PROSE_RE` now catches `seguinte` (singular), `vinhos`, `produtos`, `indicação`, `obtidos`, `replantac/plantac`, `efectuad/efetuad`, `ultrapass`, `vinificaç`, `consider`, `cento`, `conjunto`, `partir`. Tightened `_GRAPE_HEADER_KEYWORDS` to anchor `\s*$` so `Tinto Cão N` is no longer eaten by the `tinto` header alternative.
+  - **Slug-level noise blocklist** — `_NOISE_SLUGS` + `_NOISE_SLUG_RES` catch residual `os-vinhos`, `ivv`, `ip-pagina-2`, `castas-indicadas-em-X`, etc.
+  - **PT cross-country canonicalisation** ([scripts/_lib/grape_lexicon.py](scripts/_lib/grape_lexicon.py) GRAPE_ALIAS): `aragonez`/`aragones` → `tempranillo` (PT canonical of Tinta Roriz / Tempranillo); `gouveio` → `godello` (Galician canonical); `trajadura` → `treixadura`; `trincadeira-preta`/`tinta-amarela` → `trincadeira`; `esgana-cao` → `sercial`; `boal`/`bual` → `malvasia-fina` (Madeira DNA-confirmed); `brancelho` → `alvarelhao`; `alvaraca` → `batoca`; `maria-gomes` → `fernao-pires`; `trebbiano-toscano`/`talia` → `ugni-blanc`.
+  - **Verified**: zero residual `-b`/`-n`/`-r`/`-g`/`-t` suffix slugs across all 44 parents; zero residual `pdo-pt-*`, `prt*`, `sub-regiao*`, `caderno-de-*`, `castas-indicadas-em-*`. 464 unique grape slugs across the PT corpus.
+
+### Wikipedia grape lexicon — ✅ run completed (2026-05-17)
+
+`scripts/02b_fetch_grape_lexicon.py` invoked across all 4 site locales (en/fr/es/nl) against the merged FR+ES+PT slug set. PT-only contribution: 407 new slugs (of 974 total). Per-locale outcome on the new PT slugs:
+
+| locale | ok | err (not-grape) | miss |
+|---|---:|---:|---:|
+| en | 53 | 39 | 315 |
+| fr | 35 | 22 | 350 |
+| es | 19 | 45 | 343 |
+| nl | 19 | 23 | 365 |
+
+53 PT grapes now have an EN Wikipedia card (Touriga, Encruzado, Bical, Baga, Arinto, Alfrocheiro, Trincadeira, Avesso, Castelão, Sercial, Viosinho, Ramisco, plus international varieties Aglianico/Dolcetto/Sangiovese/Zinfandel/Bacchus/Dornfelder/Lemberger/Rotgipfler/Acolon). ~290 obscure-PT-only varieties (Antão Vaz, Folha de Figueira, Donzelinho Tinto, Verdelho do Pico, Terrantez do Pico, Castelão Branco, etc.) have **no** card in en/fr/es/nl because they only exist on pt.wikipedia.org. Two follow-ups in the Code section: (a) pt.wikipedia.org-source + translate sidecar pattern (mirroring stage 02b/styles-translate), (b) extraction-noise blocklist additions.
+
+### Geometry — ✅ DOPs / ⏳ IGPs
+
+- **30 DOPs** resolved via `figshare-pdo` (Bétard 2022 EU_PDO.gpkg).
+- **32 sub-regiões** inherit parent's polygon (`parent-appellation`).
+- **14 IGPs** have no Figshare row by design (Bétard is PDO-only). For v1 they appear in the sidebar with no polygon. Follow-up: parse the IGP cadernos' commune lists and union via `PTPolygonIndex.union_concelhos` against the CAOP 2025 GPKGs already on disk at `raw/pt/caop/`. The CAOP layer is loaded (305 concelhos in v1; full CAOP has ~308) — only the IGP commune-list parser needs writing. See [scripts/_lib/pt/geometry.py](scripts/_lib/pt/geometry.py).
+
+### Translation cache — ⏳ awaiting manual round-trip
+
+- PT records emit 76 translation jobs per locale via `02c_translate_summaries.py --source-lang pt --emit-todo`. Pipeline target locales for PT: en/fr/es/nl.
+- Round-trip flow (matches user's existing FR/ES workflow):
+  ```
+  .venv/bin/python scripts/02c_translate_summaries.py --source-lang pt --emit-todo /tmp/pt-todo-en.json --lang en
+  # external translator fills the items[].summary fields
+  .venv/bin/python scripts/02c_translate_summaries.py --source-lang pt --import /tmp/pt-todo-en.json --translator-id <id> --translator-kind manual
+  ```
+
+### Terroir-fact extraction — ✅ siblings shipped (2026-05-16), ⏳ awaiting first run
+
+PT now flows through 02d/02e via [scripts/pt/02d_extract_terroir_facts.py](scripts/pt/02d_extract_terroir_facts.py) + [scripts/pt/02e_translate_terroir_facts.py](scripts/pt/02e_translate_terroir_facts.py). Same dual-source grounding (caderno section 7 + pt.wikipedia.org/wiki/<DOP>), same manual round-trip support, same shared `raw/terroir-facts/` cache directory disambiguated by `country: "pt"` field, same fuzzy-coverage filter (≥0.6) and per-bullet provenance (`cahier` / `wiki` / `both`). Targets en/fr/es/nl (FR/ES are translation targets, not sources). Skips sub-regiões — they inherit the parent's bullets at the rendering layer (stage 02 already copies the parent's caderno text into each sub-região's `link_to_terroir`).
+
+Smoke-tested manually (emit-todo + import round-trip, `acores`): cache writes with correct country tag, fuzzy-grounding produces `cahier`-provenance bullet with coverage 1.0 on a verbatim quote, all 4 target locales import cleanly. Cache-hit re-run produces 0-item todo (idempotent).
+
+Runs to perform (matches user's existing FR/ES Ollama workflow):
+```
+.venv/bin/python scripts/02b_fetch_aoc_lexicon.py --lang pt           # one-time, ~44 wines
+.venv/bin/python scripts/pt/02d_extract_terroir_facts.py --provider ollama
+.venv/bin/python scripts/pt/02e_translate_terroir_facts.py --provider ollama
+.venv/bin/python scripts/04_build_maps.py
+```
+
+Or via the manual round-trip flow (PT facts → external human translator → import):
+```
+.venv/bin/python scripts/pt/02d_extract_terroir_facts.py --provider manual --emit-todo /tmp/pt-02d-todo.json
+# external worker fills items[].facts[]
+.venv/bin/python scripts/pt/02d_extract_terroir_facts.py --provider manual --import /tmp/pt-02d-todo.json --translator-id <id> --translator-kind manual
+.venv/bin/python scripts/pt/02e_translate_terroir_facts.py --provider manual --emit-todo /tmp/pt-02e-todo.json
+# external worker fills items[].translated_bullets
+.venv/bin/python scripts/pt/02e_translate_terroir_facts.py --provider manual --import /tmp/pt-02e-todo.json --translator-id <id> --translator-kind manual
+```
+
+Caveat: stage 04 currently merges FR + ES terroir-fact caches; the PT branch in [scripts/04_build_maps.py](scripts/04_build_maps.py) reads the same shared dir (cache files are country-keyed via the `country` field), but verify the rendering surface honours PT records on first full pipeline rerun — track under "COUNTRY_CONFIG refactor" in the Code follow-ups section.
+
+### Wikipedia PT lexicon — ⏳ not yet run
+
+`scripts/02b_fetch_aoc_lexicon.py --lang pt --source raw/pt/cadernos-extracted/` is wired through `LANG_CONFIG` but hasn't been run. Will fetch pt.wikipedia.org pages for 44 PT entries with disambiguator cascade `(vinho)` → `(DOP)` → `(denominação de origem protegida)`. Per-DOP override file analogous to `raw/wikipedia/aocs/manual_overrides.json` can land alongside if any pages need pinning.
+
+### Code follow-ups
+
+- ✅ **PT national-pliego (Cad.Esp.) tabular grape parser** (2026-05-16) — see grape-list polish above. The PRT-tabular dispatch + colour-code stripping + sub-região break shipped in [scripts/pt/02_extract_cadernos.py](scripts/pt/02_extract_cadernos.py).
+- ✅ **PT grape extraction residual noise** (2026-05-17) — shipped: extended `_NOISE_SLUGS` (12 literals: section-heading boilerplate + Portuguese months) and `_NOISE_SLUG_RES` (4 new regex patterns: `^pgi-?pt-?a\d+$`, `^b-?prt\d+`, `^pagina-?\d+(-(?:de-)?\d+)?$` covering both `N` and `N/M` page footers, `^de-\d+-de(-[a-z]+)?$` for date strings, `^no?-\d+-\d+$` for EU/Portuguese regulation citations, `^descricao-`, `^nome-do-processo`, Roman-numeral-prefixed section headings) in [scripts/pt/02_extract_cadernos.py](scripts/pt/02_extract_cadernos.py). `_is_noise_slug` now also consults the shared `GRAPE_BLOCKLIST` so cross-country noise (place names `palmela` / `setubal` / `terras-de-lafoes` / `s-mamede`, FR phrase fragments, ES headers) is filtered uniformly. Dropped ~70 noise slugs from the corpus; coverage went from 56% → 100% resolved.
+- **PT principal/accessory role classification** — the IVV documento-único format we currently parse emits everything as `role=principal` (3830/3830 grapes across 66 cadernos as of 2026-05-17). The principal-vs-accessory distinction lives in the national IVV regulamento PDFs (typically a Portaria on `dre.pt`), not in the documento-único. Mirror the ES-side [scripts/es/02f_extract_national_pliegos.py](scripts/es/02f_extract_national_pliegos.py) pattern: per DOP, fetch the IVV regulamento, parse the `Castas autorizadas (principais)` / `Castas autorizadas (acessórias)` sections, write a sidecar under `raw/pt/national-regulamentos-extracted/<slug>.json` containing the role assignment per slug, and have stage 04 overlay roles at load time. Without this, the PT map detail panels show every grape as "principal" which is technically inaccurate. ~10-30 hours of work; not blocking shipped feature.
+- **PT grape Wikipedia source — pt.wikipedia.org + translate sidecar** — current 02b only queries en/fr/es/nl Wikipedias, but the bulk of obscure Portuguese varieties (~290 unmatched slugs after the 2026-05-17 run) only exist on pt.wikipedia.org. Mirror the stage 02b/styles-translate pattern: add a pt-source fetch path, then translate the resulting extract into the four site locales with the same `--emit-todo`/`--import` round-trip the user already uses for 02c/02e. Cache attribution must record `source_lang=pt`, `source_page_url`, `source_wikipedia_title`, `source_sha`, `translator`, `translator_kind` per the CLAUDE.md narrative-layer rule. UI tooltip renders "Traduit de Wikipédia en portugais · CC BY-SA 4.0" in place of the `(français)` fallback marker.
+- **CAOP commune-list IGP fallback** — `_resolve_pt_igp_fallback(...)` mirroring ES's `_resolve_es_igp_fallback`. Walk the area section for "todos os concelhos do distrito de X" / commune lists, union with `PTPolygonIndex.union_concelhos`.
+- **Stage 04 `COUNTRY_CONFIG` refactor** — the v1 PT integration adds `elif country == "pt"` branches alongside the existing `== "es"` ones (~6 spots: line 869, 1148, 1200, 1565, 1724, 1865). Folding to a dispatch table when country #4 lands would be cleaner; deferred to keep v1 risk-bounded.
+- **02b_fetch_aoc_lexicon `--lang pt` smoke test** — confirm the disambiguator cascade resolves the common cases (Vinho Verde, Douro, Madeira, Dão, Alentejo).
+
+---
+
 ## Style taxonomy follow-ups
 
 - **Sweet/oxidative cross-cut** — `generoso` (sherry-family) sits under `oxidative` because most sherries are dry; PX cream sherries and dulces are nominally oxidative *and* sweet. Currently they only emit `oxidative + generoso + (sub-tag)`; the `sweet` bucket is *not* added. Decide whether to surface dual-tagging (record carries both `oxidative` and `sweet`) when the pliego describes a PX / cream / sweet-oloroso style. Currently affects ~5 sherry pliegos. Defer to v2.
@@ -344,3 +444,8 @@ These surfaced in the audit but require code changes, not lookups:
 - ✅ **ES grape Wikipedia tooltips** (shipped earlier) — `collect_grape_slugs` in [scripts/02b_fetch_grape_lexicon.py:76-95](scripts/02b_fetch_grape_lexicon.py#L76-L95) iterates both FR cahiers and ES pliegos. ES-only Iberian varieties flow through. Curator pass for non-canonical `es.wikipedia.org` titles still open (`(uva)` disambiguator etc.).
 - **ES grape alias gaps** — [scripts/audit_es_grape_aliases.py](scripts/audit_es_grape_aliases.py) lists tokens that don't resolve through `GRAPE_ALIAS` / `DEFAULT_COLOUR`. ~250 distinct tokens after current seeding; biggest residual classes are Canary Islands varieties (Bermejuela, Marmajuelo, Vijariego, Listán Negro, …) and Galician varieties (Brancellao, Sousón, Loureira, Caíño…). Most are genuine ES-only varieties — register their canonical slug in `DEFAULT_COLOUR` rather than aliasing.
 - **Parenthesised synonyms in ES variety lists** — pliegos like 3-riberas write "Albillo Mayor (Turruntés)" where the parenthetical is the regional synonym. Parser currently keeps the parenthesis in the name → 3-token slug. Extract the parenthesised tail as a synonym (route through `GRAPE_ALIAS`) and slug from the primary token only.
+
+## VIVC grape resolution — open queue (2026-05-17)
+
+Curator action: for each row below, open the VIVC search URL, pick the variety number that best matches the slug's actual identity, and add `{"vivc_id": <id>}` to [raw/vivc/slug_overrides.json](raw/vivc/slug_overrides.json). Then `./.venv/bin/python scripts/02g_fetch_vivc.py` re-runs the passport fetch for the pinned slugs. Sorted by appellation-usage count (high impact first).
+

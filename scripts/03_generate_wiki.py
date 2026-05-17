@@ -453,7 +453,7 @@ def render_index(records: list[dict]) -> str:
     parents = sum(1 for r in records if not r.get("is_sub_denomination"))
     dgcs = sum(1 for r in records if r.get("is_sub_denomination"))
     lines = [
-        "# open wine map — index des appellations",
+        "# Open Wine Map — index des appellations",
         "",
         f"_{parents} appellations + {dgcs} dénominations géographiques complémentaires "
         "générées depuis les cahiers des charges INAO._",

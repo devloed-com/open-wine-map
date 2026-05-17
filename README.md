@@ -1,4 +1,4 @@
-# open wine map
+# Open Wine Map
 
 A reference wiki + map of European wine appellations, generated mechanically
 from public regulator data. France (INAO + JORF) is the canonical pipeline;
@@ -163,7 +163,8 @@ the map sidepanel — see `CLAUDE.md` for the full rules.
 | **IGN AdminExpress (communes)** — via [geo.api.gouv.fr](https://geo.api.gouv.fr/communes) | Commune polygons for the base map | Licence Ouverte 2.0 |
 | **Cadastre Etalab (lieux-dits)** — [cadastre.data.gouv.fr](https://cadastre.data.gouv.fr/) | Named cadastral parcels per commune; resolves Chablis premier-cru / Givry premier cru / Santenay sub-commune climat geometry where INAO publishes no parcellaire (stages 00 + 04) | Licence Ouverte 2.0 |
 | **Wikipedia** — `<lang>.wikipedia.org` REST API | Sidepanel tooltips for grape varieties and distinctive styles (stages 02b/grapes, 02b/styles); per-AOC pages used as a sommelier-vocabulary salience hint for terroir-fact extraction (stage 02b/aocs → 02d) | CC BY-SA 4.0 |
-| **Anthropic Messages API** — `claude-haiku-4-5` | Cahier-summary translation (02c), terroir-fact extraction from cahier section X + Wikipedia (02d), and terroir-fact translation (02e); each stage can be swapped to Ollama or to manual round-trip | n/a — outputs are derivatives of the cahier (public domain) and Wikipedia (CC BY-SA 4.0) |
+| **VIVC** — [Vitis International Variety Catalogue](https://www.vivc.de/), Julius Kühn-Institut Geilweilerhof | Canonical grape-variety names + VIVC variety numbers driving the per-AOC pill's "canonical bracket" (e.g. *Aragonez (Tempranillo Tinto)*), and synonym-aware Wikipedia search (stage 02g + 02b/grapes). Cite: Röckel et al., Vitis International Variety Catalogue — www.vivc.de | Factual citation only — JKI publishes no explicit data licence. We ship VIVC IDs + prime names; verbatim synonym strings are *not* republished pending JKI confirmation. |
+| **Anthropic Messages API** — `claude-haiku-4-5` | Cahier-summary translation (02c), terroir-fact extraction from cahier section X + Wikipedia (02d), terroir-fact translation (02e), grape-tooltip translation (02b/grapes-translate); each stage can be swapped to Ollama or to manual round-trip | n/a — outputs are derivatives of the cahier (public domain) and Wikipedia (CC BY-SA 4.0) |
 
 The map UI displays attribution alongside any Wikipedia extract ("via
 Wikipedia · CC BY-SA 4.0"), any translated summary ("Machine translated

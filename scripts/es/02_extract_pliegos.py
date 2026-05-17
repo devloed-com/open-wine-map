@@ -48,7 +48,9 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.es.subzona import extract_subzonas, slugify as _subzona_slug  # noqa: E402
-from _lib.grape_lexicon import DEFAULT_COLOUR, GRAPE_ALIAS, slugify as _grape_slug  # noqa: E402
+from _lib.grape_lexicon import (  # noqa: E402
+    DEFAULT_COLOUR, GRAPE_ALIAS, GRAPE_BLOCKLIST, slugify as _grape_slug,
+)
 
 INDEX_IN = ROOT / "raw" / "es" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "es" / "oj-pages"
@@ -385,7 +387,9 @@ def _split_synonym_group(token: str) -> list[str]:
         paren_synonyms.append(open_tail.group(1))
         bare = bare[: open_tail.start()].rstrip()
     bare = _BARE_TRAILING_PAREN_RE.sub("", bare).rstrip()
-    parts = re.split(r"\s+-\s+|\s+o\s+|\s+u\s+|\s*/\s*", bare, flags=re.IGNORECASE)
+    # Accept hyphen-minus, en-dash, em-dash, and the spacy bullet forms used
+    # by recent pliegos ("Tempranillo — Tinto fino", "Macabeo – Viura").
+    parts = re.split(r"\s+[-–—]\s+|\s+o\s+|\s+u\s+|\s*/\s*", bare, flags=re.IGNORECASE)
     parts.extend(paren_synonyms)
     return [p.strip(" .,;:") for p in parts if p.strip(" .,;:")]
 
@@ -444,9 +448,11 @@ def _normalise_grape_entry(name: str, ambient_colour: str | None) -> dict | None
         colour = _COLOUR_BY_KEYWORD.get(m_suf.group(1).lower(), colour)
 
     raw_slug = _grape_slug(name)
-    if not raw_slug:
+    if not raw_slug or raw_slug in GRAPE_BLOCKLIST:
         return None
     slug = GRAPE_ALIAS.get(raw_slug, raw_slug)
+    if slug in GRAPE_BLOCKLIST:
+        return None
     for suf in ("-blanc", "-blanca", "-blanco", "-noir", "-negra", "-negro",
                 "-tinta", "-tinto", "-gris", "-rosada"):
         if slug.endswith(suf):

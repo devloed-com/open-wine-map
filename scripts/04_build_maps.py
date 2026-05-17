@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import re
 import shutil
@@ -56,6 +57,9 @@ from _lib.es.region import (
     derive_ccaa as derive_es_ccaa,
 )
 from _lib.es.sigpac import SigpacIndex
+from _lib.pt.commune_list import parse_commune_list as parse_pt_commune_list
+from _lib.pt.geometry import PTPolygonIndex
+from _lib.pt.region import derive_region as derive_pt_region
 from _lib.i18n import LOCALES, compile_catalogs
 from _lib.lieu_dit import LieuDitIndex, derive_climat_name
 from _lib.map_template import render as render_map_html
@@ -77,6 +81,8 @@ NATIONAL_PLIEGOS_ES = ROOT / "raw" / "es" / "national-pliegos-extracted"
 ES_FIGSHARE_GPKG = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
 ES_GISCO_LAU_ZIP = ROOT / "raw" / "es" / "gisco" / "LAU_RG_01M_2024_3035.shp.zip"
 ES_SIGPAC_DIR = ROOT / "raw" / "es" / "sigpac"
+EXTRACTED_PT = ROOT / "raw" / "pt" / "cadernos-extracted"
+PT_CAOP_DIR = ROOT / "raw" / "pt" / "caop"
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"
 WIKI = ROOT / "wiki"
 SITE_BASE_URL = "https://www.openwinemap.com"
@@ -88,6 +94,8 @@ PMTILES_OUT = MAP_DATA / "appellations.pmtiles"
 GEOJSON_VILLAGES_OUT = MAP_DATA / "appellations-villages.geojson"
 PMTILES_VILLAGES_OUT = MAP_DATA / "appellations-villages.pmtiles"
 LEXICON_DIR = ROOT / "raw" / "wikipedia" / "grapes"
+GRAPE_TRANSLATIONS_DIR = ROOT / "raw" / "translations" / "grapes"
+VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
 STYLE_LEXICON_DIR = ROOT / "raw" / "wikipedia" / "styles"
 STYLE_TRANSLATIONS_DIR = ROOT / "raw" / "translations" / "styles"
 
@@ -229,11 +237,8 @@ def load_grape_lexicon(lang: str, max_chars: int = 280) -> dict:
 
 
 def merge_grape_lexicon(lang_lex: dict, fr_lex: dict) -> dict:
-    """For any slug in `fr_lex` missing from `lang_lex`, fill in the FR
-    entry and tag it with `lang_fallback=True` so the UI can render a
-    "(français)" hint. The localised name is preserved when the entry was
-    already present (even if its `extract` was missing — a partial
-    fallback is marked via the FR extract being copied in)."""
+    """Legacy FR-fallback merge. Retained for the styles path which still
+    uses it; the grapes path now goes through `build_grapes_info()`."""
     if lang_lex is fr_lex:
         return lang_lex
     out: dict[str, dict] = {}
@@ -253,6 +258,140 @@ def merge_grape_lexicon(lang_lex: dict, fr_lex: dict) -> dict:
             out[slug] = merged
     for slug, local in lang_lex.items():
         out.setdefault(slug, local)
+    return out
+
+
+_VIVC_BY_SLUG_CACHE: dict[str, dict] | None = None
+
+
+def _load_vivc_by_slug() -> dict[str, dict]:
+    """`{slug: {canonical_name, vivc_id, vivc_url}}` from raw/vivc/by-slug/."""
+    global _VIVC_BY_SLUG_CACHE
+    if _VIVC_BY_SLUG_CACHE is not None:
+        return _VIVC_BY_SLUG_CACHE
+    out: dict[str, dict] = {}
+    if not VIVC_BY_SLUG.exists():
+        _VIVC_BY_SLUG_CACHE = out
+        return out
+    for f in VIVC_BY_SLUG.glob("*.json"):
+        rec = json.loads(f.read_text())
+        prime = (rec.get("prime_name") or "").strip()
+        vid = rec.get("vivc_id")
+        if not prime or not isinstance(vid, int):
+            continue
+        # str.title() handles apostrophes correctly ("D'AUNIS" → "D'Aunis"),
+        # which a per-token .capitalize() does not ("D'aunis").
+        canonical = prime.title()
+        out[rec["slug"]] = {
+            "canonical_name": canonical,
+            "vivc_id": vid,
+            "vivc_url": rec.get("source_url"),
+        }
+    _VIVC_BY_SLUG_CACHE = out
+    return out
+
+
+def _load_native_grape(lang: str, slug: str, max_chars: int = 280) -> dict | None:
+    """Native Wikipedia entry for (slug, lang), or None when missing/empty.
+    Returns the trimmed entry with name, extract, page_url, revision_id,
+    thumbnail, matched_via."""
+    f = LEXICON_DIR / lang / f"{slug}.json"
+    if not f.exists():
+        return None
+    d = json.loads(f.read_text())
+    if d.get("missing") or d.get("error"):
+        return None
+    title = (d.get("wikipedia_title") or "").strip()
+    extract = (d.get("extract") or "").strip()
+    if not extract or not is_grape_summary(lang, d.get("description", ""), extract):
+        return None
+    display = _DISAMBIG_SUFFIX.sub("", title).strip() if title else slug
+    if len(extract) > max_chars:
+        cut = extract[:max_chars].rsplit(". ", 1)[0]
+        extract = cut + ("." if not cut.endswith(".") else "") + " […]"
+    out: dict = {
+        "name": display or slug,
+        "extract": extract,
+        "page_url": d.get("page_url"),
+        "revision_id": d.get("revision_id"),
+        "matched_via": d.get("matched_via") or "primary",
+    }
+    if d.get("thumbnail"):
+        out["thumbnail"] = d["thumbnail"]
+    return out
+
+
+def _load_translated_grape(lang: str, slug: str, max_chars: int = 280) -> dict | None:
+    f = GRAPE_TRANSLATIONS_DIR / lang / f"{slug}.json"
+    if not f.exists():
+        return None
+    d = json.loads(f.read_text())
+    extract = (d.get("extract") or "").strip()
+    if not extract:
+        return None
+    if len(extract) > max_chars:
+        cut = extract[:max_chars].rsplit(". ", 1)[0]
+        extract = cut + ("." if not cut.endswith(".") else "") + " […]"
+    return {
+        "extract": extract,
+        "source_lang": d.get("source_lang"),
+        "page_url": d.get("source_page_url"),
+        "name": (d.get("source_wikipedia_title") or slug).strip() or slug,
+        "translator": d.get("translator"),
+        "translator_kind": d.get("translator_kind"),
+    }
+
+
+def build_grapes_info(target_locale: str) -> dict:
+    """Per-slug grape data for the target locale's map page.
+
+    Resolution per (slug, target_locale):
+      1. Native target-locale Wikipedia entry → `is_translated=false`,
+         `source_lang=target_locale`.
+      2. Translated cache (`02b_translate_grapes.py`) →
+         `is_translated=true`, `source_lang` from the cache record.
+      3. Neither → emit `{canonical_name, vivc_id, vivc_url}` only when
+         a VIVC record exists; the pill still renders (cahier name +
+         optional canonical bracket + VIVC link), just without a tooltip
+         body.
+
+    VIVC `canonical_name`/`vivc_id`/`vivc_url` ride alongside the
+    Wikipedia entry for every slug that has a resolved VIVC record;
+    unresolved/missed slugs simply lack those fields.
+    """
+    vivc = _load_vivc_by_slug()
+    slugs: set[str] = set()
+    if (LEXICON_DIR / target_locale).exists():
+        slugs.update(p.stem for p in (LEXICON_DIR / target_locale).glob("*.json"))
+    if (GRAPE_TRANSLATIONS_DIR / target_locale).exists():
+        slugs.update(p.stem for p in (GRAPE_TRANSLATIONS_DIR / target_locale).glob("*.json"))
+    slugs.update(vivc.keys())
+
+    out: dict[str, dict] = {}
+    for slug in slugs:
+        vivc_fields = vivc.get(slug) or {}
+        native = _load_native_grape(target_locale, slug)
+        if native is not None:
+            entry = {
+                **vivc_fields,
+                **native,
+                "source_lang": target_locale,
+                "is_translated": False,
+            }
+            out[slug] = entry
+            continue
+        translated = _load_translated_grape(target_locale, slug)
+        if translated is not None:
+            entry = {
+                **vivc_fields,
+                **translated,
+                "is_translated": True,
+                "matched_via": "translation",
+            }
+            out[slug] = entry
+            continue
+        if vivc_fields:
+            out[slug] = {**vivc_fields, "is_translated": False, "source_lang": None}
     return out
 
 
@@ -775,6 +914,13 @@ def main() -> int:
             if json_path.name == "_index.json":
                 continue
             extracted_records.append(json.loads(json_path.read_text()))
+    # Multi-country: also iterate PT extracted records
+    # (raw/pt/cadernos-extracted/). Same stub semantics as ES.
+    if EXTRACTED_PT.exists():
+        for json_path in sorted(EXTRACTED_PT.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text()))
     # Augment ES records with national-pliego sidecar data — adds the
     # accessory varieties that the EU-OJ documento único omits. The
     # sidecar carries provenance (URL + sha256 + fetched_at) which
@@ -831,6 +977,22 @@ def main() -> int:
         )
     es_hits: Counter[str] = Counter()
     es_region_by_parent_slug: dict[str, str] = {}
+
+    # PT polygon index: Bétard 2022 (re-uses ES Figshare gpkg, which
+    # covers all EU PDOs) + DGT CAOP 2025 (Continente + Açores + Madeira)
+    pt_caop_gpkgs = (
+        sorted(PT_CAOP_DIR.glob("*.gpkg")) if PT_CAOP_DIR.exists() else []
+    )
+    pt_polygons = PTPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        caop_gpkgs=pt_caop_gpkgs,
+    )
+    print(
+        f"[load] PT polygons: {pt_polygons.n_pdo_polygons} Figshare PT-PDOs / "
+        f"{pt_polygons.n_concelhos} CAOP concelhos",
+        file=sys.stderr,
+    )
+    pt_hits: Counter[str] = Counter()
 
     for record in tqdm(extracted_records, desc="union", leave=False):
         is_sub_denomination = bool(record.get("is_sub_denomination"))
@@ -917,12 +1079,78 @@ def main() -> int:
                 parent_geom_by_slug[record["slug"]] = geom
                 parent_village_geom_by_slug[record["slug"]] = geom
             _emit_es_features = True
+            _emit_pt_features = False
+        elif country == "pt":
+            # PT branch — Bétard Figshare PDO match → parent fallback.
+            # CAOP município-list union is reserved for IGPs in a follow-
+            # up; v1 relies on Bétard for the 30 DOPs and falls through
+            # to parent inheritance for sub-regiões + no-geometry for the
+            # ~14 IGPs that aren't in Bétard.
+            geom = None
+            stats = {"matched": 0, "unmatched": 0}
+            geom_source = "none"
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            if record.get("stub"):
+                geom_source = "stub-no-geometry"
+            elif is_sub_denomination:
+                # Sub-regiões inherit the parent's polygon — they share
+                # the parent's Bétard file_number, but `parent-appellation`
+                # is the more honest attribution (the polygon's precision
+                # is parent-level, not sub-região-level).
+                parent_slug = record.get("parent_slug") or ""
+                parent_geom = parent_geom_by_slug.get(parent_slug)
+                if parent_geom is not None:
+                    geom = parent_geom
+                    geom_source = "parent-appellation"
+                    stats = {"matched": -1, "unmatched": 0}
+            else:
+                # 1) CAOP commune-list union (preferred — município-level
+                #    precision avoids Bétard's whole-município padding
+                #    that causes adjacent-DOP polygons to overlap on the
+                #    boundary).
+                area_text = (record.get("sections") or {}).get("area", "")
+                parsed = parse_pt_commune_list(area_text)
+                caop_geom, caop_stats = pt_polygons.union_from_parsed(parsed)
+                cm = caop_stats["concelhos_matched"]
+                dm = caop_stats["distritos_matched"]
+                # Threshold: accept CAOP when at least 2 concelho matches
+                # or 1 distrito expansion. Single-concelho caches (Pico
+                # caderno mentions "São Roque" only — but São Roque do
+                # Pico didn't match) fall through to Bétard.
+                if caop_geom is not None and not caop_geom.is_empty and (
+                    cm >= 2 or dm >= 1
+                ):
+                    geom = caop_geom
+                    geom_source = "caop-concelho-union"
+                    stats = {"matched": cm + dm, "unmatched": (
+                        caop_stats["concelhos_unmatched"]
+                        + caop_stats["distritos_unmatched"]
+                    )}
+                else:
+                    # 2) Bétard 2022 PDO polygon (covers all 30 PT DOPs
+                    #    but not IGPs; coarser precision than CAOP).
+                    fig = pt_polygons.figshare_polygon(record.get("file_number") or "")
+                    if fig is not None and not fig.is_empty:
+                        geom = fig
+                        geom_source = "figshare-pdo"
+                        stats = {"matched": -1, "unmatched": 0}
+            pt_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if not is_sub_denomination and geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = True
         else:
             _emit_es_features = False
+            _emit_pt_features = False
             sib_v_geom = sib_name = sib_slug = None
             cadastre_match = None
 
-        if _emit_es_features:
+        if _emit_es_features or _emit_pt_features:
             # Geometry already resolved above; skip the FR-specific chain.
             pass
         elif is_sub_denomination:
@@ -974,10 +1202,10 @@ def main() -> int:
         # commune-blocks instead of parcel-precise outlines. DGCs typically
         # don't have their own row in the aires CSV, so we let them fall
         # back to the parent's village geometry (already computed).
-        # ES records already had v_geom assigned in the ES branch above
+        # ES + PT records already had v_geom assigned in their branch above
         # (using the same geom for both detail + village), so skip the
         # FR-specific village resolution.
-        if _emit_es_features:
+        if _emit_es_features or _emit_pt_features:
             pass
         elif is_sub_denomination:
             # Prefer DGC's own parcellaire polygon as the village geometry —
@@ -1079,9 +1307,9 @@ def main() -> int:
         # Pommeau, etc.) and ciders fall outside that set. The map hides
         # non-wine appellations by default — see `showSpirits` in the
         # template for the toggle.
-        # ES records have no `categorie` — every entry is filtered to
+        # ES + PT records have no `categorie` — every entry is filtered to
         # productType=WINE upstream in stage 00, so they're all wines.
-        if record.get("country") == "es":
+        if record.get("country") in ("es", "pt"):
             is_wine = "1"
         else:
             is_wine = "1" if categorie.startswith("Vin") else "0"
@@ -1143,6 +1371,8 @@ def main() -> int:
             else:
                 region_value = derive_es_ccaa(record)
                 es_region_by_parent_slug[record["slug"]] = region_value
+        elif record.get("country") == "pt":
+            region_value = derive_pt_region(record)
         else:
             region_value = record.get("comite_regional", "")
         common_props = {
@@ -1251,16 +1481,16 @@ def main() -> int:
         if PMTILES_OUT.exists() and PMTILES_VILLAGES_OUT.exists():
             emit_html(
                 features, village_features,
-                layer_url="/map-data/appellations.pmtiles",
-                villages_layer_url="/map-data/appellations-villages.pmtiles",
+                layer_url=_fingerprint("/map-data/appellations.pmtiles", PMTILES_OUT),
+                villages_layer_url=_fingerprint("/map-data/appellations-villages.pmtiles", PMTILES_VILLAGES_OUT),
                 source_type="pmtiles",
                 use_translations=not args.no_translations,
             )
         else:
             emit_html(
                 features, village_features,
-                layer_url="/map-data/appellations.geojson",
-                villages_layer_url="/map-data/appellations-villages.geojson",
+                layer_url=_fingerprint("/map-data/appellations.geojson", GEOJSON_OUT),
+                villages_layer_url=_fingerprint("/map-data/appellations-villages.geojson", GEOJSON_VILLAGES_OUT),
                 source_type="geojson",
                 use_translations=not args.no_translations,
             )
@@ -1270,8 +1500,8 @@ def main() -> int:
         print("warn: tippecanoe not on PATH (brew install tippecanoe) — skipping pmtiles", file=sys.stderr)
         emit_html(
             features, village_features,
-            layer_url="/map-data/appellations.geojson",
-            villages_layer_url="/map-data/appellations-villages.geojson",
+            layer_url=_fingerprint("/map-data/appellations.geojson", GEOJSON_OUT),
+            villages_layer_url=_fingerprint("/map-data/appellations-villages.geojson", GEOJSON_VILLAGES_OUT),
             source_type="geojson",
             use_translations=not args.no_translations,
         )
@@ -1305,8 +1535,8 @@ def main() -> int:
 
     emit_html(
         features, village_features,
-        layer_url="/map-data/appellations.pmtiles",
-        villages_layer_url="/map-data/appellations-villages.pmtiles",
+        layer_url=_fingerprint("/map-data/appellations.pmtiles", PMTILES_OUT),
+        villages_layer_url=_fingerprint("/map-data/appellations-villages.pmtiles", PMTILES_VILLAGES_OUT),
         source_type="pmtiles",
         use_translations=not args.no_translations,
     )
@@ -1493,9 +1723,19 @@ def _sources_for(record: dict) -> dict:
     """Pull authoritative source URLs from the extracted record. The keys
     are country-specific: FR records carry BO Agri / show_texte / product
     URLs; ES records carry the EUR-Lex final URL + the original
-    eAmbrosia publication URL. The UI branches on `country` to render
-    the right attribution wording."""
+    eAmbrosia publication URL; PT records carry the IVV caderno PDF URL.
+    The UI branches on `country` to render the right attribution wording."""
     src = record.get("source") or {}
+    if record.get("country") == "pt":
+        return {
+            "country": "pt",
+            "ivv_caderno_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "pdf_sha256": src.get("sha256") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
     if record.get("country") == "es":
         # The AOC-blob phase re-reads the on-disk extracted JSON (which
         # doesn't carry the augmentation), so fall back to the slug-keyed
@@ -1602,6 +1842,23 @@ def overlay_translated_facts(
     return out
 
 
+def _fingerprint(url: str, file: Path) -> str:
+    """Suffix `url` with `?v=<sha8>` derived from `file`'s bytes.
+
+    Pmtiles + geojson assets are served with a 30-day browser cache
+    (Bunny default). The HTML is short-cached separately, but its
+    references to map-data assets would otherwise pin clients to stale
+    polygon / grape data across rebuilds. A content-derived suffix
+    bypasses the cache exactly when the file changes."""
+    if not file.exists():
+        return url
+    h = hashlib.sha256()
+    with file.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 16), b""):
+            h.update(chunk)
+    return f"{url}?v={h.hexdigest()[:8]}"
+
+
 def emit_html(
     features: list[dict],
     village_features: list[dict],
@@ -1641,18 +1898,33 @@ def emit_html(
         simple_styles = sorted({SIMPLE_STYLE_BUCKETS.get(s, "other") for s in styles}) if styles else []
 
         # Extracted JSON has a richer summary + source URLs; pull them.
-        # Try the FR path first, then the ES path. Slugs are globally
-        # unique across countries (see stage 02 + stage 02es slug derivation),
-        # so at most one path matches.
+        # Try the FR path first, then the ES path, then the PT path. Slugs
+        # are globally unique across countries (see each stage 02's slug
+        # derivation), so at most one path matches.
         country = p.get("country") or "fr"
-        ext_path = (EXTRACTED_ES if country == "es" else EXTRACTED) / f"{slug}.json"
+        ext_dir = {
+            "es": EXTRACTED_ES,
+            "pt": EXTRACTED_PT,
+        }.get(country, EXTRACTED)
+        ext_path = ext_dir / f"{slug}.json"
         summary = ""
         sources: dict = {}
+        grape_names: dict[str, str] = {}
         parent_slug_for_facts = p.get("parent_slug", "") or ""
         if ext_path.exists():
             rec = json.loads(ext_path.read_text())
             summary = derive_summary(rec)
             sources = _sources_for(rec)
+            # Per-appellation cahier spelling per slug — drives the pill
+            # label so the rendered name matches what the regulator
+            # actually published (PT Douro shows "Aragonez", ES Rioja
+            # shows "Tempranillo", FR Bandol shows "mourvèdre"), with
+            # the VIVC canonical name added in brackets when distinct.
+            for d in (rec.get("grapes") or {}).get("details") or []:
+                s_slug = d.get("slug")
+                s_name = (d.get("name") or "").strip()
+                if s_slug and s_name and s_name.lower() != s_slug:
+                    grape_names[s_slug] = s_name
         syndicate = resolve_appellation_url(
             slug, parent_slug_for_facts, p.get("region", "") or "", appellation_urls
         )
@@ -1689,6 +1961,7 @@ def emit_html(
             "grapes_accessory": accessory,
             "grapes_observation": observation,
             "grapes_all": all_grapes,
+            "grape_names": grape_names,
             "summary": summary,
             "sources": sources,
             "terroir_facts": terroir_facts,
@@ -1777,14 +2050,12 @@ def emit_html(
         area_q1=area_q1,
         area_q3=area_q3,
     )
-    fr_lex = load_grape_lexicon("fr")
     fr_styles_lex = load_style_lexicon("fr")
     for lang in LOCALES:
+        lex = build_grapes_info(lang)
         if lang == "fr":
-            lex = fr_lex
             styles_lex = fr_styles_lex
         else:
-            lex = merge_grape_lexicon(load_grape_lexicon(lang), fr_lex)
             styles_lex = merge_style_lexicon(load_style_lexicon(lang), fr_styles_lex)
         translations = load_summary_translations(lang) if use_translations else {}
         # The translation overlay is source-language-aware: a record's
@@ -1797,7 +2068,8 @@ def emit_html(
         # cahier, so no marker.
         aocs_for_lang = {}
         for slug, rec in aocs.items():
-            src_lang = "es" if rec.get("country") == "es" else "fr"
+            rec_country = rec.get("country")
+            src_lang = rec_country if rec_country in ("es", "pt") else "fr"
             t = translations.get(slug)
             if not t:
                 aocs_for_lang[slug] = rec
@@ -1818,9 +2090,12 @@ def emit_html(
         facts_translations: dict[str, dict] = {}
         if use_translations:
             all_facts_translations = load_terroir_facts_translations(lang)
+            def _src_lang_for(slug: str) -> str:
+                c = (aocs.get(slug, {}) or {}).get("country")
+                return c if c in ("es", "pt") else "fr"
             facts_translations = {
                 slug: t for slug, t in all_facts_translations.items()
-                if lang != ("es" if (aocs.get(slug, {}).get("country") == "es") else "fr")
+                if lang != _src_lang_for(slug)
             }
             if facts_translations:
                 aocs_for_lang = overlay_translated_facts(aocs_for_lang, facts_translations)
@@ -1831,11 +2106,13 @@ def emit_html(
         out.write_text(render_map_html(
             **per_locale_facets, locale=lang, grapes_info=lex, styles_info=styles_lex,
         ))
-        fallback_n = sum(1 for v in lex.values() if v.get("lang_fallback"))
+        translated_n = sum(1 for v in lex.values() if v.get("is_translated"))
+        with_vivc_n = sum(1 for v in lex.values() if v.get("vivc_id"))
         styles_fallback_n = sum(1 for v in styles_lex.values() if v.get("lang_fallback"))
         print(
             f"[html] {out.relative_to(ROOT)} "
-            f"(locale={lang}, grape_info={len(lex)}, fr_fallback={fallback_n}, "
+            f"(locale={lang}, grape_info={len(lex)}, translated={translated_n}, "
+            f"vivc_linked={with_vivc_n}, "
             f"style_info={len(styles_lex)}, style_fr_fallback={styles_fallback_n}, "
             f"summary_translations={len(translations)}, "
             f"facts_translations={len(facts_translations)})",
@@ -1878,8 +2155,8 @@ def _sitemap_url_block(loc: str, lastmod: str, alternates: str) -> str:
 
 
 _WEBMANIFEST = {
-    "name": "open wine map",
-    "short_name": "open wine map",
+    "name": "Open Wine Map",
+    "short_name": "Open Wine Map",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",

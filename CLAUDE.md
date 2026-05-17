@@ -1,4 +1,4 @@
-# open wine map — curation guide for Claude
+# Open Wine Map — curation guide for Claude
 
 This project is a reference wiki + map of European wine appellations,
 generated mechanically from public regulator data. It is **not** a
@@ -63,10 +63,42 @@ details and "Hard rules" for invariants that apply to every country.
     translated tooltips with "Traduit de Wikipédia en &lt;source&gt; ·
     CC BY-SA 4.0" (linked to the source article) in place of the
     `(français)` fallback marker.
+  - Stage 02b/grapes-translate (`scripts/02b_translate_grapes.py`) —
+    sister stage to 02b/styles-translate, for grape Wikipedia extracts.
+    The source-locale preference is *per-slug*, derived from the
+    `per_slug_dominant_lang()` index in
+    `scripts/_lib/grape_corpus.py` (the country whose corpus mentions
+    the slug most frequently): the chain is
+    `dominant-cahier-lang → fr → en → any-other`. Identical
+    provider trio, manual round-trip flags, and sha-keyed cache
+    invalidation. Stage 04 surfaces the translated extract in the
+    pill tooltip with the same "Traduit de Wikipédia en &lt;source&gt;"
+    attribution.
   Cahier text, commune lists, region names, and INAO category codes continue to
   come exclusively from INAO/JORF. Each Wikipedia entry caches `revision`,
   `fetched_at`, `page_url`, and `license`; the UI must render attribution
   ("via Wikipedia · CC BY-SA 4.0") next to any extract it shows.
+- **VIVC is a third-party grape-taxonomy reference (factual citation).**
+  Stage 02g (`scripts/02g_fetch_vivc.py`) resolves every distinct grape
+  slug in the FR/ES/PT corpora to a VIVC variety number (Vitis
+  International Variety Catalogue, Julius Kühn-Institut Geilweilerhof —
+  https://www.vivc.de/). The resolved record carries the VIVC prime
+  name, berry colour, country of origin, parentage, and full synonym
+  list with per-country "Official name in X" flags. Three uses:
+  (1) the **canonical-bracket** on each grape pill — the cahier's
+  spelling is shown verbatim with the VIVC prime name in brackets when
+  distinct (e.g. *Aragonez (Tempranillo Tinto)* on a PT pill, suppressed
+  when normalisation collapses to the same name); (2) **synonym-aware
+  Wikipedia search** in stage 02b/grapes (when the slug-derived title
+  misses, the chain walks VIVC's prime + synonyms in
+  country-official-name-priority order); (3) **VIVC #&lt;id&gt;** link
+  in the tooltip source-block alongside the Wikipedia attribution.
+  JKI publishes no explicit data licence — the codebase therefore ships
+  VIVC IDs + prime names (factual citation) and does **not** republish
+  verbatim synonym strings in the UI pending JKI confirmation. Citation:
+  Röckel et al., Vitis International Variety Catalogue — www.vivc.de.
+  Ambiguous slugs (multiple candidate VIVC entries) get pinned via
+  `raw/vivc/slug_overrides.json` (template at `slug_overrides.example.json`).
 - **Machine-translated summaries are a bounded narrative layer.** Stage 02c
   (`scripts/02c_translate_summaries.py`) translates the FR cahier summary
   paragraph into `en` / `es` / `nl` for the map detail panel only. FR remains
@@ -259,15 +291,17 @@ twice with no changes upstream must be a no-op (cache hits).
 | 00_fetch_data.py | (network) | raw/inao/siqo-referentiel.csv, raw/ign/communes.geojson, raw/inao/parcellaire/*.shp, raw/cadastre/lieux-dits/*.json.gz |
 | 01_scrape_cahiers.py | raw/inao/siqo-referentiel.csv | raw/inao/cahiers/*.pdf, raw/inao/cahiers/manifest.json |
 | 02_extract_cahiers.py | raw/inao/cahiers/*.pdf | raw/inao/cahier-extracted/*.json + _index.json |
-| 02b_fetch_grape_lexicon.py | raw/inao/cahier-extracted/*.json | raw/wikipedia/grapes/<lang>/*.json + manifest.json |
+| 02b_fetch_grape_lexicon.py | raw/inao/cahier-extracted/*.json + raw/vivc/by-slug/ | raw/wikipedia/grapes/<lang>/*.json + manifest.json |
 | 02b_fetch_aoc_lexicon.py | raw/inao/cahier-extracted/*.json | raw/wikipedia/aocs/fr/*.json + manifest.json |
 | 02b_fetch_style_lexicon.py | raw/wikipedia/style_overrides.json | raw/wikipedia/styles/<lang>/*.json + manifest.json |
 | 02b_translate_styles.py | raw/wikipedia/styles/<lang>/*.json | raw/translations/styles/<lang>/*.json + manifest.json |
+| 02b_translate_grapes.py | raw/wikipedia/grapes/<lang>/*.json + grape-corpus dominant-lang | raw/translations/grapes/<lang>/*.json + manifest.json |
 | 02c_translate_summaries.py | raw/inao/cahier-extracted/*.json | raw/translations/summaries/<lang>/*.json |
 | 02d_extract_terroir_facts.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/aocs/fr/ | raw/terroir-facts/*.json + manifest.json |
 | 02e_translate_terroir_facts.py | raw/terroir-facts/*.json | raw/translations/terroir-facts/<lang>/*.json |
+| 02g_fetch_vivc.py | raw/inao/cahier-extracted/*.json + raw/es/pliegos-extracted/ + raw/pt/cadernos-extracted/ + raw/vivc/slug_overrides.json | raw/vivc/{search,passport,by-slug}/*.html\|json + manifest.json + slug_overrides.example.json |
 | 03_generate_wiki.py | raw/inao/cahier-extracted/*.json + raw/terroir-facts/ | wiki/*.md, wiki/_index.json |
-| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (homepage × 4 locales) |
+| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (homepage × 4 locales) |
 
 ## Spain pipeline (`scripts/es/`)
 
@@ -440,6 +474,125 @@ formats won't yield a polygon yet — they need per-source parsers.
 Curator effort still produces value though: the wine moves out of
 the stub bucket, sources become traceable, and the audit shows
 real provenance instead of "no URL anywhere".
+
+## Portugal pipeline (`scripts/pt/`)
+
+Country #3. Structurally simpler than ES: the **IVV (Instituto da
+Vinha e do Vinho)** publishes every PT DOP/IGP caderno de
+especificações as a stable PDF directly from its master index pages,
+so no AWS WAF, no Playwright bootstrap. ~44 wine GIs (30 DOP + 14
+IGP) — about a third the size of ES.
+
+Spine: **eAmbrosia + IVV cadernos master indexes**. eAmbrosia
+(filtered to `country=PT + productType=WINE + status=registered`)
+provides the wine list with `fileNumber` (`PDO-PT-Axxxx` /
+`PGI-PT-Axxxx`), kind, producer group, and publication-URL
+provenance. IVV's HTML pages at `/np4/8617.html` (DOP) and
+`/np4/8616.html` (IGP) enumerate the actual caderno PDFs behind the
+NP4 templating literal `{$clientServletPath}` (URL-encoded
+`%7B%24clientServletPath%7D` — resolves server-side). Names match
+1:1 between eAmbrosia and IVV with the normaliser in
+[scripts/_lib/pt/name_match.py](scripts/_lib/pt/name_match.py).
+
+Caderno structure: PT cadernos come in three variants — "Roman +
+Arabic" (Douro, Alentejo, Madeira, Porto — sections I..VI with V.
+DOCUMENTO ÚNICO carrying numbered subsections 1–9 inside), "Arabic
+only / documento único first" (Vinho Verde, Pico — sections 1–9
+directly), and "Arabic short / older format" (Dão — sections 1–9
+without the DOCUMENTO ÚNICO wrapper).
+[scripts/_lib/pt/caderno_sections.py](scripts/_lib/pt/caderno_sections.py)
+finds section bodies by Portuguese keyword anchors (`área
+delimitada` / `zona geográfica demarcada`, `relação com a área
+geográfica`, `castas` / `uvas de vinho`, `rendimentos máximos`,
+etc.) and carves up the text between them — independent of the
+variant.
+
+Sub-regiões (the FR DGC / ES subzona analogue) are detected by
+[scripts/_lib/pt/subregiao.py](scripts/_lib/pt/subregiao.py) with
+two patterns: **Pattern A** (`Sub-região NAME`) covers Vinho Verde
++ Alentejo + variants; **Pattern B** (Douro-style `NAME: no
+distrito de X` colon-prefix with a `três áreas geográficas` /
+`área das sub-regiões` preamble) covers Douro/Porto + Trás-os-
+Montes. Wines without a matched pattern emit parent-only — those
+sub-regiões exist in regulatory documents but aren't in the caderno
+text. Sub-região records carry `is_sub_denomination=true`,
+`parent_slug`, `parent_id_eambrosia`, `parent_name` (same data
+model as FR DGCs and ES subzonas) and share the parent's
+`file_number` / sections / grapes (parent inherited at the
+rendering layer).
+
+| Script | Reads | Writes |
+|---|---|---|
+| pt/00_fetch_data.py | (network) | raw/pt/eambrosia/index.json, raw/pt/ivv/cadernos-index.json, raw/pt/caop/CAOP_{Continente,RAA,RAM}_2025.gpkg |
+| pt/01_fetch_cadernos.py | raw/pt/eambrosia/index.json + raw/pt/ivv/cadernos-index.json + raw/pt/ivv/cadernos/manual_overrides.json | raw/pt/ivv/cadernos/*.pdf + manifest.json |
+| pt/02_extract_cadernos.py | raw/pt/ivv/cadernos/*.pdf | raw/pt/cadernos-extracted/*.json + _index.json (parents + sub-regiões + stubs) |
+| pt/02d_extract_terroir_facts.py | raw/pt/cadernos-extracted/*.json + raw/wikipedia/aocs/pt/ | raw/terroir-facts/*.json (country="pt") + manifest-pt.json |
+| pt/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="pt") | raw/translations/terroir-facts/<en|fr|es|nl>/*.json |
+| pt/03_generate_wiki.py | raw/pt/cadernos-extracted/*.json | wiki/<slug>.md (per PT record) + merges PT entries into wiki/_index.json |
+| pt/regen_manual_overrides_template.py | raw/pt/eambrosia/index.json + raw/pt/ivv/cadernos/manifest.json | raw/pt/ivv/cadernos/manual_overrides.json (curator queue, preserves filled-in URLs) |
+
+PT-specific notes:
+- `kind` is `"DOP"` / `"IGP"` (Portuguese convention, same as ES).
+- The shared stages 02b/02c are extended to PT: grape lexicon
+  (`02b_fetch_grape_lexicon.py`) iterates `raw/pt/cadernos-extracted/`;
+  AOC lexicon (`02b_fetch_aoc_lexicon.py`) supports `--lang pt`;
+  translation summaries (`02c_translate_summaries.py`) supports
+  `--source-lang pt` with target locales `en/fr/es/nl`.
+- Terroir-fact extraction (02d/02e) is wired for PT via
+  `scripts/pt/02d_extract_terroir_facts.py` +
+  `scripts/pt/02e_translate_terroir_facts.py` (siblings of the ES
+  pair). Same dual-source grounding (caderno section 7 +
+  pt.wikipedia.org per-DOP page), same fuzzy-coverage filter (≥ 0.6),
+  same per-bullet provenance (`cahier` / `wiki` / `both`), same
+  manual round-trip flow. PT 02e targets en/fr/es/nl (FR + ES are
+  translation targets, not sources). Cache files land in the shared
+  `raw/terroir-facts/` directory with `country: "pt"` to distinguish
+  them from FR/ES records. Sub-regiões are skipped — they inherit
+  the parent's bullets at the rendering layer.
+
+### PT geometry resolution chain (stage 04)
+
+Per PT record, in priority order (each step records the chosen
+source in `geom_source` so the panel can attribute correctly):
+
+1. **`stub-no-geometry`** — stubs (no caderno) short-circuit.
+2. **`parent-appellation`** — sub-regiões inherit the parent's
+   polygon. Honest attribution: precision is parent-level, not
+   sub-região-level. v2 follow-up will refine via CAOP município
+   commune lists when the caderno enumerates them per-sub-região.
+3. **`figshare-pdo`** — exact `file_number` (`PDO-PT-Axxxx`) →
+   `PDOid` match against Bétard 2022 EU_PDO.gpkg (reuses
+   `raw/es/figshare/EU_PDO.gpkg`; the dataset covers all EU PDOs).
+   Hit rate: 30 / 30 PT DOPs.
+4. **`none`** — the 14 PT IGPs (which Bétard 2022 doesn't carry
+   by design — it's PDO-only) appear in the sidebar with no
+   polygon in v1. Helper [scripts/_lib/pt/geometry.py](scripts/_lib/pt/geometry.py)
+   exposes `PTPolygonIndex.union_concelhos` against DGT CAOP 2025
+   for the future IGP commune-list parser.
+
+Bétard 2022 + CAOP 2025 are CC-licensed and re-distributable with
+attribution. CAOP 2025 (Continente + RAA + RAM) is fetched once in
+stage 00 and cached at `raw/pt/caop/`. Re-runnable: stage 04 reads
+the cached gpkg on every run.
+
+### Curator workflow for PT wines without an IVV match
+
+Mirrors the ES `regen_manual_overrides_template.py` flow. After a
+stage 01 run that left `no-caderno` rows in the manifest:
+
+```
+.venv/bin/python scripts/pt/regen_manual_overrides_template.py
+# writes raw/pt/ivv/cadernos/manual_overrides.json with one entry
+# per wine that needs a URL. Edit, fill the `pdf_url` field with a
+# public, licence-clear caderno PDF (alternate IVV path, BOE-style
+# national gazette PDF, consejo regulador site).
+.venv/bin/python scripts/pt/01_fetch_cadernos.py
+.venv/bin/python scripts/pt/02_extract_cadernos.py
+.venv/bin/python scripts/04_build_maps.py
+```
+
+In practice the first-run IVV scrape matches 44 / 44 wines, so the
+overrides file is empty by default.
 
 ## Internationalisation
 

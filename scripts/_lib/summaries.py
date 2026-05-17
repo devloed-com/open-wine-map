@@ -32,7 +32,7 @@ def derive_summary(record: dict) -> str:
     keep the same SHA — the cache only re-translates AOCs whose summary
     was previously clipped mid-clause.
     """
-    if record.get("country") == "es":
+    if record.get("country") in ("es", "pt"):
         return record.get("summary", "") or ""
     sections = record.get("sections", {})
     roles = record.get("section_roles") or {}

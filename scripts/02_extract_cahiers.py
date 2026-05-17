@@ -159,6 +159,20 @@ def candidate_keys(name: str) -> list[str]:
     return keys
 
 
+def _is_parent_denom(d: dict) -> bool:
+    """True iff a SIQO denomination row represents its appellation's parent
+    record (vs a DGC). Strict equality covers the common case; fuzzy
+    fallback via candidate_keys folds synonym order ("Alsace" vs "Alsace
+    ou Vin d'Alsace"), case-only differences ("Comté Tolosan" vs "Comté
+    tolosan"), and composite forms ("Blagny" vs "Blagny ou Blagny Côte de
+    Beaune")."""
+    if d["denomination"] == d["appellation"]:
+        return True
+    denom_keys = set(candidate_keys(d["denomination"]))
+    app_keys = set(candidate_keys(d["appellation"]))
+    return bool(denom_keys & app_keys)
+
+
 _FRENCH_WORD_RE = re.compile(
     r"\b(de|la|le|du|les|des|et|en|pour|par|dans|est|ou|une|un|au|aux)\b",
     re.IGNORECASE,
@@ -1064,9 +1078,14 @@ def emit_stub_records(
         if not denoms:
             continue
         meta = manifest.get(id_app)
-        parent_denom = next(
-            (d for d in denoms if d["denomination"] == d["appellation"]), denoms[0]
-        )
+        parent_denom = next((d for d in denoms if _is_parent_denom(d)), None)
+        if parent_denom is None:
+            parent_denom = {
+                "id_denomination_geo": "",
+                "denomination": denoms[0]["appellation"],
+                "appellation": denoms[0]["appellation"],
+                "categories": [],
+            }
         parent_slug = slug_map.get(id_app) or slug(parent_denom["appellation"])
         categories = siqo_categories.get(id_app, []) or denoms[0]["categories"]
 
@@ -1074,13 +1093,13 @@ def emit_stub_records(
             record = _emit_parent_stub(
                 id_app, parent_denom, parent_slug, meta, categories, out_dir
             )
-            index[parent_denom["id_denomination_geo"] or id_app] = (
+            index[parent_denom["id_denomination_geo"] or f"app:{id_app}"] = (
                 _stub_index_entry(record, parent_slug="")
             )
             written += 1
 
         for d in denoms:
-            if d["denomination"] == d["appellation"]:
+            if d["id_denomination_geo"] == parent_denom["id_denomination_geo"]:
                 continue
             if d["id_denomination_geo"] in index:
                 continue
@@ -1276,7 +1295,7 @@ def load_siqo_denominations() -> dict[str, list[dict]]:
             d["categories"] = sorted(d["categories"])
             items.append(d)
         items.sort(
-            key=lambda d: (d["denomination"] != d["appellation"], d["denomination"].lower())
+            key=lambda d: (not _is_parent_denom(d), d["denomination"].lower())
         )
         flat[id_app] = items
     return flat
@@ -1339,6 +1358,8 @@ def main() -> int:
     if args.limit:
         items = items[: args.limit]
 
+    if not (args.only or args.limit):
+        shutil.rmtree(OUT_DIR, ignore_errors=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     index: dict[str, dict] = {}
     extracted = no_segment = no_sections = errors = dgc_emitted = rescued = 0
@@ -1477,19 +1498,24 @@ def main() -> int:
         # aire / grapes / styles — the cahier text is shared, and parsing
         # DGC-specific sub-sections is out of scope for v1.
         denoms = siqo_denoms.get(id_app, [])
-        parent_denom = next(
-            (d for d in denoms if d["denomination"] == d["appellation"]), None
-        )
-        if parent_denom is None and denoms:
-            # No parent row in SIQO (rare): treat the first denomination as
-            # the parent so the appellation still gets a canonical page.
-            parent_denom = denoms[0]
+        parent_denom = next((d for d in denoms if _is_parent_denom(d)), None)
+        # When no SIQO row matches the appellation at all (e.g. Fiefs
+        # Vendéens — all 5 denominations are DGCs) we leave parent_denom
+        # = None. The parent record still gets emitted with meta["name"]
+        # and the index falls back to id_appellation as the key.
         if parent_denom is not None:
             record["id_denomination_geo"] = parent_denom["id_denomination_geo"]
 
         out_path = OUT_DIR / f"{record['slug']}.json"
         out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2))
-        index[record.get("id_denomination_geo") or id_app] = {
+        # When the appellation has no parent denomination row in SIQO
+        # (e.g. Fiefs Vendéens — all rows are DGCs), index by a synthetic
+        # "app:<id>" key. Plain `id_app` would collide with the
+        # `id_denomination_geo` namespace (the two ID spaces overlap — e.g.
+        # id_denom="1028" exists as a Pommard DGC, same numeric value as
+        # Fiefs Vendéens's id_app=1028).
+        parent_key = record.get("id_denomination_geo") or f"app:{id_app}"
+        index[parent_key] = {
             "country": "fr",
             "id_appellation": id_app,
             "id_denomination_geo": record.get("id_denomination_geo") or "",
@@ -1514,8 +1540,11 @@ def main() -> int:
         # narrower categorie set to a DGC (e.g. some Côtes du Rhône Villages
         # entries are tranquille-only); we use the DGC-level categorie list
         # when it's a strict subset, else fall back to the parent's.
+        parent_id_denom = (
+            parent_denom["id_denomination_geo"] if parent_denom else None
+        )
         for d in denoms:
-            if d["denomination"] == d["appellation"]:
+            if parent_id_denom and d["id_denomination_geo"] == parent_id_denom:
                 continue
             dgc_slug = slug(d["denomination"])
             dgc_name = d["denomination"]

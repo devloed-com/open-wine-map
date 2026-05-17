@@ -1,4 +1,4 @@
-"""Fetch the public reference datasets open wine map depends on.
+"""Fetch the public reference datasets Open Wine Map depends on.
 
 Sources:
 - INAO SIQO referentiel + INAO parcellaire viticole (data.gouv.fr, slug-resolved)

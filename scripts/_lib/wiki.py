@@ -22,6 +22,8 @@ GRAPE_KEYWORDS = {
            "variedad vinífera"),
     "nl": ("druif", "druivenras", "druivensoort", "vitis vinifera",
            "wijndruif"),
+    "pt": ("casta", "videira", "uva", "vitis vinifera", "vinífera",
+           "variedade de uva"),
 }
 
 

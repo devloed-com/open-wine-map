@@ -30,7 +30,7 @@ def build_style_labels(_: Callable[[str], str]) -> dict[str, str]:
 def build_labels(_: Callable[[str], str]) -> dict[str, str]:
     """All translatable UI strings for the map. msgid is the French source."""
     return {
-        "page_title": _("open wine map — carte des appellations"),
+        "page_title": _("Open Wine Map — carte des appellations"),
         "subtitle": _("carte des appellations viticoles"),
         "meta_description": _(
             "Carte interactive des appellations viticoles européennes "
@@ -109,7 +109,8 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "(commune de {commune}, {source})."
         ),
         "geom_approx_cadastre_source_label": _("cadastre.data.gouv.fr"),
-        "stack_header": _("{n} appellations à ce point — du plus spécifique au plus large"),
+        "stack_header": _("{n} appellations à ce point"),
+        "stack_cycle_hint": _("Cliquer à nouveau pour parcourir les autres"),
         "src_cahier": _("Cahier des charges (BO Agri, PDF)"),
         "src_homologated": _("homologué"),
         "src_jorf": _("JORF"),
@@ -132,19 +133,26 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "fr_marker_aria": _("Texte source en français"),
         "es_marker": _("(español)"),
         "es_marker_aria": _("Texte source en espagnol"),
+        "pt_marker": _("(português)"),
+        "pt_marker_aria": _("Texte source en portugais"),
         "sidebar_toggle_aria": _("Filtres"),
         "tooltip_translated_from": _("Traduit de {wiki} · CC BY-SA 4.0"),
         "wiki_lang_en": _("Wikipédia en anglais"),
         "wiki_lang_fr": _("Wikipédia en français"),
         "wiki_lang_es": _("Wikipédia en espagnol"),
         "wiki_lang_nl": _("Wikipédia en néerlandais"),
+        "wiki_lang_pt": _("Wikipédia en portugais"),
+        "vivc_link_title": _("Vitis International Variety Catalogue (Julius Kühn-Institut)"),
+        "vivc_link_label": _("VIVC #{id}"),
         "translation_attribution": _("Traduction automatique depuis {source}"),
         "translation_source_label": _("le cahier des charges"),
         "translation_source_label_es": _("le pliego de condiciones"),
+        "translation_source_label_pt": _("le caderno de especificações"),
         "facts_attribution_source_label_es": _("le pliego de condiciones"),
+        "facts_attribution_source_label_pt": _("le caderno de especificações"),
         "dgc_of": _("Dénomination géographique complémentaire de"),
         "about_link_label": _("À propos"),
-        "about_h": _("À propos d'open wine map"),
+        "about_h": _("À propos d'Open Wine Map"),
         "about_lead_html": _(
             "Carte de référence des appellations viticoles "
             "(AOC, AOP, IGP, DOP), générée automatiquement à partir des "
@@ -155,8 +163,11 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Sources : INAO ({inao}) pour les cahiers des charges et les "
             "aires parcellaires, IGN ({ign}) pour le fond cartographique, "
             "Wikipedia ({wikipedia}) pour quelques compléments narratifs "
-            "(CC BY-SA 4.0). Tout extrait Wikipedia est signalé sur place. "
-            "Détails et licences dans le {readme}."
+            "(CC BY-SA 4.0), VIVC ({vivc}) — Vitis International Variety "
+            "Catalogue, Julius Kühn-Institut — pour les noms canoniques "
+            "et numéros de cépage (citation Röckel et al.). Tout extrait "
+            "Wikipedia est signalé sur place. Détails et licences dans le "
+            "{readme}."
         ),
         "about_contrib_html": _("Suggestions et pull requests bienvenues sur {github}."),
         "feedback_issue_label": _("ticket GitHub"),
@@ -249,6 +260,20 @@ _BASSIN_COLOURS: dict[str, str] = {
     "Andalucía":            "#f0a890",
     "Baleares":             "#a8d8d4",
     "Canarias":             "#c8e0a8",
+    # Portugal — wine regions (IVV nomenclature)
+    "Minho":                "#b3d8e0",
+    "Trás-os-Montes":       "#d4b8a8",
+    "Douro/Porto":          "#e8a880",
+    "Bairrada":             "#c8d4a0",
+    "Dão":                  "#d8c0a0",
+    "Beira Interior":       "#cccca8",
+    "Lisboa":               "#e0c8d8",
+    "Tejo":                 "#d8e0a8",
+    "Setúbal":              "#c8b8d0",
+    "Alentejo":             "#e8d8a8",
+    "Algarve":              "#f0c8a8",
+    "Madeira":              "#a8d4c0",
+    "Açores":               "#c0d8d8",
 }
 
 
@@ -260,6 +285,7 @@ _DEVLOED_URL = "https://devloed.com"
 _INAO_URL = "https://www.inao.gouv.fr/"
 _IGN_URL = "https://www.ign.fr/"
 _WIKIPEDIA_URL = "https://fr.wikipedia.org/"
+_VIVC_URL = "https://www.vivc.de/"
 _FEEDBACK_USER = "winemap+feedback"
 _FEEDBACK_DOMAIN = "devloed.com"
 
@@ -291,12 +317,13 @@ def _build_about_dialog(labels: dict[str, str]) -> str:
     inao = _ext_link(_INAO_URL, "INAO")
     ign = _ext_link(_IGN_URL, "IGN")
     wikipedia = _ext_link(_WIKIPEDIA_URL, "fr.wikipedia.org")
+    vivc = _ext_link(_VIVC_URL, "vivc.de")
     readme = _ext_link(_GITHUB_URL + "#public-data-sources", "README")
     paragraphs = [
         labels["about_lead_html"],
         labels["about_made_by_html"].format(devloed=devloed),
         labels["about_data_html"].format(
-            inao=inao, ign=ign, wikipedia=wikipedia, readme=readme
+            inao=inao, ign=ign, wikipedia=wikipedia, vivc=vivc, readme=readme
         ),
         labels["about_roadmap_html"],
         labels["about_contrib_html"].format(github=github),
@@ -544,7 +571,7 @@ def render(
     jsonld_payload = {
         "@context": "https://schema.org",
         "@type": "WebSite",
-        "name": "open wine map",
+        "name": "Open Wine Map",
         "url": canonical_url,
         "description": labels["meta_description"],
         "inLanguage": locale,
@@ -605,7 +632,7 @@ _TEMPLATE = """<!doctype html>
 <link rel="alternate" hreflang="nl" href="https://www.openwinemap.com/nl/">
 <link rel="alternate" hreflang="x-default" href="https://www.openwinemap.com/">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="open wine map">
+<meta property="og:site_name" content="Open Wine Map">
 <meta property="og:title" content="{labels[page_title]}">
 <meta property="og:description" content="{labels[meta_description]}">
 <meta property="og:url" content="{canonical_url}">
@@ -750,7 +777,8 @@ _TEMPLATE = """<!doctype html>
   #panel .meta {{ color:#666; font-size:12px; margin-bottom:8px }}
   #panel .translation-attr {{ font-size:10.5px; color:#888; font-style:italic; margin:0 0 8px }}
   #panel .translation-attr a {{ color:#888 }}
-  #panel .stack-header {{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#888; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #eee }}
+  #panel .stack-header {{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#888; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:6px }}
+  #panel .stack-pos {{ font-size:10.5px; padding:1px 7px; background:#efe7d8; color:#5a4a2a; border-radius:9px; font-variant-numeric:tabular-nums; letter-spacing:0; text-transform:none; cursor:default }}
   #panel .approx-line {{ font-size:11.5px; color:#7a5a1a; background:#fbf3df; border-left:2px solid #d6b35a; padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
   #panel .approx-line a.parent-link {{ color:#7a5a1a; text-decoration:underline }}
   #panel .aoc-card + .aoc-card {{ margin-top:24px; padding-top:20px; border-top:1px dashed #ccc }}
@@ -782,6 +810,7 @@ _TEMPLATE = """<!doctype html>
   .pill.grape.observation {{ background:#fff8d8; color:#7a5a00 }}
   a.pill.grape.observation:hover {{ background:#f5ecc0 }}
   a.pill.grape.has-info {{ border-bottom:1px dotted currentColor; padding-bottom:1px }}
+  .pill.grape .canon {{ opacity:0.65; font-weight:normal; font-size:0.9em }}
   .pill.style {{ cursor:default }}
   a.pill.style {{ text-decoration:none }}
   a.pill.style:hover {{ text-decoration:underline; opacity:0.85 }}
@@ -833,7 +862,7 @@ _TEMPLATE = """<!doctype html>
   #about-dialog h1 {{ font-size:20px; margin:0 0 14px; padding-bottom:8px; border-bottom:2px solid #934050 }}
   #about-dialog p {{ margin:0 0 10px }}
   #about-dialog a {{ color:#934050 }}
-  #grape-tooltip {{ position:fixed; max-width:340px; background:#fff; color:#222; border:1px solid #ddd; border-radius:4px; padding:10px 12px; font-size:12px; line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); pointer-events:none; z-index:1000; display:none }}
+  #grape-tooltip {{ position:fixed; max-width:340px; background:#fff; color:#222; border:1px solid #ddd; border-radius:4px; padding:10px 12px; font-size:12px; line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:1000; display:none }}
   #grape-tooltip .ext {{ margin:0 0 6px }}
   #grape-tooltip .thumb {{ float:right; width:96px; height:auto; margin:0 0 6px 10px; border-radius:3px; background:#f3f3f3 }}
   #grape-tooltip .src {{ color:#888; font-size:10.5px; clear:both }}
@@ -866,7 +895,7 @@ _TEMPLATE = """<!doctype html>
 <body>
 <div id="app">
   <aside id="sidebar" data-nosnippet aria-label="{labels[sidebar_aria]}">
-    <h1><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">open wine map</h1>
+    <h1><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</h1>
     <div class="subtitle">{labels[subtitle]}</div>
     {lang_switcher_html}
     <div id="status">{labels[loading]}</div>
@@ -986,7 +1015,7 @@ _TEMPLATE = """<!doctype html>
   // lowercase — normalising here makes pills and filter entries
   // consistent regardless of source.
   function toTitleCase(s) {{
-    return s.replace(/(?:^|[\s\-'])\p{{L}}/gu, c => c.toUpperCase());
+    return s.replace(/(?:^|[\s\-'(])\p{{L}}/gu, c => c.toUpperCase());
   }}
 
   function grapeName(slug) {{
@@ -1005,6 +1034,24 @@ _TEMPLATE = """<!doctype html>
     if (info && info.page_url) return info.page_url;
     const title = slug.replace(/-/g, '_').replace(/^./, c => c.toUpperCase());
     return `https://${{LANG}}.wikipedia.org/wiki/${{title}}`;
+  }}
+
+  // True when the per-AOC cahier spelling and the VIVC prime name refer
+  // to the same variety after a light normalisation (strip diacritics,
+  // the INAO trailing colour letter, and the VIVC trailing color word).
+  // When equal, we suppress the canonical bracket to avoid pills like
+  // "Touriga Nacional (Touriga Nacional)".
+  const CANON_COLOR_WORD_RE = /\\b(tinto|tinta|blanco|blanca|noir|blanc|gris|rouge|ros[eé])\\b/gi;
+  const CANON_COLOR_LETTER_RE = /\\s+(b|n|g|rs|rg)$/i;
+  function canonicalEqualsCahier(canon, cahier) {{
+    const norm = s => s
+      .normalize('NFKD')
+      .replace(/\\p{{Diacritic}}/gu, '')
+      .replace(CANON_COLOR_LETTER_RE, '')
+      .replace(CANON_COLOR_WORD_RE, '')
+      .replace(/[^a-z0-9]/gi, '')
+      .toLowerCase();
+    return norm(canon) === norm(cahier);
   }}
 
   function searchNormalize(s) {{
@@ -1746,10 +1793,14 @@ _TEMPLATE = """<!doctype html>
   }}
 
   function srcMarker(country) {{
-    const sourceLang = country === 'es' ? 'es' : 'fr';
+    const sourceLang = (country === 'es' || country === 'pt') ? country : 'fr';
     if (LANG === sourceLang) return '';
-    const text = country === 'es' ? LABELS.es_marker : LABELS.fr_marker;
-    const aria = country === 'es' ? LABELS.es_marker_aria : LABELS.fr_marker_aria;
+    const text = country === 'es' ? LABELS.es_marker
+      : country === 'pt' ? (LABELS.pt_marker || LABELS.fr_marker)
+      : LABELS.fr_marker;
+    const aria = country === 'es' ? LABELS.es_marker_aria
+      : country === 'pt' ? (LABELS.pt_marker_aria || LABELS.fr_marker_aria)
+      : LABELS.fr_marker_aria;
     return ` <span class="fr-marker" title="${{escapeAttr(aria)}}">${{escapeHtml(text)}}</span>`;
   }}
 
@@ -1757,6 +1808,8 @@ _TEMPLATE = """<!doctype html>
     if (!t) return '';
     const labelText = country === 'es'
       ? LABELS.translation_source_label_es
+      : country === 'pt'
+      ? (LABELS.translation_source_label_pt || LABELS.translation_source_label)
       : LABELS.translation_source_label;
     const url = t.source_pdf_url;
     const sourceHtml = url
@@ -1824,7 +1877,7 @@ _TEMPLATE = """<!doctype html>
       const info = STYLES_INFO[s];
       const has = !!(info && info.extract);
       const cls = ['pill', 'style', `style--${{safe}}`, has ? 'has-info' : ''].filter(Boolean).join(' ');
-      const label = STYLE_LABELS[s] || s;
+      const label = toTitleCase(STYLE_LABELS[s] || s);
       if (has && info.page_url) {{
         return `<a class="${{cls}}" data-slug="${{safe}}" href="${{escapeAttr(info.page_url)}}" target="_blank" rel="noopener">${{label}}</a>`;
       }}
@@ -1832,9 +1885,17 @@ _TEMPLATE = """<!doctype html>
     }}).join('');
     const grapePill = (g, cls) => {{
       const info = GRAPES_INFO[g];
-      const has = !!(info && info.extract);
+      const has = !!(info && (info.extract || (info.vivc_id && info.vivc_url)));
       const cls2 = ['pill', 'grape', cls, has ? 'has-info' : ''].filter(Boolean).join(' ');
-      return `<a class="${{cls2}}" data-slug="${{escapeAttr(g)}}" href="${{escapeAttr(grapeUrl(g))}}" target="_blank" rel="noopener">${{escapeHtml(grapeName(g))}}</a>`;
+      // Title-case both the cahier spelling and the canonical bracket so
+      // pills stay consistent regardless of source casing ("mourvèdre" /
+      // "MOURVEDRE" → "Mourvèdre").
+      const cahierName = toTitleCase((r.grape_names && r.grape_names[g]) || grapeName(g));
+      const canon = info && info.canonical_name;
+      const labelInner = canon && !canonicalEqualsCahier(canon, cahierName)
+        ? `${{escapeHtml(cahierName)}} <span class="canon">(${{escapeHtml(canon)}})</span>`
+        : escapeHtml(cahierName);
+      return `<a class="${{cls2}}" data-slug="${{escapeAttr(g)}}" href="${{escapeAttr(grapeUrl(g))}}" target="_blank" rel="noopener">${{labelInner}}</a>`;
     }};
     const principal = (r.grapes_principal || []).map(g => grapePill(g, '')).join('');
     const accessory = (r.grapes_accessory || []).map(g => grapePill(g, 'accessory')).join('');
@@ -1909,18 +1970,24 @@ _TEMPLATE = """<!doctype html>
     return Number.isFinite(a) ? a : bboxArea(fallback);
   }}
 
-  function renderPanelStack(slugs) {{
+  function renderPanelStack(slugs, focusIndex) {{
     if (!slugs.length) return;
     const sorted = slugs
       .filter(s => AOCS[s])
       .sort((a, b) => localityRank(a) - localityRank(b));
     if (!sorted.length) return;
-    const header = sorted.length > 1
-      ? `<div class="stack-header">${{fmt(LABELS.stack_header, {{ n: sorted.length }})}}</div>`
-      : '';
-    panelBody.innerHTML = header + sorted.map((s, i) => renderAocCard(s, i === 0)).join('');
+    const focus = ((((focusIndex | 0) % sorted.length) + sorted.length) % sorted.length);
+    const ordered = focus === 0
+      ? sorted
+      : [sorted[focus], ...sorted.filter((_, i) => i !== focus)];
+    let header = '';
+    if (sorted.length > 1) {{
+      const pos = `<span class="stack-pos" title="${{escapeAttr(LABELS.stack_cycle_hint)}}">${{focus + 1}} / ${{sorted.length}}</span>`;
+      header = `<div class="stack-header"><span>${{fmt(LABELS.stack_header, {{ n: sorted.length }})}}</span>${{pos}}</div>`;
+    }}
+    panelBody.innerHTML = header + ordered.map((s, i) => renderAocCard(s, i === 0)).join('');
     panel.classList.add('open');
-    setSelection(sorted.slice(0, 1));
+    setSelection(ordered.slice(0, 1));
   }}
 
   function escapeHtml(s) {{
@@ -1934,6 +2001,12 @@ _TEMPLATE = """<!doctype html>
   // throw because the source isn't registered yet — we swallow and re-apply
   // at the end of map.on('load').
   let selectedSlugs = [];
+
+  // Cycling: clicking on the same overlap rotates focus through the stack.
+  // Key is the deduped slug set (order-independent) so the user can wobble
+  // a few pixels and still cycle; moving to a different overlap resets.
+  let lastStackKey = '';
+  let stackFocusIndex = 0;
 
   function setSelectedState(slug, selected) {{
     for (const source of ['appellations', 'appellations-villages']) {{
@@ -1969,12 +2042,24 @@ _TEMPLATE = """<!doctype html>
   document.querySelector('#panel .close').addEventListener('click', () => {{
     panel.classList.remove('open');
     setSelection([]);
+    lastStackKey = '';
+    stackFocusIndex = 0;
   }});
 
   // ----- pill tooltip (Wikipedia, CC BY-SA 4.0) — grapes + styles -----
   const grapeTip = document.createElement('div');
   grapeTip.id = 'grape-tooltip';
   document.body.appendChild(grapeTip);
+  let grapeTipCloseTimer = null;
+  const cancelGrapeTipClose = () => {{
+    if (grapeTipCloseTimer) {{ clearTimeout(grapeTipCloseTimer); grapeTipCloseTimer = null; }}
+  }};
+  const scheduleGrapeTipClose = () => {{
+    cancelGrapeTipClose();
+    grapeTipCloseTimer = setTimeout(() => {{ grapeTip.style.display = 'none'; grapeTipCloseTimer = null; }}, 150);
+  }};
+  grapeTip.addEventListener('mouseenter', cancelGrapeTipClose);
+  grapeTip.addEventListener('mouseleave', scheduleGrapeTipClose);
 
   function positionGrapeTip(el) {{
     const r = el.getBoundingClientRect();
@@ -1987,7 +2072,8 @@ _TEMPLATE = """<!doctype html>
   function resolvePillInfo(el) {{
     if (el.matches('a.pill.grape.has-info')) {{
       const info = GRAPES_INFO[el.dataset.slug];
-      if (!info || !info.extract) return null;
+      if (!info) return null;
+      if (!info.extract && !(info.vivc_id && info.vivc_url)) return null;
       return {{ info, url: info.page_url || grapeUrl(el.dataset.slug) }};
     }}
     if (el.matches('.pill.style.has-info')) {{
@@ -2005,34 +2091,47 @@ _TEMPLATE = """<!doctype html>
     if (!resolved) return;
     const {{ info, url }} = resolved;
     const safeUrl = escapeAttr(url);
-    const thumb = info.thumbnail
+    const hasExtract = !!info.extract;
+    const thumb = (hasExtract && info.thumbnail)
       ? `<img class="thumb" src="${{escapeAttr(info.thumbnail)}}" alt="">` : '';
+    // Two translation paths now feed the source-block:
+    //   1. info.translation — legacy styles path (raw/translations/styles/)
+    //   2. info.is_translated — grapes path (raw/translations/grapes/),
+    //      with source_lang on the entry itself.
     const tx = info.translation;
-    const fallback = (!tx && LANG !== 'fr' && info.lang_fallback)
-      ? ` <span class="fr-marker">${{escapeHtml(LABELS.fr_marker)}}</span>` : '';
-    let srcBlock;
-    if (tx) {{
-      const srcUrl = tx.source_page_url || url;
-      const wikiLabel = LABELS['wiki_lang_' + tx.source_lang]
-        || ('Wikipedia ' + tx.source_lang.toUpperCase());
-      const wikiLink = srcUrl
-        ? `<a href="${{escapeAttr(srcUrl)}}" target="_blank" rel="noopener">${{escapeHtml(wikiLabel)}}</a>`
-        : escapeHtml(wikiLabel);
-      srcBlock = LABELS.tooltip_translated_from.replace('{{wiki}}', wikiLink);
-    }} else {{
-      const srcLink = url
-        ? `<a href="${{safeUrl}}" target="_blank" rel="noopener">Wikipedia</a>`
-        : 'Wikipedia';
-      srcBlock = `via ${{srcLink}} · CC BY-SA 4.0${{info.thumbnail ? ' · image: Wikimedia Commons' : ''}}`;
+    const grapeTranslated = !tx && info.is_translated && info.source_lang;
+    let srcBlock = '';
+    if (hasExtract) {{
+      if (tx || grapeTranslated) {{
+        const srcLang = tx ? tx.source_lang : info.source_lang;
+        const srcUrl = (tx ? tx.source_page_url : info.page_url) || url;
+        const wikiLabel = LABELS['wiki_lang_' + srcLang]
+          || ('Wikipedia ' + (srcLang || '').toUpperCase());
+        const wikiLink = srcUrl
+          ? `<a href="${{escapeAttr(srcUrl)}}" target="_blank" rel="noopener">${{escapeHtml(wikiLabel)}}</a>`
+          : escapeHtml(wikiLabel);
+        srcBlock = LABELS.tooltip_translated_from.replace('{{wiki}}', wikiLink);
+      }} else {{
+        const srcLink = url
+          ? `<a href="${{safeUrl}}" target="_blank" rel="noopener">Wikipedia</a>`
+          : 'Wikipedia';
+        srcBlock = `via ${{srcLink}} · CC BY-SA 4.0${{info.thumbnail ? ' · image: Wikimedia Commons' : ''}}`;
+      }}
     }}
-    grapeTip.innerHTML = thumb + `<p class="ext">${{escapeHtml(info.extract)}}${{fallback}}</p>` +
-      `<div class="src">${{srcBlock}}</div>`;
+    if (info.vivc_id && info.vivc_url) {{
+      const vivcLabel = LABELS.vivc_link_label.replace('{{id}}', info.vivc_id);
+      const vivcLink = `<a href="${{escapeAttr(info.vivc_url)}}" target="_blank" rel="noopener" title="${{escapeAttr(LABELS.vivc_link_title)}}">${{escapeHtml(vivcLabel)}}</a>`;
+      srcBlock += srcBlock ? ` · ${{vivcLink}}` : vivcLink;
+    }}
+    const extPara = hasExtract ? `<p class="ext">${{escapeHtml(info.extract)}}</p>` : '';
+    grapeTip.innerHTML = thumb + extPara + `<div class="src">${{srcBlock}}</div>`;
+    cancelGrapeTipClose();
     grapeTip.style.display = 'block';
     positionGrapeTip(el);
   }});
 
   panel.addEventListener('mouseout', e => {{
-    if (e.target.closest('a.pill.grape.has-info, .pill.style.has-info')) grapeTip.style.display = 'none';
+    if (e.target.closest('a.pill.grape.has-info, .pill.style.has-info')) scheduleGrapeTipClose();
   }});
 
   panel.addEventListener('click', e => {{
@@ -2040,7 +2139,11 @@ _TEMPLATE = """<!doctype html>
     if (!a) return;
     e.preventDefault();
     const slug = a.dataset.slug;
-    if (slug && AOCS[slug]) renderPanelStack([slug]);
+    if (slug && AOCS[slug]) {{
+      lastStackKey = '';
+      stackFocusIndex = 0;
+      renderPanelStack([slug]);
+    }}
   }});
 
   // ----- map interactions -----
@@ -2080,6 +2183,8 @@ _TEMPLATE = """<!doctype html>
       if (!features.length) {{
         panel.classList.remove('open');
         setSelection([]);
+        lastStackKey = '';
+        stackFocusIndex = 0;
         return;
       }}
       // Dedupe by slug, and drop DGCs that share another AOC's polygon
@@ -2098,7 +2203,21 @@ _TEMPLATE = """<!doctype html>
         if (src === 'parent-appellation' || src === 'sibling-dgc') continue;
         slugs.push(s);
       }}
-      renderPanelStack(slugs);
+      if (!slugs.length) {{
+        panel.classList.remove('open');
+        setSelection([]);
+        lastStackKey = '';
+        stackFocusIndex = 0;
+        return;
+      }}
+      const key = slugs.slice().sort().join('|');
+      if (key === lastStackKey && slugs.length > 1) {{
+        stackFocusIndex = (stackFocusIndex + 1) % slugs.length;
+      }} else {{
+        lastStackKey = key;
+        stackFocusIndex = 0;
+      }}
+      renderPanelStack(slugs, stackFocusIndex);
     }});
 
     // Re-apply feature-state for any selection restored from localStorage

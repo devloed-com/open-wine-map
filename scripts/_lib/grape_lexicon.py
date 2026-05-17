@@ -115,16 +115,37 @@ GRAPE_ALIAS = {
     "pedro-jimenez": "pedro-ximenez",          # Málaga (alt-spelling)
     "pero-ximen": "pedro-ximenez",             # Málaga (truncated)
     "chenin-blanco": "chenin",                 # Betanzos (Spanish spelling)
+    # ----- PT → canonical. Synonyms unify cross-country grapes (Tinta
+    # Roriz = Aragonez = Tempranillo; Gouveio = Godello; Trajadura =
+    # Treixadura). Only DNA-confirmed identity mappings; ampelographic
+    # synonym pairs that are debated stay separate.
+    "aragonez": "tempranillo",                # PT canonical (Douro / Alentejo / Vinho Verde)
+    "aragones": "tempranillo",                # Dão spelling variant
+    "gouveio": "godello",                     # Galician canonical (same grape)
+    "trajadura": "treixadura",                # Galician canonical
+    "trincadeira-preta": "trincadeira",
+    "tinta-amarela": "trincadeira",
+    "esgana-cao": "sercial",                  # Madeira: distinct from "Esganinho"
+    "boal": "malvasia-fina",                  # Madeira "Boal" = Malvasia Fina (DNA)
+    "bual": "malvasia-fina",                  # English-language Madeira label
+    "brancelho": "alvarelhao",
+    "alvaraca": "batoca",
+    "maria-gomes": "fernao-pires",            # Bairrada synonym
+    "trebbiano-toscano": "ugni-blanc",        # international synonym
+    "talia": "ugni-blanc",                    # PT name for Ugni Blanc / Trebbiano
 }
 
 # Default colour for each well-known variety. When the parser extracts a
 # slug that ends in `-<default-colour>`, we drop the suffix — cahiers
 # usually omit the colour qualifier when it's the default (writing
 # "chenin B" not "chenin blanc B"), but if one ever spells it out we
-# still want a single canonical slug. Varieties with multiple registered
-# colour mutations (`pinot-noir / pinot-blanc / pinot-gris`,
-# `grenache / grenache-blanc / grenache-gris`, etc.) are deliberately
-# absent — there the colour is a real distinguisher.
+# still want a single canonical slug. Varieties whose bare slug is
+# ambiguous between cultivars (`pinot-noir / pinot-blanc / pinot-gris`)
+# are absent. Varieties whose bare slug denotes the dominant colour AND
+# have sibling colour mutations as separate cultivars (grenache, grolleau,
+# merlot) ARE listed: the verbose form "Grenache Noir" folds to the bare
+# canonical, and the distinct mutations (`-blanc`, `-gris`) stay separate
+# because their suffix ≠ the default.
 DEFAULT_COLOUR: dict[str, str] = {
     "chardonnay": "blanc",
     "chenin": "blanc",
@@ -145,6 +166,8 @@ DEFAULT_COLOUR: dict[str, str] = {
     "gros-manseng": "blanc",
     "courbu": "blanc",
     "merlot": "noir",
+    "grenache": "noir",
+    "grolleau": "noir",
     "cabernet-sauvignon": "noir",
     "cabernet-franc": "noir",
     "syrah": "noir",
@@ -224,6 +247,36 @@ GRAPE_BLOCKLIST = {
     # terret noir N" — single colour code spans two grapes due to a missing
     # comma between `terret blanc` and `gris`). Drop rather than alias.
     "terret-blanc-gris",
+    # ----- FR cahier phrase fragments (not grape names) -----
+    "grains",                              # fragment of "à petits grains"
+    "petit",                               # fragment of "petit X"
+    "petit-grains-blancs-roses",           # phrase fragment
+    "interet-a-fin-coliris",               # "intérêt à fin coliris" regulation phrase
+    "nom-de-lieu-dit-auxerrois",           # "nom de lieu-dit: Auxerrois" field label
+    "selection-de-gewurztraminer",         # phrase, not a variety
+    "originaires-de-l-aire-i",             # "originaires de l'aire I" — phrase fragment
+    "callum",                              # OCR/stray-word artefact
+    # ----- ES pliego boilerplate -----
+    "otras-variedades",                    # ES heading "Otras variedades"
+    "ourense",                             # Galician province name leaking from headers
+    "val-de-mino",                         # Val de Miño — geographic name
+    # ----- PT caderno boilerplate / place names -----
+    "oiv",                                 # institutional acronym (Organisation Intl du Vin)
+    "s-mamede",                            # São Mamede — geographic
+    "setubal",                             # Setúbal DOC name (variety is Castelão = `castelao`)
+    "palmela",                             # Palmela DOC name (variety is Castelão = `castelao`)
+    "terras-de-lafoes",                    # Terras de Lafões DOC name
+    # `brun argenté N` (Rasteau & Rasteau Tranquille) — running page-header
+    # "Vins doux naturels susceptibles de bénéficier des mentions …"
+    # splits the words and the back-walker picks up only `argenté`. The
+    # page-header regex above catches the simple single-line case; this
+    # blocklist line is the safety net for the multi-line wrap form.
+    "argente",
+    # Bare `Tinta` in PT IVV-table format — the parser strips the second
+    # token (Tinta Roriz / Tinta Negra / Tinta Carvalha) and leaves "Tinta"
+    # standalone. Seen in Açores (Tinta-Roriz row), Duriense, Madeira.
+    # Never a real grape on its own; always a parse artefact.
+    "tinta",
 }
 
 # Lines we strip before tokenising — these are list-headers and connector
@@ -408,6 +461,16 @@ def _tokenise_role_chunk(chunk: str) -> list[dict]:
     return out
 
 
+_PAGE_HEADER_RE = re.compile(
+    r"\n\s*Vins\s+"
+    r"(?:tranquilles?|mousseux|effervescents?|primeurs?|moelleux|"
+    r"liquoreux|doux|jaunes?|sec(?:s)?|"
+    r"de\s+paille|de\s+liqueur|doux\s+naturels?)"
+    r"\s*\n",
+    re.IGNORECASE,
+)
+
+
 def parse_grapes(section_v: str) -> dict:
     """Return {principal, accessory, observation, all} from a section V body.
 
@@ -417,6 +480,12 @@ def parse_grapes(section_v: str) -> dict:
     if not section_v or not section_v.strip():
         return {"principal": [], "accessory": [], "observation": [], "all": []}
 
+    # Strip running page-headers that get spliced mid-clause when section V
+    # spans a PDF page break — e.g. Rasteau's encépagement reads
+    # "... brun\n     argenté N (... ou\nVins tranquilles\n     vaccarèse) ..."
+    # which would otherwise break the back-walker between `brun` and
+    # `argenté` (vins/tranquilles are both _HARD_STOP tokens).
+    section_v = _PAGE_HEADER_RE.sub("\n", section_v)
     text = re.sub(r"\s+", " ", section_v)
 
     # Truncate at the next sub-section header. Section V starts with

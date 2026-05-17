@@ -72,6 +72,7 @@ LOCALE_NAME = {
     "es": "Spanish",
     "fr": "French",
     "nl": "Dutch",
+    "pt": "Portuguese",
 }
 
 
@@ -87,6 +88,11 @@ SOURCE_CONFIG: dict[str, dict] = {
         "source_dir": ROOT / "raw" / "es" / "pliegos-extracted",
         "source_document": "EU Official Journal pliego de condiciones (Spanish wine appellation specifications)",
         "target_locales": ("en", "fr", "nl"),
+    },
+    "pt": {
+        "source_dir": ROOT / "raw" / "pt" / "cadernos-extracted",
+        "source_document": "IVV caderno de especificações (Portuguese wine appellation specifications)",
+        "target_locales": ("en", "fr", "es", "nl"),
     },
 }
 
@@ -166,11 +172,14 @@ def _terroir_facts_slugs() -> set[str]:
 
 def _source_url_for(record: dict) -> str:
     """Pick the canonical source-attribution URL for a record. FR records
-    point at BO Agri; ES records point at the EUR-Lex EU-OJ HTML page."""
+    point at BO Agri; ES records point at the EUR-Lex EU-OJ HTML page;
+    PT records point at the IVV caderno PDF."""
     src = record.get("source") or {}
-    if record.get("country") == "es":
-        # `final_url` is the EUR-Lex URL after Spanish-language redirect.
+    country = record.get("country")
+    if country == "es":
         return src.get("final_url") or src.get("source_url") or ""
+    if country == "pt":
+        return src.get("source_url") or src.get("final_url") or ""
     return src.get("boagri_url") or ""
 
 

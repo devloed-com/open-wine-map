@@ -22,6 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.grape_lexicon import (  # noqa: E402
+    DEFAULT_COLOUR,
     GRAPE_ALIAS,
     GRAPE_BLOCKLIST,
     _HARD_STOP,
@@ -29,6 +30,20 @@ from _lib.grape_lexicon import (  # noqa: E402
     _WORD_RE,
     slugify,
 )
+
+_COLOUR_QUALIFIERS = {"blanc", "noir", "gris", "rose", "rouge"}
+
+
+def _strip_default_colour(slug: str) -> str:
+    """Fold "X-<default-colour>" → "X" so the audit sees the same slug
+    stage 02 emits (the cahier-verbose form "Grenache Noir N" is just a
+    notational variant of the bare canonical, not a typo)."""
+    for suf in ("-blanc", "-noir", "-gris", "-rose", "-rouge"):
+        if slug.endswith(suf):
+            stem = slug[: -len(suf)]
+            if DEFAULT_COLOUR.get(stem) == suf[1:]:
+                return stem
+    return slug
 
 LEXICON_DIR = ROOT / "raw" / "wikipedia" / "grapes" / "fr"
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
@@ -118,7 +133,7 @@ def main() -> None:
         text = collect_text(data)
         seen_in_doc: set[str] = set()
         for raw in candidate_names(text):
-            slug = slugify(raw)
+            slug = _strip_default_colour(slugify(raw))
             if not slug or slug in GRAPE_BLOCKLIST:
                 continue
             entry = observed[slug]
@@ -154,6 +169,23 @@ def main() -> None:
                 tail = obs_slug.replace(canon, "", 1).strip("-")
                 if len(tail) <= 3:
                     continue
+            obs_head, _, obs_tail = obs_slug.partition("-")
+            can_head, _, can_tail = canon.partition("-")
+            # Distinct cultivars sharing a colour-qualified naming pattern:
+            # if the variant's leading stem is itself a canonical lexicon
+            # entry and differs from canon's leading stem, they're different
+            # grapes, not typos (savagnin-blanc vs sauvignon-blanc).
+            if obs_head != can_head and obs_head in canonical_set:
+                continue
+            # Sibling colour mutations of the same stem (grolleau-noir vs
+            # grolleau-gris): same stem, both trailing tokens are colour
+            # qualifiers — not a typo, the colour is the distinguisher.
+            if (
+                obs_head == can_head
+                and obs_tail in _COLOUR_QUALIFIERS
+                and can_tail in _COLOUR_QUALIFIERS
+            ):
+                continue
             variants.append({
                 "slug": obs_slug,
                 "distance": d,

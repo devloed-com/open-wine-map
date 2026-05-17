@@ -101,6 +101,24 @@ LANG_CONFIG: dict[str, dict] = {
             "vino", "DOP", "denominación de origen", "DO",
         ),
     },
+    "pt": {
+        # Portuguese wine-vocabulary anchors. As with ES we keep `do` /
+        # `doc` out (they substring into Portuguese articles); the proper
+        # Portuguese tokens are `dop` / `igp` / `vinho` / `videira`.
+        "aoc_keywords": (
+            "denominação", "denominacao", "vinho", "vinhos", "vinha",
+            "vinhedo", "vitivinícola", "vitivinicola", "vindima",
+            "viticultura", "dop", "igp", "ig", "casta", "castas",
+            "região", "regiao", "demarcada",
+        ),
+        "default_source": "raw/pt/cadernos-extracted",
+        # PT: per-DOP wine pages on pt.wikipedia.org typically disambiguate
+        # as `(vinho)`, then `(DOP)`, then the long form. Kind is
+        # informational — the cascade order is the same.
+        "disambiguators_for_kind": lambda kind: (
+            "vinho", "DOP", "denominação de origem protegida", "DO",
+        ),
+    },
 }
 
 UA = (
