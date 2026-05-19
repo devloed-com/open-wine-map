@@ -129,6 +129,10 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "legend_principal": _("principal — variété de la cuvée"),
         "legend_accessory": _("accessoire — assemblage limité"),
         "legend_observation": _("intérêt — observation/conservation"),
+        "pt_role_disclaimer": _(
+            "Le régulateur portugais (IVV) n'établit pas de distinction principal/accessoire — "
+            "toutes les castas autorisées sont listées ensemble dans le caderno de especificações."
+        ),
         "fr_marker": _("(français)"),
         "fr_marker_aria": _("Texte source en français"),
         "es_marker": _("(español)"),
@@ -197,6 +201,10 @@ def build_region_labels(_: Callable[[str], str]) -> dict[str, str]:
     """
     return {
         "BOURGOGNE": _("BOURGOGNE"),
+        "BEAUJOLAIS": _("BEAUJOLAIS"),
+        "JURA": _("JURA"),
+        "SAVOIE": _("SAVOIE"),
+        "BUGEY": _("BUGEY"),
         "ALSACE ET EST": _("ALSACE ET EST"),
         "VAL DE LOIRE": _("VAL DE LOIRE"),
         "SUD-OUEST": _("SUD-OUEST"),
@@ -214,9 +222,11 @@ def build_region_labels(_: Callable[[str], str]) -> dict[str, str]:
 
 
 # Region underlay colour, keyed by the value written to the MVT `region`
-# property: FR bassin (comité régional INAO, ALL-CAPS) or ES Comunidad
-# Autónoma (canonical Spanish, mixed case). The two key spaces are disjoint
-# so a single match expression serves both countries.
+# property: FR wine region (ALL-CAPS — INAO bassin name, except that the
+# BOURGOGNE bassin is split by `derive_fr_wine_region` into BOURGOGNE /
+# BEAUJOLAIS / JURA / SAVOIE / BUGEY) or ES Comunidad Autónoma (canonical
+# Spanish, mixed case). The two key spaces are disjoint so a single match
+# expression serves both countries.
 #
 # Hand-picked muted palette (Set3-derived) so wine regions are
 # distinguishable on a CartoDB Voyager basemap and survive a
@@ -231,8 +241,12 @@ def build_region_labels(_: Callable[[str], str]) -> dict[str, str]:
 #     and "" (explicit multi-region: Cava, Castilla) — these wines are
 #     scattered nationwide; tinting them would produce splotchy noise.
 _BASSIN_COLOURS: dict[str, str] = {
-    # France — bassins
+    # France — wine regions
     "BOURGOGNE": "#fdb462",
+    "BEAUJOLAIS": "#bc80bd",
+    "JURA": "#ffffb3",
+    "SAVOIE": "#b7d9e8",
+    "BUGEY": "#e8c89f",
     "ALSACE ET EST": "#80b1d3",
     "VAL DE LOIRE": "#b3de69",
     "SUD-OUEST": "#fb8072",
@@ -507,6 +521,149 @@ def _build_source_block(
     )
 
 
+_GRAPE_ALIAS_REVERSE_CACHE: dict[str, list[str]] | None = None
+
+
+def _grape_alias_reverse() -> dict[str, list[str]]:
+    """Build `canonical_slug → [GRAPE_ALIAS source keys]` from the curated
+    alias map. Used by `_build_grape_search_index` to surface every
+    regulator spelling that collapsed into a canonical slug at extraction
+    time (Garnacha → Grenache, Lladoner → Grenache, …) so the chip-filter
+    search box can match any of them."""
+    global _GRAPE_ALIAS_REVERSE_CACHE  # noqa: PLW0603
+    if _GRAPE_ALIAS_REVERSE_CACHE is not None:
+        return _GRAPE_ALIAS_REVERSE_CACHE
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from _lib.grape_lexicon import GRAPE_ALIAS  # noqa: PLC0415
+    out: dict[str, list[str]] = {}
+    for src, tgt in GRAPE_ALIAS.items():
+        out.setdefault(tgt, []).append(src)
+    _GRAPE_ALIAS_REVERSE_CACHE = out
+    return out
+
+
+_LOCALE_COUNTRY = {"fr": "FRANCE", "es": "SPAIN", "pt": "PORTUGAL", "nl": "", "en": ""}
+_VIVC_SYNONYM_CAP = 10
+
+
+def _vivc_synonym_names(vivc_rec: dict | None, locale: str) -> list[str]:
+    """Top-N VIVC synonym names for one canonical, sorted so synonyms
+    flagged as `official_in` the locale's country come first. Capped to
+    keep per-locale payload bounded — Grenache alone has ~600 entries."""
+    if not vivc_rec:
+        return []
+    syns = vivc_rec.get("synonyms") or []
+    country = _LOCALE_COUNTRY.get(locale, "")
+
+    def rank(syn: dict) -> tuple[int, str]:
+        official = (syn.get("official_in") or "").upper()
+        priority = 0 if country and country in official else 1
+        return (priority, syn.get("name", ""))
+
+    ranked = sorted(syns, key=rank)[:_VIVC_SYNONYM_CAP]
+    return [s["name"].title() for s in ranked if s.get("name")]
+
+
+def _build_canonical_counts(
+    aocs: dict, slug_to_canonical: dict[str, str],
+) -> dict[str, dict[str, int]]:
+    """Per-field vivc-aggregated AOC counts: `{field → {canon_slug → n}}`
+    for `grapes_all` / `grapes_principal` / `grapes_accessory`."""
+    sinks: dict[str, dict[str, int]] = {
+        "all": {}, "principal": {}, "accessory": {},
+    }
+    fields = (
+        ("grapes_all", sinks["all"]),
+        ("grapes_principal", sinks["principal"]),
+        ("grapes_accessory", sinks["accessory"]),
+    )
+    for rec in (aocs or {}).values():
+        for field, sink in fields:
+            canons = {slug_to_canonical.get(s, s) for s in rec.get(field) or []}
+            for c in canons:
+                sink[c] = sink.get(c, 0) + 1
+    return sinks
+
+
+def _collect_aliases(
+    *, canon: str, siblings: list[str], label: str, grapes_info: dict,
+    vivc_by_slug: dict, locale: str, alias_reverse: dict[str, list[str]],
+) -> list[str]:
+    """Deduped union of sibling cahier names + GRAPE_ALIAS reverse-keys
+    folding into this canonical or any of its siblings + top-N VIVC
+    synonyms ranked by locale relevance. Skips entries that equal the
+    primary label (case-insensitive)."""
+    label_norm = label.casefold()
+    aliases: list[str] = []
+    seen: set[str] = set()
+
+    def _add(name: str) -> None:
+        norm = (name or "").strip()
+        if not norm:
+            return
+        key = norm.casefold()
+        if key in seen or key == label_norm:
+            return
+        seen.add(key)
+        aliases.append(norm)
+
+    for sib in siblings:
+        sib_info = grapes_info.get(sib) or {}
+        _add(sib_info.get("name") or sib.replace("-", " "))
+    for target in [canon, *siblings]:
+        for src in alias_reverse.get(target, []):
+            _add(src.replace("-", " "))
+    for syn in _vivc_synonym_names(vivc_by_slug.get(canon), locale):
+        _add(syn)
+    return aliases
+
+
+def _build_grape_search_index(
+    *, grapes_info: dict, aocs: dict, vivc_by_slug: dict,
+    vivc_groups: dict[int, list[str]], slug_to_canonical: dict[str, str],
+    locale: str,
+) -> list[dict]:
+    """One entry per canonical slug, carrying `slug`, `label`, `canonical`
+    (VIVC prime), `aliases` (full synonym vocabulary for search), and
+    per-role aggregated counts. Drives the chip-filter UI: the search box
+    matches the query against `label` + `aliases`, and clicking a
+    suggestion adds the `slug` to the filter set (where `expandGrapeSet`
+    handles VIVC-sibling propagation at predicate time)."""
+    alias_reverse = _grape_alias_reverse()
+    counts = _build_canonical_counts(aocs, slug_to_canonical)
+    seen_canonicals: set[str] = set()
+    index: list[dict] = []
+    for slug in grapes_info.keys():
+        canon = slug_to_canonical.get(slug, slug)
+        if canon in seen_canonicals:
+            continue
+        seen_canonicals.add(canon)
+        info = grapes_info.get(canon) or {}
+        label = info.get("name") or canon.replace("-", " ")
+        siblings = [s for s in vivc_groups.get(info.get("vivc_id"), []) if s != canon]
+        aliases = _collect_aliases(
+            canon=canon, siblings=siblings, label=label, grapes_info=grapes_info,
+            vivc_by_slug=vivc_by_slug, locale=locale, alias_reverse=alias_reverse,
+        )
+        canonical_name = info.get("canonical_name") or ""
+        if canonical_name and canonical_name.casefold() != label.casefold() \
+                and canonical_name not in aliases:
+            aliases.insert(0, canonical_name)
+        index.append({
+            "slug": canon,
+            "label": label,
+            "canonical": canonical_name,
+            "aliases": aliases,
+            "count": counts["all"].get(canon, 0),
+            "count_principal": counts["principal"].get(canon, 0),
+            "count_accessory": counts["accessory"].get(canon, 0),
+        })
+    index.sort(key=lambda e: (-e["count"], e["label"].casefold()))
+    return index
+
+
 def render(
     *,
     layer_url: str,
@@ -516,15 +673,12 @@ def render(
     facet_styles_tree: list[dict],
     style_descendants: dict[str, list[str]],
     facet_styles_simple: list[tuple[str, int]],
-    facet_principal: list[tuple[str, int]],
-    facet_accessory: list[tuple[str, int]],
-    facet_grapes_all: list[tuple[str, int]],
     facet_regions: list[tuple[str, int]],
     locale: str = "fr",
     grapes_info: dict | None = None,
     styles_info: dict | None = None,
-    area_q1: float = 0.0,
-    area_q3: float = 1.0,
+    vivc_by_slug: dict | None = None,
+    area_quartiles: tuple[float, float] = (0.0, 1.0),
 ) -> str:
     """Render the full map page (index.html) for one locale.
 
@@ -541,6 +695,7 @@ def render(
     style_labels = build_style_labels(_)
     region_labels = build_region_labels(_)
 
+    area_q1, area_q3 = area_quartiles
     source_block = _build_source_block(
         layer_url=layer_url,
         villages_layer_url=villages_layer_url,
@@ -559,6 +714,86 @@ def render(
     }
     from .style_taxonomy import bucket_descendants
     simple_style_buckets = bucket_descendants()
+
+    vivc_groups: dict[int, list[str]] = {}
+    for slug, info in (grapes_info or {}).items():
+        vid = info.get("vivc_id")
+        if vid is None:
+            continue
+        vivc_groups.setdefault(vid, []).append(slug)
+    vivc_siblings: dict[str, list[str]] = {}
+    for members in vivc_groups.values():
+        if len(members) < 2:
+            continue
+        for slug in members:
+            vivc_siblings[slug] = [s for s in members if s != slug]
+
+    # Per-(slug, country) usage from the corpus + global totals — drive the
+    # per-locale canonical row label inside each VIVC group. FR picks the
+    # spelling most common in FR records (Côt > Malbec), ES picks the
+    # ES-corpus spelling (Garnacha > Grenache), EN/NL fall back to global
+    # most-common. The regulator vocabulary closest to the locale stays
+    # the front-door label; the alternates render as parenthesised
+    # synonyms on the same row.
+    slug_country_counts: dict[tuple[str, str], int] = {}
+    slug_total_counts: dict[str, int] = {}
+    for _slug, rec in (aocs or {}).items():
+        country = rec.get("country") or "fr"
+        for s in rec.get("grapes_all") or []:
+            slug_country_counts[(s, country)] = slug_country_counts.get((s, country), 0) + 1
+            slug_total_counts[s] = slug_total_counts.get(s, 0) + 1
+
+    _locale_home_country = {"fr": "fr", "es": "es", "pt": "pt"}.get(locale)
+
+    def _pick_canonical(members: list[str]) -> str:
+        if _locale_home_country:
+            home_pick = min(
+                members,
+                key=lambda s: (
+                    -slug_country_counts.get((s, _locale_home_country), 0),
+                    -slug_total_counts.get(s, 0),
+                    s,
+                ),
+            )
+            if slug_country_counts.get((home_pick, _locale_home_country), 0) > 0:
+                return home_pick
+        return min(members, key=lambda s: (-slug_total_counts.get(s, 0), s))
+
+    slug_to_canonical: dict[str, str] = {}
+    grape_synonyms: dict[str, list[str]] = {}
+    for members in vivc_groups.values():
+        used = [m for m in members if slug_total_counts.get(m, 0) > 0]
+        if len(used) < 2:
+            continue
+        canon = _pick_canonical(used)
+        others = [
+            m for m in sorted(used, key=lambda s: (-slug_total_counts.get(s, 0), s))
+            if m != canon
+        ]
+        grape_synonyms[canon] = others
+        for m in used:
+            slug_to_canonical[m] = canon
+
+    def _merged_facet(field: str) -> list[tuple[str, int]]:
+        counts: dict[str, int] = {}
+        for _slug, rec in (aocs or {}).items():
+            canons = {slug_to_canonical.get(s, s) for s in rec.get(field) or []}
+            for c in canons:
+                counts[c] = counts.get(c, 0) + 1
+        return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+
+    facet_principal_merged = _merged_facet("grapes_principal")
+    facet_accessory_merged = _merged_facet("grapes_accessory")
+    facet_grapes_all_merged = _merged_facet("grapes_all")
+
+    grape_search_index = _build_grape_search_index(
+        grapes_info=grapes_info or {},
+        aocs=aocs or {},
+        vivc_by_slug=vivc_by_slug or {},
+        vivc_groups=vivc_groups,
+        slug_to_canonical=slug_to_canonical,
+        locale=locale,
+    )
 
     canonical_path = "/" if locale == "en" else f"/{locale}/"
     canonical_url = f"{_SITE_BASE_URL}{canonical_path}"
@@ -597,15 +832,19 @@ def render(
         styles_tree_json=json.dumps(facet_styles_tree, ensure_ascii=False),
         style_descendants_json=json.dumps(style_descendants, ensure_ascii=False),
         styles_simple_json=json.dumps(facet_styles_simple, ensure_ascii=False),
-        principal_json=json.dumps(facet_principal, ensure_ascii=False),
-        accessory_json=json.dumps(facet_accessory, ensure_ascii=False),
-        grapes_all_json=json.dumps(facet_grapes_all, ensure_ascii=False),
+        principal_json=json.dumps(facet_principal_merged, ensure_ascii=False),
+        accessory_json=json.dumps(facet_accessory_merged, ensure_ascii=False),
+        grapes_all_json=json.dumps(facet_grapes_all_merged, ensure_ascii=False),
         regions_json=json.dumps(facet_regions, ensure_ascii=False),
         style_labels_json=json.dumps(style_labels, ensure_ascii=False),
         simple_style_labels_json=json.dumps(simple_style_labels, ensure_ascii=False),
         simple_style_buckets_json=json.dumps(simple_style_buckets, ensure_ascii=False),
         labels_json=json.dumps(labels, ensure_ascii=False),
         grapes_info_json=json.dumps(grapes_info or {}, ensure_ascii=False),
+        grape_search_index_json=json.dumps(grape_search_index, ensure_ascii=False),
+        vivc_siblings_json=json.dumps(vivc_siblings, ensure_ascii=False),
+        slug_to_canonical_json=json.dumps(slug_to_canonical, ensure_ascii=False),
+        grape_synonyms_json=json.dumps(grape_synonyms, ensure_ascii=False),
         styles_info_json=json.dumps(styles_info or {}, ensure_ascii=False),
         region_labels_json=json.dumps(region_labels, ensure_ascii=False),
         source_type=source_type,
@@ -691,7 +930,12 @@ _TEMPLATE = """<!doctype html>
   #sidebar h1 .brand-mark {{ width:18px; height:18px; flex:0 0 18px; display:inline-block }}
   #sidebar .subtitle {{ font-size:11px; color:#888; padding:0 16px 10px; border-bottom:1px solid #333 }}
   #sidebar h2 {{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#888; padding:14px 16px 4px; margin:0 }}
-  #sidebar input[type=text] {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; border-radius:3px; font-size:13px }}
+  /* `:not(.grape-search)` excludes the chip-filter's typeahead input —
+     it owns its own layout via `.grape-search-wrap`, which already
+     applies the 16/16 horizontal margin. Without the exclusion the
+     catch-all rule stacks margin on top of the wrap's, leaving the
+     grape input 32px narrower than the appellation search. */
+  #sidebar input[type=text]:not(.grape-search) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; border-radius:3px; font-size:13px }}
   #sidebar input[type=text]:focus {{ outline:none; border-color:#934050 }}
   #sidebar input[type=text]:focus-visible {{ outline:2px solid #fff8e8; outline-offset:1px; border-color:#934050 }}
   #lang-switcher {{ display:flex; gap:2px; padding:6px 12px 8px; border-bottom:1px solid #333 }}
@@ -728,13 +972,40 @@ _TEMPLATE = """<!doctype html>
   #active-filters-chips:empty + #reset {{ display:none }}
   .facet-search {{ width:calc(100% - 32px); margin:4px 16px 6px; padding:5px 8px; box-sizing:border-box; background:#1f1f1f; color:#eee; border:1px solid #3a3a3a; border-radius:3px; font-size:12px }}
   .facet-search:focus {{ outline:none; border-color:#934050 }}
+  /* Grape chip filter — replaces the long-list checkbox facet with a
+     typeahead + selected-chip UX. Three instances on the page (simple
+     all, advanced principal, advanced accessory) all share these rules. */
+  /* Horizontal spacing matches `.facet-search`'s `margin:4px 16px 6px`
+     so the grape search input lines up with the appellation search
+     input below it. The chip-tray and search-wrap each carry their
+     own 16px L/R margin instead of the chip-filter container padding. */
+  .grape-chip-filter {{ padding:0 }}
+  .grape-chip-filter .chip-tray {{ display:flex; flex-wrap:wrap; gap:4px; margin:4px 16px 6px }}
+  .grape-chip-filter .chip-tray:empty {{ display:none }}
+  .grape-chip-filter .chip {{ display:inline-flex; align-items:center; gap:4px; padding:2px 4px 2px 8px; background:#3a2730; color:#fff; border:1px solid #934050; border-radius:11px; font-size:11px; line-height:1.3 }}
+  .grape-chip-filter .chip .canon {{ color:#cfa; opacity:0.7; font-style:italic }}
+  .grape-chip-filter .chip-x {{ background:none; border:none; color:#cfa; cursor:pointer; padding:0 4px; font-size:14px; line-height:1; border-radius:50% }}
+  .grape-chip-filter .chip-x:hover {{ color:#fff; background:#5a3045 }}
+  .grape-search-wrap {{ position:relative; margin:4px 16px 6px }}
+  .grape-search {{ width:100%; padding:5px 8px; box-sizing:border-box; background:#1f1f1f; color:#eee; border:1px solid #3a3a3a; border-radius:3px; font-size:12px }}
+  .grape-search:focus {{ outline:none; border-color:#934050 }}
+  .grape-suggestions {{ position:absolute; left:0; right:0; top:calc(100% + 2px); z-index:50; max-height:280px; overflow-y:auto; background:#1a1a1a; border:1px solid #3a3a3a; border-radius:3px; box-shadow:0 4px 12px rgba(0,0,0,0.4) }}
+  .grape-suggestions[hidden] {{ display:none }}
+  .grape-suggestions .suggestion {{ display:flex; align-items:center; gap:6px; padding:5px 8px; cursor:pointer; font-size:12px; color:#ddd; border-bottom:1px solid #2a2a2a }}
+  .grape-suggestions .suggestion:last-child {{ border-bottom:none }}
+  .grape-suggestions .suggestion.active, .grape-suggestions .suggestion:hover {{ background:#2a1f25 }}
+  .grape-suggestions .suggestion .name {{ flex:0 0 auto }}
+  .grape-suggestions .suggestion .canon {{ flex:1 1 auto; color:#999; font-style:italic; font-size:11px }}
+  .grape-suggestions .suggestion .count {{ flex:0 0 auto; margin-left:auto; color:#888; font-size:11px; font-variant-numeric:tabular-nums }}
   #sidebar > details > summary .facet-badge {{ display:inline-block; margin-left:6px; padding:1px 6px; background:#934050; color:#fff; border-radius:8px; font-size:10px; font-weight:600 }}
   #sidebar > details > summary .facet-badge:empty {{ display:none }}
   #sidebar > details > summary {{ display:flex; align-items:center }}
   #sidebar > details > summary .facet-label {{ flex:1 }}
+  .facet .region-group-wrap {{ display:flex; align-items:flex-start; gap:6px; margin:2px 0 }}
+  .facet .region-group-wrap > .region-select {{ accent-color:#934050; cursor:pointer; flex:0 0 auto; margin-top:6px }}
+  .facet .region-group-wrap > .region-select:checked, .facet .region-group-wrap > .region-select:indeterminate {{ accent-color:#934050 }}
+  .facet .region-group-wrap > .region-group {{ flex:1 1 auto; min-width:0 }}
   .facet .region-group > summary {{ display:flex; align-items:center; gap:6px }}
-  .facet .region-group > summary .region-select {{ accent-color:#934050; cursor:pointer; flex:0 0 auto }}
-  .facet .region-group > summary .region-select:checked, .facet .region-group > summary .region-select:indeterminate {{ accent-color:#934050 }}
   #status {{ padding:8px 16px; font-size:11px; color:#aaa; background:#222; border-bottom:1px solid #333 }}
   #status .hint-action {{ background:none; border:0; padding:0; margin-left:6px; color:#9ac4ff; font:inherit; cursor:pointer; text-decoration:underline }}
   #status .hint-action:hover {{ color:#cfe0ff }}
@@ -749,13 +1020,15 @@ _TEMPLATE = """<!doctype html>
   .facet input[type=checkbox] {{ accent-color:#c0392b; flex:0 0 auto }}
   .facet .name {{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
   .facet .count {{ color:#666; font-size:11px; margin-left:4px }}
+  .facet .syns {{ color:#888; font-size:11px; font-weight:normal }}
+  .facet label.facet-unavailable {{ display:none }}
+  .facet .region-group-wrap.facet-unavailable {{ display:none }}
   .facet .tree-row[data-depth="0"] {{ padding-left:0 }}
   .facet .tree-row[data-depth="1"] {{ padding-left:14px }}
   .facet .tree-row[data-depth="2"] {{ padding-left:28px }}
   .facet .tree-row-parent {{ font-weight:600; color:#eee }}
   .facet .tree-row[data-depth="0"]:not(:first-child) {{ margin-top:4px }}
   .facet .tree-row[data-depth="2"] .name {{ color:#bbb }}
-  .facet .region-group {{ margin:2px 0 }}
   .facet .region-group > summary {{ padding:4px 0; border-top:none; font-size:10.5px; color:#888; letter-spacing:0.06em; display:flex; align-items:center; gap:6px }}
   .facet .region-group > summary:hover {{ color:#ddd }}
   .facet .region-group > summary .name {{ flex:1 }}
@@ -781,6 +1054,7 @@ _TEMPLATE = """<!doctype html>
   #panel .stack-pos {{ font-size:10.5px; padding:1px 7px; background:#efe7d8; color:#5a4a2a; border-radius:9px; font-variant-numeric:tabular-nums; letter-spacing:0; text-transform:none; cursor:default }}
   #panel .approx-line {{ font-size:11.5px; color:#7a5a1a; background:#fbf3df; border-left:2px solid #d6b35a; padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
   #panel .approx-line a.parent-link {{ color:#7a5a1a; text-decoration:underline }}
+  #panel .role-disclaimer {{ font-size:11px; color:#888; font-style:italic; margin:2px 0 8px; line-height:1.35 }}
   #panel .aoc-card + .aoc-card {{ margin-top:24px; padding-top:20px; border-top:1px dashed #ccc }}
   #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid #934050 }}
   #panel .aoc-card.subordinate h1 {{ font-size:16px; color:#444; border-bottom-color:#ccc }}
@@ -920,22 +1194,19 @@ _TEMPLATE = """<!doctype html>
       <div class="facet" id="facet-styles"></div>
     </details>
 
-    <details data-modes="simple" data-facet="grapes">
+    <details open data-modes="simple" data-facet="grapes">
       <summary><span class="facet-label">{labels[facet_grapes_h]}</span><span class="facet-badge"></span></summary>
-      <input type="text" class="facet-search" data-facet="facet-grapes-all" placeholder="{labels[search_grape_placeholder]}" autocomplete="off">
-      <div class="facet" id="facet-grapes-all"></div>
+      <div class="grape-chip-filter" data-role="all"></div>
     </details>
 
     <details data-modes="advanced" data-facet="grapes">
       <summary><span class="facet-label">{labels[facet_principal_h]}</span><span class="facet-badge"></span></summary>
-      <input type="text" class="facet-search" data-facet="facet-principal" placeholder="{labels[search_grape_placeholder]}" autocomplete="off">
-      <div class="facet" id="facet-principal"></div>
+      <div class="grape-chip-filter" data-role="principal"></div>
     </details>
 
     <details data-modes="advanced" data-facet="accessory">
       <summary><span class="facet-label">{labels[facet_accessory_h]}</span><span class="facet-badge"></span></summary>
-      <input type="text" class="facet-search" data-facet="facet-accessory" placeholder="{labels[search_grape_placeholder]}" autocomplete="off">
-      <div class="facet" id="facet-accessory"></div>
+      <div class="grape-chip-filter" data-role="accessory"></div>
     </details>
 
     <details open data-facet="appellations">
@@ -1003,10 +1274,270 @@ _TEMPLATE = """<!doctype html>
   const SIMPLE_STYLE_BUCKETS = {simple_style_buckets_json};
   const LABELS = {labels_json};
   const GRAPES_INFO = {grapes_info_json};
+  // Slug -> siblings sharing the same VIVC variety id. Used to make the
+  // grape filter synonym-aware: toggling Cot also matches AOCs that
+  // list Malbec / Auxerrois / any other regulatory spelling of vivc_id
+  // 2889. The facet list keeps each spelling as its own row (so the user
+  // sees the regulator's terminology) — the expansion happens only in
+  // the filter predicate.
+  const VIVC_SIBLINGS = {vivc_siblings_json};
+  // Per-locale canonical row label: each member of a VIVC group maps to
+  // the single canonical slug under which the facet renders. Cross-narrow
+  // counts roll up via this map so a record using "malbec" increments the
+  // canonical "cot" row.
+  const SLUG_TO_CANONICAL = {slug_to_canonical_json};
+  // Synonyms shown inline on each canonical row (e.g. Côt → [malbec,
+  // auxerrois]). Sorted by global usage; the row's `.name` span includes
+  // every synonym so the per-facet search input matches any spelling.
+  const GRAPE_SYNONYMS = {grape_synonyms_json};
+  function expandGrapeSet(set) {{
+    if (!set || !set.size) return set;
+    const out = new Set(set);
+    for (const slug of set) {{
+      const sibs = VIVC_SIBLINGS[slug];
+      if (sibs) for (const s of sibs) out.add(s);
+    }}
+    return out;
+  }}
+  function grapeSynonymsHtml(canonSlug) {{
+    const syns = GRAPE_SYNONYMS[canonSlug];
+    if (!syns || !syns.length) return '';
+    const labels = syns.map(s => grapeName(s)).join(', ');
+    return ` <span class="syns">(${{labels}})</span>`;
+  }}
+
+  // -------------------------- grape chip filter --------------------------
+  //
+  // Replaces the long-list checkbox facet for grapes with a typeahead +
+  // selected-chip UX. The index ships pre-built (one entry per canonical
+  // slug with cahier label + VIVC prime + full alias vocabulary + per-role
+  // counts). Match logic: substring against the label and any alias, with
+  // a score (prefix > substring, label > alias) so "garna" surfaces
+  // Grenache (Garnacha) and "shiraz" surfaces Syrah.
+  const GRAPE_SEARCH_INDEX = {grape_search_index_json};
+  const _GRAPE_INDEX_NORM = GRAPE_SEARCH_INDEX.map(entry => ({{
+    entry,
+    labelN: searchNormalize(entry.label),
+    aliasesN: (entry.aliases || []).map(a => searchNormalize(a)),
+  }}));
+
+  function rankGrapeSuggestions(query, role, limit) {{
+    const countKey = role === 'principal' ? 'count_principal'
+                   : role === 'accessory' ? 'count_accessory' : 'count';
+    const nq = searchNormalize(query || '');
+    if (!nq) {{
+      return _GRAPE_INDEX_NORM
+        .filter(e => e.entry[countKey] > 0)
+        .slice(0, limit)
+        .map(e => ({{ entry: e.entry, matched: null }}));
+    }}
+    const out = [];
+    for (const e of _GRAPE_INDEX_NORM) {{
+      if (e.entry[countKey] === 0) continue;
+      let score = -1;
+      let matched = null;  // The alias string that matched, if any.
+      if (e.labelN.startsWith(nq)) score = 100;
+      else if (e.labelN.includes(nq)) score = 80;
+      else {{
+        // Walk aliases; remember which one matched best so the suggestion
+        // can promote that spelling to the primary slot ("Ull de Llebre
+        // (Tempranillo)" instead of plain "Tempranillo" when the user
+        // typed "ull").
+        let bestAliasScore = -1;
+        let bestAliasIdx = -1;
+        for (let i = 0; i < e.aliasesN.length; i++) {{
+          const a = e.aliasesN[i];
+          let s = -1;
+          if (a.startsWith(nq)) s = 60;
+          else if (a.includes(nq)) s = 40;
+          if (s > bestAliasScore) {{ bestAliasScore = s; bestAliasIdx = i; }}
+        }}
+        if (bestAliasScore >= 0) {{
+          score = bestAliasScore;
+          matched = e.entry.aliases[bestAliasIdx];
+        }}
+      }}
+      if (score >= 0) out.push({{ entry: e.entry, matched, score }});
+    }}
+    out.sort((a, b) => b.score - a.score || b.entry[countKey] - a.entry[countKey]);
+    return out.slice(0, limit).map(o => ({{ entry: o.entry, matched: o.matched }}));
+  }}
+
+  function _findGrapeEntry(slug) {{
+    for (const e of _GRAPE_INDEX_NORM) if (e.entry.slug === slug) return e.entry;
+    return null;
+  }}
+
+  function _grapeChipHtml(entry) {{
+    const canon = entry.canonical && !canonicalEqualsCahier(entry.canonical, entry.label)
+      ? ` <span class="canon">(${{escapeHtml(entry.canonical)}})</span>` : '';
+    return (
+      `<span class="chip" data-slug="${{escapeAttr(entry.slug)}}">` +
+        `<span class="name">${{escapeHtml(toTitleCase(entry.label))}}</span>${{canon}}` +
+        `<button class="chip-x" type="button" aria-label="Remove ${{escapeAttr(entry.label)}}">×</button>` +
+      `</span>`
+    );
+  }}
+
+  function _grapeSuggestionHtml(entry, matched, role, active) {{
+    // When the query matched on an alias (e.g. "ull de llebre" → Tempranillo
+    // via the GRAPE_ALIAS reverse-key "ull-de-llebre"), promote the
+    // matched alias to the primary slot so the suggestion reads in the
+    // user's terminology — "Ull de Llebre (Tempranillo)" — instead of
+    // burying the match in the canonical row label.
+    const primary = matched || entry.label;
+    const secondary = matched && matched.toLowerCase() !== entry.label.toLowerCase()
+      ? entry.label
+      : (entry.canonical && !canonicalEqualsCahier(entry.canonical, entry.label) ? entry.canonical : '');
+    const secondaryHtml = secondary
+      ? ` <span class="canon">${{escapeHtml(toTitleCase(secondary))}}</span>` : '';
+    const countKey = role === 'principal' ? 'count_principal'
+                   : role === 'accessory' ? 'count_accessory' : 'count';
+    const cls = ['suggestion'];
+    if (active) cls.push('active');
+    return (
+      `<div class="${{cls.join(' ')}}" role="option" data-slug="${{escapeAttr(entry.slug)}}">` +
+        `<span class="name">${{escapeHtml(toTitleCase(primary))}}</span>${{secondaryHtml}}` +
+        `<span class="count">${{entry[countKey]}}</span>` +
+      `</div>`
+    );
+  }}
+
+  function buildGrapeChipFilter(container, role, filterSet) {{
+    container.innerHTML =
+      `<div class="chip-tray" aria-live="polite"></div>` +
+      `<div class="grape-search-wrap">` +
+        `<input type="text" class="grape-search" name="grape-search-${{escapeAttr(role)}}" placeholder="${{escapeAttr(LABELS.search_grape_placeholder)}}" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list">` +
+        `<div class="grape-suggestions" role="listbox" hidden></div>` +
+      `</div>`;
+    const tray = container.querySelector('.chip-tray');
+    const input = container.querySelector('.grape-search');
+    const drop  = container.querySelector('.grape-suggestions');
+    let activeIdx = 0;
+    let currentSuggestions = [];
+
+    function renderChips() {{
+      const chips = [];
+      for (const slug of filterSet) {{
+        const e = _findGrapeEntry(slug);
+        if (e) chips.push(_grapeChipHtml(e));
+      }}
+      tray.innerHTML = chips.join('');
+    }}
+
+    function renderSuggestions(q) {{
+      currentSuggestions = rankGrapeSuggestions(q, role, 12)
+        .filter(s => !filterSet.has(s.entry.slug));
+      activeIdx = 0;
+      if (!currentSuggestions.length) {{
+        drop.innerHTML = '';
+        drop.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        return;
+      }}
+      drop.innerHTML = currentSuggestions
+        .map((s, i) => _grapeSuggestionHtml(s.entry, s.matched, role, i === activeIdx)).join('');
+      drop.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+    }}
+
+    function highlight(i) {{
+      const items = drop.querySelectorAll('.suggestion');
+      if (!items.length) return;
+      items.forEach((el, k) => el.classList.toggle('active', k === i));
+      activeIdx = i;
+      const cur = items[i];
+      if (cur) cur.scrollIntoView({{ block: 'nearest' }});
+    }}
+
+    function pick(slug) {{
+      filterSet.add(slug);
+      input.value = '';
+      renderChips();
+      renderSuggestions('');
+      applyFilter();
+      input.focus();
+    }}
+
+    function remove(slug) {{
+      filterSet.delete(slug);
+      renderChips();
+      renderSuggestions(input.value);
+      applyFilter();
+    }}
+
+    tray.addEventListener('click', (e) => {{
+      const btn = e.target.closest('.chip-x');
+      if (!btn) return;
+      const chip = btn.closest('.chip');
+      if (chip) remove(chip.dataset.slug);
+    }});
+
+    drop.addEventListener('mousedown', (e) => {{
+      const s = e.target.closest('.suggestion');
+      if (!s) return;
+      e.preventDefault();  // keep focus on input
+      pick(s.dataset.slug);
+    }});
+
+    drop.addEventListener('mousemove', (e) => {{
+      const s = e.target.closest('.suggestion');
+      if (!s) return;
+      const items = Array.from(drop.querySelectorAll('.suggestion'));
+      highlight(items.indexOf(s));
+    }});
+
+    input.addEventListener('input', () => renderSuggestions(input.value));
+    input.addEventListener('focus', () => renderSuggestions(input.value));
+    input.addEventListener('blur', () => {{
+      // Delay so the mousedown handler runs before we hide.
+      setTimeout(() => {{ drop.hidden = true; input.setAttribute('aria-expanded', 'false'); }}, 120);
+    }});
+    input.addEventListener('keydown', (e) => {{
+      if (e.key === 'ArrowDown') {{
+        e.preventDefault();
+        if (drop.hidden) renderSuggestions(input.value);
+        else highlight((activeIdx + 1) % currentSuggestions.length);
+      }} else if (e.key === 'ArrowUp') {{
+        e.preventDefault();
+        if (!drop.hidden) highlight((activeIdx - 1 + currentSuggestions.length) % currentSuggestions.length);
+      }} else if (e.key === 'Enter') {{
+        if (!drop.hidden && currentSuggestions[activeIdx]) {{
+          e.preventDefault();
+          pick(currentSuggestions[activeIdx].entry.slug);
+        }}
+      }} else if (e.key === 'Escape') {{
+        drop.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+      }} else if (e.key === 'Backspace' && !input.value && filterSet.size) {{
+        // Remove the most-recently-added chip.
+        const last = [...filterSet].pop();
+        remove(last);
+      }}
+    }});
+
+    renderChips();
+    container._refresh = () => {{ renderChips(); if (!drop.hidden) renderSuggestions(input.value); }};
+  }}
+
+  function refreshAllGrapeChipFilters() {{
+    document.querySelectorAll('.grape-chip-filter').forEach(c => c._refresh && c._refresh());
+  }}
   const STYLES_INFO = {styles_info_json};
   const REGION_LABELS = {region_labels_json};
   const LANG = "{lang_attr}";
   const SOURCE_TYPE = "{source_type}";
+
+  // Plausible custom-event helper. No-ops gracefully if the analytics
+  // script failed to load (ad-blocker, offline preview, dev build).
+  // All props use bounded slug vocabularies — never raw user text — so
+  // the breakdown UI stays useful and no PII can leak.
+  function track(name, props) {{
+    try {{
+      if (typeof window.plausible !== 'function') return;
+      window.plausible(name, props ? {{ props: props }} : undefined);
+    }} catch (e) {{}}
+  }}
 
   // Title-case the first letter of each word (after start, whitespace,
   // hyphen, or apostrophe). Wikipedia grape titles aren't uniformly
@@ -1202,13 +1733,13 @@ _TEMPLATE = """<!doctype html>
         const sExpr = inField('styles', fineSet);
         if (sExpr) parts.push(sExpr);
       }}
-      const gExpr = inField('grapes_all', filters.grapesAll);
+      const gExpr = inField('grapes_all', expandGrapeSet(filters.grapesAll));
       if (gExpr) parts.push(gExpr);
     }} else {{
       const fineStyles = expandStyles(filters.styles);
       const sExpr = fineStyles ? inField('styles', fineStyles) : null;
-      const pExpr = inField('grapes_principal', filters.principal);
-      const aExpr = inField('grapes_accessory', filters.accessory);
+      const pExpr = inField('grapes_principal', expandGrapeSet(filters.principal));
+      const aExpr = inField('grapes_accessory', expandGrapeSet(filters.accessory));
       if (sExpr) parts.push(sExpr);
       if (pExpr) parts.push(pExpr);
       if (aExpr) parts.push(aExpr);
@@ -1229,8 +1760,116 @@ _TEMPLATE = """<!doctype html>
     }}
     updateStatus();
     refreshFacetBadges();
+    refreshFacetAvailability();
     renderActiveFilters();
     if (opts && opts.fit) fitToFiltered();
+  }}
+
+  // Cross-narrow each facet: an option is shown only if at least one record
+  // matches every OTHER active filter while carrying that option's key. Counts
+  // are recomputed against the same per-facet "other filters" set. Already-
+  // checked options stay visible even when their count drops to 0, so the
+  // user can always unselect what they selected.
+  function refreshFacetAvailability() {{
+    const flatFacets = [
+      {{ id: 'facet-styles-simple', except: 'stylesSimple', field: 'styles_simple', mode: 'simple' }},
+      {{ id: 'facet-grapes-all',    except: 'grapesAll',    field: 'grapes_all',    mode: 'simple' }},
+      {{ id: 'facet-principal',     except: 'principal',    field: 'grapes_principal', mode: 'advanced' }},
+      {{ id: 'facet-accessory',     except: 'accessory',    field: 'grapes_accessory', mode: 'advanced' }},
+    ];
+    for (const f of flatFacets) {{
+      if (f.mode && f.mode !== viewMode) continue;
+      const el = document.getElementById(f.id);
+      if (!el) continue;
+      const except = new Set([f.except]);
+      const counts = new Map();
+      const isGrape = f.id !== 'facet-styles-simple';
+      for (const slug in AOCS) {{
+        const rec = AOCS[slug];
+        if (!matchesExceptFacets(rec, slug, except)) continue;
+        const vals = rec[f.field] || [];
+        if (isGrape) {{
+          // Roll up by canonical slug so a record using "malbec" increments
+          // the merged "cot" row exactly once even when it carries multiple
+          // synonyms of the same VIVC variety.
+          const canons = new Set();
+          for (const v of vals) canons.add(SLUG_TO_CANONICAL[v] || v);
+          for (const c of canons) counts.set(c, (counts.get(c) || 0) + 1);
+        }} else {{
+          for (const v of vals) counts.set(v, (counts.get(v) || 0) + 1);
+        }}
+      }}
+      el.querySelectorAll('label').forEach(lbl => {{
+        const inp = lbl.querySelector('input[type=checkbox]');
+        if (!inp) return;
+        const key = inp.dataset.key;
+        const n = counts.get(key) || 0;
+        const countSpan = lbl.querySelector('.count');
+        if (countSpan) countSpan.textContent = String(n);
+        lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
+      }});
+    }}
+    // Style tree (advanced mode): each node's count is the number of records
+    // (in the cross-narrowed set) whose styles intersect that node's
+    // descendant slug set — same aggregation the build-time pre-count uses.
+    if (viewMode === 'advanced') {{
+      const treeEl = document.getElementById('facet-styles');
+      if (treeEl) {{
+        const except = new Set(['styles']);
+        const treeCounts = new Map();
+        for (const slug in AOCS) {{
+          const rec = AOCS[slug];
+          if (!matchesExceptFacets(rec, slug, except)) continue;
+          const recStyles = rec.styles || [];
+          if (!recStyles.length) continue;
+          const recStyleSet = new Set(recStyles);
+          for (const node in STYLE_DESCENDANTS) {{
+            const ds = STYLE_DESCENDANTS[node];
+            for (let i = 0; i < ds.length; i++) {{
+              if (recStyleSet.has(ds[i])) {{
+                treeCounts.set(node, (treeCounts.get(node) || 0) + 1);
+                break;
+              }}
+            }}
+          }}
+        }}
+        treeEl.querySelectorAll('label').forEach(lbl => {{
+          const inp = lbl.querySelector('input[type=checkbox]');
+          if (!inp) return;
+          const key = inp.dataset.key;
+          const n = treeCounts.get(key) || 0;
+          const countSpan = lbl.querySelector('.count');
+          if (countSpan) countSpan.textContent = String(n);
+          lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
+        }});
+      }}
+    }}
+    // Appellation facet: per-slug reachability + per-region rollup. The
+    // group-level count span shows the number of currently-reachable
+    // appellations in the region.
+    const appEl = document.getElementById('facet-appellations');
+    if (appEl) {{
+      const except = new Set(['appellations']);
+      appEl.querySelectorAll('.region-group').forEach(group => {{
+        let visible = 0;
+        group.querySelectorAll('label').forEach(lbl => {{
+          const inp = lbl.querySelector('input[type=checkbox]');
+          if (!inp) return;
+          const slug = inp.dataset.key;
+          const rec = AOCS[slug];
+          const reachable = rec ? matchesExceptFacets(rec, slug, except) : false;
+          const hide = !reachable && !inp.checked;
+          lbl.classList.toggle('facet-unavailable', hide);
+          if (!hide) visible++;
+        }});
+        // `.region-group` is now the inner `<details>`; hide the
+        // outer `.region-group-wrap` so the sibling checkbox vanishes
+        // alongside the disclosure when no AOCs remain visible.
+        (group.parentElement || group).classList.toggle('facet-unavailable', visible === 0);
+        const countSpan = group.querySelector(':scope > summary > .count');
+        if (countSpan) countSpan.textContent = String(visible);
+      }});
+    }}
   }}
 
   function facetCounts() {{
@@ -1343,13 +1982,11 @@ _TEMPLATE = """<!doctype html>
   }});
 
   function refreshSidebarCheckedState() {{
-    // Re-sync all facet checkboxes to current filter sets.
+    // Re-sync facet checkboxes (styles only — grapes are chip filters
+    // and re-render their chip tray via `refreshAllGrapeChipFilters`).
     const sets = {{
       'facet-styles': filters.styles,
       'facet-styles-simple': filters.stylesSimple,
-      'facet-principal': filters.principal,
-      'facet-accessory': filters.accessory,
-      'facet-grapes-all': filters.grapesAll,
     }};
     for (const [id, set] of Object.entries(sets)) {{
       const el = document.getElementById(id);
@@ -1358,6 +1995,7 @@ _TEMPLATE = """<!doctype html>
         inp.checked = set.has(inp.dataset.key);
       }});
     }}
+    refreshAllGrapeChipFilters();
   }}
 
   // Fit-to-filtered safety belt: when spirits are hidden, clamp the bbox to
@@ -1429,6 +2067,7 @@ _TEMPLATE = """<!doctype html>
           const igpEl = document.getElementById('show-igp');
           if (igpEl) igpEl.checked = true;
           try {{ localStorage.setItem('show_igp', '1'); }} catch (err) {{}}
+          track('Kind Toggled', {{ kind: 'igp', enabled: 'true', locale: LANG, via: 'reveal-hint' }});
           applyFilter({{ fit: true }});
         }});
         el.appendChild(btn);
@@ -1444,16 +2083,51 @@ _TEMPLATE = """<!doctype html>
     if (filters.q && !searchNormalize(rec.name).includes(searchNormalize(filters.q))) return false;
     if (viewMode === 'simple') {{
       if (filters.stylesSimple.size && !setIntersects(filters.stylesSimple, rec.styles_simple || [])) return false;
-      if (filters.grapesAll.size && !setIntersects(filters.grapesAll, rec.grapes_all || [])) return false;
+      if (filters.grapesAll.size && !setIntersects(expandGrapeSet(filters.grapesAll), rec.grapes_all || [])) return false;
     }} else {{
       if (filters.styles.size) {{
         const fineStyles = expandStyles(filters.styles);
         if (!fineStyles || !setIntersects(fineStyles, rec.styles)) return false;
       }}
-      if (filters.principal.size && !setIntersects(filters.principal, rec.grapes_principal)) return false;
-      if (filters.accessory.size && !setIntersects(filters.accessory, rec.grapes_accessory)) return false;
+      if (filters.principal.size && !setIntersects(expandGrapeSet(filters.principal), rec.grapes_principal)) return false;
+      if (filters.accessory.size && !setIntersects(expandGrapeSet(filters.accessory), rec.grapes_accessory)) return false;
     }}
     if (filters.appellations.size && !filters.appellations.has(slug)) return false;
+    return true;
+  }}
+
+  // Mirrors buildFilterExpr semantics (style/grape expansion via taxonomy +
+  // VIVC siblings), but skips facets named in `except` so each facet's own
+  // availability can be computed against ONLY the other active filters —
+  // the standard faceted-search expansion pattern.
+  function matchesExceptFacets(rec, slug, except) {{
+    if (!showIgp && (rec.kind || 'AOC') === 'IGP') return false;
+    if (!spiritsVisible() && rec.is_wine === false) return false;
+    if (!except.has('q') && filters.q && !searchNormalize(rec.name).includes(searchNormalize(filters.q))) return false;
+    if (viewMode === 'simple') {{
+      if (!except.has('stylesSimple') && filters.stylesSimple.size) {{
+        const fineSet = new Set();
+        for (const b of filters.stylesSimple) {{
+          for (const s of (SIMPLE_STYLE_BUCKETS[b] || [])) fineSet.add(s);
+        }}
+        if (!setIntersects(fineSet, rec.styles || [])) return false;
+      }}
+      if (!except.has('grapesAll') && filters.grapesAll.size) {{
+        if (!setIntersects(expandGrapeSet(filters.grapesAll), rec.grapes_all || [])) return false;
+      }}
+    }} else {{
+      if (!except.has('styles') && filters.styles.size) {{
+        const fineStyles = expandStyles(filters.styles);
+        if (!fineStyles || !setIntersects(fineStyles, rec.styles || [])) return false;
+      }}
+      if (!except.has('principal') && filters.principal.size) {{
+        if (!setIntersects(expandGrapeSet(filters.principal), rec.grapes_principal || [])) return false;
+      }}
+      if (!except.has('accessory') && filters.accessory.size) {{
+        if (!setIntersects(expandGrapeSet(filters.accessory), rec.grapes_accessory || [])) return false;
+      }}
+    }}
+    if (!except.has('appellations') && filters.appellations.size && !filters.appellations.has(slug)) return false;
     return true;
   }}
 
@@ -1463,18 +2137,22 @@ _TEMPLATE = """<!doctype html>
     return false;
   }}
 
-  function buildFacet(containerId, items, store, format) {{
+  function buildFacet(containerId, items, store, format, extraFormat) {{
     const el = document.getElementById(containerId);
     const html = items.map(([key, count]) => {{
       const safeKey = String(key).replace(/"/g, '&quot;');
       const label = format ? format(key) : key;
-      return `<label><input type="checkbox" data-key="${{safeKey}}"><span class="name">${{label}}</span><span class="count">${{count}}</span></label>`;
+      const extra = extraFormat ? extraFormat(key) : '';
+      return `<label><input type="checkbox" data-key="${{safeKey}}"><span class="name">${{label}}${{extra}}</span><span class="count">${{count}}</span></label>`;
     }}).join('');
     el.innerHTML = html;
     el.addEventListener('change', e => {{
       if (e.target.tagName !== 'INPUT') return;
       const k = e.target.dataset.key;
       if (e.target.checked) store.add(k); else store.delete(k);
+      if (e.target.checked) {{
+        track('Filter Applied', {{ facet: containerId.replace(/^facet-/, ''), value: k, locale: LANG }});
+      }}
       applyFilter({{ fit: true }});
     }});
   }}
@@ -1493,6 +2171,9 @@ _TEMPLATE = """<!doctype html>
       if (e.target.tagName !== 'INPUT') return;
       const k = e.target.dataset.key;
       if (e.target.checked) store.add(k); else store.delete(k);
+      if (e.target.checked) {{
+        track('Filter Applied', {{ facet: 'styles', value: k, locale: LANG }});
+      }}
       applyFilter({{ fit: true }});
     }});
   }}
@@ -1512,9 +2193,13 @@ _TEMPLATE = """<!doctype html>
 
   buildStyleTreeFacet('facet-styles', FACET_STYLES_TREE, filters.styles);
   buildFacet('facet-styles-simple', FACET_STYLES_SIMPLE, filters.stylesSimple, k => SIMPLE_STYLE_LABELS[k] || k);
-  buildFacet('facet-principal', FACET_PRINCIPAL, filters.principal, grapeName);
-  buildFacet('facet-accessory', FACET_ACCESSORY, filters.accessory, grapeName);
-  buildFacet('facet-grapes-all', FACET_GRAPES_ALL, filters.grapesAll, grapeName);
+  document.querySelectorAll('.grape-chip-filter').forEach(container => {{
+    const role = container.dataset.role || 'all';
+    const set = role === 'principal' ? filters.principal
+              : role === 'accessory' ? filters.accessory
+              : filters.grapesAll;
+    buildGrapeChipFilter(container, role, set);
+  }});
 
   // Map of region → list of slugs, computed once. The appellation tree
   // re-renders on spirits-toggle (entries appear/disappear), but the
@@ -1573,7 +2258,12 @@ _TEMPLATE = """<!doctype html>
         return `<label data-slug="${{safeSlug}}" data-name="${{escapeAttr(searchNormalize(AOCS[slug].name))}}"><input type="checkbox" data-key="${{safeSlug}}"${{checked}}><span class="name">${{name}}</span></label>`;
       }}).join('');
       const safeRegion = escapeAttr(region);
-      html.push(`<details class="region-group" data-region="${{safeRegion}}"><summary><input type="checkbox" class="region-select" data-region="${{safeRegion}}" aria-label="${{escapeAttr(LABELS.select_all_aria)}}"><span class="name">${{escapeHtml(label)}}</span><span class="count">${{slugs.length}}</span></summary><div class="region-items">${{items}}</div></details>`);
+      // Checkbox lives outside `<summary>` (sibling of `<details>`,
+      // not a descendant) so the nested-interactive-in-summary
+      // accessibility warning doesn't fire. Visual layout is restored
+      // via `.region-group-wrap`'s flex rule — checkbox + disclosure
+      // sit in the same row.
+      html.push(`<div class="region-group-wrap" data-region="${{safeRegion}}"><input type="checkbox" class="region-select" data-region="${{safeRegion}}" aria-label="${{escapeAttr(LABELS.select_all_aria)}}"><details class="region-group" data-region="${{safeRegion}}"><summary><span class="name">${{escapeHtml(label)}}</span><span class="count">${{slugs.length}}</span></summary><div class="region-items">${{items}}</div></details></div>`);
     }}
     el.innerHTML = html.join('');
     // Reapply current search visibility (so a tree rebuild during a typed
@@ -1596,9 +2286,15 @@ _TEMPLATE = """<!doctype html>
       )) {{
         inp.checked = filters.appellations.has(inp.dataset.key);
       }}
+      if (e.target.checked) {{
+        track('Filter Applied', {{ facet: 'region', value: region || '(none)', locale: LANG }});
+      }}
     }} else {{
       const k = e.target.dataset.key;
       if (e.target.checked) filters.appellations.add(k); else filters.appellations.delete(k);
+      if (e.target.checked) {{
+        track('Filter Applied', {{ facet: 'appellation', value: k, locale: LANG }});
+      }}
     }}
     refreshRegionTriStates();
     applyFilter({{ fit: true }});
@@ -1609,7 +2305,9 @@ _TEMPLATE = """<!doctype html>
     if (!el) return;
     el.querySelectorAll('.region-group').forEach(group => {{
       const region = group.dataset.region;
-      const cb = group.querySelector('.region-select');
+      // `.region-select` is a sibling of `.region-group` inside the
+      // `.region-group-wrap`, not a descendant. Reach via the parent.
+      const cb = (group.parentElement || group).querySelector('.region-select');
       if (!cb) return;
       const state = regionTriState(region);
       cb.checked = state === 'checked';
@@ -1684,6 +2382,7 @@ _TEMPLATE = """<!doctype html>
       if (next === viewMode) return;
       viewMode = next;
       try {{ localStorage.setItem('view_mode', viewMode); }} catch (e) {{}}
+      track('View Mode Switched', {{ mode: viewMode, locale: LANG }});
       applyMode();
       applyFilter({{ fit: true }});
     }});
@@ -1694,6 +2393,7 @@ _TEMPLATE = """<!doctype html>
   igpEl.addEventListener('change', e => {{
     showIgp = e.target.checked;
     try {{ localStorage.setItem('show_igp', showIgp ? '1' : '0'); }} catch (err) {{}}
+    track('Kind Toggled', {{ kind: 'igp', enabled: showIgp ? 'true' : 'false', locale: LANG }});
     applyFilter({{ fit: true }});
   }});
 
@@ -1702,6 +2402,7 @@ _TEMPLATE = """<!doctype html>
   spiritsEl.addEventListener('change', e => {{
     showSpirits = e.target.checked;
     try {{ localStorage.setItem('show_spirits', showSpirits ? '1' : '0'); }} catch (err) {{}}
+    track('Kind Toggled', {{ kind: 'spirits', enabled: showSpirits ? 'true' : 'false', locale: LANG }});
     // Spirit AOCs join/leave the appellation tree; rebuild + reapply.
     buildAppellationFacet();
     applyFilter({{ fit: true }});
@@ -1711,12 +2412,32 @@ _TEMPLATE = """<!doctype html>
   // it auto-expands the section if collapsed, since otherwise the tree
   // updates would be invisible to the user.
   const qInput = document.getElementById('q');
+  // Debounced search analytics: fire once after the user stops typing.
+  // We send result_count / had_match / query_len only — never the raw
+  // string, since search boxes attract typos, names, and assorted junk.
+  let searchTrackTimer = null;
   qInput.addEventListener('input', e => {{
     filters.q = e.target.value.trim();
     refreshFacetVisibility('facet-appellations', filters.q);
     const det = qInput.closest('details');
     if (filters.q && det && !det.open) det.open = true;
     applyFilter();
+    if (searchTrackTimer) clearTimeout(searchTrackTimer);
+    if (filters.q) {{
+      searchTrackTimer = setTimeout(() => {{
+        const nq = searchNormalize(filters.q);
+        let n = 0;
+        for (const slug in AOCS) {{
+          if (searchNormalize(AOCS[slug].name).includes(nq)) n++;
+        }}
+        track('Search Used', {{
+          result_count: String(n),
+          had_match: n > 0 ? 'true' : 'false',
+          query_len: String(filters.q.length),
+          locale: LANG,
+        }});
+      }}, 1000);
+    }}
   }});
 
   // Per-facet search inputs (cépages). They filter only the visible
@@ -1728,6 +2449,7 @@ _TEMPLATE = """<!doctype html>
   }});
 
   document.getElementById('reset').addEventListener('click', () => {{
+    track('Filters Reset', {{ locale: LANG }});
     filters.q = '';
     filters.styles.clear(); filters.stylesSimple.clear();
     filters.principal.clear(); filters.accessory.clear(); filters.grapesAll.clear();
@@ -1900,6 +2622,14 @@ _TEMPLATE = """<!doctype html>
     const principal = (r.grapes_principal || []).map(g => grapePill(g, '')).join('');
     const accessory = (r.grapes_accessory || []).map(g => grapePill(g, 'accessory')).join('');
     const observation = (r.grapes_observation || []).map(g => grapePill(g, 'observation')).join('');
+    // PT cadernos enumerate every authorised casta as `principal` because
+    // the IVV documento-único format doesn't carry a role split (see
+    // CLAUDE.md "PT grape role classification — not published by the
+    // regulator"). Surface that limitation inline under the principal
+    // pills so the rendering is honest about what the regulator publishes.
+    const ptRoleDisclaimer = (r.country === 'pt' && principal)
+      ? `<div class="role-disclaimer">${{escapeHtml(LABELS.pt_role_disclaimer)}}</div>`
+      : '';
     const klass = isPrimary ? 'aoc-card' : 'aoc-card subordinate';
     let metaTail = '';
     if (r.geom_source === 'aires-csv' || r.geom_source === 'dgc-village-override') {{
@@ -1942,6 +2672,7 @@ _TEMPLATE = """<!doctype html>
         ${{approxLine}}
         ${{styleChips ? '<h2>' + LABELS.panel_styles_h + '</h2><div class="pills">' + styleChips + '</div>' : ''}}
         ${{principal ? '<h2>' + LABELS.facet_principal_h + '</h2><div class="pills">' + principal + '</div>' : ''}}
+        ${{ptRoleDisclaimer}}
         ${{accessory ? '<h2>' + LABELS.facet_accessory_h + '</h2><div class="pills">' + accessory + '</div>' : ''}}
         ${{observation ? '<h2>' + LABELS.panel_observation_h + '</h2><div class="pills">' + observation + '</div>' : ''}}
         ${{factsBlock || summary}}

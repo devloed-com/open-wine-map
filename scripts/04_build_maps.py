@@ -57,6 +57,7 @@ from _lib.es.region import (
     derive_ccaa as derive_es_ccaa,
 )
 from _lib.es.sigpac import SigpacIndex
+from _lib.fr_wine_region import derive_wine_region as derive_fr_wine_region
 from _lib.pt.commune_list import parse_commune_list as parse_pt_commune_list
 from _lib.pt.geometry import PTPolygonIndex
 from _lib.pt.region import derive_region as derive_pt_region
@@ -186,6 +187,7 @@ def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
         if added:
             augmented += 1
     return augmented
+
 
 # Simple-mode style buckets: collapses the fine-grained style tags into the
 # six top-level buckets the default view shows. Derived from the canonical
@@ -342,6 +344,40 @@ def _load_translated_grape(lang: str, slug: str, max_chars: int = 280) -> dict |
     }
 
 
+def _corpus_grape_names() -> dict[str, str]:
+    """Per-slug regulator spelling from the FR+ES+PT corpus, e.g.
+    `cot → 'cot'`, `malbec → 'malbec'`, `mancin → 'mancin'`. Used as the
+    canonical sidebar / pill label so three different slugs sharing a
+    Wikipedia article (Cot ↔ Malbec via vivc, plus a misattributed
+    Mancin) read as their three distinct cahier names — not three
+    identical "Malbec" rows."""
+    from _lib.grape_corpus import collect_grape_slugs as _c  # noqa: PLC0415
+    return {slug: entry["name"] for slug, entry in _c().items() if entry.get("name")}
+
+
+_CORPUS_GRAPE_NAMES: dict[str, str] | None = None
+
+
+def _corpus_name_for(slug: str) -> str | None:
+    global _CORPUS_GRAPE_NAMES
+    if _CORPUS_GRAPE_NAMES is None:
+        _CORPUS_GRAPE_NAMES = _corpus_grape_names()
+    return _CORPUS_GRAPE_NAMES.get(slug)
+
+
+def _override_name_with_corpus(entry: dict, slug: str) -> None:
+    """Replace `entry['name']` (which after `_load_native_grape` is the
+    Wikipedia article title) with the regulator's cahier spelling when
+    one exists. Keeps `wikipedia_title` intact for the tooltip header so
+    attribution stays accurate."""
+    cahier = _corpus_name_for(slug)
+    if not cahier:
+        return
+    if "wikipedia_title" not in entry and entry.get("name"):
+        entry["wikipedia_title"] = entry["name"]
+    entry["name"] = cahier
+
+
 def build_grapes_info(target_locale: str) -> dict:
     """Per-slug grape data for the target locale's map page.
 
@@ -366,6 +402,13 @@ def build_grapes_info(target_locale: str) -> dict:
     if (GRAPE_TRANSLATIONS_DIR / target_locale).exists():
         slugs.update(p.stem for p in (GRAPE_TRANSLATIONS_DIR / target_locale).glob("*.json"))
     slugs.update(vivc.keys())
+    # Keep only slugs that the *current* corpus actually emits. Stale
+    # Wikipedia / translation cache entries for slugs that no longer
+    # appear in the FR/ES/PT extracted JSONs (e.g. `tempranillo-cencibel`
+    # after the ES EU-OJ splitter fix) otherwise leak into GRAPES_INFO
+    # and reappear in the chip-filter index as ghost entries.
+    corpus_slugs = set(_corpus_grape_names().keys()) | set(vivc.keys())
+    slugs &= corpus_slugs
 
     out: dict[str, dict] = {}
     for slug in slugs:
@@ -378,6 +421,7 @@ def build_grapes_info(target_locale: str) -> dict:
                 "source_lang": target_locale,
                 "is_translated": False,
             }
+            _override_name_with_corpus(entry, slug)
             out[slug] = entry
             continue
         translated = _load_translated_grape(target_locale, slug)
@@ -388,6 +432,7 @@ def build_grapes_info(target_locale: str) -> dict:
                 "is_translated": True,
                 "matched_via": "translation",
             }
+            _override_name_with_corpus(entry, slug)
             out[slug] = entry
             continue
         if vivc_fields:
@@ -932,6 +977,13 @@ def main() -> int:
             f"[load] ES national-pliego augmentation: {n_aug} records enriched",
             file=sys.stderr,
         )
+    # PT cadernos enumerate every authorised casta as `principal` —
+    # the IVV documento-único format we parse doesn't carry a
+    # principal/accessory split, and an investigation into the
+    # national Portarias on dre.pt confirmed the role distinction
+    # isn't published at the regulator level for most DOPs. The PT
+    # map detail panel surfaces this caveat inline so the rendering
+    # reflects the data we actually have.
     # Process parents first, DGCs second — lets DGCs reuse the parent
     # geometry that was just resolved (same logic for FR DGCs and ES
     # subzonas).
@@ -1374,7 +1426,7 @@ def main() -> int:
         elif record.get("country") == "pt":
             region_value = derive_pt_region(record)
         else:
-            region_value = record.get("comite_regional", "")
+            region_value = derive_fr_wine_region(record)
         common_props = {
             "country": record.get("country") or "fr",
             "id_appellation": (
@@ -2043,12 +2095,9 @@ def emit_html(
         facet_styles_tree=facet_styles_tree,
         style_descendants=style_descendants,
         facet_styles_simple=facet_styles_simple,
-        facet_principal=sort_facet(principal_counts),
-        facet_accessory=sort_facet(accessory_counts),
-        facet_grapes_all=sort_facet(grapes_all_counts),
         facet_regions=sort_facet(region_counts),
-        area_q1=area_q1,
-        area_q3=area_q3,
+        area_quartiles=(area_q1, area_q3),
+        vivc_by_slug=_load_vivc_by_slug(),
     )
     fr_styles_lex = load_style_lexicon("fr")
     for lang in LOCALES:

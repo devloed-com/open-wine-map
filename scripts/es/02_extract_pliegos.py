@@ -48,6 +48,10 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.es.subzona import extract_subzonas, slugify as _subzona_slug  # noqa: E402
+from _lib.es.national_pliego import _split_concatenated  # noqa: E402
+from _lib.grape_entity import (  # noqa: E402
+    flush_unknowns_queue, match_variety, set_pliego_context,
+)
 from _lib.grape_lexicon import (  # noqa: E402
     DEFAULT_COLOUR, GRAPE_ALIAS, GRAPE_BLOCKLIST, slugify as _grape_slug,
 )
@@ -404,8 +408,10 @@ _FOOTNOTE_MARKER_RE = re.compile(r"\[\d+\]")
 
 
 def _normalise_grape_entry(name: str, ambient_colour: str | None) -> dict | None:
-    """Slugify, alias-fold, infer colour. Returns {slug, name, colour} or
-    None when the token isn't a real grape name."""
+    """Pre-clean a variety token (footnote/colon-label/connector strip,
+    structural-noise drop) and hand off to the vocab matcher. Returns
+    `{slug, name, colour}` on match, `None` otherwise. Unmatched tokens
+    land in the curator queue via `match_variety`."""
     name = name.strip().strip("«»\"'·")
     name = _FOOTNOTE_MARKER_RE.sub("", name).strip()
     name = _LEADING_COLON_LABEL_RE.sub("", name)
@@ -437,38 +443,11 @@ def _normalise_grape_entry(name: str, ambient_colour: str | None) -> dict | None
     first = words[0]
     if not first[0].isalpha() or not first[0].isupper():
         return None
-    # Any word in `_GRAPE_PROSE_MARKERS` marks the token as prose, not a
-    # variety name.
-    if any(w.lower() in _GRAPE_PROSE_MARKERS for w in words):
-        return None
 
-    colour = ambient_colour or ""
-    m_suf = _COLOUR_SUFFIX_RE.search(name)
-    if m_suf:
-        colour = _COLOUR_BY_KEYWORD.get(m_suf.group(1).lower(), colour)
-
-    raw_slug = _grape_slug(name)
-    if not raw_slug or raw_slug in GRAPE_BLOCKLIST:
+    result = match_variety(name, ambient_colour=ambient_colour or None)
+    if result is None or result.slug in GRAPE_BLOCKLIST:
         return None
-    slug = GRAPE_ALIAS.get(raw_slug, raw_slug)
-    if slug in GRAPE_BLOCKLIST:
-        return None
-    for suf in ("-blanc", "-blanca", "-blanco", "-noir", "-negra", "-negro",
-                "-tinta", "-tinto", "-gris", "-rosada"):
-        if slug.endswith(suf):
-            stem = slug[: -len(suf)]
-            stem_canonical = GRAPE_ALIAS.get(stem, stem)
-            if DEFAULT_COLOUR.get(stem_canonical) in {colour, "noir", "blanc"}:
-                slug = stem_canonical
-                break
-
-    # Lowercase the display name so the ES output matches the FR cahier-
-    # extracted convention. PDF source casing varies wildly (ALL CAPS in
-    # INCAVI / Cataluña, Title Case in JCCM, lowercase in valdeorras);
-    # the slug + alias-fold is already case-insensitive, so the canonical
-    # display falls back to lowercase here and is overridden by the
-    # Wikipedia lexicon's title-cased entry at render time when present.
-    return {"slug": slug, "name": name.lower(), "colour": colour}
+    return {"slug": result.slug, "name": result.name.lower(), "colour": result.colour}
 
 
 _HEADER_LINE_RE = re.compile(
@@ -520,6 +499,30 @@ def _stitch_lines(text: str) -> list[str]:
             out.append(stripped)
             prev_indent = indent
     return out
+
+
+def _emit_grape_with_split(
+    entry: dict, role: str, seen_slugs: set[str], details: list[dict],
+) -> None:
+    """Append `entry` to `details` after greedy-decomposing any typo-glued
+    slug (e.g. `tempranillo-cencibel`, `pinot-noir-mazuela`) into known
+    canonical sub-slugs via `_split_concatenated`. Reuses the helper added
+    for the national-pliego parser — same vocabulary, same decomposition
+    rules — so both ES extractor paths share one fix."""
+    for sub in _split_concatenated(entry["slug"]):
+        if sub in seen_slugs:
+            continue
+        seen_slugs.add(sub)
+        if sub == entry["slug"]:
+            entry["role"] = role
+            details.append(entry)
+        else:
+            details.append({
+                "slug": sub,
+                "name": sub.replace("-", " "),
+                "colour": entry["colour"],
+                "role": role,
+            })
 
 
 def parse_grapes(section_text: str) -> dict:
@@ -602,11 +605,7 @@ def parse_grapes(section_text: str) -> dict:
                     entry = _normalise_grape_entry(synonym, ambient_colour)
                     if entry is None:
                         continue
-                    if entry["slug"] in seen_slugs:
-                        continue
-                    seen_slugs.add(entry["slug"])
-                    entry["role"] = role
-                    details.append(entry)
+                    _emit_grape_with_split(entry, role, seen_slugs, details)
                     # Subsequent synonyms inside the same token alias onto
                     # the same canonical slug; the dedup loop swallows them.
             i += 2
@@ -901,12 +900,6 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         # "de uva" reliably qualifies a grape-variety section.
         "variedad(es) de uva", "variedades de uva", "variedad de uva",
         "variedades de uvas", "variedad o variedades",
-        # Colour-organised variant — used by pliegos that subdivide the
-        # variety section by colour at the top level (sections "Variedades
-        # blancas" / "Variedades tintas"). _AMENDMENT_TITLE_PREFIXES filters
-        # out cases like "PLANTACIONES DE SECANO VARIEDADES BLANCAS"
-        # (Yecla) where the same phrase appears mid-title.
-        "variedades blancas", "variedades tintas",
         # EU 2024 template variant ("PRINCIPALES UVAS DE VINIFICACIÓN"):
         "uvas de vinificación", "uvas de vinificacion",
         "principales uvas",
@@ -958,6 +951,27 @@ def _is_amendment_title(title: str) -> bool:
     return any(t.startswith(p) for p in _AMENDMENT_TITLE_PREFIXES)
 
 
+_GRAPE_COLOUR_FALLBACK_KEYWORDS = ("variedades blancas", "variedades tintas")
+
+
+def _match_section_body(
+    sections: dict[str, str],
+    titles: dict[str, str],
+    keywords: tuple[str, ...],
+    exclude_amendments: bool,
+) -> str | None:
+    for num, title in titles.items():
+        if exclude_amendments and _is_amendment_title(title):
+            continue
+        if not any(kw in title.lower() for kw in keywords):
+            continue
+        body = sections.get(num, "")
+        if not body.strip():
+            body = _gather_subsections(sections, num)
+        return body
+    return None
+
+
 def route_sections(sections: dict[str, str], titles: dict[str, str]) -> dict[str, str]:
     """Map semantic role → section body using title keyword matching. First
     title that matches a role's keyword list wins (same idiom as FR
@@ -970,18 +984,30 @@ def route_sections(sections: dict[str, str], titles: dict[str, str]) -> dict[str
     Amendment-section titles (prefixed "CAMBIOS …", "Incorporación …",
     "PLANTACIONES …", "VINOS BLANCOS:" wine-category headers) are
     excluded from grape_varieties matching — they false-positive on the
-    bare token "variedades" but are not the section we want."""
+    bare token "variedades" but are not the section we want.
+
+    Grape-variety routing prefers an explicit "variedad(es) de uva" /
+    "uvas de vinificación" title over the colour-organised
+    "Variedades blancas" / "Variedades tintas" fallback. Some pliegos
+    (e.g. Ribera del Guadiana) carry a real section 7 titled
+    "Variedades de uva de vinificación" plus stray oj-ti-grseq-1
+    paragraphs inside the yields list that start "1. Variedades
+    blancas 12 000 kg…"; the explicit-first pass routes around them."""
     routed: dict[str, str] = {}
     for role, keywords in SECTION_ROLE_KEYWORDS.items():
-        for num, title in titles.items():
-            if role == "grape_varieties" and _is_amendment_title(title):
-                continue
-            if any(kw in title.lower() for kw in keywords):
-                body = sections.get(num, "")
-                if not body.strip():
-                    body = _gather_subsections(sections, num)
-                routed[role] = body
-                break
+        body = _match_section_body(
+            sections, titles, keywords,
+            exclude_amendments=(role == "grape_varieties"),
+        )
+        if body is not None:
+            routed[role] = body
+    if "grape_varieties" not in routed:
+        body = _match_section_body(
+            sections, titles, _GRAPE_COLOUR_FALLBACK_KEYWORDS,
+            exclude_amendments=True,
+        )
+        if body is not None:
+            routed["grape_varieties"] = body
     return routed
 
 
@@ -1145,6 +1171,7 @@ def main() -> int:
 
     for w in tqdm(wines, desc="extract-pliegos", leave=False):
         slug = w["slug"]
+        set_pliego_context(slug)
         oj_meta = oj_manifest.get(slug, {})
         html_cache = OJ_DIR / f"{slug}.html"
         pdf_cache = OJ_DIR / f"{slug}.pdf"
@@ -1220,9 +1247,18 @@ def main() -> int:
                 }
                 subzonas_emitted += 1
 
+    set_pliego_context(None)
     INDEX_OUT.write_text(
         json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True)
     )
+    unknowns_path = ROOT / "raw" / "es" / "extraction-unknowns.json"
+    n_unknowns = flush_unknowns_queue(unknowns_path)
+    if n_unknowns:
+        print(
+            f"[entity] {n_unknowns} unknown variety candidates → "
+            f"review at {unknowns_path.relative_to(ROOT)}",
+            file=sys.stderr,
+        )
     print(
         f"[done] extracted={extracted} stubs={stubs} parse_failed={parse_failed} "
         f"subzonas={subzonas_emitted} → {OUT_DIR.relative_to(ROOT)}",

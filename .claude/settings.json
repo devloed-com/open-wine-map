@@ -6,8 +6,14 @@
       "Bash(curl -sI *)",
       "Bash(curl -sIL *)",
       "Bash(curl -sSL *)",
+      "Bash(curl -sS *)",
+      "Bash(grep *)",
+      "Bash(cat *)",
       "Bash(pdftotext -layout *)",
-      "Bash(pdftoppm -png *)"
+      "Bash(pdftoppm -png *)",
+      "Bash(.venv/bin/python scripts/audit_*.py)",
+      "Bash(.venv/bin/python scripts/audit_*.py *)",
+      "Bash(.venv/bin/python scripts/*.py *)"
     ]
   }
 }

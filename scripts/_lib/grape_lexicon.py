@@ -54,6 +54,8 @@ GRAPE_ALIAS = {
     "pousard": "poulsard",
     "roussane": "roussanne",
     "syrha": "syrah",
+    "sirah": "syrah",                          # ES pliego typo (lanzarote)
+    "syrah-shiraz": "syrah",                   # PT "Syrah (Shiraz)" — parenthetical synonym
     # ----- ES → canonical (international or FR slug where the variety
     # is the same trans-Pyrenean grape). Synonym pairs marked with " - "
     # inside pliegos are split before alias lookup, so every alternative
@@ -80,6 +82,8 @@ GRAPE_ALIAS = {
     "monastrell": "mourvedre",
     "macabeo": "macabeu",
     "viura": "macabeu",
+    "xarel-lo": "xarello",                      # "Xarel.lo" Catalan orthography → canonical Xarello (vivc 13270)
+    "xarel-lo-rosado": "xarello-rosado",        # rosé variant orthography (vivc 13273)
     "ull-de-llebre": "tempranillo",
     "tinta-del-pais": "tempranillo",
     "tinto-fino": "tempranillo",
@@ -105,9 +109,58 @@ GRAPE_ALIAS = {
     "prensal": "moll",
     "torneiro": "espadeiro",
     "gironet": "grenache",
-    "dona-branca": "dona-blanca",              # Galician form
+    "dona-branca": "siria",                    # Galician form; VIVC #2742 SIRIA
     "mouraton": "juan-garcia",                 # Bierzo/Valdeorras synonym
     "turruntes": "albillo-mayor",              # Rioja/Albillo Mayor synonym
+    # ----- ES OJ-asserted `A - B` synonym pairs, VIVC-confirmed
+    # (both sides resolve to the same VIVC variety number). Canonical
+    # picked by: VIVC prime slug when it matches a pair member, then
+    # existing GRAPE_ALIAS target, then most-used slug in the corpus.
+    # Pairs whose VIVC prime is a third existing slug are folded
+    # cross-canonically below.
+    "malvasia-sitges": "malvasia-aromatica",   # VIVC #7266
+    "malvasia-de-banyalbufar": "malvasia-aromatica",
+    "diego": "vijariego-blanco",               # VIVC #13075
+    "bigiriego": "vijariego-blanco",
+    "malvasia-riojana": "alarije",             # VIVC #213
+    "baboso-blanco": "bastardo-blanco",        # VIVC #24996
+    "marmajuelo": "bermejuela",                # VIVC #24424
+    "chelva": "montua",                        # VIVC #2520
+    "pensal-blanca": "moll",                   # VIVC #9113 prime PENSAL BLANCA, but `moll` is the established canonical (cf. `prensal: moll`)
+    "frasco": "tinto-velasco",                 # VIVC #17353
+    "marques": "loureira",                     # VIVC #6912 LOUREIRO BLANCO; loureira is the established canonical
+    "juan-ibanez": "moristel",                 # VIVC #12353
+    "montonec": "parellada",                   # VIVC #8938
+    "montonega": "parellada",
+    "cartoixa": "xarello",                     # VIVC #13270
+    "pansa-blanca": "xarello",
+    "pansal": "xarello",
+    "eva": "beba",                             # VIVC #22710
+    "marisancho": "pardillo",                  # VIVC #8934
+    "mandon": "garro",                         # VIVC #7326
+    "dozal": "pedral",                         # VIVC #9078
+    "moscatel-morisco": "muscat-a-petits-grains",  # VIVC #8193
+    # Cross-canonical: pair members fold to the VIVC prime slug already
+    # established elsewhere in the corpus (FR / PT canonicals).
+    "pardina": "cayetana-blanca",              # VIVC #5648 CAYETANA BLANCA
+    "jaen-blanco": "cayetana-blanca",
+    "dona-blanca": "siria",                    # VIVC #2742 SIRIA — unifies ES Doña Blanca with PT Síria
+    "ciguente": "siria",
+    "malvasia-castellana": "siria",
+    "brunal": "alfrocheiro",                   # VIVC #277 ALFROCHEIRO — unifies ES Brunal/Baboso Negro with PT Alfrocheiro
+    "baboso-negro": "alfrocheiro",
+    # ----- ES OJ-asserted pairs disambiguated by external research
+    # (Chrome-extension VIVC + EU DG-AGRI + MAPA + Canary Wine + Wine
+    # Grapes cross-check, 2026-05-19). Notes for each:
+    "almuneco": "listan-negro",                # VIVC #14943 LISTAN NEGRO; #6860 LISTAN PRIETO (=Mission/País) is a separate variety despite carrying ALMUNECO as a legacy synonym
+    "agudelo": "godello",                      # VIVC #12953 GOUVEIO (= Godello); the OJ's "AGUDELO - CHENIN BLANC" equation is an ampelographic error VIVC carries as a legacy ES synonym on #2527
+    "blasco": "tinto-velasco",                 # VIVC #17353 TINTO VELASCO; #304 ALICANTE BOUSCHET also lists BLASCO as a synonym (VIVC duplication) — alias pins it to the correct variety
+    "bastardo-negro": "trousseau",             # VIVC #12668 TROUSSEAU NOIR (= Merenzao); distinct from baboso-negro (= Alfrocheiro) despite the Canarian pliegos' synonymy claim
+    "crudijera": "moravia-dulce",              # VIVC #23166 MORAVIA DULCE (CRUJIDERA synonym; "Crudijera" in La Mancha/Manchuela is a d↔j metathesis)
+    "negro-sauri": "trousseau",                # VIVC #12668 TROUSSEAU NOIR; EU DG-AGRI List 8 and MAPA both register NEGRO SAURÍ as a synonym of Merenzao
+    "merenzao": "trousseau",                   # VIVC #12668 TROUSSEAU NOIR — unifies the ES/Galician name with the FR canonical (and bastardo-negro, negro-sauri, maturana-tinta below)
+    "maturana-tinta": "trousseau",             # VIVC #12668 TROUSSEAU NOIR (Rioja name)
+    "tintilla": "trousseau",                   # Canarian-only in this corpus (10/10 pliegos are Canary Islands DOPs); peninsular "Tintilla" appears as the full slug `tintilla-de-rota` (= Graciano #4935), which stays separate
     # ----- Typos / alt-spellings in specific pliegos. Folded here so
     # GRAPE_ALIAS keeps source data unmodified.
     "petiti-verdot": "petit-verdot",          # Laujar-Alpujarra

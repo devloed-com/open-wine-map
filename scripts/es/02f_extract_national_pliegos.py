@@ -58,6 +58,7 @@ import requests
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.es.national_pliego import parse_variety_section, pdf_to_text  # noqa: E402
+from _lib.grape_entity import flush_unknowns_queue, set_pliego_context  # noqa: E402
 
 PLIEGOS_DIR = ROOT / "raw" / "es" / "pliegos-extracted"
 PDF_CACHE = ROOT / "raw" / "es" / "national-pliegos"
@@ -202,7 +203,9 @@ def process(slug: str, refresh: bool, strict: bool = True, overrides: dict | Non
             raise
         return {"slug": slug, "status": "pdftotext-failed", "reason": str(e)[:200]}
 
+    set_pliego_context(slug)
     parsed = parse_variety_section(text)
+    set_pliego_context(None)
     if not parsed["found"]:
         if strict:
             raise SystemExit(
@@ -304,6 +307,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\n# Summary: ok={ok}  skip={skip}  err={err}", file=sys.stderr)
         for status, count in sorted(per_status.items()):
             print(f"   {status:<25s} {count}", file=sys.stderr)
+        unknowns_path = ROOT / "raw" / "es" / "extraction-unknowns-national.json"
+        n_unknowns = flush_unknowns_queue(unknowns_path)
+        if n_unknowns:
+            print(
+                f"[entity] {n_unknowns} unknown variety candidates → "
+                f"review at {unknowns_path.relative_to(ROOT)}",
+                file=sys.stderr,
+            )
         return 0 if err == 0 else 1
 
     slug = args.slug or "mentrida"

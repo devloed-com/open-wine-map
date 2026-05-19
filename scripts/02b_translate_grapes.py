@@ -57,6 +57,7 @@ from _lib.grape_corpus import collect_grape_slugs, per_slug_dominant_lang  # noq
 NATIVE_DIR = ROOT / "raw" / "wikipedia" / "grapes"
 CACHE_ROOT = ROOT / "raw" / "translations" / "grapes"
 MANIFEST = CACHE_ROOT / "manifest.json"
+VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
 
 # Target locales the UI renders. PT is *not* a target (no /pt/ page yet)
 # but PT is fetched as a source language for translation (some grapes
@@ -87,6 +88,80 @@ Output ONLY the translated paragraph. No preface, no closing remarks, no JSON wr
 
 def extract_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+_VIVC_CACHE: dict[str, dict | None] = {}
+
+
+def _load_vivc(slug: str) -> dict | None:
+    if slug in _VIVC_CACHE:
+        return _VIVC_CACHE[slug]
+    path = VIVC_BY_SLUG / f"{slug}.json"
+    if not path.exists():
+        _VIVC_CACHE[slug] = None
+        return None
+    _VIVC_CACHE[slug] = json.loads(path.read_text())
+    return _VIVC_CACHE[slug]
+
+
+def _vivc_id_for(slug: str) -> int | None:
+    rec = _load_vivc(slug)
+    return rec.get("vivc_id") if rec else None
+
+
+def _build_translation_donor_index(target_lang: str) -> dict[int, dict]:
+    """Per target-lang `vivc_id → existing-translation` index. Two cahier
+    slugs that share a VIVC id source from the same Wikipedia paragraph
+    and therefore translate to the same target text — once one is in cache
+    for a locale, every sibling slug can reuse the result instead of
+    paying for another translation."""
+    lang_dir = CACHE_ROOT / target_lang
+    if not lang_dir.exists():
+        return {}
+    out: dict[int, dict] = {}
+    for f in lang_dir.glob("*.json"):
+        try:
+            rec = json.loads(f.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        if not (rec.get("extract") or "").strip():
+            continue
+        vid = _vivc_id_for(f.stem)
+        if vid is None:
+            continue
+        out.setdefault(vid, rec)
+    return out
+
+
+def _share_from_donor(
+    *, slug: str, target_lang: str, source: dict, donor: dict
+) -> dict | None:
+    """Reuse a sibling's translation when the source content + locale match
+    exactly. A mismatch on either field means the donor was made from a
+    different paragraph (different dominant-cahier-lang chain) — skip and
+    let the candidate go through a real translation pass."""
+    current_sha = extract_sha(source["extract"])
+    if donor.get("source_sha") != current_sha:
+        return None
+    if donor.get("source_lang") != source["lang"]:
+        return None
+    vid = _vivc_id_for(slug)
+    return {
+        "slug": slug,
+        "lang": target_lang,
+        "extract": donor["extract"],
+        "source_lang": source["lang"],
+        "source_extract": source["extract"],
+        "source_sha": current_sha,
+        "source_page_url": source["page_url"],
+        "source_revision_id": source.get("revision_id"),
+        "source_wikipedia_title": source.get("wikipedia_title") or "",
+        "translator": donor.get("translator", ""),
+        "translator_kind": donor.get("translator_kind", ""),
+        "shared_from_slug": donor.get("slug"),
+        "shared_via": f"shared-vivc:{vid}:{donor.get('slug')}",
+        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
 
 
 def load_corpus_slugs() -> list[str]:
@@ -172,13 +247,80 @@ def _write_cache(*, lang: str, slug: str, extract: str, source: dict,
     cache.write_json(_cache_path(lang, slug), payload)
 
 
+def _cache_hit(existing: dict | None, source: dict) -> bool:
+    return bool(
+        existing
+        and existing.get("extract")
+        and existing.get("source_sha") == extract_sha(source["extract"])
+        and existing.get("source_lang") == source["lang"]
+    )
+
+
+def _try_donor_share(
+    slug: str, tgt: str, source: dict, donor_indexes: dict[str, dict[int, dict]]
+) -> dict | None:
+    """If a sibling-vivc slug already has a cached translation in `tgt`
+    with the same source content, write a shared cache entry and return
+    it. Caller treats the return as a non-job (dedup short-circuit)."""
+    vid = _vivc_id_for(slug)
+    if vid is None:
+        return None
+    donor = donor_indexes[tgt].get(vid)
+    if donor is None:
+        return None
+    shared = _share_from_donor(slug=slug, target_lang=tgt, source=source, donor=donor)
+    if shared is None:
+        return None
+    cache.write_json(_cache_path(tgt, slug), shared)
+    donor_indexes[tgt].setdefault(vid, shared)
+    return shared
+
+
+def _resolve_pair(
+    slug: str, tgt: str, source: dict, donor_indexes: dict[str, dict[int, dict]],
+    *, skip_cached: bool,
+) -> tuple[str, dict | None]:
+    """Classify a (slug, tgt) pair: `('cached', None)` already satisfied,
+    `('shared', record)` resolved via donor short-circuit (side effect:
+    cache written), `('queue', job)` needs a real translation pass."""
+    if skip_cached:
+        if _cache_hit(_existing_cache(tgt, slug), source):
+            return "cached", None
+        shared = _try_donor_share(slug, tgt, source, donor_indexes)
+        if shared is not None:
+            return "shared", shared
+    return "queue", {"slug": slug, "lang": tgt, "source": source}
+
+
+def _group_by_source(raw_jobs: list[dict]) -> list[dict]:
+    """Collapse jobs that share `(target_lang, source_sha)` to one anchor
+    with `_siblings` attached; the translator processes anchors and
+    `_replicate_to_siblings` copies the result."""
+    anchors: list[dict] = []
+    by_key: dict[tuple[str, str], dict] = {}
+    for job in raw_jobs:
+        key = (job["lang"], extract_sha(job["source"]["extract"]))
+        anchor = by_key.get(key)
+        if anchor is None:
+            by_key[key] = job
+            job["_siblings"] = []
+            anchors.append(job)
+        else:
+            anchor["_siblings"].append(job)
+    return anchors
+
+
 def _enumerate_jobs(
     slugs: list[str], target_locales: tuple[str, ...], *, skip_cached: bool = True,
 ) -> list[dict]:
     """Per (target_lang, slug) where the target has no usable native entry,
-    some other locale supplies one, and the cache is stale or absent."""
+    some other locale supplies one, and the cache is stale or absent.
+    Applies two-stage dedup (donor short-circuit + intra-run grouping) so
+    the returned jobs are unique by source content."""
     dominant = load_dominant_lang()
-    jobs: list[dict] = []
+    donor_indexes = {lang: _build_translation_donor_index(lang) for lang in target_locales}
+    raw_jobs: list[dict] = []
+    shared_writes = 0
     for slug in slugs:
         for tgt in target_locales:
             if native_extract_for(tgt, slug) is not None:
@@ -186,17 +328,51 @@ def _enumerate_jobs(
             source = pick_source(slug, tgt, dominant.get(slug))
             if source is None:
                 continue
-            if skip_cached:
-                existing = _existing_cache(tgt, slug)
-                if (
-                    existing
-                    and existing.get("extract")
-                    and existing.get("source_sha") == extract_sha(source["extract"])
-                    and existing.get("source_lang") == source["lang"]
-                ):
-                    continue
-            jobs.append({"slug": slug, "lang": tgt, "source": source})
-    return jobs
+            kind, payload = _resolve_pair(
+                slug, tgt, source, donor_indexes, skip_cached=skip_cached,
+            )
+            if kind == "shared":
+                shared_writes += 1
+            elif kind == "queue":
+                raw_jobs.append(payload)
+
+    anchors = _group_by_source(raw_jobs)
+    n_siblings = sum(len(a["_siblings"]) for a in anchors)
+    if shared_writes or n_siblings:
+        print(
+            f"[02b-grape-tx] dedup: reused {shared_writes} from prior runs; "
+            f"grouped {n_siblings} siblings under {len(anchors)} anchors",
+            file=sys.stderr,
+        )
+    return anchors
+
+
+def _replicate_to_siblings(anchor_job: dict, translated: str, *,
+                           translator: str, translator_kind: str) -> None:
+    """Anchor → siblings: every sibling job has the same (target_lang,
+    source_sha) as the anchor, so the translated text applies verbatim.
+    Recorded with `shared_via: shared-vivc-source:<anchor-slug>` so the
+    audit can attribute reuse to the dedup pass (vs. a prior-run donor)."""
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    for sib in anchor_job.get("_siblings") or []:
+        sib_src = sib["source"]
+        payload = {
+            "slug": sib["slug"],
+            "lang": sib["lang"],
+            "extract": translated,
+            "source_lang": sib_src["lang"],
+            "source_extract": sib_src["extract"],
+            "source_sha": extract_sha(sib_src["extract"]),
+            "source_page_url": sib_src["page_url"],
+            "source_revision_id": sib_src.get("revision_id"),
+            "source_wikipedia_title": sib_src.get("wikipedia_title") or "",
+            "translator": translator,
+            "translator_kind": translator_kind,
+            "shared_from_slug": anchor_job["slug"],
+            "shared_via": f"shared-vivc-source:{anchor_job['slug']}",
+            "fetched_at": now,
+        }
+        cache.write_json(_cache_path(sib["lang"], sib["slug"]), payload)
 
 
 def _translate_one(provider, *, source_extract: str, source_lang: str, target_lang: str) -> str:
@@ -224,6 +400,9 @@ def _process_one_job(provider, model_id: str, job: dict) -> tuple[bool, str | No
     _write_cache(
         lang=job["lang"], slug=job["slug"], extract=translated, source=src,
         translator=model_id, translator_kind=provider.kind,
+    )
+    _replicate_to_siblings(
+        job, translated, translator=model_id, translator_kind=provider.kind,
     )
     return True, None
 
@@ -312,21 +491,65 @@ def _normalise_todo_payload(
     return out
 
 
-def import_translations_file(
-    in_path: Path, *, target_locales: tuple[str, ...],
+def _import_one_item(
+    it: dict, lang: str, dominant: dict[str, str], *,
     translator_id: str, translator_kind: str,
-) -> int:
+) -> str:
+    """Returns `'wrote'`, `'empty'`, or `'sha_mismatch'`. Side effect on
+    `'wrote'`: writes the translation cache for (slug, lang)."""
+    slug = it.get("slug") or ""
+    extract = (it.get("extract") or "").strip()
+    if not extract:
+        return "empty"
+    source = {
+        "lang": it.get("source_lang") or "",
+        "extract": it.get("source_extract") or "",
+        "page_url": it.get("source_page_url") or "",
+        "revision_id": it.get("source_revision_id"),
+        "wikipedia_title": it.get("source_wikipedia_title") or "",
+    }
+    if not source["extract"]:
+        return "empty"
+    current = pick_source(slug, lang, dominant.get(slug))
+    if current and current["lang"] == source["lang"]:
+        cur_sha = extract_sha(current["extract"])
+        if it.get("source_sha") and it["source_sha"] != cur_sha:
+            print(
+                f"  skip {lang}/{slug}: source SHA mismatch — re-run --emit-todo",
+                file=sys.stderr,
+            )
+            return "sha_mismatch"
+    _write_cache(
+        lang=lang, slug=slug, extract=extract, source=source,
+        translator=translator_id, translator_kind=translator_kind,
+    )
+    return "wrote"
+
+
+def _load_import_payload(in_path: Path, target_locales: tuple[str, ...]):
+    """Parse + normalise the import file. Returns the block list or None
+    on any error (with the error already printed to stderr)."""
     if not in_path.exists():
         print(f"error: {in_path} does not exist.", file=sys.stderr)
-        return 1
+        return None
     try:
         payload = json.loads(in_path.read_text())
     except Exception as e:  # noqa: BLE001
         print(f"error: could not parse {in_path}: {e}", file=sys.stderr)
-        return 1
+        return None
     blocks = _normalise_todo_payload(payload, target_locales)
     if not blocks:
         print("error: file has neither single-locale nor multi-locale shape.", file=sys.stderr)
+        return None
+    return blocks
+
+
+def import_translations_file(
+    in_path: Path, *, target_locales: tuple[str, ...],
+    translator_id: str, translator_kind: str,
+) -> int:
+    blocks = _load_import_payload(in_path, target_locales)
+    if blocks is None:
         return 1
     dominant = load_dominant_lang()
 
@@ -335,36 +558,16 @@ def import_translations_file(
     for lang, items in blocks:
         wrote.setdefault(lang, 0)
         for it in items:
-            slug = it.get("slug") or ""
-            extract = (it.get("extract") or "").strip()
-            if not extract:
-                skipped_empty += 1
-                continue
-            source = {
-                "lang": it.get("source_lang") or "",
-                "extract": it.get("source_extract") or "",
-                "page_url": it.get("source_page_url") or "",
-                "revision_id": it.get("source_revision_id"),
-                "wikipedia_title": it.get("source_wikipedia_title") or "",
-            }
-            if not source["extract"]:
-                skipped_empty += 1
-                continue
-            current = pick_source(slug, lang, dominant.get(slug))
-            if current and current["lang"] == source["lang"]:
-                cur_sha = extract_sha(current["extract"])
-                if it.get("source_sha") and it["source_sha"] != cur_sha:
-                    print(
-                        f"  skip {lang}/{slug}: source SHA mismatch — re-run --emit-todo",
-                        file=sys.stderr,
-                    )
-                    skipped_sha += 1
-                    continue
-            _write_cache(
-                lang=lang, slug=slug, extract=extract, source=source,
-                translator=translator_id, translator_kind=translator_kind,
+            status = _import_one_item(
+                it, lang, dominant,
+                translator_id=translator_id, translator_kind=translator_kind,
             )
-            wrote[lang] += 1
+            if status == "wrote":
+                wrote[lang] += 1
+            elif status == "empty":
+                skipped_empty += 1
+            elif status == "sha_mismatch":
+                skipped_sha += 1
     total = sum(wrote.values())
     counts = ", ".join(f"{lang}={n}" for lang, n in wrote.items())
     print(
@@ -372,6 +575,8 @@ def import_translations_file(
         f"skipped empty={skipped_empty}, sha_mismatch={skipped_sha}",
         file=sys.stderr,
     )
+    if total > 0:
+        _enumerate_jobs(load_corpus_slugs(), target_locales, skip_cached=True)
     return 0
 
 

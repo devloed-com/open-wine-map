@@ -23,16 +23,29 @@ sibling functions when the corpus needs them.
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
-from pathlib import Path
-
 import sys
+from functools import lru_cache
+from pathlib import Path
 
 _LIB_ROOT = Path(__file__).resolve().parents[1]
 if str(_LIB_ROOT.parent) not in sys.path:
     sys.path.insert(0, str(_LIB_ROOT.parent))
+from _lib.grape_entity import match_variety  # noqa: E402
 from _lib.grape_lexicon import DEFAULT_COLOUR, GRAPE_ALIAS, slugify  # noqa: E402
+
+_REPO_ROOT = _LIB_ROOT.parent.parent
+# Sources for the "known variety" vocabulary used by the in-line typo
+# splitter. The national-pliegos themselves are EXCLUDED — that's the
+# corpus where the typos live; including it would let `malbec-cabernet-
+# franc` survive as a "known" slug and block the split.
+_KNOWN_SLUG_SOURCES = (
+    _REPO_ROOT / "raw" / "inao" / "cahier-extracted",
+    _REPO_ROOT / "raw" / "es" / "pliegos-extracted",
+    _REPO_ROOT / "raw" / "pt" / "cadernos-extracted",
+)
 
 # Variety-section header. Two strengths — prefer "strong" (with keyword
 # trailer) over "weak" (heading-only) so we don't lock onto an
@@ -198,6 +211,21 @@ _PROSE_LEAD = {
     "pliego", "preferentes", "preferente",
 }
 
+# Inline-allowed words that appear in legitimate variety names but are
+# also in `_PROSE_LEAD` to catch sentence-leaks. Connectors `de`/`del`
+# join the grape stem to a place qualifier (Ull *de* Llebre, Moscatel
+# *de* Alejandría, Malvasía *de* Sitges). Colour adjectives `tinta` /
+# `blanca` / `tinto` / `blanco` / `rosado` qualify the grape (Garnacha
+# *tinta*, Garnacha *blanca*, Xarel.lo *rosado*) and ride through the
+# alias / colour-suffix machinery downstream. They are still rejected
+# when they open the token (which signals a colour-header leak).
+_PROSE_LEAD_INLINE_ALLOWED = {
+    "de", "del",
+    "tinta", "tintas", "tinto", "tintos",
+    "blanca", "blancas", "blanco", "blancos",
+    "rosada", "rosadas", "rosado", "rosados",
+}
+
 # Sub-section role labels that prefix a variety enumeration. When a chunk
 # starts with one of these followed by a colon ("Preferentes: Albillo
 # Criollo"), keep only the part after the colon. Lanzarote, Tacoronte,
@@ -253,6 +281,149 @@ _COLOUR_SUFFIXES = (
     "-gris",
     "-rosada", "-rosado",
 )
+# Suffix → colour it expresses. Used when collapsing a redundant colour
+# suffix on a slug: strip only when the stem's `DEFAULT_COLOUR` matches
+# the suffix's colour ("merlot noir" → "merlot" because Merlot is `noir`
+# by default; but "garnacha blanca" → `grenache-blanc` stays because
+# Grenache is `noir` by default and `-blanc` carries the colour shift).
+_SUFFIX_TO_COLOUR = {
+    "-blanc": "blanc", "-blanca": "blanc", "-blanco": "blanc",
+    "-noir": "noir", "-negra": "noir", "-negro": "noir",
+    "-tinta": "noir", "-tinto": "noir",
+    "-gris": "gris",
+    "-rosada": "rose", "-rosado": "rose",
+}
+
+
+def _grapes_in_record(rec: dict, slugs: set[str]) -> None:
+    """Collect every variety slug a record exposes. Handles both shapes
+    seen across FR / ES / PT extractors: top-level `grapes` as a
+    dict-of-role-lists, top-level `grapes` as a flat list, and entries
+    whose elements are either bare slugs or `{slug, name, ...}` dicts."""
+    grapes = rec.get("grapes")
+    if isinstance(grapes, dict):
+        for role in ("principal", "accessory", "observation", "all"):
+            for g in grapes.get(role) or []:
+                if isinstance(g, str):
+                    slugs.add(g)
+                elif isinstance(g, dict) and isinstance(g.get("slug"), str):
+                    slugs.add(g["slug"])
+    elif isinstance(grapes, list):
+        for g in grapes:
+            if isinstance(g, str):
+                slugs.add(g)
+            elif isinstance(g, dict) and isinstance(g.get("slug"), str):
+                slugs.add(g["slug"])
+
+
+@lru_cache(maxsize=1)
+def _raw_known_slugs() -> frozenset[str]:
+    """Cross-corpus union of slugs from FR cahiers + ES EU-OJ pliegos +
+    PT cadernos — the curated extractors. Each slug is GRAPE_ALIAS-
+    folded so the splitter compares like-for-like with `_normalise_
+    token`'s output."""
+    raw: set[str] = set()
+    for src in _KNOWN_SLUG_SOURCES:
+        if not src.exists():
+            continue
+        for f in src.glob("*.json"):
+            if f.name.startswith("_"):
+                continue
+            try:
+                rec = json.loads(f.read_text())
+            except (json.JSONDecodeError, OSError):
+                continue
+            _grapes_in_record(rec, raw)
+    return frozenset(GRAPE_ALIAS.get(s, s) for s in raw)
+
+
+def _next_vocab_piece(
+    parts: list[str], i: int, vocab: frozenset[str], excluded: str,
+) -> tuple[str | None, int]:
+    """Longest prefix at `parts[i:]` that resolves into `vocab` (directly
+    or via GRAPE_ALIAS), excluding `excluded` so a slug can never
+    shield itself from decomposition. Returns `(piece, j)` so the caller
+    advances to `parts[j:]`, or `(None, i)` on miss."""
+    for j in range(min(len(parts), i + 4), i, -1):
+        candidate = "-".join(parts[i:j])
+        if candidate == excluded:
+            continue
+        if candidate in vocab or GRAPE_ALIAS.get(candidate, candidate) in vocab:
+            return candidate, j
+    return None, i
+
+
+def _decomposes_into_known_with_alias(slug: str, vocab: frozenset[str]) -> bool:
+    """True when `slug` greedily decomposes into 2+ pieces in `vocab` and
+    at least one piece is a `GRAPE_ALIAS` source key. The alias-source
+    requirement is what distinguishes a buggy concatenation
+    (`tempranillo-cencibel` — "cencibel" is in GRAPE_ALIAS) from a
+    legitimate composite (`cabernet-sauvignon` — neither part is in
+    GRAPE_ALIAS)."""
+    parts = slug.split("-")
+    if len(parts) < 2:
+        return False
+    pieces: list[str] = []
+    i = 0
+    while i < len(parts):
+        piece, j = _next_vocab_piece(parts, i, vocab, slug)
+        if piece is None:
+            return False
+        pieces.append(piece)
+        i = j
+    return len(pieces) >= 2 and any(p in GRAPE_ALIAS for p in pieces)
+
+
+@lru_cache(maxsize=1)
+def _known_canonical_slugs() -> frozenset[str]:
+    """Cross-corpus known slugs, with self-decomposable concatenation
+    artifacts filtered out so the splitter doesn't get shielded by its
+    own polluted corpus (`tempranillo-cencibel`, `aragonez-tinta-roriz`,
+    …). A slug is dropped when it decomposes into 2+ known-vocabulary
+    pieces with at least one alias-source piece — see
+    `_decomposes_into_known_with_alias`."""
+    raw = _raw_known_slugs()
+    vocab = raw | frozenset(GRAPE_ALIAS.keys())
+    return frozenset(s for s in raw if not _decomposes_into_known_with_alias(s, vocab))
+
+
+def _longest_known_prefix(
+    parts: list[str], i: int, known: frozenset[str], max_window: int,
+) -> tuple[str | None, int]:
+    """Longest prefix at `parts[i:]` that resolves to a slug in `known`.
+    Returns `(canon_slug, j)` so the caller can advance to `parts[j:]`;
+    returns `(None, i)` when no prefix matches."""
+    for j in range(min(len(parts), i + max_window), i, -1):
+        candidate = "-".join(parts[i:j])
+        canon = GRAPE_ALIAS.get(candidate, candidate)
+        if canon in known:
+            return canon, j
+    return None, i
+
+
+def _split_concatenated(slug: str, max_window: int = 4) -> list[str]:
+    """Greedy-decompose a slug into 2+ known canonical sub-slugs from
+    left to right. The longest prefix that resolves into the known set
+    wins at each step; if the whole slug can be covered by ≥ 2
+    consecutive matches, return the split list, otherwise return `[slug]`
+    unchanged. Catches in-line missing-comma typos like "Malbec
+    Cabernet Franc" → `["malbec", "cabernet-franc"]` in the source
+    pliegos (casa-del-blanco, lanzarote)."""
+    known = _known_canonical_slugs()
+    if slug in known:
+        return [slug]
+    parts = slug.split("-")
+    if len(parts) < 2:
+        return [slug]
+    out: list[str] = []
+    i = 0
+    while i < len(parts):
+        canon, j = _longest_known_prefix(parts, i, known, max_window)
+        if canon is None:
+            return [slug]
+        out.append(canon)
+        i = j
+    return out if len(out) >= 2 else [slug]
 
 
 def pdf_to_text(pdf_path: Path | str) -> str:
@@ -265,11 +436,61 @@ def pdf_to_text(pdf_path: Path | str) -> str:
     return result.stdout.decode("utf-8", errors="replace")
 
 
+_TRAILING_CONNECTOR_CHECK_RE = re.compile(
+    r"(?:,|\s+(?:y|o|e|u|y/o))$", re.IGNORECASE,
+)
+
+
+def _looks_like_wrap_continuation(prev: str) -> bool:
+    """A `prev` line that *plausibly* wraps into the next is either:
+      - trailing-connector wrap: prev ends with `,` / ` y` / ` o` / ` e`
+        / ` u` / ` y/o` (mentrida, valdepeñas);
+      - mid-name wrap inside a long comma-list: prev accumulates many
+        commas AND is long enough that the variety-name probably got
+        clipped at the right margin (calatayud's "…Monastrell, Syrah,
+        Cabernet" → next line "Sauvignon y Merlot.").
+
+    A short bullet-list entry with a single internal comma for a
+    composite name like "Tempranillo, Ull de llebre" is NOT a wrap —
+    each bullet line is an independent variety. Joining them produced
+    spurious concatenated slugs (`samso-pinot-noir-syrah`,
+    `garrut-trepat-mazuela`) in costers-del-segre."""
+    stripped = prev.rstrip()
+    if _TRAILING_CONNECTOR_CHECK_RE.search(stripped):
+        return True
+    body = prev.strip()
+    if not body:
+        return False
+    comma_count = body.count(",")
+    return comma_count >= 3 or (comma_count >= 1 and len(body) >= 60)
+
+
+def _is_continuation_line(prev: str, is_colour_header: bool, is_bullet_item: bool) -> bool:
+    """Decide whether to merge the current line into `prev`. Returns
+    `False` when `prev` is empty, sentence-terminated, two-column tabular,
+    or when the current line is itself a colour header / bulleted item —
+    each is a fresh entry, not a wrap target."""
+    if not prev or prev.endswith(".") or is_colour_header or is_bullet_item:
+        return False
+    # Wide-gap detection must look at the line *body*, not its leading
+    # indent. JCCM pliegos indent bullet lines deeply ("       -   "),
+    # which would otherwise be misread as a column boundary and block
+    # continuation joins like `…Cabernet\nSauvignon y Merlot.`
+    # (Calatayud, where the wrap split a single variety name into
+    # two false slugs `cabernet` + `sauvignon`).
+    prev_body = re.sub(r"^\s*[-•·*]?\s*", "", prev)
+    if prev_body and _COLUMN_GAP_RE.search(prev_body):
+        return False
+    return _looks_like_wrap_continuation(prev)
+
+
 def _stitch_continuations(text: str) -> str:
-    """Join lines that continue a variety enumeration. A line is a
-    continuation when (a) it doesn't open with a colour-bullet, (b) the
-    previous line ends without sentence punctuation. JCCM wraps long lists
-    at the right margin, e.g.
+    """Join lines that continue a variety enumeration. Continuation
+    requires that the previous line *looks like* a wrap point —
+    `_looks_like_wrap_continuation`. Bullet-list lines (one variety
+    per line, possibly with one internal comma for a composite name
+    like "Tempranillo, Ull de llebre") are NOT continuations even if
+    they contain a comma. JCCM wraps long lists at the right margin:
 
         - Tintas: Garnacha tinta, Garnacha Peluda, ..., Tempranillo,
         Cabernet Sauvignon, Merlot, Syrah, Petit Verdot, Cabernet Franc y Graciano.
@@ -283,30 +504,8 @@ def _stitch_continuations(text: str) -> str:
             continue
         is_colour_header = bool(_COLOUR_LINE_RE.match(s))
         is_bullet_item = bool(_BULLET_ITEM_RE.match(s))
-        # A line is a continuation when the previous line is mid-
-        # enumeration: contains at least one comma, didn't terminate with
-        # a period, AND isn't a tabular row (two-column layouts have a
-        # wide whitespace gap mid-line — montsant). Catches both trailing-
-        # comma wraps ("…Tempranillo,\nCabernet…") and mid-variety wraps
-        # ("…Moscatel de Grano\nMenudo y Garnacha Blanca.").
         prev = out[-1].rstrip() if out else ""
-        # Wide-gap detection must look at the line *body*, not its leading
-        # indent. JCCM pliegos indent bullet lines deeply ("       -   "),
-        # which would otherwise be misread as a column boundary and block
-        # continuation joins like `…Cabernet\nSauvignon y Merlot.`
-        # (Calatayud, where the wrap split a single variety name into
-        # two false slugs `cabernet` + `sauvignon`).
-        prev_body = re.sub(r"^\s*[-•·*]?\s*", "", prev) if prev else ""
-        prev_is_tabular = bool(prev_body) and bool(_COLUMN_GAP_RE.search(prev_body))
-        is_continuation = (
-            bool(prev)
-            and ("," in prev)
-            and not prev.endswith(".")
-            and not prev_is_tabular
-            and not is_colour_header
-            and not is_bullet_item
-        )
-        if is_continuation:
+        if _is_continuation_line(prev, is_colour_header, is_bullet_item):
             out[-1] = out[-1].rstrip() + " " + s.lstrip()
         else:
             out.append(s)
@@ -314,14 +513,10 @@ def _stitch_continuations(text: str) -> str:
 
 
 def _normalise_token(name: str, ambient_colour: str) -> dict | None:
-    """Slugify + alias-fold a single variety token. Mirrors the strict
-    proper-noun + length checks used by stage 02's parser.
-
-    Output `name` is lowercased to match the FR cahier-extracted
-    convention (display names are canonicalised lowercase; the Wikipedia
-    lexicon supplies title-cased variants at the rendering layer when
-    available).
-    """
+    """Pre-clean a candidate variety token (bullet / role-label / trailing-
+    connector strip, structural-noise drop) and hand off to the vocab
+    matcher. Returns `{slug, name, colour}` on match, `None` otherwise.
+    Unmatched tokens land in the curator queue via `match_variety`."""
     name = _LETTER_BULLET_PREFIX_RE.sub("", name)
     name = _ROLE_LABEL_RE.sub("", name)
     name = _TRAILING_CONNECTOR_RE.sub("", name)
@@ -337,27 +532,10 @@ def _normalise_token(name: str, ambient_colour: str) -> dict | None:
         return None
     if not words[0][0].isalpha():
         return None
-    # Reject any token containing a prose word — e.g. "Cabernet franc
-    # consideradas como autorizadas" (Arabako) where the variety has
-    # been concatenated with classification prose. A real variety name
-    # never contains "como" / "consideradas" / "conocida" / etc.
-    if any(w.lower() in _PROSE_LEAD for w in words):
-        # Allow a leading prose word only if it's the colour modifier
-        # at the END (handled by colour suffix logic). Otherwise reject.
+    result = match_variety(name, ambient_colour=ambient_colour or None)
+    if result is None:
         return None
-    raw = slugify(name)
-    if not raw:
-        return None
-    slug = GRAPE_ALIAS.get(raw, raw)
-    for suf in _COLOUR_SUFFIXES:
-        if slug.endswith(suf):
-            stem = slug[: -len(suf)]
-            stem_canon = GRAPE_ALIAS.get(stem, stem)
-            if stem_canon in DEFAULT_COLOUR:
-                slug = stem_canon
-                break
-    colour = ambient_colour or DEFAULT_COLOUR.get(slug, "")
-    return {"slug": slug, "name": name.lower(), "colour": colour}
+    return {"slug": result.slug, "name": result.name.lower(), "colour": result.colour}
 
 
 def _prefix_value(prefix: str) -> tuple[int, str]:
@@ -407,6 +585,47 @@ def find_variety_section(text: str) -> tuple[int, int] | None:
     return (body_start, body_end)
 
 
+def _emit_entry(entry: dict, seen: set[str], details: list[dict]) -> None:
+    """Append `entry` to `details`, expanding any concatenated-typo slug
+    via `_split_concatenated` and skipping anything already seen. Each
+    decomposed sub-slug rides the original entry's colour."""
+    for sub in _split_concatenated(entry["slug"]):
+        if sub in seen:
+            continue
+        seen.add(sub)
+        if sub == entry["slug"]:
+            details.append(entry)
+        else:
+            details.append({
+                "slug": sub,
+                "name": sub.replace("-", " "),
+                "colour": entry["colour"],
+            })
+
+
+def _process_variety_line(
+    raw_line: str, current_colour: str, seen: set[str], details: list[dict],
+) -> str:
+    """Tokenise one stitched line into variety entries (with column-gap
+    pre-split + chunk splitting + typo-decomposition) and append them
+    to `details`. Returns the updated `current_colour` so the caller's
+    rolling state survives across lines."""
+    line = raw_line.strip()
+    if not line or _PAGE_HEADER_RE.search(line):
+        return current_colour
+    line = _LETTER_BULLET_PREFIX_RE.sub("", line)
+    m_col = _COLOUR_LINE_RE.match(line)
+    if m_col:
+        current_colour = _COLOUR_TO_TAG.get(m_col.group(1).lower(), current_colour)
+        payload = line[m_col.end():]
+    else:
+        payload = line
+    for raw_chunk in _COLUMN_GAP_RE.split(payload):
+        for entry in _entries_from_chunk(raw_chunk, current_colour):
+            _emit_entry(entry, seen, details)
+    return current_colour
+
+
 def parse_variety_section(text: str) -> dict:
     """Parse a `pdftotext -layout` rendering of a Spanish national pliego
     de condiciones and return the variety section (apartado 6) as
@@ -436,35 +655,7 @@ def parse_variety_section(text: str) -> dict:
     seen: set[str] = set()
     current_colour = ""
     for raw_line in stitched.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        # Drop page-header / footer leaks ("Pliego de condiciones DOP …",
-        # standalone page numbers) that survive the section-boundary
-        # detection in narrow regional templates.
-        if _PAGE_HEADER_RE.search(line):
-            continue
-        # Strip a leading letter/digit bullet ("a) ", "b. ") before any
-        # other classification so "a) Variedades blancas" can be picked
-        # up by the colour-line regex below.
-        line = _LETTER_BULLET_PREFIX_RE.sub("", line)
-        m_col = _COLOUR_LINE_RE.match(line)
-        if m_col:
-            current_colour = _COLOUR_TO_TAG.get(m_col.group(1).lower(), current_colour)
-            payload = line[m_col.end():]
-        else:
-            payload = line
-        # Pre-split the line on wide whitespace gaps so two-column
-        # variety tables (montsant: blancas on the left, tintas on the
-        # right separated by ~30+ spaces) yield separate variety chunks.
-        # Each chunk is then split on the in-line connectors.
-        chunks = _COLUMN_GAP_RE.split(payload)
-        for raw_chunk in chunks:
-            for entry in _entries_from_chunk(raw_chunk, current_colour):
-                if entry["slug"] in seen:
-                    continue
-                seen.add(entry["slug"])
-                details.append(entry)
+        current_colour = _process_variety_line(raw_line, current_colour, seen, details)
     return {"found": True, "section_text": section_text, "details": details}
 
 

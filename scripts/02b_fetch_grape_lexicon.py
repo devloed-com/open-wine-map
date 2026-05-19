@@ -10,7 +10,11 @@ Reads:  raw/inao/cahier-extracted/*.json  (collects unique grape slugs)
 Writes: raw/wikipedia/grapes/<lang>/<slug>.json
         raw/wikipedia/grapes/manifest.json
 
-Re-runnable: cached entries are kept; pass --refresh to re-fetch everything.
+Re-runnable: cached entries are kept. Negative cache entries (`missing` /
+`error`) are auto-invalidated when their `vivc_consulted` fingerprint is
+older than the current `raw/vivc/by-slug/<slug>.json` — picks up newly
+populated VIVC synonyms without a full `--refresh`. Pass --refresh to
+re-fetch every (slug, lang) regardless.
 """
 
 from __future__ import annotations
@@ -42,6 +46,7 @@ UA = (
     "mailto:winemap@devloed.com) python-requests"
 )
 REST_URL = "https://{lang}.wikipedia.org/api/rest_v1/page/summary/{title}"
+WIKIPEDIA_LICENSE = "CC-BY-SA-4.0"
 
 # Per-locale disambiguation suffix used by Wikipedia for grape varieties that
 # share a name with a commune / town / other entity (e.g. `Chardonnay` is a
@@ -115,6 +120,90 @@ def _load_vivc(slug: str) -> dict | None:
     rec = json.loads(path.read_text())
     _VIVC_CACHE[slug] = rec
     return rec
+
+
+def _vivc_fingerprint(slug: str) -> dict | None:
+    """Fingerprint of the VIVC record consulted by the synonym chain, or
+    None when no VIVC record exists. Stored on each cache write so reruns
+    can auto-invalidate stale negatives when VIVC arrives or changes."""
+    rec = _load_vivc(slug)
+    if not rec:
+        return None
+    return {"vivc_id": rec.get("vivc_id"), "fetched_at": rec.get("fetched_at")}
+
+
+def _build_donor_index(lang_dir: Path) -> dict[int, dict]:
+    """Per-locale `vivc_id → ok-record` index. Two cahier slugs that resolve
+    to the same VIVC variety share the same Wikipedia article — once one is
+    cached for a locale, every other synonym slug in that locale can reuse
+    its `extract` / `wikipedia_title` / `page_url` / `revision_id` instead
+    of round-tripping the REST API."""
+    out: dict[int, dict] = {}
+    for f in lang_dir.glob("*.json"):
+        try:
+            rec = json.loads(f.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        if rec.get("missing") or rec.get("error") or not rec.get("extract"):
+            continue
+        vivc = _load_vivc(f.stem)
+        if not vivc or not vivc.get("vivc_id"):
+            continue
+        out.setdefault(vivc["vivc_id"], rec)
+    return out
+
+
+def _shared_record(slug: str, lang: str, donor: dict, vivc: dict | None, now: str) -> dict:
+    """Re-shape a donor's wiki content under a new (slug, lang). The wiki
+    payload (extract / title / page_url / revision_id) is verbatim; we
+    record `matched_via: shared-vivc:<id>:<donor_slug>` so the audit can
+    attribute reuse and `vivc_consulted` for the standard freshness check."""
+    return {
+        "lang": lang,
+        "slug": slug,
+        "wikipedia_title": donor.get("wikipedia_title"),
+        "extract": donor.get("extract", ""),
+        "description": donor.get("description", ""),
+        "page_url": donor.get("page_url"),
+        "revision_id": donor.get("revision_id"),
+        "thumbnail": donor.get("thumbnail"),
+        "license": WIKIPEDIA_LICENSE,
+        "matched_via": f"shared-vivc:{vivc['vivc_id']}:{donor.get('slug')}",
+        "vivc_consulted": vivc,
+        "fetched_at": now,
+    }
+
+
+def _is_negative(cached: dict) -> bool:
+    """Detect every negative-cache shape: current `missing` / `error` records
+    and the legacy `not_grape: True` records written by older script
+    versions before `error` was a structured field."""
+    return bool(cached.get("missing") or cached.get("error") or cached.get("not_grape"))
+
+
+def _cache_is_fresh(cached: dict, slug: str, donors: dict[int, dict] | None = None) -> bool:
+    """`ok` records are never auto-invalidated — `is_grape_summary` already
+    validated the match, so re-fetching only risks regression. Negative
+    entries invalidate when either condition holds:
+      • a donor for this slug's vivc_id is now available (donor-aware
+        recovery can resolve negatives a prior run couldn't);
+      • the VIVC fingerprint the cache consulted differs from the current
+        one (newly populated synonyms widen the candidate chain).
+    Pre-fingerprint legacy entries (no `vivc_consulted`) invalidate
+    whenever any VIVC record now exists for the slug."""
+    if not _is_negative(cached):
+        return True
+    if donors is not None:
+        vivc = _load_vivc(slug)
+        if vivc and vivc.get("vivc_id") in donors:
+            return False
+    consulted = cached.get("vivc_consulted")
+    current = _vivc_fingerprint(slug)
+    if consulted is None and current is None:
+        return True
+    if consulted is None or current is None:
+        return False
+    return consulted.get("fetched_at") == current.get("fetched_at")
 
 
 def _vivc_candidates(slug: str, lang: str) -> list[tuple[str, str]]:
@@ -205,7 +294,7 @@ def _build_candidates(lang: str, slug: str) -> list[tuple[str, str]]:
 
 
 def _summary_record(
-    lang: str, slug: str, data: dict, matched_via: str, now: str
+    lang: str, slug: str, data: dict, matched_via: str, now: str, vivc: dict | None
 ) -> dict:
     return {
         "lang": lang,
@@ -216,8 +305,9 @@ def _summary_record(
         "page_url": (data.get("content_urls") or {}).get("desktop", {}).get("page"),
         "revision_id": data.get("revision"),
         "thumbnail": (data.get("thumbnail") or {}).get("source"),
-        "license": "CC-BY-SA-4.0",
+        "license": WIKIPEDIA_LICENSE,
         "matched_via": matched_via,
+        "vivc_consulted": vivc,
         "fetched_at": now,
     }
 
@@ -226,6 +316,7 @@ def fetch_summary(session: requests.Session, lang: str, slug: str) -> dict:
     """Walk the candidate chain for (slug, lang) until we hit an article
     that `is_grape_summary` accepts. Reject anything else."""
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    vivc = _vivc_fingerprint(slug)
     candidates = _build_candidates(lang, slug)
     last_data: dict | None = None
     for title, matched_via in candidates:
@@ -234,16 +325,81 @@ def fetch_summary(session: requests.Session, lang: str, slug: str) -> dict:
             continue
         last_data = data
         if looks_like_grape(lang, data):
-            return _summary_record(lang, slug, data, matched_via, now)
+            return _summary_record(lang, slug, data, matched_via, now, vivc)
     if last_data is not None:
         return {
             "slug": slug,
             "lang": lang,
             "error": "not_grape_topic",
             "rejected_title": last_data.get("title"),
+            "vivc_consulted": vivc,
             "fetched_at": now,
         }
-    return {"slug": slug, "lang": lang, "missing": True, "fetched_at": now}
+    return {
+        "slug": slug,
+        "lang": lang,
+        "missing": True,
+        "vivc_consulted": vivc,
+        "fetched_at": now,
+    }
+
+
+def _fetch_locale(
+    session: requests.Session, lang: str, slugs: list[str], *, refresh: bool, throttle: float
+) -> dict[str, int]:
+    lang_dir = OUT_DIR / lang
+    lang_dir.mkdir(parents=True, exist_ok=True)
+    donors = _build_donor_index(lang_dir)
+    ok = miss = err = cached = revalidated = shared = 0
+    for slug in tqdm(slugs, desc=f"wikipedia/{lang}", leave=False):
+        cache = lang_dir / f"{slug}.json"
+        if cache.exists() and not refresh:
+            cached_data = json.loads(cache.read_text())
+            if _cache_is_fresh(cached_data, slug, donors):
+                cached += 1
+                continue
+            revalidated += 1
+        result = _resolve_one(session, lang, slug, donors, throttle)
+        cache.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+        if result.get("missing"):
+            miss += 1
+        elif result.get("error"):
+            err += 1
+        else:
+            ok += 1
+            if str(result.get("matched_via", "")).startswith("shared-vivc:"):
+                shared += 1
+            else:
+                _register_donor(donors, slug, result)
+    return {
+        "ok": ok, "miss": miss, "err": err,
+        "cached": cached, "revalidated": revalidated, "shared": shared,
+    }
+
+
+def _resolve_one(
+    session: requests.Session, lang: str, slug: str, donors: dict[int, dict], throttle: float
+) -> dict:
+    """Try the donor index first (free, no API call). On miss, fall back to
+    the candidate-chain fetch — that path is the only one paying the
+    `throttle` sleep."""
+    vivc = _vivc_fingerprint(slug)
+    if vivc and vivc.get("vivc_id") in donors:
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        return _shared_record(slug, lang, donors[vivc["vivc_id"]], vivc, now)
+    result = fetch_summary(session, lang, slug)
+    time.sleep(throttle)
+    return result
+
+
+def _register_donor(donors: dict[int, dict], slug: str, rec: dict) -> None:
+    """A freshly-fetched `ok` record becomes a donor for later synonym slugs
+    in the same locale. First-write-wins keeps the canonical donor stable
+    (no thrash if multiple synonyms get fetched in sequence)."""
+    vivc = _load_vivc(slug)
+    if not vivc or not vivc.get("vivc_id"):
+        return
+    donors.setdefault(vivc["vivc_id"], rec)
 
 
 def main() -> int:
@@ -270,30 +426,19 @@ def main() -> int:
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "n_slugs": len(slugs),
-        "license": "CC-BY-SA-4.0",
+        "license": WIKIPEDIA_LICENSE,
         "source": "wikipedia.org REST summary API",
         "locales": {},
     }
     for lang in args.locales:
-        lang_dir = OUT_DIR / lang
-        lang_dir.mkdir(parents=True, exist_ok=True)
-        ok = miss = err = cached = 0
-        for slug in tqdm(sorted(slugs), desc=f"wikipedia/{lang}", leave=False):
-            cache = lang_dir / f"{slug}.json"
-            if cache.exists() and not args.refresh:
-                cached += 1
-                continue
-            result = fetch_summary(session, lang, slug)
-            cache.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
-            if result.get("missing"):
-                miss += 1
-            elif result.get("error"):
-                err += 1
-            else:
-                ok += 1
-            time.sleep(args.throttle)
-        manifest["locales"][lang] = {"ok": ok, "miss": miss, "err": err, "cached": cached}
-        print(f"[02b/{lang}] new ok={ok} miss={miss} err={err} cached={cached}", file=sys.stderr)
+        stats = _fetch_locale(session, lang, sorted(slugs), refresh=args.refresh, throttle=args.throttle)
+        manifest["locales"][lang] = stats
+        print(
+            f"[02b/{lang}] new ok={stats['ok']} miss={stats['miss']} err={stats['err']} "
+            f"cached={stats['cached']} revalidated={stats['revalidated']} "
+            f"shared={stats['shared']}",
+            file=sys.stderr,
+        )
 
     MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     print(f"[02b] manifest: {MANIFEST.relative_to(ROOT)}", file=sys.stderr)

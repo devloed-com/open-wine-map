@@ -550,6 +550,21 @@ PT-specific notes:
   them from FR/ES records. Sub-regiões are skipped — they inherit
   the parent's bullets at the rendering layer.
 
+### PT grape role classification — not published by the regulator
+
+The IVV documento-único caderno enumerates every authorised casta
+in a single block, without a principal-vs-acessória split. An
+investigation (2026-05-18, see [CURATOR_TODO.md](CURATOR_TODO.md))
+audited 33 curator-pinned national-regulamento PDFs from dre.pt and
+found **zero** of them carry a structured role split: most are
+amendment Portarias, recognition decrees, or PRT-tabular castas
+annexes without role markers. The role distinction simply isn't
+published at the PT regulator level for the wines in the corpus.
+The map detail panel therefore renders every PT grape as
+`principal`, with an inline disclaimer noting the limitation, and
+the stage-02f pipeline that previously attempted to recover roles
+has been removed.
+
 ### PT geometry resolution chain (stage 04)
 
 Per PT record, in priority order (each step records the chosen
