@@ -133,6 +133,11 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Le régulateur portugais (IVV) n'établit pas de distinction principal/accessoire — "
             "toutes les castas autorisées sont listées ensemble dans le caderno de especificações."
         ),
+        "bianchello_note": _(
+            "Bianchello (ou Biancame) est traité ici comme un cépage distinct, conformément "
+            "au disciplinare de la DOP Bianchello del Metauro ; le catalogue VIVC le recense "
+            "comme synonyme du Trebbiano Toscano."
+        ),
         "fr_marker": _("(français)"),
         "fr_marker_aria": _("Texte source en français"),
         "es_marker": _("(español)"),
@@ -728,6 +733,13 @@ def render(
         for slug in members:
             vivc_siblings[slug] = [s for s in members if s != slug]
 
+    # Curator notes pinned to a grape slug — rendered in the pill tooltip.
+    # bianchello: kept as a distinct variety (Bianchello del Metauro
+    # disciplinare) although VIVC folds it into Trebbiano Toscano.
+    if grapes_info is not None:
+        for note_slug, note_key in {"bianchello": "bianchello_note"}.items():
+            grapes_info.setdefault(note_slug, {})["note"] = labels[note_key]
+
     # Per-(slug, country) usage from the corpus + global totals — drive the
     # per-locale canonical row label inside each VIVC group. FR picks the
     # spelling most common in FR records (Côt > Malbec), ES picks the
@@ -1138,6 +1150,7 @@ _TEMPLATE = """<!doctype html>
   #about-dialog a {{ color:#934050 }}
   #grape-tooltip {{ position:fixed; max-width:340px; background:#fff; color:#222; border:1px solid #ddd; border-radius:4px; padding:10px 12px; font-size:12px; line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:1000; display:none }}
   #grape-tooltip .ext {{ margin:0 0 6px }}
+  #grape-tooltip .note {{ margin:0 0 6px; font-style:italic; color:#555 }}
   #grape-tooltip .thumb {{ float:right; width:96px; height:auto; margin:0 0 6px 10px; border-radius:3px; background:#f3f3f3 }}
   #grape-tooltip .src {{ color:#888; font-size:10.5px; clear:both }}
   #grape-tooltip .src a {{ color:#888 }}
@@ -1546,7 +1559,7 @@ _TEMPLATE = """<!doctype html>
   // lowercase — normalising here makes pills and filter entries
   // consistent regardless of source.
   function toTitleCase(s) {{
-    return s.replace(/(?:^|[\s\-'(])\p{{L}}/gu, c => c.toUpperCase());
+    return s.replace(/(?:^|[\\s\\-'(])\\p{{L}}/gu, c => c.toUpperCase());
   }}
 
   function grapeName(slug) {{
@@ -2607,7 +2620,7 @@ _TEMPLATE = """<!doctype html>
     }}).join('');
     const grapePill = (g, cls) => {{
       const info = GRAPES_INFO[g];
-      const has = !!(info && (info.extract || (info.vivc_id && info.vivc_url)));
+      const has = !!(info && (info.extract || (info.vivc_id && info.vivc_url) || info.note));
       const cls2 = ['pill', 'grape', cls, has ? 'has-info' : ''].filter(Boolean).join(' ');
       // Title-case both the cahier spelling and the canonical bracket so
       // pills stay consistent regardless of source casing ("mourvèdre" /
@@ -2804,7 +2817,7 @@ _TEMPLATE = """<!doctype html>
     if (el.matches('a.pill.grape.has-info')) {{
       const info = GRAPES_INFO[el.dataset.slug];
       if (!info) return null;
-      if (!info.extract && !(info.vivc_id && info.vivc_url)) return null;
+      if (!info.extract && !(info.vivc_id && info.vivc_url) && !info.note) return null;
       return {{ info, url: info.page_url || grapeUrl(el.dataset.slug) }};
     }}
     if (el.matches('.pill.style.has-info')) {{
@@ -2855,7 +2868,9 @@ _TEMPLATE = """<!doctype html>
       srcBlock += srcBlock ? ` · ${{vivcLink}}` : vivcLink;
     }}
     const extPara = hasExtract ? `<p class="ext">${{escapeHtml(info.extract)}}</p>` : '';
-    grapeTip.innerHTML = thumb + extPara + `<div class="src">${{srcBlock}}</div>`;
+    const notePara = info.note ? `<p class="note">${{escapeHtml(info.note)}}</p>` : '';
+    const srcDiv = srcBlock ? `<div class="src">${{srcBlock}}</div>` : '';
+    grapeTip.innerHTML = thumb + extPara + notePara + srcDiv;
     cancelGrapeTipClose();
     grapeTip.style.display = 'block';
     positionGrapeTip(el);
