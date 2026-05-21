@@ -59,11 +59,12 @@ CACHE_ROOT = ROOT / "raw" / "translations" / "grapes"
 MANIFEST = CACHE_ROOT / "manifest.json"
 VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
 
-# Target locales the UI renders. PT is *not* a target (no /pt/ page yet)
-# but PT is fetched as a source language for translation (some grapes
-# only have authoritative pages on pt.wikipedia).
+# Target locales the UI renders. PT + IT are *not* targets (no
+# /pt/ or /it/ page yet) but both are fetched as source languages
+# for translation (some grapes only have authoritative pages on
+# the country's Wikipedia).
 LOCALES = ("fr", "en", "es", "nl")
-SOURCE_LOCALES = ("fr", "en", "es", "nl", "pt")
+SOURCE_LOCALES = ("fr", "en", "es", "nl", "pt", "it")
 
 LOCALE_NAME = {
     "en": "English",
@@ -71,6 +72,7 @@ LOCALE_NAME = {
     "fr": "French",
     "nl": "Dutch",
     "pt": "Portuguese",
+    "it": "Italian",
 }
 
 

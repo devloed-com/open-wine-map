@@ -60,7 +60,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import cache, providers, roundtrip  # noqa: E402
+from _lib import batch, cache, providers, roundtrip  # noqa: E402
 from _lib.summaries import derive_summary, summary_sha  # noqa: E402
 from _lib.translation_glossary import glossary_for  # noqa: E402
 
@@ -73,6 +73,7 @@ LOCALE_NAME = {
     "fr": "French",
     "nl": "Dutch",
     "pt": "Portuguese",
+    "it": "Italian",
 }
 
 
@@ -92,6 +93,11 @@ SOURCE_CONFIG: dict[str, dict] = {
     "pt": {
         "source_dir": ROOT / "raw" / "pt" / "cadernos-extracted",
         "source_document": "IVV caderno de especificações (Portuguese wine appellation specifications)",
+        "target_locales": ("en", "fr", "es", "nl"),
+    },
+    "it": {
+        "source_dir": ROOT / "raw" / "it" / "disciplinari-extracted",
+        "source_document": "EU Official Journal documento unico (Italian wine appellation specifications)",
         "target_locales": ("en", "fr", "es", "nl"),
     },
 }
@@ -451,6 +457,30 @@ def _run_translation_loop(
     return done, skipped
 
 
+def _run_batch(args, files, languages: tuple[str, ...], source_document: str) -> int:
+    """Translate every (slug, lang) via the provider Batch API (two-pass)."""
+    if not batch.supports(args.provider):
+        print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
+        return 1
+    model_id = args.model or batch.default_model(args.provider)
+    jobs = _enumerate_jobs(files, languages, source_lang=args.source_lang,
+                           skip_cached=not args.refresh)
+    if args.limit:
+        jobs = jobs[: args.limit]
+    if not jobs:
+        print("[02c] batch: nothing to do.", file=sys.stderr)
+        return 0
+    print(f"[02c] batch: {len(jobs)} translations (source={args.source_lang}, "
+          f"provider={args.provider}, model={model_id})", file=sys.stderr)
+    batch.run_two_pass(
+        provider=args.provider, model=model_id,
+        sidecar=ROOT / "raw" / ".batch" / f"02c-{args.source_lang}.json",
+        run_loop=lambda prov: _run_translation_loop(
+            prov, model_id, jobs, source_document, workers=1),
+    )
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -501,6 +531,12 @@ def main() -> int:
         "--retry", action="store_true",
         help="alias for default behaviour: skips entries already cached, translates everything else",
     )
+    ap.add_argument(
+        "--batch", action="store_true",
+        help="submit all work to the provider Batch API (--provider anthropic|"
+             "mistral; ~50%% cheaper). Processes the full eligible set; a re-run "
+             "resumes an in-flight batch instead of resubmitting.",
+    )
     roundtrip.add_arguments(ap)
     args = ap.parse_args()
 
@@ -549,6 +585,10 @@ def main() -> int:
 
     languages = tuple(args.lang) if args.lang else target_locales
     files = list(extracted_dir.glob("*.json"))
+
+    if args.batch:
+        return _run_batch(args, files, languages, source_document)
+
     jobs = _enumerate_jobs(files, languages, source_lang=args.source_lang)
     if args.limit:
         jobs = jobs[: args.limit]

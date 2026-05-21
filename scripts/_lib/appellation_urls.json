@@ -814,6 +814,1382 @@
     "rosalejo": {
       "url": "https://eldoze.com/",
       "label": "Bodegas Eldoze (DOP Rosalejo)"
+    },
+    "abruzzo": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "aglianico-del-taburno": {
+      "label": "Sannio Consorzio Tutela Vini",
+      "url": "https://www.sannio.wine/"
+    },
+    "aglianico-del-vulture": {
+      "label": "Consorzio di Tutela Aglianico del Vulture",
+      "url": "https://consorzioaglianico.it/"
+    },
+    "aglianico-del-vulture-superiore": {
+      "label": "Consorzio di Tutela Aglianico del Vulture",
+      "url": "https://consorzioaglianico.it/"
+    },
+    "alba": {
+      "label": "Consorzio di Tutela Barolo Barbaresco Alba Langhe e Dogliani",
+      "url": "https://www.langhevini.it/"
+    },
+    "albugnano": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "alghero": {
+      "label": "Consorzio Tutela Vini di Alghero DOC",
+      "url": "https://www.algherodoc.it/"
+    },
+    "alpi-retiche": {
+      "label": "Consorzio di Tutela dei Vini di Valtellina",
+      "url": "https://www.vinidivaltellina.it/"
+    },
+    "alta-langa": {
+      "label": "Consorzio Alta Langa",
+      "url": "https://www.altalangadocg.com/"
+    },
+    "alto-adige": {
+      "label": "Consorzio Vini Alto Adige",
+      "url": "https://www.vinialtoadige.com/"
+    },
+    "alto-mincio": {
+      "label": "Consorzio Vini Mantovani",
+      "url": "https://www.vinimantovani.it/"
+    },
+    "amarone-della-valpolicella": {
+      "label": "Consorzio Tutela Vini Valpolicella",
+      "url": "https://www.consorziovalpolicella.it/"
+    },
+    "arcole": {
+      "label": "Consorzio Tutela Vino Arcole DOC",
+      "url": "https://www.arcoledoc.com/"
+    },
+    "asolo-montello": {
+      "label": "Consorzio Vini Asolo Montello",
+      "url": "https://www.asolomontello.it/"
+    },
+    "asolo-prosecco": {
+      "label": "Consorzio Vini Asolo Montello",
+      "url": "https://www.asolomontello.it/"
+    },
+    "asti": {
+      "label": "Consorzio per la tutela dell'Asti",
+      "url": "https://astidocg.it/"
+    },
+    "atina": {
+      "label": "Consorzio per la tutela dei vini DOP Atina",
+      "url": "https://www.atinadoc.it/"
+    },
+    "aversa": {
+      "label": "VITICA - Consorzio Tutela Vini Caserta",
+      "url": "https://www.vitica.it/"
+    },
+    "bagnoli-di-sopra": {
+      "label": "Consorzio Tutela Vini Friularo di Bagnoli",
+      "url": "https://www.consorziovinidocbagnoli.it/"
+    },
+    "bagnoli-friularo": {
+      "label": "Consorzio Tutela Vini Friularo di Bagnoli",
+      "url": "https://www.consorziovinidocbagnoli.it/"
+    },
+    "barbaresco": {
+      "label": "Consorzio di Tutela Barolo Barbaresco Alba Langhe e Dogliani",
+      "url": "https://www.langhevini.it/"
+    },
+    "barbera-d-alba": {
+      "label": "Consorzio di Tutela Barolo Barbaresco Alba Langhe e Dogliani",
+      "url": "https://www.langhevini.it/"
+    },
+    "barbera-d-asti": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "barbera-del-monferrato-superiore": {
+      "label": "Consorzio Colline del Monferrato Casalese",
+      "url": "https://vinimonferratocasalese.it/"
+    },
+    "barco-reale-di-carmignano": {
+      "label": "Consorzio di Tutela dei Vini di Carmignano",
+      "url": "https://www.consorziovinicarmignano.it/"
+    },
+    "bardolino": {
+      "label": "Consorzio di Tutela Chiaretto e Bardolino",
+      "url": "https://consorziobardolino.it/"
+    },
+    "bardolino-superiore": {
+      "label": "Consorzio di Tutela Chiaretto e Bardolino",
+      "url": "https://consorziobardolino.it/"
+    },
+    "barletta": {
+      "label": "Consorzio per la Tutela del Vino DOC Barletta",
+      "url": "https://consorziobarlettadoc.wordpress.com/"
+    },
+    "barolo": {
+      "label": "Consorzio di Tutela Barolo Barbaresco Alba Langhe e Dogliani",
+      "url": "https://www.langhevini.it/"
+    },
+    "benaco-bresciano": {
+      "label": "Consorzio Valtenesi",
+      "url": "https://www.consorziovaltenesi.it/"
+    },
+    "benevento": {
+      "label": "Sannio Consorzio Tutela Vini",
+      "url": "https://www.sannio.wine/"
+    },
+    "bergamasca": {
+      "label": "Consorzio Tutela Valcalepio",
+      "url": "https://www.valcalepio.org/"
+    },
+    "bianchello-del-metauro": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "bianco-del-sillaro": {
+      "label": "Consorzio Vini di Romagna",
+      "url": "https://www.consorziovinidiromagna.it/"
+    },
+    "bianco-dell-empolese": {
+      "label": "Consorzio Vino Chianti",
+      "url": "https://www.consorziovinochianti.it/"
+    },
+    "bianco-di-pitigliano": {
+      "label": "Consorzio di Tutela del Bianco di Pitigliano e Sovana DOC",
+      "url": "http://www.pitiglianodoc.it/"
+    },
+    "bivongi": {
+      "label": "Consorzio di Tutela dei Vini DOC Bivongi",
+      "url": "https://www.docbivongi.it/"
+    },
+    "boca": {
+      "label": "Consorzio Tutela Nebbioli Alto Piemonte",
+      "url": "https://www.consnebbiolialtop.it/"
+    },
+    "bolgheri": {
+      "label": "Consorzio per la Tutela dei Vini Bolgheri e Bolgheri Sassicaia",
+      "url": "https://www.bolgheridoc.com/"
+    },
+    "bolgheri-sassicaia": {
+      "label": "Consorzio per la Tutela dei Vini Bolgheri e Bolgheri Sassicaia",
+      "url": "https://www.bolgheridoc.com/"
+    },
+    "bonarda-dell-oltrepo-pavese": {
+      "label": "Consorzio Tutela Vini Oltrepo Pavese",
+      "url": "https://www.consorziovinioltrepo.it/"
+    },
+    "bosco-eliceo": {
+      "label": "Consorzio Tutela Vini DOC Bosco Eliceo",
+      "url": "https://www.consorzioboscoeliceo.it/"
+    },
+    "botticino": {
+      "label": "Consorzio Botticino",
+      "url": "https://www.consorziobotticino.it/"
+    },
+    "brachetto-d-acqui": {
+      "label": "Consorzio Tutela Vini d'Acqui",
+      "url": "https://vinidacqui.it/"
+    },
+    "bramaterra": {
+      "label": "Consorzio Tutela Nebbioli Alto Piemonte",
+      "url": "https://www.consnebbiolialtop.it/"
+    },
+    "breganze": {
+      "label": "Consorzio Tutela Vini DOC Breganze",
+      "url": "https://www.breganzedoc.it/"
+    },
+    "brindisi": {
+      "label": "Consorzio Tutela Vini DOC Brindisi e DOC Squinzano",
+      "url": "https://www.vinibrindisisquinzanodoc.it/"
+    },
+    "brunello-di-montalcino": {
+      "label": "Consorzio del vino Brunello di Montalcino",
+      "url": "https://www.consorziobrunellodimontalcino.it/"
+    },
+    "buttafuoco-dell-oltrepo-pavese": {
+      "label": "Consorzio Tutela Vini Oltrepo Pavese",
+      "url": "https://www.consorziovinioltrepo.it/"
+    },
+    "campi-flegrei": {
+      "label": "Consorzio Tutela Vini Campi Flegrei e Ischia",
+      "url": "https://consorzioditutelavinicampiflegreieischia.it/"
+    },
+    "canavese": {
+      "label": "Consorzio Tutela Vini DOC Caluso, Carema e Canavese",
+      "url": "https://www.erbalucecarema.it/"
+    },
+    "candia-dei-colli-apuani": {
+      "label": "Consorzio Candia dei Colli Apuani",
+      "url": "https://candiadeicolliapuani.it/"
+    },
+    "canelli": {
+      "label": "Consorzio per la tutela dell'Asti",
+      "url": "https://astidocg.it/"
+    },
+    "cannellino-di-frascati": {
+      "label": "Consorzio Tutela Denominazioni Vini Frascati",
+      "url": "https://consorziofrascati.it/"
+    },
+    "capriano-del-colle": {
+      "label": "Consorzio Montenetto",
+      "url": "https://consorziomontenetto.it/"
+    },
+    "carema": {
+      "label": "Consorzio Tutela Vini DOC Caluso, Carema e Canavese",
+      "url": "https://www.erbalucecarema.it/"
+    },
+    "carmignano": {
+      "label": "Consorzio di Tutela dei Vini di Carmignano",
+      "url": "https://www.consorziovinicarmignano.it/"
+    },
+    "carso": {
+      "label": "Associazione Viticoltori del Carso - Kras",
+      "url": "https://www.carsovinokras.it/"
+    },
+    "casauria": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "casteggio": {
+      "label": "Consorzio Tutela Vini Oltrepo Pavese",
+      "url": "https://www.consorziovinioltrepo.it/"
+    },
+    "castel-del-monte": {
+      "label": "Consorzio di Tutela Vini DOC Castel del Monte",
+      "url": "https://pugliasveva.it/"
+    },
+    "castel-del-monte-bombino-nero": {
+      "label": "Consorzio di Tutela Vini DOC Castel del Monte",
+      "url": "https://pugliasveva.it/"
+    },
+    "castel-del-monte-nero-di-troia-riserva": {
+      "label": "Consorzio di Tutela Vini DOC Castel del Monte",
+      "url": "https://pugliasveva.it/"
+    },
+    "castel-del-monte-rosso-riserva": {
+      "label": "Consorzio di Tutela Vini DOC Castel del Monte",
+      "url": "https://pugliasveva.it/"
+    },
+    "castel-san-lorenzo": {
+      "label": "Consorzio di Tutela Vita Salernum Vites",
+      "url": "https://www.consorziovinisalerno.it/"
+    },
+    "castelfranco-emilia": {
+      "label": "Consorzio Tutela Lambrusco",
+      "url": "https://www.tutelalambrusco.it/"
+    },
+    "casteller": {
+      "label": "Consorzio Vini del Trentino",
+      "url": "https://vinideltrentino.com/"
+    },
+    "castelli-di-jesi-verdicchio-riserva": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "catalanesca-del-monte-somma": {
+      "label": "Consorzio Tutela Vini Vesuvio",
+      "url": "https://www.vesuvio.wine/"
+    },
+    "cerasuolo-d-abruzzo": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "cerasuolo-di-vittoria": {
+      "label": "Consorzio di tutela Cerasuolo di Vittoria DOCG e Vittoria DOC",
+      "url": "https://www.cerasuolovittoria.it/"
+    },
+    "cesanese-del-piglio": {
+      "label": "Consorzio di tutela del Cesanese del Piglio",
+      "url": "https://www.consorziotutelacesanesedelpiglio.it/"
+    },
+    "chianti": {
+      "label": "Consorzio Vino Chianti",
+      "url": "https://www.consorziovinochianti.it/"
+    },
+    "chianti-classico": {
+      "label": "Consorzio Vino Chianti Classico",
+      "url": "https://www.chianticlassico.com/"
+    },
+    "cilento": {
+      "label": "Consorzio di Tutela Vita Salernum Vites",
+      "url": "https://www.consorziovinisalerno.it/"
+    },
+    "ciro": {
+      "label": "Consorzio di Tutela Vini DOC Ciro e Melissa",
+      "url": "https://www.consorzioviniciroemelissa.it/"
+    },
+    "ciro-classico": {
+      "label": "Consorzio di Tutela Vini DOC Ciro e Melissa",
+      "url": "https://www.consorzioviniciroemelissa.it/"
+    },
+    "colli-aprutini": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "colli-berici": {
+      "label": "Consorzio di Tutela Chiaretto e Bardolino",
+      "url": "https://consorziobardolino.it/"
+    },
+    "colli-bolognesi": {
+      "label": "Consorzio Vini Colli Bolognesi",
+      "url": "https://www.collibolognesi.it/"
+    },
+    "colli-bolognesi-pignoletto": {
+      "label": "Consorzio Vini Colli Bolognesi",
+      "url": "https://www.collibolognesi.it/"
+    },
+    "colli-d-imola": {
+      "label": "Consorzio Vini di Romagna",
+      "url": "https://www.consorziovinidiromagna.it/"
+    },
+    "colli-del-sangro": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "colli-del-trasimeno": {
+      "label": "Consorzio Tutela Vini Trasimeno",
+      "url": "https://www.trasimenodoc.it/"
+    },
+    "colli-dell-etruria-centrale": {
+      "label": "Consorzio Vino Chianti",
+      "url": "https://www.consorziovinochianti.it/"
+    },
+    "colli-di-conegliano": {
+      "label": "Consorzio Tutela Vini Colli di Conegliano DOCG",
+      "url": "http://www.colliconegliano.it/"
+    },
+    "colli-di-faenza": {
+      "label": "Consorzio Vini di Romagna",
+      "url": "https://www.consorziovinidiromagna.it/"
+    },
+    "colli-di-parma": {
+      "label": "Consorzio Volontario Tutela Vini DOP Colli di Parma",
+      "url": "https://www.viniparma.it/"
+    },
+    "colli-di-salerno": {
+      "label": "Consorzio di Tutela Vita Salernum Vites",
+      "url": "https://www.consorziovinisalerno.it/"
+    },
+    "colli-di-scandiano-e-di-canossa": {
+      "label": "Consorzio Tutela Lambrusco",
+      "url": "https://www.tutelalambrusco.it/"
+    },
+    "colli-euganei": {
+      "label": "Consorzio Tutela Vini Colli Euganei",
+      "url": "https://www.collieuganeidoc.com/"
+    },
+    "colli-euganei-fior-d-arancio": {
+      "label": "Consorzio Tutela Vini Colli Euganei",
+      "url": "https://www.collieuganeidoc.com/"
+    },
+    "colli-maceratesi": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "colli-martani": {
+      "label": "Consorzio Tutela Vini Colli Martani",
+      "url": "https://www.umbriatopwines.it/en/denominations-and-consortiums/"
+    },
+    "colli-orientali-del-friuli-picolit": {
+      "label": "Consorzio Tutela Vini Friuli Colli Orientali e Ramandolo",
+      "url": "https://www.colliorientali.com/"
+    },
+    "colli-pesaresi": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "colli-piacentini": {
+      "label": "Consorzio Tutela Vini DOC Colli Piacentini",
+      "url": "https://collipiacentinidoc.it/"
+    },
+    "colli-romagna-centrale": {
+      "label": "Consorzio Vini di Romagna",
+      "url": "https://www.consorziovinidiromagna.it/"
+    },
+    "colli-tortonesi": {
+      "label": "Consorzio Tutela Vini Colli Tortonesi",
+      "url": "https://collitortonesi.com/"
+    },
+    "collina-del-milanese": {
+      "label": "Consorzio Volontario Vino DOC San Colombano",
+      "url": "https://www.sancolombanodoc.it/"
+    },
+    "collina-torinese": {
+      "label": "Consorzio del Freisa di Chieri",
+      "url": "https://www.freisadichieri.com/"
+    },
+    "colline-frentane": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "colline-novaresi": {
+      "label": "Consorzio Tutela Nebbioli Alto Piemonte",
+      "url": "https://www.consnebbiolialtop.it/"
+    },
+    "colline-pescaresi": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "colline-saluzzesi": {
+      "label": "Consorzio di Tutela Vini DOC Colline Saluzzesi",
+      "url": "http://www.collinesaluzzesi.com/"
+    },
+    "colline-teatine": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "colline-teramane-montepulciano-dabruzzo": {
+      "label": "Consorzio di Tutela Vini Colline Teramane DOCG",
+      "url": "https://collineteramane.com/"
+    },
+    "collio-goriziano": {
+      "label": "Consorzio Tutela Vini Collio",
+      "url": "https://www.collio.it/"
+    },
+    "conegliano-valdobbiadene-prosecco": {
+      "label": "Consorzio Tutela del Vino Conegliano Valdobbiadene Prosecco",
+      "url": "https://www.prosecco.it/"
+    },
+    "conero": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "controguerra": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "cortese-dell-alto-monferrato": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "corti-benedettine-del-padovano": {
+      "label": "Consorzio Tutela Vini Corti Benedettine del Padovano",
+      "url": "https://www.cortibenedettine.it/"
+    },
+    "cortona": {
+      "label": "Consorzio di Tutela dei Vini DOC Cortona",
+      "url": "https://www.cortonavini.it/"
+    },
+    "costa-d-amalfi": {
+      "label": "Consorzio di Tutela Vita Salernum Vites",
+      "url": "https://www.consorziovinisalerno.it/"
+    },
+    "costa-viola": {
+      "label": "Consorzio di Tutela Terre di Reggio Calabria",
+      "url": "https://www.terredireggiocalabria.it/"
+    },
+    "coste-della-sesia": {
+      "label": "Consorzio Tutela Nebbioli Alto Piemonte",
+      "url": "https://www.consnebbiolialtop.it/"
+    },
+    "curtefranca": {
+      "label": "Consorzio per la Tutela del Franciacorta",
+      "url": "https://franciacorta.wine/"
+    },
+    "custoza": {
+      "label": "Consorzio Tutela Vino Custoza DOC",
+      "url": "https://custoza.wine/"
+    },
+    "del-vastese": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "dell-emilia": {
+      "label": "Consorzio Tutela Vini Emilia",
+      "url": "https://www.consorzioviniemilia.it/"
+    },
+    "delle-venezie": {
+      "label": "Consorzio Tutela Vini DOC delle Venezie",
+      "url": "https://dellevenezie.it/"
+    },
+    "dogliani": {
+      "label": "Consorzio di Tutela Barolo Barbaresco Alba Langhe e Dogliani",
+      "url": "https://www.langhevini.it/"
+    },
+    "dolcetto-d-acqui": {
+      "label": "Consorzio Tutela Vini d'Acqui",
+      "url": "https://vinidacqui.it/"
+    },
+    "dolcetto-d-alba": {
+      "label": "Consorzio di Tutela Barolo Barbaresco Alba Langhe e Dogliani",
+      "url": "https://www.langhevini.it/"
+    },
+    "dolcetto-d-asti": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "dolcetto-di-diano-d-alba": {
+      "label": "Consorzio di Tutela Barolo Barbaresco Alba Langhe e Dogliani",
+      "url": "https://www.langhevini.it/"
+    },
+    "dolcetto-di-ovada": {
+      "label": "Consorzio di Tutela e Promozione dell'Ovada DOCG",
+      "url": "https://www.ovada.eu/"
+    },
+    "dolcetto-di-ovada-superiore": {
+      "label": "Consorzio di Tutela e Promozione dell'Ovada DOCG",
+      "url": "https://www.ovada.eu/"
+    },
+    "elba": {
+      "label": "Consorzio di Tutela dei Vini dell'Elba",
+      "url": "http://www.aleaticoelba.it/"
+    },
+    "elba-aleatico-passito": {
+      "label": "Consorzio di Tutela dei Vini dell'Elba",
+      "url": "http://www.aleaticoelba.it/"
+    },
+    "emilia-romagna": {
+      "label": "Consorzio Tutela Vini Emilia",
+      "url": "https://www.consorzioviniemilia.it/"
+    },
+    "erbaluce-di-caluso": {
+      "label": "Consorzio Tutela Vini DOC Caluso, Carema e Canavese",
+      "url": "https://www.erbalucecarema.it/"
+    },
+    "esino": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "etna": {
+      "label": "Consorzio Tutela dei Vini Etna DOC",
+      "url": "https://consorzioetnadoc.com/"
+    },
+    "falanghina-del-sannio": {
+      "label": "Sannio Consorzio Tutela Vini",
+      "url": "https://www.sannio.wine/"
+    },
+    "falerio": {
+      "label": "Consorzio Tutela Vini Piceni",
+      "url": "https://www.consorziovinipiceni.com/"
+    },
+    "falerno-del-massico": {
+      "label": "VITICA - Consorzio Tutela Vini Caserta",
+      "url": "https://www.vitica.it/"
+    },
+    "fara": {
+      "label": "Consorzio Tutela Nebbioli Alto Piemonte",
+      "url": "https://www.consnebbiolialtop.it/"
+    },
+    "faro": {
+      "label": "Consorzio di Tutela Vino Faro DOC",
+      "url": "https://www.consorzioditutelavinofarodoc.it/"
+    },
+    "fiano-di-avellino": {
+      "label": "Consorzio Tutela Vini d'Irpinia",
+      "url": "https://consorziovinidirpinia.it/"
+    },
+    "forli": {
+      "label": "Consorzio Vini di Romagna",
+      "url": "https://www.consorziovinidiromagna.it/"
+    },
+    "franciacorta": {
+      "label": "Consorzio per la Tutela del Franciacorta",
+      "url": "https://franciacorta.wine/"
+    },
+    "frascati": {
+      "label": "Consorzio Tutela Denominazioni Vini Frascati",
+      "url": "https://consorziofrascati.it/"
+    },
+    "frascati-superiore": {
+      "label": "Consorzio Tutela Denominazioni Vini Frascati",
+      "url": "https://consorziofrascati.it/"
+    },
+    "freisa-d-asti": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "freisa-di-chieri": {
+      "label": "Consorzio del Freisa di Chieri",
+      "url": "https://www.freisadichieri.com/"
+    },
+    "friuli": {
+      "label": "Consorzio Tutela Vini Friuli Venezia Giulia",
+      "url": "https://www.docfriuli.eu/"
+    },
+    "friuli-annia": {
+      "label": "UNI.DOC FVG - Unione dei Consorzi Vini DOC del Friuli Venezia Giulia",
+      "url": "https://www.unidocfvg.it/"
+    },
+    "friuli-aquileia": {
+      "label": "Consorzio Tutela Vini DOC Friuli Aquileia",
+      "url": "https://www.viniaquileia.it/"
+    },
+    "friuli-colli-orientali": {
+      "label": "Consorzio Tutela Vini Friuli Colli Orientali e Ramandolo",
+      "url": "https://www.colliorientali.com/"
+    },
+    "friuli-grave": {
+      "label": "Consorzio Tutela Vini DOC Friuli Grave",
+      "url": "https://www.docfriuligrave.com/"
+    },
+    "friuli-isonzo": {
+      "label": "UNI.DOC FVG - Unione dei Consorzi Vini DOC del Friuli Venezia Giulia",
+      "url": "https://www.unidocfvg.it/"
+    },
+    "friuli-latisana": {
+      "label": "UNI.DOC FVG - Unione dei Consorzi Vini DOC del Friuli Venezia Giulia",
+      "url": "https://www.unidocfvg.it/"
+    },
+    "gabiano": {
+      "label": "Consorzio Colline del Monferrato Casalese",
+      "url": "https://vinimonferratocasalese.it/"
+    },
+    "galluccio": {
+      "label": "VITICA - Consorzio Tutela Vini Caserta",
+      "url": "https://www.vitica.it/"
+    },
+    "gambellara": {
+      "label": "Consorzio Tutela Vini Gambellara",
+      "url": "https://www.consorziogambellara.com/"
+    },
+    "garda": {
+      "label": "Consorzio Garda DOC",
+      "url": "https://www.gardadocvino.it/"
+    },
+    "garda-colli-mantovani": {
+      "label": "Consorzio Vini Mantovani",
+      "url": "https://www.vinimantovani.it/"
+    },
+    "gattinara": {
+      "label": "Consorzio Tutela Nebbioli Alto Piemonte",
+      "url": "https://www.consnebbiolialtop.it/"
+    },
+    "gavi": {
+      "label": "Consorzio Tutela del Gavi",
+      "url": "https://www.consorziogavi.com/"
+    },
+    "ghemme": {
+      "label": "Consorzio Tutela Nebbioli Alto Piemonte",
+      "url": "https://www.consnebbiolialtop.it/"
+    },
+    "gioia-del-colle": {
+      "label": "Consorzio di Tutela Vini DOC Gioia del Colle",
+      "url": "http://www.consorziovinigioiadelcolle.it/"
+    },
+    "grance-senesi": {
+      "label": "Consorzio DOC Grance Senesi",
+      "url": "https://www.docgrancesenesi.it/"
+    },
+    "gravina": {
+      "label": "Consorzio di Tutela del Vino Gravina DOP",
+      "url": "http://www.gravinadop.it/"
+    },
+    "greco-di-bianco": {
+      "label": "Consorzio Greco di Bianco DOP",
+      "url": "https://www.grecodibianco.it/"
+    },
+    "greco-di-tufo": {
+      "label": "Consorzio Tutela Vini d'Irpinia",
+      "url": "https://consorziovinidirpinia.it/"
+    },
+    "grignolino-d-asti": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "grignolino-del-monferrato-casalese": {
+      "label": "Consorzio Colline del Monferrato Casalese",
+      "url": "https://vinimonferratocasalese.it/"
+    },
+    "gutturnio": {
+      "label": "Consorzio Tutela Vini DOC Colli Piacentini",
+      "url": "https://collipiacentinidoc.it/"
+    },
+    "i-terreni-di-sanseverino": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "irpinia": {
+      "label": "Consorzio Tutela Vini d'Irpinia",
+      "url": "https://consorziovinidirpinia.it/"
+    },
+    "ischia": {
+      "label": "Consorzio Tutela Vini Campi Flegrei e Ischia",
+      "url": "https://consorzioditutelavinicampiflegreieischia.it/"
+    },
+    "lacrima-di-morro": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "lago-di-caldaro": {
+      "label": "Consorzio Vini Alto Adige",
+      "url": "https://www.vinialtoadige.com/"
+    },
+    "lambrusco-di-sorbara": {
+      "label": "Consorzio Tutela Lambrusco",
+      "url": "https://www.tutelalambrusco.it/"
+    },
+    "lambrusco-grasparossa-di-castelvetro": {
+      "label": "Consorzio Tutela Lambrusco",
+      "url": "https://www.tutelalambrusco.it/"
+    },
+    "lambrusco-mantovano": {
+      "label": "Consorzio Vini Mantovani",
+      "url": "https://www.vinimantovani.it/"
+    },
+    "lambrusco-salamino-di-santa-croce": {
+      "label": "Consorzio Tutela Lambrusco",
+      "url": "https://www.tutelalambrusco.it/"
+    },
+    "langhe": {
+      "label": "Consorzio di Tutela Barolo Barbaresco Alba Langhe e Dogliani",
+      "url": "https://www.langhevini.it/"
+    },
+    "lessini-durello": {
+      "label": "Consorzio Tutela Vino Lessini Durello",
+      "url": "https://www.montilessini.com/"
+    },
+    "lessona": {
+      "label": "Consorzio Tutela Nebbioli Alto Piemonte",
+      "url": "https://www.consnebbiolialtop.it/"
+    },
+    "lison": {
+      "label": "Consorzio Vini Venezia",
+      "url": "https://www.consorziovinivenezia.it/"
+    },
+    "lison-pramaggiore": {
+      "label": "Consorzio Vini Venezia",
+      "url": "https://www.consorziovinivenezia.it/"
+    },
+    "loazzolo": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "locride": {
+      "label": "Consorzio di Tutela Terre di Reggio Calabria",
+      "url": "https://www.terredireggiocalabria.it/"
+    },
+    "lugana": {
+      "label": "Consorzio Tutela Lugana DOC",
+      "url": "https://www.consorziolugana.it/"
+    },
+    "malvasia-delle-lipari": {
+      "label": "Consorzio Malvasia delle Lipari",
+      "url": "https://consorziomalvasiadellelipari.it/"
+    },
+    "malvasia-di-bosa": {
+      "label": "Consorzio Tutela Malvasia di Bosa",
+      "url": "https://consorziotutelamalvasiadibosa.it/"
+    },
+    "malvasia-di-casorzo-d-asti": {
+      "label": "Consorzio per la Tutela della Malvasia di Casorzo",
+      "url": "https://www.malvasiadicasorzo.it/"
+    },
+    "malvasia-di-castelnuovo-don-bosco": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "mamertino": {
+      "label": "Consorzio di Tutela del Mamertino DOC",
+      "url": "https://www.mamertinodoc.com/"
+    },
+    "maremma-toscana": {
+      "label": "Consorzio Tutela Vini della Maremma Toscana",
+      "url": "https://www.consorziovinimaremma.it/"
+    },
+    "marsala": {
+      "label": "Consorzio Volontario per la Tutela del Vino Marsala",
+      "url": "https://consorziovinomarsala.it/"
+    },
+    "melissa": {
+      "label": "Consorzio di Tutela Vini DOC Ciro e Melissa",
+      "url": "https://www.consorzioviniciroemelissa.it/"
+    },
+    "merlara": {
+      "label": "Consorzio Tutela Vini Merlara DOC",
+      "url": "https://merlara.wine/"
+    },
+    "mitterberg": {
+      "label": "Consorzio Vini Alto Adige",
+      "url": "https://www.vinialtoadige.com/"
+    },
+    "modena": {
+      "label": "Consorzio Tutela Lambrusco",
+      "url": "https://www.tutelalambrusco.it/"
+    },
+    "monferrato": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "monreale": {
+      "label": "Consorzio di Tutela Vino DOC Monreale",
+      "url": "https://consorzio.docmonreale.com/"
+    },
+    "montecucco": {
+      "label": "Consorzio Tutela Vini Montecucco",
+      "url": "https://www.consorziomontecucco.it/"
+    },
+    "montecucco-sangiovese": {
+      "label": "Consorzio Tutela Vini Montecucco",
+      "url": "https://www.consorziomontecucco.it/"
+    },
+    "montefalco": {
+      "label": "Consorzio Tutela Vini Montefalco",
+      "url": "https://www.consorziomontefalco.it/"
+    },
+    "montefalco-sagrantino": {
+      "label": "Consorzio Tutela Vini Montefalco",
+      "url": "https://www.consorziomontefalco.it/"
+    },
+    "montello-rosso": {
+      "label": "Consorzio Vini Asolo Montello",
+      "url": "https://www.asolomontello.it/"
+    },
+    "montenetto-di-brescia": {
+      "label": "Consorzio Montenetto",
+      "url": "https://consorziomontenetto.it/"
+    },
+    "montepulciano-d-abruzzo": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "montescudaio": {
+      "label": "Consorzio Vino Montescudaio DOC",
+      "url": "https://www.consorziovinomontescudaiodoc.it/"
+    },
+    "monti-lessini": {
+      "label": "Consorzio Tutela Vino Lessini Durello",
+      "url": "https://www.montilessini.com/"
+    },
+    "morellino-di-scansano": {
+      "label": "Consorzio Tutela Morellino di Scansano",
+      "url": "https://www.consorziomorellino.it/"
+    },
+    "moscadello-di-montalcino": {
+      "label": "Consorzio del vino Brunello di Montalcino",
+      "url": "https://www.consorziobrunellodimontalcino.it/"
+    },
+    "moscato-di-sorso": {
+      "label": "Consorzio Volontario per la Tutela dei vini Terre di Romangia",
+      "url": "https://www.terrediromangia.it/"
+    },
+    "nebbiolo-d-alba": {
+      "label": "Consorzio di Tutela Barolo Barbaresco Alba Langhe e Dogliani",
+      "url": "https://www.langhevini.it/"
+    },
+    "nizza": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "offida": {
+      "label": "Consorzio Tutela Vini Piceni",
+      "url": "https://www.consorziovinipiceni.com/"
+    },
+    "oltrepo-pavese": {
+      "label": "Consorzio Tutela Vini Oltrepo Pavese",
+      "url": "https://www.consorziovinioltrepo.it/"
+    },
+    "oltrepo-pavese-metodo-classico": {
+      "label": "Consorzio Tutela Vini Oltrepo Pavese",
+      "url": "https://www.consorziovinioltrepo.it/"
+    },
+    "oltrepo-pavese-pinot-grigio": {
+      "label": "Consorzio Tutela Vini Oltrepo Pavese",
+      "url": "https://www.consorziovinioltrepo.it/"
+    },
+    "orcia": {
+      "label": "Consorzio del Vino Orcia",
+      "url": "https://www.consorziovinoorcia.it/"
+    },
+    "ortrugo-dei-colli-piacentini": {
+      "label": "Consorzio Tutela Vini DOC Colli Piacentini",
+      "url": "https://collipiacentinidoc.it/"
+    },
+    "orvieto": {
+      "label": "Consorzio Tutela Vini Orvieto",
+      "url": "https://www.orvietodoc.it/"
+    },
+    "paestum": {
+      "label": "Consorzio di Tutela Vita Salernum Vites",
+      "url": "https://www.consorziovinisalerno.it/"
+    },
+    "palizzi": {
+      "label": "Consorzio di Tutela Terre di Reggio Calabria",
+      "url": "https://www.terredireggiocalabria.it/"
+    },
+    "pantelleria": {
+      "label": "Consorzio Volontario per la Tutela dei Vini DOC dell'Isola di Pantelleria",
+      "url": "https://www.vinipantelleriadoc.it/"
+    },
+    "pellaro": {
+      "label": "Consorzio di Tutela Terre di Reggio Calabria",
+      "url": "https://www.terredireggiocalabria.it/"
+    },
+    "pergola": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "piave": {
+      "label": "Consorzio Vini Venezia",
+      "url": "https://www.consorziovinivenezia.it/"
+    },
+    "piave-malanotte": {
+      "label": "Consorzio Vini Venezia",
+      "url": "https://www.consorziovinivenezia.it/"
+    },
+    "piemonte": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "pinerolese": {
+      "label": "Consorzio di tutela e valorizzazione dei vini DOC Pinerolese",
+      "url": "https://consorziodocpinerolese.it/"
+    },
+    "pinot-nero-dell-oltrepo-pavese": {
+      "label": "Consorzio Tutela Vini Oltrepo Pavese",
+      "url": "https://www.consorziovinioltrepo.it/"
+    },
+    "pompeiano": {
+      "label": "Consorzio Tutela Vini Vesuvio",
+      "url": "https://www.vesuvio.wine/"
+    },
+    "primitivo-di-manduria": {
+      "label": "Consorzio di Tutela del Primitivo di Manduria",
+      "url": "https://www.consorziotutelaprimitivo.com/"
+    },
+    "primitivo-di-manduria-dolce-naturale": {
+      "label": "Consorzio di Tutela del Primitivo di Manduria",
+      "url": "https://www.consorziotutelaprimitivo.com/"
+    },
+    "prosecco": {
+      "label": "Consorzio di Tutela della DOC Prosecco",
+      "url": "https://www.prosecco.wine/"
+    },
+    "provincia-di-mantova": {
+      "label": "Consorzio Vini Mantovani",
+      "url": "https://www.vinimantovani.it/"
+    },
+    "provincia-di-pavia": {
+      "label": "Consorzio Tutela Vini Oltrepo Pavese",
+      "url": "https://www.consorziovinioltrepo.it/"
+    },
+    "quistello": {
+      "label": "Consorzio Vini Mantovani",
+      "url": "https://www.vinimantovani.it/"
+    },
+    "ramandolo": {
+      "label": "Consorzio Tutela Vini Friuli Colli Orientali e Ramandolo",
+      "url": "https://www.colliorientali.com/"
+    },
+    "ravenna": {
+      "label": "Consorzio Vini di Romagna",
+      "url": "https://www.consorziovinidiromagna.it/"
+    },
+    "recioto-della-valpolicella": {
+      "label": "Consorzio Tutela Vini Valpolicella",
+      "url": "https://www.consorziovalpolicella.it/"
+    },
+    "recioto-di-gambellara": {
+      "label": "Consorzio Tutela Vini Gambellara",
+      "url": "https://www.consorziogambellara.com/"
+    },
+    "recioto-di-soave": {
+      "label": "Consorzio Tutela Vini Soave e Recioto di Soave",
+      "url": "https://www.ilsoave.com/"
+    },
+    "reggiano": {
+      "label": "Consorzio Tutela Lambrusco",
+      "url": "https://www.tutelalambrusco.it/"
+    },
+    "reno": {
+      "label": "Consorzio Tutela Lambrusco",
+      "url": "https://www.tutelalambrusco.it/"
+    },
+    "rimini": {
+      "label": "Consorzio Vini di Romagna",
+      "url": "https://www.consorziovinidiromagna.it/"
+    },
+    "riviera-del-garda-classico": {
+      "label": "Consorzio Valtenesi",
+      "url": "https://www.consorziovaltenesi.it/"
+    },
+    "roccamonfina": {
+      "label": "VITICA - Consorzio Tutela Vini Caserta",
+      "url": "https://www.vitica.it/"
+    },
+    "roero": {
+      "label": "Consorzio Tutela Roero",
+      "url": "https://www.consorziodelroero.it/"
+    },
+    "roma": {
+      "label": "Consorzio Roma DOC",
+      "url": "https://consorzioromadoc.it/"
+    },
+    "romagna": {
+      "label": "Consorzio Vini di Romagna",
+      "url": "https://www.consorziovinidiromagna.it/"
+    },
+    "romagna-albana": {
+      "label": "Consorzio Vini di Romagna",
+      "url": "https://www.consorziovinidiromagna.it/"
+    },
+    "romangia": {
+      "label": "Consorzio Volontario per la Tutela dei vini Terre di Romangia",
+      "url": "https://www.terrediromangia.it/"
+    },
+    "ronchi-di-brescia": {
+      "label": "Consorzio Botticino",
+      "url": "https://www.consorziobotticino.it/"
+    },
+    "rosazzo": {
+      "label": "Consorzio Tutela Vini Friuli Colli Orientali e Ramandolo",
+      "url": "https://www.colliorientali.com/"
+    },
+    "rosso-conero": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "rosso-di-montalcino": {
+      "label": "Consorzio del vino Brunello di Montalcino",
+      "url": "https://www.consorziobrunellodimontalcino.it/"
+    },
+    "rosso-di-montepulciano": {
+      "label": "Consorzio del Vino Nobile di Montepulciano",
+      "url": "https://www.consorziovinonobile.it/"
+    },
+    "rosso-orvietano": {
+      "label": "Consorzio Tutela Vini Orvieto",
+      "url": "https://www.orvietodoc.it/"
+    },
+    "rosso-piceno": {
+      "label": "Consorzio Tutela Vini Piceni",
+      "url": "https://www.consorziovinipiceni.com/"
+    },
+    "rubicone": {
+      "label": "Consorzio Vini di Romagna",
+      "url": "https://www.consorziovinidiromagna.it/"
+    },
+    "rubino-di-cantavenna": {
+      "label": "Consorzio Colline del Monferrato Casalese",
+      "url": "https://vinimonferratocasalese.it/"
+    },
+    "ruche-di-castagnole-monferrato": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "sabbioneta": {
+      "label": "Consorzio Vini Mantovani",
+      "url": "https://www.vinimantovani.it/"
+    },
+    "salaparuta": {
+      "label": "Consorzio Salaparuta",
+      "url": "https://www.vinidocsalaparuta.it/"
+    },
+    "salento": {
+      "label": "Consorzio di Tutela Vini DOP Salice Salentino",
+      "url": "https://www.consorziosalicesalentino.it/"
+    },
+    "salice-salentino": {
+      "label": "Consorzio di Tutela Vini DOP Salice Salentino",
+      "url": "https://www.consorziosalicesalentino.it/"
+    },
+    "salina": {
+      "label": "Consorzio Malvasia delle Lipari",
+      "url": "https://consorziomalvasiadellelipari.it/"
+    },
+    "san-colombano-al-lambro": {
+      "label": "Consorzio Volontario Vino DOC San Colombano",
+      "url": "https://www.sancolombanodoc.it/"
+    },
+    "san-gimignano": {
+      "label": "Consorzio del Vino Vernaccia di San Gimignano",
+      "url": "https://vernaccia.it/"
+    },
+    "san-ginesio": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "san-martino-della-battaglia": {
+      "label": "Consorzio Valtenesi",
+      "url": "https://www.consorziovaltenesi.it/"
+    },
+    "sangue-di-giuda": {
+      "label": "Consorzio Tutela Vini Oltrepo Pavese",
+      "url": "https://www.consorziovinioltrepo.it/"
+    },
+    "sannio": {
+      "label": "Sannio Consorzio Tutela Vini",
+      "url": "https://www.sannio.wine/"
+    },
+    "sant-antimo": {
+      "label": "Consorzio del vino Brunello di Montalcino",
+      "url": "https://www.consorziobrunellodimontalcino.it/"
+    },
+    "scanzo": {
+      "label": "Consorzio Tutela Moscato di Scanzo",
+      "url": "https://consorziomoscatodiscanzo.it/"
+    },
+    "sebino": {
+      "label": "Consorzio per la Tutela del Franciacorta",
+      "url": "https://franciacorta.wine/"
+    },
+    "serrapetrona": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "sforzato-di-valtellina": {
+      "label": "Consorzio di Tutela dei Vini di Valtellina",
+      "url": "https://www.vinidivaltellina.it/"
+    },
+    "sicilia": {
+      "label": "Consorzio di Tutela Vini DOC Sicilia",
+      "url": "https://siciliadoc.wine/"
+    },
+    "sizzano": {
+      "label": "Consorzio Tutela Nebbioli Alto Piemonte",
+      "url": "https://www.consnebbiolialtop.it/"
+    },
+    "soave": {
+      "label": "Consorzio Tutela Vini Soave e Recioto di Soave",
+      "url": "https://www.ilsoave.com/"
+    },
+    "soave-superiore": {
+      "label": "Consorzio Tutela Vini Soave e Recioto di Soave",
+      "url": "https://www.ilsoave.com/"
+    },
+    "sovana": {
+      "label": "Consorzio di Tutela del Bianco di Pitigliano e Sovana DOC",
+      "url": "http://www.pitiglianodoc.it/"
+    },
+    "spoleto": {
+      "label": "Consorzio Tutela Vini Montefalco",
+      "url": "https://www.consorziomontefalco.it/"
+    },
+    "squinzano": {
+      "label": "Consorzio Tutela Vini DOC Brindisi e DOC Squinzano",
+      "url": "https://www.vinibrindisisquinzanodoc.it/"
+    },
+    "strevi": {
+      "label": "Consorzio per la tutela dell'Asti",
+      "url": "https://astidocg.it/"
+    },
+    "suvereto": {
+      "label": "Consorzio di tutela vini DOP Suvereto e Val di Cornia",
+      "url": "https://www.suveretowine.com/"
+    },
+    "taurasi": {
+      "label": "Consorzio Tutela Vini d'Irpinia",
+      "url": "https://consorziovinidirpinia.it/"
+    },
+    "tavoliere-delle-puglie": {
+      "label": "Consorzio di Tutela DOC Tavoliere delle Puglie",
+      "url": "https://www.tavolieredellepugliedoc.com/"
+    },
+    "teroldego-rotaliano": {
+      "label": "Consorzio Vini del Trentino",
+      "url": "https://vinideltrentino.com/"
+    },
+    "terre-alfieri": {
+      "label": "Consorzio Barbera d'Asti e Vini del Monferrato",
+      "url": "https://www.viniastimonferrato.it/"
+    },
+    "terre-aquilane": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "terre-del-colleoni": {
+      "label": "Consorzio Tutela Valcalepio",
+      "url": "https://www.valcalepio.org/"
+    },
+    "terre-del-volturno": {
+      "label": "VITICA - Consorzio Tutela Vini Caserta",
+      "url": "https://www.vitica.it/"
+    },
+    "terre-dell-alta-val-d-agri": {
+      "label": "Consorzio di Tutela e Valorizzazione della DOC Terre dell'Alta Val d'Agri",
+      "url": "https://www.terredellaltavaldagri.it/"
+    },
+    "terre-di-casole": {
+      "label": "Consorzio Terre di Casole",
+      "url": "https://www.consorzioterredicasole.com/"
+    },
+    "terre-di-chieti": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "terre-di-cosenza": {
+      "label": "Consorzio di Tutela dei Vini Terre di Cosenza DOP",
+      "url": "https://www.terredicosenza.it/"
+    },
+    "terre-di-offida": {
+      "label": "Consorzio Tutela Vini Piceni",
+      "url": "https://www.consorziovinipiceni.com/"
+    },
+    "terre-di-pisa": {
+      "label": "Consorzio Vini Terre di Pisa",
+      "url": "https://www.viniterredipisa.com/"
+    },
+    "terre-lariane": {
+      "label": "Consorzio Vini IGT Terre Lariane",
+      "url": "https://www.terrelarianeigt.it/"
+    },
+    "terre-tollesi": {
+      "label": "Consorzio di Tutela Tullum DOCG",
+      "url": "https://tullum.it/"
+    },
+    "torgiano": {
+      "label": "Consorzio Tutela Vini Torgiano",
+      "url": "https://consorziotutelavinitorgiano.it/"
+    },
+    "torgiano-rosso-riserva": {
+      "label": "Consorzio Tutela Vini Torgiano",
+      "url": "https://consorziotutelavinitorgiano.it/"
+    },
+    "toscano": {
+      "label": "Consorzio Vino Toscana",
+      "url": "https://www.consorziovinotoscana.it/"
+    },
+    "trebbiano-d-abruzzo": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "trentino": {
+      "label": "Consorzio Vini del Trentino",
+      "url": "https://vinideltrentino.com/"
+    },
+    "trento": {
+      "label": "Consorzio Vini del Trentino",
+      "url": "https://vinideltrentino.com/"
+    },
+    "val-d-arno-di-sopra": {
+      "label": "Consorzio Valdarno di Sopra DOC",
+      "url": "https://www.valdarnodisopradoc.it/"
+    },
+    "val-di-cornia": {
+      "label": "Consorzio di tutela vini DOP Suvereto e Val di Cornia",
+      "url": "https://www.suveretowine.com/"
+    },
+    "val-di-cornia-rosso": {
+      "label": "Consorzio di tutela vini DOP Suvereto e Val di Cornia",
+      "url": "https://www.suveretowine.com/"
+    },
+    "valcalepio": {
+      "label": "Consorzio Tutela Valcalepio",
+      "url": "https://www.valcalepio.org/"
+    },
+    "valcamonica": {
+      "label": "Consorzio Vini IGT Valle Camonica",
+      "url": "https://www.consorziovinivallecamonica.it/"
+    },
+    "valdadige": {
+      "label": "Consorzio Vini del Trentino",
+      "url": "https://vinideltrentino.com/"
+    },
+    "valdichiana-toscana": {
+      "label": "Consorzio Vini Valdichiana Toscana",
+      "url": "https://vinivaldichianatoscana.it/"
+    },
+    "vallagarina": {
+      "label": "Consorzio Vini del Trentino",
+      "url": "https://vinideltrentino.com/"
+    },
+    "valle-d-aosta": {
+      "label": "Consorzio Vini Valle d'Aosta",
+      "url": "https://www.vinivalledaosta.com/"
+    },
+    "valli-ossolane": {
+      "label": "Consorzio Tutela Nebbioli Alto Piemonte",
+      "url": "https://www.consnebbiolialtop.it/"
+    },
+    "valpolicella": {
+      "label": "Consorzio Tutela Vini Valpolicella",
+      "url": "https://www.consorziovalpolicella.it/"
+    },
+    "valpolicella-ripasso": {
+      "label": "Consorzio Tutela Vini Valpolicella",
+      "url": "https://www.consorziovalpolicella.it/"
+    },
+    "valsusa": {
+      "label": "Consorzio per la Tutela e Valorizzazione dei Vini DOC Valsusa",
+      "url": "https://www.consorziovalsusadoc.com/"
+    },
+    "valtellina-rosso": {
+      "label": "Consorzio di Tutela dei Vini di Valtellina",
+      "url": "https://www.vinidivaltellina.it/"
+    },
+    "valtellina-superiore": {
+      "label": "Consorzio di Tutela dei Vini di Valtellina",
+      "url": "https://www.vinidivaltellina.it/"
+    },
+    "valtenesi": {
+      "label": "Consorzio Valtenesi",
+      "url": "https://www.consorziovaltenesi.it/"
+    },
+    "veneto-orientale": {
+      "label": "Consorzio Vini Venezia",
+      "url": "https://www.consorziovinivenezia.it/"
+    },
+    "venezia": {
+      "label": "Consorzio Vini Venezia",
+      "url": "https://www.consorziovinivenezia.it/"
+    },
+    "verdicchio-dei-castelli-di-jesi": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "verdicchio-di-matelica": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "verdicchio-di-matelica-riserva": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "verduno-pelaverga": {
+      "label": "Consorzio di Tutela Barolo Barbaresco Alba Langhe e Dogliani",
+      "url": "https://www.langhevini.it/"
+    },
+    "vermentino-di-gallura": {
+      "label": "Consorzio di Tutela del Vermentino di Gallura DOCG",
+      "url": "https://www.vermentinogallura.wine/"
+    },
+    "vernaccia-di-san-gimignano": {
+      "label": "Consorzio del Vino Vernaccia di San Gimignano",
+      "url": "https://vernaccia.it/"
+    },
+    "vernaccia-di-serrapetrona": {
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)",
+      "url": "https://imtdoc.it/"
+    },
+    "vesuvio": {
+      "label": "Consorzio Tutela Vini Vesuvio",
+      "url": "https://www.vesuvio.wine/"
+    },
+    "vicenza": {
+      "label": "Consorzio di Tutela Chiaretto e Bardolino",
+      "url": "https://consorziobardolino.it/"
+    },
+    "vigneti-delle-dolomiti": {
+      "label": "Consorzio Vini del Trentino",
+      "url": "https://vinideltrentino.com/"
+    },
+    "villamagna": {
+      "label": "Consorzio Tutela Vini d'Abruzzo",
+      "url": "https://www.consorzio-viniabruzzo.it/"
+    },
+    "vin-santo-del-chianti": {
+      "label": "Consorzio Vino Chianti",
+      "url": "https://www.consorziovinochianti.it/"
+    },
+    "vin-santo-del-chianti-classico": {
+      "label": "Consorzio Vino Chianti Classico",
+      "url": "https://www.chianticlassico.com/"
+    },
+    "vin-santo-di-carmignano": {
+      "label": "Consorzio di Tutela dei Vini di Carmignano",
+      "url": "https://www.consorziovinicarmignano.it/"
+    },
+    "vin-santo-di-montepulciano": {
+      "label": "Consorzio del Vino Nobile di Montepulciano",
+      "url": "https://www.consorziovinonobile.it/"
+    },
+    "vino-nobile-di-montepulciano": {
+      "label": "Consorzio del Vino Nobile di Montepulciano",
+      "url": "https://www.consorziovinonobile.it/"
+    },
+    "vittoria": {
+      "label": "Consorzio di tutela Cerasuolo di Vittoria DOCG e Vittoria DOC",
+      "url": "https://www.cerasuolovittoria.it/"
     }
   },
   "by_bassin": {

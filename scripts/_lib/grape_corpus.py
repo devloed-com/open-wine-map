@@ -1,8 +1,10 @@
-"""Cross-country grape-slug inventory over the FR / ES / PT extracted corpora.
+"""Cross-country grape-slug inventory over the FR / ES / PT / IT corpora.
 
-Walks `raw/inao/cahier-extracted/`, `raw/es/pliegos-extracted/`, and
-`raw/pt/cadernos-extracted/` once and exposes three derived views that
-the downstream stages share:
+Walks `raw/inao/cahier-extracted/`, `raw/es/pliegos-extracted/`,
+`raw/pt/cadernos-extracted/`, `raw/it/disciplinari-extracted/` and
+`raw/it/masaf-disciplinari-extracted/` (the stage-02f MASAF sidecars —
+their grapes never reach the doc-unico extractions, which stay stubs)
+once and exposes three derived views that the downstream stages share:
 
 - `collect_grape_slugs()` — full per-slug record: `{name, by_lang}`
   where `by_lang` is a `{country_code: count}` map. Single source of
@@ -29,6 +31,8 @@ _SOURCES: tuple[tuple[str, Path], ...] = (
     ("fr", ROOT / "raw" / "inao" / "cahier-extracted"),
     ("es", ROOT / "raw" / "es" / "pliegos-extracted"),
     ("pt", ROOT / "raw" / "pt" / "cadernos-extracted"),
+    ("it", ROOT / "raw" / "it" / "disciplinari-extracted"),
+    ("it", ROOT / "raw" / "it" / "masaf-disciplinari-extracted"),
 )
 
 
@@ -36,7 +40,7 @@ def collect_grape_slugs() -> dict[str, dict]:
     """Return `{slug: {"name": display_name, "by_lang": {lang: count}}}`.
 
     `display_name` is the first occurrence encountered across the FR →
-    ES → PT walk; good enough for VIVC search (which is
+    ES → PT → IT walk; good enough for VIVC search (which is
     diacritic-tolerant) and for the Wikipedia fallback (which normalises
     via the existing slug-to-title path).
     """

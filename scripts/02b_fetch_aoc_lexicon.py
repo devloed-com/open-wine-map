@@ -119,6 +119,26 @@ LANG_CONFIG: dict[str, dict] = {
             "vinho", "DOP", "denominação de origem protegida", "DO",
         ),
     },
+    "it": {
+        # Italian wine-vocabulary anchors. The bare token `doc` is
+        # excluded for the same reason as in ES/PT (substring-hits on
+        # ordinary Italian words). `docg` / `doc` / `dop` / `igt` /
+        # `vino` are the reliable wine-context markers.
+        "aoc_keywords": (
+            "denominazione", "vino", "vini", "vigneto", "vigna",
+            "viticoltura", "viticolo", "viticola", "vendemmia",
+            "uve", "cantina", "cantine",
+            "docg", "doc", "dop", "igt", "igp",
+            "regione", "provincia",
+        ),
+        "default_source": "raw/it/disciplinari-extracted",
+        # IT: per-DOC wine pages on it.wikipedia.org typically
+        # disambiguate as `(vino)`, then `(DOCG)` / `(DOC)`, then the
+        # long form.
+        "disambiguators_for_kind": lambda kind: (
+            "vino", "DOCG", "DOC", "denominazione di origine", "DOP",
+        ),
+    },
 }
 
 UA = (

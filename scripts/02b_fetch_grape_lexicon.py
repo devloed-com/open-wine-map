@@ -39,7 +39,7 @@ OUT_DIR = ROOT / "raw" / "wikipedia" / "grapes"
 MANIFEST = OUT_DIR / "manifest.json"
 OVERRIDES_FILE = ROOT / "raw" / "wikipedia" / "grape_overrides.json"
 VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
-LOCALES = ("fr", "en", "es", "nl", "pt")
+LOCALES = ("fr", "en", "es", "nl", "pt", "it")
 
 UA = (
     "open-wine-map/0.0.1 (https://github.com/devloed-com/open-wine-map; "
@@ -51,7 +51,8 @@ WIKIPEDIA_LICENSE = "CC-BY-SA-4.0"
 # Per-locale disambiguation suffix used by Wikipedia for grape varieties that
 # share a name with a commune / town / other entity (e.g. `Chardonnay` is a
 # commune in fr.wikipedia; the grape lives at `Chardonnay (cépage)`).
-DISAMBIG = {"fr": "cépage", "en": "grape", "es": "uva", "nl": "druif", "pt": "casta"}
+DISAMBIG = {"fr": "cépage", "en": "grape", "es": "uva", "nl": "druif", "pt": "casta",
+            "it": "vitigno"}
 
 # When VIVC's `official_in` flag matches the locale's country, that synonym
 # is the regulator-aligned name in that locale's region and gets priority.

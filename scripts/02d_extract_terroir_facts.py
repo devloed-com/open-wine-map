@@ -60,7 +60,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import cache, providers, roundtrip  # noqa: E402
+from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "fr"
@@ -292,17 +292,9 @@ def load_wiki_hint(slug: str) -> tuple[dict[str, str], dict | None]:
 
 
 def parse_facts_json(raw: str) -> tuple[dict | None, str | None]:
-    """Strip ```json fences, parse, return (parsed_dict, error_or_None)."""
-    cleaned = raw.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.split("```", 2)[1]
-        if cleaned.startswith("json"):
-            cleaned = cleaned[4:]
-        cleaned = cleaned.rsplit("```", 1)[0].strip()
-    try:
-        return json.loads(cleaned), None
-    except Exception as e:  # noqa: BLE001
-        return None, str(e)
+    """Parse a model extraction reply via the shared tolerant parser —
+    recovers from unescaped double-quotes in verbatim citations."""
+    return llm_json.parse_facts(raw)
 
 
 def classify_fact(
@@ -645,6 +637,12 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     ap.add_argument("--refresh", action="store_true", help="re-extract even if cached")
+    ap.add_argument(
+        "--batch", action="store_true",
+        help="submit all AOCs to the provider Batch API (--provider anthropic|"
+             "mistral; ~50%% cheaper). Processes the full corpus; a re-run "
+             "resumes an in-flight batch instead of resubmitting.",
+    )
     roundtrip.add_arguments(ap)
     return ap
 
@@ -766,6 +764,38 @@ def _dispatch_emit_or_import(args) -> int | None:
     return None
 
 
+def _run_batch(args) -> int:
+    """Extract terroir facts for the whole corpus via the provider Batch API."""
+    if not batch.supports(args.provider):
+        print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
+        return 1
+    model_id = args.model or batch.default_model(args.provider)
+    jobs = _select_jobs(refresh=args.refresh, limit=args.limit, slugs=args.slug)
+    if not jobs:
+        print("[02d] batch: nothing to do.", file=sys.stderr)
+        return 0
+    print(f"[02d] batch: {len(jobs)} AOCs (provider={args.provider}, model={model_id})",
+          file=sys.stderr)
+    stats: dict = {}
+
+    def run_loop(prov):
+        ok, err = _run_extraction_loop(prov, model_id, jobs, workers=1)
+        stats["ok"], stats["err"] = ok, err
+
+    batch.run_two_pass(
+        provider=args.provider, model=model_id,
+        sidecar=ROOT / "raw" / ".batch" / "02d-fr.json",
+        run_loop=run_loop,
+    )
+    write_manifest(
+        n_jobs=len(jobs), ok=stats.get("ok", 0), err=stats.get("err", 0), cached=0,
+        translator_id=model_id, translator_kind=f"{args.provider}-api",
+    )
+    print(f"[02d] batch done: ok={stats.get('ok', 0)} err={stats.get('err', 0)}",
+          file=sys.stderr)
+    return 0
+
+
 def main() -> int:
     args = _build_argparser().parse_args()
     rc = _check_inputs()
@@ -775,6 +805,9 @@ def main() -> int:
     sub_rc = _dispatch_emit_or_import(args)
     if sub_rc is not None:
         return sub_rc
+
+    if args.batch:
+        return _run_batch(args)
 
     jobs = _select_jobs(args.refresh, args.limit, args.slug)
     if not jobs:

@@ -104,11 +104,27 @@ def normalise_kind(gi_type: str) -> str:
     return {"PDO": "DOP", "PGI": "IGP"}.get(gi_type, gi_type)
 
 
+# eAmbrosia (`protectedNames`) and the IVV cadernos master index both
+# label the Tejo DOP "DoTejo" — the space is dropped in both upstream
+# registers. The official Portuguese name is "Do Tejo" (DOC Do Tejo).
+# Correct the human-readable label at ingest so `name`/`slug` and the
+# IVV name-match key agree; file identifiers (IVV `DO_DoTejo.pdf`,
+# eAmbrosia `giIdentifier`) stay verbatim. Keyed by the exact bad
+# string, so it self-heals if either register fixes the spelling.
+_LABEL_CORRECTIONS = {"DoTejo": "Do Tejo"}
+
+
+def correct_label(name: str) -> str:
+    """Map a known-malformed upstream GI label to its official spelling."""
+    s = (name or "").strip()
+    return _LABEL_CORRECTIONS.get(s, s)
+
+
 def project(rec: dict) -> dict:
     """Reduce one full eAmbrosia record to the fields downstream stages need.
     Shape matches scripts/es/00_fetch_data.py:project so stage 04's loader
     is country-agnostic."""
-    name = (rec.get("protectedNames") or [""])[0]
+    name = correct_label((rec.get("protectedNames") or [""])[0])
     return {
         "giIdentifier": rec["giIdentifier"],
         "fileNumber": rec.get("fileNumber") or "",
@@ -215,6 +231,7 @@ def _scrape_ivv_index(url: str, news_id: str, kind: str) -> list[dict]:
         text = re.sub(r"^Documento\s+", "", text, flags=re.DOTALL).strip()
         if not text:
             continue
+        text = correct_label(text)
         rows.append(
             {
                 "name": text,

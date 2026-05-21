@@ -34,6 +34,30 @@ from _lib.pt.region import derive_region  # noqa: E402
 EXTRACTED = ROOT / "raw" / "pt" / "cadernos-extracted"
 WIKI = ROOT / "wiki"
 WIKI_INDEX = WIKI / "_index.json"
+TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
+
+_FACTS_SLUGS: frozenset[str] | None = None
+
+
+def _terroir_facts_slugs() -> frozenset[str]:
+    """Slugs whose terroir-facts cache holds at least one fact. The fallback
+    summary is suppressed only for these — a record that 02d extracted to
+    zero facts still shows its summary."""
+    global _FACTS_SLUGS
+    if _FACTS_SLUGS is None:
+        slugs: set[str] = set()
+        if TERROIR_FACTS.exists():
+            for p in TERROIR_FACTS.glob("*.json"):
+                if p.stem.startswith("manifest"):
+                    continue
+                try:
+                    if json.loads(p.read_text()).get("facts"):
+                        slugs.add(p.stem)
+                except (ValueError, OSError):
+                    continue
+        _FACTS_SLUGS = frozenset(slugs)
+    return _FACTS_SLUGS
+
 
 SECTION_LABELS = {
     "summary": "Resumo",
@@ -120,7 +144,9 @@ def render_record(record: dict) -> str:
         ]
         return "\n".join(fm + body)
 
-    if summary:
+    _psl = record.get("parent_slug") or ""
+    _facts = _terroir_facts_slugs()
+    if summary and slug not in _facts and _psl not in _facts:
         body += [
             f"## {SECTION_LABELS['summary']}",
             "",

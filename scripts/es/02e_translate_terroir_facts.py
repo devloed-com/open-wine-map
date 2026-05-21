@@ -31,7 +31,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import cache, providers, roundtrip  # noqa: E402
+from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -61,20 +61,10 @@ def facts_sha(facts: list[dict]) -> str:
 
 
 def parse_array(raw: str, expected_len: int) -> list[str] | None:
-    """Strip ```json fences, parse, validate length. None on failure."""
-    cleaned = raw.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.split("```", 2)[1]
-        if cleaned.startswith("json"):
-            cleaned = cleaned[4:]
-        cleaned = cleaned.rsplit("```", 1)[0].strip()
-    try:
-        arr = json.loads(cleaned)
-    except Exception:  # noqa: BLE001
-        return None
-    if not isinstance(arr, list) or len(arr) != expected_len:
-        return None
-    return [str(x).strip() for x in arr]
+    """Parse a JSON array of `expected_len` strings via the shared tolerant
+    parser — recovers from unescaped double-quotes in bullet values."""
+    arr, _err = llm_json.parse_str_array(raw, expected_len)
+    return arr
 
 
 # ────────────────────────────────────────────────────────── cache + jobs ──
@@ -318,6 +308,11 @@ def _build_argparser() -> argparse.ArgumentParser:
         help="concurrent (lang, slug) pairs to translate (default 1, keep 1 for Ollama on M1 32GB)",
     )
     ap.add_argument("--refresh", action="store_true", help="re-translate even if cached")
+    ap.add_argument(
+        "--batch", action="store_true",
+        help="submit all work to the provider Batch API (--provider anthropic|"
+             "mistral; ~50%% cheaper); resumes an in-flight batch on re-run",
+    )
     roundtrip.add_arguments(ap)
     return ap
 
@@ -414,6 +409,28 @@ def _run_translation_loop(
     return done, skipped
 
 
+def _run_batch(args, languages: tuple[str, ...]) -> int:
+    """Translate every (slug, lang) bullet set via the provider Batch API."""
+    if not batch.supports(args.provider):
+        print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
+        return 1
+    model_id = args.model or batch.default_model(args.provider)
+    jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.limit:
+        jobs = jobs[: args.limit]
+    if not jobs:
+        print("[02e/es] batch: nothing to do.", file=sys.stderr)
+        return 0
+    print(f"[02e/es] batch: {len(jobs)} translations (provider={args.provider}, "
+          f"model={model_id}, locales={','.join(languages)})", file=sys.stderr)
+    batch.run_two_pass(
+        provider=args.provider, model=model_id,
+        sidecar=ROOT / "raw" / ".batch" / "02e-es.json",
+        run_loop=lambda prov: _run_translation_loop(prov, model_id, jobs, workers=1),
+    )
+    return 0
+
+
 def main() -> int:
     args = _build_argparser().parse_args()
     rc = _check_inputs()
@@ -425,6 +442,9 @@ def main() -> int:
     sub_rc = _dispatch_emit_or_import(args, languages)
     if sub_rc is not None:
         return sub_rc
+
+    if args.batch:
+        return _run_batch(args, languages)
 
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
     if args.limit:

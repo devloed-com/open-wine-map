@@ -61,6 +61,8 @@ from _lib.fr_wine_region import derive_wine_region as derive_fr_wine_region
 from _lib.pt.commune_list import parse_commune_list as parse_pt_commune_list
 from _lib.pt.geometry import PTPolygonIndex
 from _lib.pt.region import derive_region as derive_pt_region
+from _lib.it.geometry import ITPolygonIndex
+from _lib.it.region import derive_regione as derive_it_regione
 from _lib.i18n import LOCALES, compile_catalogs
 from _lib.lieu_dit import LieuDitIndex, derive_climat_name
 from _lib.map_template import render as render_map_html
@@ -84,6 +86,8 @@ ES_GISCO_LAU_ZIP = ROOT / "raw" / "es" / "gisco" / "LAU_RG_01M_2024_3035.shp.zip
 ES_SIGPAC_DIR = ROOT / "raw" / "es" / "sigpac"
 EXTRACTED_PT = ROOT / "raw" / "pt" / "cadernos-extracted"
 PT_CAOP_DIR = ROOT / "raw" / "pt" / "caop"
+EXTRACTED_IT = ROOT / "raw" / "it" / "disciplinari-extracted"
+MASAF_DISCIPLINARI_IT = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"
 WIKI = ROOT / "wiki"
 SITE_BASE_URL = "https://www.openwinemap.com"
@@ -111,6 +115,13 @@ _DISAMBIG_SUFFIX = re.compile(r"\s*\([^)]*\)\s*$")
 # this lookup gives that phase access to the same provenance the
 # in-memory record carries.
 _ES_NATIONAL_PLIEGO_BY_SLUG: dict[str, dict] = {}
+
+
+# Slug-keyed cache of MASAF disciplinare provenance + augmented payload,
+# populated by augment_it_records_with_masaf() and read by _sources_for()
+# / the AOC-blob phase (which re-reads each on-disk extracted JSON,
+# bypassing in-memory augmentation).
+_IT_MASAF_BY_SLUG: dict[str, dict] = {}
 
 
 def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
@@ -186,6 +197,101 @@ def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
         _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
         if added:
             augmented += 1
+    return augmented
+
+
+def augment_it_records_with_masaf(records: list[dict]) -> int:
+    """In-place merge of MASAF disciplinare sidecar data into IT stub
+    records. Only stubs are touched — wines whose documento unico was
+    extracted in stage 02 already carry canonical EUR-Lex data and
+    shouldn't be overwritten.
+
+    For each IT stub with a matching sidecar at
+    raw/it/masaf-disciplinari-extracted/<slug>.json the following
+    fields are merged:
+      - summary           ← Article 1 first paragraph
+      - regione           ← derived from Article 3 / 9 text
+      - grapes            ← parsed from Article 2 (principal-only)
+      - geo_area_brief    ← Article 3 body
+      - link_to_terroir   ← Article 9 body
+      - section_roles     ← {grape_varieties, geo_area, link_to_terroir, ...}
+      - stub_reason       ← prefixed "masaf:" so the audit can tell
+                            doc-unico-extracted from masaf-augmented
+      - masaf             ← provenance block (url, sha256, fetched_at,
+                            parser_template, bundle_key, archive_path)
+
+    `record["stub"]` stays True — the record is still NOT a documento
+    unico extraction, just augmented. Stage 03 / 04 callers use the
+    `masaf` block to distinguish.
+
+    Returns the number of records augmented.
+    """
+    _IT_MASAF_BY_SLUG.clear()
+    if not MASAF_DISCIPLINARI_IT.exists():
+        return 0
+    augmented = 0
+    for record in records:
+        if record.get("country") != "it":
+            continue
+        if not record.get("stub"):
+            continue
+        slug = record.get("slug")
+        if not slug:
+            continue
+        sidecar_path = MASAF_DISCIPLINARI_IT / f"{slug}.json"
+        if not sidecar_path.exists():
+            continue
+        try:
+            sidecar = json.loads(sidecar_path.read_text())
+        except (ValueError, OSError):
+            continue
+
+        # Build the provenance block (also cached for the AOC-blob phase).
+        src = sidecar.get("source") or {}
+        match_info = sidecar.get("match") or {}
+        provenance = {
+            "filename": src.get("filename") or "",
+            "sha256": src.get("sha256") or "",
+            "bytes": src.get("bytes") or 0,
+            "fetched_at": src.get("fetched_at") or "",
+            "parser_template": sidecar.get("parser_template") or "",
+            "bundle_key": src.get("bundle_key") or "",
+            "archive_path": src.get("archive_path") or "",
+            "match_how": match_info.get("how") or "",
+            "pdf_filename": match_info.get("pdf_filename") or "",
+            # When an override pinned the URL, surface it for the panel.
+            "override_url": src.get("url") or "",
+            "override_source_org": src.get("source_org") or "",
+        }
+
+        # Merge augmented fields onto the record. Replace rather than
+        # union — the record was a stub so there's nothing to lose.
+        if sidecar.get("summary"):
+            record["summary"] = sidecar["summary"]
+        if sidecar.get("regione") and not record.get("regione"):
+            record["regione"] = sidecar["regione"]
+        if sidecar.get("grapes"):
+            record["grapes"] = sidecar["grapes"]
+        if sidecar.get("geo_area_brief"):
+            record["geo_area_brief"] = sidecar["geo_area_brief"]
+        if sidecar.get("link_to_terroir"):
+            record["link_to_terroir"] = sidecar["link_to_terroir"]
+        section_roles = dict(record.get("section_roles") or {})
+        if sidecar.get("grapes"):
+            section_roles.setdefault("grape_varieties", "")
+        if sidecar.get("geo_area_brief"):
+            section_roles["geo_area"] = sidecar["geo_area_brief"]
+        if sidecar.get("link_to_terroir"):
+            section_roles["link_to_terroir"] = sidecar["link_to_terroir"]
+        if sidecar.get("summary"):
+            section_roles["description"] = sidecar["summary"]
+        record["section_roles"] = section_roles
+
+        if record.get("stub_reason") and not record["stub_reason"].startswith("masaf:"):
+            record["stub_reason"] = f"masaf:{record['stub_reason']}"
+        record["masaf"] = provenance
+        _IT_MASAF_BY_SLUG[slug] = provenance
+        augmented += 1
     return augmented
 
 
@@ -966,6 +1072,13 @@ def main() -> int:
             if json_path.name == "_index.json":
                 continue
             extracted_records.append(json.loads(json_path.read_text()))
+    # Multi-country: also iterate IT extracted records
+    # (raw/it/disciplinari-extracted/). Same stub semantics as ES/PT.
+    if EXTRACTED_IT.exists():
+        for json_path in sorted(EXTRACTED_IT.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text()))
     # Augment ES records with national-pliego sidecar data — adds the
     # accessory varieties that the EU-OJ documento único omits. The
     # sidecar carries provenance (URL + sha256 + fetched_at) which
@@ -975,6 +1088,17 @@ def main() -> int:
     if n_aug:
         print(
             f"[load] ES national-pliego augmentation: {n_aug} records enriched",
+            file=sys.stderr,
+        )
+    # MASAF disciplinare augmentation for IT stub records — pulls in
+    # the full disciplinare text (articles 1/2/3/9) for the ~395 wines
+    # whose eAmbrosia entry lacks a documento unico URL. The sidecar
+    # provenance (sha256 + URL) flows through _sources_for() so the
+    # panel can attribute the data to its MASAF source.
+    n_aug_it = augment_it_records_with_masaf(extracted_records)
+    if n_aug_it:
+        print(
+            f"[load] IT MASAF augmentation: {n_aug_it} stub records enriched",
             file=sys.stderr,
         )
     # PT cadernos enumerate every authorised casta as `principal` —
@@ -1045,6 +1169,20 @@ def main() -> int:
         file=sys.stderr,
     )
     pt_hits: Counter[str] = Counter()
+
+    # IT polygon index: Bétard 2022 (re-uses ES Figshare gpkg, which
+    # covers all EU PDOs including ~412 IT DOPs) + GISCO LAU (filtered
+    # to IT comuni for IGT commune-list fallback).
+    it_polygons = ITPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        gisco_lau_zip=ES_GISCO_LAU_ZIP,
+    )
+    print(
+        f"[load] IT polygons: {it_polygons.n_pdo_polygons} Figshare IT-PDOs / "
+        f"{it_polygons.n_comuni} GISCO comuni",
+        file=sys.stderr,
+    )
+    it_hits: Counter[str] = Counter()
 
     for record in tqdm(extracted_records, desc="union", leave=False):
         is_sub_denomination = bool(record.get("is_sub_denomination"))
@@ -1196,13 +1334,59 @@ def main() -> int:
                 parent_village_geom_by_slug[record["slug"]] = geom
             _emit_es_features = False
             _emit_pt_features = True
+            _emit_it_features = False
+        elif country == "it":
+            # IT branch — Bétard Figshare PDO match (covers ~408 of the
+            # 412 IT DOPs) → parent fallback for sottozone → stub for
+            # IGTs and the 4 newer DOPs missing from Bétard. The 119 IT
+            # IGPs aren't in Bétard (PDO-only by design) and v1 doesn't
+            # yet ship the IGT commune-list fallback — they appear in
+            # the sidebar with no polygon (same status as ~14 PT IGPs).
+            # Figshare lookup runs even when the record is a stub (no
+            # documento unico fetched): the polygon doesn't depend on
+            # the documento unico, and most IT DOPs have valid eAmbrosia
+            # file numbers that match Bétard's PDOid.
+            geom = None
+            stats = {"matched": 0, "unmatched": 0}
+            geom_source = "none"
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            if is_sub_denomination:
+                # Sottozone inherit the parent's polygon — same model
+                # as FR DGCs and PT sub-regiões. Precision is parent-
+                # level, not sottozona-level.
+                parent_slug = record.get("parent_slug") or ""
+                parent_geom = parent_geom_by_slug.get(parent_slug)
+                if parent_geom is not None:
+                    geom = parent_geom
+                    geom_source = "parent-appellation"
+                    stats = {"matched": -1, "unmatched": 0}
+            else:
+                fig = it_polygons.figshare_polygon(record.get("file_number") or "")
+                if fig is not None and not fig.is_empty:
+                    geom = fig
+                    geom_source = "figshare-pdo"
+                    stats = {"matched": -1, "unmatched": 0}
+                elif record.get("stub"):
+                    geom_source = "stub-no-geometry"
+            it_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if not is_sub_denomination and geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = True
         else:
             _emit_es_features = False
             _emit_pt_features = False
+            _emit_it_features = False
             sib_v_geom = sib_name = sib_slug = None
             cadastre_match = None
 
-        if _emit_es_features or _emit_pt_features:
+        if _emit_es_features or _emit_pt_features or _emit_it_features:
             # Geometry already resolved above; skip the FR-specific chain.
             pass
         elif is_sub_denomination:
@@ -1257,7 +1441,7 @@ def main() -> int:
         # ES + PT records already had v_geom assigned in their branch above
         # (using the same geom for both detail + village), so skip the
         # FR-specific village resolution.
-        if _emit_es_features or _emit_pt_features:
+        if _emit_es_features or _emit_pt_features or _emit_it_features:
             pass
         elif is_sub_denomination:
             # Prefer DGC's own parcellaire polygon as the village geometry —
@@ -1359,9 +1543,9 @@ def main() -> int:
         # Pommeau, etc.) and ciders fall outside that set. The map hides
         # non-wine appellations by default — see `showSpirits` in the
         # template for the toggle.
-        # ES + PT records have no `categorie` — every entry is filtered to
-        # productType=WINE upstream in stage 00, so they're all wines.
-        if record.get("country") in ("es", "pt"):
+        # ES + PT + IT records have no `categorie` — every entry is filtered
+        # to productType=WINE upstream in stage 00, so they're all wines.
+        if record.get("country") in ("es", "pt", "it"):
             is_wine = "1"
         else:
             is_wine = "1" if categorie.startswith("Vin") else "0"
@@ -1425,6 +1609,23 @@ def main() -> int:
                 es_region_by_parent_slug[record["slug"]] = region_value
         elif record.get("country") == "pt":
             region_value = derive_pt_region(record)
+        elif record.get("country") == "it":
+            # IT regione (Toscana, Veneto, Piemonte, …). Sub-records
+            # inherit the parent's regione — looked up via the
+            # already-resolved parent's geometry slug (records are
+            # sorted parents-first).
+            if is_sub_denomination:
+                parent_slug = record.get("parent_slug") or ""
+                region_value = es_region_by_parent_slug.get(
+                    f"it::{parent_slug}", record.get("regione") or "Italia"
+                )
+            else:
+                region_value = record.get("regione") or derive_it_regione(
+                    record,
+                    record.get("section_roles", {}).get("geo_area", ""),
+                    record.get("section_roles", {}).get("link_to_terroir", ""),
+                ) or "Italia"
+                es_region_by_parent_slug[f"it::{record['slug']}"] = region_value
         else:
             region_value = derive_fr_wine_region(record)
         common_props = {
@@ -1788,6 +1989,35 @@ def _sources_for(record: dict) -> dict:
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
         }
+    if record.get("country") == "it":
+        # MASAF disciplinare provenance, if the stage 02f sidecar
+        # augmentation kicked in for this slug. The AOC-blob phase
+        # re-reads the on-disk JSON (which doesn't carry the
+        # augmentation), so fall back to the slug-keyed cache.
+        masaf = record.get("masaf") or _IT_MASAF_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
+        return {
+            "country": "it",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+            # MASAF national disciplinare (populated for stubs that
+            # stage 02f augmented). Empty for wines already extracted
+            # from EUR-Lex documento unico.
+            "masaf_filename": masaf.get("filename", ""),
+            "masaf_pdf_filename": masaf.get("pdf_filename", ""),
+            "masaf_sha256": masaf.get("sha256", ""),
+            "masaf_fetched_at": masaf.get("fetched_at", ""),
+            "masaf_match_how": masaf.get("match_how", ""),
+            "masaf_bundle_key": masaf.get("bundle_key", ""),
+            "masaf_archive_path": masaf.get("archive_path", ""),
+            "masaf_parser_template": masaf.get("parser_template", ""),
+            "masaf_override_url": masaf.get("override_url", ""),
+        }
     if record.get("country") == "es":
         # The AOC-blob phase re-reads the on-disk extracted JSON (which
         # doesn't carry the augmentation), so fall back to the slug-keyed
@@ -1957,6 +2187,7 @@ def emit_html(
         ext_dir = {
             "es": EXTRACTED_ES,
             "pt": EXTRACTED_PT,
+            "it": EXTRACTED_IT,
         }.get(country, EXTRACTED)
         ext_path = ext_dir / f"{slug}.json"
         summary = ""
@@ -2118,7 +2349,7 @@ def emit_html(
         aocs_for_lang = {}
         for slug, rec in aocs.items():
             rec_country = rec.get("country")
-            src_lang = rec_country if rec_country in ("es", "pt") else "fr"
+            src_lang = rec_country if rec_country in ("es", "pt", "it") else "fr"
             t = translations.get(slug)
             if not t:
                 aocs_for_lang[slug] = rec
@@ -2141,7 +2372,7 @@ def emit_html(
             all_facts_translations = load_terroir_facts_translations(lang)
             def _src_lang_for(slug: str) -> str:
                 c = (aocs.get(slug, {}) or {}).get("country")
-                return c if c in ("es", "pt") else "fr"
+                return c if c in ("es", "pt", "it") else "fr"
             facts_translations = {
                 slug: t for slug, t in all_facts_translations.items()
                 if lang != _src_lang_for(slug)

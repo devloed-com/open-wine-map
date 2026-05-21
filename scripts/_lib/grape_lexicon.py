@@ -26,6 +26,19 @@ from collections.abc import Iterable
 
 COLOUR_CODES = {"B": "blanc", "N": "noir", "G": "gris", "Rs": "rose", "Rg": "rouge"}
 
+_COLOUR_WORDS = frozenset({
+    "blanc", "blanche", "blancs",
+    "noir", "noire", "noirs",
+    "gris", "grise",
+    "rose", "rosé", "rosa", "rosada", "rosado",
+    "rouge",
+})
+
+
+def _ends_with_colour_word(name: str) -> bool:
+    tokens = name.split()
+    return bool(tokens) and tokens[-1].lower() in _COLOUR_WORDS
+
 # Map alternate spellings → canonical slug. Kept short on purpose: only
 # variants that genuinely fragment the same INAO grape across cahiers go
 # here. Add more as the per-AOC log surfaces them.
@@ -186,6 +199,274 @@ GRAPE_ALIAS = {
     "maria-gomes": "fernao-pires",            # Bairrada synonym
     "trebbiano-toscano": "ugni-blanc",        # international synonym
     "talia": "ugni-blanc",                    # PT name for Ugni Blanc / Trebbiano
+    # ----- IT → canonical. Italian regional varieties that VIVC's
+    # synonym-fold otherwise merges into wrong umbrella slugs
+    # (Lambrusco spp. into NIELLUCCIO, Trebbiano cluster into UGNI
+    # BLANC, Pinot Bianco/Grigio into pinot-noir, Riesling Italico
+    # into Riesling, …). Each entry mints (or pins) a distinct slug.
+    # Seeded from the 532 IT disciplinari extraction audit; new tokens
+    # will surface via raw/it/extraction-unknowns.json.
+    #
+    # Lambrusco family — 6 distinct cultivars; VIVC routes them via
+    # NIELLUCCIO because that VIVC entry lists "Lambrusco" as a legacy
+    # synonym.
+    "lambrusco": "lambrusco",
+    "lambrusco-barghi": "lambrusco-barghi",
+    "lambrusco-salamino": "lambrusco-salamino",
+    "lambrusco-grasparossa": "lambrusco-grasparossa",
+    "lambrusco-grasparossa-di-castelvetro": "lambrusco-grasparossa",
+    "lambrusco-maestri": "lambrusco-maestri",
+    "lambrusco-di-sorbara": "lambrusco-di-sorbara",
+    "lambrusco-a-foglia-frastagliata": "lambrusco-foglia-frastagliata",
+    "lambrusco-foglia-frastagliata": "lambrusco-foglia-frastagliata",
+    # Other reds wrongly folded into NIELLUCCIO
+    "lacrima": "lacrima",                     # Lacrima di Morro d'Alba (Marche)
+    "corinto-nero": "corinto-nero",           # Greek-origin red (Aeolian Islands)
+    # Sangiovese — NIELLUCCIO Corse = Sangiovese DNA, but `sangiovese`
+    # is the corpus-established canonical. Pin so the bare token doesn't
+    # surprise-flip when synonym-pair tokens widen the candidate set.
+    "sangiovese": "sangiovese",
+    # Trebbiano cluster — only Toscano = Ugni Blanc (DNA confirmed);
+    # the regional Trebbianos are distinct cultivars.
+    "trebbiano-romagnolo": "trebbiano-romagnolo",
+    "trebbiano-di-soave": "trebbiano-di-soave",  # = Verdicchio DNA, name kept regional
+    "trebbiano-modenese": "trebbiano-modenese",
+    "trebbiano-spoletino": "trebbiano-spoletino",
+    "trebbiano-abruzzese": "trebbiano-abruzzese",
+    "trebbiano-giallo": "trebbiano-giallo",      # a/k/a Rossetto (Lazio)
+    # Other whites wrongly folded into UGNI BLANC
+    "coda-di-volpe": "coda-di-volpe",
+    "coda-di-volpe-bianca": "coda-di-volpe",
+    "falanghina": "falanghina",
+    "passerina": "passerina",
+    "biancame": "biancame",
+    "montonico": "montonico",
+    "montonico-bianco": "montonico",
+    "rossola-nera": "rossola-nera",              # Valtellina red, NOT a Trebbiano
+    # Pinot family — split from pinot-noir umbrella
+    "pinot-bianco": "pinot-blanc",
+    "pinot-grigio": "pinot-gris",
+    "pinot-nero": "pinot-noir",
+    "pignola": "pignola-valtellinese",
+    "pignola-valtellinese": "pignola-valtellinese",
+    "pignolo": "pignolo",                        # distinct Friulian red
+    # Cabernet — `cabernet` bare slug is a parser artefact; pin to franc.
+    "cabernet": "cabernet-franc",
+    # Riesling — Italico is Welschriesling, ampelographically unrelated
+    # to true Riesling (Renano).
+    "riesling-italico": "welschriesling",
+    "welschriesling": "welschriesling",
+    "riesling-renano": "riesling",
+    # Moscato cluster
+    "moscato-bianco": "muscat-a-petits-grains",  # DNA-confirmed
+    "moscatello": "muscat-a-petits-grains",      # historical synonym
+    "moscato-reale": "muscat-a-petits-grains",   # IT synonym for Moscato bianco
+    "moscato-giallo": "moscato-giallo",          # distinct (Goldmuskateller)
+    "gelber-muskateller": "moscato-giallo",
+    "muskateller": "moscato-giallo",
+    "moscato-di-scanzo": "moscato-di-scanzo",    # distinct red Moscato (Bergamo)
+    # Garganega — totally distinct from Glera (Prosecco grape)
+    "garganega": "garganega",
+    "glera-lunga": "glera-lunga",
+    # Pugnitello — distinct from Montepulciano
+    "pugnitello": "pugnitello",
+    # Spergola — Reggio-Emilia white, distinct from Sauvignon
+    "spergola": "spergola",
+    # Vernaccia cluster + Rossese — distinct from Vermentino
+    "vernaccia-nera": "vernaccia-nera",
+    "vernaccia-di-san-gimignano": "vernaccia-di-san-gimignano",
+    "rossese": "rossese",
+    # Greco cluster — Fortana is an Emilian red, totally unrelated
+    "fortana": "fortana",
+    "greco-bianco": "greco-bianco",
+    "greco-nero": "greco-nero",
+    # Friulano = Sauvignonasse = Tocai friulano (post-2007 EU rename)
+    "tocai-friulano": "friulano",
+    "friulano": "friulano",
+    "tai": "friulano",
+    # Refosco family
+    "refosco": "refosco-dal-peduncolo-rosso",
+    "refosco-dal-peduncolo-rosso": "refosco-dal-peduncolo-rosso",
+    "refosco-nostrano": "refosco-dal-peduncolo-rosso",
+    "terrano": "refosco-dal-peduncolo-rosso",     # Refosco d'Istria (DNA)
+    # Verdicchio = Trebbiano di Soave (DNA-confirmed); regional name preserved as slug.
+    "verdicchio": "trebbiano-di-soave",
+    "verdicchio-bianco": "trebbiano-di-soave",
+    "turbiana": "trebbiano-di-soave",             # Lugana synonym for the same grape
+    # Calabrese = Nero d'Avola (DNA-confirmed); fold the Sicilian
+    # synonym to the internationally recognised canonical.
+    "calabrese": "nero-davola",
+    # Cococciola — distinct Abruzzese white, not Bombino Bianco
+    "cococciola": "cococciola",
+    # Mantonico bianco — distinct Calabrian white, not Montonico bianco
+    "mantonico-bianco": "mantonico",
+    "mantonico": "mantonico",
+    # Manzoni Bianco — distinct Veneto cross (Riesling × Pinot Bianco)
+    "manzoni-bianco": "manzoni-bianco",
+    # Molinara — distinct Veronese red (Valpolicella blend)
+    "molinara": "molinara",
+    # Pampanuto / Pampanino — Apulian local synonym for Bombino Bianco
+    "pampanuto": "pagadebiti",
+    "pampanino": "pagadebiti",
+    # Serbina — distinct (fuzzy mismatched to corbeau)
+    "serbina": "serbina",
+    # Neretto di Bairo — distinct Piemonte red, not Chatus
+    "neretto-di-bairo": "neretto-di-bairo",
+    # Malvasia nera di Basilicata — distinct, not Tempranillo
+    "malvasia-nera-di-basilicata": "malvasia-nera-di-basilicata",
+    # Moscato rosa — distinct from Moscato à petits grains rosés
+    "moscato-rosa": "moscato-rosa",
+    "rosen-muskateller": "moscato-rosa",
+    # Pignoletto — distinct Emilian white (Grechetto Gentile DNA)
+    "pignoletto": "pignoletto",
+    # Veltliner — IT label for Grüner Veltliner
+    "veltliner": "gruner-veltliner",
+    "gruner-veltliner": "gruner-veltliner",
+    # Misc distinct varieties pulled into wrong umbrellas
+    "marzemino": "marzemino",
+    "marzemina-bianca": "marzemina-bianca",
+    "ciliegiolo": "ciliegiolo",
+    "tintilia": "tintilia-del-molise",
+    "tintilia-del-molise": "tintilia-del-molise",
+    "piedirosso": "piedirosso",
+    "bombino-nero": "bombino-nero",
+    "minutolo": "minutolo",
+    "quagliano": "quagliano",
+    "negrara": "negrara",
+    "negretto": "negretto",
+    "bonarda": "bonarda",
+    "croatina": "croatina",
+    "turca": "turca",
+    "piccola-nera": "piccola-nera",
+    "neretta-cuneese": "neretta-cuneese",
+    "cortese": "cortese",
+    "gaglioppo": "gaglioppo",
+    "avana": "avana",
+    "avanà": "avana",
+    "pavana": "pavana",
+    "franconia": "franconia",                    # Friulian name for Blaufränkisch
+    "grillo": "grillo",
+    "albana": "albana",
+    "albanello": "albanello",
+    "perera": "perera",
+    "piculit-neri": "piculit-neri",
+    "damaschino": "damaschino",
+    "canina-nera": "canina-nera",
+    "melara": "melara",
+    "montu": "montu",
+    "montù": "montu",
+    "verdeca": "verdeca",
+    "verdea": "verdea",
+    "verdese": "verdese",
+    "bian-ver": "bian-ver",
+    "tocai-rosso": "grenache",                   # = Garnacha (DNA-confirmed)
+    "fertilia": "fertilia",
+    "termarina": "termarina",
+    "maresco": "maresco",
+    "albarola": "albarola",
+    "cabernet-carbon": "cabernet-carbon",
+    "viogner": "viognier",                       # IT spelling drift
+    # Malvasia cluster — multiple distinct cultivars sharing the name
+    "malvasia-istriana": "malvasia-istriana",
+    "malvasia-bianca-lunga": "malvasia-bianca-lunga",
+    "malvasia-bianca-di-candia": "malvasia-di-candia",
+    "malvasia-di-candia": "malvasia-di-candia",
+    "malvasia-di-candia-aromatica": "malvasia-di-candia-aromatica",
+    "malvasia-nera-di-brindisi": "malvasia-nera-di-brindisi",
+    "malvasia-nera-lunga": "malvasia-nera-lunga",
+    "malvasia-bianca-di-basilicata": "malvasia-di-basilicata",
+    "malvasia-di-basilicata": "malvasia-di-basilicata",
+    "malvasia-del-lazio": "malvasia-del-lazio",
+    "malvasia-di-lipari": "malvasia-di-lipari",
+    "malvasia-moscata": "malvasia-moscata",
+    "malvoisier": "malvasia-bianca-lunga",        # synonym pair in IT
+    "malvoisie": "malvasia-di-candia",            # synonym pair in IT
+    # ----- IT MASAF-disciplinare varieties. Italian wine grapes the
+    # EU-OJ documento unico never carried (the wine is a no-publication
+    # stub), so they never reached the VIVC-seeded vocabulary. Surfaced
+    # by scripts/it/02f_extract_masaf.py into
+    # raw/it/extraction-unknowns-masaf.json; each is a registro-listed
+    # variety. Spelling / regional-name variants fold to the canonical.
+    "barbera": "barbera",
+    "monica": "monica",
+    "giro": "giro",
+    "uva-rara": "uva-rara",
+    "negroamaro": "negroamaro",
+    "nero-di-troia": "nero-di-troia",
+    "vespolina": "vespolina",
+    "rondinella": "rondinella",
+    "raboso": "raboso",
+    "raboso-piave": "raboso-piave",
+    "raboso-veronese": "raboso-veronese",
+    "ughetta": "ughetta",
+    "grignolino": "grignolino",
+    "canaiolo-nero": "canaiolo-nero",
+    "susumaniello": "susumaniello",
+    "sciascinoso": "sciascinoso",
+    "schiava": "schiava",
+    "schiava-gentile": "schiava-gentile",
+    "schiava-grossa": "schiava-grossa",
+    "schiava-grigia": "schiava-grigia",
+    "nerello-mascalese": "nerello-mascalese",
+    "nerello-cappuccio": "nerello-cappuccio",
+    "frappato": "frappato",
+    "corvina": "corvina",
+    "corvinone": "corvinone",
+    "ancellotta": "ancellotta",
+    "rebo": "rebo",
+    "perricone": "perricone",
+    "notardomenico": "notardomenico",
+    "cesanese": "cesanese",
+    "cesanese-di-affile": "cesanese-di-affile",
+    "cesanese-comune": "cesanese-comune",
+    "malvasia-di-schierano": "malvasia-di-schierano",
+    "groppello": "groppello",
+    "casavecchia": "casavecchia",
+    "teroldego": "teroldego",
+    "pelaverga": "pelaverga",
+    "pelaverga-piccolo": "pelaverga-piccolo",
+    "lagrein": "lagrein",
+    "schioppettino": "schioppettino",
+    "pallagrello-nero": "pallagrello-nero",
+    "oseleta": "oseleta",
+    "rossignola": "rossignola",
+    "gamba-rossa": "gamba-rossa",
+    "nero-buono": "nero-buono",
+    "semidano": "semidano",
+    "nuragus": "nuragus",
+    "ansonica": "ansonica",
+    "inzolia": "inzolia",
+    "bianco-di-alessano": "bianco-di-alessano",
+    "moscatello-selvatico": "moscatello-selvatico",
+    "verduzzo-friulano": "verduzzo-friulano",
+    "pecorino": "pecorino",
+    "francavilla": "francavilla",
+    "catarratto": "catarratto",
+    "picolit": "picolit",
+    "incrocio-manzoni": "incrocio-manzoni",
+    "biancolella": "biancolella",
+    "nascetta": "nascetta",
+    "vespaiolo": "vespaiolo",
+    "ribolla-gialla": "ribolla-gialla",
+    "durella": "durella",
+    "erbaluce": "erbaluce",
+    "ortrugo": "ortrugo",
+    "vernaccia-di-oristano": "vernaccia-di-oristano",
+    "invernenga": "invernenga",
+    "lumassina": "lumassina",
+    "catalanesca": "catalanesca",
+    "guardavalle": "guardavalle",
+    "bianchello": "bianchello",
+    "uva-di-troia": "nero-di-troia",            # = Nero di Troia (modern name)
+    "bombino": "bombino-bianco",                # bare "Bombino" in Lazio = Bombino bianco
+    "canaiolo": "canaiolo-nero",
+    "pignatello": "perricone",                  # disciplinari: "Pignatello o Perricone"
+    "insolia": "inzolia",
+    "negro-amaro": "negroamaro",
+    "sussumariello": "susumaniello",
+    "corvina-veronese": "corvina",
+    "notar-domenico": "notardomenico",
+    "bianco-d-alessano": "bianco-di-alessano",
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -269,6 +550,177 @@ DEFAULT_COLOUR: dict[str, str] = {
     "muscat-d-alexandrie": "blanc",
     "hondarrabi-zuri": "blanc",
     "hondarrabi-beltza": "noir",
+    # ----- IT regional varieties (single-colour mutation only) -----
+    # Reds
+    "lambrusco": "noir",
+    "lambrusco-barghi": "noir",
+    "lambrusco-salamino": "noir",
+    "lambrusco-grasparossa": "noir",
+    "lambrusco-maestri": "noir",
+    "lambrusco-di-sorbara": "noir",
+    "lambrusco-foglia-frastagliata": "noir",
+    "lacrima": "noir",
+    "corinto-nero": "noir",
+    "sangiovese": "noir",
+    "rossola-nera": "noir",
+    "pignola-valtellinese": "noir",
+    "pignolo": "noir",
+    "moscato-di-scanzo": "noir",
+    "pugnitello": "noir",
+    "vernaccia-nera": "noir",
+    "rossese": "noir",
+    "fortana": "noir",
+    "greco-nero": "noir",
+    "marzemino": "noir",
+    "ciliegiolo": "noir",
+    "tintilia-del-molise": "noir",
+    "piedirosso": "noir",
+    "bombino-nero": "noir",
+    "quagliano": "noir",
+    "negrara": "noir",
+    "negretto": "noir",
+    "bonarda": "noir",
+    "croatina": "noir",
+    "turca": "noir",
+    "piccola-nera": "noir",
+    "neretta-cuneese": "noir",
+    "gaglioppo": "noir",
+    "avana": "noir",
+    "pavana": "noir",
+    "franconia": "noir",
+    "piculit-neri": "noir",
+    "canina-nera": "noir",
+    "fertilia": "noir",
+    "termarina": "noir",
+    "refosco-dal-peduncolo-rosso": "noir",
+    "cabernet-carbon": "noir",
+    "malvasia-nera-di-brindisi": "noir",
+    "malvasia-nera-lunga": "noir",
+    # Whites
+    "trebbiano-romagnolo": "blanc",
+    "trebbiano-di-soave": "blanc",
+    "trebbiano-modenese": "blanc",
+    "trebbiano-spoletino": "blanc",
+    "trebbiano-abruzzese": "blanc",
+    "trebbiano-giallo": "blanc",
+    "coda-di-volpe": "blanc",
+    "falanghina": "blanc",
+    "passerina": "blanc",
+    "biancame": "blanc",
+    "montonico": "blanc",
+    "welschriesling": "blanc",
+    "moscato-giallo": "blanc",
+    "garganega": "blanc",
+    "glera-lunga": "blanc",
+    "spergola": "blanc",
+    "vernaccia-di-san-gimignano": "blanc",
+    "greco-bianco": "blanc",
+    "friulano": "blanc",
+    "pignoletto": "blanc",
+    "gruner-veltliner": "blanc",
+    "marzemina-bianca": "blanc",
+    "minutolo": "blanc",
+    "cortese": "blanc",
+    "grillo": "blanc",
+    "albana": "blanc",
+    "albanello": "blanc",
+    "perera": "blanc",
+    "damaschino": "blanc",
+    "melara": "blanc",
+    "montu": "blanc",
+    "verdeca": "blanc",
+    "verdea": "blanc",
+    "verdese": "blanc",
+    "bian-ver": "blanc",
+    "maresco": "blanc",
+    "albarola": "blanc",
+    "malvasia-istriana": "blanc",
+    "malvasia-bianca-lunga": "blanc",
+    "malvasia-di-candia": "blanc",
+    "malvasia-di-candia-aromatica": "blanc",
+    "malvasia-di-basilicata": "blanc",
+    "malvasia-del-lazio": "blanc",
+    "malvasia-di-lipari": "blanc",
+    "malvasia-moscata": "blanc",
+    "cococciola": "blanc",
+    "mantonico": "blanc",
+    "neretto-di-bairo": "noir",
+    "malvasia-nera-di-basilicata": "noir",
+    "moscato-rosa": "rose",
+    "manzoni-bianco": "blanc",
+    "molinara": "noir",
+    "serbina": "noir",
+    # IT MASAF-disciplinare varieties (see the matching GRAPE_ALIAS block).
+    "barbera": "noir",
+    "monica": "noir",
+    "giro": "noir",
+    "uva-rara": "noir",
+    "negroamaro": "noir",
+    "nero-di-troia": "noir",
+    "vespolina": "noir",
+    "rondinella": "noir",
+    "raboso": "noir",
+    "raboso-piave": "noir",
+    "raboso-veronese": "noir",
+    "ughetta": "noir",
+    "grignolino": "noir",
+    "canaiolo-nero": "noir",
+    "susumaniello": "noir",
+    "sciascinoso": "noir",
+    "schiava": "noir",
+    "schiava-gentile": "noir",
+    "schiava-grossa": "noir",
+    "schiava-grigia": "noir",
+    "nerello-mascalese": "noir",
+    "nerello-cappuccio": "noir",
+    "frappato": "noir",
+    "corvina": "noir",
+    "corvinone": "noir",
+    "ancellotta": "noir",
+    "rebo": "noir",
+    "perricone": "noir",
+    "notardomenico": "noir",
+    "cesanese": "noir",
+    "cesanese-di-affile": "noir",
+    "cesanese-comune": "noir",
+    "malvasia-di-schierano": "noir",
+    "groppello": "noir",
+    "casavecchia": "noir",
+    "teroldego": "noir",
+    "pelaverga": "noir",
+    "pelaverga-piccolo": "noir",
+    "lagrein": "noir",
+    "schioppettino": "noir",
+    "pallagrello-nero": "noir",
+    "oseleta": "noir",
+    "rossignola": "noir",
+    "gamba-rossa": "noir",
+    "nero-buono": "noir",
+    "semidano": "blanc",
+    "nuragus": "blanc",
+    "ansonica": "blanc",
+    "inzolia": "blanc",
+    "bianco-di-alessano": "blanc",
+    "moscatello-selvatico": "blanc",
+    "verduzzo-friulano": "blanc",
+    "pecorino": "blanc",
+    "francavilla": "blanc",
+    "catarratto": "blanc",
+    "picolit": "blanc",
+    "incrocio-manzoni": "blanc",
+    "biancolella": "blanc",
+    "nascetta": "blanc",
+    "vespaiolo": "blanc",
+    "ribolla-gialla": "blanc",
+    "durella": "blanc",
+    "erbaluce": "blanc",
+    "ortrugo": "blanc",
+    "vernaccia-di-oristano": "blanc",
+    "invernenga": "blanc",
+    "lumassina": "blanc",
+    "catalanesca": "blanc",
+    "guardavalle": "blanc",
+    "bianchello": "blanc",
 }
 
 # Slugs that are pure boilerplate after stop-word filtering and should be
@@ -484,6 +936,10 @@ def _tokenise_role_chunk(chunk: str) -> list[dict]:
     chunk = _HEADER_STRIP.sub("", chunk)
     chunk = re.sub(r"\s+", " ", chunk)
 
+    # Local import to avoid the grape_entity ↔ grape_lexicon circular —
+    # `grape_entity` pulls GRAPE_ALIAS/DEFAULT_COLOUR/slugify from here.
+    from _lib.grape_entity import match_variety  # noqa: PLC0415
+
     out: list[dict] = []
     seen: set[str] = set()
     cursor = 0
@@ -500,16 +956,32 @@ def _tokenise_role_chunk(chunk: str) -> list[dict]:
         cursor = m.end()
         if not name:
             continue
-        slug = _canonical_slug(name)
-        if not slug or slug in GRAPE_BLOCKLIST:
+        colour = COLOUR_CODES.get(m.group(1), "")
+        # FR convention drops bare colour-adjective tokens (`rose`,
+        # `blanc`, …) via GRAPE_BLOCKLIST applied to the *input*. The
+        # back-walker occasionally lands on a bare colour word when the
+        # cahier wraps a name across a line ("Clairette / rose Rs"); we
+        # must reject before vocab lookup or VIVC's bare-name synonyms
+        # (e.g. `rose` → `nebbiolo`) would falsely match.
+        if slugify(name) in GRAPE_BLOCKLIST:
             continue
-        if slug in seen:
+        result = match_variety(name, ambient_colour=colour or None)
+        if result is None or result.slug in GRAPE_BLOCKLIST:
             continue
-        seen.add(slug)
+        # FR cahiers anchor on a colour-letter code; the back-walker
+        # sometimes grabs a partial token when a variety name wraps
+        # across a line ("muscat à petits / grains B" → name="grains").
+        # Reject fuzzy fallbacks here — INAO typos belong in GRAPE_ALIAS
+        # per the curation guide, not in the fuzzy matcher.
+        if result.method.startswith("fuzzy"):
+            continue
+        if result.slug in seen:
+            continue
+        seen.add(result.slug)
         out.append({
-            "slug": slug,
+            "slug": result.slug,
             "name": name,
-            "colour": COLOUR_CODES.get(m.group(1), ""),
+            "colour": colour or result.colour,
         })
     return out
 

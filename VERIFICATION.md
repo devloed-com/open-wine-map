@@ -213,3 +213,93 @@ destructive-write design and would benefit from the same hardening
   Varosa). Useful for spot-checking that cluster only.
 - **Wines of Portugal** (trade body) — high-level marketing surface;
   doesn't enumerate all 44 cleanly.
+
+---
+
+## Italy
+
+### 2026-05-19 — initial pipeline drop ⏳ pending independent cross-check
+
+**eAmbrosia count (pipeline spine, 2026-05-19 fetch)**:
+
+| Bucket | Count |
+|---:|:---|
+| Total IT wine GIs (registered) | 531 |
+| DOPs | 412 |
+| IGPs | 119 |
+
+**Independent authority candidates**:
+
+- **MASAF DOP-IGP portal** — `https://dopigp.politicheagricole.gov.it/en/vino`
+  Reports ~524 wines per the project plan's research. Reconcile by:
+  scraping the portal index (HTML, no API), name-matching against
+  eAmbrosia. Expected delta: ~7 (eAmbrosia's status=registered vs. MASAF's
+  in-force list often diverge by a handful around recent amendments).
+- **Qualivita** (Fondazione Qualivita, a private foundation) — publishes
+  an annual `Atlante Qualivita` with the canonical IT wine GI count
+  per region. Useful for per-regione cross-check.
+- **Federdoc** — coordinating body of Italian consorzi di tutela.
+  Member directory could surface DOP-equivalent wines.
+
+**Re-run recipe**:
+
+```
+.venv/bin/python scripts/it/00_fetch_data.py
+.venv/bin/python scripts/audit_it_coverage.py
+# Then manually fetch MASAF portal HTML and count rows.
+```
+
+Expected drift: MASAF + eAmbrosia track each other within ~5 wines
+month-to-month. A larger delta would indicate either an eAmbrosia
+cache miss, a MASAF batch update we haven't seen, or a parser drop.
+
+**Note on coverage**:
+
+- 408 of 531 (76.8 %) wines have a Bétard 2022 Figshare polygon (all
+  DOPs that existed pre-2022; newer DOPs and all 119 IGPs miss it).
+- 129 of 531 (24.3 %) wines have a fully extracted documento unico
+  (139 had an EUR-Lex URL; 9 failed `looks_like_documento_unico`;
+  1 missing the DOCUMENTO UNICO anchor).
+- 392 wines (74 %) have no eAmbrosia publication URL at all — they
+  need MASAF / Gazzetta Ufficiale fallback via stage 02f or the
+  curator manual-overrides path.
+
+### 2026-05-20 — completeness audit + MASAF grape-extraction fix ✅
+
+Independent re-audit of the IT pipeline. Spine intact: 531 eAmbrosia
+wine GIs → 531 extracted records → 531 entries in `wiki/_index.json`.
+Geometry: 408 / 531 Figshare polygons (4 newer DOPs + all 119 IGPs
+miss — known v1 limitation). 15 wines carry neither a documento
+unico nor a MASAF sidecar (2 DOPs keep a Figshare polygon; 13 IGPs
+are stub-no-geometry).
+
+Audit found the MASAF grape extraction badly under-performing — 108
+of 388 sidecars had `grapes=0`, and `audit_it_coverage.py` reported
+only "123 of 531 with grapes" because it reads the on-disk doc-unico
+extractions and ignores the stage-04 MASAF augmentation. Root cause
+was a parser defect, not (mostly) a vocab gap — see CURATOR_TODO.md
+"MASAF grape-extraction fix". After the fix: **MASAF sidecars with
+grapes 280 → 354 of 387**; residual 33 are 4 empty-Article-2, ~24
+genuinely-generic IGTs, ~5 layout misses. No false-positive grape
+matches remain (verified: no spurious `nielluccio` / `listan`).
+
+**Re-run recipe**:
+
+```
+.venv/bin/python scripts/it/02f_extract_masaf.py --all
+.venv/bin/python - <<'PY'
+import json, pathlib
+sc = {p.stem: json.loads(p.read_text())
+      for p in pathlib.Path("raw/it/masaf-disciplinari-extracted").glob("*.json")
+      if p.stem != "_index"}
+ng = lambda d: len((d.get("grapes") or {}).get("principal", [])) \
+             + len((d.get("grapes") or {}).get("accessory", []))
+print("with grapes:", sum(1 for d in sc.values() if ng(d) > 0), "/", len(sc))
+PY
+.venv/bin/python scripts/04_build_maps.py
+```
+
+Caveat: `audit_it_coverage.py`'s "Wines with grapes" line still
+reads doc-unico extractions only — it understates true coverage by
+the whole MASAF-augmented set. Reading the MASAF sidecars (as the
+recipe above does) gives the real figure.

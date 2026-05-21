@@ -62,6 +62,8 @@ ROOT = Path(__file__).resolve().parent.parent
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 ES_EXTRACTED = ROOT / "raw" / "es" / "pliegos-extracted"
 PT_EXTRACTED = ROOT / "raw" / "pt" / "cadernos-extracted"
+IT_EXTRACTED = ROOT / "raw" / "it" / "disciplinari-extracted"
+IT_MASAF_EXTRACTED = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
 
 OUT_DIR = ROOT / "raw" / "vivc"
 SEARCH_DIR = OUT_DIR / "search"
@@ -79,7 +81,7 @@ UA = (
 
 def _record_files() -> list[Path]:
     out: list[Path] = []
-    for d in (EXTRACTED, ES_EXTRACTED, PT_EXTRACTED):
+    for d in (EXTRACTED, ES_EXTRACTED, PT_EXTRACTED, IT_EXTRACTED, IT_MASAF_EXTRACTED):
         if not d.exists():
             continue
         out.extend(jp for jp in d.glob("*.json") if not jp.name.startswith("_"))
@@ -87,7 +89,7 @@ def _record_files() -> list[Path]:
 
 
 def collect_grape_slugs() -> dict[str, str]:
-    """Walk FR / ES / PT extracted records, return {slug: display_name}."""
+    """Walk FR / ES / PT / IT extracted records, return {slug: display_name}."""
     slugs: dict[str, str] = {}
     for jp in _record_files():
         rec = json.loads(jp.read_text())
@@ -99,21 +101,37 @@ def collect_grape_slugs() -> dict[str, str]:
 
 
 _APOSTROPHE_REJOIN_RE = re.compile(r"\b([dlnsDLNS])\s+(\w)", re.UNICODE)
+# Trailing 1-2 letter colour markers (B. / N. / G. / Rs. / Rg. / R.) — IT
+# disciplinari and ES pliegos pass the colour code through to the `name`
+# field. VIVC's cultivarname search rejects them. Anchored at end so we
+# don't strip mid-word matches.
+_COLOUR_SUFFIX_RE = re.compile(r"\s+(B|N|G|Rs|Rg|R)\.?\s*$", re.IGNORECASE)
 
 
 def slug_to_query(name: str) -> str:
     """The search query we send to VIVC. Strip parenthesised qualifiers
-    ('Alfrocheiro (Tinta-Bastardinha)' → 'Alfrocheiro'), normalise hyphens
-    to spaces (some corpus records store the kebab-case slug as the name,
-    e.g. 'cabernet-sauvignon' → 'cabernet sauvignon'), then re-attach
-    single-letter elision particles with an apostrophe so French/Italian
-    apostrophed names match their VIVC primes:
+    ('Alfrocheiro (Tinta-Bastardinha)' → 'Alfrocheiro'), drop dash-suffix
+    synonyms ('Cabernet franc N. - Cabernet' → 'Cabernet franc N.'),
+    peel off trailing colour-letter markers ('Sangiovese N.' →
+    'Sangiovese'), normalise hyphens to spaces (some corpus records
+    store the kebab-case slug as the name, e.g. 'cabernet-sauvignon' →
+    'cabernet sauvignon'), then re-attach single-letter elision
+    particles with an apostrophe so French/Italian apostrophed names
+    match their VIVC primes:
 
         nero-d-avola      → "nero d avola"      → "nero d'avola"
         len-de-l-el       → "len de l el"       → "len de l'el"
         pineau-d-aunis    → "pineau d aunis"    → "pineau d'aunis"
     """
-    q = name.split("(")[0].strip().replace("-", " ").replace("_", " ")
+    q = name.split("(")[0].strip()
+    # Strip leading country/region prefix ("Italia - X", "Italie - X", etc.)
+    # — geographic qualifier in IT disciplinari, not a synonym.
+    q = re.sub(r"^(Italia|Italie|Italy)\s+[-–—]\s+", "", q, flags=re.IGNORECASE)
+    # Dash with spaces on either side = synonym separator (drop tail);
+    # bare hyphen = slug component (kept, normalised to space below).
+    q = re.split(r"\s+[-–—]\s+", q, maxsplit=1)[0].strip()
+    q = _COLOUR_SUFFIX_RE.sub("", q).strip()
+    q = q.replace("-", " ").replace("_", " ")
     q = " ".join(q.split())
     q = _APOSTROPHE_REJOIN_RE.sub(r"\1'\2", q)
     return q or name
@@ -280,18 +298,26 @@ def _build_parser() -> argparse.ArgumentParser:
     return ap
 
 
-def _load_overrides() -> dict[str, int]:
+def _load_overrides() -> tuple[dict[str, int], set[str]]:
+    """Returns `(pins, skips)`. A `vivc_id` of `false` pins the slug as
+    deliberately absent from VIVC — a curator decision to keep a variety
+    distinct that VIVC folds into another prime (e.g. bianchello, which
+    VIVC catalogues as a Trebbiano Toscano synonym). Skipped slugs are
+    never resolved and any stale by-slug record is removed."""
     if not OVERRIDES.exists():
-        return {}
+        return {}, set()
     data = json.loads(OVERRIDES.read_text())
     entries = data.get("entries") if isinstance(data, dict) else None
     out: dict[str, int] = {}
+    skip: set[str] = set()
     for slug, v in (entries or {}).items():
         vid = v.get("vivc_id") if isinstance(v, dict) else v
-        if isinstance(vid, int):
+        if vid is False:
+            skip.add(slug)
+        elif isinstance(vid, int):
             out[slug] = vid
-    print(f"[02g] loaded {len(out)} curator pin(s)", file=sys.stderr)
-    return out
+    print(f"[02g] loaded {len(out)} curator pin(s), {len(skip)} skip(s)", file=sys.stderr)
+    return out, skip
 
 
 def _select_slugs(args: argparse.Namespace) -> dict[str, str]:
@@ -335,12 +361,22 @@ def main() -> int:
         )
         return 1
 
-    overrides = _load_overrides()
+    overrides, skips = _load_overrides()
     slugs = _select_slugs(args)
-    print(f"[02g] {len(slugs)} unique grape slugs to resolve", file=sys.stderr)
 
     for d in (SEARCH_DIR, PASSPORT_DIR, BY_SLUG_DIR):
         d.mkdir(parents=True, exist_ok=True)
+
+    for s in skips & set(slugs):
+        slugs.pop(s, None)
+        stale = BY_SLUG_DIR / f"{s}.json"
+        if stale.exists():
+            stale.unlink()
+    print(
+        f"[02g] {len(slugs)} unique grape slugs to resolve "
+        f"({len(skips)} curator-skipped — kept distinct, no VIVC)",
+        file=sys.stderr,
+    )
 
     session = requests.Session()
     session.headers.update({"User-Agent": UA})

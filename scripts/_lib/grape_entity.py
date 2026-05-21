@@ -377,23 +377,32 @@ def match_variety(
     # around the hyphen). Try each side as an independent variety; the
     # first piece that exact-matches wins. This catches synonym-pair
     # cells in OJ-tabular HTML before the fuzzy fallback inflates a
-    # short-word overlap into a false positive.
+    # short-word overlap into a false positive. Each piece is tried
+    # both as-is and after stripping a trailing colour-letter suffix —
+    # IT documenti unici list synonyms as "Pinot bianco B. - Pinot",
+    # where the head carries the colour code that must be peeled off
+    # before the vocabulary lookup catches the canonical Italian name.
     if "-" in bare or "–" in bare or "—" in bare:
         for piece in re.split(r"\s*[-–—]\s*", bare):
             piece = piece.strip(" .,;:«»\"'·“”()")
             if len(piece) < 3:
                 continue
-            piece_key = _normalise(piece)
-            if piece_key in _BANNED_SURFACES:
-                continue
-            if piece_key in vocab.exact_index:
-                canon = vocab.exact_index[piece_key]
-                return MatchResult(
-                    slug=canon,
-                    name=piece,
-                    colour=explicit_colour or ambient_colour or DEFAULT_COLOUR.get(canon, ""),
-                    method="exact-after-hyphen-split",
-                )
+            piece_bare, piece_colour = _strip_colour_letter(piece)
+            for variant in (piece, piece_bare) if piece_bare != piece else (piece,):
+                v_key = _normalise(variant)
+                if not v_key or len(v_key) < 3 or v_key in _BANNED_SURFACES:
+                    continue
+                if v_key in vocab.exact_index:
+                    canon = vocab.exact_index[v_key]
+                    return MatchResult(
+                        slug=canon,
+                        name=variant,
+                        colour=(
+                            explicit_colour or piece_colour
+                            or ambient_colour or DEFAULT_COLOUR.get(canon, "")
+                        ),
+                        method="exact-after-hyphen-split",
+                    )
 
     candidate_key = bare_key if bare != cleaned else full_key
     candidate_name = bare if bare != cleaned else cleaned
@@ -467,3 +476,13 @@ def reset_unknowns_queue() -> None:
 
 def vocabulary_size() -> int:
     return len(_load_vocabulary().exact_index)
+
+
+def preheat_vocabulary() -> int:
+    """Force the vocabulary cache to load now. Use at the start of an
+    extractor that wipes its own `<country>/cahier-extracted/` or
+    `pliegos-extracted/` dir before processing — the rmtree blanks the
+    cross-corpus contribution that the canonical-by-vivc-id rank relies
+    on, so the cache must be locked while disk is still in baseline
+    state. Returns the vocabulary size for telemetry."""
+    return vocabulary_size()

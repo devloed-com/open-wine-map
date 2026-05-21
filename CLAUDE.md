@@ -117,6 +117,12 @@ details and "Hard rules" for invariants that apply to every country.
   `--translator-kind` you supply, e.g. `deepl-api`). Other per-AOC content
   (appellation names, region names, commune lists, grape variety names,
   INAO category strings) is **not** machine-translated — it stays French.
+  **The summary is a fallback, off by default.** Stages 02c (translate),
+  03 (wiki `## Summary` section) and 04 (map panel) produce / translate /
+  render it only for records that have **no** extracted terroir facts
+  (02d) — a record with facts shows the facts and no summary. In a corpus
+  with broad 02d coverage 02c therefore translates only the residual
+  no-facts records.
 - **Terroir-fact extraction is a bounded narrative layer (dual-source).**
   Stage 02d (`scripts/02d_extract_terroir_facts.py`) extracts a short
   bullet list of noteworthy facts per AOC from the cahier section X
@@ -608,6 +614,253 @@ stage 01 run that left `no-caderno` rows in the manifest:
 
 In practice the first-run IVV scrape matches 44 / 44 wines, so the
 overrides file is empty by default.
+
+## Italy pipeline (`scripts/it/`)
+
+Country #4. Largest EU wine producer; 531 wine GIs (412 DOP + 119 IGP)
+sourced from eAmbrosia. Structurally closest to the ES pipeline — same
+EU-OJ documento-unico HTML template (just Italian instead of Spanish),
+same Bétard 2022 Figshare gpkg for DOP polygons, same Eurostat GISCO
+LAU for comune unions. Both upstream artifacts are reused from the
+already-cached ES paths (`raw/es/figshare/EU_PDO.gpkg`,
+`raw/es/gisco/lau-eu-2024-01m.shp.zip`) — no re-fetch in IT stage 00.
+
+Spine: **eAmbrosia EU register**, filtered to `country=IT +
+productType=WINE + status=registered`. Of the 531 IT wines:
+
+- **139** have at least one EUR-Lex publication URL → stage 01 (EUR-Lex
+  fetch) succeeds for ~130 of these after the 01b WAF bootstrap.
+- **62** have only Commission-internal `Ares(YYYY)NNNNNN` references
+  with numeric URIs (not directly fetchable from the public web).
+  Stub status until a curator URL is supplied via
+  `raw/it/oj-pages/manual_overrides.json`.
+- **330** have no publications at all. Same curator-queue path.
+
+So ~74 % of IT wines (vs 44 % for ES) need the curator path or stage
+02f-MASAF overlay. The architecture supports both via the
+manual_overrides flow.
+
+| Script | Reads | Writes |
+|---|---|---|
+| it/00_fetch_data.py | (network: eAmbrosia + MASAF disciplinari bundles) | raw/it/eambrosia/ + raw/it/masaf-disciplinari/bundles/*.7z + manifest.json |
+| it/01_fetch_pliegos.py | raw/it/eambrosia/index.json + raw/it/oj-pages/manual_overrides.json | raw/it/oj-pages/*.html + manifest.json |
+| it/01b_solve_waf.py | raw/it/oj-pages/manifest.json | raw/it/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
+| it/02_extract_pliegos.py | raw/it/oj-pages/*.html | raw/it/disciplinari-extracted/*.json + _index.json + raw/it/extraction-unknowns.json |
+| it/02f_extract_masaf.py | raw/it/disciplinari-extracted/*.json + raw/it/masaf-disciplinari/bundles/*.7z + raw/it/masaf-disciplinari/manual_overrides.json | raw/it/masaf-disciplinari/pdfs/*.pdf + raw/it/masaf-disciplinari-extracted/*.json + raw/it/extraction-unknowns-masaf.json |
+| it/03_generate_wiki.py | raw/it/disciplinari-extracted/*.json | wiki/<slug>.md (per IT record) + merges IT entries into wiki/_index.json |
+| audit_it_coverage.py | raw/it/eambrosia/ + raw/it/disciplinari-extracted/ + raw/it/oj-pages/manifest.json + raw/es/figshare/EU_PDO.gpkg | (stdout — coverage table + curator queue) |
+| it/02d_extract_terroir_facts.py | raw/it/disciplinari-extracted/*.json + raw/it/masaf-disciplinari-extracted/*.json + raw/wikipedia/aocs/it/ | raw/terroir-facts/*.json (country="it") + manifest-it.json |
+| it/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="it") | raw/translations/terroir-facts/<en\|fr\|es\|nl>/*.json |
+
+IT-specific notes:
+- `kind` is `"DOP"` / `"IGP"` (Italian convention, same as ES/PT).
+- The shared `scripts/02b_fetch_aoc_lexicon.py` accepts `--lang it` and
+  cascades through `(vino)` → `(DOCG)` → `(DOC)` →
+  `(denominazione di origine)`.
+- The shared `scripts/02c_translate_summaries.py` accepts
+  `--source-lang it` with target locales `en/fr/es/nl`.
+- The shared `scripts/02g_fetch_vivc.py` and
+  `scripts/_lib/grape_corpus.py` walk
+  `raw/it/disciplinari-extracted/` alongside the FR / ES / PT corpora.
+  Italian local-name aliasing (Sangiovese ↔ Brunello / Prugnolo Gentile,
+  Nebbiolo ↔ Chiavennasca, Vermentino ↔ Pigato, Trebbiano cluster)
+  flows through VIVC's synonym index. Ambiguous slugs pinned via
+  `raw/vivc/slug_overrides.json` as the audit surfaces them.
+- Grape role classification is not split in the EUR-Lex documento
+  unico for most Italian DOPs — section 7 lists varieties without
+  principal/accessory markers. Stage 02 defaults all matches to
+  `principal`. Full role splits live in the national disciplinare
+  allegato (Gazzetta Ufficiale PDFs), which is stage-02f territory
+  (deferred; mirrors the ES MAPA / PT Portaria pattern).
+- Terroir-fact extraction (02d/02e) is wired for IT via
+  `scripts/it/02d_extract_terroir_facts.py` +
+  `scripts/it/02e_translate_terroir_facts.py` (siblings of the ES/PT
+  pairs). Same dual-source grounding (documento-unico / MASAF
+  disciplinare section 8–9 + it.wikipedia.org per-DOP page), same
+  fuzzy-coverage filter (≥ 0.6), same per-bullet provenance
+  (`cahier` / `wiki` / `both`), same manual round-trip flow. IT 02d
+  reads `link_to_terroir` directly from EUR-Lex extractions for the
+  ~125 non-stub wines, and merges the MASAF sidecar's Article 9
+  body in-memory for the ~385 MASAF-augmented stubs (mirrors stage
+  04's `augment_it_records_with_masaf`), so both paths feed a single
+  Italian-language extraction prompt. IT 02e targets en/fr/es/nl (FR
+  + ES are translation targets, not sources). Cache files land in
+  the shared `raw/terroir-facts/` directory with `country: "it"` to
+  distinguish them from FR/ES/PT records. Sottozone are skipped —
+  they inherit the parent's bullets at the rendering layer.
+
+### Sottozone and Menzioni / Unità Geografiche Aggiuntive
+
+Italy has two layers of sub-denomination granularity:
+
+- **Sottozone** — strict regulatory sub-areas with their own
+  production rules (Chianti's 7: Colli Aretini, Colli Fiorentini,
+  Colli Senesi, Colline Pisane, Montalbano, Rufina, Montespertoli).
+  Modelled as first-class sub-denomination records with
+  `is_sub_denomination=true` + `parent_slug` + `parent_id_eambrosia`,
+  same data shape as FR DGCs / ES subzonas / PT sub-regiões. Stage 02
+  detects them via `scripts/_lib/it/sottozona.py` (two regex
+  patterns: explicit `Sottozona NAME:` prefix and preamble-list
+  `Le sottozone X, Y, Z e W`).
+- **Menzioni / Unità Geografiche Aggiuntive** (MGA / UGA) — finer
+  "cru" granularity (Chianti Classico's 11 UGAs, Barolo's 181 MGAs,
+  Soave's 29 UGAs). Per 2024 wine-law reform, UGA is the new official
+  term. **v1 scope** (with user): emit MGA/UGA as a flat
+  `menzioni: []` chip list on parent panels only — no per-cru
+  polygons, no per-cru records. Stage 02 harvests them via
+  `scripts/_lib/it/menzione.py` (numbered-list and comma-list
+  patterns inside the documento unico). The complete MGA list for
+  Barolo / Barbaresco lives in the national disciplinare allegato
+  and is stage-02f-MASAF territory.
+
+### IT geometry resolution chain (stage 04)
+
+Per IT record, in priority order (each step records the chosen
+source in `geom_source` so the panel can attribute correctly):
+
+1. **`parent-appellation`** — sottozone (sub-denominations) inherit
+   the parent's polygon. Precision is parent-level, not
+   sottozona-level.
+2. **`figshare-pdo`** — exact `file_number` (`PDO-IT-A*` /
+   `PGI-IT-A*`) → `PDOid` match against Bétard 2022 EU\_PDO.gpkg.
+   Hit rate: 408 / 412 IT DOPs (~99 %). The 4 missing DOPs are
+   newer 2024+ registrations not in the 2022 snapshot. **Figshare
+   lookup runs even when the record is a stub** (no documento
+   unico fetched) — the polygon doesn't depend on the documento
+   unico, and most IT DOPs have valid eAmbrosia file numbers that
+   match Bétard's PDOid. So well-known DOPs like Barolo, Brunello,
+   Aglianico del Vulture appear on the map with their full
+   polygon even though the documento unico isn't accessible.
+3. **`stub-no-geometry`** — IGTs (Bétard is PDO-only by design) and
+   the 4 newer DOPs that miss Bétard. They appear in the sidebar
+   with no polygon (same status as ~14 PT IGPs). Future v2:
+   commune-list union via GISCO LAU when the documento unico
+   enumerates comuni.
+
+### MASAF disciplinare fallback for no-publication wines (stage 02f)
+
+MASAF (the Italian Ministry of Agriculture) publishes the
+consolidated *disciplinare di produzione* for every wine DOP + IGT
+as 4 7-Zip archives on
+[IDPagina/4625](https://www.masaf.gov.it/flex/cm/pages/ServeBLOB.php/L/IT/IDPagina/4625)
+("Disciplinari DOP A-D / E-N / O-Z" and "Disciplinari IGP"). Stage 00
+downloads the 4 bundles (~100 MB total) into
+[raw/it/masaf-disciplinari/bundles/](raw/it/masaf-disciplinari/bundles/);
+stage 02f
+([scripts/it/02f_extract_masaf.py](scripts/it/02f_extract_masaf.py))
+augments IT STUB records (wines whose eAmbrosia entry lacks a
+documento unico URL — ~395 of 531) by parsing those disciplinari.
+
+Pipeline per stub:
+1. Index every PDF inside the 4 archives (521 distinct filenames).
+2. Match each eAmbrosia wine to one PDF via
+   [scripts/_lib/it/masaf.py](scripts/_lib/it/masaf.py)
+   `match_wines_to_pdfs` — exact-after-normalisation on alt-name slugs
+   from "X o Y o Z" splits, then substring, then rapidfuzz token-ratio
+   ≥ 90. One-to-one assignment (a PDF claimed by an earlier wine
+   isn't a fuzzy candidate for later ones). Hit rate: 521 / 531 wines
+   (98 %).
+3. Extract the PDF on-demand from the archive into
+   [raw/it/masaf-disciplinari/pdfs/<slug>.pdf](raw/it/masaf-disciplinari/pdfs/)
+   and run `pdftotext -layout`.
+4. Carve the layout-text into a `{article_num: body}` dict via
+   `extract_articles` (anchor regex tolerates the form-feed page
+   breaks pdftotext emits between articles), then parse:
+   - **Article 1** → summary (first paragraph, ≤ 600 chars)
+   - **Article 2** → grape varieties via `match_variety` on
+     line/colon/comma-split candidates + `vitigno NAME` regex scan
+   - **Article 3** → geo area / commune list
+   - **Article 9** → link to terroir
+5. Emit a sidecar JSON under
+   [raw/it/masaf-disciplinari-extracted/<slug>.json](raw/it/masaf-disciplinari-extracted/)
+   with full provenance (`bundle_key`, `archive_path`, sha256, match
+   method).
+
+Stage 04's `augment_it_records_with_masaf()` merges the sidecar into
+the in-memory stub record at load time (summary / regione / grapes /
+geo_area_brief / link_to_terroir / section_roles); the on-disk stub
+JSON stays immutable. `_sources_for()` surfaces `masaf_*` provenance
+fields so the panel can attribute the data and link to the archived
+PDF. The record's `stub_reason` is prefixed `masaf:` so the audit
+can tell doc-unico-extracted from MASAF-augmented wines.
+
+The 10 wines without a bundle hit (mostly newer IGTs not yet in
+MASAF's archives + a couple of DOPs whose PDF lives under a different
+name) use the same `manual_overrides.json` flow as ES + PT:
+```json
+{
+  "<slug>": {
+    "pdf_url": "https://...",
+    "source_org": "masaf|regione|consorzio|gazzetta",
+    "verification_note": "..."
+  }
+}
+```
+at `raw/it/masaf-disciplinari/manual_overrides.json`. The override
+URL takes precedence over the bundle match and re-fetches when the
+sidecar's `source.url` disagrees.
+
+Re-runnable per slug or sweep:
+```
+.venv/bin/python scripts/it/02f_extract_masaf.py --slug barolo
+.venv/bin/python scripts/it/02f_extract_masaf.py --all
+```
+Unknown-variety candidates flow to
+[raw/it/extraction-unknowns-masaf.json](raw/it/extraction-unknowns-masaf.json)
+for vocab curation (Cesanese di Affile, regional Sardinian varieties,
+etc. — the curator pattern adds them to `DEFAULT_COLOUR` /
+`GRAPE_ALIAS` rather than the MASAF parser).
+
+### Curator workflow for IT wines without an OJ publication
+
+Mirrors the ES + PT `regen_manual_overrides_template.py` flow.
+Wines in the `no-publication` bucket (~330) or `not-single-document`
+bucket (~9) appear in the audit at the bottom. Per high-priority
+wine, find a public, licence-clear pliego URL (MASAF detail-page
+HTML, Gazzetta Ufficiale PDF, regional gazette) and put it in
+`raw/it/oj-pages/manual_overrides.json` keyed by `slug` or
+`giIdentifier`:
+
+```json
+{
+  "barolo": {"url": "https://...documento-unico.html", "note": "MASAF detail page"}
+}
+```
+
+Then re-run `scripts/it/01_fetch_pliegos.py` → `02_extract_pliegos.py`
+→ `04_build_maps.py`. Caveat: stage 02's HTML parser only
+understands the EU-OJ documento-unico template; MASAF detail pages
+need a per-source parser (stage 02f-MASAF, deferred).
+
+## Batch API (02c / 02d / 02e)
+
+The three LLM stages — `02c` (summary translation), `02d` (terroir-fact
+extraction) and `02e` (bullet translation), every country — accept a
+`--batch` flag. With `--provider anthropic` or `--provider mistral` it
+submits the whole eligible corpus to that provider's Batch API as one
+job (~50 % cheaper than synchronous calls) instead of looping
+`provider.chat()`.
+
+Mechanics (`scripts/_lib/batch.py`): the stage's normal processing loop
+runs twice — pass 1, a `CollectingProvider` records every prompt the
+stage would send (returns `""`, so nothing is parsed or cached); the
+batch is submitted and polled to completion; pass 2, a `ReplayProvider`
+feeds the answers back in the same call order so the stage parses and
+writes caches unchanged. The command blocks until the batch finishes;
+the batch id is written to `raw/.batch/<stage>.json`, so an interrupted
+run, re-run, **resumes** the in-flight batch instead of resubmitting
+(and re-paying). Each request's `custom_id` is a hash of its prompt, so
+`--batch` is **incremental** — it enumerates only the stale / missing
+entries and never resubmits an already-processed one — and pass 2 matches
+answers by content, not call order (runs are single-threaded all the
+same).
+
+Default models (`scripts/_lib/providers.py`): `claude-sonnet-4-6` for
+anthropic, `mistral-medium-latest` for mistral — used by `--batch` and by
+synchronous `--provider` runs alike; override per run with `--model`. API
+keys are read from the environment or a repo-root `.env`. Anthropic
+batches use the Messages Batches SDK; Mistral batches use a file-upload /
+poll / download REST flow (no `mistralai` SDK dependency).
 
 ## Internationalisation
 

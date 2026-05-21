@@ -1,0 +1,4109 @@
+{
+  "consorzi": [
+    {
+      "consorzio": "Consorzio Tutela Vini d'Abruzzo",
+      "address": "Corso matteotti - Palazzo Corvo - 66026 Ortona (CH)",
+      "wines": [
+        {
+          "slug": "abruzzo",
+          "name": "Abruzzo",
+          "kind": "DOP",
+          "regione": "Abruzzo"
+        },
+        {
+          "slug": "cerasuolo-d-abruzzo",
+          "name": "Cerasuolo d'Abruzzo",
+          "kind": "DOP",
+          "regione": "Abruzzo"
+        },
+        {
+          "slug": "colline-frentane",
+          "name": "Colline Frentane",
+          "kind": "IGP",
+          "regione": ""
+        },
+        {
+          "slug": "colline-pescaresi",
+          "name": "Colline Pescaresi",
+          "kind": "IGP",
+          "regione": ""
+        },
+        {
+          "slug": "colline-teatine",
+          "name": "Colline Teatine",
+          "kind": "IGP",
+          "regione": ""
+        },
+        {
+          "slug": "controguerra",
+          "name": "Controguerra",
+          "kind": "DOP",
+          "regione": "Marche"
+        },
+        {
+          "slug": "montepulciano-d-abruzzo",
+          "name": "Montepulciano d'Abruzzo",
+          "kind": "DOP",
+          "regione": "Abruzzo"
+        },
+        {
+          "slug": "terre-di-chieti",
+          "name": "Terre di Chieti",
+          "kind": "IGP",
+          "regione": ""
+        },
+        {
+          "slug": "trebbiano-d-abruzzo",
+          "name": "Trebbiano d'Abruzzo",
+          "kind": "DOP",
+          "regione": "Abruzzo"
+        },
+        {
+          "slug": "villamagna",
+          "name": "Villamagna",
+          "kind": "DOP",
+          "regione": "Puglia"
+        },
+        {
+          "slug": "del-vastese",
+          "name": "del Vastese",
+          "kind": "IGP",
+          "regione": ""
+        }
+      ],
+      "id": "C001"
+    },
+    {
+      "consorzio": "Sannio Consorzio Tutela Vini",
+      "address": "Via Mario Vetrone, snc  - 82100 Benevento",
+      "wines": [
+        {
+          "slug": "aglianico-del-taburno",
+          "name": "Aglianico del Taburno",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "benevento",
+          "name": "Benevento",
+          "kind": "IGP",
+          "regione": ""
+        },
+        {
+          "slug": "falanghina-del-sannio",
+          "name": "Falanghina del Sannio",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "sannio",
+          "name": "Sannio",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C002"
+    },
+    {
+      "consorzio": "Consorzio di Tutela Aglianico del Vulture",
+      "address": "Piazza XX settembre (pal. Giustino Fortunato) C.P. 18 - 85028 - Rionero in Vulture (PZ)",
+      "wines": [
+        {
+          "slug": "aglianico-del-vulture",
+          "name": "Aglianico del Vulture",
+          "kind": "DOP",
+          "regione": "Basilicata"
+        },
+        {
+          "slug": "aglianico-del-vulture-superiore",
+          "name": "Aglianico del Vulture Superiore",
+          "kind": "DOP",
+          "regione": "Basilicata"
+        }
+      ],
+      "id": "C003"
+    },
+    {
+      "consorzio": "Consorzio tutela Barbera d'Asti e Vini del Monferrato",
+      "address": "Piazza Vittorio Emanuele II, n. 10 14055 Costigliole d'Asti (AT)",
+      "wines": [
+        {
+          "slug": "albugnano",
+          "name": "Albugnano",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "barbera-d-asti",
+          "name": "Barbera d'Asti",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "cortese-dell-alto-monferrato",
+          "name": "Cortese dell'Alto Monferrato",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "dolcetto-d-asti",
+          "name": "Dolcetto d'Asti",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "freisa-d-asti",
+          "name": "Freisa d'Asti",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "grignolino-d-asti",
+          "name": "Grignolino d'Asti",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "loazzolo",
+          "name": "Loazzolo",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "malvasia-di-castelnuovo-don-bosco",
+          "name": "Malvasia di Castelnuovo Don Bosco",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "monferrato",
+          "name": "Monferrato",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "nizza",
+          "name": "Nizza",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "piemonte",
+          "name": "Piemonte",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "ruche-di-castagnole-monferrato",
+          "name": "Ruchè di Castagnole Monferrato",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "terre-alfieri",
+          "name": "Terre Alfieri",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C004"
+    },
+    {
+      "consorzio": "Consorzio di tutela vini di Alghero",
+      "address": "c/o Tenuta Sella e Mosca S.p.a. - Loc. I Piani - 07041 Alghero (SS)",
+      "wines": [
+        {
+          "slug": "alghero",
+          "name": "Alghero",
+          "kind": "DOP",
+          "regione": "Sardegna"
+        }
+      ],
+      "id": "C005"
+    },
+    {
+      "consorzio": "Consorzio Tutela Alta Langa",
+      "address": "Piazza Roma, n. 10\n14100 - Asti",
+      "wines": [
+        {
+          "slug": "alta-langa",
+          "name": "Alta Langa",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        }
+      ],
+      "id": "C006"
+    },
+    {
+      "consorzio": "Consorzio volontario di tutela Vini Alto Adige",
+      "address": "via F. Crispi, 15 - 39100 Bolzano",
+      "wines": [
+        {
+          "slug": "alto-adige",
+          "name": "Alto Adige",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "lago-di-caldaro",
+          "name": "Lago di Caldaro",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "mitterberg",
+          "name": "Mitterberg",
+          "kind": "IGP",
+          "regione": ""
+        }
+      ],
+      "id": "C007"
+    },
+    {
+      "consorzio": "Consorzio per la Tutela dei Vini Valpolicella",
+      "address": "Via Valpolicella, n. 57\n37029 San Pietro in Cariano (VR)",
+      "wines": [
+        {
+          "slug": "amarone-della-valpolicella",
+          "name": "Amarone della Valpolicella",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "recioto-della-valpolicella",
+          "name": "Recioto della Valpolicella",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "valpolicella",
+          "name": "Valpolicella",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "valpolicella-ripasso",
+          "name": "Valpolicella Ripasso",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C008"
+    },
+    {
+      "consorzio": "Consorzio volontario per la tutela dei vini Amelia DOC",
+      "address": "Zona industriale Fornole - 05022 - Amelia",
+      "wines": [
+        {
+          "slug": "amelia",
+          "name": "Amelia",
+          "kind": "DOP",
+          "regione": "Umbria"
+        }
+      ],
+      "id": "C009"
+    },
+    {
+      "consorzio": "Consorzio per la tutela dei vini DOC Arcole",
+      "address": "Via A. Mattielli, 11 - 37038 Soave (VR)",
+      "wines": [
+        {
+          "slug": "arcole",
+          "name": "Arcole",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C010"
+    },
+    {
+      "consorzio": "Consorzio per la tutela dell'Asti",
+      "address": "Piazza Roma, 10 - 14100 Asti",
+      "wines": [
+        {
+          "slug": "asti",
+          "name": "Asti",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "canelli",
+          "name": "Canelli",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "strevi",
+          "name": "Strevi",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C011"
+    },
+    {
+      "consorzio": "Consorzio per la tutela dei vini DOP Atina",
+      "address": "Via Broile, n. 267\n03042 - Atina (FR)",
+      "wines": [
+        {
+          "slug": "atina",
+          "name": "Atina",
+          "kind": "DOP",
+          "regione": "Lazio"
+        }
+      ],
+      "id": "C012"
+    },
+    {
+      "consorzio": "Consorzio tutela vini DOC Asprinio d'Aversa, Galluccio e Falerno del Massic",
+      "address": "Viale Giulio Antonio Acquaviva n. 128   81100 Caserta",
+      "wines": [
+        {
+          "slug": "aversa",
+          "name": "Aversa",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "falerno-del-massico",
+          "name": "Falerno del Massico",
+          "kind": "DOP",
+          "regione": "Campania"
+        },
+        {
+          "slug": "galluccio",
+          "name": "Galluccio",
+          "kind": "DOP",
+          "regione": "Campania"
+        },
+        {
+          "slug": "roccamonfina",
+          "name": "Roccamonfina",
+          "kind": "IGP",
+          "regione": "Campania"
+        },
+        {
+          "slug": "terre-del-volturno",
+          "name": "Terre del Volturno",
+          "kind": "IGP",
+          "regione": "Campania"
+        }
+      ],
+      "id": "C013"
+    },
+    {
+      "consorzio": "Consorzio Valdinoto",
+      "address": "Via Rocco Pirri n. 23\n96017 - Noto (SR)",
+      "wines": [
+        {
+          "slug": "avola",
+          "name": "Avola",
+          "kind": "IGP",
+          "regione": ""
+        },
+        {
+          "slug": "eloro",
+          "name": "Eloro",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "noto",
+          "name": "Noto",
+          "kind": "DOP",
+          "regione": "Sicilia"
+        },
+        {
+          "slug": "siracusa",
+          "name": "Siracusa",
+          "kind": "DOP",
+          "regione": "Sicilia"
+        }
+      ],
+      "id": "C014"
+    },
+    {
+      "consorzio": "Consorzio di tutela vino Friularo di Bagnoli DOCG e vini DOC Bagnoli",
+      "address": "Piazza Marconi n. 63 \n35023 - Bagnoli di Sopra (PD)\nSede operativa: Via Padova n. 68\n35026 - Conselve (PD)",
+      "wines": [
+        {
+          "slug": "bagnoli-friularo",
+          "name": "Bagnoli Friularo",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "bagnoli-di-sopra",
+          "name": "Bagnoli di Sopra",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C015"
+    },
+    {
+      "consorzio": "Consorzio di tutela Barolo Barbaresco Alba Langhe e Dogliani",
+      "address": "Corso Enotria, 2/C Ampelion 12051 Alba (CN)",
+      "wines": [
+        {
+          "slug": "barbaresco",
+          "name": "Barbaresco",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "barbera-d-alba",
+          "name": "Barbera d'Alba",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "barolo",
+          "name": "Barolo",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "dogliani",
+          "name": "Dogliani",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "dolcetto-d-alba",
+          "name": "Dolcetto d'Alba",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "dolcetto-di-diano-d-alba",
+          "name": "Dolcetto di Diano d'Alba",
+          "kind": "DOP",
+          "regione": "Liguria"
+        },
+        {
+          "slug": "langhe",
+          "name": "Langhe",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "nebbiolo-d-alba",
+          "name": "Nebbiolo d'Alba",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "verduno-pelaverga",
+          "name": "Verduno Pelaverga",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        }
+      ],
+      "id": "C016"
+    },
+    {
+      "consorzio": "Consorzio Colline del Monferrato Casalese",
+      "address": "Via Mameli n. 10\nc/o Comune Casale di Monferrato\n15033 - Casale Monferrato (AL)",
+      "wines": [
+        {
+          "slug": "barbera-del-monferrato-superiore",
+          "name": "Barbera del Monferrato Superiore",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "gabiano",
+          "name": "Gabiano",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "rubino-di-cantavenna",
+          "name": "Rubino di Cantavenna",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C017"
+    },
+    {
+      "consorzio": "Consorzio Tutela Vino Bardolino D.O.C.",
+      "address": "Piazza Matteotti, 8\n37011 Bardolino (VR)",
+      "wines": [
+        {
+          "slug": "bardolino",
+          "name": "Bardolino",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "bardolino-superiore",
+          "name": "Bardolino Superiore",
+          "kind": "DOP",
+          "regione": "Veneto"
+        },
+        {
+          "slug": "colli-berici",
+          "name": "Colli Berici",
+          "kind": "DOP",
+          "regione": "Veneto"
+        },
+        {
+          "slug": "vicenza",
+          "name": "Vicenza",
+          "kind": "DOP",
+          "regione": "Veneto"
+        }
+      ],
+      "id": "C018"
+    },
+    {
+      "consorzio": "Consorzio Valtènesi",
+      "address": "Via Roma, n. 4 c/o Villa Galnica - 25080 - Pugnago del Garda (BS)",
+      "wines": [
+        {
+          "slug": "benaco-bresciano",
+          "name": "Benaco Bresciano",
+          "kind": "IGP",
+          "regione": ""
+        },
+        {
+          "slug": "san-martino-della-battaglia",
+          "name": "San Martino della Battaglia",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C019"
+    },
+    {
+      "consorzio": "Istituto Marchigiano di tutela vini",
+      "address": "Viale dell'Industria, 5 - 60035 Jesi (AN)",
+      "wines": [
+        {
+          "slug": "bianchello-del-metauro",
+          "name": "Bianchello del Metauro",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "castelli-di-jesi-verdicchio-riserva",
+          "name": "Castelli di Jesi Verdicchio Riserva",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "colli-maceratesi",
+          "name": "Colli Maceratesi",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "colli-pesaresi",
+          "name": "Colli Pesaresi",
+          "kind": "DOP",
+          "regione": "Marche"
+        },
+        {
+          "slug": "conero",
+          "name": "Cònero",
+          "kind": "DOP",
+          "regione": "Marche"
+        },
+        {
+          "slug": "esino",
+          "name": "Esino",
+          "kind": "DOP",
+          "regione": "Marche"
+        },
+        {
+          "slug": "lacrima-di-morro",
+          "name": "Lacrima di Morro",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "pergola",
+          "name": "Pergola",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "rosso-conero",
+          "name": "Rosso Cònero",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "san-ginesio",
+          "name": "San Ginesio",
+          "kind": "DOP",
+          "regione": "Marche"
+        },
+        {
+          "slug": "serrapetrona",
+          "name": "Serrapetrona",
+          "kind": "DOP",
+          "regione": "Marche"
+        },
+        {
+          "slug": "verdicchio-dei-castelli-di-jesi",
+          "name": "Verdicchio dei Castelli di Jesi",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "verdicchio-di-matelica",
+          "name": "Verdicchio di Matelica",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "verdicchio-di-matelica-riserva",
+          "name": "Verdicchio di Matelica Riserva",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "vernaccia-di-serrapetrona",
+          "name": "Vernaccia di Serrapetrona",
+          "kind": "DOP",
+          "regione": "Marche"
+        }
+      ],
+      "id": "C020"
+    },
+    {
+      "consorzio": "Consorzio Vino Chianti",
+      "address": "Viale Belfiore, 9 50144 – Firenze",
+      "wines": [
+        {
+          "slug": "bianco-dell-empolese",
+          "name": "Bianco dell'Empolese",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "chianti",
+          "name": "Chianti",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "colli-dell-etruria-centrale",
+          "name": "Colli dell'Etruria Centrale",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "vin-santo-del-chianti",
+          "name": "Vin Santo del Chianti",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C021"
+    },
+    {
+      "consorzio": "Consorzio vini DOC Bianco di Pitigliano e Sovana",
+      "address": "c/o Comunità Montana Colline del Fiora - Via Ugolini, 83 - 58017 Pitigliano (GR",
+      "wines": [
+        {
+          "slug": "bianco-di-pitigliano",
+          "name": "Bianco di Pitigliano",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "sovana",
+          "name": "Sovana",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C022"
+    },
+    {
+      "consorzio": "Consorzio di tutela e valorizzazione delle viti e del vino DOC Bivongi",
+      "address": "Via Cesare Battisti n. 20\n89040 - Bivongi (RC)\nSede operativa: Contrada Melissari snc \n89047 - Rocella Ionica (RC)",
+      "wines": [
+        {
+          "slug": "bivongi",
+          "name": "Bivongi",
+          "kind": "DOP",
+          "regione": "Calabria"
+        }
+      ],
+      "id": "C023"
+    },
+    {
+      "consorzio": "Consorzio Tutela Nebbioli Alto Piemonte",
+      "address": "Piazza Castello, n. 47 - 28074 Ghemme (NO)",
+      "wines": [
+        {
+          "slug": "boca",
+          "name": "Boca",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "bramaterra",
+          "name": "Bramaterra",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "colline-novaresi",
+          "name": "Colline Novaresi",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "coste-della-sesia",
+          "name": "Coste della Sesia",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "fara",
+          "name": "Fara",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "gattinara",
+          "name": "Gattinara",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "ghemme",
+          "name": "Ghemme",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "lessona",
+          "name": "Lessona",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "sizzano",
+          "name": "Sizzano",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "valli-ossolane",
+          "name": "Valli Ossolane",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        }
+      ],
+      "id": "C024"
+    },
+    {
+      "consorzio": "Consorzio per la tutela dei vini con denominazione di origine Bolgheri",
+      "address": "Casa Comunale - via Carducci, n. 1 - 57022 Castagneto Carducci (LI)",
+      "wines": [
+        {
+          "slug": "bolgheri",
+          "name": "Bolgheri",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "bolgheri-sassicaia",
+          "name": "Bolgheri Sassicaia",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C025"
+    },
+    {
+      "consorzio": "Consorzio Tutela Vini Oltrepò Pavese",
+      "address": "Sede legale: Via Mentana, n. 27  c/o CCIAA di Pavia 27100 - Pavia\nsede operativa: Via Riccagioia, 48 \nTorrazze Coste (PV)",
+      "wines": [
+        {
+          "slug": "bonarda-dell-oltrepo-pavese",
+          "name": "Bonarda dell'Oltrepò Pavese",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "buttafuoco-dell-oltrepo-pavese",
+          "name": "Buttafuoco dell'Oltrepò Pavese",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "oltrepo-pavese",
+          "name": "Oltrepò Pavese",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "oltrepo-pavese-pinot-grigio",
+          "name": "Oltrepò Pavese Pinot grigio",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "oltrepo-pavese-metodo-classico",
+          "name": "Oltrepò Pavese metodo classico",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "pinot-nero-dell-oltrepo-pavese",
+          "name": "Pinot nero dell'Oltrepò Pavese",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "sangue-di-giuda",
+          "name": "Sangue di Giuda",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        }
+      ],
+      "id": "C026"
+    },
+    {
+      "consorzio": "Consorzio tutela vini DOC Bosco Eliceo",
+      "address": "Via Borgoleoni, 11 44100  - Ferrara",
+      "wines": [
+        {
+          "slug": "bosco-eliceo",
+          "name": "Bosco Eliceo",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C027"
+    },
+    {
+      "consorzio": "Consorzio Botticino",
+      "address": "Viale della Bornata, 65 (c/o Ente Vini Bresciani) - 25123 - Brescia",
+      "wines": [
+        {
+          "slug": "botticino",
+          "name": "Botticino",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C028"
+    },
+    {
+      "consorzio": "Consorzio Tutela Vini d'Acqui",
+      "address": "Piazza A. Levi, 7 - 15011 Asti",
+      "wines": [
+        {
+          "slug": "brachetto-d-acqui",
+          "name": "Brachetto d'Acqui",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "dolcetto-d-acqui",
+          "name": "Dolcetto d'Acqui",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C029"
+    },
+    {
+      "consorzio": "Consorzio per la tutela della DOC dei vini Breganze",
+      "address": "Piazza Mazzini, 18 - 36042 Breganze (VI)",
+      "wines": [
+        {
+          "slug": "breganze",
+          "name": "Breganze",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C030"
+    },
+    {
+      "consorzio": "Consorzio per la tutela dei vini DOP Brindisi e DOP Squinzano",
+      "address": "Via Bastioni Carlo V n. 4\n72100 - Brindisi",
+      "wines": [
+        {
+          "slug": "brindisi",
+          "name": "Brindisi",
+          "kind": "DOP",
+          "regione": "Puglia"
+        },
+        {
+          "slug": "squinzano",
+          "name": "Squinzano",
+          "kind": "DOP",
+          "regione": "Puglia"
+        }
+      ],
+      "id": "C031"
+    },
+    {
+      "consorzio": "Consorzio del vino Brunello di Montalcino",
+      "address": "Via Boldrini, n. 10 - 53024 Montalcino (SI)",
+      "wines": [
+        {
+          "slug": "brunello-di-montalcino",
+          "name": "Brunello di Montalcino",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "moscadello-di-montalcino",
+          "name": "Moscadello di Montalcino",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "rosso-di-montalcino",
+          "name": "Rosso di Montalcino",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "sant-antimo",
+          "name": "Sant'Antimo",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C032"
+    },
+    {
+      "consorzio": "Consorzio di tutela vini di Cagliari",
+      "address": "c/o CCIAA di Cagliari, Largo Carlo Felice, 72 - 09100 Cagliari (CA)",
+      "wines": [
+        {
+          "slug": "cagliari",
+          "name": "Cagliari",
+          "kind": "DOP",
+          "regione": "Sardegna"
+        },
+        {
+          "slug": "giro-di-cagliari",
+          "name": "Girò di Cagliari",
+          "kind": "DOP",
+          "regione": "Sardegna"
+        },
+        {
+          "slug": "nasco-di-cagliari",
+          "name": "Nasco di Cagliari",
+          "kind": "DOP",
+          "regione": "Sardegna"
+        },
+        {
+          "slug": "nuragus-di-cagliari",
+          "name": "Nuragus di Cagliari",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C033"
+    },
+    {
+      "consorzio": "Consorzio Tutela Vini dei Campi Flegrei e Ischia",
+      "address": "Via Cinta n. 42\n80126 - Napoli",
+      "wines": [
+        {
+          "slug": "campi-flegrei",
+          "name": "Campi Flegrei",
+          "kind": "DOP",
+          "regione": "Campania"
+        },
+        {
+          "slug": "ischia",
+          "name": "Ischia",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C034"
+    },
+    {
+      "consorzio": "Consorzio Volontario per la Tutela e la Valorizzazione dei vini DOC Terralba",
+      "address": "Via Marceddì n. 23\n09098 - Terralba (OR)",
+      "wines": [
+        {
+          "slug": "campidano-di-terralba",
+          "name": "Campidano di Terralba",
+          "kind": "DOP",
+          "regione": "Sardegna"
+        }
+      ],
+      "id": "C035"
+    },
+    {
+      "consorzio": "Consorzio volontario per la tutela e la valorizzazione dei vini DOCG di Caluso e DOC Carema e Canavese",
+      "address": "Piazza Umbertini n. 1 – 10014 Caluso (TO)",
+      "wines": [
+        {
+          "slug": "canavese",
+          "name": "Canavese",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "carema",
+          "name": "Carema",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        },
+        {
+          "slug": "erbaluce-di-caluso",
+          "name": "Erbaluce di Caluso",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C036"
+    },
+    {
+      "consorzio": "Consorzio Candia Colli Apuani",
+      "address": "Largo Matteotti, n. 22 - 54100 Massa (MS)",
+      "wines": [
+        {
+          "slug": "candia-dei-colli-apuani",
+          "name": "Candia dei Colli Apuani",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C037"
+    },
+    {
+      "consorzio": "Consorzio tutela denominazione vini Frascati",
+      "address": "Largo donatori di sangue, snc - Frascati (RM)",
+      "wines": [
+        {
+          "slug": "cannellino-di-frascati",
+          "name": "Cannellino di Frascati",
+          "kind": "DOP",
+          "regione": "Lazio"
+        },
+        {
+          "slug": "frascati",
+          "name": "Frascati",
+          "kind": "DOP",
+          "regione": "Lazio"
+        },
+        {
+          "slug": "frascati-superiore",
+          "name": "Frascati Superiore",
+          "kind": "DOP",
+          "regione": "Lazio"
+        }
+      ],
+      "id": "C038"
+    },
+    {
+      "consorzio": "Consorzio Montenetto",
+      "address": "Viale della Bornata, 65 (c/o Ente Vini Bresciani) - 25123 - Brescia",
+      "wines": [
+        {
+          "slug": "capriano-del-colle",
+          "name": "Capriano del Colle",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C039"
+    },
+    {
+      "consorzio": "Consorzio di Tutela Vino Carignano del Sulcis",
+      "address": "Via Zuddas, n. 12 - 09041 Dolianova (SU)",
+      "wines": [
+        {
+          "slug": "carignano-del-sulcis",
+          "name": "Carignano del Sulcis",
+          "kind": "DOP",
+          "regione": "Sardegna"
+        }
+      ],
+      "id": "C040"
+    },
+    {
+      "consorzio": "Consorzio di Tutela dei Vini Carmignano",
+      "address": "Piazza Vittorio Emanuele II n. 2\n59015 - Carmignano (PO)",
+      "wines": [
+        {
+          "slug": "carmignano",
+          "name": "Carmignano",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C041"
+    },
+    {
+      "consorzio": "Consorzio per la tutela dei vini DOC Castel del Monte",
+      "address": "Corso Cavour, n. 23-25-27\n70033 Corato (Bari)",
+      "wines": [
+        {
+          "slug": "castel-del-monte",
+          "name": "Castel del Monte",
+          "kind": "DOP",
+          "regione": "Puglia"
+        },
+        {
+          "slug": "castel-del-monte-bombino-nero",
+          "name": "Castel del Monte Bombino Nero",
+          "kind": "DOP",
+          "regione": "Puglia"
+        },
+        {
+          "slug": "castel-del-monte-nero-di-troia-riserva",
+          "name": "Castel del Monte Nero di Troia Riserva",
+          "kind": "DOP",
+          "regione": "Puglia"
+        },
+        {
+          "slug": "castel-del-monte-rosso-riserva",
+          "name": "Castel del Monte Rosso Riserva",
+          "kind": "DOP",
+          "regione": "Puglia"
+        }
+      ],
+      "id": "C042"
+    },
+    {
+      "consorzio": "Consorzio di Tutela Vita Salernum Vites",
+      "address": "Via Roberto Wenner, n. 62\n84131 Salerno",
+      "wines": [
+        {
+          "slug": "castel-san-lorenzo",
+          "name": "Castel San Lorenzo",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "cilento",
+          "name": "Cilento",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "colli-di-salerno",
+          "name": "Colli di Salerno",
+          "kind": "IGP",
+          "regione": "Campania"
+        },
+        {
+          "slug": "paestum",
+          "name": "Paestum",
+          "kind": "IGP",
+          "regione": ""
+        }
+      ],
+      "id": "C043"
+    },
+    {
+      "consorzio": "Consorzio tutela vini del Trentino",
+      "address": "Via del Suffragio, 3\n38122 Trento",
+      "wines": [
+        {
+          "slug": "casteller",
+          "name": "Casteller",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "teroldego-rotaliano",
+          "name": "Teroldego Rotaliano",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "trentino",
+          "name": "Trentino",
+          "kind": "DOP",
+          "regione": "Trentino-Alto Adige"
+        },
+        {
+          "slug": "trento",
+          "name": "Trento",
+          "kind": "DOP",
+          "regione": "Trentino-Alto Adige"
+        },
+        {
+          "slug": "valdadige",
+          "name": "Valdadige",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "vallagarina",
+          "name": "Vallagarina",
+          "kind": "IGP",
+          "regione": "Trentino-Alto Adige"
+        },
+        {
+          "slug": "vigneti-delle-dolomiti",
+          "name": "Vigneti delle Dolomiti",
+          "kind": "IGP",
+          "regione": "Veneto"
+        }
+      ],
+      "id": "C044"
+    },
+    {
+      "consorzio": "Consorzio volontario di tutela Cerasuolo di Vittoria DOCG e Vittoria DOC",
+      "address": "c/o Museo Civco Polivalente - Piazza Enriquez 97019 Vittoria (R",
+      "wines": [
+        {
+          "slug": "cerasuolo-di-vittoria",
+          "name": "Cerasuolo di Vittoria",
+          "kind": "DOP",
+          "regione": "Sicilia"
+        },
+        {
+          "slug": "vittoria",
+          "name": "Vittoria",
+          "kind": "DOP",
+          "regione": "Sicilia"
+        }
+      ],
+      "id": "C045"
+    },
+    {
+      "consorzio": "Consorzio per la tutela e la valorizzazione del vino Cesanese del Piglio",
+      "address": "Via Adige, 41 - 03100 – Frosinone (FR)",
+      "wines": [
+        {
+          "slug": "cesanese-del-piglio",
+          "name": "Cesanese del Piglio",
+          "kind": "DOP",
+          "regione": "Lazio"
+        }
+      ],
+      "id": "C046"
+    },
+    {
+      "consorzio": "Consorzio Vino Chianti Classico",
+      "address": "Via Pianigiani, n. 9 - 53017 Radda in Chianti (SI)",
+      "wines": [
+        {
+          "slug": "chianti-classico",
+          "name": "Chianti Classico",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "vin-santo-del-chianti-classico",
+          "name": "Vin Santo del Chianti Classico",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C047"
+    },
+    {
+      "consorzio": "Consorzio per la tutela dei vini DOP e IGP Colli di Luni, Cinque Terre, Colline di Levanto e Liguria di Levante",
+      "address": "Via Variante Cisa Loc. Pallodola\nc/o sede delle Organizzazioni Professionali di Categoria, Mercato Ortofrutticolo\n19038 - Sarzana (SP)",
+      "wines": [
+        {
+          "slug": "cinque-terre",
+          "name": "Cinque Terre",
+          "kind": "DOP",
+          "regione": "Liguria"
+        },
+        {
+          "slug": "colli-di-luni",
+          "name": "Colli di Luni",
+          "kind": "DOP",
+          "regione": "Liguria"
+        },
+        {
+          "slug": "colline-di-levanto",
+          "name": "Colline di Levanto",
+          "kind": "DOP",
+          "regione": "Liguria"
+        },
+        {
+          "slug": "liguria-di-levante",
+          "name": "Liguria di Levante",
+          "kind": "IGP",
+          "regione": "Liguria"
+        }
+      ],
+      "id": "C048"
+    },
+    {
+      "consorzio": "Consorzio per la tutela e la valorizzazione dei vini DOC Cirò e Melissa",
+      "address": "Via Roma, 88 88811 - Cirò Marina (KR)",
+      "wines": [
+        {
+          "slug": "ciro",
+          "name": "Cirò",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "melissa",
+          "name": "Melissa",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C049"
+    },
+    {
+      "consorzio": "Consorzio Vini Colli Bolognesi",
+      "address": "Via Abbazia n. 30/C, Loc. San Teodoro - 40050 Monteveglio (BO)",
+      "wines": [
+        {
+          "slug": "colli-bolognesi",
+          "name": "Colli Bolognesi",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C050"
+    },
+    {
+      "consorzio": "Consorzio Vini di Romagna",
+      "address": "Corso della Repubblica, 5 47121 - Forlì (FO)",
+      "wines": [
+        {
+          "slug": "colli-d-imola",
+          "name": "Colli d'Imola",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "colli-di-faenza",
+          "name": "Colli di Faenza",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "forli",
+          "name": "Forlì",
+          "kind": "IGP",
+          "regione": "Emilia-Romagna"
+        },
+        {
+          "slug": "ravenna",
+          "name": "Ravenna",
+          "kind": "IGP",
+          "regione": "Emilia-Romagna"
+        },
+        {
+          "slug": "romagna",
+          "name": "Romagna",
+          "kind": "DOP",
+          "regione": "Emilia-Romagna"
+        },
+        {
+          "slug": "romagna-albana",
+          "name": "Romagna Albana",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "rubicone",
+          "name": "Rubicone",
+          "kind": "IGP",
+          "regione": "Puglia"
+        }
+      ],
+      "id": "C051"
+    },
+    {
+      "consorzio": "Consorzio tutela vini DOC Colli del Trasimeno",
+      "address": "P.za Gramsci, 1 - 06061 - Castiglione del Lago (PG)",
+      "wines": [
+        {
+          "slug": "colli-del-trasimeno",
+          "name": "Colli del Trasimeno",
+          "kind": "DOP",
+          "regione": "Umbria"
+        }
+      ],
+      "id": "C052"
+    },
+    {
+      "consorzio": "Consorzio volontario per la tutela dei vini dei Colli di Parma",
+      "address": "Via Verdi, 2 43121 – Parma",
+      "wines": [
+        {
+          "slug": "colli-di-parma",
+          "name": "Colli di Parma",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C053"
+    },
+    {
+      "consorzio": "Consorzio Tutela Lambrusco",
+      "address": "Viale Virgilio, 55 41123 – Modena",
+      "wines": [
+        {
+          "slug": "colli-di-scandiano-e-di-canossa",
+          "name": "Colli di Scandiano e di Canossa",
+          "kind": "DOP",
+          "regione": "Emilia-Romagna"
+        },
+        {
+          "slug": "lambrusco-grasparossa-di-castelvetro",
+          "name": "Lambrusco Grasparossa di Castelvetro",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "lambrusco-salamino-di-santa-croce",
+          "name": "Lambrusco Salamino di Santa Croce",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "lambrusco-di-sorbara",
+          "name": "Lambrusco di Sorbara",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "modena",
+          "name": "Modena",
+          "kind": "DOP",
+          "regione": "Emilia-Romagna"
+        },
+        {
+          "slug": "reggiano",
+          "name": "Reggiano",
+          "kind": "DOP",
+          "regione": "Emilia-Romagna"
+        },
+        {
+          "slug": "reno",
+          "name": "Reno",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C054"
+    },
+    {
+      "consorzio": "Consorzio volontario per la tutela dei vini Colli Euganei",
+      "address": "Piazzetta Martiri n. 10 - 35030 Vò (PD)",
+      "wines": [
+        {
+          "slug": "colli-euganei",
+          "name": "Colli Euganei",
+          "kind": "DOP",
+          "regione": "Veneto"
+        },
+        {
+          "slug": "colli-euganei-fior-d-arancio",
+          "name": "Colli Euganei Fior d'Arancio",
+          "kind": "DOP",
+          "regione": "Veneto"
+        }
+      ],
+      "id": "C055"
+    },
+    {
+      "consorzio": "Consorzio tutela vini Friuli Colli Orientali e Ramandolo",
+      "address": "Piazza XXVII Maggio, n. 23 - 33040 Corno di Rosazzo (UD)",
+      "wines": [
+        {
+          "slug": "colli-orientali-del-friuli-picolit",
+          "name": "Colli Orientali del Friuli Picolit",
+          "kind": "DOP",
+          "regione": "Friuli-Venezia Giulia"
+        },
+        {
+          "slug": "friuli-colli-orientali",
+          "name": "Friuli Colli Orientali",
+          "kind": "DOP",
+          "regione": "Friuli-Venezia Giulia"
+        },
+        {
+          "slug": "ramandolo",
+          "name": "Ramandolo",
+          "kind": "DOP",
+          "regione": "Friuli-Venezia Giulia"
+        },
+        {
+          "slug": "rosazzo",
+          "name": "Rosazzo",
+          "kind": "DOP",
+          "regione": "Friuli-Venezia Giulia"
+        }
+      ],
+      "id": "C056"
+    },
+    {
+      "consorzio": "Consorzio volontario per la tutela e la valorizzazione dei vini a denominazione di origine controllata Colli Tortonesi",
+      "address": "Corso Alessandria, 62 c/o Comune di Tortona 15057 (AL)",
+      "wines": [
+        {
+          "slug": "colli-tortonesi",
+          "name": "Colli Tortonesi",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        }
+      ],
+      "id": "C057"
+    },
+    {
+      "consorzio": "Consorzio volontario vino DOC San Colombano o San Colombano al Lambro",
+      "address": "Via Ricetto - Castello Belgioioso 20078 - San Colombano al Lambro (MI)",
+      "wines": [
+        {
+          "slug": "collina-del-milanese",
+          "name": "Collina del Milanese",
+          "kind": "IGP",
+          "regione": ""
+        },
+        {
+          "slug": "san-colombano-al-lambro",
+          "name": "San Colombano al Lambro",
+          "kind": "DOP",
+          "regione": "Lombardia"
+        }
+      ],
+      "id": "C058"
+    },
+    {
+      "consorzio": "Consorzio di tutela e valorizzazione delle DOC Freisa di Chieri e Collina Torinese",
+      "address": "c/o Municipio di Chieri - Via Palazzo di Città, 10 - 10023 Chieri (TO)",
+      "wines": [
+        {
+          "slug": "collina-torinese",
+          "name": "Collina Torinese",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "freisa-di-chieri",
+          "name": "Freisa di Chieri",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C059"
+    },
+    {
+      "consorzio": "Consorzio di tutela Vini del Collio",
+      "address": "Via Gramsci 2/4 - 34071 - Cormons (GO)",
+      "wines": [
+        {
+          "slug": "collio-goriziano",
+          "name": "Collio Goriziano",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C060"
+    },
+    {
+      "consorzio": "Consorzio Tutela del Vino Conegliano Valdobbiadene Prosecco",
+      "address": "Piazza Libertà, 7\nVilla Brandolini - Loc. Solighetto\n31053 Pieve di Soligo (TV)",
+      "wines": [
+        {
+          "slug": "conegliano-valdobbiadene-prosecco",
+          "name": "Conegliano Valdobbiadene - Prosecco",
+          "kind": "DOP",
+          "regione": "Veneto"
+        }
+      ],
+      "id": "C061"
+    },
+    {
+      "consorzio": "Consorzio Volontario per la tutela e la valorizzazione dei Vini DOC Cori",
+      "address": "Via della Libertà n. 36\n04010 Cori (LT)",
+      "wines": [
+        {
+          "slug": "cori",
+          "name": "Cori",
+          "kind": "DOP",
+          "regione": "Lazio"
+        }
+      ],
+      "id": "C062"
+    },
+    {
+      "consorzio": "Consorzio di tutela dei vini a denominazione di origine controllata Cortona",
+      "address": "Piazza Signorelli, n. 14 - 52044 Cortona (AR)",
+      "wines": [
+        {
+          "slug": "cortona",
+          "name": "Cortona",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C063"
+    },
+    {
+      "consorzio": "Consorzio Terre di Reggio Calabria",
+      "address": "C/o Museo del Vino\nVia Vittoria n. 46  Bianco (RC)",
+      "wines": [
+        {
+          "slug": "costa-viola",
+          "name": "Costa Viola",
+          "kind": "IGP",
+          "regione": "Calabria"
+        },
+        {
+          "slug": "locride",
+          "name": "Locride",
+          "kind": "IGP",
+          "regione": "Calabria"
+        },
+        {
+          "slug": "palizzi",
+          "name": "Palizzi",
+          "kind": "IGP",
+          "regione": "Calabria"
+        },
+        {
+          "slug": "pellaro",
+          "name": "Pellaro",
+          "kind": "IGP",
+          "regione": "Calabria"
+        }
+      ],
+      "id": "C064"
+    },
+    {
+      "consorzio": "Consorzio per la tutela del Franciacorta",
+      "address": "Via G. Verdi, 53 - 25030 Erbusco (BS)",
+      "wines": [
+        {
+          "slug": "curtefranca",
+          "name": "Curtefranca",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "franciacorta",
+          "name": "Franciacorta",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "sebino",
+          "name": "Sebino",
+          "kind": "IGP",
+          "regione": ""
+        }
+      ],
+      "id": "C065"
+    },
+    {
+      "consorzio": "Consorzio tutela vini Emilia",
+      "address": "V.le Virgilio, 55 - 41123 Modena (MO)",
+      "wines": [
+        {
+          "slug": "dell-emilia",
+          "name": "dell'Emilia",
+          "kind": "IGP",
+          "regione": ""
+        }
+      ],
+      "id": "C066"
+    },
+    {
+      "consorzio": "Consorzio Tutela DOC Delle Venezie",
+      "address": "Via Pallon n. 20 \n37121 - Verona",
+      "wines": [
+        {
+          "slug": "delle-venezie",
+          "name": "delle Venezie",
+          "kind": "DOP",
+          "regione": "Friuli-Venezia Giulia"
+        }
+      ],
+      "id": "C067"
+    },
+    {
+      "consorzio": "Consorzio Tutela Ovada DOCG",
+      "address": "Via Torino, n. 2\n15076 Ovada (AL)",
+      "wines": [
+        {
+          "slug": "dolcetto-di-ovada",
+          "name": "Dolcetto di Ovada",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "dolcetto-di-ovada-superiore",
+          "name": "Dolcetto di Ovada Superiore",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        }
+      ],
+      "id": "C068"
+    },
+    {
+      "consorzio": "Consorzio volontario per la Tutela dei Vini Etna con DOC",
+      "address": "Via Vidalba, n. 2\nFrazione Rovitello\n95012 Castiglione di Sicilia (CT)",
+      "wines": [
+        {
+          "slug": "etna",
+          "name": "Etna",
+          "kind": "DOP",
+          "regione": "Sicilia"
+        }
+      ],
+      "id": "C069"
+    },
+    {
+      "consorzio": "Consorzio tutela vini Piceni",
+      "address": "Largo Silvano Montevecchi, n. 11 - 63073 Offida (AP)",
+      "wines": [
+        {
+          "slug": "falerio",
+          "name": "Falerio",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "offida",
+          "name": "Offida",
+          "kind": "DOP",
+          "regione": "Marche"
+        },
+        {
+          "slug": "rosso-piceno",
+          "name": "Rosso Piceno",
+          "kind": "DOP",
+          "regione": "Marche"
+        },
+        {
+          "slug": "terre-di-offida",
+          "name": "Terre di Offida",
+          "kind": "DOP",
+          "regione": "Marche"
+        }
+      ],
+      "id": "C070"
+    },
+    {
+      "consorzio": "Consorzio Tutela vini d'Irpinia",
+      "address": "Viale Cassitto, n. 7\n83100 Avellino",
+      "wines": [
+        {
+          "slug": "fiano-di-avellino",
+          "name": "Fiano di Avellino",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "greco-di-tufo",
+          "name": "Greco di Tufo",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "irpinia",
+          "name": "Irpinia",
+          "kind": "DOP",
+          "regione": "Campania"
+        },
+        {
+          "slug": "taurasi",
+          "name": "Taurasi",
+          "kind": "DOP",
+          "regione": "Campania"
+        }
+      ],
+      "id": "C071"
+    },
+    {
+      "consorzio": "Consorzio Tutela Vini Friuli Venezia Giulia",
+      "address": "Via Altan n. 83/3\nSan Vito al Tagliamento (PD)",
+      "wines": [
+        {
+          "slug": "friuli",
+          "name": "Friuli",
+          "kind": "DOP",
+          "regione": "Friuli-Venezia Giulia"
+        }
+      ],
+      "id": "C072"
+    },
+    {
+      "consorzio": "Consorzio tutela vini DOC Friuli Aquileia",
+      "address": "Via dei Patriarchi, n. 3 - 33051 Aquileia (UD)",
+      "wines": [
+        {
+          "slug": "friuli-aquileia",
+          "name": "Friuli Aquileia",
+          "kind": "DOP",
+          "regione": "Friuli-Venezia Giulia"
+        }
+      ],
+      "id": "C073"
+    },
+    {
+      "consorzio": "Consorzio Tutela Vini DOC Friuli Grave",
+      "address": "Via Altan, n. 83/3\n33078 San Vito al Tagliamento (PN)",
+      "wines": [
+        {
+          "slug": "friuli-grave",
+          "name": "Friuli Grave",
+          "kind": "DOP",
+          "regione": "Friuli-Venezia Giulia"
+        }
+      ],
+      "id": "C074"
+    },
+    {
+      "consorzio": "Consorzio volontario per la Tutela dei vini Gambellara DOC e Recioto di Gambellara DOCG",
+      "address": "Via Mazzini, n. 2 - 36053 Gambellara (VI)",
+      "wines": [
+        {
+          "slug": "gambellara",
+          "name": "Gambellara",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "recioto-di-gambellara",
+          "name": "Recioto di Gambellara",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C075"
+    },
+    {
+      "consorzio": "Consorzio Garda DOC",
+      "address": "illa Venier \nVia Bassa, n. 14 Sommacampagna \n(VR)",
+      "wines": [
+        {
+          "slug": "garda",
+          "name": "Garda",
+          "kind": "DOP",
+          "regione": "Lombardia"
+        }
+      ],
+      "id": "C076"
+    },
+    {
+      "consorzio": "Consorzio vini Mantovani",
+      "address": "c/o CCIAA - via P.F. Calvi, 28 - 46100 -  Mantova",
+      "wines": [
+        {
+          "slug": "garda-colli-mantovani",
+          "name": "Garda Colli Mantovani",
+          "kind": "DOP",
+          "regione": "Lombardia"
+        },
+        {
+          "slug": "lambrusco-mantovano",
+          "name": "Lambrusco Mantovano",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "provincia-di-mantova",
+          "name": "Provincia di Mantova",
+          "kind": "IGP",
+          "regione": ""
+        },
+        {
+          "slug": "quistello",
+          "name": "Quistello",
+          "kind": "IGP",
+          "regione": ""
+        }
+      ],
+      "id": "C077"
+    },
+    {
+      "consorzio": "Consorzio tutela Gavi",
+      "address": "Corte Zerbo 27, Vico Bassani - 15066 Gavi (AL)",
+      "wines": [
+        {
+          "slug": "gavi",
+          "name": "Gavi",
+          "kind": "DOP",
+          "regione": "Piemonte"
+        }
+      ],
+      "id": "C078"
+    },
+    {
+      "consorzio": "Consorzio dei Vini Gioia del Colle DOC",
+      "address": "Via Paolo Cassano n. 311\n70023 - Gioia del Colle (BA)",
+      "wines": [
+        {
+          "slug": "gioia-del-colle",
+          "name": "Gioia del Colle",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C079"
+    },
+    {
+      "consorzio": "Consorzio per la promozione dei vini DOC Grance Senesi",
+      "address": "Via dell'Antica Grecis s.n.c. - Fraz. Serre di Rapolano - Rapolano Terme (SI)",
+      "wines": [
+        {
+          "slug": "grance-senesi",
+          "name": "Grance Senesi",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C080"
+    },
+    {
+      "consorzio": "Consorzio per la tutela e la valorizzazione del Vino DOC Gravina",
+      "address": "Via Giambattista Vico zona PIP70024 \nGravina in Puglia (BA)",
+      "wines": [
+        {
+          "slug": "gravina",
+          "name": "Gravina",
+          "kind": "DOP",
+          "regione": "Puglia"
+        }
+      ],
+      "id": "C081"
+    },
+    {
+      "consorzio": "Consorzio Tutela Vini DOC Colli Piacentini",
+      "address": "Piazza Cavalli, n. 35\n29121 Piacenza c/o CCIAA di Piacenza",
+      "wines": [
+        {
+          "slug": "gutturnio",
+          "name": "Gutturnio",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C082"
+    },
+    {
+      "consorzio": "Consorzio per la tutela del Vino Lessini Durello DOC",
+      "address": "Piazza G. Marconi, 4 - 37030 Roncà (VR)",
+      "wines": [
+        {
+          "slug": "lessini-durello",
+          "name": "Lessini Durello",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C083"
+    },
+    {
+      "consorzio": "Consorzio Vini Venezia",
+      "address": "Setriere San Marco 2032 - 30124 Venezia",
+      "wines": [
+        {
+          "slug": "lison",
+          "name": "Lison",
+          "kind": "DOP",
+          "regione": "Veneto"
+        },
+        {
+          "slug": "lison-pramaggiore",
+          "name": "Lison-Pramaggiore",
+          "kind": "DOP",
+          "regione": "Veneto"
+        },
+        {
+          "slug": "piave",
+          "name": "Piave",
+          "kind": "DOP",
+          "regione": "Veneto"
+        },
+        {
+          "slug": "piave-malanotte",
+          "name": "Piave Malanotte",
+          "kind": "DOP",
+          "regione": "Veneto"
+        },
+        {
+          "slug": "veneto-orientale",
+          "name": "Veneto Orientale",
+          "kind": "IGP",
+          "regione": ""
+        }
+      ],
+      "id": "C084"
+    },
+    {
+      "consorzio": "Consorzio tutela Lugana DOC",
+      "address": "Viale Marconi, n. 2 - 25019 Sirmione (BS)",
+      "wines": [
+        {
+          "slug": "lugana",
+          "name": "Lugana",
+          "kind": "DOP",
+          "regione": "Lombardia"
+        }
+      ],
+      "id": "C085"
+    },
+    {
+      "consorzio": "Consorzio volontario per la tutela e la valorizzazione dei vini Malvasia delle Lipari DOC e IGP Salina",
+      "address": "Consorzio volontario per la tutela e la valorizzazione dei vini Malvasia delle Lipari \nDOC e IGP Salina",
+      "wines": [
+        {
+          "slug": "malvasia-delle-lipari",
+          "name": "Malvasia delle Lipari",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "salina",
+          "name": "Salina",
+          "kind": "IGP",
+          "regione": ""
+        }
+      ],
+      "id": "C086"
+    },
+    {
+      "consorzio": "Consorzio volontario per la tutela e la valorizzazione dei vini a DOC Malvasia di Bosa",
+      "address": "Via dei Mulini, n. 10\n08019 Modolo (OR)",
+      "wines": [
+        {
+          "slug": "malvasia-di-bosa",
+          "name": "Malvasia di Bosa",
+          "kind": "DOP",
+          "regione": "Sardegna"
+        }
+      ],
+      "id": "C087"
+    },
+    {
+      "consorzio": "Consorzio per la Tutela del Casorzo",
+      "address": "via San Lodovico, 1 - 14032 Casorzo (AT)",
+      "wines": [
+        {
+          "slug": "malvasia-di-casorzo-d-asti",
+          "name": "Malvasia di Casorzo d'Asti",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C088"
+    },
+    {
+      "consorzio": "Consorzio Tutela Vini della Maremma Toscana",
+      "address": "Via Pietro Micca, n. 39 - 58100 - Grossetto (GR)",
+      "wines": [
+        {
+          "slug": "maremma-toscana",
+          "name": "Maremma toscana",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C089"
+    },
+    {
+      "consorzio": "Consorzio tutela denominazione Marino",
+      "address": "Via del Divino Amore, 115/bis 00040 Marino località Frattocchie (RM)",
+      "wines": [
+        {
+          "slug": "marino",
+          "name": "Marino",
+          "kind": "DOP",
+          "regione": "Lazio"
+        }
+      ],
+      "id": "C090"
+    },
+    {
+      "consorzio": "Consorzio volontarioper la tutela del vino Marsala - Consorzio Vino Marsala",
+      "address": "VICOLO DELLE SALINE 8/B, 91025, MARSALA (TP)",
+      "wines": [
+        {
+          "slug": "marsala",
+          "name": "Marsala",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C091"
+    },
+    {
+      "consorzio": "Consorzio tutela vini Merlara DOC",
+      "address": "Via Bindola, 593 - 35040 Merlara (PD)",
+      "wines": [
+        {
+          "slug": "merlara",
+          "name": "Merlara",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C092"
+    },
+    {
+      "consorzio": "Consorzio Tutela Vini Sardegna",
+      "address": "Via Zuddas, n. 12 - 09041 Dolianova (SU)",
+      "wines": [
+        {
+          "slug": "monica-di-sardegna",
+          "name": "Monica di Sardegna",
+          "kind": "DOP",
+          "regione": "Sardegna"
+        }
+      ],
+      "id": "C093"
+    },
+    {
+      "consorzio": "Consorzio Tutela Montecucco DOC",
+      "address": "Comunità Montana Amiata Grossetana, Loc. S. Lorenzo, 19 - 58031 Arcidosso (GR)",
+      "wines": [
+        {
+          "slug": "montecucco",
+          "name": "Montecucco",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "montecucco-sangiovese",
+          "name": "Montecucco Sangiovese",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C094"
+    },
+    {
+      "consorzio": "Consorzio Tutela Vini Montefalco",
+      "address": "Piazza del comune, 16\n06036 Montefalco (PG)",
+      "wines": [
+        {
+          "slug": "montefalco",
+          "name": "Montefalco",
+          "kind": "DOP",
+          "regione": "Umbria"
+        },
+        {
+          "slug": "montefalco-sagrantino",
+          "name": "Montefalco Sagrantino",
+          "kind": "DOP",
+          "regione": "Umbria"
+        },
+        {
+          "slug": "spoleto",
+          "name": "Spoleto",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C095"
+    },
+    {
+      "consorzio": "Consorzio per la tutela dei vini del Montello e dei Colli Asolani",
+      "address": "Via S. Gaetano, 35 - 31044 Montebelluna (TV)",
+      "wines": [
+        {
+          "slug": "montello-rosso",
+          "name": "Montello Rosso",
+          "kind": "DOP",
+          "regione": "Veneto"
+        }
+      ],
+      "id": "C096"
+    },
+    {
+      "consorzio": "Consorzio tutela Morellino di Scansano",
+      "address": "via XX settembre 36 - 58054 Scansano (GR)",
+      "wines": [
+        {
+          "slug": "morellino-di-scansano",
+          "name": "Morellino di Scansano",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C097"
+    },
+    {
+      "consorzio": "Consorzio volontario per la tutela e la valorizzazione dei vini Terre di Romangia",
+      "address": "Località Lu Cabrioni snc\n07037 - Sorso (SS)",
+      "wines": [
+        {
+          "slug": "moscato-di-sorso",
+          "name": "Moscato di Sorso",
+          "kind": "DOP",
+          "regione": "Sardegna"
+        },
+        {
+          "slug": "romangia",
+          "name": "Romangia",
+          "kind": "IGP",
+          "regione": ""
+        }
+      ],
+      "id": "C098"
+    },
+    {
+      "consorzio": "Consorzio volontario di tutela e valorizzazione del vino DOC Nardò",
+      "address": "Via Alessandro Manzoni, s.n.\n73048 - Nardò (LE)",
+      "wines": [
+        {
+          "slug": "nardo",
+          "name": "Nardò",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C099"
+    },
+    {
+      "consorzio": "Consorzio di tutela del vino a denominazione di origine Orcia",
+      "address": "Via Borgo Maestro, 90 - Loc. Rocca d'Orcia- Castiglione d'Orcia (SI)",
+      "wines": [
+        {
+          "slug": "orcia",
+          "name": "Orcia",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C100"
+    },
+    {
+      "consorzio": "Consorzio di tutela dei Vini Doc di Orvieto",
+      "address": "Corso Cavour, 36 - 05018 Orvieto (TR)",
+      "wines": [
+        {
+          "slug": "orvieto",
+          "name": "Orvieto",
+          "kind": "DOP",
+          "regione": "Lazio"
+        },
+        {
+          "slug": "rosso-orvietano",
+          "name": "Rosso Orvietano",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C101"
+    },
+    {
+      "consorzio": "Consorzio per la tutela e valorizzazione dei vini DOC Pinerolese",
+      "address": "Piazza Santa Maria, n. 11\n10060 Bricherasio (TO)",
+      "wines": [
+        {
+          "slug": "pinerolese",
+          "name": "Pinerolese",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C102"
+    },
+    {
+      "consorzio": "Consorzio Vino Pomino",
+      "address": "Via Areatina n. 120\n50065 - Pontassieve - Località Sieci (FI)",
+      "wines": [
+        {
+          "slug": "pomino",
+          "name": "Pomino",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C103"
+    },
+    {
+      "consorzio": "Consorzio Tutela Vini Vesuvio",
+      "address": "Via  Pomigliano, n. 6 - 80048  Sant'Anastasia (NA)",
+      "wines": [
+        {
+          "slug": "pompeiano",
+          "name": "Pompeiano",
+          "kind": "IGP",
+          "regione": ""
+        },
+        {
+          "slug": "vesuvio",
+          "name": "Vesuvio",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C104"
+    },
+    {
+      "consorzio": "Consorzio Primitivo di Manduria DOC",
+      "address": "Fraz. Uggiano Montefusco - Contrada Piscine s.n.   74024 Manduria  (TA)",
+      "wines": [
+        {
+          "slug": "primitivo-di-manduria",
+          "name": "Primitivo di Manduria",
+          "kind": "DOP",
+          "regione": "Puglia"
+        },
+        {
+          "slug": "primitivo-di-manduria-dolce-naturale",
+          "name": "Primitivo di Manduria Dolce Naturale",
+          "kind": "DOP",
+          "regione": "Puglia"
+        }
+      ],
+      "id": "C105"
+    },
+    {
+      "consorzio": "Consorzio di Tutela della DOC Prosecco",
+      "address": "Via Calmaggiore, 23 - 3100 Treviso",
+      "wines": [
+        {
+          "slug": "prosecco",
+          "name": "Prosecco",
+          "kind": "DOP",
+          "regione": "Veneto"
+        }
+      ],
+      "id": "C106"
+    },
+    {
+      "consorzio": "Consorzio tutela vini Soave e Recioto di Soave",
+      "address": "Via A. Mattielli, 11 - 37038 Soave (VR)",
+      "wines": [
+        {
+          "slug": "recioto-di-soave",
+          "name": "Recioto di Soave",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "soave-superiore",
+          "name": "Soave Superiore",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C107"
+    },
+    {
+      "consorzio": "Consorzio di tutela Roero",
+      "address": "Via Sersheim, n. 2 - 12043 Canale (CN)",
+      "wines": [
+        {
+          "slug": "roero",
+          "name": "Roero",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C108"
+    },
+    {
+      "consorzio": "Consorzio Roma DOC",
+      "address": "Largo donatori di sangue, snc - Frascati (RM)",
+      "wines": [
+        {
+          "slug": "roma",
+          "name": "Roma",
+          "kind": "DOP",
+          "regione": "Lazio"
+        }
+      ],
+      "id": "C109"
+    },
+    {
+      "consorzio": "Consorzio del Vino Nobile di Montepulciano",
+      "address": "Via San Donato, n. 21 - 53045 Montepulciano (SI)",
+      "wines": [
+        {
+          "slug": "rosso-di-montepulciano",
+          "name": "Rosso di Montepulciano",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "vin-santo-di-montepulciano",
+          "name": "Vin Santo di Montepulciano",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "vino-nobile-di-montepulciano",
+          "name": "Vino Nobile di Montepulciano",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C110"
+    },
+    {
+      "consorzio": "Consorzio di tutela e valorizzazione del vino DOP Salice Salentino",
+      "address": "Via P. Leone c/o casina Ripa - 73015 Salice Salentino (LE)",
+      "wines": [
+        {
+          "slug": "salice-salentino",
+          "name": "Salice Salentino",
+          "kind": "DOP",
+          "regione": "Puglia"
+        }
+      ],
+      "id": "C111"
+    },
+    {
+      "consorzio": "Consorzio del Vino Vernaccia di San Gimignano",
+      "address": "Villa La Rocca, n. 1\n53037 - San Gimignano (SI)",
+      "wines": [
+        {
+          "slug": "san-gimignano",
+          "name": "San Gimignano",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "vernaccia-di-san-gimignano",
+          "name": "Vernaccia di San Gimignano",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C112"
+    },
+    {
+      "consorzio": "Consorzio Tutela Moscato di Scanzo",
+      "address": "Via Martinengo Colleoni n. 38\n24020 - Scanzorosciate (BG)",
+      "wines": [
+        {
+          "slug": "scanzo",
+          "name": "Scanzo",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C113"
+    },
+    {
+      "consorzio": "Consorzio di tutela dei vini di Valtellina",
+      "address": "Via Piazzi, 23\n23100 - Sondrio\nCasella Postale 135",
+      "wines": [
+        {
+          "slug": "sforzato-di-valtellina",
+          "name": "Sforzato di Valtellina",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "valtellina-superiore",
+          "name": "Valtellina Superiore",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "valtellina-rosso",
+          "name": "Valtellina rosso",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C114"
+    },
+    {
+      "consorzio": "Consorzio di tutela vini DOC Sicilia",
+      "address": "Via Aurelio Drago, n. 38 - 90129 Palermo (PA)",
+      "wines": [
+        {
+          "slug": "sicilia",
+          "name": "Sicilia",
+          "kind": "DOP",
+          "regione": "Sicilia"
+        }
+      ],
+      "id": "C115"
+    },
+    {
+      "consorzio": "Consorzio di tutela vini DOP Suvereto e Val di Cornia Wine",
+      "address": "Via Trento n. 49\n57021 - Campiglia Marittima (LI) Frazione Venturina Terme",
+      "wines": [
+        {
+          "slug": "suvereto",
+          "name": "Suvereto",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "val-di-cornia",
+          "name": "Val di Cornia",
+          "kind": "DOP",
+          "regione": "Toscana"
+        },
+        {
+          "slug": "val-di-cornia-rosso",
+          "name": "Val di Cornia Rosso",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C116"
+    },
+    {
+      "consorzio": "Consorzio di tutela DOC Tavoliere",
+      "address": "c/o Comune di Troia - Via R. Margherita, 8071029 Troia (FG)",
+      "wines": [
+        {
+          "slug": "tavoliere-delle-puglie",
+          "name": "Tavoliere delle Puglie",
+          "kind": "DOP",
+          "regione": "Puglia"
+        }
+      ],
+      "id": "C117"
+    },
+    {
+      "consorzio": "Consorzio tutela Valcalepio",
+      "address": "Via Bergamo, n. 10\n24060 - San Paolo D'Argon (BG)",
+      "wines": [
+        {
+          "slug": "terre-del-colleoni",
+          "name": "Terre del Colleoni",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "valcalepio",
+          "name": "Valcalepio",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C118"
+    },
+    {
+      "consorzio": "Consorzio vini Terre di Cosenza DOP",
+      "address": "Via Calabria, n. 33 - c/o Camera di Commercio di Cosenza 87100 Cosenza",
+      "wines": [
+        {
+          "slug": "terre-di-cosenza",
+          "name": "Terre di Cosenza",
+          "kind": "DOP",
+          "regione": "Calabria"
+        }
+      ],
+      "id": "C119"
+    },
+    {
+      "consorzio": "Consorzio Vini Terre di Pisa",
+      "address": "c/o CCIAA di Pisa\nPiazza Vittorio Emanuele II n. 6\n56100 - Pisa",
+      "wines": [
+        {
+          "slug": "terre-di-pisa",
+          "name": "Terre di Pisa",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C120"
+    },
+    {
+      "consorzio": "Consorzio Vini Terre Lariane",
+      "address": "Via Regina Levante, n. 2 \nGravedona (CO)",
+      "wines": [
+        {
+          "slug": "terre-lariane",
+          "name": "Terre Lariane",
+          "kind": "IGP",
+          "regione": ""
+        }
+      ],
+      "id": "C121"
+    },
+    {
+      "consorzio": "Consorzio di Tutela Tintilia del Molise",
+      "address": "Piazza della Vittoria, n. 1 - 86100 Campobasso",
+      "wines": [
+        {
+          "slug": "tintilia-del-molise",
+          "name": "Tintilia del Molise",
+          "kind": "DOP",
+          "regione": "Molise"
+        }
+      ],
+      "id": "C122"
+    },
+    {
+      "consorzio": "Consorzio di tutela dei vini di Torgiano",
+      "address": "Viale Giorgio Lungarotti, 206089 Torgiano (PG)",
+      "wines": [
+        {
+          "slug": "torgiano",
+          "name": "Torgiano",
+          "kind": "DOP",
+          "regione": ""
+        },
+        {
+          "slug": "torgiano-rosso-riserva",
+          "name": "Torgiano Rosso Riserva",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C123"
+    },
+    {
+      "consorzio": "Consorzio del Vino a indicazione geografica tipica Toscana - Consorzio Vino Toscana",
+      "address": "Via dei Serragli n. 133\n50124 - Firenze",
+      "wines": [
+        {
+          "slug": "toscano",
+          "name": "Toscano",
+          "kind": "IGP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C124"
+    },
+    {
+      "consorzio": "Consorzio di tutela dei vini con denominazione d'origine Val d'Arno di Sopra",
+      "address": "Casa Municipale - Piazza della repubblica, 16- 52028 Terranuova Bracciolini (AR)",
+      "wines": [
+        {
+          "slug": "val-d-arno-di-sopra",
+          "name": "Val d'Arno di Sopra",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C125"
+    },
+    {
+      "consorzio": "Consorzio IGT Valcamonica",
+      "address": "Via San Maurizio, snc\n25020 Losine (BS)",
+      "wines": [
+        {
+          "slug": "valcamonica",
+          "name": "Valcamonica",
+          "kind": "IGP",
+          "regione": ""
+        }
+      ],
+      "id": "C126"
+    },
+    {
+      "consorzio": "Consorzio di Tutela Vini DOC Valdadige Terra dei Fort",
+      "address": "via Dante, n. 14\n38063 Avio (TN)",
+      "wines": [
+        {
+          "slug": "valdadige-terradeiforti",
+          "name": "Valdadige Terradeiforti",
+          "kind": "DOP",
+          "regione": ""
+        }
+      ],
+      "id": "C127"
+    },
+    {
+      "consorzio": "Consorzio volontario per la tutela dei vini a DOP Valdichiana toscana",
+      "address": "loc. Ponte a Chiani, n. 57/F\n52100 Arezzo",
+      "wines": [
+        {
+          "slug": "valdichiana-toscana",
+          "name": "Valdichiana toscana",
+          "kind": "DOP",
+          "regione": "Toscana"
+        }
+      ],
+      "id": "C128"
+    },
+    {
+      "consorzio": "Consorzio Vini Valle d'Aosta",
+      "address": "Regione la Rochere\nc/o Institut n. 1/A\n11100 - Aosta",
+      "wines": [
+        {
+          "slug": "valle-d-aosta",
+          "name": "Valle d'Aosta",
+          "kind": "DOP",
+          "regione": "Valle d'Aosta"
+        }
+      ],
+      "id": "C129"
+    },
+    {
+      "consorzio": "Consorzio Vermentino di Gallura",
+      "address": "Piazza Regina Margherita, n. 21\n07026 Olbia (OT)",
+      "wines": [
+        {
+          "slug": "vermentino-di-gallura",
+          "name": "Vermentino di Gallura",
+          "kind": "DOP",
+          "regione": "Sardegna"
+        }
+      ],
+      "id": "C130"
+    },
+    {
+      "consorzio": "Consorzio Volontario per la Tutela e la Valorizzazione dei vini DOC Vernaccia di Oristano",
+      "address": "Via Cavour n. 6\n09170 - Oristano",
+      "wines": [
+        {
+          "slug": "vernaccia-di-oristano",
+          "name": "Vernaccia di Oristano",
+          "kind": "DOP",
+          "regione": "Sardegna"
+        }
+      ],
+      "id": "C131"
+    }
+  ],
+  "nameless_wines": [
+    {
+      "slug": "alba",
+      "name": "Alba",
+      "kind": "DOP",
+      "regione": "Piemonte"
+    },
+    {
+      "slug": "alcamo",
+      "name": "Alcamo",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "aleatico-di-gradoli",
+      "name": "Aleatico di Gradoli",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "aleatico-di-puglia",
+      "name": "Aleatico di Puglia",
+      "kind": "DOP",
+      "regione": "Puglia"
+    },
+    {
+      "slug": "alezio",
+      "name": "Alezio",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "allerona",
+      "name": "Allerona",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "alpi-retiche",
+      "name": "Alpi Retiche",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "alta-valle-della-greve",
+      "name": "Alta Valle della Greve",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "alto-livenza",
+      "name": "Alto Livenza",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "alto-mincio",
+      "name": "Alto Mincio",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "anagni",
+      "name": "Anagni",
+      "kind": "IGP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "ansonica-costa-dell-argentario",
+      "name": "Ansonica Costa dell'Argentario",
+      "kind": "DOP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "aprilia",
+      "name": "Aprilia",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "arborea",
+      "name": "Arborea",
+      "kind": "DOP",
+      "regione": "Sardegna"
+    },
+    {
+      "slug": "arghilla",
+      "name": "Arghillà",
+      "kind": "IGP",
+      "regione": "Calabria"
+    },
+    {
+      "slug": "asolo-montello",
+      "name": "Asolo Montello",
+      "kind": "DOP",
+      "regione": "Veneto"
+    },
+    {
+      "slug": "asolo-prosecco",
+      "name": "Asolo Prosecco",
+      "kind": "DOP",
+      "regione": "Veneto"
+    },
+    {
+      "slug": "assisi",
+      "name": "Assisi",
+      "kind": "DOP",
+      "regione": "Umbria"
+    },
+    {
+      "slug": "barbagia",
+      "name": "Barbagia",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "barbera-del-monferrato",
+      "name": "Barbera del Monferrato",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "barco-reale-di-carmignano",
+      "name": "Barco Reale di Carmignano",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "barletta",
+      "name": "Barletta",
+      "kind": "DOP",
+      "regione": "Puglia"
+    },
+    {
+      "slug": "basilicata",
+      "name": "Basilicata",
+      "kind": "IGP",
+      "regione": "Basilicata"
+    },
+    {
+      "slug": "bergamasca",
+      "name": "Bergamasca",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "bettona",
+      "name": "Bettona",
+      "kind": "IGP",
+      "regione": "Umbria"
+    },
+    {
+      "slug": "bianco-capena",
+      "name": "Bianco Capena",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "bianco-del-sillaro",
+      "name": "Bianco del Sillaro",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "biferno",
+      "name": "Biferno",
+      "kind": "DOP",
+      "regione": "Molise"
+    },
+    {
+      "slug": "cacc-e-mmitte-di-lucera",
+      "name": "Cacc'e mmitte di Lucera",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "calabria",
+      "name": "Calabria",
+      "kind": "IGP",
+      "regione": "Calabria"
+    },
+    {
+      "slug": "calosso",
+      "name": "Calosso",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "camarro",
+      "name": "Camarro",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "campania",
+      "name": "Campania",
+      "kind": "IGP",
+      "regione": "Campania"
+    },
+    {
+      "slug": "cannara",
+      "name": "Cannara",
+      "kind": "IGP",
+      "regione": "Umbria"
+    },
+    {
+      "slug": "cannonau-di-sardegna",
+      "name": "Cannonau di Sardegna",
+      "kind": "DOP",
+      "regione": "Sardegna"
+    },
+    {
+      "slug": "capalbio",
+      "name": "Capalbio",
+      "kind": "DOP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "capri",
+      "name": "Capri",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "carso",
+      "name": "Carso",
+      "kind": "DOP",
+      "regione": "Friuli-Venezia Giulia"
+    },
+    {
+      "slug": "casauria",
+      "name": "Casauria",
+      "kind": "DOP",
+      "regione": "Abruzzo"
+    },
+    {
+      "slug": "casavecchia-di-pontelatone",
+      "name": "Casavecchia di Pontelatone",
+      "kind": "DOP",
+      "regione": "Campania"
+    },
+    {
+      "slug": "casteggio",
+      "name": "Casteggio",
+      "kind": "DOP",
+      "regione": "Piemonte"
+    },
+    {
+      "slug": "castelfranco-emilia",
+      "name": "Castelfranco Emilia",
+      "kind": "IGP",
+      "regione": "Emilia-Romagna"
+    },
+    {
+      "slug": "castelli-romani",
+      "name": "Castelli Romani",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "catalanesca-del-monte-somma",
+      "name": "Catalanesca del Monte Somma",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "cellatica",
+      "name": "Cellatica",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "cerveteri",
+      "name": "Cerveteri",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "cesanese-di-affile",
+      "name": "Cesanese di Affile",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "cesanese-di-olevano-romano",
+      "name": "Cesanese di Olevano Romano",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "circeo",
+      "name": "Circeo",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "ciro-classico",
+      "name": "Cirò Classico",
+      "kind": "DOP",
+      "regione": "Calabria"
+    },
+    {
+      "slug": "cisterna-d-asti",
+      "name": "Cisterna d'Asti",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "civitella-d-agliano",
+      "name": "Civitella d'Agliano",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "colli-albani",
+      "name": "Colli Albani",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "colli-altotiberini",
+      "name": "Colli Altotiberini",
+      "kind": "DOP",
+      "regione": "Umbria"
+    },
+    {
+      "slug": "colli-aprutini",
+      "name": "Colli Aprutini",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "colli-bolognesi-pignoletto",
+      "name": "Colli Bolognesi Pignoletto",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "colli-cimini",
+      "name": "Colli Cimini",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "colli-etruschi-viterbesi",
+      "name": "Colli Etruschi Viterbesi",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "colli-lanuvini",
+      "name": "Colli Lanuvini",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "colli-martani",
+      "name": "Colli Martani",
+      "kind": "DOP",
+      "regione": "Umbria"
+    },
+    {
+      "slug": "colli-perugini",
+      "name": "Colli Perugini",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "colli-piacentini",
+      "name": "Colli Piacentini",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "colli-romagna-centrale",
+      "name": "Colli Romagna centrale",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "colli-trevigiani",
+      "name": "Colli Trevigiani",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "colli-del-limbara",
+      "name": "Colli del Limbara",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "colli-del-sangro",
+      "name": "Colli del Sangro",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "colli-della-sabina",
+      "name": "Colli della Sabina",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "colli-della-toscana-centrale",
+      "name": "Colli della Toscana centrale",
+      "kind": "IGP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "colli-di-conegliano",
+      "name": "Colli di Conegliano",
+      "kind": "DOP",
+      "regione": "Veneto"
+    },
+    {
+      "slug": "colline-joniche-tarantine",
+      "name": "Colline Joniche Tarantine",
+      "kind": "DOP",
+      "regione": "Puglia"
+    },
+    {
+      "slug": "colline-lucchesi",
+      "name": "Colline Lucchesi",
+      "kind": "DOP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "colline-saluzzesi",
+      "name": "Colline Saluzzesi",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "colline-savonesi",
+      "name": "Colline Savonesi",
+      "kind": "IGP",
+      "regione": "Liguria"
+    },
+    {
+      "slug": "colline-teramane-montepulciano-dabruzzo",
+      "name": "Colline Teramane Montepulciano d’Abruzzo",
+      "kind": "DOP",
+      "regione": "Abruzzo"
+    },
+    {
+      "slug": "colline-del-genovesato",
+      "name": "Colline del Genovesato",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "conselvano",
+      "name": "Conselvano",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "contea-di-sclafani",
+      "name": "Contea di Sclafani",
+      "kind": "DOP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "contessa-entellina",
+      "name": "Contessa Entellina",
+      "kind": "DOP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "copertino",
+      "name": "Copertino",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "corti-benedettine-del-padovano",
+      "name": "Corti Benedettine del Padovano",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "costa-etrusco-romana",
+      "name": "Costa Etrusco Romana",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "costa-toscana",
+      "name": "Costa Toscana",
+      "kind": "IGP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "costa-d-amalfi",
+      "name": "Costa d'Amalfi",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "custoza",
+      "name": "Custoza",
+      "kind": "DOP",
+      "regione": "Lombardia"
+    },
+    {
+      "slug": "daunia",
+      "name": "Daunia",
+      "kind": "IGP",
+      "regione": "Puglia"
+    },
+    {
+      "slug": "delia-nivolelli",
+      "name": "Delia Nivolelli",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "dugenta",
+      "name": "Dugenta",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "elba",
+      "name": "Elba",
+      "kind": "DOP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "elba-aleatico-passito",
+      "name": "Elba Aleatico Passito",
+      "kind": "DOP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "emilia-romagna",
+      "name": "Emilia-Romagna",
+      "kind": "DOP",
+      "regione": "Emilia-Romagna"
+    },
+    {
+      "slug": "epomeo",
+      "name": "Epomeo",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "erice",
+      "name": "Erice",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "est-est-est-di-montefiascone",
+      "name": "Est! Est!! Est!!! di Montefiascone",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "faro",
+      "name": "Faro",
+      "kind": "DOP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "fontanarossa-di-cerda",
+      "name": "Fontanarossa di Cerda",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "fortana-del-taro",
+      "name": "Fortana del Taro",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "friuli-annia",
+      "name": "Friuli Annia",
+      "kind": "DOP",
+      "regione": "Friuli-Venezia Giulia"
+    },
+    {
+      "slug": "friuli-isonzo",
+      "name": "Friuli Isonzo",
+      "kind": "DOP",
+      "regione": "Friuli-Venezia Giulia"
+    },
+    {
+      "slug": "friuli-latisana",
+      "name": "Friuli Latisana",
+      "kind": "DOP",
+      "regione": "Friuli-Venezia Giulia"
+    },
+    {
+      "slug": "frusinate",
+      "name": "Frusinate",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "galatina",
+      "name": "Galatina",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "genazzano",
+      "name": "Genazzano",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "greco-di-bianco",
+      "name": "Greco di Bianco",
+      "kind": "DOP",
+      "regione": "Calabria"
+    },
+    {
+      "slug": "grignolino-del-monferrato-casalese",
+      "name": "Grignolino del Monferrato Casalese",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "grottino-di-roccanova",
+      "name": "Grottino di Roccanova",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "i-terreni-di-sanseverino",
+      "name": "I Terreni di Sanseverino",
+      "kind": "DOP",
+      "regione": "Marche"
+    },
+    {
+      "slug": "isola-dei-nuraghi",
+      "name": "Isola dei Nuraghi",
+      "kind": "IGP",
+      "regione": "Sardegna"
+    },
+    {
+      "slug": "lago-di-corbara",
+      "name": "Lago di Corbara",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "lamezia",
+      "name": "Lamezia",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "lazio",
+      "name": "Lazio",
+      "kind": "IGP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "leverano",
+      "name": "Leverano",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "lipuda",
+      "name": "Lipuda",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "lizzano",
+      "name": "Lizzano",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "locorotondo",
+      "name": "Locorotondo",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "mamertino",
+      "name": "Mamertino",
+      "kind": "DOP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "mandrolisai",
+      "name": "Mandrolisai",
+      "kind": "DOP",
+      "regione": "Sardegna"
+    },
+    {
+      "slug": "marca-trevigiana",
+      "name": "Marca Trevigiana",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "marche",
+      "name": "Marche",
+      "kind": "IGP",
+      "regione": "Marche"
+    },
+    {
+      "slug": "marmilla",
+      "name": "Marmilla",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "martina",
+      "name": "Martina",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "matera",
+      "name": "Matera",
+      "kind": "DOP",
+      "regione": "Basilicata"
+    },
+    {
+      "slug": "matino",
+      "name": "Matino",
+      "kind": "DOP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "menfi",
+      "name": "Menfi",
+      "kind": "DOP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "molise",
+      "name": "Molise",
+      "kind": "DOP",
+      "regione": "Molise"
+    },
+    {
+      "slug": "monreale",
+      "name": "Monreale",
+      "kind": "DOP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "montecarlo",
+      "name": "Montecarlo",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "montecastelli",
+      "name": "Montecastelli",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "montecompatri-colonna",
+      "name": "Montecompatri Colonna",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "montenetto-di-brescia",
+      "name": "Montenetto di Brescia",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "monteregio-di-massa-marittima",
+      "name": "Monteregio di Massa Marittima",
+      "kind": "DOP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "montescudaio",
+      "name": "Montescudaio",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "monti-lessini",
+      "name": "Monti Lessini",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "moscato-di-sardegna",
+      "name": "Moscato di Sardegna",
+      "kind": "DOP",
+      "regione": "Sardegna"
+    },
+    {
+      "slug": "moscato-di-trani",
+      "name": "Moscato di Trani",
+      "kind": "DOP",
+      "regione": "Puglia"
+    },
+    {
+      "slug": "murgia",
+      "name": "Murgia",
+      "kind": "IGP",
+      "regione": "Puglia"
+    },
+    {
+      "slug": "narni",
+      "name": "Narni",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "negroamaro-di-terra-d-otranto",
+      "name": "Negroamaro di Terra d'Otranto",
+      "kind": "DOP",
+      "regione": "Puglia"
+    },
+    {
+      "slug": "nettuno",
+      "name": "Nettuno",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "nurra",
+      "name": "Nurra",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "ogliastra",
+      "name": "Ogliastra",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "orta-nova",
+      "name": "Orta Nova",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "ortona",
+      "name": "Ortona",
+      "kind": "DOP",
+      "regione": "Puglia"
+    },
+    {
+      "slug": "ortrugo-dei-colli-piacentini",
+      "name": "Ortrugo dei Colli Piacentini",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "osco",
+      "name": "Osco",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "ostuni",
+      "name": "Ostuni",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "pantelleria",
+      "name": "Pantelleria",
+      "kind": "DOP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "parrina",
+      "name": "Parrina",
+      "kind": "DOP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "parteolla",
+      "name": "Parteolla",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "penisola-sorrentina",
+      "name": "Penisola Sorrentina",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "pentro-di-isernia",
+      "name": "Pentro di Isernia",
+      "kind": "DOP",
+      "regione": "Molise"
+    },
+    {
+      "slug": "planargia",
+      "name": "Planargia",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "pornassio",
+      "name": "Pornassio",
+      "kind": "DOP",
+      "regione": "Liguria"
+    },
+    {
+      "slug": "portofino",
+      "name": "Portofino",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "provincia-di-nuoro",
+      "name": "Provincia di Nuoro",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "provincia-di-pavia",
+      "name": "Provincia di Pavia",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "puglia",
+      "name": "Puglia",
+      "kind": "IGP",
+      "regione": "Puglia"
+    },
+    {
+      "slug": "riesi",
+      "name": "Riesi",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "rimini",
+      "name": "Rimini",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "riviera-del-brenta",
+      "name": "Riviera del Brenta",
+      "kind": "DOP",
+      "regione": "Trentino-Alto Adige"
+    },
+    {
+      "slug": "riviera-del-garda-classico",
+      "name": "Riviera del Garda Classico",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "riviera-ligure-di-ponente",
+      "name": "Riviera ligure di Ponente",
+      "kind": "DOP",
+      "regione": "Liguria"
+    },
+    {
+      "slug": "ronchi-varesini",
+      "name": "Ronchi Varesini",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "ronchi-di-brescia",
+      "name": "Ronchi di Brescia",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "rossese-di-dolceacqua",
+      "name": "Rossese di Dolceacqua",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "rosso-di-cerignola",
+      "name": "Rosso di Cerignola",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "rotae",
+      "name": "Rotae",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "s-anna-di-isola-capo-rizzuto",
+      "name": "S. Anna di Isola Capo Rizzuto",
+      "kind": "DOP",
+      "regione": "Calabria"
+    },
+    {
+      "slug": "sabbioneta",
+      "name": "Sabbioneta",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "salaparuta",
+      "name": "Salaparuta",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "salemi",
+      "name": "Salemi",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "salento",
+      "name": "Salento",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "sambuca-di-sicilia",
+      "name": "Sambuca di Sicilia",
+      "kind": "DOP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "san-severo",
+      "name": "San Severo",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "san-torpe",
+      "name": "San Torpè",
+      "kind": "DOP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "santa-margherita-di-belice",
+      "name": "Santa Margherita di Belice",
+      "kind": "DOP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "sardegna-semidano",
+      "name": "Sardegna Semidano",
+      "kind": "DOP",
+      "regione": "Sardegna"
+    },
+    {
+      "slug": "savuto",
+      "name": "Savuto",
+      "kind": "DOP",
+      "regione": "Calabria"
+    },
+    {
+      "slug": "scavigna",
+      "name": "Scavigna",
+      "kind": "DOP",
+      "regione": "Calabria"
+    },
+    {
+      "slug": "sciacca",
+      "name": "Sciacca",
+      "kind": "DOP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "scilla",
+      "name": "Scilla",
+      "kind": "IGP",
+      "regione": "Calabria"
+    },
+    {
+      "slug": "sibiola",
+      "name": "Sibiola",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "soave",
+      "name": "Soave",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "spello",
+      "name": "Spello",
+      "kind": "IGP",
+      "regione": "Umbria"
+    },
+    {
+      "slug": "tarantino",
+      "name": "Tarantino",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "tarquinia",
+      "name": "Tarquinia",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "terra-d-otranto",
+      "name": "Terra d'Otranto",
+      "kind": "DOP",
+      "regione": "Puglia"
+    },
+    {
+      "slug": "terracina",
+      "name": "Terracina",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "terratico-di-bibbona",
+      "name": "Terratico di Bibbona",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "terrazze-dell-imperiese",
+      "name": "Terrazze dell'Imperiese",
+      "kind": "IGP",
+      "regione": "Liguria"
+    },
+    {
+      "slug": "terre-abruzzesi",
+      "name": "Terre Abruzzesi",
+      "kind": "IGP",
+      "regione": "Abruzzo"
+    },
+    {
+      "slug": "terre-aquilane",
+      "name": "Terre Aquilane",
+      "kind": "IGP",
+      "regione": "Abruzzo"
+    },
+    {
+      "slug": "terre-siciliane",
+      "name": "Terre Siciliane",
+      "kind": "IGP",
+      "regione": "Sicilia"
+    },
+    {
+      "slug": "terre-tollesi",
+      "name": "Terre Tollesi",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "terre-dell-alta-val-d-agri",
+      "name": "Terre dell'Alta Val d'Agri",
+      "kind": "DOP",
+      "regione": "Basilicata"
+    },
+    {
+      "slug": "terre-di-casole",
+      "name": "Terre di Casole",
+      "kind": "DOP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "terre-di-veleja",
+      "name": "Terre di Veleja",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "tharros",
+      "name": "Tharros",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "todi",
+      "name": "Todi",
+      "kind": "DOP",
+      "regione": "Umbria"
+    },
+    {
+      "slug": "trevenezie",
+      "name": "Trevenezie",
+      "kind": "IGP",
+      "regione": "Veneto"
+    },
+    {
+      "slug": "trexenta",
+      "name": "Trexenta",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "umbria",
+      "name": "Umbria",
+      "kind": "IGP",
+      "regione": "Umbria"
+    },
+    {
+      "slug": "val-polcevera",
+      "name": "Val Polcèvera",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "val-tidone",
+      "name": "Val Tidone",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "val-d-arbia",
+      "name": "Val d'Arbia",
+      "kind": "DOP",
+      "regione": "Toscana"
+    },
+    {
+      "slug": "val-di-magra",
+      "name": "Val di Magra",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "val-di-neto",
+      "name": "Val di Neto",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "valdamato",
+      "name": "Valdamato",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "valdinievole",
+      "name": "Valdinievole",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "valle-belice",
+      "name": "Valle Belice",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "valle-d-itria",
+      "name": "Valle d'Itria",
+      "kind": "IGP",
+      "regione": "Puglia"
+    },
+    {
+      "slug": "valle-del-tirso",
+      "name": "Valle del Tirso",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "valli-di-porto-pino",
+      "name": "Valli di Porto Pino",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "valsusa",
+      "name": "Valsusa",
+      "kind": "DOP",
+      "regione": "Piemonte"
+    },
+    {
+      "slug": "valtenesi",
+      "name": "Valtènesi",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "velletri",
+      "name": "Velletri",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "veneto",
+      "name": "Veneto",
+      "kind": "IGP",
+      "regione": ""
+    },
+    {
+      "slug": "venezia",
+      "name": "Venezia",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "venezia-giulia",
+      "name": "Venezia Giulia",
+      "kind": "IGP",
+      "regione": "Friuli-Venezia Giulia"
+    },
+    {
+      "slug": "vermentino-di-sardegna",
+      "name": "Vermentino di Sardegna",
+      "kind": "DOP",
+      "regione": "Sardegna"
+    },
+    {
+      "slug": "verona",
+      "name": "Verona",
+      "kind": "IGP",
+      "regione": "Veneto"
+    },
+    {
+      "slug": "vignanello",
+      "name": "Vignanello",
+      "kind": "DOP",
+      "regione": "Lazio"
+    },
+    {
+      "slug": "vigneti-della-serenissima",
+      "name": "Vigneti della Serenissima",
+      "kind": "DOP",
+      "regione": "Veneto"
+    },
+    {
+      "slug": "vin-santo-di-carmignano",
+      "name": "Vin Santo di Carmignano",
+      "kind": "DOP",
+      "regione": ""
+    },
+    {
+      "slug": "zagarolo",
+      "name": "Zagarolo",
+      "kind": "DOP",
+      "regione": ""
+    }
+  ]
+}

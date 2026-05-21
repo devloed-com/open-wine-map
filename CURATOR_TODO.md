@@ -291,6 +291,8 @@ Smoke-test against Montsant + Priorat after each major batch lands.
 
 ✅ [scripts/02b_fetch_grape_lexicon.py:76-95](scripts/02b_fetch_grape_lexicon.py#L76-L95) (`collect_grape_slugs`) already iterates both `raw/inao/cahier-extracted/` and `raw/es/pliegos-extracted/`. ES-only Iberian varieties (Canary, Galicia, Catalan) flow into the cache automatically on next 02b run. The remaining work is curator-side: per-locale title overrides for varieties whose `es.wikipedia.org` page lives at a non-canonical title (e.g. `(uva)` disambiguator) — surface candidates via [scripts/audit_es_grape_aliases.py](scripts/audit_es_grape_aliases.py).
 
+🟢 Browser-extension research prompt at [tmp/es-grape-wikipedia-research-prompt.md](tmp/es-grape-wikipedia-research-prompt.md): 39 ES-corpus grape slugs with no `es.wikipedia.org` card (25 `missing` + 14 `not_grape_topic`). Regenerate the list against the post-fetch state before use — the synonym-aware 02b re-fetch may recover some.
+
 ### Wikipedia ES pages — 29 missing/error parents
 
 ⏳ Same situation as FR — no override mechanism. 5 IGP + 24 DOP. 9 are `not_aoc_topic` (urueña, ayles, campo-de-calatrava, bolandin, dehesa-penalba, abadia-retuerta, rio-negro, rosalejo, islas-canarias).
@@ -453,6 +455,300 @@ Caveat: stage 04 currently merges FR + ES terroir-fact caches; the PT branch in 
 - **02b_fetch_aoc_lexicon `--lang pt` smoke test** — confirm the disambiguator cascade resolves the common cases (Vinho Verde, Douro, Madeira, Dão, Alentejo).
 
 ---
+
+## Italy
+
+### Documento unico coverage — ✅ initial drop landed 2026-05-19
+
+531 IT wines (412 DOP + 119 IGP) from eAmbrosia. After stage 01 +
+stage 01b WAF bootstrap: 129 wines have full extraction. Of those,
+408 wines (76 %) have a Bétard 2022 Figshare polygon and render on the
+map — including the 314 DOPs whose documento unico isn't accessible
+(stub records still get a figshare polygon via file_number lookup).
+
+| Bucket | Count | Notes |
+|---|---:|---|
+| Extracted (full record) | 129 | 115 DOPs + 14 IGPs with documento unico HTML |
+| Stub: no-publication | 392 | eAmbrosia has no `publications[].uri` |
+| Stub: not-single-document | 9 | EUR-Lex URL leads to a non-documento-unico page |
+| Stub: no-documento-unico-anchor | 1 | `ortrugo-dei-colli-piacentini` (parser miss) |
+
+### MASAF disciplinare fallback for no-publication DOPs — ✅ landed 2026-05-19
+
+Stage 02f-MASAF ([scripts/it/02f_extract_masaf.py](scripts/it/02f_extract_masaf.py))
+augments IT stub records by parsing the consolidated disciplinare PDFs
+that MASAF (Ministero dell'agricoltura) publishes as 4 7-Zip archives
+under [IDPagina/4625](https://www.masaf.gov.it/flex/cm/pages/ServeBLOB.php/L/IT/IDPagina/4625):
+
+| Bundle | Coverage |
+|---|---:|
+| Disciplinari DOP (A-D) | 154 PDFs |
+| Disciplinari DOP (E-N) | 113 PDFs |
+| Disciplinari DOP (O-Z) | 143 PDFs |
+| Disciplinari IGP / IGT | 111 PDFs |
+
+Stage 00 downloads the bundles (~100 MB total, cache-keyed by sha256).
+Stage 02f indexes each bundle's PDFs, matches eAmbrosia wines to PDFs
+(exact > substring > rapidfuzz ≥ 90 on alt-name slugs from "X o Y o Z"
+splits — 521 / 531 wines = 98 % auto-matched), extracts the PDF
+on-demand from the archive, runs `pdftotext -layout`, and parses
+articles 1 (summary), 2 (grapes via `match_variety` + vitigno-regex
+scan), 3 (geo area), 9 (terroir link). Sidecars land under
+[raw/it/masaf-disciplinari-extracted/](raw/it/masaf-disciplinari-extracted/);
+stage 04's `augment_it_records_with_masaf()` merges them into stubs
+in-memory (provenance in `record["masaf"]`, surfaced by `_sources_for`
+as `masaf_*` fields for panel attribution).
+
+Sweep result (2026-05-19):
+
+| Bucket | Count |
+|---|---:|
+| Sidecar written | 387 |
+| Skip: not-a-stub (already doc-unico extracted) | 129 |
+| Skip: no-bundle-match (curator override needed) | 9 |
+| No "Articolo N" anchors in PDF | 6 |
+
+The 6 no-anchors slugs (`colli-trevigiani`, `conselvano`,
+`gambellara`, `marca-trevigiana`, `veneto`, `veneto-orientale`)
+all live in the IGT bundle and use a non-standard DM template
+(no "Articolo N" headers — likely older Decreto Ministeriale or
+RV-style formatting). Curator follow-up: extend the article-anchor
+regex or pin via `raw/it/masaf-disciplinari/manual_overrides.json`.
+
+🟢 **Disciplinare URL hunt — 15 wines.** The 6 no-anchor slugs above
+plus the 9 `not-single-document` no-bundle-match wines (`colli-aprutini`,
+`colli-del-sangro`, `colline-frentane`, `colline-pescaresi`,
+`colline-teatine`, `del-vastese`, `salemi`, `terre-di-chieti`,
+`valtenesi`) have no usable source document. Browser-extension research
+prompt at [tmp/it-masaf-disciplinare-research-prompt.md](tmp/it-masaf-disciplinare-research-prompt.md):
+find a public disciplinare PDF for each and merge into
+`raw/it/masaf-disciplinari/manual_overrides.json`, then re-run 02f → 04.
+
+### MASAF grape-extraction fix — ✅ landed 2026-05-20
+
+The earlier note here called the 108 `grapes=0` MASAF records a pure
+vocab gap. A 2026-05-20 audit found that was a mis-diagnosis: most
+were a **parser** defect — the disciplinare's Article-2 text never
+reached `match_variety` as a clean candidate. Fixed in
+[scripts/_lib/it/masaf.py](scripts/_lib/it/masaf.py): `vitigno NAME:`
+colon terminator, dash-bullet + parenthetical-gloss handling,
+connective-aware percentage-tail strip, word-boundary drop-list
+(was discarding "Corvinone" on the `vino` substring), smart-quote /
+line-break-hyphen / one-variety-per-line layout handling, leading
+wine-type-word strip, and false-positive guards (self-name two-pass,
+fuzzy floor ≥ 90 + min length 7).
+
+The genuine vocab gap was real too but smaller: ~73 registro-listed
+Italian varieties (Barbera, Corvina, Teroldego, Negroamaro, Frappato,
+Schiava, …) were absent from the VIVC-seeded vocabulary because the
+broken extraction never seeded them. Added to `GRAPE_ALIAS` +
+`DEFAULT_COLOUR` in [scripts/_lib/grape_lexicon.py](scripts/_lib/grape_lexicon.py).
+
+Result: MASAF records with grapes 280 → 354 of 387. Remaining 33
+`grapes=0`: 4 with an empty Article 2, ~24 genuinely-generic IGTs
+("da uno o più vitigni idonei alla coltivazione" — 0 is correct),
+~5 stubborn layout misses (`erbaluce-di-caluso`,
+`colli-euganei-fior-d-arancio`, `primitivo-di-manduria-dolce-naturale`,
+`quistello`, `rotae`).
+
+Curator follow-up: the 73 added varieties' Wikipedia grape-lexicon
+entries are handled — `grape_corpus.py` now walks the MASAF sidecars,
+so `02b_fetch_grape_lexicon.py` + `02b_translate_grapes.py` cover them
+(2026-05-21). Two bugs were fixed in passing: `wiki.py` `GRAPE_KEYWORDS`
+had no `it` entry (every it.wikipedia page was rejected
+`not_grape_topic`); `02b_translate_grapes.py` `LOCALE_NAME` had no `it`
+(every it-sourced translation raised `KeyError: 'it'`).
+
+The unknowns queue at
+[raw/it/extraction-unknowns-masaf.json](raw/it/extraction-unknowns-masaf.json)
+still lists the residual unmatched candidates.
+
+### IT new-grape VIVC pins — ⏳ ready to apply
+
+Browser-research (2026-05-21) resolved VIVC variety numbers for the
+new IT varieties whose slug-derived Wikipedia search missed (article
+filed under a synonym, or no article). Apply via
+`raw/vivc/slug_overrides.json` after extending stage 02g to walk
+`raw/it/masaf-disciplinari-extracted/` (mirror the `grape_corpus.py`
+`_SOURCES` change — 02g uses its own walk, `IT_EXTRACTED` at
+[scripts/02g_fetch_vivc.py](scripts/02g_fetch_vivc.py)).
+
+| slug | VIVC # | note |
+|---|---|---|
+| monica | 7928 | prime MONICA NERA |
+| nuragus | 8623 | |
+| schiava-grossa | 10823 | en/es wiki = "Trollinger", fr = "Frankenthal" |
+| schiava-grigia | 10822 | VIVC colour NOIR despite "grigia" trade name |
+| uva-rara | 12830 | distinct variety; "Uva Rara" is also a Vespolina synonym |
+| pelaverga-piccolo | 16938 | |
+| nero-di-troia | 12819 | prime UVA DI TROIA — it/en wiki article "Uva di Troia" |
+| cesanese-comune | 2398 | |
+| cesanese-di-affile | 2399 | |
+| gamba-rossa | 4385 | en wiki = "Gamba di Pernice" |
+| invernenga | 5536 | no Wikipedia article in any of en/fr/es/nl/it |
+| semidano | 11479 | no Wikipedia article |
+| groppello-gentile | 5078 | |
+| oseleta | 16537 | |
+| rossignola | 10219 | |
+| moscatello-selvatico | 8043 | no Wikipedia article |
+| francavilla | 4217 | prime ZLATARICA VRGORSKA (Dalmatian) — pill canonical-bracket will read "Francavilla (Zlatarica Vrgorska)" |
+
+Curator decisions:
+- **bianchello** — NOT pinned. VIVC folds it into Trebbiano Toscano
+  (#12628), but the Bianchello del Metauro disciplinare names it as
+  its own variety and it.wiki treats "Biancame" as distinct. Keep the
+  standalone `bianchello` slug — regulator authority over VIVC for
+  identity; VIVC is a citation layer only.
+- bare **cesanese** / bare **groppello** — left unpinned (genuinely
+  ambiguous family names); only the sub-variety slugs are pinned.
+
+Re-run after pinning: `02g_fetch_vivc.py` → `02b_fetch_grape_lexicon.py`
+→ `02b_translate_grapes.py` → `04_build_maps.py`. Surfaces VIVC# +
+canonical-bracket on the pills, and the synonym-aware Wikipedia search
+recovers the articles filed under a synonym (nero-di-troia,
+schiava-grossa, gamba-rossa). The no-Wikipedia varieties (invernenga,
+semidano, moscatello-selvatico, schiava-grigia, francavilla,
+pelaverga-piccolo) gain only the VIVC# citation — no tooltip text
+exists to fetch.
+
+### `ortrugo-dei-colli-piacentini` — ❌ no DOCUMENTO UNICO anchor
+
+One wine (PDO-IT-A0350) whose EUR-Lex HTML doesn't have the standard
+`<p class="ti-grseq-1">DOCUMENTO UNICO</p>` anchor — likely an older
+template. Investigate the raw HTML at
+`raw/it/oj-pages/ortrugo-dei-colli-piacentini.html` and either extend
+the anchor regex or pin a working override URL.
+
+### Italian-name VIVC slug overrides — ✅ done (2026-05-19)
+
+The original 5 cases (Sangiovese / Nebbiolo / Vermentino / Trebbiano
+cluster / Grechetto) were all already resolving correctly: the trade-
+name synonyms (Brunello, Prugnolo Gentile, Morellino, Chiavennasca,
+Spanna, Pigato, Favorita) don't appear in the IT disciplinari's
+section-7 grape lists — the regulator uses the canonical name there.
+
+But the spot-check uncovered a much bigger over-fold problem in
+`scripts/_lib/grape_entity.py`: the vocabulary loader takes every
+VIVC synonym verbatim, and several umbrella VIVC entries (NIELLUCCIO,
+TREBBIANO TOSCANO, MUSCAT D'ALEXANDRIE) list dozens of distinct
+Italian regional varieties as historical synonyms. Result: across
+532 IT records, the `sangiovese` slug pulled in 17 Lambrusco /
+Lacrima / Corinto Nero mentions, the `ugni-blanc` slug pulled in
+21 Trebbiano spp. / Coda di Volpe / Falanghina / Passerina /
+Biancame / Montonico / Rossola Nera entries, `pinot-noir` pulled
+Pinot Bianco/Grigio + Pignola/Pignolo, `riesling` folded the
+unrelated Welschriesling, `glera` pulled Garganega, etc. Also
+`cabernet` was a bare-slug parser artefact swallowing both Franc
+and Sauvignon.
+
+Fixes shipped:
+
+1. **`scripts/_lib/grape_entity.py:match_variety`** — patched the
+   hyphen-split path to strip the trailing colour-letter (`B`/`N`/
+   `G`/`Rs`) from each piece before vocab lookup. Without this, the
+   IT format `"Pinot bianco B. - Pinot"` skipped the head piece (no
+   match for the colour-suffixed key) and fell through to the
+   trade-name synonym `"Pinot"`, which mapped to `pinot-noir`.
+2. **`scripts/02g_fetch_vivc.py:slug_to_query`** — patched to strip
+   trailing colour-letter markers and dash-suffix synonyms when
+   building the VIVC search query. IT records store `"Lacrima N."`
+   as the display name; VIVC's `cultivarname-search` rejected
+   colour-suffixed queries and returned 0 candidates.
+3. **`scripts/_lib/grape_lexicon.py:GRAPE_ALIAS`** — added ~155 IT
+   variety pins minting (or routing) distinct slugs for: Lambrusco
+   family (×6 cultivars), Trebbiano cluster (×6 regional siblings),
+   Pinot Bianco/Grigio/Nero, Welschriesling vs. Riesling Renano,
+   Moscato bianco/giallo/scanzo, Garganega, Pignoletto, Friulano,
+   Refosco, Marzemino, Ciliegiolo, all the Malvasias, plus 40+
+   minor Italian varieties. DEFAULT_COLOUR extended in parallel.
+4. **DNA-confirmed cross-canonical folds**: `tocai-rosso → grenache`,
+   `calabrese → nero-davola`, `cococciola` stays its own slug
+   distinct from `bombino-bianco → pagadebiti`, etc.
+5. **`raw/vivc/slug_overrides.json`** — added 39 curator pins for
+   the new slugs (Albana, Avana, Biancame, Bonarda Piemontese,
+   Ciliegiolo, Cococciola, Corinto Nero, Falanghina Flegrea,
+   Fortana Nera, Friulano, Garganega, Greco Bianco di Tufo, Greco
+   Nero, Grillo, Lacrima, Malvasia spp., Manzoni-Bianco,
+   Minutolo, Montù, Negrara Trentina, Negretto, Neretta Cuneese,
+   Passerina, Piedirosso, Pignola Valtellinese, Pignolo, Rossola
+   Nera, Spergola, Termarina, Tintilia del Molise, Trebbiano
+   Giallo, Verdea, Vernaccia Nera, Welschriesling, Moscato Rosa,
+   Pugnitello), plus a fix for the pre-existing miss-pin
+   `gruner-veltliner` (was 4878 GOLDEN GRAIN → now 12930
+   GRUENER VELTLINER).
+
+Final 02g manifest: `{exact-cultivar: 579, override: 341, ambiguous: 8}`
+across 928 distinct slugs (was 815 before the IT split). The 8
+remaining ambiguous entries are all ES/PT cases pre-existing
+before this task.
+
+IT corpus distinct slugs: 160 (was ~80). Stage 02 still surfaces
+~441 unknown variety candidates per
+`raw/it/extraction-unknowns.json` — those are mostly text fragments
+and unmatched obscure varieties, separate follow-up.
+
+### IT regione fallback — ⏳ low priority
+
+353 of 408 IT polygons render with `region="Italia"` because their
+records are stubs (no documento unico → no section-6 text to scan
+for regione name). Stage 02d-MASAF would populate this, or a curated
+`scripts/_lib/it/regione_by_file_number.json` keyed on `PDO-IT-A*`
+could fill in the well-known DOPs (Barolo→Piemonte, Brunello→Toscana,
+Lambrusco→Emilia-Romagna, …) immediately.
+
+🟢 Browser-extension research prompt at [tmp/it-regione-research-prompt.md](tmp/it-regione-research-prompt.md):
+159 DOPs with an empty `regione` field listed by file number — research
+each to its administrative regione and emit
+`scripts/_lib/it/regione_by_file_number.json`.
+
+### IT IGT geometry — ⏳ deferred to v2
+
+119 IT IGPs aren't in Bétard 2022 (PDO-only by design) and v1 doesn't
+ship the commune-list-union fallback for IT. They appear in the
+sidebar with no polygon, same status as ~14 PT IGPs.
+
+### Sottozone detection — ⏳ low coverage
+
+0 sottozone detected so far. The explicit `Sottozona NAME:` pattern
+and the preamble-list pattern in
+[scripts/_lib/it/sottozona.py](scripts/_lib/it/sottozona.py) match
+nothing across the 129 extracted records, because Italian
+documenti unici typically embed sottozone as section-1 wine type
+qualifiers rather than as explicit enumerations. Audit the
+section-1 text of known sottozona-bearing wines (Chianti parent,
+Valpolicella, Soave, Bardolino) to derive a new pattern.
+
+### Consorzio / DO-organisation URLs — 🟡 344/531 merged (2026-05-21)
+
+Research run (`research-gaps` skill, 17 web-research agents) resolved the
+official consorzio di tutela / DO-organisation website per IT appellation,
+giving the map cards FR/ES parity. 344 of 531 merged into
+[scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json)
+`by_slug` (117 of 131 eAmbrosia-named consorzi + 60 of 224 wines eAmbrosia
+left consorzio-less). Findings:
+[tmp/it-consorzio-urls-research-results.md](tmp/it-consorzio-urls-research-results.md);
+no-link list: [tmp/it-consorzio-no-link.json](tmp/it-consorzio-no-link.json).
+
+🟡 Re-check periodically — consorzio exists but runs no public website
+(becomes a card link once a site appears): Amelia, Valdinoto (Avola /
+Eloro / Noto / Siracusa), vini di Cagliari (Cagliari / Girò di Cagliari /
+Nasco di Cagliari / Nuragus di Cagliari), Campidano di Terralba, Carignano
+del Sulcis, Colli di Luni / Cinque Terre / Colline di Levanto / Liguria di
+Levante, Cori, Marino, Monica di Sardegna, Nardò, Pomino, Tintilia del
+Molise, Valdadige Terradeiforti, Vernaccia di Oristano; plus nameless-wine
+cases — Est! Est!! Est!!! di Montefiascone, Cesanese di Olevano Romano,
+Colli Lanuvini, Contea di Sclafani, Ortona, Penisola Sorrentina, Terratico
+di Bibbona, Terre Siciliane, Matera, Leverano, Lizzano, San Severo,
+Moscato di Trani, Cannonau di Sardegna, Vermentino di Sardegna, Mandrolisai.
+
+🟡 `montecarlo` — Consorzio Vini DOC Montecarlo (Lucca) page at
+http://www.promontecarlo.it/consorzio_vini_doc.html returned HTTP 403 to
+the research agent; re-fetch from a browser to confirm and add.
+
+❌ ~150 IT appellations have genuinely no consorzio di tutela (small IGTs,
+older southern / island DOCs, region-wide umbrella IGTs) — permanent NONE,
+not actionable. Full enumerated list in `tmp/it-consorzio-no-link.json` so
+the lookup is not retried blindly.
 
 ## Style taxonomy follow-ups
 

@@ -26,8 +26,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import re
+import shutil
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -39,7 +40,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import cache, providers, roundtrip  # noqa: E402
+from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "es" / "pliegos-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "es"
@@ -288,14 +289,9 @@ def _process_subsection(
     except Exception as e:  # noqa: BLE001
         return [], 0, str(e)
     # Tolerant JSON extraction
-    raw = raw.strip()
-    m = re.search(r"\{.*\}", raw, re.S)
-    if not m:
-        return [], 0, "no JSON in response"
-    try:
-        payload = json.loads(m.group())
-    except json.JSONDecodeError as e:
-        return [], 0, f"json decode: {e}"
+    payload, perr = llm_json.parse_facts(raw)
+    if payload is None:
+        return [], 0, perr or "no JSON in response"
     raw_facts = payload.get("facts") or []
     kept, dropped = _ground_facts(raw_facts, lien, wiki_hint)
     return kept, dropped, ""
@@ -373,6 +369,51 @@ def _is_cache_valid(record: dict) -> bool:
     return True
 
 
+def _run_batch(args) -> int:
+    """Extract terroir facts for every ES wine via the provider Batch API."""
+    if not batch.supports(args.provider):
+        print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
+        return 1
+    model_id = args.model or batch.default_model(args.provider)
+    targets = collect_targets()
+    if args.only:
+        needles = [s.lower() for s in args.only]
+        targets = [r for r in targets if any(n in r["slug"].lower() for n in needles)]
+    if args.limit:
+        targets = targets[: args.limit]
+    targets = [r for r in targets if args.refresh or not _is_cache_valid(r)]
+    if not targets:
+        print("[02d/es] batch: nothing to do.", file=sys.stderr)
+        return 0
+    print(f"[02d/es] batch: {len(targets)} wines (provider={args.provider}, "
+          f"model={model_id})", file=sys.stderr)
+
+    def run_loop(prov):
+        # _process_record writes the cache unconditionally; in the collect
+        # pass redirect CACHE_DIR to a throwaway so pass 1 leaves no caches.
+        global CACHE_DIR
+        if getattr(prov, "kind", "") == "collecting":
+            keep = CACHE_DIR
+            CACHE_DIR = Path(tempfile.mkdtemp(prefix="batch-02d-es-"))
+            try:
+                for rec in targets:
+                    _process_record(prov, model_id, rec)
+            finally:
+                shutil.rmtree(CACHE_DIR, ignore_errors=True)
+                CACHE_DIR = keep
+        else:
+            CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            for rec in targets:
+                _process_record(prov, model_id, rec)
+
+    batch.run_two_pass(
+        provider=args.provider, model=model_id,
+        sidecar=ROOT / "raw" / ".batch" / "02d-es.json",
+        run_loop=run_loop,
+    )
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -391,12 +432,19 @@ def main() -> int:
     ap.add_argument("--only", action="append", default=[])
     ap.add_argument("--refresh", action="store_true",
                     help="re-extract even when cache is valid")
+    ap.add_argument("--batch", action="store_true",
+                    help="submit all wines to the provider Batch API "
+                         "(--provider anthropic|mistral; ~50%% cheaper); "
+                         "resumes an in-flight batch on re-run")
     args = ap.parse_args()
 
     if not EXTRACTED.exists():
         print(f"error: {EXTRACTED} missing — run scripts/es/02_extract_pliegos.py first",
               file=sys.stderr)
         return 1
+
+    if args.batch:
+        return _run_batch(args)
 
     targets = collect_targets()
     if args.only:

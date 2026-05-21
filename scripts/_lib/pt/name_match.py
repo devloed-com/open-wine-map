@@ -2,10 +2,14 @@
 master-index labels.
 
 In practice the two sources agree 1:1 on names today, but eAmbrosia /
-IVV editorial drift (capitalisation, "DO " / "DOP " prefixes, spelling
-of "DoTejo" vs "Do Tejo") may show up in future runs. Keep the
-normaliser narrow so a mismatch surfaces as a stub rather than as a
-silent wrong-PDF match.
+IVV editorial drift (capitalisation, "DOP " / "IGP " prefixes) may show
+up in future runs. Keep the normaliser narrow so a mismatch surfaces as
+a stub rather than as a silent wrong-PDF match.
+
+Bare "DO" is deliberately NOT a stripped prefix: the Portuguese
+preposition "do" opens the appellation name "Do Tejo" (DOC Do Tejo), so
+stripping it would collapse "Do Tejo" onto the distinct IGP "Tejo" and
+silently match the wrong caderno PDF.
 """
 
 from __future__ import annotations
@@ -14,7 +18,7 @@ import re
 import unicodedata
 
 _KIND_PREFIX_RE = re.compile(
-    r"^(?:DOP|DOC|DO|IGP|IG|VR)\s+", flags=re.IGNORECASE
+    r"^(?:DOP|DOC|IGP|IG|VR)\s+", flags=re.IGNORECASE
 )
 
 

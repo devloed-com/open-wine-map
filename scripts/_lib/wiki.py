@@ -24,6 +24,7 @@ GRAPE_KEYWORDS = {
            "wijndruif"),
     "pt": ("casta", "videira", "uva", "vitis vinifera", "vinífera",
            "variedade de uva"),
+    "it": ("vitigno", "vitis vinifera", "vinifera", "uva", "varietà di vite"),
 }
 
 

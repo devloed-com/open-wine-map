@@ -24,9 +24,9 @@ import os
 
 import requests
 
-DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5"
+DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"
 DEFAULT_MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions"
-DEFAULT_MISTRAL_MODEL = "mistral-large-latest"
+DEFAULT_MISTRAL_MODEL = "mistral-medium-latest"
 DEFAULT_OLLAMA_URL = "http://localhost:11434/api/chat"
 DEFAULT_OLLAMA_MODEL = "mistral-small3.2"
 OLLAMA_TIMEOUT_S = 900

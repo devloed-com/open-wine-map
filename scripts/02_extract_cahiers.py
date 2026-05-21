@@ -40,6 +40,9 @@ from pathlib import Path
 
 from tqdm import tqdm
 
+from _lib.grape_entity import (
+    flush_unknowns_queue, preheat_vocabulary, set_pliego_context,
+)
 from _lib.grape_lexicon import parse_grapes, parse_styles
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -1358,7 +1361,14 @@ def main() -> int:
     if args.limit:
         items = items[: args.limit]
 
+    # Preheat the grape-entity vocabulary cache BEFORE the rmtree. The
+    # vocab's canonical-by-vivc-id ranking reads cross-corpus extracted
+    # slugs; wiping `cahier-extracted/` first would blank the FR
+    # contribution and flip the canonical slug for FR-canonical
+    # varieties (e.g. `aubun` would lose to `corvo` from PT/duriense
+    # under VIVC's shared vivc_id 761).
     if not (args.only or args.limit):
+        preheat_vocabulary()
         shutil.rmtree(OUT_DIR, ignore_errors=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     index: dict[str, dict] = {}
@@ -1429,6 +1439,7 @@ def main() -> int:
         record["country"] = "fr"
         record["id_appellation"] = id_app
         record["slug"] = slug_map[id_app]
+        set_pliego_context(record["slug"])
         source_filename = rescue_pdf or meta["filename"]
         source_sha = (
             rescue_pdf.removesuffix(".pdf") if rescue_pdf else meta["sha256"]
@@ -1581,11 +1592,20 @@ def main() -> int:
             }
             dgc_emitted += 1
 
+    set_pliego_context(None)
     stubs = emit_stub_records(
         siqo_denoms, siqo_categories, manifest, index, slug_map, OUT_DIR
     )
 
     INDEX_PATH.write_text(json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True))
+    unknowns_path = ROOT / "raw" / "inao" / "extraction-unknowns.json"
+    n_unknowns = flush_unknowns_queue(unknowns_path)
+    if n_unknowns:
+        print(
+            f"[entity] {n_unknowns} unknown variety candidates → "
+            f"review at {unknowns_path.relative_to(ROOT)}",
+            file=sys.stderr,
+        )
     print(
         f"[done] extracted={extracted} dgcs={dgc_emitted} rescued={rescued} "
         f"stubs={stubs} no-segment={no_segment} no-sections={no_sections} "

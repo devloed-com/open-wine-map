@@ -36,6 +36,9 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.grape_entity import (  # noqa: E402
+    flush_unknowns_queue, match_variety, set_pliego_context,
+)
 from _lib.grape_lexicon import GRAPE_ALIAS, GRAPE_BLOCKLIST  # noqa: E402
 from _lib.pt.caderno_sections import (  # noqa: E402
     collapse_whitespace,
@@ -209,28 +212,49 @@ def _prt_canonical_name(rest: str) -> str:
     return tokens[0] if tokens else ""
 
 
+_PAREN_SYNONYM_RE = re.compile(r"\s*\(([^)]*)\)?\s*")
+
+
 def _split_line_into_candidates(line: str) -> list[str]:
     """One grapes-section line → candidate variety names.
 
     - `Aragonez; Tinta-Roriz; Tempranillo` (synonyms): take first.
     - `Alfrocheiro, Alvarelhão, … e Trincadeira` (enumeration): split.
+    - `Arinto (Pedernã)` (parenthesised synonym): emit both as separate
+      candidates so the matcher sees `Arinto` and `Pedernã`
+      independently. The matcher's vocab folds them to the same slug;
+      dedupe drops the duplicate. Tolerates an unbalanced opening paren
+      from a column-split fragment.
     """
-    if ";" in line:
-        return [line.split(";")[0].strip()]
-    if "," in line or re.search(r"\be\b", line):
-        parts = _GRAPE_SPLIT_INNER_RE.split(line)
-        return [p.strip() for p in parts if p.strip()]
-    return [line.strip()]
+    paren_raw = _PAREN_SYNONYM_RE.findall(line)
+    paren_synonyms: list[str] = []
+    for content in paren_raw:
+        for piece in re.split(r"\s*[,;]\s*", content):
+            piece = piece.strip()
+            if piece:
+                paren_synonyms.append(piece)
+    bare = _PAREN_SYNONYM_RE.sub(" ", line).strip()
+    if ";" in bare:
+        bare = bare.split(";")[0].strip()
+        return [bare, *paren_synonyms] if bare else paren_synonyms
+    if "," in bare or re.search(r"\be\b", bare):
+        parts = _GRAPE_SPLIT_INNER_RE.split(bare)
+        primary = [p.strip() for p in parts if p.strip()]
+    else:
+        primary = [bare.strip()] if bare.strip() else []
+    return [*primary, *paren_synonyms]
 
 
 def _candidate_to_slug(candidate: str) -> tuple[str, str] | None:
     """Normalise one candidate name into (display-name, canonical-slug).
 
-    Returns None if the candidate is prose, too long, or noise. Note:
-    trailing "Branco"/"Branca"/"Tinto"/"Tinta" words are NOT stripped —
-    in PT cadernos these are part of the canonical variety name
-    (`Pinheira Branca` is distinct from `Pinheira`; `Verdelho Tinto`
-    from `Verdelho`). The PRT-tabular path strips its own colour-column.
+    Pre-cleans the candidate (strip leading numeric/code prefix, drop
+    prose-looking tokens, drop over-long tokens), then hands off to the
+    vocab matcher. Returns None on miss; unmatched tokens land in the
+    curator queue via `match_variety`. Note: trailing "Branco"/"Branca"/
+    "Tinto"/"Tinta" words are NOT stripped — in PT cadernos these are
+    part of the canonical variety name (`Pinheira Branca` is distinct
+    from `Pinheira`). The PRT-tabular path strips its own colour-column.
     """
     cand = candidate.strip().rstrip(",.;:").strip()
     if not cand or len(cand) < 3:
@@ -238,7 +262,6 @@ def _candidate_to_slug(candidate: str) -> tuple[str, str] | None:
     if _PROSE_RE.search(cand):
         return None
     tokens = cand.split()
-    # Drop a leading numeric/code prefix.
     if tokens and _CODE_LIKE_RE.match(tokens[0]):
         tokens = tokens[1:]
     if not tokens:
@@ -246,13 +269,19 @@ def _candidate_to_slug(candidate: str) -> tuple[str, str] | None:
     name = " ".join(tokens).strip()
     if len(name) < 3 or len(name.split()) > 5:
         return None
-    slug = slugify(name)
-    if not slug or len(slug) < 3:
+    # Quick noise pre-filter: a token that slugifies to a known noise
+    # pattern (PRT-codes, page-footer fragments, regulation citations,
+    # …) is rejected before the matcher so the curator queue stays
+    # focused on real grape-vs-prose ambiguities.
+    pre_slug = GRAPE_ALIAS.get(slugify(name), slugify(name))
+    if pre_slug and _is_noise_slug(pre_slug):
         return None
-    slug = GRAPE_ALIAS.get(slug, slug)
-    if _is_noise_slug(slug):
+    result = match_variety(name)
+    if result is None or result.slug in GRAPE_BLOCKLIST:
         return None
-    return name, slug
+    if _is_noise_slug(result.slug):
+        return None
+    return result.name, result.slug
 
 
 def _normalize_line(line: str) -> str:
@@ -513,6 +542,7 @@ def main() -> int:
 
     for w in tqdm(wines, desc="extract", leave=False):
         slug = w["slug"]
+        set_pliego_context(slug)
         info = manifest.get(slug, {})
         status = info.get("status", "unknown")
         if status != "ok":
@@ -605,6 +635,7 @@ def main() -> int:
             }
             n_subregioes += 1
 
+    set_pliego_context(None)
     INDEX_OUT_PATH.write_text(
         json.dumps(
             {
@@ -622,6 +653,14 @@ def main() -> int:
             sort_keys=True,
         )
     )
+    unknowns_path = ROOT / "raw" / "pt" / "extraction-unknowns.json"
+    n_unknowns = flush_unknowns_queue(unknowns_path)
+    if n_unknowns:
+        print(
+            f"[entity] {n_unknowns} unknown variety candidates → "
+            f"review at {unknowns_path.relative_to(ROOT)}",
+            file=sys.stderr,
+        )
     print(
         f"[done] parents={n_parents} subregioes={n_subregioes} "
         f"stubs={n_stubs} → {OUT_DIR.relative_to(ROOT)}",

@@ -380,11 +380,18 @@ def render_page(record: dict) -> str:
             "",
         ]
 
-    body = [
-        "## Summary",
-        "",
-        summary or "_(pas de résumé extrait)_",
-        "",
+    body = []
+    # Summary is a fallback narrative: emit it only when no terroir facts
+    # were extracted (facts and summary are mutually exclusive — the map
+    # panel already renders one XOR the other).
+    if not facts_block:
+        body += [
+            "## Summary",
+            "",
+            summary or "_(pas de résumé extrait)_",
+            "",
+        ]
+    body += [
         "## Aire géographique",
         "",
         fmt_communes(aire_geo),

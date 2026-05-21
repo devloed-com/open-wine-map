@@ -27,6 +27,7 @@ dev = [
 # of the pipeline never touches Playwright.
 bootstrap = [
     "playwright>=1.55",
+    "py7zr>=1.1.0",
 ]
 
 [tool.ruff]
