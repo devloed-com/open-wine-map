@@ -28,11 +28,35 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.it.region import derive_regione  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "it" / "disciplinari-extracted"
+MASAF_EXTRACTED = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
 WIKI = ROOT / "wiki"
 WIKI_INDEX = WIKI / "_index.json"
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 
 _FACTS_SLUGS: frozenset[str] | None = None
+_MASAF_REGIONI: dict[str, str] | None = None
+
+
+def _masaf_regione(slug: str) -> str:
+    """Regione from the stage-02f MASAF sidecar. A MASAF-augmented stub's
+    regione lives in the sidecar, not the (immutable) on-disk stub
+    record — stage 04 merges it in; stage 03 reads it directly so the
+    wiki frontmatter carries the regione too."""
+    global _MASAF_REGIONI
+    if _MASAF_REGIONI is None:
+        out: dict[str, str] = {}
+        if MASAF_EXTRACTED.exists():
+            for p in MASAF_EXTRACTED.glob("*.json"):
+                if p.name.startswith("_"):
+                    continue
+                try:
+                    rec = json.loads(p.read_text())
+                except (ValueError, OSError):
+                    continue
+                if rec.get("regione"):
+                    out[rec.get("slug") or p.stem] = rec["regione"]
+        _MASAF_REGIONI = out
+    return _MASAF_REGIONI.get(slug, "")
 
 
 def _terroir_facts_slugs() -> frozenset[str]:
@@ -70,10 +94,16 @@ def _resolve_regione(record: dict) -> str:
         return record["regione"]
     if record.get("is_sub_denomination"):
         return ""
+    sidecar = _masaf_regione(record.get("slug") or "")
+    if sidecar:
+        return sidecar
+    # Fallback only — stage 02 / 02f persist `regione` on every real
+    # record. Terroir text is deliberately not passed (it names
+    # neighbouring regioni); a commune index is not available here.
     return derive_regione(
         {"file_number": record.get("file_number") or ""},
         (record.get("section_roles") or {}).get("geo_area", ""),
-        (record.get("section_roles") or {}).get("link_to_terroir", ""),
+        record.get("name", ""),
     )
 
 

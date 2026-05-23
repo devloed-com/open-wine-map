@@ -64,9 +64,11 @@ from _lib.it.masaf import (  # noqa: E402
     derive_terroir, extract_articles, match_wines_to_pdfs, parse_grapes_with,
 )
 from _lib.it.region import derive_regione  # noqa: E402
+from _lib.it.province import load_comune_regione_map, resolve_gisco_lau  # noqa: E402
 
 EAMBROSIA_INDEX = ROOT / "raw" / "it" / "eambrosia" / "index.json"
 EXTRACTED_DIR = ROOT / "raw" / "it" / "disciplinari-extracted"
+GISCO_DIR = ROOT / "raw" / "es" / "gisco"
 BUNDLES_DIR = ROOT / "raw" / "it" / "masaf-disciplinari" / "bundles"
 BUNDLES_MANIFEST = BUNDLES_DIR / "manifest.json"
 PDF_CACHE = ROOT / "raw" / "it" / "masaf-disciplinari" / "pdfs"
@@ -199,7 +201,7 @@ def collapse_whitespace(s: str) -> str:
 
 
 def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
-                 match_info: dict) -> dict:
+                 match_info: dict, comune_map: dict) -> dict:
     """Build the sidecar JSON. The shape mirrors the doc-unico extracted
     record where it can (slug / name / kind / file_number / id_eambrosia
     / regione / grapes / styles / sections_present) so stage 04 can
@@ -219,8 +221,8 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
     regione = derive_regione(
         {"file_number": wine.get("fileNumber") or ""},
         geo_area,
-        terroir,
         wine.get("name", ""),
+        comune_map=comune_map,
     )
 
     return {
@@ -257,6 +259,7 @@ def process_slug(
     refresh: bool,
     strict: bool,
     extracted_status: dict[str, dict],
+    comune_map: dict,
 ) -> dict:
     slug = wine["slug"]
 
@@ -349,7 +352,7 @@ def process_slug(
             )
         return {"slug": slug, "status": "no-articles", "reason": "no-anchors"}
 
-    record = build_record(wine, articles, pdf_meta, match_info)
+    record = build_record(wine, articles, pdf_meta, match_info, comune_map)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"{slug}.json"
     out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2))
@@ -432,13 +435,23 @@ def main(argv: list[str] | None = None) -> int:
         file=sys.stderr,
     )
 
+    gisco_lau = resolve_gisco_lau(GISCO_DIR)
+    comune_map = load_comune_regione_map(str(gisco_lau)) if gisco_lau else {}
+    if comune_map:
+        print(f"[regione] GISCO commune index: {len(comune_map)} names",
+              file=sys.stderr)
+    else:
+        print("[regione] warn: GISCO LAU not found — regione derivation "
+              "falls back to province/file-number signals", file=sys.stderr)
+
     if args.slug:
         wine = next((w for w in wines if w["slug"] == args.slug), None)
         if wine is None:
             raise SystemExit(f"no eAmbrosia wine with slug {args.slug!r}")
         out = process_slug(wine, pdfs, outcomes_by_slug, overrides,
                            refresh=args.refresh, strict=True,
-                           extracted_status=extracted_status)
+                           extracted_status=extracted_status,
+                           comune_map=comune_map)
         if out.get("status") == "ok":
             print(f"# {wine['name']} ({wine['slug']})")
             print(f"  match    : {out['match_how']:14s} {out['pdf_filename']!r}")
@@ -467,7 +480,8 @@ def main(argv: list[str] | None = None) -> int:
         slug = wine["slug"]
         res = process_slug(wine, pdfs, outcomes_by_slug, overrides,
                            refresh=args.refresh, strict=False,
-                           extracted_status=extracted_status)
+                           extracted_status=extracted_status,
+                           comune_map=comune_map)
         results.append(res)
         if res["status"] == "ok":
             print(

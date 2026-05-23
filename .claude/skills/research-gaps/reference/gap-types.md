@@ -180,6 +180,29 @@ ES are curated; IT had zero coverage in `appellation_urls.json`.
   shape `{ "<slug>": { "url": ..., "label": "<organisation name>" } }`.
 - **Re-run:** `04_build_maps.py`.
 
+## `at-weinkomitee-url` — Austrian appellation with no DO-organisation link
+
+Austrian analogue of `it-consorzio-url`. The administering body of a DAC is
+its **Regionales Weinkomitee**; the public web presence is usually the
+regional/Bundesland wine board (Wein Burgenland, Wein Steiermark, …) or a
+per-DAC `.wine` site. eAmbrosia carries **no** producer-group name for any
+AT wine, so research is by appellation name.
+
+- **Detect:** AT wine slugs in `raw/at/eambrosia/index.json` (`wines[].slug`)
+  absent from `by_slug` in `scripts/_lib/appellation_urls.json`.
+- **Triage:** 32 wines, no sub-denominations — a flat list. Many share an
+  org (all Burgenland DACs ≈ Wein Burgenland; the 5 generic western
+  regions ≈ ÖWM); still write one `by_slug` entry each.
+- **Search:** (1) the Regionales Weinkomitee / per-DAC regional site;
+  (2) the Bundesland wine board; (3) Österreich Wein Marketing (ÖWM) —
+  oesterreichwein.at / austrianwine.com — national fallback + region
+  directory. Reject winery / shop / tourism-portal sites.
+- **WAF risk:** low — Austrian wine-board sites are agent-reachable
+  (weinniederoesterreich.at serves a SiteGround bot-CAPTCHA but is live).
+- **Overrides target:** `scripts/_lib/appellation_urls.json` → `by_slug`,
+  shape `{ "<slug>": { "label": "<organisation name>", "url": ... } }`.
+- **Re-run:** `04_build_maps.py`.
+
 ---
 
 ## Adding a new gap type

@@ -3,8 +3,9 @@
 A reference wiki + map of European wine appellations, generated mechanically
 from public regulator data. France (INAO + JORF) is the canonical pipeline;
 Spain (eAmbrosia + EUR-Lex) lives under `scripts/es/`; Portugal (eAmbrosia +
-IVV) lives under `scripts/pt/`. Every per-record fact traces back to a
-public-source document — nothing here is hand-written narrative.
+IVV) under `scripts/pt/`; Italy under `scripts/it/`; Austria under
+`scripts/at/`; Slovenia under `scripts/si/`. Every per-record fact traces
+back to a public-source document — nothing here is hand-written narrative.
 
 ## Status
 
@@ -15,9 +16,11 @@ premier-cru climats, etc.). The ES pipeline covers the ~149 wine GIs in
 eAmbrosia (106 DOP + 43 IGP); coverage is a function of which wines have an
 EU-OJ "documento único" — see `CLAUDE.md` for the curator workflow. The PT
 pipeline covers the 44 wine GIs (30 DOP + 14 IGP) sourced from eAmbrosia +
-the IVV cadernos master indexes. Stage 04 merges all three streams into a
-single four-locale interactive map (FR / EN / ES / NL). The site is deployed
-at <https://www.openwinemap.com>.
+the IVV cadernos master indexes. Italy (531 wine GIs), Austria (32) and
+Slovenia (17 — 14 DOP + 3 IGP) follow the same eAmbrosia + EU-OJ
+single-document pattern. Stage 04 merges all six streams into a single
+four-locale interactive map (FR / EN / ES / NL). The site is deployed at
+<https://www.openwinemap.com>.
 
 ## Setup
 

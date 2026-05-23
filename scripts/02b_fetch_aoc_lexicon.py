@@ -139,6 +139,41 @@ LANG_CONFIG: dict[str, dict] = {
             "vino", "DOCG", "DOC", "denominazione di origine", "DOP",
         ),
     },
+    "de": {
+        # German wine-vocabulary anchors for the Austrian corpus
+        # (`--lang de` → de.wikipedia.org). Whole-word matched, so the
+        # generic short tokens stay out; `dac` / `weinbaugebiet` /
+        # `rebsorte` are the reliable wine-context markers.
+        "aoc_keywords": (
+            "wein", "weine", "weinbau", "weinbaugebiet", "weinbauregion",
+            "weingut", "weingärten", "weingarten", "winzer", "rebsorte",
+            "rebsorten", "qualitätswein", "qualitatswein", "dac",
+            "ursprungsbezeichnung", "weinland",
+        ),
+        "default_source": "raw/at/dokumente-extracted",
+        # AT: Austrian wine-region pages on de.wikipedia.org disambiguate
+        # as `(Weinbaugebiet)` / `(Weinbauregion)`, then bare title, then
+        # `(DAC)` / `(Wein)`.
+        "disambiguators_for_kind": lambda kind: (
+            "Weinbaugebiet", "Weinbauregion", "DAC", "Wein",
+        ),
+    },
+    "sl": {
+        # Slovenian wine-vocabulary anchors for the SI corpus
+        # (`--lang sl` → sl.wikipedia.org). Whole-word matched.
+        "aoc_keywords": (
+            "vino", "vina", "vinograd", "vinogradništvo", "vinogradnistvo",
+            "vinarstvo", "vinorodni", "vinorodna", "vinorodno", "trgatev",
+            "grozdje", "sorta", "sorte", "okoliš", "okolis", "zop", "zgp",
+            "vinska", "geografska označba", "označba porekla",
+        ),
+        "default_source": "raw/si/dokumenti-extracted",
+        # SI: per-DOP wine pages on sl.wikipedia.org disambiguate as
+        # `(vino)`, then the vinorodni-okoliš / vinorodna-dežela forms.
+        "disambiguators_for_kind": lambda kind: (
+            "vino", "vinorodni okoliš", "vinorodna dežela",
+        ),
+    },
 }
 
 UA = (

@@ -230,7 +230,23 @@ Detail tables below preserved as reference. Workflow notes:
 
 `no-documento-unico-anchor` (✅ resolved — flag was stale): Toro + Ribera del Guadiana both anchor-match cleanly against `DOC_UNICO_ANCHOR_RE` in [scripts/es/02_extract_pliegos.py:212](scripts/es/02_extract_pliegos.py#L212) (re-verified 2026-05-14). Toro extracts 7 principal grapes; Ribera del Guadiana extracts polygon (`figshare-pdo`). RDG's "0 principal grapes" trace is a separate role-routing issue — its older `ti-grseq-1` template puts grapes at section 7 (not 6) with non-standard numbering, so the grape parser misses them. See `ES role-routing coverage` in code follow-ups.
 
-### Geometry — visibility ✅; precision ⏳ for 4 wines
+### Geometry — official MAPA zones harvested 🟢 (2026-05-22)
+
+ES geometry now uses the **official MAPA national wine-zone layer**
+("Zonas de Calidad Diferenciada: Vinos", 96 DOP-side figures) as the
+primary source — `geom_source = mapa-zone`, ahead of the Bétard
+`figshare-pdo` fallback. ~90 of 106 ES DOPs resolve to an official
+zone polygon; the 16 misses are newer Vinos de Pago that post-date
+the layer (Abadía Retuerta, Cebreros, Río Negro, Tharsys, Urbezo, …)
+→ they keep Bétard. The 43 IGPs aren't in the MAPA DOP-side layer and
+keep the existing GISCO commune-union chain.
+
+⏳ **Licence note** — the MAPA IDE *metadata record* declares CC-BY 4.0
+("Sin limitaciones al acceso público"); the *download landing page*
+carries softer non-commercial wording. The machine-readable metadata
+is the citable licence and the project is non-commercial regardless,
+so it's used with `© MAPA` attribution — but if the project ever
+monetises, get this clarified with MAPA. Source: `_lib/es/zones.py`.
 
 **Visibility check (2026-05-14)**: zero ES `stub-no-geometry` features in `wiki/map-data/appellations.geojson`. The 6 entries in [raw/es/geometry_research.json](raw/es/geometry_research.json) all resolve to `geometry-research-municipios` (whole-municipio union of GISCO communes by INE code) via [scripts/04_build_maps.py:836-848](scripts/04_build_maps.py#L836-L848). So every ES record has a polygon.
 
@@ -366,6 +382,20 @@ These surfaced in the audit but require code changes, not lookups:
 - **ES stage-01 `--refresh` manifest footgun** — `--refresh --only X` wipes manifest entries for wines outside the `--only` filter. Doesn't block extraction (stage 02 dispatches by file existence) but the manifest stats audit reports incorrect counts. Cosmetic.
 
 ## Portugal
+
+### CVR / DO-organisation URLs — ✅ complete (2026-05-22)
+
+Research run (`research-gaps` skill, 3 web-research agents) resolved the
+official DO-organisation website for all 44 PT appellations — 14 distinct
+bodies (12 Comissões Vitivinícolas Regionais + IVDP + IVBAM), cross-checked
+against the IVV (`ivv.gov.pt`) entidades-certificadoras list. All 44 merged
+into [scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json)
+`by_slug`. 44/44 FOUND — no backlog. Findings:
+[tmp/pt-cvr-urls-research-results.md](tmp/pt-cvr-urls-research-results.md).
+Three cross-agent conflicts resolved at staging: Azores → IVVA (the old CVR
+Açores domain lapsed); Beira Interior → `vinhosdabeirainterior.pt` (the
+`cvrbi.pt` redirect target); CVR Lisboa → `http://www.vinhosdelisboa.com/`
+(HTTP only — HTTPS cert-name mismatch).
 
 ### Cadernos — ✅ complete (2026-05-16, v1 land)
 
@@ -701,11 +731,38 @@ Lambrusco→Emilia-Romagna, …) immediately.
 each to its administrative regione and emit
 `scripts/_lib/it/regione_by_file_number.json`.
 
-### IT IGT geometry — ⏳ deferred to v2
+### IT geometry — regional-geoportal zone harvest 🟢 in progress
 
-119 IT IGPs aren't in Bétard 2022 (PDO-only by design) and v1 doesn't
-ship the commune-list-union fallback for IT. They appear in the
-sidebar with no polygon, same status as ~14 PT IGPs.
+Strategy (decided 2026-05-22): use official regional production-zone
+polygons where a region publishes a licence-clear GIS layer; Bétard
+2022 is the fallback. Registry + per-region status live in
+[scripts/_lib/it/zone_sources.py](scripts/_lib/it/zone_sources.py);
+stage 00 fetches the `active` ones, stage 04 resolves `geoportal-zone`
+in front of `figshare-pdo`.
+
+Region tracker:
+
+| Region | Status | Licence | Note |
+|---|---|---|---|
+| Piemonte | ✅ active | CC-BY 4.0 | 64 zones; 57 wines matched |
+| Veneto | ✅ active | IODL 2.0 / CC-BY | WFS, DOC+DOCG+IGT; 41 wines matched |
+| Toscana | ✅ active | CC-BY 4.0 (GEOscopio; download page links CC-BY) | direct zip, `zo_vin_nom_zon` layer; 55 wines |
+| Lazio | ✅ active | CC-BY 4.0 | GeoServer WFS, DOC+DOCG+IGT; 29 wines |
+| Lombardia | ✅ active | CC-BY 4.0 | ArcGIS MapServer, DOC+DOCG+IGT; 34 wines |
+| Umbria | ⏳ todo | CC-BY 4.0 | needs a bespoke fetch — ~23 separate per-appellation `.7z` shapefiles via the dati.regione.umbria.it CKAN API |
+| Puglia | ⏳ todo | IODL 2.0 | endpoint not reachable (SIT Puglia WFS/ArcGIS hosts 404 / login-gated) — needs the live WFS layer name |
+
+**5 of 7 regions harvested → 218 IT wines on official zone polygons**
+(`geoportal-zone`); the rest fall back to Bétard. Umbria + Puglia are
+real to-dos, not skips — see the per-region notes and
+[scripts/_lib/it/zone_sources.py](scripts/_lib/it/zone_sources.py).
+| Abruzzo | ❌ fallback | custom, unconfirmed | portal SSL cert expired; stays on Bétard |
+| Campania | ❌ fallback | unconfirmed | dataset page 404s; stays on Bétard |
+| FVG, Sicilia, Sardegna, Emilia-R., Marche, Liguria, Basilicata, Calabria, Molise, Valle d'Aosta, Trento | ❌ fallback | — | no open zone layer found in the 2026-05-22 audit; stay on Bétard |
+
+Wines in fallback regions keep Bétard's whole-municipality polygon
+(approximate, may overlap). 119 IGPs not in Bétard remain
+polygon-less in those regions.
 
 ### Sottozone detection — ⏳ low coverage
 
@@ -750,6 +807,167 @@ older southern / island DOCs, region-wide umbrella IGTs) — permanent NONE,
 not actionable. Full enumerated list in `tmp/it-consorzio-no-link.json` so
 the lookup is not retried blindly.
 
+## Austria
+
+Country #5 (added 2026-05-21). 32 wine GIs (29 DOP + 3 IGP), all with
+an OJ-C publication URL — extraction is complete out of the box.
+
+### Einziges Dokument — ✅ 30 / 32 extracted
+
+❌ `neusiedlersee-hugelland` (PDO-AT-A0220) and `sudburgenland`
+(PDO-AT-A0227) — both content-stubs. eAmbrosia still lists them
+`registered`, but their only OJ-C publication is a *Löschungsantrag*
+(cancellation request) — these are superseded names from the Austrian
+DAC reform (Neusiedlersee-Hügelland → Leithaberg + Rosalia;
+Südburgenland → Eisenberg). No single document exists to extract. A
+curator could pin an alternate pliego URL in
+`raw/at/oj-pages/manual_overrides.json` if one surfaces, or these may
+genuinely be in delisting. Low priority.
+
+### Geometry — ✅ 30 / 32 mapped, commune-precise
+
+AT geometry is resolved commune-precise from each Einziges Dokument's
+Bezirk/Gemeinde description (`scripts/_lib/at/gemeinde.py`, GISCO LAU +
+Statistik Austria registry) — the 16 proper DACs are verified disjoint
+(the Bétard whole-municipality overlap is gone). The 2 *Löschungsantrag*
+content-stubs (Neusiedlersee-Hügelland, Südburgenland) have no Einziges
+Dokument → no geo-area → `stub-no-geometry`; they'd be unblocked if a
+curator pins a pliego URL (see above).
+
+⏳ Two known precision gaps, both minor, both documented in
+`scripts/_lib/at/gemeinde.py`:
+- `leithaberg` — its doc adds 4 named *Rieden* inside the Gemeinde
+  Neusiedl am See; Rieden are sub-commune and can't resolve at GISCO
+  Gemeinde precision, so they're dropped (slight under-coverage rather
+  than swallowing the whole commune, which would overlap Neusiedlersee).
+- `carnuntum` — its doc adds the *Gerichtsbezirk* Schwechat (a judicial
+  district); approximated by the Gemeinde Schwechat.
+- New municipal mergers / renames surface as a Gemeinde the parser
+  skips silently — extend `_GEMEINDE_ALIAS` when an appellation's
+  commune count looks short.
+
+### AOC Wikipedia hints — ⏳ 5 / 32 resolved
+
+`scripts/02b_fetch_aoc_lexicon.py --lang de --source raw/at/dokumente-extracted`
+resolves only 5 of 32 — de.wikipedia's Austrian wine-region articles
+are general region pages (valley / Bundesland) whose REST summary
+doesn't trip the wine-keyword `looks_like_aoc` filter (`not_aoc_topic`).
+This is a salience hint for stage 02d only — terroir facts still
+extract from the Einziges Dokument regardless. Curator pass: pin the
+correct de.wikipedia titles via the AOC-override mechanism (e.g.
+`Weinbau in der Wachau`, `Weinbaugebiet Kamptal`) so the dual-source
+grounding gets a `wiki` arm. Low priority.
+
+### Summary translation (02c) — ⏳ 1 residual record
+
+29 / 30 AT records carry stage-02d terroir facts, so the fallback
+summary is needed for just **1** record — `oberosterreich` (its
+section-8 text is < 400 chars, below the 02d extraction threshold).
+Per the manual-round-trip workflow, run
+`scripts/02c_translate_summaries.py --source-lang de --emit-todo
+todo.json`, have the FR→EN/FR/ES/NL strings translated externally,
+then `--import todo.json --translator-id <id>`. Until then
+`oberosterreich` shows its German summary on the localized pages.
+
+### Grape vocabulary — ✅ seeded
+
+Austrian-only varieties folded into `GRAPE_ALIAS` / `DEFAULT_COLOUR`
+in [scripts/_lib/grape_lexicon.py](scripts/_lib/grape_lexicon.py):
+Zweigelt, Sankt Laurent, Neuburger, Scheurebe, Blauer Wildbacher,
+Bouvier, Goldburger, Rathay, Blütenmuskateller (+ Grauburgunder →
+Pinot Gris). Re-run `scripts/at/02_extract_pliegos.py` →
+`scripts/02g_fetch_vivc.py` after any edit. One residual junk token
+(`"4"`) in `raw/at/extraction-unknowns.json` — ignorable.
+
+### Appellation organisation URLs — ✅ 32 / 32 curated (2026-05-22)
+
+All 32 AT wine GIs given an org link in
+[scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json)
+`by_slug` via `/research-gaps` (prompt + results kept at
+`tmp/at-weinkomitee-url-research-{prompt,results}.md`). Two caveats:
+
+❌ `traisental` → `Verein Traisentaler Wein` is **HTTP-only** —
+`traisentalwein.at` resolves but serves no working TLS (HTTPS handshake
+fails), so the entry uses `http://`. Switch to `https://` if the site
+adds a certificate.
+
+❌ `neusiedlersee-hugelland` has no organisation site of its own
+(superseded name, area now Leithaberg DAC); the entry falls back to
+`Wein Burgenland`, the Bundesland board. Re-point to a dedicated body
+only if the name is revived.
+
+ÖWM (`Austrian Wine`, `austrianwine.com`) covers the 5 generic-region
+slugs with no Regionales Weinkomitee — `bergland`, `weinland`,
+`salzburg`, `vorarlberg`, `oberosterreich`.
+
+## Slovenia
+
+Country #6 (added 2026-05-22). 17 wine GIs (14 DOP + 3 IGP). Structurally
+an Austria clone, but only 1 wine has a fetchable EU single document.
+
+### ENOTNI DOKUMENT — ⏳ 1 / 17 extracted
+
+✅ `cvicek` (PDO-SI-A1561) — full extract from its EUR-Lex ENOTNI
+DOKUMENT (OJ C/2026/256), 17 grape varieties.
+
+❌ 16 content-stubs (`no-publication`). 13 grandfathered DOPs + the 3
+region IGPs have no public single-document URL in eAmbrosia — only a
+non-fetchable `Ares(...)` summary-sheet. The canonical source is the
+Slovenian national specification (*specifikacija proizvoda*, MKGP).
+**Phase 2**: research a public, licence-clear URL pattern for the MKGP
+specifications (fits `/research-gaps`), fill
+`raw/si/oj-pages/manual_overrides.json` via
+`scripts/si/regen_manual_overrides_template.py`, and add a national-spec
+parser branch to stage 02 (mirrors ES MAPA / IT MASAF). This also
+unlocks the podokoliš (sub-district) sub-denominations.
+
+**2026-05-23** — active EUR-Lex search via `/research-gaps` (prompt +
+results at
+[tmp/si-enotni-dokument-research-prompt.md](tmp/si-enotni-dokument-research-prompt.md)
+and [-results.md](tmp/si-enotni-dokument-research-results.md)) returned
+**0 / 16 FOUND**: every grandfathered name has only an
+`Ares(2011|2013)` summary-sheet id, no consolidated single-document
+publication on EUR-Lex. Closest false hits ruled out: *Belokranjska
+pogača* (food PDO ≠ Bela krajina wine), *Kraška panceta* (≠ Kras wine),
+*Nanoški sir* (≠ Vipavska dolina); Reg. (EU) 2017/1353 for Teran is the
+SI/HR labelling regulation, not a single document. **Re-check in 3–6
+months for `belokranjec` (PDO-SI-A1576) + `metliska-crnina`
+(PDO-SI-A1579)** — both had a national *standardna sprememba* approved
+2026-Q1 (MKGP consultation 7 Jan – 9 Feb 2026; eAmbrosia
+`amendmentsInProgressFlag: true` on A1579 corroborates). These are the
+most plausible to land an OJ-C ENOTNI-DOKUMENT publication mirroring
+Cviček's path (OJ C/2026/256, 16.1.2026). MKGP-national Phase 2 remains
+the systematic unlock for the other 14.
+
+### Geometry — ✅ 17 / 17 mapped
+
+14 DOPs resolve `figshare-pdo` (Bétard 2022, even as content-stubs); the
+3 IGPs resolve `region-pdo-union` (union of the member-region DOPs).
+Nothing in `stub-no-geometry`.
+
+### Sub-denominations (podokoliši) — ⏳ Phase 2
+
+v1 ships a flat 17-wine corpus. The podokoliš (sub-district) layer —
+the FR-DGC / ES-subzona analogue — is recoverable from the MKGP national
+specifications and lands with the Phase-2 national-spec parser.
+
+### Grape vocabulary — ✅ seeded
+
+Slovenian varieties folded into `GRAPE_ALIAS` / `DEFAULT_COLOUR` in
+[scripts/_lib/grape_lexicon.py](scripts/_lib/grape_lexicon.py): Žametovka,
+Kraljevina, Ranfol, Rumeni plavec (+ `sentlovrenka` → Sankt Laurent,
+`refošk` / `teran` → Refosco dal Peduncolo Rosso, `chardonay` typo →
+Chardonnay). `raw/si/extraction-unknowns.json` is empty after seeding.
+
+### Teran cross-border note — ✅ done
+
+`teran` carries a curated, source-cited note in
+[scripts/_lib/appellation_notes.json](scripts/_lib/appellation_notes.json)
+on the SI/HR labelling distinction (Reg. (EU) 2017/1353 + GC Case
+T-626/17). When Croatia (#7) is added, add the symmetric
+`hrvatska-istra` entry and do **not** mint a duplicate `teran`
+appellation.
+
 ## Style taxonomy follow-ups
 
 - **Sweet/oxidative cross-cut** — `generoso` (sherry-family) sits under `oxidative` because most sherries are dry; PX cream sherries and dulces are nominally oxidative *and* sweet. Currently they only emit `oxidative + generoso + (sub-tag)`; the `sweet` bucket is *not* added. Decide whether to surface dual-tagging (record carries both `oxidative` and `sweet`) when the pliego describes a PX / cream / sweet-oloroso style. Currently affects ~5 sherry pliegos. Defer to v2.
@@ -758,7 +976,38 @@ the lookup is not retried blindly.
 - **ES grape alias gaps** — [scripts/audit_es_grape_aliases.py](scripts/audit_es_grape_aliases.py) lists tokens that don't resolve through `GRAPE_ALIAS` / `DEFAULT_COLOUR`. ~250 distinct tokens after current seeding; biggest residual classes are Canary Islands varieties (Bermejuela, Marmajuelo, Vijariego, Listán Negro, …) and Galician varieties (Brancellao, Sousón, Loureira, Caíño…). Most are genuine ES-only varieties — register their canonical slug in `DEFAULT_COLOUR` rather than aliasing.
 - **Parenthesised synonyms in ES variety lists** — pliegos like 3-riberas write "Albillo Mayor (Turruntés)" where the parenthetical is the regional synonym. Parser currently keeps the parenthesis in the name → 3-token slug. Extract the parenthesised tail as a synonym (route through `GRAPE_ALIAS`) and slug from the primary token only.
 
-## VIVC grape resolution — open queue (2026-05-17)
+## VIVC grape resolution — open queue (2026-05-22)
 
-Curator action: for each row below, open the VIVC search URL, pick the variety number that best matches the slug's actual identity, and add `{"vivc_id": <id>}` to [raw/vivc/slug_overrides.json](raw/vivc/slug_overrides.json). Then `./.venv/bin/python scripts/02g_fetch_vivc.py` re-runs the passport fetch for the pinned slugs. Sorted by appellation-usage count (high impact first).
+Curator action: for each row below, open the VIVC search URL, pick the variety number that best matches the slug's actual identity, and add `{"vivc_id": <id>}` to [raw/vivc/slug_overrides.json](raw/vivc/slug_overrides.json). Then `./.venv/bin/python scripts/02g_fetch_vivc.py` re-runs the passport fetch for the pinned slugs.
+
+Latest `scripts/02g_fetch_vivc.py` run (2026-05-22, after the AT corpus
+landed): `buckets = {exact-cultivar: 625, override: 363, ambiguous: 11,
+miss: 5}`.
+
+**11 ambiguous slugs — curator queue at
+[raw/vivc/slug_overrides.example.json](raw/vivc/slug_overrides.example.json)**
+(`[02g] 11 ambiguous slug(s)`). Each has multiple candidate VIVC
+entries; copy the file to `raw/vivc/slug_overrides.json` and pin the
+right `vivc_id`:
+
+| slug | query | candidate VIVC ids |
+|---|---|---|
+| `sankt-laurent` | St. Laurent | 10470, 8252 — **AT** (Austrian red Sankt Laurent) |
+| `groppello` | Groppello | 16969, 5076, 6698, … (23) |
+| `inzolia` | Insolia | 122, 492, 5533 |
+| `loureiro-tinto` | loureiro tinto | 17346, 7623 |
+| `maresco` | Maresco | 1660, 4019 |
+| `moscatel-negra` | moscatel negra | 25847, 24609 |
+| `moscatel-negro` | moscatel negro | 6860, 40043, 23166, … (12) |
+| `schiava` | Schiava | 10821–10826, 22368, … (19) |
+| `siria` | doña blanca | 2742, 17676 |
+| `tempranillo-blanco` | tempranillo blanco | 25057, 10690 |
+| `verdejo-negro` | verdejo negro | 15678, 12668, 9694 |
+
+**5 misses** (no VIVC candidate at all): `blutenmuskateller` (**AT** —
+Blütenmuskateller, an Austrian Muscat selection that VIVC may not
+carry under that name), plus pre-existing `bianco-di-alessano`,
+`incrocio-manzoni`, `nerello-cappuccio`, `siria`-class IT/ES varieties.
+JKI publishes no data licence, so unresolved slugs simply ship without
+a VIVC bracket — not blocking.
 

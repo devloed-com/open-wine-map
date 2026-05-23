@@ -1067,6 +1067,10 @@ _TEMPLATE = """<!doctype html>
   #panel .approx-line {{ font-size:11.5px; color:#7a5a1a; background:#fbf3df; border-left:2px solid #d6b35a; padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
   #panel .approx-line a.parent-link {{ color:#7a5a1a; text-decoration:underline }}
   #panel .role-disclaimer {{ font-size:11px; color:#888; font-style:italic; margin:2px 0 8px; line-height:1.35 }}
+  #panel .appellation-note {{ font-size:11.5px; color:#33506b; background:#eef3f8; border-left:2px solid #6f93b5; padding:6px 9px; margin:8px 0; border-radius:2px; line-height:1.45 }}
+  #panel .appellation-note .note-srcs {{ margin-top:4px }}
+  #panel .appellation-note a {{ color:#33506b; text-decoration:underline }}
+  #panel .appellation-note .note-srcs a {{ margin-right:10px; white-space:nowrap }}
   #panel .aoc-card + .aoc-card {{ margin-top:24px; padding-top:20px; border-top:1px dashed #ccc }}
   #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid #934050 }}
   #panel .aoc-card.subordinate h1 {{ font-size:16px; color:#444; border-bottom-color:#ccc }}
@@ -2677,6 +2681,16 @@ _TEMPLATE = """<!doctype html>
     const summary = (!factsBlock && r.summary)
       ? `<p>${{escapeHtml(r.summary)}}${{summaryMarker}}</p>${{translationAttribution(r.summary_translation, r.country)}}`
       : '';
+    // Curated, source-cited cross-border note (e.g. Teran SI/HR). Only a
+    // handful of appellations carry one — see _lib/appellation_notes.json.
+    const noteBlock = (r.note && r.note.text)
+      ? `<div class="appellation-note"><div class="note-text">ⓘ ${{escapeHtml(r.note.text)}}</div>${{
+          (r.note.sources && r.note.sources.length)
+            ? '<div class="note-srcs">' + r.note.sources.map(s =>
+                `<a href="${{escapeAttr(s.url)}}" target="_blank" rel="noopener">${{escapeHtml(s.label)}}</a>`).join('') + '</div>'
+            : ''
+        }}</div>`
+      : '';
     return `
       <div class="${{klass}}">
         <h1>${{escapeHtml(r.name)}}</h1>
@@ -2689,6 +2703,7 @@ _TEMPLATE = """<!doctype html>
         ${{accessory ? '<h2>' + LABELS.facet_accessory_h + '</h2><div class="pills">' + accessory + '</div>' : ''}}
         ${{observation ? '<h2>' + LABELS.panel_observation_h + '</h2><div class="pills">' + observation + '</div>' : ''}}
         ${{factsBlock || summary}}
+        ${{noteBlock}}
         ${{renderSources(slug, r.sources)}}
       </div>
     `;

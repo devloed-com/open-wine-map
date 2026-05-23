@@ -59,6 +59,9 @@ from pathlib import Path
 import requests
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.it.zone_sources import active_sources  # noqa: E402
+
 OUT_DIR = ROOT / "raw" / "it" / "eambrosia"
 INDEX_PATH = OUT_DIR / "index.json"
 MANIFEST_PATH = OUT_DIR / "manifest.json"
@@ -124,6 +127,25 @@ MASAF_LICENSE = (
 # producing geometry-less records downstream.
 FIGSHARE_GPKG_PATH = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
 GISCO_LAU_PATH = ROOT / "raw" / "es" / "gisco" / "lau-eu-2024-01m.shp.zip"
+
+# ISTAT official comune registry — comune ↔ 6-digit code ↔ provincia ↔
+# regione. The code joins exactly to GISCO LAU (`GISCO_ID = IT_<code>`),
+# so stage 04 can resolve each disciplinare's comune / provincia /
+# regione description into a commune-precise polygon union instead of
+# Bétard's overlapping whole-municipality polygons.
+ISTAT_COMUNI_DIR = ROOT / "raw" / "it" / "istat"
+ISTAT_COMUNI_URL = (
+    "https://www.istat.it/storage/codici-unita-amministrative/"
+    "Elenco-comuni-italiani.csv"
+)
+ISTAT_LICENSE = (
+    "© ISTAT. Open data, CC BY 4.0 — reuse with attribution."
+)
+
+# Regional geoportal wine production-zone layers — official delimited
+# DOC/DOCG/IGT boundaries, used by stage 04 in preference to Bétard.
+# Registry + region to-do tracker: scripts/_lib/it/zone_sources.py.
+REGIONAL_ZONES_DIR = ROOT / "raw" / "it" / "regional-zones"
 
 EAMBROSIA_LIST_URL = (
     "https://webgate.ec.europa.eu/eambrosia-api/api/v1/geographical-indications"
@@ -270,6 +292,69 @@ def assert_shared_artifacts() -> None:
         sys.exit(2)
 
 
+def fetch_istat_comuni() -> dict:
+    """Download the ISTAT official comune registry (comune ↔ code ↔
+    provincia ↔ regione). One ~1 MB CSV; re-fetched every run (ISTAT
+    revises it as comuni merge — the file carries a Gebietsstand date)."""
+    ISTAT_COMUNI_DIR.mkdir(parents=True, exist_ok=True)
+    dest = ISTAT_COMUNI_DIR / "Elenco-comuni-italiani.csv"
+    print(f"[istat] fetch {ISTAT_COMUNI_URL}", file=sys.stderr)
+    r = requests.get(ISTAT_COMUNI_URL, headers={"User-Agent": UA}, timeout=120)
+    r.raise_for_status()
+    body = r.content
+    if b";" not in body[:200]:
+        raise RuntimeError(
+            f"ISTAT returned non-CSV content ({len(body)} bytes) — URL rotated."
+        )
+    dest.write_bytes(body)
+    manifest = {
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "source_url": ISTAT_COMUNI_URL,
+        "license": ISTAT_LICENSE,
+        "bytes": len(body),
+    }
+    (ISTAT_COMUNI_DIR / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True)
+    )
+    print(f"[istat] saved Elenco-comuni-italiani.csv ({len(body):,} bytes)",
+          file=sys.stderr)
+    return manifest
+
+
+def fetch_regional_zones() -> dict:
+    """Download each active regional wine production-zone layer. A region
+    may have several layers (DOC / DOCG / IGT). Cached by presence —
+    re-runs skip an already-downloaded file; delete the file to re-fetch."""
+    REGIONAL_ZONES_DIR.mkdir(parents=True, exist_ok=True)
+    out: dict[str, dict] = {}
+    for region, spec in active_sources().items():
+        files = []
+        for layer in spec["layers"]:
+            dest = REGIONAL_ZONES_DIR / layer["filename"]
+            if dest.exists():
+                files.append({"filename": layer["filename"],
+                              "bytes": dest.stat().st_size, "from_cache": True})
+                print(f"[zones] cache hit  {region}/{layer['filename']} "
+                      f"({dest.stat().st_size:,} b)", file=sys.stderr)
+                continue
+            print(f"[zones] fetch {region}/{layer['filename']}", file=sys.stderr)
+            r = requests.get(layer["url"], headers={"User-Agent": UA}, timeout=300)
+            r.raise_for_status()
+            dest.write_bytes(r.content)
+            files.append({"filename": layer["filename"], "bytes": len(r.content),
+                          "from_cache": False})
+            print(f"[zones] saved {region}/{layer['filename']} "
+                  f"({len(r.content):,} b)", file=sys.stderr)
+        out[region] = {"licence": spec.get("licence", ""),
+                       "attribution": spec.get("attribution", ""),
+                       "files": files}
+    (REGIONAL_ZONES_DIR / "manifest.json").write_text(json.dumps({
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "regions": out,
+    }, ensure_ascii=False, indent=2, sort_keys=True))
+    return out
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     assert_shared_artifacts()
@@ -330,6 +415,19 @@ def main() -> int:
     print(
         f"[done] MASAF: {len(masaf['bundles'])} bundles ({total_bytes:,} bytes) "
         f"→ {MASAF_BUNDLES_DIR.relative_to(ROOT)}",
+        file=sys.stderr,
+    )
+
+    fetch_istat_comuni()
+    print(
+        f"[done] ISTAT comuni registry → {ISTAT_COMUNI_DIR.relative_to(ROOT)}",
+        file=sys.stderr,
+    )
+
+    zones = fetch_regional_zones()
+    print(
+        f"[done] regional zone layers: {len(zones)} active "
+        f"→ {REGIONAL_ZONES_DIR.relative_to(ROOT)}",
         file=sys.stderr,
     )
     return 0

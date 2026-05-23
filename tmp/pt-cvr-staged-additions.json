@@ -1,0 +1,178 @@
+{
+  "acores": {
+    "label": "Instituto da Vinha e do Vinho dos Açores",
+    "url": "https://ivva.azores.gov.pt/"
+  },
+  "alenquer": {
+    "label": "Comissão Vitivinícola da Região de Lisboa",
+    "url": "http://www.vinhosdelisboa.com/"
+  },
+  "alentejano": {
+    "label": "Comissão Vitivinícola Regional Alentejana",
+    "url": "https://www.vinhosdoalentejo.pt/"
+  },
+  "alentejo": {
+    "label": "Comissão Vitivinícola Regional Alentejana",
+    "url": "https://www.vinhosdoalentejo.pt/"
+  },
+  "algarve": {
+    "label": "Comissão Vitivinícola do Algarve",
+    "url": "https://www.vinhosdoalgarve.pt/"
+  },
+  "arruda": {
+    "label": "Comissão Vitivinícola da Região de Lisboa",
+    "url": "http://www.vinhosdelisboa.com/"
+  },
+  "bairrada": {
+    "label": "Comissão Vitivinícola da Bairrada",
+    "url": "https://www.cvbairrada.pt/"
+  },
+  "beira-atlantico": {
+    "label": "Comissão Vitivinícola da Bairrada",
+    "url": "https://www.cvbairrada.pt/"
+  },
+  "beira-interior": {
+    "label": "Comissão Vitivinícola Regional da Beira Interior",
+    "url": "https://www.vinhosdabeirainterior.pt/"
+  },
+  "biscoitos": {
+    "label": "Instituto da Vinha e do Vinho dos Açores",
+    "url": "https://ivva.azores.gov.pt/"
+  },
+  "bucelas": {
+    "label": "Comissão Vitivinícola da Região de Lisboa",
+    "url": "http://www.vinhosdelisboa.com/"
+  },
+  "carcavelos": {
+    "label": "Comissão Vitivinícola da Região de Lisboa",
+    "url": "http://www.vinhosdelisboa.com/"
+  },
+  "colares": {
+    "label": "Comissão Vitivinícola da Região de Lisboa",
+    "url": "http://www.vinhosdelisboa.com/"
+  },
+  "dao": {
+    "label": "Comissão Vitivinícola Regional do Dão",
+    "url": "https://www.cvrdao.pt/"
+  },
+  "do-tejo": {
+    "label": "Comissão Vitivinícola Regional do Tejo",
+    "url": "https://www.cvrtejo.pt/"
+  },
+  "douro": {
+    "label": "Instituto dos Vinhos do Douro e do Porto",
+    "url": "https://www.ivdp.pt/"
+  },
+  "duriense": {
+    "label": "Instituto dos Vinhos do Douro e do Porto",
+    "url": "https://www.ivdp.pt/"
+  },
+  "encostas-d-aire": {
+    "label": "Comissão Vitivinícola da Região de Lisboa",
+    "url": "http://www.vinhosdelisboa.com/"
+  },
+  "graciosa": {
+    "label": "Instituto da Vinha e do Vinho dos Açores",
+    "url": "https://ivva.azores.gov.pt/"
+  },
+  "lafoes": {
+    "label": "Comissão Vitivinícola Regional do Dão",
+    "url": "https://www.cvrdao.pt/"
+  },
+  "lagoa": {
+    "label": "Comissão Vitivinícola do Algarve",
+    "url": "https://www.vinhosdoalgarve.pt/"
+  },
+  "lagos": {
+    "label": "Comissão Vitivinícola do Algarve",
+    "url": "https://www.vinhosdoalgarve.pt/"
+  },
+  "lisboa": {
+    "label": "Comissão Vitivinícola da Região de Lisboa",
+    "url": "http://www.vinhosdelisboa.com/"
+  },
+  "madeira": {
+    "label": "Instituto do Vinho, do Bordado e do Artesanato da Madeira",
+    "url": "https://ivbam.madeira.gov.pt/"
+  },
+  "madeirense": {
+    "label": "Instituto do Vinho, do Bordado e do Artesanato da Madeira",
+    "url": "https://ivbam.madeira.gov.pt/"
+  },
+  "minho": {
+    "label": "Comissão de Viticultura da Região dos Vinhos Verdes",
+    "url": "https://www.vinhoverde.pt/"
+  },
+  "obidos": {
+    "label": "Comissão Vitivinícola da Região de Lisboa",
+    "url": "http://www.vinhosdelisboa.com/"
+  },
+  "palmela": {
+    "label": "Comissão Vitivinícola Regional da Península de Setúbal",
+    "url": "https://vinhosdesetubal.pt/"
+  },
+  "peninsula-de-setubal": {
+    "label": "Comissão Vitivinícola Regional da Península de Setúbal",
+    "url": "https://vinhosdesetubal.pt/"
+  },
+  "pico": {
+    "label": "Instituto da Vinha e do Vinho dos Açores",
+    "url": "https://ivva.azores.gov.pt/"
+  },
+  "portimao": {
+    "label": "Comissão Vitivinícola do Algarve",
+    "url": "https://www.vinhosdoalgarve.pt/"
+  },
+  "porto": {
+    "label": "Instituto dos Vinhos do Douro e do Porto",
+    "url": "https://www.ivdp.pt/"
+  },
+  "setubal": {
+    "label": "Comissão Vitivinícola Regional da Península de Setúbal",
+    "url": "https://vinhosdesetubal.pt/"
+  },
+  "tavira": {
+    "label": "Comissão Vitivinícola do Algarve",
+    "url": "https://www.vinhosdoalgarve.pt/"
+  },
+  "tavora-varosa": {
+    "label": "Comissão Vitivinícola Regional de Távora-Varosa",
+    "url": "https://www.cvrtavora-varosa.pt/"
+  },
+  "tejo": {
+    "label": "Comissão Vitivinícola Regional do Tejo",
+    "url": "https://www.cvrtejo.pt/"
+  },
+  "terras-da-beira": {
+    "label": "Comissão Vitivinícola Regional da Beira Interior",
+    "url": "https://www.vinhosdabeirainterior.pt/"
+  },
+  "terras-de-cister": {
+    "label": "Comissão Vitivinícola Regional de Távora-Varosa",
+    "url": "https://www.cvrtavora-varosa.pt/"
+  },
+  "terras-do-dao": {
+    "label": "Comissão Vitivinícola Regional do Dão",
+    "url": "https://www.cvrdao.pt/"
+  },
+  "terras-madeirenses": {
+    "label": "Instituto do Vinho, do Bordado e do Artesanato da Madeira",
+    "url": "https://ivbam.madeira.gov.pt/"
+  },
+  "torres-vedras": {
+    "label": "Comissão Vitivinícola da Região de Lisboa",
+    "url": "http://www.vinhosdelisboa.com/"
+  },
+  "transmontano": {
+    "label": "Comissão Vitivinícola Regional de Trás-os-Montes",
+    "url": "https://cvrtm.pt/"
+  },
+  "tras-os-montes": {
+    "label": "Comissão Vitivinícola Regional de Trás-os-Montes",
+    "url": "https://cvrtm.pt/"
+  },
+  "vinho-verde": {
+    "label": "Comissão de Viticultura da Região dos Vinhos Verdes",
+    "url": "https://www.vinhoverde.pt/"
+  }
+}

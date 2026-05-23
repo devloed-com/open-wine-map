@@ -33,6 +33,8 @@ _SOURCES: tuple[tuple[str, Path], ...] = (
     ("pt", ROOT / "raw" / "pt" / "cadernos-extracted"),
     ("it", ROOT / "raw" / "it" / "disciplinari-extracted"),
     ("it", ROOT / "raw" / "it" / "masaf-disciplinari-extracted"),
+    ("at", ROOT / "raw" / "at" / "dokumente-extracted"),
+    ("si", ROOT / "raw" / "si" / "dokumenti-extracted"),
 )
 
 

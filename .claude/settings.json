@@ -9,6 +9,7 @@
       "Bash(curl -sS *)",
       "Bash(grep *)",
       "Bash(cat *)",
+      "Bash(sed *)",
       "Bash(pdftotext -layout *)",
       "Bash(pdftoppm -png *)",
       "Bash(.venv/bin/python scripts/audit_*.py)",

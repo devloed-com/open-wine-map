@@ -1,0 +1,23 @@
+{
+  "_README": [
+    "Curated review decisions for suspicious appellation overlaps flagged by",
+    "scripts/audit_geometry_overlaps.py.",
+    "",
+    "The audit flags SLIVER overlaps — two appellations that are otherwise",
+    "disjoint sharing only a thin band (typically one commune thick), the",
+    "symptom of a border commune assigned to both commune lists. Some slivers",
+    "are genuine: a commune can legitimately belong to two appellations, and",
+    "two real appellations can share a small production area.",
+    "",
+    "  whitelist — appellation PAIRS reviewed and confirmed to overlap",
+    "              legitimately. The audit reports them as ACCEPTED instead of",
+    "              SUSPICIOUS. Each entry needs a public-source reason.",
+    "",
+    "Pairs are unordered — [\"a\",\"b\"] and [\"b\",\"a\"] match the same overlap.",
+    "Use the appellation `slug` (as in wiki/_index.json / the map features).",
+    "This is a whitelist only — it does not change any geometry; fixing a real",
+    "artifact means correcting the upstream commune list / resolver, not",
+    "editing this file."
+  ],
+  "whitelist": []
+}

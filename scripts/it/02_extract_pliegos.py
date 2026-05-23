@@ -52,6 +52,7 @@ from _lib.it.documento_unico import (  # noqa: E402
 from _lib.it.sottozona import extract_sottozone  # noqa: E402
 from _lib.it.menzione import extract_menzioni  # noqa: E402
 from _lib.it.region import derive_regione  # noqa: E402
+from _lib.it.province import load_comune_regione_map, resolve_gisco_lau  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue, match_variety, set_pliego_context,
 )
@@ -62,6 +63,7 @@ OJ_DIR = ROOT / "raw" / "it" / "oj-pages"
 OJ_MANIFEST = OJ_DIR / "manifest.json"
 OUT_DIR = ROOT / "raw" / "it" / "disciplinari-extracted"
 INDEX_OUT = OUT_DIR / "_index.json"
+GISCO_DIR = ROOT / "raw" / "es" / "gisco"
 
 
 def strip_tags(html: str) -> str:
@@ -283,15 +285,15 @@ def derive_summary(role_text: str, max_chars: int = 600) -> str:
 
 
 def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
-                 oj_meta: dict) -> dict:
+                 oj_meta: dict, comune_map: dict) -> dict:
     routed = route_sections(sections, titles)
     grapes = parse_grapes(routed.get("grape_varieties", ""))
     styles = parse_styles(sections, titles)
     regione = derive_regione(
         {"file_number": wine["fileNumber"]},
         routed.get("geo_area", ""),
-        routed.get("link_to_terroir", ""),
         routed.get("name", ""),
+        comune_map=comune_map,
     )
     geo_area = routed.get("geo_area", "")
     additional = routed.get("additional_conditions", "")
@@ -418,6 +420,16 @@ def main() -> int:
             pass
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    gisco_lau = resolve_gisco_lau(GISCO_DIR)
+    comune_map = load_comune_regione_map(str(gisco_lau)) if gisco_lau else {}
+    if comune_map:
+        print(f"[regione] GISCO commune index: {len(comune_map)} names",
+              file=sys.stderr)
+    else:
+        print("[regione] warn: GISCO LAU not found — regione derivation "
+              "falls back to province/file-number signals", file=sys.stderr)
+
     extracted = stubs = parse_failed = sottozone_emitted = 0
     index: dict[str, dict] = {}
 
@@ -450,7 +462,7 @@ def main() -> int:
             else:
                 parse_failed += 1
         else:
-            record = build_record(w, sections, titles, oj_meta)
+            record = build_record(w, sections, titles, oj_meta, comune_map)
             record["source"]["filename"] = html_cache.name
             extracted += 1
 

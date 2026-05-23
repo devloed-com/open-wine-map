@@ -2190,6 +2190,310 @@
     "vittoria": {
       "label": "Consorzio di tutela Cerasuolo di Vittoria DOCG e Vittoria DOC",
       "url": "https://www.cerasuolovittoria.it/"
+    },
+    "acores": {
+      "label": "Instituto da Vinha e do Vinho dos Açores",
+      "url": "https://ivva.azores.gov.pt/"
+    },
+    "alenquer": {
+      "label": "Comissão Vitivinícola da Região de Lisboa",
+      "url": "http://www.vinhosdelisboa.com/"
+    },
+    "alentejano": {
+      "label": "Comissão Vitivinícola Regional Alentejana",
+      "url": "https://www.vinhosdoalentejo.pt/"
+    },
+    "alentejo": {
+      "label": "Comissão Vitivinícola Regional Alentejana",
+      "url": "https://www.vinhosdoalentejo.pt/"
+    },
+    "algarve": {
+      "label": "Comissão Vitivinícola do Algarve",
+      "url": "https://www.vinhosdoalgarve.pt/"
+    },
+    "arruda": {
+      "label": "Comissão Vitivinícola da Região de Lisboa",
+      "url": "http://www.vinhosdelisboa.com/"
+    },
+    "bairrada": {
+      "label": "Comissão Vitivinícola da Bairrada",
+      "url": "https://www.cvbairrada.pt/"
+    },
+    "beira-atlantico": {
+      "label": "Comissão Vitivinícola da Bairrada",
+      "url": "https://www.cvbairrada.pt/"
+    },
+    "beira-interior": {
+      "label": "Comissão Vitivinícola Regional da Beira Interior",
+      "url": "https://www.vinhosdabeirainterior.pt/"
+    },
+    "biscoitos": {
+      "label": "Instituto da Vinha e do Vinho dos Açores",
+      "url": "https://ivva.azores.gov.pt/"
+    },
+    "bucelas": {
+      "label": "Comissão Vitivinícola da Região de Lisboa",
+      "url": "http://www.vinhosdelisboa.com/"
+    },
+    "carcavelos": {
+      "label": "Comissão Vitivinícola da Região de Lisboa",
+      "url": "http://www.vinhosdelisboa.com/"
+    },
+    "colares": {
+      "label": "Comissão Vitivinícola da Região de Lisboa",
+      "url": "http://www.vinhosdelisboa.com/"
+    },
+    "dao": {
+      "label": "Comissão Vitivinícola Regional do Dão",
+      "url": "https://www.cvrdao.pt/"
+    },
+    "do-tejo": {
+      "label": "Comissão Vitivinícola Regional do Tejo",
+      "url": "https://www.cvrtejo.pt/"
+    },
+    "douro": {
+      "label": "Instituto dos Vinhos do Douro e do Porto",
+      "url": "https://www.ivdp.pt/"
+    },
+    "duriense": {
+      "label": "Instituto dos Vinhos do Douro e do Porto",
+      "url": "https://www.ivdp.pt/"
+    },
+    "encostas-d-aire": {
+      "label": "Comissão Vitivinícola da Região de Lisboa",
+      "url": "http://www.vinhosdelisboa.com/"
+    },
+    "graciosa": {
+      "label": "Instituto da Vinha e do Vinho dos Açores",
+      "url": "https://ivva.azores.gov.pt/"
+    },
+    "lafoes": {
+      "label": "Comissão Vitivinícola Regional do Dão",
+      "url": "https://www.cvrdao.pt/"
+    },
+    "lagoa": {
+      "label": "Comissão Vitivinícola do Algarve",
+      "url": "https://www.vinhosdoalgarve.pt/"
+    },
+    "lagos": {
+      "label": "Comissão Vitivinícola do Algarve",
+      "url": "https://www.vinhosdoalgarve.pt/"
+    },
+    "lisboa": {
+      "label": "Comissão Vitivinícola da Região de Lisboa",
+      "url": "http://www.vinhosdelisboa.com/"
+    },
+    "madeira": {
+      "label": "Instituto do Vinho, do Bordado e do Artesanato da Madeira",
+      "url": "https://ivbam.madeira.gov.pt/"
+    },
+    "madeirense": {
+      "label": "Instituto do Vinho, do Bordado e do Artesanato da Madeira",
+      "url": "https://ivbam.madeira.gov.pt/"
+    },
+    "minho": {
+      "label": "Comissão de Viticultura da Região dos Vinhos Verdes",
+      "url": "https://www.vinhoverde.pt/"
+    },
+    "obidos": {
+      "label": "Comissão Vitivinícola da Região de Lisboa",
+      "url": "http://www.vinhosdelisboa.com/"
+    },
+    "palmela": {
+      "label": "Comissão Vitivinícola Regional da Península de Setúbal",
+      "url": "https://vinhosdesetubal.pt/"
+    },
+    "peninsula-de-setubal": {
+      "label": "Comissão Vitivinícola Regional da Península de Setúbal",
+      "url": "https://vinhosdesetubal.pt/"
+    },
+    "pico": {
+      "label": "Instituto da Vinha e do Vinho dos Açores",
+      "url": "https://ivva.azores.gov.pt/"
+    },
+    "portimao": {
+      "label": "Comissão Vitivinícola do Algarve",
+      "url": "https://www.vinhosdoalgarve.pt/"
+    },
+    "porto": {
+      "label": "Instituto dos Vinhos do Douro e do Porto",
+      "url": "https://www.ivdp.pt/"
+    },
+    "setubal": {
+      "label": "Comissão Vitivinícola Regional da Península de Setúbal",
+      "url": "https://vinhosdesetubal.pt/"
+    },
+    "tavira": {
+      "label": "Comissão Vitivinícola do Algarve",
+      "url": "https://www.vinhosdoalgarve.pt/"
+    },
+    "tavora-varosa": {
+      "label": "Comissão Vitivinícola Regional de Távora-Varosa",
+      "url": "https://www.cvrtavora-varosa.pt/"
+    },
+    "tejo": {
+      "label": "Comissão Vitivinícola Regional do Tejo",
+      "url": "https://www.cvrtejo.pt/"
+    },
+    "terras-da-beira": {
+      "label": "Comissão Vitivinícola Regional da Beira Interior",
+      "url": "https://www.vinhosdabeirainterior.pt/"
+    },
+    "terras-de-cister": {
+      "label": "Comissão Vitivinícola Regional de Távora-Varosa",
+      "url": "https://www.cvrtavora-varosa.pt/"
+    },
+    "terras-do-dao": {
+      "label": "Comissão Vitivinícola Regional do Dão",
+      "url": "https://www.cvrdao.pt/"
+    },
+    "terras-madeirenses": {
+      "label": "Instituto do Vinho, do Bordado e do Artesanato da Madeira",
+      "url": "https://ivbam.madeira.gov.pt/"
+    },
+    "torres-vedras": {
+      "label": "Comissão Vitivinícola da Região de Lisboa",
+      "url": "http://www.vinhosdelisboa.com/"
+    },
+    "transmontano": {
+      "label": "Comissão Vitivinícola Regional de Trás-os-Montes",
+      "url": "https://cvrtm.pt/"
+    },
+    "tras-os-montes": {
+      "label": "Comissão Vitivinícola Regional de Trás-os-Montes",
+      "url": "https://cvrtm.pt/"
+    },
+    "vinho-verde": {
+      "label": "Comissão de Viticultura da Região dos Vinhos Verdes",
+      "url": "https://www.vinhoverde.pt/"
+    },
+    "bergland": {
+      "label": "Austrian Wine (Österreich Wein Marketing)",
+      "url": "https://www.austrianwine.com/"
+    },
+    "burgenland": {
+      "label": "Wein Burgenland",
+      "url": "https://www.weinburgenland.at/"
+    },
+    "carnuntum": {
+      "label": "Rubin Carnuntum Weingüter",
+      "url": "https://www.carnuntum.com/"
+    },
+    "eisenberg": {
+      "label": "Verein EisenbergDAC",
+      "url": "https://www.eisenberg-dac.at/"
+    },
+    "kamptal": {
+      "label": "Weinstraße Kamptal",
+      "url": "https://www.weinkultur-kamptal.at/"
+    },
+    "karnten": {
+      "label": "Weinbauverband Kärnten",
+      "url": "https://weinauskaernten.at/"
+    },
+    "kremstal": {
+      "label": "Regionales Weinkomitee Kremstal",
+      "url": "https://kremstalwein.at/"
+    },
+    "leithaberg": {
+      "label": "DAC Leithaberg",
+      "url": "https://www.leithaberg.at/"
+    },
+    "mittelburgenland": {
+      "label": "Verband Blaufränkisch",
+      "url": "https://www.blaufraenkischland.at/"
+    },
+    "neusiedlersee": {
+      "label": "Verein Neusiedlersee DAC",
+      "url": "https://neusiedlersee-dac.wine/"
+    },
+    "neusiedlersee-hugelland": {
+      "label": "Wein Burgenland",
+      "url": "https://www.weinburgenland.at/"
+    },
+    "niederosterreich": {
+      "label": "Wein Niederösterreich",
+      "url": "https://weinniederoesterreich.at/"
+    },
+    "oberosterreich": {
+      "label": "Austrian Wine (Österreich Wein Marketing)",
+      "url": "https://www.austrianwine.com/"
+    },
+    "rosalia": {
+      "label": "Verein Rosalia",
+      "url": "https://www.rosaliadac.at/"
+    },
+    "ruster-ausbruch": {
+      "label": "Verein Ruster Ausbruch DAC",
+      "url": "https://www.rusterausbruch.at/"
+    },
+    "salzburg": {
+      "label": "Austrian Wine (Österreich Wein Marketing)",
+      "url": "https://www.austrianwine.com/"
+    },
+    "steiermark": {
+      "label": "Wein Steiermark",
+      "url": "https://steiermark.wine/"
+    },
+    "steirerland": {
+      "label": "Wein Steiermark",
+      "url": "https://steiermark.wine/"
+    },
+    "sudburgenland": {
+      "label": "Weinidylle Südburgenland",
+      "url": "https://www.weinidylle.at/"
+    },
+    "sudsteiermark": {
+      "label": "Wein Steiermark",
+      "url": "https://steiermark.wine/"
+    },
+    "thermenregion": {
+      "label": "Regionales Weinkomitee Thermenregion",
+      "url": "https://www.thermenregiondac.at/"
+    },
+    "tirol": {
+      "label": "Tiroler Weinbauverband",
+      "url": "https://www.tirolwein.at/"
+    },
+    "traisental": {
+      "label": "Verein Traisentaler Wein",
+      "url": "http://www.traisentalwein.at/"
+    },
+    "vorarlberg": {
+      "label": "Austrian Wine (Österreich Wein Marketing)",
+      "url": "https://www.austrianwine.com/"
+    },
+    "vulkanland-steiermark": {
+      "label": "Wein Steiermark",
+      "url": "https://steiermark.wine/"
+    },
+    "wachau": {
+      "label": "Vinea Wachau",
+      "url": "https://www.vinea-wachau.at/"
+    },
+    "wagram": {
+      "label": "Wein Niederösterreich",
+      "url": "https://weinniederoesterreich.at/"
+    },
+    "weinland": {
+      "label": "Austrian Wine (Österreich Wein Marketing)",
+      "url": "https://www.austrianwine.com/"
+    },
+    "weinviertel": {
+      "label": "Regionales Weinkomitee Weinviertel",
+      "url": "https://www.weinvierteldac.at/"
+    },
+    "weststeiermark": {
+      "label": "Wein Steiermark",
+      "url": "https://steiermark.wine/"
+    },
+    "wien": {
+      "label": "Wiener Wein",
+      "url": "https://www.wienerwein.at/"
+    },
+    "wiener-gemischter-satz": {
+      "label": "Wiener Wein",
+      "url": "https://www.wienerwein.at/"
     }
   },
   "by_bassin": {

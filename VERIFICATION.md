@@ -303,3 +303,137 @@ Caveat: `audit_it_coverage.py`'s "Wines with grapes" line still
 reads doc-unico extractions only — it understates true coverage by
 the whole MASAF-augmented set. Reading the MASAF sidecars (as the
 recipe above does) gives the real figure.
+
+---
+
+## Austria
+
+### 2026-05-21 — eAmbrosia ↔ de.wikipedia DAC-list cross-check ✅
+
+**Independent authority**: German Wikipedia, *Weinbau in Österreich*
+(CC BY-SA 4.0) — independent of the eAmbrosia EU-register spine.
+URL: <https://de.wikipedia.org/wiki/Weinbau_in_Österreich>
+
+The pipeline corpus is **32 wine GIs (29 DOP + 3 IGP)**, sourced from
+eAmbrosia (`country=AT` + `productType=WINE` + `status=registered`).
+Wikipedia independently enumerates **18 DAC** appellations and **3
+Weinbauregionen** (Landwein / PGI: Bergland, Steirerland, Weinland).
+
+| Check | Wikipedia | Pipeline | Match |
+|---|---:|---:|:---:|
+| DAC appellations | 18 | 18 | ✓ |
+| Landwein regions (IGP) | 3 | 3 | ✓ |
+| Total DOP | — | 29 | — |
+
+**Reconciliation of the 29 DOP** (Wikipedia lists DACs, not the full
+g.U. set): 18 DAC + 9 generic Bundesland g.U. (Niederösterreich,
+Burgenland, Steiermark, Wien, Kärnten, Oberösterreich, Salzburg,
+Tirol, Vorarlberg) + 2 superseded names still EU-registered
+(Neusiedlersee-Hügelland → Leithaberg + Rosalia; Südburgenland →
+Eisenberg) = 29. The 2 superseded names extract as content-stubs —
+their only OJ-C publication is a *Löschungsantrag* (see CURATOR_TODO).
+
+No discrepancies. The 18 Wikipedia DACs all appear in the corpus by
+name.
+
+**Re-run recipe**:
+
+```
+.venv/bin/python scripts/at/00_fetch_data.py
+.venv/bin/python - <<'PY'
+import json
+w = json.load(open("raw/at/eambrosia/index.json"))["wines"]
+print("DOP:", sum(1 for x in w if x["kind"] == "DOP"),
+      "IGP:", sum(1 for x in w if x["kind"] == "IGP"),
+      "total:", len(w))
+PY
+```
+
+Compare against the DAC list at the Wikipedia URL above.
+
+### 2026-05-22 — commune-precise geometry: DAC disjointness ✅
+
+After switching AT geometry off Bétard 2022 (whole-municipality
+polygons that overlap on shared communes) to commune-precise
+resolution from each Einziges Dokument (`scripts/_lib/at/gemeinde.py`),
+the 16 proper DACs must be mutually disjoint — Austrian wine law
+assigns each commune to exactly one DAC.
+
+| Check | Before (Bétard) | After (commune-union) |
+|---|---|---|
+| Südsteiermark ∩ Vulkanland Steiermark | 22.4 % | 0 % |
+| Vulkanland Steiermark ∩ Weststeiermark | 6.7 % | 0 % |
+| Leithaberg ∩ Neusiedlersee | 15.9 % | 0 % |
+| Wagram ∩ Weinviertel | 4.5 % | 0 % |
+| any proper-DAC pair | up to 22 % | **0 %** (all 120 pairs) |
+| AT wines mapped | 27 / 32 | 30 / 32 |
+
+The region-wide g.U.s (Steiermark, Niederösterreich, …) and the 3
+Landwein IGPs (Steirerland, Weinland, Bergland) still contain their
+DACs at 100 % — that is correct regulatory nesting, not an overlap.
+The 2 unmapped wines are the *Löschungsantrag* content-stubs.
+
+**Re-run recipe**:
+
+```
+.venv/bin/python scripts/04_build_maps.py --no-tippecanoe --no-translations
+.venv/bin/python - <<'PY'
+import json, itertools
+from shapely.geometry import shape
+fc = json.load(open("wiki/map-data/appellations.geojson"))
+g = {f["properties"]["slug"]: shape(f["geometry"])
+     for f in fc["features"] if f["properties"].get("country") == "at"}
+regional = {"burgenland", "niederosterreich", "steiermark", "wien", "karnten",
+            "oberosterreich", "salzburg", "tirol", "vorarlberg",
+            "weinland", "steirerland", "bergland",
+            "ruster-ausbruch", "wiener-gemischter-satz"}
+dacs = [s for s in g if s not in regional]
+bad = [(a, b) for a, b in itertools.combinations(dacs, 2)
+       if g[a].intersects(g[b])
+       and g[a].intersection(g[b]).area / min(g[a].area, g[b].area) > 0.005]
+print("overlapping proper-DAC pairs:", bad or "none — all disjoint")
+PY
+```
+
+---
+
+## Slovenia
+
+### 2026-05-22 — eAmbrosia ↔ vinorodne-dežele cross-check ✅
+
+**Independent authority**: the Slovenian wine-law region/district
+structure — 3 vinorodne dežele (wine regions) partitioned into 9
+vinorodni okoliši (districts) — independent of the eAmbrosia EU-register
+spine. Reference: English Wikipedia, *Slovenian wine* (CC BY-SA 4.0),
+<https://en.wikipedia.org/wiki/Slovenian_wine>.
+
+The pipeline corpus is **17 wine GIs (14 DOP + 3 IGP)**, sourced from
+eAmbrosia (`country=SI` + `productType=WINE` + `status=registered`).
+
+| Check | Expected | Pipeline | Match |
+|---|---:|---:|:---:|
+| Total wines | 17 | 17 | ✓ |
+| DOP | 14 | 14 | ✓ |
+| IGP (= the 3 vinorodne dežele) | 3 | 3 | ✓ |
+| Figshare 2022 DOP polygons | 14 | 14 | ✓ |
+
+**Reconciliation of the 14 DOP**: 9 vinorodni okoliši (Štajerska
+Slovenija, Prekmurje, Bizeljsko Sremič, Dolenjska, Bela krajina, Goriška
+Brda, Vipavska dolina, Kras, Slovenska Istra) + 5 traditional-name DOPs
+(Cviček, Belokranjec, Bizeljčan, Metliška črnina, Teran) = 14. The 3
+IGPs are the regions themselves (Podravje, Posavje, Primorska).
+
+The curated `file_number → region` map in `scripts/_lib/si/region.py`
+partitions all 17 wines cleanly across the 3 regions (7 + 5 + 2 DOP,
++ 1 IGP each). 16 of 17 are content-stubs (`no-publication`) — only
+Cviček carries a fetchable EU single document; see CURATOR_TODO.
+
+**Re-run recipe**:
+
+```
+.venv/bin/python scripts/si/00_fetch_data.py
+.venv/bin/python scripts/audit_si_coverage.py
+```
+
+Compare the kind counts + region distribution against the region/
+district structure at the Wikipedia URL above.

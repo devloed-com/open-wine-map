@@ -1,0 +1,138 @@
+{
+  "_README": [
+    "Curated review decisions for detached polygon parts ('outliers') flagged",
+    "by scripts/audit_geometry_outliers.py. This file is the human-reviewed",
+    "ledger — NOT a place to silently bury problems. Two sections:",
+    "",
+    "  clip      — per appellation slug, a list of polygon parts confirmed to be",
+    "              SPURIOUS (an upstream-data error). Stage 04 drops the matching",
+    "              part from the resolved geometry and logs every clip. The audit",
+    "              independently re-verifies each entry against the SOURCE data",
+    "              every run: a clip that still matches a real part reports as",
+    "              CONFIRMED; a clip that no longer matches (upstream data drifted",
+    "              or was fixed) reports as STALE with a loud warning to re-verify.",
+    "",
+    "  whitelist — per appellation slug, appellations whose detached parts are",
+    "              LEGITIMATE (archipelagos, multi-region DOs). The audit lists",
+    "              them as ACCEPTED rather than UNREVIEWED. Whitelisting suppresses",
+    "              outlier flagging for the WHOLE slug, so only use it for",
+    "              appellations whose every detached part has been reviewed.",
+    "",
+    "A clip entry matches a part when its 3035-centroid is within `match_tol_km`",
+    "of `centroid_latlon` AND its area is within `area_tol_pct` of `area_km2`.",
+    "Exactly one part must match — zero or several is reported as STALE and the",
+    "part is NOT clipped (fail loud, never guess).",
+    "",
+    "Every clip entry must cite a public, checkable reason: what the part is, why",
+    "it does not belong, and what it overlaps. `verified` is the review date."
+  ],
+  "_match_tol_km": 1.5,
+  "_area_tol_pct": 20.0,
+
+  "clip": {
+    "garda": {
+      "file_number": "PDO-IT-A1320",
+      "geom_source": "figshare-pdo",
+      "drop": [
+        {
+          "centroid_latlon": [45.0667, 7.5236],
+          "area_km2": 29.517,
+          "reason": "Fragment 225 km W of Lake Garda, near Avigliana (Piedmont). Lies 100% inside the Piemonte regional DOC (PDO-IT-A1224). The Garda disciplinare restricts the DOC to the provinces of Brescia, Mantova and Verona — no Piedmont component exists. Bétard 2022 EU_PDO.gpkg cross-attribution error.",
+          "verified": "2026-05-22"
+        }
+      ]
+    },
+    "valdadige": {
+      "file_number": "PDO-IT-A0474",
+      "geom_source": "figshare-pdo",
+      "drop": [
+        {
+          "centroid_latlon": [45.0029, 8.2519],
+          "area_km2": 17.305,
+          "reason": "Fragment 205 km SW of the Adige valley, in the Monferrato (Piedmont). Lies 100% inside Grignolino d'Asti / Barbera del Monferrato / Monferrato DOCs. Valdadige DOC is the Adige valley (Trento / Bolzano / Verona). Bétard 2022 cross-attribution error — mirror of the Garda case.",
+          "verified": "2026-05-22"
+        }
+      ]
+    },
+    "barbera-d-asti": {
+      "file_number": "PDO-IT-A1398",
+      "geom_source": "figshare-pdo",
+      "drop": [
+        {
+          "centroid_latlon": [45.9239, 11.1067],
+          "area_km2": 5.286,
+          "reason": "Fragment ~215 km NE of the Asti / Monferrato main body, near Trento. Lies 100% inside delle Venezie / Valdadige / Casteller (Trentino). Bétard 2022 cross-attribution error.",
+          "verified": "2026-05-22"
+        },
+        {
+          "centroid_latlon": [45.9642, 11.1270],
+          "area_km2": 4.914,
+          "reason": "Second Trentino fragment, ~218 km NE near Trento, shared verbatim with the other three Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
+          "verified": "2026-05-22"
+        }
+      ]
+    },
+    "barbera-del-monferrato": {
+      "file_number": "PDO-IT-A1071",
+      "geom_source": "figshare-pdo",
+      "drop": [
+        {
+          "centroid_latlon": [45.9239, 11.1067],
+          "area_km2": 5.286,
+          "reason": "Trentino fragment near Trento (~204 km from the Monferrato main body), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
+          "verified": "2026-05-22"
+        },
+        {
+          "centroid_latlon": [45.9642, 11.1270],
+          "area_km2": 4.914,
+          "reason": "Second Trentino fragment near Trento (~207 km away), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
+          "verified": "2026-05-22"
+        }
+      ]
+    },
+    "barbera-del-monferrato-superiore": {
+      "file_number": "PDO-IT-A1397",
+      "geom_source": "figshare-pdo",
+      "drop": [
+        {
+          "centroid_latlon": [45.9239, 11.1067],
+          "area_km2": 5.286,
+          "reason": "Trentino fragment near Trento (~204 km from the Monferrato main body), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
+          "verified": "2026-05-22"
+        },
+        {
+          "centroid_latlon": [45.9642, 11.1270],
+          "area_km2": 4.914,
+          "reason": "Second Trentino fragment near Trento (~207 km away), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
+          "verified": "2026-05-22"
+        }
+      ]
+    },
+    "monferrato": {
+      "file_number": "PDO-IT-A1210",
+      "geom_source": "figshare-pdo",
+      "drop": [
+        {
+          "centroid_latlon": [45.9239, 11.1067],
+          "area_km2": 5.286,
+          "reason": "Trentino fragment near Trento (~204 km from the Monferrato main body), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
+          "verified": "2026-05-22"
+        },
+        {
+          "centroid_latlon": [45.9642, 11.1270],
+          "area_km2": 4.914,
+          "reason": "Second Trentino fragment near Trento (~207 km away), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
+          "verified": "2026-05-22"
+        }
+      ]
+    }
+  },
+
+  "whitelist": {
+    "madeira": "Atlantic archipelago — the DOP spans Madeira, Porto Santo and the Desertas; disjoint island parts are expected.",
+    "madeirense": "Atlantic archipelago — same island footprint as Madeira DOP.",
+    "islas-canarias": "Atlantic archipelago — the DO covers all seven Canary Islands; disjoint island parts are expected.",
+    "sicilia": "Sicily plus its minor-island groups (Pantelleria, Aeolian, Egadi, Ustica) — disjoint island parts are expected.",
+    "cava": "Spanish sparkling-wine DO produced in legally listed municipalities across Catalonia, La Rioja, Aragon, Navarra, the Basque Country, Extremadura and Valencia — genuinely multi-region and disjoint."
+  }
+}

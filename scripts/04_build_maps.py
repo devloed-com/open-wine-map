@@ -50,6 +50,7 @@ from _lib.es.commune_list import (
     parse_whole_commune_prefix,
 )
 from _lib.es.geometry import ESPolygonIndex
+from _lib.es.zones import ESZoneIndex, MAPA_ZONES_FILE
 from _lib.es.pliego_parcels import parse_polygon_inclusions
 from _lib.es.region import (
     CCAA_TO_PROVINCE_INES,
@@ -58,11 +59,18 @@ from _lib.es.region import (
 )
 from _lib.es.sigpac import SigpacIndex
 from _lib.fr_wine_region import derive_wine_region as derive_fr_wine_region
+from _lib.geometry_overrides import ClipResult, GeometryOverrides
 from _lib.pt.commune_list import parse_commune_list as parse_pt_commune_list
 from _lib.pt.geometry import PTPolygonIndex
 from _lib.pt.region import derive_region as derive_pt_region
 from _lib.it.geometry import ITPolygonIndex
+from _lib.it.zones import ITZoneIndex
 from _lib.it.region import derive_regione as derive_it_regione
+from _lib.at.geometry import ATPolygonIndex
+from _lib.at.gemeinde import ATCommuneIndex
+from _lib.at.region import derive_bundesland as derive_at_bundesland
+from _lib.si.geometry import SIPolygonIndex
+from _lib.si.region import derive_region as derive_si_region
 from _lib.i18n import LOCALES, compile_catalogs
 from _lib.lieu_dit import LieuDitIndex, derive_climat_name
 from _lib.map_template import render as render_map_html
@@ -88,6 +96,9 @@ EXTRACTED_PT = ROOT / "raw" / "pt" / "cadernos-extracted"
 PT_CAOP_DIR = ROOT / "raw" / "pt" / "caop"
 EXTRACTED_IT = ROOT / "raw" / "it" / "disciplinari-extracted"
 MASAF_DISCIPLINARI_IT = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
+EXTRACTED_AT = ROOT / "raw" / "at" / "dokumente-extracted"
+AT_STATISTIK_DIR = ROOT / "raw" / "at" / "statistik"
+EXTRACTED_SI = ROOT / "raw" / "si" / "dokumenti-extracted"
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"
 WIKI = ROOT / "wiki"
 SITE_BASE_URL = "https://www.openwinemap.com"
@@ -1034,6 +1045,10 @@ def main() -> int:
     parcel_hits = aires_hits = commune_hits = 0
     dgc_hits: Counter[str] = Counter()
     village_aires_hits = village_commune_hits = village_skipped = 0
+    # Geometry-outlier clips (curator-reviewed spurious parts dropped from
+    # resolved polygons). Every applied clip and every stale override is
+    # collected here and logged after the union loop — nothing is hidden.
+    geom_clip_results: list[ClipResult] = []
 
     # Pre-load the parent appellation polygons so DGCs can fall back to the
     # parent's geometry when the parcellaire has nothing keyed under their
@@ -1079,6 +1094,20 @@ def main() -> int:
             if json_path.name == "_index.json":
                 continue
             extracted_records.append(json.loads(json_path.read_text()))
+    # Multi-country: also iterate AT extracted records
+    # (raw/at/dokumente-extracted/). Same stub semantics as ES/PT/IT.
+    if EXTRACTED_AT.exists():
+        for json_path in sorted(EXTRACTED_AT.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text()))
+    # Multi-country: also iterate SI extracted records
+    # (raw/si/dokumenti-extracted/). Same stub semantics as ES/PT/IT/AT.
+    if EXTRACTED_SI.exists():
+        for json_path in sorted(EXTRACTED_SI.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text()))
     # Augment ES records with national-pliego sidecar data — adds the
     # accessory varieties that the EU-OJ documento único omits. The
     # sidecar carries provenance (URL + sha256 + fetched_at) which
@@ -1119,9 +1148,13 @@ def main() -> int:
         figshare_gpkg=ES_FIGSHARE_GPKG,
         gisco_lau_zip=ES_GISCO_LAU_ZIP,
     )
+    # Official MAPA national wine production-zone polygons — preferred
+    # ES geometry source, used in front of the Bétard fallback.
+    es_zones = ESZoneIndex(ROOT / "raw" / "es" / "mapa-zonas" / MAPA_ZONES_FILE)
     print(
         f"[load] ES polygons: {es_polygons.n_pdo_polygons} Figshare PDOs / "
-        f"{es_polygons.n_municipios} GISCO municipios",
+        f"{es_polygons.n_municipios} GISCO municipios / "
+        f"{es_zones.n_zones} MAPA zones",
         file=sys.stderr,
     )
     # SIGPAC parcel-precision index for ES wines whose pliegos enumerate
@@ -1177,16 +1210,64 @@ def main() -> int:
         figshare_gpkg=ES_FIGSHARE_GPKG,
         gisco_lau_zip=ES_GISCO_LAU_ZIP,
     )
+    # Official regional-geoportal wine-zone polygons — the preferred IT
+    # geometry source, used in front of the Bétard fallback.
+    it_zones = ITZoneIndex(ROOT / "raw" / "it" / "regional-zones")
     print(
         f"[load] IT polygons: {it_polygons.n_pdo_polygons} Figshare IT-PDOs / "
-        f"{it_polygons.n_comuni} GISCO comuni",
+        f"{it_polygons.n_comuni} GISCO comuni / "
+        f"{it_zones.n_zones} geoportal zones ({len(it_zones.regions)} regions)",
         file=sys.stderr,
     )
     it_hits: Counter[str] = Counter()
 
+    # AT geometry: primary path is commune-precise — ATCommuneIndex
+    # resolves each appellation's Einziges-Dokument Bezirk/Gemeinde
+    # description into a disjoint union of GISCO municipality polygons
+    # (Statistik Austria registry + GISCO LAU). ATPolygonIndex (Bétard
+    # 2022) stays loaded only as a defensive fallback for any record
+    # whose geo-area text fails to parse.
+    at_communes = ATCommuneIndex(
+        polbezirke_csv=AT_STATISTIK_DIR / "polbezirke.csv",
+        gemliste_csv=AT_STATISTIK_DIR / "gemliste_knz.csv",
+        gisco_lau_zip=ES_GISCO_LAU_ZIP,
+    )
+    at_polygons = ATPolygonIndex(figshare_gpkg=ES_FIGSHARE_GPKG)
+    print(
+        f"[load] AT geometry: {at_communes.n_gemeinden} GISCO Gemeinden / "
+        f"{at_polygons.n_pdo_polygons} Figshare AT-PDOs (fallback)",
+        file=sys.stderr,
+    )
+
+    # SI polygon index: Bétard 2022 (re-uses ES Figshare gpkg) for the
+    # 14 SI DOPs; the 3 SI PGIs (Podravje / Posavje / Primorska) resolve
+    # as the union of their constituent region-PDO polygons (see
+    # SIPolygonIndex).
+    si_polygons = SIPolygonIndex(figshare_gpkg=ES_FIGSHARE_GPKG)
+    print(
+        f"[load] SI polygons: {si_polygons.n_pdo_polygons} Figshare SI-PDOs",
+        file=sys.stderr,
+    )
+    si_hits: Counter[str] = Counter()
+    at_hits: Counter[str] = Counter()
+
+    # Curator-reviewed geometry-outlier overrides — clips confirmed-spurious
+    # parts (upstream-data errors) out of resolved polygons. See
+    # scripts/_lib/geometry_outlier_overrides.json and
+    # scripts/audit_geometry_outliers.py.
+    geom_overrides = GeometryOverrides()
+    print(
+        f"[load] geometry-outlier overrides: {len(geom_overrides.clip_specs)} clip, "
+        f"{len(geom_overrides.whitelist)} whitelist",
+        file=sys.stderr,
+    )
+
     for record in tqdm(extracted_records, desc="union", leave=False):
         is_sub_denomination = bool(record.get("is_sub_denomination"))
         country = record.get("country") or "fr"
+        # Defaulted here so every geometry branch (and the FR else-branch)
+        # can leave it untouched; only the SI branch flips it True.
+        _emit_si_features = False
 
         # ES branch — Figshare PDO polygon → GISCO commune-union → parent
         # fallback. Stubs (`stub: True`) skip geometry; they appear in the
@@ -1237,10 +1318,19 @@ def main() -> int:
                     else None
                 )
                 if sigpac_geom is not None and not sigpac_geom.is_empty:
+                    # Parcel-precision (Priorat ↔ Montsant) — beats the
+                    # municipality-resolution MAPA zone, so it runs first.
                     geom = sigpac_geom
                     geom_source = "sigpac-hybrid-pliego"
                     stats = {"matched": -1, "unmatched": 0}
-                elif geom is None or geom.is_empty:
+                if geom is None or geom.is_empty:
+                    # Official MAPA national zone polygon, matched by name.
+                    mgeom, msrc, mstats = es_zones.resolve(record.get("name") or "")
+                    if mgeom is not None and not mgeom.is_empty:
+                        geom = mgeom
+                        geom_source = msrc
+                        stats = mstats
+                if geom is None or geom.is_empty:
                     fig = es_polygons.figshare_polygon(record.get("file_number") or "")
                     if fig is not None and not fig.is_empty:
                         geom = fig
@@ -1336,22 +1426,24 @@ def main() -> int:
             _emit_pt_features = True
             _emit_it_features = False
         elif country == "it":
-            # IT branch — Bétard Figshare PDO match (covers ~408 of the
-            # 412 IT DOPs) → parent fallback for sottozone → stub for
-            # IGTs and the 4 newer DOPs missing from Bétard. The 119 IT
-            # IGPs aren't in Bétard (PDO-only by design) and v1 doesn't
-            # yet ship the IGT commune-list fallback — they appear in
-            # the sidebar with no polygon (same status as ~14 PT IGPs).
-            # Figshare lookup runs even when the record is a stub (no
-            # documento unico fetched): the polygon doesn't depend on
-            # the documento unico, and most IT DOPs have valid eAmbrosia
-            # file numbers that match Bétard's PDOid.
+            # IT branch — geometry precedence:
+            #   1. geoportal-zone — official regional production-zone
+            #      polygon (consortium-validated), the preferred source.
+            #   2. figshare-pdo — Bétard 2022 fallback (whole-municipality
+            #      resolution; covers ~408 of the 412 IT DOPs).
+            #   3. parent-appellation — sottozone inherit the parent.
+            #   4. stub-no-geometry — IGTs / newer DOPs missing Bétard.
             geom = None
             stats = {"matched": 0, "unmatched": 0}
             geom_source = "none"
             sib_v_geom = sib_name = sib_slug = None
             cadastre_match = None
-            if is_sub_denomination:
+            zgeom, zsrc, zstats = it_zones.resolve(record.get("name") or "")
+            if zgeom is not None and not zgeom.is_empty:
+                geom = zgeom
+                geom_source = zsrc
+                stats = zstats
+            elif is_sub_denomination:
                 # Sottozone inherit the parent's polygon — same model
                 # as FR DGCs and PT sub-regiões. Precision is parent-
                 # level, not sottozona-level.
@@ -1369,7 +1461,10 @@ def main() -> int:
                     stats = {"matched": -1, "unmatched": 0}
                 elif record.get("stub"):
                     geom_source = "stub-no-geometry"
-            it_hits[geom_source] += 1
+            # Collapse the per-region geoportal-zone tag for the hit
+            # counter so the summary stays readable.
+            it_hits["geoportal-zone" if geom_source.startswith("geoportal-zone")
+                     else geom_source] += 1
             v_geom = geom
             v_source = geom_source
             v_stats = stats
@@ -1379,14 +1474,69 @@ def main() -> int:
             _emit_es_features = False
             _emit_pt_features = False
             _emit_it_features = True
+            _emit_at_features = False
+        elif country == "at":
+            # AT branch — commune-precise: resolve the appellation's
+            # Einziges-Dokument Bezirk/Gemeinde description into a
+            # disjoint union of GISCO municipality polygons. Falls back
+            # to the Bétard Figshare polygon only if the geo-area text
+            # fails to parse (content-stubs have no geo-area at all →
+            # stub-no-geometry). Austria has no sub-denominations in v1.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = at_communes.resolve(
+                record.get("geo_area_brief") or "",
+                record.get("bundesland") or "",
+            )
+            if geom is None or geom.is_empty:
+                geom, geom_source, stats = at_polygons.resolve(
+                    record.get("file_number") or ""
+                )
+            at_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = True
+        elif country == "si":
+            # SI branch — Bétard Figshare PDO match for the 14 SI DOPs;
+            # the 3 SI PGIs (Podravje / Posavje / Primorska) resolve as
+            # the union of their constituent region-PDO polygons (see
+            # SIPolygonIndex.resolve). Slovenia has no sub-denominations
+            # in v1 — podokoliši are Phase 2 — so there is no parent
+            # fallback step.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = si_polygons.resolve(
+                record.get("file_number") or ""
+            )
+            si_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = True
         else:
             _emit_es_features = False
             _emit_pt_features = False
             _emit_it_features = False
+            _emit_at_features = False
             sib_v_geom = sib_name = sib_slug = None
             cadastre_match = None
 
-        if _emit_es_features or _emit_pt_features or _emit_it_features:
+        if (_emit_es_features or _emit_pt_features or _emit_it_features
+                or _emit_at_features or _emit_si_features):
             # Geometry already resolved above; skip the FR-specific chain.
             pass
         elif is_sub_denomination:
@@ -1441,7 +1591,8 @@ def main() -> int:
         # ES + PT records already had v_geom assigned in their branch above
         # (using the same geom for both detail + village), so skip the
         # FR-specific village resolution.
-        if _emit_es_features or _emit_pt_features or _emit_it_features:
+        if (_emit_es_features or _emit_pt_features or _emit_it_features
+                or _emit_at_features or _emit_si_features):
             pass
         elif is_sub_denomination:
             # Prefer DGC's own parcellaire polygon as the village geometry —
@@ -1507,6 +1658,21 @@ def main() -> int:
                 v_geom, v_stats = union_for_appellation(record, commune_idx)
                 v_source = "communes"
 
+        # Drop curator-reviewed spurious parts (geometry-outlier overrides).
+        # Applied to both the detail and village geometries; for ES/PT/IT/AT
+        # they are the same object, so one clip covers both. A stale override
+        # (no longer matches) is kept in the ledger and logged loudly below —
+        # the geometry is left untouched, never silently altered.
+        _pre_clip_geom = geom
+        clip_res = geom_overrides.clip(record["slug"], geom)
+        geom = clip_res.geom
+        if v_geom is _pre_clip_geom:
+            v_geom = clip_res.geom
+        elif v_geom is not None and not v_geom.is_empty:
+            v_geom = geom_overrides.clip(record["slug"], v_geom).geom
+        if clip_res.dropped or clip_res.stale:
+            geom_clip_results.append(clip_res)
+
         if geom is None or geom.is_empty:
             skipped += 1
             continue
@@ -1543,9 +1709,10 @@ def main() -> int:
         # Pommeau, etc.) and ciders fall outside that set. The map hides
         # non-wine appellations by default — see `showSpirits` in the
         # template for the toggle.
-        # ES + PT + IT records have no `categorie` — every entry is filtered
-        # to productType=WINE upstream in stage 00, so they're all wines.
-        if record.get("country") in ("es", "pt", "it"):
+        # ES + PT + IT + AT + SI records have no `categorie` — every entry
+        # is filtered to productType=WINE upstream in stage 00, so they're
+        # all wines.
+        if record.get("country") in ("es", "pt", "it", "at", "si"):
             is_wine = "1"
         else:
             is_wine = "1" if categorie.startswith("Vin") else "0"
@@ -1623,9 +1790,29 @@ def main() -> int:
                 region_value = record.get("regione") or derive_it_regione(
                     record,
                     record.get("section_roles", {}).get("geo_area", ""),
-                    record.get("section_roles", {}).get("link_to_terroir", ""),
+                    record.get("name", ""),
                 ) or "Italia"
                 es_region_by_parent_slug[f"it::{record['slug']}"] = region_value
+        elif record.get("country") == "at":
+            # AT region = Bundesland (Niederösterreich, Burgenland,
+            # Steiermark, …). The 3 multi-state Landwein PGIs are tagged
+            # "Österreich". Austria has no sub-denominations in v1.
+            region_value = record.get("bundesland") or derive_at_bundesland(
+                record,
+                record.get("section_roles", {}).get("geo_area", ""),
+                record.get("section_roles", {}).get("link_to_terroir", ""),
+                record.get("name", ""),
+            ) or "Österreich"
+        elif record.get("country") == "si":
+            # SI region = vinorodna dežela (Podravje / Posavje /
+            # Primorska). The 3 PGIs are the regions themselves.
+            # Slovenia has no sub-denominations in v1.
+            region_value = record.get("region") or derive_si_region(
+                record,
+                record.get("section_roles", {}).get("geo_area", ""),
+                record.get("section_roles", {}).get("link_to_terroir", ""),
+                record.get("name", ""),
+            ) or "Slovenija"
         else:
             region_value = derive_fr_wine_region(record)
         common_props = {
@@ -1707,6 +1894,26 @@ def main() -> int:
         f"parcellaire={parcel_hits} aires-csv={aires_hits} commune-text={commune_hits} skipped={skipped}",
         file=sys.stderr,
     )
+    n_clipped = sum(len(r.dropped) for r in geom_clip_results)
+    n_stale = sum(len(r.stale) for r in geom_clip_results)
+    if geom_clip_results:
+        print(
+            f"[geo] geometry-outlier overrides: clipped {n_clipped} spurious "
+            f"part(s) across {sum(1 for r in geom_clip_results if r.dropped)} "
+            f"appellation(s); {n_stale} stale override(s)",
+            file=sys.stderr,
+        )
+        for r in geom_clip_results:
+            for line in r.log_lines():
+                print(f"[geo]{line}", file=sys.stderr)
+    if n_stale:
+        print(
+            f"[geo] WARNING: {n_stale} geometry-outlier override(s) no longer "
+            f"match the source data — re-verify scripts/_lib/"
+            f"geometry_outlier_overrides.json and re-run "
+            f"scripts/audit_geometry_outliers.py",
+            file=sys.stderr,
+        )
     print(
         f"[geo] DGC resolution: parcellaire={dgc_hits['parcellaire-dgc']} "
         f"village-override={dgc_hits['dgc-village-override']} "
@@ -2018,6 +2225,31 @@ def _sources_for(record: dict) -> dict:
             "masaf_parser_template": masaf.get("parser_template", ""),
             "masaf_override_url": masaf.get("override_url", ""),
         }
+    if record.get("country") == "at":
+        # Austria: every wine carries an EUR-Lex Einziges-Dokument URL —
+        # no national-pliego fallback layer (unlike ES / IT).
+        return {
+            "country": "at",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
+    if record.get("country") == "si":
+        # Slovenia: only Cviček carries a fetchable EUR-Lex single
+        # document; the other 16 are content-stubs awaiting the national
+        # specification (Phase 2). eAmbrosia + file number always resolve.
+        return {
+            "country": "si",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
     if record.get("country") == "es":
         # The AOC-blob phase re-reads the on-disk extracted JSON (which
         # doesn't carry the augmentation), so fall back to the slug-keyed
@@ -2167,6 +2399,20 @@ def emit_html(
 
     appellation_urls = load_appellation_urls()
 
+    # Curated, source-cited per-appellation notes (a bounded narrative
+    # layer — e.g. the Teran SI/HR cross-border labelling note). Keyed by
+    # slug; `__`-prefixed keys are the file's own documentation.
+    appellation_notes: dict[str, dict] = {}
+    _notes_path = ROOT / "scripts" / "_lib" / "appellation_notes.json"
+    if _notes_path.exists():
+        try:
+            appellation_notes = {
+                k: v for k, v in json.loads(_notes_path.read_text()).items()
+                if not k.startswith("__")
+            }
+        except (ValueError, OSError) as exc:
+            print(f"[warn] appellation_notes.json: {exc}", file=sys.stderr)
+
     for feat in features:
         p = feat["properties"]
         slug = p["slug"]
@@ -2188,6 +2434,8 @@ def emit_html(
             "es": EXTRACTED_ES,
             "pt": EXTRACTED_PT,
             "it": EXTRACTED_IT,
+            "at": EXTRACTED_AT,
+            "si": EXTRACTED_SI,
         }.get(country, EXTRACTED)
         ext_path = ext_dir / f"{slug}.json"
         summary = ""
@@ -2248,6 +2496,7 @@ def emit_html(
             "summary": summary,
             "sources": sources,
             "terroir_facts": terroir_facts,
+            "note": appellation_notes.get(slug),
         }
         for s in styles:
             style_counts[s] = style_counts.get(s, 0) + 1
@@ -2349,18 +2598,31 @@ def emit_html(
         aocs_for_lang = {}
         for slug, rec in aocs.items():
             rec_country = rec.get("country")
-            src_lang = rec_country if rec_country in ("es", "pt", "it") else "fr"
+            src_lang = rec_country if rec_country in ("es", "pt", "it", "at", "si") else "fr"
             t = translations.get(slug)
             if not t:
-                aocs_for_lang[slug] = rec
-                continue
-            new_rec = {**rec, "summary": t["summary"]}
-            if lang != src_lang:
-                new_rec["summary_translation"] = {
-                    "translator": t["translator"],
-                    "source_pdf_url": t["source_pdf_url"],
-                    "source_pdf_filename": t["source_pdf_filename"],
-                }
+                new_rec = rec
+            else:
+                new_rec = {**rec, "summary": t["summary"]}
+                if lang != src_lang:
+                    new_rec["summary_translation"] = {
+                        "translator": t["translator"],
+                        "source_pdf_url": t["source_pdf_url"],
+                        "source_pdf_filename": t["source_pdf_filename"],
+                    }
+            # Resolve the curated cross-border note to the current locale
+            # (en fallback). Only the handful of records in
+            # appellation_notes.json carry one; the rest have note=None.
+            note_obj = rec.get("note")
+            if note_obj:
+                by_locale = note_obj.get("note") or {}
+                note_text = by_locale.get(lang) or by_locale.get("en") or ""
+                if note_text:
+                    new_rec = {
+                        **new_rec,
+                        "note": {"text": note_text,
+                                 "sources": note_obj.get("sources") or []},
+                    }
             aocs_for_lang[slug] = new_rec
         # Overlay translated terroir-fact bullets only for records whose
         # source language differs from the current locale (canonical bullets
@@ -2372,7 +2634,7 @@ def emit_html(
             all_facts_translations = load_terroir_facts_translations(lang)
             def _src_lang_for(slug: str) -> str:
                 c = (aocs.get(slug, {}) or {}).get("country")
-                return c if c in ("es", "pt", "it") else "fr"
+                return c if c in ("es", "pt", "it", "at", "si") else "fr"
             facts_translations = {
                 slug: t for slug, t in all_facts_translations.items()
                 if lang != _src_lang_for(slug)

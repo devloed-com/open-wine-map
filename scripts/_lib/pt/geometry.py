@@ -24,6 +24,7 @@ freguesia data lives alongside município.
 from __future__ import annotations
 
 import re
+import sys
 import unicodedata
 from pathlib import Path
 from typing import Iterable
@@ -73,6 +74,9 @@ class PTPolygonIndex:
         target_crs: str = "EPSG:4326",
     ) -> None:
         self.target_crs = target_crs
+        # Same-name concelho collisions resolved during `union_concelhos`.
+        self.n_concelho_ambiguous_resolved = 0
+        self.n_concelho_ambiguous_guessed = 0
         self._pdo_polygons: dict[str, BaseGeometry] = {}
         # norm → list of concelho candidates
         self._concelho_by_norm: dict[str, list[_Concelho]] = {}
@@ -155,25 +159,86 @@ class PTPolygonIndex:
     def union_concelhos(
         self, concelho_names: Iterable[str]
     ) -> tuple[BaseGeometry | None, dict[str, int]]:
-        """Union CAOP município polygons matched by normalised name.
-        Returns (geom, stats={'matched','unmatched'}). Best-effort match —
-        ambiguous names (rare for PT concelhos vs ES communes) take the
-        first candidate."""
+        """Union CAOP município polygons matched by normalised name, with
+        distrito-context disambiguation for same-name concelhos.
+
+        A few concelho names recur across distritos — most consequentially
+        `Lagoa` (distrito de Faro, in the Algarve) and `Lagoa` (Ilha de São
+        Miguel, in the Açores). Taking the first candidate unioned the wrong
+        one: DOP Lagoa is an Algarve wine, and the Azores polygon dragged its
+        resolved geometry ~1500 km out into the Atlantic.
+
+        Pass 1 — every name that resolves to exactly one concelho is
+        unambiguous; collect their distritos as the expected-distrito set.
+        Pass 2 — for an ambiguous name, prefer the candidate whose distrito is
+        in that set; failing that, the candidate nearest the centroid of the
+        already-resolved polygons. Every disambiguation is logged to stderr —
+        a wrong guess must be visible, never silent.
+
+        Returns (geom, stats) with `matched`, `unmatched` and
+        `ambiguous_resolved` counts.
+        """
+        per: list[tuple[str, list[_Concelho]]] = [
+            (n, list(self._concelho_by_norm.get(_normalise_concelho(n), [])))
+            for n in concelho_names
+            if n and n.strip()
+        ]
+        expected_distritos = {
+            _normalise_concelho(cands[0].distrito)
+            for _name, cands in per
+            if len(cands) == 1 and cands[0].distrito
+        }
+
         geoms: list[BaseGeometry] = []
-        matched = unmatched = 0
-        for name in concelho_names:
-            if not name:
-                continue
-            norm = _normalise_concelho(name)
-            candidates = self._concelho_by_norm.get(norm)
-            if not candidates:
+        matched = unmatched = ambiguous_resolved = 0
+        for name, cands in per:
+            if not cands:
                 unmatched += 1
                 continue
-            geoms.append(candidates[0].geom)
+            if len(cands) == 1:
+                geoms.append(cands[0].geom)
+                matched += 1
+                continue
+
+            # Ambiguous — disambiguate by distrito context, then by spatial
+            # proximity to the already-resolved cluster.
+            in_distrito = [
+                c for c in cands
+                if _normalise_concelho(c.distrito) in expected_distritos
+            ]
+            if len(in_distrito) == 1:
+                chosen, how = in_distrito[0], "distrito-context"
+            elif geoms:
+                ref = unary_union(geoms).centroid
+                chosen = min(in_distrito or cands,
+                             key=lambda c, ref=ref: c.geom.distance(ref))
+                how = "nearest resolved cluster"
+            else:
+                chosen, how = cands[0], "first candidate — NO disambiguating context"
+            geoms.append(chosen.geom)
             matched += 1
+            ambiguous_resolved += 1
+            if "NO disambiguating" in how:
+                self.n_concelho_ambiguous_guessed += 1
+            else:
+                self.n_concelho_ambiguous_resolved += 1
+            dropped = ", ".join(sorted(
+                {c.distrito for c in cands if c is not chosen}
+            ))
+            print(
+                f"  [pt-geom] ambiguous concelho '{name}': {len(cands)} "
+                f"candidates → chose distrito de {chosen.distrito} "
+                f"via {how} (rejected: {dropped})",
+                file=sys.stderr,
+            )
+
         if not geoms:
-            return None, {"matched": matched, "unmatched": unmatched}
-        return unary_union(geoms), {"matched": matched, "unmatched": unmatched}
+            return None, {"matched": matched, "unmatched": unmatched,
+                          "ambiguous_resolved": ambiguous_resolved}
+        return unary_union(geoms), {
+            "matched": matched, "unmatched": unmatched,
+            "ambiguous_resolved": ambiguous_resolved,
+        }
 
     def union_distritos(
         self, distrito_names: Iterable[str]

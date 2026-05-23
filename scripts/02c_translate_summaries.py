@@ -74,6 +74,8 @@ LOCALE_NAME = {
     "nl": "Dutch",
     "pt": "Portuguese",
     "it": "Italian",
+    "de": "German",
+    "sl": "Slovenian",
 }
 
 
@@ -98,6 +100,16 @@ SOURCE_CONFIG: dict[str, dict] = {
     "it": {
         "source_dir": ROOT / "raw" / "it" / "disciplinari-extracted",
         "source_document": "EU Official Journal documento unico (Italian wine appellation specifications)",
+        "target_locales": ("en", "fr", "es", "nl"),
+    },
+    "de": {
+        "source_dir": ROOT / "raw" / "at" / "dokumente-extracted",
+        "source_document": "EU Official Journal Einziges Dokument (Austrian wine appellation specifications)",
+        "target_locales": ("en", "fr", "es", "nl"),
+    },
+    "sl": {
+        "source_dir": ROOT / "raw" / "si" / "dokumenti-extracted",
+        "source_document": "EU Official Journal enotni dokument (Slovenian wine appellation specifications)",
         "target_locales": ("en", "fr", "es", "nl"),
     },
 }

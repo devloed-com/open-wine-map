@@ -64,6 +64,8 @@ ES_EXTRACTED = ROOT / "raw" / "es" / "pliegos-extracted"
 PT_EXTRACTED = ROOT / "raw" / "pt" / "cadernos-extracted"
 IT_EXTRACTED = ROOT / "raw" / "it" / "disciplinari-extracted"
 IT_MASAF_EXTRACTED = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
+AT_EXTRACTED = ROOT / "raw" / "at" / "dokumente-extracted"
+SI_EXTRACTED = ROOT / "raw" / "si" / "dokumenti-extracted"
 
 OUT_DIR = ROOT / "raw" / "vivc"
 SEARCH_DIR = OUT_DIR / "search"
@@ -81,7 +83,8 @@ UA = (
 
 def _record_files() -> list[Path]:
     out: list[Path] = []
-    for d in (EXTRACTED, ES_EXTRACTED, PT_EXTRACTED, IT_EXTRACTED, IT_MASAF_EXTRACTED):
+    for d in (EXTRACTED, ES_EXTRACTED, PT_EXTRACTED, IT_EXTRACTED, IT_MASAF_EXTRACTED,
+              AT_EXTRACTED, SI_EXTRACTED):
         if not d.exists():
             continue
         out.extend(jp for jp in d.glob("*.json") if not jp.name.startswith("_"))

@@ -52,9 +52,18 @@ from pathlib import Path
 import requests
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.es.zones import (  # noqa: E402
+    MAPA_LICENCE, MAPA_ZONES_FILE, MAPA_ZONES_URL,
+)
+
 OUT_DIR = ROOT / "raw" / "es" / "eambrosia"
 INDEX_PATH = OUT_DIR / "index.json"
 MANIFEST_PATH = OUT_DIR / "manifest.json"
+
+# MAPA national wine production-zone polygons — the preferred ES
+# geometry source (stage 04), consumed via scripts/_lib/es/zones.py.
+MAPA_ZONES_DIR = ROOT / "raw" / "es" / "mapa-zonas"
 
 FIGSHARE_OUT_DIR = ROOT / "raw" / "es" / "figshare"
 FIGSHARE_GPKG_PATH = FIGSHARE_OUT_DIR / "EU_PDO.gpkg"
@@ -318,11 +327,25 @@ def fetch_gisco_lau() -> None:
               file=sys.stderr)
 
 
+def fetch_mapa_zones() -> None:
+    """MAPA national wine production-zone polygons — "Zonas de Calidad
+    Diferenciada: Vinos". Fetched via the OGC API-Features endpoint as
+    GeoJSON (the `.aspx` shapefile download is reCAPTCHA-gated)."""
+    _fetch_binary_with_manifest(
+        label="mapa-zones",
+        url=MAPA_ZONES_URL,
+        out_path=MAPA_ZONES_DIR / MAPA_ZONES_FILE,
+        manifest_path=MAPA_ZONES_DIR / "manifest.json",
+        extra_manifest={"license": MAPA_LICENCE},
+    )
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     fetch_figshare_gpkg()
     fetch_gisco_lau()
     fetch_sigpac_comarques()
+    fetch_mapa_zones()
     full, etag = fetch_list()
     es_wines_all = [
         g for g in full

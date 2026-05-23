@@ -1,0 +1,21 @@
+{
+  "__doc__": "Curated, source-cited per-appellation notes — a bounded narrative layer (same category as terroir-facts / translations). Keyed by appellation slug. Each entry: {note: {en,fr,es,nl}, sources: [{label,url}]}. EVERY note MUST cite a public, licence-clear source (EUR-Lex regulation, CURIA judgment, official register). Notes are hand-authored in the 4 map-panel locales and kept out of the LLM translation flow. Stage 04 loads this file into the aocs blob; the map detail panel and the per-country stage-03 wiki generator render it as an 'ⓘ' / '## Note' block. Used for cross-border GI-name situations such as Teran (SI PDO) vs the labelling term permitted on Croatian Hrvatska Istra wines; a symmetric hrvatska-istra entry is added when the Croatia pipeline (country #7) lands.",
+  "teran": {
+    "note": {
+      "en": "«Teran» is a Slovenian protected designation of origin (PDO) in the Kras area of the Primorska wine region. Under Commission Delegated Regulation (EU) 2017/1353, Croatian wines bearing the «Hrvatska Istra» PDO may also carry the name «Teran» on the label as a wine-grape-variety reference, under defined labelling conditions. Slovenia's action for annulment of that regulation was dismissed by the General Court of the European Union in Case T-626/17 (judgment of 9 September 2020).",
+      "fr": "«Teran» est une appellation d'origine protégée (AOP) slovène située dans la zone du Kras, en région viticole de Primorska. En vertu du règlement délégué (UE) 2017/1353 de la Commission, les vins croates bénéficiant de l'AOP «Hrvatska Istra» peuvent également porter le nom «Teran» sur l'étiquette à titre de mention d'un cépage, dans des conditions d'étiquetage définies. Le recours de la Slovénie en annulation de ce règlement a été rejeté par le Tribunal de l'Union européenne dans l'affaire T-626/17 (arrêt du 9 septembre 2020).",
+      "es": "«Teran» es una denominación de origen protegida (DOP) eslovena situada en la zona del Kras, en la región vinícola de Primorska. En virtud del Reglamento Delegado (UE) 2017/1353 de la Comisión, los vinos croatas con la DOP «Hrvatska Istra» también pueden llevar el nombre «Teran» en la etiqueta como mención de una variedad de uva, en condiciones de etiquetado definidas. El recurso de Eslovenia de anulación de dicho reglamento fue desestimado por el Tribunal General de la Unión Europea en el asunto T-626/17 (sentencia de 9 de septiembre de 2020).",
+      "nl": "«Teran» is een Sloveense beschermde oorsprongsbenaming (BOB) in het Kras-gebied van de wijnregio Primorska. Op grond van Gedelegeerde Verordening (EU) 2017/1353 van de Commissie mogen Kroatische wijnen met de BOB «Hrvatska Istra» de naam «Teran» eveneens op het etiket vermelden als verwijzing naar een wijndruivenras, onder vastgestelde etiketteringsvoorwaarden. Het beroep van Slovenië tot nietigverklaring van die verordening werd door het Gerecht van de Europese Unie verworpen in zaak T-626/17 (arrest van 9 september 2020)."
+    },
+    "sources": [
+      {
+        "label": "Commission Delegated Regulation (EU) 2017/1353",
+        "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32017R1353"
+      },
+      {
+        "label": "General Court, Case T-626/17 — Slovenia v Commission",
+        "url": "https://curia.europa.eu/juris/liste.jsf?num=T-626/17"
+      }
+    ]
+  }
+}

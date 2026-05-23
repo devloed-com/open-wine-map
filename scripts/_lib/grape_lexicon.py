@@ -289,6 +289,10 @@ GRAPE_ALIAS = {
     "refosco-dal-peduncolo-rosso": "refosco-dal-peduncolo-rosso",
     "refosco-nostrano": "refosco-dal-peduncolo-rosso",
     "terrano": "refosco-dal-peduncolo-rosso",     # Refosco d'Istria (DNA)
+    "refosk": "refosco-dal-peduncolo-rosso",      # SI "Refošk" — Kras Refosco
+    "teran": "refosco-dal-peduncolo-rosso",       # SI "Teran" grape sense (VIVC #9987 syn.
+                                                  # TERAN CRVENE); the PDO "Teran" is a
+                                                  # separate appellation slug, not a grape
     # Verdicchio = Trebbiano di Soave (DNA-confirmed); regional name preserved as slug.
     "verdicchio": "trebbiano-di-soave",
     "verdicchio-bianco": "trebbiano-di-soave",
@@ -467,6 +471,40 @@ GRAPE_ALIAS = {
     "corvina-veronese": "corvina",
     "notar-domenico": "notardomenico",
     "bianco-d-alessano": "bianco-di-alessano",
+    # ----- AT EUR-Lex Einziges-Dokument varieties. Austrian wine grapes
+    # the EU single document lists in section 7 ("Keltertraubensorten")
+    # that VIVC's FR/ES/PT/IT seed never carried. Surfaced by
+    # scripts/at/02_extract_pliegos.py into raw/at/extraction-unknowns.json;
+    # German synonyms / regional names fold to the canonical slug.
+    "zweigelt": "zweigelt",
+    "blauer-zweigelt": "zweigelt",
+    "rotburger": "zweigelt",                    # Zweigelt's breeder name
+    "sankt-laurent": "sankt-laurent",
+    "st-laurent": "sankt-laurent",
+    "neuburger": "neuburger",
+    "scheurebe": "scheurebe",
+    "samling-88": "scheurebe",                  # Sämling 88 = Scheurebe
+    "blauer-wildbacher": "blauer-wildbacher",
+    "wildbacher": "blauer-wildbacher",
+    "bouvier": "bouvier",
+    "goldburger": "goldburger",
+    "rathay": "rathay",
+    "blutenmuskateller": "blutenmuskateller",
+    "grauburgunder": "pinot-gris",              # German name for Pinot Gris
+    # ----- SI EUR-Lex Enotni-dokument varieties. Slovenian wine grapes
+    # the EU single document lists that the FR/ES/PT/IT/AT seed never
+    # carried. Surfaced by scripts/si/02_extract_pliegos.py into
+    # raw/si/extraction-unknowns.json. The exact-match aliases also
+    # pre-empt the fuzzy fallback's false positives (kraljevina and
+    # ranfol are distinct varieties, not Portugieser / Savagnin rose).
+    "zametovka": "zametovka",                   # Žametovka / Žametna črnina
+    "zametna-crnina": "zametovka",
+    "modra-kavcina": "zametovka",                # Modra kavčina = Žametovka (DNA)
+    "kraljevina": "kraljevina",                 # white SI/HR variety
+    "ranfol": "ranfol",                         # white SI/HR variety
+    "rumeni-plavec": "rumeni-plavec",            # Rumeni plavec
+    "sentlovrenka": "sankt-laurent",            # Slovenian name for Sankt Laurent
+    "chardonay": "chardonnay",                  # SI Enotni-dokument typo (Cviček)
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -721,6 +759,22 @@ DEFAULT_COLOUR: dict[str, str] = {
     "catalanesca": "blanc",
     "guardavalle": "blanc",
     "bianchello": "blanc",
+    # ----- AT Einziges-Dokument varieties (see the matching GRAPE_ALIAS
+    # block).
+    "zweigelt": "noir",
+    "sankt-laurent": "noir",
+    "blauer-wildbacher": "noir",
+    "rathay": "noir",
+    "neuburger": "blanc",
+    "scheurebe": "blanc",
+    "bouvier": "blanc",
+    "goldburger": "blanc",
+    "blutenmuskateller": "blanc",
+    # SI Enotni-dokument varieties
+    "zametovka": "noir",
+    "kraljevina": "blanc",
+    "ranfol": "blanc",
+    "rumeni-plavec": "blanc",
 }
 
 # Slugs that are pure boilerplate after stop-word filtering and should be
