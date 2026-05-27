@@ -28,7 +28,7 @@ Active tiers per country as of today:
 | AT | ✓ (fallback) | **GISCO LAU + Statistik Austria registry** (commune-union from Einziges Dokument text) | — |
 | ES | ✓ (fallback) | **MAPA national wine-zone layer** | SIGPAC parcels (Priorat comarca only) |
 | IT | ✓ (fallback) | **5 regional geoportals** (Piemonte/Veneto/Lazio/Lombardia/Toscana) | — |
-| PT | ✓ (DOPs only) | none open (audit negative — see PT section) | — |
+| PT | ✓ (DOPs fallback) | **DGT CAOP 2025 município-union** parsed from caderno "Área Delimitada" | — |
 | SI | ✓ (DOPs); PGI = region-union of member-PDO Bétard polygons | none yet | — |
 
 What follows lists every source consulted per country, including the ones
@@ -146,8 +146,18 @@ was lower priority. Listed for revisit if MAPA gets retired:
 
 ## Portugal
 
-**Audit result: negative.** No open, licence-clear Portuguese wine-zone
-boundary geodata exists at the time of audit (2026-05-22). Sources checked:
+**Audit result on wine-specific layers: negative.** No open,
+licence-clear Portuguese wine-zone boundary geodata exists at the time
+of audit (2026-05-22). Updated 2026-05-23: the actionable PT
+improvement noted in this section (caderno-derived município-union
+against DGT CAOP) **has shipped** — Tier A for PT is now the
+`caop-concelho-union` step in stage 04, parsing each caderno's "Área
+Delimitada" section and unioning the named CAOP municípios. All 14 PT
+IGPs that previously had no polygon are now mapped (município
+precision). The rest of this section remains as the negative record
+for revisit if a wine-specific layer ever appears.
+
+Sources checked:
 
 | Source | URL | Result |
 |---|---|---|
@@ -161,19 +171,24 @@ boundary geodata exists at the time of audit (2026-05-22). Sources checked:
 | IVBAM Madeira | ivbam.gov-madeira.pt | Madeira-specific CVR — no GIS export. |
 | OT Açores | ot.azores.gov.pt | Pico Vinhas da Criação Velha — no GIS export of the wine area. |
 
-### Actionable PT improvement that doesn't depend on a wine-specific layer
+### PT Tier A — DGT CAOP 2025 município-union (shipped 2026-05-23)
 
-Bétard 2022 covers all 30 PT DOPs but is PDO-only by design — the
-**14 PT IGPs** (Minho, Duriense, Transmontano, Beira Atlântico, Tejo,
-Lisboa, Alentejano, Vinho Regional do Algarve, …) currently appear in the
-sidebar with **no polygon**. The caderno's geo-area section (or
-section 1 / 2 boundary description) enumerates the constituent
-**concelhos**; union DGT CAOP 2025 município polygons by name and the
-IGP gets a polygon at municipality resolution.
-`scripts/_lib/pt/geometry.py` already exposes
-`PTPolygonIndex.union_concelhos` for this — what's missing is the
-per-IGP concelho-list parser. Path forward for a future "Tier A" PT
-without an upstream wine layer.
+The caderno's "Área Delimitada" section enumerates the production area
+in one of several patterns: a flat municípios/concelhos list, a
+whole-distrito declaration ("todos os municípios do distrito de X"),
+a bullet-list of concelhos, a bare "Distrito de Setúbal." sentence,
+or a whole-archipelago phrase ("Arquipélago dos Açores" / "Região
+Autónoma da Madeira"). [scripts/_lib/pt/commune_list.py](scripts/_lib/pt/commune_list.py)
+covers all five patterns; the matched names union against DGT CAOP
+2025 município polygons in [scripts/_lib/pt/geometry.py](scripts/_lib/pt/geometry.py)
+via `PTPolygonIndex.union_from_parsed`. Stage 04 prefers this step
+ahead of the Bétard fallback because it carries município-level
+precision (no whole-município overlap padding between adjacent DOPs).
+
+Coverage after the change: **23 / 30 PT DOPs + 14 / 14 PT IGPs** via
+CAOP; the 7 DOP residuals fall through to `figshare-pdo` (Bétard
+2022). Macro-region expansions are codified in `PT_MACRO_REGIONS`
+(Açores = 7 ilhas / 16 municipios; Madeira = 2 ilhas / 11 municipios).
 
 ---
 
@@ -243,12 +258,21 @@ IT:
 
 PT:
   simple   = Bétard 2022 (DOP only; IGPs invisible)
-  advanced = Bétard 2022 + caderno-concelho-list × CAOP 2025 union for IGPs
-             (not yet implemented — actionable next step for PT)
+  advanced = caderno-concelho-list × CAOP 2025 union → Bétard 2022 fallback
+             (shipped 2026-05-23; all 14 IGPs now mapped at município precision)
 
 SI:
   simple   = Bétard 2022 + IGP-as-PDO-union (current default)
   advanced = + MKGP specifikacija parser (Phase 2)
+
+BG:
+  simple   = Bétard 2022 + IGP-as-PDO-union (current default — 100 %
+             coverage: 52 PDOs in Bétard + 2 PGIs via member-PDO union;
+             reuses raw/es/figshare/EU_PDO.gpkg + raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip
+             with CNTR_CODE='BG' as defensive commune-list fallback,
+             ~265 obshtini)
+  advanced = + Държавен вестник продуктова спецификация parser (Phase 2 —
+             gates on the curator-pinned URL workflow)
 ```
 
 The reproducibility contract (`uv sync` → stages 00 → 04 must rebuild

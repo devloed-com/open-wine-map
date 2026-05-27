@@ -2494,6 +2494,626 @@
     "wiener-gemischter-satz": {
       "label": "Wiener Wein",
       "url": "https://www.wienerwein.at/"
+    },
+    "bela-krajina": {
+      "url": "http://www.vinogradniki-metlika.si/",
+      "label": "Društvo vinogradnikov Metlika"
+    },
+    "bizeljcan": {
+      "url": "https://www.bizeljskowines.si/",
+      "label": "Društvo vinogradnikov Bizeljsko"
+    },
+    "bizeljsko-sremic": {
+      "url": "https://www.bizeljskowines.si/",
+      "label": "Društvo vinogradnikov Bizeljsko"
+    },
+    "cvicek": {
+      "url": "https://www.konzorcijcvicek.com/",
+      "label": "Zadruga Konzorcij Cviček z.o.o."
+    },
+    "dolenjska": {
+      "url": "https://www.zdvd.si/",
+      "label": "Zveza društev vinogradnikov Dolenjske (ZDVD)"
+    },
+    "goriska-brda": {
+      "url": "https://klet-brda.si/sl/",
+      "label": "Klet Brda z.o.o. (Vinska klet Goriška Brda)"
+    },
+    "kras": {
+      "url": "https://www.sezana.si/objava/568522",
+      "label": "Društvo vinogradnikov in vinarjev Krasa"
+    },
+    "podravje": {
+      "url": "https://vinskadruzba.si/",
+      "label": "Vinska družba Slovenije d.o.o."
+    },
+    "posavje": {
+      "url": "https://www.zdvd.si/",
+      "label": "Zveza društev vinogradnikov Dolenjske (ZDVD)"
+    },
+    "primorska": {
+      "url": "https://vinskadruzba.si/",
+      "label": "Vinska družba Slovenije d.o.o."
+    },
+    "slovenska-istra": {
+      "url": "https://www.vinakoper.si/",
+      "label": "Vinakoper d.o.o."
+    },
+    "stajerska-slovenija": {
+      "url": "https://vinorodna-stajerska.si/",
+      "label": "Združenje Vinorodna Štajerska"
+    },
+    "teran": {
+      "url": "https://www.sezana.si/objava/568522",
+      "label": "Konzorcij kraških pridelovalcev Terana"
+    },
+    "vipavska-dolina": {
+      "url": "https://govipwines.com/sl/",
+      "label": "Konzorcij vinarjev Vipavske doline"
+    },
+    "dalmatinska-zagora": {
+      "url": "https://vinodalmacije.com/",
+      "label": "Udruženje Vino Dalmacije"
+    },
+    "dingac": {
+      "url": "https://vinodalmacije.com/",
+      "label": "Udruga vinara “Plavac mali – Pelješac”"
+    },
+    "hrvatska-istra": {
+      "url": "https://vinistra.hr/hr",
+      "label": "Vinistra – Udruga vinogradara i vinara Istre"
+    },
+    "hrvatsko-podunavlje": {
+      "url": "https://grasevina.hr/en/",
+      "label": "Graševina Croatica – Udruga vinara Slavonije i hrvatskog Podunavlja"
+    },
+    "hrvatsko-primorje": {
+      "url": "https://kvarner.wine/",
+      "label": "Udruženje Kvarner Wines (Vina Kvarnera)"
+    },
+    "istocna-kontinentalna-hrvatska": {
+      "url": "https://grasevina.hr/en/",
+      "label": "Graševina Croatica – Udruga vinara Slavonije i hrvatskog Podunavlja"
+    },
+    "moslavina": {
+      "url": "https://bregovitahrvatska.hr/",
+      "label": "Bregovita Hrvatska"
+    },
+    "muskat-momjanski": {
+      "url": "https://vinistra.hr/hr",
+      "label": "Udruga proizvođača momjanskog muškata “Vino Momilianum”"
+    },
+    "plesivica": {
+      "url": "https://bregovitahrvatska.hr/",
+      "label": "Bregovita Hrvatska"
+    },
+    "pokuplje": {
+      "url": "https://bregovitahrvatska.hr/",
+      "label": "Bregovita Hrvatska"
+    },
+    "ponikve": {
+      "url": "https://vinodalmacije.com/",
+      "label": "Udruženje Vino Dalmacije"
+    },
+    "prigorje-bilogora": {
+      "url": "https://bregovitahrvatska.hr/",
+      "label": "Bregovita Hrvatska"
+    },
+    "primorska-hrvatska": {
+      "url": "https://vinodalmacije.com/",
+      "label": "Vinistra + Vino Dalmacije (joint coverage)"
+    },
+    "sjeverna-dalmacija": {
+      "url": "https://vinodalmacije.com/",
+      "label": "Udruženje Vino Dalmacije"
+    },
+    "slavonija": {
+      "url": "https://grasevina.hr/en/",
+      "label": "Graševina Croatica – Udruga vinara Slavonije i hrvatskog Podunavlja"
+    },
+    "srednja-i-juzna-dalmacija": {
+      "url": "https://vinodalmacije.com/",
+      "label": "Udruženje Vino Dalmacije"
+    },
+    "zagorje-meimurje": {
+      "url": "https://bregovitahrvatska.hr/",
+      "label": "Društvo vinogradara i vinara Međimurja “Hortus Croatiae” Štrigova"
+    },
+    "zapadna-kontinentalna-hrvatska": {
+      "url": "https://bregovitahrvatska.hr/",
+      "label": "Bregovita Hrvatska"
+    },
+    "badacsony": {
+      "url": "https://www.badacsonyiborvidek.hu/",
+      "label": "Badacsonyi Borvidék Hegyközségi Tanácsa"
+    },
+    "balaton": {
+      "url": "https://hnt.hu/szervezet/borregiok",
+      "label": "Hegyközségek Nemzeti Tanácsa — Balaton borrégió"
+    },
+    "balaton-felvidek": {
+      "url": "https://hnt.hu/szervezet/borvidekek/balaton-felvideki-borvidek",
+      "label": "Balaton-felvidéki Borvidék Hegyközségi Tanácsa"
+    },
+    "balatonboglar": {
+      "url": "https://hnt.hu/szervezet/borvidekek/balatonboglari-borvidek",
+      "label": "Balatonboglári Borvidék Hegyközségi Tanácsa"
+    },
+    "balatonfured-csopak": {
+      "url": "https://hnt.hu/szervezet/borvidekek/balatonfured-csopaki-borvidek",
+      "label": "Balatonfüred-Csopaki Borvidék Hegyközségi Tanácsa"
+    },
+    "balatonmelleki": {
+      "url": "https://boraszat.kormany.hu/balatonmelleki",
+      "label": "Hegyközségek Nemzeti Tanácsa — Balatonmelléki OFJ"
+    },
+    "bukk": {
+      "url": "https://hnt.hu/szervezet/borvidekek/bukki-borvidek",
+      "label": "Bükki Borvidék Hegyközségi Tanácsa"
+    },
+    "csongrad": {
+      "url": "https://csongradiborvidek.hu/",
+      "label": "Csongrádi Borvidék Hegyközségi Tanácsa"
+    },
+    "csopak": {
+      "url": "https://hnt.hu/szervezet/borvidekek/balatonfured-csopaki-borvidek",
+      "label": "Balatonfüred-Csopaki Borvidék Hegyközségi Tanácsa"
+    },
+    "debroi-harslevelu": {
+      "url": "https://ebht.hu/",
+      "label": "Egri Borvidék Hegyközségi Tanácsa"
+    },
+    "duna": {
+      "url": "http://www.kunsagiborvidek.hu/",
+      "label": "Kunsági Borvidék Hegyközségi Tanácsa"
+    },
+    "duna-tisza-kozi": {
+      "url": "http://www.kunsagiborvidek.hu/",
+      "label": "Kunsági Borvidék Hegyközségi Tanácsa"
+    },
+    "dunantuli": {
+      "url": "https://boraszat.kormany.hu/foldrajzi-arujelzot-kezelo-hegykozsegi-szervezetek",
+      "label": "Hegyközségek Nemzeti Tanácsa — Dunántúli OFJ"
+    },
+    "eger": {
+      "url": "https://ebht.hu/",
+      "label": "Egri Borvidék Hegyközségi Tanácsa (EBHT)"
+    },
+    "etyek-buda": {
+      "url": "https://etyekbudaiborvidek.hu/",
+      "label": "Etyek-Budai Borvidék Hegyközségi Tanácsa"
+    },
+    "etyeki-pezsgo": {
+      "url": "https://etyekbudaiborvidek.hu/",
+      "label": "Etyek-Budai Borvidék Hegyközségi Tanácsa"
+    },
+    "felso-magyarorszag": {
+      "url": "https://boraszat.kormany.hu/felsomo",
+      "label": "Hegyközségek Nemzeti Tanácsa — Felső-Magyarország OFJ"
+    },
+    "fured": {
+      "url": "https://hnt.hu/szervezet/borvidekek/balatonfured-csopaki-borvidek",
+      "label": "Balatonfüred-Csopaki Borvidék Hegyközségi Tanácsa"
+    },
+    "hajos-baja": {
+      "url": "https://hajosbajaiborvidek.hu/",
+      "label": "Hajós-Bajai Borvidék Hegyközségi Tanácsa"
+    },
+    "izsaki-arany-sarfeher": {
+      "url": "http://www.kunsagiborvidek.hu/",
+      "label": "Izsáki Hegyközség (under Kunsági Borvidék Hegyközségi Tanácsa)"
+    },
+    "kali": {
+      "url": "https://hnt.hu/szervezet/borvidekek/balaton-felvideki-borvidek",
+      "label": "Balaton-felvidéki Borvidék Hegyközségi Tanácsa"
+    },
+    "koszeg": {
+      "url": "https://hnt.hu/szervezet/borvidekek/soproni-borvidek",
+      "label": "Kőszeg és Környéke – Vaskeresztes és Környéke Hegyközség (under Soproni Borvidék Hegyközségi Tanácsa)"
+    },
+    "kunsag": {
+      "url": "http://www.kunsagiborvidek.hu/",
+      "label": "Kunsági Borvidék Hegyközségi Tanácsa"
+    },
+    "matra": {
+      "url": "https://matraiborvidek.hu/",
+      "label": "Mátrai Borvidék Hegyközségi Tanácsa"
+    },
+    "monor": {
+      "url": "http://www.kunsagiborvidek.hu/",
+      "label": "Kunsági Borvidék Hegyközségi Tanácsa"
+    },
+    "mor": {
+      "url": "https://www.moriborvidek.com/",
+      "label": "Móri Borvidék Hegyközsége (Móri Borvidék Hegyközségi Tanácsa)"
+    },
+    "nagy-somlo": {
+      "url": "https://somloiborvidek.hu/",
+      "label": "Somlói Borvidék Hegyközsége (Somlói Borvidék Hegyközségi Tanácsa)"
+    },
+    "neszmely": {
+      "url": "https://hnt.hu/szervezet/borvidekek/neszmelyi-borvidek",
+      "label": "Neszmélyi Borvidék Hegyközsége (Neszmélyi Borvidék Hegyközségi Tanácsa)"
+    },
+    "pannon": {
+      "url": "https://hnt.hu/szervezet/borvidekek/tolnai-borvidek",
+      "label": "Tolnai Borvidék Hegyközségi Tanácsa (kezelő, on behalf of the Pannon borrégió: Pécsi, Szekszárdi, Tolnai, Villányi HKTs)"
+    },
+    "pannonhalma": {
+      "url": "http://www.pannonhalmiborvidek.hu/",
+      "label": "Pannonhalmi Borvidék Hegyközsége (Pannonhalmi Borvidék Hegyközségi Tanácsa)"
+    },
+    "pecs": {
+      "url": "https://hnt.hu/szervezet/borvidekek/pecsi-borvidek",
+      "label": "Pécsi Borvidék Hegyközsége (Pécsi Borvidék Hegyközségi Tanácsa)"
+    },
+    "soltvadkerti": {
+      "url": "https://hnt.hu/szervezet/hegykozsegek/soltvadkerti-hegykozseg",
+      "label": "Soltvadkerti Hegyközség (under Kunsági Borvidék Hegyközségi Tanácsa)"
+    },
+    "somloi": {
+      "url": "https://somloiborvidek.hu/",
+      "label": "Somlói Borvidék Hegyközsége (Somlói Borvidék Hegyközségi Tanácsa)"
+    },
+    "sopron": {
+      "url": "https://soproniborvidek.hu/",
+      "label": "Soproni Borvidék Hegyközségi Tanácsa"
+    },
+    "szekszard": {
+      "url": "https://hnt.hu/szervezet/borvidekek/szekszardi-borvidek",
+      "label": "Szekszárdi Borvidék Hegyközségi Tanácsa"
+    },
+    "tihany": {
+      "url": "https://hnt.hu/szervezet/borvidekek/balatonfured-csopaki-borvidek",
+      "label": "Balatonfüred-Csopaki Borvidék Hegyközségi Tanácsa"
+    },
+    "tokaj": {
+      "url": "https://tokajiborvidek.hu/",
+      "label": "Tokaji Borvidék Hegyközségi Tanácsa"
+    },
+    "tolna": {
+      "url": "https://hnt.hu/szervezet/borvidekek/tolnai-borvidek",
+      "label": "Tolnai Borvidék Hegyközségi Tanácsa"
+    },
+    "villany": {
+      "url": "https://villanyiborvidek.hu/hu/rolunk/hegykozsegi-tanacs",
+      "label": "Villányi Borvidék Hegyközségi Tanácsa"
+    },
+    "zala": {
+      "url": "https://hnt.hu/szervezet/borvidekek/zalai-borvidek",
+      "label": "Zalai Borvidék Hegyközségi Tanácsa"
+    },
+    "zemplen": {
+      "url": "https://tokajiborvidek.hu/",
+      "label": "Tokaji Borvidék Hegyközségi Tanácsa"
+    },
+    "adamclisi": {
+      "url": "https://www.onvpv.ro/ro/doc/adamclisi",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Adamclisi"
+    },
+    "aiud": {
+      "url": "https://www.onvpv.ro/ro/doc/aiud",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Aiud"
+    },
+    "alba-iulia": {
+      "url": "https://www.onvpv.ro/ro/doc/alba-iulia",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Alba Iulia"
+    },
+    "babadag": {
+      "url": "https://www.onvpv.ro/ro/doc/babadag",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Babadag"
+    },
+    "banat": {
+      "url": "https://www.onvpv.ro/ro/doc/banat",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Banat"
+    },
+    "banu-maracine": {
+      "url": "https://www.onvpv.ro/ro/doc/banu-maracine",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Banu Mărăcine"
+    },
+    "bohotin": {
+      "url": "https://www.onvpv.ro/ro/doc/bohotin",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Bohotin"
+    },
+    "colinele-dobrogei": {
+      "url": "https://www.onvpv.ro/ro/ig/colinele-dobrogei",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Colinele Dobrogei"
+    },
+    "cotesti": {
+      "url": "https://www.onvpv.ro/ro/doc/cotesti",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Coteşti"
+    },
+    "cotnari": {
+      "url": "https://www.onvpv.ro/ro/doc/cotnari",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Cotnari"
+    },
+    "crisana": {
+      "url": "https://www.onvpv.ro/ro/doc/crisana",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Crişana"
+    },
+    "dealu-bujorului": {
+      "url": "https://www.onvpv.ro/ro/doc/dealu-bujorului",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Dealu Bujorului"
+    },
+    "dealu-mare": {
+      "url": "https://www.onvpv.ro/ro/doc/dealu-mare",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Dealu Mare"
+    },
+    "dealurile-crisanei": {
+      "url": "https://www.onvpv.ro/ro/ig/dealurile-crisanei",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Dealurile Crişanei"
+    },
+    "dealurile-moldovei": {
+      "url": "https://www.onvpv.ro/ro/ig/dealurile-moldovei",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Dealurile Moldovei"
+    },
+    "dealurile-munteniei": {
+      "url": "https://www.onvpv.ro/ro/ig/dealurile-munteniei",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Dealurile Munteniei"
+    },
+    "dealurile-olteniei": {
+      "url": "https://www.onvpv.ro/ro/ig/dealurile-olteniei",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Dealurile Olteniei"
+    },
+    "dealurile-satmarului": {
+      "url": "https://www.onvpv.ro/ro/ig/dealurile-satmarului",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Dealurile Sătmarului"
+    },
+    "dealurile-transilvaniei": {
+      "url": "https://www.onvpv.ro/ro/ig/dealurile-transilvaniei",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Dealurile Transilvaniei"
+    },
+    "dealurile-vrancei": {
+      "url": "https://www.onvpv.ro/ro/ig/dealurile-vrancei",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Dealurile Vrancei"
+    },
+    "dealurile-zarandului": {
+      "url": "https://www.onvpv.ro/ro/ig/dealurile-zarandului",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Dealurile Zarandului"
+    },
+    "dragasani": {
+      "url": "https://www.onvpv.ro/ro/doc/dragasani",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Drăgăşani"
+    },
+    "husi": {
+      "url": "https://www.onvpv.ro/ro/doc/husi",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Huşi"
+    },
+    "iana": {
+      "url": "https://www.onvpv.ro/ro/doc/iana",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Iana"
+    },
+    "iasi": {
+      "url": "https://www.onvpv.ro/ro/doc/iasi",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Iaşi"
+    },
+    "insuratei": {
+      "url": "https://www.onvpv.ro/ro/doc/insuratei",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Însurăţei"
+    },
+    "jidvei": {
+      "url": "https://www.onvpv.ro/ro/doc/jidvei",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Jidvei"
+    },
+    "lechinta": {
+      "url": "https://www.onvpv.ro/ro/doc/lechinta",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Lechinţa"
+    },
+    "mehedinti": {
+      "url": "https://www.onvpv.ro/ro/doc/mehedinti",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Mehedinţi"
+    },
+    "minis": {
+      "url": "https://www.onvpv.ro/ro/doc/minis",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Miniş"
+    },
+    "murfatlar": {
+      "url": "https://www.onvpv.ro/ro/doc/murfatlar",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Murfatlar"
+    },
+    "nicoresti": {
+      "url": "https://www.onvpv.ro/ro/doc/nicoresti",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Nicoreşti"
+    },
+    "odobesti": {
+      "url": "https://www.onvpv.ro/ro/doc/odobesti",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Odobeşti"
+    },
+    "oltina": {
+      "url": "https://www.onvpv.ro/ro/doc/oltina",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Oltina"
+    },
+    "panciu": {
+      "url": "https://www.onvpv.ro/ro/doc/panciu",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Panciu"
+    },
+    "pietroasa": {
+      "url": "https://www.onvpv.ro/ro/doc/pietroasa",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Pietroasa"
+    },
+    "recas": {
+      "url": "https://www.onvpv.ro/ro/doc/recas",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Recaş"
+    },
+    "samburesti": {
+      "url": "https://www.onvpv.ro/ro/doc/samburesti",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Sâmbureşti"
+    },
+    "sarica-niculitel": {
+      "url": "https://www.onvpv.ro/ro/doc/sarica-niculitel",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Sarica Niculiţel"
+    },
+    "sebes-apold": {
+      "url": "https://www.onvpv.ro/ro/doc/sebes-apold",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Sebeş-Apold"
+    },
+    "segarcea": {
+      "url": "https://www.onvpv.ro/ro/doc/segarcea",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Segarcea"
+    },
+    "stefanesti": {
+      "url": "https://www.onvpv.ro/ro/doc/stefanesti",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Ştefăneşti"
+    },
+    "tarnave": {
+      "url": "https://www.onvpv.ro/ro/doc/tarnave",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — DOC Târnave"
+    },
+    "terasele-dunarii": {
+      "url": "https://www.onvpv.ro/ro/ig/terasele-dunarii",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Terasele Dunării"
+    },
+    "viile-carasului": {
+      "url": "https://www.onvpv.ro/ro/ig/viile-carasului",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Viile Caraşului"
+    },
+    "viile-timisului": {
+      "url": "https://www.onvpv.ro/ro/ig/viile-timisului",
+      "label": "Oficiul Național al Viei și Produselor Vitivinicole (ONVPV) — IG Viile Timişului"
+    },
+    "asenovgrad": {
+      "url": "https://bg.wikipedia.org/wiki/Асеновград",
+      "label": "Wikipedia (българска) — Асеновград"
+    },
+    "brestnik": {
+      "url": "https://bg.wikipedia.org/wiki/Брестник",
+      "label": "Wikipedia (българска) — Брестник"
+    },
+    "dragoevo": {
+      "url": "https://bg.wikipedia.org/wiki/Драгоево",
+      "label": "Wikipedia (българска) — Драгоево"
+    },
+    "dunavska-ravnina": {
+      "url": "https://bg.wikipedia.org/wiki/Винарство_в_България",
+      "label": "Wikipedia (българска) — Винарство в България"
+    },
+    "evksinograd": {
+      "url": "https://bg.wikipedia.org/wiki/Евксиноград",
+      "label": "Wikipedia (българска) — Евксиноград"
+    },
+    "iambol": {
+      "url": "https://bg.wikipedia.org/wiki/Ямбол",
+      "label": "Wikipedia (българска) — Ямбол"
+    },
+    "ivailovgrad": {
+      "url": "https://bg.wikipedia.org/wiki/Ивайловград",
+      "label": "Wikipedia (българска) — Ивайловград"
+    },
+    "karnobat": {
+      "url": "https://bg.wikipedia.org/wiki/Карнобат",
+      "label": "Wikipedia (българска) — Карнобат"
+    },
+    "kh-rsovo": {
+      "url": "https://bg.wikipedia.org/wiki/Хърсово_(област_Благоевград)",
+      "label": "Wikipedia (българска) — Хърсово (област Благоевград)"
+    },
+    "khan-krum": {
+      "url": "https://bg.wikipedia.org/wiki/Хан_Крум_(село)",
+      "label": "Wikipedia (българска) — Хан Крум (село)"
+    },
+    "khaskovo": {
+      "url": "https://bg.wikipedia.org/wiki/Хасково",
+      "label": "Wikipedia (българска) — Хасково"
+    },
+    "liaskovets": {
+      "url": "https://bg.wikipedia.org/wiki/Лясковец",
+      "label": "Wikipedia (българска) — Лясковец"
+    },
+    "melnik": {
+      "url": "https://bg.wikipedia.org/wiki/Мелник",
+      "label": "Wikipedia (българска) — Мелник"
+    },
+    "nova-zagora": {
+      "url": "https://bg.wikipedia.org/wiki/Нова_Загора",
+      "label": "Wikipedia (българска) — Нова Загора"
+    },
+    "novo-selo": {
+      "url": "https://bg.wikipedia.org/wiki/Ново_село_(област_Видин)",
+      "label": "Wikipedia (българска) — Ново село (област Видин)"
+    },
+    "oriakhovitsa": {
+      "url": "https://bg.wikipedia.org/wiki/Оряховица",
+      "label": "Wikipedia (българска) — Оряховица"
+    },
+    "pavlikeni": {
+      "url": "https://bg.wikipedia.org/wiki/Павликени",
+      "label": "Wikipedia (българска) — Павликени"
+    },
+    "pazardzhik": {
+      "url": "https://bg.wikipedia.org/wiki/Пазарджик",
+      "label": "Wikipedia (българска) — Пазарджик"
+    },
+    "perushchitsa": {
+      "url": "https://bg.wikipedia.org/wiki/Перущица",
+      "label": "Wikipedia (българска) — Перущица"
+    },
+    "pleven": {
+      "url": "https://bg.wikipedia.org/wiki/Плевен",
+      "label": "Wikipedia (българска) — Плевен"
+    },
+    "pomorie": {
+      "url": "https://bg.wikipedia.org/wiki/Поморие",
+      "label": "Wikipedia (българска) — Поморие"
+    },
+    "sakar": {
+      "url": "https://bg.wikipedia.org/wiki/Сакар",
+      "label": "Wikipedia (българска) — Сакар"
+    },
+    "sandanski": {
+      "url": "https://bg.wikipedia.org/wiki/Сандански",
+      "label": "Wikipedia (българска) — Сандански"
+    },
+    "shivachevo": {
+      "url": "https://bg.wikipedia.org/wiki/Шивачево",
+      "label": "Wikipedia (българска) — Шивачево"
+    },
+    "slaviantsi": {
+      "url": "https://bg.wikipedia.org/wiki/Славянци",
+      "label": "Wikipedia (българска) — Славянци"
+    },
+    "sliven": {
+      "url": "https://bg.wikipedia.org/wiki/Сливен",
+      "label": "Wikipedia (българска) — Сливен"
+    },
+    "stambolovo": {
+      "url": "https://bg.wikipedia.org/wiki/Винарска_изба_Стамболово",
+      "label": "Wikipedia (българска) — Винарска изба Стамболово"
+    },
+    "stara-zagora": {
+      "url": "https://bg.wikipedia.org/wiki/Стара_Загора",
+      "label": "Wikipedia (българска) — Стара Загора"
+    },
+    "sukhindol": {
+      "url": "https://bg.wikipedia.org/wiki/Сухиндол",
+      "label": "Wikipedia (българска) — Сухиндол"
+    },
+    "sungurlare": {
+      "url": "https://bg.wikipedia.org/wiki/Сунгурларе",
+      "label": "Wikipedia (българска) — Сунгурларе"
+    },
+    "svishchov": {
+      "url": "https://bg.wikipedia.org/wiki/Свищов",
+      "label": "Wikipedia (българска) — Свищов"
+    },
+    "t-rgovishche": {
+      "url": "https://bg.wikipedia.org/wiki/Търговище",
+      "label": "Wikipedia (българска) — Търговище"
+    },
+    "trakiiska-nizina": {
+      "url": "https://bg.wikipedia.org/wiki/Горнотракийска_низина",
+      "label": "Wikipedia (българска) — Горнотракийска низина"
+    },
+    "veliki-preslav": {
+      "url": "https://bg.wikipedia.org/wiki/Велики_Преслав",
+      "label": "Wikipedia (българска) — Велики Преслав"
+    },
+    "vidin": {
+      "url": "https://bg.wikipedia.org/wiki/Видин",
+      "label": "Wikipedia (българска) — Видин"
+    },
+    "vratsa": {
+      "url": "https://bg.wikipedia.org/wiki/Враца",
+      "label": "Wikipedia (българска) — Враца"
     }
   },
   "by_bassin": {
@@ -2540,6 +3160,114 @@
     "TOULOUSE-PYRENEES": {
       "url": "https://www.vignobles-sudouest.fr/",
       "label": "IVSO — Interprofession des Vins du Sud-Ouest"
+    },
+    "Дунавска равнина": {
+      "url": "https://eavw.com/",
+      "label": "Изпълнителна агенция по лозата и виното (IAVV)"
+    },
+    "Черноморски район": {
+      "url": "https://eavw.com/",
+      "label": "Изпълнителна агенция по лозата и виното (IAVV)"
+    },
+    "Розова долина": {
+      "url": "https://eavw.com/",
+      "label": "Изпълнителна агенция по лозата и виното (IAVV)"
+    },
+    "Тракийска низина": {
+      "url": "https://eavw.com/",
+      "label": "Изпълнителна агенция по лозата и виното (IAVV)"
+    },
+    "Долината на Струма": {
+      "url": "https://eavw.com/",
+      "label": "Изпълнителна агенция по лозата и виното (IAVV)"
+    },
+    "Ahr": {
+      "url": "https://www.ahrwein.de/",
+      "label": "Ahrwein e.V."
+    },
+    "Baden": {
+      "url": "https://www.badischerweinbauverband.de/",
+      "label": "Badischer Weinbauverband e.V."
+    },
+    "Franken": {
+      "url": "https://www.frankenwein-aktuell.de/",
+      "label": "Weinbauverband Franken e.V."
+    },
+    "Hessische Bergstraße": {
+      "url": "https://www.bergstraesserwein.de/",
+      "label": "Weinbauverband Hessische Bergstraße e.V."
+    },
+    "Mittelrhein": {
+      "url": "https://www.mittelrhein-wein.com/",
+      "label": "Mittelrhein-Wein e.V."
+    },
+    "Mosel": {
+      "url": "https://www.weinland-mosel.de/",
+      "label": "Moselwein e.V."
+    },
+    "Nahe": {
+      "url": "https://www.weinland-nahe.com/",
+      "label": "Weinland Nahe e.V."
+    },
+    "Pfalz": {
+      "url": "https://www.pfalz.de/wein",
+      "label": "Pfalzwein e.V."
+    },
+    "Rheingau": {
+      "url": "https://www.rheingau.com/",
+      "label": "Rheingauer Weinbauverband e.V."
+    },
+    "Rheinhessen": {
+      "url": "https://www.rheinhessenwein.de/",
+      "label": "Rheinhessenwein e.V."
+    },
+    "Saale-Unstrut": {
+      "url": "https://www.weinregion-saale-unstrut.de/",
+      "label": "Weinbauverband Saale-Unstrut e.V."
+    },
+    "Sachsen": {
+      "url": "https://www.weinbauverband-sachsen.de/",
+      "label": "Weinbauverband Sachsen e.V."
+    },
+    "Württemberg": {
+      "url": "https://www.wuerttemberger-weingaertner.de/",
+      "label": "Weinbauverband Württemberg e.V."
+    },
+    "Bayern": {
+      "url": "https://www.frankenwein-aktuell.de/",
+      "label": "Weinbauverband Franken e.V."
+    },
+    "Hessen": {
+      "url": "https://www.deutscheweine.de/",
+      "label": "Deutsches Weininstitut (DWI)"
+    },
+    "Brandenburg": {
+      "url": "https://www.deutscheweine.de/",
+      "label": "Deutsches Weininstitut (DWI)"
+    },
+    "Mecklenburg-Vorpommern": {
+      "url": "https://www.deutscheweine.de/",
+      "label": "Deutsches Weininstitut (DWI)"
+    },
+    "Schleswig-Holstein": {
+      "url": "https://www.deutscheweine.de/",
+      "label": "Deutsches Weininstitut (DWI)"
+    },
+    "Saarland": {
+      "url": "https://www.weinland-mosel.de/",
+      "label": "Moselwein e.V."
+    },
+    "Sachsen-Anhalt": {
+      "url": "https://www.weinregion-saale-unstrut.de/",
+      "label": "Weinbauverband Saale-Unstrut e.V."
+    },
+    "Rheinland-Pfalz": {
+      "url": "https://www.deutscheweine.de/",
+      "label": "Deutsches Weininstitut (DWI)"
+    },
+    "Deutschland": {
+      "url": "https://www.deutscheweine.de/",
+      "label": "Deutsches Weininstitut (DWI)"
     }
   }
 }

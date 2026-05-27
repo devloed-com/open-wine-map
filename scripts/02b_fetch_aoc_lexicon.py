@@ -174,6 +174,167 @@ LANG_CONFIG: dict[str, dict] = {
             "vino", "vinorodni okoliš", "vinorodna dežela",
         ),
     },
+    "hr": {
+        # Croatian wine-vocabulary anchors for the HR corpus
+        # (`--lang hr` → hr.wikipedia.org). Whole-word matched.
+        "aoc_keywords": (
+            "vino", "vina", "vinograd", "vinogradarstvo", "vinarstvo",
+            "vinogorje", "vinogorja", "vinogradarska", "vinska", "berba",
+            "grožđe", "grozde", "sorta", "sorte", "podregija", "regija",
+            "zoi", "zozp", "kzp", "oznaka izvornosti", "predikat",
+        ),
+        "default_source": "raw/hr/dokumenti-extracted",
+        # HR: per-DOP wine pages on hr.wikipedia.org disambiguate as
+        # `(vino)`, then the vinogorje form, then the long form.
+        "disambiguators_for_kind": lambda kind: (
+            "vino", "vinogorje", "vinska regija", "oznaka izvornosti",
+        ),
+    },
+    "ro": {
+        # Romanian wine-vocabulary anchors for the RO corpus
+        # (`--lang ro` → ro.wikipedia.org). Whole-word matched.
+        "aoc_keywords": (
+            "vin", "vinuri", "vie", "vii", "viticultură", "viticultura",
+            "viticol", "vinificație", "vinificatie", "podgorie", "podgorii",
+            "soi", "soiuri", "struguri", "regiune", "regiune viticolă",
+            "regiune viticola", "denumire de origine", "indicație geografică",
+            "indicatie geografica", "dop", "igp", "onvpv", "vie",
+        ),
+        "default_source": "raw/ro/dokumente-extracted",
+        # RO: per-DOP wine pages on ro.wikipedia.org disambiguate as
+        # `(vin)`, then the `(podgorie)` form, then the long form.
+        "disambiguators_for_kind": lambda kind: (
+            "vin", "podgorie", "regiune viticolă", "denumire de origine",
+        ),
+    },
+    "hu": {
+        # Hungarian wine-vocabulary anchors for the HU corpus
+        # (`--lang hu` → hu.wikipedia.org). Whole-word matched.
+        "aoc_keywords": (
+            "bor", "borok", "borvidék", "borvidek", "borrégió", "borregio",
+            "szőlő", "szolo", "szőlészet", "szoleszet", "szőlőfajta",
+            "szolofajta", "borászat", "boraszat", "borászati", "boraszati",
+            "termőterület", "termoterulet", "eredetvédelem", "eredetvedelem",
+            "eredetmegjelölés", "eredetmegjeloles", "földrajzi árujelző",
+            "foldrajzi arujelzo", "oem", "ofj",
+        ),
+        "default_source": "raw/hu/dokumentumok-extracted",
+        # HU: per-DOP wine pages on hu.wikipedia.org typically disambiguate
+        # as `(borvidék)` (wine district), then `(bor)`, then a fuller form.
+        "disambiguators_for_kind": lambda kind: (
+            "borvidék", "bor", "borrégió", "eredetvédelem",
+        ),
+    },
+    "el": {
+        # Greek wine-vocabulary anchors for the GR corpus
+        # (`--lang el` → el.wikipedia.org). Greece is the first
+        # Greek-script country; the shared slugify() path uses
+        # unidecode() so the slug is Latin-ASCII while the Wikipedia
+        # title preferred by `slug_to_title(slug, name)` is the
+        # native Greek display name (the eAmbrosia `transcriptions[0]`
+        # gives us the standard English transliteration alongside).
+        "aoc_keywords": (
+            "οίνος", "οίνοι", "οινολογία", "οινοποιείο", "οινοποιία",
+            "αμπέλι", "αμπελώνας", "αμπελώνες", "αμπελουργία",
+            "αμπελουργικός", "αμπελουργική", "αμπελοοινική",
+            "ποικιλία", "ποικιλίες", "ποικιλιακός",
+            "προστατευόμενη ονομασία προέλευσης",
+            "προστατευόμενη γεωγραφική ένδειξη",
+            "ονομασία προέλευσης", "γεωγραφική ένδειξη",
+            "γεωγραφικής ένδειξης", "πόπ", "πγε", "ποπ",
+            "κρασί", "κρασιά", "wine",
+        ),
+        "default_source": "raw/gr/dokumenti-extracted",
+        # GR: per-PDO wine pages on el.wikipedia.org typically
+        # disambiguate as `(οίνος)` (wine) or use the bare appellation
+        # name; some carry a `(κρασί)` qualifier.
+        "disambiguators_for_kind": lambda kind: (
+            "οίνος", "κρασί", "αμπελουργική ζώνη",
+            "προστατευόμενη ονομασία προέλευσης",
+        ),
+    },
+    "bg": {
+        # Bulgarian wine-vocabulary anchors for the BG corpus
+        # (`--lang bg` → bg.wikipedia.org). Whole-word matched. Bulgaria
+        # is the first Cyrillic-script country; the shared slugify()
+        # path uses unidecode so the slug is Latin-ASCII while the
+        # Wikipedia title preferred by `slug_to_title(slug, name)` is
+        # the Cyrillic display name.
+        "aoc_keywords": (
+            "вино", "вина", "лозе", "лозя", "лозарство", "винарство",
+            "винопроизводство", "винарска", "винарски", "винарска област",
+            "винарски район", "сорт", "сортове", "грозде",
+            "защитено наименование за произход",
+            "защитено географско указание",
+            "наименование за произход", "географско указание",
+            "географско означение", "знп", "згу", "иалв", "wine",
+        ),
+        "default_source": "raw/bg/dokumenti-extracted",
+        # BG: per-PDO wine pages on bg.wikipedia.org typically
+        # disambiguate as `(вино)` (wine), then `(винарска област)`
+        # (wine district), then a fuller form.
+        "disambiguators_for_kind": lambda kind: (
+            "вино", "винарска област", "защитено наименование за произход",
+        ),
+    },
+    "sk": {
+        # Slovak wine-vocabulary anchors for the SK corpus
+        # (`--lang sk` → sk.wikipedia.org). Whole-word matched.
+        "aoc_keywords": (
+            "víno", "vína", "vinič", "vinohrad", "vinohradníctvo",
+            "vinárstvo", "vinohradnícka", "vinohradnícky", "vinohradnícka oblasť",
+            "vinohradnícky rajón", "odroda", "odrody", "hrozno", "muštové",
+            "chránené označenie pôvodu", "chránené zemepisné označenie",
+            "označenie pôvodu", "zemepisné označenie", "chop", "chzo",
+        ),
+        "default_source": "raw/sk/dokumenty-extracted",
+        # SK: per-DOP wine pages on sk.wikipedia.org typically
+        # disambiguate as `(víno)`, then the vinohradnícka-oblasť form,
+        # then the long form.
+        "disambiguators_for_kind": lambda kind: (
+            "víno", "vinohradnícka oblasť", "chránené označenie pôvodu",
+        ),
+    },
+    "cs": {
+        # Czech wine-vocabulary anchors for the CZ corpus
+        # (`--lang cs` → cs.wikipedia.org). Whole-word matched.
+        "aoc_keywords": (
+            "víno", "vína", "réva", "réva vinná", "vinice", "vinohradnictví",
+            "vinařství", "vinařská", "vinařský", "vinařská oblast",
+            "vinařská podoblast", "odrůda", "odrůdy", "hrozno", "moštové",
+            "chráněné označení původu", "chráněné zeměpisné označení",
+            "označení původu", "zeměpisné označení", "chop", "chzo",
+        ),
+        "default_source": "raw/cz/dokumenty-extracted",
+        # CZ: per-DOP wine pages on cs.wikipedia.org typically
+        # disambiguate as `(víno)`, then the vinařská-oblast form, then
+        # the long form.
+        "disambiguators_for_kind": lambda kind: (
+            "víno", "vinařská oblast", "chráněné označení původu",
+        ),
+    },
+    "nl": {
+        # Dutch wine-vocabulary anchors. Used for both BE Flemish wines
+        # + Maasvallei (per-record source_lang) and the entire NL corpus
+        # (`--lang nl` → nl.wikipedia.org). Whole-word matched.
+        "aoc_keywords": (
+            "wijn", "wijnen", "wijnbouw", "wijngaard", "wijngaarden",
+            "wijnstreek", "wijnregio", "wijnregios", "wijnbouwer",
+            "druif", "druiven", "druivenras", "wijndruif",
+            "oorsprongsbenaming", "geografische aanduiding",
+            "beschermde", "bob", "bga",
+        ),
+        # NL is the more populous Dutch-language corpus; default the
+        # source path there. BE's Flemish records are covered when
+        # this stage is invoked with `--source raw/be/dokumenten-extracted`.
+        "default_source": "raw/nl/dokumenten-extracted",
+        # NL / BE-Flemish: wine-region pages on nl.wikipedia.org
+        # disambiguate as `(wijn)`, then the wijnstreek form, then the
+        # long form.
+        "disambiguators_for_kind": lambda kind: (
+            "wijn", "wijnstreek", "wijnbouw", "oorsprongsbenaming",
+        ),
+    },
 }
 
 UA = (

@@ -39,6 +39,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from rapidfuzz import fuzz, process
+from unidecode import unidecode
 
 _LIB_ROOT = Path(__file__).resolve().parent
 if str(_LIB_ROOT.parent) not in sys.path:
@@ -66,7 +67,13 @@ _FUZZY_CUTOFF = 85
 # INAO colour-letter suffixes. Case-sensitive on purpose — lowercase `b`
 # is too common as a final letter (`Bobal B` correctly strips `B`, but
 # stripping a final `b` from any token would shred legitimate names).
-_COLOUR_LETTER_RE = re.compile(r"(?<=[A-Za-zàâäéèêëîïôöùûüç])\s+(B|N|G|Rs|Rg|R)\Z")
+_COLOUR_LETTER_RE = re.compile(
+    r"(?<=[A-Za-zàâäéèêëîïôöùûüçășțşţáíóúőűñõ"
+    r"α-ωάέήίόύώϊϋΐΰ"
+    # SK/CZ: ě č ř ť ď ň ů ľ ŕ ô ž š ý — both lower + upper forms.
+    r"ěčřťďňůľŕôžšýĚČŘŤĎŇŮĽŔÔŽŠÝ])"
+    r"\s+(B|N|G|Rs|Rg|R|Β|Ν|Γ)\Z"
+)
 _COLOUR_LETTER_TO_NAME = {
     "B": "blanc",
     "N": "noir",
@@ -74,6 +81,12 @@ _COLOUR_LETTER_TO_NAME = {
     "Rs": "rose",
     "Rg": "rouge",
     "R": "rouge",
+    # Greek pliegos mix Greek capital Β / Ν / Γ (glyph-identical to Latin
+    # B / N / G, different code points) with Latin letters at the end
+    # of variety names; both map to the same colour buckets.
+    "Β": "blanc",
+    "Ν": "noir",
+    "Γ": "gris",
 }
 
 # Bare colour-adjective surfaces that VIVC surfaces as standalone
@@ -123,9 +136,12 @@ def set_pliego_context(slug: str | None) -> None:
 
 
 def _normalise(name: str) -> str:
-    """Lowercase + NFKD diacritic-strip + collapse whitespace + collapse
-    hyphens / dots / commas to single spaces. The vocab surface form."""
-    nfkd = unicodedata.normalize("NFKD", name)
+    """Lowercase + Cyrillic→Latin transliteration + NFKD diacritic-strip
+    + collapse whitespace + collapse hyphens / dots / commas to single
+    spaces. The vocab surface form. `unidecode` is a no-op for Latin
+    input (covers all 9 pre-BG corpora) and romanises Cyrillic for BG."""
+    transliterated = unidecode(name)
+    nfkd = unicodedata.normalize("NFKD", transliterated)
     ascii_form = nfkd.encode("ascii", "ignore").decode().lower()
     ascii_form = re.sub(r"[-_./,]+", " ", ascii_form)
     ascii_form = re.sub(r"\s+", " ", ascii_form).strip()

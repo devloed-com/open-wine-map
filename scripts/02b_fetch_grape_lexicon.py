@@ -408,6 +408,16 @@ def main() -> int:
     ap.add_argument("--refresh", action="store_true", help="re-fetch even if cached")
     ap.add_argument("--throttle", type=float, default=0.05, help="seconds between API calls")
     ap.add_argument("--locales", nargs="+", default=list(LOCALES))
+    ap.add_argument(
+        "--only",
+        action="append",
+        default=[],
+        help="exact slug to fetch (repeatable). When provided, the corpus-wide "
+        "sweep is skipped — only these slugs are considered. Use for "
+        "surgical updates after adding new country aliases (avoids the "
+        "~25 min unfiltered sweep that revalidates VIVC negative caches "
+        "for unrelated slugs as a side effect).",
+    )
     args = ap.parse_args()
 
     if not EXTRACTED.exists():
@@ -415,6 +425,18 @@ def main() -> int:
         return 1
 
     slugs = collect_grape_slugs()
+    if args.only:
+        wanted = set(args.only)
+        unknown = wanted - set(slugs)
+        if unknown:
+            print(
+                f"[02b] warning: --only slug(s) not in corpus, "
+                f"including anyway: {sorted(unknown)}",
+                file=sys.stderr,
+            )
+        # Preserve any display-name mapping the corpus has; for unknown slugs
+        # default the display name to the slug itself.
+        slugs = {s: slugs.get(s, s) for s in wanted}
     print(
         f"[02b] {len(slugs)} unique grape slugs across {len(args.locales)} locales",
         file=sys.stderr,

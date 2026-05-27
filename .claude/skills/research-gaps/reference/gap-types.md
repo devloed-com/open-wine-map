@@ -180,6 +180,46 @@ ES are curated; IT had zero coverage in `appellation_urls.json`.
   shape `{ "<slug>": { "url": ..., "label": "<organisation name>" } }`.
 - **Re-run:** `04_build_maps.py`.
 
+## `cz-specification` — Czech wine with no EU-OJ single document
+
+All 13 CZ wines are Art.107 / Reg.1308/2013 grandfathered names whose
+only eAmbrosia reference is a non-fetchable `Ares(...)` summary-sheet.
+The canonical alternative is the Czech national implementing decree
+(Vyhláška č. 88/2017 Sb. for varieties + Vyhláška č. 254/2010 Sb. for
+the per-podoblast obec list, both implementing Zákon č. 321/2004 Sb.).
+
+- **Detect:** `scripts/audit_cz_coverage.py` — every wine in the
+  `no-publication` bucket. `scripts/cz/regen_manual_overrides_template.py`
+  writes the editable file.
+- **Triage:** 13 wines, all actionable. The 6 podoblasti + 4 macro
+  names share two consolidated decrees; the 3 newer 2011 single-vineyard
+  PDOs (Znojmo, Šobes, Novosedelské Slámové víno) are likely genuine
+  `NONE`s — verified 2026-05-24.
+- **Search:** (1) EUR-Lex Czech-language search by file_number AND
+  protected name (most CZ wines have nothing — but the post-2009
+  ones might); (2) Sbírka zákonů via zakonyprolidi.cz mirror (the
+  Sbírka PDF is image-scanned, eSbírka is a JS SPA); (3)
+  ukzuz.gov.cz / eagri.cz / mze.gov.cz / vinarskecentrum.cz / svcr.cz
+  for per-PDO specifikace PDFs (these don't exist for most wines).
+- **WAF risk:** medium — EUR-Lex AWS WAF; agents can handle
+  zakonyprolidi.cz fine.
+- **Overrides target (active fetch):** `raw/cz/oj-pages/manual_overrides.json`
+  keyed by slug, `{ "url": "<EUR-Lex Jednotný-dokument HTML>" }` —
+  **only** EUR-Lex single-document URLs will parse with the stage-02
+  EU-OJ template. National-spec URLs (sbirka, ukzuz, eagri) go in the
+  **documentation** field with `url: ""` (the regen template's
+  `__doc__` says empty url is ignored).
+- **National-spec extraction (already shipped 2026-05-24):**
+  `scripts/cz/02f_extract_national_specs.py` parses Vyhláška 88/2017
+  + 254/2010 into `raw/cz/national-specs/` sidecars (variety roster +
+  per-podoblast obec lists). Stage 04 augments every CZ wine with the
+  67-variety national list. Re-run that script if you find an updated
+  decree URL.
+- **Re-run:** `cz/01_fetch_pliegos.py` → `cz/02_extract_pliegos.py` →
+  `04_build_maps.py` (after editing `manual_overrides.json` with an
+  EUR-Lex URL); OR `cz/02f_extract_national_specs.py --refresh` →
+  `04_build_maps.py` (after a decree update).
+
 ## `at-weinkomitee-url` — Austrian appellation with no DO-organisation link
 
 Austrian analogue of `it-consorzio-url`. The administering body of a DAC is

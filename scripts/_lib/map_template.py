@@ -138,6 +138,9 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "au disciplinare de la DOP Bianchello del Metauro ; le catalogue VIVC le recense "
             "comme synonyme du Trebbiano Toscano."
         ),
+        "stub_message": _(
+            "Open Wine Map n'a pas encore trouvé de {doc} pour cette appellation."
+        ),
         "fr_marker": _("(français)"),
         "fr_marker_aria": _("Texte source en français"),
         "es_marker": _("(español)"),
@@ -187,9 +190,14 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Signalez-les via {issue} ou {email}."
         ),
         "about_roadmap_html": _(
-            "Couverture actuelle : France et une première version de "
-            "l'Espagne. Prochaines étapes : amélioration continue de la "
-            "qualité des données, puis ajout du Portugal."
+            "Extension de la couverture européenne en cours : France, "
+            "Espagne, Portugal, Italie, Autriche, Allemagne, Slovénie, "
+            "Croatie, Hongrie, Roumanie, Bulgarie et Grèce sont déjà "
+            "cartographiés. Quelques itérations supplémentaires "
+            "viendront affiner la qualité des données existantes ; "
+            "l'Europe centrale et orientale est à considérer comme une "
+            "première version, appelée à être améliorée. À plus long "
+            "terme, des classifications hors AOP pourront être ajoutées."
         ),
     }
 
@@ -1101,6 +1109,7 @@ _TEMPLATE = """<!doctype html>
   a.pill.grape.observation:hover {{ background:#f5ecc0 }}
   a.pill.grape.has-info {{ border-bottom:1px dotted currentColor; padding-bottom:1px }}
   .pill.grape .canon {{ opacity:0.65; font-weight:normal; font-size:0.9em }}
+  h1 .latin, .facet label .latin {{ opacity:0.55; font-weight:normal; font-size:0.85em; margin-left:0.25em }}
   .pill.style {{ cursor:default }}
   a.pill.style {{ text-decoration:none }}
   a.pill.style:hover {{ text-decoration:underline; opacity:0.85 }}
@@ -1290,6 +1299,18 @@ _TEMPLATE = """<!doctype html>
   const SIMPLE_STYLE_LABELS = {simple_style_labels_json};
   const SIMPLE_STYLE_BUCKETS = {simple_style_buckets_json};
   const LABELS = {labels_json};
+  // Per-jurisdiction regulator-published specification document name,
+  // in the regulator's own language. Used by the stub-message block
+  // when no source document has been located for an appellation yet.
+  const STUB_DOC_NAMES = {{
+    fr: 'cahier des charges',
+    es: 'pliego de condiciones',
+    pt: 'caderno de especificações',
+    it: 'disciplinare di produzione',
+    at: 'Produktspezifikation',
+    si: 'specifikacija proizvoda',
+    hr: 'specifikacija proizvoda',
+  }};
   const GRAPES_INFO = {grapes_info_json};
   // Slug -> siblings sharing the same VIVC variety id. Used to make the
   // grape filter synonym-aware: toggling Cot also matches AOCs that
@@ -1606,6 +1627,21 @@ _TEMPLATE = """<!doctype html>
     return (s || '').normalize('NFD').replace(/\\p{{Diacritic}}/gu, '').toLowerCase();
   }}
 
+  // BG / GR appellations carry both a native-script name (Cyrillic /
+  // Greek) and an informational Latin transliteration (`name_latin`).
+  // Search has to match either form so a user typing "Mavrud" finds
+  // "Мавруд".
+  function searchableText(rec) {{
+    return searchNormalize(((rec && rec.name) || '') + ' ' + ((rec && rec.name_latin) || ''));
+  }}
+
+  function nameWithLatin(rec) {{
+    const native = escapeHtml((rec && rec.name) || '');
+    const latin = (rec && rec.name_latin) || '';
+    if (!latin || latin === rec.name) return native;
+    return native + ' <span class="latin">(' + escapeHtml(latin) + ')</span>';
+  }}
+
   const proto = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', proto.tile);
 
@@ -1727,14 +1763,6 @@ _TEMPLATE = """<!doctype html>
     const parts = ['all'];
     if (!showIgp) parts.push(['!=', ['get', 'kind'], 'IGP']);
     if (!spiritsVisible()) parts.push(['==', ['get', 'is_wine'], '1']);
-    if (filters.q) {{
-      const qn = searchNormalize(filters.q);
-      const matching = [];
-      for (const slug in AOCS) {{
-        if (searchNormalize(AOCS[slug].name).includes(qn)) matching.push(slug);
-      }}
-      parts.push(['in', ['get', 'slug'], ['literal', matching]]);
-    }}
     function inField(field, set) {{
       if (set.size === 0) return null;
       const tests = [];
@@ -2015,16 +2043,7 @@ _TEMPLATE = """<!doctype html>
     refreshAllGrapeChipFilters();
   }}
 
-  // Fit-to-filtered safety belt: when spirits are hidden, clamp the bbox to
-  // mainland France + Corsica so a stray IGP polygon (say a still-visible
-  // Atlantique IGP that overlaps a wine appellation) cannot drag the camera
-  // to a hemispheric view. Loose bounds — meant to forbid overshoots, not
-  // to constrain real selections inside France.
-  const MAINLAND_BBOX = [-5.5, 41.0, 10.0, 51.5];
-
   function fitToFiltered() {{
-    const expr = buildFilterExpr();
-    if (!expr) return;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     let any = false;
     for (const slug in AOCS) {{
@@ -2039,12 +2058,6 @@ _TEMPLATE = """<!doctype html>
       any = true;
     }}
     if (!any) return;
-    if (!spiritsVisible()) {{
-      minX = Math.max(minX, MAINLAND_BBOX[0]);
-      minY = Math.max(minY, MAINLAND_BBOX[1]);
-      maxX = Math.min(maxX, MAINLAND_BBOX[2]);
-      maxY = Math.min(maxY, MAINLAND_BBOX[3]);
-    }}
     if (minX >= maxX || minY >= maxY) return;
     map.fitBounds([[minX, minY], [maxX, maxY]], {{ padding: 40, maxZoom: 10, duration: 500 }});
   }}
@@ -2097,7 +2110,6 @@ _TEMPLATE = """<!doctype html>
   function matchesClient(rec, slug, opts) {{
     if (!(opts && opts.ignoreIgpGate) && !showIgp && (rec.kind || 'AOC') === 'IGP') return false;
     if (!spiritsVisible() && rec.is_wine === false) return false;
-    if (filters.q && !searchNormalize(rec.name).includes(searchNormalize(filters.q))) return false;
     if (viewMode === 'simple') {{
       if (filters.stylesSimple.size && !setIntersects(filters.stylesSimple, rec.styles_simple || [])) return false;
       if (filters.grapesAll.size && !setIntersects(expandGrapeSet(filters.grapesAll), rec.grapes_all || [])) return false;
@@ -2120,7 +2132,6 @@ _TEMPLATE = """<!doctype html>
   function matchesExceptFacets(rec, slug, except) {{
     if (!showIgp && (rec.kind || 'AOC') === 'IGP') return false;
     if (!spiritsVisible() && rec.is_wine === false) return false;
-    if (!except.has('q') && filters.q && !searchNormalize(rec.name).includes(searchNormalize(filters.q))) return false;
     if (viewMode === 'simple') {{
       if (!except.has('stylesSimple') && filters.stylesSimple.size) {{
         const fineSet = new Set();
@@ -2270,9 +2281,10 @@ _TEMPLATE = """<!doctype html>
       const label = region ? regionLabel(region) : LABELS.meta_no_region;
       const items = slugs.map(slug => {{
         const safeSlug = escapeAttr(slug);
-        const name = escapeHtml(AOCS[slug].name);
+        const rec = AOCS[slug];
+        const nameHtml = nameWithLatin(rec);
         const checked = filters.appellations.has(slug) ? ' checked' : '';
-        return `<label data-slug="${{safeSlug}}" data-name="${{escapeAttr(searchNormalize(AOCS[slug].name))}}"><input type="checkbox" data-key="${{safeSlug}}"${{checked}}><span class="name">${{name}}</span></label>`;
+        return `<label data-slug="${{safeSlug}}" data-name="${{escapeAttr(searchableText(rec))}}"><input type="checkbox" data-key="${{safeSlug}}"${{checked}}><span class="name">${{nameHtml}}</span></label>`;
       }}).join('');
       const safeRegion = escapeAttr(region);
       // Checkbox lives outside `<summary>` (sibling of `<details>`,
@@ -2346,7 +2358,12 @@ _TEMPLATE = """<!doctype html>
           lbl.style.display = match ? '' : 'none';
           if (match) visible++;
         }});
-        group.style.display = visible ? '' : 'none';
+        const wrap = group.parentElement;
+        if (wrap && wrap.classList.contains('region-group-wrap')) {{
+          wrap.style.display = visible ? '' : 'none';
+        }} else {{
+          group.style.display = visible ? '' : 'none';
+        }}
         if (nq && visible) group.open = true;
       }});
       return;
@@ -2438,14 +2455,13 @@ _TEMPLATE = """<!doctype html>
     refreshFacetVisibility('facet-appellations', filters.q);
     const det = qInput.closest('details');
     if (filters.q && det && !det.open) det.open = true;
-    applyFilter();
     if (searchTrackTimer) clearTimeout(searchTrackTimer);
     if (filters.q) {{
       searchTrackTimer = setTimeout(() => {{
         const nq = searchNormalize(filters.q);
         let n = 0;
         for (const slug in AOCS) {{
-          if (searchNormalize(AOCS[slug].name).includes(nq)) n++;
+          if (searchableText(AOCS[slug]).includes(nq)) n++;
         }}
         track('Search Used', {{
           result_count: String(n),
@@ -2630,7 +2646,16 @@ _TEMPLATE = """<!doctype html>
       // pills stay consistent regardless of source casing ("mourvèdre" /
       // "MOURVEDRE" → "Mourvèdre").
       const cahierName = toTitleCase((r.grape_names && r.grape_names[g]) || grapeName(g));
-      const canon = info && info.canonical_name;
+      // Prefer VIVC's prime name when resolved; fall back to a Latin
+      // transliteration of the cahier spelling for non-Latin scripts
+      // (Cyrillic / Greek native varieties that VIVC hasn't catalogued)
+      // so pills still surface a readable Latin form alongside the
+      // native one. Per-record `grape_names_latin` covers slugs that
+      // never make it into GRAPES_INFO (no Wikipedia + no VIVC).
+      const canon = (info && info.canonical_name)
+        || (info && info.name_latin)
+        || (r.grape_names_latin && r.grape_names_latin[g])
+        || '';
       const labelInner = canon && !canonicalEqualsCahier(canon, cahierName)
         ? `${{escapeHtml(cahierName)}} <span class="canon">(${{escapeHtml(canon)}})</span>`
         : escapeHtml(cahierName);
@@ -2675,6 +2700,9 @@ _TEMPLATE = """<!doctype html>
       const src = `<a href="https://cadastre.data.gouv.fr/" target="_blank" rel="noopener">${{escapeHtml(LABELS.geom_approx_cadastre_source_label)}}</a>`;
       approxLine = `<div class="approx-line">${{fmt(LABELS.geom_approx_cadastre, {{ lieu_dit: escapeHtml(r.cadastre_lieu_dit), commune: escapeHtml(r.cadastre_commune || ''), source: src }})}}</div>`;
     }}
+    const stubLine = r.is_stub
+      ? `<div class="approx-line">${{fmt(LABELS.stub_message, {{ doc: '<em>' + escapeHtml(STUB_DOC_NAMES[r.country] || STUB_DOC_NAMES.fr) + '</em>' }})}}</div>`
+      : '';
     const factsBlock = renderTerroirFacts(r);
     const isTranslated = !!r.summary_translation;
     const summaryMarker = isTranslated ? '' : srcMarker(r.country);
@@ -2693,10 +2721,11 @@ _TEMPLATE = """<!doctype html>
       : '';
     return `
       <div class="${{klass}}">
-        <h1>${{escapeHtml(r.name)}}</h1>
+        <h1>${{nameWithLatin(r)}}</h1>
         <div class="meta">${{r.kind}}${{regionSeg}}${{metaTail}}</div>
         ${{dgcLine}}
         ${{approxLine}}
+        ${{stubLine}}
         ${{styleChips ? '<h2>' + LABELS.panel_styles_h + '</h2><div class="pills">' + styleChips + '</div>' : ''}}
         ${{principal ? '<h2>' + LABELS.facet_principal_h + '</h2><div class="pills">' + principal + '</div>' : ''}}
         ${{ptRoleDisclaimer}}

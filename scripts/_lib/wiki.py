@@ -25,6 +25,13 @@ GRAPE_KEYWORDS = {
     "pt": ("casta", "videira", "uva", "vitis vinifera", "vinífera",
            "variedade de uva"),
     "it": ("vitigno", "vitis vinifera", "vinifera", "uva", "varietà di vite"),
+    "de": ("rebsorte", "weinrebe", "rotweinsorte", "weißweinsorte",
+           "weissweinsorte", "vitis vinifera", "weinrebsorte", "rebe"),
+    "sl": ("sorta vinske trte", "vinska trta", "trta", "grozdje",
+           "vitis vinifera", "žlahtna vinska trta"),
+    "hr": ("vinova loza", "sorta vinove loze", "sorta grožđa",
+           "vinska sorta", "grožđe", "kultivar vinove loze",
+           "vitis vinifera"),
 }
 
 

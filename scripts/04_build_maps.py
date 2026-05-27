@@ -33,6 +33,7 @@ from pathlib import Path
 from shapely.geometry import shape, mapping
 from shapely.ops import unary_union
 from tqdm import tqdm
+from unidecode import unidecode
 
 from _lib.aires import load_aires, lookup as lookup_aire
 from _lib.aoc_translations import (
@@ -69,8 +70,32 @@ from _lib.it.region import derive_regione as derive_it_regione
 from _lib.at.geometry import ATPolygonIndex
 from _lib.at.gemeinde import ATCommuneIndex
 from _lib.at.region import derive_bundesland as derive_at_bundesland
+from _lib.de.geometry import DEPolygonIndex
+from _lib.de.region import derive_region as derive_de_region
 from _lib.si.geometry import SIPolygonIndex
 from _lib.si.region import derive_region as derive_si_region
+from _lib.hr.geometry import HRPolygonIndex
+from _lib.hr.region import derive_region as derive_hr_region
+from _lib.hu.geometry import HUPolygonIndex
+from _lib.hu.region import derive_region as derive_hu_region
+from _lib.ro.geometry import ROPolygonIndex
+from _lib.ro.region import derive_region as derive_ro_region
+from _lib.bg.geometry import BGPolygonIndex
+from _lib.bg.region import derive_region as derive_bg_region
+from _lib.gr.geometry import GRPolygonIndex
+from _lib.gr.region import derive_region as derive_gr_region
+from _lib.sk.geometry import SKPolygonIndex
+from _lib.sk.region import derive_region as derive_sk_region
+from _lib.cz.geometry import CZPolygonIndex
+from _lib.cz.region import derive_region as derive_cz_region
+from _lib.ch.geometry import CHCommuneIndex, GESitgIndex, resolve as ch_resolve_geometry
+from _lib.ch.region import derive_region as derive_ch_region
+from _lib.lu.geometry import LUPolygonIndex
+from _lib.lu.region import derive_region as derive_lu_region
+from _lib.be.geometry import BEPolygonIndex
+from _lib.be.region import derive_region as derive_be_region
+from _lib.nl.geometry import NLPolygonIndex
+from _lib.nl.region import derive_region as derive_nl_region
 from _lib.i18n import LOCALES, compile_catalogs
 from _lib.lieu_dit import LieuDitIndex, derive_climat_name
 from _lib.map_template import render as render_map_html
@@ -98,7 +123,27 @@ EXTRACTED_IT = ROOT / "raw" / "it" / "disciplinari-extracted"
 MASAF_DISCIPLINARI_IT = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
 EXTRACTED_AT = ROOT / "raw" / "at" / "dokumente-extracted"
 AT_STATISTIK_DIR = ROOT / "raw" / "at" / "statistik"
+EXTRACTED_DE = ROOT / "raw" / "de" / "dokumente-extracted"
+PRODUKTSPEZIFIKATION_DE = ROOT / "raw" / "de" / "produktspezifikationen-extracted"
 EXTRACTED_SI = ROOT / "raw" / "si" / "dokumenti-extracted"
+EXTRACTED_HR = ROOT / "raw" / "hr" / "dokumenti-extracted"
+EXTRACTED_HU = ROOT / "raw" / "hu" / "dokumentumok-extracted"
+EXTRACTED_RO = ROOT / "raw" / "ro" / "dokumente-extracted"
+EXTRACTED_BG = ROOT / "raw" / "bg" / "dokumenti-extracted"
+EXTRACTED_GR = ROOT / "raw" / "gr" / "dokumenti-extracted"
+EXTRACTED_SK = ROOT / "raw" / "sk" / "dokumenty-extracted"
+EXTRACTED_CZ = ROOT / "raw" / "cz" / "dokumenty-extracted"
+NATIONAL_SPECS_CZ = ROOT / "raw" / "cz" / "national-specs"
+EXTRACTED_CH = ROOT / "raw" / "ch" / "dokumente-extracted"
+CH_SWISSTOPO_GPKG = ROOT / "raw" / "ch" / "swisstopo" / "swissboundaries3d_2026-01_2056_5728.gpkg"
+CH_SITG_GEOJSON = ROOT / "raw" / "ch" / "geoportals" / "sitg-vit-vignoble-ao.geojson"
+EXTRACTED_LU = ROOT / "raw" / "lu" / "cahier-extracted"
+LU_IVV_VINEYARDS_SHP = (
+    ROOT / "raw" / "lu" / "ivv" / "vineyards" / "weinberge-lu-2022" / "weinberge_lu_2022.shp"
+)
+EXTRACTED_BE = ROOT / "raw" / "be" / "dokumenten-extracted"
+EXTRACTED_NL = ROOT / "raw" / "nl" / "dokumenten-extracted"
+NL_NUTS_GEOJSON = ROOT / "raw" / "nl" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_2.geojson"
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"
 WIKI = ROOT / "wiki"
 SITE_BASE_URL = "https://www.openwinemap.com"
@@ -129,10 +174,22 @@ _ES_NATIONAL_PLIEGO_BY_SLUG: dict[str, dict] = {}
 
 
 # Slug-keyed cache of MASAF disciplinare provenance + augmented payload,
+# populated by augment_de_records_with_produktspezifikation() and read
+# by _sources_for() / panel rendering — same shape as the IT/ES caches.
+_DE_PRODUKTSPEZIFIKATION_BY_SLUG: dict[str, dict] = {}
+
 # populated by augment_it_records_with_masaf() and read by _sources_for()
 # / the AOC-blob phase (which re-reads each on-disk extracted JSON,
 # bypassing in-memory augmentation).
 _IT_MASAF_BY_SLUG: dict[str, dict] = {}
+
+# Slug-keyed cache of CZ national-spec provenance, populated by
+# augment_cz_records_with_national_specs(). Mirrors the ES/IT/DE caches.
+# Czech wine law publishes one national variety roster (Vyhláška 88/2017
+# Sb. Příloha č. 2) that applies to every jakostní víno regardless of
+# podoblast, so every augmented CZ wine carries the same provenance
+# block — but per-record so _sources_for() can surface it uniformly.
+_CZ_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
 
 
 def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
@@ -304,6 +361,300 @@ def augment_it_records_with_masaf(records: list[dict]) -> int:
         _IT_MASAF_BY_SLUG[slug] = provenance
         augmented += 1
     return augmented
+
+
+def augment_de_records_with_produktspezifikation(records: list[dict]) -> int:
+    """In-place merge of BLE-Produktspezifikation sidecar data into DE
+    parent-Anbaugebiet records.
+
+    The EU Einziges Dokument for German wines doesn't carry a principal/
+    accessory split — section 7 is a flat list. The BLE national
+    Produktspezifikation (Amtliches Werk §5 UrhG) names individual
+    varieties with their own Mindestmostgewicht threshold in §3.2 (Mosel
+    → Riesling/Elbling/Müller-Thurgau/Dornfelder). Stage 02f extracts
+    that split into raw/de/produktspezifikationen-extracted/<slug>.json;
+    this augment re-tags the in-memory record's grapes block accordingly.
+
+    Only the 13 Anbaugebiete (the regional PDOs) carry a sidecar —
+    Einzellage sub-denominations and Landwein PGIs are not touched
+    (the sidecar's variety list is for the parent Anbaugebiet only).
+
+    For records with `role_split_method == "section-3.2-principal"`:
+      - re-tag existing record["grapes"]["details"] items as
+        principal/accessory based on the sidecar's slug sets
+      - rebuild record["grapes"]["principal"] / ["accessory"] lists
+      - fold any new sidecar slugs not already in the EU record
+
+    For records with `role_split_method == "section-8-flat-no-split"`
+    (Anbaugebiete whose §3.2 doesn't enumerate per-variety thresholds —
+    Franken, Württemberg in v1): the existing all-principal default
+    stands; the sidecar just records the BLE source as provenance.
+
+    Stage 04 reads the cached provenance later in the AOC-blob phase
+    via `_DE_PRODUKTSPEZIFIKATION_BY_SLUG`.
+
+    Returns the number of records augmented.
+    """
+    _DE_PRODUKTSPEZIFIKATION_BY_SLUG.clear()
+    if not PRODUKTSPEZIFIKATION_DE.exists():
+        return 0
+    augmented = 0
+    for record in records:
+        if record.get("country") != "de":
+            continue
+        if record.get("is_sub_denomination"):
+            continue
+        slug = record.get("slug") or ""
+        sidecar_path = PRODUKTSPEZIFIKATION_DE / f"{slug}.json"
+        if not sidecar_path.exists():
+            continue
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+
+        method = sidecar.get("role_split_method") or ""
+        src = sidecar.get("source") or {}
+        provenance = {
+            "url": src.get("url") or "",
+            "sha256": src.get("sha256") or "",
+            "bytes": src.get("bytes") or 0,
+            "fetched_at": src.get("fetched_at") or "",
+            "source_org": src.get("source_org") or "BLE",
+            "license": src.get("license") or "Amtliches Werk §5 UrhG",
+            "role_split_method": method,
+            "n_principal": sidecar.get("n_principal") or 0,
+            "n_accessory": sidecar.get("n_accessory") or 0,
+        }
+
+        # BLE §8/§9 "Zusammenhang" terroir backfill — when the EU
+        # Einziges Dokument is sparse (stub or no link_to_terroir), use
+        # the BLE PDF's terroir block so 02d can extract facts from it.
+        # Affects Ahr, Baden, Hessische Bergstraße, Rheingau, Sachsen,
+        # Saale-Unstrut in v1. We also record the BLE PDF URL as the
+        # cahier_source for downstream provenance.
+        bz = (sidecar.get("zusammenhang_text") or "").strip()
+        eu_terroir = (record.get("link_to_terroir") or "").strip()
+        if bz and len(eu_terroir) < 400:
+            record["link_to_terroir"] = bz
+            section_roles = dict(record.get("section_roles") or {})
+            section_roles["link_to_terroir"] = bz
+            record["section_roles"] = section_roles
+            # Surface the BLE PDF as the canonical terroir source so the
+            # panel + 02d attribute it correctly.
+            rec_src = dict(record.get("source") or {})
+            rec_src["terroir_source_url"] = src.get("url") or ""
+            rec_src["terroir_source_org"] = "BLE"
+            record["source"] = rec_src
+            provenance["terroir_backfilled"] = True
+
+        # For both role-split methods, fold the sidecar's variety roster
+        # into the in-memory record. The default fold tags non-sidecar
+        # EU slugs as `accessory` (the BLE PDF's §3.2 is the principal
+        # allowlist); the flat-no-split method instead tags everything
+        # as principal because the document doesn't enumerate a split.
+        if method in ("section-3.2-principal", "section-8-flat-no-split"):
+            # Build slug → role from the sidecar.
+            sidecar_role: dict[str, str] = {}
+            sidecar_details: list[dict] = []
+            for g in sidecar.get("grapes") or []:
+                s = g.get("slug")
+                if s:
+                    sidecar_role[s] = g.get("role") or "principal"
+                    sidecar_details.append(g)
+
+            # Re-tag the EU-record's existing details. Keep the EU
+            # record's display name (matches the wine's own
+            # Einziges-Dokument spelling). When the sidecar has an
+            # authoritative §3.2 split, slugs NOT named in the sidecar
+            # default to "accessory" — the BLE PDF's §3.2 is the
+            # principal-allowlist, so anything outside it is
+            # implicitly "alle übrigen Rebsorten". When the sidecar is
+            # flat-no-split, every slug is principal (the regulator
+            # didn't enumerate a split).
+            unmatched_default = (
+                "principal" if method == "section-8-flat-no-split" else "accessory"
+            )
+            grapes = dict(record.get("grapes") or {})
+            details_in = grapes.get("details") or []
+            new_details: list[dict] = []
+            eu_slugs: set[str] = set()
+            for d in details_in:
+                new_d = dict(d)
+                s = new_d.get("slug")
+                if s:
+                    new_d["role"] = sidecar_role.get(s, unmatched_default)
+                new_details.append(new_d)
+                if s:
+                    eu_slugs.add(s)
+
+            # Fold in any sidecar varieties that the EU record missed
+            # (the §8 list is more complete than the EU section 7 for
+            # some Anbaugebiete).
+            for g in sidecar_details:
+                s = g.get("slug")
+                if s and s not in eu_slugs:
+                    new_details.append({
+                        "slug": s,
+                        "name": g.get("name", s),
+                        "role": g.get("role", "accessory"),
+                        "colour": g.get("colour", ""),
+                        "source": "ble-produktspezifikation",
+                    })
+
+            # Rebuild principal / accessory lists from the re-tagged
+            # details (deterministic + dedup-by-first-seen).
+            principal: list[str] = []
+            accessory: list[str] = []
+            seen_p: set[str] = set()
+            seen_a: set[str] = set()
+            for d in new_details:
+                s = d.get("slug")
+                if not s:
+                    continue
+                if d.get("role") == "accessory":
+                    if s in seen_a:
+                        continue
+                    seen_a.add(s)
+                    accessory.append(s)
+                else:
+                    if s in seen_p:
+                        continue
+                    seen_p.add(s)
+                    principal.append(s)
+            grapes["principal"] = principal
+            grapes["accessory"] = accessory
+            grapes["details"] = new_details
+            record["grapes"] = grapes
+
+        record["produktspezifikation"] = provenance
+        _DE_PRODUKTSPEZIFIKATION_BY_SLUG[slug] = provenance
+        augmented += 1
+    return augmented
+
+
+def augment_cz_records_with_national_specs(records: list[dict]) -> int:
+    """In-place merge of the Czech national variety roster (Vyhláška
+    č. 88/2017 Sb. Příloha č. 2) into every CZ wine record.
+
+    Czech wine law publishes one national variety list (35 white + 26
+    red + 6 zemské-víno = 67 varieties) that applies to every jakostní
+    víno regardless of podoblast — no per-appellation restriction. So
+    every CZ wine that *should* carry a variety list (10 of 13, all
+    except 3 newer single-vineyard / single-varietal PDOs whose
+    Vyhláška-88 status is undocumented) gets the same fold:
+
+      - white-wine PDOs/PGIs → all 35 white varieties as `principal`
+      - red-wine PDOs/PGIs → all 26 red varieties as `principal`
+      - mixed (most macros + podoblasti) → both lists folded;
+        zemské-víno-only varieties go under `accessory` (they apply
+        only to the lower zemské-víno PGI tier).
+
+    Since the Vyhláška doesn't enumerate a per-appellation principal/
+    accessory split (it's a flat national authorisation), we mark
+    everything `principal` and let the panel render "All Czech
+    jakostní vína authorise these 67 varieties — see Vyhláška č.
+    88/2017 Sb." in the provenance.
+
+    Stage 04 reads the cached provenance later via
+    `_CZ_NATIONAL_SPEC_BY_SLUG`.
+
+    Returns the number of records augmented.
+    """
+    _CZ_NATIONAL_SPEC_BY_SLUG.clear()
+    if not NATIONAL_SPECS_CZ.exists():
+        return 0
+    varieties_path = NATIONAL_SPECS_CZ / "varieties.json"
+    manifest_path = NATIONAL_SPECS_CZ / "manifest.json"
+    if not varieties_path.exists():
+        return 0
+    try:
+        spec = json.loads(varieties_path.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return 0
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+    except (ValueError, OSError):
+        manifest = {}
+    src_meta = (manifest.get("sources") or {}).get("vyhlaska-88-2017") or {}
+
+    # Build a slug → match details index for the lexicon match.
+    from _lib.grape_entity import match_variety, set_pliego_context  # noqa: E402
+    sidecar_details: list[dict] = []
+    set_pliego_context("vyhlaska-88-2017")
+    for v in spec.get("varieties") or []:
+        m = match_variety(v.get("name") or "")
+        if m is None:
+            continue
+        sidecar_details.append({
+            "slug": m.slug,
+            "name": v.get("name"),
+            "role": "principal",
+            "colour": m.colour or _COLOUR_FROM_CZ_BLOCK.get(v.get("colour", ""), ""),
+            "source": "vyhlaska-88-2017",
+        })
+    set_pliego_context(None)
+
+    provenance_base = {
+        "url": src_meta.get("canonical_url") or src_meta.get("fetch_url") or "",
+        "fetch_url": src_meta.get("fetch_url") or "",
+        "title": src_meta.get("title") or "",
+        "sbirka_castka": src_meta.get("sbirka_castka") or "",
+        "sha256": src_meta.get("sha256") or "",
+        "fetched_at": (src_meta.get("fetched_at") or "")
+                       if isinstance(src_meta, dict) else "",
+        "source_org": "sbirka",
+        "license": "Czech law text per §3(d) of the Czech Copyright Act",
+        "n_varieties": spec.get("n_total") or 0,
+        "n_white": spec.get("n_white") or 0,
+        "n_red": spec.get("n_red") or 0,
+        "n_zemske": spec.get("n_zemske") or 0,
+    }
+
+    augmented = 0
+    for record in records:
+        if record.get("country") != "cz":
+            continue
+        slug = record.get("slug") or ""
+        # Build the per-record details list. Start from the sidecar
+        # (the national variety roster) since the EU-OJ extracted record
+        # has no grapes (every CZ wine is a stub in v1). Folding by
+        # role: everything `principal` because the Vyhláška doesn't
+        # split.
+        grapes = dict(record.get("grapes") or {})
+        existing_slugs = {d.get("slug") for d in (grapes.get("details") or []) if d.get("slug")}
+        new_details = list(grapes.get("details") or [])
+        for d in sidecar_details:
+            if d["slug"] in existing_slugs:
+                continue
+            existing_slugs.add(d["slug"])
+            new_details.append(d)
+        principal = [d["slug"] for d in new_details if d["slug"] and d.get("role") != "accessory"]
+        accessory = [d["slug"] for d in new_details if d["slug"] and d.get("role") == "accessory"]
+        # Dedup while preserving order.
+        principal_seen: set[str] = set()
+        principal_ordered = [s for s in principal if not (s in principal_seen or principal_seen.add(s))]
+        accessory_seen: set[str] = set()
+        accessory_ordered = [s for s in accessory if not (s in accessory_seen or accessory_seen.add(s))]
+        grapes["principal"] = principal_ordered
+        grapes["accessory"] = accessory_ordered
+        grapes["details"] = new_details
+        record["grapes"] = grapes
+        record["national_spec"] = provenance_base
+        _CZ_NATIONAL_SPEC_BY_SLUG[slug] = provenance_base
+        augmented += 1
+    return augmented
+
+
+# CZ variety-block colour → grape-entity colour mapping. The Vyhláška
+# 88/2017 block headers are "Bílé moštové odrůdy" (blanc) / "Modré
+# moštové odrůdy" (noir) / "Odrůdy pro výrobu zemských vín" (mixed
+# colours, kept as `zemske` here — falls back via match_variety()).
+_COLOUR_FROM_CZ_BLOCK: dict[str, str] = {
+    "blanc": "blanc",
+    "noir": "noir",
+    "zemske": "",  # mixed; let match_variety supply the per-variety colour
+}
 
 
 # Simple-mode style buckets: collapses the fine-grained style tags into the
@@ -482,6 +833,15 @@ def _corpus_name_for(slug: str) -> str | None:
     return _CORPUS_GRAPE_NAMES.get(slug)
 
 
+def _latin_form_or_empty(name: str) -> str:
+    # Cyrillic / Greek / other non-Latin display strings get an
+    # informational ASCII transliteration so the grape-pill renderer can
+    # fall back to it when no VIVC canonical name is available (e.g.
+    # native BG varieties like `mavrud` that VIVC hasn't catalogued).
+    latin = unidecode(name or "").strip()
+    return latin if latin and latin != (name or "").strip() else ""
+
+
 def _override_name_with_corpus(entry: dict, slug: str) -> None:
     """Replace `entry['name']` (which after `_load_native_grape` is the
     Wikipedia article title) with the regulator's cahier spelling when
@@ -493,6 +853,9 @@ def _override_name_with_corpus(entry: dict, slug: str) -> None:
     if "wikipedia_title" not in entry and entry.get("name"):
         entry["wikipedia_title"] = entry["name"]
     entry["name"] = cahier
+    latin = _latin_form_or_empty(cahier)
+    if latin:
+        entry["name_latin"] = latin
 
 
 def build_grapes_info(target_locale: str) -> dict:
@@ -1101,10 +1464,112 @@ def main() -> int:
             if json_path.name == "_index.json":
                 continue
             extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate DE extracted records
+    # (raw/de/dokumente-extracted/). Same stub semantics as ES/PT/IT/AT —
+    # ~19 of 46 DE wines are Art.107 / Reg.1308/2013 grandfathered names
+    # with no fetchable single document. All 13 Anbaugebiete (PDOs)
+    # land on the map via Bétard 2022 regardless; the 6 Einzellage PDOs
+    # inherit their parent Anbaugebiet polygon (parent/sub model).
+    if EXTRACTED_DE.exists():
+        for json_path in sorted(EXTRACTED_DE.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
     # Multi-country: also iterate SI extracted records
     # (raw/si/dokumenti-extracted/). Same stub semantics as ES/PT/IT/AT.
     if EXTRACTED_SI.exists():
         for json_path in sorted(EXTRACTED_SI.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate HR extracted records
+    # (raw/hr/dokumenti-extracted/). Same stub semantics as ES/PT/IT/AT/SI.
+    if EXTRACTED_HR.exists():
+        for json_path in sorted(EXTRACTED_HR.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate HU extracted records
+    # (raw/hu/dokumentumok-extracted/). Same stub semantics as the
+    # other countries.
+    if EXTRACTED_HU.exists():
+        for json_path in sorted(EXTRACTED_HU.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate RO extracted records
+    # (raw/ro/dokumente-extracted/). Same stub semantics as the
+    # other countries.
+    if EXTRACTED_RO.exists():
+        for json_path in sorted(EXTRACTED_RO.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate BG extracted records
+    # (raw/bg/dokumenti-extracted/). Same stub semantics as the
+    # other countries.
+    if EXTRACTED_BG.exists():
+        for json_path in sorted(EXTRACTED_BG.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate GR extracted records
+    # (raw/gr/dokumenti-extracted/). Same stub semantics as the
+    # other countries — ~136 of 147 GR wines are content-stubs.
+    if EXTRACTED_GR.exists():
+        for json_path in sorted(EXTRACTED_GR.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate SK extracted records
+    # (raw/sk/dokumenty-extracted/). 4 of 10 SK wines have a fetchable
+    # EUR-Lex Jednotný dokument; the other 6 ship as content-stubs.
+    if EXTRACTED_SK.exists():
+        for json_path in sorted(EXTRACTED_SK.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate CZ extracted records
+    # (raw/cz/dokumenty-extracted/). 0 of 13 CZ wines have a fetchable
+    # EU-OJ single document in v1 — they all ship as content-stubs.
+    # Multi-country: also iterate CH extracted records
+    # (raw/ch/dokumente-extracted/). 63 entries from OFAG (61 unique
+    # after intercantonal dedupe) across 26 cantons. Source language is
+    # per-record (fr / de / it depending on canton).
+    if EXTRACTED_CH.exists():
+        for json_path in sorted(EXTRACTED_CH.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    if EXTRACTED_CZ.exists():
+        for json_path in sorted(EXTRACTED_CZ.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate LU extracted records
+    # (raw/lu/cahier-extracted/). 1 parent (Moselle Luxembourgeoise) +
+    # 11 modern-commune sub-denominations (predicate labels under Art. 8
+    # / Art. 9 of RGD 17-déc-2015). Source language is fr.
+    if EXTRACTED_LU.exists():
+        for json_path in sorted(EXTRACTED_LU.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate BE extracted records
+    # (raw/be/dokumenten-extracted/). 10 wine GIs (7 PDOs + 2 PGIs + 1
+    # cross-border BE+NL PDO). Per-record source_lang: nl for the 5
+    # Flemish wines + Maasvallei; fr for the 4 Walloon wines.
+    if EXTRACTED_BE.exists():
+        for json_path in sorted(EXTRACTED_BE.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate NL extracted records
+    # (raw/nl/dokumenten-extracted/). 21 wine GIs (9 standalone PDOs +
+    # 12 province-PGIs); the cross-border Maasvallei Limburg ships on
+    # the BE side. Source language is nl.
+    if EXTRACTED_NL.exists():
+        for json_path in sorted(EXTRACTED_NL.glob("*.json")):
             if json_path.name == "_index.json":
                 continue
             extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
@@ -1128,6 +1593,28 @@ def main() -> int:
     if n_aug_it:
         print(
             f"[load] IT MASAF augmentation: {n_aug_it} stub records enriched",
+            file=sys.stderr,
+        )
+    # DE Produktspezifikation augmentation — derives a principal/
+    # accessory split from the BLE national PDF's §3.2 thresholds.
+    # The EU Einziges Dokument is flat (no role split); the BLE PDF
+    # names Leitsorten by their own Mindestmostgewicht.
+    n_aug_de = augment_de_records_with_produktspezifikation(extracted_records)
+    if n_aug_de:
+        print(
+            f"[load] DE BLE-Produktspezifikation augmentation: {n_aug_de} Anbaugebiete enriched",
+            file=sys.stderr,
+        )
+    # CZ national-spec augmentation — every Czech wine inherits the
+    # national variety roster (67 varieties from Vyhláška č. 88/2017 Sb.
+    # Příloha č. 2). Czech wine law doesn't restrict varieties per
+    # podoblast, so the same fold runs for all 13 records (the 3 newer
+    # 2011 single-vineyard PDOs are also covered — they authorise the
+    # standard roster).
+    n_aug_cz = augment_cz_records_with_national_specs(extracted_records)
+    if n_aug_cz:
+        print(
+            f"[load] CZ national-spec augmentation: {n_aug_cz} records enriched",
             file=sys.stderr,
         )
     # PT cadernos enumerate every authorised casta as `principal` —
@@ -1239,6 +1726,19 @@ def main() -> int:
         file=sys.stderr,
     )
 
+    # DE polygon index: Bétard 2022 covers all 13 traditional German
+    # Anbaugebiete + Bayerischer Bodensee-Landwein (Germany was an EU
+    # founding member; everything predates Bétard's Nov-2021 cutoff).
+    # The 6 Einzellage PDOs inherit the parent Anbaugebiet polygon
+    # (parent/sub model). Most Landwein PGIs union the regional
+    # Anbaugebiet polygons that make up their territory.
+    de_polygons = DEPolygonIndex(figshare_gpkg=ES_FIGSHARE_GPKG)
+    print(
+        f"[load] DE polygons: {de_polygons.n_pdo_polygons} Figshare DE-PDOs",
+        file=sys.stderr,
+    )
+    de_hits: Counter[str] = Counter()
+
     # SI polygon index: Bétard 2022 (re-uses ES Figshare gpkg) for the
     # 14 SI DOPs; the 3 SI PGIs (Podravje / Posavje / Primorska) resolve
     # as the union of their constituent region-PDO polygons (see
@@ -1249,7 +1749,166 @@ def main() -> int:
         file=sys.stderr,
     )
     si_hits: Counter[str] = Counter()
+    # HR polygon index: Bétard 2022 only — every HR PDO is in the
+    # Figshare gpkg (no IGPs in the Croatian corpus, so no region-union
+    # branch needed). Cleanest profile of any country.
+    hr_polygons = HRPolygonIndex(figshare_gpkg=ES_FIGSHARE_GPKG)
+    print(
+        f"[load] HR polygons: {hr_polygons.n_pdo_polygons} Figshare HR-PDOs",
+        file=sys.stderr,
+    )
+    hr_hits: Counter[str] = Counter()
+    # HU polygon index: Bétard 2022 PDO-HU + PGI-HU (Balaton entry is
+    # mis-labelled by Bétard as PDO-HU-A1507; we bridge it back to its
+    # PGI-HU-A1507 file_number). 5 HU PGIs not in Bétard resolve as the
+    # union of their constituent PDO polygons (SI PGI pattern).
+    hu_polygons = HUPolygonIndex(figshare_gpkg=ES_FIGSHARE_GPKG)
+    print(
+        f"[load] HU polygons: {hu_polygons.n_pdo_polygons} Figshare HU-PDOs/PGIs",
+        file=sys.stderr,
+    )
+    hu_hits: Counter[str] = Counter()
+    # RO polygon index: Bétard 2022 (re-uses ES Figshare gpkg) for the
+    # 38 RO PDOs in the dataset; the 13 IGPs + the 3 newer PDOs (Sebeș-
+    # Apold, Plaiurile Drâncei, Iana) resolve via commune-list union
+    # against the shared GISCO LAU (raw/es/gisco/, 3,181 RO communes).
+    ro_polygons = ROPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        gisco_lau_zip=ES_GISCO_LAU_ZIP,
+    )
+    print(
+        f"[load] RO polygons: {ro_polygons.n_pdo_polygons} Figshare RO-PDOs / "
+        f"{ro_polygons.n_lau} GISCO RO communes",
+        file=sys.stderr,
+    )
+    ro_hits: Counter[str] = Counter()
+    # BG polygon index: Bétard 2022 (re-uses ES Figshare gpkg) covers
+    # all 52 BG PDOs since Bulgaria entered the EU in 2007. The 2 macro
+    # PGIs (Дунавска равнина / Тракийска низина) resolve via the
+    # member-PDO union (SI pattern). GISCO LAU (raw/es/gisco/, ~265 BG
+    # obshtini) feeds the commune-list fallback.
+    bg_polygons = BGPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        gisco_lau_zip=ES_GISCO_LAU_ZIP,
+    )
+    print(
+        f"[load] BG polygons: {bg_polygons.n_pdo_polygons} Figshare BG-PDOs/PGIs / "
+        f"{bg_polygons.n_lau} GISCO BG obshtini",
+        file=sys.stderr,
+    )
+    bg_hits: Counter[str] = Counter()
+    # GR polygon index: Bétard 2022 covers all 33 GR PDOs (Greece
+    # joined the EU in 1981; every GR PDO predates Bétard). The 114
+    # GR PGIs are not in Bétard (PDO-only dataset) and currently fall
+    # through to stub-no-geometry — only ~11 of 147 wines have a
+    # fetchable single document with parseable commune list. GISCO
+    # LAU (CNTR_CODE='EL', ~6,142 communities) feeds the commune-list
+    # fallback when available.
+    gr_polygons = GRPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        gisco_lau_zip=ES_GISCO_LAU_ZIP,
+    )
+    print(
+        f"[load] GR polygons: {gr_polygons.n_pdo_polygons} Figshare GR-PDOs/PGIs / "
+        f"{gr_polygons.n_lau} GISCO EL communities",
+        file=sys.stderr,
+    )
+    gr_hits: Counter[str] = Counter()
+    # SK polygon index: Bétard 2022 covers 8 of 9 SK DOPs; the 9th
+    # (TOKAJSKÉ VÍNO, PDO-SK-02856) post-dates the snapshot and aliases
+    # the Vinohradnícka oblasť Tokaj polygon (PDO-SK-A0120). The single
+    # SK PGI (Slovenská) resolves as the union of all 8 SK DOPs (SI
+    # PGI pattern).
+    sk_polygons = SKPolygonIndex(figshare_gpkg=ES_FIGSHARE_GPKG)
+    print(
+        f"[load] SK polygons: {sk_polygons.n_pdo_polygons} Figshare SK-PDOs",
+        file=sys.stderr,
+    )
+    sk_hits: Counter[str] = Counter()
+    # CZ polygon index: Bétard 2022 covers all 11 CZ DOPs (Czechia
+    # joined the EU in 2004). The 2 macro PGIs (české / moravské) =
+    # union of their constituent macro-PDO polygon (Čechy / Morava).
+    # For the 6 podoblasti, the resolver first attempts a commune-union
+    # against the obec list in Vyhláška 254/2010 Sb. (parsed by
+    # scripts/cz/02f_extract_national_specs.py) using shared GISCO LAU
+    # — commune-precision, more honest than Bétard's macro-region
+    # aggregation for these sub-regions.
+    cz_polygons = CZPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        gisco_lau_zip=ES_GISCO_LAU_ZIP,
+        national_specs_dir=NATIONAL_SPECS_CZ,
+    )
+    print(
+        f"[load] CZ polygons: {cz_polygons.n_pdo_polygons} Figshare CZ-PDOs / "
+        f"{cz_polygons.n_lau} GISCO CZ obce / "
+        f"{cz_polygons.n_podoblasti_with_communes} podoblasti with commune lists",
+        file=sys.stderr,
+    )
+    cz_hits: Counter[str] = Counter()
+    # CH polygon index: swisstopo swissBOUNDARIES3D (2,110 Swiss
+    # Gemeinden across 26 cantons) for commune-union / canton-union
+    # fallback + SITG VIT_VIGNOBLE_AO (parcel-precise GE premier crus,
+    # 23 polygonised AOCs). swissBOUNDARIES3D is native EPSG:2056;
+    # the CHCommuneIndex reprojects to EPSG:4326 at load time.
+    ch_commune_idx: CHCommuneIndex | None = None
+    ch_ge_sitg: GESitgIndex | None = None
+    if CH_SWISSTOPO_GPKG.exists():
+        ch_commune_idx = CHCommuneIndex(CH_SWISSTOPO_GPKG)
+        print(
+            f"[load] CH commune index: {ch_commune_idx.n_communes} Swiss "
+            f"Gemeinden across {ch_commune_idx.n_cantons} cantons",
+            file=sys.stderr,
+        )
+    if CH_SITG_GEOJSON.exists():
+        ch_ge_sitg = GESitgIndex(CH_SITG_GEOJSON)
+        print(
+            f"[load] CH GE SITG: {ch_ge_sitg.n_aocs} parcel-precise GE AOCs",
+            file=sys.stderr,
+        )
+    ch_hits: Counter[str] = Counter()
     at_hits: Counter[str] = Counter()
+    # LU polygon index: Bétard 2022 covers the 1 LU PDO + IVV
+    # Weinbaukartei 2022 parcel-precise vineyard polygons dissolved per
+    # modern wine commune (planted-vineyard precision; ~12 km² total
+    # across 11 communes, vs. ~250 km² Bétard regulatory perimeter).
+    # The 11 commune sub-denominations use the IVV-dissolved polygon;
+    # the parent uses Bétard.
+    lu_polygons = LUPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        gisco_lau_zip=ES_GISCO_LAU_ZIP,
+        ivv_vineyards_shp=LU_IVV_VINEYARDS_SHP if LU_IVV_VINEYARDS_SHP.exists() else None,
+    )
+    print(
+        f"[load] LU polygons: {lu_polygons.n_pdo_polygons} Figshare LU-PDOs / "
+        f"{lu_polygons.n_gisco_communes} GISCO LU wine-communes / "
+        f"{lu_polygons.n_ivv_communes} IVV-vineyard communes ({lu_polygons.n_ivv_parcels} parcels)",
+        file=sys.stderr,
+    )
+    lu_hits: Counter[str] = Counter()
+    # BE polygon index: Bétard 2022 covers all 8 BE+ PDOs (the 7 BE PDOs
+    # + the cross-border PDO-BE+NL-02172 Maasvallei Limburg). The 2 BE
+    # PGIs (Vlaamse landwijn, Vin de pays des jardins de Wallonie)
+    # resolve as the union of their member-PDO polygons.
+    be_polygons = BEPolygonIndex(figshare_gpkg=ES_FIGSHARE_GPKG)
+    print(
+        f"[load] BE polygons: {be_polygons.n_pdo_polygons} Figshare BE-PDOs",
+        file=sys.stderr,
+    )
+    be_hits: Counter[str] = Counter()
+    # NL polygon index: Bétard 2022 covers 6 of 10 NL PDOs (the 4
+    # post-Bétard PDOs ship as stub-no-geometry in v1). Eurostat NUTS-2
+    # supplies one polygon per Dutch province — each of the 12 NL PGIs
+    # is coextensive with one province and resolves via NUTS_ID.
+    nl_polygons = NLPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        nuts2_geojson=NL_NUTS_GEOJSON,
+    )
+    print(
+        f"[load] NL polygons: {nl_polygons.n_pdo_polygons} Figshare NL-PDOs / "
+        f"{nl_polygons.n_nuts2_polygons} NUTS-2 NL provinces",
+        file=sys.stderr,
+    )
+    nl_hits: Counter[str] = Counter()
 
     # Curator-reviewed geometry-outlier overrides — clips confirmed-spurious
     # parts (upstream-data errors) out of resolved polygons. See
@@ -1266,8 +1925,20 @@ def main() -> int:
         is_sub_denomination = bool(record.get("is_sub_denomination"))
         country = record.get("country") or "fr"
         # Defaulted here so every geometry branch (and the FR else-branch)
-        # can leave it untouched; only the SI branch flips it True.
+        # can leave it untouched; only the SI / HR / HU branches flip them True.
         _emit_si_features = False
+        _emit_hr_features = False
+        _emit_hu_features = False
+        _emit_ro_features = False
+        _emit_bg_features = False
+        _emit_gr_features = False
+        _emit_de_features = False
+        _emit_sk_features = False
+        _emit_cz_features = False
+        _emit_ch_features = False
+        _emit_lu_features = False
+        _emit_be_features = False
+        _emit_nl_features = False
 
         # ES branch — Figshare PDO polygon → GISCO commune-union → parent
         # fallback. Stubs (`stub: True`) skip geometry; they appear in the
@@ -1527,6 +2198,348 @@ def main() -> int:
             _emit_it_features = False
             _emit_at_features = False
             _emit_si_features = True
+        elif country == "hr":
+            # HR branch — Bétard Figshare PDO match for all 18 HR DOPs.
+            # Croatia has no IGPs (every wine GI is a PDO) and Bétard
+            # 2022 covers every one, so this is a single-step resolve
+            # with no fallback chain. Sub-denominations are deferred to
+            # v2 — the regulatory hierarchy is preserved via the region
+            # facet, not as parent/child records.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = hr_polygons.resolve(
+                record.get("file_number") or ""
+            )
+            hr_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = False
+            _emit_hr_features = True
+        elif country == "hu":
+            # HU branch — Bétard Figshare PDO match for 33 HU PDOs/PGIs
+            # (Balaton PGI bridged via the Bétard mis-label); 5 remaining
+            # HU PGIs resolve as the union of their constituent PDO
+            # polygons (SI PGI pattern). Three newer PDOs (Etyeki Pezsgő,
+            # Kőszeg, Füred) post-date Bétard and fall to stub-no-geometry.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = hu_polygons.resolve(
+                record.get("file_number") or ""
+            )
+            hu_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = False
+            _emit_hr_features = False
+            _emit_hu_features = True
+        elif country == "ro":
+            # RO branch — Bétard Figshare PDO match for ~38 of 41 RO
+            # PDOs; the 13 RO IGPs and the 3 newer PDOs missing from
+            # Bétard (Sebeș-Apold, Plaiurile Drâncei, Iana) resolve via
+            # the GISCO commune-list fallback against the documento-unic
+            # `geo_communes` extracted in stage 02 (ES IGP-fallback
+            # pattern). Grandfathered IGPs without a parseable single
+            # document remain `stub-no-geometry`.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = ro_polygons.resolve(
+                record.get("file_number") or "",
+                record.get("geo_communes") or [],
+            )
+            ro_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = False
+            _emit_hr_features = False
+            _emit_hu_features = False
+            _emit_ro_features = True
+        elif country == "bg":
+            # BG branch — Bétard Figshare PDO match covers all 52 BG
+            # PDOs (Bulgaria entered the EU in 2007; everything predates
+            # Bétard's Nov-2021 cutoff). The 2 macro BG PGIs (Дунавска
+            # равнина / Тракийска низина) resolve as the union of their
+            # member-PDO polygons (SI PGI pattern). GISCO BG commune-list
+            # is a defensive fallback that should not normally be hit.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = bg_polygons.resolve(
+                record.get("file_number") or "",
+                record.get("geo_communes") or [],
+            )
+            bg_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = False
+            _emit_hr_features = False
+            _emit_hu_features = False
+            _emit_ro_features = False
+            _emit_bg_features = True
+        elif country == "gr":
+            # GR branch — Bétard Figshare PDO match covers all 33 GR
+            # PDOs (Greece joined the EU in 1981). The 114 GR PGIs are
+            # NOT in Bétard (PDO-only dataset) and fall through to
+            # `stub-no-geometry` in v1 — only ~11 of 147 GR wines have
+            # a fetchable single document, so the commune-list fallback
+            # is rarely exercised.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = gr_polygons.resolve(
+                record.get("file_number") or "",
+                record.get("geo_communes") or [],
+            )
+            gr_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = False
+            _emit_hr_features = False
+            _emit_hu_features = False
+            _emit_ro_features = False
+            _emit_bg_features = False
+            _emit_gr_features = True
+        elif country == "de":
+            # DE branch — Bétard Figshare PDO match for the 13 traditional
+            # German Anbaugebiete (PDO-DE-A12xx + PDO-DE-A0867 = Ahr);
+            # the 6 Einzellage PDOs (Bürgstadter Berg, Würzburger Stein-
+            # Berg, Monzinger Niederberg, Uhlen Blaufüsser Lay / Laubach
+            # / Roth Lay) inherit their parent Anbaugebiet polygon via
+            # the parent/sub-denomination model. The 27 Landwein PGIs
+            # are not in Bétard (PDO-only dataset) — most resolve via
+            # member-PDO union (the SI/HU/BG pattern); a handful of
+            # multi-Bundesland Landweine remain `stub-no-geometry` (the
+            # Phase-2 Weingesetz / commune-list parser will fill those in).
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = de_polygons.resolve(
+                record.get("file_number") or ""
+            )
+            de_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = False
+            _emit_hr_features = False
+            _emit_hu_features = False
+            _emit_ro_features = False
+            _emit_bg_features = False
+            _emit_gr_features = False
+            _emit_de_features = True
+        elif country == "sk":
+            # SK branch — Bétard Figshare PDO match for 8 of 9 SK DOPs;
+            # the 9th (TOKAJSKÉ VÍNO, PDO-SK-02856) aliases the
+            # Vinohradnícka oblasť Tokaj polygon (PDO-SK-A0120). The
+            # single SK PGI (Slovenská) resolves as the union of all 8
+            # SK DOPs. Slovakia has no sub-denominations in v1.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = sk_polygons.resolve(
+                record.get("file_number") or ""
+            )
+            sk_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = False
+            _emit_hr_features = False
+            _emit_hu_features = False
+            _emit_ro_features = False
+            _emit_bg_features = False
+            _emit_gr_features = False
+            _emit_de_features = False
+            _emit_sk_features = True
+        elif country == "ch":
+            # CH branch — swisstopo swissBOUNDARIES3D commune/canton
+            # union for the bulk + SITG VIT_VIGNOBLE_AO for the 22
+            # parcel-precise GE premier crus + parent inheritance for
+            # the 13 régionale / 22 locale sub-denominations whose
+            # commune list isn't enumerated. Non-EU country — no
+            # Bétard polygons in EU_PDO.gpkg.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            if ch_commune_idx is None:
+                geom, geom_source, stats = None, "stub-no-geometry", {"matched": 0}
+            else:
+                geom, geom_source, stats = ch_resolve_geometry(
+                    record,
+                    commune_index=ch_commune_idx,
+                    ge_sitg=ch_ge_sitg,
+                    parent_geom_by_slug=parent_geom_by_slug,
+                )
+            ch_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = False
+            _emit_hr_features = False
+            _emit_hu_features = False
+            _emit_ro_features = False
+            _emit_bg_features = False
+            _emit_gr_features = False
+            _emit_de_features = False
+            _emit_sk_features = False
+            _emit_cz_features = False
+            _emit_ch_features = True
+        elif country == "cz":
+            # CZ branch — Bétard Figshare PDO match covers all 11 CZ
+            # DOPs; the 2 macro PGIs (české / moravské) resolve as the
+            # macro-PDO union (Čechy / Morava). Czechia has no sub-
+            # denominations as first-class records in v1 — the sub-
+            # region PDOs (Litoměřická, Mělnická, Slovácká, Znojemská,
+            # …) are themselves PDOs in eAmbrosia, not DGCs.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = cz_polygons.resolve(
+                record.get("file_number") or ""
+            )
+            cz_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = False
+            _emit_hr_features = False
+            _emit_hu_features = False
+            _emit_ro_features = False
+            _emit_bg_features = False
+            _emit_gr_features = False
+            _emit_de_features = False
+            _emit_sk_features = False
+            _emit_cz_features = True
+        elif country == "lu":
+            # LU branch — 1 PDO (Moselle Luxembourgeoise) + 11 per-commune
+            # sub-denominations. Parent uses Bétard PDO-LU-A0452 (245 km²
+            # regulatory perimeter); sub-records use the IVV
+            # Weinbaukartei vineyard polygons dissolved per modern
+            # commune (planted-vineyard precision). The 4 821 IVV parcels
+            # total ~12 km², which is the actual planted vineyard area
+            # (vs. ~75 km² of modern admin-commune polygons that
+            # contain those parcels).
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = lu_polygons.resolve(record)
+            lu_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = False
+            _emit_hr_features = False
+            _emit_hu_features = False
+            _emit_ro_features = False
+            _emit_bg_features = False
+            _emit_gr_features = False
+            _emit_de_features = False
+            _emit_sk_features = False
+            _emit_cz_features = False
+            _emit_lu_features = True
+        elif country == "be":
+            # BE branch — Bétard 2022 covers all 8 BE+ PDOs (the 7 BE
+            # PDOs + the cross-border PDO-BE+NL-02172 Maasvallei Limburg
+            # owned by BE). The 2 BE PGIs resolve as the union of their
+            # member-PDO polygons (SI/HU/BG/DE PGI pattern).
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = be_polygons.resolve(
+                record.get("file_number") or ""
+            )
+            be_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_be_features = True
+        elif country == "nl":
+            # NL branch — Bétard 2022 covers 6 of 10 NL PDOs; the 12 NL
+            # PGIs each resolve to one Eurostat NUTS-2 province polygon
+            # (the 12 NUTS-2 regions of NL ARE the 12 provincies). The
+            # 4 newer PDOs (post-Bétard) ship as stub-no-geometry in v1.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = nl_polygons.resolve(
+                record.get("file_number") or ""
+            )
+            nl_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_nl_features = True
         else:
             _emit_es_features = False
             _emit_pt_features = False
@@ -1536,7 +2549,12 @@ def main() -> int:
             cadastre_match = None
 
         if (_emit_es_features or _emit_pt_features or _emit_it_features
-                or _emit_at_features or _emit_si_features):
+                or _emit_at_features or _emit_si_features or _emit_hr_features
+                or _emit_hu_features or _emit_ro_features or _emit_bg_features
+                or _emit_gr_features or _emit_de_features
+                or _emit_sk_features or _emit_cz_features
+                or _emit_ch_features or _emit_lu_features
+                or _emit_be_features or _emit_nl_features):
             # Geometry already resolved above; skip the FR-specific chain.
             pass
         elif is_sub_denomination:
@@ -1592,7 +2610,12 @@ def main() -> int:
         # (using the same geom for both detail + village), so skip the
         # FR-specific village resolution.
         if (_emit_es_features or _emit_pt_features or _emit_it_features
-                or _emit_at_features or _emit_si_features):
+                or _emit_at_features or _emit_si_features or _emit_hr_features
+                or _emit_hu_features or _emit_ro_features or _emit_bg_features
+                or _emit_gr_features or _emit_de_features
+                or _emit_sk_features or _emit_cz_features
+                or _emit_ch_features or _emit_lu_features
+                or _emit_be_features or _emit_nl_features):
             pass
         elif is_sub_denomination:
             # Prefer DGC's own parcellaire polygon as the village geometry —
@@ -1712,7 +2735,7 @@ def main() -> int:
         # ES + PT + IT + AT + SI records have no `categorie` — every entry
         # is filtered to productType=WINE upstream in stage 00, so they're
         # all wines.
-        if record.get("country") in ("es", "pt", "it", "at", "si"):
+        if record.get("country") in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "sk", "cz", "ch", "lu", "be", "nl"):
             is_wine = "1"
         else:
             is_wine = "1" if categorie.startswith("Vin") else "0"
@@ -1803,6 +2826,24 @@ def main() -> int:
                 record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
             ) or "Österreich"
+        elif record.get("country") == "de":
+            # DE region = Anbaugebiet (the 13 traditional regional PDOs)
+            # for PDOs, or Bundesland-scale territory (Rheinland-Pfalz,
+            # Bayern, Baden-Württemberg, …) for Landwein PGIs. Einzellage
+            # sub-denominations inherit the parent Anbaugebiet's region.
+            if is_sub_denomination:
+                parent_slug = record.get("parent_slug") or ""
+                region_value = es_region_by_parent_slug.get(
+                    f"de::{parent_slug}", record.get("region") or "Deutschland"
+                )
+            else:
+                region_value = record.get("region") or derive_de_region(
+                    record,
+                    record.get("section_roles", {}).get("geo_area", ""),
+                    record.get("section_roles", {}).get("link_to_terroir", ""),
+                    record.get("name", ""),
+                ) or "Deutschland"
+                es_region_by_parent_slug[f"de::{record['slug']}"] = region_value
         elif record.get("country") == "si":
             # SI region = vinorodna dežela (Podravje / Posavje /
             # Primorska). The 3 PGIs are the regions themselves.
@@ -1813,10 +2854,113 @@ def main() -> int:
                 record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
             ) or "Slovenija"
+        elif record.get("country") == "hr":
+            # HR region = wine macro region (Primorska Hrvatska /
+            # Istočna kontinentalna Hrvatska / Zapadna kontinentalna
+            # Hrvatska). The 3 macro regions themselves appear as PDOs
+            # in the corpus. Croatia has no sub-denominations in v1.
+            region_value = record.get("region") or derive_hr_region(
+                record,
+                record.get("section_roles", {}).get("geo_area", ""),
+                record.get("section_roles", {}).get("link_to_terroir", ""),
+                record.get("name", ""),
+            ) or "Hrvatska"
+        elif record.get("country") == "hu":
+            # HU region = borrégió (Tokaj / Felső-Magyarország / Duna /
+            # Balaton / Pannon / Felső-Pannon / Zemplén). The curated
+            # file_number map covers every wine. No sub-denominations in v1.
+            region_value = record.get("region") or derive_hu_region(
+                record,
+                record.get("section_roles", {}).get("geo_area", ""),
+                record.get("section_roles", {}).get("link_to_terroir", ""),
+                record.get("name", ""),
+            ) or "Magyarország"
+        elif record.get("country") == "ro":
+            # RO region = regiune viticolă (Moldova / Muntenia / Oltenia
+            # / Dobrogea / Transilvania / Banat / Crișana și Maramureș /
+            # Terasele Dunării). The curated file_number map is
+            # incremental; text scan + "România" fallback otherwise.
+            # No sub-denominations in v1.
+            region_value = record.get("region") or derive_ro_region(
+                record,
+                record.get("section_roles", {}).get("geo_area", ""),
+                record.get("section_roles", {}).get("link_to_terroir", ""),
+                record.get("name", ""),
+            ) or "România"
+        elif record.get("country") == "bg":
+            # BG region = винарски район (Дунавска равнина / Черноморски
+            # район / Розова долина / Тракийска низина / Долината на
+            # Струма). The curated file_number map covers every wine.
+            # No sub-denominations in v1.
+            region_value = record.get("region") or derive_bg_region(
+                record,
+                record.get("section_roles", {}).get("geo_area", ""),
+                record.get("section_roles", {}).get("link_to_terroir", ""),
+                record.get("name", ""),
+            ) or "България"
+        elif record.get("country") == "gr":
+            # GR region = αμπελουργική ζώνη (Μακεδονία / Θράκη / Θεσσαλία
+            # / Ήπειρος / Στερεά Ελλάδα / Πελοπόννησος / Ιόνια Νησιά /
+            # Νησιά Αιγαίου / Κρήτη). The curated file_number map covers
+            # every PDO at v1; PGIs fall back to text scan + "Ελλάδα".
+            # No sub-denominations in v1.
+            region_value = record.get("region") or derive_gr_region(
+                record,
+                record.get("section_roles", {}).get("geo_area", ""),
+                record.get("section_roles", {}).get("link_to_terroir", ""),
+                record.get("name", ""),
+            ) or "Ελλάδα"
+        elif record.get("country") == "sk":
+            # SK region = vinohradnícka oblasť (Malokarpatská /
+            # Južnoslovenská / Nitrianska / Stredoslovenská /
+            # Východoslovenská / Tokaj). The single SK PGI is "Slovensko".
+            # No sub-denominations in v1.
+            region_value = record.get("region") or derive_sk_region(
+                record,
+                record.get("section_roles", {}).get("geo_area", ""),
+                record.get("section_roles", {}).get("link_to_terroir", ""),
+                record.get("name", ""),
+            ) or "Slovensko"
+        elif record.get("country") == "cz":
+            # CZ region = vinařská oblast (Čechy / Morava). The curated
+            # file_number map covers every wine — the 2 macro PDOs, the 2
+            # macro PGIs, and the 9 sub-region / district / single-vineyard
+            # PDOs (Šobes, Znojmo, Litoměřická, …) all inherit one of the
+            # 2 macro regions. No sub-denominations as first-class records
+            # in v1.
+            region_value = record.get("region") or derive_cz_region(
+                record,
+                record.get("section_roles", {}).get("geo_area", ""),
+                record.get("section_roles", {}).get("link_to_terroir", ""),
+                record.get("name", ""),
+            ) or "Česko"
+        elif record.get("country") == "ch":
+            # CH region = Swiss wine region (Valais / Vaud / Genève /
+            # Trois-Lacs / Ticino / Deutschschweiz) — the Swiss Wine
+            # Promotion 6-region scheme. Curated canton → region map
+            # covers every wine. Sub-denominations inherit the parent
+            # canton's region.
+            region_value = derive_ch_region(record) or "Schweiz"
+        elif record.get("country") == "lu":
+            # LU has a single wine region (Moselle Luxembourgeoise) —
+            # both the parent record and the 11 commune sub-denominations
+            # share it. No facet variation in v1.
+            region_value = derive_lu_region(record) or "Moselle Luxembourgeoise"
+        elif record.get("country") == "be":
+            # BE region = Vlaanderen / Wallonië (the two language
+            # communities). Curated file_number map covers every wine;
+            # cross-border Maasvallei = Vlaanderen (BE-side).
+            region_value = derive_be_region(record) or "België"
+        elif record.get("country") == "nl":
+            # NL region = one of the 12 provincies, hand-mapped per
+            # file_number. PGI = its own province; each PDO sits in
+            # exactly one province.
+            region_value = derive_nl_region(record) or "Nederland"
         else:
             region_value = derive_fr_wine_region(record)
         common_props = {
             "country": record.get("country") or "fr",
+            "source_lang": record.get("source_lang") or "",
             "id_appellation": (
                 record.get("id_appellation")
                 or record.get("file_number")
@@ -1826,6 +2970,7 @@ def main() -> int:
             "id_denomination_geo": record.get("id_denomination_geo") or "",
             "slug": record["slug"],
             "name": record["name"],
+            "name_latin": record.get("name_latin") or "",
             "kind": mvt_kind,
             "region": region_value,
             "categorie": categorie,
@@ -2237,12 +3382,234 @@ def _sources_for(record: dict) -> dict:
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
         }
+    if record.get("country") == "de":
+        # Germany: 27 of 46 wines carry a fetchable EUR-Lex Einziges
+        # Dokument. The 13 Anbaugebiete are additionally backed by the
+        # BLE Produktspezifikation (national specification, §5 UrhG) —
+        # that's where the principal/accessory variety split comes from
+        # (the EU document is flat). Provenance surfaces the BLE URL +
+        # sha so the panel can attribute the role split correctly.
+        de_spec = record.get("produktspezifikation") or _DE_PRODUKTSPEZIFIKATION_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
+        return {
+            "country": "de",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+            "ble_produktspezifikation_url": de_spec.get("url", ""),
+            "ble_produktspezifikation_sha256": de_spec.get("sha256", ""),
+            "ble_produktspezifikation_fetched_at": de_spec.get("fetched_at", ""),
+            "ble_role_split_method": de_spec.get("role_split_method", ""),
+            "ble_n_principal": de_spec.get("n_principal", 0),
+            "ble_n_accessory": de_spec.get("n_accessory", 0),
+        }
     if record.get("country") == "si":
         # Slovenia: only Cviček carries a fetchable EUR-Lex single
         # document; the other 16 are content-stubs awaiting the national
         # specification (Phase 2). eAmbrosia + file number always resolve.
         return {
             "country": "si",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
+    if record.get("country") == "hr":
+        # Croatia: only Muškat momjanski + Ponikve carry a fetchable
+        # EUR-Lex single document; the other 16 are content-stubs
+        # awaiting the national specification (Phase 2). All 18 resolve
+        # to Bétard PDO geometry regardless. eAmbrosia + file number
+        # always resolve.
+        return {
+            "country": "hr",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
+    if record.get("country") == "hu":
+        # Hungary: 26 of 41 wines carry a fetchable EUR-Lex EGYSÉGES
+        # DOKUMENTUM; the remaining 15 (Tokaj, Villány, Sopron, …) are
+        # content-stubs awaiting a curator-pinned URL or the national
+        # termékleírás (Phase 2). 38 of 41 resolve to a polygon via
+        # Bétard PDO match or PGI region-union. eAmbrosia + file number
+        # always resolve.
+        return {
+            "country": "hu",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
+    if record.get("country") == "ro":
+        # Romania: 34 of 54 wines carry a fetchable EUR-Lex DOCUMENT
+        # UNIC; the remaining 20 are Art.107 / Reg.1308/2013
+        # grandfathered names awaiting a curator-pinned URL or the
+        # national caiet de sarcini (Phase 2). 38 / 41 PDOs resolve to
+        # a Bétard polygon; the 13 IGPs + 3 newer PDOs resolve via
+        # the GISCO commune-list fallback. eAmbrosia + file number
+        # always resolve.
+        return {
+            "country": "ro",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
+    if record.get("country") == "bg":
+        # Bulgaria: ~3 of 54 wines carry a fetchable EUR-Lex Единен
+        # документ; the remaining ~51 are Art.107 / Reg.1308/2013
+        # grandfathered names awaiting a curator-pinned URL or the
+        # Държавен вестник national specification (Phase 2). All 52
+        # PDOs resolve to a Bétard polygon; both PGIs resolve via
+        # member-PDO union. eAmbrosia + file_number always resolve.
+        return {
+            "country": "bg",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
+    if record.get("country") == "gr":
+        # Greece: only ~11 of 147 wines carry a fetchable EUR-Lex Ενιαίο
+        # Έγγραφο; the remaining ~136 are Art.107 / Reg.1308/2013
+        # grandfathered names awaiting a curator-pinned URL or the
+        # ΥΠΑΑΤ / ΦΕΚ national προδιαγραφή προϊόντος (Phase 2). All 33
+        # PDOs resolve to a Bétard polygon; PGIs land as
+        # stub-no-geometry in v1. eAmbrosia + file_number always resolve.
+        return {
+            "country": "gr",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
+    if record.get("country") == "sk":
+        # Slovakia: 4 of 10 wines carry a fetchable EUR-Lex Jednotný
+        # dokument (Vinohradnícka oblasť Tokaj, Stredoslovenská,
+        # Skalický rubín, TOKAJSKÉ VÍNO zo slovenskej oblasti); the
+        # other 6 are Art.107 / Reg.1308/2013 grandfathered names with
+        # only Ares(...) references. All 10 land on the map via Bétard
+        # (8 direct PDO matches + the Tokaj alias for PDO-SK-02856 +
+        # the single PGI's all-PDO union). eAmbrosia + file_number
+        # always resolve.
+        return {
+            "country": "sk",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
+    if record.get("country") == "cz":
+        # Czech Republic: 0 of 13 wines carry a fetchable EUR-Lex
+        # Jednotný dokument — every CZ wine is an Art.107 /
+        # Reg.1308/2013 grandfathered name with only Ares(...) refs.
+        # All 13 land on the map via Bétard / GISCO commune-union (11
+        # PDO matches + each macro PGI = its macro PDO's polygon + 6
+        # podoblasti commune-precision via Vyhláška 254/2010 Sb.). The
+        # variety roster comes from Vyhláška 88/2017 Sb. Příloha č. 2
+        # (national-spec layer, 67 varieties applied to all 10 wines —
+        # CZ wine law does not restrict varieties per podoblast).
+        ns = record.get("national_spec") or _CZ_NATIONAL_SPEC_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
+        return {
+            "country": "cz",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+            "national_spec_url": ns.get("url", ""),
+            "national_spec_fetch_url": ns.get("fetch_url", ""),
+            "national_spec_title": ns.get("title", ""),
+            "national_spec_sbirka_castka": ns.get("sbirka_castka", ""),
+            "national_spec_sha256": ns.get("sha256", ""),
+            "national_spec_n_varieties": ns.get("n_varieties", 0),
+        }
+    if record.get("country") == "lu":
+        # Luxembourg: 1 AOP (Moselle Luxembourgeoise) — no fetchable
+        # EU-OJ Document Unique (eAmbrosia's only publication ref is
+        # the Ares numeric `58323`). The canonical source is the IVV
+        # 2020 Cahier des charges PDF hosted on agriculture.public.lu.
+        # The 11 modern-commune sub-denominations are predicate labels
+        # under Art. 8 / Art. 9 of RGD 17-déc-2015; they share the
+        # parent's source.
+        reglements = src.get("reglements") or []
+        return {
+            "country": "lu",
+            "cahier_url": src.get("source_url") or "",
+            "cahier_publisher": src.get("publisher") or "",
+            "cahier_filename": src.get("filename") or "",
+            "cahier_sha256": src.get("sha256") or "",
+            "cahier_kind": src.get("kind") or "ivv-cahier-des-charges",
+            "reglements": reglements,
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+            "commune": record.get("commune") or "",
+            "historic_communes": record.get("historic_communes") or [],
+        }
+    if record.get("country") == "ch":
+        # Switzerland: OFAG/BLW repertoire + cantonal règlement. The
+        # spine source is the OFAG PDF; per-record source is the
+        # canton's wine règlement / Reglement / regolamento. Non-EU
+        # country — no EUR-Lex single document.
+        sources_list = record.get("sources") or []
+        ofag = next((s for s in sources_list
+                     if s.get("kind") == "ofag-repertoire"), {})
+        reglement = next((s for s in sources_list
+                          if s.get("kind") == "cantonal-reglement"), {})
+        return {
+            "country": "ch",
+            "canton": record.get("canton") or "",
+            "source_lang": record.get("source_lang") or "",
+            "ofag_repertoire_url": ofag.get("url", ""),
+            "ofag_repertoire_label": ofag.get("label", ""),
+            "ofag_repertoire_sha256": ofag.get("sha256", ""),
+            "cantonal_reglement_url": reglement.get("url", ""),
+            "cantonal_reglement_shelf": reglement.get("shelf", ""),
+            "cantonal_reglement_label": reglement.get("label", ""),
+            "cantonal_reglement_sha256": reglement.get("sha256", ""),
+            "cantonal_reglement_license": reglement.get("license", ""),
+        }
+    if record.get("country") == "be":
+        # Belgium: EU-OJ ENIG DOCUMENT (Flemish) or DOCUMENT UNIQUE
+        # (Walloon). Per-record source_lang drives both the URL rewrite
+        # at fetch time and the panel attribution label.
+        return {
+            "country": "be",
+            "source_lang": record.get("source_lang") or "",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
+    if record.get("country") == "nl":
+        # Netherlands: EU-OJ ENIG DOCUMENT (single source_lang "nl").
+        return {
+            "country": "nl",
+            "source_lang": "nl",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
             "eu_oj_publication_url": src.get("source_url") or "",
             "filename": src.get("filename") or "",
@@ -2435,17 +3802,49 @@ def emit_html(
             "pt": EXTRACTED_PT,
             "it": EXTRACTED_IT,
             "at": EXTRACTED_AT,
+            "de": EXTRACTED_DE,
             "si": EXTRACTED_SI,
+            "hr": EXTRACTED_HR,
+            "hu": EXTRACTED_HU,
+            "ro": EXTRACTED_RO,
+            "bg": EXTRACTED_BG,
+            "gr": EXTRACTED_GR,
+            "sk": EXTRACTED_SK,
+            "cz": EXTRACTED_CZ,
+            "ch": EXTRACTED_CH,
+            "lu": EXTRACTED_LU,
+            "be": EXTRACTED_BE,
+            "nl": EXTRACTED_NL,
         }.get(country, EXTRACTED)
         ext_path = ext_dir / f"{slug}.json"
         summary = ""
         sources: dict = {}
         grape_names: dict[str, str] = {}
+        # For BG / GR (and any other non-Latin-script corpus added later)
+        # the cahier spelling lives in native script. The grape-pill
+        # canonical-bracket falls through to this per-record latin form
+        # when GRAPES_INFO has neither a VIVC canonical name nor a
+        # corpus-wide latin form — covers native varieties without
+        # Wikipedia + without VIVC (e.g. BG `shiroka-melnishka-loza`).
+        grape_names_latin: dict[str, str] = {}
+        is_stub = False
         parent_slug_for_facts = p.get("parent_slug", "") or ""
         if ext_path.exists():
             rec = json.loads(ext_path.read_text(encoding="utf-8"))
             summary = derive_summary(rec)
             sources = _sources_for(rec)
+            # IT records augmented via MASAF and ES records augmented via
+            # the national pliego have an effective source document — the
+            # disciplinare di produzione / pliego de condiciones — even
+            # though the on-disk doc-único stub wasn't populated. Don't
+            # flag those as "not yet found".
+            stub_raw = bool(rec.get("stub")) or rec.get("kind") == "STUB"
+            has_augmented_source = (
+                (country == "it" and slug in _IT_MASAF_BY_SLUG)
+                or (country == "es" and slug in _ES_NATIONAL_PLIEGO_BY_SLUG)
+                or (country == "de" and slug in _DE_PRODUKTSPEZIFIKATION_BY_SLUG)
+            )
+            is_stub = stub_raw and not has_augmented_source
             # Per-appellation cahier spelling per slug — drives the pill
             # label so the rendered name matches what the regulator
             # actually published (PT Douro shows "Aragonez", ES Rioja
@@ -2456,6 +3855,9 @@ def emit_html(
                 s_name = (d.get("name") or "").strip()
                 if s_slug and s_name and s_name.lower() != s_slug:
                     grape_names[s_slug] = s_name
+                    latin = _latin_form_or_empty(s_name)
+                    if latin:
+                        grape_names_latin[s_slug] = latin
         syndicate = resolve_appellation_url(
             slug, parent_slug_for_facts, p.get("region", "") or "", appellation_urls
         )
@@ -2469,7 +3871,9 @@ def emit_html(
 
         aocs[slug] = {
             "country": p.get("country") or "fr",
+            "source_lang": p.get("source_lang") or "",
             "name": p["name"],
+            "name_latin": p.get("name_latin") or "",
             "kind": p["kind"],
             "region": p["region"],
             "is_wine": p.get("is_wine", "1") == "1",
@@ -2493,10 +3897,12 @@ def emit_html(
             "grapes_observation": observation,
             "grapes_all": all_grapes,
             "grape_names": grape_names,
+            "grape_names_latin": grape_names_latin,
             "summary": summary,
             "sources": sources,
             "terroir_facts": terroir_facts,
             "note": appellation_notes.get(slug),
+            "is_stub": is_stub,
         }
         for s in styles:
             style_counts[s] = style_counts.get(s, 0) + 1
@@ -2598,7 +4004,16 @@ def emit_html(
         aocs_for_lang = {}
         for slug, rec in aocs.items():
             rec_country = rec.get("country")
-            src_lang = rec_country if rec_country in ("es", "pt", "it", "at", "si") else "fr"
+            if rec_country in ("ch", "be"):
+                # CH + BE source-language is per-record (per canton for
+                # CH; per language community for BE — Flemish=nl,
+                # Walloon=fr).
+                src_lang = rec.get("source_lang") or "fr"
+            elif rec_country == "nl":
+                src_lang = "nl"
+            else:
+                # LU's country code is "lu" but its source language is "fr" — fall through to the "fr" default.
+                src_lang = rec_country if rec_country in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "sk", "cz") else "fr"
             t = translations.get(slug)
             if not t:
                 new_rec = rec
@@ -2633,8 +4048,14 @@ def emit_html(
         if use_translations:
             all_facts_translations = load_terroir_facts_translations(lang)
             def _src_lang_for(slug: str) -> str:
-                c = (aocs.get(slug, {}) or {}).get("country")
-                return c if c in ("es", "pt", "it", "at", "si") else "fr"
+                rec = aocs.get(slug, {}) or {}
+                c = rec.get("country")
+                if c in ("ch", "be"):
+                    return rec.get("source_lang") or "fr"
+                if c == "nl":
+                    return "nl"
+                # LU (country "lu") uses source_lang "fr" — falls through to the "fr" default.
+                return c if c in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "sk", "cz") else "fr"
             facts_translations = {
                 slug: t for slug, t in all_facts_translations.items()
                 if lang != _src_lang_for(slug)

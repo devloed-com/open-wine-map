@@ -14,6 +14,7 @@ dependencies = [
     "babel>=2.16",
     "anthropic>=0.40",
     "lingua-language-detector>=2.2.0",
+    "unidecode>=1.3",
 ]
 
 [dependency-groups]

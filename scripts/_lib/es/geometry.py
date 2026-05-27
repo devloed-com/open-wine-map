@@ -39,23 +39,31 @@ from shapely.ops import unary_union
 
 
 def _normalise_commune_name(s: str) -> str:
-    """Strip diacritics, leading articles, and parenthetical suffixes;
-    lowercase. Same idiom as scripts/_lib/lieu_dit.py:_normalise_name on
-    the FR side, with a Spanish article list (la / el / los / las / o
-    / a / os / as)."""
+    """Strip diacritics, articles (leading + GISCO's trailing-comma
+    convention), and parenthetical suffixes; lowercase. Same idiom as
+    scripts/_lib/lieu_dit.py:_normalise_name on the FR side."""
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     s = re.sub(r"\([^)]*\)", " ", s)  # drop parenthetical context
     s = re.sub(r"[^A-Za-z0-9\s\-']", " ", s)
     s = re.sub(r"\s+", " ", s).strip().lower()
-    # Strip leading Spanish/Galician/Catalan articles
+    # GISCO lists Catalan / Castilian / Galician / Mallorquí articled
+    # names as "Borges del Camp, Les" / "Canonja, La" / "Castell, Es",
+    # so after the comma-to-space pass the article surfaces as a
+    # trailing token. Pliegos use article-first ("Les Borges del Camp").
+    # Strip both forms so the two normalise to the same root.
+    _articles = {
+        "la", "el", "los", "las", "lo",
+        "les", "els",
+        "es", "sa", "ses",
+        "o", "a", "os", "as",
+    }
     parts = s.split(" ", 1)
-    if len(parts) == 2 and parts[0] in {
-        "la", "el", "los", "las", "o", "a", "os", "as", "lo",
-    }:
+    if len(parts) == 2 and parts[0] in _articles:
         s = parts[1]
-    # Drop trailing common suffixes ("/" co-official forms)
+    parts = s.rsplit(" ", 1)
+    if len(parts) == 2 and parts[1] in _articles:
+        s = parts[0]
     if "/" in s:
-        # GISCO sometimes lists "Vitoria/Gasteiz" — keep the first form.
         s = s.split("/", 1)[0].strip()
     return s
 

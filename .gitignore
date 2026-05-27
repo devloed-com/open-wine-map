@@ -49,3 +49,5 @@ done*.json
 # gettext catalogs — UI-localisation layer; not committed in the minimal
 # bootstrap. Stage 04 falls back to the FR source when these are absent.
 locale/
+
+tmp/*

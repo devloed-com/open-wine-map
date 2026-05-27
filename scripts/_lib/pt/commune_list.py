@@ -72,6 +72,38 @@ _BULLET_WHOLE_DISTRITO_RE = re.compile(
     re.MULTILINE,
 )
 
+# Bare "Distrito de Setúbal." standalone at start of section / line.
+# Península de Setúbal's whole area section is literally one sentence:
+# "Distrito de Setúbal." with no "todo / abrange" preamble.
+# Anchored at start-of-text or start-of-line and capped by a period
+# to keep prose mentions out.
+_BARE_DISTRITO_RE = re.compile(
+    r"(?:^|\n)\s*Distritos?\s+de\s+([^.;:\n,]+?)\s*\.",
+)
+
+# Bullet-list concelho pattern — `• Armamar:`, `• Lamego;`,
+# `•Tarouca.` (Terras de Cister). Captures the head token-cluster of
+# each bullet line, before the first `:` / `;` / `,` / `.`. Restricted
+# to short heads (≤ 35 chars) so multi-line bullet bodies don't leak
+# in. Bullet chars: `•` (U+2022), `·` (U+00B7), `*`, `-`.
+_BULLET_CONCELHO_RE = re.compile(
+    r"(?:^|\n)\s*[•·*]\s*([A-ZÀ-Ý][A-Za-zÀ-ÿ'\- ]{2,34}?)\s*[:;.,\n]",
+)
+
+# Whole-archipelago / whole-RAM patterns. The caderno declares the
+# production area as the entire autonomous region rather than
+# enumerating its concelhos. Emits a `macro_regions` token that
+# `geometry.union_from_parsed` expands into the constituent ilhas.
+_MACRO_ACORES_RE = re.compile(
+    r"(?:arquip[ée]lago|regi[ãa]o\s+aut[óo]noma)\s+dos\s+A[çc]ores",
+    re.IGNORECASE,
+)
+_MACRO_MADEIRA_RE = re.compile(
+    r"(?:arquip[ée]lago|regi[ãa]o\s+aut[óo]noma|regi[ãa]o\s+demarcada)"
+    r"\s+da\s+Madeira",
+    re.IGNORECASE,
+)
+
 # Stop-phrases — when one of these appears inside a captured group, we
 # take only the text BEFORE it (so "Almeida, as freguesias de X, Y" →
 # we keep "Almeida" only). Bairrada-style "União das freguesias" and
@@ -176,19 +208,23 @@ def _dedupe_preserve_order(items: list[str]) -> list[str]:
 
 
 def parse_commune_list(area_text: str) -> dict:
-    """Walk the area text, return {concelhos, distritos, raw_hits}.
+    """Walk the area text, return {concelhos, distritos, macro_regions, raw_hits}.
 
     `concelhos` is a list of município names in the canonical
     Portuguese form (with diacritics) preserving case. `distritos`
     is the same for the "todos os municípios do distrito de X" form
-    — callers expand it via a CAOP distrito index.
+    — callers expand it via a CAOP distrito index. `macro_regions`
+    is a list of `"acores"` / `"madeira"` tokens emitted when the
+    caderno declares the area as the whole autonomous region —
+    callers expand each into its constituent ilhas.
     """
     if not area_text:
-        return {"concelhos": [], "distritos": [], "raw_hits": 0}
+        return {"concelhos": [], "distritos": [], "macro_regions": [], "raw_hits": 0}
 
     raw_hits = 0
     concelhos: list[str] = []
     distritos: list[str] = []
+    macro_regions: list[str] = []
 
     for pat in (_MUNICIPIO_RE, _CONCELHO_RE):
         for m in pat.finditer(area_text):
@@ -198,15 +234,30 @@ def parse_commune_list(area_text: str) -> dict:
                 if _looks_like_name(token):
                     concelhos.append(token)
 
-    for pat in (_DISTRITO_ALL_RE, _WHOLE_DISTRITO_RE, _BULLET_WHOLE_DISTRITO_RE):
+    for m in _BULLET_CONCELHO_RE.finditer(area_text):
+        raw_hits += 1
+        token = m.group(1).strip()
+        if _looks_like_name(token):
+            concelhos.append(token)
+
+    for pat in (_DISTRITO_ALL_RE, _WHOLE_DISTRITO_RE, _BULLET_WHOLE_DISTRITO_RE,
+                _BARE_DISTRITO_RE):
         for m in pat.finditer(area_text):
             raw_hits += 1
             for token in _split_list(m.group(1)):
                 if _looks_like_name(token):
                     distritos.append(token)
 
+    if _MACRO_ACORES_RE.search(area_text):
+        raw_hits += 1
+        macro_regions.append("acores")
+    if _MACRO_MADEIRA_RE.search(area_text):
+        raw_hits += 1
+        macro_regions.append("madeira")
+
     return {
         "concelhos": _dedupe_preserve_order(concelhos),
         "distritos": _dedupe_preserve_order(distritos),
+        "macro_regions": _dedupe_preserve_order(macro_regions),
         "raw_hits": raw_hits,
     }

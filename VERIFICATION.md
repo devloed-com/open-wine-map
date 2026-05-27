@@ -437,3 +437,60 @@ Cviček carries a fetchable EU single document; see CURATOR_TODO.
 
 Compare the kind counts + region distribution against the region/
 district structure at the Wikipedia URL above.
+
+---
+
+## Bulgaria
+
+### 2026-05-23 — eAmbrosia ↔ Закон за виното (5-region structure) cross-check ✅
+
+**Independent authority**: the Bulgarian Wine Act (Закон за виното и
+спиртните напитки) partitions the country into 5 traditional wine
+regions (винарски район). The 2 EU PGIs are themselves named regions
+covering the two macro halves of the country (north / south of Stara
+Planina). Reference: English Wikipedia, *Bulgarian wine* (CC BY-SA 4.0),
+<https://en.wikipedia.org/wiki/Bulgarian_wine>.
+
+The pipeline corpus is **54 wine GIs (52 DOP + 2 IGP)**, sourced from
+eAmbrosia (`country=BG` + `productType=WINE` + `status=registered`).
+
+| Check | Expected | Pipeline | Match |
+|---|---:|---:|:---:|
+| Total wines | 54 | 54 | ✓ |
+| DOP | 52 | 52 | ✓ |
+| IGP (= the 2 macro PGIs) | 2 | 2 | ✓ |
+| Figshare 2022 PDO polygons | 52 | 52 | ✓ |
+
+**Reconciliation of the 52 DOP across 5 wine regions** (via the curated
+`file_number → region` map in [scripts/_lib/bg/region.py](scripts/_lib/bg/region.py)):
+
+| Wine region | PDOs | PGI |
+|---|---:|---|
+| Дунавска равнина (North) | 21 | + 1 PGI |
+| Черноморски район (Black Sea coast) | 8 | — |
+| Розова долина (Sub-Balkan / Rose Valley) | 2 | — |
+| Тракийска низина (South-Central) | 17 | + 1 PGI |
+| Долината на Струма (Southwestern) | 4 | — |
+| **Total** | **52** | **+ 2** |
+
+The 2 PGIs map cleanly: Дунавска равнина PGI = the entire Northern
+wine region (21 PDOs); Тракийска низина PGI = the four southern wine
+regions combined (31 PDOs). Hand-verified mapping in
+[scripts/_lib/bg/geometry.py](scripts/_lib/bg/geometry.py) `BG_PGI_MEMBER_PDOS`.
+
+Only 3 of 54 wines (Мелник, Нова Загора, Дунавска равнина) carry a
+fetchable EUR-Lex ЕДИНЕН ДОКУМЕНТ; the other 51 are content-stubs
+(`no-publication`) — see CURATOR_TODO. Bétard 2022 nonetheless gives
+every BG PDO a polygon, so 100 % of records render on the map.
+
+**Re-run recipe**:
+
+```
+.venv/bin/python scripts/bg/00_fetch_data.py
+.venv/bin/python scripts/audit_bg_coverage.py
+```
+
+Compare the kind counts + region distribution against the wine-law
+5-region structure at the Wikipedia URL above. Note the asymmetric
+PGI mapping — the south PGI subsumes 4 sub-regions while the north
+PGI is coextensive with one.

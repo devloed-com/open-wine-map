@@ -24,6 +24,8 @@ import re
 import unicodedata
 from collections.abc import Iterable
 
+from unidecode import unidecode
+
 COLOUR_CODES = {"B": "blanc", "N": "noir", "G": "gris", "Rs": "rose", "Rg": "rouge"}
 
 _COLOUR_WORDS = frozenset({
@@ -505,6 +507,716 @@ GRAPE_ALIAS = {
     "rumeni-plavec": "rumeni-plavec",            # Rumeni plavec
     "sentlovrenka": "sankt-laurent",            # Slovenian name for Sankt Laurent
     "chardonay": "chardonnay",                  # SI Enotni-dokument typo (Cviček)
+    # ----- HR EUR-Lex Jedinstveni-dokument varieties. Croatian wine
+    # grapes the EU single document lists that the FR/ES/PT/IT/AT/SI
+    # seed never carried. Surfaced by scripts/hr/02_extract_pliegos.py
+    # into raw/hr/extraction-unknowns.json. Each alias is grounded in
+    # VIVC (Vitis International Variety Catalogue): the prime name's
+    # slug is the canonical target; aliases fold local Croatian and
+    # synonym spellings onto it.
+    "plavac-mali": "plavac-mali",               # VIVC #9252 PLAVAC MALI CRNI (Dalmatian flagship)
+    "plavac-mali-crni": "plavac-mali",
+    "posip": "posip",                           # VIVC #9601 POŠIP BIJELI (Korčula white)
+    "posip-bijeli": "posip",
+    "marastina": "marastina",                   # VIVC #7338 MARAŠTINA (= Rukatac, Pavlos / Malvasia del Chianti synonym in Dalmatia)
+    "rukatac": "marastina",
+    "babic": "babic",                           # VIVC #952 BABIĆ (Šibenik / Primošten red)
+    "bogdanusa": "bogdanusa",                   # VIVC #1422 BOGDANUŠA (Hvar white)
+    "vugava": "vugava",                         # VIVC #13245 VUGAVA (Vis white; = Bugava)
+    "bugava": "vugava",
+    "grk": "grk",                               # VIVC #5026 GRK BIJELI (Korčula white)
+    "grk-bijeli": "grk",
+    "debit": "debit",                           # VIVC #3308 DEBIT (Dalmatian white)
+    "trbljan": "trbljan",                       # VIVC #12503 TRBLJAN (= Kuč, Dalmatian white)
+    "kuc": "trbljan",
+    "tribidrag": "tribidrag",                   # VIVC #17636 TRIBIDRAG (= Crljenak Kaštelanski = Zinfandel = Primitivo)
+    "crljenak-kastelanski": "tribidrag",        # Croatian name for the same variety
+    "kastelanski-crljenak": "tribidrag",
+    "zinfandel": "tribidrag",                   # US/Croatian-origin synonym
+    "primitivo": "tribidrag",                   # IT synonym (DNA-equivalent)
+    "grasevina": "welschriesling",              # VIVC #13096 WELSCHRIESLING (= Graševina = Laški rizling = Riesling Italico — distinct from Renski rizling / Riesling)
+    "laski-rizling": "welschriesling",
+    "rizvanac": "muller-thurgau",               # VIVC #8141 MÜLLER-THURGAU; Croatian name
+    "malvazija-istarska": "malvazija-istarska", # VIVC #7349 MALVAZIJA ISTARSKA (Istrian white)
+    "muskat-zuti": "muskat-zuti",               # VIVC #8242 MUSCAT D'ALEXANDRIE — but the Croatian "Muškat žuti" is the YELLOW (Muscat Lunel) cluster; pinned as its own slug until VIVC reconciliation
+    "frankovka": "blaufrankisch",               # VIVC #1459 BLAUFRÄNKISCH; Croatian name for Lemberger/Blaufränkisch
+    "skrlet": "skrlet",                         # VIVC #11343 ŠKRLET BIJELI (Moslavina white)
+    "skrlet-bijeli": "skrlet",
+    "zlahtina": "zlahtina",                     # VIVC #13832 ŽLAHTINA (Krk white)
+    "zelenac-slatki": "zelenac-slatki",         # Plešivica
+    "kraljevina-crvena": "kraljevina",          # Zagorje
+    "moslavac": "furmint",                      # VIVC #4456 FURMINT; Croatian name in Moslavina
+    "moslavac-zuti": "furmint",
+    "pusipel": "furmint",                       # alternate Croatian name in eastern Slavonia/Međimurje
+    "mediteranska-istra": "malvazija-istarska", # source-text typo, occasionally appears (cf. INAO-typo precedent)
+    # ----- HU EUR-Lex Egységes-dokumentum varieties. Hungarian wine
+    # grapes the EU single document lists in section 7 ("Fontosabb
+    # borszőlőfajták") that the FR/ES/PT/IT/AT/SI/HR seed never
+    # carried. Surfaced by scripts/hu/02_extract_pliegos.py into
+    # raw/hu/extraction-unknowns.json. Hungarian synonyms / regional
+    # names fold to the canonical slug; native Hungarian crossings
+    # stay on their own slug.
+    "harslevelu": "harslevelu",                 # VIVC #5331 HÁRSLEVELŰ (Tokaj signature white)
+    "lindenblattrige": "harslevelu",            # German synonym
+    "lindeblattrige": "harslevelu",
+    "feuilles-de-tilleul": "harslevelu",        # French synonym
+    "lipovina": "harslevelu",                   # Slovak synonym
+    "olaszrizling": "welschriesling",           # VIVC #13096 WELSCHRIESLING (Hungarian name)
+    "olasz-rizling": "welschriesling",
+    "nemes-rizling": "welschriesling",
+    "rajnai-rizling": "riesling",               # Hungarian name for Riesling
+    "tramini": "gewurztraminer",                # Hungarian name for Gewürztraminer
+    "kekfrankos": "blaufrankisch",              # Hungarian name for Blaufränkisch
+    "kek-frankos": "blaufrankisch",
+    "kadarka": "kadarka",                       # VIVC #5734 KADARKA (Hungarian/Bulgarian red)
+    "jenei-fekete": "kadarka",                  # Hungarian synonym
+    "biborkadarka": "biborkadarka",             # Hungarian crossing (Kadarka × Csókaszőlő)
+    "kekoporto": "blauer-portugieser",          # Hungarian for Blauer Portugieser
+    "kek-oporto": "blauer-portugieser",
+    "portugizer": "blauer-portugieser",
+    "blauer-portugieser": "blauer-portugieser",
+    "portugieser": "blauer-portugieser",
+    "cserszegi-fuszeres": "cserszegi-fuszeres", # native Hungarian crossing
+    "irsai-oliver": "irsai-oliver",             # native Hungarian crossing
+    "irsai": "irsai-oliver",
+    "muskat-oliver": "irsai-oliver",            # synonym
+    "zolotis": "irsai-oliver",                  # synonym
+    "kiralyleanyka": "kiralyleanyka",           # Hungarian "Little Queen" — Fetească Regală cluster
+    "feteasca-regala": "kiralyleanyka",         # Romanian synonym (DNA = Kiralyleányka)
+    "feteasca-regale": "kiralyleanyka",
+    "danosi-leanyka": "kiralyleanyka",
+    "galbena-de-ardeal": "kiralyleanyka",
+    "leanyka": "leanyka",                       # Hungarian — Fetească Albă cluster
+    "feteasca-alba": "leanyka",                 # Romanian synonym (DNA = Leányka)
+    "leanyszolo": "leanyka",
+    "madchentraube": "leanyka",                 # German synonym
+    "juhfark": "juhfark",                       # native Hungarian (Somló signature white)
+    "ezerjo": "ezerjo",                         # native Hungarian (Mór signature white)
+    "kolmreifler": "ezerjo",
+    "tausendgute": "ezerjo",
+    "tausendachtgute": "ezerjo",
+    "trummertraube": "ezerjo",
+    "korponai": "ezerjo",
+    "szadocsina": "ezerjo",
+    "szurkebarat": "pinot-gris",                # Hungarian name for Pinot Gris
+    "feher-burgundi": "pinot-blanc",            # Hungarian name for Pinot Blanc
+    "kek-rulandi": "pinot-noir",                # Hungarian name for Pinot Noir
+    "ottonel-muskotaly": "muscat-ottonel",      # Muscat Ottonel
+    "muscat-ottonel": "muscat-ottonel",
+    "hamburgi-muskotaly": "muscat-hambourg",    # Hungarian for Muscat de Hambourg
+    "muscat-de-hamburg": "muscat-hambourg",
+    "sarga-muskotaly": "muscat-blanc-a-petits-grains",   # Hungarian "Yellow Muscat" = Muscat Lunel / Muscat blanc à petits grains
+    "mátrai-muskotaly": "muscat-blanc-a-petits-grains",
+    "kovidinka": "kovidinka",                   # Hungarian — Vojvodina cluster
+    "dinka-crvena": "kovidinka",
+    "csabagyongye": "csabagyongye",             # native Hungarian crossing
+    "perle-di-csaba": "csabagyongye",
+    "pearl-of-csaba": "csabagyongye",
+    "csaba-gyongye": "csabagyongye",
+    "zalagyongye": "zalagyongye",               # native Hungarian crossing
+    "kunleany": "kunleany",                     # native Hungarian crossing
+    "nektar": "nektar",                         # native Hungarian crossing
+    "aletta": "aletta",                         # native Hungarian crossing
+    "medina": "medina",                         # native Hungarian crossing
+    "generosa": "generosa",                     # native Hungarian crossing
+    "zenit": "zenit",                           # native Hungarian crossing
+    "zeta": "zeta",                             # native Hungarian crossing
+    "kabar": "kabar",                           # native Hungarian crossing
+    "turan": "turan",                           # native Hungarian crossing
+    "csokaszolo": "csokaszolo",                 # native Hungarian (Tokaj-area red)
+    "pozsonyi-feher": "pozsonyi-feher",         # native Hungarian (Pozsony / Bratislava white)
+    "czetenyi-feher": "pozsonyi-feher",
+    "kereklevelu": "chardonnay",                # Hungarian synonym for Chardonnay
+    "cabernet-dorsa": "cabernet-dorsa",         # German crossing, used in HU eAmbrosia
+    "cabernet-carbon": "cabernet-carbon",
+    "blauburger": "blauburger",                 # Austrian crossing also used in HU
+    # Additional HU varieties surfaced by stage 02 unknowns:
+    "zefir": "zefir",                           # Hungarian crossing (white)
+    "ezerfurtu": "ezerfurtu",                   # Hungarian "thousand-cluster" white
+    "zengo": "zengo",                           # Hungarian crossing
+    "alibernet": "alibernet",                   # crossing (Alicante Bouschet × Cabernet Sauvignon)
+    "menoire": "menoire",                       # Hungarian crossing (red)
+    "arany-sarfeher": "arany-sarfeher",         # native Hungarian (Izsák specialty)
+    "izsaki-sarfeher": "arany-sarfeher",        # alias — Izsák regional name
+    "huszar-szolo": "huszar-szolo",             # native Hungarian
+    "gyongyrizling": "gyongyrizling",           # Hungarian "pearl riesling" crossing
+    "kerner": "kerner",                         # German Müller-Thurgau × Trollinger crossing
+    "rubintos": "rubintos",                     # Hungarian crossing (red)
+    "decsi-szagos": "decsi-szagos",             # Hungarian "Decs perfume" white
+    "zold-szagos": "zold-szagos",               # Hungarian "green perfume" white
+    "patria": "patria",                         # Hungarian crossing
+    "poloskei-muskotaly": "poloskei-muskotaly", # Hungarian Muscat crossing
+    "rozalia": "rozalia",                       # Hungarian crossing
+    "rozsako": "rozsako",                       # Hungarian crossing
+    "viktoria-gyongye": "viktoria-gyongye",     # Hungarian crossing
+    "csomor": "csomor",                         # native Hungarian white
+    "csomorika": "csomor",                      # diminutive form
+    "domina": "domina",                         # German Portugieser × Pinot Noir crossing
+    "grasa-de-cotnari": "grasa-de-cotnari",     # Romanian variety, also in HU
+    "koverszolo": "koverszolo",                 # native Hungarian (Tokaj-area Grasă)
+    "sagrantino": "sagrantino",                 # Italian, used in HU
+    "cirfandli": "zierfandler",                 # Hungarian name for Zierfandler (AT Spätrot)
+    "piros-cirfandli": "zierfandler",
+    "zierfandler": "zierfandler",
+    "meszikadar": "meszikadar",                 # Hungarian crossing
+    "bakator": "bakator",                       # native Hungarian / Transylvanian family
+    "kek-bakator": "bakator",
+    "piros-bakator": "bakator",
+    "bakar-rozsa": "bakator",
+    "bakator-rouge": "bakator",
+    "bakatortraube": "bakator",
+    "budai-zold": "budai-zold",                 # native Hungarian
+    "zold-budai": "budai-zold",
+    "budai": "budai-zold",
+    "duna-gyongye": "duna-gyongye",             # Hungarian "Pearl of the Danube" crossing
+    "pannon-frankos": "blaufrankisch",          # Hungarian Kékfrankos clone, folded
+    "jubileum-75": "jubileum-75",               # Hungarian crossing
+    "odysseus": "odysseus",                     # Hungarian crossing
+    "orpheus": "orpheus",                       # Hungarian crossing
+    "zeus": "zeus",                             # Hungarian crossing
+    "pintes": "pintes",                         # Hungarian
+    "refren": "refren",                         # Hungarian crossing
+    "vertes-csillaga": "vertes-csillaga",       # Hungarian crossing
+    "vulcanus": "vulcanus",                     # Hungarian crossing
+    "szederkenyi-feher": "szederkenyi-feher",   # Hungarian
+    "nemet-dinka": "kovidinka",                 # Hungarian "German Dinka" — folded to kovidinka cluster
+    "gyudi-feher": "gyudi-feher",               # Hungarian (Pécs)
+    "zoldfeher": "zoldfeher",                   # native Hungarian
+    "zoldszolo": "zoldfeher",
+    "csillam": "csillam",                       # Hungarian crossing
+    # ── Romanian (RO) native varieties ────────────────────────────────
+    # The upstream slugifier ASCII-folds + kebab-cases, so all alias
+    # keys here are ASCII-only. Comments carry the diacritic forms.
+    "feteasca-alba": "feteasca-alba",            # VIVC #4044 FETEASCĂ ALBĂ — RO Moldova white
+    "feteasca-regala": "feteasca-regala",        # VIVC #4045 FETEASCĂ REGALĂ — RO crossing (Grasă × Frâncușă)
+    "feteasca-neagra": "feteasca-neagra",        # VIVC #4046 FETEASCĂ NEAGRĂ — RO native red
+    "tamaioasa-romaneasca": "muscat-blanc-a-petits-grains",
+                                                 # Tămâioasă Românească — VIVC syn. of Muscat Blanc à Petits Grains
+    "tamaioasa": "muscat-blanc-a-petits-grains", # bare form
+    "tamioasa-romaneasca": "muscat-blanc-a-petits-grains",  # alt spelling
+    "busuioaca-de-bohotin": "busuioaca-de-bohotin",
+                                                 # Busuioacă de Bohotin — Moldova native aromatic rosé
+    "grasa-de-cotnari": "grasa-de-cotnari",      # VIVC #5050 — botrytis-prone Cotnari white
+    "grasa": "grasa-de-cotnari",                 # bare form
+    "babeasca-neagra": "babeasca-neagra",        # VIVC #908 BĂBEASCĂ NEAGRĂ — Moldova red
+    "negru-de-dragasani": "negru-de-dragasani",  # Negru de Drăgășani — RO crossing
+    "novac": "novac",                            # RO interspecific red — Drăgășani
+    "crampoșie-selectionata": "crampoșie-selectionata",  # diacritic form as it arrives from the documento-unic
+    "crampoșie": "crampoșie-selectionata",                # bare diacritic form
+    "crampoșie-selectionată": "crampoșie-selectionata",   # both -ata/-ată variants seen
+    "crampo-ie-selectionata": "crampoșie-selectionata",   # `_grape_entity` slug-key (NFKD-stripped variant)
+    "francusa": "francusa",                      # Frâncușă — Cotnari/Iași white
+    "galbena-de-odobesti": "galbena-de-odobesti",  # Galbenă de Odobești — Moldova-Vrancea white
+    "plavaie": "plavaie",                        # Plăvaie — native RO white (Vrancea)
+    "zghihara-de-husi": "zghihara-de-husi",      # Zghihară de Huși — native RO white (Huși)
+    "sarba": "sarba",                            # Șarbă — RO crossing (Tămâioasă × Riesling italian)
+    "mustoasa-de-maderat": "mustoasa-de-maderat", # Mustoasă de Măderat — native RO white (Banat / Miniș)
+    "mustoasa": "mustoasa-de-maderat",
+    "iordana": "iordana",                        # Iordană — Transilvania native white
+    "majarca-alba": "majarca-alba",              # Majarcă Albă — Banat / Crișana native white
+    "raluca": "raluca",                          # RO crossing (Recaș)
+    # SCDVV / Romanian breeding-station crossings (1970s–1990s).
+    # Iași unless noted; VIVC IDs in DEFAULT_COLOUR comments below.
+    "alutus": "alutus",                          # Drăgășani — Băbească Neagră × Saperavi
+    "arcas": "arcas",                            # Iași — Cabernet Sauvignon × Băbească Neagră
+    "aromat-de-iasi": "aromat-de-iasi",          # Iași — Tămâioasă Românească OP
+    "balada": "balada",                          # Iași — Băbească Neagră × Pinot Noir
+    "batuta-neagra": "batuta-neagra",            # VIVC #1042 — Moldova native red
+    "negru-batut": "batuta-neagra",              # word-order variant — same VIVC accession
+    "cadarca": "kadarka",                        # Romanian spelling of Kadarka — fold to existing canonical
+    "codana": "codana",                          # Iași/Odobești — Băbească Neagră × Cabernet Sauvignon
+    "columna": "columna",                        # Murfatlar — Pinot Gris × Grasă de Cotnari
+    "cristina": "cristina",                      # Murfatlar / ICDVV — RO crossing, red (Colinele Dobrogei)
+    "donaris": "donaris",                        # Greaca-Giurgiu — Bicane × Muscat Hamburg
+    "golia": "golia",                            # Iași — Șarbă × Sauvignon Blanc
+    "miorita": "miorita",                        # Odobești-Vrancea — Coarna Albă OP
+    "negru-aromat": "negru-aromat",              # Drăgășani — Cabernet Sauvignon OP
+    "ozana": "ozana",                            # Iași — Csaba Gyöngye × Afus Ali
+    "unirea": "unirea",                          # Iași — Crâmpoșie × Muscat Ottonel
+    "babeasca-gri": "babeasca-gri",              # VIVC #842 — Băbească Neagră gris mutation (Odobești 1975)
+    "babeasca-gris": "babeasca-gri",             # VIVC prime spelling
+    # RO/foreign-language synonyms folded to existing canonicals.
+    "rkatsiteli": "rkatsiteli",                  # VIVC #10116 — Georgian white
+    "rkatiteli": "rkatsiteli",                   # RO/RU spelling
+    "dedali-rkatiteli": "rkatsiteli",            # VIVC syn DEDALI RKATITERLI
+    "korolioc-rkatiteli": "rkatsiteli",          # VIVC syn KOROLIOK RKATITELI / COROLIOC
+    "schwarzer-kadarka": "kadarka",              # German "black Kadarka"
+    "rubinroter-kadarka": "kadarka",             # German "ruby-red Kadarka" — synonym, NOT Bíborkadarka
+    "riesling-de-rin": "riesling",               # RO "Rhine Riesling"
+    "riesling-de-rhin": "riesling",
+    "petit-vidure": "cabernet-sauvignon",        # Bordeaux synonym
+    "bourdeos-tinto": "cabernet-sauvignon",      # Spanish synonym
+    "affume": "pinot-gris",                      # French Pinot Gris synonym (Affumé)
+    "grau-burgunder": "pinot-gris",              # German Pinot Gris synonym
+    "grauer-monch": "pinot-gris",                # "Grauer Mönch"
+    "pinot-cendre": "pinot-gris",                # French synonym
+    "pinot-grigio": "pinot-gris",                # Italian name
+    "rulander": "pinot-gris",                    # German name
+    "blauer-spatburgunder": "pinot-noir",        # German Pinot Noir synonym
+    "burgund-mic": "pinot-noir",                 # RO "small Burgundy"
+    "burgunder-roter": "pinot-noir",
+    "klavner-morillon-noir": "pinot-noir",       # Klävner/Morillon — Austrian synonyms
+    "olasz-riesling": "welschriesling",          # Hungarian "Italian Riesling" (space variant)
+    "rosetraminer": "gewurztraminer",            # German rose-Traminer synonym
+    "savagnin-roz": "gewurztraminer",            # RO "pink Savagnin"
+    "konigliche-madchentraube": "kiralyleanyka", # German "Royal Madchentraube"
+    "konigsast": "kiralyleanyka",                # German synonym
+    "ktralyleanka": "kiralyleanyka",             # corrupt-spelling Királyleányka (seen in Lechința doc)
+    "danasana": "kiralyleanyka",                 # Dănăşană — RO Transylvanian synonym
+    "pasareasca-alba": "leanyka",                # RO "white Păsărească" — Leányka synonym
+    "poama-fetei": "leanyka",                    # RO "maiden's grape"
+    "schwarze-madchentraube": "feteasca-neagra", # German — black Madchentraube
+    "poama-fetei-neagra": "feteasca-neagra",
+    "pasareasca-neagra": "feteasca-neagra",
+    "coada-randunicii": "feteasca-neagra",       # RO "swallow's tail" — local Fetească Neagră synonym
+    "tamaioasa-roza": "muscat-a-petits-grains-rouges",  # rose-coloured Tămâioasă = Muscat Rouge de Frontignan
+    # Internationally-known varieties on Romanian-language labels —
+    # the Romanian spelling-variants land here so they fold to VIVC primes.
+    "riesling-italian": "welschriesling",        # Riesling italian = Welschriesling family
+    "muscat-ottonel": "muscat-ottonel",          # VIVC #8246
+    "pinot-gris-rulanda": "pinot-gris",          # RO synonym
+    "rulanda": "pinot-gris",                     # RO bare form
+    "traminer-rose": "gewurztraminer",           # Traminer roz = rosé-pink Traminer = Gewürztraminer
+    "traminer-aromat": "gewurztraminer",         # RO official name (Traminer aromat = Gewürztraminer)
+    "traminer-aromat-alb": "gewurztraminer",     # white-form variant on Romanian labels
+    # ----- BG (Bulgaria) native varieties + Cyrillic→Latin folds -----
+    # Bulgarian native varieties self-canonicalise; the Cyrillic spellings
+    # round-trip through unidecode() in slugify() to the same Latin slugs.
+    # Cross-language synonyms fold to the existing canonical.
+    "mavrud": "mavrud",                           # VIVC #7414 MAVRUD — BG native red
+    "shiroka-melnishka-loza": "shiroka-melnishka-loza",  # BG native "broad-leaf Melnik vine"
+    "shiroka-melnishka": "shiroka-melnishka-loza",
+    "shiroka-melnishka-loza-melnik": "shiroka-melnishka-loza",
+    "melnik-1300": "shiroka-melnishka-loza",      # umbrella name on labels
+    "rannamelniska-loza": "early-melnik",         # "early Melnik" — Melnik 55 crossing
+    "rannna-melniska-loza": "early-melnik",
+    "ranna-melnishka-loza": "early-melnik",
+    "early-melnik": "early-melnik",               # Мелник 55 (early variant)
+    "melnik-55": "early-melnik",
+    "melnik-82": "melnik-82",                     # BG Mavrud × Pinot noir crossing
+    "melnik-iubileen-1300": "melnik-iubileen-1300",
+    "melnishki-rubin": "melnishki-rubin",         # BG crossing (Shiroka × Cabernet)
+    "pamid": "pamid",                             # BG native red (Plovdiv basin)
+    "dimyat": "dimyat",                           # BG native white (Dunavska / Black Sea)
+    "dimiat": "dimyat",                           # alt transliteration
+    "cherven-misket": "cherven-misket",           # BG "red Misket" (native white-pink)
+    "misket-cherven": "cherven-misket",
+    "tamyanka": "muscat-blanc-a-petits-grains",   # BG name for Muscat blanc à petits grains
+    "tamianka": "muscat-blanc-a-petits-grains",
+    "temenuga": "muscat-blanc-a-petits-grains",   # BG synonym (Tamyanka labelled "Temenuga")
+    "sandanski-misket": "sandanski-misket",       # BG SW native white
+    "misket-sandanski": "sandanski-misket",
+    "muskat-sandanski": "sandanski-misket",       # Latin transliteration variant
+    "rkatsiteli": "rkatsiteli",                   # VIVC #10063 — pan-Black-Sea white
+    "gamza": "kadarka",                           # BG synonym for Kadarka (DNA match)
+    "kerasuda": "kerasuda",                       # BG SW native white (Melnik area)
+    "keratsuda": "kerasuda",                      # alt transliteration
+    "bogdan": "bogdan",                           # BG modern crossing
+    "rubin": "rubin",                             # BG Nebbiolo × Syrah crossing
+    "ruen": "ruen",                               # BG modern crossing
+    "storgozia": "storgozia",                     # BG modern crossing
+    "kaylashki-misket": "kaylashki-misket",       # BG modern crossing (white)
+    "varnenski-misket": "varnenski-misket",       # BG Varna-area Misket
+    # Internationally-known varieties transliterated from Cyrillic via
+    # unidecode — folded to VIVC primes.
+    "kaberne-sovinion": "cabernet-sauvignon",     # Каберне Совиньон
+    "kaberne-fran": "cabernet-franc",             # Каберне Фран
+    "merlo": "merlot",                            # Мерло
+    "sira": "syrah",                              # Сира
+    "shiraz": "syrah",
+    "sovinion-blan": "sauvignon-blanc",           # Совиньон блан
+    "shardone": "chardonnay",                     # Шардоне
+    "shardonne": "chardonnay",
+    "pino-nuar": "pinot-noir",                    # Пино ноар
+    "pino-noar": "pinot-noir",
+    "pino-gri": "pinot-gris",                     # Пино гри
+    "pino-blan": "pinot-blanc",                   # Пино блан
+    "muskat-otonel": "muscat-ottonel",            # Мускат отонел
+    "vionie": "viognier",                         # Вионие
+    "grenash": "grenache",                        # Гренаш
+    "mourvedr": "mourvedre",                      # Мурведр
+    "mourvedre-bg": "mourvedre",
+    "muskat": "muscat-blanc-a-petits-grains",     # generic Cyrillic Muskat fallback
+    "tramin-aromaten": "gewurztraminer",          # Bulgarian "aromatic Traminer"
+    "traminer": "gewurztraminer",                 # bare Traminer fallback (BG context)
+    "biser": "biser",                             # BG modern crossing
+    "marselan": "marselan",                       # Marselan in Cyrillic-transliterated docs
+    "vrachanski-misket": "vrachanski-misket",     # BG Vratsa-area Misket
+    "buket": "buket",                             # BG modern crossing
+    "trakiiski-biser": "trakiiski-biser",         # BG modern crossing
+    # ----- GR (Greece) native varieties — Greek-script folds via unidecode -----
+    # The Greek-script names round-trip through unidecode() in slugify()
+    # to non-standard romanisations (asurtiko / ksinomauro / rompola /
+    # maurodaphne / sabbatiano / negkoska / …). We fold those to the
+    # internationally-used English canonical slug (assyrtiko / xinomavro
+    # / robola / mavrodaphne / savatiano / negoska / …) so VIVC search
+    # and the Wikipedia lexicon both find the right page.
+    # Whites:
+    "asurtiko": "assyrtiko",                      # Ασύρτικο — Santorini white
+    "athiri": "athiri",                           # Αθήρι — Aegean white
+    "atheri": "athiri",
+    "aidani": "aidani",                           # Αηδάνι — Santorini white
+    "aedani": "aidani",
+    "malagousia": "malagousia",                   # Μαλαγουζιά — modern revival
+    "malagouzia": "malagousia",
+    "moschofilero": "moschofilero",               # Μοσχοφίλερο — Mantinia pink-skinned
+    "moskhophilero": "moschofilero",
+    "moshofilero": "moschofilero",
+    "roditis": "roditis",                         # Ροδίτης — Patras pink-skinned
+    "rodites": "roditis",                         # unidecode
+    "rhoditis": "roditis",
+    "robola": "robola",                           # Ρομπόλα — Kefallinia white
+    "rompola": "robola",                          # unidecode
+    "savatiano": "savatiano",                     # Σαββατιανό — Attika white
+    "sabbatiano": "savatiano",                    # unidecode
+    "vilana": "vilana",                           # Βιλάνα — Cretan white
+    "bilana": "vilana",                           # unidecode
+    "vidiano": "vidiano",                         # Βιδιανό — Cretan white revival
+    "bidiano": "vidiano",
+    "debina": "debina",                           # Ντεμπίνα — Zitsa white
+    "ntempina": "debina",                         # unidecode
+    "thrapsathiri": "thrapsathiri",               # Θραψαθήρι — Cretan white
+    "thrapsatheri": "thrapsathiri",
+    "batiki": "batiki",                           # Μπατίκι — Thessaly white
+    "mpatiki": "batiki",                          # unidecode
+    "lagorthi": "lagorthi",                       # Λαγόρθι — Peloponnese white
+    "monemvasia": "monemvasia",                   # Μονεμβασιά — Peloponnese white
+    "monemvasia-malvasia": "monemvasia",
+    # Reds:
+    "xinomavro": "xinomavro",                     # Ξινόμαυρο — Naoussa red
+    "ksinomauro": "xinomavro",                    # unidecode
+    "xynomavro": "xinomavro",
+    "xinogalsto": "xinomavro",                    # Ξινόγκαλτσο — local Xinomavro biotype/synonym
+    "ksinogkaltso": "xinomavro",
+    "agiorgitiko": "agiorgitiko",                 # Αγιωργίτικο — Nemea red
+    "agiorghitiko": "agiorgitiko",
+    "mavrodaphne": "mavrodaphne",                 # Μαυροδάφνη — Patras/Kefallinia red
+    "maurodaphne": "mavrodaphne",                 # unidecode
+    "mavrodafni": "mavrodaphne",                  # eAmbrosia transcription form
+    "mavrodaphni": "mavrodaphne",
+    "limnio": "limnio",                           # Λημνιό — Limnos red
+    "lemnio": "limnio",                           # unidecode
+    "kalampaki": "limnio",                        # Καλαμπάκι — Limnio synonym
+    "limniona": "limniona",                       # Λημνιώνα — Thessaly red revival
+    "lemniona": "limniona",
+    "mandilaria": "mandilaria",                   # Μανδηλαριά — Aegean/Cretan red
+    "mandelaria": "mandilaria",                   # unidecode
+    "amorgiano": "mandilaria",                    # Αμοργιανό — Mandilaria synonym
+    "doumbiano": "mandilaria",                    # Δουμπιανό — Mandilaria synonym
+    "kotsifali": "kotsifali",                     # Κοτσιφάλι — Cretan red
+    "kotsiphali": "kotsifali",
+    "liatiko": "liatiko",                         # Λιάτικο — Cretan red
+    "negoska": "negoska",                         # Νεγκόσκα — Goumenissa red
+    "negkoska": "negoska",                        # unidecode
+    "negoshka": "negoska",
+    "vradiano": "vradiano",                       # Βραδιανό — Evia red
+    "bradiano": "vradiano",
+    "stavroto": "stavroto",                       # Σταυρωτό — Rapsani red
+    "krasato": "krasato",                         # Κρασάτο — Rapsani red
+    # Greek synonyms for international varieties:
+    "fileri": "moschofilero",                     # Φιλέρι — synonym
+    "asuda": "asproudes",                         # absorbed (white-skinned generic, dropped in BLOCKLIST below)
+    # ----- DE (Germany) Einziges-Dokument varieties --------------------
+    # German wine carries the most prolific set of breeding-station
+    # crossings in the corpus: Geilweilerhof (JKI; "GM" + named releases),
+    # Geisenheim, Weinsberg ("WE" codes), Würzburg (Klosterneuburg/Würzburg
+    # parentage). Most named releases have VIVC entries. Anonymous breeder
+    # codes (gm-643-10, we-94-26-36, vb-91-26-5, …) are kept as raw
+    # candidates for now — no Wikipedia + no VIVC presence in v1.
+    # International varieties under their German names fold to the
+    # canonical slug; native German crossings stay on their own slug.
+    "spatburgunder": "pinot-noir",                # VIVC #9279 PINOT NOIR — German Spätburgunder
+    "fruhburgunder": "frueburgunder",              # VIVC #4461 PINOT MEUNIER siblings? — actually Frühburgunder is a clone of Pinot Noir, but treated as a distinct variety in Germany
+    "fruehburgunder": "frueburgunder",
+    "frueburgunder": "frueburgunder",
+    "blauer-fruhburgunder": "frueburgunder",
+    "blauer-fruehburgunder": "frueburgunder",
+    # LU cahier des charges section f names this variety in French:
+    # "Pinot noir précoce" — same cultivar as DE Frühburgunder.
+    "pinot-noir-precoce": "frueburgunder",
+    "pinot-precoce": "frueburgunder",
+    "weissburgunder": "pinot-blanc",              # VIVC #9276 PINOT BLANC — German Weißburgunder
+    "weisser-burgunder": "pinot-blanc",
+    "grauer-burgunder": "pinot-gris",
+    "schwarzriesling": "pinot-meunier",           # VIVC #9275 PINOT MEUNIER — German Schwarzriesling
+    "mullerrebe": "pinot-meunier",                # synonym
+    "muellerrebe": "pinot-meunier",
+    "muller-thurgau": "muller-thurgau",           # VIVC #8141 MÜLLER-THURGAU (Riesling × Madeleine Royale)
+    "mueller-thurgau": "muller-thurgau",
+    "rivaner": "muller-thurgau",                  # luxembourgish / DE synonym
+    "blauer-limberger": "lemberger",              # VIVC #1459 BLAUFRÄNKISCH — German Lemberger / Limberger
+    "limberger": "lemberger",
+    "blauer-trollinger": "schiava-grossa",         # VIVC #11237 SCHIAVA GROSSA = Vernatsch = Trollinger
+    "trollinger": "schiava-grossa",
+    "gutedel": "chasselas",                       # German Chasselas
+    "weisser-gutedel": "chasselas",
+    "elbling": "elbling",                          # VIVC #3811 ELBLING — Mosel native white
+    "weisser-elbling": "elbling",
+    "roter-elbling": "roter-elbling",              # VIVC #3819 ELBLING RUDE — red colour-mutation
+    "elbling-rouge": "roter-elbling",
+    "dornfelder": "dornfelder",                   # VIVC #3776 DORNFELDER (Helfensteiner × Heroldrebe)
+    "helfensteiner": "helfensteiner",              # VIVC #5364 HELFENSTEINER
+    "heroldrebe": "heroldrebe",                   # VIVC #5400 HEROLDREBE
+    "regent": "regent",                           # VIVC #9788 REGENT (Diana × Chambourcin), Geilweilerhof
+    "rondo": "rondo",                             # VIVC #10153 RONDO (Saperavi Severnyi × St Laurent)
+    "domina": "domina",                           # VIVC #3754 DOMINA (Portugieser × Spätburgunder)
+    "deckrot": "deckrot",                          # VIVC #3493 DECKROT (Pinot gris × Teinturier)
+    "dunkelfelder": "dunkelfelder",                # VIVC #3815 DUNKELFELDER (teinturier red)
+    "dakapo": "dakapo",                            # VIVC #3267 DAKAPO (Portugieser × Deckrot)
+    "tauberschwarz": "tauberschwarz",              # VIVC #11842 TAUBERSCHWARZ — native red
+    "acolon": "acolon",                            # VIVC #82 ACOLON (Lemberger × Dornfelder), Weinsberg
+    "cabernet-mitos": "cabernet-mitos",            # VIVC #2078 CABERNET MITOS (Lemberger × Teinturier)
+    "cabernet-dorsa": "cabernet-dorsa",            # VIVC #2030 CABERNET DORSA (Dornfelder × Cab Sauv)
+    "cabernet-dorio": "cabernet-dorio",            # VIVC #2031 CABERNET DORIO (Dornfelder × Cab Sauv), sibling
+    "cabernet-cubin": "cabernet-cubin",            # VIVC #2026 CABERNET CUBIN
+    "cabernet-cortis": "cabernet-cortis",          # VIVC #2025 CABERNET CORTIS (Solaris × Cab Sauv)
+    "cabernet-carbon": "cabernet-carbon",          # VIVC #2018 CABERNET CARBON (Bronner × Cab Sauv)
+    "cabernet-blanc": "cabernet-blanc",            # VIVC #16258 CABERNET BLANC
+    "cabernet-cantor": "cabernet-cantor",          # VIVC #2017 CABERNET CANTOR (Bronner × Cab Sauv)
+    "cabernet-jura": "cabernet-jura",              # Valentin Blattner CH crossing (Cab Sauv x resistant)
+    "cabaret-noir": "cabaret-noir",                # VIVC interspecific red
+    "cabernet-bordo": "cabernet-franc",            # eastern-European Cab Franc synonym
+    "bacchus": "bacchus",                          # VIVC #908 BACCHUS (Silvaner × Riesling × Müller-Thurgau)
+    "faberrebe": "faberrebe",                      # VIVC #3917 FABER — Geisenheim crossing
+    "faber": "faberrebe",
+    "ortega": "ortega",                            # VIVC #8732 ORTEGA — Würzburg crossing
+    "optima": "optima",                            # VIVC #8731 OPTIMA — Geilweilerhof
+    "optima-113": "optima",                        # OPTIMA 113 = full breeder name
+    "reichensteiner": "reichensteiner",            # VIVC #9787 REICHENSTEINER — Geisenheim
+    "schonburger": "schonburger",                  # VIVC #11160 SCHÖNBURGER — Geisenheim
+    "schoenburger": "schonburger",
+    "siegerrebe": "siegerrebe",                    # VIVC #11629 SIEGERREBE — Alzey crossing
+    "sieger": "sieger",                            # VIVC #11627 SIEGER — Alzey crossing (sibling)
+    "wurzer": "wurzer",                            # VIVC #13469 WÜRZER — Alzey aromatic
+    "wuerzer": "wurzer",
+    "huxelrebe": "huxelrebe",                      # VIVC #5563 HUXELREBE (Chasselas × Courtillier Musqué)
+    "huxel": "huxelrebe",
+    "ehrenfelser": "ehrenfelser",                  # VIVC #3801 EHRENFELSER (Riesling × Knipperle)
+    "kerner": "kerner",                            # VIVC #5917 KERNER (Trollinger × Riesling), Weinsberg
+    "kernling": "kernling",                        # VIVC #5918 KERNLING — Kerner mutation
+    "scheurebe": "scheurebe",                      # already present above; reaffirmed for DE corpus
+    "samling-88": "scheurebe",                     # AT synonym
+    "samling": "scheurebe",
+    "morio-muskat": "morio-muskat",                # VIVC #8194 MORIO-MUSKAT — Geilweilerhof
+    "phoenix": "phoenix",                          # VIVC #9192 PHOENIX (Bacchus × Villard Blanc), Geilweilerhof
+    "phonix": "phoenix",
+    "phoenix-de": "phoenix",
+    "hibernal": "hibernal",                        # VIVC #5424 HIBERNAL — interspecific white
+    "helios": "helios",                            # VIVC #5362 HELIOS — Freiburg crossing
+    "felicia": "felicia",                          # VIVC #3961 FELICIA — Geilweilerhof
+    "merzling": "merzling",                        # VIVC #7659 MERZLING — Freiburg crossing
+    "solaris": "solaris",                          # VIVC #11781 SOLARIS — Freiburg crossing
+    "souvignier-gris": "souvignier-gris",          # VIVC #15947 SOUVIGNIER GRIS — Freiburg
+    "souvignier": "souvignier-gris",
+    "bronner": "bronner",                          # VIVC #1581 BRONNER — Freiburg interspecific white
+    "johanniter": "johanniter",                    # VIVC #5642 JOHANNITER — Freiburg
+    "muscaris": "muscaris",                        # VIVC #21068 MUSCARIS — Freiburg aromatic
+    "sauvignac": "sauvignac",                      # VIVC interspecific white
+    "saphira": "saphira",                          # VIVC #15966 SAPHIRA — Geilweilerhof
+    "albalonga": "albalonga",                      # VIVC #109 ALBALONGA — Geilweilerhof
+    "kanzler": "kanzler",                          # VIVC #5910 KANZLER — Alzey crossing
+    "juwel": "juwel",                              # VIVC #5710 JUWEL — Geilweilerhof
+    "mariensteiner": "mariensteiner",              # VIVC #7361 MARIENSTEINER — Würzburg
+    "septimer": "septimer",                        # VIVC #11367 SEPTIMER — Alzey
+    "sibera": "sibera",                            # VIVC #11589 SIBERA — Mlazice CZ crossing
+    "fidelio": "fidelio",                          # VIVC #4084 FIDELIO — Geilweilerhof
+    "sirius": "sirius",                            # VIVC #11696 SIRIUS — Geilweilerhof
+    "orion": "orion",                              # VIVC #8729 ORION — Geilweilerhof
+    "pollux": "pollux",                            # VIVC #9389 POLLUX — Geilweilerhof
+    "prinzipal": "prinzipal",                      # VIVC #9509 PRINZIPAL — Geilweilerhof
+    "rinot": "rinot",                              # VIVC interspecific white
+    "calandro": "calandro",                        # VIVC #2207 CALANDRO — Geilweilerhof red
+    "calardis-blanc": "calardis-blanc",            # VIVC #21065 CALARDIS BLANC — Geilweilerhof
+    "calardis-musque": "calardis-musque",          # Calardis Musqué — Geilweilerhof
+    "calardis-royal": "calardis-royal",            # Calardis Royal — Geilweilerhof
+    "calardis-soleil": "calardis-soleil",          # Calardis Soleil — Geilweilerhof
+    "villaris": "villaris",                        # VIVC #13169 VILLARIS — Geilweilerhof
+    "hegel": "hegel",                              # VIVC #5354 HEGEL — Geilweilerhof
+    "holder": "holder",                            # VIVC #5519 HÖLDER
+    "hoelder": "holder",
+    "freisamer": "freisamer",                      # VIVC #4459 FREISAMER — Freiburg
+    "regner": "regner",                            # VIVC #9802 REGNER — Alzey
+    "ehrenbreitsteiner": "ehrenbreitsteiner",      # VIVC #3800 EHRENBREITSTEINER — Geisenheim
+    "osteiner": "osteiner",                        # VIVC #8801 OSTEINER — Geisenheim
+    "rabaner": "rabaner",                          # VIVC #9667 RABANER — Geisenheim
+    "nobling": "nobling",                          # VIVC #8508 NOBLING — Freiburg
+    "perle": "perle",                              # VIVC #8865 PERLE (Müller-Thurgau × Gewürztraminer) — Würzburg
+    "gutenborner": "gutenborner",                  # VIVC #5283 GUTENBORNER — Geisenheim
+    "bukettsilvaner": "bukettsilvaner",            # VIVC #1812 BUKETTSILVANER — Alzey
+    "noblessa": "noblessa",                        # VIVC #8506 NOBLESSA — Geilweilerhof
+    "blutenmuskateller": "blutenmuskateller",      # already present
+    "muskat-trollinger": "muskat-trollinger",      # VIVC #8338 MUSCAT TROLLINGER
+    "muskateller": "muscat-blanc-a-petits-grains", # German Muscat
+    "gelber-muskateller": "muscat-blanc-a-petits-grains",
+    "roter-muskateller": "muscat-a-petits-grains-rouges",
+    "blauer-muskateller": "muscat-a-petits-grains-rouges",
+    "muskat-ottonel": "muscat-ottonel",            # already present
+    "morio": "morio-muskat",
+    "morio-muscat": "morio-muskat",
+    "auxerrois": "auxerrois",                      # VIVC #913 AUXERROIS (sibling of Chardonnay)
+    "auxerrois-blanc": "auxerrois",
+    "blauer-portugieser": "blauer-portugieser",    # already present
+    "portugieser-blau": "blauer-portugieser",
+    "blauer-spatburgunder": "pinot-noir",          # already present
+    "blauer-gaensfusser": "blauer-gaensfusser",     # VIVC GÄNSFÜSSER — Pfalz heritage red
+    "blauer-gansfusser": "blauer-gaensfusser",
+    "gelber-orleans": "gelber-orleans",            # VIVC #4622 ORLEANS — historical Rheingau white
+    "weisser-rauschling": "raeuschling",            # VIVC #9742 RÄUSCHLING — historical Rheinland white
+    "weisser-raeuschling": "raeuschling",
+    "rauschling": "raeuschling",
+    "raeuschling": "raeuschling",
+    "kleinberger": "kleinberger",                  # VIVC #6113 KLEINBERGER — Mosel heritage
+    "gelber-kleinberger": "kleinberger",
+    "donauriesling": "donauriesling",              # AT/DE interspecific white
+    "donauveltliner": "donauveltliner",            # AT/DE interspecific white
+    "blauburger": "blauburger",                    # already present (AT)
+    "schwarzer-heunisch": "heunisch",              # VIVC #5392 HEUNISCH WEISS — historical European parent grape, red mutation
+    "weisser-heunisch": "heunisch",
+    "heunisch": "heunisch",
+    "hartblau": "hartblau",                        # German interspecific red
+    "bolero": "bolero",                            # interspecific red crossing
+    "laurot": "laurot",                            # VIVC #12869 LAUROT — interspecific red
+    "piroso": "piroso",                            # interspecific red
+    "pinot-nova": "pinot-nova",                    # CH/DE interspecific red
+    "pinot-iskra": "pinot-iskra",                  # CH/DE interspecific red
+    "pinot-kors": "pinot-kors",                    # CH/DE interspecific red
+    "accent": "accent",                            # interspecific red crossing
+    "adelfraenkisch": "adelfraenkisch",             # historical Franken red — kept as own slug
+    "adelfrankisch": "adelfraenkisch",
+    "gruner-adelfraenkisch": "adelfraenkisch",
+    "gruener-adelfraenkisch": "adelfraenkisch",
+    "blauer-hangling": "blauer-hangling",          # Pfalz heritage red
+    "blauer-haengling": "blauer-hangling",
+    "bettlertraube": "bettlertraube",              # Franken heritage red
+    "geisdutte": "geisdutte",                      # Franken heritage white
+    "rheinfelder": "rheinfelder",                  # interspecific white
+    "comtessa": "comtessa",                        # Geilweilerhof
+    "divona": "divona",                            # Agroscope CH white
+    "aromera": "aromera",                          # Geilweilerhof crossing
+    "merlot-khorus": "merlot-khorus",              # IT/DE interspecific red
+    "merlot-kanthus": "merlot-kanthus",            # IT/DE interspecific red
+    "sauvignon-cita": "sauvignon-cita",            # IT/DE interspecific white
+    "sauvignon-sary": "sauvignon-sary",            # IT/DE interspecific white
+    "sauvitage": "sauvitage",                      # interspecific white
+    "thurling": "thurling",                        # heritage white
+    "weisser-lagler": "weisser-lagler",            # heritage white
+    "dalkauer": "dalkauer",                        # heritage white
+    "wildmuskat": "wildmuskat",                    # heritage aromatic
+    "muscabona": "muscabona",                      # heritage aromatic
+    "mucabona": "muscabona",
+    "orangentraube": "orangentraube",              # heritage white
+    "vogelfraenkisch": "vogelfraenkisch",          # historical Franken red
+    "burgunder-fraenkisch-kleiner": "vogelfraenkisch",
+    "kleiner-fraenkischer-burgunder": "vogelfraenkisch",
+    "kleiner-fraenkischer": "vogelfraenkisch",
+    "carillon": "carillon",                        # heritage variety
+    "savilon": "savilon",                          # heritage variety
+    "sulmer": "sulmer",                            # heritage variety
+    "ladner": "ladner",                            # heritage white
+    "jakob-gerhardt-blanc": "jakob-gerhardt-blanc", # German breeding-station crossing
+    "cumdeo-blanc": "cumdeo-blanc",                 # interspecific white
+    "cumdeo-rouge": "cumdeo-rouge",                 # interspecific red
+    "perle-von-zala": "csabagyongye",              # alternate German name for Csabagyöngye
+    "zala-gyoengye": "csabagyongye",
+    "zala-gyongye": "csabagyongye",
+    "staufer": "staufer",                          # VIVC #11825 STAUFER — Weinsberg
+    "hecker": "hecker",                            # Weinsberg crossing
+    "allegro": "allegro",                          # Geilweilerhof crossing — separate from Galego Dourado
+    "arneis": "arneis",                            # Italian white (used in DE Sekt blends)
+    "barbera": "barbera",                          # Italian red (used in some DE Sekt)
+    "carmenere": "carmenere",                      # already mapped; reaffirmed
+    "tannat": "tannat",                            # already mapped; reaffirmed
+    "garnacha-tintorera": "alicante-bouschet",     # ES synonym
+    "alicante-bouschet": "alicante-bouschet",      # VIVC #234 ALICANTE BOUSCHET
+    "alicante": "alicante-bouschet",
+    "alvarinho": "albarino",                       # PT name for ES Albariño
+    "artaban": "artaban",                          # VIVC #21138 ARTABAN — INRA interspecific red
+    "voltis": "voltis",                            # VIVC #21163 VOLTIS — INRA interspecific white
+    "floreal": "floreal",                          # VIVC #21162 FLOREAL — INRA interspecific white
+    "vidoc": "vidoc",                              # VIVC #21164 VIDOC — INRA interspecific red
+    "sauvignac": "sauvignac",                      # reaffirmed
+    "valerie": "valerie",                          # German interspecific
+    "weisser-deckling": "weisser-deckling",         # heritage white
+    "schwarzer-deckling": "schwarzer-deckling",     # heritage red
+    "blauer-arbst": "blauer-arbst",                # heritage red
+    "weisser-arbst": "weisser-arbst",              # heritage white
+    "palas": "palas",                              # Czech interspecific red — Polášek / Klingenberger crossing
+    "levitage": "levitage",                        # German interspecific white
+    "riesel": "riesel",                            # German crossing — Riesling × Madeleine angevine sibling
+    # ─── Slovakia (Vinohradnícke novostavby) — own SK crossings,
+    # bred at VÚVV Bratislava / SCPV in the 1960s-90s. Each gets its
+    # own slug (no foreign-cultivar equivalent in VIVC). ──
+    "devin": "devin",                              # VIVC #20242 DEVÍN — Tramín × Veltlínske červené
+    "dunaj": "dunaj",                              # VIVC #20242 DUNAJ — Muscat Bouschet × (Oporto + Sankt Laurent)
+    "hron": "hron",                                # SK red crossing (Castets × Svätovavrinecké)
+    "rimava": "rimava",                            # SK white crossing
+    "vah": "vah",                                  # SK white crossing
+    "nitria": "nitria",                            # SK white crossing
+    "nitriansky-jubilejny": "nitria",
+    "hetera": "hetera",                            # SK white crossing
+    "karpatska-perla": "karpatska-perla",          # SK PDO brand (not a single variety, but appears as a name in pliegos)
+    # SK-side name variants that round-trip through unidecode to existing slugs
+    "frankovka-modra": "blaufrankisch",            # explicit Slovak "blue Frankovka"
+    "svatovavrinecke": "sankt-laurent",            # Slovak name for Sankt Laurent
+    "tramin-cerveny": "gewurztraminer",            # Slovak "red Tramín"
+    "rizling-vlassky": "welschriesling",
+    "rizling-rynsky": "riesling",
+    "rulandske-biele": "pinot-blanc",
+    "rulandske-sede": "pinot-gris",
+    "rulandske-modre": "pinot-noir",
+    "veltlinske-zelene": "gruner-veltliner",
+    "veltlinske-cervene-rane": "fruhroter-veltliner",
+    "muskat-zlty": "muscat-a-petits-grains",
+    "muscat-zlty": "muscat-a-petits-grains",
+    "pesecka-leanka": "leanyka",                   # SK name for HU Leányka (VIVC #6816) — distinct from feteasca-regala
+    "leanka": "leanyka",
+    "modry-portugal": "blauer-portugieser",
+    # ─── Czech crossings (Lednice / Velké Bílovice / Polášek) ───
+    "palava": "palava",                            # VIVC #18198 PÁLAVA — Tramín × Müller Thurgau
+    "aurelius": "aurelius",                        # VIVC #816 AURELIUS — Neuburger × Müller-Thurgau (CZ)
+    "cabernet-moravia": "cabernet-moravia",        # CZ red crossing (Cabernet Franc × Zweigeltrebe)
+    # André in a Czech wine context = the CZ red crossing of Frankovka ×
+    # Svatovavřinecké, distinct from any IT/ES variety the fuzzy matcher
+    # might collide with.
+    "andre": "andre",                              # VIVC #20242 ANDRÉ — Frankovka × Svatovavřinecké (CZ)
+    "neronet": "neronet",                          # VIVC #20242 NERONET — CZ red crossing (Sankt Laurent × Alibernet)
+    "ryzlink-rynsky": "riesling",
+    "ryzlink-vlassky": "welschriesling",
+    "rulandske-bile": "pinot-blanc",
+    "veltlinske-zelene-cz": "gruner-veltliner",
+    "tramin-cerveny-cz": "gewurztraminer",
+    "modry-portugal-cz": "blauer-portugieser",
+    "svatovavrinecke-cz": "sankt-laurent",
+    "frankovka-cz": "blaufrankisch",
+    "zweigeltrebe": "zweigelt",
+    # ─── Czech registry-only crossings from Vyhláška 88/2017 Sb.
+    # Příloha č. 2 — Lednice / Velké Bílovice / Polášek breeding
+    # stations. Most have no VIVC entry; kept as own slugs. ──
+    "erilon": "erilon",                            # CZ white crossing
+    "florianka": "florianka",                      # CZ white crossing
+    "lena": "lena",                                # CZ white crossing
+    "malverina": "malverina",                      # CZ white (Rakish × Veltlínske)
+    "medea": "medea",                              # CZ white crossing
+    "mery": "mery",                                # CZ white crossing
+    "muskat-moravsky": "muskat-moravsky",          # CZ Moravian Muscat (Müller-Thurgau × Muscat Ottonel)
+    "rulenka": "rulenka",                          # CZ white crossing
+    "svojsen": "svojsen",                          # CZ white crossing
+    "tristar": "tristar",                          # CZ white crossing
+    "veritas": "veritas",                          # CZ white crossing
+    "vesna": "vesna",                              # CZ white crossing
+    "vrboska": "vrboska",                          # CZ white crossing
+    "agni": "agni",                                # CZ red crossing
+    "fratava": "fratava",                          # CZ red crossing
+    "jakubske": "jakubske",                        # CZ red crossing (Jakubské)
+    "kofranka": "kofranka",                        # CZ red crossing
+    "nativa": "nativa",                            # CZ red crossing
+    "sevar": "sevar",                              # CZ red crossing
+    # Zemské víno varieties (CZ-only or under-mapped)
+    "bily-portugal": "bily-portugal",              # CZ "white Portugal" — distinct from Blauer Portugieser
+    "modry-janek": "modry-janek",                  # CZ red zemské-only crossing
+    "ranuse-muskatova": "ranuse-muskatova",        # CZ aromatic
+    "sedy-portugal": "sedy-portugal",              # CZ "grey Portugal"
+    "tramin-zluty": "tramin-zluty",                # CZ "yellow Traminer" — kept distinct from gewurztraminer
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -775,6 +1487,344 @@ DEFAULT_COLOUR: dict[str, str] = {
     "kraljevina": "blanc",
     "ranfol": "blanc",
     "rumeni-plavec": "blanc",
+    # ----- HR Jedinstveni-dokument varieties (see the matching
+    # GRAPE_ALIAS block).
+    "plavac-mali": "noir",
+    "babic": "noir",
+    "tribidrag": "noir",
+    "welschriesling": "blanc",
+    "posip": "blanc",
+    "marastina": "blanc",
+    "bogdanusa": "blanc",
+    "vugava": "blanc",
+    "grk": "blanc",
+    "debit": "blanc",
+    "trbljan": "blanc",
+    "malvazija-istarska": "blanc",
+    "muskat-zuti": "blanc",
+    "skrlet": "blanc",
+    "zlahtina": "blanc",
+    "zelenac-slatki": "blanc",
+    # ----- HU Egységes-dokumentum varieties (see the matching
+    # GRAPE_ALIAS block).
+    "harslevelu": "blanc",
+    "cserszegi-fuszeres": "blanc",
+    "irsai-oliver": "blanc",
+    "kiralyleanyka": "blanc",
+    "leanyka": "blanc",
+    "juhfark": "blanc",
+    "ezerjo": "blanc",
+    "kovidinka": "blanc",
+    "csabagyongye": "blanc",
+    "zalagyongye": "blanc",
+    "kunleany": "blanc",
+    "nektar": "blanc",
+    "aletta": "blanc",
+    "medina": "noir",
+    "generosa": "blanc",
+    "zenit": "blanc",
+    "zeta": "blanc",
+    "kabar": "blanc",
+    "pozsonyi-feher": "blanc",
+    "kadarka": "noir",
+    "biborkadarka": "noir",
+    "blauer-portugieser": "noir",
+    "turan": "noir",
+    "csokaszolo": "noir",
+    "muscat-ottonel": "blanc",
+    "muscat-hambourg": "noir",
+    "cabernet-dorsa": "noir",
+    "cabernet-carbon": "noir",
+    "blauburger": "noir",
+    "zefir": "blanc",
+    "ezerfurtu": "blanc",
+    "zengo": "blanc",
+    "alibernet": "noir",
+    "menoire": "noir",
+    "arany-sarfeher": "blanc",
+    "huszar-szolo": "blanc",
+    "gyongyrizling": "blanc",
+    "kerner": "blanc",
+    "rubintos": "noir",
+    "decsi-szagos": "blanc",
+    "zold-szagos": "blanc",
+    "patria": "blanc",
+    "poloskei-muskotaly": "blanc",
+    "rozalia": "blanc",
+    "rozsako": "blanc",
+    "viktoria-gyongye": "blanc",
+    "csomor": "blanc",
+    "domina": "noir",
+    "grasa-de-cotnari": "blanc",
+    "koverszolo": "blanc",
+    "sagrantino": "noir",
+    "zierfandler": "blanc",
+    "meszikadar": "noir",
+    "bakator": "noir",                          # the Bakator family is dominated by red mutations
+    "budai-zold": "blanc",
+    "duna-gyongye": "blanc",
+    "jubileum-75": "blanc",
+    "odysseus": "blanc",
+    "orpheus": "blanc",
+    "zeus": "blanc",
+    "pintes": "blanc",
+    "refren": "noir",
+    "vertes-csillaga": "blanc",
+    "vulcanus": "blanc",
+    "szederkenyi-feher": "blanc",
+    "gyudi-feher": "blanc",
+    "zoldfeher": "blanc",
+    "csillam": "blanc",
+    # ----- RO breeding-station crossings (see GRAPE_ALIAS block) -----
+    "alutus": "noir",
+    "arcas": "noir",
+    "aromat-de-iasi": "blanc",
+    "balada": "noir",
+    "batuta-neagra": "noir",
+    "codana": "noir",
+    "columna": "blanc",
+    "cristina": "noir",
+    "donaris": "blanc",
+    "golia": "blanc",
+    "miorita": "blanc",
+    "negru-aromat": "noir",
+    "ozana": "blanc",
+    "unirea": "blanc",
+    "babeasca-gri": "gris",
+    "rkatsiteli": "blanc",
+    # ----- BG (Bulgaria) native varieties + crossings (see GRAPE_ALIAS block) -----
+    "mavrud": "noir",
+    "shiroka-melnishka-loza": "noir",
+    "early-melnik": "noir",
+    "melnik-82": "noir",
+    "melnik-iubileen-1300": "noir",
+    "melnishki-rubin": "noir",
+    "pamid": "noir",
+    "dimyat": "blanc",
+    "cherven-misket": "blanc",
+    "sandanski-misket": "blanc",
+    "kerasuda": "blanc",
+    "bogdan": "noir",
+    "rubin": "noir",
+    "ruen": "noir",
+    "storgozia": "noir",
+    "kaylashki-misket": "blanc",
+    "varnenski-misket": "blanc",
+    "vrachanski-misket": "blanc",
+    "buket": "noir",
+    "trakiiski-biser": "blanc",
+    "biser": "blanc",
+    "marselan": "noir",
+    # ----- GR (Greece) native varieties (see GRAPE_ALIAS block above) -----
+    "athiri": "blanc",
+    "aidani": "blanc",
+    "malagousia": "blanc",
+    "moschofilero": "rose",        # pink-skinned, vinified as white in Mantinia
+    "roditis": "rose",              # pink-skinned, dominant in Patras blends
+    "robola": "blanc",
+    "savatiano": "blanc",
+    "vilana": "blanc",
+    "vidiano": "blanc",
+    "debina": "blanc",
+    "thrapsathiri": "blanc",
+    "batiki": "blanc",
+    "lagorthi": "blanc",
+    "monemvasia": "blanc",
+    "xinomavro": "noir",
+    "agiorgitiko": "noir",
+    "mavrodaphne": "noir",
+    "limnio": "noir",
+    "limniona": "noir",
+    "mandilaria": "noir",
+    "kotsifali": "noir",
+    "liatiko": "noir",
+    "negoska": "noir",
+    "vradiano": "noir",
+    "stavroto": "noir",
+    "krasato": "noir",
+    # ----- DE (Germany) varieties (see GRAPE_ALIAS block above) -----
+    # Mosaic of historic German + modern breeding-station crossings.
+    # PINK-skinned mutations of pinot (already covered) and ambiguous
+    # bicolours are kept out; the rest split cleanly by typical
+    # vinification practice.
+    "elbling": "blanc",
+    "roter-elbling": "rose",         # red-skinned colour mutation, vinified pale
+    "frueburgunder": "noir",
+    "dornfelder": "noir",
+    "helfensteiner": "noir",
+    "heroldrebe": "noir",
+    "regent": "noir",
+    "rondo": "noir",
+    "domina": "noir",
+    "deckrot": "noir",
+    "dunkelfelder": "noir",
+    "dakapo": "noir",
+    "tauberschwarz": "noir",
+    "acolon": "noir",
+    "cabernet-mitos": "noir",
+    "cabernet-dorsa": "noir",
+    "cabernet-dorio": "noir",
+    "cabernet-cubin": "noir",
+    "cabernet-cortis": "noir",
+    "cabernet-carbon": "noir",
+    "cabernet-blanc": "blanc",       # despite "Cabernet" — interspecific white
+    "cabernet-cantor": "noir",
+    "cabernet-jura": "noir",
+    "cabaret-noir": "noir",
+    "bacchus": "blanc",
+    "faberrebe": "blanc",
+    "ortega": "blanc",
+    "optima": "blanc",
+    "reichensteiner": "blanc",
+    "schonburger": "rose",           # pink-skinned aromatic, vinified pale
+    "siegerrebe": "blanc",
+    "sieger": "blanc",
+    "wurzer": "blanc",
+    "huxelrebe": "blanc",
+    "ehrenfelser": "blanc",
+    "kernling": "blanc",
+    "morio-muskat": "blanc",
+    "phoenix": "blanc",
+    "hibernal": "blanc",
+    "helios": "blanc",
+    "felicia": "blanc",
+    "merzling": "blanc",
+    "solaris": "blanc",
+    "souvignier-gris": "blanc",      # despite "gris" — vinified as white
+    "bronner": "blanc",
+    "johanniter": "blanc",
+    "muscaris": "blanc",
+    "sauvignac": "blanc",
+    "saphira": "blanc",
+    "albalonga": "blanc",
+    "kanzler": "blanc",
+    "juwel": "blanc",
+    "mariensteiner": "blanc",
+    "septimer": "blanc",
+    "sibera": "blanc",
+    "fidelio": "blanc",
+    "sirius": "blanc",
+    "orion": "blanc",
+    "pollux": "blanc",
+    "prinzipal": "blanc",
+    "rinot": "blanc",
+    "calandro": "noir",
+    "calardis-blanc": "blanc",
+    "calardis-musque": "blanc",
+    "calardis-royal": "blanc",
+    "calardis-soleil": "blanc",
+    "villaris": "blanc",
+    "hegel": "noir",
+    "holder": "blanc",
+    "freisamer": "blanc",
+    "regner": "blanc",
+    "ehrenbreitsteiner": "blanc",
+    "osteiner": "blanc",
+    "rabaner": "blanc",
+    "nobling": "blanc",
+    "perle": "rose",                  # pink-skinned mutation of Müller-Thurgau × Gewürz
+    "gutenborner": "blanc",
+    "bukettsilvaner": "blanc",
+    "noblessa": "blanc",
+    "muskat-trollinger": "noir",
+    "blauer-gaensfusser": "noir",
+    "gelber-orleans": "blanc",
+    "raeuschling": "blanc",
+    "kleinberger": "blanc",
+    "donauriesling": "blanc",
+    "donauveltliner": "blanc",
+    "heunisch": "blanc",              # Heunisch Weiss is white; red mutations exist but rare
+    "hartblau": "noir",
+    "bolero": "noir",
+    "laurot": "noir",
+    "piroso": "noir",
+    "pinot-nova": "noir",
+    "pinot-iskra": "noir",
+    "pinot-kors": "noir",
+    "accent": "noir",
+    "adelfraenkisch": "noir",         # historical Franken red
+    "blauer-hangling": "noir",
+    "bettlertraube": "noir",
+    "geisdutte": "blanc",
+    "rheinfelder": "blanc",
+    "comtessa": "blanc",
+    "divona": "blanc",
+    "aromera": "blanc",
+    "merlot-khorus": "noir",
+    "merlot-kanthus": "noir",
+    "sauvignon-cita": "blanc",
+    "sauvignon-sary": "blanc",
+    "sauvitage": "blanc",
+    "thurling": "blanc",
+    "weisser-lagler": "blanc",
+    "dalkauer": "blanc",
+    "wildmuskat": "blanc",
+    "muscabona": "blanc",
+    "orangentraube": "blanc",
+    "vogelfraenkisch": "noir",
+    "carillon": "blanc",
+    "savilon": "blanc",
+    "sulmer": "noir",
+    "ladner": "blanc",
+    "jakob-gerhardt-blanc": "blanc",
+    "cumdeo-blanc": "blanc",
+    "cumdeo-rouge": "noir",
+    "staufer": "blanc",
+    "hecker": "blanc",
+    "allegro": "blanc",
+    "alicante-bouschet": "noir",
+    "artaban": "noir",
+    "voltis": "blanc",
+    "floreal": "blanc",
+    "vidoc": "noir",
+    "valerie": "blanc",
+    "weisser-deckling": "blanc",
+    "schwarzer-deckling": "noir",
+    "blauer-arbst": "noir",
+    "weisser-arbst": "blanc",
+    "palas": "noir",
+    "levitage": "blanc",
+    "riesel": "blanc",
+    # ─── Slovakia ────────────────────────────────────────────
+    "devin": "blanc",                  # aromatic white (Tramín × Veltlínske červené)
+    "dunaj": "noir",
+    "hron": "noir",
+    "rimava": "blanc",
+    "vah": "blanc",
+    "nitria": "blanc",
+    "hetera": "blanc",
+    "karpatska-perla": "blanc",        # placeholder — the PDO bears the brand name
+    # ─── Czech Republic ──────────────────────────────────────
+    "palava": "blanc",                 # aromatic white (Tramín × Müller-Thurgau)
+    "aurelius": "blanc",
+    "cabernet-moravia": "noir",
+    "andre": "noir",                   # Frankovka × Svatovavřinecké (CZ)
+    "neronet": "noir",
+    # ─── Czech registry-only crossings from Vyhláška 88/2017 Sb. ───
+    "erilon": "blanc",
+    "florianka": "blanc",
+    "lena": "blanc",
+    "malverina": "blanc",
+    "medea": "blanc",
+    "mery": "blanc",
+    "muskat-moravsky": "blanc",
+    "rulenka": "blanc",
+    "svojsen": "blanc",
+    "tristar": "blanc",
+    "veritas": "blanc",
+    "vesna": "blanc",
+    "vrboska": "blanc",
+    "agni": "noir",
+    "fratava": "noir",
+    "jakubske": "noir",
+    "kofranka": "noir",
+    "nativa": "noir",
+    "sevar": "noir",
+    "bily-portugal": "blanc",
+    "modry-janek": "noir",
+    "ranuse-muskatova": "blanc",
+    "sedy-portugal": "gris",
+    "tramin-zluty": "blanc",
 }
 
 # Slugs that are pure boilerplate after stop-word filtering and should be
@@ -922,6 +1972,7 @@ _ROLE_PATTERNS = [
 
 
 def slugify(s: str) -> str:
+    s = unidecode(s)
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     s = re.sub(r"[^A-Za-z0-9]+", "-", s).strip("-").lower()
     return s

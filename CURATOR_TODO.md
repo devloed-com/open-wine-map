@@ -968,6 +968,525 @@ T-626/17). When Croatia (#7) is added, add the symmetric
 `hrvatska-istra` entry and do **not** mint a duplicate `teran`
 appellation.
 
+## Hungary
+
+Country #8 (added 2026-05-23). 41 wine GIs (35 DOP + 6 PGI), 38 of 41 on
+the map (92.7 %).
+
+### EGYSÉGES DOKUMENTUM — ✅ 26 / 41 extracted
+
+❌ 15 content-stubs (`no-publication`) — every historic flagship (Tokaj,
+Villány, Sopron, Szekszárd, Pannonhalma, Pécs, Bükk, Somlói, Nagy-Somló,
+Balatonfüred-Csopak, Csongrád, Balatonboglár, Káli, plus the
+Balatonmelléki and Zemplén PGIs). These are Art. 107 / Reg. 1308/2013
+grandfathered names whose only eAmbrosia reference is a non-fetchable
+`Ares(...)` summary-sheet. They appear in the index and on the map
+(geometry resolves via Bétard) but have no extracted single-document
+text. The canonical source is the HNT (Hegyközségek Nemzeti Tanácsa)
+national termékleírás / Magyar Közlöny PDF.
+
+**Phase 2**: research a public, licence-clear URL pattern for the HNT
+specifications (fits `/research-gaps`), fill
+`raw/hu/oj-pages/manual_overrides.json` via
+`scripts/hu/regen_manual_overrides_template.py`, and add a national-spec
+parser branch to stage 02 (mirrors ES MAPA / IT MASAF / planned SI MKGP).
+This also unlocks the dűlő (named-vineyard) sub-denominations for
+appellations like Eger Bikavér and the Tokaj cru positions.
+
+### Geometry — ✅ 38 / 41 mapped
+
+32 PDOs + the Balaton PGI resolve `figshare-pdo` (Bétard 2022, with
+PGI-HU-A1507 bridged via the upstream mis-label PDO-HU-A1507). The
+remaining 5 PGIs (Balatonmelléki, Duna-Tisza-közi, Dunántúli,
+Felső-Magyarország, Zemplén) resolve `region-pdo-union` (union of
+their constituent PDO polygons; member tables in
+[scripts/_lib/hu/geometry.py](scripts/_lib/hu/geometry.py)).
+
+⏳ 3 `stub-no-geometry`: `etyeki-pezsgo` (PDO-HU-02772), `koszeg`
+(PDO-HU-02804), `fured` (PDO-HU-03043) — newer PDOs that post-date the
+Bétard 2022 snapshot. Phase 2 unlock: parse the Hungarian commune list
+from the Egységes Dokumentum + reuse Eurostat GISCO LAU for HU
+települések polygons (the AT pattern).
+
+### Dűlő / cru layer — ⏳ Phase 2
+
+v1 ships a flat 41-wine corpus. The dűlő layer (FR-DGC / ES-subzona /
+HR-position analogue — e.g. Eger Bikavér's named dűlők, Tokaj's
+classified single-vineyard positions, Csopak's Open Mosaic dűlő map)
+is recoverable from either the Egységes Dokumentum or the HNT national
+termékleírás (where present) and lands with the Phase-2 work.
+
+### AOC Wikipedia hints — ⏳ to run
+
+`scripts/02b_fetch_aoc_lexicon.py --lang hu --source raw/hu/dokumentumok-extracted`
+hasn't been run yet. Expected coverage: hu.wikipedia.org has rich
+per-borvidék articles, but the title disambiguators are non-standard
+("Tokaji borvidék", "Egri borvidék", "Villányi borvidék"). Curator
+pass: pin the correct titles via the AOC-override mechanism if the
+slug-derived defaults miss.
+
+### Grape vocabulary — ✅ seeded
+
+Hungarian native varieties + crossings folded into `GRAPE_ALIAS` /
+`DEFAULT_COLOUR` in [scripts/_lib/grape_lexicon.py](scripts/_lib/grape_lexicon.py):
+Furmint, Hárslevelű, Olaszrizling (→ welschriesling), Kékfrankos (→
+blaufrankisch), Kadarka, Kékoportó (→ blauer-portugieser), Cserszegi
+fűszeres, Irsai Olivér, Királyleányka, Leányka, Juhfark, Ezerjó,
+Tramini (→ gewurztraminer), Szürkebarát (→ pinot-gris), Csókaszőlő,
+Kövérszőlő, Kövidinka, plus the native crossings Zefír, Ezerfürtű,
+Zengő, Kabar, Bíborkadarka, Generosa, Rubintos, Csabagyöngye,
+Zalagyöngye, Kunleány, Aletta, Medina, Zenit, Zéta, Patria, Domina,
+Cirfandli (Zierfandler), Bakator family, Odysseus / Orpheus / Zeus,
+Pannon Frankos (→ blaufrankisch), and ~20 others. Re-run
+`scripts/hu/02_extract_pliegos.py` → `scripts/02g_fetch_vivc.py` after
+any edit. Residual unknowns: `franc`, `** ezerjo`, `** karat`,
+`** syrah` — `franc` is a stranded line-split artefact (Cabernet franc
+lines); the `**`-prefixed tokens come from the Monor doc's bold-marker
+leakage. Acceptable noise.
+
+### Wikipedia grape lexicon — 🟡 11 / 49 FOUND (2026-05-24)
+
+49 HU-corpus grape slugs were never attempted in any of en/fr/es/nl
+Wikipedia. After `/research-gaps grape-wikipedia`: 11 resolved
+(22 per-locale overrides merged into
+[raw/wikipedia/grape_overrides.json](raw/wikipedia/grape_overrides.json)
+— `blaufrankisch`, `cserszegi-fuszeres`, `ezerjo`, `juhfark`, `kabar`,
+`koverszolo`, `kovidinka`, `muscat-hambourg`, `sagrantino`, `zeta`,
+`zierfandler`); 38 have no en/fr/es/nl article — most carry a
+hu.wikipedia.org page that the project does not currently fetch.
+
+⏳ **Phase 2 unlock** — mirror the PT pt.wikipedia translate-sidecar
+pattern (CURATOR_TODO line 482) for hu. Without it the following stay
+tooltip-less:
+
+Native on hu.wikipedia (would fetch + translate cleanly):
+`arany-sarfeher` · `bakator` · `biborkadarka` · `budai-zold` ·
+`csokaszolo` · `ezerfurtu` · `jubileum-75` · `kunleany` · `medina` ·
+`menoire` · `nektar` · `poloskei-muskotaly` · `pozsonyi-feher` ·
+`rubintos` · `viktoria-gyongye` · `zalagyongye` · `zefir` · `zengo` ·
+`zenit` · `zeus`
+
+No Wikipedia article anywhere (VIVC-only — tooltip would stay blank):
+`aletta` · `alibernet` · `csillam` · `csomor` · `duna-gyongye` ·
+`gyongyrizling` · `meszikadar` · `odysseus` · `orpheus` · `patria` ·
+`pintes` · `refren` · `rozalia` · `rozsako` · `turan` ·
+`vertes-csillaga` · `vulcanus` · `zold-szagos`
+
+Provenance: [tmp/hu-grape-wikipedia-research-prompt.md](tmp/hu-grape-wikipedia-research-prompt.md)
++ [tmp/hu-grape-wikipedia-research-results.md](tmp/hu-grape-wikipedia-research-results.md).
+
+## Romania
+
+### eAmbrosia + DOCUMENT UNIC — v1 land (2026-05-23)
+
+54 wine GIs (41 PDO + 13 PGI) from eAmbrosia. v1 pipeline scaffolded
+from the HR template; section anchor is "DOCUMENT UNIC", Romanian
+section keywords routed in [scripts/_lib/ro/document_unic.py](scripts/_lib/ro/document_unic.py).
+~34 of 54 wines carry a fetchable EUR-Lex publication URL; the
+remaining ~20 are Art.107 / Reg.1308/2013 grandfathered names with
+only `Ares(…)` references — `regen_manual_overrides_template.py`
+queues them for curator URLs (ONVPV / *Monitorul Oficial* national
+caiet de sarcini once a parser branch exists).
+
+### Geometry — Bétard PDOs + GISCO commune-list IGPs
+
+- ✅ **Bétard 2022 PDO coverage**: 38 / 41 RO PDOs resolved via
+  Figshare match. 3 newer PDOs (`PDO-RO-01182` Sebeș-Apold,
+  `PDO-RO-02854` Plaiurile Drâncei, `PDO-RO-03446` Iana) post-date
+  Bétard and fall through to the GISCO commune-list resolver.
+- 🟢 **GISCO commune-list resolver**: parses DOCUMENT UNIC section 6
+  (the `aria geografică delimitată`) via [scripts/_lib/ro/commune.py](scripts/_lib/ro/commune.py),
+  unions matching `RO_*` GISCO LAU polygons against the shared
+  `raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip` (3,181 RO communes).
+  Used for the 13 RO IGPs and the 3 newer PDOs. Audit via
+  [scripts/audit_ro_coverage.py](scripts/audit_ro_coverage.py) → "IGP
+  commune-list coverage" section reports unmatched commune-name counts;
+  add aliases or parser tweaks until the residual is ≤ 2 per wine.
+
+### Region facet — incremental file_number map
+
+[scripts/_lib/ro/region.py](scripts/_lib/ro/region.py) carries the 8
+Romanian wine macro regions (Moldova / Muntenia / Oltenia / Dobrogea
+/ Transilvania / Banat / Crișana și Maramureș / Terasele Dunării).
+The `_REGION_BY_FILE_NUMBER` map is empty in v1 — every wine
+resolves via the in-text scan (which catches the region name when
+the documento-unic prose mentions it) or falls back to "România".
+Curator pass: after the first end-to-end run, hand-pin each of the
+54 wines' file_number → region for stable facet labels (matches the
+AT / HR / HU pattern).
+
+### Wikipedia RO pages — first run pending
+
+Run after stage 02 lands a non-empty `raw/ro/dokumente-extracted/`:
+
+```
+.venv/bin/python scripts/02b_fetch_aoc_lexicon.py \
+    --lang ro --source raw/ro/dokumente-extracted
+```
+
+Expect some misses on the grandfathered IGPs (no Wikipedia page);
+add curator overrides at `raw/wikipedia/aocs/ro/manual_overrides.json`
+following the HR pattern.
+
+### Terroir-fact extraction — siblings shipped, run pending
+
+[scripts/ro/02d_extract_terroir_facts.py](scripts/ro/02d_extract_terroir_facts.py)
+and [scripts/ro/02e_translate_terroir_facts.py](scripts/ro/02e_translate_terroir_facts.py)
+are wired. Drive via batch flow per project preference:
+
+```
+.venv/bin/python scripts/ro/02d_extract_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/ro/02e_translate_terroir_facts.py --batch --provider anthropic
+```
+
+Expect ~34 wines feeding 02d (the ones with non-stub DOCUMENT UNIC).
+
+### Extraction-unknowns triage (2026-05-23)
+
+98 unknown grape candidates curated into [scripts/_lib/grape_lexicon.py](scripts/_lib/grape_lexicon.py)
+GRAPE_ALIAS / DEFAULT_COLOUR — 15 new canonical slugs (Alutus,
+Arcaș, Aromat de Iași, Balada, Bătută Neagră, Codană, Columna,
+Donaris, Golia, Miorița, Negru Aromat, Ozana, Unirea, Băbească Gri,
+Rkatsiteli) pinned in [raw/vivc/slug_overrides.json](raw/vivc/slug_overrides.json).
+After re-extraction one survivor remains, needing a curator look at
+the source EU-OJ HTML:
+
+- 🟡 **Colinele Dobrogei — `Cristina N`**. No VIVC entry, no
+  wein.plus / SCDVV reference, no Romanian viticulture-press
+  mention. Suspected wine **brand/cuvée name** mis-parsed by stage 02
+  as a variety. Verify against
+  [raw/ro/oj-pages/colinele-dobrogei.html](raw/ro/oj-pages/colinele-dobrogei.html)
+  section 7 — if it's a brand, add it to `GRAPE_BLOCKLIST`; if a
+  real variety, mint a new slug.
+- 🟡 **Dealurile Moldovei — `Zghihară neagră`**. VIVC's Zghihară de
+  Huși #20281 is firmly white; no documented red biotype in
+  wein.plus, Indigene, or Crameromania. Likely a typo for plain
+  `Zghihară` (de Huși) or for a different red variety. Verify the
+  source HTML; if a typo, fold via `GRAPE_ALIAS` to the correct
+  canonical.
+
+---
+
+## Bulgaria
+
+Country #10. First Cyrillic-script country. 54 wine GIs total — 52 PDOs
++ 2 macro PGIs (Дунавска равнина / Тракийска низина = north / south
+country halves). Only **3 of 54** wines carry a fetchable EUR-Lex
+ЕДИНЕН ДОКУМЕНТ (melnik, nova-zagora, dunavska-ravnina); the other 51
+are Art.107 / Reg.1308/2013 grandfathered names with no public
+single-document URL — they ship as content-stubs that nonetheless
+appear on the map because Bétard 2022 covers every BG PDO. Geometry
+coverage is 100 % at v1 (52 figshare-pdo + 2 region-pdo-union).
+
+### Cyrillic-handling infrastructure (2026-05-23, shipped)
+
+- `unidecode>=1.3` added to [pyproject.toml](pyproject.toml).
+- [scripts/_lib/grape_lexicon.py](scripts/_lib/grape_lexicon.py) `slugify`
+  pre-`unidecode()`s Cyrillic input → Latin slug; Latin-script input
+  invariant (verified against the FR/ES/PT/IT/AT/SI/HR/HU/RO corpora).
+- [scripts/_lib/grape_entity.py](scripts/_lib/grape_entity.py)
+  `_normalise` does the same — `match_variety` works on Cyrillic
+  variety names (Мавруд / Гъмза / Широка мелнишка лоза…) by folding to
+  Latin VIVC primes.
+- BG-specific helpers preserve Cyrillic via `.casefold()` rather than
+  ASCII-fold (see [scripts/_lib/bg/commune.py](scripts/_lib/bg/commune.py)
+  + [scripts/_lib/bg/region.py](scripts/_lib/bg/region.py)).
+
+### Per-PDO Wikipedia AOC tooltips — curator pass pending
+
+[scripts/02b_fetch_aoc_lexicon.py](scripts/02b_fetch_aoc_lexicon.py)
+`--lang bg --source raw/bg/dokumenti-extracted` first-run output:
+**ok=0, miss=4, err=50 (`not_aoc_topic`)**. Most BG wine appellations
+share their name with a town article on bg.wikipedia.org; the town
+article doesn't pass the AOC-keyword filter (wine is a sub-topic).
+Curator path: pin per-PDO Wikipedia titles in
+`raw/wikipedia/aocs/manual_overrides.json` (BG-language section) so
+the AOC-topic filter is bypassed for known-good articles. Until then,
+02d runs without Wikipedia salience hints (cahier-only grounding).
+
+### Terroir-fact extraction — siblings shipped, run pending
+
+[scripts/bg/02d_extract_terroir_facts.py](scripts/bg/02d_extract_terroir_facts.py)
+and [scripts/bg/02e_translate_terroir_facts.py](scripts/bg/02e_translate_terroir_facts.py)
+are wired. Drive via batch flow per project preference:
+
+```
+.venv/bin/python scripts/bg/02d_extract_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/bg/02e_translate_terroir_facts.py --batch --provider anthropic
+```
+
+Only ~3 wines feed 02d (the ones with non-stub ЕДИНЕН ДОКУМЕНТ); the
+batch is tiny.
+
+### Curator queue — 51 stubs (`raw/bg/oj-pages/manual_overrides.json`)
+
+Generated by [scripts/bg/regen_manual_overrides_template.py](scripts/bg/regen_manual_overrides_template.py).
+50 DOPs + 1 IGP (Тракийска низина) lack a fetchable EU OJ URL. Source
+priority for curator-pinned URLs:
+
+1. EUR-Lex OJ-C amendment publication if the wine has any recent
+   modification publication.
+2. Държавен вестник (https://dv.parliament.bg) PDF of the original
+   recognition Постановление/Заповед (Bulgarian State Gazette).
+3. IAVV per-PDO page if one exists at https://eavw.com/ (rare).
+
+**Caveat**: stage 02's HTML parser only understands the EU-OJ ЕДИНЕН
+ДОКУМЕНТ template. Държавен вестник PDFs and IAVV pages need a per-
+source parser branch — that's **Phase 2** work for BG, mirroring the
+ES MAPA / IT MASAF national-specification fallback. Until then, only
+EUR-Lex single-document URLs promote a wine out of stub state; State
+Gazette PDFs land as stubs with provenance but no parsed sections.
+
+### Per-PDO appellation_urls.json entries — ongoing
+
+[scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json)
+now carries the 5 BG `by_bassin` regional fallbacks (one per
+винарски район, all pointing to IAVV / https://eavw.com — Bulgaria's
+central regulator, no per-PDO landing pages). Per-PDO `by_slug`
+entries are deferred: IAVV doesn't publish them, and BG regional
+consortia are rare. Wikipedia stand-ins (`bg.wikipedia.org/wiki/<name>_(вино)`)
+are the realistic fallback once curated per slug. A background
+research sweep produced `/tmp/bg-appellation-urls.json` — merge after
+review.
+
+---
+
+### Cross-cutting: align IGP geometry patterns across countries — ❌ open
+
+The per-country IGP geometry chains are inconsistent today:
+
+| Country | IGPs | v1 IGP strategy              |
+| ------- | ---: | ---------------------------- |
+| FR      | many | INAO aires CSV (parcel)      |
+| ES      |   43 | `gisco-commune-list` / ccaa  |
+| PT      |   14 | `none` (shelved)             |
+| IT      |  119 | `figshare` (PDO-only) + stub |
+| AT      |    3 | `gisco-bundesland-union`     |
+| SI      |    3 | `region-pdo-union`           |
+| HR      |    0 | n/a                          |
+| HU      |    5 | `region-pdo-union`           |
+| RO      |   13 | `gisco-commune-list` (new)   |
+| BG      |    2 | `region-pdo-union` (SI pattern) |
+
+The PT IGPs (shelved with `none`) and IT IGTs (Bétard-only — they
+don't appear in the PDO-only gpkg) are the biggest unaligned bucket.
+A future pass should retrofit `gisco-commune-list` to PT + IT IGPs
+using the same resolver shape as RO + ES, so every country reaches
+the same geometry-chain template. The RO commune-list parser
+[scripts/_lib/ro/commune.py](scripts/_lib/ro/commune.py) is the
+shape-template; adapt for Portuguese (concelho / freguesia) +
+Italian (comune) names, then plug into stage 04's PT + IT branches.
+
+## Greece
+
+Country #11. 147 wine GIs (33 PDO + 114 PGI). Wikipedia tooltip
+coverage is the thinnest of any country.
+
+### Per-PDO Wikipedia AOC tooltips — research pass complete (2026-05-25)
+
+31 PDOs researched via Wikipedia agent sweep: **4 FOUND**
+(`nemea` → "Κρασί Νεμέας", `robola-kefallinias` → "Ρομπόλα Κεφαλονιάς",
+`santorini` → "Βινσάντο Σαντορίνης" (caveat: covers only the Vinsanto
+sub-style of the broader PDO), `monemvasia-malvasia` → "Μαλβαζία").
+**27 PDOs pinned `missing`** — el.wiki has only locality articles for
+flagships like Naoussa / Mantinia / Rapsani / Limnos / Paros etc.
+
+### Per-IGP Wikipedia AOC tooltips — bulk-pinned NONE, revisit pending
+
+114 GR PGIs (the Art.107/Reg.1308/2013 grandfathered VdP / Vins de Pays
+names) were bulk-pinned as `missing` in
+[raw/wikipedia/aoc_overrides.json](raw/wikipedia/aoc_overrides.json)
+on 2026-05-25 without per-slug research — pattern confirmed by the
+adjacent BG result (52/52 NONE) + GR PDO 27/31 NONE rate. Curator
+todo: a future per-slug verification pass might recover ~5–10 % of
+these (a handful of well-known PGIs like Πελοπόννησος / Μακεδονία /
+Θεσσαλία / Κρήτη umbrellas could have el.wiki articles even when the
+individual sub-area IGPs don't).
+
+### Interprofession / consortium URLs — ❌ 0 / 147
+
+No entries in [scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json)
+— neither `by_slug` nor `by_bassin` covers any Greek PDO/PGI. EDOAO
+(Εθνική Διεπαγγελματική Οργάνωση Αμπέλου & Οίνου / ΚΕΟΣΟΕ) is the
+national interprofessional body; per-PDO consortium sites exist for
+flagships (Santorini, Νεμέα, Νάουσα, Σάμος). Curator pass: sweep
+PDOs first (33), then macro-region fallbacks under `by_bassin` for
+the 9 αμπελουργικές ζώνες to catch the 114 PGIs in bulk.
+
+---
+
+## Slovakia
+
+Country #13 (added 2026-05-24). 10 wine GIs (9 DOP + 1 PGI), all 10 on
+the map.
+
+### JEDNOTNÝ DOKUMENT — ✅ 4 / 10 extracted
+
+❌ 6 content-stubs (`no-publication`): Východoslovenská, Južnoslovenská,
+Nitrianska, Malokarpatská, Karpatská perla, Slovenská (PGI). Art. 107 /
+Reg. 1308/2013 grandfathered names with only `Ares(...)` references in
+eAmbrosia. Phase 2: research a public URL pattern for the MPRV SR
+national špecifikácia výrobku on slov-lex.sk.
+
+### Geometry — ✅ 10 / 10 mapped
+
+8 of 9 SK DOPs resolve `figshare-pdo` (Bétard 2022). The 9th
+(`PDO-SK-02856` TOKAJSKÉ VÍNO) resolves `figshare-pdo-alias` to the
+Vinohradnícka oblasť Tokaj polygon (same Tokaj zone, different brand
+registration). The single PGI `Slovenská` resolves `region-pdo-union`
+(union of all 8 SK DOPs).
+
+### Terroir facts — ✅ 4 / 4 extracted + translated (2026-05-24)
+
+The 4 non-stub SK wines (Vinohradnícka oblasť Tokaj, Stredoslovenská,
+Skalický rubín, TOKAJSKÉ VÍNO zo slovenskej oblasti) got 9–10 terroir
+bullets each via Anthropic Batch API (37 source bullets total,
+148 cached translations across en/fr/es/nl).
+
+### Grape vocabulary — ✅ seeded (2026-05-24)
+
+Slovak native varieties + crossings folded into `GRAPE_ALIAS` /
+`DEFAULT_COLOUR`: Frankovka modrá (→ blaufrankisch), Svätovavrinecké
+(→ sankt-laurent), Veltlínske zelené (→ gruner-veltliner), Tramín
+červený (→ gewurztraminer), Müller Thurgau, Rizling rýnsky/vlašský,
+Rulandské biele/šedé/modré, Modrý Portugal, Pesecká leánka (→ leanyka,
+the SK name for HU Leányka — distinct from feteasca-regala despite
+literature confusion), plus the VÚVV Bratislava crossings Devín,
+Dunaj, Hron, Rimava, Váh, Nitria, Hetera. `karpatska-perla` carries
+its own slug for the namesake PDO.
+
+### Interprofession / consortium URLs — ❌ 0 / 10
+
+No entries in [scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json).
+National bodies to research: ZVHV (Zväz vinohradníkov a vinárov
+Slovenska) for an interprofession-level fallback under `by_bassin`
+(7 vinohradnícke oblasti incl. Tokaj). Per-oblast consortium sites
+likely exist for Tokaj (Tokajská vínna spoločnosť?) and the
+Malokarpatská corridor.
+
+## Czech Republic
+
+Country #14 (added 2026-05-24). 13 wine GIs (11 DOP + 2 PGI), all 13
+on the map.
+
+### JEDNOTNÝ DOKUMENT — ❌ 0 / 13 extracted
+
+All 13 CZ wines are Art. 107 / Reg. 1308/2013 grandfathered names with
+only `Ares(...)` references in eAmbrosia — **the worst single-document
+coverage of any country in the corpus**. The structural alternative
+shipped 2026-05-24: stage 02f extracts data from the Czech national
+implementing decrees (Vyhláška 88/2017 + 254/2010 Sb.). See
+"National-spec extraction" below.
+
+### National-spec extraction — ✅ shipped (2026-05-24, stage 02f)
+
+Two Czech wine-law decrees fetched, cached, and parsed by
+[scripts/cz/02f_extract_national_specs.py](scripts/cz/02f_extract_national_specs.py):
+
+- **Vyhláška č. 88/2017 Sb. Příloha č. 2** → national variety roster
+  (35 white + 26 red + 6 zemské-víno = **67 varieties**, all 67
+  resolved in the lexicon). Applied to all 13 CZ wines (Czech wine
+  law does not restrict varieties per podoblast). Sidecar:
+  `raw/cz/national-specs/varieties.json`.
+- **Vyhláška č. 254/2010 Sb. Příloha** → per-podoblast obec lists
+  (50/35/119/90/71/30 obce across the 6 podoblasti =
+  **395 obce total**, 392 matched to GISCO LAU = **99.2 %**).
+  Sidecars: `raw/cz/national-specs/communes/<slug>.json`.
+
+Fetch source: zakonyprolidi.cz (eSbírka is a JS SPA, Sbírka scan-PDFs
+are image-only). Canonical attribution: Sbírka zákonů částka 32/2017 +
+částka 92/2010. Czech law text is public per §3(d) of the Czech
+Copyright Act (úřední dílo).
+
+### Geometry — ✅ 13 / 13 mapped, 6 at commune precision
+
+- **6 podoblasti** (Litoměřická / Mělnická / Slovácká / Znojemská /
+  Velkopavlovická / Mikulovská) resolve `gisco-commune-union-podoblast`
+  — commune-precision via the Vyhláška 254/2010 obec list. More
+  honest than Bétard's macro-region-aggregated polygon for these
+  sub-regions.
+- **2 macro DOPs** (Čechy / Morava) resolve `figshare-pdo` (Bétard
+  2022).
+- **2 macro PGIs** (české / moravské) resolve `region-pdo-union` (each
+  = the macro PDO polygon of the same name, single-member union).
+- **3 single-vineyard / single-varietal PDOs** (Znojmo, Šobes,
+  Novosedelské Slámové víno) resolve `figshare-pdo` (Bétard 2022).
+
+### Per-podoblast variety + terroir restriction — ⏳ Phase 2
+
+The current shipped state attaches the same 67-variety national list
+to all 10 wines that authorise jakostní víno (every PDO/PGI). Czech
+wine law makes no per-podoblast restriction, so this is factually
+correct — but the panel UX wins less than a per-AOC list would. A
+future ÚKZÚZ or per-consortium "registered Leitsorten" per
+sub-region could give a more useful principal split (much like the
+DE BLE Produktspezifikation §3.2 split). Not blocking.
+
+### Terroir text — ❌ structurally unavailable
+
+Czech wine law does not publish per-appellation terroir / link-to-
+region narrative text. The "Popis souvislostí" section that EU
+JEDNOTNÝ DOKUMENT carries is exactly what's missing for grandfathered
+CZ names. The 3 newer 2011 PDOs (Znojmo, Šobes, Novosedelské) that
+went through the post-2009 EU procedure also don't publish a
+documento unic publicly. **Verified by /research-gaps 2026-05-24**
+(see `tmp/cz-specification-research-results.md`). No Phase-2 unlock
+path for terroir text short of curator-authored notes.
+
+### Grape vocabulary — ✅ seeded (2026-05-24)
+
+All 67 varieties in Vyhláška 88/2017 Sb. Příloha č. 2 resolve:
+shared international varieties (Müller Thurgau, Chardonnay, Sauvignon,
+Cabernet Sauvignon, Cabernet Moravia, Hibernal, Solaris, Zweigeltrebe
+→ zweigelt, …) folded to canonical slugs; Czech registry-only
+crossings (Děvín, Erilon, Florianka, Lena, Malverina, Medea, Mery,
+Muškát moravský, Rulenka, Svojsen, Tristar, Veritas, Vesna, Vrboska,
+Agni, Fratava, Jakubské, Kofranka, Nativa, Sevar, Pálava, Aurelius,
+André, Neronet) get own slugs in
+[scripts/_lib/grape_lexicon.py](scripts/_lib/grape_lexicon.py).
+Zemské-víno-only varieties (Bílý Portugal, Modrý Janek, Ranuše
+muškátová, Šedý Portugal, Tramín žlutý, Veltlínské červenobílé) also
+seeded.
+
+### AOC Wikipedia hints — ✅ fetched (2026-05-24)
+
+`scripts/02b_fetch_aoc_lexicon.py --lang cs --source raw/cz/dokumenty-extracted`
+shipped 8 of 13 cs.wikipedia.org pages on first run; 4 errors + 1
+missing — likely title-disambiguation drift (curator pass to pin the
+correct `(víno)` / `(vinařská oblast)` titles via the AOC-override
+mechanism is open but not blocking).
+
+Provenance: [tmp/cz-specification-research-prompt.md](tmp/cz-specification-research-prompt.md)
++ [tmp/cz-specification-research-results.md](tmp/cz-specification-research-results.md).
+
+### Interprofession / consortium URLs — ❌ 0 / 13
+
+No entries in [scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json).
+National bodies to research: Národní vinařský fond (Wine Fund of the
+Czech Republic, `vinarskyfond.cz`) and Svaz vinařů ČR (Czech Wine
+Association) as interprofession-level fallbacks under `by_bassin`
+for the 2 oblasti (Čechy / Morava). Per-podoblast consortium sites
+likely exist for Mikulovská / Velkopavlovická / Slovácká / Znojemská.
+
+## Switzerland
+
+Country added 2026-05. 63 AOC entries across 26 cantons.
+
+### Interprofession / cantonal-association URLs — ❌ 0 / 75
+
+No entries in [scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json)
+— neither `by_slug` nor `by_bassin` covers any Swiss AOC. The
+6 Swiss wine regions (Valais, Vaud, Genève, Trois-Lacs, Ticino,
+Deutschschweiz) have well-known interprofessions / promotion
+bodies: Interprofession de la Vigne et du Vin du Valais (IVV),
+Office des Vins Vaudois (OVV), Office de Promotion des Produits
+Agricoles de Genève (OPAGE), Ticinowine, plus Swiss Wine Promotion
+(`swisswine.ch`) as a national fallback. Per-AOC sites exist for
+the 22 GE premier crus and for Lavaux / Dézaley / Calamin in Vaud.
+Curator pass: start with the 6 regional fallbacks under
+`by_bassin`, then sweep the major cantonale AOCs (Valais, Vaud,
+Genève, Ticino, Neuchâtel) under `by_slug`.
+
 ## Style taxonomy follow-ups
 
 - **Sweet/oxidative cross-cut** — `generoso` (sherry-family) sits under `oxidative` because most sherries are dry; PX cream sherries and dulces are nominally oxidative *and* sweet. Currently they only emit `oxidative + generoso + (sub-tag)`; the `sweet` bucket is *not* added. Decide whether to surface dual-tagging (record carries both `oxidative` and `sweet`) when the pliego describes a PX / cream / sweet-oloroso style. Currently affects ~5 sherry pliegos. Defer to v2.

@@ -34,6 +34,24 @@ from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 
 
+# Macro-region expansions: when the caderno declares the production
+# area as the whole autonomous region (Açores or Madeira) rather than
+# enumerating concelhos, expand the token into the constituent ilhas.
+# The names below match the `_concelhos_by_distrito` bare-name keys
+# (CAOP `distrito_ilha` stripped of "Ilha de/do/da"). Coverage:
+#   - Açores: 7 ilhas → 16 municipios (Grupo Central + Oriental; the
+#     Grupo Ocidental's Corvo + Flores are wine-free and not in the
+#     CAOP gpkg we ship).
+#   - Madeira: 2 ilhas → 11 municipios (RAM).
+PT_MACRO_REGIONS: dict[str, list[str]] = {
+    "acores": [
+        "Santa Maria", "São Miguel", "Terceira", "Graciosa",
+        "São Jorge", "Pico", "Faial",
+    ],
+    "madeira": ["Madeira", "Porto Santo"],
+}
+
+
 def _normalise_concelho(s: str) -> str:
     """Strip diacritics + leading articles, lowercase, collapse spaces."""
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
@@ -132,11 +150,13 @@ class PTPolygonIndex:
                     dnorm = _normalise_concelho(distrito)
                     self._concelhos_by_distrito.setdefault(dnorm, []).append(c)
                     # Açores / Madeira distrito_ilha rows are prefixed
-                    # with "Ilha de" / "Ilha do" / "Ilha da" — index a
-                    # bare-name variant too so cadernos can say "Pico"
-                    # (the ilha) and still match.
+                    # with "Ilha de" / "Ilha do" / "Ilha da" — and a
+                    # bare "Ilha " for "Ilha Terceira" (no preposition).
+                    # Index a bare-name variant too so cadernos can say
+                    # "Pico" / "Terceira" and still match.
                     bare = re.sub(
-                        r"^ilha\s+(?:de|do|da)\s+", "", dnorm, flags=re.IGNORECASE,
+                        r"^ilha\s+(?:de\s+|do\s+|da\s+)?", "", dnorm,
+                        flags=re.IGNORECASE,
                     )
                     if bare and bare != dnorm:
                         self._concelhos_by_distrito.setdefault(bare, []).append(c)
@@ -268,18 +288,24 @@ class PTPolygonIndex:
         self, parsed: dict
     ) -> tuple[BaseGeometry | None, dict[str, int]]:
         """Combine `union_concelhos` + `union_distritos` into one call.
-        Takes the dict returned by `commune_list.parse_commune_list`."""
+        Takes the dict returned by `commune_list.parse_commune_list`.
+        Expands `macro_regions` tokens (`acores` / `madeira`) into
+        their constituent ilhas via `PT_MACRO_REGIONS`."""
         geoms: list[BaseGeometry] = []
         stats = {"concelhos_matched": 0, "concelhos_unmatched": 0,
                  "distritos_matched": 0, "distritos_unmatched": 0}
+        macro_distritos: list[str] = []
+        for token in parsed.get("macro_regions") or []:
+            macro_distritos.extend(PT_MACRO_REGIONS.get(token, []))
+        all_distritos = list(parsed.get("distritos") or []) + macro_distritos
         if parsed.get("concelhos"):
             g, s = self.union_concelhos(parsed["concelhos"])
             stats["concelhos_matched"] = s["matched"]
             stats["concelhos_unmatched"] = s["unmatched"]
             if g is not None and not g.is_empty:
                 geoms.append(g)
-        if parsed.get("distritos"):
-            g, s = self.union_distritos(parsed["distritos"])
+        if all_distritos:
+            g, s = self.union_distritos(all_distritos)
             stats["distritos_matched"] = s["matched"]
             stats["distritos_unmatched"] = s["unmatched"]
             if g is not None and not g.is_empty:

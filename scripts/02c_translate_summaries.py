@@ -76,6 +76,13 @@ LOCALE_NAME = {
     "it": "Italian",
     "de": "German",
     "sl": "Slovenian",
+    "hr": "Croatian",
+    "hu": "Hungarian",
+    "ro": "Romanian",
+    "bg": "Bulgarian",
+    "el": "Greek",
+    "sk": "Slovak",
+    "cs": "Czech",
 }
 
 
@@ -103,13 +110,46 @@ SOURCE_CONFIG: dict[str, dict] = {
         "target_locales": ("en", "fr", "es", "nl"),
     },
     "de": {
-        "source_dir": ROOT / "raw" / "at" / "dokumente-extracted",
-        "source_document": "EU Official Journal Einziges Dokument (Austrian wine appellation specifications)",
+        "source_dir": (
+            ROOT / "raw" / "at" / "dokumente-extracted",
+            ROOT / "raw" / "de" / "dokumente-extracted",
+        ),
+        "source_document": "EU Official Journal Einziges Dokument (Austrian and German wine appellation specifications)",
         "target_locales": ("en", "fr", "es", "nl"),
     },
     "sl": {
         "source_dir": ROOT / "raw" / "si" / "dokumenti-extracted",
         "source_document": "EU Official Journal enotni dokument (Slovenian wine appellation specifications)",
+        "target_locales": ("en", "fr", "es", "nl"),
+    },
+    "hr": {
+        "source_dir": ROOT / "raw" / "hr" / "dokumenti-extracted",
+        "source_document": "EU Official Journal jedinstveni dokument (Croatian wine appellation specifications)",
+        "target_locales": ("en", "fr", "es", "nl"),
+    },
+    "ro": {
+        "source_dir": ROOT / "raw" / "ro" / "dokumente-extracted",
+        "source_document": "EU Official Journal document unic (Romanian wine appellation specifications)",
+        "target_locales": ("en", "fr", "es", "nl"),
+    },
+    "bg": {
+        "source_dir": ROOT / "raw" / "bg" / "dokumenti-extracted",
+        "source_document": "EU Official Journal Единен документ (Bulgarian wine appellation specifications)",
+        "target_locales": ("en", "fr", "es", "nl"),
+    },
+    "el": {
+        "source_dir": ROOT / "raw" / "gr" / "dokumenti-extracted",
+        "source_document": "EU Official Journal Ενιαίο Έγγραφο (Greek wine appellation specifications)",
+        "target_locales": ("en", "fr", "es", "nl"),
+    },
+    "sk": {
+        "source_dir": ROOT / "raw" / "sk" / "dokumenty-extracted",
+        "source_document": "EU Official Journal Jednotný dokument (Slovak wine appellation specifications)",
+        "target_locales": ("en", "fr", "es", "nl"),
+    },
+    "cs": {
+        "source_dir": ROOT / "raw" / "cz" / "dokumenty-extracted",
+        "source_document": "EU Official Journal Jednotný dokument (Czech wine appellation specifications)",
         "target_locales": ("en", "fr", "es", "nl"),
     },
 }
@@ -190,11 +230,11 @@ def _terroir_facts_slugs() -> set[str]:
 
 def _source_url_for(record: dict) -> str:
     """Pick the canonical source-attribution URL for a record. FR records
-    point at BO Agri; ES records point at the EUR-Lex EU-OJ HTML page;
-    PT records point at the IVV caderno PDF."""
+    point at BO Agri; ES/IT/AT/SI/HR records point at the EUR-Lex EU-OJ
+    HTML page; PT records point at the IVV caderno PDF."""
     src = record.get("source") or {}
     country = record.get("country")
-    if country == "es":
+    if country in ("es", "it", "at", "si", "hr", "ro"):
         return src.get("final_url") or src.get("source_url") or ""
     if country == "pt":
         return src.get("source_url") or src.get("final_url") or ""
@@ -263,10 +303,23 @@ def _job_to_todo_item(j: dict) -> dict:
     }
 
 
+def _iter_record_files(extracted_dir: Path | tuple[Path, ...]) -> list[Path]:
+    """Walk one extracted dir or a tuple of them and return all per-record
+    JSON files. The `de` source-lang config uses a tuple (AT + DE share
+    the German language)."""
+    dirs = (extracted_dir,) if isinstance(extracted_dir, Path) else tuple(extracted_dir)
+    out: list[Path] = []
+    for d in dirs:
+        if not d.exists():
+            continue
+        out.extend(d.glob("*.json"))
+    return out
+
+
 def emit_todo_file(
     out_path: Path,
     *,
-    extracted_dir: Path,
+    extracted_dir: Path | tuple[Path, ...],
     languages: tuple[str, ...],
     source_lang: str,
     skip_cached: bool,
@@ -274,7 +327,7 @@ def emit_todo_file(
 ) -> int:
     """Write a translation-todo JSON file. Single-locale shape when
     `single_lang=True`, otherwise dict-keyed-by-locale."""
-    files = list(extracted_dir.glob("*.json"))
+    files = _iter_record_files(extracted_dir)
     jobs = _enumerate_jobs(files, languages, source_lang=source_lang, skip_cached=skip_cached)
     by_lang: dict[str, list[dict]] = {l: [] for l in languages}
     for j in jobs:
@@ -316,7 +369,7 @@ def _normalise_todo_payload(
 def import_translations_file(
     in_path: Path,
     *,
-    extracted_dir: Path,
+    extracted_dir: Path | tuple[Path, ...],
     source_lang: str,
     target_locales: tuple[str, ...],
     translator_id: str,
@@ -347,7 +400,7 @@ def import_translations_file(
     # that the import file's source_summary_sha is still valid.
     current_sha: dict[str, str] = {}
     current_country: dict[str, str] = {}
-    for f in extracted_dir.glob("*.json"):
+    for f in _iter_record_files(extracted_dir):
         if f.name == "_index.json":
             continue
         rec = json.loads(f.read_text(encoding="utf-8"))
@@ -553,12 +606,16 @@ def main() -> int:
     args = ap.parse_args()
 
     cfg = SOURCE_CONFIG[args.source_lang]
-    extracted_dir: Path = cfg["source_dir"]
+    extracted_dir: Path | tuple[Path, ...] = cfg["source_dir"]
     target_locales: tuple[str, ...] = cfg["target_locales"]
     source_document: str = cfg["source_document"]
 
-    if not extracted_dir.exists():
-        print(f"error: {extracted_dir} is missing — run the upstream extraction stage first",
+    _dirs_for_check = (
+        (extracted_dir,) if isinstance(extracted_dir, Path) else tuple(extracted_dir)
+    )
+    if not any(d.exists() for d in _dirs_for_check):
+        missing = ", ".join(str(d) for d in _dirs_for_check)
+        print(f"error: none of {missing} exist — run the upstream extraction stage first",
               file=sys.stderr)
         return 1
 
@@ -596,7 +653,7 @@ def main() -> int:
         )
 
     languages = tuple(args.lang) if args.lang else target_locales
-    files = list(extracted_dir.glob("*.json"))
+    files = _iter_record_files(extracted_dir)
 
     if args.batch:
         return _run_batch(args, files, languages, source_document)

@@ -34,7 +34,15 @@ _SOURCES: tuple[tuple[str, Path], ...] = (
     ("it", ROOT / "raw" / "it" / "disciplinari-extracted"),
     ("it", ROOT / "raw" / "it" / "masaf-disciplinari-extracted"),
     ("at", ROOT / "raw" / "at" / "dokumente-extracted"),
+    ("de", ROOT / "raw" / "de" / "dokumente-extracted"),
     ("si", ROOT / "raw" / "si" / "dokumenti-extracted"),
+    ("hr", ROOT / "raw" / "hr" / "dokumenti-extracted"),
+    ("ro", ROOT / "raw" / "ro" / "dokumente-extracted"),
+    ("bg", ROOT / "raw" / "bg" / "dokumenti-extracted"),
+    ("gr", ROOT / "raw" / "gr" / "dokumenti-extracted"),
+    ("sk", ROOT / "raw" / "sk" / "dokumenty-extracted"),
+    ("cz", ROOT / "raw" / "cz" / "dokumenty-extracted"),
+    ("ch", ROOT / "raw" / "ch" / "dokumente-extracted"),
 )
 
 
