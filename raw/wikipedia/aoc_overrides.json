@@ -1,0 +1,2849 @@
+{
+  "bg": {
+    "asenovgrad": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "boliarovo": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "brestnik": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "chernomorski-raion": {
+      "missing": true,
+      "note": "researched 2026-05; \"Черноморски район\" article is about Chornomorske Raion in Crimea, not the BG Black Sea wine region"
+    },
+    "dolinata-na-struma": {
+      "missing": true,
+      "note": "researched 2026-05; macro wine region mentioned only as unlinked plain text in Винарство в България; \"Струма\" is the river"
+    },
+    "dragoevo": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "evksinograd": {
+      "missing": true,
+      "note": "researched 2026-05; royal-residence article; wine cellar is one subsection (~10-15%), not primary subject"
+    },
+    "iambol": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "iuzhno-chernomorie": {
+      "missing": true,
+      "note": "researched 2026-05; bg.wikipedia.org/wiki/Южно_Черноморие returns 404"
+    },
+    "ivailovgrad": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "karlovo": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "karnobat": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "kh-rsovo": {
+      "missing": true,
+      "note": "researched 2026-05; \"Хърсово\" is a disambiguation page covering 8+ villages; no dedicated wine article"
+    },
+    "khan-krum": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "khaskovo": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "khisaria": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "liaskovets": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "liubimets": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "lom": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "lovech": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "lozitsa": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "melnik": {
+      "missing": true,
+      "note": "researched 2026-05; \"Мелник\" article is the town (smallest in Bulgaria); wine ~5-10% only; \"Мелник (вино)\" 404"
+    },
+    "montana": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "nova-zagora": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "novi-pazar": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "novo-selo": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "oriakhovitsa": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "pavlikeni": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "pazardzhik": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "perushchitsa": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "pleven": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "plovdiv": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "pomorie": {
+      "missing": true,
+      "note": "researched 2026-05; town article; \"Лозарство и винарство\" subsection ~3-5% only; \"Поморие (вино)\" 404"
+    },
+    "ruse": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "sakar": {
+      "missing": true,
+      "note": "researched 2026-05; \"Сакар\" article is about the mountain; wine mentioned briefly in Стопанство section"
+    },
+    "sandanski": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "septemvri": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "shivachevo": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "shumen": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "slaviantsi": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "sliven": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "stambolovo": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "stara-zagora": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "sukhindol": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "sungurlare": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "svishchov": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "t-rgovishche": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "v-rbitsa": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "varna": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "veliki-preslav": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "vidin": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "vratsa": {
+      "missing": true,
+      "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    }
+  },
+  "cs": {
+    "cechy": {
+      "wiki_title": "Vinařská oblast Čechy",
+      "page_url": "https://cs.wikipedia.org/wiki/Vina%C5%99sk%C3%A1_oblast_%C4%8Cechy",
+      "verification_quote": "Vinařská oblast Čechy je vinařská oblast, která obsahuje schválená území pro pěstování révy vinné."
+    },
+    "ceske": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article for \"České zemské víno\"; appears only as a classification term inside the general Víno article"
+    },
+    "morava": {
+      "wiki_title": "Vinařská oblast Morava",
+      "page_url": "https://cs.wikipedia.org/wiki/Vina%C5%99sk%C3%A1_oblast_Morava",
+      "verification_quote": "Vinařská oblast Morava je vinařská oblast, která zahrnuje schválená území pro pěstování révy vinné na území Moravy."
+    },
+    "novosedelske-slamove-vino": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; cs.wiki has pages for various Novosedly settlements but none about this single-vineyard straw-wine PDO"
+    },
+    "znojmo": {
+      "wiki_title": "Znojemská vinařská podoblast",
+      "page_url": "https://cs.wikipedia.org/wiki/Znojemsk%C3%A1_vina%C5%99sk%C3%A1_podoblast",
+      "verification_quote": "Znojemská vinařská podoblast leží ve vinařské oblasti Morava. Pokrývá vinařské obce okresů Znojmo a Třebíč."
+    }
+  },
+  "de": {
+    "aargau": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "ahrtaler-landwein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index; mentioned briefly in Ahr (Weinanbaugebiet) but no dedicated article"
+    },
+    "appenzell-ausserrhoden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "appenzell-innerrhoden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "badischer-landwein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "basel-landschaft": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "basel-stadt": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "bayerischer-bodensee-landwein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "bern-berne": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "bielersee-lac-de-bienne": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "brandenburger-landwein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "burgenland": {
+      "missing": true,
+      "note": "researched 2026-05; Burgenland article is the Bundesland with a wine subsection only, no dedicated Weinbaugebiet article"
+    },
+    "cheyres": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "eisenberg": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated Eisenberg DAC article on de.wikipedia.org"
+    },
+    "geneve": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "glarus": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "graubunden-grigioni": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "groraschener-see": {
+      "missing": true,
+      "note": "researched 2026-05; Großräschener See article is exclusively about the artificial lake (former lignite mine); wine production not mentioned"
+    },
+    "jura": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "kamptal": {
+      "missing": true,
+      "note": "researched 2026-05; redirects to \"Kamp (Fluss)\" — a river article, not wine"
+    },
+    "karnten": {
+      "missing": true,
+      "note": "researched 2026-05; Kärnten is the Bundesland; multi-state Bergland (Weinbauregion) is not slug-aligned"
+    },
+    "kremstal": {
+      "missing": true,
+      "note": "researched 2026-05; \"Kremstal (Niederösterreich)\" is the geographic valley article, not the DAC"
+    },
+    "landwein-der-mosel": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "landwein-der-ruwer": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "landwein-der-saar": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on Landwein index; Saarländischer Landwein article explicitly distinguishes itself from Landwein der Saar (RLP communities Serrig to Konz)"
+    },
+    "landwein-main": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index (formerly Fränkischer Landwein); no dedicated article"
+    },
+    "landwein-neckar": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "landwein-oberrhein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "landwein-rhein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "landwein-rhein-neckar": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "leithaberg": {
+      "missing": true,
+      "note": "researched 2026-05; resolves to \"Leithagebirge\" (mountain range), not the DAC"
+    },
+    "luzern": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "mittelburgenland": {
+      "missing": true,
+      "note": "researched 2026-05; \"Blaufränkischland\" marketing-term article, not the DAC"
+    },
+    "mitteldeutscher-landwein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "nahegauer-landwein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "neuchatel": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "neusiedlersee": {
+      "missing": true,
+      "note": "researched 2026-05; resolves to \"Neusiedler See\" (the lake), not the DAC"
+    },
+    "neusiedlersee-hugelland": {
+      "missing": true,
+      "note": "researched 2026-05; older DAC, no dedicated de.wiki article; superseded by Leithaberg (also missing)"
+    },
+    "nidwalden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "niederosterreich": {
+      "missing": true,
+      "note": "researched 2026-05; Niederösterreich is the Bundesland; no dedicated regional wine article"
+    },
+    "oberosterreich": {
+      "missing": true,
+      "note": "researched 2026-05; Oberösterreich is the Bundesland; wine only as part of multi-state Bergland (Weinbauregion)"
+    },
+    "obwalden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "pfalzer-landwein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "rheinburgen-landwein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "rheingauer-landwein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "rheinischer-landwein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "rosalia": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated Rosalia DAC article"
+    },
+    "saarlandischer-landwein": {
+      "wiki_title": "Saarländischer Landwein",
+      "page_url": "https://de.wikipedia.org/wiki/Saarl%C3%A4ndischer_Landwein",
+      "verification_quote": "Saarländischer Landwein wird einerseits auf 124 ha an der saarländischen Obermosel, die zum Bereich Moseltor im bestimmten Anbaugebiet Mosel gehören, andererseits auf knapp 17 ha Anbaufläche für Landwein an Südhängen an der Saar, der Nied, der Blies und anderen Orten angebaut."
+    },
+    "sachsischer-landwein": {
+      "wiki_title": "Sächsischer Landwein",
+      "page_url": "https://de.wikipedia.org/wiki/S%C3%A4chsischer_Landwein",
+      "verification_quote": "Sächsischer Landwein gehört zu den deutschen Landweinen, die eine gehobene Stufe des „Deutschen Weins\" ohne Herkunftsbezeichnung darstellen und sich durch „gebietstypischen Charakter und ländliche Namensgebung\" auszeichnen."
+    },
+    "salzburg": {
+      "missing": true,
+      "note": "researched 2026-05; Bundesland article; wine only as part of multi-state Bergland (Weinbauregion)"
+    },
+    "schaffhausen": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "schwabischer-landwein": {
+      "wiki_title": "Schwäbischer Landwein",
+      "page_url": "https://de.wikipedia.org/wiki/Schw%C3%A4bischer_Landwein",
+      "verification_quote": "Schwäbischer Landwein gehört zu den Deutschen Landweinen, die eine gehobene Stufe des Weins (früher: „Tafelwein\") darstellen und sich durch „gebietstypischen Charakter und ländliche Namensgebung\" auszeichnen."
+    },
+    "schwyz": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "solothurn": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "st-gallen": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "steiermark": {
+      "missing": true,
+      "note": "researched 2026-05; Steiermark article is the Bundesland; wine is sub-topic only"
+    },
+    "steirerland": {
+      "missing": true,
+      "note": "researched 2026-05; \"Weinbauregion Steirerland\" redirects to general \"Weinbau in Österreich\""
+    },
+    "sudburgenland": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine-region article; diffused into Burgenland + Weinbau in Österreich"
+    },
+    "sudsteiermark": {
+      "missing": true,
+      "note": "researched 2026-05; Südsteiermark article is the geographic region with wine as one of many aspects"
+    },
+    "taubertaler-landwein": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on de.wikipedia.org/wiki/Landwein index page; no dedicated article"
+    },
+    "thunersee": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "thurgau": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "ticino": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "traisental": {
+      "missing": true,
+      "note": "researched 2026-05; \"Traisen (Fluss)\" / Traisental is the river/valley geographic article"
+    },
+    "uri": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "valais-wallis": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "vaud": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "vorarlberg": {
+      "missing": true,
+      "note": "researched 2026-05; Bundesland article; wine only as part of multi-state Bergland (Weinbauregion)"
+    },
+    "vulkanland-steiermark": {
+      "missing": true,
+      "note": "researched 2026-05; \"Steirisches Vulkanland\" is a Tourismus-Marketing article, not the DAC"
+    },
+    "vully": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "wachau": {
+      "missing": true,
+      "note": "researched 2026-05; Wachau article is the UNESCO cultural landscape, not the DAC (lead: \"die Landschaft im und um das Tal der Donau\")"
+    },
+    "wagram": {
+      "missing": true,
+      "note": "researched 2026-05; Wagram article is the geographic terrain edge (\"eine bis zu 40 Meter hohe, langgestreckte Geländekante\")"
+    },
+    "weinland": {
+      "missing": true,
+      "note": "\"Weinland Österreich\" returns HTTP 404; no dedicated article for the multi-Bundesland Landwein PGI"
+    },
+    "weinviertel": {
+      "missing": true,
+      "note": "researched 2026-05; Weinviertel article is the geographic region in NE Niederösterreich, not a wine-region article"
+    },
+    "weststeiermark": {
+      "missing": true,
+      "note": "researched 2026-05; Weststeiermark article is the geographic region west of the Mur, wine is one aspect among many"
+    },
+    "wien": {
+      "wiki_title": "Weinbau in Wien",
+      "page_url": "https://de.wikipedia.org/wiki/Weinbau_in_Wien",
+      "verification_quote": "Der Weinbau in Wien wird auf einer Fläche von 588 Hektar des Wiener Stadtgebietes betrieben."
+    },
+    "wiener-gemischter-satz": {
+      "wiki_title": "Gemischter Satz",
+      "page_url": "https://de.wikipedia.org/wiki/Gemischter_Satz",
+      "verification_quote": "Der Gemischte Satz ist die Bezeichnung für den Anbau von Wein, der aus unterschiedlichen Rebsorten in einem Weingarten besteht, sowie dann des daraus hergestellten Weins."
+    },
+    "zug": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "zurich": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
+    },
+    "zurichsee": {
+      "page_url": "https://de.wikipedia.org/wiki/Weinbau_am_Z%C3%BCrichsee",
+      "verification_quote": "Weinbau am Zürichsee beschreibt den Weinbau in der Region rund um den Zürichsee in den Kantonen Zürich, St. Gallen und Schwyz.",
+      "wiki_title": "Weinbau am Zürichsee"
+    }
+  },
+  "el": {
+    "achaia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "aegeo-pelagos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "agora": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "amynteo": {
+      "missing": true,
+      "note": "researched 2026-05; Αμύνταιο page is the Florina town; no separate wine article"
+    },
+    "anavyssos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "anchialos": {
+      "missing": true,
+      "note": "researched 2026-05; Αγχίαλος is a disambig; Νέα Αγχίαλος is the town, no dedicated wine PDO article"
+    },
+    "argolida": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "arhanes": {
+      "missing": true,
+      "note": "researched 2026-05; Επάνω Αρχάνες is about the locality (archaeology/settlement), not the PDO"
+    },
+    "arkadia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "attiki": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "avdira": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "ayio-oros": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "dafnes": {
+      "missing": true,
+      "note": "researched 2026-05; Δαφνές Ηρακλείου opens \"Ο Δαφνές είναι χωριό\" — village article"
+    },
+    "dodekanisos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "drama": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "elassona": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "epanomi": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "evia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "evros": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "florina": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "fthiotida": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "gerania": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "goumenissa": {
+      "missing": true,
+      "note": "researched 2026-05; Γουμένισσα page is the town; wine mentioned in passing, no dedicated wine article"
+    },
+    "grevena": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "halikouna": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "halkidiki": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "handakas-candia": {
+      "missing": true,
+      "note": "researched 2026-05; no Wikipedia article found for this newer PDO"
+    },
+    "hania": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "ikaria": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "ilia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "ilion": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "imathia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "ioannina": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "ipiros": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "iraklio": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "ismaros": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "karditsa": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "karystos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "kastoria": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "kavala": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "kerkira": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "kiklades": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "kilada-atalantis": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "kissamos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "klimenti": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "korinthos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "kos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "kozani": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "krania": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "krannona": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "kriti": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "lakonia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "lasithi": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "lefkada": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "letrini": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "lilantio-pedio": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "limnos": {
+      "missing": true,
+      "note": "researched 2026-05; Λήμνος is the island article; no Λήμνος (οίνος) / Μοσχάτος Λήμνου dedicated wine article"
+    },
+    "magnisia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "makedonia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "malvasia-handakas-candia": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; Μαλβαζία article is specifically the Monemvasia-Malvasia PDO"
+    },
+    "malvasia-paros": {
+      "missing": true,
+      "note": "researched 2026-05; no Μαλβάζια Πάρου article; Πάρος mentions it as PDO but no dedicated page"
+    },
+    "malvasia-sitia": {
+      "missing": true,
+      "note": "researched 2026-05; no Μαλβάζια Σητείας article"
+    },
+    "mantinia": {
+      "missing": true,
+      "note": "researched 2026-05; Μαντίνεια is a disambig (locality); Μαντίνεια Αρκαδίας is the ancient/modern locality, no wine PDO article"
+    },
+    "mantzavinata": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "markopoulo": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "martino": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "mavrodafni-kefallinias": {
+      "missing": true,
+      "note": "researched 2026-05; only the combined grape+wine article Μαυροδάφνη exists; no PDO-specific page"
+    },
+    "mavrodafni-patron": {
+      "missing": true,
+      "note": "researched 2026-05; only the combined grape+wine article Μαυροδάφνη exists; no PDO-specific page"
+    },
+    "mesenikola": {
+      "missing": true,
+      "note": "researched 2026-05; Μεσενικόλας Καρδίτσας opens \"Ο Μεσενικόλας είναι χωριό\" — village article, wine is a section"
+    },
+    "messinia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "metaxaton": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "meteora": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "metsovo": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "monemvasia-malvasia": {
+      "wiki_title": "Μαλβαζία",
+      "page_url": "https://el.wikipedia.org/wiki/%CE%9C%CE%B1%CE%BB%CE%B2%CE%B1%CE%B6%CE%AF%CE%B1",
+      "verification_quote": "Μαλβαζία (ή Μαλβασία) είναι ένα γλυκό, λιαστό κρασί που παράγεται στην περιοχή της Μονεμβασιάς, προστατευόμενης ονομασίας προέλευσης (Π.Ο.Π.)."
+    },
+    "moschato-kefallinias": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated Greek-Wikipedia article"
+    },
+    "moschato-patron": {
+      "missing": true,
+      "note": "researched 2026-05; no Μοσχάτο Πατρών article; Πάτρα city page only links Μαυροδάφνη"
+    },
+    "moschato-rodou": {
+      "missing": true,
+      "note": "researched 2026-05; no Μοσχάτος Ρόδου article"
+    },
+    "moschatos-limnou": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; Λήμνος island page mentions Muscat in product list"
+    },
+    "moschatos-riou-patras": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article for Μοσχάτος Ρίου Πάτρας"
+    },
+    "naoussa": {
+      "missing": true,
+      "note": "researched 2026-05; Νάουσα page is the town in Imathia; disambig lists Naousa only as alt name for Xinomavro variety"
+    },
+    "nea-mesimvria": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "nemea": {
+      "wiki_title": "Κρασί Νεμέας",
+      "page_url": "https://el.wikipedia.org/wiki/%CE%9A%CF%81%CE%B1%CF%83%CE%AF_%CE%9D%CE%B5%CE%BC%CE%AD%CE%B1%CF%82",
+      "verification_quote": "Το κρασί Νεμέας (Ονομασίας Προέλευσης Ανωτέρας Ποιότητας) παράγεται στην ευρύτερη περιοχή της Νεμέας, η οποία αποτελεί την μεγαλύτερη αμπελουργική ζώνη της Ελλάδας."
+    },
+    "opountia-lokridas": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "paggeo": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "pallini": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "parnassos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "paros": {
+      "missing": true,
+      "note": "researched 2026-05; Πάρος island page mentions PDO Mandilaria + Monemvasia but no dedicated wine article"
+    },
+    "patra": {
+      "missing": true,
+      "note": "researched 2026-05; Πάτρα city page has no dedicated Patras wine PDO article"
+    },
+    "pella": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "peloponnisos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "peza": {
+      "missing": true,
+      "note": "researched 2026-05; Πεζά Ηρακλείου opens \"Τα Πεζά είναι οικισμός...\" — village article"
+    },
+    "pieria": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "pisatis": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "playies-abelou": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "playies-egialias": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "playies-enou": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "playies-kitherona": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "playies-knimidas": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "playies-melitona": {
+      "missing": true,
+      "note": "researched 2026-05; no Greek Wikipedia article found for Πλαγιές Μελίτωνα"
+    },
+    "playies-paikou": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "playies-parnithas": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "playies-pentelikou": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "playies-vertiskou": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "pylia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "rapsani": {
+      "missing": true,
+      "note": "researched 2026-05; Ραψάνη opens \"Η Ραψάνη είναι χωριό\" — village article (wine is a major section but article is about the settlement)"
+    },
+    "rethimno": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-attikis": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-evias": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-gialtron": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-halkidas-evias": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-karistou": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-koropiou": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-markopoulou-attikis": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-megaron": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-mesogion-attikis": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-of-viotia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-pallinis": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-peanias": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-pikermiou": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-spaton": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "retsina-thivon-viotias": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "ritsona": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "robola-kefallinias": {
+      "wiki_title": "Ρομπόλα Κεφαλονιάς",
+      "page_url": "https://el.wikipedia.org/wiki/%CE%A1%CE%BF%CE%BC%CF%80%CF%8C%CE%BB%CE%B1_%CE%9A%CE%B5%CF%86%CE%B1%CE%BB%CE%BF%CE%BD%CE%B9%CE%AC%CF%82",
+      "verification_quote": "Η Ρομπόλα Κεφαλονιάς είναι λευκό κρασί Προστατευόμενης Ονομασίας Προέλευσης (ΠΟΠ) που παράγεται αποκλειστικά στο νησί της Κεφαλονιάς."
+    },
+    "rodos": {
+      "missing": true,
+      "note": "researched 2026-05; Ρόδος is the island article; no dedicated Rhodes wine PDO article"
+    },
+    "santorini": {
+      "wiki_title": "Βινσάντο Σαντορίνης",
+      "page_url": "https://el.wikipedia.org/wiki/%CE%92%CE%B9%CE%BD%CF%83%CE%AC%CE%BD%CF%84%CE%BF_%CE%A3%CE%B1%CE%BD%CF%84%CE%BF%CF%81%CE%AF%CE%BD%CE%B7%CF%82",
+      "verification_quote": "Το βινσάντο της Σαντορίνης είναι παραδοσιακό γλυκό κρασί με σκούρο μπρούτζινο χρώμα, το οποίο ανήκει στην κατηγορία των κρασιών Π.Ο.Π Σαντορίνης. [Note: el.wiki has only the Vinsanto sub-style article; the broader Santorini PDO covers Assyrtiko whites too]"
+    },
+    "serres": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "siatista": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "sithonia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "sitia": {
+      "missing": true,
+      "note": "researched 2026-05; Σητεία opens \"Η Σητεία είναι πόλη...\" — town article, no dedicated wine PDO article"
+    },
+    "spata": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "sterea-ellada": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "tegea": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "thapsana": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "thasos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "thessalia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "thessaloniki": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "thiva": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "thraki": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "trifilia": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "tyrnavos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "velvedo": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "verdea-zakyntou": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    },
+    "zakynthos": {
+      "missing": true,
+      "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    }
+  },
+  "es": {
+    "3-riberas": {
+      "page_url": "https://es.wikipedia.org/wiki/Tres_Riberas",
+      "verification_quote": "Tres Riberas (o 3 Riberas) es una indicación geográfica con derecho a la mención tradicional Vino de la Tierra utilizada para designar los vinos de mesa originarios de viñedos de la zona de producción constituida por los términos municipales integrados en la Comunidad Foral de Navarra, excepto aquellos amparados por la Denominación de Origen Calificada Rioja.",
+      "wiki_title": "Tres Riberas"
+    },
+    "abadia-retuerta": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. Abadía Retuerta is a single-estate DOP (Sardón de Duero); es.wikipedia.org has the historical Abadía de Santa María de Retuerta article (12th-c. monastery) but no dedicated wine-DOP page."
+    },
+    "arabako-txakolina": {
+      "page_url": "https://es.wikipedia.org/wiki/Chacol%C3%AD_de_%C3%81lava",
+      "verification_quote": "Chacolí o Txakoli de Álava (en euskera Arabako Txakolina) es una denominación de origen española para el vino chacolí originario de la zona vitícola del Valle de Ayala, en Álava.",
+      "wiki_title": "Chacolí de Álava"
+    },
+    "ayles": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. Aylés is a Vino de Pago single-estate DOP in Aragón; no dedicated es.wikipedia.org article — nearest is the bodega Pago Aylés."
+    },
+    "bizkaiko-txakolina": {
+      "page_url": "https://es.wikipedia.org/wiki/Chacol%C3%AD_de_Vizcaya",
+      "verification_quote": "Chacolí de Vizcaya o Txakoli de Vizcaya (en euskera Bizkaiko Txakolina) es una denominación de origen española que regula y ampara este tipo de vino producido en el territorio histórico de Vizcaya.",
+      "wiki_title": "Chacolí de Vizcaya"
+    },
+    "bolandin": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. Bolandín is a Vino de Pago single-estate DOP in Navarra (Ablitas); no dedicated es.wikipedia.org wine-DOP article."
+    },
+    "campo-de-calatrava": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. Campo de Calatrava is a Castilla-La Mancha DOP; es.wikipedia.org has the comarca article (Campo de Calatrava, Ciudad Real) but doesn't cover the wine DOP."
+    },
+    "campo-de-la-guardia": {
+      "page_url": "https://es.wikipedia.org/wiki/Campo_de_la_Guardia",
+      "verification_quote": "Campo de la Guardia es un Vino de Pago procedente de Castilla-La Mancha, solo aplicable a vinos tintos y blancos.",
+      "wiki_title": "Campo de la Guardia"
+    },
+    "chozas-carrascal": {
+      "missing": true,
+      "note": "Searched es.wikipedia.org (titles: 'Chozas Carrascal', 'Pago Chozas Carrascal') and Wikipedia search API; only result is the generic 'Vino de pago' article. No dedicated page."
+    },
+    "dehesa-penalba": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. Dehesa Peñalba is a Vino de Pago single-estate DOP in Castilla y León; no dedicated es.wikipedia.org wine-DOP article."
+    },
+    "el-terrerazo": {
+      "missing": true,
+      "note": "Searched es.wikipedia.org (titles: 'El Terrerazo', 'Pago El Terrerazo'); only generic 'Vino de pago' article matches. No dedicated DOP page."
+    },
+    "el-vicario": {
+      "missing": true,
+      "note": "Searched es.wikipedia.org; 'El vicario' is a disambiguation page (book/film references), no article for the Vino de Pago El Vicario."
+    },
+    "getariako-txakolina": {
+      "page_url": "https://es.wikipedia.org/wiki/Chacol%C3%AD_de_Guetaria",
+      "verification_quote": "Chacolí o Txakoli de Getaria (en vasco, Getariako Txakolina) es una denominación de origen española establecida en 1990 para el vino chacolí originario de la zona vitícola de Guetaria.",
+      "wiki_title": "Chacolí de Guetaria"
+    },
+    "islas-canarias": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. Islas Canarias is a DOP umbrella for the archipelago; es.wikipedia.org has Islas Canarias (the archipelago) but no dedicated wine-DOP article — wine coverage sits in per-island DOP articles instead."
+    },
+    "jerez-xeres-sherry": {
+      "page_url": "https://es.wikipedia.org/wiki/Jerez",
+      "verification_quote": "El jerez (en inglés sherry y en francés xérès) hace referencia a una amplia gama de vinos españoles que se cría en las ciudades andaluzas de la provincia de Cádiz de Jerez de la Frontera, El Puerto de Santa María y Sanlúcar de Barrameda.",
+      "wiki_title": "Jerez"
+    },
+    "la-jaraba": {
+      "missing": true,
+      "note": "Searched es.wikipedia.org (titles: 'La Jaraba', 'Pago La Jaraba') and search API; no relevant results. No dedicated DOP page."
+    },
+    "los-balagueses": {
+      "missing": true,
+      "note": "Searched es.wikipedia.org (titles: 'Los Balagueses', 'Pago Los Balagueses'); only the generic 'Vino de pago' article references it. No dedicated page."
+    },
+    "los-cerrillos": {
+      "missing": true,
+      "note": "Searched es.wikipedia.org; 'Los Cerrillos' is a disambiguation page covering unrelated places. No article for the Vino de Pago Los Cerrillos."
+    },
+    "ribeiras-do-morrazo": {
+      "missing": true,
+      "note": "Searched es.wikipedia.org (title 'Ribeiras do Morrazo') and search API; only results are geographic articles about the Morrazo comarca, none about the IGP wine."
+    },
+    "ribera-del-gallego-cinco-villas": {
+      "page_url": "https://es.wikipedia.org/wiki/Ribera_del_G%C3%A1llego-Cinco_Villas",
+      "verification_quote": "Ribera del Gállego-Cinco Villas es una indicación geográfica protegida, utilizada para designar los vinos de la tierra originarios de las zonas vitícolas españolas de la ribera del Gállego y Cinco Villas.",
+      "wiki_title": "Ribera del Gállego-Cinco Villas"
+    },
+    "rio-negro": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. Río Negro is a Vino de Pago single-estate DOP (Guadalajara); es.wikipedia.org 'Río Negro' is a disambiguation page covering Argentine and other geographic 'río Negro' topics, not the Spanish DOP."
+    },
+    "rosalejo": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. Rosalejo is a Vino de Pago single-estate DOP (Toledo); no dedicated es.wikipedia.org wine-DOP article."
+    },
+    "sierras-de-las-estancias-y-los-filabres": {
+      "page_url": "https://es.wikipedia.org/wiki/Sierras_de_las_Estancias_y_los_Filabres",
+      "verification_quote": "Sierras de las Estancias y los Filabres es una indicación geográfica utilizada para designar los vinos con derecho a la mención tradicional Vino de la Tierra de la comarca vitícola de las sierras homónimas.",
+      "wiki_title": "Sierras de las Estancias y los Filabres"
+    },
+    "terras-do-navia": {
+      "missing": true,
+      "note": "Searched es.wikipedia.org (titles: 'Terras do Navia', 'Vino de la Tierra Terras do Navia') and search API; no relevant article found for the IGP."
+    },
+    "tharsys": {
+      "not_aoc_topic": true,
+      "note": "Page exists at 'Pago de Tharsys' (https://es.wikipedia.org/wiki/Pago_de_Tharsys) but is about the bodega (a family winery within DO Utiel-Requena), not the Vino de Pago DOP itself."
+    },
+    "urbezo": {
+      "missing": true,
+      "note": "Searched es.wikipedia.org (titles 'Urbezo', 'Vino de pago Urbezo'); no article exists for the Vino de Pago Urbezo or its bodega."
+    },
+    "uruena": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. Urueña is a Vino de Pago single-estate DOP; es.wikipedia.org has the commune article (Urueña, Valladolid) but no dedicated article for the DOP itself."
+    },
+    "vallegarcia": {
+      "missing": true,
+      "note": "Searched es.wikipedia.org (titles 'Vallegarcía', 'Vallegarcia', 'Pago Vallegarcía') and search API; no relevant article found."
+    },
+    "vera-de-estenas": {
+      "missing": true,
+      "note": "Searched es.wikipedia.org (titles 'Vera de Estenas', 'Pago Vera de Estenas'); only the generic 'Vino de pago' article matches. No dedicated DOP or bodega page."
+    }
+  },
+  "fr": {
+    "aargau": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "moselle-luxembourgeoise": {
+      "wiki_title": "Viticulture au Luxembourg",
+      "page_url": "https://fr.wikipedia.org/wiki/Viticulture_au_Luxembourg",
+      "verification_quote": "Sa production se concentre principalement sur la Moselle luxembourgeoise"
+    },
+    "alsace-grand-cru-altenberg-de-bergheim": {
+      "page_url": "https://fr.wikipedia.org/wiki/Altenberg-de-bergheim",
+      "verification_quote": "Un alsace grand cru Altenberg de Bergheim, ou plus simplement un altenberg-de-bergheim, est un vin blanc français produit sur le lieu-dit Altenberg et plusieurs lieux-dits l'avoisinant, situés sur la commune de Bergheim, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Altenberg-de-bergheim"
+    },
+    "alsace-grand-cru-altenberg-de-wolxheim": {
+      "page_url": "https://fr.wikipedia.org/wiki/Altenberg-de-wolxheim",
+      "verification_quote": "Un alsace grand cru Altenberg de Wolxheim, ou plus simplement un altenberg-de-wolxheim, est un vin blanc français produit sur le lieu-dit Altenberg et plusieurs lieux-dits l'avoisinant, situés sur la commune de Wolxheim, dans le département du Bas-Rhin dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Altenberg-de-wolxheim"
+    },
+    "alsace-grand-cru-brand": {
+      "page_url": "https://fr.wikipedia.org/wiki/Brand_(grand_cru)",
+      "verification_quote": "Un alsace grand cru Brand, ou plus simplement un brand, est un vin blanc français produit sur le lieu-dit le Brand et plusieurs lieux-dits l'avoisinant, situés sur la commune de Turckheim, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Brand (grand cru)"
+    },
+    "alsace-grand-cru-bruderthal": {
+      "page_url": "https://fr.wikipedia.org/wiki/Bruderthal",
+      "verification_quote": "Un alsace grand cru Bruderthal, ou plus simplement un bruderthal, est un vin blanc français produit sur le lieu-dit le Bruderthal, et plusieurs lieux-dits l'avoisinant, situés sur la commune de Molsheim, dans le département du Bas-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Bruderthal"
+    },
+    "alsace-grand-cru-eichberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Eichberg_(grand_cru)",
+      "verification_quote": "Un alsace grand cru Eichberg, ou plus simplement un eichberg, est un vin blanc français produit sur un ensemble de lieux-dits groupés sous l'appellation Eichberg, situés sur la commune d’Eguisheim, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Eichberg (grand cru)"
+    },
+    "alsace-grand-cru-engelberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Engelberg_(grand_cru)",
+      "verification_quote": "Un alsace grand cru Engelberg, ou plus simplement un engelberg, est un vin blanc français produit sur le lieu-dit l’Engelberg et plusieurs lieux-dits l'avoisinant, situés sur les communes de Dahlenheim et de Scharrachbergheim-Irmstett, dans le département du Bas-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Engelberg (grand cru)"
+    },
+    "alsace-grand-cru-florimont": {
+      "page_url": "https://fr.wikipedia.org/wiki/Florimont_(grand_cru)",
+      "verification_quote": "Un alsace grand cru Florimont, ou plus simplement un florimont, est un vin blanc français produit sur plusieurs lieux-dits des communes d’Ingersheim et de Katzenthal (regroupés sous la nomination « Florimont »), dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Florimont (grand cru)"
+    },
+    "alsace-grand-cru-froehn": {
+      "page_url": "https://fr.wikipedia.org/wiki/Froehn",
+      "verification_quote": "Un alsace grand cru Froehn, ou plus simplement un froehn, est un vin blanc français produit sur plusieurs lieux-dits de la commune de Zellenberg, situés dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Froehn"
+    },
+    "alsace-grand-cru-furstentum": {
+      "page_url": "https://fr.wikipedia.org/wiki/Furstentum",
+      "verification_quote": "Un alsace grand cru Furstentum, ou plus simplement un furstentum, est un vin blanc français produit sur le lieu-dit le Furstentum et d'autres lieux-dits l'avoisant, situés sur la commune de Kaysersberg Vignoble (Kientzheim et Sigolsheim, intégrés dans cette nouvelle commune depuis 2016), dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Furstentum"
+    },
+    "alsace-grand-cru-geisberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Geisberg_(grand_cru)",
+      "verification_quote": "Un alsace grand cru Geisberg, ou plus simplement un geisberg, est un vin blanc français produit sur le lieu-dit le Geisberg, situé sur la commune de Ribeauvillé, dans le département du Haut-Rhin, dans le département du Bas-Rhin, dans la collectivité européenne d'Alsace.",
+      "wiki_title": "Geisberg (grand cru)"
+    },
+    "alsace-grand-cru-gloeckelberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Gloeckelberg",
+      "verification_quote": "Un alsace grand cru Gloeckelberg, ou plus simplement un gloeckelberg, est un vin blanc français produit sur le lieu-dit le Gloeckelberg et plusieurs lieux-dits l'avoisinant, situés sur les communes de Rodern et de Saint-Hippolyte, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Gloeckelberg"
+    },
+    "alsace-grand-cru-goldert": {
+      "page_url": "https://fr.wikipedia.org/wiki/Goldert",
+      "verification_quote": "Un alsace grand cru goldert, ou plus simplement un goldert, est un vin blanc français produit sur le lieu-dit Goldert et plusieurs lieux-dits l'avoisinant, situés sur la commune de Gueberschwihr, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Goldert"
+    },
+    "alsace-grand-cru-hatschbourg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Hatschbourg",
+      "verification_quote": "Un alsace grand cru Hatschbourg, ou plus simplement un hatschbourg, est un vin blanc français produit sur le lieu-dit Hatschbourg et des lieux-dits l'avoisant, situés sur les communes de Hattstatt et de Vœgtlinshoffen, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Hatschbourg"
+    },
+    "alsace-grand-cru-hengst": {
+      "page_url": "https://fr.wikipedia.org/wiki/Hengst",
+      "verification_quote": "Un alsace grand cru Hengst, ou plus simplement un hengst, est un vin français produit sur le lieu-dit Hengst et sur de nombreux lieux-dits l'avoisinant, situés sur la commune de Wintzenheim, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Hengst"
+    },
+    "alsace-grand-cru-kanzlerberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Kanzlerberg",
+      "verification_quote": "Un alsace grand cru Kanzlerberg, ou plus simplement un kanzlerberg, est un vin blanc français produit sur le lieu-dit Kanzlerberg et deux autres lieux-dits, situés sur la commune de Bergheim, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Kanzlerberg"
+    },
+    "alsace-grand-cru-kastelberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Kastelberg_(grand_cru)",
+      "verification_quote": "Un alsace grand cru Kastelberg, ou plus simplement un kastelberg, est un vin blanc français produit sur le lieu-dit Kastelberg et plusieurs lieux-dits l'avoisinant, situés sur la commune d'Andlau, dans le département du Bas-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Kastelberg (grand cru)"
+    },
+    "alsace-grand-cru-kessler": {
+      "page_url": "https://fr.wikipedia.org/wiki/Kessler_(grand_cru)",
+      "verification_quote": "Un alsace grand cru Kessler, ou plus simplement un kessler, est un vin blanc français produit sur le lieu-dit Kessler, et quelques lieux-dits l'avoisinant, situés sur la commune de Guebwiller, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Kessler (grand cru)"
+    },
+    "alsace-grand-cru-kirchberg-de-barr": {
+      "page_url": "https://fr.wikipedia.org/wiki/Kirchberg-de-barr",
+      "verification_quote": "Un alsace grand cru Kirchberg de Barr, ou plus simplement un kirchberg-de-barr, est un vin blanc ou rouge français produit sur le lieu-dit du Kirchberg et plusieurs lieux-dits l'avoisinant, situés sur la commune de Barr, dans le département du Bas-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Kirchberg-de-barr"
+    },
+    "alsace-grand-cru-kirchberg-de-ribeauville": {
+      "page_url": "https://fr.wikipedia.org/wiki/Kirchberg-de-ribeauvill%C3%A9",
+      "verification_quote": "Un alsace grand cru Kirchberg de Ribeauvillé, ou plus simplement un kirchberg-de-ribeauvillé, est un vin blanc français produit principalement sur le lieu-dit Kirchberg, situé sur la commune de Ribeauvillé, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Kirchberg-de-ribeauvillé"
+    },
+    "alsace-grand-cru-kitterle": {
+      "page_url": "https://fr.wikipedia.org/wiki/Kitterl%C3%A9",
+      "verification_quote": "Un alsace grand cru Kitterlé, ou plus simplement un kitterlé, est un vin blanc français produit sur le lieu-dit le Kitterlé, et quelques lieux-dits l'avoisinant, situés sur la commune de Guebwiller, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Kitterlé"
+    },
+    "alsace-grand-cru-mambourg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Mambourg",
+      "verification_quote": "Un alsace grand cru Mambourg, ou plus simplement un mambourg, est un vin blanc français produit sur le lieu-dit du Mambourg et plusieurs lieux-dits avoisinant, situés sur la commune de Kaysersberg Vignoble (nouvelle commune incluant Sigolsheim depuis 2016), dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Mambourg"
+    },
+    "alsace-grand-cru-mandelberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Mandelberg",
+      "verification_quote": "Un alsace grand cru Mandelberg, ou plus simplement un mandelberg, est un vin blanc français produit sur le lieu-dit le Mandelberg et deux autres lieux-dits, situés sur les communes de Mittelwihr et de Beblenheim, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Mandelberg"
+    },
+    "alsace-grand-cru-marckrain": {
+      "page_url": "https://fr.wikipedia.org/wiki/Marckrain",
+      "verification_quote": "Un alsace grand cru Marckrain, ou plus simplement un marckrain, est un vin blanc français produit sur le lieu-dit le Marckrain et d'autres lieux-dits avoisinant, situés sur les communes de Kaysersberg Vignoble (nouvelle commune incluant Sigolsheim depuis 2016) et de Bennwihr, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Marckrain"
+    },
+    "alsace-grand-cru-moenchberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Moenchberg",
+      "verification_quote": "Un alsace grand cru Moenchberg, ou plus simplement un moenchberg, est un vin blanc français produit sur les lieux-dits le Moenchberg et le Duettenberg, situés sur les communes d'Andlau et d'Eichhoffen, dans le département du Bas-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Moenchberg"
+    },
+    "alsace-grand-cru-muenchberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Muenchberg",
+      "verification_quote": "Un alsace grand cru Muenchberg, ou plus simplement un muenchberg, est un vin blanc français produit sur les lieux-dits le Muenchberg, et le Buengertrain situés sur la commune de Nothalten, dans le département du Bas-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Muenchberg"
+    },
+    "alsace-grand-cru-ollwiller": {
+      "page_url": "https://fr.wikipedia.org/wiki/Ollwiller",
+      "verification_quote": "Un alsace grand cru Ollwiller, ou plus simplement un ollwiller, est un vin blanc français produit sur le lieu-dit l’Ollwiller (au nord du château) et sur une série de lieux-dits l'avoisinant, situés sur la commune de Wuenheim, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Ollwiller"
+    },
+    "alsace-grand-cru-osterberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Osterberg_(grand_cru)",
+      "verification_quote": "Un alsace grand cru Osterberg, ou plus simplement un osterberg, est un vin blanc français produit sur le lieu-dit l’Osterberg et plusieurs lieux-dits l'avoisinant, situéq sur la commune de Ribeauvillé, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Osterberg (grand cru)"
+    },
+    "alsace-grand-cru-pfersigberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Pfersigberg",
+      "verification_quote": "Un alsace grand cru Pfersigberg, ou plus simplement un pfersigberg (la colline aux pêchers), est un vin blanc français produit sur un ensemble de lieux-dits groupés sous l'appellation Pfersigberg, situés sur les communes d'Eguisheim et de Wettolsheim, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Pfersigberg"
+    },
+    "alsace-grand-cru-pfingstberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Pfingstberg",
+      "verification_quote": "Un alsace grand cru Pfingstberg, ou plus simplement un pfingstberg, est un vin blanc français produit sur le lieu-dit le Pfingstberg et quelques lieux-dits l'avoisant, situés sur la commune d'Orschwihr, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Pfingstberg"
+    },
+    "alsace-grand-cru-praelatenberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Praelatenberg",
+      "verification_quote": "Un alsace grand cru Praelatenberg, ou plus simplement un praelatenberg, est un vin blanc français produit sur le lieu-dit le Praelatenberg et plusieurs lieux-dits l'avoisinant, situés sur la commune de Kintzheim, dans le département du Bas-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Praelatenberg"
+    },
+    "alsace-grand-cru-rosacker": {
+      "page_url": "https://fr.wikipedia.org/wiki/Rosacker",
+      "verification_quote": "Un alsace grand cru Rosacker, ou plus simplement un rosacker, est un vin blanc français produit sur le lieu-dit le Rosacker, et plusieurs lieux-dits l'avoisinant, situés sur la commune de Hunawihr, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Rosacker"
+    },
+    "alsace-grand-cru-saering": {
+      "page_url": "https://fr.wikipedia.org/wiki/Saering",
+      "verification_quote": "Un alsace grand cru Saering, ou plus simplement un saering, est un vin blanc français produit sur le lieu-dit le Saering et sur des lieux-dits l'avoisinant, situés sur la commune de Guebwiller, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Saering"
+    },
+    "alsace-grand-cru-schlossberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Schlossberg_(grand_cru)",
+      "verification_quote": "Un alsace grand cru schlossberg, ou plus simplement un schlossberg, est un vin blanc français produit sur les lieux-dits Schlossberg et Kirrenburg, situés sur la commune de Kaysersberg Vignoble (nouvelle commune créée en 2016 et incluant le village de Kientzheim où se trouvent les vignes), dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Schlossberg (grand cru)"
+    },
+    "alsace-grand-cru-schoenenbourg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Schoenenbourg_(grand_cru)",
+      "verification_quote": "Un alsace grand cru Schoenenbourg, ou plus simplement un schoenenbourg, est un vin blanc français produit sur les lieux-dits le Schoenenburg, et le Kronenburg, situés sur les communes de Riquewihr et de Zellenberg, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Schoenenbourg (grand cru)"
+    },
+    "alsace-grand-cru-sommerberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Sommerberg",
+      "verification_quote": "Un alsace grand cru Sommerberg, ou plus simplement un sommerberg, est un vin blanc français produit sur le lieu-dit le Sommerberg et plusieurs lieux-dits l'avoisinant, situés sur les communes de Niedermorschwihr et de Katzenthal, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Sommerberg"
+    },
+    "alsace-grand-cru-sonnenglanz": {
+      "page_url": "https://fr.wikipedia.org/wiki/Sonnenglanz",
+      "verification_quote": "Un alsace grand cru Sonnenglanz, ou plus simplement un sonnenglanz, est un vin blanc français produit sur le lieu-dit le Sonnenglanz, situé sur la commune de Beblenheim, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Sonnenglanz"
+    },
+    "alsace-grand-cru-spiegel": {
+      "page_url": "https://fr.wikipedia.org/wiki/Spiegel_(grand_cru)",
+      "verification_quote": "Un alsace grand cru Spiegel, ou plus simplement un spiegel, est un vin blanc français produit sur le lieu-dit le Spiegel, et quelques lieux-dits l'avoisinant, situés sur les communes de Bergholtz et de Guebwiller, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace.",
+      "wiki_title": "Spiegel (grand cru)"
+    },
+    "alsace-grand-cru-sporen": {
+      "page_url": "https://fr.wikipedia.org/wiki/Sporen",
+      "verification_quote": "Un alsace grand cru Sporen, ou plus simplement un sporen, est un vin blanc français produit sur le lieu-dit le Sporen et quelques lieux-dits l'avoisinant, situés sur la commune de Riquewihr, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Sporen"
+    },
+    "alsace-grand-cru-steinert": {
+      "page_url": "https://fr.wikipedia.org/wiki/Steinert",
+      "verification_quote": "Un alsace grand cru Steinert, ou plus simplement un steinert, est un vin blanc français produit sur le lieu-dit le Steinert et plusieurs lieux-dits l'avosinant, situés sur les communes de Pfaffenheim et de Westhalten, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Steinert"
+    },
+    "alsace-grand-cru-steingrubler": {
+      "page_url": "https://fr.wikipedia.org/wiki/Steingrubler",
+      "verification_quote": "Un alsace grand cru Steingrubler, ou plus simplement un steingrubler, est un vin blanc français produit sur le lieu-dit le Steingrub et quelques lieux-dits l'avoisinant, situés sur la commune de Wettolsheim, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Steingrubler"
+    },
+    "alsace-grand-cru-steinklotz": {
+      "page_url": "https://fr.wikipedia.org/wiki/Steinklotz",
+      "verification_quote": "Un alsace grand cru Steinklotz, ou plus simplement un steinklotz, est un vin blanc français produit sur le lieu-dit le Steinklotz, et plusieurs lieux-dits l'avoisinant, situés sur la commune de Marlenheim, dans le département du Bas-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Steinklotz"
+    },
+    "alsace-grand-cru-wiebelsberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Wiebelsberg",
+      "verification_quote": "Un alsace grand cru Wiebelsberg, ou plus simplement un wiebelsberg, est un vin blanc français produit sur les lieux-dits le Wiebelsberg et le Pflaenzer, situés sur la commune d'Andlau, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Wiebelsberg"
+    },
+    "alsace-grand-cru-wineck-schlossberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Wineck-schlossberg",
+      "verification_quote": "Un alsace grand cru Wineck-Schlossberg, ou plus simplement un wineck-schlossberg, est un vin blanc français produit sur des lieux-dits entourant le Wineck (dit aussi le Schlossberg), situés sur les communes de Katzenthal et d'Ammerschwihr, dans le département du Haut-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Wineck-schlossberg"
+    },
+    "alsace-grand-cru-winzenberg": {
+      "page_url": "https://fr.wikipedia.org/wiki/Winzenberg",
+      "verification_quote": "Un alsace grand cru Winzenberg, ou plus simplement un winzenberg, est un vin blanc français produit sur le lieu-dit le Winzenberg et plusieurs lieux-dits l'avoisinant, situés sur la commune de Blienschwiller, dans le département du Bas-Rhin, dans la collectivité européenne d'Alsace, au sein de la région Grand Est.",
+      "wiki_title": "Winzenberg"
+    },
+    "alsace-ou-vin-d-alsace": {
+      "page_url": "https://fr.wikipedia.org/wiki/Alsace_(AOC)",
+      "verification_quote": "Un alsace, ou un vin d'Alsace (les deux formes sont autorisées), est un vin français d'appellation d'origine contrôlée produit sur tout le vignoble d'Alsace.",
+      "wiki_title": "Alsace (AOC)"
+    },
+    "anjou-brissac": {
+      "page_url": "https://fr.wikipedia.org/wiki/Anjou_brissac",
+      "verification_quote": "Un anjou brissac, précédemment connu sous la dénomination « anjou-villages brissac », est un vin rouge produit sur huit communes autour du château de Brissac, entre la Loire et le Layon.",
+      "wiki_title": "Anjou brissac"
+    },
+    "appenzell-ausserrhoden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "appenzell-innerrhoden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "aveyron": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. fr.wikipedia.org/wiki/Aveyron is the département; no dedicated article for the Aveyron IGP wine."
+    },
+    "banyuls-grand-cru": {
+      "missing": true,
+      "note": "No standalone page; banyuls-grand-cru is described as a sub-appellation inside fr.wikipedia.org/wiki/Banyuls_(AOC) ('Une seconde appellation quasi homonyme existe aussi, uniquement en vin doux naturel rouge, « le banyuls grand cru »...')."
+    },
+    "basel-landschaft": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "basel-stadt": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "bellet-ou-vin-de-bellet": {
+      "page_url": "https://fr.wikipedia.org/wiki/Bellet_(AOC)",
+      "verification_quote": "Un bellet, ou vin de Bellet (les deux formes sont autorisées), est un vin d'appellation d'origine contrôlée du vignoble de Provence récolté sur le seul territoire de la commune de Nice.",
+      "wiki_title": "Bellet (AOC)"
+    },
+    "bern-berne": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "bielersee-lac-de-bienne": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "calvados-domfontais": {
+      "missing": true,
+      "note": "No standalone page at Calvados_Domfrontais / Calvados_domfrontais; coverage exists as a sub-AOC inside fr.wikipedia.org/wiki/Calvados_(eau-de-vie) (body mentions 'domfrontais'). Slug also intentionally misspelled in source — Wikipedia uses 'Domfrontais'."
+    },
+    "calvados-pays-d-auge": {
+      "missing": true,
+      "note": "No standalone page at Calvados_Pays_d'Auge; coverage exists as a sub-AOC inside fr.wikipedia.org/wiki/Calvados_(eau-de-vie). Note: fr.wikipedia.org/wiki/Pays_d'Auge_(cidre) is a separate cidre AOP article, not the calvados eau-de-vie sub-AOC."
+    },
+    "cheyres": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "cidre-cotentin-ou-cotentin": {
+      "missing": true,
+      "note": "Searched Cidre_Cotentin, Cidre_du_Cotentin, Cotentin_(AOC); no fr.wikipedia.org page found. Google site: search returned only Cidre, Julien Le Paulmier, and Fermanville commune."
+    },
+    "cidre-de-bretagne-ou-cidre-breton": {
+      "page_url": "https://fr.wikipedia.org/wiki/Cidre_breton",
+      "verification_quote": "Le cidre breton ou cidre de Bretagne est une variété de cidre produit en Bretagne, dont il est un produit emblématique.",
+      "wiki_title": "Cidre breton"
+    },
+    "cidre-de-normandie-ou-cidre-normand": {
+      "page_url": "https://fr.wikipedia.org/wiki/Cidre_de_Normandie",
+      "verification_quote": "Le cidre de Normandie est une boisson alcoolisée titrant de 2 % à 8 % d'alcool obtenue à partir de la fermentation du jus de pomme.",
+      "wiki_title": "Cidre de Normandie"
+    },
+    "cidre-du-perche-ou-perche": {
+      "missing": true,
+      "note": "Searched Cidre_du_Perche and 'cidre du perche' via Google site: — no dedicated fr.wikipedia.org page; only general Cidre and Perche (région naturelle) articles."
+    },
+    "cite-de-carcassonne": {
+      "wiki_title": "Cité-de-carcassonne",
+      "page_url": "https://fr.wikipedia.org/wiki/Cit%C3%A9-de-carcassonne",
+      "verification_quote": "Un cité-de-carcassonne, anciennement dénommé vin de pays des coteaux de la cité de Carcassonne de 1974 jusqu'en 2009, est un vin français qui fait partie depuis 2025 de l'indication géographique protégée."
+    },
+    "clos-de-vougeot-ou-clos-vougeot": {
+      "page_url": "https://fr.wikipedia.org/wiki/Clos-de-vougeot",
+      "verification_quote": "Un clos-de-vougeot, ou un clos-vougeot (les deux formes sont autorisées), est un vin rouge français d'appellation d'origine contrôlée produit sur le clos de Vougeot.",
+      "wiki_title": "Clos-de-vougeot"
+    },
+    "cognac-ou-eau-de-vie-de-cognac-ou-eau-de-vie-des-charentes": {
+      "page_url": "https://fr.wikipedia.org/wiki/Cognac_(eau-de-vie)",
+      "verification_quote": "Un cognac, ou une eau-de-vie de Cognac ou une eau-de-vie des Charentes (les trois noms sont autorisés par le cahier des charges), est une eau-de-vie de vin produite en France.",
+      "wiki_title": "Cognac (eau-de-vie)"
+    },
+    "collines-rhodaniennes": {
+      "wiki_title": "Collines-rhodaniennes",
+      "page_url": "https://fr.wikipedia.org/wiki/Collines-rhodaniennes",
+      "verification_quote": "Un collines-rhodaniennes, appelé vin de pays des collines rhodaniennes jusqu'en 2009, est un vin français d'indication géographique protégée."
+    },
+    "comte-tolosan": {
+      "wiki_title": "Comté-tolosan",
+      "page_url": "https://fr.wikipedia.org/wiki/Comt%C3%A9-tolosan",
+      "verification_quote": "Un comté-tolosan, anciennement appelé vin de pays du comté tolosan de 1982 à 2009, est un vin français d'indication géographique protégée."
+    },
+    "cote-de-nuits-villages-ou-vins-fins-de-la-cote-de-nuits": {
+      "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4te-de-nuits-villages",
+      "verification_quote": "Un côte-de-nuits-villages, qui peut être appelé aussi un vins fins de la Côte de Nuits (les deux formes sont autorisées), est un vin rouge ou blanc français d'appellation d'origine contrôlée.",
+      "wiki_title": "Côte-de-nuits-villages"
+    },
+    "cote-vermeille": {
+      "wiki_title": "Côte-vermeille (IGP)",
+      "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4te-vermeille_(IGP)",
+      "verification_quote": "Le côte-vermeille est un vin français d'indication géographique protégée destiné à labelliser des vins ne pouvant prétendre à une appellation d'origine."
+    },
+    "coteaux-bourguignons-ou-bourgogne-grand-ordinaire-ou-bourgogne-ordinaire": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-bourguignons",
+      "verification_quote": "Un coteaux-bourguignons est un vin français d'appellation d'origine contrôlée (AOC), produit en rouge, en rosé, et en blanc. Jusqu'en 2011, il s'est appelé bourgogne ordinaire ou bourgogne grand-ordinaire.",
+      "wiki_title": "Coteaux-bourguignons"
+    },
+    "coteaux-d-enserune": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-d%27ens%C3%A9rune",
+      "verification_quote": "Le coteaux-d'ensérune est un vin français d'indication géographique protégée (le nouveau nom des vins de pays) de zone du vignoble du Languedoc-Roussillon, produit sur une partie du département de l'Hérault.",
+      "wiki_title": "Coteaux-d'ensérune"
+    },
+    "coteaux-de-coiffy": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-de-coiffy",
+      "verification_quote": "Le coteaux-de-coiffy, appelé vin de pays des coteaux de Coiffy jusqu'en 2009, est un vin français d'indication géographique protégée de zone, produit dans la micro-région naturelle française d'Apance-Amance.",
+      "wiki_title": "Coteaux-de-coiffy"
+    },
+    "coteaux-de-glanes": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-de-glanes",
+      "verification_quote": "Un coteaux-de-glanes est un vin français d'indication géographique protégée (le nouveau nom des vins de pays) de zone du Sud-Ouest, produit dans le département du Lot.",
+      "wiki_title": "Coteaux-de-glanes"
+    },
+    "coteaux-de-l-ain": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-de-l%27ain",
+      "verification_quote": "Un coteaux-de-l'ain, anciennement vin de pays des coteaux de l'Ain, est un vin français d'indication géographique protégée départementale, produit dans le département de l'Ain.",
+      "wiki_title": "Coteaux-de-l'ain"
+    },
+    "coteaux-de-l-auxois": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-de-l%27auxois",
+      "verification_quote": "Un coteaux-de-l'auxois, anciennement vin de pays des coteaux de l'Auxois, est un vin français d'indication géographique protégée de zone, produit dans le département de la Côte-d'Or.",
+      "wiki_title": "Coteaux-de-l'auxois"
+    },
+    "coteaux-de-narbonne": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-de-narbonne",
+      "verification_quote": "Un coteaux-de-narbonne, anciennement connu sous le nom vin de pays des coteaux de Narbonne, est un vin français faisant partie depuis 2011 de l'indication géographique protégée pays-d'oc, produit dans le département de l'Aude.",
+      "wiki_title": "Coteaux-de-narbonne"
+    },
+    "coteaux-de-peyriac": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-de-peyriac",
+      "verification_quote": "Le coteaux-de-peyriac est un vin français d'IGP (indication géographique protégée) du vignoble du Languedoc-Roussillon. Il est produit en blanc, rosé ou rouge, sur une partie du Minervois.",
+      "wiki_title": "Coteaux-de-peyriac"
+    },
+    "coteaux-de-tannay": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-de-tannay",
+      "verification_quote": "Un coteaux-de-tannay, anciennement vin de pays des coteaux de Tannay, est un vignoble français d'indication géographique protégée de zone, produit dans le département de la Nièvre.",
+      "wiki_title": "Coteaux-de-tannay"
+    },
+    "coteaux-des-baronnies": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-des-baronnies",
+      "verification_quote": "Le coteaux-des-baronnies, appelé vin de pays des coteaux-des-baronnies jusqu'en 2011, est un vin français d'indication géographique protégée.",
+      "wiki_title": "Coteaux-des-baronnies"
+    },
+    "coteaux-du-cher-et-de-l-arnon": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-du-cher-et-de-l%27arnon",
+      "verification_quote": "Les coteaux-du-cher-et-de-l'arnon, anciennement « vin de pays des coteaux du Cher et de l'Arnon », est un vin français d'indication géographique protégée (IGP) de zone, produit dans les départements du Cher et de l'Indre.",
+      "wiki_title": "Coteaux-du-cher-et-de-l'arnon"
+    },
+    "coteaux-du-pont-du-gard": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coteaux-du-pont-du-gard",
+      "verification_quote": "Le coteaux-du-pont-du-gard, appelé vin de pays des coteaux-du-pont-du-gard jusqu'en 2011, est un vin français d'indication géographique protégée.",
+      "wiki_title": "Coteaux-du-pont-du-gard"
+    },
+    "cotes-catalanes": {
+      "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4tes-catalanes",
+      "verification_quote": "Un côtes-catalanes est un vin d'indication géographique protégée (le nouveau nom des vins de pays) départementale qui a vocation à labelliser, après dégustation, les vins ne pouvant postuler à une appellation d'origine.",
+      "wiki_title": "Côtes-catalanes"
+    },
+    "cotes-de-bourg-bourg-et-bourgeais": {
+      "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4tes-de-bourg",
+      "verification_quote": "Un côtes-de-bourg, appelé aussi bourg ou bourgeais (ces noms sont autorisés par le cahier des charges), est un vin français d'appellation d'origine contrôlée produit autour de Bourg.",
+      "wiki_title": "Côtes-de-bourg"
+    },
+    "cotes-de-la-charite": {
+      "wiki_title": "Côtes-de-la-charité",
+      "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4tes-de-la-charit%C3%A9",
+      "verification_quote": "Un côtes-de-la-charité, anciennement vin de pays des coteaux charitois, est un vignoble français d'indication géographique protégée de zone, produit dans le département de la Nièvre autour de La Charité-sur-Loire."
+    },
+    "cotes-de-meuse": {
+      "wiki_title": "Côtes-de-meuse (IGP)",
+      "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4tes-de-meuse_(IGP)",
+      "verification_quote": "Un côtes-de-meuse, appelé vin de pays des côtes de Meuse jusqu'en 2009 lorsqu'il fut reconnu comme IGP, est un vin français d'indication géographique protégée."
+    },
+    "cotes-de-thau": {
+      "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4tes-de-thau",
+      "verification_quote": "Les côtes-de-thau, anciennement « vin de pays des côtes de Thau », est un vin français d'indication géographique protégée de zone, produit dans le département de l'Hérault.",
+      "wiki_title": "Côtes-de-thau"
+    },
+    "cotes-de-thongue": {
+      "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4tes-de-thongue",
+      "verification_quote": "Le côtes-de-thongue est un vin français d'indication géographique protégée (le nouveau nom des vins de pays) de zone du vignoble du Languedoc-Roussillon, produit sur une partie du département de l'Hérault.",
+      "wiki_title": "Côtes-de-thongue"
+    },
+    "cotes-du-lot": {
+      "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4tes-du-lot",
+      "verification_quote": "Un côtes-du-lot, anciennement appelé vin de pays du Lot jusqu'en 2009, est un vin français d'indication géographique protégée (IGP) départemental, qui peut être produit sur l'ensemble du vignoble du département du Lot.",
+      "wiki_title": "Côtes-du-lot"
+    },
+    "cotes-du-tarn": {
+      "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4tes-du-tarn",
+      "verification_quote": "Un côtes-du-tarn, appelé vin de pays des côtes du Tarn jusqu'en 2009, est un vin français d'indication géographique protégée de zone du Sud-Ouest, produit dans le département du Tarn.",
+      "wiki_title": "Côtes-du-tarn"
+    },
+    "coulee-de-serrant": {
+      "page_url": "https://fr.wikipedia.org/wiki/Coul%C3%A9e-de-serrant",
+      "verification_quote": "Une coulée-de-serrant est un vin blanc d'appellation d'origine contrôlée produit sur le lieu-dit de la coulée de Serrant, sur la commune de Savennières en Maine-et-Loire.",
+      "wiki_title": "Coulée-de-serrant"
+    },
+    "crozes-hermitage-ou-crozes-ermitage": {
+      "page_url": "https://fr.wikipedia.org/wiki/Crozes-hermitage_(AOC)",
+      "verification_quote": "Un crozes-hermitage, ou crozes-ermitage (les deux formes sont autorisées), est un vin rouge ou blanc d'appellation d'origine contrôlée produit sur dix communes autour de Crozes-Hermitage et de Tain-l'Hermitage, dans la Drôme.",
+      "wiki_title": "Crozes-hermitage (AOC)"
+    },
+    "domfront": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md prior research. fr.wikipedia.org has Domfront (commune in the Orne) but no dedicated article for the Domfront poiré AOP (perry, not wine — sits in the FR cidre cluster)."
+    },
+    "eau-de-vie-de-cidre-de-bretagne": {
+      "page_url": "https://fr.wikipedia.org/wiki/Lambig",
+      "verification_quote": "Le lambig est l'un des noms de l'eau-de-vie de cidre de Bretagne qui peut aussi être nommée gwinardant, odivi ou lagout.",
+      "wiki_title": "Lambig"
+    },
+    "eau-de-vie-de-cidre-du-maine": {
+      "page_url": "https://fr.wikipedia.org/wiki/Fine_du_Maine",
+      "verification_quote": "La fine du Maine est un alcool digestif de type eau-de-vie obtenue par distillation de cidre. […] La fine du Maine est reconnue par une Appellation d'origine contrôlée depuis 2015.",
+      "wiki_title": "Fine du Maine"
+    },
+    "entraygues-le-fel": {
+      "page_url": "https://fr.wikipedia.org/wiki/Entraygues-le-fel",
+      "verification_quote": "Un entraygues-le-fel est un vin français d'appellation d'origine contrôlée produit en rouge, rosé et blanc dans les vignobles du Sud-Ouest.",
+      "wiki_title": "Entraygues-le-fel"
+    },
+    "euskal-sagardoa-ou-sidra-del-pais-vasco-ou-cidre-du-pays-basque-ou-cidre-du-pays-basque-eu": {
+      "missing": true,
+      "note": "Searched 'Euskal Sagardoa', 'Sidra del País Vasco', 'cidre du Pays basque'; no dedicated fr.wikipedia.org article. Only Sagardotegi (Basque cider house) page is tangentially related."
+    },
+    "franche-comte": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. fr.wikipedia.org/wiki/Franche-Comté is the region article; no dedicated page for the Franche-Comté IGP wine."
+    },
+    "geneve": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "glarus": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "grand-roussillon": {
+      "page_url": "https://fr.wikipedia.org/wiki/Grand-roussillon",
+      "verification_quote": "Un grand-roussillon est un vin doux naturel (VDN) dont l'aire d'appellation couvre une large part du département des Pyrénées-Orientales et une petite partie du département de l'Aude.",
+      "wiki_title": "Grand-roussillon"
+    },
+    "graubunden-grigioni": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "haute-vallee-de-l-aude": {
+      "wiki_title": "Haute-vallée-de-l'aude (IGP)",
+      "page_url": "https://fr.wikipedia.org/wiki/Haute-vall%C3%A9e-de-l%27aude_(IGP)",
+      "verification_quote": "Le haute-vallée-de-l'aude est un vin français d'indication géographique protégée de zone qui a vocation à labelliser les vins ne pouvant postuler une appellation d'origine."
+    },
+    "haute-vallee-de-l-orb": {
+      "page_url": "https://fr.wikipedia.org/wiki/Haute-vall%C3%A9e-de-l%27orb",
+      "verification_quote": "Le vin haute-vallée-de-l'orb, anciennement « vin de pays de la haute-vallée de l'Orb », est un vin français d'indication géographique protégée (IGP), essentiellement produit dans les haut-cantons du département de l'Hérault.",
+      "wiki_title": "Haute-vallée-de-l'orb"
+    },
+    "hermitage-ou-ermitage-ou-l-hermitage-ou-l-ermitage": {
+      "page_url": "https://fr.wikipedia.org/wiki/Hermitage_(AOC)",
+      "verification_quote": "Un hermitage, ou l'hermitage, ou ermitage, ou l'ermitage (les quatre graphies sont autorisées) est un vin rouge ou blanc d'appellation d'origine contrôlée produit sur le coteau de l'Hermitage.",
+      "wiki_title": "Hermitage (AOC)"
+    },
+    "ile-de-beaute": {
+      "wiki_title": "Île-de-beauté",
+      "page_url": "https://fr.wikipedia.org/wiki/%C3%8Ele-de-beaut%C3%A9",
+      "verification_quote": "Un île-de-beauté est un vin français d'indication géographique protégée (le nouveau nom depuis 2009 des vins de pays) de zone du vignoble de Corse."
+    },
+    "jura": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "le-pays-cathare": {
+      "wiki_title": "Le-pays-cathare (IGP)",
+      "page_url": "https://fr.wikipedia.org/wiki/Le-pays-cathare_(IGP)",
+      "verification_quote": "Le le-pays-cathare, anciennement vin de pays cathare, est un vin français d'indication géographique protégée."
+    },
+    "luzern": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "marc-d-alsace-gewurztraminer": {
+      "page_url": "https://fr.wikipedia.org/wiki/Marc_d%27Alsace",
+      "verification_quote": "Un marc d'Alsace, marc de gewurztraminer, marc de gewurz ou marc d'Alsace gewurztraminer de par sa dénomination légale, est une eau-de-vie fabriquée à partir du marc de gewurztraminer.",
+      "wiki_title": "Marc d'Alsace"
+    },
+    "moulis-ou-moulis-en-medoc": {
+      "page_url": "https://fr.wikipedia.org/wiki/Moulis_(AOC)",
+      "verification_quote": "Un moulis, ou moulis-en-médoc (les deux formes sont autorisées par le cahier des charges), est un vin rouge français d'appellation d'origine contrôlée produit autour du village de Moulis-en-Médoc dans le Médoc.",
+      "wiki_title": "Moulis (AOC)"
+    },
+    "muscat-de-frontignan-ou-frontignan-ou-vin-de-frontignan": {
+      "page_url": "https://fr.wikipedia.org/wiki/Muscat_de_Frontignan",
+      "verification_quote": "Un muscat de Frontignan, ou un frontignan ou un vin de Frontignan (les trois formes sont autorisées par le cahier des charges), est un vin doux naturel ou un vin de liqueur d'appellation d'origine contrôlée.",
+      "wiki_title": "Muscat de Frontignan"
+    },
+    "neuchatel": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "nidwalden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "obwalden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "pays-d-herault": {
+      "page_url": "https://fr.wikipedia.org/wiki/Pays-d%27h%C3%A9rault",
+      "verification_quote": "Un pays-d'hérault, appelé vin de pays de l'Hérault jusqu'en 2009, est un vin français d'indication géographique protégée départementale produit sur l'ensemble du vignoble du département de l'Hérault.",
+      "wiki_title": "Pays-d'hérault"
+    },
+    "pays-d-oc": {
+      "wiki_title": "Pays-d'oc (IGP)",
+      "page_url": "https://fr.wikipedia.org/wiki/Pays-d%27oc_(IGP)",
+      "verification_quote": "Un pays-d'oc, anciennement appelé vin de pays d'Oc jusqu'en 2009, est un vin français d'indication géographique protégée (IGP)."
+    },
+    "pays-de-brive": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. fr.wikipedia.org has Brive-la-Gaillarde and the bassin de Brive but no dedicated article for the Pays de Brive IGP wine."
+    },
+    "pays-des-bouches-du-rhone": {
+      "wiki_title": "Pays-des-bouches-du-rhône",
+      "page_url": "https://fr.wikipedia.org/wiki/Pays-des-bouches-du-rh%C3%B4ne",
+      "verification_quote": "Un pays-des-bouches-du-rhône, appelé vin de pays des Bouches-du-Rhône jusqu'en 2009, est un vin français d'indication géographique protégée."
+    },
+    "pommeau-de-normandie": {
+      "not_aoc_topic": true,
+      "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. fr.wikipedia.org/wiki/Pommeau covers the family of pommeau aperitifs (Bretagne / Maine / Normandie pooled); no dedicated AOC-specific article for Pommeau de Normandie."
+    },
+    "pouilly-fume-ou-blanc-fume-de-pouilly": {
+      "page_url": "https://fr.wikipedia.org/wiki/Pouilly-fum%C3%A9",
+      "verification_quote": "Un pouilly-fumé, ou blanc-fumé de Pouilly, est un vin blanc d'appellation d'origine contrôlée produit autour de Pouilly-sur-Loire, dans la Nièvre.",
+      "wiki_title": "Pouilly-fumé"
+    },
+    "rhum-de-la-martinique": {
+      "page_url": "https://fr.wikipedia.org/wiki/Rhum_de_Martinique",
+      "verification_quote": "Le rhum agricole de Martinique qui est produit à partir de jus de canne à sucre, fait partie de ces institutions culturelles liées à la culture créole martiniquaise. […] La Martinique produit principalement du rhum agricole AOC.",
+      "wiki_title": "Rhum de Martinique"
+    },
+    "savennieres-roche-aux-moines": {
+      "page_url": "https://fr.wikipedia.org/wiki/Savenni%C3%A8res-roche-aux-moines",
+      "verification_quote": "Un savennières-roche-aux-moines est un vin blanc d'appellation d'origine contrôlée produit sur le lieu-dit de la roche aux Moines, sur la commune de Savennières en Maine-et-Loire.",
+      "wiki_title": "Savennières-roche-aux-moines"
+    },
+    "schaffhausen": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "schwyz": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "solothurn": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "st-gallen": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "terres-du-midi": {
+      "wiki_title": "Terres-du-midi",
+      "page_url": "https://fr.wikipedia.org/wiki/Terres-du-midi",
+      "verification_quote": "Un terres-du-midi est un vin qui peut être produit dans tout le vignoble du Languedoc-Roussillon, bénéficiant d'une indication géographique protégée (IGP) régionale."
+    },
+    "thunersee": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "thurgau": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "ticino": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "uri": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "val-de-loire": {
+      "wiki_title": "Val-de-loire (IGP)",
+      "page_url": "https://fr.wikipedia.org/wiki/Val-de-loire_(IGP)",
+      "verification_quote": "Un val-de-loire, anciennement appelé vin de pays du jardin de la France de 1981 à 2007, puis renommé vin de pays du Val de Loire jusqu'en 2009, est un vin français d'indication géographique protégée régionale."
+    },
+    "valais-wallis": {
+      "page_url": "https://fr.wikipedia.org/wiki/Vignoble_du_Valais",
+      "verification_quote": "Le canton du Valais, avec ses 5 259 hectares de vignes, possède le plus grand vignoble de Suisse.",
+      "wiki_title": "Vignoble du Valais"
+    },
+    "vallee-du-torgan": {
+      "missing": true,
+      "note": "Searched Vallée-du-torgan and 'vallée du torgan' via Google site:; no fr.wikipedia.org IGP article. Only mentioned in commune articles (Massac, Padern, Montgaillard) and the Vin français bénéficiant d'une IGP list."
+    },
+    "vaud": {
+      "page_url": "https://fr.wikipedia.org/wiki/Vignoble_du_canton_de_Vaud",
+      "verification_quote": "Le vignoble vaudois produit un quart des vins suisses et a une vaste diversité de cépages.",
+      "wiki_title": "Vignoble du canton de Vaud"
+    },
+    "vicomte-d-aumelas": {
+      "not_aoc_topic": true,
+      "note": "No vin/IGP article exists. fr.wikipedia.org/wiki/Aumelas is the commune and fr.wikipedia.org/wiki/Seigneurie_d'Aumelas is the medieval lordship — neither covers the vicomté-d'aumelas IGP wine."
+    },
+    "vin-de-corse-ou-corse": {
+      "page_url": "https://fr.wikipedia.org/wiki/Corse_(AOC)",
+      "verification_quote": "Un corse, ou un vin de Corse, est un vin d'appellation d'origine contrôlée produit sur l'ensemble du vignoble de Corse.",
+      "wiki_title": "Corse (AOC)"
+    },
+    "vin-de-savoie-ou-savoie": {
+      "page_url": "https://fr.wikipedia.org/wiki/Savoie_(AOC)",
+      "verification_quote": "Un vin de Savoie, ou un savoie, est un vin d'appellation d'origine contrôlée produit essentiellement dans les départements de la Savoie et de la Haute-Savoie, auxquels se rajoutent deux communes de l'Ain et une de l'Isère.",
+      "wiki_title": "Savoie (AOC)"
+    },
+    "vully": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "whisky-breton-ou-whisky-de-bretagne": {
+      "page_url": "https://fr.wikipedia.org/wiki/Whisky_breton",
+      "verification_quote": "Le whisky breton ou whisky de Bretagne est un whisky produit par différentes distilleries en Bretagne et bénéficiant depuis 2015 d'une indication géographique protégée.",
+      "wiki_title": "Whisky breton"
+    },
+    "zug": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "zurich": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    },
+    "zurichsee": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
+    }
+  },
+  "hr": {
+    "ponikve": {
+      "wiki_title": "Vinogorje Ponikve",
+      "page_url": "https://hr.wikipedia.org/wiki/Vinogorje_Ponikve",
+      "verification_quote": "Vinogorje Ponikve su vinogradarski položaj koji se nalazi u blizini naselja Boljenovići na poluotoku Pelješcu u sastavu općine Ston u vinogradarskoj podregiji Srednja i Južna Dalmacija."
+    }
+  },
+  "hu": {
+    "balaton": {
+      "wiki_title": "Balaton borrégió",
+      "page_url": "https://hu.wikipedia.org/wiki/Balaton_borr%C3%A9gi%C3%B3",
+      "verification_quote": "A Balaton borrégió Magyarország hat borrégiójának egyike; négy megyén át a Balaton körül helyezkedik el, mintegy 10 718 hektár szőlőterülettel."
+    },
+    "balatonmelleki": {
+      "missing": true,
+      "note": "researched 2026-05; 404 at /Balatonmelléki_borvidék; the PGI Landwein term has no dedicated article (Balaton borrégió is the macro-PDO, already pinned)"
+    },
+    "csopak": {
+      "wiki_title": "Balatonfüred–Csopaki borvidék",
+      "page_url": "https://hu.wikipedia.org/wiki/Balatonf%C3%BCred%E2%80%93Csopaki_borvid%C3%A9k",
+      "verification_quote": "A Balatonfüred-Csopaki borvidék Magyarország Dunántúli részén található, a Balaton tó északi partjának keleti medencéjében, kb. 2150 hektáron. [parent borvidék — Csopak village within it]"
+    },
+    "debroi-harslevelu": {
+      "missing": true,
+      "note": "researched 2026-05; only mentioned within Egri borvidék article; no standalone Debrői Hárslevelű article"
+    },
+    "duna": {
+      "wiki_title": "Duna borrégió",
+      "page_url": "https://hu.wikipedia.org/wiki/Duna_borr%C3%A9gi%C3%B3",
+      "verification_quote": "A Duna borrégió (más néven Alföldi borrégió) Magyarország legnagyobb borrégiója a Duna és a Tisza közötti területen."
+    },
+    "duna-tisza-kozi": {
+      "missing": true,
+      "note": "researched 2026-05; \"Duna-Tisza köze\" geographic area exists but no dedicated wine-PGI article"
+    },
+    "dunantuli": {
+      "missing": true,
+      "note": "researched 2026-05; \"Dunántúl\" is a general Transdanubia geography article; no dedicated Dunántúli borrégió article"
+    },
+    "etyeki-pezsgo": {
+      "wiki_title": "Etyek–Budai borvidék",
+      "page_url": "https://hu.wikipedia.org/wiki/Etyek%E2%80%93Budai_borvid%C3%A9k",
+      "verification_quote": "Az Etyek–Budai borvidék a Felső-Pannon borrégió legkeletibb, a Buda, Etyek és a Velencei-tó környéki szőlőket felölelő része. [parent borvidék — no Etyeki Pezsgő-specific article]"
+    },
+    "felso-magyarorszag": {
+      "missing": true,
+      "note": "researched 2026-05; misidentification of Felső-Pannon borrégió (different region — west Hungary not north Hungary); no dedicated article for the Felső-Magyarországi PGI"
+    },
+    "fured": {
+      "wiki_title": "Balatonfüred–Csopaki borvidék",
+      "page_url": "https://hu.wikipedia.org/wiki/Balatonf%C3%BCred%E2%80%93Csopaki_borvid%C3%A9k",
+      "verification_quote": "A Balatonfüred-Csopaki borvidék Magyarország Dunántúli részén található, a Balaton tó északi partjának keleti medencéjében, kb. 2150 hektáron."
+    },
+    "izsaki-arany-sarfeher": {
+      "missing": true,
+      "note": "researched 2026-05; the \"Sárfehér\" article is about a different grape; Izsák town article covers the grape festival but is not a wine-appellation article"
+    },
+    "kali": {
+      "missing": true,
+      "note": "researched 2026-05; \"Káli-medence\" is a geological/national-park article with no wine content"
+    },
+    "koszeg": {
+      "wiki_title": "Soproni borvidék",
+      "page_url": "https://hu.wikipedia.org/wiki/Soproni_borvid%C3%A9k",
+      "verification_quote": "A Soproni borvidék Magyarország egyik legrégibb borvidéke. [parent borvidék — Kőszegi körzet sub-district within it]"
+    },
+    "monor": {
+      "missing": true,
+      "note": "researched 2026-05; \"Monor\" is a town article; Monori sub-region noted on Kunsági borvidék but no dedicated wine article"
+    },
+    "pannon": {
+      "wiki_title": "Pannon borrégió",
+      "page_url": "https://hu.wikipedia.org/wiki/Pannon_borr%C3%A9gi%C3%B3",
+      "verification_quote": "A Pannon borrégió Magyarország hét borrégiójának egyike."
+    },
+    "soltvadkerti": {
+      "missing": true,
+      "note": "researched 2026-05; \"Soltvadkert\" is a town article with a wine subsection only, no dedicated PDO article"
+    },
+    "tihany": {
+      "missing": true,
+      "note": "researched 2026-05; \"Tihany\" is a village article with minor szőlők mention; /Tihanyi_borvidék 404; covered by Balatonfüred–Csopaki borvidék"
+    },
+    "zemplen": {
+      "missing": true,
+      "note": "researched 2026-05; \"Zemplén\" is a disambiguation page; the PGI is covered under Tokaji borvidék"
+    }
+  },
+  "it": {
+    "aargau": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "alpi-retiche": {
+      "missing": true,
+      "note": "researched 2026-05; Alpi Retiche article is about the mountain range, not the IGT wine"
+    },
+    "alta-valle-della-greve": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; only listed in Vini IGT directory"
+    },
+    "alto-livenza": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; only listed in Vini IGT directory + Viticoltura in Veneto"
+    },
+    "alto-mincio": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; only listed in Vini IGT directory + Viticoltura in Lombardia"
+    },
+    "appenzell-ausserrhoden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "appenzell-innerrhoden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "asolo-montello": {
+      "missing": true,
+      "note": "researched 2026-05; demoted from FOUND — agent pinned to \"Montello rosso\" but that article is for the Montello Rosso DOCG (slug montello-rosso); Asolo Montello DOCG (red wine in the Asolo-Montello area) has no separate it.wiki article"
+    },
+    "asolo-prosecco": {
+      "wiki_title": "Colli Asolani - Prosecco",
+      "page_url": "https://it.wikipedia.org/wiki/Colli_Asolani_-_Prosecco_(vino)",
+      "verification_quote": "Colli Asolani - Prosecco (o Asolo - Prosecco) è una DOCG riservata ad alcuni vini la cui produzione è consentita nella provincia di Treviso."
+    },
+    "avola": {
+      "missing": true,
+      "note": "researched 2026-05; Avola article is about the Sicilian town (Nero d'Avola is a passing reference); no wine-appellation article"
+    },
+    "basel-landschaft": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "basel-stadt": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "benaco-bresciano": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki article"
+    },
+    "bern-berne": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "bianco-del-sillaro": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; only a passing mention in the Emilia IGT description"
+    },
+    "bielersee-lac-de-bienne": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "camarro": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; only listed in Vini IGT directory"
+    },
+    "casauria": {
+      "missing": true,
+      "note": "researched 2026-05; Casauria base name is a disambig page (commune/abbey); DOC described only as sub-zone within Montepulciano d'Abruzzo rosso article"
+    },
+    "castel-del-monte-nero-di-troia-riserva": {
+      "wiki_title": "Castel del Monte Nero di Troia riserva",
+      "page_url": "https://it.wikipedia.org/wiki/Castel_del_Monte_Nero_di_Troia_riserva",
+      "verification_quote": "Castel del Monte Nero di Troia è la denominazione di origine controllata e garantita di un vino prodotto in provincia di Barletta-Andria-Trani e nella città metropolitana di Bari."
+    },
+    "catalanesca-del-monte-somma": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated it.wiki article"
+    },
+    "cheyres": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "ciro-classico": {
+      "missing": true,
+      "note": "researched 2026-05; Cirò DOC article exists but no Classico sub-zone article"
+    },
+    "colli-aprutini": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated it.wiki article"
+    },
+    "colli-cimini": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; only listed in Vini IGT directory + Viticoltura in Lazio"
+    },
+    "colli-del-limbara": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki article"
+    },
+    "colli-della-toscana-centrale": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; only listed in Vini IGT directory"
+    },
+    "colli-di-salerno": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; only listed in Vini IGT directory"
+    },
+    "colli-trevigiani": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; only listed in Vini del Veneto / Viticoltura in Veneto"
+    },
+    "collina-del-milanese": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki article"
+    },
+    "colline-teramane-montepulciano-dabruzzo": {
+      "wiki_title": "Montepulciano d'Abruzzo Colline Teramane",
+      "page_url": "https://it.wikipedia.org/wiki/Montepulciano_d%27Abruzzo_Colline_Teramane",
+      "verification_quote": "Montepulciano d'Abruzzo Colline Teramane è la denominazione relativa al disciplinare di alcuni vini a DOCG prodotti nei comuni di…"
+    },
+    "conselvano": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; only listed in Vini IGT directory + Vini del Veneto"
+    },
+    "corti-benedettine-del-padovano": {
+      "wiki_title": "Corti benedettine del Padovano",
+      "page_url": "https://it.wikipedia.org/wiki/Corti_benedettine_del_Padovano",
+      "verification_quote": "Il Corti benedettine del padovano è un vino a DOC prodotto nelle province di Padova e Venezia. [Note: it.wiki article is about the DOC; slug refers to the IGT of the same name + area — wine info is region-relevant]"
+    },
+    "costa-etrusco-romana": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki article"
+    },
+    "costa-toscana": {
+      "missing": true,
+      "note": "researched 2026-05; \"Costa Toscana\" article is about the Costa Crociere cruise ship; IGT appears only as a row in the IGT list-page"
+    },
+    "costa-viola": {
+      "missing": true,
+      "note": "researched 2026-05; \"Costa Viola\" article is about the geographic coastal area of Reggio Calabria; IGT only in IGT list-page"
+    },
+    "del-vastese": {
+      "missing": true,
+      "note": "researched 2026-05; only listed inside Vini a indicazione geografica tipica / Consorzio di tutela dei vini d'Abruzzo; no standalone article"
+    },
+    "dell-emilia": {
+      "missing": true,
+      "note": "researched 2026-05; no standalone it.wiki article for the dell'Emilia / Emilia IGT; appears only inside category and list pages"
+    },
+    "dolcetto-di-ovada-superiore": {
+      "wiki_title": "Dolcetto di Ovada superiore",
+      "page_url": "https://it.wikipedia.org/wiki/Dolcetto_di_Ovada_superiore",
+      "verification_quote": "Dolcetto di Ovada superiore o Ovada è la denominazione di origine controllata e garantita di un vino prodotto in provincia di Alessandria."
+    },
+    "epomeo": {
+      "missing": true,
+      "note": "researched 2026-05; only listed inside Vini a indicazione geografica tipica; no standalone wine article"
+    },
+    "fontanarossa-di-cerda": {
+      "missing": true,
+      "note": "researched 2026-05; only listed inside Vini a indicazione geografica tipica; no standalone article"
+    },
+    "geneve": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "glarus": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "graubunden-grigioni": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "isola-dei-nuraghi": {
+      "missing": true,
+      "note": "researched 2026-05; bare \"Isola_dei_Nuraghi\" and \"Isola_dei_Nuraghi_(vino)\" both 404; only a row in IGT list-page"
+    },
+    "jura": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "lipuda": {
+      "missing": true,
+      "note": "researched 2026-05; only listed inside Vini a indicazione geografica tipica; no standalone article"
+    },
+    "locride": {
+      "missing": true,
+      "note": "researched 2026-05; \"Locride (Italia)\" is the geographic Ionian-coast area, not a wine article; IGT mentioned only in gastronomia section"
+    },
+    "luzern": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "marca-trevigiana": {
+      "missing": true,
+      "note": "researched 2026-05; \"Marca Trevigiana\" article is about the medieval territorial designation around Treviso; IGT not primary subject"
+    },
+    "martina": {
+      "wiki_title": "Martina Franca (vino)",
+      "page_url": "https://it.wikipedia.org/wiki/Martina_Franca_(vino)",
+      "verification_quote": "Martina Franca o Martina è la denominazione di origine controllata di un vino prodotto nelle province di Taranto, Bari e Brindisi, in Puglia."
+    },
+    "mitterberg": {
+      "missing": true,
+      "note": "researched 2026-05; only listed inside Vini a indicazione geografica tipica (Bolzano province IGT entry); no standalone article"
+    },
+    "montello-rosso": {
+      "wiki_title": "Montello rosso",
+      "page_url": "https://it.wikipedia.org/wiki/Montello_rosso",
+      "verification_quote": "Il Montello rosso o Montello è una DOCG riservata a un vino la cui produzione è consentita nella provincia di Treviso, in due comprensori collinari limitrofi posti ai piedi delle Dolomiti."
+    },
+    "montenetto-di-brescia": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki standalone article; en.wiki has Monte Netto (geological hill), it.wiki has only IGT list entry"
+    },
+    "moscato-di-sorso": {
+      "wiki_title": "Moscato di Sorso-Sennori",
+      "page_url": "https://it.wikipedia.org/wiki/Moscato_di_Sorso-Sennori",
+      "verification_quote": "Il Moscato di Sorso-Sennori è un vino DOC la cui produzione è consentita nella città metropolitana di Sassari."
+    },
+    "murgia": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki standalone Murgia (vino) article; only third-party sources cover the Murgia IGT"
+    },
+    "neuchatel": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "nidwalden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "obwalden": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "osco": {
+      "missing": true,
+      "note": "researched 2026-05; only listed inside Vini a indicazione geografica tipica; Molise (vino) exists but is separate Molise DOC"
+    },
+    "paestum": {
+      "missing": true,
+      "note": "researched 2026-05; \"Paestum_(vino)\" 404s; Paestum disambig page does not include a wine entry; IGT only in IGT list-page"
+    },
+    "pinot-nero-dell-oltrepo-pavese": {
+      "wiki_title": "Pinot Nero dell'Oltrepò Pavese",
+      "page_url": "https://it.wikipedia.org/wiki/Pinot_Nero_dell%27Oltrep%C3%B2_Pavese",
+      "verification_quote": "Il Pinot Nero dell'Oltrepò Pavese è un vino DOC rosso fermo, la cui produzione è consentita nella provincia di Pavia."
+    },
+    "pompeiano": {
+      "missing": true,
+      "note": "researched 2026-05; \"Rosso pompeiano\" is the iron-oxide pigment, not the wine; Pompeiano IGT only in IGT list-page"
+    },
+    "portofino": {
+      "wiki_title": "Golfo del Tigullio-Portofino",
+      "page_url": "https://it.wikipedia.org/wiki/Golfo_del_Tigullio-Portofino",
+      "verification_quote": "Golfo del Tigullio-Portofino o Portofino è una DOC riservata ad alcuni vini la cui produzione è consentita nella città metropolitana di Genova."
+    },
+    "roccamonfina": {
+      "missing": true,
+      "note": "researched 2026-05; \"Roccamonfina\" article is the comune in Caserta province; IGT only a list-page entry + disambig note"
+    },
+    "ronchi-di-brescia": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki standalone article; only a one-line mention inside Provincia di Brescia and the IGT list-page"
+    },
+    "ronchi-varesini": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki standalone article; only third-party wine sources"
+    },
+    "rosso-conero": {
+      "wiki_title": "Rosso Conero",
+      "page_url": "https://it.wikipedia.org/wiki/Rosso_Conero",
+      "verification_quote": "Il Rosso Conero è un vino DOC la cui produzione è consentita nella zona di Monte Cònero."
+    },
+    "s-anna-di-isola-capo-rizzuto": {
+      "wiki_title": "Sant'Anna di Isola Capo Rizzuto",
+      "page_url": "https://it.wikipedia.org/wiki/Sant%27Anna_di_Isola_Capo_Rizzuto",
+      "verification_quote": "Il Sant'Anna di Isola Capo Rizzuto è una DOC riservata ad alcuni vini."
+    },
+    "salina": {
+      "missing": true,
+      "note": "researched 2026-05; Salina is a disambig; Isola di Salina is the island; no dedicated IGT wine article"
+    },
+    "scanzo": {
+      "wiki_title": "Moscato di Scanzo",
+      "page_url": "https://it.wikipedia.org/wiki/Moscato_di_Scanzo",
+      "verification_quote": "Scanzo o Moscato di Scanzo è la denominazione di origine controllata e garantita di un vino prodotto in provincia di Bergamo."
+    },
+    "schaffhausen": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "schwyz": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "sebino": {
+      "missing": true,
+      "note": "researched 2026-05; Sebino is a disambig page with one-line entry pointing to the IGT; no dedicated wine article"
+    },
+    "sibiola": {
+      "missing": true,
+      "note": "researched 2026-05; only Chiesa di Santa Maria di Sibiola and SS 466 di Sibiola exist; no IGT wine article"
+    },
+    "solothurn": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "st-gallen": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "terrazze-dell-imperiese": {
+      "missing": true,
+      "note": "researched 2026-05; mentioned only in the IGT list page; no dedicated wine article"
+    },
+    "terre-abruzzesi": {
+      "missing": true,
+      "note": "researched 2026-05; mentioned only in Viticoltura in Abruzzo / IGT list pages; no dedicated wine article"
+    },
+    "terre-aquilane": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki article; only on third-party wine sites"
+    },
+    "terre-del-volturno": {
+      "missing": true,
+      "note": "researched 2026-05; mentioned only in the Vini IGT list page; no dedicated wine article"
+    },
+    "terre-di-chieti": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki article; only on third-party wine sites"
+    },
+    "terre-di-veleja": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki article; only on third-party wine sites"
+    },
+    "terre-lariane": {
+      "missing": true,
+      "note": "researched 2026-05; mentioned only inside Cucina lombarda; no dedicated IGT wine article"
+    },
+    "terre-siciliane": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki article; only Viticulture in Sicily (EN) and en.wiki list"
+    },
+    "thunersee": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "thurgau": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "ticino": {
+      "page_url": "https://it.wikipedia.org/wiki/Ticino_(vino)",
+      "verification_quote": "Ticino è la denominazione di origine controllata di alcuni vini prodotti nel Canton Ticino, in Svizzera.",
+      "wiki_title": "Ticino (vino)"
+    },
+    "trevenezie": {
+      "missing": true,
+      "note": "researched 2026-05; Delle Venezie (DOC) article exists for the related DOC, but no dedicated Trevenezie IGT article"
+    },
+    "uri": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "val-di-neto": {
+      "missing": true,
+      "note": "researched 2026-05; Val di Neto page is the geographic valley in Calabria with no wine content"
+    },
+    "val-tidone": {
+      "missing": true,
+      "note": "researched 2026-05; Val Tidone page is the geographic valley; wine mentioned only as Colli Piacentini reference"
+    },
+    "valais-wallis": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "valcamonica": {
+      "missing": true,
+      "note": "researched 2026-05; Val Camonica page is the geographic valley with no wine content"
+    },
+    "valdamato": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki article; only on third-party wine sites"
+    },
+    "vallagarina": {
+      "missing": true,
+      "note": "researched 2026-05; Vallagarina page is the geographic valley; wine appears only as one sub-section under Economy"
+    },
+    "valle-del-tirso": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki article exists at the direct URL"
+    },
+    "valli-di-porto-pino": {
+      "missing": true,
+      "note": "researched 2026-05; no it.wiki article exists at the direct URL"
+    },
+    "valtellina-rosso": {
+      "wiki_title": "Valtellina Rosso",
+      "page_url": "https://it.wikipedia.org/wiki/Valtellina_Rosso",
+      "verification_quote": "Il Valtellina è un vino a DOC prodotto in provincia di Sondrio."
+    },
+    "vaud": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "verdicchio-di-matelica-riserva": {
+      "wiki_title": "Verdicchio di Matelica riserva",
+      "page_url": "https://it.wikipedia.org/wiki/Verdicchio_di_Matelica_riserva",
+      "verification_quote": "Verdicchio di Matelica riserva è la denominazione di origine controllata e garantita di un vino bianco prodotto nelle province di Macerata e Ancona."
+    },
+    "vigneti-delle-dolomiti": {
+      "missing": true,
+      "note": "researched 2026-05; mentioned only in IGT list and Viticoltura in Trentino-Alto Adige; no dedicated wine article"
+    },
+    "vully": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "zug": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "zurich": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "zurichsee": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    }
+  },
+  "pt": {
+    "alenquer": {
+      "missing": true,
+      "note": "researched 2026-05; redlink on Denominações de origem portuguesas; Alenquer pages are about the município"
+    },
+    "alentejano": {
+      "wiki_title": "Vinho do Alentejo",
+      "page_url": "https://pt.wikipedia.org/wiki/Vinho_do_Alentejo",
+      "verification_quote": "Todos os produtores de vinho da região que pretendem usar a Denominação de Origem Controlada (DOC Alentejo) ou a Indicação Geográfica (Regional Alentejano)…"
+    },
+    "beira-interior": {
+      "wiki_title": "Vinho da Beira Interior",
+      "page_url": "https://pt.wikipedia.org/wiki/Vinho_da_Beira_Interior",
+      "verification_quote": "O Vinho da Beira Interior é um vinho português produzido nas regiões de Castelo Rodrigo, Cova da Beira e Pinhel, constituindo uma Denominação de Origem Controlada cuja demarcação remonta a 2 de Novembro de 1999."
+    },
+    "bucelas": {
+      "missing": true,
+      "note": "researched 2026-05; Bucelas page is about the parish/town in Loures; brief wine note only"
+    },
+    "carcavelos": {
+      "wiki_title": "Vinho de Carcavelos",
+      "page_url": "https://pt.wikipedia.org/wiki/Vinho_de_Carcavelos",
+      "verification_quote": "Carcavelos DOC é a mais pequena região demarcada vinícola portuguesa e situa-se em torno da freguesia de Carcavelos, nos Municípios de Cascais e de Oeiras."
+    },
+    "colares": {
+      "wiki_title": "Colares DOC",
+      "page_url": "https://pt.wikipedia.org/wiki/Colares_DOC",
+      "verification_quote": "Colares é uma pequena região vinícola portuguesa no concelho de Sintra, em redor da vila de Colares, entre a serra e o Atlântico."
+    },
+    "dao": {
+      "wiki_title": "Região Demarcada do Dão",
+      "page_url": "https://pt.wikipedia.org/wiki/Regi%C3%A3o_Demarcada_do_D%C3%A3o",
+      "verification_quote": "A Região Demarcada do Dão foi instituída em data desconhecida de 1908, situada no centro de Portugal, na província da Beira Alta."
+    },
+    "do-tejo": {
+      "missing": true,
+      "note": "researched 2026-05; only redlink entry on Denominações de origem portuguesas (substitui Ribatejo DOC)"
+    },
+    "duriense": {
+      "missing": true,
+      "note": "researched 2026-05; no IGP article; Douro DOC + Alto Douro pages cover related concepts"
+    },
+    "encostas-d-aire": {
+      "missing": true,
+      "note": "researched 2026-05; redlink; en.wikipedia has an article but no PT sibling exists"
+    },
+    "graciosa": {
+      "missing": true,
+      "note": "researched 2026-05; Ilha Graciosa page is geography; redlink for the IGP"
+    },
+    "lagoa": {
+      "missing": true,
+      "note": "researched 2026-05; Lagoa (Algarve) is the município, not the DOC"
+    },
+    "lagos": {
+      "missing": true,
+      "note": "researched 2026-05; Lagos (Portugal) is the município, not the DOC"
+    },
+    "madeira": {
+      "wiki_title": "Vinho da Madeira",
+      "page_url": "https://pt.wikipedia.org/wiki/Vinho_da_Madeira",
+      "verification_quote": "O vinho da Madeira, ou simplesmente vinho Madeira, é um vinho fortificado, com elevado teor alcoólico, produzido nas encostas e adegas da Região Demarcada da Ilha da Madeira."
+    },
+    "madeirense": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated PT article for the table-wine DOC"
+    },
+    "minho": {
+      "missing": true,
+      "note": "researched 2026-05; no PT article for the IGP (Vinho Verde DOC article unrelated)"
+    },
+    "pico": {
+      "wiki_title": "Vinho do Pico",
+      "page_url": "https://pt.wikipedia.org/wiki/Vinho_do_Pico",
+      "verification_quote": "Vinho do Pico é a designação genérica dada aos vinhos produzidos na ilha do Pico, Açores."
+    },
+    "setubal": {
+      "wiki_title": "Moscatel de Setúbal",
+      "page_url": "https://pt.wikipedia.org/wiki/Moscatel_de_Set%C3%BAbal",
+      "verification_quote": "Moscatel de Setúbal é uma Denominação de Origem Controlada (DOC) portuguesa conhecida pelos vinhos generosos produzidos de castas moscatel."
+    },
+    "tavora-varosa": {
+      "missing": true,
+      "note": "researched 2026-05; only listed on Região vinícola; direct URLs 404"
+    },
+    "tejo": {
+      "missing": true,
+      "note": "researched 2026-05; only redlink entry on Denominações de origem portuguesas"
+    },
+    "terras-da-beira": {
+      "missing": true,
+      "note": "researched 2026-05; only the broader Beiras geographic article"
+    },
+    "terras-de-cister": {
+      "missing": true,
+      "note": "researched 2026-05; no PT article"
+    },
+    "terras-do-dao": {
+      "missing": true,
+      "note": "researched 2026-05; only the Dão DOC article (already used for dao slug)"
+    },
+    "terras-madeirenses": {
+      "missing": true,
+      "note": "researched 2026-05; no PT article"
+    },
+    "torres-vedras": {
+      "missing": true,
+      "note": "researched 2026-05; only en.wikipedia has the DOC article; PT page is the município"
+    },
+    "transmontano": {
+      "missing": true,
+      "note": "researched 2026-05; no PT article for the IGP"
+    },
+    "tras-os-montes": {
+      "missing": true,
+      "note": "researched 2026-05; PT pages cover the historical province / geographic region, not the DOC"
+    }
+  },
+  "ro": {
+    "adamclisi": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; appears only as a wine center in \"Podgorii în România\" list"
+    },
+    "aiud": {
+      "missing": true,
+      "note": "researched 2026-05; Aiud article is the town; Podgoria Aiud is a redlink in \"Podgorii în România\""
+    },
+    "alba-iulia": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article; Podgoria Alba is a redlink in \"Podgorii în România\""
+    },
+    "babadag": {
+      "missing": true,
+      "note": "researched 2026-05; Podișul Babadagului is the geographic plateau, not the wine region; Istria-Babadag mentioned only in podgorii list"
+    },
+    "banu-maracine": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated podgoria article; only briefly mentioned in Istoria Craiovei"
+    },
+    "colinele-dobrogei": {
+      "missing": true,
+      "note": "researched 2026-05; mentioned in \"Podgorii în România\" as a wine macro-region but no dedicated article"
+    },
+    "cotesti": {
+      "missing": true,
+      "note": "researched 2026-05; only Comuna Cotești, Vrancea exists (commune article); Podgoria Cotești is a redlink"
+    },
+    "cotnari": {
+      "missing": true,
+      "note": "researched 2026-05; Cotnari, Iași is the commune article; Podgoria Cotnari is a redlink; Grasă de Cotnari is a grape variety"
+    },
+    "dealu-bujorului": {
+      "missing": true,
+      "note": "researched 2026-05; only the Bujoru research station exists, not the wine region"
+    },
+    "dealu-mare": {
+      "wiki_title": "Podgoria Dealu Mare",
+      "page_url": "https://ro.wikipedia.org/wiki/Podgoria_Dealu_Mare",
+      "verification_quote": "Dealu Mare este o regiune viticolă cu mai multe podgorii, situată în județele Buzău și Prahova pe versantul sudic al dealurilor Istriței."
+    },
+    "dealurile-crisanei": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article; Podgoria Aradului covers a different scope"
+    },
+    "dealurile-moldovei": {
+      "missing": true,
+      "note": "researched 2026-05; listed in \"Podgorii în România\" as a macro-region but no dedicated article"
+    },
+    "dealurile-munteniei": {
+      "missing": true,
+      "note": "researched 2026-05; listed in \"Podgorii în România\" but no dedicated article"
+    },
+    "dealurile-olteniei": {
+      "missing": true,
+      "note": "researched 2026-05; listed in \"Podgorii în România\" but no dedicated article"
+    },
+    "dealurile-satmarului": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine article on ro.wikipedia.org"
+    },
+    "dealurile-transilvaniei": {
+      "missing": true,
+      "note": "researched 2026-05; mentioned in viticulture article as a macro-region but no dedicated article"
+    },
+    "dealurile-vrancei": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; Vincon Vrancea is a company article"
+    },
+    "dealurile-zarandului": {
+      "missing": true,
+      "note": "researched 2026-05; Munții Zarandului / Țara Zarandului are geography/history, not wine articles"
+    },
+    "dragasani": {
+      "missing": true,
+      "note": "researched 2026-05; Drăgășani, Vâlcea is the municipality article; Podgoria Drăgășani mentioned only inside it"
+    },
+    "husi": {
+      "missing": true,
+      "note": "researched 2026-05; only Huși commune and Zghihară de Huși grape; Podgoria Huși is a redlink"
+    },
+    "iana": {
+      "missing": true,
+      "note": "researched 2026-05; no wine or commune article surfaces in Romanian Wikipedia for this DOC"
+    },
+    "iasi": {
+      "missing": true,
+      "note": "researched 2026-05; Iași city article exists but is not a wine article; Podgoria Iași is a redlink"
+    },
+    "insuratei": {
+      "missing": true,
+      "note": "researched 2026-05; no wine-region article; Însurăței only mentioned as a town"
+    },
+    "jidvei": {
+      "missing": true,
+      "note": "researched 2026-05; Jidvei, Alba is the commune; Jidvei (companie) is the wine company; Podgoria Jidvei is a redlink"
+    },
+    "lechinta": {
+      "missing": true,
+      "note": "researched 2026-05; Lechinta is a disambig for villages and a river; Podgoria Lechința is a redlink"
+    },
+    "mehedinti": {
+      "missing": true,
+      "note": "researched 2026-05; Județul Mehedinți and Podișul Mehedinți exist (county/geography); Podgoria Corcova covers only one estate, not the DOC"
+    },
+    "minis": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated Podgoria Miniș article; mentioned only as a locality within Podgoria Aradului"
+    },
+    "murfatlar": {
+      "missing": true,
+      "note": "researched 2026-05; Murfatlar is the town article; Murfatlar (companie) is a defunct company — no dedicated wine-region article"
+    },
+    "nicoresti": {
+      "missing": true,
+      "note": "researched 2026-05; only mentioned as one of the 12 Moldovan podgorii in summary lists; no dedicated article"
+    },
+    "odobesti": {
+      "missing": true,
+      "note": "researched 2026-05; mentioned in viticulture article and Vincon Vrancea but no dedicated podgoria article"
+    },
+    "oltina": {
+      "missing": true,
+      "note": "researched 2026-05; only Lacul Oltina (nature reserve) exists; no wine-region article"
+    },
+    "panciu": {
+      "missing": true,
+      "note": "researched 2026-05; mentioned in viticulture article and Vincon Vrancea but no dedicated podgoria article"
+    },
+    "pietroasa": {
+      "missing": true,
+      "note": "researched 2026-05; Pietroasele, Buzău is the commune; no Podgoria Pietroasa article; Tămâioasă Românească is a grape-variety article"
+    },
+    "recas": {
+      "missing": true,
+      "note": "researched 2026-05; Recaș is the town; Cramele Recaș is the company; no dedicated wine-region article"
+    },
+    "samburesti": {
+      "missing": true,
+      "note": "researched 2026-05; mentioned only inside Drăgășani, Vâlcea article; no dedicated Podgoria Sâmburești article"
+    },
+    "sarica-niculitel": {
+      "missing": true,
+      "note": "researched 2026-05; only Comuna Niculițel, Tulcea exists (commune); no dedicated Podgoria Sarica-Niculițel article"
+    },
+    "sebes-apold": {
+      "missing": true,
+      "note": "researched 2026-05; Podgoria Sebeș-Apold is a redlink in \"Podgorii în România\""
+    },
+    "segarcea": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated Podgoria Segarcea article on ro.wikipedia.org"
+    },
+    "stefanesti": {
+      "missing": true,
+      "note": "researched 2026-05; Valea Mare-Podgoria, Argeș is a village; no dedicated Podgoria Ștefănești article"
+    },
+    "tarnave": {
+      "wiki_title": "Podgoria Târnavelor",
+      "page_url": "https://ro.wikipedia.org/wiki/Podgoria_T%C3%A2rnavelor",
+      "verification_quote": "Podgoria Tarnavelor este cea mai mare din Transilvania, concentrînd vigoarea plantațiilor cultivate între râurile Târnava Mare și Târnava Mică."
+    },
+    "terasele-dunarii": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine-region article on ro.wikipedia.org"
+    },
+    "viile-carasului": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated wine-region article on ro.wikipedia.org"
+    },
+    "viile-timisului": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated article; Dealurile Timișului appears only inside Cramele Recaș company article"
+    }
+  },
+  "sk": {
+    "karpatska-perla": {
+      "missing": true,
+      "note": "researched 2026-05; only mentioned as producer in Malokarpatská vinohradnícka oblasť article; no dedicated article"
+    },
+    "skalicky-rubin": {
+      "missing": true,
+      "note": "researched 2026-05; only mentioned in Slovenská kuchyňa article; no dedicated wine-appellation article"
+    },
+    "slovenska": {
+      "missing": true,
+      "note": "researched 2026-05; sk.wiki has no all-Slovakia wine-PGI article (Slovenské_víno is 404)"
+    },
+    "tokajske-vino-zo-slovenskej-oblasti": {
+      "wiki_title": "Tokajské víno",
+      "page_url": "https://sk.wikipedia.org/wiki/Tokajsk%C3%A9_v%C3%ADno",
+      "verification_quote": "Tokajské víno je označenie vína z vinohradníckej oblasti Tokaj (scoped to Slovak Tokaj per zákon č. 313/2009 Z. z. o vinohradníctve a vinárstve)."
+    }
+  },
+  "sl": {
+    "bela-krajina": {
+      "wiki_title": "Vinorodni okoliš Bela krajina",
+      "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Bela_krajina",
+      "verification_quote": "Vinorodni okoliš Bela krajina (1130 ha) je eden od treh vinorodnih okolišev 7700 hektarov obsegajoče slovenske vinorodne dežele Posavje."
+    },
+    "bizeljcan": {
+      "missing": true,
+      "note": "researched 2026-05; sl.wiki has split articles \"Rdeči bizeljčan\" and \"Beli bizeljčan\" (red/white versions); no combined Bizeljčan appellation article"
+    },
+    "bizeljsko-sremic": {
+      "wiki_title": "Vinorodni okoliš Bizeljsko - Sremič",
+      "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Bizeljsko_-_Sremi%C4%8D",
+      "verification_quote": "Vinorodni okoliš Bizeljsko - Sremič (1700 ha) je eden od treh vinorodnih okolišev 7700 hektarov obsegajoče slovenske vinorodne dežele Posavje."
+    },
+    "goriska-brda": {
+      "wiki_title": "Vinorodni okoliš Goriška brda",
+      "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Gori%C5%A1ka_brda",
+      "verification_quote": "Vinorodni okoliš Goriška brda obsega 1800 ha površine in je del v 7055 ha obsegajoče slovenske vinorodne dežele Primorske."
+    },
+    "kras": {
+      "wiki_title": "Vinorodni okoliš Kras",
+      "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Kras",
+      "verification_quote": "Vinorodni okoliš Kras je s površino 575 hektarov najmanjši vinorodni okoliš v Sloveniji."
+    },
+    "podravje": {
+      "wiki_title": "Vinorodna dežela Podravje",
+      "page_url": "https://sl.wikipedia.org/wiki/Vinorodna_de%C5%BEela_Podravje",
+      "verification_quote": "Vinorodna dežela Podravje je z okrog 6641 hektarji druga po velikosti izmed treh slovenskih vinorodnih dežel."
+    },
+    "posavje": {
+      "wiki_title": "Vinorodna dežela Posavje",
+      "page_url": "https://sl.wikipedia.org/wiki/Vinorodna_de%C5%BEela_Posavje",
+      "verification_quote": "Vinorodna dežela Posavje je ena izmed treh slovenskih vinorodnih dežel."
+    },
+    "prekmurje": {
+      "wiki_title": "Vinorodni okoliš Prekmurje",
+      "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Prekmurje",
+      "verification_quote": "Vinorodni okoliš Prekmurje, tudi Prekmurske gorice (528 ha) je po površini manjši od dveh vinorodnih okolišev."
+    },
+    "primorska": {
+      "wiki_title": "Vinorodna dežela Primorska",
+      "page_url": "https://sl.wikipedia.org/wiki/Vinorodna_de%C5%BEela_Primorska",
+      "verification_quote": "Vinorodna dežela Primorska je ena izmed treh vinorodnih dežel v Sloveniji."
+    },
+    "slovenska-istra": {
+      "wiki_title": "Vinorodni okoliš Koper",
+      "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Koper",
+      "verification_quote": "Koprski vinorodni okoliš (2400 ha) spada v 7055 hektarov obsegajočo slovensko vinorodno deželo Primorsko. [Koprski okoliš = sl-language name for Slovenska Istra]"
+    },
+    "stajerska-slovenija": {
+      "missing": true,
+      "note": "researched 2026-05; no dedicated \"Vinorodni okoliš Štajerska Slovenija\" article; only mentioned as parent in sub-okoliš articles"
+    }
+  }
+}

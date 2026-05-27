@@ -17,7 +17,16 @@ wine-wiki/
 # raw/ holds downloaded datasets, the pdftotext cache, the cahier-extracted
 # JSON, the Wikipedia grape lexicon cache, and the manual translation cache —
 # all reproducible from scripts/00…02c. None of it is committed.
-raw/
+raw/*
+!raw/wikipedia/
+raw/wikipedia/*
+# …except the hand-curated Wikipedia override tables. These are canonical
+# curator input (slug → per-locale Wikipedia title pins) that the 02b stages
+# read; without them, a fresh checkout cannot run the pipeline.
+!raw/wikipedia/style_overrides.json
+!raw/wikipedia/aoc_overrides.json
+!raw/wikipedia/aoc_overrides.README.md
+!raw/wikipedia/grape_overrides.json
 
 # build-output binaries that may sneak in elsewhere
 *.shp
