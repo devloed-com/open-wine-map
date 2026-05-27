@@ -61,7 +61,7 @@ def main() -> int:
     for p in sorted(PLIEGOS_DIR.glob("*.json")):
         if p.name == "_index.json":
             continue
-        rec = json.loads(p.read_text())
+        rec = json.loads(p.read_text(encoding="utf-8"))
         if rec.get("is_sub_denomination"):
             continue
         total_records += 1

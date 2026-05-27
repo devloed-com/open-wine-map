@@ -55,7 +55,7 @@ def apply_patches(gdf: "gpd.GeoDataFrame") -> "gpd.GeoDataFrame":
         print(f"warn: no patch CSV at {PATCH_CSV}", file=sys.stderr)
         return gdf
 
-    with PATCH_CSV.open() as fh:
+    with PATCH_CSV.open(encoding="utf-8") as fh:
         patches = list(csv.DictReader(fh))
 
     n = 0
@@ -113,8 +113,8 @@ def build_aoc_polygons(force: bool = False) -> tuple[dict[str, dict], dict[str, 
             f"{CACHE_DENOM_GEOJSON.relative_to(ROOT)}",
             file=sys.stderr,
         )
-        fc_app = json.loads(CACHE_GEOJSON.read_text())
-        fc_denom = json.loads(CACHE_DENOM_GEOJSON.read_text())
+        fc_app = json.loads(CACHE_GEOJSON.read_text(encoding="utf-8"))
+        fc_denom = json.loads(CACHE_DENOM_GEOJSON.read_text(encoding="utf-8"))
         by_app = {f["properties"]["app"]: f for f in fc_app["features"]}
         by_denom = {str(f["properties"]["id_denom"]): f for f in fc_denom["features"]}
         return by_app, by_denom
@@ -162,8 +162,8 @@ def build_aoc_polygons(force: bool = False) -> tuple[dict[str, dict], dict[str, 
         file=sys.stderr,
     )
 
-    fc_app = json.loads(CACHE_GEOJSON.read_text())
-    fc_denom = json.loads(CACHE_DENOM_GEOJSON.read_text())
+    fc_app = json.loads(CACHE_GEOJSON.read_text(encoding="utf-8"))
+    fc_denom = json.loads(CACHE_DENOM_GEOJSON.read_text(encoding="utf-8"))
     by_app = {f["properties"]["app"]: f for f in fc_app["features"]}
     by_denom = {str(f["properties"]["id_denom"]): f for f in fc_denom["features"]}
     return by_app, by_denom

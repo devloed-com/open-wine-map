@@ -44,7 +44,7 @@ def main() -> int:
     print("=== PT coverage audit ===\n")
 
     # 1. eAmbrosia
-    ea = json.loads(EAMBROSIA_INDEX.read_text())
+    ea = json.loads(EAMBROSIA_INDEX.read_text(encoding="utf-8"))
     wines = ea.get("wines", [])
     by_kind = Counter(w["kind"] for w in wines)
     print("eAmbrosia (raw/pt/eambrosia/index.json):")
@@ -55,7 +55,7 @@ def main() -> int:
     # 2. IVV cadernos
     print("\nIVV cadernos (raw/pt/ivv/cadernos/manifest.json):")
     if CADERNOS_MANIFEST.exists():
-        m = json.loads(CADERNOS_MANIFEST.read_text())
+        m = json.loads(CADERNOS_MANIFEST.read_text(encoding="utf-8"))
         counts = m.get("counts", {})
         for k in ("ok", "cached", "override", "no_caderno", "fetch_error_or_not_pdf"):
             _bullet(k, counts.get(k, 0))
@@ -73,7 +73,7 @@ def main() -> int:
         n_parents = n_subregioes = n_stubs = 0
         per_pattern: Counter[str] = Counter()
         for f in files:
-            rec = json.loads(f.read_text())
+            rec = json.loads(f.read_text(encoding="utf-8"))
             if rec.get("stub"):
                 n_stubs += 1
             elif rec.get("is_sub_denomination"):
@@ -100,7 +100,7 @@ def main() -> int:
             n = sum(
                 1
                 for p in lang_dir.glob("*.json")
-                if (json.loads(p.read_text()).get("country") == "pt")
+                if (json.loads(p.read_text(encoding="utf-8")).get("country") == "pt")
             )
             _bullet(f"{lang_dir.name}", n)
 
@@ -112,7 +112,7 @@ def main() -> int:
             if p.stem in ("manifest", "manifest-es"):
                 continue
             try:
-                if json.loads(p.read_text()).get("country") == "pt":
+                if json.loads(p.read_text(encoding="utf-8")).get("country") == "pt":
                     n_pt += 1
             except (ValueError, OSError):
                 continue
@@ -128,7 +128,7 @@ def main() -> int:
     # 6. Wiki index
     print("\nWiki index (wiki/_index.json):")
     if WIKI_INDEX.exists():
-        idx = json.loads(WIKI_INDEX.read_text())
+        idx = json.loads(WIKI_INDEX.read_text(encoding="utf-8"))
         n_pt = sum(1 for v in idx.values() if v.get("country") == "pt")
         n_pt_stub = sum(
             1 for v in idx.values()

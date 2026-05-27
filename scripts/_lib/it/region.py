@@ -75,7 +75,7 @@ _REGIONE_BY_FILE_NUMBER_PATH = Path(__file__).with_name("regione_by_file_number.
 
 def _load_file_number_map() -> dict[str, str]:
     try:
-        raw = json.loads(_REGIONE_BY_FILE_NUMBER_PATH.read_text())
+        raw = json.loads(_REGIONE_BY_FILE_NUMBER_PATH.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
     out: dict[str, str] = {}

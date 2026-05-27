@@ -42,7 +42,7 @@ def collect_slugs() -> dict[str, dict[str, set[str]]]:
             if path.name.startswith("_"):
                 continue
             try:
-                record = json.loads(path.read_text())
+                record = json.loads(path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 continue
             pliego_slug = record.get("slug") or path.stem
@@ -59,7 +59,7 @@ def vivc_status(slug: str) -> str:
     if not path.exists():
         return "absent"
     try:
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return "absent"
     return "resolved" if data.get("vivc_id") else "absent"
@@ -102,7 +102,7 @@ def main() -> None:
     }
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUT_PATH.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+    OUT_PATH.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     print(
         f"[no-vivc] {len(candidates)} slugs lack VIVC + GRAPE_ALIAS coverage "

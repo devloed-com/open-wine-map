@@ -74,7 +74,7 @@ SLUG_OVERRIDES = {
 # is_grape_summary validation), then stored verbatim. Hand-editable.
 LANG_OVERRIDES: dict[str, dict[str, str]] = {}
 if OVERRIDES_FILE.exists():
-    LANG_OVERRIDES = json.loads(OVERRIDES_FILE.read_text())
+    LANG_OVERRIDES = json.loads(OVERRIDES_FILE.read_text(encoding="utf-8"))
 
 def slug_to_title(slug: str) -> str:
     """Best-effort title from kebab-case slug. Wikipedia REST follows redirects
@@ -118,7 +118,7 @@ def _load_vivc(slug: str) -> dict | None:
     if not path.exists():
         _VIVC_CACHE[slug] = None
         return None
-    rec = json.loads(path.read_text())
+    rec = json.loads(path.read_text(encoding="utf-8"))
     _VIVC_CACHE[slug] = rec
     return rec
 
@@ -142,7 +142,7 @@ def _build_donor_index(lang_dir: Path) -> dict[int, dict]:
     out: dict[int, dict] = {}
     for f in lang_dir.glob("*.json"):
         try:
-            rec = json.loads(f.read_text())
+            rec = json.loads(f.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             continue
         if rec.get("missing") or rec.get("error") or not rec.get("extract"):
@@ -355,13 +355,13 @@ def _fetch_locale(
     for slug in tqdm(slugs, desc=f"wikipedia/{lang}", leave=False):
         cache = lang_dir / f"{slug}.json"
         if cache.exists() and not refresh:
-            cached_data = json.loads(cache.read_text())
+            cached_data = json.loads(cache.read_text(encoding="utf-8"))
             if _cache_is_fresh(cached_data, slug, donors):
                 cached += 1
                 continue
             revalidated += 1
         result = _resolve_one(session, lang, slug, donors, throttle)
-        cache.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+        cache.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         if result.get("missing"):
             miss += 1
         elif result.get("error"):
@@ -441,7 +441,7 @@ def main() -> int:
             file=sys.stderr,
         )
 
-    MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"[02b] manifest: {MANIFEST.relative_to(ROOT)}", file=sys.stderr)
     return 0
 

@@ -65,8 +65,8 @@ def main() -> int:
         return 1
 
     apps = load_siqo()
-    manifest = json.loads(MANIFEST.read_text())
-    index = json.loads(INDEX.read_text())
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    index = json.loads(INDEX.read_text(encoding="utf-8"))
 
     extracted_app_ids: set[str] = set()
     extracted_denom_ids: set[str] = set()

@@ -253,7 +253,7 @@ def main() -> int:
 
     CAHIERS_DIR.mkdir(parents=True, exist_ok=True)
     manifest: dict = (
-        json.loads(HISTORIQUE_MANIFEST.read_text())
+        json.loads(HISTORIQUE_MANIFEST.read_text(encoding="utf-8"))
         if HISTORIQUE_MANIFEST.exists() else {}
     )
     print(f"[plan] crawl {args.year_from}..{args.year_to} "
@@ -269,7 +269,8 @@ def main() -> int:
 
     def save() -> None:
         HISTORIQUE_MANIFEST.write_text(
-            json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False)
+            json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False),
+            encoding="utf-8",
         )
 
     for year in range(args.year_from, args.year_to + 1):

@@ -70,7 +70,7 @@ def main() -> int:
     for path in sorted(EXTRACTED.glob("*.json")):
         if path.name == "_index.json":
             continue
-        d = json.loads(path.read_text())
+        d = json.loads(path.read_text(encoding="utf-8"))
         if d.get("is_sub_denomination"):
             siblings_by_app[d.get("id_appellation") or ""].append(d["name"])
 
@@ -78,7 +78,7 @@ def main() -> int:
     for path in sorted(EXTRACTED.glob("*.json")):
         if path.name == "_index.json":
             continue
-        d = json.loads(path.read_text())
+        d = json.loads(path.read_text(encoding="utf-8"))
         if not d.get("is_sub_denomination"):
             continue
         id_denom = d.get("id_denomination_geo") or ""

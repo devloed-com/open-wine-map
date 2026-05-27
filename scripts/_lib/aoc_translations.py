@@ -33,7 +33,7 @@ def load_summary_translations(lang: str) -> dict[str, dict]:
         return {}
     out: dict[str, dict] = {}
     for f in cache_dir.glob("*.json"):
-        d = json.loads(f.read_text())
+        d = json.loads(f.read_text(encoding="utf-8"))
         if not d.get("summary"):
             continue
         out[d["slug"]] = {
@@ -57,7 +57,7 @@ def load_terroir_facts_translations(lang: str) -> dict[str, dict]:
     out: dict[str, dict] = {}
     for f in cache_dir.glob("*.json"):
         try:
-            d = json.loads(f.read_text())
+            d = json.loads(f.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
             continue
         if not d.get("facts"):

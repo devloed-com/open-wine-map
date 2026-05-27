@@ -28,7 +28,7 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
-    wines = json.loads(eamb_idx.read_text())["wines"]
+    wines = json.loads(eamb_idx.read_text(encoding="utf-8"))["wines"]
     n_wines = len(wines)
     by_kind = Counter(w["kind"] for w in wines)
 
@@ -37,7 +37,7 @@ def main() -> int:
     n_html_cached = 0
     oj_status: Counter[str] = Counter()
     if oj_manifest_path.exists():
-        m = json.loads(oj_manifest_path.read_text())
+        m = json.loads(oj_manifest_path.read_text(encoding="utf-8"))
         for slug, info in m.get("by_slug", {}).items():
             oj_status[info.get("status", "unknown")] += 1
             if info.get("status") == "ok":
@@ -52,7 +52,7 @@ def main() -> int:
         for jp in sorted(extracted_dir.glob("*.json")):
             if jp.name.startswith("_"):
                 continue
-            d = json.loads(jp.read_text())
+            d = json.loads(jp.read_text(encoding="utf-8"))
             extracted_slugs.add(d["slug"])
             if d.get("is_sub_denomination"):
                 subzonas += 1
@@ -75,7 +75,7 @@ def main() -> int:
         n = 0
         for jp in d.glob("*.json"):
             try:
-                rec = json.loads(jp.read_text())
+                rec = json.loads(jp.read_text(encoding="utf-8"))
             except (ValueError, OSError):
                 continue
             if rec.get("country") == "es" or rec.get("source_lang") == "es":
@@ -136,7 +136,7 @@ def main() -> int:
     # Curation queue: wines that need a manual_overrides.json URL.
     overrides_path = ROOT / "raw" / "es" / "oj-pages" / "manual_overrides.json"
     if overrides_path.exists():
-        overrides = json.loads(overrides_path.read_text())
+        overrides = json.loads(overrides_path.read_text(encoding="utf-8"))
         needs_curation = []
         curated = []
         for slug, entry in overrides.items():

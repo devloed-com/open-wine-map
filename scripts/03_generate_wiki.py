@@ -121,14 +121,14 @@ def load_terroir_facts(slug: str, parent_slug: str = "") -> dict | None:
     p = TERROIR_FACTS / f"{slug}.json"
     if p.exists():
         try:
-            return json.loads(p.read_text())
+            return json.loads(p.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
             return None
     if parent_slug:
         pp = TERROIR_FACTS / f"{parent_slug}.json"
         if pp.exists():
             try:
-                return json.loads(pp.read_text())
+                return json.loads(pp.read_text(encoding="utf-8"))
             except Exception:  # noqa: BLE001
                 return None
     return None
@@ -523,7 +523,7 @@ def main() -> int:
     ap.add_argument("--only", action="append", default=[])
     args = ap.parse_args()
 
-    index = json.loads(INDEX_IN.read_text())
+    index = json.loads(INDEX_IN.read_text(encoding="utf-8"))
     items = sorted(index.items(), key=lambda kv: kv[1]["name"].lower())
     if args.only:
         needles = [s.lower() for s in args.only]
@@ -534,9 +534,9 @@ def main() -> int:
     written = 0
     for _key, idx_entry in tqdm(items, desc="wiki", leave=False):
         path = EXTRACTED / idx_entry["filename"]
-        record = json.loads(path.read_text())
+        record = json.loads(path.read_text(encoding="utf-8"))
         out = WIKI / f"{record['slug']}.md"
-        out.write_text(render_page(record))
+        out.write_text(render_page(record), encoding="utf-8")
         records.append(record)
         written += 1
 
@@ -569,15 +569,15 @@ def main() -> int:
     existing_idx: dict[str, dict] = {}
     if WIKI_INDEX.exists():
         try:
-            existing_idx = json.loads(WIKI_INDEX.read_text())
+            existing_idx = json.loads(WIKI_INDEX.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             existing_idx = {}
     non_fr_kept = {k: v for k, v in existing_idx.items() if v.get("country") != "fr"}
     merged = {**non_fr_kept, **fr_idx}
-    WIKI_INDEX.write_text(json.dumps(merged, ensure_ascii=False, indent=2, sort_keys=True))
+    WIKI_INDEX.write_text(json.dumps(merged, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
 
-    (WIKI / "index.md").write_text(render_index(records))
-    (WIKI / "log.md").write_text(render_log(records))
+    (WIKI / "index.md").write_text(render_index(records), encoding="utf-8")
+    (WIKI / "log.md").write_text(render_log(records), encoding="utf-8")
 
     print(f"[done] wrote {written} pages to {WIKI.relative_to(ROOT)}/", file=sys.stderr)
     return 0

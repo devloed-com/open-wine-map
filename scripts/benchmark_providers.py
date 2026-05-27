@@ -150,7 +150,7 @@ def load_dotenv() -> None:
     env_path = ROOT / ".env"
     if not env_path.exists():
         return
-    for line in env_path.read_text().splitlines():
+    for line in env_path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
@@ -360,7 +360,7 @@ def run_extraction(provider, model_id: str, country: str, slug: str) -> dict:
     t0 = time.perf_counter()
     if country == "fr":
         mod = EXTRACT_MODS["fr"]
-        rec = json.loads((mod.EXTRACTED / f"{slug}.json").read_text())
+        rec = json.loads((mod.EXTRACTED / f"{slug}.json").read_text(encoding="utf-8"))
         job = mod._job_from_record(rec)
         if job is None:
             return {"error": f"FR record {slug} not extractable (DGC or section too short)"}
@@ -371,7 +371,7 @@ def run_extraction(provider, model_id: str, country: str, slug: str) -> dict:
         if rec is None:
             return {"error": f"{country}/{slug} absent from collect_targets()"}
         wiki_path = mod.WIKI_AOCS / f"{slug}.json"
-        wiki_record = json.loads(wiki_path.read_text()) if wiki_path.exists() else {}
+        wiki_record = json.loads(wiki_path.read_text(encoding="utf-8")) if wiki_path.exists() else {}
         facts, errors = [], []
         for sub in mod.SUBSECTIONS:
             kept, _dropped, err = mod._process_subsection(provider, model_id, rec, sub, wiki_record)
@@ -399,7 +399,7 @@ def run_extraction(provider, model_id: str, country: str, slug: str) -> dict:
 def run_translation(provider, country: str, slug: str) -> dict:
     """Run the real 02c summary translation live into TARGET_LANGS."""
     cfg = C02.SOURCE_CONFIG[country]
-    rec = json.loads((cfg["source_dir"] / f"{slug}.json").read_text())
+    rec = json.loads((cfg["source_dir"] / f"{slug}.json").read_text(encoding="utf-8"))
     text = derive_summary(rec)
     if not text:
         return {"error": f"{country}/{slug}: derive_summary() returned nothing"}
@@ -472,7 +472,7 @@ def ingest_extraction_cache(slug: str) -> dict | None:
     if not p.exists():
         return None
     try:
-        d = json.loads(p.read_text())
+        d = json.loads(p.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return None
     facts = d.get("facts")
@@ -505,7 +505,7 @@ def ingest_translation_cache(slug: str) -> dict | None:
         if not p.exists():
             continue
         try:
-            d = json.loads(p.read_text())
+            d = json.loads(p.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             continue
         source_text = source_text or d.get("source_summary") or ""
@@ -531,7 +531,7 @@ def ingest_facts_translation_cache(slug: str) -> dict | None:
     if not src_p.exists():
         return None
     try:
-        src_facts = json.loads(src_p.read_text()).get("facts")
+        src_facts = json.loads(src_p.read_text(encoding="utf-8")).get("facts")
     except (ValueError, OSError):
         return None
     if not src_facts:
@@ -542,7 +542,7 @@ def ingest_facts_translation_cache(slug: str) -> dict | None:
         if not p.exists():
             continue
         try:
-            d = json.loads(p.read_text())
+            d = json.loads(p.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             continue
         tfacts = d.get("facts")
@@ -669,7 +669,7 @@ def run_candidate(label: str, *, tasks: tuple[str, ...], sample: list[tuple[str,
 def load_results(path: Path) -> dict:
     if path.exists():
         try:
-            return json.loads(path.read_text())
+            return json.loads(path.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             pass
     return {"sample": [list(s) for s in SAMPLE], "target_langs": list(TARGET_LANGS),
@@ -679,7 +679,7 @@ def load_results(path: Path) -> dict:
 def save_results(path: Path, data: dict) -> None:
     data["generated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 # ───────────────────────────────────────────────────────── report builder ──
@@ -1176,8 +1176,8 @@ def main() -> int:
     if args.report_only:
         report_path.parent.mkdir(parents=True, exist_ok=True)
         d = load_results(results_path)
-        report_path.write_text(build_report(d))
-        html_path.write_text(build_html(d))
+        report_path.write_text(build_report(d), encoding="utf-8")
+        html_path.write_text(build_html(d), encoding="utf-8")
         print(f"[bench] wrote {report_path} and {html_path}", file=sys.stderr)
         return 0
 
@@ -1214,8 +1214,8 @@ def main() -> int:
         block["wall_total_s"] = round(time.time() - t0, 1)
         data["results"][lbl] = block
         save_results(results_path, data)  # incremental — survives a later crash
-        report_path.write_text(build_report(data))
-        html_path.write_text(build_html(data))
+        report_path.write_text(build_report(data), encoding="utf-8")
+        html_path.write_text(build_html(data), encoding="utf-8")
         print(f"[bench] {lbl} done in {block['wall_total_s']}s", file=sys.stderr)
 
     print(f"\n[bench] results: {results_path}\n[bench] report:  {report_path}"

@@ -53,7 +53,7 @@ def collect_grape_slugs() -> dict[str, dict]:
         for jp in src.glob("*.json"):
             if jp.name.startswith("_"):
                 continue
-            rec = json.loads(jp.read_text())
+            rec = json.loads(jp.read_text(encoding="utf-8"))
             for d in (rec.get("grapes") or {}).get("details") or []:
                 s = d.get("slug")
                 if not s:

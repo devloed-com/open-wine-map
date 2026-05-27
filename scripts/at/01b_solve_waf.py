@@ -100,13 +100,13 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
-    wines = json.loads(INDEX_PATH.read_text())["wines"]
-    manifest_root = json.loads(MANIFEST_PATH.read_text())
+    wines = json.loads(INDEX_PATH.read_text(encoding="utf-8"))["wines"]
+    manifest_root = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     by_slug = manifest_root.get("by_slug", {})
     overrides: dict[str, dict] = {}
     if OVERRIDES_PATH.exists():
         try:
-            overrides = json.loads(OVERRIDES_PATH.read_text())
+            overrides = json.loads(OVERRIDES_PATH.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             overrides = {}
 
@@ -210,7 +210,7 @@ def main() -> int:
     }
     manifest_root["generated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     MANIFEST_PATH.write_text(json.dumps(manifest_root, ensure_ascii=False, indent=2,
-                                        sort_keys=True))
+                                        sort_keys=True), encoding="utf-8")
     print(f"[01b] solved={n_ok} failed={n_bad}", file=sys.stderr)
     return 0
 

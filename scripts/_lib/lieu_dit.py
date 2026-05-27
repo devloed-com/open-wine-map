@@ -85,7 +85,7 @@ def _score(climat: str, lieu_dit: str) -> float:
 def _load_overrides() -> dict[str, dict]:
     if not OVERRIDES_PATH.exists():
         return {}
-    raw = json.loads(OVERRIDES_PATH.read_text())
+    raw = json.loads(OVERRIDES_PATH.read_text(encoding="utf-8"))
     return raw if isinstance(raw, dict) else {}
 
 

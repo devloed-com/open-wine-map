@@ -47,7 +47,7 @@ def _load_dotenv() -> None:
     env = ROOT / ".env"
     if not env.exists():
         return
-    for line in env.read_text().splitlines():
+    for line in env.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
@@ -346,7 +346,7 @@ def run_batch(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
     state = None
     if sidecar.exists():
         try:
-            state = json.loads(sidecar.read_text())
+            state = json.loads(sidecar.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             state = None
     if state and state.get("batch_id") and state.get("provider") == provider:
@@ -367,7 +367,7 @@ def run_batch(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
             "provider": provider, "model": model, "batch_id": batch_id,
             "n_requests": len(reqs),
             "submitted_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        }, indent=2))
+        }, indent=2), encoding="utf-8")
         print(f"[batch] {provider} batch {batch_id} submitted — id saved to "
               f"{sidecar.name} (re-run this command to resume if interrupted)",
               file=sys.stderr)

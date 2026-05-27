@@ -161,7 +161,7 @@ def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
         sidecar_path = NATIONAL_PLIEGOS_ES / f"{slug}.json"
         if not sidecar_path.exists():
             continue
-        sidecar = json.loads(sidecar_path.read_text())
+        sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
         new_slugs = list(sidecar.get("delta_vs_oj", {}).get("new_slugs") or [])
         if not new_slugs:
             # Still stamp provenance — the pliego was parsed even if it
@@ -253,7 +253,7 @@ def augment_it_records_with_masaf(records: list[dict]) -> int:
         if not sidecar_path.exists():
             continue
         try:
-            sidecar = json.loads(sidecar_path.read_text())
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             continue
 
@@ -331,7 +331,7 @@ def load_grape_lexicon(lang: str, max_chars: int = 280) -> dict:
         return {}
     out: dict[str, dict] = {}
     for f in lang_dir.glob("*.json"):
-        d = json.loads(f.read_text())
+        d = json.loads(f.read_text(encoding="utf-8"))
         if d.get("missing") or d.get("error"):
             continue
         title = (d.get("wikipedia_title") or "").strip()
@@ -393,7 +393,7 @@ def _load_vivc_by_slug() -> dict[str, dict]:
         _VIVC_BY_SLUG_CACHE = out
         return out
     for f in VIVC_BY_SLUG.glob("*.json"):
-        rec = json.loads(f.read_text())
+        rec = json.loads(f.read_text(encoding="utf-8"))
         prime = (rec.get("prime_name") or "").strip()
         vid = rec.get("vivc_id")
         if not prime or not isinstance(vid, int):
@@ -417,7 +417,7 @@ def _load_native_grape(lang: str, slug: str, max_chars: int = 280) -> dict | Non
     f = LEXICON_DIR / lang / f"{slug}.json"
     if not f.exists():
         return None
-    d = json.loads(f.read_text())
+    d = json.loads(f.read_text(encoding="utf-8"))
     if d.get("missing") or d.get("error"):
         return None
     title = (d.get("wikipedia_title") or "").strip()
@@ -444,7 +444,7 @@ def _load_translated_grape(lang: str, slug: str, max_chars: int = 280) -> dict |
     f = GRAPE_TRANSLATIONS_DIR / lang / f"{slug}.json"
     if not f.exists():
         return None
-    d = json.loads(f.read_text())
+    d = json.loads(f.read_text(encoding="utf-8"))
     extract = (d.get("extract") or "").strip()
     if not extract:
         return None
@@ -579,7 +579,7 @@ def load_style_lexicon(lang: str, max_chars: int = 320) -> dict:
     lang_dir = STYLE_LEXICON_DIR / lang
     if lang_dir.exists():
         for f in lang_dir.glob("*.json"):
-            d = json.loads(f.read_text())
+            d = json.loads(f.read_text(encoding="utf-8"))
             if d.get("missing") or d.get("error"):
                 continue
             extract = _truncate_extract(d.get("extract") or "", max_chars)
@@ -597,7 +597,7 @@ def load_style_lexicon(lang: str, max_chars: int = 320) -> dict:
     tx_dir = STYLE_TRANSLATIONS_DIR / lang
     if tx_dir.exists():
         for f in tx_dir.glob("*.json"):
-            d = json.loads(f.read_text())
+            d = json.loads(f.read_text(encoding="utf-8"))
             slug = d.get("slug") or f.stem
             if slug in out:
                 continue  # native fetch wins
@@ -696,7 +696,7 @@ def load_commune_index(
     strings for cadastre lieu-dit matches.
     """
     print(f"[load] {path.relative_to(ROOT)} ({path.stat().st_size // (1<<20)} MB)", file=sys.stderr)
-    fc = json.loads(path.read_text())
+    fc = json.loads(path.read_text(encoding="utf-8"))
     name_idx: dict[tuple[str, str], tuple[dict, str]] = {}
     insee_idx: dict[str, dict] = {}
     insee_to_name: dict[str, str] = {}
@@ -1070,7 +1070,7 @@ def main() -> int:
     for json_path in sorted(EXTRACTED.glob("*.json")):
         if json_path.name == "_index.json":
             continue
-        extracted_records.append(json.loads(json_path.read_text()))
+        extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
     # Multi-country: also iterate ES extracted records (raw/es/pliegos-
     # extracted/). Stubs are skipped at the geometry-resolution step
     # (no commune list / no Figshare polygon) but kept in the AOCS
@@ -1079,35 +1079,35 @@ def main() -> int:
         for json_path in sorted(EXTRACTED_ES.glob("*.json")):
             if json_path.name == "_index.json":
                 continue
-            extracted_records.append(json.loads(json_path.read_text()))
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
     # Multi-country: also iterate PT extracted records
     # (raw/pt/cadernos-extracted/). Same stub semantics as ES.
     if EXTRACTED_PT.exists():
         for json_path in sorted(EXTRACTED_PT.glob("*.json")):
             if json_path.name == "_index.json":
                 continue
-            extracted_records.append(json.loads(json_path.read_text()))
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
     # Multi-country: also iterate IT extracted records
     # (raw/it/disciplinari-extracted/). Same stub semantics as ES/PT.
     if EXTRACTED_IT.exists():
         for json_path in sorted(EXTRACTED_IT.glob("*.json")):
             if json_path.name == "_index.json":
                 continue
-            extracted_records.append(json.loads(json_path.read_text()))
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
     # Multi-country: also iterate AT extracted records
     # (raw/at/dokumente-extracted/). Same stub semantics as ES/PT/IT.
     if EXTRACTED_AT.exists():
         for json_path in sorted(EXTRACTED_AT.glob("*.json")):
             if json_path.name == "_index.json":
                 continue
-            extracted_records.append(json.loads(json_path.read_text()))
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
     # Multi-country: also iterate SI extracted records
     # (raw/si/dokumenti-extracted/). Same stub semantics as ES/PT/IT/AT.
     if EXTRACTED_SI.exists():
         for json_path in sorted(EXTRACTED_SI.glob("*.json")):
             if json_path.name == "_index.json":
                 continue
-            extracted_records.append(json.loads(json_path.read_text()))
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
     # Augment ES records with national-pliego sidecar data — adds the
     # accessory varieties that the EU-OJ documento único omits. The
     # sidecar carries provenance (URL + sha256 + fetched_at) which
@@ -1178,7 +1178,7 @@ def main() -> int:
     es_geom_research: dict[str, dict] = {}
     geom_research_path = ROOT / "raw" / "es" / "geometry_research.json"
     if geom_research_path.exists():
-        for it in json.loads(geom_research_path.read_text()):
+        for it in json.loads(geom_research_path.read_text(encoding="utf-8")):
             es_geom_research[(it.get("name") or "").lower()] = it
         print(
             f"[load] ES geometry_research: {len(es_geom_research)} curator entries",
@@ -1879,9 +1879,9 @@ def main() -> int:
             village_skipped += 1
 
     fc = {"type": "FeatureCollection", "features": features}
-    GEOJSON_OUT.write_text(json.dumps(fc, ensure_ascii=False))
+    GEOJSON_OUT.write_text(json.dumps(fc, ensure_ascii=False), encoding="utf-8")
     village_fc = {"type": "FeatureCollection", "features": village_features}
-    GEOJSON_VILLAGES_OUT.write_text(json.dumps(village_fc, ensure_ascii=False))
+    GEOJSON_VILLAGES_OUT.write_text(json.dumps(village_fc, ensure_ascii=False), encoding="utf-8")
     print(
         f"[geo] villages: {len(village_features)} polygons → {GEOJSON_VILLAGES_OUT.relative_to(ROOT)} "
         f"({GEOJSON_VILLAGES_OUT.stat().st_size // (1<<20)} MB), "
@@ -2293,7 +2293,7 @@ def load_terroir_facts(slug: str, parent_slug: str = "") -> dict | None:
     if not p.exists():
         return None
     try:
-        d = json.loads(p.read_text())
+        d = json.loads(p.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         return None
     facts = d.get("facts") or []
@@ -2407,7 +2407,7 @@ def emit_html(
     if _notes_path.exists():
         try:
             appellation_notes = {
-                k: v for k, v in json.loads(_notes_path.read_text()).items()
+                k: v for k, v in json.loads(_notes_path.read_text(encoding="utf-8")).items()
                 if not k.startswith("__")
             }
         except (ValueError, OSError) as exc:
@@ -2443,7 +2443,7 @@ def emit_html(
         grape_names: dict[str, str] = {}
         parent_slug_for_facts = p.get("parent_slug", "") or ""
         if ext_path.exists():
-            rec = json.loads(ext_path.read_text())
+            rec = json.loads(ext_path.read_text(encoding="utf-8"))
             summary = derive_summary(rec)
             sources = _sources_for(rec)
             # Per-appellation cahier spelling per slug — drives the pill
@@ -2647,7 +2647,7 @@ def emit_html(
         per_locale_facets = {**facets, "aocs": aocs_for_lang}
         out.write_text(render_map_html(
             **per_locale_facets, locale=lang, grapes_info=lex, styles_info=styles_lex,
-        ))
+        ), encoding="utf-8")
         translated_n = sum(1 for v in lex.values() if v.get("is_translated"))
         with_vivc_n = sum(1 for v in lex.values() if v.get("vivc_id"))
         styles_fallback_n = sum(1 for v in styles_lex.values() if v.get("lang_fallback"))
@@ -2767,7 +2767,7 @@ def write_seo_files() -> None:
         + "\n".join(url_blocks)
         + "\n</urlset>\n"
     )
-    (WIKI / "sitemap.xml").write_text(sitemap)
+    (WIKI / "sitemap.xml").write_text(sitemap, encoding="utf-8")
 
     robots = (
         "User-agent: *\n"
@@ -2775,7 +2775,7 @@ def write_seo_files() -> None:
         "Disallow: /map-data/\n"
         f"Sitemap: {SITE_BASE_URL}/sitemap.xml\n"
     )
-    (WIKI / "robots.txt").write_text(robots)
+    (WIKI / "robots.txt").write_text(robots, encoding="utf-8")
     print(
         f"[seo] wrote {WIKI.relative_to(ROOT)}/robots.txt and sitemap.xml "
         f"({len(LOCALES)} URLs)",

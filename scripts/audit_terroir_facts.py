@@ -195,7 +195,7 @@ def load_wiki_hints(slug: str, country: str) -> tuple[dict[str, str], dict | Non
     empty = dict.fromkeys(headings_map, "")
     if not cache.exists():
         return empty, None
-    data = json.loads(cache.read_text())
+    data = json.loads(cache.read_text(encoding="utf-8"))
     if data.get("missing") or data.get("error"):
         return empty, data
     if country == "es":
@@ -223,7 +223,7 @@ def load_current_cahier(slug: str, country: str) -> tuple[str, str] | None:
     if not p.exists():
         return None
     try:
-        rec = json.loads(p.read_text())
+        rec = json.loads(p.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         return None
     lien = (rec.get(field) or "").strip()
@@ -233,7 +233,7 @@ def load_current_cahier(slug: str, country: str) -> tuple[str, str] | None:
 def audit_one(cache_path: Path) -> dict:
     """Audit one terroir-facts cache file. Returns a dict with the per-AOC
     findings (drift flags + per-bullet coverage)."""
-    data = json.loads(cache_path.read_text())
+    data = json.loads(cache_path.read_text(encoding="utf-8"))
     slug = data.get("slug") or cache_path.stem
     country = data.get("country") or "fr"
     facts = data.get("facts") or []
@@ -401,7 +401,7 @@ def main() -> int:
             "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "summary": summary,
             "aocs": audits,
-        }, ensure_ascii=False, indent=2, default=str) + "\n")
+        }, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")
         print(f"[audit] full report → {args.report}", file=sys.stderr)
     return 0
 

@@ -102,7 +102,7 @@ def _load_vivc(slug: str) -> dict | None:
     if not path.exists():
         _VIVC_CACHE[slug] = None
         return None
-    _VIVC_CACHE[slug] = json.loads(path.read_text())
+    _VIVC_CACHE[slug] = json.loads(path.read_text(encoding="utf-8"))
     return _VIVC_CACHE[slug]
 
 
@@ -123,7 +123,7 @@ def _build_translation_donor_index(target_lang: str) -> dict[int, dict]:
     out: dict[int, dict] = {}
     for f in lang_dir.glob("*.json"):
         try:
-            rec = json.loads(f.read_text())
+            rec = json.loads(f.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             continue
         if not (rec.get("extract") or "").strip():
@@ -535,7 +535,7 @@ def _load_import_payload(in_path: Path, target_locales: tuple[str, ...]):
         print(f"error: {in_path} does not exist.", file=sys.stderr)
         return None
     try:
-        payload = json.loads(in_path.read_text())
+        payload = json.loads(in_path.read_text(encoding="utf-8"))
     except Exception as e:  # noqa: BLE001
         print(f"error: could not parse {in_path}: {e}", file=sys.stderr)
         return None

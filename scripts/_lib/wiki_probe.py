@@ -149,7 +149,7 @@ def title_matches_slug(title: str, slug: str) -> bool:
 def stubbed_slugs(lang: str) -> list[str]:
     out = []
     for f in (CACHE_DIR / lang).glob("*.json"):
-        d = json.loads(f.read_text())
+        d = json.loads(f.read_text(encoding="utf-8"))
         if d.get("not_grape") or d.get("missing"):
             slug = d.get("slug") or f.stem
             if any(slug.startswith(p) for p in SKIP_PREFIXES):
@@ -231,7 +231,7 @@ def search_fallback(session: requests.Session, lang: str, slug: str) -> str | No
 def main() -> int:
     overrides: dict[str, dict[str, str]] = {lang: {} for lang in ("fr",) + LOCALES_TARGET}
     if OUT.exists():
-        overrides.update(json.loads(OUT.read_text()))
+        overrides.update(json.loads(OUT.read_text(encoding="utf-8")))
 
     session = requests.Session()
     session.headers.update({"User-Agent": UA, "Accept": "application/json"})
@@ -280,7 +280,7 @@ def main() -> int:
             time.sleep(0.05)
         print(f"[probe/{lang}] +{added} via search fallback", file=sys.stderr)
 
-    OUT.write_text(json.dumps(overrides, ensure_ascii=False, indent=2, sort_keys=True))
+    OUT.write_text(json.dumps(overrides, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     print(f"[probe] wrote {OUT.relative_to(ROOT)}", file=sys.stderr)
     return 0
 

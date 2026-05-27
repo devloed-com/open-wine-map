@@ -190,7 +190,7 @@ def _fetch_binary_with_manifest(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if out_path.exists() and manifest_path.exists():
         try:
-            existing = json.loads(manifest_path.read_text())
+            existing = json.loads(manifest_path.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             existing = {}
         if existing.get("sha256"):
@@ -210,7 +210,7 @@ def _fetch_binary_with_manifest(
         "source_url": url,
         "bytes": len(r.content),
         "sha256": sha,
-    }, ensure_ascii=False, indent=2, sort_keys=True))
+    }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     print(
         f"[{label}] {len(r.content) // (1<<20)} MB → "
         f"{out_path.relative_to(ROOT)}",
@@ -240,12 +240,12 @@ def fetch_sigpac_comarques() -> None:
         print(f"[sigpac] URL catalog missing at {SIGPAC_URLS_JSON} — skipping",
               file=sys.stderr)
         return
-    catalog = json.loads(SIGPAC_URLS_JSON.read_text())
+    catalog = json.loads(SIGPAC_URLS_JSON.read_text(encoding="utf-8"))
     SIGPAC_OUT_DIR.mkdir(parents=True, exist_ok=True)
     overall: dict[str, dict] = {}
     if SIGPAC_MANIFEST_PATH.exists():
         try:
-            overall = json.loads(SIGPAC_MANIFEST_PATH.read_text()).get("comarques", {})
+            overall = json.loads(SIGPAC_MANIFEST_PATH.read_text(encoding="utf-8")).get("comarques", {})
         except (ValueError, OSError):
             overall = {}
     for codi in SIGPAC_COMARCA_CODIS:
@@ -296,7 +296,7 @@ def fetch_sigpac_comarques() -> None:
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "source": "analisi.transparenciacatalunya.cat (Generalitat de Catalunya)",
         "comarques": overall,
-    }, ensure_ascii=False, indent=2, sort_keys=True))
+    }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
 
 
 def fetch_gisco_lau() -> None:
@@ -383,7 +383,8 @@ def main() -> int:
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     INDEX_PATH.write_text(
         json.dumps({"generated_at": now, "wines": projected},
-                   ensure_ascii=False, indent=2)
+                   ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
 
     by_kind: dict[str, int] = {}
@@ -400,7 +401,7 @@ def main() -> int:
         "n_skipped_applied": n_skipped_applied,
         "by_kind": by_kind,
         "n_slug_collisions": len(collisions),
-    }, ensure_ascii=False, indent=2, sort_keys=True))
+    }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
 
     print(
         f"[done] eAmbrosia: total_eu={len(full)} es_wines={len(projected)} "

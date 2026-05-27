@@ -105,7 +105,7 @@ def fold_diacritics(s: str) -> str:
 
 
 def load_commune_index() -> dict[tuple[str, str], str]:
-    fc = json.loads(COMMUNES_GEOJSON.read_text())
+    fc = json.loads(COMMUNES_GEOJSON.read_text(encoding="utf-8"))
     idx: dict[tuple[str, str], str] = {}
     for feat in fc["features"]:
         p = feat["properties"]
@@ -198,7 +198,7 @@ def main() -> int:
     for json_path in sorted(EXTRACTED.glob("*.json")):
         if json_path.name == "_index.json":
             continue
-        d = json.loads(json_path.read_text())
+        d = json.loads(json_path.read_text(encoding="utf-8"))
         index[d["slug"]] = d
 
     overrides: dict[str, set[str]] = {}
@@ -280,7 +280,7 @@ def main() -> int:
 
     out_path = ROOT / "scripts" / "_lib" / "dgc_village_overrides.json"
     sidecar = {k: sorted(v) for k, v in sorted(overrides.items(), key=lambda kv: int(kv[0]))}
-    out_path.write_text(json.dumps(sidecar, indent=2, sort_keys=True) + "\n")
+    out_path.write_text(json.dumps(sidecar, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"{len(overrides)} overrides written → {out_path.relative_to(ROOT)}", file=sys.stderr)
     return 0
 

@@ -250,7 +250,7 @@ def import_todo(in_path: Path, *, translator_id: str, translator_kind: str) -> i
         print(f"error: {in_path} does not exist.", file=sys.stderr)
         return 1
     try:
-        payload = json.loads(in_path.read_text())
+        payload = json.loads(in_path.read_text(encoding="utf-8"))
     except Exception as e:  # noqa: BLE001
         print(f"error: could not parse {in_path}: {e}", file=sys.stderr)
         return 1
@@ -259,7 +259,7 @@ def import_todo(in_path: Path, *, translator_id: str, translator_kind: str) -> i
         if f.name.startswith("_") or f.name.startswith("manifest"):
             continue
         try:
-            d = json.loads(f.read_text())
+            d = json.loads(f.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
             continue
         if d.get("country") == "it":

@@ -240,7 +240,7 @@ def pdftotext(pdf_path: Path) -> str:
         return cached.read_text(encoding="utf-8")
     out = subprocess.run(
         ["pdftotext", "-layout", "-enc", "UTF-8", str(pdf_path), "-"],
-        check=True, capture_output=True, text=True,
+        check=True, capture_output=True, text=True, encoding="utf-8",
     ).stdout
     if _looks_like_glyph_junk(out):
         print(f"[ocr] {pdf_path.name}: pdftotext yielded glyph-junk, falling back to OCR", file=sys.stderr)
@@ -1032,7 +1032,8 @@ def _emit_parent_stub(id_app: str, parent_denom: dict, parent_slug: str,
                           parent_slug, meta, categories, stub_reason)
     record["is_sub_denomination"] = False
     (out_dir / f"{parent_slug}.json").write_text(
-        json.dumps(record, ensure_ascii=False, indent=2)
+        json.dumps(record, ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
     return record
 
@@ -1049,7 +1050,8 @@ def _emit_dgc_stub(id_app: str, parent_denom: dict, parent_slug: str, dgc: dict,
     record["parent_slug"] = parent_slug
     record["parent_name"] = parent_denom["appellation"]
     (out_dir / f"{dgc_slug}.json").write_text(
-        json.dumps(record, ensure_ascii=False, indent=2)
+        json.dumps(record, ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
     return record
 
@@ -1342,7 +1344,7 @@ def main() -> int:
         print(f"error: {MANIFEST_PATH} missing — run scripts/01_scrape_cahiers.py first", file=sys.stderr)
         return 1
 
-    manifest = json.loads(MANIFEST_PATH.read_text())
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     siqo_categories = load_siqo_categories()
     siqo_denoms = load_siqo_denominations()
     # Include manifest entries with no filename too — they can still extract
@@ -1518,7 +1520,7 @@ def main() -> int:
             record["id_denomination_geo"] = parent_denom["id_denomination_geo"]
 
         out_path = OUT_DIR / f"{record['slug']}.json"
-        out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2))
+        out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
         # When the appellation has no parent denomination row in SIQO
         # (e.g. Fiefs Vendéens — all rows are DGCs), index by a synthetic
         # "app:<id>" key. Plain `id_app` would collide with the
@@ -1574,7 +1576,7 @@ def main() -> int:
             dgc_record["categories"] = dgc_categories
 
             dgc_path = OUT_DIR / f"{dgc_slug}.json"
-            dgc_path.write_text(json.dumps(dgc_record, ensure_ascii=False, indent=2))
+            dgc_path.write_text(json.dumps(dgc_record, ensure_ascii=False, indent=2), encoding="utf-8")
             index[d["id_denomination_geo"]] = {
                 "country": "fr",
                 "id_appellation": id_app,
@@ -1597,7 +1599,7 @@ def main() -> int:
         siqo_denoms, siqo_categories, manifest, index, slug_map, OUT_DIR
     )
 
-    INDEX_PATH.write_text(json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True))
+    INDEX_PATH.write_text(json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     unknowns_path = ROOT / "raw" / "inao" / "extraction-unknowns.json"
     n_unknowns = flush_unknowns_queue(unknowns_path)
     if n_unknowns:

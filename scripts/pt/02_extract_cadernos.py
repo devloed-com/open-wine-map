@@ -530,8 +530,8 @@ def main() -> int:
         return 1
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    wines = json.loads(INDEX_PATH.read_text())["wines"]
-    manifest = json.loads(CADERNOS_MANIFEST.read_text()).get("by_slug", {})
+    wines = json.loads(INDEX_PATH.read_text(encoding="utf-8"))["wines"]
+    manifest = json.loads(CADERNOS_MANIFEST.read_text(encoding="utf-8")).get("by_slug", {})
 
     if args.only:
         needles = [s.lower() for s in args.only]
@@ -548,7 +548,8 @@ def main() -> int:
         if status != "ok":
             stub = make_stub_record(w, reason=f"no-caderno:{status}")
             (OUT_DIR / f"{slug}.json").write_text(
-                json.dumps(stub, ensure_ascii=False, indent=2)
+                json.dumps(stub, ensure_ascii=False, indent=2),
+                encoding="utf-8",
             )
             index[slug] = {
                 "country": "pt",
@@ -566,7 +567,8 @@ def main() -> int:
         if not pdf_path.exists():
             stub = make_stub_record(w, reason="no-caderno:missing-pdf")
             (OUT_DIR / f"{slug}.json").write_text(
-                json.dumps(stub, ensure_ascii=False, indent=2)
+                json.dumps(stub, ensure_ascii=False, indent=2),
+                encoding="utf-8",
             )
             index[slug] = {
                 "country": "pt",
@@ -585,7 +587,8 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             stub = make_stub_record(w, reason=f"pdftotext-error:{exc!r}")
             (OUT_DIR / f"{slug}.json").write_text(
-                json.dumps(stub, ensure_ascii=False, indent=2)
+                json.dumps(stub, ensure_ascii=False, indent=2),
+                encoding="utf-8",
             )
             index[slug] = {
                 "country": "pt",
@@ -605,7 +608,8 @@ def main() -> int:
         )
         parent = make_parent_record(w, sections, len(sub_records), info)
         (OUT_DIR / f"{slug}.json").write_text(
-            json.dumps(parent, ensure_ascii=False, indent=2)
+            json.dumps(parent, ensure_ascii=False, indent=2),
+            encoding="utf-8",
         )
         index[slug] = {
             "country": "pt",
@@ -622,7 +626,8 @@ def main() -> int:
         for sr in sub_records:
             sub = make_subregion_record(parent, sr)
             (OUT_DIR / f"{sub['slug']}.json").write_text(
-                json.dumps(sub, ensure_ascii=False, indent=2)
+                json.dumps(sub, ensure_ascii=False, indent=2),
+                encoding="utf-8",
             )
             index[sub["slug"]] = {
                 "country": "pt",
@@ -651,7 +656,8 @@ def main() -> int:
             ensure_ascii=False,
             indent=2,
             sort_keys=True,
-        )
+        ),
+        encoding="utf-8",
     )
     unknowns_path = ROOT / "raw" / "pt" / "extraction-unknowns.json"
     n_unknowns = flush_unknowns_queue(unknowns_path)

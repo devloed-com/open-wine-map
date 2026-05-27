@@ -253,7 +253,7 @@ def collect_targets() -> list[dict]:
     for jp in sorted(EXTRACTED.glob("*.json")):
         if jp.name.startswith("_"):
             continue
-        rec = json.loads(jp.read_text())
+        rec = json.loads(jp.read_text(encoding="utf-8"))
         if rec.get("is_sub_denomination") or rec.get("stub"):
             continue
         lien = rec.get("link_to_terroir") or ""
@@ -300,7 +300,7 @@ def _process_subsection(
 def _process_record(provider, model_id: str, record: dict) -> dict:
     slug = record["slug"]
     wiki_path = WIKI_AOCS / f"{slug}.json"
-    wiki_record = json.loads(wiki_path.read_text()) if wiki_path.exists() else {}
+    wiki_record = json.loads(wiki_path.read_text(encoding="utf-8")) if wiki_path.exists() else {}
     lien = record.get("link_to_terroir") or ""
     wiki_revision = wiki_record.get("revision") if wiki_record else None
     wiki_url = wiki_record.get("page_url") if wiki_record else None
@@ -348,7 +348,7 @@ def _is_cache_valid(record: dict) -> bool:
     if not p.exists():
         return False
     try:
-        existing = json.loads(p.read_text())
+        existing = json.loads(p.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return False
     if existing.get("country") != "es":
@@ -360,7 +360,7 @@ def _is_cache_valid(record: dict) -> bool:
     cur_rev = None
     if wiki_path.exists():
         try:
-            wj = json.loads(wiki_path.read_text())
+            wj = json.loads(wiki_path.read_text(encoding="utf-8"))
             cur_rev = wj.get("revision")
         except (ValueError, OSError):
             pass
@@ -506,7 +506,7 @@ def main() -> int:
         "n_wines_processed": n_done,
         "n_facts_total": n_facts,
         "elapsed_seconds": int(elapsed),
-    }, ensure_ascii=False, indent=2, sort_keys=True))
+    }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     print(
         f"[02d/es] done: {n_done} wines, {n_facts} facts, "
         f"{elapsed/60:.1f} min ({elapsed/n_done:.1f} s/wine)",

@@ -219,7 +219,7 @@ def _enumerate_jobs(
     for f in sorted(extracted_files):
         if f.name == "_index.json":
             continue
-        rec = json.loads(f.read_text())
+        rec = json.loads(f.read_text(encoding="utf-8"))
         slug = rec["slug"]
         text = derive_summary(rec)
         if not text:
@@ -328,7 +328,7 @@ def import_translations_file(
         print(f"error: {in_path} does not exist.", file=sys.stderr)
         return 1
     try:
-        payload = json.loads(in_path.read_text())
+        payload = json.loads(in_path.read_text(encoding="utf-8"))
     except Exception as e:  # noqa: BLE001
         print(f"error: could not parse {in_path}: {e}", file=sys.stderr)
         return 1
@@ -350,7 +350,7 @@ def import_translations_file(
     for f in extracted_dir.glob("*.json"):
         if f.name == "_index.json":
             continue
-        rec = json.loads(f.read_text())
+        rec = json.loads(f.read_text(encoding="utf-8"))
         text = derive_summary(rec)
         if text:
             current_sha[rec["slug"]] = summary_sha(text)

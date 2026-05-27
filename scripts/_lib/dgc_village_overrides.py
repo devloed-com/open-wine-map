@@ -165,7 +165,7 @@ def _load_extracted() -> dict[str, frozenset[str]]:
     path = Path(__file__).resolve().parent / "dgc_village_overrides.json"
     if not path.exists():
         return {}
-    raw = json.loads(path.read_text())
+    raw = json.loads(path.read_text(encoding="utf-8"))
     return {k: frozenset(v) for k, v in raw.items()}
 
 

@@ -458,9 +458,9 @@ def main() -> int:
         appellations = [a for a in appellations if any(n in a.name.lower() for n in needles)]
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    manifest: dict = json.loads(MANIFEST_PATH.read_text()) if MANIFEST_PATH.exists() else {}
+    manifest: dict = json.loads(MANIFEST_PATH.read_text(encoding="utf-8")) if MANIFEST_PATH.exists() else {}
     overrides: dict = (
-        json.loads(MANUAL_OVERRIDES_PATH.read_text())
+        json.loads(MANUAL_OVERRIDES_PATH.read_text(encoding="utf-8"))
         if MANUAL_OVERRIDES_PATH.exists() else {}
     )
     if overrides:
@@ -495,7 +495,7 @@ def main() -> int:
     cached = counters["cached"]
     missed = counters["missed"] + counters["legifrance-only"]
 
-    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False))
+    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
 
     print(
         f"[done] fetched={fetched} cached={cached} extra={extra} missed={missed} "

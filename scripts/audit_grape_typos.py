@@ -127,7 +127,7 @@ def main() -> None:
         if path.name == "_index.json":
             continue
         try:
-            data = json.loads(path.read_text())
+            data = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             continue
         text = collect_text(data)
@@ -256,7 +256,7 @@ def main() -> None:
         "observed_count": len(observed),
         "clusters": clusters,
         "unresolved": unresolved,
-    }, indent=2, ensure_ascii=False, default=list))
+    }, indent=2, ensure_ascii=False, default=list), encoding="utf-8")
     print(f"\nFull report written to: {out_path.relative_to(ROOT)}")
 
 

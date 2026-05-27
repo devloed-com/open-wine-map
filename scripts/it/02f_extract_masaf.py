@@ -94,7 +94,7 @@ def load_overrides() -> dict:
     if not OVERRIDES_PATH.exists():
         return {}
     try:
-        return json.loads(OVERRIDES_PATH.read_text())
+        return json.loads(OVERRIDES_PATH.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return {}
 
@@ -105,7 +105,7 @@ def load_bundles_manifest() -> dict:
             f"missing {BUNDLES_MANIFEST.relative_to(ROOT)} — "
             f"run scripts/it/00_fetch_data.py first"
         )
-    return json.loads(BUNDLES_MANIFEST.read_text())
+    return json.loads(BUNDLES_MANIFEST.read_text(encoding="utf-8"))
 
 
 def enumerate_bundle_pdfs() -> tuple[list[PdfRecord], dict[str, str]]:
@@ -136,7 +136,7 @@ def load_wines() -> list[dict]:
             f"missing {EAMBROSIA_INDEX.relative_to(ROOT)} — "
             f"run scripts/it/00_fetch_data.py first"
         )
-    return json.loads(EAMBROSIA_INDEX.read_text())["wines"]
+    return json.loads(EAMBROSIA_INDEX.read_text(encoding="utf-8"))["wines"]
 
 
 def load_extracted_status() -> dict[str, dict]:
@@ -150,7 +150,7 @@ def load_extracted_status() -> dict[str, dict]:
         if p.name == "_index.json":
             continue
         try:
-            rec = json.loads(p.read_text())
+            rec = json.loads(p.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             continue
         slug = rec.get("slug")
@@ -192,6 +192,7 @@ def pdf_to_text(pdf_path: Path) -> str:
         check=True,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     return result.stdout
 
@@ -355,7 +356,7 @@ def process_slug(
     record = build_record(wine, articles, pdf_meta, match_info, comune_map)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"{slug}.json"
-    out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2))
+    out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
     return {
         "slug": slug,
         "status": "ok",
@@ -381,7 +382,8 @@ def write_index(records: list[dict]) -> None:
                 ),
             },
             ensure_ascii=False, indent=2, sort_keys=True,
-        )
+        ),
+        encoding="utf-8",
     )
 
 
@@ -458,7 +460,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  articles : {out['n_articles']}")
             print(f"  grapes   : {out['n_grapes']}")
             print(f"  regione  : {out['regione'] or '(unresolved)'}")
-            sidecar = json.loads((OUT_DIR / f"{wine['slug']}.json").read_text())
+            sidecar = json.loads((OUT_DIR / f"{wine['slug']}.json").read_text(encoding="utf-8"))
             print(f"\n  summary  : {sidecar['summary'][:240]}…"
                   if len(sidecar['summary']) > 240
                   else f"\n  summary  : {sidecar['summary']}")

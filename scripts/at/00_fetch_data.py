@@ -183,7 +183,7 @@ def fetch_statistik_austria() -> dict:
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "license": STATISTIK_LICENSE,
         "files": out,
-    }, ensure_ascii=False, indent=2, sort_keys=True))
+    }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     return out
 
 
@@ -217,7 +217,8 @@ def main() -> int:
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     INDEX_PATH.write_text(
         json.dumps({"generated_at": now, "wines": projected},
-                   ensure_ascii=False, indent=2)
+                   ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
 
     by_kind: dict[str, int] = {}
@@ -236,7 +237,7 @@ def main() -> int:
         "n_with_publication": n_with_pub,
         "by_kind": by_kind,
         "n_slug_collisions": len(collisions),
-    }, ensure_ascii=False, indent=2, sort_keys=True))
+    }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
 
     print(
         f"[done] eAmbrosia: total_eu={len(full)} at_wines={len(projected)} "

@@ -183,7 +183,7 @@ def main() -> int:
     total_records = 0
 
     for path in files:
-        rec = json.loads(path.read_text())
+        rec = json.loads(path.read_text(encoding="utf-8"))
         if rec.get("stub"):
             continue
         if rec.get("is_sub_denomination"):

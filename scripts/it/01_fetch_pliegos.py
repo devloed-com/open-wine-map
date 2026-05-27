@@ -185,11 +185,11 @@ def main() -> int:
     overrides: dict[str, dict] = {}
     if OVERRIDES_PATH.exists():
         try:
-            overrides = json.loads(OVERRIDES_PATH.read_text())
+            overrides = json.loads(OVERRIDES_PATH.read_text(encoding="utf-8"))
         except (ValueError, OSError) as exc:
             print(f"[warn] could not read overrides: {exc}", file=sys.stderr)
 
-    wines = json.loads(INDEX_PATH.read_text())["wines"]
+    wines = json.loads(INDEX_PATH.read_text(encoding="utf-8"))["wines"]
     if args.only:
         needles = [s.lower() for s in args.only]
         wines = [w for w in wines if any(n in w["slug"].lower() for n in needles)]
@@ -206,7 +206,7 @@ def main() -> int:
     manifest: dict[str, dict] = {}
     if MANIFEST_PATH.exists() and not args.refresh:
         try:
-            manifest = json.loads(MANIFEST_PATH.read_text()).get("by_slug", {})
+            manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8")).get("by_slug", {})
         except (ValueError, OSError):
             manifest = {}
 
@@ -283,7 +283,7 @@ def main() -> int:
             "fetch_error_or_not_single_document": n_bad,
         },
         "by_slug": manifest,
-    }, ensure_ascii=False, indent=2, sort_keys=True))
+    }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     print(
         f"[done] ok={n_ok} cached={n_cached} override={n_override} "
         f"no-pub={n_no_pub} bad={n_bad} → {OUT_DIR.relative_to(ROOT)}",

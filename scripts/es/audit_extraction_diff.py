@@ -20,7 +20,7 @@ GRAPE_CATEGORIES = ("principal", "accessory", "observation")
 
 def _record_slugs(path: Path) -> set[str]:
     try:
-        rec = json.loads(path.read_text())
+        rec = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return set()
     grapes = rec.get("grapes") or {}
@@ -89,7 +89,7 @@ def main() -> int:
     }
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+    args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     print(f"[diff] {len(all_keys)} pliegos compared", file=sys.stderr)
     print(

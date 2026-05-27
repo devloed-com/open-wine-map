@@ -78,7 +78,7 @@ def _read_creds_file() -> tuple[str, str]:
     if not CONFIG_PATH.exists():
         return "", ""
     try:
-        cfg = json.loads(CONFIG_PATH.read_text())
+        cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         print(f"warn: could not read {CONFIG_PATH}: {exc}", file=sys.stderr)
         return "", ""
@@ -113,7 +113,8 @@ def _save_creds(cookie: str, ua: str) -> None:
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(
         json.dumps({"cf_clearance": cookie, "user_agent": ua},
-                   ensure_ascii=False, indent=2)
+                   ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
     CONFIG_PATH.chmod(0o600)  # cookie is sensitive
     print(f"saved → {CONFIG_PATH} (chmod 600)", file=sys.stderr)
@@ -335,8 +336,8 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
-    overrides = json.loads(OVERRIDES.read_text())
-    manifest = json.loads(MANIFEST.read_text())
+    overrides = json.loads(OVERRIDES.read_text(encoding="utf-8"))
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     targets = _select_targets(
         overrides, manifest, args.refresh, args.only, args.limit
     )
@@ -352,7 +353,7 @@ def main() -> int:
         targets, manifest, cf_clearance, user_agent, args.throttle, args.headed
     )
     MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2,
-                                    sort_keys=True))
+                                    sort_keys=True), encoding="utf-8")
     print(f"[01b-legifrance] fetched={n_ok} failed={n_bad}", file=sys.stderr)
     return 0 if n_bad == 0 else 2
 

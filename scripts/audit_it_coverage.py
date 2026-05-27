@@ -26,7 +26,7 @@ FIGSHARE = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
 def _load_eambrosia() -> list[dict]:
     if not EAMBROSIA.exists():
         return []
-    return json.loads(EAMBROSIA.read_text())["wines"]
+    return json.loads(EAMBROSIA.read_text(encoding="utf-8"))["wines"]
 
 
 def _load_extracted() -> dict[str, dict]:
@@ -36,7 +36,7 @@ def _load_extracted() -> dict[str, dict]:
     for jp in EXTRACTED.glob("*.json"):
         if jp.name.startswith("_"):
             continue
-        rec = json.loads(jp.read_text())
+        rec = json.loads(jp.read_text(encoding="utf-8"))
         out[rec["slug"]] = rec
     return out
 
@@ -45,7 +45,7 @@ def _load_manifest() -> dict[str, dict]:
     if not OJ_MANIFEST.exists():
         return {}
     try:
-        return json.loads(OJ_MANIFEST.read_text()).get("by_slug", {})
+        return json.loads(OJ_MANIFEST.read_text(encoding="utf-8")).get("by_slug", {})
     except (ValueError, OSError):
         return {}
 
@@ -54,7 +54,7 @@ def _load_overrides() -> dict[str, dict]:
     if not OVERRIDES.exists():
         return {}
     try:
-        return json.loads(OVERRIDES.read_text())
+        return json.loads(OVERRIDES.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return {}
 

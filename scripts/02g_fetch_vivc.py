@@ -95,7 +95,7 @@ def collect_grape_slugs() -> dict[str, str]:
     """Walk FR / ES / PT / IT extracted records, return {slug: display_name}."""
     slugs: dict[str, str] = {}
     for jp in _record_files():
-        rec = json.loads(jp.read_text())
+        rec = json.loads(jp.read_text(encoding="utf-8"))
         for d in (rec.get("grapes") or {}).get("details") or []:
             s = d.get("slug")
             if s:
@@ -177,9 +177,9 @@ def _passport_record(
 def _cached_passport(session: requests.Session, vivc_id: int, refresh: bool) -> str:
     path = PASSPORT_DIR / f"{vivc_id}.html"
     if path.exists() and not refresh:
-        return path.read_text()
+        return path.read_text(encoding="utf-8")
     html = fetch_passport(session, vivc_id)
-    path.write_text(html)
+    path.write_text(html, encoding="utf-8")
     return html
 
 
@@ -188,9 +188,9 @@ def _cached_search(
 ) -> str:
     path = SEARCH_DIR / f"{slug}.html"
     if path.exists() and not refresh:
-        return path.read_text()
+        return path.read_text(encoding="utf-8")
     html = search_cultivarname(session, query)
-    path.write_text(html)
+    path.write_text(html, encoding="utf-8")
     return html
 
 
@@ -210,7 +210,7 @@ def _resolve_one(
         vivc_id = int(overrides[slug])
         passport_html = _cached_passport(session, vivc_id, refresh)
         rec = _passport_record(slug, name, name, vivc_id, "override", passport_html)
-        out_path.write_text(json.dumps(rec, ensure_ascii=False, indent=2) + "\n")
+        out_path.write_text(json.dumps(rec, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         time.sleep(throttle)
         return rec, "override"
 
@@ -239,13 +239,13 @@ def _resolve_one(
             "source_url": SEARCH_URL.format(q=query),
             "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }
-        out_path.write_text(json.dumps(rec, ensure_ascii=False, indent=2) + "\n")
+        out_path.write_text(json.dumps(rec, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         time.sleep(throttle)
         return rec, status
 
     passport_html = _cached_passport(session, row.vivc_id, refresh)
     rec = _passport_record(slug, name, query, row.vivc_id, status, passport_html)
-    out_path.write_text(json.dumps(rec, ensure_ascii=False, indent=2) + "\n")
+    out_path.write_text(json.dumps(rec, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     time.sleep(throttle)
     return rec, status
 
@@ -271,7 +271,8 @@ def _emit_overrides_template(ambiguous: list[dict]) -> None:
         },
     }
     OVERRIDES_TEMPLATE.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
     )
 
 
@@ -309,7 +310,7 @@ def _load_overrides() -> tuple[dict[str, int], set[str]]:
     never resolved and any stale by-slug record is removed."""
     if not OVERRIDES.exists():
         return {}, set()
-    data = json.loads(OVERRIDES.read_text())
+    data = json.loads(OVERRIDES.read_text(encoding="utf-8"))
     entries = data.get("entries") if isinstance(data, dict) else None
     out: dict[str, int] = {}
     skip: set[str] = set()
@@ -394,7 +395,7 @@ def main() -> int:
         "citation": "Röckel et al. (year): Vitis International Variety Catalogue – www.vivc.de",
         "buckets": dict(sorted(buckets.items())),
     }
-    MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+    MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(
         f"[02g] manifest: {MANIFEST.relative_to(ROOT)} buckets={manifest['buckets']}",
         file=sys.stderr,

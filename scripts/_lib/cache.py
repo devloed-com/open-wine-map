@@ -17,7 +17,7 @@ def read_json_or_none(path: Path) -> dict | None:
     if not path.exists():
         return None
     try:
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         return None
 
@@ -32,5 +32,6 @@ def write_json(path: Path, payload: dict | list, *, sort_keys: bool = False) -> 
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=sort_keys) + "\n"
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=sort_keys) + "\n",
+        encoding="utf-8",
     )

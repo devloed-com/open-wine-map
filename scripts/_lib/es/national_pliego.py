@@ -330,7 +330,7 @@ def _raw_known_slugs() -> frozenset[str]:
             if f.name.startswith("_"):
                 continue
             try:
-                rec = json.loads(f.read_text())
+                rec = json.loads(f.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError):
                 continue
             _grapes_in_record(rec, raw)

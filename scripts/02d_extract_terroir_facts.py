@@ -414,7 +414,7 @@ def enumerate_aocs() -> list[dict]:
     for f in sorted(EXTRACTED.glob("*.json")):
         if f.name.startswith("_") or not f.is_file():
             continue
-        job = _job_from_record(json.loads(f.read_text()))
+        job = _job_from_record(json.loads(f.read_text(encoding="utf-8")))
         if job is not None:
             jobs.append(job)
     return jobs
@@ -559,7 +559,7 @@ def import_todo(in_path: Path, *, translator_id: str, translator_kind: str) -> i
         print(f"error: {in_path} does not exist.", file=sys.stderr)
         return 1
     try:
-        payload = json.loads(in_path.read_text())
+        payload = json.loads(in_path.read_text(encoding="utf-8"))
     except Exception as e:  # noqa: BLE001
         print(f"error: could not parse {in_path}: {e}", file=sys.stderr)
         return 1

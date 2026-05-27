@@ -91,13 +91,13 @@ def main() -> int:
     overrides: dict[str, dict] = {}
     if OVERRIDES_PATH.exists():
         try:
-            raw = json.loads(OVERRIDES_PATH.read_text())
+            raw = json.loads(OVERRIDES_PATH.read_text(encoding="utf-8"))
             overrides = {k: v for k, v in raw.items() if not k.startswith("__")}
         except (ValueError, OSError) as exc:
             print(f"[warn] could not read overrides: {exc}", file=sys.stderr)
 
-    wines = json.loads(INDEX_PATH.read_text())["wines"]
-    ivv_entries = json.loads(IVV_INDEX_PATH.read_text())["entries"]
+    wines = json.loads(INDEX_PATH.read_text(encoding="utf-8"))["wines"]
+    ivv_entries = json.loads(IVV_INDEX_PATH.read_text(encoding="utf-8"))["entries"]
     ivv_lookup = build_lookup(ivv_entries)
 
     if args.only:
@@ -117,7 +117,7 @@ def main() -> int:
     manifest: dict[str, dict] = {}
     if MANIFEST_PATH.exists() and not args.refresh:
         try:
-            manifest = json.loads(MANIFEST_PATH.read_text()).get("by_slug", {})
+            manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8")).get("by_slug", {})
         except (ValueError, OSError):
             manifest = {}
 
@@ -208,7 +208,8 @@ def main() -> int:
             ensure_ascii=False,
             indent=2,
             sort_keys=True,
-        )
+        ),
+        encoding="utf-8",
     )
     print(
         f"[done] ok={n_ok} cached={n_cached} override={n_override} "

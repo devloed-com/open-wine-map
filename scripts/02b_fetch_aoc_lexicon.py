@@ -63,7 +63,7 @@ OVERRIDES_FILE = ROOT / "raw" / "wikipedia" / "aoc_overrides.json"
 # `raw/wikipedia/aoc_overrides.README.md`.
 LANG_OVERRIDES: dict[str, dict[str, dict]] = {}
 if OVERRIDES_FILE.exists():
-    LANG_OVERRIDES = json.loads(OVERRIDES_FILE.read_text())
+    LANG_OVERRIDES = json.loads(OVERRIDES_FILE.read_text(encoding="utf-8"))
 
 # Per-language config. `disambiguators_for_kind` returns the suffix priority
 # order for the candidate-title cascade (highest priority first); each suffix
@@ -225,7 +225,7 @@ def collect_targets(source_dir: Path) -> list[tuple[str, str, str]]:
     for jp in sorted(source_dir.glob("*.json")):
         if jp.name.startswith("_") or not jp.is_file():
             continue
-        rec = json.loads(jp.read_text())
+        rec = json.loads(jp.read_text(encoding="utf-8"))
         if rec.get("is_sub_denomination"):
             continue
         slug = rec.get("slug")
@@ -539,7 +539,7 @@ def main() -> int:
             cached += 1
             continue
         result = fetch_aoc(session, cfg, args.lang, slug, name, kind)
-        cache.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+        cache.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         if result.get("missing"):
             miss += 1
         elif result.get("error"):
@@ -554,7 +554,7 @@ def main() -> int:
     manifest_root: dict = {}
     if manifest_path.exists():
         try:
-            manifest_root = json.loads(manifest_path.read_text())
+            manifest_root = json.loads(manifest_path.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
             manifest_root = {}
     if "by_lang" not in manifest_root or not isinstance(manifest_root.get("by_lang"), dict):
@@ -572,7 +572,8 @@ def main() -> int:
     }
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
-        json.dumps(manifest_root, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+        json.dumps(manifest_root, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
     )
     print(
         f"[02b/aocs/{args.lang}] new ok={ok} miss={miss} err={err} cached={cached} "

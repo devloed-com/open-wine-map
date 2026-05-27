@@ -54,7 +54,7 @@ def load_overrides() -> tuple[list[str], dict[str, dict[str, str]]]:
     if not OVERRIDES_FILE.exists():
         print(f"error: {OVERRIDES_FILE} missing", file=sys.stderr)
         sys.exit(1)
-    data = json.loads(OVERRIDES_FILE.read_text())
+    data = json.loads(OVERRIDES_FILE.read_text(encoding="utf-8"))
     curated = list(data.get("_curated") or [])
     per_lang = {k: v for k, v in data.items() if not k.startswith("_")}
     return curated, per_lang
@@ -146,7 +146,7 @@ def main() -> int:
                 cached += 1
                 continue
             result = fetch_summary(session, lang, slug, title)
-            cache.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+            cache.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             if result.get("missing"):
                 miss += 1
             elif result.get("error"):
@@ -163,7 +163,7 @@ def main() -> int:
             file=sys.stderr,
         )
 
-    MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"[02b/styles] manifest: {MANIFEST.relative_to(ROOT)}", file=sys.stderr)
     return 0
 

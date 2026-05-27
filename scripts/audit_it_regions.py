@@ -60,7 +60,7 @@ GISCO_LAU = GISCO_DIR / "LAU_RG_01M_2024_3035.shp.zip"
 def _load_eambrosia() -> list[dict]:
     if not EAMBROSIA.exists():
         return []
-    return json.loads(EAMBROSIA.read_text())["wines"]
+    return json.loads(EAMBROSIA.read_text(encoding="utf-8"))["wines"]
 
 
 def _load_records(directory: Path) -> dict[str, dict]:
@@ -71,7 +71,7 @@ def _load_records(directory: Path) -> dict[str, dict]:
         if jp.name.startswith("_"):
             continue
         try:
-            rec = json.loads(jp.read_text())
+            rec = json.loads(jp.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             continue
         if rec.get("slug"):

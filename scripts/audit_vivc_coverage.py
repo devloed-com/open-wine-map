@@ -41,7 +41,7 @@ def _load_records() -> list[dict]:
             file=sys.stderr,
         )
         return []
-    return [json.loads(p.read_text()) for p in sorted(BY_SLUG.glob("*.json"))]
+    return [json.loads(p.read_text(encoding="utf-8")) for p in sorted(BY_SLUG.glob("*.json"))]
 
 
 def _usage_index() -> dict[str, dict]:
@@ -155,8 +155,8 @@ def _write_curator_section(
         for r in misses:
             uses = usage.get(r["slug"], {}).get("total", 0)
             lines.append(f"| `{r['slug']}` | {uses} | `{r['query']}` |")
-    existing = todo_path.read_text() if todo_path.exists() else ""
-    todo_path.write_text(existing.rstrip() + "\n" + "\n".join(lines) + "\n")
+    existing = todo_path.read_text(encoding="utf-8") if todo_path.exists() else ""
+    todo_path.write_text(existing.rstrip() + "\n" + "\n".join(lines) + "\n", encoding="utf-8")
     print(
         f"[audit-vivc] appended VIVC queue to {todo_path.relative_to(ROOT)} "
         f"({len(ambig)} ambiguous + {len(misses)} misses)",

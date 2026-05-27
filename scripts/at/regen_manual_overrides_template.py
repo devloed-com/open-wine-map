@@ -37,8 +37,8 @@ def main() -> int:
         print(f"error: {EAMBROSIA_INDEX} missing — run scripts/at/00_fetch_data.py first",
               file=sys.stderr)
         return 1
-    data = json.loads(EAMBROSIA_INDEX.read_text())
-    oj = json.loads(OJ_MANIFEST.read_text())["by_slug"] if OJ_MANIFEST.exists() else {}
+    data = json.loads(EAMBROSIA_INDEX.read_text(encoding="utf-8"))
+    oj = json.loads(OJ_MANIFEST.read_text(encoding="utf-8"))["by_slug"] if OJ_MANIFEST.exists() else {}
 
     needs = []
     for w in data["wines"]:
@@ -71,7 +71,7 @@ def main() -> int:
 
     n_preserved = 0
     if OVERRIDES_PATH.exists():
-        existing = json.loads(OVERRIDES_PATH.read_text())
+        existing = json.loads(OVERRIDES_PATH.read_text(encoding="utf-8"))
         for slug, entry in out.items():
             if slug == "__doc__":
                 continue
@@ -84,7 +84,8 @@ def main() -> int:
 
     OVERRIDES_PATH.parent.mkdir(parents=True, exist_ok=True)
     OVERRIDES_PATH.write_text(
-        json.dumps(out, ensure_ascii=False, indent=2) + "\n"
+        json.dumps(out, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
     )
 
     n_dop = sum(1 for w, _ in needs if w["kind"] == "DOP")

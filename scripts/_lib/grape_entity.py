@@ -167,7 +167,7 @@ def _corpus_slug_frequency() -> dict[str, int]:
             if f.name.startswith("_"):
                 continue
             try:
-                rec = json.loads(f.read_text())
+                rec = json.loads(f.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError):
                 continue
             per_record: set[str] = set()
@@ -228,7 +228,7 @@ def _load_vivc_records() -> list[tuple[str, dict]]:
         return out
     for f in sorted(_VIVC_DIR.glob("*.json")):
         try:
-            data = json.loads(f.read_text())
+            data = json.loads(f.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             continue
         out.append((f.stem, data))
@@ -466,7 +466,7 @@ def flush_unknowns_queue(out_path: Path) -> int:
         ),
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+    out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return len(_UNKNOWNS.seen)
 
 

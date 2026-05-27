@@ -51,7 +51,7 @@ def _terroir_facts_slugs() -> frozenset[str]:
                 if p.stem.startswith("manifest"):
                     continue
                 try:
-                    if json.loads(p.read_text()).get("facts"):
+                    if json.loads(p.read_text(encoding="utf-8")).get("facts"):
                         slugs.add(p.stem)
                 except (ValueError, OSError):
                     continue
@@ -230,22 +230,23 @@ def main() -> int:
     written = 0
     pt_index: dict[str, dict] = {}
     for f in tqdm(files, desc="pt-wiki", leave=False):
-        rec = json.loads(f.read_text())
+        rec = json.loads(f.read_text(encoding="utf-8"))
         out_path = WIKI / f"{rec['slug']}.md"
-        out_path.write_text(render_record(rec))
+        out_path.write_text(render_record(rec), encoding="utf-8")
         pt_index[rec["slug"]] = index_entry(rec)
         written += 1
 
     existing: dict[str, dict] = {}
     if WIKI_INDEX.exists():
         try:
-            existing = json.loads(WIKI_INDEX.read_text())
+            existing = json.loads(WIKI_INDEX.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             existing = {}
     kept = {k: v for k, v in existing.items() if v.get("country") != "pt"}
     merged = {**kept, **pt_index}
     WIKI_INDEX.write_text(
-        json.dumps(merged, ensure_ascii=False, indent=2, sort_keys=True)
+        json.dumps(merged, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
     )
     by_country: dict[str, int] = {}
     for v in merged.values():

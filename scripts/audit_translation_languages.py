@@ -82,7 +82,7 @@ def iter_summaries() -> Iterator[Item]:
             continue
         for p in sorted(d.glob("*.json")):
             try:
-                rec = json.loads(p.read_text())
+                rec = json.loads(p.read_text(encoding="utf-8"))
             except Exception:  # noqa: BLE001
                 continue
             text = (rec.get("summary") or "").strip()
@@ -98,7 +98,7 @@ def iter_terroir_translated() -> Iterator[Item]:
             continue
         for p in sorted(d.glob("*.json")):
             try:
-                rec = json.loads(p.read_text())
+                rec = json.loads(p.read_text(encoding="utf-8"))
             except Exception:  # noqa: BLE001
                 continue
             for i, f in enumerate(rec.get("facts") or []):
@@ -118,7 +118,7 @@ def iter_wiki(subdir: str, surface: str, field: str) -> Iterator[Item]:
             continue
         for p in sorted(d.glob("*.json")):
             try:
-                rec = json.loads(p.read_text())
+                rec = json.loads(p.read_text(encoding="utf-8"))
             except Exception:  # noqa: BLE001
                 continue
             if rec.get("missing") or rec.get("error"):
@@ -134,7 +134,7 @@ def iter_cahier_summaries() -> Iterator[Item]:
         if p.name == "_index.json":
             continue
         try:
-            rec = json.loads(p.read_text())
+            rec = json.loads(p.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
             continue
         text = (rec.get("lien_au_terroir") or "").strip()
@@ -148,7 +148,7 @@ def iter_terroir_source() -> Iterator[Item]:
         if p.name == "manifest.json":
             continue
         try:
-            rec = json.loads(p.read_text())
+            rec = json.loads(p.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
             continue
         for i, f in enumerate(rec.get("facts") or []):
@@ -331,7 +331,7 @@ def main() -> int:
             "confidence_threshold": args.confidence,
             "summary": all_summaries,
             "findings": [asdict(f) for f in all_findings],
-        }, ensure_ascii=False, indent=2) + "\n")
+        }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"[audit] full report → {args.report}", file=sys.stderr)
     return 0
 

@@ -170,7 +170,7 @@ def _fetch_binary_with_manifest(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if out_path.exists() and manifest_path.exists():
         try:
-            existing = json.loads(manifest_path.read_text())
+            existing = json.loads(manifest_path.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             existing = {}
         if existing.get("sha256"):
@@ -198,7 +198,8 @@ def _fetch_binary_with_manifest(
             ensure_ascii=False,
             indent=2,
             sort_keys=True,
-        )
+        ),
+        encoding="utf-8",
     )
     print(
         f"[{label}] {len(r.content) // (1 << 20)} MB → "
@@ -258,7 +259,8 @@ def fetch_ivv_index() -> None:
             {"generated_at": now, "entries": entries},
             ensure_ascii=False,
             indent=2,
-        )
+        ),
+        encoding="utf-8",
     )
     IVV_INDEX_MANIFEST.write_text(
         json.dumps(
@@ -273,7 +275,8 @@ def fetch_ivv_index() -> None:
             ensure_ascii=False,
             indent=2,
             sort_keys=True,
-        )
+        ),
+        encoding="utf-8",
     )
     print(
         f"[ivv] {len(dop)} DOP + {len(igp)} IGP → "
@@ -329,7 +332,8 @@ def fetch_caop() -> None:
             ensure_ascii=False,
             indent=2,
             sort_keys=True,
-        )
+        ),
+        encoding="utf-8",
     )
 
 
@@ -368,7 +372,8 @@ def main() -> int:
             {"generated_at": now, "wines": projected},
             ensure_ascii=False,
             indent=2,
-        )
+        ),
+        encoding="utf-8",
     )
 
     by_kind: dict[str, int] = {}
@@ -391,7 +396,8 @@ def main() -> int:
             ensure_ascii=False,
             indent=2,
             sort_keys=True,
-        )
+        ),
+        encoding="utf-8",
     )
 
     print(

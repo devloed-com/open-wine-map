@@ -43,7 +43,7 @@ def _corpus_slugs() -> set[str]:
         for jp in src.glob("*.json"):
             if jp.name.startswith("_"):
                 continue
-            rec = json.loads(jp.read_text())
+            rec = json.loads(jp.read_text(encoding="utf-8"))
             for d in (rec.get("grapes") or {}).get("details") or []:
                 if d.get("slug"):
                     out.add(d["slug"])
@@ -79,7 +79,7 @@ def _is_covered(path: Path) -> bool:
     if not path.exists():
         return False
     try:
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
     if data.get("missing"):
@@ -165,7 +165,7 @@ def main() -> int:
         lines.append(f"| {slug} | {cells[0]} | {cells[1]} | {cells[2]} | {cells[3]} |")
     lines.append("")
 
-    REPORT.write_text("\n".join(lines))
+    REPORT.write_text("\n".join(lines), encoding="utf-8")
     print(f"wrote {REPORT.relative_to(ROOT)}: full={len(full)} partial={len(partial)} missing={len(missing)}", file=sys.stderr)
     return 0
 

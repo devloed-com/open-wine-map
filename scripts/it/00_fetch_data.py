@@ -213,7 +213,7 @@ def fetch_masaf_bundles() -> dict:
     existing = {}
     if MASAF_BUNDLES_MANIFEST.exists():
         try:
-            existing = json.loads(MASAF_BUNDLES_MANIFEST.read_text()).get("bundles", {})
+            existing = json.loads(MASAF_BUNDLES_MANIFEST.read_text(encoding="utf-8")).get("bundles", {})
         except (ValueError, OSError):
             existing = {}
 
@@ -272,7 +272,8 @@ def fetch_masaf_bundles() -> dict:
         "bundles": by_key,
     }
     MASAF_BUNDLES_MANIFEST.write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True)
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
     )
     return manifest
 
@@ -314,7 +315,8 @@ def fetch_istat_comuni() -> dict:
         "bytes": len(body),
     }
     (ISTAT_COMUNI_DIR / "manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True)
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
     )
     print(f"[istat] saved Elenco-comuni-italiani.csv ({len(body):,} bytes)",
           file=sys.stderr)
@@ -351,7 +353,7 @@ def fetch_regional_zones() -> dict:
     (REGIONAL_ZONES_DIR / "manifest.json").write_text(json.dumps({
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "regions": out,
-    }, ensure_ascii=False, indent=2, sort_keys=True))
+    }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     return out
 
 
@@ -385,7 +387,8 @@ def main() -> int:
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     INDEX_PATH.write_text(
         json.dumps({"generated_at": now, "wines": projected},
-                   ensure_ascii=False, indent=2)
+                   ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
 
     by_kind: dict[str, int] = {}
@@ -402,7 +405,7 @@ def main() -> int:
         "n_skipped_applied": n_skipped_applied,
         "by_kind": by_kind,
         "n_slug_collisions": len(collisions),
-    }, ensure_ascii=False, indent=2, sort_keys=True))
+    }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
 
     print(
         f"[done] eAmbrosia: total_eu={len(full)} it_wines={len(projected)} "

@@ -109,7 +109,7 @@ def find_pliego_url(record: dict) -> str | None:
 
 
 def load_overrides() -> dict:
-    return json.loads(OVERRIDES_PATH.read_text()) if OVERRIDES_PATH.exists() else {}
+    return json.loads(OVERRIDES_PATH.read_text(encoding="utf-8")) if OVERRIDES_PATH.exists() else {}
 
 
 def resolve_pliego_url(slug: str, record: dict, overrides: dict) -> tuple[str | None, str]:
@@ -166,7 +166,7 @@ def process(slug: str, refresh: bool, strict: bool = True, overrides: dict | Non
         if strict:
             raise SystemExit(f"no extracted record for slug: {slug}")
         return {"slug": slug, "status": "skip", "reason": "no-extracted-record"}
-    record = json.loads(rec_path.read_text())
+    record = json.loads(rec_path.read_text(encoding="utf-8"))
 
     url, url_source = resolve_pliego_url(slug, record, overrides)
     if not url:
@@ -186,7 +186,7 @@ def process(slug: str, refresh: bool, strict: bool = True, overrides: dict | Non
     if url_source == "override" and not refresh:
         cached_url = None
         if sidecar_path.exists():
-            cached_url = (json.loads(sidecar_path.read_text()).get("source") or {}).get("url")
+            cached_url = (json.loads(sidecar_path.read_text(encoding="utf-8")).get("source") or {}).get("url")
         if cached_url != url:
             refresh = True
     try:
@@ -237,7 +237,7 @@ def process(slug: str, refresh: bool, strict: bool = True, overrides: dict | Non
         "section_text": parsed["section_text"],
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / f"{slug}.json").write_text(json.dumps(out, ensure_ascii=False, indent=2))
+    (OUT_DIR / f"{slug}.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     out["status"] = "ok"
     return out
 
@@ -252,7 +252,7 @@ def _list_candidate_slugs(overrides: dict | None = None) -> list[str]:
     for p in sorted(PLIEGOS_DIR.glob("*.json")):
         if p.name == "_index.json":
             continue
-        rec = json.loads(p.read_text())
+        rec = json.loads(p.read_text(encoding="utf-8"))
         if rec.get("stub") or rec.get("is_sub_denomination"):
             continue
         if find_pliego_url(rec) or (overrides.get(p.stem) or {}).get("pliego_url"):

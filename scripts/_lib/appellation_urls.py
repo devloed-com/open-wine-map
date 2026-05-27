@@ -21,7 +21,7 @@ _DATA_PATH = Path(__file__).resolve().parent / "appellation_urls.json"
 
 
 def load() -> dict:
-    return json.loads(_DATA_PATH.read_text())
+    return json.loads(_DATA_PATH.read_text(encoding="utf-8"))
 
 
 def resolve(

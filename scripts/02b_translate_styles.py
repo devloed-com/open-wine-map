@@ -83,7 +83,7 @@ def extract_sha(text: str) -> str:
 
 
 def load_curated() -> list[str]:
-    data = json.loads(OVERRIDES_FILE.read_text())
+    data = json.loads(OVERRIDES_FILE.read_text(encoding="utf-8"))
     return list(data.get("_curated") or [])
 
 
@@ -300,7 +300,7 @@ def import_translations_file(
         print(f"error: {in_path} does not exist.", file=sys.stderr)
         return 1
     try:
-        payload = json.loads(in_path.read_text())
+        payload = json.loads(in_path.read_text(encoding="utf-8"))
     except Exception as e:  # noqa: BLE001
         print(f"error: could not parse {in_path}: {e}", file=sys.stderr)
         return 1

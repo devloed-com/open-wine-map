@@ -354,7 +354,7 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
-    wines = json.loads(INDEX_IN.read_text())["wines"]
+    wines = json.loads(INDEX_IN.read_text(encoding="utf-8"))["wines"]
     if args.only:
         needles = [s.lower() for s in args.only]
         wines = [w for w in wines if any(n in w["slug"].lower() for n in needles)]
@@ -364,7 +364,7 @@ def main() -> int:
     oj_manifest: dict = {}
     if OJ_MANIFEST.exists():
         try:
-            oj_manifest = json.loads(OJ_MANIFEST.read_text()).get("by_slug", {})
+            oj_manifest = json.loads(OJ_MANIFEST.read_text(encoding="utf-8")).get("by_slug", {})
         except (ValueError, OSError):
             pass
 
@@ -398,7 +398,7 @@ def main() -> int:
             extracted += 1
 
         out_path = OUT_DIR / f"{slug}.json"
-        out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2))
+        out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
         index[slug] = {
             "country": "si",
             "id_eambrosia": w["giIdentifier"],
@@ -417,7 +417,8 @@ def main() -> int:
 
     set_pliego_context(None)
     INDEX_OUT.write_text(
-        json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True)
+        json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
     )
     unknowns_path = ROOT / "raw" / "si" / "extraction-unknowns.json"
     n_unknowns = flush_unknowns_queue(unknowns_path)

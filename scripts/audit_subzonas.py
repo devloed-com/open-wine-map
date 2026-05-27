@@ -43,7 +43,7 @@ def main() -> int:
     for jp in sorted(EXTRACTED.glob("*.json")):
         if jp.name.startswith("_"):
             continue
-        d = json.loads(jp.read_text())
+        d = json.loads(jp.read_text(encoding="utf-8"))
         if d.get("is_sub_denomination"):
             extracted_subzonas_per_parent.setdefault(d["parent_slug"], []).append(d["name"])
             extracted_parents.add(d["parent_slug"])

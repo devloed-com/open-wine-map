@@ -128,7 +128,7 @@ def fetch_communes(dest: Path) -> dict:
 
     merged = {"type": "FeatureCollection", "features": features}
     tmp = dest.with_suffix(dest.suffix + ".part")
-    with open(tmp, "w") as f:
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(merged, f)
     tmp.rename(dest)
 
@@ -163,7 +163,7 @@ def fetch_cadastre_lieux_dits(insee_codes: set[str], dest_dir: Path) -> dict:
     dest_dir.mkdir(parents=True, exist_ok=True)
     sub_manifest_path = dest_dir / "manifest.json"
     sub: dict = (
-        json.loads(sub_manifest_path.read_text()) if sub_manifest_path.exists() else {}
+        json.loads(sub_manifest_path.read_text(encoding="utf-8")) if sub_manifest_path.exists() else {}
     )
     fetched = 0
     skipped = 0
@@ -202,7 +202,7 @@ def fetch_cadastre_lieux_dits(insee_codes: set[str], dest_dir: Path) -> dict:
             "sha256": sha256(out),
         }
         fetched += 1
-    sub_manifest_path.write_text(json.dumps(sub, indent=2, sort_keys=True))
+    sub_manifest_path.write_text(json.dumps(sub, indent=2, sort_keys=True), encoding="utf-8")
     return {
         "communes_total": len(insee_codes),
         "fetched": fetched,
@@ -232,7 +232,7 @@ def collect_cadastre_communes() -> set[str]:
 
 def main() -> int:
     manifest_path = RAW / "manifest.json"
-    manifest: dict = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
+    manifest: dict = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
 
     for src in DATAGOUV_SOURCES:
         try:
@@ -277,7 +277,7 @@ def main() -> int:
         )
         manifest["cadastre-lieux-dits"] = fetch_cadastre_lieux_dits(cadastre_insee, cadastre_dest)
 
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
     print(f"[done] manifest at {manifest_path.relative_to(ROOT)}", file=sys.stderr)
     return 0
 
