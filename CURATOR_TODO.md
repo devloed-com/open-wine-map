@@ -540,19 +540,42 @@ Sweep result (2026-05-19):
 
 The 6 no-anchors slugs (`colli-trevigiani`, `conselvano`,
 `gambellara`, `marca-trevigiana`, `veneto`, `veneto-orientale`)
-all live in the IGT bundle and use a non-standard DM template
-(no "Articolo N" headers — likely older Decreto Ministeriale or
-RV-style formatting). Curator follow-up: extend the article-anchor
-regex or pin via `raw/it/masaf-disciplinari/manual_overrides.json`.
+use the older `Art. N` Decreto-Ministeriale header style instead
+of `Articolo N`. Resolved 2026-05-27 by extending `_ARTICLE_HEAD_RE`
+in [scripts/_lib/it/masaf.py](scripts/_lib/it/masaf.py) to
+`(?:Articolo|Art\.)`. Verified safe (1/50 sampled existing MASAF
+PDFs had line-start `Art. N`, and that one was previously failing
+too). Combined with the 02f oj-pages-cache fallback, all 6 now
+extract via curator-pinned PDFs.
 
-🟢 **Disciplinare URL hunt — 15 wines.** The 6 no-anchor slugs above
-plus the 9 `not-single-document` no-bundle-match wines (`colli-aprutini`,
-`colli-del-sangro`, `colline-frentane`, `colline-pescaresi`,
-`colline-teatine`, `del-vastese`, `salemi`, `terre-di-chieti`,
-`valtenesi`) have no usable source document. Browser-extension research
-prompt at [tmp/it-masaf-disciplinare-research-prompt.md](tmp/it-masaf-disciplinare-research-prompt.md):
-find a public disciplinare PDF for each and merge into
-`raw/it/masaf-disciplinari/manual_overrides.json`, then re-run 02f → 04.
+🟡 **Disciplinare URL hunt — 9 wines remaining.** The 2026-05-27 drop
+added 15 override URLs, of which 6 promoted out of stub state with
+clean disciplinare extraction (colli-trevigiani, conselvano,
+marca-trevigiana, veneto, veneto-orientale, valtenesi — the last one
+ships as a 2-article correction-decree fragment, not a full
+disciplinare, but is correctly attributed). The remaining 9 had bad
+URLs that were **removed** from the override files:
+
+| Slug | Bad URL pinned | Problem |
+|---|---|---|
+| `gambellara` | GU 2011-02-25 `caricaPdf?cdimg=11A0223000100010110005` | wrong document — the PDF at that `cdimg` is actually the *Salame Piacentino* DOP disciplinare (a cured-pork product), not Gambellara wine. Curator confused the `cdimg` page identifier |
+| `colli-aprutini` | GU 2025-09-09 n.209 (consolidated) | not in the GU's TOC at all; consolidated GU is 40 pp of unrelated decrees |
+| `colline-frentane` | GU 2025-09-09 n.209 | only mentioned in a *consortium-recognition* decree (25A04880), not a disciplinare |
+| `colline-pescaresi` | GU 2025-09-09 n.209 | same — recognition decree only |
+| `colline-teatine` | GU 2025-09-09 n.209 | same |
+| `del-vastese` | GU 2025-09-09 n.209 | same |
+| `terre-di-chieti` | GU 2025-09-09 n.209 | same |
+| `salemi` | GU `caricaArticolo?...flagTipoArticolo=0` | returns HTML, not PDF. Try `flagTipoArticolo=1` (the same fix that worked for marca-trevigiana) |
+| `colli-del-sangro` | MASAF detail HTML page | index page, not a disciplinare PDF. The Sept-2025 GU decree (25A04880) explicitly notes that the Consorzio tutela vini d'Abruzzo *failed* representativeness for this IGT — may be deregistered / dormant |
+
+Re-run the existing research prompt at
+[tmp/it-masaf-disciplinare-research-prompt.md](tmp/it-masaf-disciplinare-research-prompt.md)
+scoped to these 9 slugs and merge accepted URLs into both
+`raw/it/oj-pages/manual_overrides.json` and (if the URL is a PDF)
+`raw/it/masaf-disciplinari/manual_overrides.json`. **Verify before
+pinning** that the URL's content is the actual disciplinare di
+produzione of the named wine (not a recognition / amendment /
+consortium-management decree, and not a different product entirely).
 
 ### MASAF grape-extraction fix — ✅ landed 2026-05-20
 

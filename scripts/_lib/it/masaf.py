@@ -198,7 +198,7 @@ def match_wines_to_pdfs(
 # start each new article on its own page, and pdftotext -layout emits a
 # bare \x0c at the start of the article-header line.
 _ARTICLE_HEAD_RE = re.compile(
-    r"^[ \t\x0c]*Articolo[ \t]+(\d+)\b[ \t]*([^\n]*)$",
+    r"^[ \t\x0c]*(?:Articolo|Art\.)[ \t]+(\d+)\b[ \t]*([^\n]*)$",
     re.M,
 )
 
@@ -586,3 +586,25 @@ def derive_terroir(article9_body: str, max_chars: int = 4000) -> str:
     """Same shape as `derive_geo_area` but for Article 9 ('Legame con
     l'ambiente geografico')."""
     return derive_geo_area(article9_body, max_chars=max_chars)
+
+
+_LEGAME_TITLE_RE = re.compile(
+    r"legame\s+con\s+(?:l['’]ambiente|la\s+zona)\s+geografic",
+    re.I,
+)
+
+
+def pick_terroir_article(articles: dict[int, str]) -> tuple[int, str]:
+    """Return (article_number, derived_terroir_body) for the article
+    whose title is the 'Legame con l'ambiente geografico' section.
+    The canonical MASAF template puts it at Article 9; the older
+    Veneto-IGT template (colli-trevigiani, conselvano, marca-
+    trevigiana, veneto-orientale) shifts it to Article 8 because
+    Article 9 there holds 'Riferimenti alla struttura di controllo'.
+    Tries Art 9 then Art 8 by title-keyword match; falls back to Art 9
+    when neither matches (the established canonical default)."""
+    for n in (9, 8):
+        body = articles.get(n, "")
+        if body and _LEGAME_TITLE_RE.search(body[:300]):
+            return n, derive_terroir(body)
+    return 9, derive_terroir(articles.get(9, ""))

@@ -44,6 +44,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import functools
 import hashlib
 import json
 import re
@@ -61,7 +62,7 @@ from _lib.grape_entity import (  # noqa: E402
 )
 from _lib.it.masaf import (  # noqa: E402
     PdfRecord, build_pdf_index, derive_geo_area, derive_summary,
-    derive_terroir, extract_articles, match_wines_to_pdfs, parse_grapes_with,
+    extract_articles, match_wines_to_pdfs, parse_grapes_with, pick_terroir_article,
 )
 from _lib.it.region import derive_regione  # noqa: E402
 from _lib.it.province import load_comune_regione_map, resolve_gisco_lau  # noqa: E402
@@ -74,6 +75,8 @@ BUNDLES_MANIFEST = BUNDLES_DIR / "manifest.json"
 PDF_CACHE = ROOT / "raw" / "it" / "masaf-disciplinari" / "pdfs"
 OUT_DIR = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
 OUT_MANIFEST = OUT_DIR / "_index.json"
+OJ_PAGES_DIR = ROOT / "raw" / "it" / "oj-pages"
+OJ_PAGES_MANIFEST = OJ_PAGES_DIR / "manifest.json"
 
 OVERRIDES_PATH = BUNDLES_DIR.parent / "manual_overrides.json"
 
@@ -97,6 +100,25 @@ def load_overrides() -> dict:
         return json.loads(OVERRIDES_PATH.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return {}
+
+
+@functools.lru_cache(maxsize=1)
+def _load_oj_pages_overrides() -> dict:
+    """Curator URLs from raw/it/oj-pages/manual_overrides.json — surfaced
+    here so PDFs cached under raw/it/oj-pages/<slug>.pdf can be
+    attributed to their source when 02f promotes them via the
+    oj-pages-cache fallback."""
+    fp = OJ_PAGES_DIR / "manual_overrides.json"
+    if not fp.exists():
+        return {}
+    try:
+        return json.loads(fp.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return {}
+
+
+def _load_oj_page_meta(slug: str) -> dict:
+    return _load_oj_pages_overrides().get(slug) or {}
 
 
 def load_bundles_manifest() -> dict:
@@ -213,7 +235,7 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
 
     summary = derive_summary(articles.get(1, ""))
     geo_area = derive_geo_area(articles.get(3, ""))
-    terroir = derive_terroir(articles.get(9, ""))
+    terroir_article_num, terroir = pick_terroir_article(articles)
 
     # If the wine's name is already DOC/DOCG-prefixed in article 1, the
     # summary tends to be a self-referential opening sentence. Cap at
@@ -245,7 +267,9 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
         # keep articles 1 / 3 / 9 verbatim so 02d-style terroir
         # extraction can later run against them when stage 02 is silent.
         "article_bodies": {
-            str(n): articles.get(n, "") for n in (1, 2, 3, 9) if articles.get(n)
+            str(n): articles.get(n, "")
+            for n in sorted({1, 2, 3, 9, terroir_article_num})
+            if articles.get(n)
         },
         "source": pdf_meta,
         "match": match_info,
@@ -304,6 +328,27 @@ def process_slug(
             "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }
         match_info = {"how": "override", "pdf_filename": pdf_dest.name}
+    elif (OJ_PAGES_DIR / f"{slug}.pdf").exists():
+        # oj-pages already cached a PDF for this slug (curator pinned a URL
+        # in raw/it/oj-pages/manual_overrides.json but stage 02 can't parse
+        # PDFs — they land here as `pdf-cache-not-yet-parsed` stubs).
+        # Try them as MASAF-format disciplinari; graceful fall-through to
+        # "no-articles" if the PDF isn't a disciplinare at all.
+        oj_pdf = OJ_PAGES_DIR / f"{slug}.pdf"
+        body = oj_pdf.read_bytes()
+        pdf_dest.parent.mkdir(parents=True, exist_ok=True)
+        pdf_dest.write_bytes(body)
+        oj_meta = _load_oj_page_meta(slug)
+        pdf_meta = {
+            "url": oj_meta.get("url", ""),
+            "source_org": oj_meta.get("source_org", "oj-pages-override"),
+            "verification_note": oj_meta.get("verification_note", ""),
+            "filename": pdf_dest.name,
+            "sha256": hashlib.sha256(body).hexdigest(),
+            "bytes": len(body),
+            "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        match_info = {"how": "oj-pages-cache", "pdf_filename": pdf_dest.name}
     else:
         outcome = outcomes_by_slug.get(slug)
         if outcome is None or outcome.pdf_index is None:
