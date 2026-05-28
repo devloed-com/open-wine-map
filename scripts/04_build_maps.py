@@ -2687,12 +2687,12 @@ def main() -> int:
         # (no longer matches) is kept in the ledger and logged loudly below —
         # the geometry is left untouched, never silently altered.
         _pre_clip_geom = geom
-        clip_res = geom_overrides.clip(record["slug"], geom)
+        clip_res = geom_overrides.clip(record["slug"], geom, geom_source)
         geom = clip_res.geom
         if v_geom is _pre_clip_geom:
             v_geom = clip_res.geom
         elif v_geom is not None and not v_geom.is_empty:
-            v_geom = geom_overrides.clip(record["slug"], v_geom).geom
+            v_geom = geom_overrides.clip(record["slug"], v_geom, geom_source).geom
         if clip_res.dropped or clip_res.stale:
             geom_clip_results.append(clip_res)
 

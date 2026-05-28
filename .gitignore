@@ -50,6 +50,7 @@ done*.json
 
 # obsidian / editor scratch
 .obsidian/
+.scratch/
 
 # local agent state (settings.json is shared, settings.local.json is per-user)
 .claude/settings.local.json

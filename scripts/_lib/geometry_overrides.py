@@ -127,12 +127,28 @@ class GeometryOverrides:
     def is_whitelisted(self, slug: str) -> bool:
         return slug in self._whitelist
 
-    def clip(self, slug: str, geom: BaseGeometry | None) -> ClipResult:
+    def clip(
+        self,
+        slug: str,
+        geom: BaseGeometry | None,
+        geom_source: str | None = None,
+    ) -> ClipResult:
         """Return a ClipResult for `slug`. When `slug` has no clip spec, or
         `geom` is empty, the geometry is returned unchanged with empty
-        ledgers."""
+        ledgers.
+
+        `geom_source` is the resolved geometry's provenance tag (e.g.
+        `figshare-pdo`, `geoportal-zone:piemonte`). When the clip spec
+        carries a `geom_source` field, the clip applies only to that
+        source; if a higher-priority resolver (a regional geoportal,
+        say) replaced the Bétard polygon, the spec is silently inactive
+        — it remains a valid record of the Bétard error but doesn't
+        warn on every build."""
         spec = self._clip.get(slug)
         if spec is None or geom is None or geom.is_empty:
+            return ClipResult(slug=slug, geom=geom)
+        target_source = spec.get("geom_source")
+        if target_source and geom_source and target_source != geom_source:
             return ClipResult(slug=slug, geom=geom)
 
         drops = spec.get("drop", []) or []
