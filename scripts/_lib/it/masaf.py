@@ -589,22 +589,63 @@ def derive_terroir(article9_body: str, max_chars: int = 4000) -> str:
 
 
 _LEGAME_TITLE_RE = re.compile(
-    r"legame\s+con\s+(?:l['’]ambiente|la\s+zona)\s+geografic",
+    r"legam[ei]\s+con\s+(?:(?:l['’]?\s*)?ambiente|la\s+zona|il\s+territorio)",
     re.I,
 )
 
 
-def pick_terroir_article(articles: dict[int, str]) -> tuple[int, str]:
-    """Return (article_number, derived_terroir_body) for the article
-    whose title is the 'Legame con l'ambiente geografico' section.
+def pick_terroir_article(
+    articles: dict[int, str], raw_text: str | None = None
+) -> tuple[int, str]:
+    """Return (article_number, derived_terroir_body) for the 'Legame
+    con l'ambiente geografico' section.
+
     The canonical MASAF template puts it at Article 9; the older
     Veneto-IGT template (colli-trevigiani, conselvano, marca-
     trevigiana, veneto-orientale) shifts it to Article 8 because
-    Article 9 there holds 'Riferimenti alla struttura di controllo'.
-    Tries Art 9 then Art 8 by title-keyword match; falls back to Art 9
-    when neither matches (the established canonical default)."""
-    for n in (9, 8):
+    Article 9 there holds 'Riferimenti alla struttura di controllo';
+    some PDFs concatenate two disciplinari (portofino — main DOC +
+    a `sottozona` sub-disciplinare) which breaks the 'last occurrence
+    wins' assumption in `extract_articles` for Art 8.
+
+    Strategy:
+      1. Try every article in the parsed dict by title-keyword match
+         (Art 9 then Art 8 first since those are canonical).
+      2. If nothing matches AND `raw_text` is provided, scan the raw
+         pdftotext output for a "Legame con …" line anchored to its
+         containing "Art. N" header, regardless of article number or
+         the deduplication done by `extract_articles`.
+      3. Fall back to the canonical Art 9 (preserves established
+         behaviour for the 350+ wines whose parsing already works).
+    """
+    # Step 1: try Art 9, Art 8, then any other present article.
+    candidates: list[int] = [9, 8] + sorted(set(articles) - {8, 9})
+    for n in candidates:
         body = articles.get(n, "")
         if body and _LEGAME_TITLE_RE.search(body[:300]):
             return n, derive_terroir(body)
+
+    # Step 2: raw-text fallback (handles concatenated disciplinari).
+    if raw_text:
+        title_m = _LEGAME_TITLE_RE.search(raw_text)
+        if title_m:
+            # Walk back from title to the nearest preceding "Art. N" header.
+            pre = raw_text[: title_m.start()]
+            head_iter = list(_ARTICLE_HEAD_RE.finditer(pre))
+            if head_iter:
+                last_head = head_iter[-1]
+                try:
+                    n = int(last_head.group(1))
+                except (ValueError, TypeError):
+                    n = 0
+                # Body starts just after that header, ends at the next
+                # "Art. N" header (or EOF).
+                start = last_head.end()
+                next_m = _ARTICLE_HEAD_RE.search(raw_text, title_m.end())
+                end = next_m.start() if next_m else len(raw_text)
+                body = raw_text[start:end].strip()
+                if body and n:
+                    return n, derive_terroir(body)
+
+    # Step 3: established canonical fallback.
     return 9, derive_terroir(articles.get(9, ""))

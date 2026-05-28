@@ -224,7 +224,7 @@ def collapse_whitespace(s: str) -> str:
 
 
 def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
-                 match_info: dict, comune_map: dict) -> dict:
+                 match_info: dict, comune_map: dict, raw_text: str = "") -> dict:
     """Build the sidecar JSON. The shape mirrors the doc-unico extracted
     record where it can (slug / name / kind / file_number / id_eambrosia
     / regione / grapes / styles / sections_present) so stage 04 can
@@ -235,7 +235,7 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
 
     summary = derive_summary(articles.get(1, ""))
     geo_area = derive_geo_area(articles.get(3, ""))
-    terroir_article_num, terroir = pick_terroir_article(articles)
+    terroir_article_num, terroir = pick_terroir_article(articles, raw_text=raw_text)
 
     # If the wine's name is already DOC/DOCG-prefixed in article 1, the
     # summary tends to be a self-referential opening sentence. Cap at
@@ -398,7 +398,7 @@ def process_slug(
             )
         return {"slug": slug, "status": "no-articles", "reason": "no-anchors"}
 
-    record = build_record(wine, articles, pdf_meta, match_info, comune_map)
+    record = build_record(wine, articles, pdf_meta, match_info, comune_map, raw_text=text)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"{slug}.json"
     out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
