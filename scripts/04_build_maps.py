@@ -136,6 +136,7 @@ SPECIFIKACIJE_HR = ROOT / "raw" / "hr" / "specifikacije-extracted"
 EXTRACTED_HU = ROOT / "raw" / "hu" / "dokumentumok-extracted"
 EXTRACTED_RO = ROOT / "raw" / "ro" / "dokumente-extracted"
 EXTRACTED_BG = ROOT / "raw" / "bg" / "dokumenti-extracted"
+NATIONAL_SPECS_BG = ROOT / "raw" / "bg" / "national-specs-extracted"
 EXTRACTED_GR = ROOT / "raw" / "gr" / "dokumenti-extracted"
 NATIONAL_SPECS_GR = ROOT / "raw" / "gr" / "national-specs-extracted"
 NATIONAL_SPECS_RO = ROOT / "raw" / "ro" / "national-specs-extracted"
@@ -227,6 +228,14 @@ _GR_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
 # sarcini-v1 parser). Unlike GR/HR, the merge also carries `geo_communes`
 # so the 2 grandfathered IGPs resolve via the GISCO commune-union chain.
 _RO_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
+
+# Slug-keyed cache of BG national-spec provenance, populated by
+# augment_bg_records_with_national_specs(). The 51 grandfathered BG wines
+# (only an Ares(...) reference in eAmbrosia, no EU-OJ ЕДИНЕН ДОКУМЕНТ) are
+# augmented from the ИАЛВ / IAVV per-wine продуктова спецификация (stage
+# 02f, iavv-specifikacija-v1 parser — eavw.com PDF, numbered 1–8 template:
+# 5 сортове / 6 Връзка с географския район / 3 район).
+_BG_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
 
 
 # Cross-border PDOs that physically extend across more than one country.
@@ -583,6 +592,83 @@ def augment_gr_records_with_national_specs(records: list[dict]) -> int:
             record["stub_reason"] = f"national-spec:{record['stub_reason']}"
         record["national_spec"] = provenance
         _GR_NATIONAL_SPEC_BY_SLUG[slug] = provenance
+        augmented += 1
+    return augmented
+
+
+def augment_bg_records_with_national_specs(records: list[dict]) -> int:
+    """In-place merge of BG national-spec sidecar data into stub records.
+
+    Sibling of `augment_gr_records_with_national_specs`. 51 of 54 BG wines
+    ship as content-stubs (no fetchable EU-OJ ЕДИНЕН ДОКУМЕНТ). Stage 02f
+    (`scripts/bg/02f_extract_national_specs.py`) parses the ИАЛВ / IAVV
+    per-wine продуктова спецификация PDF fetched by stage 01c into
+    `raw/bg/national-specs-extracted/<slug>.json` (51 of 51).
+
+    For each BG stub with a matching sidecar:
+      - grapes            ← section 5 (Винени сортове грозде, colour-split)
+      - link_to_terroir   ← section 6 (Връзка с географския район)
+      - geo_area_brief / summary / styles ← matching sections
+      - section_roles     ← unified role dict so 02d reads terroir uniformly
+      - stub_reason       ← prefixed `national-spec:` so the audit can tell
+                            EU-OJ-extracted from spec-augmented wines
+      - national_spec     ← provenance block (url, sha256, format, …)
+
+    `record["stub"]` stays True — still NOT an EU-OJ extraction, just
+    augmented with the canonical ИАЛВ source. Returns count augmented.
+    """
+    _BG_NATIONAL_SPEC_BY_SLUG.clear()
+    if not NATIONAL_SPECS_BG.exists():
+        return 0
+    augmented = 0
+    for record in records:
+        if record.get("country") != "bg" or not record.get("stub"):
+            continue
+        slug = record.get("slug")
+        if not slug:
+            continue
+        sidecar_path = NATIONAL_SPECS_BG / f"{slug}.json"
+        if not sidecar_path.exists():
+            continue
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+
+        src = sidecar.get("source") or {}
+        provenance = {
+            "url": src.get("url") or "",
+            "sha256": src.get("sha256") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "format": src.get("format") or "",
+            "source_org": src.get("source_org") or "iavv",
+            "filename": src.get("filename") or "",
+            "parser_template": sidecar.get("parser_template") or "",
+        }
+
+        if sidecar.get("summary"):
+            record["summary"] = sidecar["summary"]
+        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
+                                      or sidecar["grapes"].get("accessory")):
+            record["grapes"] = sidecar["grapes"]
+        if sidecar.get("geo_area_brief"):
+            record["geo_area_brief"] = sidecar["geo_area_brief"]
+        if sidecar.get("link_to_terroir"):
+            record["link_to_terroir"] = sidecar["link_to_terroir"]
+        if sidecar.get("styles"):
+            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
+
+        section_roles = dict(record.get("section_roles") or {})
+        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
+            sidecar_roles = sidecar.get("section_roles") or {}
+            if sidecar_roles.get(role):
+                section_roles[role] = sidecar_roles[role]
+        record["section_roles"] = section_roles
+
+        if record.get("stub_reason") and not record["stub_reason"].startswith("national-spec:"):
+            record["stub_reason"] = f"national-spec:{record['stub_reason']}"
+        record["national_spec"] = provenance
+        _BG_NATIONAL_SPEC_BY_SLUG[slug] = provenance
         augmented += 1
     return augmented
 
@@ -1070,6 +1156,31 @@ _COLOUR_FROM_CZ_BLOCK: dict[str, str] = {
 SIMPLE_STYLE_BUCKETS: dict[str, str] = {
     s: _taxonomy_simple_bucket(s) for s in _taxonomy_all_slugs()
 }
+
+
+# Several non-FR stage-02 pipelines tag wine colour with the FR colour word
+# (blanc / noir / rouge / gris) rather than the canonical style-taxonomy slug
+# (white / red / rose). Those leak straight through the STYLE_LABELS lookup in
+# the UI untranslated, rendering "Blanc" / "Rouge" / "Noir" in every locale.
+# Canonicalise here — line ~3276 is the single point every record's styles flow
+# through into the map, so this corrects the whole corpus uniformly regardless
+# of which country emitted the tag.
+_COLOUR_WORD_TO_STYLE_SLUG: dict[str, str] = {
+    "blanc": "white",
+    "noir": "red",
+    "rouge": "red",
+    "gris": "white",
+    "rose": "rose",
+}
+
+
+def _canonical_styles(values: list[str]) -> list[str]:
+    """Map legacy colour-word style tags to canonical taxonomy slugs, dedupe,
+    and keep the order stable so the MVT `in` filter strings stay clean."""
+    seen: dict[str, None] = {}
+    for s in values or ():
+        seen.setdefault(_COLOUR_WORD_TO_STYLE_SLUG.get(s, s), None)
+    return list(seen)
 
 
 def load_grape_lexicon(lang: str, max_chars: int = 280) -> dict:
@@ -2065,6 +2176,16 @@ def main() -> int:
             f"[load] RO national-spec augmentation: {n_aug_ro} stub records enriched",
             file=sys.stderr,
         )
+    # BG: the 51 grandfathered wines (only an Ares(...) ref in eAmbrosia)
+    # are augmented from the ИАЛВ / IAVV per-wine продуктова спецификация
+    # (stage 01c/02f, eavw.com PDFs). The merge carries grapes (section 5)
+    # + terroir text (section 6) + styles so the panel + 02d ground on it.
+    n_aug_bg = augment_bg_records_with_national_specs(extracted_records)
+    if n_aug_bg:
+        print(
+            f"[load] BG national-spec augmentation: {n_aug_bg} stub records enriched",
+            file=sys.stderr,
+        )
     # PT cadernos enumerate every authorised casta as `principal` —
     # the IVV documento-único format we parse doesn't carry a
     # principal/accessory split, and an investigation into the
@@ -2213,9 +2334,13 @@ def main() -> int:
     # mis-labelled by Bétard as PDO-HU-A1507; we bridge it back to its
     # PGI-HU-A1507 file_number). 5 HU PGIs not in Bétard resolve as the
     # union of their constituent PDO polygons (SI PGI pattern).
-    hu_polygons = HUPolygonIndex(figshare_gpkg=ES_FIGSHARE_GPKG)
+    hu_polygons = HUPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        gisco_lau_zip=ES_GISCO_LAU_ZIP,
+    )
     print(
-        f"[load] HU polygons: {hu_polygons.n_pdo_polygons} Figshare HU-PDOs/PGIs",
+        f"[load] HU polygons: {hu_polygons.n_pdo_polygons} Figshare HU-PDOs/PGIs / "
+        f"{hu_polygons.n_lau} GISCO HU communes",
         file=sys.stderr,
     )
     hu_hits: Counter[str] = Counter()
@@ -2685,7 +2810,8 @@ def main() -> int:
             sib_v_geom = sib_name = sib_slug = None
             cadastre_match = None
             geom, geom_source, stats = hu_polygons.resolve(
-                record.get("file_number") or ""
+                record.get("file_number") or "",
+                record.get("geo_communes") or [],
             )
             hu_hits[geom_source] += 1
             v_geom = geom
@@ -3177,7 +3303,7 @@ def main() -> int:
         accessory = grapes.get("accessory") or []
         observation = grapes.get("observation") or []
         all_grapes = sorted(set(principal) | set(accessory) | set(observation))
-        styles = record.get("styles") or []
+        styles = _canonical_styles(record.get("styles") or [])
         categories = record.get("categories") or []
         categorie = record.get("categorie", "") or ""
         # Wine vs. non-wine split: every INAO `categorie` value beginning with
@@ -3965,11 +4091,16 @@ def _sources_for(record: dict) -> dict:
         }
     if record.get("country") == "bg":
         # Bulgaria: ~3 of 54 wines carry a fetchable EUR-Lex Единен
-        # документ; the remaining ~51 are Art.107 / Reg.1308/2013
-        # grandfathered names awaiting a curator-pinned URL or the
-        # Държавен вестник national specification (Phase 2). All 52
-        # PDOs resolve to a Bétard polygon; both PGIs resolve via
-        # member-PDO union. eAmbrosia + file_number always resolve.
+        # документ; the remaining 51 are Art.107 / Reg.1308/2013
+        # grandfathered names augmented from the ИАЛВ / IAVV per-wine
+        # продуктова спецификация (stage 02f — eavw.com). All 52 PDOs
+        # resolve to a Bétard polygon; both PGIs resolve via member-PDO
+        # union. eAmbrosia + file_number always resolve. The national-spec
+        # provenance surfaces the IAVV PDF URL + sha so the panel can
+        # attribute the variety roster + terroir text correctly.
+        bg_spec = record.get("national_spec") or _BG_NATIONAL_SPEC_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
         return {
             "country": "bg",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
@@ -3978,6 +4109,12 @@ def _sources_for(record: dict) -> dict:
             "fetched_at": src.get("fetched_at") or "",
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
+            "national_spec_url": bg_spec.get("url", ""),
+            "national_spec_sha256": bg_spec.get("sha256", ""),
+            "national_spec_fetched_at": bg_spec.get("fetched_at", ""),
+            "national_spec_format": bg_spec.get("format", ""),
+            "national_spec_source_org": bg_spec.get("source_org", ""),
+            "national_spec_parser_template": bg_spec.get("parser_template", ""),
         }
     if record.get("country") == "gr":
         # Greece: only ~11 of 147 wines carry a fetchable EUR-Lex Ενιαίο
@@ -4414,6 +4551,7 @@ def emit_html(
                 or (country == "hr" and slug in _HR_SPECIFIKACIJA_BY_SLUG)
                 or (country == "gr" and slug in _GR_NATIONAL_SPEC_BY_SLUG)
                 or (country == "ro" and slug in _RO_NATIONAL_SPEC_BY_SLUG)
+                or (country == "bg" and slug in _BG_NATIONAL_SPEC_BY_SLUG)
             )
             is_stub = stub_raw and not has_augmented_source
             # Per-appellation cahier spelling per slug — drives the pill

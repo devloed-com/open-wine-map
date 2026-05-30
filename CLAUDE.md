@@ -1878,7 +1878,9 @@ cutoff). v1 geometry coverage = **100 %** of records.
 | bg/01_fetch_pliegos.py | raw/bg/eambrosia/index.json + raw/bg/oj-pages/manual_overrides.json | raw/bg/oj-pages/*.html + manifest.json |
 | bg/01b_solve_waf.py | raw/bg/oj-pages/manifest.json | raw/bg/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
 | bg/02_extract_pliegos.py | raw/bg/oj-pages/*.html | raw/bg/dokumenti-extracted/*.json + _index.json |
-| bg/02d_extract_terroir_facts.py | raw/bg/dokumenti-extracted/*.json + raw/wikipedia/aocs/bg/ | raw/terroir-facts/*.json (country="bg") + manifest-bg.json |
+| bg/01c_fetch_specifikacije.py | raw/bg/national-specs/manual_overrides.json | raw/bg/national-specs/*.pdf + manifest.json |
+| bg/02f_extract_national_specs.py | raw/bg/national-specs/*.pdf + raw/bg/national-specs/manual_overrides.json | raw/bg/national-specs-extracted/*.json + _index.json + manifest.json + raw/bg/extraction-unknowns-specifikacije.json |
+| bg/02d_extract_terroir_facts.py | raw/bg/dokumenti-extracted/*.json + raw/bg/national-specs-extracted/ + raw/wikipedia/aocs/bg/ | raw/terroir-facts/*.json (country="bg") + manifest-bg.json |
 | bg/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="bg") | raw/translations/terroir-facts/<en\|fr\|es\|nl>/*.json |
 | bg/03_generate_wiki.py | raw/bg/dokumenti-extracted/*.json | wiki/<slug>.md (per BG record) + merges BG entries into wiki/_index.json |
 | bg/regen_manual_overrides_template.py | raw/bg/eambrosia/index.json + raw/bg/oj-pages/manifest.json | raw/bg/oj-pages/manual_overrides.json (curator queue) |
@@ -1964,34 +1966,103 @@ Per BG record, in priority order (`geom_source` records the choice):
 4. **`stub-no-geometry`** — last resort. Not hit in v1; all 54 wines
    resolve.
 
+### BG national specifikacija layer (stages 01c + 02f)
+
+Because only 3 of 54 BG wines carry a fetchable EU-OJ ЕДИНЕН ДОКУМЕНТ
+(every other wine is an Art.107 / Reg.1308/2013 grandfathered name with
+only an `Ares(...)` reference in eAmbrosia), the corpus would ship as 51
+bare stubs without a national-spec layer. The canonical source —
+resolved 2026-05-30 via `/research-gaps` — is the **ИАЛВ / IAVV
+(Изпълнителна агенция по лозата и виното) per-wine продуктова
+спецификация**, published as a PDF on the eavw.com WebSphere WCM store
+and listed at
+`…/legislation/wines.with.pdo.and.pgi/specifications.of.wines.with.pdo.and.pgi`.
+Official act of a state administration body → ЗАПСП Art. 4 copyright
+exemption; reuse with attribution to ИАЛВ. URLs are pinned in
+[raw/bg/national-specs/manual_overrides.json](raw/bg/national-specs/manual_overrides.json)
+(slug → `{url, source_org: "iavv", file_number, format: "pdf", note}`);
+the UUID/CVID tokens are opaque (read off the listing page) — re-pull
+the listing if a token rotates and a fetch 404s.
+
+The spec is a stable numbered template (1–8), parsed by
+[scripts/_lib/bg/specifikacija.py](scripts/_lib/bg/specifikacija.py)
+over `pdftotext -layout` output:
+
+  1. Наименование · 2. описание на вината · 3. район (commune list) ·
+  4. максимален добив · **5. винени сортове грозде** (grapes, colour-split
+  `за бели вина` / `за червени вина( и розе)` / `за розе`) ·
+  **6. Връзка с географския район** (terroir: а) Природни / б) Човешки
+  фактори) · 7. приложими изисквания · 8. контролен орган
+
+Grapes resolve via the shared `_lib.grape_entity.match_variety`; all are
+`principal` (no role split in BG, same as PT/IT/HR). String handling is
+Cyrillic-preserving (`.casefold()`, never NFKD-ASCII). Unknown varieties
+flow to
+[raw/bg/extraction-unknowns-specifikacije.json](raw/bg/extraction-unknowns-specifikacije.json)
+for the `GRAPE_ALIAS` / `DEFAULT_COLOUR` vocab-curation pattern — the
+2026-05-30 pass added 18 BG breeding-station crossings / old natives
+(Евмолпия, Тракийска слава, Шевка, Ахелой, Хеброс, Орфей, Кукленски
+мавруд, Септемврийски рубин, the Black-Sea + Misket crossings, Ризлинг
+български, …) with researched colours, plus 9 international folds
+(Гъмза→kadarka, Юни блан→ugni-blanc, Сензо→cinsault, Мьоние→meunier,
+Мюлер тюргао→muller-thurgau, Харш Лавелю→harslevelu, …). `ъ`/`ь`
+render as an apostrophe under unidecode (Гъмза → `g'mza`), so those
+alias keys carry the apostrophe rather than the slugify-hyphen form.
+
+Stage 02f
+([scripts/bg/02f_extract_national_specs.py](scripts/bg/02f_extract_national_specs.py))
+writes one sidecar JSON per wine under `raw/bg/national-specs-extracted/`
+with full provenance (URL, sha256, format, parser_template
+`iavv-specifikacija-v1`). Stage 04's
+`augment_bg_records_with_national_specs()`
+([scripts/04_build_maps.py](scripts/04_build_maps.py)) merges the
+sidecar's summary / grapes / geo_area / link_to_terroir / styles /
+section_roles into each in-memory BG stub at load time (the on-disk
+dokumenti-extracted JSON stays immutable); `stub_reason` is prefixed
+`national-spec:` so the audit distinguishes EU-OJ-extracted from
+spec-augmented wines, and `_sources_for()` surfaces `national_spec_*`
+provenance. BG 02d's `_resolve_lien_and_source` reads the sidecar's
+section-6 terroir text when the on-disk record's `link_to_terroir` is
+empty, so terroir-fact extraction grounds against the IAVV spec.
+
+Result: **51 / 51 stubs augmented; all 54 BG wines carry grapes (418
+principal slugs) + section-6 terroir source text**. Terroir-fact
+extraction (02d/02e, Anthropic batch) then grounds on that text.
+
+Re-runnable per slug or sweep:
+```
+.venv/bin/python scripts/bg/01c_fetch_specifikacije.py
+.venv/bin/python scripts/bg/02f_extract_national_specs.py --slug pomorie
+.venv/bin/python scripts/bg/02f_extract_national_specs.py --all
+.venv/bin/python scripts/04_build_maps.py
+```
+Cached PDFs at `raw/bg/national-specs/<slug>.pdf` are reused unless
+`--refresh` is passed.
+
 ### Curator workflow for BG wines without an OJ publication
 
-Mirrors the SI/HR/HU/RO `regen_manual_overrides_template.py` flow.
-51 of 54 BG wines (50 DOPs + 1 IGP — Тракийска низина) are
-grandfathered names with no fetchable single-document URL. The
-canonical source is the Bulgarian national продуктова спецификация
-published in **Държавен вестник** (the State Gazette,
-<https://dv.parliament.bg>) or on the **IAVV** (Изпълнителна агенция
-по лозата и виното, <https://eavw.com>) site; researching a public,
-licence-clear URL pattern for it — and adding a national-spec parser
-branch — is Phase 2 work. For now:
+All 51 grandfathered names are covered by the ИАЛВ specifikacija layer
+above (researched 2026-05-30). If a new BG wine appears, or an IAVV
+UUID/CVID token rotates, add/refresh it in
+`raw/bg/national-specs/manual_overrides.json` (slug → `{url, source_org,
+file_number, format, note}`) and re-run 01c → 02f → 04. The EU-OJ
+`regen_manual_overrides_template.py` flow still applies if the Commission
+later publishes a real ЕДИНЕН ДОКУМЕНТ (which would add the EU-OJ
+narrative sections stage 02 parses directly):
 
 ```
 .venv/bin/python scripts/bg/regen_manual_overrides_template.py
 # edit raw/bg/oj-pages/manual_overrides.json: fill `url` with a public,
-# licence-clear specification (EUR-Lex OJ-C page, or Държавен вестник /
-# IAVV national продуктова спецификация).
+# licence-clear EUR-Lex OJ-C single-document page.
 .venv/bin/python scripts/bg/01_fetch_pliegos.py
 .venv/bin/python scripts/bg/02_extract_pliegos.py
 .venv/bin/python scripts/04_build_maps.py
 ```
 
 **Caveat**: stage 02's HTML parser only understands the EU-OJ ЕДИНЕН
-ДОКУМЕНТ template; Държавен вестник / IAVV national-specification
-formats need a per-source parser (Phase 2, mirrors the ES MAPA / IT
-MASAF pattern). Until then, only EUR-Lex single-document URLs promote
-a wine out of stub state; State Gazette PDFs land as stubs with
-provenance but no parsed sections.
+ДОКУМЕНТ template; the IAVV PDF specs ride the parallel 01c/02f layer
+(kept OUT of `raw/bg/oj-pages/manual_overrides.json` so a PDF never
+enters the HTML path — the HR/SI lesson).
 
 ## Greece pipeline (`scripts/gr/`)
 

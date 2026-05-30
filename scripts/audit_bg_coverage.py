@@ -21,6 +21,8 @@ EXTRACTED = ROOT / "raw" / "bg" / "dokumenti-extracted"
 OJ_MANIFEST = ROOT / "raw" / "bg" / "oj-pages" / "manifest.json"
 OVERRIDES = ROOT / "raw" / "bg" / "oj-pages" / "manual_overrides.json"
 FIGSHARE = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
+NATIONAL_SPECS = ROOT / "raw" / "bg" / "national-specs-extracted"
+TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 
 
 def _load_eambrosia() -> list[dict]:
@@ -152,9 +154,54 @@ def main() -> int:
     for b, n in sorted(by_region.items(), key=lambda x: -x[1]):
         print(f"  {n:>4}  {b}")
     print()
-    print("## Grape extraction")
+    print("## Grape extraction (on-disk EU-OJ records only)")
     print(f"  Wines with grapes:  {n_with_grapes} of {len(extracted)}")
     print(f"  Total grape-slugs:  {grape_total}")
+    print()
+
+    # National-spec augmentation (ИАЛВ / IAVV per-wine продуктова
+    # спецификация, stage 01c/02f). On-disk records stay stubs; this layer
+    # is merged in-memory by stage 04's augment_bg_records_with_national_specs.
+    ns_sidecars = 0
+    ns_with_grapes = ns_with_terroir = ns_grape_total = 0
+    if NATIONAL_SPECS.exists():
+        for jp in NATIONAL_SPECS.glob("*.json"):
+            if jp.name.startswith("_") or jp.name == "manifest.json":
+                continue
+            sc = json.loads(jp.read_text(encoding="utf-8"))
+            ns_sidecars += 1
+            ng = len((sc.get("grapes") or {}).get("principal") or [])
+            if ng:
+                ns_with_grapes += 1
+                ns_grape_total += ng
+            if len((sc.get("link_to_terroir") or "").strip()) >= 200:
+                ns_with_terroir += 1
+    print("## National-spec augmentation (ИАЛВ / IAVV, stage 02f)")
+    print(f"  Sidecars:           {ns_sidecars}")
+    print(f"  With grapes:        {ns_with_grapes}")
+    print(f"  With terroir ≥200:  {ns_with_terroir}")
+    print(f"  Total grape-slugs:  {ns_grape_total}")
+    print()
+
+    # Terroir-fact bullets (stage 02d) — across both EU-OJ and spec-grounded.
+    tf_records = tf_bullets = 0
+    if TERROIR_FACTS.exists():
+        for jp in TERROIR_FACTS.glob("*.json"):
+            if jp.name.startswith(("_", "manifest")):
+                continue
+            try:
+                tf = json.loads(jp.read_text(encoding="utf-8"))
+            except (ValueError, OSError):
+                continue
+            if tf.get("country") != "bg":
+                continue
+            bullets = tf.get("facts") or tf.get("bullets") or []
+            if bullets:
+                tf_records += 1
+                tf_bullets += len(bullets)
+    print("## Terroir-fact bullets (stage 02d, country=bg)")
+    print(f"  Wines with bullets: {tf_records}")
+    print(f"  Total bullets:      {tf_bullets}")
     print()
 
     curator_targets: list[tuple[str, str, str]] = []

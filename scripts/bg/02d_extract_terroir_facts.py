@@ -42,6 +42,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "bg" / "dokumenti-extracted"
+NATIONAL_SPECS = ROOT / "raw" / "bg" / "national-specs-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "bg"
 CACHE_DIR = ROOT / "raw" / "terroir-facts"
 MANIFEST = CACHE_DIR / "manifest-bg.json"
@@ -234,9 +235,30 @@ def _ground_facts(
 
 
 def _resolve_lien_and_source(rec: dict) -> tuple[str, dict]:
+    """Terroir-source resolution. The ~3 non-stub wines use their EU-OJ
+    ЕДИНЕН ДОКУМЕНТ link section. The 51 grandfathered stubs have no
+    on-disk link_to_terroir — fall back to the ИАЛВ / IAVV national-spec
+    sidecar's section 6 (Връзка с географския район) from stage 02f,
+    mirroring stage 04's in-memory augmentation so 02d and the map ground
+    on the same text."""
     lien = rec.get("link_to_terroir") or ""
     src = rec.get("source") or {}
     eu_url = src.get("final_url") or src.get("source_url") or ""
+    if len(lien) >= MIN_LIEN_CHARS or not rec.get("slug"):
+        return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
+    sidecar_path = NATIONAL_SPECS / f"{rec['slug']}.json"
+    if sidecar_path.exists():
+        try:
+            sc = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            sc = {}
+        ns_lien = sc.get("link_to_terroir") or ""
+        if ns_lien:
+            ns_src = sc.get("source") or {}
+            return ns_lien, {
+                "pdf_url": ns_src.get("url") or "",
+                "kind": "iavv-national-spec",
+            }
     return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
 
 

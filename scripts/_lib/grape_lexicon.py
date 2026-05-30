@@ -854,6 +854,42 @@ GRAPE_ALIAS = {
     "vrachanski-misket": "vrachanski-misket",     # BG Vratsa-area Misket
     "buket": "buket",                             # BG modern crossing
     "trakiiski-biser": "trakiiski-biser",         # BG modern crossing
+    # International varieties named in the ИАЛВ продуктови спецификации,
+    # transliterated from Cyrillic via unidecode — folded to VIVC primes.
+    # `ъ`/`ь` render as an apostrophe under unidecode (Гъмза → g'mza,
+    # Мьоние → m'onie), so those keys carry the apostrophe rather than the
+    # slugify hyphen form (which would normalise differently).
+    "iuni-blan": "ugni-blanc",                    # Юни блан (Ugni blanc = Trebbiano)
+    "g'mza": "kadarka",                           # Гъмза (ъ-spelling of Гамза = Kadarka)
+    "shenin-blan": "chenin",                      # Шенин блан (Chenin blanc)
+    "geviurtstraminer": "gewurztraminer",         # Гевюрцтраминер (full spelling)
+    "miuler-tiurgao": "muller-thurgau",           # Мюлер тюргао (Müller-Thurgau)
+    "kharsh-laveliu": "harslevelu",               # Харш Лавелю (Hárslevelű)
+    "m'onie": "meunier",                          # Мьоние (Meunier / Pinot Meunier)
+    "senzo": "cinsault",                          # Сензо (BG name for Cinsault)
+    "rizling-nemski": "sylvaner",                 # Ризлинг немски (= Немски ризлинг → Sylvaner)
+    # BG breeding-station crossings + old natives self-canonicalise (colours
+    # in DEFAULT_COLOUR). `ъ`/`ь` render as an apostrophe under unidecode, so
+    # `balgarski-rizling` is reached via the apostrophe key "rizling-b'lgarski".
+    "evmolpiia": "evmolpiia",                     # Евмолпия
+    "trakiiska-slava": "trakiiska-slava",         # Тракийска слава
+    "shevka": "shevka",                           # Шевка
+    "akheloi": "akheloi",                         # Ахелой
+    "chernomorski-briliant": "chernomorski-briliant",  # Черноморски брилянт
+    "chernomorski-eliksir": "chernomorski-eliksir",    # Черноморски еликсир
+    "kamchiia": "kamchiia",                       # Камчия
+    "khebros": "khebros",                         # Хеброс
+    "kokorko": "kokorko",                         # Кокорко
+    "kuklenski-mavrud": "kuklenski-mavrud",       # Кукленски мавруд
+    "orfei": "orfei",                             # Орфей
+    "plovdivska-malaga": "plovdivska-malaga",     # Пловдивска малага
+    "pomoriiski-biser": "pomoriiski-biser",       # Поморийски бисер
+    "sungurlarski-biser": "sungurlarski-biser",   # Сунгурларски бисер
+    "septemvriiski-rubin": "septemvriiski-rubin",  # Септемврийски рубин
+    "misket-markovski": "misket-markovski",       # Мискет марковски
+    "misket-sungurlarski": "misket-sungurlarski",  # Мискет сунгурларски
+    "rizling-b'lgarski": "balgarski-rizling",     # Ризлинг български (Dimyat × Riesling)
+    "balgarski-rizling": "balgarski-rizling",
     # ----- GR (Greece) native varieties — Greek-script folds via unidecode -----
     # The Greek-script names round-trip through unidecode() in slugify()
     # to non-standard romanisations (asurtiko / ksinomauro / rompola /
@@ -1695,6 +1731,27 @@ DEFAULT_COLOUR: dict[str, str] = {
     "trakiiski-biser": "blanc",
     "biser": "blanc",
     "marselan": "noir",
+    # BG breeding-station crossings + old natives named in the ИАЛВ
+    # продуктови спецификации (colours researched 2026-05-30 against
+    # bg.wikipedia / VIVC / wein.plus / BG institute catalogues).
+    "evmolpiia": "noir",            # Mavrud × Merlot (VIVC #22725)
+    "trakiiska-slava": "noir",      # Pamid × Mavrud
+    "shevka": "noir",               # old Balkan red (Sliven)
+    "akheloi": "blanc",             # Ugni blanc × Muscat Ottonel
+    "chernomorski-briliant": "blanc",  # Tamyanka × Dimyat
+    "chernomorski-eliksir": "blanc",   # Orange Muscat × Dimyat
+    "kamchiia": "blanc",            # white (Misket Varnenski group)
+    "khebros": "noir",              # Misket Cherven × Pinot noir (IV-9/14)
+    "kokorko": "blanc",             # old Black-Sea white, near-extinct
+    "kuklenski-mavrud": "noir",     # Mavrud × Saperavi
+    "orfei": "blanc",               # Misket Cherven × Pinot noir (IV-9/8), white
+    "plovdivska-malaga": "noir",    # Misket Cherven × Marseille Précoce
+    "pomoriiski-biser": "blanc",    # Misket Cherven × Villard Blanc
+    "sungurlarski-biser": "blanc",  # white bud-mutation of Misket Cherven
+    "septemvriiski-rubin": "noir",  # Pamid × Cabernet Sauvignon (NOT a Rubin clone)
+    "misket-markovski": "blanc",    # Muscat crossing (Plovdiv)
+    "misket-sungurlarski": "blanc", # Misket Cherven × Sauvignon blanc
+    "balgarski-rizling": "blanc",   # Dimyat × Riesling (distinct, NOT Welschriesling)
     # ----- GR (Greece) native varieties (see GRAPE_ALIAS block above) -----
     "athiri": "blanc",
     "aidani": "blanc",
