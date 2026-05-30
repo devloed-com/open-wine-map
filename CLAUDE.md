@@ -2953,11 +2953,13 @@ stage-01 run, but the bootstrap remains available).
 | sk/01_fetch_pliegos.py | raw/sk/eambrosia/index.json + raw/sk/oj-pages/manual_overrides.json | raw/sk/oj-pages/*.html + manifest.json |
 | sk/01b_solve_waf.py | raw/sk/oj-pages/manifest.json | raw/sk/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
 | sk/02_extract_pliegos.py | raw/sk/oj-pages/*.html | raw/sk/dokumenty-extracted/*.json + _index.json |
-| sk/02d_extract_terroir_facts.py | raw/sk/dokumenty-extracted/*.json + raw/wikipedia/aocs/sk/ | raw/terroir-facts/*.json (country="sk") + manifest-sk.json |
+| sk/01c_fetch_specifikacije.py | raw/sk/national-specs/manual_overrides.json | raw/sk/national-specs/*.pdf + manifest.json (ÚPV SR špecifikácie) |
+| sk/02f_extract_national_specs.py | raw/sk/national-specs/*.pdf | raw/sk/national-specs-extracted/*.json + _index.json + raw/sk/extraction-unknowns-specifikacije.json |
+| sk/02d_extract_terroir_facts.py | raw/sk/dokumenty-extracted/*.json + raw/sk/national-specs-extracted/ + raw/wikipedia/aocs/sk/ | raw/terroir-facts/*.json (country="sk") + manifest-sk.json |
 | sk/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="sk") | raw/translations/terroir-facts/<en\|fr\|es\|nl>/*.json |
 | sk/03_generate_wiki.py | raw/sk/dokumenty-extracted/*.json | wiki/<slug>.md (per SK record) + merges SK entries into wiki/_index.json |
 | sk/regen_manual_overrides_template.py | raw/sk/eambrosia/index.json + raw/sk/oj-pages/manifest.json | raw/sk/oj-pages/manual_overrides.json (curator queue) |
-| audit_sk_coverage.py | raw/sk/eambrosia/ + raw/sk/dokumenty-extracted/ + raw/sk/oj-pages/manifest.json + raw/es/figshare/EU_PDO.gpkg | (stdout — coverage table + curator queue) |
+| audit_sk_coverage.py | raw/sk/eambrosia/ + raw/sk/dokumenty-extracted/ + raw/sk/national-specs-extracted/ + raw/terroir-facts/ + raw/sk/oj-pages/manifest.json + raw/es/figshare/EU_PDO.gpkg | (stdout — coverage table + national-spec + terroir + curator queue) |
 
 SK-specific notes:
 - `kind` is `"DOP"` / `"IGP"` (same convention as ES/PT/IT/AT/SI/HR/
@@ -3013,6 +3015,81 @@ SK-specific notes:
   výber z hrozna, bobuľový výber, hrozienkový výber, ľadové víno,
   slamové víno, tokajský výber, tokajská esencia, samorodné.
 
+### SK national-spec layer (stages 01c + 02f)
+
+All 6 grandfathered SK stubs are augmented from a Slovak regulator
+per-wine **špecifikácia výrobku** — the SK analogue of the ES MAPA / IT
+MASAF / BG IAVV / HR–SI national-spec layer. Resolved 2026-05-30/31 via
+`/research-gaps national-spec sk` (the MPRV SR / slov-lex.sk Phase-2 lead
+was the WAF-blocked mirror; the WAF-free register is **ÚPV SR**, Úrad
+priemyselného vlastníctva SR / Slovak Industrial Property Office,
+indprop.gov.sk). Two source shapes / parser templates:
+
+- **5 modern specs** (Východoslovenská, Južnoslovenská, Nitrianska,
+  Malokarpatská + the Slovenská PGI) — the lettered a–i ÚPV template,
+  `upv-sr-specifikacia-v1` (described below).
+- **1 old prihláška** (Karpatská perla, `PDO-SK-A1598`) — not on the ÚPV
+  register, but its canonical spec is public on the **mpsr.sk** mirror
+  (`https://www.mpsr.sk/download.php?fID=15089`): the 1996 ÚPV
+  *Prihláška označenia pôvodu* (application 0005-96), an OCR-scanned PDF
+  with a numbered `03.N` template and a flat §03.5 variety list. A
+  second parser branch `upv-sr-prihlaska-v1` handles it (numbered slicer
+  + flat-list extractor + targeted OCR repairs for the scan noise);
+  terroir is the §03.2/03.3/03.4 narrative (granite-weathering soils,
+  climate, the Karpáti-Deutsch history). mpsr.sk WAF-blocks bot UAs, so
+  SK 01c presents a browser UA (indprop.gov.sk accepts it too).
+
+- **Stage 01c** ([scripts/sk/01c_fetch_specifikacije.py](scripts/sk/01c_fetch_specifikacije.py))
+  fetches each curator-pinned URL from
+  `raw/sk/national-specs/manual_overrides.json` (slug → `{url,
+  source_org: upv-sr, file_number, format: pdf}`) into
+  `raw/sk/national-specs/<slug>.pdf` + manifest (sha256, fetched_at).
+  Listing page `…/OPVAZOV/specifikacie-op-zo/vina-a-liehoviny`; URL
+  pattern `…/swift_data/source/pdf/specifikacie_op_oz/<slug>.pdf`.
+- **Stage 02f** ([scripts/sk/02f_extract_national_specs.py](scripts/sk/02f_extract_national_specs.py))
+  runs `pdftotext -layout` and parses via
+  [scripts/_lib/sk/specifikacija.py](scripts/_lib/sk/specifikacija.py)
+  (`upv-sr-specifikacia-v1`). The spec is a uniform lettered a–i outline
+  (`a` názov · `b` opis vína → styles · `d` vymedzenie zemepisnej oblasti
+  → geo area · `f` označenie odrody/odrôd → grapes · `g` údaje
+  potvrdzujúce spojitosť → terroir). Section f is a two-column table —
+  `Odroda` (canonical Slovak name) left, `Synonymum` (foreign synonyms)
+  right — grouped under `MUŠTOVÉ BIELE` (white → blanc) / `MUŠTOVÉ MODRÉ`
+  (blue-black → noir) bucket labels. The parser takes **only the left
+  Odroda column** (Title-Case, comma-free; the column gutter is the
+  ≥ 2-space gap), so the Pesecká leánka ↔ Feteasca regala synonym
+  confusion never reaches the matcher and synonym-continuation lines
+  don't pollute the unknowns queue. No principal/accessory split (same as
+  PT/IT/HR/BG) — every variety is `principal`.
+- **Stage 04** `augment_sk_records_with_national_specs()` merges the
+  sidecar's summary / grapes / geo_area / link_to_terroir / styles /
+  section_roles into the in-memory stub record at load time (the on-disk
+  dokumenty-extracted JSON stays immutable); `stub_reason` is prefixed
+  `national-spec:`; `_sources_for()` surfaces `national_spec_*`
+  provenance. **02d** grounds terroir-fact extraction on the sidecar's
+  §g text when the on-disk record's `link_to_terroir` is empty.
+
+Result: **6 / 6 stubs augmented** — the 5 modern specs carry 41–42
+principal varieties + §g terroir (2.8–14.8 KB) each; Karpatská perla
+carries 31 varieties + §03.2/03.3/03.4 terroir (6.9 KB). Terroir-fact
+extraction (02d/02e, Anthropic batch) then produced 9–10 bullets per
+modern-spec wine and 4 for Karpatská perla, translated en/fr/es/nl. **SK
+effective coverage = 10 / 10 wines with grapes + terroir.** Six
+VÚVV/Pospíšilová crossings named in §f were folded into
+`grape_lexicon.py` (Breslava, Mília, Noria → blanc; Nitranka, Rudava,
+Torysa → noir; all VIVC-anchored, distinct, own slugs). Licence: official
+act (úradné dielo, §3 Autorský zákon) — attribution to ÚPV SR / MPRV SR.
+
+Re-runnable per slug or sweep:
+```
+.venv/bin/python scripts/sk/01c_fetch_specifikacije.py
+.venv/bin/python scripts/sk/02f_extract_national_specs.py --slug nitrianska
+.venv/bin/python scripts/sk/02f_extract_national_specs.py --all
+.venv/bin/python scripts/04_build_maps.py
+```
+Cached PDFs at `raw/sk/national-specs/<slug>.pdf` are reused unless
+`--refresh` is passed.
+
 ### SK geometry resolution chain (stage 04)
 
 Per SK record, in priority order (`geom_source` records the choice):
@@ -3035,32 +3112,31 @@ The shared `raw/es/figshare/EU_PDO.gpkg` — no new fetch in stage 00.
 
 ### Curator workflow for SK wines without an OJ publication
 
-Mirrors the ES/PT/IT/AT/SI/HR/HU/RO/BG/GR
-`regen_manual_overrides_template.py` flow. 6 of 10 SK wines have no
-fetchable single-document URL (Východoslovenská, Južnoslovenská,
-Nitrianska, Malokarpatská, Karpatská perla, Slovenská IGP) — the
-Art.107 / Reg.1308/2013 grandfathered names. The canonical source for
-those is the Slovak national **špecifikácia výrobku** published by
-MPRV SR (Ministry of Agriculture and Rural Development) on
-[slov-lex.sk](https://www.slov-lex.sk); researching a public,
-licence-clear URL pattern for it — and adding a national-spec parser
-branch — is Phase 2 work. For now:
+5 of the 6 grandfathered SK wines are now covered by the ÚPV SR
+national-spec layer above (researched 2026-05-30; see "SK national-spec
+layer"). If a new SK wine appears, or an ÚPV URL rotates, add/refresh it
+in `raw/sk/national-specs/manual_overrides.json` (slug → `{url,
+source_org: upv-sr, file_number, format: pdf}`) and re-run 01c → 02f →
+02d → 02e → 04. The only remaining stub is **Karpatská perla**
+(no standalone ÚPV spec — see the layer note above).
+
+If the Commission later publishes a real EU-OJ JEDNOTNÝ DOKUMENT for any
+SK wine, the original `regen_manual_overrides_template.py` flow still
+applies (it adds the EU-OJ narrative sections stage 02 parses directly):
 
 ```
 .venv/bin/python scripts/sk/regen_manual_overrides_template.py
 # edit raw/sk/oj-pages/manual_overrides.json: fill `url` with a public,
-# licence-clear specification (EUR-Lex OJ-C page, or the MPRV /
-# Slov-Lex national specification).
+# licence-clear EUR-Lex OJ-C single-document page.
 .venv/bin/python scripts/sk/01_fetch_pliegos.py
 .venv/bin/python scripts/sk/02_extract_pliegos.py
 .venv/bin/python scripts/04_build_maps.py
 ```
 
 **Caveat**: stage 02's HTML parser only understands the EU-OJ JEDNOTNÝ
-DOKUMENT template; MPRV / Slov-Lex national-specification formats
-need a per-source parser (Phase 2, mirrors the ES MAPA / IT MASAF
-pattern). Until then, only EUR-Lex single-document URLs promote a
-wine out of stub state.
+DOKUMENT template; the ÚPV SR PDF specs ride the parallel 01c/02f layer
+(kept OUT of `raw/sk/oj-pages/manual_overrides.json` so a PDF never
+enters the HTML path — the HR/SI lesson).
 
 ## Czech Republic pipeline (`scripts/cz/`)
 

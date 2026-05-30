@@ -1629,11 +1629,33 @@ the map.
 
 ### JEDNOTNÝ DOKUMENT — ✅ 4 / 10 extracted
 
-❌ 6 content-stubs (`no-publication`): Východoslovenská, Južnoslovenská,
+6 content-stubs (`no-publication`): Východoslovenská, Južnoslovenská,
 Nitrianska, Malokarpatská, Karpatská perla, Slovenská (PGI). Art. 107 /
 Reg. 1308/2013 grandfathered names with only `Ares(...)` references in
-eAmbrosia. Phase 2: research a public URL pattern for the MPRV SR
-national špecifikácia výrobku on slov-lex.sk.
+eAmbrosia.
+
+### National-spec layer — ✅ shipped (2026-05-30/31, stage 01c/02f)
+
+All **6 / 6** stubs augmented. 5 from the **ÚPV SR** (Úrad
+priemyselného vlastníctva SR / Slovak Industrial Property Office,
+indprop.gov.sk) per-wine **špecifikácia výrobku** PDF (modern lettered
+a–i template, `upv-sr-specifikacia-v1`) — researched + verified
+2026-05-30 via `/research-gaps national-spec sk` (national-source +
+EUR-Lex negative-check; 0/6 have an EU-OJ single document). The Phase-2
+MPRV SR / slov-lex.sk lead was the WAF-blocked mirror; the WAF-free
+register is ÚPV SR. Listing `…/OPVAZOV/specifikacie-op-zo/vina-a-liehoviny`,
+URL pattern `…/swift_data/source/pdf/specifikacie_op_oz/<slug>.pdf`.
+Result: 41–42 principal varieties each, 2.8–14.8 KB §g terroir each.
+
+The 6th, **Karpatská perla** (`PDO-SK-A1598`), has NO spec on the ÚPV
+register — but its canonical spec IS public on the **mpsr.sk** mirror
+(`https://www.mpsr.sk/download.php?fID=15089`): the old 1996 ÚPV
+*Prihláška označenia pôvodu* (application 0005-96), an OCR-scanned PDF
+with the numbered `03.N` template + a flat §03.5 variety list. A second
+parser branch `upv-sr-prihlaska-v1` handles it (numbered slicer + flat
+list + targeted OCR repairs). mpsr.sk WAF-blocks bot UAs, so SK 01c uses
+a browser UA. Result: **31 varieties + 6.9 KB §03.2/03.3/03.4 terroir
+narrative → 4 terroir bullets**. Stage 04 augments all 6.
 
 ### Geometry — ✅ 10 / 10 mapped
 
@@ -1643,12 +1665,16 @@ Vinohradnícka oblasť Tokaj polygon (same Tokaj zone, different brand
 registration). The single PGI `Slovenská` resolves `region-pdo-union`
 (union of all 8 SK DOPs).
 
-### Terroir facts — ✅ 4 / 4 extracted + translated (2026-05-24)
+### Terroir facts — ✅ 10 / 10 extracted + translated
 
 The 4 non-stub SK wines (Vinohradnícka oblasť Tokaj, Stredoslovenská,
 Skalický rubín, TOKAJSKÉ VÍNO zo slovenskej oblasti) got 9–10 terroir
-bullets each via Anthropic Batch API (37 source bullets total,
-148 cached translations across en/fr/es/nl).
+bullets each via Anthropic Batch API (2026-05-24). The 5 modern-spec
+stubs (Malokarpatská, Nitrianska, Južnoslovenská, Východoslovenská,
+Slovenská) got 9–10 bullets each grounded on the ÚPV §g narrative, and
+Karpatská perla got 4 grounded on its 1996-prihláška §03.2/03.4 granite-
+soil narrative (2026-05-30/31). **91 SK source bullets across all 10
+wines**, translated en/fr/es/nl.
 
 ### Grape vocabulary — ✅ seeded (2026-05-24)
 
@@ -1660,7 +1686,14 @@ Rulandské biele/šedé/modré, Modrý Portugal, Pesecká leánka (→ leanyka,
 the SK name for HU Leányka — distinct from feteasca-regala despite
 literature confusion), plus the VÚVV Bratislava crossings Devín,
 Dunaj, Hron, Rimava, Váh, Nitria, Hetera. `karpatska-perla` carries
-its own slug for the namesake PDO.
+its own slug for the namesake PDO. **2026-05-30 national-spec pass**
+added 6 more VÚVV/Pospíšilová crossings from the ÚPV §f tables, each
+VIVC-anchored and distinct (own slug): Breslava (#1671, blanc), Mília
+(#22818, filed blanc — VIVC berry-skin rose, Traminer-inherited),
+Noria (#22819, blanc), Nitranka (#17282, noir), Rudava (#17283, noir),
+Torysa (#22419, noir). The parser takes only the left **Odroda**
+column, never the synonym column, so the Pesecká leánka ↔ Feteasca
+regala confusion never reaches the matcher.
 
 ### Interprofession / consortium URLs — ❌ 0 / 10
 

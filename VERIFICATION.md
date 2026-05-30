@@ -670,3 +670,63 @@ meszes lepelhomok, 75 %+ kvarc → filoxéra-immunitás).
 # Independent check: open boraszat.kormany.hu/termekleirasok2 in a browser
 # and confirm each corpus name has a termékleírás leaf page.
 ```
+
+## Slovakia — national-spec layer (ÚPV SR špecifikácia výrobku)
+
+**Date**: 2026-05-30. **Source**: Úrad priemyselného vlastníctva SR /
+Slovak Industrial Property Office (indprop.gov.sk), register of
+designations of origin / geographical indications — listing
+`https://www.indprop.gov.sk/oznacenia-povodu-vyrobkov-a-zemepisne-oznacenia-vyrobkov/OPVAZOV/specifikacie-op-zo/vina-a-liehoviny`,
+one text-layer PDF per protected name at
+`/swift_data/source/pdf/specifikacie_op_oz/<slug>.pdf`. Official act
+(úradné dielo, §3 Autorský zákon). Resolved via `/research-gaps
+national-spec sk`.
+
+**What was independently confirmed**:
+- *EUR-Lex negative-check* — 0 of the 6 grandfathered SK wines
+  (Východoslovenská, Južnoslovenská, Nitrianska, Malokarpatská,
+  Karpatská perla, Slovenská PGI) have a fetchable EU-OJ JEDNOTNÝ
+  DOKUMENT. Positive control passed: Skalický rubín (a non-stub) surfaced
+  CELEX 32017D0713(01), OJ C 224/2017 — the search finds single documents
+  when they exist. So the national source is the correct path.
+- *National-source scout + fetch verification* — 5 of the 6 resolve to an
+  ÚPV PDF (HTTP 200, real sizes 100–198 KB), each carrying §f variety
+  table + §g terroir narrative + §d commune list. The 6th, Karpatská
+  perla (`PDO-SK-A1598`), is absent from the ÚPV register (404) but its
+  canonical spec is public on the **mpsr.sk** mirror
+  (`download.php?fID=15089`): the 1996 ÚPV *Prihláška označenia pôvodu*
+  (application 0005-96), an OCR-scanned PDF with the old numbered `03.N`
+  template + flat §03.5 variety list — parsed by a second branch
+  `upv-sr-prihlaska-v1`. Completed from its own spec, not aliased to
+  Malokarpatská (which the public-source rule would forbid).
+
+**Outcome scorecard** (`scripts/audit_sk_coverage.py`, 2026-05-31):
+- National-spec sidecars: **6 / 6**, all with grapes + terroir ≥ 200
+  chars; 237 principal grape-slugs total (41–42 per modern-spec wine; 31
+  for Karpatská perla — the SK regions permit the full Listina
+  registrovaných odrôd).
+- Terroir-fact bullets (02d, country=sk): **10 / 10 wines, 91 bullets**
+  (4 prior non-stubs + 5 modern-spec + Karpatská perla's 4 from the
+  prihláška §03.2/03.4 granite-soil narrative), translated en/fr/es/nl.
+- Geometry: **10 / 10 mapped** (unchanged — figshare-pdo + alias + PGI
+  union).
+- Curator queue: **0** (empty — every Slovak wine extracted).
+- Parser `upv-sr-specifikacia-v1` takes only the left **Odroda** column of
+  the §f `Odroda | Synonymum` table, so the Pesecká leánka ↔ Feteasca
+  regala synonym confusion never reaches the matcher. 6 VÚVV/Pospíšilová
+  crossings folded into `grape_lexicon.py` (VIVC-anchored): Breslava
+  #1671, Mília #22818, Noria #22819 (blanc); Nitranka #17282, Rudava
+  #17283, Torysa #22419 (noir).
+
+**Re-run recipe**:
+
+```
+.venv/bin/python scripts/sk/01c_fetch_specifikacije.py
+.venv/bin/python scripts/sk/02f_extract_national_specs.py --all
+.venv/bin/python scripts/sk/02d_extract_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/sk/02e_translate_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/04_build_maps.py
+.venv/bin/python scripts/audit_sk_coverage.py    # 6/6 augmented, 10/10 terroir, queue=0
+# Independent check: open the ÚPV listing above (5 specs) + the mpsr.sk
+# specifications listing (Karpatská perla = download.php?fID=15089).
+```
