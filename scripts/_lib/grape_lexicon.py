@@ -51,6 +51,7 @@ GRAPE_ALIAS = {
     "niellucio": "nielluccio",
     "muscat-petits-grains": "muscat-a-petits-grains",
     "muscat-a-petits-grains-blancs": "muscat-a-petits-grains",
+    "muscat-blanc-a-petits-grains": "muscat-a-petits-grains",  # spelling variant — same VIVC #8193
     "muscat-petits-grains-blancs": "muscat-a-petits-grains",
     "muscat-a-petit-grain": "muscat-a-petits-grains",
     "muscats-a-petits-grains": "muscat-a-petits-grains",
@@ -627,9 +628,9 @@ GRAPE_ALIAS = {
     "muscat-ottonel": "muscat-ottonel",
     "hamburgi-muskotaly": "muscat-hambourg",    # Hungarian for Muscat de Hambourg
     "muscat-de-hamburg": "muscat-hambourg",
-    "sarga-muskotaly": "muscat-blanc-a-petits-grains",   # Hungarian "Yellow Muscat" = Muscat Lunel / Muscat blanc à petits grains
-    "sargamuskotaly": "muscat-blanc-a-petits-grains",    # one-word spelling in the termékleírás PDFs (Tokaj, Balatonboglár, …)
-    "mátrai-muskotaly": "muscat-blanc-a-petits-grains",
+    "sarga-muskotaly": "muscat-a-petits-grains",   # Hungarian "Yellow Muscat" = Muscat Lunel / Muscat à petits grains blancs (VIVC #8193)
+    "sargamuskotaly": "muscat-a-petits-grains",    # one-word spelling in the termékleírás PDFs (Tokaj, Balatonboglár, …)
+    "mátrai-muskotaly": "muscat-a-petits-grains",
     "korai-piros-veltelini": "fruhroter-veltliner",      # Korai piros veltelíni = Frühroter Veltliner
     "kovidinka": "kovidinka",                   # Hungarian — Vojvodina cluster
     "dinka-crvena": "kovidinka",
@@ -718,10 +719,10 @@ GRAPE_ALIAS = {
     "feteasca-alba": "feteasca-alba",            # VIVC #4119 FETEASCĂ ALBĂ — RO Moldova white (= HU Leányka)
     "feteasca-regala": "feteasca-regala",        # VIVC #4121 FETEASCĂ REGALĂ — RO, Fetească albă × Frâncușă (= HU Királyleányka)
     "feteasca-neagra": "feteasca-neagra",        # VIVC #4120 FETEASCĂ NEAGRĂ — RO native red
-    "tamaioasa-romaneasca": "muscat-blanc-a-petits-grains",
-                                                 # Tămâioasă Românească — VIVC syn. of Muscat Blanc à Petits Grains
-    "tamaioasa": "muscat-blanc-a-petits-grains", # bare form
-    "tamioasa-romaneasca": "muscat-blanc-a-petits-grains",  # alt spelling
+    "tamaioasa-romaneasca": "muscat-a-petits-grains",
+                                                 # Tămâioasă Românească — VIVC syn. of Muscat à petits grains blancs (#8193)
+    "tamaioasa": "muscat-a-petits-grains",       # bare form
+    "tamioasa-romaneasca": "muscat-a-petits-grains",  # alt spelling
     "busuioaca-de-bohotin": "busuioaca-de-bohotin",
                                                  # Busuioacă de Bohotin — Moldova native aromatic rosé
     "grasa-de-cotnari": "grasa-de-cotnari",      # VIVC #5050 — botrytis-prone Cotnari white
@@ -829,9 +830,9 @@ GRAPE_ALIAS = {
     "dimiat": "dimyat",                           # alt transliteration
     "cherven-misket": "cherven-misket",           # BG "red Misket" (native white-pink)
     "misket-cherven": "cherven-misket",
-    "tamyanka": "muscat-blanc-a-petits-grains",   # BG name for Muscat blanc à petits grains
-    "tamianka": "muscat-blanc-a-petits-grains",
-    "temenuga": "muscat-blanc-a-petits-grains",   # BG synonym (Tamyanka labelled "Temenuga")
+    "tamyanka": "muscat-a-petits-grains",         # BG name for Muscat à petits grains blancs (#8193)
+    "tamianka": "muscat-a-petits-grains",
+    "temenuga": "muscat-a-petits-grains",         # BG synonym (Tamyanka labelled "Temenuga")
     "sandanski-misket": "sandanski-misket",       # BG SW native white
     "misket-sandanski": "sandanski-misket",
     "muskat-sandanski": "sandanski-misket",       # Latin transliteration variant
@@ -864,7 +865,7 @@ GRAPE_ALIAS = {
     "grenash": "grenache",                        # Гренаш
     "mourvedr": "mourvedre",                      # Мурведр
     "mourvedre-bg": "mourvedre",
-    "muskat": "muscat-blanc-a-petits-grains",     # generic Cyrillic Muskat fallback
+    "muskat": "muscat-a-petits-grains",           # generic Cyrillic Muskat fallback (VIVC #8193)
     "tramin-aromaten": "gewurztraminer",          # Bulgarian "aromatic Traminer"
     "traminer": "gewurztraminer",                 # bare Traminer fallback (BG context)
     "biser": "biser",                             # BG modern crossing
@@ -1125,8 +1126,8 @@ GRAPE_ALIAS = {
     "noblessa": "noblessa",                        # VIVC #8506 NOBLESSA — Geilweilerhof
     "blutenmuskateller": "blutenmuskateller",      # already present
     "muskat-trollinger": "muskat-trollinger",      # VIVC #8338 MUSCAT TROLLINGER
-    "muskateller": "muscat-blanc-a-petits-grains", # German Muscat
-    "gelber-muskateller": "muscat-blanc-a-petits-grains",
+    "muskateller": "muscat-a-petits-grains",       # German Muscat (VIVC #8193)
+    "gelber-muskateller": "muscat-a-petits-grains",  # Gelber Muskateller = Muscat à petits grains blancs
     "roter-muskateller": "muscat-a-petits-grains-rouges",
     "blauer-muskateller": "muscat-a-petits-grains-rouges",
     "muskat-ottonel": "muscat-ottonel",            # already present
@@ -1502,6 +1503,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "montonico": "blanc",
     "welschriesling": "blanc",
     "moscato-giallo": "blanc",
+    "muscat-a-petits-grains": "blanc",
     "garganega": "blanc",
     "glera-lunga": "blanc",
     "spergola": "blanc",
