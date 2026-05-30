@@ -62,8 +62,10 @@ from _lib.grape_entity import (  # noqa: E402
 )
 from _lib.it.masaf import (  # noqa: E402
     PdfRecord, build_pdf_index, derive_geo_area, derive_summary,
-    extract_articles, match_wines_to_pdfs, parse_grapes_with, pick_terroir_article,
+    extract_articles, match_wines_to_pdfs, parse_annex_grapes_with,
+    parse_grapes_with, pick_terroir_article,
 )
+from _lib.it.menzione import extract_menzioni  # noqa: E402
 from _lib.it.region import derive_regione  # noqa: E402
 from _lib.it.province import load_comune_regione_map, resolve_gisco_lau  # noqa: E402
 
@@ -231,7 +233,18 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
     merge it into the stub with minimal branching."""
     set_pliego_context(wine["slug"])
     grapes = parse_grapes_with(match_variety, articles.get(2, ""), wine.get("name", ""))
+    # Regional IGTs whose article 2 defers to an in-PDF "Allegato … vitigni"
+    # numbered roster (Toscano et al.) parse zero inline varieties — recover
+    # them from the annex.
+    if not grapes["principal"]:
+        grapes = parse_annex_grapes_with(match_variety, raw_text)
     set_pliego_context(None)
+
+    # Menzioni / Unità Geografiche Aggiuntive (MGA) chip list — harvested
+    # from the full disciplinare text (the MGA roster lives in Article 8,
+    # which isn't in `article_bodies`). Barolo's 181 / Barbaresco's 66
+    # crus come from here; the EU documento unico carries only a subset.
+    menzioni = extract_menzioni(raw_text, wine.get("name", ""))
 
     summary = derive_summary(articles.get(1, ""))
     geo_area = derive_geo_area(articles.get(3, ""))
@@ -260,6 +273,7 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
         "regione": regione,
         "summary": summary,
         "grapes": grapes,
+        "menzioni": menzioni,
         "geo_area_brief": geo_area,
         "link_to_terroir": terroir,
         "articles_present": sorted(articles.keys()),
@@ -285,12 +299,16 @@ def process_slug(
     strict: bool,
     extracted_status: dict[str, dict],
     comune_map: dict,
+    allow_nonstub: bool = False,
 ) -> dict:
     slug = wine["slug"]
 
-    # Skip non-stubs — they already have docunico data.
+    # Skip non-stubs — they already have docunico data — unless
+    # `allow_nonstub`, in which case we still emit a sidecar so stage 04
+    # can backfill any EMPTY docunico field (e.g. geo_area_brief / grapes
+    # that the documento unico didn't carry) without overwriting the rest.
     rec = extracted_status.get(slug)
-    if rec and not rec.get("stub"):
+    if rec and not rec.get("stub") and not allow_nonstub:
         return {"slug": slug, "status": "skip", "reason": "not-a-stub"}
 
     pdf_cache_dir = PDF_CACHE
@@ -450,6 +468,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="sweep every stub record")
     ap.add_argument("--refresh", action="store_true",
                     help="re-extract the PDF from the bundle even if cached")
+    ap.add_argument("--include-nonstub", action="store_true",
+                    help="also emit sidecars for non-stub (docunico-extracted) "
+                         "records so stage 04 can backfill their empty fields")
     args = ap.parse_args(argv)
 
     if not args.slug and not args.all:
@@ -498,7 +519,8 @@ def main(argv: list[str] | None = None) -> int:
         out = process_slug(wine, pdfs, outcomes_by_slug, overrides,
                            refresh=args.refresh, strict=True,
                            extracted_status=extracted_status,
-                           comune_map=comune_map)
+                           comune_map=comune_map,
+                           allow_nonstub=args.include_nonstub)
         if out.get("status") == "ok":
             print(f"# {wine['name']} ({wine['slug']})")
             print(f"  match    : {out['match_how']:14s} {out['pdf_filename']!r}")
@@ -528,7 +550,8 @@ def main(argv: list[str] | None = None) -> int:
         res = process_slug(wine, pdfs, outcomes_by_slug, overrides,
                            refresh=args.refresh, strict=False,
                            extracted_status=extracted_status,
-                           comune_map=comune_map)
+                           comune_map=comune_map,
+                           allow_nonstub=args.include_nonstub)
         results.append(res)
         if res["status"] == "ok":
             print(

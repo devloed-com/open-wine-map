@@ -198,7 +198,7 @@ def match_wines_to_pdfs(
 # start each new article on its own page, and pdftotext -layout emits a
 # bare \x0c at the start of the article-header line.
 _ARTICLE_HEAD_RE = re.compile(
-    r"^[ \t\x0c]*(?:Articolo|Art\.)[ \t]+(\d+)\b[ \t]*([^\n]*)$",
+    r"^[ \t\x0c]*(?:Articolo|Art\.)[ \t]*(\d+)\b[ \t]*([^\n]*)$",
     re.M,
 )
 
@@ -273,6 +273,17 @@ def extract_articles(text: str) -> dict[int, str]:
 # Bellone") — all separate one candidate phrase from the next.
 _LINE_SPLIT_RE = re.compile(r"[\n,;«»“”\"]+")
 
+# A leading enumeration index on a numbered variety line ("1. Montepulciano
+# minimo 85%;", "2) Sangiovese") — strip it so the bare variety name reaches
+# match_variety. Only a short integer index, never a 4-digit year or a
+# percentage figure.
+_LEADING_INDEX_RE = re.compile(r"^\s*\d{1,2}\s*[.)]\s+")
+
+# A leading share figure on a variety chunk ("100% Primitivo", "85 % Montepulciano")
+# — the share precedes the name here, so the trailing percent-tail stripper would
+# eat the whole chunk. Strip the leading figure instead, leaving the name.
+_LEADING_PERCENT_RE = re.compile(r"^\s*\d{1,3}(?:[.,]\d+)?\s*%\s*")
+
 # Characters trimmed from candidate variety phrases — Italian
 # disciplinari sprinkle quotation marks, parens, stops, and list-bullet
 # dashes around names.
@@ -294,10 +305,14 @@ _GRAPE_LINE_DROP = (
 # Nebbiolo: dal 70%") and an open paren ("vitigno Nebbiolo (Spanna) dal
 # 90%") are terminators too — Italian disciplinari attach the percentage
 # range or a synonym gloss to the variety name with either.
+# Connective terminators are word-bounded (`per\b`, `al\b`, …) so they
+# stop the variety capture only at a real word break — a bare `al`
+# alternative would otherwise truncate "Erb·al·uce" → "Erb".
 _VITIGNO_RE = re.compile(
-    r"\bvitign[oi]\s+([A-ZÀÈÉÌÒÙ][\w\sàèéìòù'’\-/.]+?)"
-    r"(?=\s*(?:per|al|dal|nel|nella|in\s|con\s|che\s|;|,|:|\(|\.|"
-    r"\bn\.|\bb\.|\bg\.|\brs\.|\brg\.|\brb\.|$))",
+    r"\b(?:vitign[oi]|variet[aà])\s+([A-ZÀÈÉÌÒÙ][\w\sàèéìòù'’\-/.]+?)"
+    r"(?=\s*(?:per\b|al\b|dal\b|nel\b|nella\b|in\b|con\b|che\b|"
+    r"almeno\b|minimo\b|massimo\b|fino\b|sino\b|circa\b|"
+    r";|,|:|\(|\.|\bn\.|\bb\.|\bg\.|\brs\.|\brg\.|\brb\.|$))",
     re.U,
 )
 
@@ -448,6 +463,8 @@ def article2_candidate_phrases(text: str) -> list[str]:
             piece = piece.strip(_TRIM_CHARS)
             if not piece:
                 continue
+            piece = _LEADING_INDEX_RE.sub("", piece)
+            piece = _LEADING_PERCENT_RE.sub("", piece)
             piece = _strip_role_prefix(piece)
             piece = _strip_percent_tail(piece)
             piece = _TRAILING_NOISE_RE.sub("", piece).strip(_TRIM_CHARS)
@@ -525,6 +542,57 @@ def parse_grapes_with(matcher, article2_body: str, wine_name: str = "") -> dict:
             "role": "principal",
             "colour": hit.colour,
             "source": "masaf-disciplinare",
+        })
+    return out
+
+
+# Some regional IGT disciplinari (Toscano, and others whose article 2
+# says "i vitigni … riportati nell'allegato 1") carry the variety roster
+# in an in-PDF annex rather than the article body. The annex is a numbered
+# list, one variety per line: "1. Abrusco N." / "53. Montepulciano N." —
+# index, name, optional colour code. A bare-number line ("14") is a
+# pdftotext page number to skip.
+_ANNEX_ANCHOR_RE = re.compile(
+    r"^[ \t\x0c]*Allegat[oi]\b[^\n]*?\bvitigni\b",
+    re.M | re.I,
+)
+_ANNEX_ITEM_RE = re.compile(r"^[ \t\x0c]*\d{1,3}[.)]\s+(\S.*\S|\S)\s*$", re.M)
+
+
+def parse_annex_grapes_with(matcher, raw_text: str) -> dict:
+    """Recover the variety roster from an in-PDF "Allegato … vitigni"
+    numbered list when article 2 referenced it instead of listing the
+    varieties inline. Returns the same shape as `parse_grapes_with`
+    (all `principal`). Empty when no annex anchor is present."""
+    out = {"principal": [], "accessory": [], "observation": [], "details": []}
+    if not raw_text:
+        return out
+    anchor = _ANNEX_ANCHOR_RE.search(raw_text)
+    if anchor is None:
+        return out
+    body = raw_text[anchor.end():]
+    seen: set[str] = set()
+    for m in _ANNEX_ITEM_RE.finditer(body):
+        cand = m.group(1).strip(_TRIM_CHARS)
+        cand = _COLOUR_SUFFIX_RE.sub("", cand).strip(_TRIM_CHARS)
+        cand = _strip_winetype(cand)
+        if not cand or cand.lower() in _BARE_TYPE_WORDS or len(cand) > 80:
+            continue
+        hit = matcher(cand)
+        if hit is None or hit.slug in seen:
+            continue
+        if hit.method.startswith("fuzzy"):
+            score = int(hit.method.split(":")[1])
+            if score < 90 or len(re.sub(r"[\W\d_]", "", cand)) < 7:
+                continue
+        seen.add(hit.slug)
+        out["principal"].append(hit.slug)
+        out["details"].append({
+            "slug": hit.slug,
+            "name": hit.name,
+            "role": "principal",
+            "colour": hit.colour,
+            "source": "masaf-disciplinare-allegato",
         })
     return out
 

@@ -264,6 +264,33 @@ cache miss, a MASAF batch update we haven't seen, or a parser drop.
   need MASAF / Gazzetta Ufficiale fallback via stage 02f or the
   curator manual-overrides path.
 
+### 2026-05-30 — complete-coverage pass + 7 cancelled IGTs removed ✅
+
+Corpus **531 → 524** after filtering the 7 Abruzzo IGTs cancelled by
+Commission Implementing Regulations (EU) 2026/558–708 (consolidated into
+IGP Terre Abruzzesi). **This corroborates the MASAF in-force count of
+~524** noted in the 2026-05-19 entry above — the 7-wine delta between
+eAmbrosia (`status=registered`, not retroactively cleaned) and MASAF was
+exactly these cancellations. Registry: `CANCELLED_GIS` in
+`scripts/it/00_fetch_data.py`, surfaced by `audit_it_coverage.py`.
+
+Map coverage after this pass: **523 / 524** IT wines carry a polygon
+(only Salemi — no parseable source, pending its own cancellation —
+stays `stub-no-geometry`), up from 442 / 531. The new
+`gisco-comune/provincia/regione-union` fallback resolves ~81 IGTs;
+spot-checked areas land within ~1 % of the true administrative km²
+(Umbria 8 455 vs 8 464 km², Lazio 17 214 vs 17 232, Pavia 2 972 vs
+2 968). Sottozone: **0 → 38** sub-denomination records (Chianti's 7 etc.).
+Re-run recipe:
+
+```
+.venv/bin/python scripts/it/00_fetch_data.py        # applies CANCELLED_GIS
+.venv/bin/python scripts/it/02f_extract_masaf.py --all --include-nonstub
+.venv/bin/python scripts/it/02h_extract_regional_registers.py
+.venv/bin/python scripts/04_build_maps.py
+.venv/bin/python scripts/audit_it_coverage.py
+```
+
 ### 2026-05-20 — completeness audit + MASAF grape-extraction fix ✅
 
 Independent re-audit of the IT pipeline. Spine intact: 531 eAmbrosia

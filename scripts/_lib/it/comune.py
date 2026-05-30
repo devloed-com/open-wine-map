@@ -53,6 +53,13 @@ _KW_PROVINCE = {"provincia", "province"}
 _KW_REGION = {"regione", "regioni"}
 _MAX_NAME_WORDS = 6
 
+# Adjectival / official region-name forms a disciplinare may use that the
+# ISTAT registry doesn't carry: "Regione Siciliana" (vs ISTAT "Sicilia").
+# Keyed by _norm(ISTAT name) → extra _norm aliases.
+_REGION_NAME_ALIAS = {
+    "sicilia": ("siciliana",),
+}
+
 
 def _norm(s: str) -> str:
     """Diacritics stripped, only a–z0–9. The Italian hagionym prefix is
@@ -64,6 +71,14 @@ def _norm(s: str) -> str:
     s = s.encode("ascii", "ignore").decode()
     s = re.sub(r"\bs(?:anto|anta|ante|ant|an)?\.?\s+", "san ", s)
     return re.sub(r"[^a-z0-9]+", "", s)
+
+
+def _name_variants(raw: str) -> set[str]:
+    """Normalised forms of a province/region name, including each
+    slash-separated bilingual part on its own ("Bolzano/Bozen" →
+    {bolzanobozen, bolzano, bozen})."""
+    parts = [raw] + (raw.split("/") if "/" in raw else [])
+    return {v for v in (_norm(p) for p in parts) if v}
 
 
 class ITCommuneIndex:
@@ -95,10 +110,16 @@ class ITCommuneIndex:
                 if not (len(code) == 6 and code.isdigit() and name):
                     continue
                 self._comune_by_name.setdefault(_norm(name), []).append(code)
-                self._codes_by_province.setdefault(
-                    _norm(r[_COL_PROVINCE]), set()).add(code)
-                self._codes_by_region.setdefault(
-                    _norm(r[_COL_REGION]), set()).add(code)
+                # Bilingual ISTAT province/region names carry both forms
+                # slash-joined ("Bolzano/Bozen", "Valle d'Aosta/Vallée
+                # d'Aoste"); a disciplinare names just one ("provincia di
+                # Bolzano"), so register each slash-part as an alias too.
+                for prov in _name_variants(r[_COL_PROVINCE]):
+                    self._codes_by_province.setdefault(prov, set()).add(code)
+                for reg in _name_variants(r[_COL_REGION]):
+                    self._codes_by_region.setdefault(reg, set()).add(code)
+                    for alias in _REGION_NAME_ALIAS.get(reg, ()):  # adjectival/official forms
+                        self._codes_by_region.setdefault(alias, set()).add(code)
 
         if gisco_lau_zip.exists():
             gdf = gpd.read_file(gisco_lau_zip)
