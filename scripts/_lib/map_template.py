@@ -78,6 +78,8 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "panel_observation_h": _("Variétés d'intérêt"),
         "panel_sources_h": _("Sources"),
         "panel_facts_h": _("Terroir"),
+        "panel_dulok_h": _("Dűlők (lieux-dits) : {n}"),
+        "panel_menzioni_h": _("Menzioni geografiche aggiuntive (crus) : {n}"),
         "facts_sub_facteurs_naturels": _("Facteurs naturels"),
         "facts_sub_facteurs_humains": _("Facteurs humains"),
         "facts_sub_produit": _("Caractéristiques du produit"),
@@ -124,6 +126,8 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_eur_lex": _("Pliego de condiciones (EUR-Lex, documento único)"),
         "src_national_pliego": _("Pliego de condiciones (national, PDF)"),
         "src_national_pliego_added": _("variétés ajoutées"),
+        "src_national_spec": _("Cahier des charges national (PDF)"),
+        "src_regional_register": _("Registre régional des cépages (PDF)"),
         "src_eambrosia": _("Registre eAmbrosia (UE)"),
         "src_eambrosia_id": _("Numéro de dossier"),
         "legend_h": _("Légende couleurs"),
@@ -1143,6 +1147,13 @@ _TEMPLATE = """<!doctype html>
   #panel .appellation-note {{ font-size:11.5px; color:#33506b; background:#eef3f8; border-left:2px solid #6f93b5; padding:6px 9px; margin:8px 0; border-radius:2px; line-height:1.45 }}
   #panel .appellation-note .note-srcs {{ margin-top:4px }}
   #panel .appellation-note a {{ color:#33506b; text-decoration:underline }}
+  #panel details.dulok {{ margin:8px 0; font-size:11.5px; color:#444 }}
+  #panel details.dulok > summary {{ cursor:pointer; font-weight:600; color:#5a4a2a; padding:2px 0; list-style:revert }}
+  #panel details.dulok[open] > summary {{ margin-bottom:4px }}
+  #panel details.dulok .dulo-row {{ padding:2px 0; line-height:1.4; border-top:1px solid #f0ece2 }}
+  #panel details.dulok .dulo-tel {{ font-weight:600; color:#7a5a1a }}
+  #panel details.menzioni .menzioni-chips {{ display:flex; flex-wrap:wrap; gap:4px; margin-top:4px }}
+  #panel details.menzioni .pill.menzione {{ background:#f3eee2; color:#5a4a2a; border:1px solid #e4dcc8; font-size:11px; padding:1px 7px; border-radius:10px }}
   #panel .appellation-note .note-srcs a {{ margin-right:10px; white-space:nowrap }}
   #panel .aoc-card + .aoc-card {{ margin-top:24px; padding-top:20px; border-top:1px dashed #ccc }}
   #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid #934050 }}
@@ -2612,6 +2623,14 @@ _TEMPLATE = """<!doctype html>
       const note = added ? ' — +' + added + ' ' + LABELS.src_national_pliego_added : '';
       links.push(`<li><a href="${{escapeAttr(sources.national_pliego_url)}}" target="_blank" rel="noopener">${{LABELS.src_national_pliego}}</a>${{note}}</li>`);
     }}
+    if (sources.national_spec_url) {{
+      const org = sources.national_spec_source_org ? ' — ' + escapeHtml(sources.national_spec_source_org) : '';
+      links.push(`<li><a href="${{escapeAttr(sources.national_spec_url)}}" target="_blank" rel="noopener">${{LABELS.src_national_spec}}</a>${{org}}</li>`);
+    }}
+    if (sources.regional_register_url) {{
+      const reg = sources.regional_register_region ? ' — ' + escapeHtml(sources.regional_register_region) : '';
+      links.push(`<li><a href="${{escapeAttr(sources.regional_register_url)}}" target="_blank" rel="noopener">${{LABELS.src_regional_register}}</a>${{reg}}</li>`);
+    }}
     if (sources.id_eambrosia) {{
       const eambrosiaUrl = `https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/details/${{encodeURIComponent(sources.id_eambrosia)}}`;
       const fileNum = sources.file_number ? ' — ' + LABELS.src_eambrosia_id + ' ' + escapeHtml(sources.file_number) : '';
@@ -2735,6 +2754,42 @@ _TEMPLATE = """<!doctype html>
     return `<h2>${{LABELS.panel_facts_h}}</h2>${{blocks.join('')}}${{attribution}}`;
   }}
 
+  function renderDulok(r) {{
+    // HU named single-vineyards (dűlők), grouped by település, in a
+    // collapsible block. Names are verbatim regulator data (not
+    // translated); the termékleírás source is attributed in Sources.
+    const dulok = r.dulok || [];
+    if (!dulok.length) return '';
+    const groups = {{}};
+    const order = [];
+    for (const d of dulok) {{
+      const tel = d.telepules || '';
+      let name = d.dulo || '';
+      if (d.aldulok && d.aldulok.length) name += ' (' + d.aldulok.join(', ') + ')';
+      if (!(tel in groups)) {{ groups[tel] = []; order.push(tel); }}
+      groups[tel].push(name);
+    }}
+    const rows = order.map(tel =>
+      `<div class="dulo-row"><span class="dulo-tel">${{escapeHtml(tel)}}</span> ${{
+        groups[tel].map(n => escapeHtml(n)).join(', ')}}</div>`).join('');
+    return `<details class="dulok"><summary>${{
+      fmt(LABELS.panel_dulok_h, {{ n: dulok.length }})}}</summary>${{rows}}</details>`;
+  }}
+
+  function renderMenzioni(r) {{
+    // IT menzioni geografiche aggiuntive (MGA/UGA crus) — a flat,
+    // collapsible name-chip list on the parent panel. Verbatim regulator
+    // data (not translated); the disciplinare is attributed in Sources.
+    // No per-cru polygons: no licence-clear public GIS layer exists.
+    const mz = r.menzioni || [];
+    if (!mz.length) return '';
+    const chips = mz.map(n =>
+      `<span class="pill menzione">${{escapeHtml(toTitleCase(n))}}</span>`).join('');
+    return `<details class="dulok menzioni"><summary>${{
+      fmt(LABELS.panel_menzioni_h, {{ n: mz.length }})}}</summary>` +
+      `<div class="menzioni-chips">${{chips}}</div></details>`;
+  }}
+
   function renderAocCard(slug, isPrimary) {{
     const r = AOCS[slug];
     if (!r) return '';
@@ -2816,6 +2871,8 @@ _TEMPLATE = """<!doctype html>
     const stubLine = r.is_stub
       ? `<div class="approx-line">${{fmt(LABELS.stub_message, {{ doc: '<em>' + escapeHtml(STUB_DOC_NAMES[r.country] || STUB_DOC_NAMES.fr) + '</em>' }})}}</div>`
       : '';
+    const dulokBlock = renderDulok(r);
+    const menzioniBlock = renderMenzioni(r);
     const factsBlock = renderTerroirFacts(r);
     const isTranslated = !!r.summary_translation;
     const summaryMarker = isTranslated ? '' : srcMarker(r.country);
@@ -2845,6 +2902,8 @@ _TEMPLATE = """<!doctype html>
         ${{accessory ? '<h2>' + LABELS.facet_accessory_h + '</h2><div class="pills">' + accessory + '</div>' : ''}}
         ${{observation ? '<h2>' + LABELS.panel_observation_h + '</h2><div class="pills">' + observation + '</div>' : ''}}
         ${{factsBlock || summary}}
+        ${{dulokBlock}}
+        ${{menzioniBlock}}
         ${{noteBlock}}
         ${{renderSources(slug, r.sources)}}
       </div>

@@ -16,10 +16,13 @@ Stage 04 resolves each HU record by:
      umbrella territories; Bétard is PDO-only, so we union the Figshare
      polygons of the member PDOs by curated mapping (the SI PGI
      pattern). Member tables are stable and hand-verified.
-  3. **stub-no-geometry** — 3 newer PDOs (Etyeki Pezsgő, Kőszeg, Füred)
-     post-date the Bétard snapshot; they show in the sidebar with no
-     polygon in v1. (Phase 2: parse the Hungarian commune list from
-     the Egységes Dokumentum + reuse Eurostat GISCO LAU.)
+  3. **gisco-commune-union** — the 3 newer PDOs (Etyeki Pezsgő, Kőszeg,
+     Füred) post-date the Bétard snapshot. Their Egységes Dokumentum
+     area section names the constituent települések; we parse that list
+     (`scripts/_lib/hu/commune.py`) and union the matching Eurostat
+     GISCO LAU 2024 `HU_*` polygons. Mirrors the RO/BG IGP-fallback +
+     AT Gemeinde-union pattern.
+  4. **stub-no-geometry** — last resort; not normally hit.
 """
 
 from __future__ import annotations
@@ -103,10 +106,16 @@ class HUPolygonIndex:
     def __init__(
         self,
         figshare_gpkg: Path,
+        gisco_lau_zip: Path | None = None,
         target_crs: str = "EPSG:4326",
     ) -> None:
         self.target_crs = target_crs
         self._pdo_polygons: dict[str, BaseGeometry] = {}
+        # commune (casefolded native HU name) → list of polygons. A few
+        # HU settlement names recur across counties; we keep all
+        # candidates and union them all when a name matches.
+        self._lau_by_name: dict[str, list[BaseGeometry]] = {}
+        self._n_lau = 0
 
         if figshare_gpkg.exists():
             gdf = gpd.read_file(figshare_gpkg)
@@ -117,9 +126,55 @@ class HUPolygonIndex:
                 if row.geometry is not None and not row.geometry.is_empty:
                     self._pdo_polygons[row["PDOid"]] = row.geometry
 
+        if gisco_lau_zip is not None and gisco_lau_zip.exists():
+            from .commune import _normalise_commune  # late import — same package
+            gdf = gpd.read_file(gisco_lau_zip)
+            hu = gdf[gdf["CNTR_CODE"] == "HU"]
+            if hu.crs is None or hu.crs.to_string() != target_crs:
+                hu = hu.to_crs(target_crs)
+            for _, r in hu.iterrows():
+                name = (r.get("LAU_NAME") or "").strip()
+                geom = r.geometry
+                if not name or geom is None or geom.is_empty:
+                    continue
+                self._lau_by_name.setdefault(_normalise_commune(name), []).append(geom)
+                self._n_lau += 1
+
     @property
     def n_pdo_polygons(self) -> int:
         return len(self._pdo_polygons)
+
+    @property
+    def n_lau(self) -> int:
+        return self._n_lau
+
+    def commune_union(
+        self, commune_names: Iterable[str],
+    ) -> tuple[BaseGeometry | None, dict]:
+        """Union the GISCO LAU polygons matching the given HU settlement
+        names. Returns (geometry, stats) with matched / unmatched counts."""
+        from .commune import _normalise_commune
+        polys: list[BaseGeometry] = []
+        matched: list[str] = []
+        unmatched: list[str] = []
+        for raw_name in commune_names:
+            key = _normalise_commune(raw_name)
+            if not key:
+                continue
+            cands = self._lau_by_name.get(key)
+            if not cands:
+                unmatched.append(raw_name)
+                continue
+            polys.extend(cands)
+            matched.append(raw_name)
+        stats = {
+            "matched": len(matched),
+            "unmatched": len(unmatched),
+            "names_unmatched": unmatched[:30],
+        }
+        if not polys:
+            return None, stats
+        return unary_union(polys), stats
 
     def figshare_polygon(self, file_number: str) -> BaseGeometry | None:
         bridged = _FILE_NUMBER_BÉTARD_BRIDGE.get(file_number, file_number)
@@ -140,10 +195,14 @@ class HUPolygonIndex:
             return None, stats
         return unary_union(polys), stats
 
-    def resolve(self, file_number: str) -> tuple[BaseGeometry | None, str, dict]:
-        """Resolve geometry for one HU record by file_number. Returns
-        (geometry, geom_source, stats). `matched == -1` is the project
-        convention for a polygon resolved whole rather than commune-counted."""
+    def resolve(
+        self, file_number: str, commune_names: Iterable[str] | None = None,
+    ) -> tuple[BaseGeometry | None, str, dict]:
+        """Resolve geometry for one HU record. Returns (geometry,
+        geom_source, stats). Bétard PDO match first, then PGI member
+        union, then the GISCO commune-union fallback for the newer PDOs
+        not in Bétard. `matched == -1` is the project convention for a
+        polygon resolved whole rather than commune-counted."""
         fn = file_number or ""
         bridged = _FILE_NUMBER_BÉTARD_BRIDGE.get(fn, fn)
         if bridged in self._pdo_polygons:
@@ -157,6 +216,11 @@ class HUPolygonIndex:
             }
             if geom is not None:
                 return geom, "region-pdo-union", stats
+            return None, "stub-no-geometry", stats
+        if commune_names:
+            geom, stats = self.commune_union(commune_names)
+            if geom is not None:
+                return geom, "gisco-commune-union", stats
             return None, "stub-no-geometry", stats
         return None, "stub-no-geometry", {"matched": 0, "unmatched": 0}
 

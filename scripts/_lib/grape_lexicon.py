@@ -393,6 +393,21 @@ GRAPE_ALIAS = {
     # by scripts/it/02f_extract_masaf.py into
     # raw/it/extraction-unknowns-masaf.json; each is a registro-listed
     # variety. Spelling / regional-name variants fold to the canonical.
+    # Tuscan natives from the IGT Toscano allegato-1 roster (2026-05-30).
+    "abrusco": "abrusco",
+    "barsaglina": "barsaglina",
+    "bonamico": "bonamico",
+    "bracciola-nera": "bracciola-nera",
+    "colombana-nera": "colombana-nera",
+    "foglia-tonda": "foglia-tonda",
+    "groppello-gentile": "groppello-gentile",
+    "groppello-di-santo-stefano": "groppello-di-santo-stefano",
+    "incrocio-bruni-54": "incrocio-bruni-54",
+    "livornese-bianca": "livornese-bianca",
+    "orpicchio": "orpicchio",
+    "pollera-nera": "pollera-nera",
+    "sanforte": "sanforte",
+    "vermentino-nero": "vermentino-nero",
     "barbera": "barbera",
     "monica": "monica",
     "giro": "giro",
@@ -616,9 +631,15 @@ GRAPE_ALIAS = {
     "hamburgi-muskotaly": "muscat-hambourg",    # Hungarian for Muscat de Hambourg
     "muscat-de-hamburg": "muscat-hambourg",
     "sarga-muskotaly": "muscat-blanc-a-petits-grains",   # Hungarian "Yellow Muscat" = Muscat Lunel / Muscat blanc à petits grains
+    "sargamuskotaly": "muscat-blanc-a-petits-grains",    # one-word spelling in the termékleírás PDFs (Tokaj, Balatonboglár, …)
     "mátrai-muskotaly": "muscat-blanc-a-petits-grains",
+    "korai-piros-veltelini": "fruhroter-veltliner",      # Korai piros veltelíni = Frühroter Veltliner
     "kovidinka": "kovidinka",                   # Hungarian — Vojvodina cluster
     "dinka-crvena": "kovidinka",
+    "goher": "goher",                           # Gohér — heritage Hungarian white (Zemplén, Balaton)
+    "gohier": "goher",
+    "banati-rizling": "banati-rizling",         # Bánáti rizling = Banat Riesling / Kreaca, white (Somló)
+    "banati": "banati-rizling",
     "csabagyongye": "csabagyongye",             # native Hungarian crossing
     "perle-di-csaba": "csabagyongye",
     "pearl-of-csaba": "csabagyongye",
@@ -1484,6 +1505,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "friulano": "blanc",
     "pignoletto": "blanc",
     "gruner-veltliner": "blanc",
+    "fruhroter-veltliner": "gris",   # reddish-grey berries, white wine (= Malvasier); HU Korai piros veltelíni, CZ Veltlínske červené rané
     "marzemina-bianca": "blanc",
     "minutolo": "blanc",
     "cortese": "blanc",
@@ -1517,6 +1539,21 @@ DEFAULT_COLOUR: dict[str, str] = {
     "molinara": "noir",
     "serbina": "noir",
     # IT MASAF-disciplinare varieties (see the matching GRAPE_ALIAS block).
+    # Tuscan natives from the IGT Toscano allegato-1 roster (2026-05-30).
+    "abrusco": "noir",
+    "barsaglina": "noir",
+    "bonamico": "noir",
+    "bracciola-nera": "noir",
+    "colombana-nera": "noir",
+    "foglia-tonda": "noir",
+    "groppello-gentile": "noir",
+    "groppello-di-santo-stefano": "noir",
+    "incrocio-bruni-54": "blanc",
+    "livornese-bianca": "blanc",
+    "orpicchio": "blanc",
+    "pollera-nera": "noir",
+    "sanforte": "noir",
+    "vermentino-nero": "noir",
     "barbera": "noir",
     "monica": "noir",
     "giro": "noir",
@@ -1643,6 +1680,8 @@ DEFAULT_COLOUR: dict[str, str] = {
     "kabar": "blanc",
     "pozsonyi-feher": "blanc",
     "kadarka": "noir",
+    "goher": "blanc",
+    "banati-rizling": "blanc",
     "biborkadarka": "noir",
     "blauer-portugieser": "noir",
     "turan": "noir",

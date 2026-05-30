@@ -34,6 +34,7 @@ from _lib.hu.egyseges_dokumentum import (  # noqa: E402
     SECTION_ROLE_KEYWORDS, ROLE_BY_KEYWORD, INLINE_ROLE_RE,
     STYLE_MARKERS, COLOUR_BY_KEYWORD, _GEO_AREA_TITLE_BLOCKLIST,
 )
+from _lib.hu.commune import parse_commune_list  # noqa: E402
 from _lib.hu.region import derive_region  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue, match_variety, set_pliego_context,
@@ -246,6 +247,22 @@ def parse_grapes(section_text: str) -> dict:
         if not item:
             continue
 
+        # Strip a leading bold-marker leak ("** Ezerjó", "* Kadarka") seen
+        # in the Monor doc, and capture a trailing role marker
+        # "(FONTOSABB)" / "(EGYÉB)" before it would be dropped as a
+        # parenthetical — it encodes the principal/accessory split.
+        item = re.sub(r"^[*•·]+\s*", "", item)
+        m_trail = re.search(
+            r"\((fontosabb|f[őo]bb|egyéb|egyeb|kiegészít[őo]|kiegeszit[őo])\)\s*$",
+            item, re.IGNORECASE,
+        )
+        if m_trail:
+            kw = m_trail.group(1).lower()
+            current_role = "accessory" if kw.startswith(("egy", "kieg")) else "principal"
+            item = item[: m_trail.start()].strip()
+        if not item:
+            continue
+
         m_role = INLINE_ROLE_RE.match(item)
         if m_role:
             kw = m_role.group(1).lower()
@@ -324,6 +341,7 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
     grapes = parse_grapes(routed.get("grape_varieties", ""))
     styles = parse_styles(sections, titles)
     geo_area = routed.get("geo_area", "")
+    geo_communes = parse_commune_list(geo_area) if geo_area else []
     region = derive_region(
         {"file_number": wine["fileNumber"]},
         geo_area,
@@ -348,6 +366,7 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
         "grapes": grapes,
         "styles": styles,
         "geo_area_brief": geo_area,
+        "geo_communes": geo_communes,
         "link_to_terroir": routed.get("link_to_terroir", ""),
         "producer_group": wine["producer_group"],
         "publications": wine["publications"],

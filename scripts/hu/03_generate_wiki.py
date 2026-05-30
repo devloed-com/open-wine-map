@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.hu.region import derive_region  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "hu" / "dokumentumok-extracted"
+NATIONAL_SPECS = ROOT / "raw" / "hu" / "national-specs-extracted"
 WIKI = ROOT / "wiki"
 WIKI_INDEX = WIKI / "_index.json"
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
@@ -72,9 +73,41 @@ SECTION_LABELS = {
     "geo": "Körülhatárolt földrajzi terület",
     "grapes": "Borszőlőfajták",
     "link": "A kapcsolat(ok) leírása",
+    "dulok": "Dűlők (feltüntethető kisebb földrajzi egységek)",
     "note": "Megjegyzés",
     "sources": "Források",
 }
+
+
+def _render_dulok_section(slug: str) -> list[str]:
+    """Render the dűlő (named single-vineyard) list from the national-spec
+    sidecar, grouped by település. Empty when the spec has no Dűlők table
+    (only Tokaj enumerates them in the canonical format in v1)."""
+    sidecar_path = NATIONAL_SPECS / f"{slug}.json"
+    if not sidecar_path.exists():
+        return []
+    try:
+        dulok = json.loads(sidecar_path.read_text(encoding="utf-8")).get("dulok") or []
+    except (ValueError, OSError):
+        return []
+    if not dulok:
+        return []
+    groups: dict[str, list[str]] = {}
+    order: list[str] = []
+    for d in dulok:
+        tel = d.get("telepules") or ""
+        name = d.get("dulo") or ""
+        if d.get("aldulok"):
+            name = f"{name} ({', '.join(d['aldulok'])})"
+        if tel not in groups:
+            groups[tel] = []
+            order.append(tel)
+        groups[tel].append(name)
+    body = [f"## {SECTION_LABELS['dulok']} ({len(dulok)})", ""]
+    for tel in order:
+        body.append(f"- **{tel}**: {', '.join(groups[tel])}")
+    body.append("")
+    return body
 
 
 def _resolve_region(record: dict) -> str:
@@ -164,6 +197,10 @@ def render_record(record: dict) -> str:
             "elérhetővé válik.",
             "",
         ]
+        # Stub pages stay placeholders for the EU document, but the
+        # national termékleírás (stage 02f) does enumerate dűlők — surface
+        # them so the famous Tokaj cru list isn't hidden behind the stub.
+        body += _render_dulok_section(slug)
         body += _render_note_section(slug)
         body += [
             f"## {SECTION_LABELS['sources']}",
@@ -206,6 +243,8 @@ def render_record(record: dict) -> str:
             _truncate(link, max_chars=2000),
             "",
         ]
+
+    body += _render_dulok_section(slug)
 
     body += _render_note_section(slug)
 

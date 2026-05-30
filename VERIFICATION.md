@@ -579,3 +579,67 @@ fallback.
 .venv/bin/python scripts/bg/02f_extract_national_specs.py --all
 .venv/bin/python scripts/audit_bg_coverage.py   # see the national-spec + terroir sections
 ```
+
+---
+
+## Hungary
+
+### 2026-05-30 — eAmbrosia ↔ Agrárminisztérium termékleírás register cross-check ✅
+
+**Independent authority**: the Agrárminisztérium (Hungarian Ministry of
+Agriculture) wine-sector portal `boraszat.kormany.hu/termekleirasok2`
+publishes the national **termékleírás** (product specification) for every
+Hungarian OEM/OFJ — the regulator's own per-appellation register, a
+different bureaucratic list from the EU eAmbrosia register the pipeline is
+built on. HNT (Hegyközségek Nemzeti Tanácsa, `hnt.hu`) delegates to this
+index. Public official act (Szjt. 1999. évi LXXVI. tv. §1(4) — úrhivatalos
+exemption).
+
+| Check | termékleírás register | Pipeline | Match |
+|---|---:|---:|:---:|
+| 15 grandfathered flagships have a published spec | 15 | 15 | ✓ (each fetched + sha-pinned in `raw/hu/national-specs/manifest.json`) |
+| eAmbrosia wine GIs (corpus spine) | — | 41 (35 DOP + 6 PGI) | — |
+| On the map | — | 41 / 41 (100 %) | — |
+| Wines with grapes | — | 41 / 41 (1292 slugs; 16 via termékleírás) | — |
+| Wines with terroir facts (02d) | — | 41 / 41 (368 bullets) | — |
+
+(The 16th national spec is Badacsony — a non-stub whose EU document has an
+awkward structure that left its grape section unrouted; it is backfilled
+from its termékleírás via the fill-if-empty augment.)
+
+**What was independently confirmed**: the 15 grandfathered wines whose
+eAmbrosia entry carries only a non-fetchable `Ares(...)` reference (Tokaj,
+Villány, Sopron, Szekszárd, Pannonhalma, Pécs, Bükk, Somlói, Nagy-Somló,
+Balatonfüred-Csopak, Csongrád, Balatonboglár, Káli, + the Balatonmelléki
+and Zemplén PGIs) each resolve to a published termékleírás PDF on the
+Agrárminisztérium register — independently confirming they are genuine
+Hungarian OEM/OFJ, not pipeline artefacts. Each spec is the EU
+single-document template in Hungarian (Roman-numeral outline) and parses
+cleanly (`hu-termekleiras-v1`): 15/15 yield grapes + commune list +
+terroir text. The other 26 wines carry a fetchable EUR-Lex EGYSÉGES
+DOKUMENTUM (the pipeline's primary path) and also appear on the register.
+
+**Caveat / not-yet-done**: a full machine-countable cross-check of the
+register *total* (to mirror the RO 35-DOC + 12-IG name-for-name table) is
+blocked because the per-appellation leaf pages
+(`…/termekleirasok2/<slug>`) are JavaScript shells — the document links are
+JS-injected, not in the raw HTML. A curator browser pass (or the
+`/research-gaps` Claude-extension prompt path) can enumerate the index to
+confirm the 41-wine total against the register name-for-name.
+
+Spot-checks (smoke wines): Tokaj (Furmint, Hárslevelű, Kabar, Kövérszőlő,
+Sárgamuskotály→muscat-blanc, Zéta; 27 communes; UNESCO-világörökség
+terroir text), Villány (29 varieties incl. Kékfrankos→blaufränkisch,
+Kékoportó→blauer-portugieser; 16 communes), Soltvadkerti (single-variety
+Ezerjó; section-8 terroir recovered after the older-template keyword fix —
+meszes lepelhomok, 75 %+ kvarc → filoxéra-immunitás).
+
+**Re-run recipe**:
+
+```
+.venv/bin/python scripts/hu/01c_fetch_specifikacije.py        # fetch 15 termékleírás (curl; incomplete TLS chain)
+.venv/bin/python scripts/hu/02f_extract_national_specs.py --all
+.venv/bin/python scripts/audit_hu_coverage.py                 # 41/41 mapped, 0 stubs needing input
+# Independent check: open boraszat.kormany.hu/termekleirasok2 in a browser
+# and confirm each corpus name has a termékleírás leaf page.
+```
