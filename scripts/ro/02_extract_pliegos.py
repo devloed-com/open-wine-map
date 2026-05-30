@@ -285,6 +285,39 @@ def derive_summary(role_text: str, max_chars: int = 600) -> str:
     return cut + ("." if not cut.endswith(".") else "")
 
 
+# Area-enumeration markers — a section body carrying several of these in
+# list form is a commune list, not terroir prose. Used by the
+# density-fallback when geo_area routing misfires on a template whose
+# section numbering is mangled by the PDF→HTML conversion (Dealurile
+# Moldovei's "6 Judeţul Iaşi" header swallowed into section 1).
+_AREA_MARKER_RE = re.compile(
+    r"\b(jude[țţt]ul|comuna|comunele|municipiul|ora[șş]ul|ora[șş]\b|"
+    r"satele|localit[ăa][țţt]i\s+componente|podgoria)\b",
+    re.IGNORECASE,
+)
+
+
+def _harvest_communes_fallback(sections: dict[str, str]) -> list[str]:
+    """When geo_area routing yields too few communes (mangled section
+    numbering / template drift), scan every section body and parse the
+    commune list out of the ones that are commune-dense (≥3 area
+    markers). `parse_commune_list` already rejects județ names, prose
+    tokens and over-long chunks, so this stays safe against false
+    positives from terroir prose."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for body in sections.values():
+        if len(_AREA_MARKER_RE.findall(body or "")) < 3:
+            continue
+        for name in parse_commune_list(body):
+            key = name.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(name)
+    return out
+
+
 def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
                  oj_meta: dict) -> dict:
     routed = route_sections(sections, titles)
@@ -292,6 +325,8 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
     styles = parse_styles(sections, titles)
     geo_area = routed.get("geo_area", "")
     geo_communes = parse_commune_list(geo_area) if geo_area else []
+    if len(geo_communes) < 2:
+        geo_communes = _harvest_communes_fallback(sections)
     region = derive_region(
         {"file_number": wine["fileNumber"]},
         geo_area,

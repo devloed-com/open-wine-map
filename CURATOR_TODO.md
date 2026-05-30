@@ -1272,69 +1272,38 @@ Provenance: [tmp/hu-grape-wikipedia-research-prompt.md](tmp/hu-grape-wikipedia-r
 
 ## Romania
 
-### eAmbrosia + DOCUMENT UNIC — v1 land (2026-05-23)
+### Complete coverage — DONE (2026-05-30)
 
-54 wine GIs (41 PDO + 13 PGI) from eAmbrosia. v1 pipeline scaffolded
-from the HR template; section anchor is "DOCUMENT UNIC", Romanian
-section keywords routed in [scripts/_lib/ro/document_unic.py](scripts/_lib/ro/document_unic.py).
-~34 of 54 wines carry a fetchable EUR-Lex publication URL; the
-remaining ~20 are Art.107 / Reg.1308/2013 grandfathered names with
-only `Ares(…)` references — `regen_manual_overrides_template.py`
-queues them for curator URLs (ONVPV / *Monitorul Oficial* national
-caiet de sarcini once a parser branch exists).
+**46 wine GIs (34 DOP + 12 IGP)** from eAmbrosia (de-duplicated;
+earlier docs said 54 — that counted administrative re-registrations).
+**v1 coverage is now 46 / 46 on the map, 0 stubs.** 32 wines extracted
+from the EU-OJ DOCUMENT UNIC; the 14 grandfathered names (`Ares(…)`
+only) are fully covered by the new **ONVPV national-spec layer**:
 
-### Geometry — Bétard PDOs + GISCO commune-list IGPs
+- ✅ **National-spec layer** (stages 01c/02f + [scripts/_lib/ro/caiet.py](scripts/_lib/ro/caiet.py)):
+  14 ONVPV caiete de sarcini (PDF, `onvpv.ro`, WAF-free) pinned in
+  `raw/ro/national-specs/manual_overrides.json`, parsed into sidecars,
+  merged in stage 04 (`augment_ro_records_with_national_specs`). Each
+  augmented wine carries 9–18 grapes, commune geometry, 7–10 terroir
+  facts. See the RO national-spec section in [CLAUDE.md](CLAUDE.md).
+- ✅ **Geometry**: 33 figshare-pdo + 13 gisco-commune-list = 46/46.
+  The 2 grandfathered IGPs (Dealurile Transilvaniei, Viile Caraşului)
+  resolve from the caiet's commune list. Section-routing for the newer
+  Reg. 2024/1143 template + a density-based commune fallback fixed the
+  3 IGPs (Dealurile Moldovei/Vrancei, Terasele Dunării) that previously
+  failed to parse communes.
+- ✅ **Terroir facts 46/46** (02d/02e Anthropic batch); ro.wikipedia is
+  thin (43/46 curator-pinned `missing` — see CLAUDE.md), so RO grounds
+  on the cahier/caiet text.
 
-- ✅ **Bétard 2022 PDO coverage**: 38 / 41 RO PDOs resolved via
-  Figshare match. 3 newer PDOs (`PDO-RO-01182` Sebeș-Apold,
-  `PDO-RO-02854` Plaiurile Drâncei, `PDO-RO-03446` Iana) post-date
-  Bétard and fall through to the GISCO commune-list resolver.
-- 🟢 **GISCO commune-list resolver**: parses DOCUMENT UNIC section 6
-  (the `aria geografică delimitată`) via [scripts/_lib/ro/commune.py](scripts/_lib/ro/commune.py),
-  unions matching `RO_*` GISCO LAU polygons against the shared
-  `raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip` (3,181 RO communes).
-  Used for the 13 RO IGPs and the 3 newer PDOs. Audit via
-  [scripts/audit_ro_coverage.py](scripts/audit_ro_coverage.py) → "IGP
-  commune-list coverage" section reports unmatched commune-name counts;
-  add aliases or parser tweaks until the residual is ≤ 2 per wine.
-
-### Region facet — incremental file_number map
+### Region facet — incremental file_number map (still open, low priority)
 
 [scripts/_lib/ro/region.py](scripts/_lib/ro/region.py) carries the 8
-Romanian wine macro regions (Moldova / Muntenia / Oltenia / Dobrogea
-/ Transilvania / Banat / Crișana și Maramureș / Terasele Dunării).
-The `_REGION_BY_FILE_NUMBER` map is empty in v1 — every wine
-resolves via the in-text scan (which catches the region name when
-the documento-unic prose mentions it) or falls back to "România".
-Curator pass: after the first end-to-end run, hand-pin each of the
-54 wines' file_number → region for stable facet labels (matches the
-AT / HR / HU pattern).
-
-### Wikipedia RO pages — first run pending
-
-Run after stage 02 lands a non-empty `raw/ro/dokumente-extracted/`:
-
-```
-.venv/bin/python scripts/02b_fetch_aoc_lexicon.py \
-    --lang ro --source raw/ro/dokumente-extracted
-```
-
-Expect some misses on the grandfathered IGPs (no Wikipedia page);
-add curator overrides at `raw/wikipedia/aocs/ro/manual_overrides.json`
-following the HR pattern.
-
-### Terroir-fact extraction — siblings shipped, run pending
-
-[scripts/ro/02d_extract_terroir_facts.py](scripts/ro/02d_extract_terroir_facts.py)
-and [scripts/ro/02e_translate_terroir_facts.py](scripts/ro/02e_translate_terroir_facts.py)
-are wired. Drive via batch flow per project preference:
-
-```
-.venv/bin/python scripts/ro/02d_extract_terroir_facts.py --batch --provider anthropic
-.venv/bin/python scripts/ro/02e_translate_terroir_facts.py --batch --provider anthropic
-```
-
-Expect ~34 wines feeding 02d (the ones with non-stub DOCUMENT UNIC).
+Romanian wine macro regions. `_REGION_BY_FILE_NUMBER` is empty — every
+wine resolves via the in-text scan or falls back to "România" (the
+distribution looks correct in the audit). Optional curator pass:
+hand-pin each wine's file_number → region for stable facet labels
+(matches the AT / HR / HU pattern).
 
 ### Extraction-unknowns triage (2026-05-23)
 
@@ -1359,6 +1328,25 @@ the source EU-OJ HTML:
   `Zghihară` (de Huși) or for a different red variety. Verify the
   source HTML; if a typo, fold via `GRAPE_ALIAS` to the correct
   canonical.
+
+### Caiet-de-sarcini grape unknowns (2026-05-30, national-spec layer)
+
+Surfaced by stage 02f over the ONVPV caiete
+([raw/ro/extraction-unknowns-national.json](raw/ro/extraction-unknowns-national.json)).
+The affected wines already carry their other 9–18 varieties + geometry
++ facts, so these are accessory-variety gaps, not blockers. Same
+SCDVV-crossing pattern as the 2026-05-23 batch (uneven VIVC coverage;
+wein.plus is the upstream-of-VIVC secondary source):
+
+- 🟡 **Majarcă (albă)** — fuzzy-near `majarca-alba` (73). A real Banat
+  white; add a `GRAPE_ALIAS` pin `majarca → majarca-alba` (the bare
+  form drops the colour suffix).
+- 🟡 **Astra / Blasius / Radames** — Romanian SCDVV breeding-station
+  crossings, no current lexicon entry. Research VIVC/wein.plus IDs and
+  mint slugs + `DEFAULT_COLOUR` like the prior 15.
+- ⚪ **`Sortiment alb` / `Sortiment roşu`** — blend pseudo-varieties
+  ("white/red assemblage"), correctly unmatched; add to a grape
+  blocklist if the noise is bothersome (no false positive today).
 
 ---
 

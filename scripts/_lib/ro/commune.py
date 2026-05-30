@@ -129,8 +129,32 @@ def _normalise_commune(name: str) -> str:
     # appear in cahier text; LAU_NAME uses the hyphen form sometimes
     # and the space form sometimes. We normalise both to single spaces.
     s = s.replace("-", " ")
-    s = re.sub(r"\s+", " ", s).strip(" .,;:")
+    s = re.sub(r"\s+", " ", s).strip(_EDGE_STRIP)
     return s
+
+
+# Trailing "component-locality" descriptor that follows a commune name in
+# both the EU DOCUMENT UNIC and the national caiet de sarcini:
+#   «municipiul Aiud- localităţi componente: Aiud, Gârbova…»
+#   «comuna Daia cu satele Daia, Dăiţa…»
+#   «Zimnicea cu localităţile componente»
+# We keep the commune name (the head) and drop the descriptor tail. The
+# "sate/localit" cut only fires after a dash or "cu" so legitimate names
+# such as «Satu Nou» / «Satu Mare» survive.
+_DESCRIPTOR_TAIL_RE = re.compile(
+    r"\s*(?:"
+    r"[-–]\s*(?:sate|satul|satele|localit\w*)"
+    r"|cu\s+(?:satele|satul|sate|localit\w*|urm[ăa]toarele)"
+    r"|localit[ăaâ][țţt]i(?:le)?\s+componente"
+    r")\b.*$",
+    re.IGNORECASE,
+)
+
+
+# Edge characters trimmed off each split chunk — punctuation plus the
+# bullet glyphs ("- ", "•", "·") that lead area-list lines in both the
+# EU DOCUMENT UNIC and the national caiet de sarcini.
+_EDGE_STRIP = " .,;:\t-–•·"
 
 
 def _truncate_at_terroir_section(text: str) -> str:
@@ -156,6 +180,11 @@ def parse_commune_list(text: str) -> list[str]:
     if not text:
         return []
     body = _truncate_at_terroir_section(text)
+    # Drop parenthetical "(satele X, Y şi Z)" groups whole — they enumerate
+    # sub-village hamlets (not GISCO-commune-level) and, because they carry
+    # internal commas, would otherwise fragment across the comma split and
+    # leave the head commune name glued to "(satele …".
+    body = re.sub(r"\([^)]*\)", " ", body)
     # Rewrite "satul X aparținând comunei Y" → "comuna Y" so the
     # tier-prefix strip below picks up Y, not the (uncrappable) X.
     body = _SATUL_BELONGS_RE.sub("comuna ", body)
@@ -167,12 +196,15 @@ def parse_commune_list(text: str) -> list[str]:
     seen: set[str] = set()
     out: list[str] = []
     for raw in _COMMUNE_SPLIT_RE.split(body):
-        chunk = raw.strip(" .,;:")
+        chunk = raw.strip(_EDGE_STRIP)
         if not chunk:
             continue
         # Strip a leading municipal-tier prefix (municipiul / orașul /
-        # comuna / satul …).
-        chunk = _TIER_PREFIX_RE.sub("", chunk).strip(" .,;:")
+        # comuna / satul …); a leading bullet was already trimmed above.
+        chunk = _TIER_PREFIX_RE.sub("", chunk).strip(_EDGE_STRIP)
+        # Drop a trailing "- localităţi componente …" / "cu satele …"
+        # descriptor so the bare commune name matches the GISCO key.
+        chunk = _DESCRIPTOR_TAIL_RE.sub("", chunk).strip(_EDGE_STRIP)
         if not chunk:
             continue
         key = _normalise_commune(chunk)

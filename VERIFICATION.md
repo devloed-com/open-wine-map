@@ -440,6 +440,47 @@ district structure at the Wikipedia URL above.
 
 ---
 
+## Romania
+
+### 2026-05-30 — eAmbrosia ↔ ONVPV national DOC/IG register cross-check ✅
+
+**Independent authority**: Oficiul Național al Viei și Produselor
+Vitivinicole (ONVPV), the Romanian national wine regulator — its
+published *denumiri de origine controlată (DOC)* and *indicații
+geografice (IG)* register pages (a different bureaucratic list from
+the EU eAmbrosia register the pipeline is built on).
+URLs: <https://www.onvpv.ro/ro/content/caiete-de-sarcini-pentru-obtinerea-vinurilor-cu-denumire-de-origine-controlata-doc-0>
+(DOC) and <https://www.onvpv.ro/ro/content/indicatii-geografice> (IG).
+
+| Check | ONVPV | Pipeline | Match |
+|---|---:|---:|:---:|
+| IG (IGP) | 12 | 12 | ✓ (exact, name-for-name) |
+| DOC (DOP) | 35 | 34 | 34/35 — delta explained |
+
+**Explained delta**: the one DOC in the ONVPV national register absent
+from our corpus is **Strunga** (a Moldavian DOC). It is **not present
+in eAmbrosia at all** (verified by scanning the full EU register, all
+statuses) — i.e. it is a Romania-national-only DOC never registered /
+protected at EU level. The pipeline's spine is the EU eAmbrosia
+register, so excluding Strunga is correct by scope, not a dropped
+record. All other 34 DOC names reconcile name-for-name.
+
+**Note on the "54" figure**: earlier docs cited 54 RO wine GIs. That
+counted eAmbrosia administrative *re-registrations* of the same wine
+(Murfatlar, Dealu Mare, Panciu, … each carry a 2007-protected entry +
+later modification entries, all `status=registered`). Stage 00
+de-duplicates by slug to **46 unique GIs (34 DOP + 12 IGP)**, which is
+what ONVPV's register also reflects (35 DOC − 1 national-only + 12 IG).
+
+Re-runnable recipe:
+```
+.venv/bin/python scripts/audit_ro_coverage.py        # 46 wines, 0 stubs
+# Independent counts: fetch the two ONVPV register pages above and
+# count DOC / IG names; compare to `by_kind` in the audit header.
+```
+
+---
+
 ## Bulgaria
 
 ### 2026-05-23 — eAmbrosia ↔ Закон за виното (5-region structure) cross-check ✅

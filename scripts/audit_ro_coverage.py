@@ -21,6 +21,7 @@ EAMBROSIA = ROOT / "raw" / "ro" / "eambrosia" / "index.json"
 EXTRACTED = ROOT / "raw" / "ro" / "dokumente-extracted"
 OJ_MANIFEST = ROOT / "raw" / "ro" / "oj-pages" / "manifest.json"
 OVERRIDES = ROOT / "raw" / "ro" / "oj-pages" / "manual_overrides.json"
+NATIONAL_SPECS = ROOT / "raw" / "ro" / "national-specs-extracted"
 FIGSHARE = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
 
 
@@ -38,6 +39,23 @@ def _load_extracted() -> dict[str, dict]:
         if jp.name.startswith("_"):
             continue
         rec = json.loads(jp.read_text(encoding="utf-8"))
+        out[rec["slug"]] = rec
+    return out
+
+
+def _load_national_specs() -> dict[str, dict]:
+    """slug → ONVPV caiet-de-sarcini sidecar (stage 02f). These augment
+    the on-disk DOCUMENT UNIC stubs in stage 04."""
+    out: dict[str, dict] = {}
+    if not NATIONAL_SPECS.exists():
+        return out
+    for jp in NATIONAL_SPECS.glob("*.json"):
+        if jp.name.startswith("_"):
+            continue
+        try:
+            rec = json.loads(jp.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
         out[rec["slug"]] = rec
     return out
 
@@ -79,6 +97,7 @@ def main() -> int:
     extracted = _load_extracted()
     oj_manifest = _load_manifest()
     overrides = _load_overrides()
+    national_specs = _load_national_specs()
     figshare_ids = _load_figshare_file_numbers()
 
     print("# RO pipeline audit\n")
@@ -86,6 +105,7 @@ def main() -> int:
     print(f"Extracted records:    {len(extracted)}")
     print(f"OJ-page manifest:     {len(oj_manifest)} entries")
     print(f"Manual overrides:     {len(overrides)} entries")
+    print(f"National-spec (caiet) sidecars: {len(national_specs)}")
     print(f"Figshare RO PDOids:   {len(figshare_ids)}")
     print()
 
@@ -102,6 +122,7 @@ def main() -> int:
     n_communes_total = 0
     n_with_communes = 0
     n_igp_missing_communes = 0
+    n_national_spec = 0
 
     for w in wines:
         slug = w["slug"]
@@ -111,23 +132,32 @@ def main() -> int:
         if rec is None:
             stub_reasons["not-yet-extracted"] += 1
             continue
-        if rec.get("stub"):
+        # A DOCUMENT UNIC stub augmented by the ONVPV caiet de sarcini
+        # (stage 02f) is effectively covered — stage 04 merges its grapes /
+        # communes / terroir at load time. Count grapes + communes from the
+        # sidecar and keep it out of the stub / curator buckets.
+        spec = national_specs.get(slug) if rec.get("stub") else None
+        if rec.get("stub") and not spec:
             by_kind_stub[kind] += 1
             stub_reasons[rec.get("stub_reason", "unknown")] += 1
+        elif spec:
+            n_national_spec += 1
+            by_kind_extracted[kind] += 1
         else:
             by_kind_extracted[kind] += 1
+        eff = spec or rec
         fn = w.get("fileNumber") or ""
         if fn in figshare_ids:
             in_figshare += 1
         else:
             no_figshare += 1
-            if kind == "IGP" and not (rec.get("geo_communes") or []):
+            if kind == "IGP" and not (eff.get("geo_communes") or []):
                 n_igp_missing_communes += 1
-        n_grapes = len((rec.get("grapes") or {}).get("details") or [])
+        n_grapes = len((eff.get("grapes") or {}).get("details") or [])
         if n_grapes:
             n_with_grapes += 1
             grape_total += n_grapes
-        communes = rec.get("geo_communes") or []
+        communes = eff.get("geo_communes") or []
         if communes:
             n_with_communes += 1
             n_communes_total += len(communes)
@@ -164,6 +194,12 @@ def main() -> int:
     print(f"  Wines with grapes:  {n_with_grapes} of {len(extracted)}")
     print(f"  Total grape-slugs:  {grape_total}")
     print()
+    print("## National-spec coverage (ONVPV caiet de sarcini, stage 02f)")
+    print(f"  DOCUMENT UNIC stubs augmented: {n_national_spec} of "
+          f"{len(national_specs)} sidecars")
+    print("  (these are effectively covered — stage 04 merges grapes / "
+          "communes / terroir at load time)")
+    print()
 
     curator_targets: list[tuple[str, str, str]] = []
     for w in wines:
@@ -171,6 +207,8 @@ def main() -> int:
         rec = extracted.get(slug)
         if rec is None or not rec.get("stub"):
             continue
+        if slug in national_specs:
+            continue  # covered by the ONVPV caiet de sarcini
         if slug in overrides or w["giIdentifier"] in overrides:
             continue
         curator_targets.append((rec.get("stub_reason") or "unknown", slug,
