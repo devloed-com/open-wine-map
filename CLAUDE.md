@@ -3906,3 +3906,12 @@ After editing a `.po`, just rerun `uv run scripts/04_build_maps.py`.
 - Single-purpose scripts; share helpers via `scripts/_lib/`.
 - No comments unless the *why* is non-obvious. Identifiers carry the *what*.
 - Logs to stderr, structured progress (per-AOC) so reruns are debuggable.
+- **No silent dict-key overrides.** Python keeps the *last* value when a dict
+  literal repeats a key, so a key re-bound to a different value is a silent
+  override — it once split VIVC #4121 (Fetească regală / Királyleányka) across
+  two grape slugs in `grape_lexicon.py`. The guard
+  [scripts/audit_dup_keys.py](scripts/audit_dup_keys.py) scans every dict
+  literal under `scripts/` and exits non-zero on any such *clash* (it also lists
+  benign same-value dups without failing); `tests/test_no_duplicate_keys.py`
+  runs it under `pytest`. Run `.venv/bin/python scripts/audit_dup_keys.py` (or
+  `pytest`) after editing `grape_lexicon.py` or any other large lookup table.

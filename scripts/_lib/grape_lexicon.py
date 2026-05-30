@@ -51,6 +51,7 @@ GRAPE_ALIAS = {
     "niellucio": "nielluccio",
     "muscat-petits-grains": "muscat-a-petits-grains",
     "muscat-a-petits-grains-blancs": "muscat-a-petits-grains",
+    "muscat-blanc-a-petits-grains": "muscat-a-petits-grains",  # spelling variant — same VIVC #8193
     "muscat-petits-grains-blancs": "muscat-a-petits-grains",
     "muscat-a-petit-grain": "muscat-a-petits-grains",
     "muscats-a-petits-grains": "muscat-a-petits-grains",
@@ -264,8 +265,7 @@ GRAPE_ALIAS = {
     "moscatello": "muscat-a-petits-grains",      # historical synonym
     "moscato-reale": "muscat-a-petits-grains",   # IT synonym for Moscato bianco
     "moscato-giallo": "moscato-giallo",          # distinct (Goldmuskateller)
-    "gelber-muskateller": "moscato-giallo",
-    "muskateller": "moscato-giallo",
+    "goldmuskateller": "moscato-giallo",         # German synonym (≠ Gelber Muskateller, which is Muscat Blanc à Petits Grains — see German section)
     "moscato-di-scanzo": "moscato-di-scanzo",    # distinct red Moscato (Bergamo)
     # Garganega — totally distinct from Glera (Prosecco grape)
     "garganega": "garganega",
@@ -606,15 +606,13 @@ GRAPE_ALIAS = {
     "irsai": "irsai-oliver",
     "muskat-oliver": "irsai-oliver",            # synonym
     "zolotis": "irsai-oliver",                  # synonym
-    "kiralyleanyka": "kiralyleanyka",           # Hungarian "Little Queen" — Fetească Regală cluster
-    "feteasca-regala": "kiralyleanyka",         # Romanian synonym (DNA = Kiralyleányka)
-    "feteasca-regale": "kiralyleanyka",
-    "danosi-leanyka": "kiralyleanyka",
-    "galbena-de-ardeal": "kiralyleanyka",
-    "leanyka": "leanyka",                       # Hungarian — Fetească Albă cluster
-    "feteasca-alba": "leanyka",                 # Romanian synonym (DNA = Leányka)
-    "leanyszolo": "leanyka",
-    "madchentraube": "leanyka",                 # German synonym
+    "kiralyleanyka": "feteasca-regala",         # Hungarian "Little Queen" — VIVC #4121 prime FETEASCA REGALA
+    "feteasca-regale": "feteasca-regala",
+    "danosi-leanyka": "feteasca-regala",
+    "galbena-de-ardeal": "feteasca-regala",
+    "leanyka": "feteasca-alba",                 # Hungarian — VIVC #4119 prime FETEASCA ALBA
+    "leanyszolo": "feteasca-alba",
+    "madchentraube": "feteasca-alba",           # German synonym
     "juhfark": "juhfark",                       # native Hungarian (Somló signature white)
     "ezerjo": "ezerjo",                         # native Hungarian (Mór signature white)
     "kolmreifler": "ezerjo",
@@ -630,9 +628,9 @@ GRAPE_ALIAS = {
     "muscat-ottonel": "muscat-ottonel",
     "hamburgi-muskotaly": "muscat-hambourg",    # Hungarian for Muscat de Hambourg
     "muscat-de-hamburg": "muscat-hambourg",
-    "sarga-muskotaly": "muscat-blanc-a-petits-grains",   # Hungarian "Yellow Muscat" = Muscat Lunel / Muscat blanc à petits grains
-    "sargamuskotaly": "muscat-blanc-a-petits-grains",    # one-word spelling in the termékleírás PDFs (Tokaj, Balatonboglár, …)
-    "mátrai-muskotaly": "muscat-blanc-a-petits-grains",
+    "sarga-muskotaly": "muscat-a-petits-grains",   # Hungarian "Yellow Muscat" = Muscat Lunel / Muscat à petits grains blancs (VIVC #8193)
+    "sargamuskotaly": "muscat-a-petits-grains",    # one-word spelling in the termékleírás PDFs (Tokaj, Balatonboglár, …)
+    "mátrai-muskotaly": "muscat-a-petits-grains",
     "korai-piros-veltelini": "fruhroter-veltliner",      # Korai piros veltelíni = Frühroter Veltliner
     "kovidinka": "kovidinka",                   # Hungarian — Vojvodina cluster
     "dinka-crvena": "kovidinka",
@@ -718,13 +716,13 @@ GRAPE_ALIAS = {
     # ── Romanian (RO) native varieties ────────────────────────────────
     # The upstream slugifier ASCII-folds + kebab-cases, so all alias
     # keys here are ASCII-only. Comments carry the diacritic forms.
-    "feteasca-alba": "feteasca-alba",            # VIVC #4044 FETEASCĂ ALBĂ — RO Moldova white
-    "feteasca-regala": "feteasca-regala",        # VIVC #4045 FETEASCĂ REGALĂ — RO crossing (Grasă × Frâncușă)
-    "feteasca-neagra": "feteasca-neagra",        # VIVC #4046 FETEASCĂ NEAGRĂ — RO native red
-    "tamaioasa-romaneasca": "muscat-blanc-a-petits-grains",
-                                                 # Tămâioasă Românească — VIVC syn. of Muscat Blanc à Petits Grains
-    "tamaioasa": "muscat-blanc-a-petits-grains", # bare form
-    "tamioasa-romaneasca": "muscat-blanc-a-petits-grains",  # alt spelling
+    "feteasca-alba": "feteasca-alba",            # VIVC #4119 FETEASCĂ ALBĂ — RO Moldova white (= HU Leányka)
+    "feteasca-regala": "feteasca-regala",        # VIVC #4121 FETEASCĂ REGALĂ — RO, Fetească albă × Frâncușă (= HU Királyleányka)
+    "feteasca-neagra": "feteasca-neagra",        # VIVC #4120 FETEASCĂ NEAGRĂ — RO native red
+    "tamaioasa-romaneasca": "muscat-a-petits-grains",
+                                                 # Tămâioasă Românească — VIVC syn. of Muscat à petits grains blancs (#8193)
+    "tamaioasa": "muscat-a-petits-grains",       # bare form
+    "tamioasa-romaneasca": "muscat-a-petits-grains",  # alt spelling
     "busuioaca-de-bohotin": "busuioaca-de-bohotin",
                                                  # Busuioacă de Bohotin — Moldova native aromatic rosé
     "grasa-de-cotnari": "grasa-de-cotnari",      # VIVC #5050 — botrytis-prone Cotnari white
@@ -790,12 +788,12 @@ GRAPE_ALIAS = {
     "olasz-riesling": "welschriesling",          # Hungarian "Italian Riesling" (space variant)
     "rosetraminer": "gewurztraminer",            # German rose-Traminer synonym
     "savagnin-roz": "gewurztraminer",            # RO "pink Savagnin"
-    "konigliche-madchentraube": "kiralyleanyka", # German "Royal Madchentraube"
-    "konigsast": "kiralyleanyka",                # German synonym
-    "ktralyleanka": "kiralyleanyka",             # corrupt-spelling Királyleányka (seen in Lechința doc)
-    "danasana": "kiralyleanyka",                 # Dănăşană — RO Transylvanian synonym
-    "pasareasca-alba": "leanyka",                # RO "white Păsărească" — Leányka synonym
-    "poama-fetei": "leanyka",                    # RO "maiden's grape"
+    "konigliche-madchentraube": "feteasca-regala", # German "Royal Madchentraube" — VIVC #4121 syn.
+    "konigsast": "feteasca-regala",              # German synonym (VIVC #4121)
+    "ktralyleanka": "feteasca-regala",           # corrupt-spelling Királyleányka (seen in Lechința doc)
+    "danasana": "feteasca-regala",               # Dănăşană — RO Transylvanian synonym (VIVC #4121)
+    "pasareasca-alba": "feteasca-alba",          # RO "white Păsărească" — Leányka/Fetească albă synonym
+    "poama-fetei": "feteasca-alba",              # RO "maiden's grape"
     "schwarze-madchentraube": "feteasca-neagra", # German — black Madchentraube
     "poama-fetei-neagra": "feteasca-neagra",
     "pasareasca-neagra": "feteasca-neagra",
@@ -832,9 +830,9 @@ GRAPE_ALIAS = {
     "dimiat": "dimyat",                           # alt transliteration
     "cherven-misket": "cherven-misket",           # BG "red Misket" (native white-pink)
     "misket-cherven": "cherven-misket",
-    "tamyanka": "muscat-blanc-a-petits-grains",   # BG name for Muscat blanc à petits grains
-    "tamianka": "muscat-blanc-a-petits-grains",
-    "temenuga": "muscat-blanc-a-petits-grains",   # BG synonym (Tamyanka labelled "Temenuga")
+    "tamyanka": "muscat-a-petits-grains",         # BG name for Muscat à petits grains blancs (#8193)
+    "tamianka": "muscat-a-petits-grains",
+    "temenuga": "muscat-a-petits-grains",         # BG synonym (Tamyanka labelled "Temenuga")
     "sandanski-misket": "sandanski-misket",       # BG SW native white
     "misket-sandanski": "sandanski-misket",
     "muskat-sandanski": "sandanski-misket",       # Latin transliteration variant
@@ -867,7 +865,7 @@ GRAPE_ALIAS = {
     "grenash": "grenache",                        # Гренаш
     "mourvedr": "mourvedre",                      # Мурведр
     "mourvedre-bg": "mourvedre",
-    "muskat": "muscat-blanc-a-petits-grains",     # generic Cyrillic Muskat fallback
+    "muskat": "muscat-a-petits-grains",           # generic Cyrillic Muskat fallback (VIVC #8193)
     "tramin-aromaten": "gewurztraminer",          # Bulgarian "aromatic Traminer"
     "traminer": "gewurztraminer",                 # bare Traminer fallback (BG context)
     "biser": "biser",                             # BG modern crossing
@@ -1128,8 +1126,8 @@ GRAPE_ALIAS = {
     "noblessa": "noblessa",                        # VIVC #8506 NOBLESSA — Geilweilerhof
     "blutenmuskateller": "blutenmuskateller",      # already present
     "muskat-trollinger": "muskat-trollinger",      # VIVC #8338 MUSCAT TROLLINGER
-    "muskateller": "muscat-blanc-a-petits-grains", # German Muscat
-    "gelber-muskateller": "muscat-blanc-a-petits-grains",
+    "muskateller": "muscat-a-petits-grains",       # German Muscat (VIVC #8193)
+    "gelber-muskateller": "muscat-a-petits-grains",  # Gelber Muskateller = Muscat à petits grains blancs
     "roter-muskateller": "muscat-a-petits-grains-rouges",
     "blauer-muskateller": "muscat-a-petits-grains-rouges",
     "muskat-ottonel": "muscat-ottonel",            # already present
@@ -1259,8 +1257,8 @@ GRAPE_ALIAS = {
     "veltlinske-cervene-rane": "fruhroter-veltliner",
     "muskat-zlty": "muscat-a-petits-grains",
     "muscat-zlty": "muscat-a-petits-grains",
-    "pesecka-leanka": "leanyka",                   # SK name for HU Leányka (VIVC #6816) — distinct from feteasca-regala
-    "leanka": "leanyka",
+    "pesecka-leanka": "feteasca-alba",             # SK name for HU Leányka (VIVC #6816) — folded to Fetească albă (#4119), distinct from feteasca-regala (#4121)
+    "leanka": "feteasca-alba",
     "modry-portugal": "blauer-portugieser",
     # ─── Czech crossings (Lednice / Velké Bílovice / Polášek) ───
     "palava": "palava",                            # VIVC #18198 PÁLAVA — Tramín × Müller Thurgau
@@ -1505,6 +1503,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "montonico": "blanc",
     "welschriesling": "blanc",
     "moscato-giallo": "blanc",
+    "muscat-a-petits-grains": "blanc",
     "garganega": "blanc",
     "glera-lunga": "blanc",
     "spergola": "blanc",
@@ -1671,8 +1670,9 @@ DEFAULT_COLOUR: dict[str, str] = {
     "harslevelu": "blanc",
     "cserszegi-fuszeres": "blanc",
     "irsai-oliver": "blanc",
-    "kiralyleanyka": "blanc",
-    "leanyka": "blanc",
+    "feteasca-regala": "blanc",
+    "feteasca-alba": "blanc",
+    "feteasca-neagra": "noir",
     "juhfark": "blanc",
     "ezerjo": "blanc",
     "kovidinka": "blanc",
