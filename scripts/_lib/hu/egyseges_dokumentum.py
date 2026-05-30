@@ -99,6 +99,14 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "kapcsolat leírása",
         "kapcsolat leirasa",
         "okozati kapcsolat",
+        # Older single-document template variant (e.g. Soltvadkerti):
+        # section 8 titled "Kapcsolat a földrajzi területtel". The
+        # "földrajzi terület" substring also matches geo_area, so this
+        # title is blocklisted from geo_area below to force the link route.
+        "kapcsolat a földrajzi területtel",
+        "kapcsolat a foldrajzi terulettel",
+        "kapcsolat a földrajzi",
+        "kapcsolat a foldrajzi",
     ),
     "additional_conditions": (
         "további alapvető feltételek",
@@ -120,6 +128,11 @@ _GEO_AREA_TITLE_BLOCKLIST = (
     "foldrajzi arujelzo tipusa",
     "szőlőből készült termékek kategóriái",
     "szolobol keszult termekek kategoriai",
+    # The terroir section "Kapcsolat a földrajzi területtel" contains
+    # "földrajzi terület" — keep it out of geo_area so it routes to
+    # link_to_terroir instead.
+    "kapcsolat a földrajzi",
+    "kapcsolat a foldrajzi",
 )
 
 

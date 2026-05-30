@@ -20,10 +20,28 @@ EAMBROSIA = ROOT / "raw" / "hu" / "eambrosia" / "index.json"
 EXTRACTED = ROOT / "raw" / "hu" / "dokumentumok-extracted"
 OJ_MANIFEST = ROOT / "raw" / "hu" / "oj-pages" / "manifest.json"
 OVERRIDES = ROOT / "raw" / "hu" / "oj-pages" / "manual_overrides.json"
+NATIONAL_SPECS = ROOT / "raw" / "hu" / "national-specs-extracted"
 FIGSHARE = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
 
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.hu.geometry import HU_PGI_MEMBER_PDOS  # noqa: E402
+
+
+def _load_national_specs() -> dict[str, dict]:
+    """Slug → national-spec sidecar (stage 02f). These augment the 15
+    grandfathered stubs with grapes + terroir at stage 04 (in-memory)."""
+    out: dict[str, dict] = {}
+    if not NATIONAL_SPECS.exists():
+        return out
+    for jp in NATIONAL_SPECS.glob("*.json"):
+        if jp.name.startswith("_"):
+            continue
+        try:
+            rec = json.loads(jp.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+        out[rec.get("slug") or jp.stem] = rec
+    return out
 
 
 def _load_eambrosia() -> list[dict]:
@@ -86,6 +104,7 @@ def main() -> int:
     extracted = _load_extracted()
     oj_manifest = _load_manifest()
     overrides = _load_overrides()
+    national_specs = _load_national_specs()
     figshare_ids = _load_figshare_file_numbers()
 
     print("# HU pipeline audit\n")
@@ -93,6 +112,7 @@ def main() -> int:
     print(f"Extracted records:    {len(extracted)}")
     print(f"OJ-page manifest:     {len(oj_manifest)} entries")
     print(f"Manual overrides:     {len(overrides)} entries")
+    print(f"National-spec sidecars: {len(national_specs)} (termékleírás PDFs)")
     print(f"Figshare HU PDO/PGI ids: {len(figshare_ids)}")
     print()
 
@@ -101,8 +121,10 @@ def main() -> int:
     by_kind_stub: Counter[str] = Counter()
     stub_reasons: Counter[str] = Counter()
     in_figshare = no_figshare = pgi_union_resolved = pgi_no_geom = 0
+    commune_union = 0
     grape_total = 0
     n_with_grapes = 0
+    n_national_spec = 0
     by_region: Counter[str] = Counter()
 
     for w in wines:
@@ -113,11 +135,15 @@ def main() -> int:
         if rec is None:
             stub_reasons["not-yet-extracted"] += 1
             continue
+        spec = national_specs.get(slug)
         if rec.get("stub"):
             by_kind_stub[kind] += 1
-            stub_reasons[rec.get("stub_reason", "unknown")] += 1
+            reason = rec.get("stub_reason", "unknown")
+            stub_reasons[f"national-spec:{reason}" if spec else reason] += 1
         else:
             by_kind_extracted[kind] += 1
+        if spec:
+            n_national_spec += 1
         fn = w.get("fileNumber") or ""
         bridged = _BÉTARD_BRIDGE.get(fn, fn)
         if bridged in figshare_ids:
@@ -131,9 +157,17 @@ def main() -> int:
                 pgi_union_resolved += 1
             else:
                 pgi_no_geom += 1
+        elif rec.get("geo_communes"):
+            # Newer PDOs (Etyeki Pezsgő, Kőszeg, Füred) not in Bétard
+            # resolve via the GISCO commune-union of the area-section list.
+            commune_union += 1
         else:
             no_figshare += 1
+        # Effective grapes: on-disk record, else the national-spec sidecar
+        # (the stage-04 augment merges the sidecar for the 15 stubs).
         n_grapes = len((rec.get("grapes") or {}).get("details") or [])
+        if not n_grapes and spec:
+            n_grapes = len((spec.get("grapes") or {}).get("details") or [])
         if n_grapes:
             n_with_grapes += 1
             grape_total += n_grapes
@@ -153,9 +187,10 @@ def main() -> int:
     print("## Geometry coverage")
     print(f"  Bétard PDO match:      {in_figshare} of {len(wines)}")
     print(f"  PGI region-union:      {pgi_union_resolved}")
+    print(f"  GISCO commune-union:   {commune_union}  (newer PDOs not in Bétard)")
     print(f"  PGI no member geom:    {pgi_no_geom}")
     print(f"  Missing entirely:      {no_figshare}")
-    total_mapped = in_figshare + pgi_union_resolved
+    total_mapped = in_figshare + pgi_union_resolved + commune_union
     print(f"  → on the map:          {total_mapped} of {len(wines)} "
           f"({total_mapped/max(1,len(wines)):.1%})")
     print()
@@ -164,15 +199,20 @@ def main() -> int:
         print(f"  {n:>4}  {b}")
     print()
     print("## Grape extraction")
-    print(f"  Wines with grapes:  {n_with_grapes} of {len(extracted)}")
+    print(f"  Wines with grapes:  {n_with_grapes} of {len(extracted)} "
+          f"(incl. {n_national_spec} via national termékleírás)")
     print(f"  Total grape-slugs:  {grape_total}")
     print()
 
+    # A stub is only a real gap if it has NO national-spec sidecar — the
+    # 15 grandfathered wines are sourced from the termékleírás layer.
     curator_targets: list[tuple[str, str, str]] = []
     for w in wines:
         slug = w["slug"]
         rec = extracted.get(slug)
         if rec is None or not rec.get("stub"):
+            continue
+        if slug in national_specs:
             continue
         if slug in overrides or w["giIdentifier"] in overrides:
             continue

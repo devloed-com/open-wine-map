@@ -1165,60 +1165,89 @@ appellation minted on the HR side.
 
 ## Hungary
 
-Country #8 (added 2026-05-23). 41 wine GIs (35 DOP + 6 PGI), 38 of 41 on
-the map (92.7 %).
+Country #8 (added 2026-05-23; complete-coverage pass 2026-05-30). 41 wine
+GIs (35 DOP + 6 PGI), **41 / 41 on the map (100 %)**, **41 / 41 with grapes**
+(1292 slugs; 16 via the national termékleírás layer), **41 / 41 with terroir
+facts** (368 bullets, translated en/fr/es/nl). Complete coverage on all
+four axes: source documents, map, grapes, terroir.
 
-### EGYSÉGES DOKUMENTUM — ✅ 26 / 41 extracted
+### EGYSÉGES DOKUMENTUM + national termékleírás — ✅ 41 / 41 sourced
 
-❌ 15 content-stubs (`no-publication`) — every historic flagship (Tokaj,
-Villány, Sopron, Szekszárd, Pannonhalma, Pécs, Bükk, Somlói, Nagy-Somló,
-Balatonfüred-Csopak, Csongrád, Balatonboglár, Káli, plus the
-Balatonmelléki and Zemplén PGIs). These are Art. 107 / Reg. 1308/2013
-grandfathered names whose only eAmbrosia reference is a non-fetchable
-`Ares(...)` summary-sheet. They appear in the index and on the map
-(geometry resolves via Bétard) but have no extracted single-document
-text. The canonical source is the HNT (Hegyközségek Nemzeti Tanácsa)
-national termékleírás / Magyar Közlöny PDF.
+26 wines carry a fetchable EUR-Lex EGYSÉGES DOKUMENTUM (stage 02). The 15
+grandfathered flagships (Tokaj, Villány, Sopron, Szekszárd, Pannonhalma,
+Pécs, Bükk, Somlói, Nagy-Somló, Balatonfüred-Csopak, Csongrád,
+Balatonboglár, Káli, + the Balatonmelléki and Zemplén PGIs) are now
+backed by the **Agrárminisztérium national termékleírás PDF** via the
+stage 01c/02f national-spec layer (`hu-termekleiras-v1` parser):
 
-**Phase 2**: research a public, licence-clear URL pattern for the HNT
-specifications (fits `/research-gaps`), fill
-`raw/hu/oj-pages/manual_overrides.json` via
-`scripts/hu/regen_manual_overrides_template.py`, and add a national-spec
-parser branch to stage 02 (mirrors ES MAPA / IT MASAF / planned SI MKGP).
-This also unlocks the dűlő (named-vineyard) sub-denominations for
-appellations like Eger Bikavér and the Tokaj cru positions.
+- Source: `boraszat.kormany.hu/termekleirasok2` (the leaf pages are JS
+  shells; the real PDFs are opaque-token `/download/...` URLs — pinned in
+  [raw/hu/national-specs/manual_overrides.json](raw/hu/national-specs/manual_overrides.json)).
+  Tokaj uses the `tokajiborvidek.hu` council mirror. Public official act
+  (Szjt. 1999. évi LXXVI. tv. §1(4) — úrhivatalos exemption).
+- The PDF is the EU single-document template in Hungarian: Roman-numeral
+  outline (IV. KÖRÜLHATÁROLT TERÜLET → communes, VI. ENGEDÉLYEZETT
+  SZŐLŐFAJTÁK → grapes, VII. KAPCSOLAT A FÖLDRAJZI TERÜLETTEL → terroir).
+  15/15 extracted with grapes + communes + terroir text.
+- Fetch caveat: `boraszat.kormany.hu` serves an incomplete TLS chain that
+  Python `requests`/`ssl` rejects; stage 01c shells out to `curl` (the
+  codebase already shells out to pdftotext). If a download token rotates
+  and a fetch 404s, re-pull from the leaf page `…/termekleirasok2/<slug>`.
 
-### Geometry — ✅ 38 / 41 mapped
+✅ `soltvadkerti` (PDO-HU-02171) — was a routing miss, now fixed. Its EU
+EGYSÉGES DOKUMENTUM uses the older template variant where section 8 is
+titled "Kapcsolat a földrajzi területtel" (vs. the standard "A
+kapcsolat(ok) leírása"); that title wasn't in the `link_to_terroir`
+keyword table, so 5.7 KB of terroir text was dropped. Fixed in
+[scripts/_lib/hu/egyseges_dokumentum.py](scripts/_lib/hu/egyseges_dokumentum.py)
+(keyword added + blocklisted from geo_area). It now has 8 terroir facts.
+Its single grape (Ezerjó) is **correct** — Soltvadkerti is a single-variety
+Ezerjó appellation (section 7 is just `Ezerjó – <synonym>` lines).
 
-32 PDOs + the Balaton PGI resolve `figshare-pdo` (Bétard 2022, with
-PGI-HU-A1507 bridged via the upstream mis-label PDO-HU-A1507). The
-remaining 5 PGIs (Balatonmelléki, Duna-Tisza-közi, Dunántúli,
-Felső-Magyarország, Zemplén) resolve `region-pdo-union` (union of
-their constituent PDO polygons; member tables in
-[scripts/_lib/hu/geometry.py](scripts/_lib/hu/geometry.py)).
+### Geometry — ✅ 41 / 41 mapped
 
-⏳ 3 `stub-no-geometry`: `etyeki-pezsgo` (PDO-HU-02772), `koszeg`
-(PDO-HU-02804), `fured` (PDO-HU-03043) — newer PDOs that post-date the
-Bétard 2022 snapshot. Phase 2 unlock: parse the Hungarian commune list
-from the Egységes Dokumentum + reuse Eurostat GISCO LAU for HU
-települések polygons (the AT pattern).
+33 PDOs + the Balaton PGI resolve `figshare-pdo` (Bétard 2022, with
+PGI-HU-A1507 bridged via the upstream mis-label PDO-HU-A1507). The 5 PGIs
+(Balatonmelléki, Duna-Tisza-közi, Dunántúli, Felső-Magyarország, Zemplén)
+resolve `region-pdo-union`. The 3 newer PDOs (`etyeki-pezsgo`, `koszeg`,
+`fured`) that post-date Bétard now resolve **`gisco-commune-union`** —
+[scripts/_lib/hu/commune.py](scripts/_lib/hu/commune.py) parses the
+Egységes Dokumentum / termékleírás settlement list and unions the matching
+Eurostat GISCO LAU `HU_*` polygons (0 unmatched: Etyek 1, Kőszeg 4,
+Füred 10 communes). HU stage 02 now emits `geo_communes` per record.
 
-### Dűlő / cru layer — ⏳ Phase 2
+### Dűlő / cru layer — ✅ Tokaj shipped (427); other formats Phase-2
 
-v1 ships a flat 41-wine corpus. The dűlő layer (FR-DGC / ES-subzona /
-HR-position analogue — e.g. Eger Bikavér's named dűlők, Tokaj's
-classified single-vineyard positions, Csopak's Open Mosaic dűlő map)
-is recoverable from either the Egységes Dokumentum or the HNT national
-termékleírás (where present) and lands with the Phase-2 work.
+The dűlő (named single-vineyard) layer is harvested from the termékleírás
+MELLÉKLET by [scripts/_lib/hu/dulo.py](scripts/_lib/hu/dulo.py) (stage
+02f → `dulok` in the sidecar → stage-04 augment → `dulok` in the aocs
+blob). Following the IT menzioni/UGA decision, dűlők are a flat,
+source-attributed **chip list** grouped by település (no per-dűlő
+polygons — none exist publicly; Tokaj alone has 427), surfaced as a
+collapsible "Dűlők (named vineyards): N" block on the map panel +
+a `## Dűlők` wiki section.
 
-### AOC Wikipedia hints — ⏳ to run
+✅ **Tokaj** — 427 dűlők across 27 települések (incl. aldűlők), parsed
+cleanly from the canonical 3-column `… megnevezése` table.
+
+⏳ **Phase-2 format variants** — only Tokaj uses the canonical 3-column
+table. The other dűlő-bearing specs use layouts the v1 parser does not
+attempt (a fragile parse that mis-attributes a dűlő to the wrong village
+is worse than none):
+- **Villány** — a "2-up" table (two `Borvidéki település | Dűlőnév`
+  column-pairs per row, with carry-forward down empty cells + page-wrapped
+  aldűlők). Needs column-offset slicing per half.
+- **Szekszárd / Somló / Nagy-Somló / Balatonboglár / Eger / Csopak** —
+  define dűlőnév *rules* (95 %-származás, yield caps) but either don't
+  enumerate a list, or enumerate it in prose / a non-tabular form.
+All 36 specs are now fetched (`raw/hu/national-specs/`), so the Phase-2
+work is parser-only — no new fetches.
+
+### AOC Wikipedia hints — ✅ cached (41 / 41 attempted)
 
 `scripts/02b_fetch_aoc_lexicon.py --lang hu --source raw/hu/dokumentumok-extracted`
-hasn't been run yet. Expected coverage: hu.wikipedia.org has rich
-per-borvidék articles, but the title disambiguators are non-standard
-("Tokaji borvidék", "Egri borvidék", "Villányi borvidék"). Curator
-pass: pin the correct titles via the AOC-override mechanism if the
-slug-derived defaults miss.
+has been run; the per-borvidék hu.wikipedia cache is populated and feeds
+02d salience.
 
 ### Grape vocabulary — ✅ seeded
 
@@ -1234,10 +1263,39 @@ Zalagyöngye, Kunleány, Aletta, Medina, Zenit, Zéta, Patria, Domina,
 Cirfandli (Zierfandler), Bakator family, Odysseus / Orpheus / Zeus,
 Pannon Frankos (→ blaufrankisch), and ~20 others. Re-run
 `scripts/hu/02_extract_pliegos.py` → `scripts/02g_fetch_vivc.py` after
-any edit. Residual unknowns: `franc`, `** ezerjo`, `** karat`,
-`** syrah` — `franc` is a stranded line-split artefact (Cabernet franc
-lines); the `**`-prefixed tokens come from the Monor doc's bold-marker
-leakage. Acceptable noise.
+any edit. The Monor doc's `**` bold-marker leakage + `(FONTOSABB)` /
+`(EGYÉB)` role suffixes are now stripped in `parse_grapes` (and the role
+markers drive a real principal/accessory split: Monor → 13 principal +
+8 accessory). `badacsony` (PDO-HU-A1506) has an awkward EU doc where the
+wine-type subsections (Késői szüretelésű / Jégbor / Töppedt) are numbered
+as top-level sections 5–7, leaving its grape section unrouted; it is
+backfilled (21 varieties) from its national termékleírás via the
+fill-if-empty branch of `augment_hu_records_with_national_specs` (the
+augment now enriches empty fields on non-stub HU records too, never
+clobbering good EUR-Lex data).
+
+The national-spec extraction (`raw/hu/extraction-unknowns-national.json`,
+2026-05-30) added `sargamuskotaly` (one-word Sárgamuskotály →
+muscat-blanc-a-petits-grains, fixes flagship Tokaj), `korai-piros-veltelini`
+(→ `fruhroter-veltliner`, now VIVC #16157 + colour gris; Wikipedia tooltip
+still a **miss** — the article is under the German title "Frühroter
+Veltliner", curator-pinnable via `raw/wikipedia/grape_overrides.json`),
+`goher` (Gohér — heritage white, Zemplén + Balatonboglár; VIVC *ambiguous*
+→ curator pin pending in `slug_overrides.example.json`) and `banati-rizling`
+(Bánáti rizling = Banat Riesling, VIVC #6501 KREACA; Somló + Nagy-Somló).
+⏳ Still in the unknowns queue for a curator: `Zervin` (Badacsony —
+uncertain identity/colour) and `Messiás` (Zala — EU-extracted, not
+displayed). VIVC by-slug coverage of displayed HU grape slugs is now
+113/113 (files; `goher` carries a null id pending the ambiguity pin).
+The 3 newly-added slugs' Wikipedia tooltips miss (rare/German-titled) —
+the same hu-native tooltip long-tail noted below. Residual unknowns there
+are mostly **product-type labels** correctly excluded as non-grapes
+(Classicus/Premium/Super Premium/Bikavér/Főbor/Jégbor/Késői szüretelésű/
+Narancsbor/Gyöngyözőbor) plus a tail of rare HU natives and pdftotext
+column-gluing artefacts (`Dornfelder Ezerfürtű`, `Syrah Szürkebarát`,
+`Cabernet Francfranc`, `Cot (Malbec`, bare `Gohér` / `Bánáti rizling` /
+`Csomorika`). Fold the genuine natives via `GRAPE_ALIAS` as the curator
+confirms colours; the glued artefacts need no action.
 
 ### Wikipedia grape lexicon — 🟡 11 / 49 FOUND (2026-05-24)
 
