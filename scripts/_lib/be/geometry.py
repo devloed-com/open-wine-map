@@ -11,7 +11,7 @@ Stage 04 resolves each BE record by:
   1. **figshare-pdo** — exact `file_number` → `PDOid` match against
      Bétard 2022 EU_PDO.gpkg. Covers all 8 BE+ PDOs.
   2. **region-pdo-union** — the 2 BE PGIs are whole-Vlaanderen /
-     whole-Wallonië wine territories; each is the union of the member-
+     whole-Wallonie wine territories; each is the union of the member-
      PDO Figshare polygons (the SI/HU/BG/DE PGI pattern):
        - Vlaamse landwijn = 3 Flemish DOPs (Hagelandse / Haspengouwse /
          Heuvellandse — Vlaamse mousserende kwaliteitswijn and

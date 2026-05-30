@@ -41,10 +41,19 @@ SECTION_HEADER_RE = re.compile(
 SECTION_NUM_RE = re.compile(r"^\s*(\d+(?:\.\d+)*)\s*\.\s*(.+?)\s*$", re.S)
 
 
+_INFLECTION_PAREN_RE = re.compile(r"\([^)]{0,5}\)")
+# Slash-inflection groups in the post-2024 (Reg. (EU) 2024/1143) template:
+# `της/των`, `οινοποιήσιμης/-ων`, `ποικιλίας/-ών`. A slash followed by an
+# optional hyphen and 1–4 Greek letters that are NOT followed by another
+# Greek letter — the trailing-letter lookahead leaves real alternations
+# like `λευκός/ερυθρός` (long segment) untouched.
+_INFLECTION_SLASH_RE = re.compile(r"/-?[α-ω]{1,4}(?![α-ω])")
+
+
 def greek_norm(s: str) -> str:
     """Greek-aware comparator key. casefold + diacritic-strip + final-sigma
-    fold. Handles three Greek-specific gotchas the BG/RO/HU casefold path
-    doesn't have:
+    fold + inflection-suffix-paren drop. Handles four Greek-specific gotchas
+    the BG/RO/HU casefold path doesn't have:
 
       - **Final sigma** (`ς` U+03C2 vs medial `σ` U+03C3). `.casefold()`
         of capital `Σ` produces `σ`, never `ς`, so a title that ended in
@@ -58,12 +67,28 @@ def greek_norm(s: str) -> str:
       - **NFC vs NFD**. Greek text occasionally comes in NFD form
         (precomposed `ί` vs decomposed `ι` + combining tonos). The
         NFKD + drop-marks chain normalises both.
+      - **Parenthetical inflection suffixes**. The combined
+        singular/plural template variant writes a section-7 heading as
+        `Κύρια(ες) οινοποιήσιμη(ες) ποικιλία(ες) σταφυλιού` — the `(ες)`
+        groups splice singular + plural into one title and break every
+        substring keyword match (`ποικιλία σταφυλιού` is no longer
+        contiguous). Drop short (≤ 5-char) parenthetical groups so the
+        inflected title collapses back to the canonical wording. Longer
+        word-in-parens decorations (`(ονομασίες)`) and semantic parens
+        (`(ξηρού, ημίγλυκου …)`) are left intact. The post-2024
+        (Reg. (EU) 2024/1143) template uses the slash variant of the
+        same trick — `της/των`, `ποικιλίας/-ών` — so short slash-suffix
+        groups are dropped the same way (real alternations like
+        `λευκός/ερυθρός` survive via a trailing-letter lookahead).
     """
     s = s.casefold()
     s = "".join(
         c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
     )
     s = s.replace("ς", "σ")
+    s = _INFLECTION_PAREN_RE.sub("", s)
+    s = _INFLECTION_SLASH_RE.sub("", s)
+    s = re.sub(r"\s+", " ", s).strip()
     return s
 
 
@@ -129,6 +154,10 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "κυριότερες οινοποιήσιμες ποικιλίες",
         "οινοποιήσιμες ποικιλίες σταφυλιού",
         "οινοποιήσιμες ποικιλίες",
+        "ένδειξη της οινοποιήσιμης ποικιλίας αμπέλου",
+        "οινοποιήσιμης ποικιλίας αμπέλου",
+        "ποικιλίας αμπέλου",
+        "ποικιλίας σταφυλιού",
         "ποικιλίες σταφυλιού",
         "ποικιλία σταφυλιού",
         "ποικιλίες αμπέλου",

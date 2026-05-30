@@ -56,6 +56,17 @@ MANIFEST_PATH = OUT_DIR / "manifest.json"
 FIGSHARE_GPKG_PATH = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
 GISCO_LAU_PATH = ROOT / "raw" / "es" / "gisco" / "LAU_RG_01M_2024_3035.shp.zip"
 
+# GISCO NUTS-3 (regional units) — the PGI geometry fallback (the 114 GR
+# PGIs aren't in Bétard, and their spec delimits the area by NUTS region).
+# NUTS-2 is the NL pipeline's LEVL_2 file (EU-wide); only NUTS-3 is fetched
+# here. © European Union, Eurostat / GISCO; reuse with attribution.
+NUTS3_DIR = ROOT / "raw" / "gr" / "nuts"
+NUTS3_PATH = NUTS3_DIR / "NUTS_RG_03M_2024_4326_LEVL_3.geojson"
+NUTS3_URL = (
+    "https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/"
+    "NUTS_RG_03M_2024_4326_LEVL_3.geojson"
+)
+
 EAMBROSIA_LIST_URL = (
     "https://webgate.ec.europa.eu/eambrosia-api/api/v1/geographical-indications"
 )
@@ -153,9 +164,21 @@ def assert_shared_artifacts() -> None:
         sys.exit(2)
 
 
+def fetch_nuts3() -> None:
+    """Fetch the GISCO NUTS-3 GeoJSON (cached; no-op if present)."""
+    if NUTS3_PATH.exists():
+        return
+    NUTS3_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"[fetch] {NUTS3_URL}", file=sys.stderr)
+    r = requests.get(NUTS3_URL, headers={"User-Agent": UA}, timeout=120)
+    r.raise_for_status()
+    NUTS3_PATH.write_bytes(r.content)
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     assert_shared_artifacts()
+    fetch_nuts3()
     full, etag = fetch_list()
     gr_wines_all = [
         g for g in full

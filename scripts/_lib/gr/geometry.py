@@ -45,6 +45,8 @@ class GRPolygonIndex:
         self,
         figshare_gpkg: Path,
         gisco_lau_zip: Path | None = None,
+        nuts3_geojson: Path | None = None,
+        nuts2_geojson: Path | None = None,
         target_crs: str = "EPSG:4326",
     ) -> None:
         self.target_crs = target_crs
@@ -52,6 +54,10 @@ class GRPolygonIndex:
         # commune (LAU_NAME, normalised) → list of polygons.
         self._lau_by_name: dict[str, list[BaseGeometry]] = {}
         self._n_lau = 0
+        # NUTS region polygons for the PGI fallback: NUTS_ID → geometry,
+        # plus a normalised-name-token → NUTS_ID index.
+        self._nuts_by_id: dict[str, BaseGeometry] = {}
+        self._nuts_name_to_id: dict[str, str] = {}
 
         if figshare_gpkg.exists():
             gdf = gpd.read_file(figshare_gpkg)
@@ -76,6 +82,28 @@ class GRPolygonIndex:
                     continue
                 self._lau_by_name.setdefault(_normalise_commune(name), []).append(geom)
                 self._n_lau += 1
+
+        self._load_nuts(nuts3_geojson, target_crs)
+        self._load_nuts(nuts2_geojson, target_crs)
+
+    def _load_nuts(self, path: Path | None, target_crs: str) -> None:
+        """Index the EL features of a GISCO NUTS GeoJSON (any level) by
+        NUTS_ID and by normalised name-token (for the PGI fallback)."""
+        if path is None or not path.exists():
+            return
+        from .nuts import name_tokens  # late import — same package
+        gdf = gpd.read_file(path)
+        gdf = gdf[gdf["CNTR_CODE"] == "EL"]
+        if gdf.crs is None or gdf.crs.to_string() != target_crs:
+            gdf = gdf.to_crs(target_crs)
+        for _, r in gdf.iterrows():
+            nid = (r.get("NUTS_ID") or "").strip()
+            geom = r.geometry
+            if not nid or geom is None or geom.is_empty:
+                continue
+            self._nuts_by_id[nid] = geom
+            for tok in name_tokens(r.get("NUTS_NAME") or ""):
+                self._nuts_name_to_id.setdefault(tok, nid)
 
     @property
     def n_pdo_polygons(self) -> int:
@@ -116,12 +144,42 @@ class GRPolygonIndex:
             return None, stats
         return unary_union(polys), stats
 
+    def nuts_region(self, record: dict) -> tuple[BaseGeometry | None, dict]:
+        """Resolve a GR PGI to its GISCO NUTS region(s). Order: curated
+        slug override → the spec's cited NUTS name → appellation name →
+        region facet. Returns (geometry, stats)."""
+        from .nuts import greek_norm, override_ids, spec_nuts_name
+        slug = record.get("slug", "")
+        ids = override_ids(slug)
+        how = "nuts-override"
+        if not ids:
+            candidates = [
+                spec_nuts_name(record.get("geo_area_brief") or ""),
+                record.get("name") or "",
+                record.get("region") or "",
+            ]
+            for cand in candidates:
+                nid = self._nuts_name_to_id.get(greek_norm(cand).strip())
+                if nid:
+                    ids = [nid]
+                    how = "nuts-name"
+                    break
+        if not ids:
+            return None, {"matched": 0, "unmatched": 0}
+        polys = [self._nuts_by_id[i] for i in ids if i in self._nuts_by_id]
+        if not polys:
+            return None, {"matched": 0, "unmatched": len(ids), "nuts_ids": ids}
+        return unary_union(polys), {
+            "matched": len(polys), "unmatched": 0, "nuts_ids": ids, "how": how,
+        }
+
     def resolve(
         self, file_number: str, commune_names: Iterable[str] | None = None,
+        record: dict | None = None,
     ) -> tuple[BaseGeometry | None, str, dict]:
         """Resolve geometry for one GR record. Returns (geometry,
-        geom_source, stats). Bétard PDO match first; GISCO commune-union
-        fallback otherwise."""
+        geom_source, stats). Bétard PDO match first; GISCO commune-union;
+        then the NUTS-region fallback for PGIs (record-driven)."""
         fn = file_number or ""
         if fn in self._pdo_polygons:
             return (
@@ -132,7 +190,10 @@ class GRPolygonIndex:
             geom, stats = self.commune_union(commune_names)
             if geom is not None:
                 return geom, "gisco-commune-list", stats
-            return None, "stub-no-geometry", stats
+        if record is not None and self._nuts_by_id:
+            geom, stats = self.nuts_region(record)
+            if geom is not None:
+                return geom, "gisco-nuts-region", stats
         return None, "stub-no-geometry", {"matched": 0, "unmatched": 0}
 
     def union_all(self, file_numbers: Iterable[str]) -> BaseGeometry | None:

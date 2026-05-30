@@ -36,6 +36,7 @@ inheritance step.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Iterable
 
@@ -130,16 +131,94 @@ DE_EINZELLAGE_PARENT_PDO: dict[str, str] = {
 }
 
 
+def _de_norm(s: str) -> str:
+    """Normalise a German place name for GISCO-LAU matching: lowercase,
+    transliterate umlauts, drop the ", Stadt" suffix and parentheticals
+    (so "Werder (Havel), Stadt" and "Werder/ Havel" both collapse to
+    "werder havel")."""
+    s = s.lower().strip()
+    s = s.replace("ß", "ss").replace("ä", "a").replace("ö", "o").replace("ü", "u")
+    s = re.sub(r",?\s*stadt\s*$", "", s)
+    s = s.replace("/", " ").replace("(", " ").replace(")", " ")
+    return re.sub(r"\s+", " ", s).strip()
+
+
+# Brandenburg Kreis name → 5-digit AGS (the GISCO_ID `DE_<AGS8>` prefix
+# positions 3:8). Used to union every GISCO commune of a whole Landkreis
+# / kreisfreie Stadt. Keys are pre-normalised via `_de_norm`.
+_DE_KREIS_AGS: dict[str, str] = {
+    _de_norm(name): code for name, code in {
+        "Brandenburg an der Havel": "12051",
+        "Cottbus": "12052",
+        "Frankfurt (Oder)": "12053",
+        "Potsdam": "12054",
+        "Barnim": "12060",
+        "Dahme-Spreewald": "12061",
+        "Elbe-Elster": "12062",
+        "Havelland": "12063",
+        "Märkisch-Oderland": "12064",
+        "Oberhavel": "12065",
+        "Oberspreewald-Lausitz": "12066",
+        "Oder-Spree": "12067",
+        "Ostprignitz-Ruppin": "12068",
+        "Potsdam-Mittelmark": "12069",
+        "Prignitz": "12070",
+        "Spree-Neiße": "12071",
+        "Teltow-Fläming": "12072",
+        "Uckermark": "12073",
+    }.items()
+}
+
+# Curated commune-list geometry for Landwein PGIs that are NOT
+# coextensive with a single Anbaugebiet (so `region-pdo-union` can't
+# resolve them and Bétard — PDO-only — has no polygon). Transcribed
+# from the BLE Produktspezifikation §3 "Abgrenzung des Gebietes".
+# Resolved by `landwein_commune_union` against GISCO LAU 2024:
+#   - `landkreise` / `kreisfreie`: whole-Kreis union by AGS prefix
+#   - `gemeinden`: a single commune matched by name within its Kreis
+#     (`spec` records the Produktspezifikation's wording when the GISCO
+#     commune differs — e.g. the Ortsteil Meseberg sits in Gransee).
+DE_LANDWEIN_AREA: dict[str, dict] = {
+    # Brandenburger Landwein (PGI-DE-A1281): 6 Landkreise + 7 Gemeinden
+    # + 4 kreisfreie Städte. BLE Produktspezifikation Brandenburger
+    # Landwein §3.
+    "PGI-DE-A1281": {
+        "landkreise": [
+            "Dahme-Spreewald", "Elbe-Elster", "Oberspreewald-Lausitz",
+            "Oder-Spree", "Spree-Neiße", "Teltow-Fläming",
+        ],
+        "kreisfreie": [
+            "Brandenburg an der Havel", "Cottbus", "Frankfurt (Oder)", "Potsdam",
+        ],
+        "gemeinden": [
+            {"name": "Niederfinow", "kreis": "Barnim"},
+            {"name": "Müncheberg", "kreis": "Märkisch-Oderland"},
+            {"name": "Gransee", "kreis": "Oberhavel", "spec": "Meseberg (Ortsteil der Stadt Gransee)"},
+            {"name": "Vielitzsee", "kreis": "Ostprignitz-Ruppin"},
+            {"name": "Werder (Havel)", "kreis": "Potsdam-Mittelmark"},
+            {"name": "Templin", "kreis": "Uckermark"},
+            {"name": "Prenzlau", "kreis": "Uckermark"},
+        ],
+        "source": "BLE Produktspezifikation Brandenburger Landwein, Abschnitt 3 (Abgrenzung des Gebietes)",
+    },
+}
+
+
 class DEPolygonIndex:
     """In-memory polygon index for DE records, backed by Bétard 2022."""
 
     def __init__(
         self,
         figshare_gpkg: Path,
+        gisco_lau_zip: Path | None = None,
         target_crs: str = "EPSG:4326",
     ) -> None:
         self.target_crs = target_crs
         self._pdo_polygons: dict[str, BaseGeometry] = {}
+        # GISCO communes for the Landwein commune-union fallback, indexed
+        # by 5-digit AGS Kreis prefix and by (kreis, normalised name).
+        self._communes_by_kreis: dict[str, list[BaseGeometry]] = {}
+        self._commune_by_kreis_name: dict[tuple[str, str], BaseGeometry] = {}
 
         if figshare_gpkg.exists():
             gdf = gpd.read_file(figshare_gpkg)
@@ -150,9 +229,81 @@ class DEPolygonIndex:
                 if row.geometry is not None and not row.geometry.is_empty:
                     self._pdo_polygons[row["PDOid"]] = row.geometry
 
+        if gisco_lau_zip is not None and gisco_lau_zip.exists() and DE_LANDWEIN_AREA:
+            self._load_communes(gisco_lau_zip)
+
+    def _load_communes(self, gisco_lau_zip: Path) -> None:
+        """Load GISCO LAU 2024 communes for the Länder referenced by
+        DE_LANDWEIN_AREA (only the 2-digit Land prefixes actually needed,
+        so the index stays small — Brandenburg alone is 413 communes)."""
+        land2 = {code[:2] for area in DE_LANDWEIN_AREA.values()
+                 for code in (_DE_KREIS_AGS.get(_de_norm(n))
+                              for n in (*area.get("landkreise", []),
+                                        *area.get("kreisfreie", []),
+                                        *(g["kreis"] for g in area.get("gemeinden", []))))
+                 if code}
+        if not land2:
+            return
+        gdf = gpd.read_file(f"zip://{gisco_lau_zip}")
+        gdf = gdf[gdf["CNTR_CODE"] == "DE"]
+        gid = gdf["GISCO_ID"].astype(str)
+        gdf = gdf[gid.str[3:5].isin(land2)]
+        if gdf.crs is None or gdf.crs.to_string() != self.target_crs:
+            gdf = gdf.to_crs(self.target_crs)
+        for _, row in gdf.iterrows():
+            geom = row.geometry
+            if geom is None or geom.is_empty:
+                continue
+            kreis = str(row["GISCO_ID"])[3:8]
+            self._communes_by_kreis.setdefault(kreis, []).append(geom)
+            self._commune_by_kreis_name[(kreis, _de_norm(str(row["LAU_NAME"])))] = geom
+
     @property
     def n_pdo_polygons(self) -> int:
         return len(self._pdo_polygons)
+
+    @property
+    def n_communes(self) -> int:
+        return len(self._commune_by_kreis_name)
+
+    def landwein_commune_union(
+        self, file_number: str
+    ) -> tuple[BaseGeometry | None, dict]:
+        """Union the GISCO communes for a curated DE_LANDWEIN_AREA wine.
+        Returns (geometry, stats)."""
+        area = DE_LANDWEIN_AREA.get(file_number or "")
+        if not area:
+            return None, {"matched": 0, "unmatched": 0}
+        polys: list[BaseGeometry] = []
+        n_kreis = 0
+        unmatched: list[str] = []
+        for name in (*area.get("landkreise", []), *area.get("kreisfreie", [])):
+            code = _DE_KREIS_AGS.get(_de_norm(name))
+            members = self._communes_by_kreis.get(code or "", [])
+            if members:
+                polys.extend(members)
+                n_kreis += 1
+            else:
+                unmatched.append(name)
+        n_gem = 0
+        for g in area.get("gemeinden", []):
+            code = _DE_KREIS_AGS.get(_de_norm(g["kreis"]))
+            geom = self._commune_by_kreis_name.get((code or "", _de_norm(g["name"])))
+            if geom is not None:
+                polys.append(geom)
+                n_gem += 1
+            else:
+                unmatched.append(g.get("spec") or g["name"])
+        stats = {
+            "matched": len(polys) if polys else 0,
+            "unmatched": len(unmatched),
+            "kreise": n_kreis,
+            "gemeinden": n_gem,
+            "unmatched_names": unmatched,
+        }
+        if not polys:
+            return None, stats
+        return unary_union(polys), stats
 
     def figshare_polygon(self, file_number: str) -> BaseGeometry | None:
         return self._pdo_polygons.get(file_number)
@@ -209,7 +360,14 @@ class DEPolygonIndex:
         geom = self._pdo_polygons.get(fn)
         if geom is not None:
             return geom, "figshare-pdo", {"matched": -1, "unmatched": 0}
-        # 4. Stub.
+        # 4. Curated commune-list union (multi-Bundesland Landwein PGIs
+        #    not coextensive with one Anbaugebiet — Brandenburger, …).
+        if fn in DE_LANDWEIN_AREA:
+            geom, stats = self.landwein_commune_union(fn)
+            if geom is not None:
+                return geom, "gisco-commune-union", stats
+            return None, "stub-no-geometry", stats
+        # 5. Stub.
         return None, "stub-no-geometry", {"matched": 0, "unmatched": 0}
 
     def union_all(self, file_numbers: Iterable[str]) -> BaseGeometry | None:

@@ -432,7 +432,7 @@ def match_variety(
         scorer=fuzz.token_sort_ratio,
         score_cutoff=_FUZZY_CUTOFF,
     )
-    if best is not None:
+    if best is not None and _fuzzy_passes_sanity(candidate_key, best[0], best[1]):
         match_name, score, _idx = best
         canon = vocab.exact_index[match_name]
         return MatchResult(
@@ -444,6 +444,33 @@ def match_variety(
 
     _log_unknown(token, cleaned, candidate_name, candidate_key, source_pliego)
     return None
+
+
+def _fuzzy_passes_sanity(candidate_key: str, match_name: str, score: float) -> bool:
+    """Reject fuzzy matches likely to be false positives.
+
+    `token_sort_ratio` at the 85-94 range frequently scores a name + 1-2
+    leading-or-trailing letters against an unrelated lexicon entry —
+    `pergolin` (Slovenian/Friulian native) hit `spergolina` (a sauvignon
+    synonym) at 88.9%. Both span the cutoff because the longer name
+    contains the candidate as a substring after a single-char prefix.
+
+    Rule: for fuzzy matches below 95, the first non-space character of
+    the candidate and the matched name must agree. Above 95, allow
+    first-char mismatches — that's the score range where dropping a
+    leading vowel (`aleatico` ↔ `leatico`) is a real spelling drift.
+
+    This catches the prefix-shift class while preserving every typo
+    fold I've seen in the corpus (the FR cahier typos all keep the
+    first letter — `chardonay` ↔ `chardonnay`, `cabarnet` ↔
+    `cabernet`)."""
+    if score >= 95:
+        return True
+    cand = candidate_key.lstrip()
+    matched = match_name.lstrip()
+    if not cand or not matched:
+        return False
+    return cand[0] == matched[0]
 
 
 def _log_unknown(

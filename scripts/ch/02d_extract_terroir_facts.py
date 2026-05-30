@@ -48,7 +48,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "ch" / "dokumente-extracted"
 WIKI_AOCS_ROOT = ROOT / "raw" / "wikipedia" / "aocs"
@@ -749,6 +749,12 @@ def main() -> int:
     sub_rc = _dispatch_emit_or_import(args)
     if sub_rc is not None:
         return sub_rc
+
+    terroir_verbatim.emit_for_country(
+        country="ch", extracted_dir=EXTRACTED, cache_dir=CACHE_DIR,
+        default_source_lang="fr", cahier_source_kind="cantonal-reglement",
+        only=args.only, log_prefix="[02d/ch]",
+    )
 
     if args.batch:
         return _run_batch(args)

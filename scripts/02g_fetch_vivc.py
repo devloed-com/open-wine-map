@@ -67,7 +67,9 @@ IT_MASAF_EXTRACTED = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
 AT_EXTRACTED = ROOT / "raw" / "at" / "dokumente-extracted"
 DE_EXTRACTED = ROOT / "raw" / "de" / "dokumente-extracted"
 SI_EXTRACTED = ROOT / "raw" / "si" / "dokumenti-extracted"
+SI_SPEC_EXTRACTED = ROOT / "raw" / "si" / "specifikacije-extracted"
 HR_EXTRACTED = ROOT / "raw" / "hr" / "dokumenti-extracted"
+HR_SPEC_EXTRACTED = ROOT / "raw" / "hr" / "specifikacije-extracted"
 RO_EXTRACTED = ROOT / "raw" / "ro" / "dokumente-extracted"
 HU_EXTRACTED = ROOT / "raw" / "hu" / "dokumentumok-extracted"
 BG_EXTRACTED = ROOT / "raw" / "bg" / "dokumenti-extracted"
@@ -92,7 +94,8 @@ UA = (
 def _record_files() -> list[Path]:
     out: list[Path] = []
     for d in (EXTRACTED, ES_EXTRACTED, PT_EXTRACTED, IT_EXTRACTED, IT_MASAF_EXTRACTED,
-              AT_EXTRACTED, DE_EXTRACTED, SI_EXTRACTED, HR_EXTRACTED, RO_EXTRACTED,
+              AT_EXTRACTED, DE_EXTRACTED, SI_EXTRACTED, SI_SPEC_EXTRACTED,
+              HR_EXTRACTED, HR_SPEC_EXTRACTED, RO_EXTRACTED,
               HU_EXTRACTED, BG_EXTRACTED, GR_EXTRACTED, SK_EXTRACTED, CZ_EXTRACTED):
         if not d.exists():
             continue

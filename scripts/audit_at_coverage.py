@@ -17,6 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 EAMBROSIA = ROOT / "raw" / "at" / "eambrosia" / "index.json"
+EAMBROSIA_MANIFEST = ROOT / "raw" / "at" / "eambrosia" / "manifest.json"
 EXTRACTED = ROOT / "raw" / "at" / "dokumente-extracted"
 OJ_MANIFEST = ROOT / "raw" / "at" / "oj-pages" / "manifest.json"
 OVERRIDES = ROOT / "raw" / "at" / "oj-pages" / "manual_overrides.json"
@@ -147,6 +148,19 @@ def main() -> int:
     print(f"  Total grape-slugs:  {grape_total}")
     print()
 
+    if EAMBROSIA_MANIFEST.exists():
+        try:
+            mani = json.loads(EAMBROSIA_MANIFEST.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            mani = {}
+        cancelled = mani.get("cancelled_pdos") or {}
+        if cancelled:
+            print(f"## Cancelled PDOs (filtered at stage 00 — {len(cancelled)})")
+            for fn, meta in sorted(cancelled.items()):
+                print(f"  {fn}  {meta.get('name','')}")
+                print(f"    {meta.get('regulation','')} — OJ {meta.get('oj_l','')}")
+            print()
+
     curator_targets: list[tuple[str, str, str]] = []
     for w in wines:
         slug = w["slug"]
@@ -165,8 +179,24 @@ def main() -> int:
     if not curator_targets:
         print("  (empty — every Austrian wine extracted)")
     print()
-    return 0
+    # Verbatim-mode terroir-facts records — short-text liens where 02d
+    # emits the source text directly (see scripts/_lib/terroir_verbatim.py).
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from _lib import terroir_verbatim as _verbatim
+        _vb_count, _vb_records = _verbatim.count_verbatim_records(
+            Path(__file__).resolve().parent.parent / "raw" / "terroir-facts", "at",
+        )
+        if _vb_count:
+            print(f"## Verbatim terroir-facts records ({_vb_count} flagged for validation)")
+            for _r in _vb_records:
+                print(f"  {_r['slug']:42}  {_r['chars']:>4} chars  flag={_r['flag']}")
+            print()
+    except Exception as _exc:  # noqa: BLE001
+        print(f"[warn] verbatim-records check failed: {_exc}")
 
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())

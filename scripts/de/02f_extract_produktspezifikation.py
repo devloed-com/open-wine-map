@@ -1,11 +1,19 @@
-"""Extract the BLE Produktspezifikation per-Anbaugebiet variety lists +
-derive the principal / accessory role split.
+"""Extract the BLE Produktspezifikation variety lists + terroir text.
 
 Pipeline stage 02f (de). DE analog of `scripts/it/02f_extract_masaf.py`
 and `scripts/es/02f_extract_national_pliegos.py` — pulls the regulator's
 canonical variety list from the national specification PDF, and uses the
 production-rules section's per-variety thresholds to derive a principal
 vs accessory split that the EU Einziges Dokument doesn't carry.
+
+Two source categories, dispatched by the manifest's `category` field:
+  - `anbaugebiet` (13 quality-wine PDOs) → `produktspezifikation.extract`,
+    the four rigid section-numbered templates + §3.2 principal split.
+  - `landwein` (15 Landwein g.g.A. that ship as stubs with no fetchable
+    EU Einziges Dokument) → `landwein_spezifikation.extract`, a
+    heterogeneous-layout lexicon scan. Landwein has no role split, so its
+    sidecar lands as `section-8-flat-no-split` (all-principal) and carries
+    the §-Zusammenhang terroir text the stub record otherwise lacks.
 
 Reads:
   raw/de/produktspezifikationen/<slug>.pdf  (downloaded by stage 00 in
@@ -39,7 +47,6 @@ Re-runnable per slug or in sweep mode:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -49,7 +56,8 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-from _lib.de.produktspezifikation import extract as parse_pdf  # noqa: E402
+from _lib.de.produktspezifikation import extract as parse_anbaugebiet_pdf  # noqa: E402
+from _lib.de.landwein_spezifikation import extract as parse_landwein_pdf  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue, match_variety, set_pliego_context,
 )
@@ -175,6 +183,14 @@ def _process_slug(slug: str, pdf_meta: dict) -> dict | None:
     if not pdf_path.exists():
         print(f"  {slug}: no PDF at {pdf_path}", file=sys.stderr)
         return None
+    # Landwein g.g.A. specs use a heterogeneous layout (variety roster at
+    # §6/§7/§8, no role split) → the dedicated lexicon-scan parser; the
+    # 13 Anbaugebiete use the four rigid section-numbered templates.
+    parse_pdf = (
+        parse_landwein_pdf
+        if pdf_meta.get("category") == "landwein"
+        else parse_anbaugebiet_pdf
+    )
     try:
         parsed = parse_pdf(pdf_path)
     except Exception as e:  # noqa: BLE001

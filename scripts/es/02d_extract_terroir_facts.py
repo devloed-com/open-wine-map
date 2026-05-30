@@ -40,7 +40,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "es" / "pliegos-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "es"
@@ -442,6 +442,12 @@ def main() -> int:
         print(f"error: {EXTRACTED} missing — run scripts/es/02_extract_pliegos.py first",
               file=sys.stderr)
         return 1
+
+    terroir_verbatim.emit_for_country(
+        country="es", extracted_dir=EXTRACTED, cache_dir=CACHE_DIR,
+        default_source_lang="es", cahier_source_kind="eu-oj",
+        only=args.only, log_prefix="[02d/es]",
+    )
 
     if args.batch:
         return _run_batch(args)

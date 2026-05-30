@@ -107,6 +107,36 @@ BLE_PRODUKTSPEZIFIKATIONEN = (
     ("sachsen",             "Sachsen",             "Sachsen"),
     ("wurttemberg",         "Wuerttemberg",        "Württemberg"),
 )
+# BLE Produktspezifikation per Landwein g.g.A. — same Amtliches-Werk §5
+# UrhG source, parallel directory. These 15 Landwein PGIs have no
+# fetchable EU Einziges Dokument (they ship as stubs), so the BLE
+# national Produktspezifikation is the canonical source for their
+# authorised-variety roster + Zusammenhang terroir text. The URL works
+# without the cache-buster `v=` param, so we omit it (robust to BLE
+# version bumps).
+BLE_LANDWEINE_BASE = (
+    "https://www.ble.de/SharedDocs/Downloads/DE/Ernaehrung-Lebensmittel/"
+    "EU-Qualitaetskennzeichen/Wein/Antraege/Landweingebiete/"
+    "01_Produktspezifikationen_Landweine"
+)
+# (slug, BLE filename fragment, display name).
+BLE_LANDWEINE = (
+    ("ahrtaler-landwein",            "Ahrtaler",                     "Ahrtaler Landwein"),
+    ("badischer-landwein",           "Badischer",                    "Badischer Landwein"),
+    ("bayerischer-bodensee-landwein","Bayerischer_Bodensee-Landwein","Bayerischer Bodensee-Landwein"),
+    ("brandenburger-landwein",       "Brandenburger",                "Brandenburger Landwein"),
+    ("landwein-main",                "Main",                         "Landwein Main"),
+    ("landwein-neckar",              "Neckar",                       "Landwein Neckar"),
+    ("landwein-oberrhein",           "Oberrhein",                    "Landwein Oberrhein"),
+    ("landwein-rhein",               "Rhein",                        "Landwein Rhein"),
+    ("landwein-rhein-neckar",        "Rhein-Neckar",                 "Landwein Rhein-Neckar"),
+    ("mitteldeutscher-landwein",     "Mitteldeutscher",              "Mitteldeutscher Landwein"),
+    ("regensburger-landwein",        "Regensburger",                 "Regensburger Landwein"),
+    ("rheingauer-landwein",          "Rheingauer",                   "Rheingauer Landwein"),
+    ("schwabischer-landwein",        "Schwaebischer_Landwein",       "Schwäbischer Landwein"),
+    ("starkenburger-landwein",       "Starkenburger",                "Starkenburger Landwein"),
+    ("taubertaler-landwein",         "Taubertaeler",                 "Taubertäler Landwein"),
+)
 UA = (
     "open-wine-map/0.0.1 (https://github.com/devloed-com/open-wine-map; "
     "mailto:winemap@devloed.com) python-requests"
@@ -151,40 +181,53 @@ def project(rec: dict) -> dict:
     }
 
 
-def fetch_ble_produktspezifikationen() -> dict:
-    """Download the 13 BLE Produktspezifikation PDFs (one per Anbaugebiet).
-    Each is *Amtliches Werk §5 UrhG* — free reuse with attribution.
-    Re-runs are cache hits: if the PDF already exists, the sha256 is
-    re-computed but the file is not re-fetched."""
+def _fetch_ble_pdf(slug: str, url: str, display: str, category: str) -> dict:
+    """Fetch one BLE PDF (cache hit if already on disk) → manifest entry."""
     import hashlib  # local — keeps the module's top imports lean
 
+    dest = BLE_PRODUKTSPEZIFIKATIONEN_DIR / f"{slug}.pdf"
+    cached = dest.exists()
+    if cached:
+        body = dest.read_bytes()
+    else:
+        print(f"[ble] fetch {slug} ({display})", file=sys.stderr)
+        r = requests.get(url, headers={"User-Agent": UA}, timeout=120)
+        r.raise_for_status()
+        body = r.content
+        if body[:4] != b"%PDF":
+            raise RuntimeError(
+                f"BLE returned non-PDF for {slug} ({len(body)} bytes) — "
+                "the URL pattern may have rotated."
+            )
+        dest.write_bytes(body)
+    return {
+        "display": display,
+        "url": url,
+        "bytes": len(body),
+        "sha256": hashlib.sha256(body).hexdigest(),
+        "cached": cached,
+        "category": category,
+    }
+
+
+def fetch_ble_produktspezifikationen() -> dict:
+    """Download the BLE Produktspezifikation PDFs — 13 per-Anbaugebiet
+    quality-wine specs + 15 per-Landwein g.g.A. specs. Each is *Amtliches
+    Werk §5 UrhG* — free reuse with attribution. Re-runs are cache hits:
+    if the PDF already exists, the sha256 is re-computed but the file is
+    not re-fetched."""
     BLE_PRODUKTSPEZIFIKATIONEN_DIR.mkdir(parents=True, exist_ok=True)
     manifest: dict[str, dict] = {}
     for slug, fragment, display in BLE_PRODUKTSPEZIFIKATIONEN:
         v_param = "v=1" if slug == "hessische-bergstrae" else "v=3"
         url = f"{BLE_BASE}/Produktspezifikation_{fragment}.pdf?__blob=publicationFile&{v_param}"
-        dest = BLE_PRODUKTSPEZIFIKATIONEN_DIR / f"{slug}.pdf"
-        cached = dest.exists()
-        if cached:
-            body = dest.read_bytes()
-        else:
-            print(f"[ble] fetch {slug} ({display})", file=sys.stderr)
-            r = requests.get(url, headers={"User-Agent": UA}, timeout=120)
-            r.raise_for_status()
-            body = r.content
-            if body[:4] != b"%PDF":
-                raise RuntimeError(
-                    f"BLE returned non-PDF for {slug} ({len(body)} bytes) — "
-                    "the URL pattern may have rotated."
-                )
-            dest.write_bytes(body)
-        manifest[slug] = {
-            "display": display,
-            "url": url,
-            "bytes": len(body),
-            "sha256": hashlib.sha256(body).hexdigest(),
-            "cached": cached,
-        }
+        manifest[slug] = _fetch_ble_pdf(slug, url, display, "anbaugebiet")
+
+    # Landwein g.g.A. specs — parallel BLE directory, no `v=` param.
+    for slug, fragment, display in BLE_LANDWEINE:
+        url = f"{BLE_LANDWEINE_BASE}/Landwein_{fragment}.pdf?__blob=publicationFile"
+        manifest[slug] = _fetch_ble_pdf(slug, url, display, "landwein")
+
     (BLE_PRODUKTSPEZIFIKATIONEN_DIR / "manifest.json").write_text(json.dumps({
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "license": BLE_PRODUKTSPEZIFIKATIONEN_LICENSE,

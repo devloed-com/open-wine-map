@@ -51,7 +51,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import cache, providers, roundtrip  # noqa: E402
+from _lib import batch, cache, providers, roundtrip  # noqa: E402
 from _lib.grape_corpus import collect_grape_slugs, per_slug_dominant_lang  # noqa: E402
 
 NATIVE_DIR = ROOT / "raw" / "wikipedia" / "grapes"
@@ -64,7 +64,7 @@ VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
 # for translation (some grapes only have authoritative pages on
 # the country's Wikipedia).
 LOCALES = ("fr", "en", "es", "nl")
-SOURCE_LOCALES = ("fr", "en", "es", "nl", "pt", "it")
+SOURCE_LOCALES = ("fr", "en", "es", "nl", "pt", "it", "hr")
 
 LOCALE_NAME = {
     "en": "English",
@@ -73,6 +73,7 @@ LOCALE_NAME = {
     "nl": "Dutch",
     "pt": "Portuguese",
     "it": "Italian",
+    "hr": "Croatian",
 }
 
 
@@ -438,6 +439,47 @@ def _run_translation_loop(provider, model_id: str, jobs: list[dict], workers: in
     return done, skipped
 
 
+def _count_done_by_lang(slugs: list[str], target_locales: tuple[str, ...]) -> dict[str, int]:
+    done_by_lang = dict.fromkeys(target_locales, 0)
+    for slug in slugs:
+        for lang in target_locales:
+            entry = _existing_cache(lang, slug)
+            if entry and entry.get("extract"):
+                done_by_lang[lang] += 1
+    return done_by_lang
+
+
+def _run_batch(args, slugs: list[str], target_locales: tuple[str, ...]) -> int:
+    """Submit the whole eligible job set to the provider Batch API as one
+    job (~50%% cheaper than synchronous). Mirrors 02c / 02d / 02e: the
+    two-pass collect/replay loop is `_run_translation_loop` itself,
+    single-threaded — pass 1 records prompts (empty returns parse to
+    skips), pass 2 replays the answers and writes caches + siblings. The
+    job set is the same stale/missing enumeration as the sync path, so
+    --batch is incremental and resumes an interrupted batch on re-run."""
+    if not batch.supports(args.provider):
+        print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
+        return 1
+    model_id = args.model or batch.default_model(args.provider)
+    jobs = _enumerate_jobs(slugs, target_locales, skip_cached=not args.refresh)
+    if args.limit and args.limit > 0:
+        jobs = jobs[: args.limit]
+    if not jobs:
+        print("[02b-grape-tx] batch: nothing to translate (cache satisfies all needs).",
+              file=sys.stderr)
+        return 0
+    print(f"[02b-grape-tx] batch: {len(jobs)} (slug, lang) pairs (provider={args.provider}, "
+          f"model={model_id}, locales={','.join(target_locales)})", file=sys.stderr)
+    batch.run_two_pass(
+        provider=args.provider, model=model_id,
+        sidecar=ROOT / "raw" / ".batch" / "02b-grapes.json",
+        run_loop=lambda prov: _run_translation_loop(prov, model_id, jobs, 1),
+    )
+    _write_manifest(f"{args.provider}-api", model_id,
+                    _count_done_by_lang(slugs, target_locales), [])
+    return 0
+
+
 # ----------------------------- emit / import (manual round-trip) ----
 
 
@@ -619,6 +661,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="concurrent (slug, lang) pairs to translate (default 1)")
     ap.add_argument("--refresh", action="store_true",
         help="ignore cached translations and re-translate everything (still honours SHA-match no-op).")
+    ap.add_argument(
+        "--batch", action="store_true",
+        help="submit all work to the provider Batch API (--provider anthropic|"
+             "mistral; ~50%% cheaper); resumes an in-flight batch on re-run",
+    )
     roundtrip.add_arguments(ap)
     return ap
 
@@ -667,6 +714,9 @@ def main() -> int:
         )
     if args.provider == "manual":
         return _handle_manual(slugs, target_locales, args.refresh)
+
+    if args.batch:
+        return _run_batch(args, slugs, target_locales)
 
     provider, model_id = providers.make_provider(
         args.provider, model=args.model, ollama_url=args.ollama_url,

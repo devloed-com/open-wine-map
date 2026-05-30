@@ -18,6 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 EAMBROSIA = ROOT / "raw" / "hr" / "eambrosia" / "index.json"
 EXTRACTED = ROOT / "raw" / "hr" / "dokumenti-extracted"
+SPECIFIKACIJE = ROOT / "raw" / "hr" / "specifikacije-extracted"
 OJ_MANIFEST = ROOT / "raw" / "hr" / "oj-pages" / "manifest.json"
 OVERRIDES = ROOT / "raw" / "hr" / "oj-pages" / "manual_overrides.json"
 FIGSHARE = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
@@ -142,9 +143,45 @@ def main() -> int:
     for b, n in sorted(by_region.items(), key=lambda x: -x[1]):
         print(f"  {n:>4}  {b}")
     print()
-    print("## Grape extraction")
+    print("## Grape extraction (EU-OJ documents only)")
     print(f"  Wines with grapes:  {n_with_grapes} of {len(extracted)}")
     print(f"  Total grape-slugs:  {grape_total}")
+    print()
+
+    # Specifikacija augmentation (stage 02f): canonical MPS regulator
+    # source for the 16 grandfathered stubs. The on-disk
+    # `dokumenti-extracted/*.json` reflects the EU-OJ extraction only; the
+    # augmentation is applied in-memory by stage 04. Count sidecars so this
+    # audit reflects effective coverage.
+    n_real_extracted = sum(by_kind_extracted.values())
+    n_spec = 0
+    spec_by_template: Counter[str] = Counter()
+    spec_n_principal: list[int] = []
+    n_spec_terroir = 0
+    if SPECIFIKACIJE.exists() and (SPECIFIKACIJE / "_index.json").exists():
+        try:
+            idx = json.loads((SPECIFIKACIJE / "_index.json").read_text(encoding="utf-8"))
+            n_spec = len(idx)
+            for r in idx.values():
+                spec_by_template[r.get("parser_template", "?")] += 1
+                spec_n_principal.append(int(r.get("n_principal", 0) or 0))
+                if r.get("has_terroir"):
+                    n_spec_terroir += 1
+        except (ValueError, OSError):
+            pass
+    print("## Specifikacija augmentation (stage 02f — MPS national spec)")
+    print(f"  Sidecars present:   {n_spec} of {len(wines) - n_real_extracted} stub wines")
+    for tmpl, n in sorted(spec_by_template.items(), key=lambda x: -x[1]):
+        print(f"    {n:>4}  parser_template={tmpl}")
+    if spec_n_principal:
+        print(f"  Variety counts: principal sum={sum(spec_n_principal)}, "
+              f"per-wine min={min(spec_n_principal)} max={max(spec_n_principal)}")
+    print(f"  With terroir text:  {n_spec_terroir} of {n_spec}")
+    print()
+    print("## Effective extraction (incl. specifikacija augmentation)")
+    print(f"  EU-OJ extracted:        {n_real_extracted}")
+    print(f"  Specifikacija augment:  {n_spec}")
+    print(f"  Effective total:        {n_real_extracted + n_spec} of {len(wines)}")
     print()
 
     curator_targets: list[tuple[str, str, str]] = []
@@ -165,8 +202,24 @@ def main() -> int:
     if not curator_targets:
         print("  (empty — every Croatian wine extracted)")
     print()
-    return 0
+    # Verbatim-mode terroir-facts records — short-text liens where 02d
+    # emits the source text directly (see scripts/_lib/terroir_verbatim.py).
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from _lib import terroir_verbatim as _verbatim
+        _vb_count, _vb_records = _verbatim.count_verbatim_records(
+            Path(__file__).resolve().parent.parent / "raw" / "terroir-facts", "hr",
+        )
+        if _vb_count:
+            print(f"## Verbatim terroir-facts records ({_vb_count} flagged for validation)")
+            for _r in _vb_records:
+                print(f"  {_r['slug']:42}  {_r['chars']:>4} chars  flag={_r['flag']}")
+            print()
+    except Exception as _exc:  # noqa: BLE001
+        print(f"[warn] verbatim-records check failed: {_exc}")
 
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -507,6 +507,16 @@ GRAPE_ALIAS = {
     "rumeni-plavec": "rumeni-plavec",            # Rumeni plavec
     "sentlovrenka": "sankt-laurent",            # Slovenian name for Sankt Laurent
     "chardonay": "chardonnay",                  # SI Enotni-dokument typo (Cviček)
+    # `Ranina` is a VIVC-ambiguous synonym name claimed by BOTH Bouvier
+    # (VIVC #1625, the Slovenian/Austrian aromatic white) and Portugieser
+    # Blau (VIVC #9620, the central-European blue cultivar). Neither
+    # VIVC record carries a country-disambiguation flag, so the
+    # vocabulary-builder's iteration order arbitrarily binds bare
+    # "ranina" to portugais-bleu — which then dedup-collides with the
+    # SI Cviček variety list ("Portugalka" → portugais-bleu, then
+    # "Ranina - Radgonska ranina" tries head `ranina` first and gets
+    # dropped). Force the Slovenian reading: ranina → bouvier.
+    "ranina": "bouvier",
     # ----- HR EUR-Lex Jedinstveni-dokument varieties. Croatian wine
     # grapes the EU single document lists that the FR/ES/PT/IT/AT/SI
     # seed never carried. Surfaced by scripts/hr/02_extract_pliegos.py
@@ -882,6 +892,11 @@ GRAPE_ALIAS = {
     "lagorthi": "lagorthi",                       # Λαγόρθι — Peloponnese white
     "monemvasia": "monemvasia",                   # Μονεμβασιά — Peloponnese white
     "monemvasia-malvasia": "monemvasia",
+    "kakotrygis": "kakotrygis",                   # Κακοτρύγης — Corfu white (Halikouna/Kerkira)
+    "kakotruges": "kakotrygis",                   # unidecode (Greek-script)
+    "petrokoritho": "petrokoritho",               # Πετροκόριθο (Πετροκόριθο Λευκό) — Corfu white
+    "petrokoritho lefko": "petrokoritho",
+    "priknadi": "priknadi",                       # Πρικνάδι — Siatista/W. Macedonia white
     # Reds:
     "xinomavro": "xinomavro",                     # Ξινόμαυρο — Naoussa red
     "ksinomauro": "xinomavro",                    # unidecode
@@ -913,6 +928,12 @@ GRAPE_ALIAS = {
     "bradiano": "vradiano",
     "stavroto": "stavroto",                       # Σταυρωτό — Rapsani red
     "krasato": "krasato",                         # Κρασάτο — Rapsani red
+    "mavro-mesenikola": "mavro-mesenikola",       # Μαύρο Μεσενικόλα — Mesenikola red
+    "mauro mesenikola": "mavro-mesenikola",       # unidecode (Greek-script)
+    "moschomavro": "moschomavro",                 # Μοσχόμαυρο — Siatista red
+    "moskhomauro": "moschomavro",                 # unidecode (Greek-script)
+    "chondromavro": "chondromavro",               # Χονδρόμαυρο — Siatista red
+    "khondromauro": "chondromavro",               # unidecode (Greek-script)
     # Greek synonyms for international varieties:
     "fileri": "moschofilero",                     # Φιλέρι — synonym
     "asuda": "asproudes",                         # absorbed (white-skinned generic, dropped in BLOCKLIST below)
@@ -944,6 +965,7 @@ GRAPE_ALIAS = {
     "muller-thurgau": "muller-thurgau",           # VIVC #8141 MÜLLER-THURGAU (Riesling × Madeleine Royale)
     "mueller-thurgau": "muller-thurgau",
     "rivaner": "muller-thurgau",                  # luxembourgish / DE synonym
+    "roter-muller-thurgau": "muller-thurgau",     # colour mutation, same cultivar (VIVC #8141)
     "blauer-limberger": "lemberger",              # VIVC #1459 BLAUFRÄNKISCH — German Lemberger / Limberger
     "limberger": "lemberger",
     "blauer-trollinger": "schiava-grossa",         # VIVC #11237 SCHIAVA GROSSA = Vernatsch = Trollinger
@@ -958,12 +980,14 @@ GRAPE_ALIAS = {
     "helfensteiner": "helfensteiner",              # VIVC #5364 HELFENSTEINER
     "heroldrebe": "heroldrebe",                   # VIVC #5400 HEROLDREBE
     "regent": "regent",                           # VIVC #9788 REGENT (Diana × Chambourcin), Geilweilerhof
+    "reberger": "reberger",                       # VIVC #19999 REBERGER (Regent × Lemberger), Geilweilerhof — red
     "rondo": "rondo",                             # VIVC #10153 RONDO (Saperavi Severnyi × St Laurent)
     "domina": "domina",                           # VIVC #3754 DOMINA (Portugieser × Spätburgunder)
     "deckrot": "deckrot",                          # VIVC #3493 DECKROT (Pinot gris × Teinturier)
     "dunkelfelder": "dunkelfelder",                # VIVC #3815 DUNKELFELDER (teinturier red)
     "dakapo": "dakapo",                            # VIVC #3267 DAKAPO (Portugieser × Deckrot)
     "tauberschwarz": "tauberschwarz",              # VIVC #11842 TAUBERSCHWARZ — native red
+    "blauer-affenthaler": "blauer-affenthaler",    # VIVC #79 AFFENTHALER — old Württemberg red; not Trollinger
     "acolon": "acolon",                            # VIVC #82 ACOLON (Lemberger × Dornfelder), Weinsberg
     "cabernet-mitos": "cabernet-mitos",            # VIVC #2078 CABERNET MITOS (Lemberger × Teinturier)
     "cabernet-dorsa": "cabernet-dorsa",            # VIVC #2030 CABERNET DORSA (Dornfelder × Cab Sauv)
@@ -1013,6 +1037,7 @@ GRAPE_ALIAS = {
     "muscaris": "muscaris",                        # VIVC #21068 MUSCARIS — Freiburg aromatic
     "sauvignac": "sauvignac",                      # VIVC interspecific white
     "saphira": "saphira",                          # VIVC #15966 SAPHIRA — Geilweilerhof
+    "serena": "serena",                            # VIVC #4739 SERENA — interspecific white (02g confirms)
     "albalonga": "albalonga",                      # VIVC #109 ALBALONGA — Geilweilerhof
     "kanzler": "kanzler",                          # VIVC #5910 KANZLER — Alzey crossing
     "juwel": "juwel",                              # VIVC #5710 JUWEL — Geilweilerhof
@@ -1065,6 +1090,7 @@ GRAPE_ALIAS = {
     "weisser-raeuschling": "raeuschling",
     "rauschling": "raeuschling",
     "raeuschling": "raeuschling",
+    "roter-rauschling": "raeuschling",              # colour mutation of Räuschling, same cultivar
     "kleinberger": "kleinberger",                  # VIVC #6113 KLEINBERGER — Mosel heritage
     "gelber-kleinberger": "kleinberger",
     "donauriesling": "donauriesling",              # AT/DE interspecific white
@@ -1217,6 +1243,60 @@ GRAPE_ALIAS = {
     "ranuse-muskatova": "ranuse-muskatova",        # CZ aromatic
     "sedy-portugal": "sedy-portugal",              # CZ "grey Portugal"
     "tramin-zluty": "tramin-zluty",                # CZ "yellow Traminer" — kept distinct from gewurztraminer
+
+    # Croatia autochthonous varieties (MPS specifikacija proizvoda, 2026-05-29).
+    # Self-maps register a distinct native variety; folds collapse a
+    # documented DNA synonym. VIVC numbers verified on vivc.de where noted.
+    "plavina": "plavina",                # VIVC #9557 (PLAVINA CRNA) — Dalmatia; canonical for Brajda crna / Plavčina
+    "brajda-crna": "plavina",            # VIVC #9557 synonym of Plavina
+    "plavcina": "plavina",               # VIVC #9557 synonym of Plavina
+    "crljenak-viski": "tribidrag",       # VIVC #17636 (= Crljenak kaštelanski = Zinfandel = Primitivo)
+    "kavcina-crna": "zametovka",         # documented synonym of Žametovka (Modra kavčina)
+    "diseca-ranina-bijela": "diseca-belina-bijela",  # same Zagorje variety as Dišeća belina
+    "belina-hizakovo": "belina-hizakovo",            # Zagorje Belina type
+    "blatina": "blatina",                # VIVC #1454
+    "brajdica-bijela": "brajdica-bijela",
+    "bratkovina": "bratkovina",          # Korčula; a Pošip parent
+    "cetinka": "cetinka",                # VIVC #2407 (CETINJKA)
+    "debejan-crni": "debejan-crni",
+    "diseca-belina-bijela": "diseca-belina-bijela",
+    "dobricic": "dobricic",              # VIVC #3608 (Šolta; a Plavac Mali parent)
+    "draganela": "draganela",
+    "drnekusa": "drnekusa",              # Hvar red
+    "gegic": "gegic",                    # VIVC #4493 (Pag)
+    "glavinusa": "glavinusa",            # VIVC #8728 (prime name OKATAC)
+    "kujundzusa": "kujundzusa",          # VIVC #6545 (KUJUNDZUSA BELA)
+    "kurtelaska-bijela": "kurtelaska-bijela",
+    "lasina": "lasina",                  # VIVC #6761
+    "ljutac": "ljutac",
+    "magrovina": "magrovina",
+    "mejsko-belo": "mejsko-belo",
+    "mirkovaca": "mirkovaca",
+    "mladenka": "mladenka",
+    "modra-kosovina": "modra-kosovina",
+    "nincusa": "nincusa",
+    "okatica-bijela": "okatica-bijela",  # white — distinct from noir Okatac/Glavinuša
+    "osljevina": "osljevina",
+    "prc": "prc",                        # Hvar white
+    "rusljin-crni": "rusljin-crni",
+    "sansigot": "sansigot",              # Kvarner/Susak red
+    "smudna-belina": "smudna-belina",    # VIVC #24912
+    "svetokriska-belina": "svetokriska-belina",
+    "svrdlovina-crna": "svrdlovina-crna",
+    "trnjak": "trnjak",                  # VIVC #10327 (prime name RUDEZUSA)
+    "trojiscina-crvena": "trojiscina-crvena",
+    "vlaska": "vlaska",
+    "volarovo": "volarovo",
+    "vranac": "vranac",                  # VIVC #13179 (Montenegro/Dalmatia)
+    "zadarka": "zadarka",
+    "zumic": "zumic",
+    "bilan-bijeli": "bilan-bijeli",      # Kvarner/Primorje white
+    "posip-crni": "posip-crni",          # black-berried Pošip — distinct from white posip
+    # Colour-suffixed forms of varieties that already resolve via the
+    # parser's colour-adjective-strip fallback — pinned explicitly so the
+    # first match_variety() call succeeds and they don't log as unknowns.
+    "croatina-crna": "croatina",
+    "carmenere-crni": "carmenere",
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -1630,6 +1710,9 @@ DEFAULT_COLOUR: dict[str, str] = {
     "batiki": "blanc",
     "lagorthi": "blanc",
     "monemvasia": "blanc",
+    "kakotrygis": "blanc",
+    "petrokoritho": "blanc",
+    "priknadi": "blanc",
     "xinomavro": "noir",
     "agiorgitiko": "noir",
     "mavrodaphne": "noir",
@@ -1642,6 +1725,9 @@ DEFAULT_COLOUR: dict[str, str] = {
     "vradiano": "noir",
     "stavroto": "noir",
     "krasato": "noir",
+    "mavro-mesenikola": "noir",
+    "moschomavro": "noir",
+    "chondromavro": "noir",
     # ----- DE (Germany) varieties (see GRAPE_ALIAS block above) -----
     # Mosaic of historic German + modern breeding-station crossings.
     # PINK-skinned mutations of pinot (already covered) and ambiguous
@@ -1654,6 +1740,8 @@ DEFAULT_COLOUR: dict[str, str] = {
     "helfensteiner": "noir",
     "heroldrebe": "noir",
     "regent": "noir",
+    "reberger": "noir",
+    "blauer-affenthaler": "noir",
     "rondo": "noir",
     "domina": "noir",
     "deckrot": "noir",
@@ -1690,6 +1778,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "felicia": "blanc",
     "merzling": "blanc",
     "solaris": "blanc",
+    "serena": "blanc",
     "souvignier-gris": "blanc",      # despite "gris" — vinified as white
     "bronner": "blanc",
     "johanniter": "blanc",
@@ -1825,6 +1914,49 @@ DEFAULT_COLOUR: dict[str, str] = {
     "ranuse-muskatova": "blanc",
     "sedy-portugal": "gris",
     "tramin-zluty": "blanc",
+
+    # Croatia autochthonous (MPS specifikacija, 2026-05-29) — colours
+    # taken from the regulator's own Bijele sorte / Crne sorte grouping.
+    "plavina": "noir",
+    "belina-hizakovo": "blanc",
+    "blatina": "noir",
+    "brajdica-bijela": "blanc",
+    "bratkovina": "blanc",
+    "cetinka": "blanc",
+    "debejan-crni": "noir",
+    "diseca-belina-bijela": "blanc",
+    "dobricic": "noir",
+    "draganela": "blanc",
+    "drnekusa": "noir",
+    "gegic": "blanc",
+    "glavinusa": "noir",
+    "kujundzusa": "blanc",
+    "kurtelaska-bijela": "blanc",
+    "lasina": "noir",
+    "ljutac": "noir",
+    "magrovina": "noir",
+    "mejsko-belo": "blanc",
+    "mirkovaca": "blanc",
+    "mladenka": "blanc",
+    "modra-kosovina": "noir",
+    "nincusa": "noir",
+    "okatica-bijela": "blanc",
+    "osljevina": "blanc",
+    "prc": "blanc",
+    "rusljin-crni": "noir",
+    "sansigot": "noir",
+    "smudna-belina": "blanc",
+    "svetokriska-belina": "blanc",
+    "svrdlovina-crna": "noir",
+    "trnjak": "noir",
+    "trojiscina-crvena": "noir",
+    "vlaska": "blanc",
+    "volarovo": "blanc",
+    "vranac": "noir",
+    "zadarka": "noir",
+    "zumic": "blanc",
+    "bilan-bijeli": "blanc",
+    "posip-crni": "noir",
 }
 
 # Slugs that are pure boilerplate after stop-word filtering and should be

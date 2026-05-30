@@ -9,6 +9,6 @@ the corpus to use per-record source_lang (Switzerland was first); see
 `scripts/_lib/ch/` for the precedent.
 
 This package carries the Belgian tables: the ENIG DOCUMENT (NL) +
-DOCUMENT UNIQUE (FR) keyword routing, the Vlaanderen/Wallonië region
+DOCUMENT UNIQUE (FR) keyword routing, the Vlaanderen/Wallonie region
 facet, and the polygon index.
 """

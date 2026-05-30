@@ -39,7 +39,12 @@ OUT_DIR = ROOT / "raw" / "wikipedia" / "grapes"
 MANIFEST = OUT_DIR / "manifest.json"
 OVERRIDES_FILE = ROOT / "raw" / "wikipedia" / "grape_overrides.json"
 VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
-LOCALES = ("fr", "en", "es", "nl", "pt", "it")
+# fr/en/es/nl are the panel display locales; pt/it/hr are source-only
+# locales fetched so the translate sidecar (02b_translate_grapes) can
+# pick a native extract for varieties whose dominant-corpus language is
+# Portuguese / Italian / Croatian (e.g. autochthonous HR grapes that
+# only have an article on hr.wikipedia).
+LOCALES = ("fr", "en", "es", "nl", "pt", "it", "hr")
 
 UA = (
     "open-wine-map/0.0.1 (https://github.com/devloed-com/open-wine-map; "

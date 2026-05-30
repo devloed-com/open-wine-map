@@ -117,6 +117,10 @@ NATIONAL_PLIEGOS_ES = ROOT / "raw" / "es" / "national-pliegos-extracted"
 ES_FIGSHARE_GPKG = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
 ES_GISCO_LAU_ZIP = ROOT / "raw" / "es" / "gisco" / "LAU_RG_01M_2024_3035.shp.zip"
 ES_SIGPAC_DIR = ROOT / "raw" / "es" / "sigpac"
+# GISCO NUTS for the GR PGI region fallback: NUTS-3 (regional units) +
+# NUTS-2 (regions, shared with the NL pipeline's LEVL_2 file).
+GR_NUTS3_GEOJSON = ROOT / "raw" / "gr" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_3.geojson"
+GR_NUTS2_GEOJSON = ROOT / "raw" / "nl" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_2.geojson"
 EXTRACTED_PT = ROOT / "raw" / "pt" / "cadernos-extracted"
 PT_CAOP_DIR = ROOT / "raw" / "pt" / "caop"
 EXTRACTED_IT = ROOT / "raw" / "it" / "disciplinari-extracted"
@@ -126,11 +130,14 @@ AT_STATISTIK_DIR = ROOT / "raw" / "at" / "statistik"
 EXTRACTED_DE = ROOT / "raw" / "de" / "dokumente-extracted"
 PRODUKTSPEZIFIKATION_DE = ROOT / "raw" / "de" / "produktspezifikationen-extracted"
 EXTRACTED_SI = ROOT / "raw" / "si" / "dokumenti-extracted"
+SPECIFIKACIJE_SI = ROOT / "raw" / "si" / "specifikacije-extracted"
 EXTRACTED_HR = ROOT / "raw" / "hr" / "dokumenti-extracted"
+SPECIFIKACIJE_HR = ROOT / "raw" / "hr" / "specifikacije-extracted"
 EXTRACTED_HU = ROOT / "raw" / "hu" / "dokumentumok-extracted"
 EXTRACTED_RO = ROOT / "raw" / "ro" / "dokumente-extracted"
 EXTRACTED_BG = ROOT / "raw" / "bg" / "dokumenti-extracted"
 EXTRACTED_GR = ROOT / "raw" / "gr" / "dokumenti-extracted"
+NATIONAL_SPECS_GR = ROOT / "raw" / "gr" / "national-specs-extracted"
 EXTRACTED_SK = ROOT / "raw" / "sk" / "dokumenty-extracted"
 EXTRACTED_CZ = ROOT / "raw" / "cz" / "dokumenty-extracted"
 NATIONAL_SPECS_CZ = ROOT / "raw" / "cz" / "national-specs"
@@ -190,6 +197,41 @@ _IT_MASAF_BY_SLUG: dict[str, dict] = {}
 # podoblast, so every augmented CZ wine carries the same provenance
 # block — but per-record so _sources_for() can surface it uniformly.
 _CZ_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
+
+# Slug-keyed cache of SI specifikacija provenance + augmented payload,
+# populated by augment_si_records_with_specifikacija(). Two source
+# patterns feed it (MKGP per-wine .doc, Uradni list RS pravilnik HTML);
+# the sidecar's `parser_template` distinguishes them for attribution.
+_SI_SPECIFIKACIJA_BY_SLUG: dict[str, dict] = {}
+
+# Slug-keyed cache of HR specifikacija provenance, populated by
+# augment_hr_records_with_specifikacija(). The 16 grandfathered HR wines
+# whose EU-OJ JEDINSTVENI DOKUMENT was never published are augmented from
+# the Ministarstvo poljoprivrede per-wine SPECIFIKACIJA PROIZVODA (stage
+# 02f). `parser_template` distinguishes the lettered .doc/.pdf path
+# (mps-specifikacija-v1) from the docx fallback (mps-specifikacija-docx).
+_HR_SPECIFIKACIJA_BY_SLUG: dict[str, dict] = {}
+
+# Slug-keyed cache of GR national-spec provenance, populated by
+# augment_gr_records_with_national_specs(). 132 of the 138 grandfathered
+# GR wines are augmented from the ΥΠΑΑΤ national προδιαγραφή / τεχνικός
+# φάκελος (stage 02f) — 87 structured-PDF ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ, 43 `.doc`,
+# 2 `.docx`. `parser_template` (gr-national-{pdf,doc,docx}) distinguishes.
+_GR_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
+
+
+# Cross-border PDOs that physically extend across more than one country.
+# Keyed by eAmbrosia file_number → list of secondary country codes (the
+# primary country sits in `record.country` from stage 02). The map shows
+# one polygon (BE-side ownership for PDO-BE+NL-02172), but the panel
+# meta line renders flags + names for every country the appellation
+# spans so users can find it from either side.
+_CROSS_BORDER_COUNTRY_ALIASES: dict[str, list[str]] = {
+    # Maasvallei Limburg — straddles the BE/NL Limburg border in the Maas
+    # valley. BE-primary by eAmbrosia file_number ordering; the NL side
+    # is the southern tip of the Dutch province of Limburg.
+    "PDO-BE+NL-02172": ["nl"],
+}
 
 
 def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
@@ -265,6 +307,274 @@ def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
         _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
         if added:
             augmented += 1
+    return augmented
+
+
+def augment_si_records_with_specifikacija(records: list[dict]) -> int:
+    """In-place merge of SI national-spec sidecar data into stub records.
+
+    Sibling of `augment_it_records_with_masaf`. The 16 grandfathered SI
+    wines (every wine except Cviček) ship as content-stubs because their
+    eAmbrosia entry has no fetchable EU-OJ ENOTNI DOKUMENT URL. Stage
+    02f (`scripts/si/02f_extract_specifikacije.py`) extracts the
+    canonical Slovenian regulator source — either an MKGP per-wine
+    `.doc` specifikacija proizvoda or an Uradni list RS pravilnik HTML —
+    into a sidecar at `raw/si/specifikacije-extracted/<slug>.json`.
+
+    For each SI stub with a matching sidecar:
+      - summary           ← MKGP §2 (opis vin) or pravilnik §2
+      - grapes            ← MKGP §6 (sorte) or pravilnik Article-5 +
+                            priloga 2 (priporočene → principal,
+                            dovoljene → accessory)
+      - geo_area_brief    ← MKGP §4 (opredelitev geografskega območja)
+      - link_to_terroir   ← MKGP §7 (povezava z geografskim območjem)
+                            (pravilnik-derived records have empty
+                            link_to_terroir — pravilniki are regulatory
+                            lists, not narrative documents)
+      - styles            ← MKGP-derived colour/sparkling/predikat tags
+      - section_roles     ← unified role dict so 02d can read terroir
+                            text uniformly
+      - stub_reason       ← prefixed `specifikacija:` so the audit can
+                            tell EU-OJ-extracted from spec-augmented
+      - specifikacija     ← provenance block (url, sha256, fetched_at,
+                            parser_template, source_org, license)
+
+    `record["stub"]` stays True — the record is still NOT an EU-OJ
+    extraction, just augmented with the canonical Slovenian regulator
+    source. Stage 03 / 04 callers use the `specifikacija` block to
+    distinguish and to render attribution.
+
+    Returns the number of records augmented.
+    """
+    _SI_SPECIFIKACIJA_BY_SLUG.clear()
+    if not SPECIFIKACIJE_SI.exists():
+        return 0
+    augmented = 0
+    for record in records:
+        if record.get("country") != "si":
+            continue
+        if not record.get("stub"):
+            continue
+        slug = record.get("slug")
+        if not slug:
+            continue
+        sidecar_path = SPECIFIKACIJE_SI / f"{slug}.json"
+        if not sidecar_path.exists():
+            continue
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+
+        src = sidecar.get("source") or {}
+        provenance = {
+            "url": src.get("url") or "",
+            "final_url": src.get("final_url") or "",
+            "sha256": src.get("sha256") or "",
+            "bytes": src.get("bytes") or 0,
+            "fetched_at": src.get("fetched_at") or "",
+            "format": src.get("format") or "",
+            "source_org": src.get("source_org") or "",
+            "license": src.get("license") or "",
+            "parser_template": sidecar.get("parser_template") or "",
+            "matched_okoliši": sidecar.get("matched_okoliši") or [],
+        }
+
+        if sidecar.get("summary"):
+            record["summary"] = sidecar["summary"]
+        if sidecar.get("grapes"):
+            record["grapes"] = sidecar["grapes"]
+        if sidecar.get("geo_area_brief"):
+            record["geo_area_brief"] = sidecar["geo_area_brief"]
+        if sidecar.get("link_to_terroir"):
+            record["link_to_terroir"] = sidecar["link_to_terroir"]
+        if sidecar.get("styles"):
+            existing_styles = set(record.get("styles") or [])
+            record["styles"] = sorted(existing_styles | set(sidecar["styles"]))
+
+        section_roles = dict(record.get("section_roles") or {})
+        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
+            sidecar_roles = sidecar.get("section_roles") or {}
+            if sidecar_roles.get(role):
+                section_roles[role] = sidecar_roles[role]
+        record["section_roles"] = section_roles
+
+        if record.get("stub_reason") and not record["stub_reason"].startswith("specifikacija:"):
+            record["stub_reason"] = f"specifikacija:{record['stub_reason']}"
+        record["specifikacija"] = provenance
+        _SI_SPECIFIKACIJA_BY_SLUG[slug] = provenance
+        augmented += 1
+    return augmented
+
+
+def augment_hr_records_with_specifikacija(records: list[dict]) -> int:
+    """In-place merge of HR national-spec sidecar data into stub records.
+
+    Sibling of `augment_si_records_with_specifikacija`. The 16
+    grandfathered HR wines (everything except Muškat momjanski + Ponikve)
+    ship as content-stubs because their eAmbrosia entry has no fetchable
+    EU-OJ JEDINSTVENI DOKUMENT URL. Stage 02f
+    (`scripts/hr/02f_extract_specifikacije.py`) extracts the canonical
+    Ministarstvo poljoprivrede per-wine SPECIFIKACIJA PROIZVODA (14
+    `.doc`, 1 `.docx`, 1 PDF) into a sidecar at
+    `raw/hr/specifikacije-extracted/<slug>.json`.
+
+    For each HR stub with a matching sidecar:
+      - summary           ← lettered section b) (opis svojstava vina)
+      - grapes            ← section f) (sorte vinove loze; colour-grouped,
+                            all principal — the MPS spec has no
+                            principal/accessory split, same as PT/IT)
+      - geo_area_brief    ← section d) (granice područja)
+      - link_to_terroir   ← section g) (…povezane sa zemljopisnim
+                            uvjetima); empty for the Primorska docx
+      - styles            ← colour/sparkling/dessert/liqueur tags
+      - section_roles     ← unified role dict so 02d reads terroir text
+      - stub_reason       ← prefixed `specifikacija:` so the audit can
+                            tell EU-OJ-extracted from spec-augmented
+      - specifikacija     ← provenance block (url, sha256, fetched_at,
+                            parser_template, source_org, license)
+
+    `record["stub"]` stays True — the record is still NOT an EU-OJ
+    extraction, just augmented with the canonical Croatian regulator
+    source. Returns the number of records augmented.
+    """
+    _HR_SPECIFIKACIJA_BY_SLUG.clear()
+    if not SPECIFIKACIJE_HR.exists():
+        return 0
+    augmented = 0
+    for record in records:
+        if record.get("country") != "hr":
+            continue
+        if not record.get("stub"):
+            continue
+        slug = record.get("slug")
+        if not slug:
+            continue
+        sidecar_path = SPECIFIKACIJE_HR / f"{slug}.json"
+        if not sidecar_path.exists():
+            continue
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+
+        src = sidecar.get("source") or {}
+        provenance = {
+            "url": src.get("url") or "",
+            "final_url": src.get("final_url") or "",
+            "sha256": src.get("sha256") or "",
+            "bytes": src.get("bytes") or 0,
+            "fetched_at": src.get("fetched_at") or "",
+            "format": src.get("format") or "",
+            "source_org": src.get("source_org") or "",
+            "license": src.get("license") or "",
+            "parser_template": sidecar.get("parser_template") or "",
+        }
+
+        if sidecar.get("summary"):
+            record["summary"] = sidecar["summary"]
+        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
+                                      or sidecar["grapes"].get("accessory")):
+            record["grapes"] = sidecar["grapes"]
+        if sidecar.get("geo_area_brief"):
+            record["geo_area_brief"] = sidecar["geo_area_brief"]
+        if sidecar.get("link_to_terroir"):
+            record["link_to_terroir"] = sidecar["link_to_terroir"]
+        if sidecar.get("styles"):
+            existing_styles = set(record.get("styles") or [])
+            record["styles"] = sorted(existing_styles | set(sidecar["styles"]))
+
+        section_roles = dict(record.get("section_roles") or {})
+        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
+            sidecar_roles = sidecar.get("section_roles") or {}
+            if sidecar_roles.get(role):
+                section_roles[role] = sidecar_roles[role]
+        record["section_roles"] = section_roles
+
+        if record.get("stub_reason") and not record["stub_reason"].startswith("specifikacija:"):
+            record["stub_reason"] = f"specifikacija:{record['stub_reason']}"
+        record["specifikacija"] = provenance
+        _HR_SPECIFIKACIJA_BY_SLUG[slug] = provenance
+        augmented += 1
+    return augmented
+
+
+def augment_gr_records_with_national_specs(records: list[dict]) -> int:
+    """In-place merge of GR national-spec sidecar data into stub records.
+
+    Sibling of `augment_si_records_with_specifikacija`. 138 of 147 GR
+    wines ship as content-stubs (no fetchable EU-OJ ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ).
+    Stage 02f (`scripts/gr/02f_extract_national_specs.py`) parses the
+    ΥΠΑΑΤ national προδιαγραφή / τεχνικός φάκελος fetched by stage 01c
+    into `raw/gr/national-specs-extracted/<slug>.json` (132 of 138; the
+    other 6 are unresolved — see CURATOR_TODO.md).
+
+    For each GR stub with a matching sidecar:
+      - grapes            ← §6 ΟΙΝΟΠΟΙΗΣΙΜΕΣ ΠΟΙΚΙΛΙΕΣ (PDF list) or the
+                            grape section's capitalised-token scan (.doc prose)
+      - link_to_terroir   ← §7 ΔΕΣΜΟΣ ΜΕ ΤΗΝ ΓΕΩΓΡΑΦΙΚΗ ΠΕΡΙΟΧΗ
+      - geo_area_brief / summary / styles ← matching sections
+      - section_roles     ← unified role dict so 02d reads terroir uniformly
+      - stub_reason       ← prefixed `national-spec:` so the audit can tell
+                            EU-OJ-extracted from spec-augmented wines
+      - national_spec     ← provenance block (url, sha256, format, …)
+
+    `record["stub"]` stays True — still NOT an EU-OJ extraction, just
+    augmented with the canonical ΥΠΑΑΤ source. Returns count augmented.
+    """
+    _GR_NATIONAL_SPEC_BY_SLUG.clear()
+    if not NATIONAL_SPECS_GR.exists():
+        return 0
+    augmented = 0
+    for record in records:
+        if record.get("country") != "gr" or not record.get("stub"):
+            continue
+        slug = record.get("slug")
+        if not slug:
+            continue
+        sidecar_path = NATIONAL_SPECS_GR / f"{slug}.json"
+        if not sidecar_path.exists():
+            continue
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+
+        src = sidecar.get("source") or {}
+        provenance = {
+            "url": src.get("source_url") or "",
+            "sha256": src.get("sha256") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "format": src.get("format") or "",
+            "source_org": src.get("source_org") or "ypaat",
+            "filename": src.get("filename") or "",
+            "parser_template": sidecar.get("parser_template") or "",
+        }
+
+        if sidecar.get("summary"):
+            record["summary"] = sidecar["summary"]
+        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
+                                      or sidecar["grapes"].get("accessory")):
+            record["grapes"] = sidecar["grapes"]
+        if sidecar.get("geo_area_brief"):
+            record["geo_area_brief"] = sidecar["geo_area_brief"]
+        if sidecar.get("link_to_terroir"):
+            record["link_to_terroir"] = sidecar["link_to_terroir"]
+        if sidecar.get("styles"):
+            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
+
+        section_roles = dict(record.get("section_roles") or {})
+        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
+            sidecar_roles = sidecar.get("section_roles") or {}
+            if sidecar_roles.get(role):
+                section_roles[role] = sidecar_roles[role]
+        record["section_roles"] = section_roles
+
+        if record.get("stub_reason") and not record["stub_reason"].startswith("national-spec:"):
+            record["stub_reason"] = f"national-spec:{record['stub_reason']}"
+        record["national_spec"] = provenance
+        _GR_NATIONAL_SPEC_BY_SLUG[slug] = provenance
+        augmented += 1
     return augmented
 
 
@@ -375,9 +685,15 @@ def augment_de_records_with_produktspezifikation(records: list[dict]) -> int:
     that split into raw/de/produktspezifikationen-extracted/<slug>.json;
     this augment re-tags the in-memory record's grapes block accordingly.
 
-    Only the 13 Anbaugebiete (the regional PDOs) carry a sidecar —
-    Einzellage sub-denominations and Landwein PGIs are not touched
-    (the sidecar's variety list is for the parent Anbaugebiet only).
+    Two sidecar categories are merged (both written by stage 02f):
+      - the 13 Anbaugebiete (regional PDOs), with a principal/accessory
+        split from §3.2 Mindestmostgewicht; and
+      - the 15 Landwein g.g.A. that ship as stubs (no EU Einziges
+        Dokument). Their BLE spec has no role split, so they arrive as
+        `section-8-flat-no-split` (all-principal) and fold their full
+        roster + §-Zusammenhang terroir text into the stub record.
+    Einzellage sub-denominations are still skipped (they inherit the
+    parent Anbaugebiet's varieties at render time).
 
     For records with `role_split_method == "section-3.2-principal"`:
       - re-tag existing record["grapes"]["details"] items as
@@ -1617,6 +1933,38 @@ def main() -> int:
             f"[load] CZ national-spec augmentation: {n_aug_cz} records enriched",
             file=sys.stderr,
         )
+    # SI specifikacija augmentation — 16 grandfathered SI wines (everything
+    # except Cviček) ship as stubs because their eAmbrosia entry has no
+    # fetchable EU-OJ Enotni dokument URL. Stage 02f extracts the
+    # canonical Slovenian regulator source (MKGP per-wine .doc or
+    # Uradni list RS pravilnik HTML); this augment merges it in.
+    n_aug_si = augment_si_records_with_specifikacija(extracted_records)
+    if n_aug_si:
+        print(
+            f"[load] SI specifikacija augmentation: {n_aug_si} stub records enriched",
+            file=sys.stderr,
+        )
+    # HR specifikacija augmentation — 16 grandfathered HR wines (everything
+    # except Muškat momjanski + Ponikve) ship as stubs because their
+    # eAmbrosia entry has no fetchable EU-OJ Jedinstveni dokument URL.
+    # Stage 02f extracts the canonical MPS SPECIFIKACIJA PROIZVODA
+    # (.doc/.docx/.pdf); this augment merges it in.
+    n_aug_hr = augment_hr_records_with_specifikacija(extracted_records)
+    if n_aug_hr:
+        print(
+            f"[load] HR specifikacija augmentation: {n_aug_hr} stub records enriched",
+            file=sys.stderr,
+        )
+    # GR national-spec augmentation — 138 grandfathered GR wines ship as
+    # stubs (no fetchable EU-OJ Ενιαίο Έγγραφο). Stage 02f parses the ΥΠΑΑΤ
+    # national προδιαγραφή / τεχνικός φάκελος (minagric.gr) into per-wine
+    # sidecars; this augment merges grapes / terroir text / styles in.
+    n_aug_gr = augment_gr_records_with_national_specs(extracted_records)
+    if n_aug_gr:
+        print(
+            f"[load] GR national-spec augmentation: {n_aug_gr} stub records enriched",
+            file=sys.stderr,
+        )
     # PT cadernos enumerate every authorised casta as `principal` —
     # the IVV documento-único format we parse doesn't carry a
     # principal/accessory split, and an investigation into the
@@ -1732,7 +2080,10 @@ def main() -> int:
     # The 6 Einzellage PDOs inherit the parent Anbaugebiet polygon
     # (parent/sub model). Most Landwein PGIs union the regional
     # Anbaugebiet polygons that make up their territory.
-    de_polygons = DEPolygonIndex(figshare_gpkg=ES_FIGSHARE_GPKG)
+    de_polygons = DEPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        gisco_lau_zip=ES_GISCO_LAU_ZIP,
+    )
     print(
         f"[load] DE polygons: {de_polygons.n_pdo_polygons} Figshare DE-PDOs",
         file=sys.stderr,
@@ -1807,6 +2158,8 @@ def main() -> int:
     gr_polygons = GRPolygonIndex(
         figshare_gpkg=ES_FIGSHARE_GPKG,
         gisco_lau_zip=ES_GISCO_LAU_ZIP,
+        nuts3_geojson=GR_NUTS3_GEOJSON,
+        nuts2_geojson=GR_NUTS2_GEOJSON,
     )
     print(
         f"[load] GR polygons: {gr_polygons.n_pdo_polygons} Figshare GR-PDOs/PGIs / "
@@ -2318,6 +2671,7 @@ def main() -> int:
             geom, geom_source, stats = gr_polygons.resolve(
                 record.get("file_number") or "",
                 record.get("geo_communes") or [],
+                record=record,
             )
             gr_hits[geom_source] += 1
             v_geom = geom
@@ -2947,10 +3301,16 @@ def main() -> int:
             # share it. No facet variation in v1.
             region_value = derive_lu_region(record) or "Moselle Luxembourgeoise"
         elif record.get("country") == "be":
-            # BE region = Vlaanderen / Wallonië (the two language
-            # communities). Curated file_number map covers every wine;
-            # cross-border Maasvallei = Vlaanderen (BE-side).
-            region_value = derive_be_region(record) or "België"
+            # BE region = Vlaanderen / Wallonie (the two language
+            # communities). Curated file_number map covers every wine.
+            # Cross-border Maasvallei intentionally has no region —
+            # both BE/NL Limburg sides were one duchy until the 1839
+            # partition; the panel surfaces the dual country via the
+            # country chip instead. Skip the "België" fallback for
+            # any record listed in _CROSS_BORDER_COUNTRY_ALIASES.
+            region_value = derive_be_region(record)
+            if record.get("file_number", "") not in _CROSS_BORDER_COUNTRY_ALIASES:
+                region_value = region_value or "België"
         elif record.get("country") == "nl":
             # NL region = one of the 12 provincies, hand-mapped per
             # file_number. PGI = its own province; each PDO sits in
@@ -3409,8 +3769,14 @@ def _sources_for(record: dict) -> dict:
         }
     if record.get("country") == "si":
         # Slovenia: only Cviček carries a fetchable EUR-Lex single
-        # document; the other 16 are content-stubs awaiting the national
-        # specification (Phase 2). eAmbrosia + file number always resolve.
+        # document. The other 16 are content-stubs whose canonical
+        # source is the Slovenian national specifikacija (stage 02f) —
+        # 11 are MKGP per-wine `.doc` files, 5 are Uradni list RS
+        # pravilnik HTMLs. Provenance surfaces the spec URL + sha so
+        # the panel can attribute the variety roster + summary.
+        si_spec = record.get("specifikacija") or _SI_SPECIFIKACIJA_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
         return {
             "country": "si",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
@@ -3419,13 +3785,25 @@ def _sources_for(record: dict) -> dict:
             "fetched_at": src.get("fetched_at") or "",
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
+            "specifikacija_url": si_spec.get("url", ""),
+            "specifikacija_final_url": si_spec.get("final_url", ""),
+            "specifikacija_sha256": si_spec.get("sha256", ""),
+            "specifikacija_fetched_at": si_spec.get("fetched_at", ""),
+            "specifikacija_format": si_spec.get("format", ""),
+            "specifikacija_source_org": si_spec.get("source_org", ""),
+            "specifikacija_parser_template": si_spec.get("parser_template", ""),
         }
     if record.get("country") == "hr":
         # Croatia: only Muškat momjanski + Ponikve carry a fetchable
-        # EUR-Lex single document; the other 16 are content-stubs
-        # awaiting the national specification (Phase 2). All 18 resolve
-        # to Bétard PDO geometry regardless. eAmbrosia + file number
-        # always resolve.
+        # EUR-Lex single document; the other 16 are content-stubs whose
+        # canonical source is the Ministarstvo poljoprivrede per-wine
+        # SPECIFIKACIJA PROIZVODA (stage 02f) — 14 `.doc`, 1 `.docx`
+        # (Primorska Hrvatska), 1 PDF (Dingač). Provenance surfaces the
+        # spec URL + sha so the panel can attribute the variety roster +
+        # terroir text. All 18 resolve to Bétard PDO geometry regardless.
+        hr_spec = record.get("specifikacija") or _HR_SPECIFIKACIJA_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
         return {
             "country": "hr",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
@@ -3434,6 +3812,13 @@ def _sources_for(record: dict) -> dict:
             "fetched_at": src.get("fetched_at") or "",
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
+            "specifikacija_url": hr_spec.get("url", ""),
+            "specifikacija_final_url": hr_spec.get("final_url", ""),
+            "specifikacija_sha256": hr_spec.get("sha256", ""),
+            "specifikacija_fetched_at": hr_spec.get("fetched_at", ""),
+            "specifikacija_format": hr_spec.get("format", ""),
+            "specifikacija_source_org": hr_spec.get("source_org", ""),
+            "specifikacija_parser_template": hr_spec.get("parser_template", ""),
         }
     if record.get("country") == "hu":
         # Hungary: 26 of 41 wines carry a fetchable EUR-Lex EGYSÉGES
@@ -3491,6 +3876,9 @@ def _sources_for(record: dict) -> dict:
         # ΥΠΑΑΤ / ΦΕΚ national προδιαγραφή προϊόντος (Phase 2). All 33
         # PDOs resolve to a Bétard polygon; PGIs land as
         # stub-no-geometry in v1. eAmbrosia + file_number always resolve.
+        gr_spec = record.get("national_spec") or _GR_NATIONAL_SPEC_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
         return {
             "country": "gr",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
@@ -3499,6 +3887,12 @@ def _sources_for(record: dict) -> dict:
             "fetched_at": src.get("fetched_at") or "",
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
+            "national_spec_url": gr_spec.get("url", ""),
+            "national_spec_sha256": gr_spec.get("sha256", ""),
+            "national_spec_fetched_at": gr_spec.get("fetched_at", ""),
+            "national_spec_format": gr_spec.get("format", ""),
+            "national_spec_source_org": gr_spec.get("source_org", ""),
+            "national_spec_parser_template": gr_spec.get("parser_template", ""),
         }
     if record.get("country") == "sk":
         # Slovakia: 4 of 10 wines carry a fetchable EUR-Lex Jednotný
@@ -3650,19 +4044,65 @@ def _sources_for(record: dict) -> dict:
     }
 
 
+# Curator-pinned terroir-facts inheritance for wines whose canonical
+# regulator source has no narrative section, when a parent / containing
+# region exists with a regulator-grade narrative that honestly applies.
+#
+# Used by `load_terroir_facts` and `overlay_translated_facts` to fall
+# through to the regional source. Always paired with a curated entry in
+# `scripts/_lib/appellation_notes.json` so the panel renders an explicit
+# inheritance disclosure to the user.
+#
+# Cases (added 2026-05-29):
+#   - SI `bela-krajina` (DOP/PDO-SI-A0878) — okoliš in Posavje wine
+#     region; the 2007 Pravilnik defines it regulatorily but carries no
+#     terroir narrative; the per-region MKGP Posavje ZGO spec covers
+#     it geographically.
+#   - SI `belokranjec` (DOP/PDO-SI-A1576) — PTP white-wine style
+#     produced exclusively inside Bela krajina; the 2022 PTP Pravilnik
+#     carries no terroir narrative; chains through bela-krajina to
+#     posavje at the regional level.
+_TERROIR_INHERIT_OVERRIDES = {
+    "bela-krajina": "posavje",
+    "belokranjec": "posavje",
+}
+
+
 def load_terroir_facts(slug: str, parent_slug: str = "") -> dict | None:
     """Per-AOC terroir-facts payload for the sidepanel; falls back to parent
-    for DGCs (which inherit the parent appellation's bullets)."""
+    for DGCs (which inherit the parent appellation's bullets).
+
+    Two modes: bullet-mode (LLM-extracted `facts[]`) and verbatim mode
+    (`mode: "verbatim"` with the source `link_to_terroir` quoted as-is,
+    emitted by 02d when the lien is below MIN_LIEN_CHARS — see
+    `_lib/terroir_verbatim.py`).
+
+    Additionally honours `_TERROIR_INHERIT_OVERRIDES` for curator-pinned
+    inheritance (always paired with an appellation_notes entry that
+    discloses the inheritance to the user)."""
     cache_dir = ROOT / "raw" / "terroir-facts"
     p = cache_dir / f"{slug}.json"
     if not p.exists() and parent_slug:
         p = cache_dir / f"{parent_slug}.json"
+    if not p.exists() and slug in _TERROIR_INHERIT_OVERRIDES:
+        p = cache_dir / f"{_TERROIR_INHERIT_OVERRIDES[slug]}.json"
     if not p.exists():
         return None
     try:
         d = json.loads(p.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         return None
+    if d.get("mode") == "verbatim":
+        if not d.get("verbatim_text"):
+            return None
+        return {
+            "mode": "verbatim",
+            "verbatim_text": d.get("verbatim_text") or "",
+            "validation_flag": d.get("validation_flag") or "",
+            "source_lang": d.get("source_lang") or "",
+            "wiki_source_url": d.get("wiki_source_url") or "",
+            "cahier_source_pdf_url": d.get("cahier_source_pdf_url") or "",
+        }
     facts = d.get("facts") or []
     if not facts:
         return None
@@ -3698,8 +4138,23 @@ def overlay_translated_facts(
             parent = rec.get("parent_slug") or ""
             if parent:
                 t = translations.get(parent)
+        if not t and slug in _TERROIR_INHERIT_OVERRIDES:
+            t = translations.get(_TERROIR_INHERIT_OVERRIDES[slug])
         if not tf or not t:
             out[slug] = rec
+            continue
+        if tf.get("mode") == "verbatim":
+            translated_text = t.get("verbatim_text") or ""
+            if not translated_text:
+                out[slug] = rec
+                continue
+            out[slug] = {
+                **rec,
+                "terroir_facts": {
+                    **tf,
+                    "verbatim_text": translated_text,
+                },
+            }
             continue
         translated = t.get("facts") or []
         fr_facts = tf.get("facts") or []
@@ -3829,8 +4284,10 @@ def emit_html(
         grape_names_latin: dict[str, str] = {}
         is_stub = False
         parent_slug_for_facts = p.get("parent_slug", "") or ""
+        file_number = ""
         if ext_path.exists():
             rec = json.loads(ext_path.read_text(encoding="utf-8"))
+            file_number = rec.get("file_number") or ""
             summary = derive_summary(rec)
             sources = _sources_for(rec)
             # IT records augmented via MASAF and ES records augmented via
@@ -3843,6 +4300,9 @@ def emit_html(
                 (country == "it" and slug in _IT_MASAF_BY_SLUG)
                 or (country == "es" and slug in _ES_NATIONAL_PLIEGO_BY_SLUG)
                 or (country == "de" and slug in _DE_PRODUKTSPEZIFIKATION_BY_SLUG)
+                or (country == "si" and slug in _SI_SPECIFIKACIJA_BY_SLUG)
+                or (country == "hr" and slug in _HR_SPECIFIKACIJA_BY_SLUG)
+                or (country == "gr" and slug in _GR_NATIONAL_SPEC_BY_SLUG)
             )
             is_stub = stub_raw and not has_augmented_source
             # Per-appellation cahier spelling per slug — drives the pill
@@ -3871,6 +4331,7 @@ def emit_html(
 
         aocs[slug] = {
             "country": p.get("country") or "fr",
+            "country_aliases": _CROSS_BORDER_COUNTRY_ALIASES.get(file_number, []),
             "source_lang": p.get("source_lang") or "",
             "name": p["name"],
             "name_latin": p.get("name_latin") or "",

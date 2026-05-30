@@ -40,9 +40,10 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "si" / "dokumenti-extracted"
+SPECIFIKACIJE = ROOT / "raw" / "si" / "specifikacije-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "sl"
 CACHE_DIR = ROOT / "raw" / "terroir-facts"
 MANIFEST = CACHE_DIR / "manifest-si.json"
@@ -243,12 +244,45 @@ def _ground_facts(
 
 
 def _resolve_lien_and_source(rec: dict) -> tuple[str, dict]:
-    """Return (link_to_terroir text, source-provenance dict) for an SI
-    record. Slovenia has no national-spec fallback layer wired in v1, so
-    this is just the on-disk ENOTNI-DOKUMENT link section plus the
-    EUR-Lex URL for cache attribution."""
+    """Resolve the terroir-source text for one SI record.
+
+    Preference:
+      1. EU Enotni dokument's `link_to_terroir` (Cviček — the only SI
+         wine with a real EU-OJ single document)
+      2. MKGP specifikacija sidecar's `link_to_terroir` (section 7
+         "Povezava z geografskim območjem" — 11 of 16 augmented stubs).
+         Sidecar at raw/si/specifikacije-extracted/<slug>.json.
+
+    The 5 uradni-list-pravilnik wines (bela-krajina + belokranjec + 3
+    PGIs) have empty `link_to_terroir` because the pravilnik documents
+    are regulatory lists, not narrative — those records are skipped by
+    the MIN_LIEN_CHARS guard in collect_targets.
+    """
     lien = rec.get("link_to_terroir") or ""
     src = rec.get("source") or {}
+    if len(lien) >= MIN_LIEN_CHARS:
+        eu_url = src.get("final_url") or src.get("source_url") or ""
+        return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
+    slug = rec.get("slug") or ""
+    sidecar_path = SPECIFIKACIJE / f"{slug}.json"
+    if sidecar_path.exists():
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            sidecar = None
+        if sidecar:
+            spec_lien = (sidecar.get("link_to_terroir") or "").strip()
+            if len(spec_lien) >= MIN_LIEN_CHARS:
+                spec_url = (sidecar.get("source") or {}).get("url") or ""
+                spec_org = (sidecar.get("source") or {}).get("source_org") or ""
+                return spec_lien, {
+                    "pdf_url": spec_url,
+                    "kind": (
+                        "mkgp-specifikacija"
+                        if spec_org == "gov-si"
+                        else "uradni-list-pravilnik"
+                    ),
+                }
     eu_url = src.get("final_url") or src.get("source_url") or ""
     return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
 
@@ -660,6 +694,12 @@ def main() -> int:
     sub_rc = _dispatch_emit_or_import(args)
     if sub_rc is not None:
         return sub_rc
+
+    terroir_verbatim.emit_for_country(
+        country="si", extracted_dir=EXTRACTED, cache_dir=CACHE_DIR,
+        default_source_lang="sl", cahier_source_kind="eu-oj",
+        only=args.only, log_prefix="[02d/si]",
+    )
 
     if args.batch:
         return _run_batch(args)

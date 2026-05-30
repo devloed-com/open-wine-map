@@ -129,25 +129,39 @@ PDF_LOWER_RE = re.compile(rf"^[ \t]*([a-z](?:\.\d+)*){_HEAD_TAIL}", re.MULTILINE
 
 _PDF_INTRA_LINE_WS_RE = re.compile(r"(\S) {2,}")
 
+# MAPA's authoring system occasionally leaks unfilled i18n placeholders into
+# the published PDF — e.g. Costa de Cantabria's section 7 carries
+# `label.newWineName.singleDocument.linkWithArea.conciseDetails` immediately
+# before the actual vínculo paragraph. Pattern: a line of dot-separated
+# ASCII identifiers (with optional leading whitespace), nothing else. These
+# are NOT regular Spanish text — the dot-separated keypath is the give-away.
+_PDF_I18N_PLACEHOLDER_LINE_RE = re.compile(
+    r"^[ \t]*[a-zA-Z][a-zA-Z0-9]*(?:\.[a-zA-Z][a-zA-Z0-9]+){2,}[ \t]*$",
+    re.MULTILINE,
+)
+
 
 def pdftotext(pdf_path: Path) -> str:
     """Run `pdftotext -layout` and return the plaintext. Layout mode preserves
     column structure well enough for tabular data (analytical characteristics
     tables) and keeps section headers on their own line.
 
-    Two cleanups before returning: drop `\\x0c` page-break markers (they
+    Three cleanups before returning: drop `\\x0c` page-break markers (they
     prepend the first heading on a new page and prevent `^[ \\t]*` from
-    matching) and collapse intra-line runs of 2+ spaces to a single space
+    matching), collapse intra-line runs of 2+ spaces to a single space
     so column-aligned headings like
     `G)  EXPLICACIÓN            DETALLADA         DEL     VINCULO` stay
-    under the 80-char limit of `_HEAD_TAIL`. Leading whitespace is
-    preserved (the regex requires a non-space char before the run) so
-    `_stitch_lines` can still use indent for continuation detection."""
+    under the 80-char limit of `_HEAD_TAIL`, and scrub MAPA i18n
+    placeholder lines that leak from the authoring system. Leading
+    whitespace is preserved (the WS regex requires a non-space char
+    before the run) so `_stitch_lines` can still use indent for
+    continuation detection."""
     raw = subprocess.run(
         ["pdftotext", "-layout", "-enc", "UTF-8", str(pdf_path), "-"],
         check=True, capture_output=True, text=True, encoding="utf-8",
     ).stdout
-    return _PDF_INTRA_LINE_WS_RE.sub(r"\1 ", raw.replace("\x0c", ""))
+    cleaned = _PDF_INTRA_LINE_WS_RE.sub(r"\1 ", raw.replace("\x0c", ""))
+    return _PDF_I18N_PLACEHOLDER_LINE_RE.sub("", cleaned)
 
 
 def extract_sections_from_pdf_text(text: str) -> tuple[dict[str, str], dict[str, str]]:

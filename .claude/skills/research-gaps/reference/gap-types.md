@@ -220,6 +220,36 @@ the per-podoblast obec list, both implementing Zákon č. 321/2004 Sb.).
   EUR-Lex URL); OR `cz/02f_extract_national_specs.py --refresh` →
   `04_build_maps.py` (after a decree update).
 
+## `hr-specification` — Croatian wine with no EU-OJ single document
+
+16 of 18 HR wine PDOs are Art.107 / Reg.1308/2013 grandfathered names
+whose only eAmbrosia reference is a non-fetchable `Ares(...)` summary-
+sheet. The canonical alternative is the Croatian national
+*specifikacija proizvoda* (per Reg. 1308/2013 art. 94) published by the
+Ministarstvo poljoprivrede (poljoprivreda.gov.hr).
+
+- **Detect:** `scripts/audit_hr_coverage.py` — `no-publication` stubs.
+  `scripts/hr/regen_manual_overrides_template.py` writes the EU-OJ queue.
+- **Triage:** 16 wines, all actionable; all resolved 2026-05-29.
+- **Search:** (1) MPS listing page
+  `poljoprivreda.gov.hr/istaknute-teme/hrana-111/oznake-kvalitete/oznake-izvornosti-vina/229`
+  → per-wine `.doc`/`.docx`/PDF in
+  `…/UserDocsImages/dokumenti/hrana/zastita_oznaka_izvrsnosti_vina/na_razini_EU/`;
+  (2) Narodne novine (narodne-novine.nn.hr); (3) EUR-Lex Croatian
+  single document (none exist for the grandfathered names).
+- **WAF risk:** low — poljoprivreda.gov.hr is agent-reachable.
+- **Overrides target:** `raw/hr/specifikacije/manual_overrides.json`
+  (NOT `raw/hr/oj-pages/...` — the .doc/.pdf specs ride the parallel
+  01c/02f layer; a spec URL in the oj-pages `url` field would let stage
+  01 save the Dingač PDF as `ok` and stage 02 can't parse it). Shape:
+  `{ "<slug>": { "url": ..., "source_org": "mps", "note": ...,
+  "file_number": ... } }`.
+- **Re-run:** `hr/01c_fetch_specifikacije.py` →
+  `hr/02f_extract_specifikacije.py` → `04_build_maps.py`. National-spec
+  parser branch already shipped (`scripts/_lib/hr/specifikacija.py`,
+  lettered sections a–j; `.doc` via the shared `owm-antiword` Docker
+  image).
+
 ## `at-weinkomitee-url` — Austrian appellation with no DO-organisation link
 
 Austrian analogue of `it-consorzio-url`. The administering body of a DAC is

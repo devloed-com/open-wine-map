@@ -87,6 +87,10 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         ),
         "facts_attribution_source_label": _("source"),
         "facts_wiki_marker": _("via Wikipedia · CC BY-SA 4.0"),
+        "facts_verbatim_attribution": _(
+            "Citation textuelle du Lien au terroir — voir la {source}."
+        ),
+        "facts_verbatim_to_verify": _("à vérifier — texte source court"),
         "meta_no_region": _("sans région"),
         "meta_communes_inao": _("{n} commune(s) INAO"),
         "meta_communes": _("{n} commune(s)"),
@@ -154,6 +158,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "wiki_lang_es": _("Wikipédia en espagnol"),
         "wiki_lang_nl": _("Wikipédia en néerlandais"),
         "wiki_lang_pt": _("Wikipédia en portugais"),
+        "wiki_lang_hr": _("Wikipédia en croate"),
         "vivc_link_title": _("Vitis International Variety Catalogue (Julius Kühn-Institut)"),
         "vivc_link_label": _("VIVC #{id}"),
         "translation_attribution": _("Traduction automatique depuis {source}"),
@@ -231,6 +236,60 @@ def build_region_labels(_: Callable[[str], str]) -> dict[str, str]:
         "COGNAC": _("COGNAC"),
         "ARMAGNAC": _("ARMAGNAC"),
         "RHUM": _("RHUM"),
+    }
+
+
+# Country code → flag emoji (Unicode regional-indicator pair). Every
+# country code that appears in `record.country` across the corpus has
+# a flag — rendered in the panel meta line ahead of the kind. Country
+# flag emojis are RGI and render reliably on every modern platform.
+_COUNTRY_FLAG_EMOJI: dict[str, str] = {
+    "fr": "\U0001F1EB\U0001F1F7",  # 🇫🇷
+    "es": "\U0001F1EA\U0001F1F8",  # 🇪🇸
+    "pt": "\U0001F1F5\U0001F1F9",  # 🇵🇹
+    "it": "\U0001F1EE\U0001F1F9",  # 🇮🇹
+    "at": "\U0001F1E6\U0001F1F9",  # 🇦🇹
+    "si": "\U0001F1F8\U0001F1EE",  # 🇸🇮
+    "hr": "\U0001F1ED\U0001F1F7",  # 🇭🇷
+    "hu": "\U0001F1ED\U0001F1FA",  # 🇭🇺
+    "ro": "\U0001F1F7\U0001F1F4",  # 🇷🇴
+    "bg": "\U0001F1E7\U0001F1EC",  # 🇧🇬
+    "gr": "\U0001F1EC\U0001F1F7",  # 🇬🇷
+    "de": "\U0001F1E9\U0001F1EA",  # 🇩🇪
+    "sk": "\U0001F1F8\U0001F1F0",  # 🇸🇰
+    "ch": "\U0001F1E8\U0001F1ED",  # 🇨🇭
+    "cz": "\U0001F1E8\U0001F1FF",  # 🇨🇿
+    "lu": "\U0001F1F1\U0001F1FA",  # 🇱🇺
+    "be": "\U0001F1E7\U0001F1EA",  # 🇧🇪
+    "nl": "\U0001F1F3\U0001F1F1",  # 🇳🇱
+}
+
+
+def build_country_labels(_: Callable[[str], str]) -> dict[str, str]:
+    """Country code → translatable country name. msgid is the FR form
+    (project convention — FR is the gettext source language). Surfaced
+    in the panel meta line next to the country flag emoji so users
+    unfamiliar with European borders can identify a record's jurisdiction
+    without needing to recognise the appellation by name."""
+    return {
+        "fr": _("France"),
+        "es": _("Espagne"),
+        "pt": _("Portugal"),
+        "it": _("Italie"),
+        "at": _("Autriche"),
+        "si": _("Slovénie"),
+        "hr": _("Croatie"),
+        "hu": _("Hongrie"),
+        "ro": _("Roumanie"),
+        "bg": _("Bulgarie"),
+        "gr": _("Grèce"),
+        "de": _("Allemagne"),
+        "sk": _("Slovaquie"),
+        "ch": _("Suisse"),
+        "cz": _("Tchéquie"),
+        "lu": _("Luxembourg"),
+        "be": _("Belgique"),
+        "nl": _("Pays-Bas"),
     }
 
 
@@ -707,6 +766,7 @@ def render(
     labels = build_labels(_)
     style_labels = build_style_labels(_)
     region_labels = build_region_labels(_)
+    country_labels = build_country_labels(_)
 
     area_q1, area_q3 = area_quartiles
     source_block = _build_source_block(
@@ -867,6 +927,8 @@ def render(
         grape_synonyms_json=json.dumps(grape_synonyms, ensure_ascii=False),
         styles_info_json=json.dumps(styles_info or {}, ensure_ascii=False),
         region_labels_json=json.dumps(region_labels, ensure_ascii=False),
+        country_labels_json=json.dumps(country_labels, ensure_ascii=False),
+        country_flag_emoji_json=json.dumps(_COUNTRY_FLAG_EMOJI, ensure_ascii=False),
         source_type=source_type,
     )
 
@@ -1068,6 +1130,9 @@ _TEMPLATE = """<!doctype html>
   #panel .body h2 {{ font-size:13px; text-transform:uppercase; letter-spacing:0.04em; color:#934050; margin:18px 0 6px }}
   #panel .body p {{ margin:0 0 8px }}
   #panel .meta {{ color:#666; font-size:12px; margin-bottom:8px }}
+  #panel .meta .meta-country {{ display:inline-flex; align-items:center; gap:5px; color:#444 }}
+  #panel .meta .country-flag {{ font-size:13px; line-height:1 }}
+  #panel .meta .country-name {{ font-weight:600 }}
   #panel .translation-attr {{ font-size:10.5px; color:#888; font-style:italic; margin:0 0 8px }}
   #panel .translation-attr a {{ color:#888 }}
   #panel .stack-header {{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#888; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:6px }}
@@ -1090,6 +1155,8 @@ _TEMPLATE = """<!doctype html>
   #panel ul.facts li {{ margin:2px 0 }}
   #panel ul.facts .wiki-attr {{ font-size:10.5px; color:#888; font-style:italic }}
   #panel ul.facts .wiki-attr a {{ color:#888 }}
+  #panel blockquote.facts-verbatim {{ margin:4px 0 6px; padding:6px 10px; border-left:3px solid #ddd; background:#f9f7f4; font-size:13px; color:#333; font-style:italic; white-space:pre-wrap }}
+  #panel .verbatim-badge {{ display:inline-block; margin-left:8px; padding:1px 8px; background:#fff5e5; color:#a05a00; border:1px solid #f0d8a8; border-radius:9px; font-size:10.5px; font-weight:600; font-style:normal; vertical-align:middle }}
   #panel .pills {{ margin:0 0 4px }}
   .pill {{ display:inline-block; padding:2px 8px; margin:2px 4px 2px 0; background:#eee; border-radius:10px; font-size:11px; color:#333; text-decoration:none }}
   .pill.style {{ background:#fdebe5; color:#934050 }}
@@ -1563,6 +1630,8 @@ _TEMPLATE = """<!doctype html>
   }}
   const STYLES_INFO = {styles_info_json};
   const REGION_LABELS = {region_labels_json};
+  const COUNTRY_LABELS = {country_labels_json};
+  const COUNTRY_FLAG_EMOJI = {country_flag_emoji_json};
   const LANG = "{lang_attr}";
   const SOURCE_TYPE = "{source_type}";
 
@@ -1596,6 +1665,23 @@ _TEMPLATE = """<!doctype html>
   function regionLabel(region) {{
     if (!region) return LABELS.meta_no_region;
     return REGION_LABELS[region] || region;
+  }}
+
+  function oneCountryChip(countryCode) {{
+    const flag = COUNTRY_FLAG_EMOJI[countryCode] || '';
+    const name = COUNTRY_LABELS[countryCode] || '';
+    if (!flag && !name) return '';
+    const flagSpan = flag ? `<span class="country-flag" aria-hidden="true">${{flag}}</span>` : '';
+    const nameSpan = name ? `<span class="country-name">${{escapeHtml(name)}}</span>` : '';
+    return `<span class="meta-country">${{flagSpan}}${{nameSpan}}</span>`;
+  }}
+
+  // Cross-border PDOs (e.g. Maasvallei Limburg BE+NL) get a chip per
+  // country, joined with " · ". Single-country records render one chip.
+  function countryChipHtml(countryCode, aliases) {{
+    if (!countryCode) return '';
+    const codes = [countryCode].concat(aliases || []);
+    return codes.map(oneCountryChip).filter(Boolean).join(' · ');
   }}
 
   function grapeUrl(slug) {{
@@ -2586,9 +2672,43 @@ _TEMPLATE = """<!doctype html>
     interactions: LABELS.facts_sub_interactions,
   }};
 
+  function buildFactsSourceLabel(country) {{
+    if (country === 'es') return LABELS.facts_attribution_source_label_es;
+    if (country === 'pt') return LABELS.facts_attribution_source_label_pt;
+    return LABELS.facts_attribution_source_label;
+  }}
+
+  function buildFactsAttribution(tplKey, country, cahierUrl) {{
+    const labelText = buildFactsSourceLabel(country);
+    const sourceHtml = cahierUrl
+      ? `<a href="${{escapeAttr(cahierUrl)}}" target="_blank" rel="noopener">${{escapeHtml(labelText)}}</a>`
+      : escapeHtml(labelText);
+    const tpl = LABELS[tplKey];
+    const placeholder = '{{source}}';
+    const idx = tpl.indexOf(placeholder);
+    const pre = idx >= 0 ? tpl.slice(0, idx) : (tpl + ' ');
+    const post = idx >= 0 ? tpl.slice(idx + placeholder.length) : '';
+    return `<p class="translation-attr">${{escapeHtml(pre)}}${{sourceHtml}}${{escapeHtml(post)}}</p>`;
+  }}
+
+  function renderVerbatimFacts(r, tf) {{
+    const text = tf.verbatim_text || '';
+    if (!text) return '';
+    const cahierUrl = tf.cahier_source_pdf_url || '';
+    const flag = tf.validation_flag || '';
+    const badge = flag
+      ? `<span class="verbatim-badge" title="${{escapeAttr(flag)}}">${{escapeHtml(LABELS.facts_verbatim_to_verify)}}</span>`
+      : '';
+    const body = `<blockquote class="facts-verbatim">${{escapeHtml(text)}}</blockquote>`;
+    const attribution = buildFactsAttribution('facts_verbatim_attribution', r.country, cahierUrl);
+    return `<h2>${{LABELS.panel_facts_h}}${{badge ? ' ' + badge : ''}}</h2>${{body}}${{attribution}}`;
+  }}
+
   function renderTerroirFacts(r) {{
     const tf = r.terroir_facts;
-    if (!tf || !tf.facts || !tf.facts.length) return '';
+    if (!tf) return '';
+    if (tf.mode === 'verbatim') return renderVerbatimFacts(r, tf);
+    if (!tf.facts || !tf.facts.length) return '';
     const wikiUrl = tf.wiki_source_url || '';
     const wikiAttr = wikiUrl
       ? ` <span class="wiki-attr">(<a href="${{escapeAttr(wikiUrl)}}" target="_blank" rel="noopener">${{escapeHtml(LABELS.facts_wiki_marker)}}</a>)</span>`
@@ -2608,19 +2728,9 @@ _TEMPLATE = """<!doctype html>
       return [`<div class="facts-sub-h">${{escapeHtml(FACTS_SUB_LABELS[k] || k)}}</div><ul class="facts">${{items}}</ul>`];
     }});
     if (!blocks.length) return '';
-    const cahierUrl = tf.cahier_source_pdf_url || '';
-    const labelText = r.country === 'es'
-      ? LABELS.facts_attribution_source_label_es
-      : LABELS.facts_attribution_source_label;
-    const sourceHtml = cahierUrl
-      ? `<a href="${{escapeAttr(cahierUrl)}}" target="_blank" rel="noopener">${{escapeHtml(labelText)}}</a>`
-      : escapeHtml(labelText);
-    const tpl = LABELS.facts_attribution;
-    const placeholder = '{{source}}';
-    const idx = tpl.indexOf(placeholder);
-    const pre = idx >= 0 ? tpl.slice(0, idx) : (tpl + ' ');
-    const post = idx >= 0 ? tpl.slice(idx + placeholder.length) : '';
-    const attribution = `<p class="translation-attr">${{escapeHtml(pre)}}${{sourceHtml}}${{escapeHtml(post)}}</p>`;
+    const attribution = buildFactsAttribution(
+      'facts_attribution', r.country, tf.cahier_source_pdf_url || ''
+    );
     return `<h2>${{LABELS.panel_facts_h}}</h2>${{blocks.join('')}}${{attribution}}`;
   }}
 
@@ -2685,6 +2795,8 @@ _TEMPLATE = """<!doctype html>
     }}
     const region = r.region ? regionLabel(r.region) : '';
     const regionSeg = region ? ` · ${{escapeHtml(region)}}` : '';
+    const countryChip = countryChipHtml(r.country, r.country_aliases);
+    const countrySeg = countryChip ? `${{countryChip}} · ` : '';
     const dgcLine = r.is_sub_denomination && r.parent_slug
       ? `<div class="dgc-line">${{escapeHtml(LABELS.dgc_of)}} <a class="parent-link" data-slug="${{escapeAttr(r.parent_slug)}}" href="#">${{escapeHtml(r.parent_name || r.parent_slug)}}</a></div>`
       : '';
@@ -2722,7 +2834,7 @@ _TEMPLATE = """<!doctype html>
     return `
       <div class="${{klass}}">
         <h1>${{nameWithLatin(r)}}</h1>
-        <div class="meta">${{r.kind}}${{regionSeg}}${{metaTail}}</div>
+        <div class="meta">${{countrySeg}}${{r.kind}}${{regionSeg}}${{metaTail}}</div>
         ${{dgcLine}}
         ${{approxLine}}
         ${{stubLine}}

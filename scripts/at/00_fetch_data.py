@@ -97,6 +97,34 @@ LICENSE = (
     "© European Union, eAmbrosia register. Reuse authorised with attribution."
 )
 
+# PDOs that the Commission has formally cancelled via an OJ-L Implementing
+# Regulation but that eAmbrosia still lists as status=registered (the register
+# is not retroactively cleaned up). Filtered at this stage so they never enter
+# the corpus. Each entry cites the cancellation regulation; verify any new
+# entry against the OJ-L document (status=registered alone is insufficient —
+# look for "cancelling the protection of the designation of origin" in the
+# Implementing Regulation's title).
+CANCELLED_PDOS: dict[str, dict] = {
+    "PDO-AT-A0220": {
+        "name": "Neusiedlersee-Hügelland",
+        "regulation": "Commission Implementing Regulation (EU) 2021/1303",
+        "oj_l": "L 283/11, 6.8.2021",
+        "url": (
+            "https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/"
+            "?uri=uriserv:OJ.L_.2021.283.01.0011.01.ENG"
+        ),
+    },
+    "PDO-AT-A0227": {
+        "name": "Südburgenland",
+        "regulation": "Commission Implementing Regulation (EU) 2021/1294",
+        "oj_l": "L 282/1, 5.8.2021",
+        "url": (
+            "https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/"
+            "?uri=uriserv:OJ.L_.2021.282.01.0001.01.ENG"
+        ),
+    },
+}
+
 
 def slugify(s: str) -> str:
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
@@ -195,8 +223,17 @@ def main() -> int:
         g for g in full
         if "AT" in (g.get("countries") or []) and g.get("productType") == "WINE"
     ]
-    at_wines = [g for g in at_wines_all if g.get("status") == "registered"]
-    n_skipped_applied = len(at_wines_all) - len(at_wines)
+    at_registered = [g for g in at_wines_all if g.get("status") == "registered"]
+    n_skipped_applied = len(at_wines_all) - len(at_registered)
+    at_wines = [g for g in at_registered if g.get("fileNumber") not in CANCELLED_PDOS]
+    n_skipped_cancelled = len(at_registered) - len(at_wines)
+    if n_skipped_cancelled:
+        for fn, meta in CANCELLED_PDOS.items():
+            print(
+                f"[filter] cancelled: {fn} {meta['name']} — {meta['regulation']} "
+                f"({meta['oj_l']})",
+                file=sys.stderr,
+            )
 
     by_slug: dict[str, list[dict]] = {}
     projected = [project(rec) for rec in at_wines]
@@ -234,6 +271,8 @@ def main() -> int:
         "n_total_eu": len(full),
         "n_at_wines": len(projected),
         "n_skipped_applied": n_skipped_applied,
+        "n_skipped_cancelled": n_skipped_cancelled,
+        "cancelled_pdos": CANCELLED_PDOS,
         "n_with_publication": n_with_pub,
         "by_kind": by_kind,
         "n_slug_collisions": len(collisions),

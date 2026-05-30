@@ -979,23 +979,25 @@ need a per-source parser (stage 02f-MASAF, deferred).
 
 ## Austria pipeline (`scripts/at/`)
 
-Country #5. The cleanest corpus so far: **32 wine GIs (29 DOP + 3
-IGP)** from eAmbrosia, and **every one carries an OJ Series C
+Country #5. The cleanest corpus so far: **30 wine GIs (27 DOP + 3
+IGP)** from eAmbrosia after filtering 2 cancelled PDOs (see "Cancelled
+PDOs" below), and **every one of the 30 carries an OJ Series C
 publication URL** — no curator queue, no no-publication bucket
 (unlike ES 44 % / IT 74 %). Latin script + German language, so the
 shared slug / normalisation helpers reuse untouched.
 
 Spine: **eAmbrosia EU register** (filtered `country=AT` +
-`productType=WINE` + `status=registered`). Pliego source: the EU-OJ
-**"EINZIGES DOKUMENT"** published inline as HTML, reached via each
-GI's `publications[].uri` (German-language URL rewrite — `/legal-
-content/DE/TXT/HTML/`, `…01.DEU`). Structurally a near-verbatim mirror
-of the IT pipeline **minus the MASAF / stage-02f layer** — Austria
-needs no national-spec fallback because every wine has its EU single
-document.
+`productType=WINE` + `status=registered`, minus the `CANCELLED_PDOS`
+registry in [scripts/at/00_fetch_data.py](scripts/at/00_fetch_data.py)).
+Pliego source: the EU-OJ **"EINZIGES DOKUMENT"** published inline as
+HTML, reached via each GI's `publications[].uri` (German-language URL
+rewrite — `/legal-content/DE/TXT/HTML/`, `…01.DEU`). Structurally a
+near-verbatim mirror of the IT pipeline **minus the MASAF / stage-02f
+layer** — Austria needs no national-spec fallback because every wine
+has its EU single document.
 
 WAF caveat: same as ES / IT — EUR-Lex returns HTTP 202 + an AWS WAF
-JavaScript challenge; all 32 AT wines hit it on the first pass.
+JavaScript challenge; all 30 AT wines hit it on the first pass.
 `scripts/at/01b_solve_waf.py` clears them with headless Chromium
 (Playwright, `bootstrap` dependency-group).
 
@@ -1029,14 +1031,14 @@ AT-specific notes:
   Laurent, Neuburger, Scheurebe, Blauer Wildbacher, Bouvier,
   Goldburger, Rathay, Grauburgunder) are folded into the shared
   `GRAPE_ALIAS` / `DEFAULT_COLOUR` tables in `grape_lexicon.py`.
-- v1 models the 32 wine GIs as a **flat corpus** — no DAC sub-
+- v1 models the 30 wine GIs as a **flat corpus** — no DAC sub-
   denominations (FR DGC / ES subzona / IT sottozona analogue). Most
   Austrian DACs use ripeness (Steinfeder / Federspiel / Smaragd) or
   single-vineyard (*Ried*) tiers rather than geographic sub-areas,
   and the single document does not enumerate them.
 - Region facet = **Bundesland** (`scripts/_lib/at/region.py`). All 9
   wine Bundesländer appear in the corpus as generic regional PDOs;
-  each of the 29 DOPs maps to exactly one Bundesland (curated
+  each of the 27 DOPs maps to exactly one Bundesland (curated
   file_number map). The 3 multi-state Landwein IGPs (Bergland,
   Weinland) are tagged `Österreich`; Steirerland is coextensive with
   Steiermark. Bundesland labels follow the IT/ES convention — shown
@@ -1079,16 +1081,44 @@ Per AT record, in priority order (`geom_source` records the choice):
    Steirerland): union every GISCO Gemeinde of the named Bundesland/
    Bundesländer.
 3. **`figshare-pdo`** — Bétard 2022 fallback, used only if a record's
-   geo-area text fails to parse. Defensive; not normally hit.
-4. **`stub-no-geometry`** — the 2 content-stubs (Neusiedlersee-Hügelland,
-   Südburgenland) whose only OJ-C publication is a *Löschungsantrag*,
-   so there is no Einziges Dokument and no geo-area to parse. The other
-   30 wines are mapped. (The IGP-containing-DAC and Leithaberg ⊃ Ruster
-   Ausbruch overlaps are legitimate regulatory containment, not errors.)
+   geo-area text fails to parse. Defensive; not normally hit. (The
+   IGP-containing-DAC and Leithaberg ⊃ Ruster Ausbruch overlaps are
+   legitimate regulatory containment, not errors.)
+4. **`stub-no-geometry`** — last resort. Not normally hit in v1; all
+   30 wines resolve.
 
 Statistik Austria registry lists are CC BY 4.0 (fetched in stage 00);
 GISCO LAU is the shared `raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip`,
 Bétard `raw/es/figshare/EU_PDO.gpkg` — both already cached by ES.
+
+### Cancelled PDOs (filtered at stage 00)
+
+The Commission occasionally cancels a registered PDO via an OJ-L
+Implementing Regulation, but eAmbrosia is not retroactively cleaned
+up — cancelled names linger as `status: registered`. Stage 00's
+`CANCELLED_PDOS` registry in
+[scripts/at/00_fetch_data.py](scripts/at/00_fetch_data.py) filters
+these out before they enter `raw/at/eambrosia/index.json`. Each entry
+cites the cancellation regulation; the audit at
+[scripts/audit_at_coverage.py](scripts/audit_at_coverage.py)
+surfaces the registry so the decision is traceable.
+
+Current entries (verified 2026-05 via the public OJ-L documents):
+
+- `PDO-AT-A0220` Neusiedlersee-Hügelland — Commission Implementing
+  Regulation (EU) 2021/1303 (OJ L 283/11, 6.8.2021). Territory mostly
+  absorbed into Leithaberg.
+- `PDO-AT-A0227` Südburgenland — Commission Implementing Regulation
+  (EU) 2021/1294 (OJ L 282/1, 5.8.2021). Reorganised into Eisenberg.
+
+Adding an entry: verify the OJ-L document's title literally says
+"cancelling the protection of the designation of origin '<name>'"
+(not "amending" — that's a modification, kept), then add the
+`fileNumber → {name, regulation, oj_l, url}` quadruple. Re-run stage
+00 → 02 → 04 to flush the cached extracted record and OJ-page
+manifest entry. The same mechanism applies to other countries —
+mirror the registry into the country's stage 00 when a cancellation
+is verified.
 
 ## Slovenia pipeline (`scripts/si/`)
 
@@ -1115,7 +1145,9 @@ headless Chromium.
 | si/00_fetch_data.py | (network: eAmbrosia) | raw/si/eambrosia/index.json + manifest.json |
 | si/01_fetch_pliegos.py | raw/si/eambrosia/index.json + raw/si/oj-pages/manual_overrides.json | raw/si/oj-pages/*.html + manifest.json |
 | si/01b_solve_waf.py | raw/si/oj-pages/manifest.json | raw/si/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
+| si/01c_fetch_specifikacije.py | raw/si/oj-pages/manual_overrides.json | raw/si/specifikacije/*.{doc,html} + manifest.json |
 | si/02_extract_pliegos.py | raw/si/oj-pages/*.html | raw/si/dokumenti-extracted/*.json + _index.json |
+| si/02f_extract_specifikacije.py | raw/si/specifikacije/*.{doc,html} + Docker `owm-antiword` image | raw/si/specifikacije-extracted/*.json + _index.json + manifest.json |
 | si/02d_extract_terroir_facts.py | raw/si/dokumenti-extracted/*.json + raw/wikipedia/aocs/sl/ | raw/terroir-facts/*.json (country="si") + manifest-si.json |
 | si/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="si") | raw/translations/terroir-facts/<en\|fr\|es\|nl>/*.json |
 | si/03_generate_wiki.py | raw/si/dokumenti-extracted/*.json | wiki/<slug>.md (per SI record) + merges SI entries into wiki/_index.json |
@@ -1164,28 +1196,105 @@ Per SI record, in priority order (`geom_source` records the choice):
 Bétard 2022 is the shared `raw/es/figshare/EU_PDO.gpkg` — no new fetch
 in stage 00.
 
-### Curator workflow for SI wines without an OJ publication
+### SI national-spec augmentation (stage 02f)
 
-Mirrors the ES/PT/IT/AT `regen_manual_overrides_template.py` flow. 16 of
-17 SI wines are grandfathered names with no public single-document URL —
-they dominate the curator queue. The canonical source for those is the
-Slovenian national specification (specifikacija proizvoda) published by
-the MKGP; researching a public, licence-clear URL pattern for it — and
-adding a national-spec parser branch — is Phase 2 work (it also unlocks
-the podokoliš sub-denominations). For now:
+Because 16 of 17 SI wines have no fetchable EU-OJ ENOTNI DOKUMENT
+(every wine except Cviček is an Art.107 / Reg.1308/2013 grandfathered
+name), the SI corpus would ship as 16 bare stubs without a national-
+spec layer. Stage 02f
+([scripts/si/02f_extract_specifikacije.py](scripts/si/02f_extract_specifikacije.py))
+parses the canonical Slovenian regulator sources researched in
+2026-05-29 via `/research-gaps` and pinned in
+[raw/si/oj-pages/manual_overrides.json](raw/si/oj-pages/manual_overrides.json) —
+two source patterns covering all 16 stubs:
 
+- **MKGP per-wine `.doc`** (11 wines) — Microsoft Word 97-2003 binary
+  format hosted at `gov.si/assets/ministrstva/MKGP/DOKUMENTI/HRANA/VINO/ZOP/`.
+  Layout is the "SPECIFIKACIJA PROIZVODA v skladu s 118 c členom
+  Uredbe Sveta 1234/2007" template — 9 numbered sections matching the
+  EU template (1 Ime / 2 Opis vin / 3 Posebni enološki postopki /
+  4 Opredelitev geografskega območja / 5 Največji donos / 6 Sorte /
+  7 Povezava z geografskim območjem / 8 Veljavne zahteve / 9 Pregledi).
+  Section 6 (Sorte) splits by colour markers `bele:` / `rdeče:` /
+  `rose:` — flat list, no principal/accessory split (same shape as
+  the EU template).
+- **Uradni list RS pravilnik HTML** (5 wines, 2 distinct documents) —
+  the Slovenian official gazette. 4 wines (bela-krajina + the 3 PGIs
+  podravje / posavje / primorska) share **Uradni list RS št. 49/2007,
+  predpis 2634** *Pravilnik o seznamu geografskih označb za vina in
+  trsnem izboru*; Priloga 2 lists per-okoliš `priporočene sorte`
+  (→ principal) + `dovoljene sorte` (→ accessory) — the only SI
+  source that ships a real role split. 1 wine (belokranjec) is
+  parsed from **Uradni list RS št. 112/2022, predpis 2690** the
+  Metliška črnina + Belokranjec PTP Pravilnik; Article 5 paragraph 2
+  enumerates the 10-variety Belokranjec list.
+
+Pipeline (stages 01c + 02f):
+
+1. **Stage 01c** ([scripts/si/01c_fetch_specifikacije.py](scripts/si/01c_fetch_specifikacije.py))
+   fetches the 16 specs into `raw/si/specifikacije/<slug>.{doc,html}`
+   keyed by `Content-Type` (msword → `.doc`, html → `.html`); writes
+   `manifest.json` with sha256, source URL, fetched_at.
+2. **Stage 02f** dispatches each cache file to one of two parser
+   branches in [scripts/_lib/si/specifikacija.py](scripts/_lib/si/specifikacija.py):
+   - **`mkgp-doc-v1`**: `.doc` files are converted via `antiword`
+     running in a one-off Docker image
+     ([scripts/si/Dockerfile.doc-converter](scripts/si/Dockerfile.doc-converter):
+     ~120 KB on top of `debian:bookworm-slim`). Build once via
+     `docker build -t owm-antiword:latest -f scripts/si/Dockerfile.doc-converter scripts/si/`;
+     stage 02f shells out with `-w 0 -m UTF-8.txt` for unwrapped
+     paragraphs + Slovenian diacritics. The output text feeds the
+     9-section parser keyed on numbered SPECIFIKACIJA-PROIZVODA
+     headers; style detection truncates at the `Tradicionalna imena`
+     boilerplate (lists every predikat tier authorised in Slovenian
+     wine law for the okoliš, not styles actually produced) so the
+     resulting style tags reflect the wine's first-paragraph
+     description rather than the regulatory roster.
+   - **`uradni-list-pravilnik-2007`**: HTML pravilnik. Strips to plain
+     text, then walks Article 5 paragraphs to identify the wine
+     region's okoliši, then walks Priloga 2 to extract per-okoliš
+     `priporočene sorte` / `dovoljene sorte`. PGI variant rolls every
+     okoliš inside the wine region into one combined roster.
+   - **`uradni-list-pravilnik-2022-ptp`**: HTML pravilnik. Strict
+     `\b\d+\. člen\b` word-boundary regex avoids false-positives on
+     genitive references (`5. člena`, `9. členu`); Article 2 ¶2 for
+     description, Article 4 for area, Article 5 ¶2 for the enumerated
+     Belokranjec variety list.
+
+`augment_si_records_with_specifikacija()` in
+[scripts/04_build_maps.py](scripts/04_build_maps.py) merges the
+sidecar's summary / grapes / geo-area / link-to-terroir / styles /
+section-roles into each in-memory SI stub record at load time; the
+on-disk dokumenti-extracted JSON stays immutable. `_sources_for()`
+surfaces `specifikacija_*` provenance for the panel (URL, sha256,
+parser_template, format) so the map can attribute the data + link to
+its source. The record's `stub_reason` is prefixed `specifikacija:`
+so the audit can tell EU-OJ-extracted from spec-augmented wines.
+
+Result: 16 / 16 SI stubs augmented; **236 principal + 54 accessory**
+variety slugs added across the corpus (per-wine principal min=1 for
+Teran, max=25 for Bizeljčan / Bizeljsko Sremič).
+
+Re-runnable per slug or sweep:
 ```
-.venv/bin/python scripts/si/regen_manual_overrides_template.py
-# edit raw/si/oj-pages/manual_overrides.json: fill `url` with a public,
-# licence-clear specification (EUR-Lex OJ-C page, MKGP specification).
-.venv/bin/python scripts/si/01_fetch_pliegos.py
-.venv/bin/python scripts/si/02_extract_pliegos.py
+.venv/bin/python scripts/si/01c_fetch_specifikacije.py
+.venv/bin/python scripts/si/02f_extract_specifikacije.py --slug teran
+.venv/bin/python scripts/si/02f_extract_specifikacije.py --all
 .venv/bin/python scripts/04_build_maps.py
 ```
 
-**Caveat**: stage 02's HTML parser only understands the EU-OJ ENOTNI
-DOKUMENT template; MKGP national-specification formats need a per-source
-parser (Phase 2, mirrors the ES MAPA / IT MASAF pattern).
+Cached `.doc` / `.html` files at `raw/si/specifikacije/<slug>.*` are
+reused unless `--refresh` is passed.
+
+Note: stage 02's HTML parser still only understands the EU-OJ ENOTNI
+DOKUMENT template (the parsed-via-stage-02 path of stage 02 emits
+`raw/si/dokumenti-extracted/<slug>.json` — the stub-or-extract
+contract is unchanged). National-spec extraction is a parallel layer
+that feeds stage 04 via the augmentation hook, not via the dokumenti-
+extracted directory. The podokoliš (sub-district) sub-denomination
+layer remains Phase 3 — recoverable from the same MKGP `.doc` files
+(section 4 enumerates podokoliši for wines that have them) but
+deferred so v1 sticks with the flat-corpus model.
 
 ### Teran — cross-border note (`appellation_notes.json`)
 
@@ -1237,7 +1346,9 @@ covers them all.
 | hr/00_fetch_data.py | (network: eAmbrosia) | raw/hr/eambrosia/index.json + manifest.json |
 | hr/01_fetch_pliegos.py | raw/hr/eambrosia/index.json + raw/hr/oj-pages/manual_overrides.json | raw/hr/oj-pages/*.html + manifest.json |
 | hr/01b_solve_waf.py | raw/hr/oj-pages/manifest.json | raw/hr/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
+| hr/01c_fetch_specifikacije.py | raw/hr/specifikacije/manual_overrides.json | raw/hr/specifikacije/*.{doc,docx,pdf} + manifest.json |
 | hr/02_extract_pliegos.py | raw/hr/oj-pages/*.html | raw/hr/dokumenti-extracted/*.json + _index.json |
+| hr/02f_extract_specifikacije.py | raw/hr/specifikacije/*.{doc,docx,pdf} + Docker `owm-antiword` image | raw/hr/specifikacije-extracted/*.json + _index.json + manifest.json |
 | hr/02d_extract_terroir_facts.py | raw/hr/dokumenti-extracted/*.json + raw/wikipedia/aocs/hr/ | raw/terroir-facts/*.json (country="hr") + manifest-hr.json |
 | hr/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="hr") | raw/translations/terroir-facts/<en\|fr\|es\|nl>/*.json |
 | hr/03_generate_wiki.py | raw/hr/dokumenti-extracted/*.json | wiki/<slug>.md (per HR record) + merges HR entries into wiki/_index.json |
@@ -1290,30 +1401,100 @@ Per HR record, in priority order (`geom_source` records the choice):
 Croatia has no IGPs (unlike SI's 3), so there is no region-union
 branch — the simplest geometry chain of any country.
 
-### Curator workflow for HR wines without an OJ publication
+### HR national specifikacija augmentation (stage 01c + 02f)
 
-Mirrors the ES/PT/IT/AT/SI `regen_manual_overrides_template.py` flow.
-16 of 18 HR wines are grandfathered names with no public single-document
-URL — they dominate the curator queue. The canonical source for those
-is the Croatian national specification (specifikacija proizvoda)
-published in *Narodne novine* (the official gazette) and on the MPS
-(Ministarstvo poljoprivrede) website; researching a public, licence-
-clear URL pattern for it — and adding a national-spec parser branch —
-is Phase 2 work. For now:
+The 16 grandfathered HR wines (everything except Muškat momjanski +
+Ponikve) have no fetchable EU-OJ JEDINSTVENI DOKUMENT, so the corpus
+would ship as 16 bare stubs without a national-spec layer. Their
+canonical source is the **Ministarstvo poljoprivrede (MPS) per-wine
+SPECIFIKACIJA PROIZVODA** "sukladno Uredbi 1308/2013, članak 94." —
+all 16 published at
+`poljoprivreda.gov.hr/UserDocsImages/dokumenti/hrana/zastita_oznaka_izvrsnosti_vina/na_razini_EU/`
+(listing page
+`/istaknute-teme/hrana-111/oznake-kvalitete/oznake-izvornosti-vina/229`)
+in three formats: 14 legacy `.doc`, 1 `.docx` (Primorska Hrvatska),
+1 PDF (Dingač). URLs are pinned in
+[raw/hr/specifikacije/manual_overrides.json](raw/hr/specifikacije/manual_overrides.json) —
+a **dedicated** overrides file, NOT `raw/hr/oj-pages/manual_overrides.json`:
+HR stage 01 saves a PDF response as `ok` and stage 02's HTML parser
+can't read `.doc`/`.docx`/`.pdf`, so the national specs ride a parallel
+01c → 02f → stage-04-augment layer that never touches the EU-OJ path.
 
+Stage 01c
+([scripts/hr/01c_fetch_specifikacije.py](scripts/hr/01c_fetch_specifikacije.py))
+fetches the 16 specs keyed by Content-Type. Stage 02f
+([scripts/hr/02f_extract_specifikacije.py](scripts/hr/02f_extract_specifikacije.py))
+converts each (`.doc` → `antiword` in the shared `owm-antiword` Docker
+image, [scripts/si/Dockerfile.doc-converter](scripts/si/Dockerfile.doc-converter);
+`.docx` → stdlib zip → `word/document.xml`; PDF → `pdftotext -layout`)
+and parses via
+[scripts/_lib/hr/specifikacija.py](scripts/_lib/hr/specifikacija.py).
+The parser slices the lettered-section outline (a Naziv / b Opis
+svojstava vina / c Enološki postupci / d Granice područja / e
+Maksimalni urod / f Sorte vinove loze / g …povezane sa zemljopisnim
+uvjetima / h Prihvatljivi zahtjevi). `\x0c` form-feeds are normalised
+to `\n` (so a section starting a new PDF page is still anchored) and a
+forward-only letter guard drops backward cross-reference anchors
+("…točkom e) …" inside section c). Grapes come from the colour markers
+`Bijele sorte:` / `Crne sorte:` (white→blanc, black→noir; a trailing-
+colour-adjective fallback recovers `Croatina crna`→croatina); there is
+no principal/accessory split in the MPS spec (same as PT/IT), so every
+variety is `principal`. The `.docx` (Primorska) loses its lettered a–j
+prefixes to Word auto-numbering, so it falls through to a keyword-title
+slicer (`_keyword_sections`) that anchors on the role-keyword heading
+lines instead — recovering grapes *and* the section-g terroir narrative
+(the docx extractor strips `<w:pPr>` blocks so paragraph-property markup
+can't leak into the text).
+
+Stage 04's `augment_hr_records_with_specifikacija()`
+([scripts/04_build_maps.py](scripts/04_build_maps.py)) merges the
+sidecar's summary / grapes / geo_area / link_to_terroir / styles /
+section_roles into each in-memory stub at load time; the on-disk
+`dokumenti-extracted` JSON stays immutable. `_sources_for()` surfaces
+`specifikacija_*` provenance (URL, sha256, parser_template, format) so
+the panel attributes the data + links the source. The record's
+`stub_reason` is prefixed `specifikacija:` so the audit can tell
+EU-OJ-extracted from spec-augmented. HR 02d's
+`_resolve_lien_and_source` reads the sidecar's `link_to_terroir`
+(section g) so terroir-fact extraction grounds against the MPS spec.
+
+Result: **16 / 16 stubs augmented; 689 principal varieties (after the
+2026-05-29 autochthonous-variety lexicon pass — 44 native HR varieties
+added with regulator-assigned colours + a research VIVC/identity pass);
+16 / 16 with terroir source text**. Effective extraction = 18 / 18.
+Terroir-fact extraction (02d/02e, Anthropic batch) then produced **213
+bullets across all 18 HR wines**, translated into en/fr/es/nl. VIVC +
+grape-Wikipedia enrichment is wired for the spec-only varieties:
+`grape_corpus.py` + `02g_fetch_vivc.py` also scan
+`raw/{hr,si}/specifikacije-extracted/` (the IT-MASAF sidecar
+precedent), so 02g resolves 12 HR VIVC IDs (11 pinned in
+`raw/vivc/slug_overrides.json`) and 02b lands tooltips for the
+internationally-known varieties. ~44 autochthonous HR varieties the specs name
+(Vranac, Dobričić, Trnjak, Kujundžuša, Crljenak viški = Tribidrag, …)
+flow to `raw/hr/extraction-unknowns-specifikacije.json` for the same
+`GRAPE_ALIAS` / `DEFAULT_COLOUR` vocab-curation pattern the other
+countries use (see [CURATOR_TODO.md](CURATOR_TODO.md)).
+
+Re-runnable per slug or sweep:
 ```
-.venv/bin/python scripts/hr/regen_manual_overrides_template.py
-# edit raw/hr/oj-pages/manual_overrides.json: fill `url` with a public,
-# licence-clear specification (EUR-Lex OJ-C page, MPS / NN specification).
-.venv/bin/python scripts/hr/01_fetch_pliegos.py
-.venv/bin/python scripts/hr/02_extract_pliegos.py
+.venv/bin/python scripts/hr/01c_fetch_specifikacije.py
+.venv/bin/python scripts/hr/02f_extract_specifikacije.py --slug dingac
+.venv/bin/python scripts/hr/02f_extract_specifikacije.py --all
 .venv/bin/python scripts/04_build_maps.py
 ```
+Cached `.doc`/`.docx`/`.pdf` at `raw/hr/specifikacije/<slug>.*` are
+reused unless `--refresh` is passed.
 
-**Caveat**: stage 02's HTML parser only understands the EU-OJ
-JEDINSTVENI DOKUMENT template; MPS/NN national-specification formats
-need a per-source parser (Phase 2, mirrors the ES MAPA / IT MASAF
-pattern).
+### Curator workflow for HR wines without an OJ publication
+
+The 16 grandfathered names are all covered by the MPS specifikacija
+layer above (researched 2026-05-29). If a new HR wine appears, or an
+MPS URL rotates, add it to
+`raw/hr/specifikacije/manual_overrides.json` (slug → `{url,
+source_org, note, file_number}`) and re-run 01c → 02f → 04. The
+EU-OJ `regen_manual_overrides_template.py` flow still applies if the
+Commission later publishes a real JEDINSTVENI DOKUMENT (which would
+add the EU-OJ narrative sections stage 02 parses directly).
 
 ## Hungary pipeline (`scripts/hu/`)
 
@@ -1754,9 +1935,11 @@ The remaining 138 are Art.107 / Reg.1308/2013 grandfathered names
 whose only eAmbrosia reference is a non-fetchable `Ares(...)`
 summary-sheet. Nonetheless, **all 33 GR PDOs land on the map** via
 Bétard 2022 (Greece joined the EU in 1981, so every PDO predates the
-Nov-2021 cutoff). The 114 PGIs are not in Bétard (PDO-only dataset)
-and ship as `stub-no-geometry` in v1; 2 made it on via the commune-
-list fallback. The first **non-Latin-script** country in the corpus —
+Nov-2021 cutoff). The 114 PGIs are not in Bétard (PDO-only dataset) but
+all land on the map via the `gisco-nuts-region` fallback (112) + the
+commune-list fallback (2) — every one of the 147 GR wines now carries a
+polygon (0 `stub-no-geometry`; see the geometry chain below). The first
+**non-Latin-script** country in the corpus —
 eAmbrosia ships an EU-official Latin **`transcriptions[0]`** field
 per record (`Ραψάνη` → `Rapsani`, `Σαντορίνη` → `Santorini`, …) which
 the stage-00 slugifier uses as authoritative.
@@ -1771,11 +1954,13 @@ URLs with headless Chromium (none blocked on first stage-01 run).
 
 | Script | Reads | Writes |
 |---|---|---|
-| gr/00_fetch_data.py | (network: eAmbrosia) | raw/gr/eambrosia/index.json + manifest.json |
+| gr/00_fetch_data.py | (network: eAmbrosia + GISCO NUTS-3) | raw/gr/eambrosia/index.json + manifest.json, raw/gr/nuts/NUTS_RG_03M_2024_4326_LEVL_3.geojson |
 | gr/01_fetch_pliegos.py | raw/gr/eambrosia/index.json + raw/gr/oj-pages/manual_overrides.json | raw/gr/oj-pages/*.html + manifest.json |
 | gr/01b_solve_waf.py | raw/gr/oj-pages/manifest.json | raw/gr/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
 | gr/02_extract_pliegos.py | raw/gr/oj-pages/*.html | raw/gr/dokumenti-extracted/*.json + _index.json |
-| gr/02d_extract_terroir_facts.py | raw/gr/dokumenti-extracted/*.json + raw/wikipedia/aocs/el/ | raw/terroir-facts/*.json (country="gr") + manifest-gr.json |
+| gr/01c_fetch_specifikacije.py | raw/gr/national-specs/manual_overrides.json | raw/gr/national-specs/*.{pdf,doc,docx} + manifest.json |
+| gr/02f_extract_national_specs.py | raw/gr/national-specs/*.{pdf,doc,docx} + owm-antiword Docker image | raw/gr/national-specs-extracted/*.json + _index.json |
+| gr/02d_extract_terroir_facts.py | raw/gr/dokumenti-extracted/*.json + raw/gr/national-specs-extracted/ + raw/wikipedia/aocs/el/ | raw/terroir-facts/*.json (country="gr") + manifest-gr.json |
 | gr/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="gr") | raw/translations/terroir-facts/<en\|fr\|es\|nl>/*.json |
 | gr/03_generate_wiki.py | raw/gr/dokumenti-extracted/*.json | wiki/<slug>.md (per GR record) + merges GR entries into wiki/_index.json |
 | gr/regen_manual_overrides_template.py | raw/gr/eambrosia/index.json + raw/gr/oj-pages/manifest.json | raw/gr/oj-pages/manual_overrides.json (curator queue) |
@@ -1853,48 +2038,96 @@ Per GR record, in priority order (`geom_source` records the choice):
 2. **`gisco-commune-list`** — parse the documento-unic section-6
    area body into δήμος / κοινότητα names (Greek-preserving) and
    union matching GISCO LAU `EL_*` polygons (CNTR_CODE='EL' — the
-   EU country code for Greece, *not* ISO `GR`). 6 GR IGPs have a
-   parseable commune list; 2 currently resolve onto the map (the
-   other 4 await commune-name normaliser tightening). Mirrors the
-   RO / BG chains. ~6,142 Greek δημοτική κοινότητα polygons in
-   GISCO LAU 2024.
-3. **`stub-no-geometry`** — the dominant case for the ~112 grand-
-   fathered Greek PGIs whose only eAmbrosia reference is an
-   `Ares(...)` summary-sheet. Visible in the sidebar/search,
-   absent from the map until curator-pinned.
+   EU country code for Greece, *not* ISO `GR`). Only the 2 EU-OJ
+   PGIs with an enumerated list resolve here. ~6,142 Greek δημοτική
+   κοινότητα polygons in GISCO LAU 2024.
+3. **`gisco-nuts-region`** — the PGI fallback. The national-spec
+   "Οριοθετημένη περιοχή" section does NOT enumerate δήμοι — it
+   delimits the area by reference to the founding ministerial decrees
+   plus a NUTS code + regional-unit / region name (`GR232 Αχαΐα`,
+   `GR30 Αττική`). So the honest geometry is the GISCO NUTS polygon
+   for that unit — exactly what the spec legally delimits.
+   [scripts/_lib/gr/nuts.py](scripts/_lib/gr/nuts.py) resolves it:
+   curated `slug → [NUTS_ID]` override → the spec's cited NUTS name →
+   appellation name → region facet, matched (Greek-normalised,
+   island-list-token-aware) against GISCO NUTS-3 (52 EL regional
+   units) + NUTS-2 (13 EL regions). `GRPolygonIndex` unions the
+   matched NUTS polygons. The curated override carries the residual
+   that strict name-match misses — the Attica retsina/town cluster
+   (→ EL30 Αττική), the Cyclades / Dodecanese (NUTS-3 labelled by
+   island list), and Μακεδονία (→ EL51+EL52+EL53 unioned). Resolves
+   **112 of 114 PGIs**; honest precision is regional-unit-level, not
+   commune-level.
+4. **`stub-no-geometry`** — last resort. Not hit in v1; all 147 GR
+   wines resolve to a polygon.
 
-The shared `raw/es/figshare/EU_PDO.gpkg` and
-`raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip` are re-used — no new
-stage-00 download.
+The shared `raw/es/figshare/EU_PDO.gpkg`,
+`raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip`, and the NL pipeline's
+NUTS-2 GeoJSON are re-used; only the GISCO NUTS-3 layer
+(`raw/gr/nuts/NUTS_RG_03M_2024_4326_LEVL_3.geojson`, © European Union
+/ Eurostat GISCO) is newly fetched in stage 00.
 
 ### Curator workflow for GR wines without an OJ publication
 
-Mirrors the ES/PT/IT/AT/SI/HR/HU/RO/BG
-`regen_manual_overrides_template.py` flow. ~138 GR wines (30 DOPs +
-108 PGIs) dominate the curator queue — the historic flagships whose
-grandfathered registration carries only an `Ares(...)` reference.
-The canonical source for those is the national **προδιαγραφή
-προϊόντος** published by ΥΠΑΑΤ (Υπουργείο Αγροτικής Ανάπτυξης και
-Τροφίμων, the Greek Ministry of Rural Development and Food) or in
-ΦΕΚ (Εφημερίδα της Κυβερνήσεως, the Greek government gazette);
-researching a public, licence-clear URL pattern for it — and adding
-a national-spec parser branch — is Phase 2 work. For now:
+138 of 147 GR wines are grandfathered names with only an `Ares(...)`
+reference. Their canonical source is the national **προδιαγραφή
+προϊόντος** / **τεχνικός φάκελος** published by ΥΠΑΑΤ (Greek Ministry
+of Rural Development and Food) on minagric.gr. A `/research-gaps gr
+stubs` sweep (2026-05-29) resolved **132 of 138** to that source
+(0 EUR-Lex single documents exist — every file_number search returns
+only the unrelated EU-Kosovo SAA annex); the 6 unresolved are in the
+Greece section of [CURATOR_TODO.md](CURATOR_TODO.md).
 
+### GR national-spec layer (stages 01c + 02f)
+
+Because the EU-OJ path covers only 9 of 147 wines, the bulk of the GR
+corpus is filled from the ΥΠΑΑΤ national spec via a parallel layer
+(the ES MAPA / IT MASAF / DE BLE / HR–SI specifikacije pattern):
+
+- **Host caveat**: the canonical reachable host is the legacy four-w
+  host `http://wwww.minagric.gr/greek/data/pop-pge/` (four w's, plain
+  HTTP) — `https://www.minagric.gr` and `minagric.gov.gr` are
+  Akamai-WAF-blocked (HTTP 403) to non-browser clients; a VPN can
+  re-trigger the WAF. URLs are pinned in
+  `raw/gr/national-specs/manual_overrides.json` (slug-keyed: `url`,
+  `source_org: ypaat`, `file_number`, `format`).
+- **Stage 01c** ([scripts/gr/01c_fetch_specifikacije.py](scripts/gr/01c_fetch_specifikacije.py))
+  fetches the 132 specs into `raw/gr/national-specs/<slug>.{pdf,doc,docx}`
+  (87 PDF, 43 .doc, 2 .docx) + manifest with sha256.
+- **Stage 02f** ([scripts/gr/02f_extract_national_specs.py](scripts/gr/02f_extract_national_specs.py))
+  parses each via [scripts/_lib/gr/specifikacija.py](scripts/_lib/gr/specifikacija.py):
+  one role-keyword section splitter (reuses the `eniaio_engrafo`
+  tables + `greek_norm`) over `pdftotext -layout` (PDF), the shared
+  `owm-antiword` Docker image (.doc), or zip/XML (.docx). Grapes come
+  from the §6 ΟΙΝΟΠΟΙΗΣΙΜΕΣ ΠΟΙΚΙΛΙΕΣ list (PDF) or a capitalised-Greek
+  prose scan scoped to that section (.doc) with a first-char-guarded
+  fuzzy filter (a cross-first-char fuzzy hit on a place name is the
+  dominant false positive — `Νάουσα`→xinomavro, `Σεπτέμβρη`→
+  chasselas-rose). Sidecars land in `raw/gr/national-specs-extracted/`
+  (132: 127 with grapes, 131 with terroir text).
+- **Stage 04** `augment_gr_records_with_national_specs()` merges the
+  sidecar grapes / terroir text / styles / geo-area into the in-memory
+  stub record (on-disk JSON stays immutable); `stub_reason` is prefixed
+  `national-spec:`; `_sources_for()` surfaces `national_spec_*`
+  provenance. **02d** grounds terroir-fact extraction on the sidecar's
+  §7 ΔΕΣΜΟΣ text when the on-disk record's `link_to_terroir` is empty.
+
+Re-runnable:
 ```
-.venv/bin/python scripts/gr/regen_manual_overrides_template.py
-# edit raw/gr/oj-pages/manual_overrides.json: fill `url` with a public,
-# licence-clear specification (EUR-Lex OJ-C page, or ΥΠΑΑΤ / ΦΕΚ
-# national προδιαγραφή προϊόντος).
-.venv/bin/python scripts/gr/01_fetch_pliegos.py
-.venv/bin/python scripts/gr/02_extract_pliegos.py
+.venv/bin/python scripts/gr/01c_fetch_specifikacije.py
+.venv/bin/python scripts/gr/02f_extract_national_specs.py --all
+.venv/bin/python scripts/gr/02d_extract_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/gr/02e_translate_terroir_facts.py --batch --provider anthropic
 .venv/bin/python scripts/04_build_maps.py
 ```
 
-**Caveat**: stage 02's HTML parser only understands the EU-OJ ΕΝΙΑΙΟ
-ΕΓΓΡΑΦΟ template; ΥΠΑΑΤ / ΦΕΚ national-specification formats need
-a per-source parser (Phase 2, mirrors the ES MAPA / IT MASAF
-pattern). Until then, only EUR-Lex single-document URLs promote a
-wine out of stub state.
+For a curator-pinned EUR-Lex single document (the only path that
+promotes a wine to a full EU-OJ extraction), use the original flow:
+`scripts/gr/regen_manual_overrides_template.py` → edit
+`raw/gr/oj-pages/manual_overrides.json` → `gr/01_fetch_pliegos.py` →
+`gr/02_extract_pliegos.py` → `04_build_maps.py`. Stage 02's HTML
+parser only understands the EU-OJ ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ template; national
+PDF/.doc specs ride the 01c/02f layer above instead.
 
 ## Germany pipeline (`scripts/de/`)
 
@@ -2073,6 +2306,35 @@ DE-specific notes:
   `augment_de_records_with_produktspezifikation()` mirrors the same
   fold for in-memory rendering. After this, every traditional German
   Anbaugebiet (13 of 13) has 7-10 terroir facts.
+
+  **Landwein g.g.A. extension (Phase 2)**: the same stage 02f also
+  augments the **15 Landwein PGIs** that ship as stubs (no fetchable EU
+  Einziges Dokument): Ahrtaler, Badischer, Bayerischer Bodensee, Branden-
+  burger, Landwein Main / Neckar / Oberrhein / Rhein / Rhein-Neckar,
+  Mitteldeutscher, Regensburger, Rheingauer, Schwäbischer, Starkenburger,
+  Taubertäler. Their BLE national Produktspezifikation lives in a
+  parallel directory
+  (`…/Wein/Antraege/Landweingebiete/01_Produktspezifikationen_Landweine/Landwein_<Fragment>.pdf`,
+  fetched by stage 00 alongside the Anbaugebiete PDFs into the shared
+  `raw/de/produktspezifikationen/` dir, tagged `category: "landwein"` in
+  the manifest). The Landwein layout is heterogeneous — the variety
+  roster sits at §6 / §7 / §8 depending on the document, grouped by
+  colour subheader OR by per-Bundesland prose paragraph — so section
+  numbers aren't reliable anchors. A dedicated parser
+  ([scripts/_lib/de/landwein_spezifikation.py](scripts/_lib/de/landwein_spezifikation.py))
+  locates the variety section by KEYWORD ("N. Rebsorten" / "N. Zugelassene
+  Keltertraubensorten"), slices to the next top-level numbered header, and
+  runs the shared grape lexicon over the candidate phrases (the same
+  whole-section scan the CH règlement parser uses). Landwein has no
+  principal/accessory split, so every variety resolves as `principal`
+  (the sidecar lands as `section-8-flat-no-split`); per-grape colour comes
+  from the lexicon matcher. The §-Zusammenhang terroir text (title variant
+  "N. Angaben, aus denen sich der Zusammenhang … ergibt" OR "N. Zusammen-
+  hang mit dem geografischen Gebiet") is extracted the same way. Result:
+  **15 / 15 Landwein stubs augmented — 38-160 varieties each + 1.3-4.3 KB
+  of terroir source text**, feeding stage 04's grape fold + 02d's terroir
+  extraction. Geometry was already resolved via `region-pdo-union`
+  (DE_PGI_MEMBER_PDOS), so these PGIs now carry full panels.
 - Region facet = **Anbaugebiet** for PDOs (the 13 traditional German
   wine regions: Ahr, Baden, Franken, Hessische Bergstraße, Mittelrhein,
   Mosel, Nahe, Pfalz, Rheingau, Rheinhessen, Saale-Unstrut, Sachsen,
@@ -2122,12 +2384,23 @@ Per DE record, in priority order (`geom_source` records the choice):
    Rheinhessen + Nahe + Pfalz + Mittelrhein), we use the union of the
    member-PDO Figshare polygons (the SI / HU / BG pattern). Mappings
    in `DE_PGI_MEMBER_PDOS` in [scripts/_lib/de/geometry.py](scripts/_lib/de/geometry.py).
-4. **`stub-no-geometry`** — multi-Bundesland Landweine that don't
-   align with the Anbaugebiete (Mitteldeutscher Landwein,
-   Brandenburger Landwein, Mecklenburger Landwein, Schleswig-
-   Holsteinischer Landwein, …). Phase 2: parse the commune list
-   from the Einziges Dokument and union the GISCO LAU DE polygons
-   (same pattern as RO IGPs and BG commune-list fallback).
+4. **`gisco-commune-union`** — for multi-Bundesland Landwein PGIs that
+   are NOT coextensive with one Anbaugebiet (so step 3 can't union a
+   parent PDO) and aren't in Bétard (PDO-only). The area is transcribed
+   from the BLE Produktspezifikation §3 "Abgrenzung des Gebietes" into
+   the curated `DE_LANDWEIN_AREA` in
+   [scripts/_lib/de/geometry.py](scripts/_lib/de/geometry.py) as whole
+   Landkreise / kreisfreie Städte (unioned by 5-digit AGS Kreis prefix
+   against the GISCO_ID) plus named Gemeinden (single-commune name match
+   scoped to their Kreis; the `spec` field records the regulator's
+   wording when the GISCO commune differs — e.g. the Ortsteil Meseberg
+   resolves to its Stadt Gransee). Shipped for **Brandenburger Landwein**
+   (PGI-DE-A1281 — 6 Landkreise + 4 kreisfreie Städte + 7 Gemeinden =
+   188 GISCO communes, 13,093 km²). Same pattern as the RO IGP / BG
+   commune-list fallback; extend `DE_LANDWEIN_AREA` for the other
+   multi-Bundesland Landweine (Mitteldeutscher, Mecklenburger,
+   Schleswig-Holsteinischer) as they're transcribed.
+5. **`stub-no-geometry`** — last resort; no longer hit for Brandenburger.
 
 ### Curator workflow for DE wines without an OJ publication
 
@@ -2963,8 +3236,15 @@ Maasvallei polygon, and the 2 PGIs resolve via region-pdo-union.
 **Cross-border Maasvallei Limburg** (`PDO-BE+NL-02172`): emitted as a
 single BE record (BE-primary by file_number ordering). The NL pipeline
 (country #17) skips this file_number — the cross-border GI shows up
-exactly once on the map, on the BE side. A future iteration could
-add a cross-border alias surface on the NL panel.
+exactly once on the map, on the BE side. The detail panel surfaces
+the cross-border nature via `country_aliases`: stage 04 reads the
+`_CROSS_BORDER_COUNTRY_ALIASES` table in
+[scripts/04_build_maps.py](scripts/04_build_maps.py) (keyed by
+file_number → list of secondary country codes) and attaches `["nl"]`
+to the Maasvallei record so the panel header renders both country
+chips: `🇧🇪 Belgique · 🇳🇱 Pays-Bas · DOP · Vlaanderen · …`.
+Adding another cross-border PDO later is a one-line entry in that
+table.
 
 | Script | Reads | Writes |
 |---|---|---|
@@ -3003,10 +3283,17 @@ BE-specific notes:
   sub-zones in v1.
 - Region facet = **language community**
   ([scripts/_lib/be/region.py](scripts/_lib/be/region.py)):
-  `Vlaanderen` (the 6 Flemish PDOs/PGIs + Maasvallei) and `Wallonië`
-  (the 4 Walloon records; Dutch spelling used for parity with
-  `Vlaanderen`). Curated `_REGION_BY_FILE_NUMBER` covers all 10
-  wines. Region labels follow the AT/IT/ES/SI/HR/HU/RO/BG/GR/DE/SK/CZ
+  `Vlaanderen` (the 5 Flemish PDOs/PGIs — Dutch, the region's
+  native language) and `Wallonie` (the 4 Walloon records — French,
+  the region's native language). Each label is in the language
+  actually spoken in that region, not in a single language imposed
+  across the country. The cross-border Maasvallei Limburg PDO has
+  no region label — both BE and NL sides were one duchy of Limburg
+  until the 1839 partition, and "Vlaanderen" is only the Belgian
+  federal region name, not a region of the appellation itself.
+  The panel still surfaces the cross-border nature via the country
+  chip (BE + NL — see [Cross-border PDOs](#cross-border-maasvallei-limburg-pdo-benl-02172) below).
+  Region labels follow the AT/IT/ES/SI/HR/HU/RO/BG/GR/DE/SK/CZ
   convention — shown in their native form, not gettext-translated.
 - Stage 02d/02e wire terroir-fact extraction + translation for BE
   (siblings of the ES/PT/IT/AT/SI/HR/HU/RO/BG/GR/DE/SK/CH/LU pairs).
@@ -3243,14 +3530,18 @@ The standard `regen_manual_overrides_template.py` flow handles the 1
 edge case (Ambt Delden has no Dutch single document); curator can pin
 the English version, or — Phase 2 — the RVO national productdossier.
 
-## Batch API (02c / 02d / 02e)
+## Batch API (02b-grapes / 02c / 02d / 02e)
 
-The three LLM stages — `02c` (summary translation), `02d` (terroir-fact
-extraction) and `02e` (bullet translation), every country — accept a
-`--batch` flag. With `--provider anthropic` or `--provider mistral` it
-submits the whole eligible corpus to that provider's Batch API as one
-job (~50 % cheaper than synchronous calls) instead of looping
-`provider.chat()`.
+The LLM stages — `02b_translate_grapes` (grape-tooltip translation),
+`02c` (summary translation), `02d` (terroir-fact extraction) and `02e`
+(bullet translation), every country — accept a `--batch` flag. With
+`--provider anthropic` or `--provider mistral` it submits the whole
+eligible corpus to that provider's Batch API as one job (~50 % cheaper
+than synchronous calls) instead of looping `provider.chat()`. (Note:
+the synchronous `--provider anthropic` path reads the key from the
+environment only, so `02b_translate_grapes --provider anthropic`
+without `--batch` needs `ANTHROPIC_API_KEY` exported; the `--batch`
+path loads `.env` itself.)
 
 Mechanics (`scripts/_lib/batch.py`): the stage's normal processing loop
 runs twice — pass 1, a `CollectingProvider` records every prompt the

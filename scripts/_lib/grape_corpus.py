@@ -36,7 +36,12 @@ _SOURCES: tuple[tuple[str, Path], ...] = (
     ("at", ROOT / "raw" / "at" / "dokumente-extracted"),
     ("de", ROOT / "raw" / "de" / "dokumente-extracted"),
     ("si", ROOT / "raw" / "si" / "dokumenti-extracted"),
+    # National-spec sidecars (stage 02f) carry the grape rosters for the
+    # grandfathered SI/HR wines whose EU-OJ document was never published —
+    # the dokumenti-extracted stubs have none. Mirrors the IT MASAF entry.
+    ("si", ROOT / "raw" / "si" / "specifikacije-extracted"),
     ("hr", ROOT / "raw" / "hr" / "dokumenti-extracted"),
+    ("hr", ROOT / "raw" / "hr" / "specifikacije-extracted"),
     ("ro", ROOT / "raw" / "ro" / "dokumente-extracted"),
     ("bg", ROOT / "raw" / "bg" / "dokumenti-extracted"),
     ("gr", ROOT / "raw" / "gr" / "dokumenti-extracted"),

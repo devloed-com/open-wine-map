@@ -47,10 +47,12 @@ def load_summary_translations(lang: str) -> dict[str, dict]:
 
 
 def load_terroir_facts_translations(lang: str) -> dict[str, dict]:
-    """Per-locale translated terroir-facts bullets, from stage 02e cache.
-    Returns {slug: {facts: [{bullet, subsection, provenance}], ...}}.
-    The caller overlays the FR `terroir_facts.facts[i].bullet` with the
-    translated string at the same index."""
+    """Per-locale translated terroir-facts payloads, from the stage-02e
+    caches. Returns {slug: payload}. Two payload shapes coexist:
+    bullet-mode (`facts: [{bullet, subsection, provenance}]` — overlaid
+    onto the FR cache by index) and verbatim-mode (`mode: "verbatim"`,
+    `verbatim_text` — substituted whole; emitted by
+    `scripts/02e_translate_verbatim.py`)."""
     cache_dir = FACTS_DIR / lang
     if not cache_dir.exists():
         return {}
@@ -59,6 +61,10 @@ def load_terroir_facts_translations(lang: str) -> dict[str, dict]:
         try:
             d = json.loads(f.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
+            continue
+        if d.get("mode") == "verbatim":
+            if d.get("verbatim_text"):
+                out[d["slug"]] = d
             continue
         if not d.get("facts"):
             continue

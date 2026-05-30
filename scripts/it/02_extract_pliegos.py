@@ -92,14 +92,49 @@ def find_section_offsets(html: str) -> list[tuple[str, str, int, int]]:
     return out
 
 
+def _pick_monotonic_section_indices(headers: list) -> list[int]:
+    """Some Italian documenti reuse low numbers for nested bullets inside
+    a section body (Lambrusco di Sorbara's section 8 contains "1. Fattori
+    naturali" / "2. Fattori umani"; section 4 sometimes contains "1.
+    rosso spumante" / "2. rosato spumante" / …). A naive last-wins pass
+    overwrites the real sections 1/2 and truncates section 8 to the gap
+    before the first nested bullet, and the section-4 wine-type bullets
+    can run up to "5.", clobbering the real "5. Pratiche di vinificazione".
+    Accept a header only if its leading integer is strictly greater than
+    the last accepted top-level (or it is a dot-prefixed subsection of
+    the current top-level). Wine-type bullets are filtered by their
+    «-prefixed title — IT documenti unici use Italian guillemets «..»
+    exclusively for wine names, never for top-level section titles."""
+    accepted: list[int] = []
+    last_top = 0
+    for i, (num, title, _hstart, _hend) in enumerate(headers):
+        head_str = num.split(".")[0]
+        if not head_str.isdigit():
+            continue
+        if title.lstrip().startswith("«"):
+            continue
+        if "." in num:
+            if head_str == str(last_top):
+                accepted.append(i)
+            continue
+        head = int(head_str)
+        if head > last_top:
+            accepted.append(i)
+            last_top = head
+    return accepted
+
+
 def extract_sections(html: str) -> tuple[dict[str, str], dict[str, str]]:
     headers = find_section_offsets(html)
     if not headers:
         return {}, {}
+    accepted = _pick_monotonic_section_indices(headers)
     bodies: dict[str, str] = {}
     titles: dict[str, str] = {}
-    for i, (num, title, _hstart, hend) in enumerate(headers):
-        end = headers[i + 1][2] if i + 1 < len(headers) else len(html)
+    for j, idx in enumerate(accepted):
+        num, title, _hs, hend = headers[idx]
+        next_idx = accepted[j + 1] if j + 1 < len(accepted) else None
+        end = headers[next_idx][2] if next_idx is not None else len(html)
         bodies[num] = strip_tags(html[hend:end]).strip()
         titles[num] = title
     return bodies, titles

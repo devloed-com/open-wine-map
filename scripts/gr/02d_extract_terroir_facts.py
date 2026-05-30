@@ -39,7 +39,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "gr" / "dokumenti-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "el"
@@ -235,10 +235,33 @@ def _ground_facts(
     return kept, dropped
 
 
+NATIONAL_SPECS = ROOT / "raw" / "gr" / "national-specs-extracted"
+
+
 def _resolve_lien_and_source(rec: dict) -> tuple[str, dict]:
+    """Terroir-source resolution. Non-stub wines use their EU-OJ Ενιαίο
+    Έγγραφο link section. The 132 grandfathered stubs have no on-disk
+    link_to_terroir — fall back to the ΥΠΑΑΤ national-spec sidecar's
+    §7 ΔΕΣΜΟΣ section (stage 02f), mirroring stage 04's in-memory
+    augmentation so 02d and the map ground on the same text."""
     lien = rec.get("link_to_terroir") or ""
     src = rec.get("source") or {}
     eu_url = src.get("final_url") or src.get("source_url") or ""
+    if len(lien) >= MIN_LIEN_CHARS or not rec.get("slug"):
+        return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
+    sidecar_path = NATIONAL_SPECS / f"{rec['slug']}.json"
+    if sidecar_path.exists():
+        try:
+            sc = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            sc = {}
+        ns_lien = sc.get("link_to_terroir") or ""
+        if ns_lien:
+            ns_src = sc.get("source") or {}
+            return ns_lien, {
+                "pdf_url": ns_src.get("source_url") or "",
+                "kind": "ypaat-national-spec",
+            }
     return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
 
 
@@ -614,6 +637,12 @@ def main() -> int:
     sub_rc = _dispatch_emit_or_import(args)
     if sub_rc is not None:
         return sub_rc
+
+    terroir_verbatim.emit_for_country(
+        country="gr", extracted_dir=EXTRACTED, cache_dir=CACHE_DIR,
+        default_source_lang="el", cahier_source_kind="eu-oj",
+        only=args.only, log_prefix="[02d/gr]",
+    )
 
     if args.batch:
         return _run_batch(args)

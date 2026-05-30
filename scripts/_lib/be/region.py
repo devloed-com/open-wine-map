@@ -1,12 +1,14 @@
 """Derive the Belgian wine region for a wine GI.
 
 Belgium's wine corpus splits cleanly along its language-community
-boundary: the 5 Flemish wines (3 PDOs + 2 PGIs) sit in `Vlaanderen`,
-the 4 Walloon wines sit in `Wallonië` (Dutch spelling, used as the
-native label across the map UI for Vlaanderen-Wallonië parity). The
-cross-border Maasvallei Limburg PDO sits in `Vlaanderen` (it is the
-Belgian Limburg / Dutch Limburg wine area; the BE side dominates the
-appellation territory and brand).
+boundary: the 5 Flemish wines (3 PDOs + 2 PGIs) sit in `Vlaanderen`
+(Dutch — the region's native language), the 4 Walloon wines sit in
+`Wallonie` (French — the region's native language). Each label is
+in the language actually spoken in that region, not in a single
+language imposed across the country. The cross-border Maasvallei
+Limburg PDO sits in `Vlaanderen` (it is the Belgian Limburg / Dutch
+Limburg wine area; the BE side dominates the appellation territory
+and brand).
 
 The region drives stage 03 (wiki frontmatter) and stage 04 (panel
 header + region facet filter). Region labels follow the
@@ -18,7 +20,7 @@ from __future__ import annotations
 
 REGIONS = (
     "Vlaanderen",
-    "Wallonië",
+    "Wallonie",
 )
 
 
@@ -33,14 +35,19 @@ _REGION_BY_FILE_NUMBER: dict[str, str] = {
     "PGI-BE-A1429": "Vlaanderen",          # Vlaamse landwijn
     "PDO-BE-A1430": "Vlaanderen",          # Vlaamse mousserende kwaliteitswijn
     # Walloon wines (French-language source)
-    "PDO-BE-A0009": "Wallonië",            # Côtes de Sambre et Meuse
-    "PGI-BE-A0010": "Wallonië",            # Vin de pays des jardins de Wallonie
-    "PDO-BE-A0011": "Wallonië",            # Vin mousseux de qualité de Wallonie
-    "PDO-BE-A0012": "Wallonië",            # Crémant de Wallonie
-    # Cross-border BE+NL PDO, BE-primary by file_number ordering. Sits in
-    # the Belgian Limburg Maas valley; ships on the BE side. NL will alias
-    # it when country #17 lands.
-    "PDO-BE+NL-02172": "Vlaanderen",       # Maasvallei Limburg
+    "PDO-BE-A0009": "Wallonie",            # Côtes de Sambre et Meuse
+    "PGI-BE-A0010": "Wallonie",            # Vin de pays des jardins de Wallonie
+    "PDO-BE-A0011": "Wallonie",            # Vin mousseux de qualité de Wallonie
+    "PDO-BE-A0012": "Wallonie",            # Crémant de Wallonie
+    # Cross-border BE+NL PDO, BE-primary by file_number ordering. The
+    # polygon straddles the BE/NL Limburg border; both sides were one
+    # duchy of Limburg until the 1839 partition. "Vlaanderen" is only
+    # the Belgian federal region name, not a region of the appellation
+    # itself — labelling the cross-border polygon as Flemish would
+    # overstate that side. Left empty; stage 04 wires the country
+    # chip (BE + NL) from `_CROSS_BORDER_COUNTRY_ALIASES` so the
+    # cross-border nature is still surfaced in the panel header.
+    "PDO-BE+NL-02172": "",                 # Maasvallei Limburg
 }
 
 
