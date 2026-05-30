@@ -215,19 +215,35 @@ def parse_grapes(section_text: str) -> dict:
     return out
 
 
-def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
+# Grape berry colour → the colour-word style tag this pipeline already uses
+# (COLOUR_BY_KEYWORD emits noir/blanc/rose; stage 04's _canonical_styles
+# folds both these and the FR "rouge" form to the taxonomy bucket). Keeping
+# the same convention avoids a record carrying both `noir` and `rouge`.
+_COLOUR_TO_STYLE = {"blanc": "blanc", "noir": "noir", "gris": "blanc", "rose": "rose"}
+
+
+def parse_styles(sections: dict[str, str], titles: dict[str, str],
+                 grapes: dict | None = None) -> list[str]:
     blob_parts = []
     for num, body in sections.items():
         title_low = titles.get(num, "").lower()
+        body_low = body.lower()
         if (
             "opis vín" in title_low
             or "opis vina" in title_low
             or "kategórie" in title_low
             or "iné základné" in title_low
             or "ďalšie základné" in title_low
+            # Tokaj-style docs give each wine TYPE its own numbered section
+            # (Tokajské samorodné, Tokajský výber, ľadové víno, sekt, …)
+            # instead of one "Opis vín" section — the predikat ladder lives
+            # in those titles + their per-type "stručný slovný opis" bodies.
+            or "stručný slovný opis" in body_low
+            or "organoleptické" in body_low
         ):
             blob_parts.append(body)
-    blob = " ".join(blob_parts)
+    # Section titles themselves carry the predikat/style names.
+    blob = " ".join(blob_parts) + " " + " ".join(titles.values())
     found: set[str] = set()
     for kw, colour_slug in COLOUR_BY_KEYWORD.items():
         if re.search(rf"\b{re.escape(kw)}\b", blob, re.I):
@@ -235,6 +251,13 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(blob):
             found.add(slug)
+    # Fall back to the colour of the grapes so every wine with a variety
+    # roster carries at least its base colour style (consistency with the
+    # national-spec records, which derive colour styles the same way).
+    for d in (grapes or {}).get("details") or []:
+        s = _COLOUR_TO_STYLE.get(d.get("colour"))
+        if s:
+            found.add(s)
     return sorted(found)
 
 
@@ -250,7 +273,7 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
                  oj_meta: dict) -> dict:
     routed = route_sections(sections, titles)
     grapes = parse_grapes(routed.get("grape_varieties", ""))
-    styles = parse_styles(sections, titles)
+    styles = parse_styles(sections, titles, grapes)
     geo_area = routed.get("geo_area", "")
     region = derive_region(
         {"file_number": wine["fileNumber"]},

@@ -151,16 +151,27 @@ COLOUR_BY_KEYWORD = {
 # slamové / ľadové leaves are the obvious mappings.
 STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\b(šumivé|šumivá|šumivý|šumivého)\s+vín[oa]?\b", re.I), "sparkling"),
+    (re.compile(r"\bsekt\b", re.I), "sparkling"),
     (re.compile(r"\bperlivé\b", re.I), "semi-sparkling"),
     (re.compile(r"\bslamové víno\b", re.I), "vin-de-paille"),
     (re.compile(r"\bľadové víno\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bľadový výber\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bvýber z hrozna\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bneskorý zber\b", re.I), "vendanges-tardives"),
+    (re.compile(r"\blikérov[ée]\s+vín[oa]?\b", re.I), "vin-de-liqueur"),
+    # Tokaj predikat ladder — titles use the adjectival forms
+    # (bobuľový/hrozienkový/cibébový výber) alongside the genitive ones
+    # (výber z bobúľ/cibéb); the aszú-style putňový výber, forditáš, and
+    # esencia are all botrytis-driven sweet wines.
     (re.compile(r"\bvýber z cibéb\b", re.I), "grains-nobles"),
     (re.compile(r"\bvýber z bobúľ\b", re.I), "grains-nobles"),
-    (re.compile(r"\btokajská\s+esencia\b", re.I), "grains-nobles"),
+    (re.compile(r"\bbobuľový výber\b", re.I), "grains-nobles"),
+    (re.compile(r"\bhrozienkový výber\b", re.I), "grains-nobles"),
+    (re.compile(r"\b(cibébový|botrytický)\b", re.I), "grains-nobles"),
+    (re.compile(r"\btokajsk[áý]\s+(výberová\s+)?esencia\b", re.I), "grains-nobles"),
     (re.compile(r"\btokajský\s+výber\b", re.I), "grains-nobles"),
+    (re.compile(r"\bputňový\b", re.I), "grains-nobles"),
+    (re.compile(r"\bforditáš\b", re.I), "grains-nobles"),
     (re.compile(r"\bsamorodné\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bsuché víno\b", re.I), "dry"),
 )
