@@ -535,3 +535,47 @@ Compare the kind counts + region distribution against the wine-law
 5-region structure at the Wikipedia URL above. Note the asymmetric
 PGI mapping — the south PGI subsumes 4 sub-regions while the north
 PGI is coextensive with one.
+
+### 2026-05-30 — ИАЛВ national-spec layer: grape + terroir coverage ✅
+
+**Independent authority**: the ИАЛВ / IAVV per-wine продуктова
+спецификация (Изпълнителна агенция по лозата и виното), published as
+PDFs and listed at
+<https://eavw.com/wps/portal/executive-ialv/legislation/wines.with.pdo.and.pgi/specifications.of.wines.with.pdo.and.pgi>
+("Спецификации на вина със ЗНП и ЗГУ", upd. 14 Jun 2024 — 52 ЗНП + 2
+ЗГУ). Official act of a state administration body → ЗАПСП Art. 4
+copyright exemption. Resolved 2026-05-30 via `/research-gaps`; EUR-Lex
+cross-check independently confirmed 0 of the 51 grandfathered names
+have a published EU-OJ single document (only Мелник / Нова Загора /
+Дунавска равнина do).
+
+The 51 grandfathered stubs were augmented from this source (stages 01c
++ 02f → stage-04 augment → 02d/02e). Each spec is the same numbered
+1–8 template: section 5 = винени сортове грозде, section 6 = Връзка с
+географския район (terroir).
+
+| Check | Expected | Pipeline | Match |
+|---|---:|---:|:---:|
+| Specs fetched (51 grandfathered) | 51 | 51 | ✓ |
+| Sidecars with grapes | 51 | 51 | ✓ |
+| Sidecars with terroir text ≥200 chars | 51 | 51 | ✓ |
+| All 54 BG wines with ≥1 grape | 54 | 54 | ✓ |
+| All 54 BG wines with terroir bullets (02d) | 54 | 54 | ✓ |
+| Total principal grape slugs | — | 418 | — |
+| Total terroir bullets (02d) | — | 544 | — |
+
+Spot-checks (smoke wines): Поморие (Шардоне, Мускат отонел, Каберне
+совиньон, Мерло; 2.4 KB terroir), Сухиндол (Каберне совиньон, Мерло,
+Гъмза→kadarka), Долината на Струма (20 varieties incl. Широка мелнишка
+лоза / Мелник 82). 18 BG-native crossings + 9 international synonyms
+added to `grape_lexicon.py` with researched colours; 1 residual
+source-typo (`Шардоне Димят`) handled by the parser's whitespace-split
+fallback.
+
+**Re-run recipe**:
+
+```
+.venv/bin/python scripts/bg/01c_fetch_specifikacije.py
+.venv/bin/python scripts/bg/02f_extract_national_specs.py --all
+.venv/bin/python scripts/audit_bg_coverage.py   # see the national-spec + terroir sections
+```

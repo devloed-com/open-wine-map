@@ -24,6 +24,10 @@
       "missing": true,
       "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
     },
+    "dunavska-ravnina": {
+      "missing": true,
+      "note": "researched 2026-05-30 (aoc-wikipedia delta); bg.wikipedia 'Дунавска равнина' is the physical-geography landform article (one of Bulgaria's 5 physiographic zones), agriculture mentioned in passing, no viticulture focus — no dedicated wine-region article"
+    },
     "evksinograd": {
       "missing": true,
       "note": "researched 2026-05; royal-residence article; wine cellar is one subsection (~10-15%), not primary subject"
@@ -187,6 +191,10 @@
     "t-rgovishche": {
       "missing": true,
       "note": "researched 2026-05; bare city/town/village article with marginal wine content (typically <10% in an Economy or Agriculture subsection); no dedicated wine-region article"
+    },
+    "trakiiska-nizina": {
+      "missing": true,
+      "note": "researched 2026-05-30 (aoc-wikipedia delta); name resolves to the geographic/historical 'Тракия' (Thrace) + landform 'Горнотракийска низина' articles, not a wine-region topic — no dedicated wine article"
     },
     "v-rbitsa": {
       "missing": true,
