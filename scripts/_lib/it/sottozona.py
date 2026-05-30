@@ -40,6 +40,11 @@ import re
 import unicodedata
 
 
+# Every quote glyph an Italian disciplinare wraps a sottozona name in —
+# guillemets, straight + smart double/single quotes — stripped off names.
+_QUOTES = "«»\"'“”„‚‛‘’"
+
+
 def slugify(s: str) -> str:
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     return re.sub(r"[^A-Za-z0-9]+", "-", s).strip("-").lower()
@@ -62,7 +67,7 @@ PATTERN_A_RE = re.compile(
 PATTERN_B_PREAMBLE_RE = re.compile(
     r"(?:le|delle|seguenti|comprende|prevede|individua)\s+"
     r"sotto[\s\-]?zone[^.;:]*?:?\s+"
-    r"(?P<list>[A-Z][^.;]+)",
+    r"(?P<list>[«»\"“”A-Z][^.;]+)",
     re.IGNORECASE,
 )
 
@@ -73,6 +78,13 @@ _NAME_DROP_TOKENS = frozenset({
     "e", "ed", "del", "della", "dei", "delle", "il", "la", "lo", "gli", "le",
     "di", "con", "per", "in", "tra", "fra", "comuni", "comune",
 })
+
+
+_TRAILING_PROSE_RE = re.compile(
+    r"\s+(?:anche|purch[eé]|qualora|secondo|con\s+riferimento|a\s+condizione|"
+    r"[eè]\s+riservat\w*|ai\s+vini|nelle|nei\b|come\s+segue|della\s+provincia)\b",
+    re.IGNORECASE,
+)
 
 
 def _split_pattern_b_list(s: str) -> list[str]:
@@ -88,7 +100,13 @@ def _split_pattern_b_list(s: str) -> list[str]:
 
     out: list[str] = []
     for token in re.split(r",|\be\s+", s):
-        tok = token.strip().strip("«»\"'").rstrip(".,;:")
+        tok = token.strip().strip(_QUOTES).strip().rstrip(".,;:").strip(_QUOTES).strip()
+        # A sottozona name occasionally trails into a qualifier clause when
+        # the source has no comma before it ("Furore a condizione che…",
+        # «Sorrento» è riservata…); cut at the first prose marker. The
+        # internal lowercase connectors of real names (Nepente *di* Oliena)
+        # are preserved because they aren't in the marker set.
+        tok = _TRAILING_PROSE_RE.split(tok, maxsplit=1)[0].strip().strip(_QUOTES).strip()
         if not tok:
             continue
         if tok.lower() in _NAME_DROP_TOKENS:
@@ -104,9 +122,10 @@ def _split_pattern_b_list(s: str) -> list[str]:
 
 
 def _emit(name: str, communes: list[str], source_pattern: str) -> dict:
+    clean = name.strip().strip(_QUOTES).strip()
     return {
-        "name": name.strip().strip("«»\"'"),
-        "slug": slugify(name),
+        "name": clean,
+        "slug": slugify(clean),
         "communes": communes,
         "source_pattern": source_pattern,
     }
@@ -131,8 +150,24 @@ def extract_sottozone(geo_area_brief: str, parent_wine_name: str) -> list[dict]:
         if pre:
             names = _split_pattern_b_list(pre.group("list"))
             for name in names:
+                name = _strip_parent_prefix(name, parent_wine_name)
+                if not name:
+                    continue
                 rec = _emit(name, [], "sottozona-preamble-list")
                 if rec["slug"] not in seen_slugs:
                     seen_slugs.add(rec["slug"])
                     out.append(rec)
     return out
+
+
+def _strip_parent_prefix(name: str, parent_wine_name: str) -> str:
+    """Italian disciplinari often write each sottozona with the parent
+    name prefixed ("«Chianti Colli Aretini»"); strip it to the bare
+    sottozona name ("Colli Aretini"). A name that IS the bare parent
+    ("Chianti") collapses to empty and is dropped by the caller."""
+    name = name.strip()
+    parent = (parent_wine_name or "").strip()
+    if parent and name.lower().startswith(parent.lower()):
+        rest = name[len(parent):].strip(" -–—")
+        return rest
+    return name

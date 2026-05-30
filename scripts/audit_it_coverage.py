@@ -16,6 +16,7 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
 EAMBROSIA = ROOT / "raw" / "it" / "eambrosia" / "index.json"
 EXTRACTED = ROOT / "raw" / "it" / "disciplinari-extracted"
 OJ_MANIFEST = ROOT / "raw" / "it" / "oj-pages" / "manifest.json"
@@ -132,6 +133,16 @@ def main() -> int:
     print(f"  Extracted: {dict(by_kind_extracted)}")
     print(f"  Stubs:     {dict(by_kind_stub)}")
     print()
+    from importlib import import_module
+    try:
+        cancelled = import_module("it.00_fetch_data").CANCELLED_GIS
+    except Exception:
+        cancelled = {}
+    if cancelled:
+        print(f"## Cancelled GIs (filtered at stage 00 — {len(cancelled)})")
+        for gi, meta in sorted(cancelled.items(), key=lambda kv: kv[1]["name"]):
+            print(f"  {meta['name']:24} {gi}  {meta['regulation']} (eff. {meta['effective']})")
+        print()
     print("## Stub reasons")
     for r, n in sorted(stub_reasons.items(), key=lambda x: -x[1]):
         print(f"  {n:>4}  {r}")

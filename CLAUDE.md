@@ -742,7 +742,8 @@ manual_overrides flow.
 | it/01_fetch_pliegos.py | raw/it/eambrosia/index.json + raw/it/oj-pages/manual_overrides.json | raw/it/oj-pages/*.html + manifest.json |
 | it/01b_solve_waf.py | raw/it/oj-pages/manifest.json | raw/it/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
 | it/02_extract_pliegos.py | raw/it/oj-pages/*.html + raw/es/gisco/LAU_*.shp.zip (commune→regione index) | raw/it/disciplinari-extracted/*.json + _index.json + raw/it/extraction-unknowns.json |
-| it/02f_extract_masaf.py | raw/it/disciplinari-extracted/*.json + raw/it/masaf-disciplinari/bundles/*.7z + raw/it/masaf-disciplinari/manual_overrides.json + raw/es/gisco/LAU_*.shp.zip | raw/it/masaf-disciplinari/pdfs/*.pdf + raw/it/masaf-disciplinari-extracted/*.json + raw/it/extraction-unknowns-masaf.json |
+| it/02f_extract_masaf.py | raw/it/disciplinari-extracted/*.json + raw/it/masaf-disciplinari/bundles/*.7z + raw/it/masaf-disciplinari/manual_overrides.json + raw/es/gisco/LAU_*.shp.zip | raw/it/masaf-disciplinari/pdfs/*.pdf + raw/it/masaf-disciplinari-extracted/*.json (grapes + menzioni + sottozona-text) + raw/it/extraction-unknowns-masaf.json |
+| it/02h_extract_regional_registers.py | raw/it/regional-variety-registers/sources.json | raw/it/regional-variety-registers/{umbria,lazio,sicilia,campania,calabria}.{pdf,json} |
 | it/03_generate_wiki.py | raw/it/disciplinari-extracted/*.json | wiki/<slug>.md (per IT record) + merges IT entries into wiki/_index.json |
 | audit_it_coverage.py | raw/it/eambrosia/ + raw/it/disciplinari-extracted/ + raw/it/oj-pages/manifest.json + raw/es/figshare/EU_PDO.gpkg | (stdout — coverage table + curator queue) |
 | audit_it_regions.py | raw/it/{eambrosia,disciplinari-extracted,masaf-disciplinari-extracted}/ + raw/es/figshare/EU_PDO.gpkg + raw/es/gisco/LAU_*.shp.zip | (stdout — regione vs polygon cross-check) |
@@ -795,20 +796,74 @@ Italy has two layers of sub-denomination granularity:
   Colli Senesi, Colline Pisane, Montalbano, Rufina, Montespertoli).
   Modelled as first-class sub-denomination records with
   `is_sub_denomination=true` + `parent_slug` + `parent_id_eambrosia`,
-  same data shape as FR DGCs / ES subzonas / PT sub-regiões. Stage 02
-  detects them via `scripts/_lib/it/sottozona.py` (two regex
-  patterns: explicit `Sottozona NAME:` prefix and preamble-list
-  `Le sottozone X, Y, Z e W`).
+  same data shape as FR DGCs / ES subzonas / PT sub-regiões. Detected
+  by `scripts/_lib/it/sottozona.py` (Pattern A `Sottozona NAME:`
+  prefix; Pattern B preamble-list `le seguenti sottozone: «Chianti
+  Colli Aretini», … e «Chianti Rufina»`, with guillemet/smart-quote
+  stripping, parent-name-prefix stripping, and trailing-prose
+  truncation). The documento unico almost never names them, so they
+  live in the **MASAF disciplinare Article 1** — `synthesize_it_
+  sottozone_records()` in stage 04 runs the detector over the cached
+  sidecar `article_bodies` and appends a child record per sottozona,
+  inheriting the parent's grapes/styles/terroir; geometry resolves via
+  `parent-appellation`. v1 yield: **38 sottozone across 10 DOPs**
+  (Chianti 7, Vin Santo del Chianti 7, Valtellina Superiore 5, Bardolino
+  3, Costa d'Amalfi 3, Cannonau di Sardegna 3, Penisola Sorrentina 3,
+  Cinque Terre, Lambrusco Mantovano, Lago di Caldaro).
 - **Menzioni / Unità Geografiche Aggiuntive** (MGA / UGA) — finer
   "cru" granularity (Chianti Classico's 11 UGAs, Barolo's 181 MGAs,
   Soave's 29 UGAs). Per 2024 wine-law reform, UGA is the new official
   term. **v1 scope** (with user): emit MGA/UGA as a flat
-  `menzioni: []` chip list on parent panels only — no per-cru
-  polygons, no per-cru records. Stage 02 harvests them via
-  `scripts/_lib/it/menzione.py` (numbered-list and comma-list
-  patterns inside the documento unico). The complete MGA list for
-  Barolo / Barbaresco lives in the national disciplinare allegato
-  and is stage-02f-MASAF territory.
+  `menzioni: []` chip list on parent panels only — **no per-cru
+  polygons** (researched 2026-05-30: no licence-clear public GIS layer
+  exists; every MGA boundary dataset is Consorzio-held / Masnaghetti-
+  proprietary, so the public-sources rule forbids ingesting them).
+  `scripts/_lib/it/menzione.py` harvests the names (numbered-list +
+  comma-list patterns; the shape is chosen by yield, not marker count,
+  so a comma list carrying stray "art. N" references isn't mis-routed
+  to the numbered parser). Stage 02 harvests from the documento unico;
+  **stage 02f additionally harvests from the full MASAF disciplinare
+  text** (the MGA roster lives in Article 8, absent from the cached
+  `article_bodies`), so Barolo's 169 + Barbaresco's 66 MGAs now land.
+  Stored on the in-memory record's `menzioni`, snapshotted into
+  `_IT_MENZIONI_BY_SLUG`, surfaced in the `aocs` panel blob, and
+  rendered as a collapsible chip section (`renderMenzioni` in
+  `map_template.py`).
+
+### IT regional variety-register layer (stage 02h)
+
+~19 regional IGTs (IGT Umbria/Lazio/Calabria/Campania/Sicilia + their
+sub-IGTs) define their grape roster by reference — Article 2 says "i
+vitigni idonei alla coltivazione nella Regione X … allegato 1" and the
+annex is absent from the consolidated MASAF PDF. Each Region publishes
+its authorised-variety register as an official act (public-domain under
+art. 5 L. 633/1941). Stage 02h
+([scripts/it/02h_extract_regional_registers.py](scripts/it/02h_extract_regional_registers.py))
+fetches the 5 register PDFs pinned in
+`raw/it/regional-variety-registers/sources.json` and parses them via
+[scripts/_lib/it/regional_register.py](scripts/_lib/it/regional_register.py)
+(three colour encodings: `suffix` N./B./G./RS. — Umbria/Sicilia/Calabria;
+`columns` spelled colour — Lazio; `vbcode` V.B.N./V.B.B. — Campania).
+Each region sidecar lists the IGT slugs (`igts`) that draw from it;
+varietal IGTs (e.g. catalanesca-del-monte-somma) are deliberately
+excluded. Stage 04 `augment_it_records_with_regional_registers()` fills
+the roster only when the record still has no grapes; `_sources_for()`
+surfaces `regional_register_*` provenance (panel link
+`src_regional_register`). To-do (CURATOR_TODO): Molise (osco, rotae) +
+Lombardia (quistello) registers not yet pinned.
+
+### Cancelled IT GIs (filtered at stage 00)
+
+The 7 Abruzzo IGTs (Colli Aprutini, Colli del Sangro, Colline Frentane,
+Colline Pescaresi, Colline Teatine, del Vastese, Terre di Chieti) were
+cancelled by Commission Implementing Regulations (EU) 2026/558–708
+(spring 2026), consolidated into the regional IGP **Terre Abruzzesi**
+(which stays). Like the AT `CANCELLED_PDOS` mechanism, the
+`CANCELLED_GIS` registry in
+[scripts/it/00_fetch_data.py](scripts/it/00_fetch_data.py) (keyed by
+`giIdentifier` — these old IGTs carry no PDO/PGI fileNumber) filters
+them out of the index, cites each cancellation regulation, and is
+surfaced by `audit_it_coverage.py`. Corpus: **531 → 524** wines.
 
 ### IT regione derivation
 
@@ -874,13 +929,33 @@ source in `geom_source` so the panel can attribute correctly):
    the fallback for wines in unharvested regions. Whole-municipality
    resolution; runs even for stub records (the polygon doesn't depend
    on the documento unico).
-4. **`stub-no-geometry`** — IGTs (Bétard is PDO-only by design) and
-   the 4 newer DOPs that miss Bétard, in unharvested regions.
+4. **`gisco-comune-union` / `gisco-provincia-union` /
+   `gisco-regione-union`** — for IGTs (Bétard is PDO-only) and the few
+   newer DOPs missing Bétard: `ITCommuneIndex`
+   ([scripts/_lib/it/comune.py](scripts/_lib/it/comune.py)) parses the
+   disciplinare's geo-area text (the MASAF `geo_area_brief`, "…comprende
+   l'intero territorio amministrativo della regione/provincia di X" or a
+   flat comune list) and unions the matching GISCO LAU `IT_*` comuni —
+   the ES/RO IGP pattern. Resolves ~81 IGTs (44 comune-union, 33
+   provincia-union, 4 regione-union) that previously dropped off the
+   map; areas land within ~1 % of the true administrative km². Bilingual
+   ISTAT province/region names ("Bolzano/Bozen", "Valle d'Aosta/Vallée
+   d'Aoste") register each slash-part as an alias, and "Regione
+   Siciliana" folds to "Sicilia" (`_REGION_NAME_ALIAS`). The earlier
+   "shelved" note applied to per-commune-list parsing of complex DOC
+   prose; for the province-/region-wide IGTs this resolver is reliable.
+5. **`stub-no-geometry`** — last resort; in v1 only **Salemi** (no
+   parseable source, pending cancellation) stays here. **523 / 524** IT
+   wines resolve to a polygon.
 
-The text-extraction resolver `scripts/_lib/it/comune.py` (commune-list
-parsing of the documento unico) is **shelved** — Italian legal prose
-proved too messy for a reliable parser; the geoportal harvest
-supersedes it.
+Non-stub IGTs whose documento unico left `geo_area_brief` empty
+(`terre-siciliane`, `terre-abruzzesi`, `ravenna`, `valdadige`) are
+gap-filled from their MASAF sidecar's Article 3 body —
+`02f_extract_masaf.py --include-nonstub` emits a sidecar for non-stubs
+too, and stage 04's `_backfill_it_nonstub_from_masaf` fills *only* the
+empty fields (geo_area_brief / grapes / link_to_terroir), never
+overwriting canonical documento-unico data. The same gap-fill recovers
+grapes for non-stub DOPs whose section-7 was empty (e.g. Abruzzo).
 
 ### MASAF disciplinare fallback for no-publication wines (stage 02f)
 

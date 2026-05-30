@@ -167,14 +167,17 @@ def extract_menzioni(text: str, parent_wine_name: str) -> list[dict]:
         end_m = _LIST_END_RE.search(rest)
         list_block = rest[: end_m.start()] if end_m else rest[:1500]
 
-        # Decide list shape: numbered or comma. Numbered if at least 2
-        # markers `\n<digit><digit?>.` appear in the block.
-        if len(re.findall(r"(?m)^\s*\d{1,3}\.\s*", list_block)) >= 2:
-            names = _names_from_numbered_block(list_block)
-            pattern = "numbered-list"
+        # Decide list shape by yield, not by marker count alone: a long
+        # comma list (Barolo/Barbaresco's 169/66 MGAs) can carry a few
+        # stray "art. N" / "comma N" numbered references that would fool a
+        # marker-count heuristic into the numbered parser (which then
+        # returns nothing). Parse both and keep whichever recovers more.
+        numbered = _names_from_numbered_block(list_block)
+        comma = _names_from_comma_block(list_block)
+        if len(numbered) >= len(comma):
+            names, pattern = numbered, "numbered-list"
         else:
-            names = _names_from_comma_block(list_block)
-            pattern = "comma-list"
+            names, pattern = comma, "comma-list"
 
         for name in names:
             sl = slugify(name)

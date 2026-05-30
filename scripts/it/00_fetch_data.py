@@ -69,6 +69,64 @@ MANIFEST_PATH = OUT_DIR / "manifest.json"
 MASAF_BUNDLES_DIR = ROOT / "raw" / "it" / "masaf-disciplinari" / "bundles"
 MASAF_BUNDLES_MANIFEST = MASAF_BUNDLES_DIR / "manifest.json"
 
+# GIs the Commission has formally cancelled via an OJ-L Implementing
+# Regulation but which linger in eAmbrosia as status="registered" (the
+# register is not retroactively cleaned). Mirror of the AT
+# `CANCELLED_PDOS` mechanism — filtered out of the index before the
+# corpus is built, with the cancellation regulation cited so the
+# decision is traceable. The audit surfaces this registry.
+#
+# The seven Abruzzo IGTs below were cancelled in spring 2026 as part of
+# a regional consolidation into IGP "Terre Abruzzesi" (recognised 2020),
+# which remains in the corpus. Keyed by giIdentifier (these old IGTs
+# carry no PDO/PGI fileNumber in eAmbrosia). Verified 2026-05-30 via the
+# per-IGP OJ-L cancellation regulations (euroconsulting.be mirror +
+# disciplinare.it; eff. dates are the reclassification cut-offs).
+CANCELLED_GIS: dict[str, dict] = {
+    "EUGI00000003031": {
+        "name": "Colli Aprutini",
+        "regulation": "Commission Implementing Regulation (EU) 2026/558",
+        "effective": "2026-04",
+        "note": "Abruzzo IGT consolidation into IGP Terre Abruzzesi",
+    },
+    "EUGI00000003040": {
+        "name": "Colli del Sangro",
+        "regulation": "Commission Implementing Regulation (EU) 2026/573",
+        "effective": "2026-04-07",
+        "note": "Abruzzo IGT consolidation into IGP Terre Abruzzesi",
+    },
+    "EUGI00000003046": {
+        "name": "Colline Frentane",
+        "regulation": "Commission Implementing Regulation (EU) 2026/604",
+        "effective": "2026-04-09",
+        "note": "Abruzzo IGT consolidation into IGP Terre Abruzzesi",
+    },
+    "EUGI00000003223": {
+        "name": "Colline Pescaresi",
+        "regulation": "Commission Implementing Regulation (EU) 2026/615",
+        "effective": "2026-04-09",
+        "note": "Abruzzo IGT consolidation into IGP Terre Abruzzesi",
+    },
+    "EUGI00000003227": {
+        "name": "Colline Teatine",
+        "regulation": "Commission Implementing Regulation (EU) 2026/707",
+        "effective": "2026-04-14",
+        "note": "Abruzzo IGT consolidation into IGP Terre Abruzzesi",
+    },
+    "EUGI00000003230": {
+        "name": "del Vastese (o Histonium)",
+        "regulation": "Commission Implementing Regulation (EU) 2026/703",
+        "effective": "2026-04-13",
+        "note": "Abruzzo IGT consolidation into IGP Terre Abruzzesi",
+    },
+    "EUGI00000003282": {
+        "name": "Terre di Chieti",
+        "regulation": "Commission Implementing Regulation (EU) 2026/708",
+        "effective": "2026-04-14",
+        "note": "Abruzzo IGT consolidation into IGP Terre Abruzzesi",
+    },
+}
+
 # IDPagina/4625 on www.masaf.gov.it. Bundle URLs taken from the link
 # blob on that page; the BLOB hashes are reasonably stable across
 # revisions (each ServeAttachment URL is content-addressed by sha) but
@@ -368,6 +426,18 @@ def main() -> int:
     it_wines = [g for g in it_wines_all if g.get("status") == "registered"]
     n_skipped_applied = len(it_wines_all) - len(it_wines)
 
+    it_registered = it_wines
+    it_wines = [g for g in it_registered if g.get("giIdentifier") not in CANCELLED_GIS]
+    n_skipped_cancelled = len(it_registered) - len(it_wines)
+    for gi in (g.get("giIdentifier") for g in it_registered):
+        meta = CANCELLED_GIS.get(gi)
+        if meta:
+            print(
+                f"[filter] cancelled: {gi} {meta['name']} — {meta['regulation']} "
+                f"(eff. {meta['effective']})",
+                file=sys.stderr,
+            )
+
     by_slug: dict[str, list[dict]] = {}
     projected = [project(rec) for rec in it_wines]
     for p in projected:
@@ -403,6 +473,8 @@ def main() -> int:
         "n_total_eu": len(full),
         "n_it_wines": len(projected),
         "n_skipped_applied": n_skipped_applied,
+        "n_skipped_cancelled": n_skipped_cancelled,
+        "cancelled_gis": CANCELLED_GIS,
         "by_kind": by_kind,
         "n_slug_collisions": len(collisions),
     }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")

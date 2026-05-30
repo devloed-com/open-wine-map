@@ -672,6 +672,38 @@ template. Investigate the raw HTML at
 `raw/it/oj-pages/ortrugo-dei-colli-piacentini.html` and either extend
 the anchor regex or pin a working override URL.
 
+### Complete-coverage pass residuals — ⏳ (2026-05-30)
+
+The 2026-05-30 pass closed source-docs / map / grapes / terroir /
+sub-denominations for IT. Residual curator items:
+
+- **Regional registers — Molise + Lombardia not yet pinned.** 3 annex-
+  reference IGTs draw from registers not yet sourced: `osco` + `rotae`
+  (Molise) and `quistello` (Lombardia). Add their region register URL +
+  template to `raw/it/regional-variety-registers/sources.json` (+ `igts`
+  list) and re-run `02h_extract_regional_registers.py` → `04`. Lombardia's
+  register is the BURL Serie Ordinaria n.27/2019 ZIP (manual download per
+  the manual-downloads-ok convention); Molise needs a Regione Molise DGR.
+- **Varietal / parse-quirk IGTs with no grapes** — `catalanesca-del-monte-
+  somma` (single-variety IGP "Catalanesca"; its MASAF article 2 isn't
+  detected so add Catalanesca to the lexicon + pin), `grottino-di-
+  roccanova` (grapes under Article 1, no Articolo 2 in the PDF),
+  `valtenesi` (modification-decree PDF, only articles 1+9 parsed). Each is
+  a one-off MASAF-PDF structural quirk; recover by hand or a per-PDF tweak.
+- **Salemi** (IGP, Sicily) — no parseable public source (1995 GU umbrella
+  decree only; being absorbed into DOC Sicilia as a UGA, under a 2025
+  cancellation request). Stays `stub-no-geometry`. If/when the EU formally
+  cancels it, add to `CANCELLED_GIS` in `scripts/it/00_fetch_data.py`.
+- **MGA/UGA cru polygons** — name-chips only (Barolo 169, Barbaresco 66,
+  Soave 29, Chianti Classico 11, …). No licence-clear public GIS layer
+  exists for the cru boundaries (researched 2026-05-30: all Consorzio-held
+  / Masnaghetti-proprietary). Geoportale Piemonte's open layer is
+  appellation-level only. Revisit if a Region publishes an open MGA layer.
+- **New IT grape slugs** — the regional registers + Tuscan-natives pass
+  added varieties (abrusco, barsaglina, foglia-tonda, orpicchio, …) that
+  need a VIVC pass (`02g`) + grape-Wikipedia (`02b --only`) to gain pill
+  tooltips. Fold any new unknowns from `raw/it/extraction-unknowns-masaf.json`.
+
 ### Italian-name VIVC slug overrides — ✅ done (2026-05-19)
 
 The original 5 cases (Sangiovese / Nebbiolo / Vermentino / Trebbiano
