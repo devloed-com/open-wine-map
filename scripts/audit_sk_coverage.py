@@ -21,6 +21,8 @@ EXTRACTED = ROOT / "raw" / "sk" / "dokumenty-extracted"
 OJ_MANIFEST = ROOT / "raw" / "sk" / "oj-pages" / "manifest.json"
 OVERRIDES = ROOT / "raw" / "sk" / "oj-pages" / "manual_overrides.json"
 FIGSHARE = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
+NATIONAL_SPECS = ROOT / "raw" / "sk" / "national-specs-extracted"
+TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 
 
 def _load_eambrosia() -> list[dict]:
@@ -147,6 +149,51 @@ def main() -> int:
     print(f"  Total grape-slugs:  {grape_total}")
     print()
 
+    # National-spec augmentation (ÚPV SR per-wine špecifikácia výrobku,
+    # stage 01c/02f). On-disk records stay stubs; this layer is merged
+    # in-memory by stage 04's augment_sk_records_with_national_specs.
+    ns_slugs: set[str] = set()
+    ns_with_grapes = ns_with_terroir = ns_grape_total = 0
+    if NATIONAL_SPECS.exists():
+        for jp in NATIONAL_SPECS.glob("*.json"):
+            if jp.name.startswith("_") or jp.name == "manifest.json":
+                continue
+            sc = json.loads(jp.read_text(encoding="utf-8"))
+            ns_slugs.add(sc.get("slug") or jp.stem)
+            ng = len((sc.get("grapes") or {}).get("principal") or [])
+            if ng:
+                ns_with_grapes += 1
+                ns_grape_total += ng
+            if len((sc.get("link_to_terroir") or "").strip()) >= 200:
+                ns_with_terroir += 1
+    print("## National-spec augmentation (ÚPV SR, stage 02f)")
+    print(f"  Sidecars:           {len(ns_slugs)}")
+    print(f"  With grapes:        {ns_with_grapes}")
+    print(f"  With terroir ≥200:  {ns_with_terroir}")
+    print(f"  Total grape-slugs:  {ns_grape_total}")
+    print()
+
+    # Terroir-fact bullets (stage 02d) — across EU-OJ and spec-grounded.
+    tf_records = tf_bullets = 0
+    if TERROIR_FACTS.exists():
+        for jp in TERROIR_FACTS.glob("*.json"):
+            if jp.name.startswith(("_", "manifest")):
+                continue
+            try:
+                tf = json.loads(jp.read_text(encoding="utf-8"))
+            except (ValueError, OSError):
+                continue
+            if tf.get("country") != "sk":
+                continue
+            bullets = tf.get("facts") or tf.get("bullets") or []
+            if bullets:
+                tf_records += 1
+                tf_bullets += len(bullets)
+    print("## Terroir-fact bullets (stage 02d, country=sk)")
+    print(f"  Wines with bullets: {tf_records}")
+    print(f"  Total bullets:      {tf_bullets}")
+    print()
+
     curator_targets: list[tuple[str, str, str]] = []
     for w in wines:
         slug = w["slug"]
@@ -154,6 +201,8 @@ def main() -> int:
         if rec is None or not rec.get("stub"):
             continue
         if slug in overrides or w["giIdentifier"] in overrides:
+            continue
+        if slug in ns_slugs:  # augmented from the ÚPV national spec
             continue
         curator_targets.append((rec.get("stub_reason") or "unknown", slug,
                                  w.get("fileNumber", "")))

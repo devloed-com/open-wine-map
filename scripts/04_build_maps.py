@@ -146,6 +146,7 @@ NATIONAL_SPECS_GR = ROOT / "raw" / "gr" / "national-specs-extracted"
 NATIONAL_SPECS_RO = ROOT / "raw" / "ro" / "national-specs-extracted"
 NATIONAL_SPECS_HU = ROOT / "raw" / "hu" / "national-specs-extracted"
 EXTRACTED_SK = ROOT / "raw" / "sk" / "dokumenty-extracted"
+NATIONAL_SPECS_SK = ROOT / "raw" / "sk" / "national-specs-extracted"
 EXTRACTED_CZ = ROOT / "raw" / "cz" / "dokumenty-extracted"
 NATIONAL_SPECS_CZ = ROOT / "raw" / "cz" / "national-specs"
 EXTRACTED_CH = ROOT / "raw" / "ch" / "dokumente-extracted"
@@ -249,6 +250,14 @@ _HU_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
 # 02f, iavv-specifikacija-v1 parser — eavw.com PDF, numbered 1–8 template:
 # 5 сортове / 6 Връзка с географския район / 3 район).
 _BG_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
+
+# Slug-keyed cache of SK national-spec provenance, populated by
+# augment_sk_records_with_national_specs(). The 5 grandfathered SK wines
+# (only an Ares(...) reference in eAmbrosia, no EU-OJ JEDNOTNÝ DOKUMENT) are
+# augmented from the ÚPV SR per-wine špecifikácia výrobku (stage 02f,
+# upv-sr-specifikacia-v1 parser — indprop.gov.sk PDF, lettered a–i template:
+# f) označenie odrôd / g) údaje potvrdzujúce spojitosť / d) zemepisná oblasť).
+_SK_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
 
 
 # Cross-border PDOs that physically extend across more than one country.
@@ -682,6 +691,83 @@ def augment_bg_records_with_national_specs(records: list[dict]) -> int:
             record["stub_reason"] = f"national-spec:{record['stub_reason']}"
         record["national_spec"] = provenance
         _BG_NATIONAL_SPEC_BY_SLUG[slug] = provenance
+        augmented += 1
+    return augmented
+
+
+def augment_sk_records_with_national_specs(records: list[dict]) -> int:
+    """In-place merge of SK national-spec sidecar data into stub records.
+
+    Sibling of `augment_bg_records_with_national_specs`. 5 of the SK
+    content-stubs (no fetchable EU-OJ JEDNOTNÝ DOKUMENT) are augmented from
+    the ÚPV SR (indprop.gov.sk) per-wine špecifikácia výrobku. Stage 02f
+    (`scripts/sk/02f_extract_national_specs.py`) parses each text-layer PDF
+    fetched by stage 01c into `raw/sk/national-specs-extracted/<slug>.json`.
+
+    For each SK stub with a matching sidecar:
+      - grapes            ← section f) označenie odrody alebo odrôd
+      - link_to_terroir   ← section g) údaje potvrdzujúce spojitosť
+      - geo_area_brief / summary / styles ← matching sections
+      - section_roles     ← unified role dict so 02d reads terroir uniformly
+      - stub_reason       ← prefixed `national-spec:` so the audit can tell
+                            EU-OJ-extracted from spec-augmented wines
+      - national_spec     ← provenance block (url, sha256, format, …)
+
+    `record["stub"]` stays True — still NOT an EU-OJ extraction, just
+    augmented with the canonical ÚPV SR source. Returns count augmented.
+    """
+    _SK_NATIONAL_SPEC_BY_SLUG.clear()
+    if not NATIONAL_SPECS_SK.exists():
+        return 0
+    augmented = 0
+    for record in records:
+        if record.get("country") != "sk" or not record.get("stub"):
+            continue
+        slug = record.get("slug")
+        if not slug:
+            continue
+        sidecar_path = NATIONAL_SPECS_SK / f"{slug}.json"
+        if not sidecar_path.exists():
+            continue
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+
+        src = sidecar.get("source") or {}
+        provenance = {
+            "url": src.get("url") or "",
+            "sha256": src.get("sha256") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "format": src.get("format") or "",
+            "source_org": src.get("source_org") or "upv-sr",
+            "filename": src.get("filename") or "",
+            "parser_template": sidecar.get("parser_template") or "",
+        }
+
+        if sidecar.get("summary"):
+            record["summary"] = sidecar["summary"]
+        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
+                                      or sidecar["grapes"].get("accessory")):
+            record["grapes"] = sidecar["grapes"]
+        if sidecar.get("geo_area_brief"):
+            record["geo_area_brief"] = sidecar["geo_area_brief"]
+        if sidecar.get("link_to_terroir"):
+            record["link_to_terroir"] = sidecar["link_to_terroir"]
+        if sidecar.get("styles"):
+            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
+
+        section_roles = dict(record.get("section_roles") or {})
+        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
+            sidecar_roles = sidecar.get("section_roles") or {}
+            if sidecar_roles.get(role):
+                section_roles[role] = sidecar_roles[role]
+        record["section_roles"] = section_roles
+
+        if record.get("stub_reason") and not record["stub_reason"].startswith("national-spec:"):
+            record["stub_reason"] = f"national-spec:{record['stub_reason']}"
+        record["national_spec"] = provenance
+        _SK_NATIONAL_SPEC_BY_SLUG[slug] = provenance
         augmented += 1
     return augmented
 
@@ -2491,6 +2577,12 @@ def main() -> int:
     if n_aug_bg:
         print(
             f"[load] BG national-spec augmentation: {n_aug_bg} stub records enriched",
+            file=sys.stderr,
+        )
+    n_aug_sk = augment_sk_records_with_national_specs(extracted_records)
+    if n_aug_sk:
+        print(
+            f"[load] SK national-spec augmentation: {n_aug_sk} stub records enriched",
             file=sys.stderr,
         )
     # PT cadernos enumerate every authorised casta as `principal` —
@@ -4492,12 +4584,17 @@ def _sources_for(record: dict) -> dict:
     if record.get("country") == "sk":
         # Slovakia: 4 of 10 wines carry a fetchable EUR-Lex Jednotný
         # dokument (Vinohradnícka oblasť Tokaj, Stredoslovenská,
-        # Skalický rubín, TOKAJSKÉ VÍNO zo slovenskej oblasti); the
-        # other 6 are Art.107 / Reg.1308/2013 grandfathered names with
-        # only Ares(...) references. All 10 land on the map via Bétard
-        # (8 direct PDO matches + the Tokaj alias for PDO-SK-02856 +
-        # the single PGI's all-PDO union). eAmbrosia + file_number
-        # always resolve.
+        # Skalický rubín, TOKAJSKÉ VÍNO zo slovenskej oblasti). 5 of the
+        # other 6 are augmented from the ÚPV SR per-wine špecifikácia
+        # výrobku (stage 02f — indprop.gov.sk PDF); Karpatská perla has
+        # no standalone ÚPV spec and stays a content-stub. All 10 land
+        # on the map via Bétard (8 direct PDO matches + the Tokaj alias
+        # for PDO-SK-02856 + the single PGI's all-PDO union). The
+        # national-spec provenance surfaces the ÚPV PDF URL + sha so the
+        # panel attributes the variety roster + terroir text correctly.
+        sk_spec = record.get("national_spec") or _SK_NATIONAL_SPEC_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
         return {
             "country": "sk",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
@@ -4506,6 +4603,12 @@ def _sources_for(record: dict) -> dict:
             "fetched_at": src.get("fetched_at") or "",
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
+            "national_spec_url": sk_spec.get("url", ""),
+            "national_spec_sha256": sk_spec.get("sha256", ""),
+            "national_spec_fetched_at": sk_spec.get("fetched_at", ""),
+            "national_spec_format": sk_spec.get("format", ""),
+            "national_spec_source_org": sk_spec.get("source_org", ""),
+            "national_spec_parser_template": sk_spec.get("parser_template", ""),
         }
     if record.get("country") == "cz":
         # Czech Republic: 0 of 13 wines carry a fetchable EUR-Lex
@@ -4912,6 +5015,7 @@ def emit_html(
                 or (country == "ro" and slug in _RO_NATIONAL_SPEC_BY_SLUG)
                 or (country == "hu" and slug in _HU_NATIONAL_SPEC_BY_SLUG)
                 or (country == "bg" and slug in _BG_NATIONAL_SPEC_BY_SLUG)
+                or (country == "sk" and slug in _SK_NATIONAL_SPEC_BY_SLUG)
             )
             is_stub = stub_raw and not has_augmented_source
             # Per-appellation cahier spelling per slug — drives the pill

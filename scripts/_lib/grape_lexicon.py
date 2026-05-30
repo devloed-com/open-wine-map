@@ -1237,6 +1237,14 @@ GRAPE_ALIAS = {
     "nitria": "nitria",                            # SK white crossing
     "nitriansky-jubilejny": "nitria",
     "hetera": "hetera",                            # SK white crossing
+    # ÚPV national-spec MUŠTOVÉ BIELE / MODRÉ crossings (VÚVV Bratislava /
+    # Pospíšilová), each VIVC-anchored, none a foreign-cultivar synonym.
+    "breslava": "breslava",                        # VIVC #1671 — (Chasselas Rose × Traminer) × Santa Maria d'Alcantara
+    "milia": "milia",                              # VIVC #22818 — Müller-Thurgau × Tramín červený
+    "noria": "noria",                              # VIVC #22819 — Ezerjó × Savagnin (DNA-corrected)
+    "nitranka": "nitranka",                        # VIVC #17282 — Castets × Abouriou
+    "rudava": "rudava",                            # VIVC #17283 — Castets × I-35-9 6/28
+    "torysa": "torysa",                            # VIVC #22419 — Castets × I-35-9 9/17
     "karpatska-perla": "karpatska-perla",          # SK PDO brand (not a single variety, but appears as a name in pliegos)
     # SK-side name variants that round-trip through unidecode to existing slugs
     "frankovka-modra": "blaufrankisch",            # explicit Slovak "blue Frankovka"
@@ -1978,6 +1986,12 @@ DEFAULT_COLOUR: dict[str, str] = {
     "vah": "blanc",
     "nitria": "blanc",
     "hetera": "blanc",
+    "breslava": "blanc",               # VIVC #1671 berry-skin blanc; MUŠTOVÉ BIELE
+    "milia": "blanc",                  # white-wine grape, ÚPV MUŠTOVÉ BIELE (VIVC #22818 berry-skin = rose, inherited from Traminer parent — filed blanc per the regulator + sibling Devín)
+    "noria": "blanc",                  # VIVC #22819 berry-skin blanc; MUŠTOVÉ BIELE
+    "nitranka": "noir",                # VIVC #17282 — Castets × Abouriou, MUŠTOVÉ MODRÉ
+    "rudava": "noir",                  # VIVC #17283 — Castets × I-35-9, MUŠTOVÉ MODRÉ
+    "torysa": "noir",                  # VIVC #22419 — Castets × I-35-9, MUŠTOVÉ MODRÉ
     "karpatska-perla": "blanc",        # placeholder — the PDO bears the brand name
     # ─── Czech Republic ──────────────────────────────────────
     "palava": "blanc",                 # aromatic white (Tramín × Müller-Thurgau)
