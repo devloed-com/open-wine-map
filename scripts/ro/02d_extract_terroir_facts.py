@@ -43,6 +43,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "ro" / "dokumente-extracted"
+NATIONAL_SPECS = ROOT / "raw" / "ro" / "national-specs-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "ro"
 CACHE_DIR = ROOT / "raw" / "terroir-facts"
 MANIFEST = CACHE_DIR / "manifest-ro.json"
@@ -245,12 +246,28 @@ def _ground_facts(
 
 def _resolve_lien_and_source(rec: dict) -> tuple[str, dict]:
     """Return (link_to_terroir text, source-provenance dict) for a RO
-    record. Romania has no national-spec fallback layer wired in v1, so
-    this is just the on-disk DOCUMENT UNIC link section plus the
-    EUR-Lex URL for cache attribution."""
+    record. Non-stub wines ground on the EUR-Lex DOCUMENT UNIC link
+    section; the 14 grandfathered stubs ground on the ONVPV caiet de
+    sarcini's §II Legătura cu aria geografică (stage 02f sidecar) —
+    mirrors the GR ΥΠΑΑΤ / IT MASAF terroir-backfill pattern."""
     lien = rec.get("link_to_terroir") or ""
     src = rec.get("source") or {}
     eu_url = src.get("final_url") or src.get("source_url") or ""
+    if lien and not rec.get("stub"):
+        return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
+    sidecar_path = NATIONAL_SPECS / f"{rec.get('slug')}.json"
+    if sidecar_path.exists():
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            sidecar = {}
+        sc_lien = sidecar.get("link_to_terroir") or ""
+        if sc_lien:
+            sc_src = sidecar.get("source") or {}
+            return sc_lien, {
+                "pdf_url": sc_src.get("source_url") or "",
+                "kind": "national-spec",
+            }
     return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
 
 

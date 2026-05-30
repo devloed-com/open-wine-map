@@ -84,10 +84,22 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "productia maxima",
     ),
     "geo_area": (
+        # Newer (Reg. 2024/1143) template: "Descrierea concisă a
+        # arealului geografic delimitat". Most-specific first so it wins
+        # over the bare "aria geografică" decoy (section 3, "Țara
+        # căreia îi aparține aria geografică delimitată" → body "România",
+        # which is also blocklisted below).
+        "descrierea concisă a arealului geografic delimitat",
+        "descrierea concisa a arealului geografic delimitat",
         "aria geografică delimitată",
         "aria geografica delimitata",
         "zona geografică delimitată",
         "zona geografica delimitata",
+        # Older / national-spec template uses "areal" rather than "aria":
+        # "Arealul geografic delimitat" (Dealurile Moldovei / Vrancei).
+        "arealul geografic delimitat",
+        "arealul geografic",
+        "areal geografic delimitat",
         "arealul delimitat",
         "aria delimitată",
         "aria delimitata",
@@ -143,6 +155,11 @@ _GEO_AREA_TITLE_BLOCKLIST = (
     "tip de indicatie geografica",
     "categoriile de produse vitivinicole",
     "categorii de produse vitivinicole",
+    # Newer template section 3, "Țara căreia îi aparține aria geografică
+    # delimitată", whose body is just "România" — a decoy that otherwise
+    # shadows section 9's real area list (Terasele Dunării).
+    "țara căreia îi aparține",
+    "tara careia ii apartine",
 )
 
 

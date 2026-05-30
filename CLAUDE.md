@@ -1644,14 +1644,20 @@ ES MAPA / IT MASAF pattern).
 
 ## Romania pipeline (`scripts/ro/`)
 
-Country #9. **54 wine GIs (41 DOP + 13 IGP)** from eAmbrosia, of which
-**34 / 54 carry a fetchable `publications[].uri`** (the other 20 are
-Art.107 / Reg.1308/2013 grandfathered names with only `Ares(…)`
-references). Structurally a near-verbatim clone of the HR template —
-EU-OJ single-document HTML in Romanian, Latin script with diacritics,
-Bétard PDO geometry — with **two real deltas**:
+Country #9. **46 wine GIs (34 DOP + 12 IGP)** from eAmbrosia after
+de-duplicating administrative re-registrations (the same wine — e.g.
+Murfatlar, Dealu Mare, Panciu — has both its 2007-protected entry and
+later modification entries, all `status=registered`; stage 00 keeps the
+one with publications + the most recent modification date). **32 / 46
+carry a fetchable `publications[].uri`**; the other 14 are Art.107 /
+Reg.1308/2013 grandfathered names with only `Ares(…)` references —
+**fully covered by the ONVPV national-spec layer** (stage 01c/02f, see
+below). **v1 coverage: 46 / 46 on the map, 0 stubs.** Structurally a
+near-verbatim clone of the HR template — EU-OJ single-document HTML in
+Romanian, Latin script with diacritics, Bétard PDO geometry — with
+**three real deltas**:
 
-- **13 IGPs** (HR had zero, HU has 5 region-union ones). Bétard is
+- **12 IGPs** (HR had zero, HU has 5 region-union ones). Bétard is
   PDO-only, so Romanian IGPs and the 3 newer PDOs missing from Bétard
   (Sebeș-Apold, Plaiurile Drâncei, Iana) resolve via a new
   `gisco-commune-list` step that parses the DOCUMENT UNIC section-6
@@ -1662,7 +1668,17 @@ Bétard PDO geometry — with **two real deltas**:
   `scripts/_lib/ro/document_unic.py` carries the section-role keyword
   tables (*Denumire / Aria geografică delimitată / Soiul de struguri /
   Descrierea legăturii / Alte condiții esențiale*); the HTML-slice
-  machinery is identical to HR/SI/AT.
+  machinery is identical to HR/SI/AT. The newer Reg. 2024/1143
+  template moves the area to section 9 ("Descrierea concisă a arealului
+  geografic delimitat") behind a "Țara căreia îi aparține…" → "România"
+  decoy (blocklisted); a density-based commune fallback in stage 02
+  (`_harvest_communes_fallback`) recovers the list when the PDF→HTML
+  conversion mangles section numbering.
+- **ONVPV national-spec layer** (stage 01c/02f) — the 14 grandfathered
+  wines are augmented from the Oficiul Național al Viei și Produselor
+  Vitivinicole caiet de sarcini (see the dedicated section below). This
+  is the RO analogue of the ES MAPA / IT MASAF / GR ΥΠΑΑΤ / HR–SI
+  national-spec layer.
 
 Spine: **eAmbrosia EU register**, filtered `country=RO` +
 `productType=WINE` + `status=registered`. Pliego source: the EU-OJ
@@ -1678,7 +1694,9 @@ with headless Chromium.
 | ro/00_fetch_data.py | (network: eAmbrosia) | raw/ro/eambrosia/index.json + manifest.json |
 | ro/01_fetch_pliegos.py | raw/ro/eambrosia/index.json + raw/ro/oj-pages/manual_overrides.json | raw/ro/oj-pages/*.html + manifest.json |
 | ro/01b_solve_waf.py | raw/ro/oj-pages/manifest.json | raw/ro/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
+| ro/01c_fetch_specifikacije.py | raw/ro/national-specs/manual_overrides.json | raw/ro/national-specs/*.pdf + manifest.json (ONVPV caiete) |
 | ro/02_extract_pliegos.py | raw/ro/oj-pages/*.html | raw/ro/dokumente-extracted/*.json + _index.json (+ `geo_communes` per record) |
+| ro/02f_extract_national_specs.py | raw/ro/national-specs/*.pdf | raw/ro/national-specs-extracted/*.json + _index.json |
 | ro/02d_extract_terroir_facts.py | raw/ro/dokumente-extracted/*.json + raw/wikipedia/aocs/ro/ | raw/terroir-facts/*.json (country="ro") + manifest-ro.json |
 | ro/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="ro") | raw/translations/terroir-facts/<en\|fr\|es\|nl>/*.json |
 | ro/03_generate_wiki.py | raw/ro/dokumente-extracted/*.json | wiki/<slug>.md (per RO record) + merges RO entries into wiki/_index.json |
@@ -1705,10 +1723,13 @@ RO-specific notes:
   `DEFAULT_COLOUR` tables in [scripts/_lib/grape_lexicon.py](scripts/_lib/grape_lexicon.py).
   Tămâioasă Românească folds to `muscat-blanc-a-petits-grains` per the
   VIVC synonym chain.
-- v1 models the 54 wine GIs as a **flat corpus** — Romanian DOCs do
+- v1 models the 46 wine GIs as a **flat corpus** — Romanian DOCs do
   not have a structured DGC / subzona / sottozona analogue (rare
   cru-like designations like Cotnari's "Grasă de Cotnari" are
-  variety-restricted single-vineyards, not sub-denominations).
+  variety-restricted single-vineyards, not sub-denominations). The
+  caiet de sarcini does enumerate *denumiri de plai viticol* per
+  appellation (Aiud → CIUMBRUD, SÂNCRAI, …), harvestable as a future
+  sub-denomination layer; deferred in v1.
 - Region facet = **regiune viticolă**
   ([scripts/_lib/ro/region.py](scripts/_lib/ro/region.py)): the 8
   Romanian macro wine regions (*Moldova, Muntenia, Oltenia, Dobrogea,
@@ -1720,57 +1741,104 @@ RO-specific notes:
   text scan.
 - Stage 02d/02e wire terroir-fact extraction + translation for RO
   (siblings of the ES/PT/IT/AT/SI/HR pairs). Dual-source grounding
-  (DOCUMENT UNIC section 8 + ro.wikipedia.org per-DOP page), Romanian
-  extraction prompt, fuzzy-coverage filter (≥ 0.6), per-bullet
-  provenance, manual round-trip flow. 02e targets en/fr/es/nl.
+  (DOCUMENT UNIC section 8 — or, for the 14 grandfathered stubs, the
+  ONVPV caiet's §II *Legătura cu aria geografică* via the stage-02f
+  sidecar, mirroring the GR/IT terroir backfill — plus
+  ro.wikipedia.org per-DOP page when one exists), Romanian extraction
+  prompt, fuzzy-coverage filter (≥ 0.6), per-bullet provenance, manual
+  round-trip flow. 02e targets en/fr/es/nl. **ro.wikipedia coverage is
+  thin** (the Switzerland situation): 43 of 46 appellations have no
+  dedicated *Podgoria X* article — only the town/commune article (which
+  `looks_like_aoc` rejects) or a redlink — so they're curator-pinned
+  `missing` in `raw/wikipedia/aoc_overrides.json["ro"]` and RO facts
+  ground on the cahier/caiet text. All 46 wines carry 7–10 facts.
 
 ### RO geometry resolution chain (stage 04)
 
 Per RO record, in priority order (`geom_source` records the choice):
 
 1. **`figshare-pdo`** — exact `file_number` (`PDO-RO-*`) → `PDOid`
-   match against Bétard 2022 EU_PDO.gpkg. Covers ~38 of 41 RO PDOs.
-2. **`gisco-commune-list`** — fallback for the 13 RO IGPs (Bétard is
-   PDO-only) and the 3 newer PDOs missing from Bétard (`PDO-RO-01182`
-   Sebeș-Apold, `PDO-RO-02854` Plaiurile Drâncei, `PDO-RO-03446`
-   Iana). [scripts/_lib/ro/commune.py](scripts/_lib/ro/commune.py)
-   parses the DOCUMENT UNIC section-6 commune list (handling Romanian
-   municipal-tier prefixes — *municipiul / orașul / comuna / satul* —
-   and *satul X aparținând comunei Y* hierarchies); [scripts/_lib/ro/geometry.py](scripts/_lib/ro/geometry.py)
+   match against Bétard 2022 EU_PDO.gpkg. Covers 33 of the 34 RO PDOs.
+2. **`gisco-commune-list`** — fallback for the 12 RO IGPs (Bétard is
+   PDO-only) and the newer PDOs missing from Bétard (Sebeș-Apold,
+   Plaiurile Drâncei, Iana). [scripts/_lib/ro/commune.py](scripts/_lib/ro/commune.py)
+   parses the area commune list (handling Romanian municipal-tier
+   prefixes — *municipiul / orașul / comuna / satul* — *judeţul X:*
+   headers, *X cu satele/localităţile componente Y, Z* descriptor
+   tails, and parenthetical *(satele …)* sub-village groups);
+   [scripts/_lib/ro/geometry.py](scripts/_lib/ro/geometry.py)
    `ROPolygonIndex.commune_union` unions the matching GISCO LAU
-   polygons. Same shape as the ES IGP-fallback chain.
-3. **`stub-no-geometry`** — grandfathered IGPs without a parseable
-   single document; also any wine whose commune-list parser yields
-   zero matches (audit-tracked).
+   polygons. The list comes from the DOCUMENT UNIC for non-stub wines
+   and from the **ONVPV caiet de sarcini** (stage 02f sidecar, merged
+   into `record["geo_communes"]` at load time) for the 2 grandfathered
+   IGPs — Dealurile Transilvaniei + Viile Caraşului. Same shape as the
+   ES IGP-fallback chain.
+3. **`stub-no-geometry`** — not hit in v1; all 46 RO wines resolve.
 
 The shared `raw/es/figshare/EU_PDO.gpkg` and
 `raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip` are re-used — no new
 stage-00 download.
 
-### Curator workflow for RO wines without an OJ publication
+### RO national-spec layer (stages 01c + 02f)
 
-Mirrors the ES/PT/IT/AT/SI/HR/HU `regen_manual_overrides_template.py`
-flow. ~20 of the 54 RO wines are Art.107 / Reg.1308/2013 grandfathered
-names with no fetchable single-document URL. The canonical source for
-those is the **ONVPV** (Oficiul Național al Viei și Produselor
-Vitivinicole) caiet de sarcini, often published in *Monitorul
-Oficial*; researching a public, licence-clear URL pattern for it —
-and adding a national-spec parser branch — is Phase 2 work. For now:
+The 14 grandfathered RO wines (eAmbrosia carries only a non-fetchable
+`Ares(…)` reference — no EU-OJ DOCUMENT UNIC) would ship as bare stubs
+without a national-spec layer. Their canonical source is the
+**ONVPV** (Oficiul Național al Viei și Produselor Vitivinicole)
+*caiet de sarcini*, published as a PDF on `onvpv.ro` (the regulator's
+DOC + IG caiete-de-sarcini index pages). The host is plain HTTP/HTTPS
+and **WAF-free** — no Playwright bootstrap needed.
 
+- **Stage 01c** ([scripts/ro/01c_fetch_specifikacije.py](scripts/ro/01c_fetch_specifikacije.py))
+  fetches each curator-pinned URL from
+  `raw/ro/national-specs/manual_overrides.json` (slug → `{url,
+  source_org: onvpv, file_number, format}`) into
+  `raw/ro/national-specs/<slug>.pdf` + manifest (sha256, fetched_at).
+- **Stage 02f** ([scripts/ro/02f_extract_national_specs.py](scripts/ro/02f_extract_national_specs.py))
+  runs `pdftotext -layout` and parses via
+  [scripts/_lib/ro/caiet.py](scripts/_lib/ro/caiet.py)
+  (`onvpv-caiet-de-sarcini-v1`). The caiet is a uniform Roman-numeral
+  outline (`I. Definiţie` → summary, `II. Legătura cu aria geografică`
+  → terroir, `III. Delimitarea geografică` → commune list via the
+  shared `parse_commune_list`, `IV. Soiurile de struguri` → grapes by
+  colour header `Soiurile albe:` / `Soiuri roşii:`). Form-feeds are
+  folded to newlines so a page-break before a section header doesn't
+  let one section swallow the next, and colour segments are joined
+  line-wise (not per-line) so a variety name wrapped across two
+  pdftotext lines — `…Riesling\nItalian` — isn't sheared. Sidecars
+  land in `raw/ro/national-specs-extracted/<slug>.json` with full
+  provenance.
+- **Stage 04** `augment_ro_records_with_national_specs()` merges the
+  sidecar's summary / grapes / **geo_communes** / link_to_terroir /
+  styles / section_roles into the in-memory stub record at load time
+  (the on-disk DOCUMENT UNIC stub stays immutable); `stub_reason` is
+  prefixed `national-spec:`; `_sources_for()` surfaces `national_spec_*`
+  provenance. The geo_communes merge is the RO-specific delta vs.
+  GR/HR — it drives the GISCO commune-union geometry for the 2
+  grandfathered IGPs. **02d** grounds terroir-fact extraction on the
+  sidecar's §II Legătura text when the on-disk record is a stub.
+
+Result: **14 / 14 grandfathered wines augmented** — grapes (9–18 each),
+commune geometry, 7–10 terroir facts. Re-runnable:
 ```
-.venv/bin/python scripts/ro/regen_manual_overrides_template.py
-# edit raw/ro/oj-pages/manual_overrides.json: fill `url` with a public,
-# licence-clear specification (EUR-Lex OJ-C page, or ONVPV / Monitorul
-# Oficial national caiet de sarcini).
-.venv/bin/python scripts/ro/01_fetch_pliegos.py
-.venv/bin/python scripts/ro/02_extract_pliegos.py
+.venv/bin/python scripts/ro/01c_fetch_specifikacije.py
+.venv/bin/python scripts/ro/02f_extract_national_specs.py --all
+.venv/bin/python scripts/ro/02d_extract_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/ro/02e_translate_terroir_facts.py --batch --provider anthropic
 .venv/bin/python scripts/04_build_maps.py
 ```
 
-**Caveat**: stage 02's HTML parser only understands the EU-OJ
-DOCUMENT UNIC template; ONVPV / Monitorul Oficial national-
-specification formats need a per-source parser (Phase 2, mirrors the
-ES MAPA / IT MASAF pattern).
+### Curator workflow for new RO wines
+
+If a new RO grandfathered wine appears, or an ONVPV URL rotates, add it
+to `raw/ro/national-specs/manual_overrides.json` (slug → `{url,
+source_org, file_number, format}`) and re-run 01c → 02f → 02d → 02e →
+04. The EU-OJ `regen_manual_overrides_template.py` flow still applies
+if the Commission later publishes a real DOCUMENT UNIC.
+
+**Caveat**: the ONVPV caiet parser is PDF-only (`onvpv-caiet-de-
+sarcini-v1`); a BOE-style / Monitorul-Oficial format would need its
+own parser branch.
 
 ## Bulgaria pipeline (`scripts/bg/`)
 

@@ -138,6 +138,7 @@ EXTRACTED_RO = ROOT / "raw" / "ro" / "dokumente-extracted"
 EXTRACTED_BG = ROOT / "raw" / "bg" / "dokumenti-extracted"
 EXTRACTED_GR = ROOT / "raw" / "gr" / "dokumenti-extracted"
 NATIONAL_SPECS_GR = ROOT / "raw" / "gr" / "national-specs-extracted"
+NATIONAL_SPECS_RO = ROOT / "raw" / "ro" / "national-specs-extracted"
 EXTRACTED_SK = ROOT / "raw" / "sk" / "dokumenty-extracted"
 EXTRACTED_CZ = ROOT / "raw" / "cz" / "dokumenty-extracted"
 NATIONAL_SPECS_CZ = ROOT / "raw" / "cz" / "national-specs"
@@ -218,6 +219,14 @@ _HR_SPECIFIKACIJA_BY_SLUG: dict[str, dict] = {}
 # φάκελος (stage 02f) — 87 structured-PDF ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ, 43 `.doc`,
 # 2 `.docx`. `parser_template` (gr-national-{pdf,doc,docx}) distinguishes.
 _GR_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
+
+# Slug-keyed cache of RO national-spec provenance, populated by
+# augment_ro_records_with_national_specs(). The 14 grandfathered RO wines
+# (only an Ares(...) reference in eAmbrosia, no EU-OJ DOCUMENT UNIC) are
+# augmented from the ONVPV caiet de sarcini (stage 02f, onvpv-caiet-de-
+# sarcini-v1 parser). Unlike GR/HR, the merge also carries `geo_communes`
+# so the 2 grandfathered IGPs resolve via the GISCO commune-union chain.
+_RO_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
 
 
 # Cross-border PDOs that physically extend across more than one country.
@@ -574,6 +583,87 @@ def augment_gr_records_with_national_specs(records: list[dict]) -> int:
             record["stub_reason"] = f"national-spec:{record['stub_reason']}"
         record["national_spec"] = provenance
         _GR_NATIONAL_SPEC_BY_SLUG[slug] = provenance
+        augmented += 1
+    return augmented
+
+
+def augment_ro_records_with_national_specs(records: list[dict]) -> int:
+    """In-place merge of RO national-spec sidecar data into stub records.
+
+    Sibling of `augment_gr_records_with_national_specs`. The 14
+    grandfathered RO wines (eAmbrosia carries only a non-fetchable
+    `Ares(...)` reference — no EU-OJ DOCUMENT UNIC) ship as content-stubs.
+    Stage 02f (`scripts/ro/02f_extract_national_specs.py`) parses the
+    ONVPV caiet de sarcini fetched by stage 01c into
+    `raw/ro/national-specs-extracted/<slug>.json`.
+
+    For each RO stub with a matching sidecar:
+      - grapes            ← §IV Soiurile de struguri (colour-grouped)
+      - link_to_terroir   ← §II Legătura cu aria geografică
+      - geo_communes      ← §III Delimitarea geografică (drives the GISCO
+                            commune-union geometry for the 2 grandfathered
+                            IGPs — the RO-specific delta vs. GR/HR)
+      - geo_area_brief / summary / styles ← matching sections
+      - section_roles     ← unified role dict so 02d reads terroir uniformly
+      - stub_reason       ← prefixed `national-spec:`
+      - national_spec     ← provenance block (url, sha256, format, …)
+
+    `record["stub"]` stays True. Returns count augmented.
+    """
+    _RO_NATIONAL_SPEC_BY_SLUG.clear()
+    if not NATIONAL_SPECS_RO.exists():
+        return 0
+    augmented = 0
+    for record in records:
+        if record.get("country") != "ro" or not record.get("stub"):
+            continue
+        slug = record.get("slug")
+        if not slug:
+            continue
+        sidecar_path = NATIONAL_SPECS_RO / f"{slug}.json"
+        if not sidecar_path.exists():
+            continue
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+
+        src = sidecar.get("source") or {}
+        provenance = {
+            "url": src.get("source_url") or "",
+            "sha256": src.get("sha256") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "format": src.get("format") or "",
+            "source_org": src.get("source_org") or "onvpv",
+            "filename": src.get("filename") or "",
+            "parser_template": sidecar.get("parser_template") or "",
+        }
+
+        if sidecar.get("summary"):
+            record["summary"] = sidecar["summary"]
+        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
+                                      or sidecar["grapes"].get("accessory")):
+            record["grapes"] = sidecar["grapes"]
+        if sidecar.get("geo_area_brief"):
+            record["geo_area_brief"] = sidecar["geo_area_brief"]
+        if sidecar.get("geo_communes"):
+            record["geo_communes"] = sidecar["geo_communes"]
+        if sidecar.get("link_to_terroir"):
+            record["link_to_terroir"] = sidecar["link_to_terroir"]
+        if sidecar.get("styles"):
+            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
+
+        section_roles = dict(record.get("section_roles") or {})
+        for role in ("geo_area", "grape_varieties", "link_to_terroir"):
+            sidecar_roles = sidecar.get("section_roles") or {}
+            if sidecar_roles.get(role):
+                section_roles[role] = sidecar_roles[role]
+        record["section_roles"] = section_roles
+
+        if record.get("stub_reason") and not record["stub_reason"].startswith("national-spec:"):
+            record["stub_reason"] = f"national-spec:{record['stub_reason']}"
+        record["national_spec"] = provenance
+        _RO_NATIONAL_SPEC_BY_SLUG[slug] = provenance
         augmented += 1
     return augmented
 
@@ -1963,6 +2053,16 @@ def main() -> int:
     if n_aug_gr:
         print(
             f"[load] GR national-spec augmentation: {n_aug_gr} stub records enriched",
+            file=sys.stderr,
+        )
+    # RO: the 14 grandfathered wines (only an Ares(...) ref in eAmbrosia)
+    # are augmented from the ONVPV caiet de sarcini (stage 01c/02f). The
+    # merge carries geo_communes too, so the 2 grandfathered IGPs
+    # (Dealurile Transilvaniei, Viile Caraşului) resolve via commune-union.
+    n_aug_ro = augment_ro_records_with_national_specs(extracted_records)
+    if n_aug_ro:
+        print(
+            f"[load] RO national-spec augmentation: {n_aug_ro} stub records enriched",
             file=sys.stderr,
         )
     # PT cadernos enumerate every authorised casta as `principal` —
@@ -3837,13 +3937,17 @@ def _sources_for(record: dict) -> dict:
             "id_eambrosia": record.get("id_eambrosia") or "",
         }
     if record.get("country") == "ro":
-        # Romania: 34 of 54 wines carry a fetchable EUR-Lex DOCUMENT
-        # UNIC; the remaining 20 are Art.107 / Reg.1308/2013
-        # grandfathered names awaiting a curator-pinned URL or the
-        # national caiet de sarcini (Phase 2). 38 / 41 PDOs resolve to
-        # a Bétard polygon; the 13 IGPs + 3 newer PDOs resolve via
-        # the GISCO commune-list fallback. eAmbrosia + file number
-        # always resolve.
+        # Romania: 32 of 46 wines carry a fetchable EUR-Lex DOCUMENT
+        # UNIC; the remaining 14 are Art.107 / Reg.1308/2013
+        # grandfathered names augmented from the ONVPV caiet de sarcini
+        # (stage 01c/02f, onvpv-caiet-de-sarcini-v1). 33 PDOs resolve to
+        # a Bétard polygon; the IGPs + newer PDOs resolve via the GISCO
+        # commune-list fallback (including the 2 grandfathered IGPs whose
+        # commune list comes from the national caiet). eAmbrosia + file
+        # number always resolve.
+        ro_spec = record.get("national_spec") or _RO_NATIONAL_SPEC_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
         return {
             "country": "ro",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
@@ -3852,6 +3956,12 @@ def _sources_for(record: dict) -> dict:
             "fetched_at": src.get("fetched_at") or "",
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
+            "national_spec_url": ro_spec.get("url", ""),
+            "national_spec_sha256": ro_spec.get("sha256", ""),
+            "national_spec_fetched_at": ro_spec.get("fetched_at", ""),
+            "national_spec_format": ro_spec.get("format", ""),
+            "national_spec_source_org": ro_spec.get("source_org", ""),
+            "national_spec_parser_template": ro_spec.get("parser_template", ""),
         }
     if record.get("country") == "bg":
         # Bulgaria: ~3 of 54 wines carry a fetchable EUR-Lex Единен
@@ -4303,6 +4413,7 @@ def emit_html(
                 or (country == "si" and slug in _SI_SPECIFIKACIJA_BY_SLUG)
                 or (country == "hr" and slug in _HR_SPECIFIKACIJA_BY_SLUG)
                 or (country == "gr" and slug in _GR_NATIONAL_SPEC_BY_SLUG)
+                or (country == "ro" and slug in _RO_NATIONAL_SPEC_BY_SLUG)
             )
             is_stub = stub_raw and not has_augmented_source
             # Per-appellation cahier spelling per slug — drives the pill

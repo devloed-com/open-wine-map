@@ -1377,6 +1377,7 @@ _TEMPLATE = """<!doctype html>
     at: 'Produktspezifikation',
     si: 'specifikacija proizvoda',
     hr: 'specifikacija proizvoda',
+    ro: 'caiet de sarcini',
   }};
   const GRAPES_INFO = {grapes_info_json};
   // Slug -> siblings sharing the same VIVC variety id. Used to make the
