@@ -180,6 +180,54 @@ ES are curated; IT had zero coverage in `appellation_urls.json`.
   shape `{ "<slug>": { "url": ..., "label": "<organisation name>" } }`.
 - **Re-run:** `04_build_maps.py`.
 
+## `national-spec` — country's wines have no EU-OJ single document (generic)
+
+The umbrella gap for any country whose wines are Art.107 / Reg.1308/2013
+grandfathered names with only a non-fetchable `Ares(...)` reference in
+eAmbrosia — so there is no EU-OJ single document and we need the country's
+**national regulator product specification** instead. `cz-specification` and
+`hr-specification` below are worked instances; this entry is the parameterised
+form for the next country (`/research-gaps national-spec <cc>`). Pairs with
+the **`national-spec-layer`** skill, which scaffolds + wires the 01c/02f layer
+once this returns a source.
+
+- **Parameter:** `cc` — 2-letter country code.
+- **Detect:** `scripts/audit_<cc>_coverage.py` — the `no-publication` /
+  stub bucket. The actionable set is every stub wine (usually all of them).
+- **Triage:** typically all stubs are in scope (small corpora). Confirm the
+  count with the user only if > 60.
+- **Dispatch (discovery-first, the BG pattern):** spawn **two** agents in
+  parallel rather than chunking per-wine, because the source structure is
+  unknown until found:
+  1. **national-source scout** — find the regulator's per-wine spec listing
+     (agency site / national gazette / ministry), the per-wine URL pattern,
+     the document format, and — critically — whether the spec carries a
+     **terroir / link-to-region section** (quote one). Report fetchability
+     (HTTP 200 vs WAF/JS/404) and licence (official-act exemption / open data).
+  2. **EUR-Lex negative-check** — confirm 0 (or few) of the wines actually
+     have a published EU-OJ single document, so the national source is the
+     right path. (For BG this returned a clean 0/51.)
+  Once the source + URL pattern are confirmed, a third pass enumerates the
+  per-wine URLs (often transcribed from one listing page; validate a sample
+  fetch — the famous-region URLs are the ones most likely mistyped).
+- **Gate before building:** the source must be public + licence-clear AND
+  carry terroir narrative. If only a variety/area roster exists (the CZ
+  reality), warn the user — 02d will produce few/no bullets and the
+  acceptance bar may not be met from this source alone.
+- **WAF risk:** medium — EUR-Lex is WAF-prone for agents; national regulator
+  sites vary (IAVV/eavw.com was agent-reachable for BG; some ministry portals
+  are JS/WAF-gated and need the browser fallback or the user's VPN).
+- **Overrides target:** a **dedicated** `raw/<cc>/national-specs/manual_overrides.json`
+  (slug → `{url, source_org, file_number, format, note}`) — NOT the country's
+  `oj-pages/manual_overrides.json` (a PDF/.doc there breaks stage 02's HTML
+  single-document parser; the national specs ride the parallel 01c/02f layer).
+- **Re-run:** `<cc>/01c_fetch_specifikacije.py` →
+  `<cc>/02f_extract_national_specs.py --all` → 02d/02e → `04_build_maps.py`.
+  Build the parser/extractor first via the `national-spec-layer` skill.
+- **Calibrate:** if a country's source had a shape this entry didn't predict
+  (no terroir section, a new host/format, a WAF that needed the browser),
+  amend this entry while it's fresh so the next country starts from reality.
+
 ## `cz-specification` — Czech wine with no EU-OJ single document
 
 All 13 CZ wines are Art.107 / Reg.1308/2013 grandfathered names whose
