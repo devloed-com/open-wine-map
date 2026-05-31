@@ -5097,6 +5097,7 @@ def emit_html(
                 or (country == "hu" and slug in _HU_NATIONAL_SPEC_BY_SLUG)
                 or (country == "bg" and slug in _BG_NATIONAL_SPEC_BY_SLUG)
                 or (country == "sk" and slug in _SK_NATIONAL_SPEC_BY_SLUG)
+                or (country == "cz" and slug in _CZ_NATIONAL_SPEC_BY_SLUG)
             )
             is_stub = stub_raw and not has_augmented_source
             # Per-appellation cahier spelling per slug — drives the pill

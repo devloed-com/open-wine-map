@@ -144,14 +144,25 @@ class CZPolygonIndex:
         return unary_union(polys), stats
 
     def commune_union_for_podoblast(
-        self, podoblast_slug: str,
+        self, podoblast_slug: str, mask: BaseGeometry | None = None,
     ) -> tuple[BaseGeometry | None, dict]:
         """Union the GISCO LAU polygons matching the obce of one
-        podoblast (as enumerated in Vyhláška 254/2010 Sb. Příloha)."""
+        podoblast (as enumerated in Vyhláška 254/2010 Sb. Příloha).
+
+        Czech obec names repeat across okresy (e.g. dozens of "Lhota"),
+        and the Vyhláška lists the obec name without its okres, so a bare
+        name match against the national GISCO LAU set pulls in same-named
+        communes country-wide — scattering the polygon across all of
+        Czechia. `mask` (the podoblast's own Bétard PDO polygon, lightly
+        buffered) disambiguates: a candidate is kept only when its
+        representative point falls inside the mask, so the correct commune
+        is selected and the distant homonyms are dropped."""
         communes = self._communes_by_podoblast.get(podoblast_slug, [])
+        masked = mask.buffer(0.03) if mask is not None else None  # ~3 km slop
         polys: list[BaseGeometry] = []
         matched: list[str] = []
         unmatched: list[str] = []
+        collisions_dropped = 0
         for name in communes:
             key = _normalise_commune(name)
             if not key:
@@ -160,11 +171,19 @@ class CZPolygonIndex:
             if not cands:
                 unmatched.append(name)
                 continue
+            if masked is not None:
+                kept = [g for g in cands if masked.contains(g.representative_point())]
+                collisions_dropped += len(cands) - len(kept)
+                cands = kept
+            if not cands:
+                unmatched.append(name)
+                continue
             polys.extend(cands)
             matched.append(name)
         stats = {
             "matched": len(matched),
             "unmatched": len(unmatched),
+            "collisions_dropped": collisions_dropped,
             "names_unmatched": unmatched[:30],
         }
         if not polys:
@@ -175,25 +194,36 @@ class CZPolygonIndex:
         """Resolve geometry for one CZ record by file_number.
         Returns (geometry, geom_source, stats).
 
-        Order: podoblast commune-union → Bétard PDO → PGI member union →
-        stub-no-geometry. The podoblast commune-union runs first for the
-        6 podoblasti because it's commune-precise; Bétard is a coarser
-        macro-region-aggregated polygon for those (still a valid
-        fallback if the commune-union returns nothing)."""
+        Order: masked podoblast commune-union → Bétard PDO → PGI member
+        union → stub-no-geometry. The 6 podoblasti each have a Bétard
+        per-podoblast PDO polygon (Bétard is NOT macro-aggregated for CZ),
+        used both as the spatial mask that disambiguates the commune-union
+        and as the fallback when the masked union is too sparse."""
         fn = file_number or ""
-        # 1. Per-podoblast commune-union (the 6 sub-region DOPs).
+        # 1. Per-podoblast commune-union, masked by the podoblast's own
+        #    Bétard polygon to drop country-wide homonym collisions.
         pod_slug = CZ_PODOBLAST_PDOS.get(fn)
         if pod_slug and pod_slug in self._communes_by_podoblast:
-            geom, ustats = self.commune_union_for_podoblast(pod_slug)
-            if geom is not None and not geom.is_empty:
+            mask = self._pdo_polygons.get(fn)
+            geom, ustats = self.commune_union_for_podoblast(pod_slug, mask=mask)
+            n_total = ustats["matched"] + ustats["unmatched"]
+            ok = (
+                geom is not None
+                and not geom.is_empty
+                and mask is not None  # require the mask, else collisions leak
+                and n_total > 0
+                and ustats["matched"] >= 0.6 * n_total  # enough obce matched
+            )
+            if ok:
                 stats = {
                     "matched": ustats["matched"],
                     "unmatched": ustats["unmatched"],
+                    "collisions_dropped": ustats.get("collisions_dropped", 0),
                     "podoblast_slug": pod_slug,
                     "names_unmatched": ustats.get("names_unmatched") or [],
                 }
                 return geom, "gisco-commune-union-podoblast", stats
-            # fall through to Bétard
+            # fall through to Bétard (correct per-podoblast polygon)
 
         # 2. PGIs — member union.
         if fn in CZ_PGI_MEMBER_PDOS:
