@@ -1983,6 +1983,32 @@ conf); VIVC IDs not yet pinned for giannoudi/ofthalmo/promara/kanella/
 vasilissa (not catalogued under searchable Latin names) — optional 02g
 enrichment, pills render with colour but no VIVC bracket.
 
+## Cross-country — eAmbrosia register attachment endpoint (deferred spike, 2026-05-31)
+
+⏳ The EU GI register public API
+(`ec.europa.eu/geographical-indications-register/eambrosia-public-api`,
+OpenAPI at `/v3/api-docs`) exposes, per GI, BOTH the EU **single document
+/ fiche technique** (`singleDocTechFile[].uri`) and the **full national
+cahier des charges** (`productSpecifications[].uri`) as
+`/api/v1/attachments/<uri>` PDFs — reachable for the grandfathered
+`Ares(...)`-only population that currently rides bespoke national-spec
+parsers. Discovery: giIdentifier `EUGI0000000NNNN` → integer `NNNN` →
+`GET /api/gi-applications/id/<NNNN>` → read the two `*.uri` fields.
+Gotchas: empty `POST /api/gi-applications/filter {"filters":[]}` lists all
+rows with `id`/`appUniqueId`; the attachment endpoint is browser-gated
+(real browser UA + Accept WITHOUT `application/pdf`) and answers HTTP 202
+with the PDF body.
+
+- Proven in use: **BE** (4 Walloon wines → fiche technique, 2026-05-31)
+  and **CY** (3 image-only specs replaced by text-layer fiche technique).
+- **Spike (deferred):** sample grandfathered wines across ES / IT / SI /
+  HR / BG / GR / HU / RO / CZ / SK, confirm `singleDocTechFile` /
+  `productSpecifications` exist + parse, and report coverage + parser cost
+  before proposing migration off the per-country national-spec scrapers.
+  The single document is a uniform per-language template → one text-mode
+  parser per language could replace much of the bespoke layer; the full
+  cahier is richer but layout-varied. No migration without the spike.
+
 ## Style taxonomy follow-ups
 
 - **Sweet/oxidative cross-cut** — `generoso` (sherry-family) sits under `oxidative` because most sherries are dry; PX cream sherries and dulces are nominally oxidative *and* sweet. Currently they only emit `oxidative + generoso + (sub-tag)`; the `sweet` bucket is *not* added. Decide whether to surface dual-tagging (record carries both `oxidative` and `sweet`) when the pliego describes a PX / cream / sweet-oloroso style. Currently affects ~5 sherry pliegos. Defer to v2.

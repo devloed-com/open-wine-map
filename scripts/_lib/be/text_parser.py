@@ -9,21 +9,14 @@ Two text-mode flavours:
 1. **`parse_enig_document_text`** — for Vlaamse overheid PDFs that
    are structurally EU "Enig documents" (a numbered 1..9 outline). The
    geconsolideerd enig document for Vlaamse mousserende kwaliteitswijn
-   matches this template exactly.
+   and the productdossier for Vlaamse landwijn match this template.
 
-2. **`parse_wallex_text`** — for Walloon WALLEX arrêtés ministériels
-   that bundle multiple PDOs in one decree (Chapitre premier =
-   common provisions including the area; Chapitre II = Vin mousseux
-   de qualité de Wallonie, Articles 11-15; Chapitre III = Crémant de
-   Wallonie, Articles 16-22). The parser splits the decree by
-   chapter, then routes per slug.
-
-3. **`parse_wallex_standalone_text`** — for a WALLEX arrêté
-   ministériel that agrees a *single* AOC (no chapter split). The
-   "Côtes de Sambre et Meuse" decree (WALLEX act #2879) is an annexed
-   `Cahier des charges` whose Article 1 delimits the zone (bassin
-   hydrographique + commune lists) and "Cépages." Article 2 lists the
-   authorised varieties as a `Name;`-terminated block.
+2. **`parse_fiche_technique_text`** — for the eAmbrosia EU register
+   "fiche technique" PDF whose `I. DOCUMENT UNIQUE` block is the
+   standard single-document template (FR). Used for the Walloon wines
+   whose only EU-OJ reference is a non-fetchable Ares(...) summary —
+   the register attachment carries the varieties + terroir narrative
+   that the (abrogated) WALLEX ministerial decrees lacked.
 
 Both produce a `(sections, titles)` pair whose keys are stringy section
 numbers ("1", "2", …) keyed against the existing
@@ -115,297 +108,84 @@ def parse_enig_document_text(text: str) -> tuple[dict[str, str], dict[str, str]]
     return sections, titles
 
 
-# ────────────────────────────────────────────── walloon WALLEX parser ──
+# ───────────────────────────────────── EU fiche-technique (DOCUMENT UNIQUE) ──
 
 
-# WALLEX uses a quirky layout: chapter and content concatenated
-# without space ("Chapitre IIVin mousseux de qualité de Wallonie"),
-# and articles likewise ("Art. 11.Cépages.").
-_WALLEX_CHAPTER_II_RE = re.compile(
-    r"Chapitre\s+II(?!I)\s*(?:Vin\s+mousseux|[^\n]+)",
-    re.IGNORECASE,
+# The eAmbrosia register serves, per GI, an EU "fiche technique" PDF whose
+# `I. DOCUMENT UNIQUE` block is the standard single-document template
+# (1 Dénomination … 5 Zone délimitée, 6 Cépages principaux, 7 Description
+# du ou des liens [terroir], 8 Autres conditions). Numbering RESTARTS under
+# `II. AUTRES INFORMATIONS`, so we slice to the `I.` block only and keep a
+# strictly increasing 1→N run (the sub-items "1. Vin" / "4. Vin mousseux"
+# under section 2 break monotonicity and are dropped — the Malta/HU idiom).
+_FT_ANCHOR_RE = re.compile(r"I\.\s*DOCUMENT\s+UNIQUE", re.I)
+_FT_END_RE = re.compile(r"II\.\s*AUTRES\s+INFORMATIONS", re.I)
+_FT_HEADER_RE = re.compile(r"^[ \t]*([0-9]+)\.\s+([A-ZÀ-Ý][^\n]*?)\s*$", re.M)
+# i18n placeholder keys leak into the PDF when a sub-field was left blank
+# (e.g. "label.newWineName.singleDocument.linkWithArea.conciseDetails").
+_FT_LABEL_NOISE_RE = re.compile(r"^\s*label\.[\w.]+\s*$", re.M)
+# Per-page furniture pdftotext interleaves mid-section (running header +
+# dossier ref) — drop so it can't land inside a section body.
+_FT_PAGE_NOISE_RE = re.compile(
+    r"^.*(?:FICHE TECHNIQUE\s+\d+\s*/\s*\d+|Num[ée]ro de dossier:|Ref\. Ares).*$",
+    re.M | re.I,
 )
-_WALLEX_CHAPTER_III_RE = re.compile(
-    r"Chapitre\s+III\s*(?:Crémant|[^\n]+)",
-    re.IGNORECASE,
-)
-_WALLEX_ARTICLE_RE = re.compile(
-    r"Art\.\s*(\d+)\.\s*([A-Z][^\n.]*?)\s*\.",
-)
-_WALLEX_COMMUNE_LIST_RE = re.compile(
-    r"les\s+communes:\s*([^\n]+(?:\n(?!\s*«|\s*Province|\s*Art|\s*Chapitre)[^\n]+)*)",
-    re.IGNORECASE,
-)
+# Section 6 lists each variety as "* Name COLOUR (OIV)" / "** Name (OTHER)".
+_FT_GRAPE_PREFIX_RE = re.compile(r"^\s*\*+\s*")
+_FT_GRAPE_SUFFIX_RE = re.compile(r"\s*\((?:OIV|OTHER)\)\s*$", re.I)
 
 
-def _wallex_extract_communes(chapter1_text: str) -> str:
-    """Extract Article 1's commune lists from Chapter I (Dispositions
-    communes). The text enumerates per-province blocks like
-    `Province du Brabant wallon: « Roman Païs » les communes: ...`.
-    We return a normalised single-paragraph commune list, prefixed
-    with the source-province header so it remains a usable
-    `geo_area` body for stage 02d."""
-    pieces: list[str] = []
-    # Walk the chapter 1 prose and collect every "les communes: ..." run
-    # along with its preceding « ... » named-sub-area header.
-    for m in re.finditer(
-        r"«\s*([^»]+?)\s*»\s*les\s+communes:\s*([^\n]+(?:\n(?!\s*«|\s*Province|\s*Art\.|\s*Chapitre)[^\n]+)*)",
-        chapter1_text, re.IGNORECASE,
-    ):
-        sub_area = m.group(1).strip()
-        communes = re.sub(r"\s+", " ", m.group(2)).strip().rstrip(",")
-        pieces.append(f"« {sub_area} »: {communes}")
-    return "\n".join(pieces)
-
-
-def _wallex_articles_in_chapter(chapter_text: str) -> dict[str, tuple[str, str]]:
-    """Return {article_number: (title, body)} for a single chapter."""
-    headers = list(_WALLEX_ARTICLE_RE.finditer(chapter_text))
-    out: dict[str, tuple[str, str]] = {}
-    for i, m in enumerate(headers):
-        num = m.group(1)
-        title = m.group(2).strip()
-        body_start = m.end()
-        body_end = headers[i + 1].start() if i + 1 < len(headers) else len(chapter_text)
-        body = chapter_text[body_start:body_end].strip()
-        # Drop footer separators and pagination cruft
-        body = re.sub(r"En vigueur du.*?page \d+\s*/\s*\d+", "", body, flags=re.S)
-        body = re.sub(r"[ \t]+", " ", body).strip()
-        out[num] = (title, body)
-    return out
-
-
-_WALLEX_GRAPE_LIST_RE = re.compile(
-    r"cépages?\s+suivants?\s*:?\s*\n?\s*((?:[A-Z][^;\n]{2,40}\s*;\s*\n?\s*)+[A-Z][^;\n.]{2,40})\s*\.?",
-    re.IGNORECASE,
-)
-
-
-def _wallex_grape_block(article_body: str) -> str:
-    """The grape varieties are listed as `Chardonnay;\nPinot noir;\n...`
-    after a `cépages suivants:` lead. Return the variety block as
-    em-dash-separated items so it matches the existing FR grape parser
-    (`_BULLET_SPLIT_RE`)."""
-    m = _WALLEX_GRAPE_LIST_RE.search(article_body)
-    if m:
-        block = m.group(1)
-    else:
-        # Fallback: take every line that looks like a variety name
-        # (starts with capital, is short, contains no period).
-        candidates = []
-        for line in article_body.splitlines():
-            line = line.strip().rstrip(";").rstrip(",")
-            if 3 <= len(line) <= 40 and line[0:1].isupper() and "." not in line:
-                candidates.append(line)
-        block = "\n".join(candidates)
-    return re.sub(r"\s*;\s*", "\n", block).strip()
-
-
-# WALLEX wine-rule: PDO-BE-A0011 (Vin mousseux) takes Chapter II;
-# PDO-BE-A0012 (Crémant) takes Chapter III. The slug → chapter mapping
-# is keyed by both file_number and slug for resilience.
-WALLEX_CHAPTER_BY_SLUG: dict[str, str] = {
-    "vin-mousseux-de-qualite-de-wallonie": "II",
-    "cremant-de-wallonie": "III",
-}
-WALLEX_CHAPTER_BY_FILE_NUMBER: dict[str, str] = {
-    "PDO-BE-A0011": "II",
-    "PDO-BE-A0012": "III",
-}
-
-
-def parse_wallex_text(
-    text: str, slug: str = "", file_number: str = "",
-) -> tuple[dict[str, str], dict[str, str]]:
-    """Parse a Walloon WALLEX cahier into the standard (sections,
-    titles) shape, scoped to the chapter corresponding to the given
-    slug / file_number. Each Walloon PDO record gets its own chapter
-    (II or III); the shared Chapter I supplies the geo_area body."""
-    chapter = (
-        WALLEX_CHAPTER_BY_SLUG.get(slug)
-        or WALLEX_CHAPTER_BY_FILE_NUMBER.get(file_number)
-    )
-    if chapter is None:
+def parse_fiche_technique_text(text: str) -> tuple[dict[str, str], dict[str, str]]:
+    """Parse the `I. DOCUMENT UNIQUE` block of an eAmbrosia fiche-technique
+    PDF into the standard (sections, titles) shape, keyed against the FR
+    `SECTION_ROLE_KEYWORDS`."""
+    text = text.replace("\x0c", "")
+    a = _FT_ANCHOR_RE.search(text)
+    if not a:
         return {}, {}
+    region = text[a.end():]
+    e = _FT_END_RE.search(region)
+    if e:
+        region = region[: e.start()]
+    region = _FT_LABEL_NOISE_RE.sub("", region)
+    region = _FT_PAGE_NOISE_RE.sub("", region)
 
-    m2 = _WALLEX_CHAPTER_II_RE.search(text)
-    m3 = _WALLEX_CHAPTER_III_RE.search(text)
-    if m2 is None or m3 is None:
+    headers: list[tuple[str, str, int]] = []
+    last_top = 0
+    for m in _FT_HEADER_RE.finditer(region):
+        n = int(m.group(1))
+        if n != last_top + 1:
+            continue
+        last_top = n
+        headers.append((str(n), m.group(2).strip().rstrip(":").strip(), m.start()))
+    if not headers:
         return {}, {}
-    # Chapter I = text[0:m2.start()]; Ch II = [m2.start():m3.start()];
-    # Ch III = [m3.start():end]
-    ch1_text = text[: m2.start()]
-    ch2_text = text[m2.start(): m3.start()]
-    ch3_text = text[m3.start():]
-    ch_text = ch2_text if chapter == "II" else ch3_text
-
-    articles = _wallex_articles_in_chapter(ch_text)
-    # Grape article: II → 11, III → 16
-    grape_art = "11" if chapter == "II" else "16"
-    yield_art = "14" if chapter == "II" else "20"
-    grape_body = ""
-    if grape_art in articles:
-        _, body = articles[grape_art]
-        grape_body = _wallex_grape_block(body)
-
-    # Build a synthetic sections dict that maps to the standard role
-    # keys the downstream router expects (per
-    # `SECTION_ROLE_KEYWORDS["fr"]` in document.py). Numbers are
-    # arbitrary string keys — the router walks `titles` by keyword,
-    # not by number.
-    sections: dict[str, str] = {}
-    titles: dict[str, str] = {}
-
-    sections["1"] = (
-        "Vin mousseux de qualité de Wallonie"
-        if chapter == "II" else "Crémant de Wallonie"
-    )
-    titles["1"] = "Dénomination(s)"
-
-    sections["3"] = "Vin mousseux de qualité — v.m.q.p.r.d."
-    titles["3"] = "Catégories de produits de la vigne"
-
-    sections["6"] = _wallex_extract_communes(ch1_text)
-    titles["6"] = "Zone géographique délimitée"
-
-    sections["7"] = grape_body
-    titles["7"] = "Cépage(s) principal/aux"
-
-    # Yield + practices summary (Articles 4, 5, 14/20). v1 keeps this
-    # minimal — the grapes + area + provenance are the main user-facing
-    # surface.
-    practices_bits = []
-    for art in ("4", "5"):
-        if art in articles:
-            t, b = articles[art]
-            practices_bits.append(f"Art. {art} — {t}: {b[:300]}")
-    if yield_art in articles:
-        t, b = articles[yield_art]
-        practices_bits.append(f"Art. {yield_art} — {t}: {b[:200]}")
-    sections["5"] = "\n\n".join(practices_bits)
-    titles["5"] = "Pratiques vitivinicoles"
-
-    # No "lien au terroir" narrative section in WALLEX cahiers —
-    # leave empty so 02d won't try to extract from it.
-    sections["8"] = ""
-    titles["8"] = "Description du / des lien(s)"
-
-    return sections, titles
-
-
-# ──────────────────────────────── walloon WALLEX single-AOC parser ──
-
-
-# Single-AOC WALLEX arrêtés (one decree = one appellation, no chapter
-# split). Keyed by slug + file_number for resilience, the same way the
-# chapter tables are. Two shapes are handled (see parse function):
-#   - Côtes de Sambre et Meuse (#2879) — annexed "Cahier des charges"
-#     with "Article 1 er." zone + commune lists and a "Cépages." Art. 2
-#     variety roster.
-#   - Vin de pays des Jardins de Wallonie (#3256) — a flat Art. 1-13
-#     decree: the area is the whole Région wallonne (Art. 2) and the
-#     varieties are the broad "Vitis vinifera ou croisement" definition
-#     (Art. 3) — no named roster, so 0 grapes (the broad-IGP shape).
-WALLEX_STANDALONE_SLUGS: set[str] = {
-    "cotes-de-sambre-et-meuse",
-    "vin-de-pays-des-jardins-de-wallonie",
-}
-WALLEX_STANDALONE_FILE_NUMBERS: set[str] = {"PDO-BE-A0009", "PGI-BE-A0010"}
-_WALLEX_STANDALONE_NAME_FALLBACK: dict[str, str] = {
-    "cotes-de-sambre-et-meuse": "Côtes de Sambre et Meuse",
-    "vin-de-pays-des-jardins-de-wallonie": "Vin de pays des Jardins de Wallonie",
-}
-
-_WALLEX_STD_PAGE_FOOTER_RE = re.compile(
-    r"En\s+vigueur\s+du[^\n]*?page\s*\d+\s*/\s*\d+", re.IGNORECASE,
-)
-# Article 2's variety block runs from "…peuvent être utilisés:" to the
-# closing "Les raisins doivent…" sentence.
-_WALLEX_STD_GRAPE_BLOCK_RE = re.compile(
-    r"c[ée]pages?\s+suivants?\s+peuvent\s+[êe]tre\s+utilis[ée]s\s*:\s*"
-    r"(.*?)\n\s*Les\s+raisins\s+doivent",
-    re.IGNORECASE | re.S,
-)
-# The zone delimitation = Article 1 up to the "Cépages." / "Art. 2."
-# heading (the CSM annex shape).
-_WALLEX_STD_ZONE_RE = re.compile(
-    r"(Article\s+1\s*er\.?.*?)\n\s*(?:C[ée]pages?\.|Art\.\s*2\.)",
-    re.IGNORECASE | re.S,
-)
-# Region-wide fallback (the Jardins shape): the area is stated as
-# "vendanges récoltées en Région wallonne" / "vins produits en Région
-# wallonne" — no commune enumeration.
-_WALLEX_STD_REGION_ZONE_RE = re.compile(
-    r"((?:vins?|raisins?|vendanges?)[^.\n]*?"
-    r"(?:r[ée]colt[ée]es?|produits?)\s+(?:en|dans\s+la)\s+R[ée]gion\s+wallonne[^.\n]*\.)",
-    re.IGNORECASE,
-)
-_WALLEX_STD_YIELD_RE = re.compile(
-    r"(rendement\s+(?:moyen\s+)?maximal[^\n]*?\d+\s*hl/ha[^\n]*)", re.IGNORECASE,
-)
-
-
-def parse_wallex_standalone_text(
-    text: str, slug: str = "", file_number: str = "", name: str = "",
-) -> tuple[dict[str, str], dict[str, str]]:
-    """Parse a single-AOC WALLEX cahier des charges into the standard
-    (sections, titles) shape. Unlike `parse_wallex_text`, there is no
-    chapter split. Two shapes are supported: the CSM annex ("Article 1
-    er." zone + "Cépages." Art. 2 roster) and the flat region-wide IGP
-    decree (Jardins de Wallonie — area = Région wallonne, no roster)."""
-    if (
-        slug not in WALLEX_STANDALONE_SLUGS
-        and file_number not in WALLEX_STANDALONE_FILE_NUMBERS
-    ):
-        return {}, {}
-
-    clean = _WALLEX_STD_PAGE_FOOTER_RE.sub("", text)
-
-    m_grapes = _WALLEX_STD_GRAPE_BLOCK_RE.search(clean)
-    grape_body = ""
-    if m_grapes:
-        # The list is `Pinot noir;\nMüller-Thurgau;\n…` — re-emit as
-        # newline-separated items for the FR grape parser.
-        grape_body = re.sub(r"\s*;\s*", "\n", m_grapes.group(1)).strip()
-
-    m_zone = _WALLEX_STD_ZONE_RE.search(clean)
-    if m_zone:
-        zone_body = re.sub(r"[ \t]+", " ", m_zone.group(1)).strip()
-    else:
-        m_region = _WALLEX_STD_REGION_ZONE_RE.search(clean)
-        zone_body = re.sub(r"[ \t]+", " ", m_region.group(1)).strip() if m_region else ""
-
-    m_yield = _WALLEX_STD_YIELD_RE.search(clean)
-    yield_line = re.sub(r"[ \t]+", " ", m_yield.group(1)).strip() if m_yield else ""
-
-    display_name = name or _WALLEX_STANDALONE_NAME_FALLBACK.get(slug, "")
-    is_igp = file_number.startswith("PGI") or slug == "vin-de-pays-des-jardins-de-wallonie"
 
     sections: dict[str, str] = {}
     titles: dict[str, str] = {}
+    for i, (num, title, start) in enumerate(headers):
+        end = headers[i + 1][2] if i + 1 < len(headers) else len(region)
+        nl = region.find("\n", start)
+        header_end = nl + 1 if nl != -1 else start
+        body = region[header_end:end].strip()
+        body = re.sub(r"[ \t]+", " ", body)
+        body = re.sub(r"\n{3,}", "\n\n", body).strip()
+        sections[num] = body
+        titles[num] = title
 
-    sections["1"] = display_name
-    titles["1"] = "Dénomination(s)"
-
-    sections["3"] = (
-        "Vin de pays — indication géographique protégée"
-        if is_igp
-        else "Vin de qualité d'appellation d'origine contrôlée (V.Q.P.R.D.)"
+    # Clean the variety section: strip the "*"/"**" bullets and the
+    # "(OIV)"/"(OTHER)" origin tags so the shared grape parser sees one
+    # bare variety name per line.
+    grape_num = next(
+        (n for n, t in titles.items() if "cépages" in t.lower() or "cepages" in t.lower()),
+        None,
     )
-    titles["3"] = "Catégories de produits de la vigne"
-
-    sections["5"] = yield_line
-    titles["5"] = "Pratiques vitivinicoles"
-
-    sections["6"] = zone_body
-    titles["6"] = "Zone géographique délimitée"
-
-    sections["7"] = grape_body
-    titles["7"] = "Cépage(s) principal/aux"
-
-    # No "lien au terroir" narrative section in the WALLEX cahier —
-    # leave empty so 02d won't try to extract from it.
-    sections["8"] = ""
-    titles["8"] = "Description du / des lien(s)"
-
+    if grape_num and sections.get(grape_num):
+        cleaned = []
+        for ln in sections[grape_num].splitlines():
+            ln = _FT_GRAPE_PREFIX_RE.sub("", ln)
+            ln = _FT_GRAPE_SUFFIX_RE.sub("", ln).strip()
+            if ln:
+                cleaned.append(ln)
+        sections[grape_num] = "\n".join(cleaned)
     return sections, titles
