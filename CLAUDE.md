@@ -3164,7 +3164,8 @@ parsing without code changes.
 | cz/01_fetch_pliegos.py | raw/cz/eambrosia/index.json + raw/cz/oj-pages/manual_overrides.json | raw/cz/oj-pages/*.html + manifest.json |
 | cz/01b_solve_waf.py | raw/cz/oj-pages/manifest.json | raw/cz/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
 | cz/02_extract_pliegos.py | raw/cz/oj-pages/*.html | raw/cz/dokumenty-extracted/*.json + _index.json |
-| cz/02d_extract_terroir_facts.py | raw/cz/dokumenty-extracted/*.json + raw/wikipedia/aocs/cs/ | raw/terroir-facts/*.json (country="cz") + manifest-cz.json |
+| cz/02f_extract_national_specs.py | (network: zakonyprolidi.cz decrees + SZPI CHZO PDFs) | raw/cz/national-specs/{varieties,communes/*,chzo-*,manifest}.json |
+| cz/02d_extract_terroir_facts.py | raw/cz/dokumenty-extracted/*.json + raw/cz/national-specs/chzo-*.json + raw/wikipedia/aocs/cs/ | raw/terroir-facts/*.json (country="cz") + manifest-cz.json |
 | cz/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="cz") | raw/translations/terroir-facts/<en\|fr\|es\|nl>/*.json |
 | cz/03_generate_wiki.py | raw/cz/dokumenty-extracted/*.json | wiki/<slug>.md (per CZ record) + merges CZ entries into wiki/_index.json |
 | cz/regen_manual_overrides_template.py | raw/cz/eambrosia/index.json + raw/cz/oj-pages/manifest.json | raw/cz/oj-pages/manual_overrides.json (curator queue) |
@@ -3250,13 +3251,20 @@ public per **§3(d) of the Czech Copyright Act** (úřední dílo); the
 zakonyprolidi.cz layout is © AION CS but we only extract the law
 text, not the layout.
 
+Stage 02f ALSO fetches + parses the **two SZPI CHZO product
+specifications** (terroir + styles — see "CZ CHZO terroir + style layer"
+below).
+
 Outputs:
 - `raw/cz/national-specs/varieties.json` — national variety roster
   with colour bucket, ordinal, abbreviation, and resolved lexicon slug
 - `raw/cz/national-specs/communes/<podoblast-slug>.json` — 6 files,
   one per podoblast
+- `raw/cz/national-specs/chzo-{moravske,ceske}.{pdf,json}` — the two
+  SZPI CHZO specs (cached PDF + parsed sidecar: region terroir text +
+  style roster + provenance)
 - `raw/cz/national-specs/manifest.json` — provenance (sha256, fetched_at,
-  Sbírka attribution) for stage 04's `_sources_for()`
+  Sbírka + SZPI attribution) for stage 04's `_sources_for()`
 
 Stage 04 consumes the sidecars via two paths:
 
@@ -3276,6 +3284,63 @@ unless `--refresh`; the sidecars regenerate every run.
 
 ```
 .venv/bin/python scripts/cz/02f_extract_national_specs.py
+.venv/bin/python scripts/04_build_maps.py
+```
+
+### CZ CHZO terroir + style layer (SZPI specs)
+
+Czech wine law publishes no per-appellation CHOP (PDO) terroir/style
+narrative — but the **SZPI** (Státní zemědělská a potravinářská
+inspekce) publishes the two **CHZO** ("zemské víno" / PGI) product
+specifications as licence-clear PDFs (úřední dílo, §3(d) Czech
+Copyright Act), and these *are* full EU-template specs carrying both
+narrative layers (researched 2026-05-31, after the user pushed to find
+a regulator source before any Wikipedia fallback):
+
+- `szpi.gov.cz/soubor/specifikace-chzo-moravske.aspx` → Morava region
+- `szpi.gov.cz/soubor/specifikace-chzo-ceske.aspx` → Čechy region
+
+[scripts/_lib/cz/chzo_spec.py](scripts/_lib/cz/chzo_spec.py)
+(`parser_template: szpi-chzo-specifikace-v1`) parses the
+`pdftotext -layout` output:
+
+- **Section 1 (Popis vinařského regionu)** → `region_terroir_text`:
+  the regulator's description of the *physical* wine region — 1.1
+  meteorology (ČHMÚ 30-year normals, Huglin index) + 1.2 geology/soils
+  with per-bioregion prose. This is **tier-agnostic**, so it grounds
+  the terroir of *every* CZ wine sitting in that region, not just the
+  PGI: **Morava covers 9 wines** (morava, moravske, the 4 Moravian
+  podoblasti, znojmo, sobes, novosedelske-slamove-vino); **Čechy
+  covers 4** (cechy, ceske, litomericka, melnicka) — all 13.
+- **Section 2 (Druhy výrobků — popis vín)** → `styles`: still
+  (white/red/rose), Likérové (vin-de-liqueur), Šumivé (sparkling),
+  Perlivé (semi-sparkling).
+
+Stage 04 `augment_cz_records_with_national_specs()` merges the CHZO
+sidecars: the 2 PGIs gain the real style roster (sparkling /
+semi-sparkling / vin-de-liqueur on top of the colour bases), and ALL
+13 CZ records carry the region spec's provenance (`chzo_spec_*` in
+`_sources_for()`, panel link `src_chzo_spec`). The CHOPs + podoblasti
+keep grape-colour-inferred styles (white/red/rose from the national
+67-variety roster; the straw-wine PDO Novosedelské Slámové víno
+additionally → vin-de-paille).
+
+**Terroir facts**: `cz/02d`'s `_resolve_lien_and_source` grounds each
+CZ wine on its region's CHZO `region_terroir_text` (provenance
+`kind: cz-chzo-specifikace`, attribution → SZPI PDF), with the
+per-podoblast cs.wikipedia article kept as a secondary salience hint
+(differentiates the podoblasti — e.g. Šobes's meander microclimate
+comes from the wiki hint). Result: **7–10 terroir facts on all 13 CZ
+wines** (Anthropic batch), translated into en/fr/es/nl by `cz/02e`.
+The macro CHOP + its PGI share the region text → near-identical
+bullets (honest: same regional terroir); the podoblasti differentiate
+via the wiki salience hint.
+
+```
+.venv/bin/python scripts/cz/02f_extract_national_specs.py
+.venv/bin/python scripts/02b_fetch_aoc_lexicon.py --lang cs --source raw/cz/dokumenty-extracted
+.venv/bin/python scripts/cz/02d_extract_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/cz/02e_translate_terroir_facts.py --batch --provider anthropic
 .venv/bin/python scripts/04_build_maps.py
 ```
 
@@ -3336,19 +3401,21 @@ For curator-pinned EU-OJ URLs:
 .venv/bin/python scripts/04_build_maps.py
 ```
 
-**Structural limitation — terroir text**: Czech wine law does not
-publish per-appellation terroir / link-to-region narrative text. The
-"Popis souvislostí" section that an EU JEDNOTNÝ DOKUMENT carries is
-exactly what's missing for the 13 grandfathered CZ names. Even the 3
-newer 2011 PDOs (Znojmo, Šobes, Novosedelské Slámové víno) that went
-through the post-2009 EU procedure don't publish a documento unic
-publicly — verified by `/research-gaps cz-specification` on 2026-05-24
-(see [tmp/cz-specification-research-results.md](tmp/cz-specification-research-results.md)).
-Stage 02d's terroir-fact extraction therefore has nothing to ground
-against for CZ wines and produces zero bullets per record. The map
-panel surfaces the variety roster + commune geometry from the
-national-spec layer; terroir bullets stay empty unless a curator
-authors them from a licence-clear secondary source.
+**Terroir text — solved via the SZPI CHZO specs (2026-05-31)**: Czech
+wine law publishes no per-appellation CHOP (PDO) terroir narrative —
+the EU JEDNOTNÝ DOKUMENT "Popis souvislostí" section is missing for all
+13 grandfathered names, and even the 3 newer 2011 PDOs (Znojmo, Šobes,
+Novosedelské Slámové víno) publish no documento unic publicly. The
+earlier conclusion (zero terroir bullets, `/research-gaps
+cz-specification` 2026-05-24, [tmp/cz-specification-research-results.md](tmp/cz-specification-research-results.md))
+was correct *for the CHOP tier and the EU register*. But the **SZPI
+publishes the two CHZO (PGI) product specifications** — full
+EU-template specs whose section-1 region description is the regulator's
+own terroir narrative for the Morava / Čechy wine region, covering all
+13 CZ wines. See "CZ CHZO terroir + style layer" above; every CZ wine
+now carries 7–10 regulator-grounded terroir facts (+ real styles for
+the 2 PGIs). The lesson: hunt for the member-state inspectorate's
+product specification before treating a country as a terroir stub.
 
 ## Luxembourg pipeline (`scripts/lu/`)
 

@@ -206,6 +206,13 @@ _IT_MASAF_BY_SLUG: dict[str, dict] = {}
 # block — but per-record so _sources_for() can surface it uniformly.
 _CZ_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
 
+# Slug-keyed cache of CZ CHZO-spec provenance (the SZPI „moravské“ /
+# „české“ product specifications). Every CZ wine sits in one of the two
+# regions (Morava / Čechy), so all 13 carry the region spec's provenance
+# — the terroir bullets (02d) ground on its section-1 region description.
+# Populated by augment_cz_records_with_national_specs().
+_CZ_CHZO_BY_SLUG: dict[str, dict] = {}
+
 # Slug-keyed cache of SI specifikacija provenance + augmented payload,
 # populated by augment_si_records_with_specifikacija(). Two source
 # patterns feed it (MKGP per-wine .doc, Uradni list RS pravilnik HTML);
@@ -1411,8 +1418,30 @@ def augment_cz_records_with_national_specs(records: list[dict]) -> int:
     Returns the number of records augmented.
     """
     _CZ_NATIONAL_SPEC_BY_SLUG.clear()
+    _CZ_CHZO_BY_SLUG.clear()
     if not NATIONAL_SPECS_CZ.exists():
         return 0
+
+    # Load the two SZPI CHZO region specs (terroir source + style roster +
+    # provenance), keyed by region. Both PGIs are the spec's own subject;
+    # the macro CHOPs + podoblasti in that region share its section-1
+    # terroir description (rendered by 02d) and cite the same SZPI PDF.
+    chzo_by_region: dict[str, dict] = {}
+    for key in ("chzo-moravske", "chzo-ceske"):
+        p = NATIONAL_SPECS_CZ / f"{key}.json"
+        if not p.exists():
+            continue
+        try:
+            d = json.loads(p.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+        if d.get("region"):
+            chzo_by_region[d["region"]] = d
+    # The 2 PGI slugs whose own product specification this is (they
+    # inherit the spec's per-style roster; the CHOPs/podoblasti keep
+    # grape-colour-inferred styles only).
+    chzo_pgi_slugs = {"moravske", "ceske"}
+
     varieties_path = NATIONAL_SPECS_CZ / "varieties.json"
     manifest_path = NATIONAL_SPECS_CZ / "manifest.json"
     if not varieties_path.exists():
@@ -1489,6 +1518,47 @@ def augment_cz_records_with_national_specs(records: list[dict]) -> int:
         grapes["accessory"] = accessory_ordered
         grapes["details"] = new_details
         record["grapes"] = grapes
+        # Czech wine law publishes no per-appellation wine-description
+        # section, so styles can't be read from a spec the way HR/SI/BG
+        # do. Infer the base colour styles from the authorised variety
+        # roster instead (the BE colour-distribution fallback): a
+        # blanc/gris variety authorises white, a noir variety authorises
+        # red + rosé. Every CZ wine carries the national roster, so all
+        # carry white/red/rosé — honest (any CZ jakostní víno appellation
+        # may be made in any colour) and it makes CZ wines findable in the
+        # style facet instead of invisible. The single straw-wine PDO
+        # (Novosedelské Slámové víno) additionally carries vin-de-paille,
+        # evident from its own name.
+        colours = {d.get("colour") for d in new_details if d.get("colour")}
+        styles = set(record.get("styles") or [])
+        if colours & {"blanc", "gris"}:
+            styles.add("white")
+        if "noir" in colours:
+            styles.add("red")
+            styles.add("rose")
+        if slug == "novosedelske-slamove-vino":
+            styles.add("vin-de-paille")
+        # The 2 PGIs ("zemské víno") additionally carry the real style
+        # roster from their SZPI CHZO spec section 2 (sparkling /
+        # semi-sparkling / vin-de-liqueur on top of the colour bases).
+        chzo = chzo_by_region.get(record.get("region") or "")
+        if chzo and slug in chzo_pgi_slugs:
+            styles |= set(chzo.get("styles") or [])
+        record["styles"] = sorted(styles)
+        # All CZ wines cite the region's CHZO spec as their terroir
+        # source (02d grounds on its section-1 region description), so
+        # surface its provenance uniformly for the panel source block.
+        if chzo:
+            chzo_prov = {
+                "url": chzo.get("source_url") or "",
+                "title": chzo.get("source_title") or "",
+                "region": chzo.get("region") or "",
+                "source_org": chzo.get("source_org") or "szpi",
+                "sha256": chzo.get("source_sha256") or "",
+                "parser_template": chzo.get("parser_template") or "",
+            }
+            record["chzo_spec"] = chzo_prov
+            _CZ_CHZO_BY_SLUG[slug] = chzo_prov
         record["national_spec"] = provenance_base
         _CZ_NATIONAL_SPEC_BY_SLUG[slug] = provenance_base
         augmented += 1
@@ -4623,6 +4693,12 @@ def _sources_for(record: dict) -> dict:
         ns = record.get("national_spec") or _CZ_NATIONAL_SPEC_BY_SLUG.get(
             record.get("slug", ""), {}
         )
+        # CHZO spec — the SZPI „moravské“ / „české“ product specification
+        # whose section-1 region terroir description grounds the wine's
+        # terroir bullets (02d). Surfaced for every CZ wine in the region.
+        chzo = record.get("chzo_spec") or _CZ_CHZO_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
         return {
             "country": "cz",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
@@ -4637,6 +4713,11 @@ def _sources_for(record: dict) -> dict:
             "national_spec_sbirka_castka": ns.get("sbirka_castka", ""),
             "national_spec_sha256": ns.get("sha256", ""),
             "national_spec_n_varieties": ns.get("n_varieties", 0),
+            "chzo_spec_url": chzo.get("url", ""),
+            "chzo_spec_title": chzo.get("title", ""),
+            "chzo_spec_region": chzo.get("region", ""),
+            "chzo_spec_source_org": chzo.get("source_org", ""),
+            "chzo_spec_sha256": chzo.get("sha256", ""),
         }
     if record.get("country") == "lu":
         # Luxembourg: 1 AOP (Moselle Luxembourgeoise) — no fetchable

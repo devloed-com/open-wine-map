@@ -47,6 +47,9 @@ import requests
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
+import subprocess  # noqa: E402
+
+from _lib.cz.chzo_spec import parse_chzo_spec  # noqa: E402
 from _lib.cz.national_spec import parse_commune_tree, parse_varieties  # noqa: E402
 
 OUT_DIR = ROOT / "raw" / "cz" / "national-specs"
@@ -90,6 +93,30 @@ SOURCES: dict[str, dict[str, str]] = {
     },
 }
 
+# The two SZPI CHZO (PGI / "zemské víno") product specifications — the
+# only Czech regulator documents carrying per-region TERROIR narrative
+# (section 1) + per-style WINE descriptions (section 2). Both are full
+# EU-template specs published as free, login-free PDFs from the SZPI
+# wine page. Their section-1 region description is tier-agnostic (it
+# describes the physical Morava / Čechy wine region), so it grounds the
+# terroir of every CZ wine in that region — see _lib/cz/chzo_spec.py.
+# Licence: official regulator work (úřední dílo, §3(d) Czech Copyright
+# Act); canonical attribution is the SZPI PDF.
+CHZO_SOURCES: dict[str, dict[str, str]] = {
+    "chzo-moravske": {
+        "slug": "moravske",
+        "fetch_url": "https://www.szpi.gov.cz/soubor/specifikace-chzo-moravske.aspx",
+        "title": "Specifikace produktu CHZO „moravské“ (moravské zemské víno)",
+        "source_org": "szpi",
+    },
+    "chzo-ceske": {
+        "slug": "ceske",
+        "fetch_url": "https://www.szpi.gov.cz/soubor/specifikace-chzo-ceske.aspx",
+        "title": "Specifikace produktu CHZO „české“ (české zemské víno)",
+        "source_org": "szpi",
+    },
+}
+
 
 def fetch_html(url: str, dest: Path, *, refresh: bool, throttle: float = 0.5) -> tuple[bytes, bool]:
     if dest.exists() and not refresh:
@@ -126,6 +153,64 @@ def write_varieties_sidecar(html: bytes, src_meta: dict) -> dict:
         "varieties": parsed["varieties"],
     }
     (OUT_DIR / "varieties.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=False),
+        encoding="utf-8",
+    )
+    return payload
+
+
+def fetch_pdf(url: str, dest: Path, *, refresh: bool, throttle: float = 0.5) -> tuple[bytes, bool]:
+    if dest.exists() and not refresh:
+        return dest.read_bytes(), True
+    if throttle:
+        time.sleep(throttle)
+    print(f"[02f/cz] fetch {url}", file=sys.stderr)
+    r = requests.get(
+        url,
+        headers={"User-Agent": UA, "Accept": "application/pdf,*/*"},
+        timeout=60,
+    )
+    r.raise_for_status()
+    dest.write_bytes(r.content)
+    return r.content, False
+
+
+def pdf_to_text(pdf_path: Path) -> str:
+    result = subprocess.run(
+        ["pdftotext", "-layout", "-enc", "UTF-8", str(pdf_path), "-"],
+        capture_output=True,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"pdftotext failed on {pdf_path.name}")
+    return result.stdout.decode("utf-8", errors="replace")
+
+
+def write_chzo_sidecar(key: str, src_meta: dict, sha: str) -> dict:
+    pdf_path = OUT_DIR / f"{key}.pdf"
+    parsed = parse_chzo_spec(pdf_to_text(pdf_path), src_meta["slug"])
+    payload = {
+        "country": "cz",
+        "source_lang": "cs",
+        "slug": src_meta["slug"],
+        "region": parsed["region"],
+        "pgi_file_number": parsed["pgi_file_number"],
+        "source_org": src_meta["source_org"],
+        "source_title": src_meta["title"],
+        "source_url": src_meta["fetch_url"],
+        "source_sha256": sha,
+        "parser_template": "szpi-chzo-specifikace-v1",
+        "license": (
+            "Official regulator work (úřední dílo, §3(d) Czech Copyright "
+            "Act). © Státní zemědělská a potravinářská inspekce (SZPI)."
+        ),
+        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "source_anchor": parsed["source_anchor"],
+        "styles": parsed["styles"],
+        "n_terroir_chars": len(parsed["region_terroir_text"]),
+        "region_terroir_text": parsed["region_terroir_text"],
+    }
+    (OUT_DIR / f"{key}.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=False),
         encoding="utf-8",
     )
@@ -213,11 +298,34 @@ def main() -> int:
                 "by_podoblast": s,
             }
 
+    n_chzo = 0
+    for key, meta in CHZO_SOURCES.items():
+        dest = OUT_DIR / f"{key}.pdf"
+        body, cached = fetch_pdf(meta["fetch_url"], dest, refresh=args.refresh)
+        sha = hashlib.sha256(body).hexdigest()
+        payload = write_chzo_sidecar(key, meta, sha)
+        n_chzo += 1
+        manifest["sources"][key] = {
+            "fetch_url": meta["fetch_url"],
+            "title": meta["title"],
+            "source_org": meta["source_org"],
+            "purpose": "chzo-spec",
+            "bytes": len(body),
+            "sha256": sha,
+            "cached": cached,
+            "parsed": {
+                "region": payload["region"],
+                "pgi_file_number": payload["pgi_file_number"],
+                "styles": payload["styles"],
+                "n_terroir_chars": payload["n_terroir_chars"],
+            },
+        }
+
     MANIFEST_PATH.write_text(json.dumps(manifest, ensure_ascii=False, indent=2,
                                         sort_keys=True), encoding="utf-8")
     print(
         f"[02f/cz] varieties={n_varieties} podoblasti={n_podoblasti} "
-        f"→ {OUT_DIR.relative_to(ROOT)}",
+        f"chzo-specs={n_chzo} → {OUT_DIR.relative_to(ROOT)}",
         file=sys.stderr,
     )
     return 0
