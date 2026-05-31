@@ -2861,5 +2861,25 @@
       "missing": true,
       "note": "researched 2026-05; no dedicated \"Vinorodni okoliš Štajerska Slovenija\" article; only mentioned as parent in sub-okoliš articles"
     }
+  },
+  "en": {
+    "malta": {
+      "wiki_title": "Maltese wine",
+      "page_url": "https://en.wikipedia.org/wiki/Maltese_wine",
+      "verification_quote": "Maltese wine dates back over two thousand years to the time of the Phoenicians.",
+      "note": "Malta has no per-PDO/PGI en.wikipedia article; the umbrella Maltese-wine article grounds terroir facts (the CH/LU pattern)."
+    },
+    "gozo": {
+      "wiki_title": "Maltese wine",
+      "page_url": "https://en.wikipedia.org/wiki/Maltese_wine",
+      "verification_quote": "Maltese wine dates back over two thousand years to the time of the Phoenicians.",
+      "note": "Malta has no per-PDO/PGI en.wikipedia article; the umbrella Maltese-wine article grounds terroir facts (the CH/LU pattern)."
+    },
+    "maltese-islands": {
+      "wiki_title": "Maltese wine",
+      "page_url": "https://en.wikipedia.org/wiki/Maltese_wine",
+      "verification_quote": "Maltese wine dates back over two thousand years to the time of the Phoenicians.",
+      "note": "Malta has no per-PDO/PGI en.wikipedia article; the umbrella Maltese-wine article grounds terroir facts (the CH/LU pattern)."
+    }
   }
 }
