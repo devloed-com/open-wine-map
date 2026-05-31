@@ -18,6 +18,13 @@ Two text-mode flavours:
    Wallonie, Articles 16-22). The parser splits the decree by
    chapter, then routes per slug.
 
+3. **`parse_wallex_standalone_text`** — for a WALLEX arrêté
+   ministériel that agrees a *single* AOC (no chapter split). The
+   "Côtes de Sambre et Meuse" decree (WALLEX act #2879) is an annexed
+   `Cahier des charges` whose Article 1 delimits the zone (bassin
+   hydrographique + commune lists) and "Cépages." Article 2 lists the
+   authorised varieties as a `Name;`-terminated block.
+
 Both produce a `(sections, titles)` pair whose keys are stringy section
 numbers ("1", "2", …) keyed against the existing
 `SECTION_ROLE_KEYWORDS["nl"]` / `["fr"]` tables, so the rest of stage 02
@@ -279,6 +286,124 @@ def parse_wallex_text(
     titles["5"] = "Pratiques vitivinicoles"
 
     # No "lien au terroir" narrative section in WALLEX cahiers —
+    # leave empty so 02d won't try to extract from it.
+    sections["8"] = ""
+    titles["8"] = "Description du / des lien(s)"
+
+    return sections, titles
+
+
+# ──────────────────────────────── walloon WALLEX single-AOC parser ──
+
+
+# Single-AOC WALLEX arrêtés (one decree = one appellation, no chapter
+# split). Keyed by slug + file_number for resilience, the same way the
+# chapter tables are. Two shapes are handled (see parse function):
+#   - Côtes de Sambre et Meuse (#2879) — annexed "Cahier des charges"
+#     with "Article 1 er." zone + commune lists and a "Cépages." Art. 2
+#     variety roster.
+#   - Vin de pays des Jardins de Wallonie (#3256) — a flat Art. 1-13
+#     decree: the area is the whole Région wallonne (Art. 2) and the
+#     varieties are the broad "Vitis vinifera ou croisement" definition
+#     (Art. 3) — no named roster, so 0 grapes (the broad-IGP shape).
+WALLEX_STANDALONE_SLUGS: set[str] = {
+    "cotes-de-sambre-et-meuse",
+    "vin-de-pays-des-jardins-de-wallonie",
+}
+WALLEX_STANDALONE_FILE_NUMBERS: set[str] = {"PDO-BE-A0009", "PGI-BE-A0010"}
+_WALLEX_STANDALONE_NAME_FALLBACK: dict[str, str] = {
+    "cotes-de-sambre-et-meuse": "Côtes de Sambre et Meuse",
+    "vin-de-pays-des-jardins-de-wallonie": "Vin de pays des Jardins de Wallonie",
+}
+
+_WALLEX_STD_PAGE_FOOTER_RE = re.compile(
+    r"En\s+vigueur\s+du[^\n]*?page\s*\d+\s*/\s*\d+", re.IGNORECASE,
+)
+# Article 2's variety block runs from "…peuvent être utilisés:" to the
+# closing "Les raisins doivent…" sentence.
+_WALLEX_STD_GRAPE_BLOCK_RE = re.compile(
+    r"c[ée]pages?\s+suivants?\s+peuvent\s+[êe]tre\s+utilis[ée]s\s*:\s*"
+    r"(.*?)\n\s*Les\s+raisins\s+doivent",
+    re.IGNORECASE | re.S,
+)
+# The zone delimitation = Article 1 up to the "Cépages." / "Art. 2."
+# heading (the CSM annex shape).
+_WALLEX_STD_ZONE_RE = re.compile(
+    r"(Article\s+1\s*er\.?.*?)\n\s*(?:C[ée]pages?\.|Art\.\s*2\.)",
+    re.IGNORECASE | re.S,
+)
+# Region-wide fallback (the Jardins shape): the area is stated as
+# "vendanges récoltées en Région wallonne" / "vins produits en Région
+# wallonne" — no commune enumeration.
+_WALLEX_STD_REGION_ZONE_RE = re.compile(
+    r"((?:vins?|raisins?|vendanges?)[^.\n]*?"
+    r"(?:r[ée]colt[ée]es?|produits?)\s+(?:en|dans\s+la)\s+R[ée]gion\s+wallonne[^.\n]*\.)",
+    re.IGNORECASE,
+)
+_WALLEX_STD_YIELD_RE = re.compile(
+    r"(rendement\s+(?:moyen\s+)?maximal[^\n]*?\d+\s*hl/ha[^\n]*)", re.IGNORECASE,
+)
+
+
+def parse_wallex_standalone_text(
+    text: str, slug: str = "", file_number: str = "", name: str = "",
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Parse a single-AOC WALLEX cahier des charges into the standard
+    (sections, titles) shape. Unlike `parse_wallex_text`, there is no
+    chapter split. Two shapes are supported: the CSM annex ("Article 1
+    er." zone + "Cépages." Art. 2 roster) and the flat region-wide IGP
+    decree (Jardins de Wallonie — area = Région wallonne, no roster)."""
+    if (
+        slug not in WALLEX_STANDALONE_SLUGS
+        and file_number not in WALLEX_STANDALONE_FILE_NUMBERS
+    ):
+        return {}, {}
+
+    clean = _WALLEX_STD_PAGE_FOOTER_RE.sub("", text)
+
+    m_grapes = _WALLEX_STD_GRAPE_BLOCK_RE.search(clean)
+    grape_body = ""
+    if m_grapes:
+        # The list is `Pinot noir;\nMüller-Thurgau;\n…` — re-emit as
+        # newline-separated items for the FR grape parser.
+        grape_body = re.sub(r"\s*;\s*", "\n", m_grapes.group(1)).strip()
+
+    m_zone = _WALLEX_STD_ZONE_RE.search(clean)
+    if m_zone:
+        zone_body = re.sub(r"[ \t]+", " ", m_zone.group(1)).strip()
+    else:
+        m_region = _WALLEX_STD_REGION_ZONE_RE.search(clean)
+        zone_body = re.sub(r"[ \t]+", " ", m_region.group(1)).strip() if m_region else ""
+
+    m_yield = _WALLEX_STD_YIELD_RE.search(clean)
+    yield_line = re.sub(r"[ \t]+", " ", m_yield.group(1)).strip() if m_yield else ""
+
+    display_name = name or _WALLEX_STANDALONE_NAME_FALLBACK.get(slug, "")
+    is_igp = file_number.startswith("PGI") or slug == "vin-de-pays-des-jardins-de-wallonie"
+
+    sections: dict[str, str] = {}
+    titles: dict[str, str] = {}
+
+    sections["1"] = display_name
+    titles["1"] = "Dénomination(s)"
+
+    sections["3"] = (
+        "Vin de pays — indication géographique protégée"
+        if is_igp
+        else "Vin de qualité d'appellation d'origine contrôlée (V.Q.P.R.D.)"
+    )
+    titles["3"] = "Catégories de produits de la vigne"
+
+    sections["5"] = yield_line
+    titles["5"] = "Pratiques vitivinicoles"
+
+    sections["6"] = zone_body
+    titles["6"] = "Zone géographique délimitée"
+
+    sections["7"] = grape_body
+    titles["7"] = "Cépage(s) principal/aux"
+
+    # No "lien au terroir" narrative section in the WALLEX cahier —
     # leave empty so 02d won't try to extract from it.
     sections["8"] = ""
     titles["8"] = "Description du / des lien(s)"

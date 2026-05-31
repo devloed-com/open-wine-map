@@ -89,11 +89,16 @@ _COLOUR_LETTER_TO_NAME = {
     "Γ": "gris",
 }
 
-# Bare colour-adjective surfaces that VIVC surfaces as standalone
-# synonyms (e.g. tinta-porto-santo's synonym list has the bare word
-# "TINTA"). They never identify a variety on their own — the upstream
-# `_DROP` set already filters them at the extractor pre-processing
-# stage, but defence-in-depth keeps them out of the vocab too.
+# Surfaces that never identify a variety on their own. Two classes:
+#   1. Bare colour-adjectives that VIVC surfaces as standalone synonyms
+#      (e.g. tinta-porto-santo's synonym list has the bare word "TINTA").
+#      The upstream `_DROP` set already filters them at the extractor
+#      pre-processing stage, but defence-in-depth keeps them out too.
+#   2. Bare breeder-family names that only name a determinate cultivar
+#      when carrying their release number — "Seibel" alone is the
+#      French-American hybridiser family (Seibel 5455 = Plantet, …), and
+#      bare "Seibel" otherwise fuzzy-matches the Tempranillo VIVC synonym
+#      "Sensibel" (85.7, same first char → passes the sanity guard).
 _BANNED_SURFACES = frozenset({
     "tinta", "tintas", "tinto", "tintos",
     "blanca", "blancas", "blanco", "blancos",
@@ -101,6 +106,7 @@ _BANNED_SURFACES = frozenset({
     "gris", "grises",
     "rojo", "rojos", "roja", "rojas",
     "rosada", "rosadas", "rosado", "rosados",
+    "seibel",
 })
 
 

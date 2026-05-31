@@ -3594,10 +3594,14 @@ Coverage in the corpus: 4 of 10 BE wines have a fetchable EU-OJ URL
 (the 3 Flemish DOPs Hagelandse / Haspengouwse / Heuvellandse plus
 Maasvallei Limburg). The other 6 (the 4 Walloon DOPs + the 2 Flemish
 PGIs) are Art.107 / Reg.1308/2013 grandfathered names with only a
-non-fetchable `Ares(...)` summary-sheet — they ship as content-stubs
-(the IT/ES/SI curator-queue pattern) and nonetheless appear on the
-map because Bétard 2022 covers every BE PDO + the cross-border
-Maasvallei polygon, and the 2 PGIs resolve via region-pdo-union.
+non-fetchable `Ares(...)` summary-sheet in eAmbrosia. All 6 are now
+recovered from public regional-regulator PDFs pinned in
+`manual_overrides.json` (see "BE PDF-source extension" below) — the 3
+sparkling PDOs + CSM via WALLEX, Vlaamse landwijn via the Vlaamse
+overheid productdossier, Jardins de Wallonie via WALLEX #3256 — so
+**all 10 BE wines extract (0 stubs)**. Every BE wine appears on the
+map: Bétard 2022 covers each BE PDO + the cross-border Maasvallei
+polygon, and the 2 PGIs resolve via region-pdo-union.
 
 **Cross-border Maasvallei Limburg** (`PDO-BE+NL-02172`): emitted as a
 single BE record (BE-primary by file_number ordering). The NL pipeline
@@ -3693,86 +3697,126 @@ Per BE record, in priority order (`geom_source` records the choice):
 
 ### BE PDF-source extension (Flemish PDF + WALLEX) — stage 02 text-mode parsers
 
-The 3 BE sparkling-wine PDOs (`vlaamse-mousserende-kwaliteitswijn`,
-`vin-mousseux-de-qualite-de-wallonie`, `cremant-de-wallonie`) have no
-fetchable EU-OJ HTML single document. Their canonical specifications
-are PDFs published by the regional regulators:
+5 BE wines have no fetchable EU-OJ HTML single document but do have a
+public PDF spec from a regional regulator; with all of them wired,
+**every BE wine extracts — 10/10, 0 stubs**. Their canonical
+specifications:
 
-- **Vlaamse mousserende kwaliteitswijn** — `https://lv.vlaanderen.be/media/9156/download`,
+- **Vlaamse mousserende kwaliteitswijn** (DOP) — `https://lv.vlaanderen.be/media/9156/download`,
   the Vlaamse overheid Agentschap Landbouw en Zeevisserij
   *geconsolideerd enig document* (Dutch, 5 pp., July 2024 update).
-  Structurally identical to an EU enig document (numbered 1..9
-  outline), just delivered as PDF instead of HTML.
-- **Vin mousseux de qualité de Wallonie + Crémant de Wallonie** —
-  one shared decree:
+  Structurally an EU enig document (numbered 1..9 outline).
+- **Vlaamse landwijn** (PGI) — `https://lv.vlaanderen.be/sites/default/files/attachments/productdossier_bga_vlaamse_landwijn.pdf`,
+  the Vlaamse overheid *productdossier BGA* (Dutch, 4 pp.). Also an
+  EU-enig-document shape; §7 is the broad-IGP rule ("Vitis vinifera of
+  een kruising …") so it yields **0 grapes**, but §8 *verband* is a
+  full terroir narrative → 8 terroir-fact bullets.
+- **Vin mousseux de qualité de Wallonie + Crémant de Wallonie** (DOP) —
+  one shared decree
   `https://wallex.wallonie.be/eli/arrete/2008/03/05/2008202157`
-  (WALLEX act #5739, *Arrêté ministériel du 5 mars 2008*, Moniteur
-  belge 19 juin 2008). The annex carries Chapitre I (Dispositions
-  communes — incl. Art. 1 commune list per province), Chapitre II
-  Vin mousseux de qualité de Wallonie (Art. 11-15), Chapitre III
-  Crémant de Wallonie (Art. 16-22).
+  (WALLEX act #5739, *AM 5 mars 2008*, M.B. 19 juin 2008). Chapitre I
+  (Dispositions communes — Art. 1 commune list per province), Chapitre
+  II Vin mousseux (Art. 11-15), Chapitre III Crémant (Art. 16-22).
+- **Côtes de Sambre et Meuse** (DOP) — `…/files/pdfs/4/2879_…pdf`
+  (WALLEX act #2879, *AM 27 mai 2004*, mod. AMRW 29 mai 2007). A
+  *standalone single-AOC* cahier des charges: Article 1 = zone (bassin
+  hydrographique de la Meuse + commune lists), "Cépages." Art. 2 =
+  24-variety roster (`Name;`-terminated), Art. 6 = 65 hl/ha.
+- **Vin de pays des Jardins de Wallonie** (PGI) — `…/files/pdfs/18/3256_…pdf`
+  (WALLEX act #3256, NUMAC 2004201800, *AM 27 mai 2004*; ELI
+  `…/eli/arrete/2004/05/27/2004201800/2004/06/25` — the
+  `/contents/acts/18/3256/1.html` path 404s). A flat Art. 1-13 decree:
+  area = whole Région wallonne (Art. 2), broad-IGP rule (Art. 3, no
+  roster → 0 grapes), 90 hl/ha (Art. 7).
 
-Both URL types are pinned via `raw/be/oj-pages/manual_overrides.json`
-and fetched by stage 01. Stage 01 already handles PDF responses
-(`Content-Type: application/pdf` routes to a `.pdf` cache instead of
-`.html`); stage 02's `_extract_from_pdf` detects the PDF cache and
-routes to the appropriate text-mode parser in
+All URL types are pinned via `raw/be/oj-pages/manual_overrides.json`
+and fetched by stage 01 (`Content-Type: application/pdf` routes to a
+`.pdf` cache). Stage 02's `_extract_from_pdf` routes each PDF to the
+right text-mode parser in
 [scripts/_lib/be/text_parser.py](scripts/_lib/be/text_parser.py):
 
-- **`parse_enig_document_text(text)`** — text-mode equivalent of the
-  HTML enig-document parser. Walks lines for `^[ \t]*N. <Title>` to
-  find numbered section headers (strips `\x0c` form-feeds emitted by
-  pdftotext at page breaks). Produces the same `(sections, titles)`
-  dict shape as the HTML parser, so route_sections / parse_grapes /
-  parse_styles / build_record run unchanged.
-- **`parse_wallex_text(text, slug=, file_number=)`** — WALLEX-specific
-  parser scoped to the chapter corresponding to the requested wine:
-  Chapter II for `vin-mousseux-de-qualite-de-wallonie`, Chapter III
-  for `cremant-de-wallonie`. Routing tables
-  `WALLEX_CHAPTER_BY_SLUG` + `WALLEX_CHAPTER_BY_FILE_NUMBER`. Extracts
-  the commune list from Chapter I (shared between both PDOs), the
-  per-chapter grape list from Art. 11/16, and the per-chapter yield
-  from Art. 14/20. Emits a synthetic sections dict keyed against the
-  FR template's `SECTION_ROLE_KEYWORDS`.
+- **`parse_enig_document_text(text)`** — Flemish EU-enig-document shape
+  (Vlaamse mousserende + Vlaamse landwijn). Walks `^[ \t]*N. <Title>`
+  headers, strips `\x0c` form-feeds; same `(sections, titles)` shape as
+  the HTML parser.
+- **`parse_wallex_text(text, slug=, file_number=)`** — WALLEX *chapter*
+  parser for the shared #5739 sparkling decree, scoped per chapter
+  (II = vin-mousseux, III = crémant) via `WALLEX_CHAPTER_BY_SLUG` +
+  `WALLEX_CHAPTER_BY_FILE_NUMBER`. Commune list from Ch. I, grapes from
+  Art. 11/16, yield from Art. 14/20.
+- **`parse_wallex_standalone_text(text, slug=, file_number=, name=)`** —
+  WALLEX *single-AOC* parser for decrees with no chapter split, gated on
+  `WALLEX_STANDALONE_SLUGS` + `WALLEX_STANDALONE_FILE_NUMBERS` (runs
+  ahead of the chapter check in `_extract_from_pdf`). Handles two shapes:
+  the **CSM annex** ("Article 1 er." zone + "Cépages." Art. 2 roster) and
+  the **flat region-wide IGP** (Jardins — area = a "récoltées en Région
+  wallonne" statement, no roster). Name-agnostic (takes the eAmbrosia
+  wine name) and IGP-vs-VQPRD-aware for the category line.
 
-Coverage on the panel after this extension: all 3 wines carry
-varieties + commune-list area + source attribution. The Flemish wine
-additionally carries 6 terroir-fact bullets (the geconsolideerd enig
-document has a full §8 *Beschrijving van het verband*). The 2 Walloon
-wines have no terroir bullets — the WALLEX cahier has no narrative
-"lien au terroir" section, so 02d honestly skips them.
+All three parsers emit a synthetic sections dict keyed against the
+FR/NL template's `SECTION_ROLE_KEYWORDS`, so route_sections /
+parse_grapes / parse_styles / build_record run unchanged.
 
-### WALLEX abrogation caveat (Walloon sparkling PDOs)
+Coverage after the extension: all 5 wines carry source attribution; the
+2 sparkling Walloon PDOs + CSM carry varieties + commune/zone area; the
+2 broad IGPs (Vlaamse landwijn, Jardins) carry zone + 0 grapes (correct
+— no named roster). Terroir: only **Vlaamse landwijn** has a narrative
+§8 → 8 bullets (en/fr/es); the 4 Walloon wines have **no terroir facts**
+— WALLEX decrees carry no "lien au terroir" section, so 02d honestly
+skips them (not recoverable from these sources — the CH/LU/MT
+Wikipedia-primary route is the only alternative, and is unprobed because
+no dedicated fr/nl Wikipedia article is cached for any of the four).
 
-The Walloon cahier we pin (WALLEX #5739, *Arrêté ministériel du 5
-mars 2008*) was **formally abrogated on 22 September 2016** by the
-Arrêté du Gouvernement wallon du 14 juillet 2016, a framework decree
-on quality systems that does NOT contain a substantive cahier. A
-modification dossier ("Version 8 — juillet 2018") was filed by the
-Association des Vignerons de Wallonie and put to public consultation
-in 2020 (M.B. 18 février 2020), but **no replacement ministerial
-decree has been promulgated** (verified as of 2026-05). The 2008
-text is therefore the only public substantive specification — the
-sector still uses it in practice even though it is legally abrogated.
+Grape-matcher note: the CSM Art. 2 roster includes a bare "Seibel" (the
+French-American hybridiser *family* name, not a determinate cultivar)
+which fuzzy-matched the Tempranillo VIVC synonym "Sensibel" (85.7, same
+first char → passed the sanity guard). Bare `seibel` is therefore in
+`_BANNED_SURFACES` in
+[scripts/_lib/grape_entity.py](scripts/_lib/grape_entity.py) — only the
+numbered "Seibel NNNN" cultivars (which keep their release number)
+resolve.
+
+### WALLEX abrogation caveat (all four Walloon wines)
+
+All four Walloon WALLEX decrees we pin were **formally abrogated on 22
+September 2016** by the Arrêté du Gouvernement wallon du 14 juillet 2016,
+a framework decree on quality systems that does NOT contain a substantive
+cahier:
+
+- **#5739** (AM 5 mars 2008) — Vin mousseux de qualité de Wallonie +
+  Crémant de Wallonie
+- **#2879** (AM 27 mai 2004, mod. 2007) — Côtes de Sambre et Meuse
+- **#3256** (AM 27 mai 2004) — Vin de pays des Jardins de Wallonie
+
+A modification dossier ("Version 8 — juillet 2018") was filed by the
+Association des Vignerons de Wallonie and put to public consultation in
+2020 (M.B. 18 février 2020), but **no replacement decree has been
+promulgated** (verified as of 2026-05). Each abrogated text is the only
+public substantive specification — the sector still uses it in practice.
 
 This caveat is surfaced on the map detail panel via the curated note
 layer in
 [scripts/_lib/appellation_notes.json](scripts/_lib/appellation_notes.json)
-(keyed by `cremant-de-wallonie` and `vin-mousseux-de-qualite-de-wallonie`),
-hand-translated into all 4 panel locales and citing 3 sources (the
-2008 ELI, the 2016 AGW abrogator, the SPW Agriculture *Législation
-vitivinicole* deck of June 2022). Phase 2 follow-up: locate or
-ingest the eventual post-2016 replacement decree when it ships.
+(keyed by all four slugs — `cremant-de-wallonie`,
+`vin-mousseux-de-qualite-de-wallonie`, `cotes-de-sambre-et-meuse`,
+`vin-de-pays-des-jardins-de-wallonie`), hand-translated into the 4 panel
+locales and citing 3 sources (the act ELI, the 2016 AGW abrogator, the
+SPW Agriculture *Législation vitivinicole* deck of June 2022). The note
+states "no **in-force replacement** specification has been published"
+(NOT "no public URL" — the abrogated text IS public and is exactly what
+the panel links). Phase 2 follow-up: ingest the eventual post-2016
+replacement decree when it ships.
 
 ### Curator workflow for BE wines without an OJ publication
 
 Mirrors the SK / SI / HR / BG / GR / HU / RO
-`regen_manual_overrides_template.py` flow. 6 BE wines have no
-fetchable single-document URL. The canonical source for the Walloon
-side is the Service public de Wallonie (vins.wallonie.be); for the
-Flemish side it is the Agentschap Landbouw en Visserij — Wijnbouw
-page on vlaanderen.be. Phase 2 work to add per-source parser
-branches:
+`regen_manual_overrides_template.py` flow. All 6 BE wines without a
+fetchable single-document URL are **already recovered** via the PDF
+parsers above (the Walloon source is the Service public de Wallonie /
+WALLEX; the Flemish source is the Agentschap Landbouw en Visserij —
+Wijnbouw page on vlaanderen.be) — BE is at 0 stubs. The flow below is
+for a *new* BE wine, a rotated URL, or a curator-pinned EUR-Lex
+single document:
 
 ```
 .venv/bin/python scripts/be/regen_manual_overrides_template.py
@@ -3784,10 +3828,13 @@ branches:
 .venv/bin/python scripts/04_build_maps.py
 ```
 
-**Caveat**: stage 02's HTML parser only understands the EU-OJ
-ENIG-DOCUMENT / DOCUMENT-UNIQUE template; regional-ministry national-
-specification formats need per-source parsers (Phase 2, mirrors the
-ES MAPA / IT MASAF / DE BLE pattern).
+**Caveat**: stage 02's HTML path only understands the EU-OJ
+ENIG-DOCUMENT / DOCUMENT-UNIQUE template; other regional-ministry
+formats need a per-source text-mode parser (the WALLEX chapter /
+WALLEX standalone / Flemish-enig-document branches in
+[scripts/_lib/be/text_parser.py](scripts/_lib/be/text_parser.py) are
+the existing examples; mirrors the ES MAPA / IT MASAF / DE BLE
+pattern).
 
 ## Netherlands pipeline (`scripts/nl/`)
 
@@ -3819,10 +3866,26 @@ language URL rewrite — `/legal-content/NL/TXT/HTML/`, `…01.NLD`,
 countries — `scripts/nl/01b_solve_waf.py` clears blocked URLs with
 headless Chromium.
 
-Edge case: 1 of 21 (Ambt Delden, `PDO-NL-02169`) has no published
-Dutch translation of its single document — EUR-Lex returns the
-English version for the NL URL. v1 ships it as a stub; Phase 2
-could add an English-template fallback parser.
+Edge case (resolved 2026-05-31): Ambt Delden (`PDO-NL-02169`) has no
+published Dutch translation of its single document — EUR-Lex serves the
+2018 Commission Implementing Decision (CELEX 32018D0316(02)) which
+embeds the full **English** SINGLE DOCUMENT, and the 2024 Dutch
+publication eAmbrosia now lists (OJ C/2024/2046) is AWS-WAF-blocked
+(202 / empty), so it can't be used. Stage 02 handles this with a
+self-contained **English-template fallback**: when the Dutch
+`ENIG DOCUMENT` anchor misses, `_extract_from_html` re-anchors on
+`SINGLE DOCUMENT`, slices with `extract_sections_en` (a monotonic
+top-level-number extractor — skip nested `5.x` and repeated
+"Wine category …" sub-headers, keep only a strictly increasing 1→N
+run, the Malta/HU/BG idiom), and routes with a local English keyword
+table. A self-guarding merged-cell splitter (`_merged_cell_matches`)
+recovers two varieties packed into one table cell ("Solaris Regent" →
+solaris + regent), splitting only when every whitespace token
+independently resolves so multi-word names never split. No manual
+override and no Playwright are needed — the 2018 CELEX is the index's
+own source. ambt-delden = 5 varieties, geo area, 6.8 KB
+link-to-terroir (9 terroir facts). v1: **21/21 NL wines extract,
+0 stubs.**
 
 | Script | Reads | Writes |
 |---|---|---|
@@ -3892,9 +3955,11 @@ commercial use with attribution).
 
 ### Curator workflow for NL
 
-The standard `regen_manual_overrides_template.py` flow handles the 1
-edge case (Ambt Delden has no Dutch single document); curator can pin
-the English version, or — Phase 2 — the RVO national productdossier.
+All 21 NL wines now extract (0 stubs) — Ambt Delden via the
+English-template fallback (see the edge-case note above). If a future
+NL wine is published English-only it extracts the same way; the
+standard `regen_manual_overrides_template.py` flow remains for pinning
+a corrected EU-OJ URL or — Phase 2 — the RVO national productdossier.
 
 ## Malta pipeline (`scripts/mt/`)
 

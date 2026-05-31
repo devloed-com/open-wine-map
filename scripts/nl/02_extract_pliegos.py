@@ -6,6 +6,12 @@ the NL corpus; the only language-specific bits live in
 
 v1 models the 21 NL wine GIs (12 PGIs + 9 standalone PDOs; the
 cross-border Maasvallei Limburg ships on the BE side) as a flat corpus.
+
+English-language fallback: a handful of NL wines have no published Dutch
+translation of their single document — EUR-Lex serves the English
+"SINGLE DOCUMENT" instead (e.g. Ambt Delden, PDO-NL-02169). Rather than
+drop those to a stub, we re-anchor on the English template and route the
+sections with the shared English keyword table from `_lib.mt`.
 """
 
 from __future__ import annotations
@@ -31,12 +37,57 @@ from _lib.nl.region import derive_region  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue, match_variety, set_pliego_context,
 )
+# English SINGLE-DOCUMENT keyword table for the NL English-fallback path.
+# Based on the Malta (post-2019) keyword set but broadened for the older
+# 2018-era template (Ambt Delden), whose section titles are shorter —
+# "Main wine grapes" (no "variety"), "Demarcated area" (no "geographical").
+EN_SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "name": ("name(s)", "name"),
+    "category": (
+        "categories of grapevine products", "categories",
+        "geographical indication type",
+    ),
+    "description": ("description of the wine", "description of the product"),
+    "viticultural_practices": (
+        "wine making practices", "winemaking practices",
+        "specific oenological practices", "maximum yields",
+    ),
+    "geo_area": (
+        "demarcated geographical area", "demarcated area",
+        "geographical area", "defined geographical area",
+    ),
+    "grape_varieties": (
+        "main wine grapes variety", "main wine grape variety",
+        "wine grape variet", "grape variet", "main wine grapes",
+        "wine grapes",
+    ),
+    "link_to_terroir": (
+        "description of the link", "link with the geographical area",
+        "link to the geographical area", "causal link",
+    ),
+    "additional_conditions": (
+        "essential further conditions", "further conditions",
+        "other conditions",
+    ),
+}
+EN_GEO_AREA_TITLE_BLOCKLIST = (
+    "geographical indication type",
+    "categories of grapevine products",
+)
 
 INDEX_IN = ROOT / "raw" / "nl" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "nl" / "oj-pages"
 OJ_MANIFEST = OJ_DIR / "manifest.json"
 OUT_DIR = ROOT / "raw" / "nl" / "dokumenten-extracted"
 INDEX_OUT = OUT_DIR / "_index.json"
+
+# Tolerant anchor for the English "SINGLE DOCUMENT" slab (older OJ pages
+# wrap the heading text in inline tags, newer ones leave it bare).
+EN_DOC_ANCHOR_RE = re.compile(
+    r'<p[^>]*class="[^"]*\bti-grseq-1\b[^"]*"[^>]*>'
+    r'(?:\s*<[^>]+>)*\s*SINGLE\s+DOCUMENT\s*(?:</[^>]+>\s*)*</p>',
+    re.I | re.S,
+)
 
 
 def strip_tags(html: str) -> str:
@@ -73,6 +124,38 @@ def extract_sections(html: str) -> tuple[dict[str, str], dict[str, str]]:
     titles: dict[str, str] = {}
     for i, (num, title, _hstart, hend) in enumerate(headers):
         end = headers[i + 1][2] if i + 1 < len(headers) else len(html)
+        bodies[num] = strip_tags(html[hend:end]).strip()
+        titles[num] = title
+    return bodies, titles
+
+
+def extract_sections_en(html: str) -> tuple[dict[str, str], dict[str, str]]:
+    """Monotonic section extraction for the English SINGLE-DOCUMENT template.
+
+    The older 2018 EU-OJ Implementing-Decision layout (e.g. Ambt Delden)
+    nests wine-type and oenological subsections (``5.1``, ``5.2`` and repeated
+    "Wine category …" headers) that share the ``ti-grseq-1`` class with real
+    top-level headers, and the table-celled numbering occasionally mis-slices.
+    Keep only a strictly increasing 1→N top-level run so a nested or duplicate
+    header can't stretch a later section's body — the Malta/HU/BG idiom.
+    """
+    headers = find_section_offsets(html)
+    if not headers:
+        return {}, {}
+    kept: list[tuple[str, str, int, int]] = []
+    last_top = 0
+    for num, title, hstart, hend in headers:
+        if "." in num:
+            continue
+        n = int(num)
+        if n != last_top + 1:
+            continue
+        last_top = n
+        kept.append((num, title, hstart, hend))
+    bodies: dict[str, str] = {}
+    titles: dict[str, str] = {}
+    for i, (num, title, _hs, hend) in enumerate(kept):
+        end = kept[i + 1][2] if i + 1 < len(kept) else len(html)
         bodies[num] = strip_tags(html[hend:end]).strip()
         titles[num] = title
     return bodies, titles
@@ -115,6 +198,17 @@ def route_sections(sections: dict[str, str], titles: dict[str, str]) -> dict[str
     return routed
 
 
+def route_sections_en(sections: dict[str, str], titles: dict[str, str]) -> dict[str, str]:
+    """Route an English SINGLE-DOCUMENT's sections with the EN keyword table."""
+    routed: dict[str, str] = {}
+    for role, keywords in EN_SECTION_ROLE_KEYWORDS.items():
+        blocklist = EN_GEO_AREA_TITLE_BLOCKLIST if role == "geo_area" else ()
+        body = _match_section_body(sections, titles, keywords, blocklist)
+        if body is not None:
+            routed[role] = body
+    return routed
+
+
 _BULLET_SPLIT_RE = re.compile(r"\s*[—•·]\s*|\n")
 _NAME_SYN_SPLIT_RE = re.compile(r"\s+[-–]\s+")
 
@@ -138,6 +232,27 @@ def _item_candidates(item: str) -> list[str]:
         if c and c not in out:
             out.append(c)
     return out
+
+
+_COLOUR_CODE_TOKEN_RE = re.compile(r"^(?:B|N|G|Rs|Rg)$", re.I)
+
+
+def _merged_cell_matches(item: str) -> list[tuple[str, str, str]]:
+    """Recover 2+ varieties packed into one cell (e.g. the Ambt Delden
+    EU-OJ section 7 lists ``Solaris Regent`` in a single table cell).
+
+    Splits ONLY when every whitespace token (after dropping a trailing
+    colour-code letter) independently resolves to a known variety, so
+    genuine multi-word names (Souvignier Gris, Pinot Noir) are never split.
+    """
+    head = _NAME_SYN_SPLIT_RE.split(item, maxsplit=1)[0]
+    tokens = [t for t in head.split() if not _COLOUR_CODE_TOKEN_RE.match(t)]
+    if len(tokens) < 2:
+        return []
+    matches = [match_variety(t) for t in tokens]
+    if not all(matches):
+        return []
+    return [(tok, m.slug, m.colour) for tok, m in zip(tokens, matches)]
 
 
 def parse_grapes(section_text: str) -> dict:
@@ -182,6 +297,16 @@ def parse_grapes(section_text: str) -> dict:
                 "colour": match.colour,
             })
             break
+        else:
+            for name, slug, colour in _merged_cell_matches(item):
+                if slug in seen_slugs:
+                    continue
+                seen_slugs.add(slug)
+                out[current_role].append(slug)
+                out["details"].append({
+                    "slug": slug, "name": name,
+                    "role": current_role, "colour": colour,
+                })
     return out
 
 
@@ -223,8 +348,9 @@ def derive_summary(role_text: str, max_chars: int = 600) -> str:
 
 
 def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
-                 oj_meta: dict) -> dict:
-    routed = route_sections(sections, titles)
+                 oj_meta: dict, routed: dict[str, str] | None = None) -> dict:
+    if routed is None:
+        routed = route_sections(sections, titles)
     grapes = parse_grapes(routed.get("grape_varieties", ""))
     styles = parse_styles(
         sections, titles, grape_details=grapes.get("details") or [],
@@ -296,15 +422,29 @@ def build_stub(wine: dict, oj_meta: dict, reason: str) -> dict:
     }
 
 
-def _extract_from_html(cache: Path) -> tuple[dict[str, str], dict[str, str], str]:
+def _extract_from_html(
+    cache: Path,
+) -> tuple[dict[str, str], dict[str, str], str, str]:
+    """Return (sections, titles, doc_lang, parse_reason).
+
+    Tries the Dutch ENIG-DOCUMENT template first; falls back to the
+    English SINGLE-DOCUMENT template when no Dutch translation was
+    published (EUR-Lex then serves the English variant).
+    """
     html = cache.read_text(encoding="utf-8")
     doc = slice_document(html)
-    if doc is None:
-        return {}, {}, "no-enig-document-anchor"
-    sections, titles = extract_sections(doc)
+    if doc is not None:
+        sections, titles = extract_sections(doc)
+        if sections:
+            return sections, titles, "nl", ""
+        return {}, {}, "nl", "no-sections"
+    m = EN_DOC_ANCHOR_RE.search(html)
+    if m is None:
+        return {}, {}, "nl", "no-enig-document-anchor"
+    sections, titles = extract_sections_en(html[m.start():])
     if not sections:
-        return {}, {}, "no-sections"
-    return sections, titles, ""
+        return {}, {}, "en", "no-sections"
+    return sections, titles, "en", ""
 
 
 def main() -> int:
@@ -342,9 +482,11 @@ def main() -> int:
         oj_meta = oj_manifest.get(slug, {})
         html_cache = OJ_DIR / f"{slug}.html"
         if html_cache.exists():
-            sections, titles, parse_reason = _extract_from_html(html_cache)
+            sections, titles, doc_lang, parse_reason = _extract_from_html(html_cache)
         else:
-            sections, titles, parse_reason = {}, {}, oj_meta.get("status") or "no-html-cached"
+            sections, titles, doc_lang, parse_reason = (
+                {}, {}, "nl", oj_meta.get("status") or "no-html-cached"
+            )
         if parse_reason or not sections:
             record = build_stub(w, oj_meta, parse_reason or "no-sections")
             if parse_reason in (
@@ -355,7 +497,8 @@ def main() -> int:
             else:
                 parse_failed += 1
         else:
-            record = build_record(w, sections, titles, oj_meta)
+            routed = route_sections_en(sections, titles) if doc_lang == "en" else None
+            record = build_record(w, sections, titles, oj_meta, routed=routed)
             record["source"]["filename"] = html_cache.name
             extracted += 1
         out_path = OUT_DIR / f"{slug}.json"
