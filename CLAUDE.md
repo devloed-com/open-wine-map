@@ -3352,10 +3352,19 @@ Per CZ record, in priority order (`geom_source` records the choice):
    (Litoměřická / Mělnická / Slovácká / Znojemská / Velkopavlovická /
    Mikulovská), union the GISCO LAU 2024 polygons matching the obce
    enumerated in Vyhláška 254/2010 Sb. Příloha (parsed by stage 02f
-   into `raw/cz/national-specs/communes/<slug>.json`). Match rate
-   **392 / 395 = 99.2 %** (the 3 misses are minor — likely commune
-   mergers since 2010). Commune-precision; more honest than Bétard's
-   macro-region-aggregated polygon for these sub-regions.
+   into `raw/cz/national-specs/communes/<slug>.json`). **Czech obec
+   names repeat across okresy** (dozens of "Lhota", "Nové Sady", …) and
+   the Vyhláška lists no okres, so a bare-name match against the
+   national GISCO set pulls in same-named communes country-wide — each
+   polygon scattered 300–450 km across all of Czechia. Bétard 2022 has
+   a correct **per-podoblast** PDO polygon for each (it is NOT
+   macro-aggregated for CZ), so the union is **masked by the podoblast's
+   own Bétard polygon** (`CZPolygonIndex.commune_union_for_podoblast`,
+   centroid-in-mask + ~3 km buffer): the correct commune is kept, the
+   distant homonyms dropped. Result: mikulovská 32×35 km (was 301×223),
+   znojemská 52×45, slovácká 117/119 obce — matching the official
+   Wines-of-Czech-Republic subregion map. Falls back to step 2 if
+   < 60 % of obce match or the Bétard mask is unavailable.
 2. **`figshare-pdo`** — exact `file_number` (`PDO-CZ-*`) → `PDOid`
    match against Bétard 2022 EU\_PDO.gpkg. Used for the 4 macro names
    (Čechy / Morava — and the 3 single-vineyard / single-varietal
