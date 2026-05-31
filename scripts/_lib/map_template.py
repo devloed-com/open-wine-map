@@ -268,6 +268,7 @@ _COUNTRY_FLAG_EMOJI: dict[str, str] = {
     "be": "\U0001F1E7\U0001F1EA",  # 🇧🇪
     "nl": "\U0001F1F3\U0001F1F1",  # 🇳🇱
     "mt": "\U0001F1F2\U0001F1F9",  # 🇲🇹
+    "cy": "\U0001F1E8\U0001F1FE",  # 🇨🇾
 }
 
 
@@ -297,6 +298,7 @@ def build_country_labels(_: Callable[[str], str]) -> dict[str, str]:
         "be": _("Belgique"),
         "nl": _("Pays-Bas"),
         "mt": _("Malte"),
+        "cy": _("Chypre"),
     }
 
 

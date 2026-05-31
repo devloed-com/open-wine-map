@@ -1946,6 +1946,43 @@ enrichment; pills render with colour but no tooltip card. Run
 `scripts/02g_fetch_vivc.py` + `scripts/02b_fetch_grape_lexicon.py --only
 gellewza --only girgentina` to add them.
 
+## Cyprus
+
+### Coverage — ✅ complete (2026-05-31)
+
+11 wine GIs (7 PDO + 4 PGI). All 11 are Art.107 grandfathered names with
+no fetchable EU-OJ Ενιαίο Έγγραφο; all augmented from the moa.gov.cy
+Department-of-Agriculture τεχνικός φάκελος (stage 01c scrapes the
+«Αμπελουργία / Οινολογία» listing + name-matches; stage 02f parses the
+Greek single-document PDF, OCR'ing the image-only ones). 11/11 on the map
+(7 Bétard PDO + 4 GISCO district-union), 11/11 with grapes (226 slugs),
+8/11 with terroir facts.
+
+### Terroir text — ✅ closed (2026-05-31, browser-research)
+
+The 3 image-only moa.gov.cy scans (`pitsilia`, `larnaka`, `lefkosia`)
+were replaced by the **text-layer τεχνικός φάκελος on the EU eAmbrosia
+public attachments API** (Ares(2011)1411840 / 1411809 / 1411819), pinned
+in `raw/cy/national-specs/manual_overrides.json` (eAmbrosia serves these
+under HTTP 202 + body — `cy/01c.fetch_one` accepts 200/202). All 3 now
+parse as text-layer with a selectable §7 ΔΕΣΜΟΣ section; **11/11 CY wines
+now carry terroir facts (73 bullets)**. The OCR fallback in
+`_lib/cy/specifikacija` remains for any future image-only spec.
+
+### Indigenous varieties — ✅ (2026-05-31, VIVC/wein.plus research pass)
+
+Cypriot natives folded into `grape_lexicon.py` (`DEFAULT_COLOUR` +
+`GRAPE_ALIAS`, Greek-script + Latin-spec spellings): xynisteri, mavro,
+maratheftiko (+ vamvakada/pampakada synonyms), giannoudi, ofthalmo,
+promara, morokanella, spourtiko, vlouriko, kanella, vasilissa, vertzami
+(lefkada folds here), mavrotragano, mavrathiro. Synonym folds: malaga →
+muscat-d-alexandrie, μοσχάτο-κύπρου → muscat-a-petits-grains. Residual
+flags: `vlouriko` colour (sources split white/red — shipped noir per
+wineriesofcyprus); `mavrathiro` identity weak (likely Santorini, low
+conf); VIVC IDs not yet pinned for giannoudi/ofthalmo/promara/kanella/
+vasilissa (not catalogued under searchable Latin names) — optional 02g
+enrichment, pills render with colour but no VIVC bracket.
+
 ## Style taxonomy follow-ups
 
 - **Sweet/oxidative cross-cut** — `generoso` (sherry-family) sits under `oxidative` because most sherries are dry; PX cream sherries and dulces are nominally oxidative *and* sweet. Currently they only emit `oxidative + generoso + (sub-tag)`; the `sweet` bucket is *not* added. Decide whether to surface dual-tagging (record carries both `oxidative` and `sweet`) when the pliego describes a PX / cream / sweet-oloroso style. Currently affects ~5 sherry pliegos. Defer to v2.

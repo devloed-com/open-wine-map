@@ -992,6 +992,58 @@ GRAPE_ALIAS = {
     # Greek synonyms for international varieties:
     "fileri": "moschofilero",                     # Φιλέρι — synonym
     "asuda": "asproudes",                         # absorbed (white-skinned generic, dropped in BLOCKLIST below)
+    # ----- CY (Cyprus) native varieties — moa.gov.cy τεχνικός φάκελος ----
+    # Greek-script forms round-trip through unidecode() to non-standard
+    # romanisations (ksunisteri / mauro / maratheutiko / ophthalmo /
+    # blouriko / bertzami / …); fold those + the Latin spellings used in
+    # the spec OIV lists (Giannoudhi / Vlouriko / Morocanella / Canella)
+    # to the internationally-used slug. Colours from VIVC / wein.plus /
+    # wineriesofcyprus.com (research 2026-05-31).
+    # Whites:
+    "ksunisteri": "xynisteri",                    # Ξυνιστέρι — Cyprus's main white (VIVC #704)
+    "xynisteri": "xynisteri",
+    "promara": "promara",                         # Προμάρα — rare-native white revival
+    "morokanella": "morokanella",                 # Μοροκανέλλα — white ('little cinnamon')
+    "marokanella": "morokanella",
+    "morocanella": "morokanella",                 # Latin spec spelling
+    "spourtiko": "spourtiko",                     # Σπούρτικο — thin-skinned white
+    "kanella": "kanella",                         # Κανέλλα / Canella — white ('cinnamon')
+    "canella": "kanella",
+    "basilissa": "vasilissa",                     # Βασίλισσα — recently registered white
+    "vasilissa": "vasilissa",
+    # Reds:
+    "mauro": "mavro",                             # Μαύρο / Ντόπιο Μαύρο — Cyprus's main red
+    "mavro": "mavro",
+    "ntopio mauro": "mavro",
+    "ntopio mavro": "mavro",
+    "ntopio-mavro": "mavro",
+    "maratheutiko": "maratheftiko",               # Μαραθεύτικο — red native
+    "maratheftiko": "maratheftiko",
+    "bambakada": "maratheftiko",                  # Βαμβακάδα — Maratheftiko synonym
+    "vamvakada": "maratheftiko",
+    "pampakada": "maratheftiko",                  # Παμπακάδα — Maratheftiko synonym
+    "pampakia": "maratheftiko",
+    "giannoudi": "giannoudi",                     # Γιαννούδι — red native (revived)
+    "giannoudhi": "giannoudi",                    # Latin spec spelling
+    "yiannoudi": "giannoudi",
+    "ophthalmo": "ofthalmo",                      # Οφθαλμό — high-tannin red native
+    "ofthalmo": "ofthalmo",
+    "blouriko": "vlouriko",                       # Βλούρικο / Φλούρικο — red native
+    "phlouriko": "vlouriko",
+    "vlouriko": "vlouriko",
+    "flouriko": "vlouriko",
+    "bertzami": "vertzami",                       # Βερτζαμί — Ionian/Greek red (VIVC #13011)
+    "vertzami": "vertzami",
+    "leukada": "vertzami",                        # Λευκάδα — DNA-identical to Vertzami
+    "lefkada": "vertzami",
+    "maurotragano": "mavrotragano",               # Μαυροτράγανο — Greek (Santorini) red
+    "mavrotragano": "mavrotragano",
+    "maurathero": "mavrathiro",                   # Μαυράθηρο — Greek (Santorini) red
+    "mavrathiro": "mavrathiro",
+    # CY synonyms for international varieties:
+    "malaga": "muscat-d-alexandrie",              # Μαλάγα — = Muscat of Alexandria in Cyprus
+    "moskhato kuprou": "muscat-a-petits-grains",  # Μοσχάτο Κύπρου — Muscat blanc à petits grains
+    "moschato kyprou": "muscat-a-petits-grains",
     # ----- DE (Germany) Einziges-Dokument varieties --------------------
     # German wine carries the most prolific set of breeding-station
     # crossings in the corpus: Geilweilerhof (JKI; "GM" + named releases),
@@ -1837,6 +1889,21 @@ DEFAULT_COLOUR: dict[str, str] = {
     "mavro-mesenikola": "noir",
     "moschomavro": "noir",
     "chondromavro": "noir",
+    # ----- CY (Cyprus) native varieties (see GRAPE_ALIAS block above) -----
+    "xynisteri": "blanc",
+    "promara": "blanc",
+    "morokanella": "blanc",
+    "spourtiko": "blanc",
+    "kanella": "blanc",
+    "vasilissa": "blanc",
+    "mavro": "noir",
+    "maratheftiko": "noir",
+    "giannoudi": "noir",
+    "ofthalmo": "noir",
+    "vlouriko": "noir",
+    "vertzami": "noir",
+    "mavrotragano": "noir",
+    "mavrathiro": "noir",
     # ----- DE (Germany) varieties (see GRAPE_ALIAS block above) -----
     # Mosaic of historic German + modern breeding-station crossings.
     # PINK-skinned mutations of pinot (already covered) and ambiguous

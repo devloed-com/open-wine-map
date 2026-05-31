@@ -769,3 +769,50 @@ national-spec sk`.
 .venv/bin/python scripts/audit_mt_coverage.py       # 3 wines, 2 figshare + 1 union, 0 open stubs
 # Independent check: eAmbrosia register UI, filter country=Malta + Wine.
 ```
+
+## Cyprus (CY) — 2026-05-31
+
+**Claim**: 11 Cypriot wine GIs (7 PDO + 4 PGI), all 11 on the map with
+grapes; 8 with terroir facts.
+
+- eAmbrosia (`country=CY` + `productType=WINE` + `status=registered`):
+  **11** wines — 7 PDO (`PDO-CY-A1622` Κουμανδαρία/Commandaria,
+  `A1623` Κρασοχώρια Λεμεσού - Αφάμης, `A1624` … - Λαόνα, `A1625` Βουνί
+  Παναγιάς – Αμπελίτης, `A1626` Λαόνα Ακάμα, `A1627` Πιτσιλιά, `A1628`
+  Κρασοχώρια Λεμεσού) + 4 PGI (`PGI-CY-A1618` Πάφος, `A1619` Λεμεσός,
+  `A1620` Λάρνακα, `A1621` Λευκωσία). The 4 PGIs are the island's wine
+  districts; matches Cyprus wine law.
+- Geometry: all 7 PDOs in Bétard 2022 `EU_PDO.gpkg` (`figshare-pdo`);
+  the 4 PGIs union the GISCO LAU CY communities by district GISCO_ID
+  digit (`gisco-district-union`). **11/11 on the map**, 0 stubs.
+- National-spec source: moa.gov.cy Department of Agriculture τεχνικός
+  φάκελος (Greek EU single-document PDF), one per wine. Stage 01c scrapes
+  the «Αμπελουργία / Οινολογία» listing page (WAF-free) and name-matches
+  all 11; stage 02f parses (pdftotext, OCR-`ell` fallback for the 3
+  image-only scans). **11/11 with grapes (226 slugs)**; 11/11 with a
+  terroir-source section (the 3 image-only scans were swapped for the
+  text-layer eAmbrosia attachment PDFs — see CURATOR_TODO 2026-05-31).
+- Grapes spot-check: Commandaria = Mavro + Xynisteri (the two canonical
+  Commandaria varieties); Pitsilia = Giannoudi/Maratheftiko/Mavro/
+  Xynisteri/Ofthalmo. Native Cypriot varieties folded into the lexicon
+  with VIVC/wein.plus-researched colours.
+- Terroir-fact bullets (02d, country=cy, Greek source → en/fr/es/nl):
+  **4–10 each** for all 11 wines (73 bullets total),
+  Anthropic batch.
+
+**Re-run recipe**:
+
+```
+.venv/bin/python scripts/cy/00_fetch_data.py        # 11 wines (DOP=7, IGP=4)
+.venv/bin/python scripts/cy/01_fetch_pliegos.py     # all no-pub (EU-OJ stubs)
+.venv/bin/python scripts/cy/02_extract_pliegos.py   # 11 stubs
+.venv/bin/python scripts/cy/01c_fetch_specifikacije.py   # scrape moa.gov.cy → fetch 11 PDFs
+.venv/bin/python scripts/cy/02f_extract_national_specs.py --all   # grapes/terroir (OCR fallback)
+.venv/bin/python scripts/02b_fetch_aoc_lexicon.py --lang el --source raw/cy/dokumenti-extracted
+.venv/bin/python scripts/cy/02d_extract_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/cy/02e_translate_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/cy/03_generate_wiki.py
+.venv/bin/python scripts/04_build_maps.py
+.venv/bin/python scripts/audit_cy_coverage.py       # 11 wines, 7 figshare + 4 district-union, 11/11 grapes
+# Independent check: eAmbrosia register UI, filter country=Cyprus + Wine.
+```
