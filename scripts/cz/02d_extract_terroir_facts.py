@@ -46,12 +46,38 @@ from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim 
 
 EXTRACTED = ROOT / "raw" / "cz" / "dokumenty-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "cs"
+CHZO_SPECS_DIR = ROOT / "raw" / "cz" / "national-specs"
 CACHE_DIR = ROOT / "raw" / "terroir-facts"
 MANIFEST = CACHE_DIR / "manifest-cz.json"
 
 MIN_LIEN_CHARS = 400
 FUZZY_THRESHOLD = 0.6
 WIKI_HINT_CHAR_CAP = 1500
+
+# CZ wine region → SZPI CHZO spec sidecar. Czech wine law publishes no
+# per-appellation terroir narrative, but the two SZPI CHZO (PGI) product
+# specifications carry a section-1 description of the physical Morava /
+# Čechy wine region (climate + per-bioregion geology/soils). That
+# description is tier-agnostic, so it grounds the terroir of every CZ
+# wine in that region — all 9 Moravian + 4 Bohemian appellations — from a
+# licence-clear regulator source (úřední dílo). See _lib/cz/chzo_spec.py.
+_CHZO_BY_REGION = {"Morava": "chzo-moravske", "Čechy": "chzo-ceske"}
+_chzo_cache: dict[str, dict] = {}
+
+
+def _chzo_for_region(region: str) -> dict:
+    """Return the cached CHZO sidecar (region_terroir_text + provenance)
+    for a Czech wine region, or {} when none is available."""
+    key = _CHZO_BY_REGION.get(region or "")
+    if not key:
+        return {}
+    if key not in _chzo_cache:
+        p = CHZO_SPECS_DIR / f"{key}.json"
+        try:
+            _chzo_cache[key] = json.loads(p.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            _chzo_cache[key] = {}
+    return _chzo_cache[key]
 
 
 # Same 4-bucket structure as FR/ES/PT/IT/AT/SI/SK 02d, with Czech topic
@@ -246,14 +272,33 @@ def _ground_facts(
 
 
 def _resolve_lien_and_source(rec: dict) -> tuple[str, dict]:
-    """Return (link_to_terroir text, source-provenance dict) for an SI
-    record. Czechia has no national-spec fallback layer wired in v1, so
-    this is just the on-disk JEDNOTNÝ-DOKUMENT link section plus the
-    EUR-Lex URL for cache attribution."""
+    """Return (link_to_terroir text, source-provenance dict) for a CZ
+    record.
+
+    Preference order:
+      1. The on-disk EUR-Lex JEDNOTNÝ-DOKUMENT "Popis souvislostí" — if a
+         curator ever pins an EU single document (none exist in v1).
+      2. The SZPI CHZO region terroir text for the record's wine region
+         (the regulator source covering all 13 CZ wines — see the module
+         `_CHZO_BY_REGION` note). Provenance points to the SZPI PDF so the
+         panel attributes the terroir bullets to the regulator spec.
+    """
     lien = rec.get("link_to_terroir") or ""
-    src = rec.get("source") or {}
-    eu_url = src.get("final_url") or src.get("source_url") or ""
-    return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
+    if len(lien) >= MIN_LIEN_CHARS:
+        src = rec.get("source") or {}
+        eu_url = src.get("final_url") or src.get("source_url") or ""
+        return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
+
+    chzo = _chzo_for_region(rec.get("region") or "")
+    text = chzo.get("region_terroir_text") or ""
+    if text:
+        return text, {
+            "pdf_url": chzo.get("source_url") or "",
+            "kind": "cz-chzo-specifikace",
+            "source_org": chzo.get("source_org") or "szpi",
+            "title": chzo.get("source_title") or "",
+        }
+    return lien, {"pdf_url": "", "kind": "eu-oj"}
 
 
 # ───────────────────────────────────────────────────────────── core loop ──

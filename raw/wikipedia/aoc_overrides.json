@@ -224,8 +224,10 @@
       "verification_quote": "Vinařská oblast Čechy je vinařská oblast, která obsahuje schválená území pro pěstování révy vinné."
     },
     "ceske": {
-      "missing": true,
-      "note": "researched 2026-05; no dedicated article for \"České zemské víno\"; appears only as a classification term inside the general Víno article"
+      "wiki_title": "Vinařská oblast Čechy",
+      "page_url": "https://cs.wikipedia.org/wiki/Vina%C5%99sk%C3%A1_oblast_%C4%8Cechy",
+      "verification_quote": "Vinařská oblast Čechy je vinařská oblast, která obsahuje schválená území pro pěstování révy vinné.",
+      "note": "pinned 2026-05-31; české zemské víno (PGI) is coextensive with the Čechy wine region — reuse the region article for salience."
     },
     "morava": {
       "wiki_title": "Vinařská oblast Morava",
@@ -240,6 +242,12 @@
       "wiki_title": "Znojemská vinařská podoblast",
       "page_url": "https://cs.wikipedia.org/wiki/Znojemsk%C3%A1_vina%C5%99sk%C3%A1_podoblast",
       "verification_quote": "Znojemská vinařská podoblast leží ve vinařské oblasti Morava. Pokrývá vinařské obce okresů Znojmo a Třebíč."
+    },
+    "znojemska": {
+      "wiki_title": "Znojemská vinařská podoblast",
+      "page_url": "https://cs.wikipedia.org/wiki/Znojemsk%C3%A1_vina%C5%99sk%C3%A1_podoblast",
+      "verification_quote": "Znojemská vinařská podoblast leží ve vinařské oblasti Morava. Pokrývá vinařské obce okresů Znojmo a Třebíč.",
+      "note": "pinned 2026-05-31; the bare-name cascade hit the festival article 'Znojemské vinobraní' — wrong topic."
     }
   },
   "de": {

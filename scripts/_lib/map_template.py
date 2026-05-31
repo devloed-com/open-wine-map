@@ -127,6 +127,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_national_pliego": _("Pliego de condiciones (national, PDF)"),
         "src_national_pliego_added": _("variétés ajoutées"),
         "src_national_spec": _("Cahier des charges national (PDF)"),
+        "src_chzo_spec": _("Spécification du produit (IGP, PDF)"),
         "src_regional_register": _("Registre régional des cépages (PDF)"),
         "src_eambrosia": _("Registre eAmbrosia (UE)"),
         "src_eambrosia_id": _("Numéro de dossier"),
@@ -2626,6 +2627,11 @@ _TEMPLATE = """<!doctype html>
     if (sources.national_spec_url) {{
       const org = sources.national_spec_source_org ? ' — ' + escapeHtml(sources.national_spec_source_org) : '';
       links.push(`<li><a href="${{escapeAttr(sources.national_spec_url)}}" target="_blank" rel="noopener">${{LABELS.src_national_spec}}</a>${{org}}</li>`);
+    }}
+    if (sources.chzo_spec_url) {{
+      const reg = sources.chzo_spec_region ? ' — ' + escapeHtml(sources.chzo_spec_region) : '';
+      const org = sources.chzo_spec_source_org ? ' (' + escapeHtml(sources.chzo_spec_source_org.toUpperCase()) + ')' : '';
+      links.push(`<li><a href="${{escapeAttr(sources.chzo_spec_url)}}" target="_blank" rel="noopener">${{LABELS.src_chzo_spec}}</a>${{reg}}${{org}}</li>`);
     }}
     if (sources.regional_register_url) {{
       const reg = sources.regional_register_region ? ' — ' + escapeHtml(sources.regional_register_region) : '';

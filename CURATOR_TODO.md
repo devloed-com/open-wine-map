@@ -1762,16 +1762,24 @@ future ÚKZÚZ or per-consortium "registered Leitsorten" per
 sub-region could give a more useful principal split (much like the
 DE BLE Produktspezifikation §3.2 split). Not blocking.
 
-### Terroir text — ❌ structurally unavailable
+### Terroir text + styles — ✅ solved via SZPI CHZO specs (2026-05-31)
 
-Czech wine law does not publish per-appellation terroir / link-to-
-region narrative text. The "Popis souvislostí" section that EU
-JEDNOTNÝ DOKUMENT carries is exactly what's missing for grandfathered
-CZ names. The 3 newer 2011 PDOs (Znojmo, Šobes, Novosedelské) that
-went through the post-2009 EU procedure also don't publish a
-documento unic publicly. **Verified by /research-gaps 2026-05-24**
-(see `tmp/cz-specification-research-results.md`). No Phase-2 unlock
-path for terroir text short of curator-authored notes.
+The earlier "structurally unavailable" verdict held only for the CHOP
+(PDO) tier + the EU register. The **SZPI** publishes the two **CHZO
+(PGI) product specifications** as licence-clear PDFs (úřední dílo) —
+full EU-template specs whose section-1 region description (climate +
+per-bioregion geology/soils) is the regulator's terroir narrative for
+the Morava / Čechy wine region. Every CZ wine sits in one of the two
+regions, so all 13 now ground their terroir on a regulator source:
+`scripts/_lib/cz/chzo_spec.py` + stage 02f fetch
+(`szpi.gov.cz/soubor/specifikace-chzo-{moravske,ceske}.aspx`) →
+`cz/02d` grounds on `region_terroir_text` → **7–10 terroir facts on
+all 13 CZ wines** (en/fr/es/nl). Styles: the 2 PGIs get the real CHZO
+roster (sparkling / semi-sparkling / vin-de-liqueur); the CHOPs +
+podoblasti get grape-colour-inferred white/red/rose (+ vin-de-paille
+for Novosedelské Slámové víno). Phase-2 polish: per-podoblast
+terroir text (split section 1.2's bioregion prose by podoblast) to
+de-duplicate the macro/PGI shared bullets.
 
 ### Grape vocabulary — ✅ seeded (2026-05-24)
 
