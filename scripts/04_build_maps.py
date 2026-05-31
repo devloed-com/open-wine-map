@@ -87,6 +87,8 @@ from _lib.bg.geometry import BGPolygonIndex
 from _lib.bg.region import derive_region as derive_bg_region
 from _lib.gr.geometry import GRPolygonIndex
 from _lib.gr.region import derive_region as derive_gr_region
+from _lib.cy.geometry import CYPolygonIndex
+from _lib.cy.region import derive_region as derive_cy_region
 from _lib.sk.geometry import SKPolygonIndex
 from _lib.sk.region import derive_region as derive_sk_region
 from _lib.cz.geometry import CZPolygonIndex
@@ -99,6 +101,7 @@ from _lib.be.geometry import BEPolygonIndex
 from _lib.be.region import derive_region as derive_be_region
 from _lib.nl.geometry import NLPolygonIndex
 from _lib.nl.region import derive_region as derive_nl_region
+from _lib.mt.geometry import MTPolygonIndex
 from _lib.i18n import LOCALES, compile_catalogs
 from _lib.lieu_dit import LieuDitIndex, derive_climat_name
 from _lib.map_template import render as render_map_html
@@ -143,6 +146,8 @@ EXTRACTED_BG = ROOT / "raw" / "bg" / "dokumenti-extracted"
 NATIONAL_SPECS_BG = ROOT / "raw" / "bg" / "national-specs-extracted"
 EXTRACTED_GR = ROOT / "raw" / "gr" / "dokumenti-extracted"
 NATIONAL_SPECS_GR = ROOT / "raw" / "gr" / "national-specs-extracted"
+EXTRACTED_CY = ROOT / "raw" / "cy" / "dokumenti-extracted"
+NATIONAL_SPECS_CY = ROOT / "raw" / "cy" / "national-specs-extracted"
 NATIONAL_SPECS_RO = ROOT / "raw" / "ro" / "national-specs-extracted"
 NATIONAL_SPECS_HU = ROOT / "raw" / "hu" / "national-specs-extracted"
 EXTRACTED_SK = ROOT / "raw" / "sk" / "dokumenty-extracted"
@@ -158,6 +163,7 @@ LU_IVV_VINEYARDS_SHP = (
 )
 EXTRACTED_BE = ROOT / "raw" / "be" / "dokumenten-extracted"
 EXTRACTED_NL = ROOT / "raw" / "nl" / "dokumenten-extracted"
+EXTRACTED_MT = ROOT / "raw" / "mt" / "dokumente-extracted"
 NL_NUTS_GEOJSON = ROOT / "raw" / "nl" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_2.geojson"
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"
 WIKI = ROOT / "wiki"
@@ -233,6 +239,11 @@ _HR_SPECIFIKACIJA_BY_SLUG: dict[str, dict] = {}
 # φάκελος (stage 02f) — 87 structured-PDF ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ, 43 `.doc`,
 # 2 `.docx`. `parser_template` (gr-national-{pdf,doc,docx}) distinguishes.
 _GR_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
+# Slug-keyed cache of CY national-spec provenance, populated by
+# augment_cy_records_with_national_specs(). All 11 CY wines are
+# grandfathered names augmented from the moa.gov.cy τεχνικός φάκελος
+# (stage 02f) — a Greek ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ PDF, OCR'd when image-only.
+_CY_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
 
 # Slug-keyed cache of RO national-spec provenance, populated by
 # augment_ro_records_with_national_specs(). The 14 grandfathered RO wines
@@ -621,6 +632,73 @@ def augment_gr_records_with_national_specs(records: list[dict]) -> int:
             record["stub_reason"] = f"national-spec:{record['stub_reason']}"
         record["national_spec"] = provenance
         _GR_NATIONAL_SPEC_BY_SLUG[slug] = provenance
+        augmented += 1
+    return augmented
+
+
+def augment_cy_records_with_national_specs(records: list[dict]) -> int:
+    """In-place merge of CY national-spec sidecar data into stub records.
+
+    Sibling of `augment_gr_records_with_national_specs`. All 11 CY wines
+    ship as content-stubs (no fetchable EU-OJ ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ). Stage 02f
+    (`scripts/cy/02f_extract_national_specs.py`) parses the moa.gov.cy
+    Department-of-Agriculture τεχνικός φάκελος (Greek single-document
+    PDF, OCR'd when image-only) into `raw/cy/national-specs-extracted/
+    <slug>.json`; this merges grapes / terroir text / styles / geo-area
+    into the in-memory stub. `record["stub"]` stays True. Returns the
+    count augmented."""
+    _CY_NATIONAL_SPEC_BY_SLUG.clear()
+    if not NATIONAL_SPECS_CY.exists():
+        return 0
+    augmented = 0
+    for record in records:
+        if record.get("country") != "cy" or not record.get("stub"):
+            continue
+        slug = record.get("slug")
+        if not slug:
+            continue
+        sidecar_path = NATIONAL_SPECS_CY / f"{slug}.json"
+        if not sidecar_path.exists():
+            continue
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+
+        src = sidecar.get("source") or {}
+        provenance = {
+            "url": src.get("source_url") or "",
+            "sha256": src.get("sha256") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "format": src.get("format") or "",
+            "source_org": src.get("source_org") or "moa-cy",
+            "filename": src.get("filename") or "",
+            "parser_template": sidecar.get("parser_template") or "",
+        }
+
+        if sidecar.get("summary"):
+            record["summary"] = sidecar["summary"]
+        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
+                                      or sidecar["grapes"].get("accessory")):
+            record["grapes"] = sidecar["grapes"]
+        if sidecar.get("geo_area_brief"):
+            record["geo_area_brief"] = sidecar["geo_area_brief"]
+        if sidecar.get("link_to_terroir"):
+            record["link_to_terroir"] = sidecar["link_to_terroir"]
+        if sidecar.get("styles"):
+            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
+
+        section_roles = dict(record.get("section_roles") or {})
+        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
+            sidecar_roles = sidecar.get("section_roles") or {}
+            if sidecar_roles.get(role):
+                section_roles[role] = sidecar_roles[role]
+        record["section_roles"] = section_roles
+
+        if record.get("stub_reason") and not record["stub_reason"].startswith("national-spec:"):
+            record["stub_reason"] = f"national-spec:{record['stub_reason']}"
+        record["national_spec"] = provenance
+        _CY_NATIONAL_SPEC_BY_SLUG[slug] = provenance
         augmented += 1
     return augmented
 
@@ -2465,6 +2543,14 @@ def main() -> int:
             if json_path.name == "_index.json":
                 continue
             extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate CY extracted records
+    # (raw/cy/dokumenti-extracted/). All 11 CY wines are content-stubs
+    # augmented from the moa.gov.cy τεχνικός φάκελος.
+    if EXTRACTED_CY.exists():
+        for json_path in sorted(EXTRACTED_CY.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
     # Multi-country: also iterate SK extracted records
     # (raw/sk/dokumenty-extracted/). 4 of 10 SK wines have a fetchable
     # EUR-Lex Jednotný dokument; the other 6 ship as content-stubs.
@@ -2514,6 +2600,16 @@ def main() -> int:
     # the BE side. Source language is nl.
     if EXTRACTED_NL.exists():
         for json_path in sorted(EXTRACTED_NL.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate MT extracted records
+    # (raw/mt/dokumente-extracted/). 3 wine GIs (2 PDOs + 1 PGI). Source
+    # language is en — Malta's EU single documents are published in
+    # English (its co-official language), which is also the canonical
+    # rendered surface.
+    if EXTRACTED_MT.exists():
+        for json_path in sorted(EXTRACTED_MT.glob("*.json")):
             if json_path.name == "_index.json":
                 continue
             extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
@@ -2614,6 +2710,16 @@ def main() -> int:
     if n_aug_gr:
         print(
             f"[load] GR national-spec augmentation: {n_aug_gr} stub records enriched",
+            file=sys.stderr,
+        )
+    # CY national-spec augmentation — all 11 grandfathered CY wines ship
+    # as stubs (no fetchable EU-OJ Ενιαίο Έγγραφο). Stage 02f parses the
+    # moa.gov.cy Department-of-Agriculture τεχνικός φάκελος (Greek
+    # single-document PDF, OCR'd when image-only) into per-wine sidecars.
+    n_aug_cy = augment_cy_records_with_national_specs(extracted_records)
+    if n_aug_cy:
+        print(
+            f"[load] CY national-spec augmentation: {n_aug_cy} stub records enriched",
             file=sys.stderr,
         )
     # RO: the 14 grandfathered wines (only an Ares(...) ref in eAmbrosia)
@@ -2870,6 +2976,20 @@ def main() -> int:
         file=sys.stderr,
     )
     gr_hits: Counter[str] = Counter()
+    # CY polygon index: Bétard 2022 covers all 7 CY PDOs (Cyprus joined
+    # the EU in 2004). The 4 CY PGIs are the island's wine districts
+    # (Πάφος / Λεμεσός / Λάρνακα / Λευκωσία) and resolve as the union of
+    # the GISCO CY communities carrying the district's GISCO_ID digit.
+    cy_polygons = CYPolygonIndex(
+        figshare_gpkg=ES_FIGSHARE_GPKG,
+        gisco_lau_zip=ES_GISCO_LAU_ZIP,
+    )
+    print(
+        f"[load] CY polygons: {cy_polygons.n_pdo_polygons} Figshare CY-PDOs / "
+        f"{cy_polygons.n_lau} GISCO CY communities",
+        file=sys.stderr,
+    )
+    cy_hits: Counter[str] = Counter()
     # SK polygon index: Bétard 2022 covers 8 of 9 SK DOPs; the 9th
     # (TOKAJSKÉ VÍNO, PDO-SK-02856) post-dates the snapshot and aliases
     # the Vinohradnícka oblasť Tokaj polygon (PDO-SK-A0120). The single
@@ -2965,6 +3085,12 @@ def main() -> int:
         file=sys.stderr,
     )
     nl_hits: Counter[str] = Counter()
+    mt_polygons = MTPolygonIndex(figshare_gpkg=ES_FIGSHARE_GPKG)
+    print(
+        f"[load] MT polygons: {mt_polygons.n_pdo_polygons} Figshare MT-PDOs",
+        file=sys.stderr,
+    )
+    mt_hits: Counter[str] = Counter()
 
     # Curator-reviewed geometry-outlier overrides — clips confirmed-spurious
     # parts (upstream-data errors) out of resolved polygons. See
@@ -2988,6 +3114,7 @@ def main() -> int:
         _emit_ro_features = False
         _emit_bg_features = False
         _emit_gr_features = False
+        _emit_cy_features = False
         _emit_de_features = False
         _emit_sk_features = False
         _emit_cz_features = False
@@ -2995,6 +3122,7 @@ def main() -> int:
         _emit_lu_features = False
         _emit_be_features = False
         _emit_nl_features = False
+        _emit_mt_features = False
 
         # ES branch — Figshare PDO polygon → GISCO commune-union → parent
         # fallback. Stubs (`stub: True`) skip geometry; they appear in the
@@ -3406,6 +3534,33 @@ def main() -> int:
             _emit_ro_features = False
             _emit_bg_features = False
             _emit_gr_features = True
+        elif country == "cy":
+            # CY branch — Bétard Figshare PDO match covers all 7 CY PDOs
+            # (Cyprus joined the EU in 2004). The 4 CY PGIs are the
+            # island's wine districts and resolve as the GISCO
+            # district-union (by GISCO_ID digit). All 11 CY wines resolve.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = cy_polygons.resolve(
+                record.get("file_number") or "",
+            )
+            cy_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_es_features = False
+            _emit_pt_features = False
+            _emit_it_features = False
+            _emit_at_features = False
+            _emit_si_features = False
+            _emit_hr_features = False
+            _emit_hu_features = False
+            _emit_ro_features = False
+            _emit_bg_features = False
+            _emit_cy_features = True
         elif country == "de":
             # DE branch — Bétard Figshare PDO match for the 13 traditional
             # German Anbaugebiete (PDO-DE-A12xx + PDO-DE-A0867 = Ahr);
@@ -3610,6 +3765,23 @@ def main() -> int:
                 parent_geom_by_slug[record["slug"]] = geom
                 parent_village_geom_by_slug[record["slug"]] = geom
             _emit_nl_features = True
+        elif country == "mt":
+            # MT branch — Bétard 2022 covers both MT PDOs (Malta, Gozo);
+            # the "Maltese Islands" PGI resolves as the union of the two
+            # PDO polygons (region-pdo-union).
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = mt_polygons.resolve(
+                record.get("file_number") or ""
+            )
+            mt_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_mt_features = True
         else:
             _emit_es_features = False
             _emit_pt_features = False
@@ -3621,10 +3793,11 @@ def main() -> int:
         if (_emit_es_features or _emit_pt_features or _emit_it_features
                 or _emit_at_features or _emit_si_features or _emit_hr_features
                 or _emit_hu_features or _emit_ro_features or _emit_bg_features
-                or _emit_gr_features or _emit_de_features
+                or _emit_gr_features or _emit_cy_features or _emit_de_features
                 or _emit_sk_features or _emit_cz_features
                 or _emit_ch_features or _emit_lu_features
-                or _emit_be_features or _emit_nl_features):
+                or _emit_be_features or _emit_nl_features
+                or _emit_mt_features):
             # Geometry already resolved above; skip the FR-specific chain.
             pass
         elif is_sub_denomination:
@@ -3682,10 +3855,11 @@ def main() -> int:
         if (_emit_es_features or _emit_pt_features or _emit_it_features
                 or _emit_at_features or _emit_si_features or _emit_hr_features
                 or _emit_hu_features or _emit_ro_features or _emit_bg_features
-                or _emit_gr_features or _emit_de_features
+                or _emit_gr_features or _emit_cy_features or _emit_de_features
                 or _emit_sk_features or _emit_cz_features
                 or _emit_ch_features or _emit_lu_features
-                or _emit_be_features or _emit_nl_features):
+                or _emit_be_features or _emit_nl_features
+                or _emit_mt_features):
             pass
         elif is_sub_denomination:
             # Prefer DGC's own parcellaire polygon as the village geometry —
@@ -3805,7 +3979,7 @@ def main() -> int:
         # ES + PT + IT + AT + SI records have no `categorie` — every entry
         # is filtered to productType=WINE upstream in stage 00, so they're
         # all wines.
-        if record.get("country") in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "sk", "cz", "ch", "lu", "be", "nl"):
+        if record.get("country") in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "cy", "sk", "cz", "ch", "lu", "be", "nl", "mt"):
             is_wine = "1"
         else:
             is_wine = "1" if categorie.startswith("Vin") else "0"
@@ -3980,6 +4154,17 @@ def main() -> int:
                 record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
             ) or "Ελλάδα"
+        elif record.get("country") == "cy":
+            # CY region = wine district (επαρχία): Πάφος / Λεμεσός /
+            # Λάρνακα / Λευκωσία. The curated file_number map covers
+            # every wine (4 PGIs ARE the districts; the 7 PDOs sit
+            # inside one). No sub-denominations in v1.
+            region_value = record.get("region") or derive_cy_region(
+                record,
+                record.get("section_roles", {}).get("geo_area", ""),
+                record.get("section_roles", {}).get("link_to_terroir", ""),
+                record.get("name", ""),
+            ) or "Κύπρος"
         elif record.get("country") == "sk":
             # SK region = vinohradnícka oblasť (Malokarpatská /
             # Južnoslovenská / Nitrianska / Stredoslovenská /
@@ -4032,6 +4217,11 @@ def main() -> int:
             # file_number. PGI = its own province; each PDO sits in
             # exactly one province.
             region_value = derive_nl_region(record) or "Nederland"
+        elif record.get("country") == "mt":
+            # MT region = the wine island (Malta / Gozo) or "Maltese
+            # Islands" for the archipelago-wide PGI. Carried on the
+            # record from stage 02.
+            region_value = record.get("region") or "Maltese Islands"
         else:
             region_value = derive_fr_wine_region(record)
         common_props = {
@@ -4651,6 +4841,31 @@ def _sources_for(record: dict) -> dict:
             "national_spec_source_org": gr_spec.get("source_org", ""),
             "national_spec_parser_template": gr_spec.get("parser_template", ""),
         }
+    if record.get("country") == "cy":
+        # Cyprus: none of the 11 wines carry a fetchable EU-OJ Ενιαίο
+        # Έγγραφο — all are augmented from the moa.gov.cy Department of
+        # Agriculture τεχνικός φάκελος (Greek single-document PDF, OCR'd
+        # when image-only). All 7 PDOs resolve to a Bétard polygon; the
+        # 4 PGIs to a GISCO district-union. eAmbrosia + file_number always
+        # resolve.
+        cy_spec = record.get("national_spec") or _CY_NATIONAL_SPEC_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
+        return {
+            "country": "cy",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+            "national_spec_url": cy_spec.get("url", ""),
+            "national_spec_sha256": cy_spec.get("sha256", ""),
+            "national_spec_fetched_at": cy_spec.get("fetched_at", ""),
+            "national_spec_format": cy_spec.get("format", ""),
+            "national_spec_source_org": cy_spec.get("source_org", ""),
+            "national_spec_parser_template": cy_spec.get("parser_template", ""),
+        }
     if record.get("country") == "sk":
         # Slovakia: 4 of 10 wines carry a fetchable EUR-Lex Jednotný
         # dokument (Vinohradnícka oblasť Tokaj, Stredoslovenská,
@@ -4783,6 +4998,18 @@ def _sources_for(record: dict) -> dict:
         return {
             "country": "nl",
             "source_lang": "nl",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
+    if record.get("country") == "mt":
+        # Malta: EU-OJ SINGLE DOCUMENT published in English (co-official).
+        return {
+            "country": "mt",
+            "source_lang": "en",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
             "eu_oj_publication_url": src.get("source_url") or "",
             "filename": src.get("filename") or "",
@@ -5043,12 +5270,14 @@ def emit_html(
             "ro": EXTRACTED_RO,
             "bg": EXTRACTED_BG,
             "gr": EXTRACTED_GR,
+            "cy": EXTRACTED_CY,
             "sk": EXTRACTED_SK,
             "cz": EXTRACTED_CZ,
             "ch": EXTRACTED_CH,
             "lu": EXTRACTED_LU,
             "be": EXTRACTED_BE,
             "nl": EXTRACTED_NL,
+            "mt": EXTRACTED_MT,
         }.get(country, EXTRACTED)
         ext_path = ext_dir / f"{slug}.json"
         summary = ""
@@ -5093,6 +5322,7 @@ def emit_html(
                 or (country == "si" and slug in _SI_SPECIFIKACIJA_BY_SLUG)
                 or (country == "hr" and slug in _HR_SPECIFIKACIJA_BY_SLUG)
                 or (country == "gr" and slug in _GR_NATIONAL_SPEC_BY_SLUG)
+                or (country == "cy" and slug in _CY_NATIONAL_SPEC_BY_SLUG)
                 or (country == "ro" and slug in _RO_NATIONAL_SPEC_BY_SLUG)
                 or (country == "hu" and slug in _HU_NATIONAL_SPEC_BY_SLUG)
                 or (country == "bg" and slug in _BG_NATIONAL_SPEC_BY_SLUG)
@@ -5269,9 +5499,13 @@ def emit_html(
                 src_lang = rec.get("source_lang") or "fr"
             elif rec_country == "nl":
                 src_lang = "nl"
+            elif rec_country == "mt":
+                # MT's country code is "mt" but its source language is "en"
+                # (Malta's EU single documents are published in English).
+                src_lang = "en"
             else:
                 # LU's country code is "lu" but its source language is "fr" — fall through to the "fr" default.
-                src_lang = rec_country if rec_country in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "sk", "cz") else "fr"
+                src_lang = rec_country if rec_country in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "cy", "sk", "cz") else "fr"
             t = translations.get(slug)
             if not t:
                 new_rec = rec
@@ -5312,8 +5546,10 @@ def emit_html(
                     return rec.get("source_lang") or "fr"
                 if c == "nl":
                     return "nl"
+                if c == "mt":
+                    return "en"
                 # LU (country "lu") uses source_lang "fr" — falls through to the "fr" default.
-                return c if c in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "sk", "cz") else "fr"
+                return c if c in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "cy", "sk", "cz") else "fr"
             facts_translations = {
                 slug: t for slug, t in all_facts_translations.items()
                 if lang != _src_lang_for(slug)

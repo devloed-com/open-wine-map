@@ -3896,6 +3896,107 @@ The standard `regen_manual_overrides_template.py` flow handles the 1
 edge case (Ambt Delden has no Dutch single document); curator can pin
 the English version, or — Phase 2 — the RVO national productdossier.
 
+## Malta pipeline (`scripts/mt/`)
+
+Country #18 and the **first English-source corpus**. 3 wine GIs from
+eAmbrosia: 2 PDOs (Malta `PDO-MT-A1630`, Gozo `PDO-MT-A1629`) + 1 PGI
+(Maltese Islands `PGI-MT-A1631`). Structurally the simplest EU-OJ
+single-document pipeline after Croatia — Bétard PDO geometry + a single
+PGI region-union, no national-spec layer.
+
+Spine: **eAmbrosia EU register**, filtered `country=MT` +
+`productType=WINE` + `status=registered`. Pliego source: the EU-OJ
+**"SINGLE DOCUMENT"** published inline as HTML in **English** (Malta is
+bilingual mt/en and the EU-OJ Maltese-wine documents are issued in
+English), reached via each GI's `publications[].uri` (`/legal-content/
+EN/TXT/HTML/`, `…01.ENG`). Same AWS-WAF caveat as the other EU-OJ
+countries — `scripts/mt/01b_solve_waf.py` is the Chromium bootstrap
+(neither Malta wine triggered it on the first run).
+
+| Script | Reads | Writes |
+|---|---|---|
+| mt/00_fetch_data.py | (network: eAmbrosia) | raw/mt/eambrosia/index.json + manifest.json |
+| mt/01_fetch_pliegos.py | raw/mt/eambrosia/index.json + raw/mt/oj-pages/manual_overrides.json | raw/mt/oj-pages/*.html + manifest.json |
+| mt/01b_solve_waf.py | raw/mt/oj-pages/manifest.json | raw/mt/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
+| mt/02_extract_pliegos.py | raw/mt/oj-pages/*.html | raw/mt/dokumente-extracted/*.json + _index.json |
+| mt/02d_extract_terroir_facts.py | raw/mt/dokumente-extracted/*.json + raw/wikipedia/aocs/en/ | raw/terroir-facts/*.json (country="mt") + manifest-mt.json |
+| mt/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="mt") | raw/translations/terroir-facts/<fr\|es\|nl>/*.json |
+| mt/03_generate_wiki.py | raw/mt/dokumente-extracted/*.json | wiki/<slug>.md (per MT record) + merges MT entries into wiki/_index.json |
+| mt/regen_manual_overrides_template.py | raw/mt/eambrosia/index.json + raw/mt/oj-pages/manifest.json | raw/mt/oj-pages/manual_overrides.json (curator queue) |
+| audit_mt_coverage.py | raw/mt/eambrosia/ + raw/mt/dokumente-extracted/ + raw/mt/oj-pages/manifest.json + raw/es/figshare/EU_PDO.gpkg + raw/terroir-facts/ | (stdout — coverage table) |
+
+MT-specific notes:
+- `kind` is `"DOP"` / `"IGP"` (same convention as ES/PT/IT/…). `country`
+  is `"mt"`; **`source_lang` is `"en"`** — Malta is the first corpus
+  whose source language is English. EN is also the canonical rendered
+  surface (`/`), so the extracted narrative needs no machine translation
+  for the homepage; stage 02e only produces fr/es/nl. The stage-04
+  src_lang resolvers (`_src_lang_for` + the summary/facts overlay) map
+  `country=="mt"` → `"en"` explicitly, the way `lu`→`fr` is handled.
+- The English SINGLE-DOCUMENT template is parsed by
+  [scripts/_lib/mt/single_document.py](scripts/_lib/mt/single_document.py)
+  (English section-keyword role routing — *Name(s)*, *Demarcated
+  geographical area*, *Main wine grapes variety(ies)*, *Description of
+  the link(s)*, …). Both Malta documents are **STANDARD AMENDMENT**
+  communications, so `extract_sections` uses the HU/BG monotonic-number
+  state machine: sections 4 & 5 nest `<p class="ti-grseq-1">`
+  subsections that restart numbering at 1 (per-wine-type descriptions,
+  per-variety oenological practices — "1. Passito", "1. Malbec"), and
+  the `last_top + 1` guard keeps those from shadowing the real top-level
+  sections.
+- The section-7 variety list is flat (no principal/accessory split) →
+  all `principal`. The two indigenous varieties **Ġellewża** (red) and
+  **Girgentina** (white) are folded into the shared `GRAPE_ALIAS` /
+  `DEFAULT_COLOUR` tables in
+  [scripts/_lib/grape_lexicon.py](scripts/_lib/grape_lexicon.py) (both
+  round-trip through unidecode, so the diacritic and plain spellings
+  fold to one slug); the other ~30 are international varieties already
+  in the lexicon.
+- Region facet = the wine island
+  ([scripts/_lib/mt/region.py](scripts/_lib/mt/region.py)): "Malta" /
+  "Gozo" for the two PDOs, "Maltese Islands" for the archipelago-wide
+  PGI. Native form, not gettext-translated.
+- v1 models the 3 wine GIs as a **flat corpus** — no sub-denominations.
+
+### MT terroir facts — Wikipedia-primary (the CH/LU model)
+
+The STANDARD AMENDMENT documents restate only *changed* sections, so
+section 8 ("Description of the link(s)") reads literally "No amendments
+are to be carried out in this section." for both PDOs — there is no
+link-to-terroir narrative in the regulator source. Exactly as for
+Switzerland's règlements, MT terroir facts therefore ground on the
+**English Wikipedia "Maltese wine" article** (pinned for all three GIs
+via `raw/wikipedia/aoc_overrides.json["en"]` — the CH/LU umbrella-
+article pattern), with the regulator data (region, varieties,
+demarcated area) as secondary context. `scripts/02b_fetch_aoc_lexicon.py`
+gained an `"en"` `LANG_CONFIG` entry (`--lang en` → en.wikipedia.org).
+02d/02e are siblings of the CH pair (English prompt, single source_lang
+"en", same 4-subsection schema + fuzzy-coverage filter); 02e targets
+fr/es/nl. v1 yield: 2 facts each for Malta/Gozo/Maltese-Islands.
+
+### MT geometry resolution chain (stage 04)
+
+Per MT record, in priority order
+([scripts/_lib/mt/geometry.py](scripts/_lib/mt/geometry.py)
+`MTPolygonIndex.resolve`; `geom_source` records the choice):
+
+1. **`figshare-pdo`** — exact `file_number` → `PDOid` match against
+   Bétard 2022 EU_PDO.gpkg. Covers both MT PDOs (Malta, Gozo). The
+   shared `raw/es/figshare/EU_PDO.gpkg` — no new fetch in stage 00.
+2. **`region-pdo-union`** — the single MT PGI ("Maltese Islands") is the
+   whole archipelago; Bétard is PDO-only, so it is the union of the two
+   MT PDO polygons (the SI/CZ/HU/BG pattern).
+3. **`stub-no-geometry`** — not hit in v1; all 3 MT wines resolve.
+
+### Curator workflow for MT
+
+Both PDOs carry a fetchable English SINGLE DOCUMENT; only the "Maltese
+Islands" PGI is a no-publication grandfathered name, and it still
+appears on the map via `region-pdo-union`. `regen_manual_overrides_
+template.py` writes a 1-entry queue for it — the curator's only job is
+to pin a public, licence-clear EU-OJ English SINGLE-DOCUMENT page if
+the Commission ever publishes one, then re-run mt/01 → mt/02 → stage 04.
+
 ## Batch API (02b-grapes / 02c / 02d / 02e)
 
 The LLM stages — `02b_translate_grapes` (grape-tooltip translation),
