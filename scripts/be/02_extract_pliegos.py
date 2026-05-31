@@ -37,7 +37,9 @@ from _lib.be.document import (  # noqa: E402
 from _lib.be.region import derive_region  # noqa: E402
 from _lib.be.text_parser import (  # noqa: E402
     pdftotext, parse_enig_document_text, parse_wallex_text,
+    parse_wallex_standalone_text,
     WALLEX_CHAPTER_BY_SLUG, WALLEX_CHAPTER_BY_FILE_NUMBER,
+    WALLEX_STANDALONE_SLUGS, WALLEX_STANDALONE_FILE_NUMBERS,
 )
 from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue, match_variety, set_pliego_context,
@@ -373,9 +375,11 @@ def _extract_from_html(cache: Path, lang: str) -> tuple[dict[str, str], dict[str
 
 
 def _extract_from_pdf(
-    pdf_cache: Path, lang: str, slug: str, file_number: str,
+    pdf_cache: Path, lang: str, slug: str, file_number: str, name: str = "",
 ) -> tuple[dict[str, str], dict[str, str], str]:
     """Route a cached PDF through the right text-mode parser:
+    - WALLEX single-AOC PDFs (Côtes de Sambre et Meuse) → WALLEX
+      standalone parser (one decree, one appellation, no chapters).
     - WALLEX PDFs (the 2 Walloon sparkling PDOs) → WALLEX-specific
       chapter parser (one decree, two PDOs, one chapter each).
     - Flemish PDFs structurally identical to EU enig documents →
@@ -384,6 +388,13 @@ def _extract_from_pdf(
     text = pdftotext(pdf_cache)
     if not text:
         return {}, {}, "pdftotext-empty"
+    if slug in WALLEX_STANDALONE_SLUGS or file_number in WALLEX_STANDALONE_FILE_NUMBERS:
+        sections, titles = parse_wallex_standalone_text(
+            text, slug=slug, file_number=file_number, name=name,
+        )
+        if not sections:
+            return {}, {}, "wallex-standalone-parse-empty"
+        return sections, titles, ""
     is_wallex = (
         slug in WALLEX_CHAPTER_BY_SLUG
         or file_number in WALLEX_CHAPTER_BY_FILE_NUMBER
@@ -446,7 +457,7 @@ def main() -> int:
             sections, titles, parse_reason = _extract_from_html(html_cache, lang)
         elif pdf_cache.exists():
             sections, titles, parse_reason = _extract_from_pdf(
-                pdf_cache, lang, slug, file_number,
+                pdf_cache, lang, slug, file_number, w.get("name", ""),
             )
         else:
             sections, titles, parse_reason = {}, {}, oj_meta.get("status") or "no-html-cached"
