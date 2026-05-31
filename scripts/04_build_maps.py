@@ -99,6 +99,7 @@ from _lib.be.geometry import BEPolygonIndex
 from _lib.be.region import derive_region as derive_be_region
 from _lib.nl.geometry import NLPolygonIndex
 from _lib.nl.region import derive_region as derive_nl_region
+from _lib.mt.geometry import MTPolygonIndex
 from _lib.i18n import LOCALES, compile_catalogs
 from _lib.lieu_dit import LieuDitIndex, derive_climat_name
 from _lib.map_template import render as render_map_html
@@ -158,6 +159,7 @@ LU_IVV_VINEYARDS_SHP = (
 )
 EXTRACTED_BE = ROOT / "raw" / "be" / "dokumenten-extracted"
 EXTRACTED_NL = ROOT / "raw" / "nl" / "dokumenten-extracted"
+EXTRACTED_MT = ROOT / "raw" / "mt" / "dokumente-extracted"
 NL_NUTS_GEOJSON = ROOT / "raw" / "nl" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_2.geojson"
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"
 WIKI = ROOT / "wiki"
@@ -2447,6 +2449,16 @@ def main() -> int:
             if json_path.name == "_index.json":
                 continue
             extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate MT extracted records
+    # (raw/mt/dokumente-extracted/). 3 wine GIs (2 PDOs + 1 PGI). Source
+    # language is en — Malta's EU single documents are published in
+    # English (its co-official language), which is also the canonical
+    # rendered surface.
+    if EXTRACTED_MT.exists():
+        for json_path in sorted(EXTRACTED_MT.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
     # Augment ES records with national-pliego sidecar data — adds the
     # accessory varieties that the EU-OJ documento único omits. The
     # sidecar carries provenance (URL + sha256 + fetched_at) which
@@ -2895,6 +2907,12 @@ def main() -> int:
         file=sys.stderr,
     )
     nl_hits: Counter[str] = Counter()
+    mt_polygons = MTPolygonIndex(figshare_gpkg=ES_FIGSHARE_GPKG)
+    print(
+        f"[load] MT polygons: {mt_polygons.n_pdo_polygons} Figshare MT-PDOs",
+        file=sys.stderr,
+    )
+    mt_hits: Counter[str] = Counter()
 
     # Curator-reviewed geometry-outlier overrides — clips confirmed-spurious
     # parts (upstream-data errors) out of resolved polygons. See
@@ -2925,6 +2943,7 @@ def main() -> int:
         _emit_lu_features = False
         _emit_be_features = False
         _emit_nl_features = False
+        _emit_mt_features = False
 
         # ES branch — Figshare PDO polygon → GISCO commune-union → parent
         # fallback. Stubs (`stub: True`) skip geometry; they appear in the
@@ -3540,6 +3559,23 @@ def main() -> int:
                 parent_geom_by_slug[record["slug"]] = geom
                 parent_village_geom_by_slug[record["slug"]] = geom
             _emit_nl_features = True
+        elif country == "mt":
+            # MT branch — Bétard 2022 covers both MT PDOs (Malta, Gozo);
+            # the "Maltese Islands" PGI resolves as the union of the two
+            # PDO polygons (region-pdo-union).
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = mt_polygons.resolve(
+                record.get("file_number") or ""
+            )
+            mt_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_mt_features = True
         else:
             _emit_es_features = False
             _emit_pt_features = False
@@ -3554,7 +3590,8 @@ def main() -> int:
                 or _emit_gr_features or _emit_de_features
                 or _emit_sk_features or _emit_cz_features
                 or _emit_ch_features or _emit_lu_features
-                or _emit_be_features or _emit_nl_features):
+                or _emit_be_features or _emit_nl_features
+                or _emit_mt_features):
             # Geometry already resolved above; skip the FR-specific chain.
             pass
         elif is_sub_denomination:
@@ -3615,7 +3652,8 @@ def main() -> int:
                 or _emit_gr_features or _emit_de_features
                 or _emit_sk_features or _emit_cz_features
                 or _emit_ch_features or _emit_lu_features
-                or _emit_be_features or _emit_nl_features):
+                or _emit_be_features or _emit_nl_features
+                or _emit_mt_features):
             pass
         elif is_sub_denomination:
             # Prefer DGC's own parcellaire polygon as the village geometry —
@@ -3735,7 +3773,7 @@ def main() -> int:
         # ES + PT + IT + AT + SI records have no `categorie` — every entry
         # is filtered to productType=WINE upstream in stage 00, so they're
         # all wines.
-        if record.get("country") in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "sk", "cz", "ch", "lu", "be", "nl"):
+        if record.get("country") in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "sk", "cz", "ch", "lu", "be", "nl", "mt"):
             is_wine = "1"
         else:
             is_wine = "1" if categorie.startswith("Vin") else "0"
@@ -3962,6 +4000,11 @@ def main() -> int:
             # file_number. PGI = its own province; each PDO sits in
             # exactly one province.
             region_value = derive_nl_region(record) or "Nederland"
+        elif record.get("country") == "mt":
+            # MT region = the wine island (Malta / Gozo) or "Maltese
+            # Islands" for the archipelago-wide PGI. Carried on the
+            # record from stage 02.
+            region_value = record.get("region") or "Maltese Islands"
         else:
             region_value = derive_fr_wine_region(record)
         common_props = {
@@ -4709,6 +4752,18 @@ def _sources_for(record: dict) -> dict:
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
         }
+    if record.get("country") == "mt":
+        # Malta: EU-OJ SINGLE DOCUMENT published in English (co-official).
+        return {
+            "country": "mt",
+            "source_lang": "en",
+            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+            "eu_oj_publication_url": src.get("source_url") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+        }
     if record.get("country") == "es":
         # The AOC-blob phase re-reads the on-disk extracted JSON (which
         # doesn't carry the augmentation), so fall back to the slug-keyed
@@ -5187,6 +5242,10 @@ def emit_html(
                 src_lang = rec.get("source_lang") or "fr"
             elif rec_country == "nl":
                 src_lang = "nl"
+            elif rec_country == "mt":
+                # MT's country code is "mt" but its source language is "en"
+                # (Malta's EU single documents are published in English).
+                src_lang = "en"
             else:
                 # LU's country code is "lu" but its source language is "fr" — fall through to the "fr" default.
                 src_lang = rec_country if rec_country in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "sk", "cz") else "fr"
@@ -5230,6 +5289,8 @@ def emit_html(
                     return rec.get("source_lang") or "fr"
                 if c == "nl":
                     return "nl"
+                if c == "mt":
+                    return "en"
                 # LU (country "lu") uses source_lang "fr" — falls through to the "fr" default.
                 return c if c in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "sk", "cz") else "fr"
             facts_translations = {

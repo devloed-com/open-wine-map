@@ -1260,6 +1260,11 @@ GRAPE_ALIAS = {
     "pesecka-leanka": "feteasca-alba",             # SK name for HU Leányka (VIVC #6816) — folded to Fetească albă (#4119), distinct from feteasca-regala (#4121)
     "leanka": "feteasca-alba",
     "modry-portugal": "blauer-portugieser",
+    # ─── Malta — the two indigenous Maltese varieties. Both round-trip
+    # through unidecode (Ġ→G, ż→z) so the diacritic and plain spellings
+    # fold to one slug. No foreign-cultivar equivalent. ───
+    "gellewza": "gellewza",                        # Ġellewża — Malta's indigenous red
+    "girgentina": "girgentina",                    # Malta's indigenous white (Girgenti / Agrigento)
     # ─── Czech crossings (Lednice / Velké Bílovice / Polášek) ───
     "palava": "palava",                            # VIVC #18198 PÁLAVA — Tramín × Müller Thurgau
     "aurelius": "aurelius",                        # VIVC #816 AURELIUS — Neuburger × Müller-Thurgau (CZ)
@@ -2067,6 +2072,9 @@ DEFAULT_COLOUR: dict[str, str] = {
     "zumic": "blanc",
     "bilan-bijeli": "blanc",
     "posip-crni": "noir",
+    # Malta indigenous varieties.
+    "gellewza": "noir",
+    "girgentina": "blanc",
 }
 
 # Slugs that are pure boilerplate after stop-word filtering and should be

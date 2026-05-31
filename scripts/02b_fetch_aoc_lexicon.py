@@ -71,6 +71,23 @@ if OVERRIDES_FILE.exists():
 # substring filter applied to the REST summary description+extract to reject
 # wrong-topic page hits (a town named Bandol vs the Bandol appellation).
 LANG_CONFIG: dict[str, dict] = {
+    "en": {
+        # English wine-vocabulary anchors for the Malta corpus
+        # (`--lang en` → en.wikipedia.org). Malta's EU single documents
+        # are published in English (its co-official language), so EN is
+        # the source language. Malta has no per-PDO wine article; the
+        # umbrella "Maltese wine" article is pinned for both PDOs via
+        # raw/wikipedia/aoc_overrides.json["en"].
+        "aoc_keywords": (
+            "wine", "wines", "vineyard", "vineyards", "viticulture",
+            "winemaking", "grape", "grapes", "vine", "vines", "vintage",
+            "pdo", "pgi", "appellation", "denomination",
+        ),
+        "default_source": "raw/mt/dokumente-extracted",
+        "disambiguators_for_kind": lambda kind: (
+            "wine", "PDO", "PGI", "appellation",
+        ),
+    },
     "fr": {
         "aoc_keywords": (
             "appellation", "vin", "vignoble", "viticole", "cépage", "cépages",

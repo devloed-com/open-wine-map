@@ -1887,6 +1887,57 @@ BLE Produktspezifikation layer; what's still missing is the EU-OJ
 narrative-section data. Curator path: `regen_manual_overrides_template.py`
 → pin a EUR-Lex OJ-C URL if one is published.
 
+## Malta
+
+Country #18, added 2026-05-31. 3 wine GIs (2 DOP + 1 IGP); all 3 on the
+map. First English-source corpus (`source_lang="en"`).
+
+### Coverage — ✅ complete
+
+- Malta `PDO-MT-A1630` + Gozo `PDO-MT-A1629` — EU-OJ English SINGLE
+  DOCUMENT extracted (sections 1–9, ~30 varieties each).
+- Maltese Islands `PGI-MT-A1631` — `no-publication` content-stub;
+  resolves geometry via `region-pdo-union` (Malta ∪ Gozo). 1-entry
+  curator queue; pin a EUR-Lex OJ-C English SINGLE-DOCUMENT URL in
+  `raw/mt/oj-pages/manual_overrides.json` only if the Commission ever
+  publishes one (no action required for v1 — it is on the map).
+
+### Terroir narrative — ✅ closed: Wikipedia-only (no regulator source exists)
+
+Investigated 2026-05-31. The two PDO publications are STANDARD AMENDMENT
+communications whose section 8 reads "No amendments are to be carried
+out in this section." — and this is **not** a language artifact: the
+Maltese-language version says the same ("Ma għandha ssir l-ebda emenda
+f'din it-taqsima"). The full national specs **are** publicly fetchable
+(clean PDFs via `legislation.mt/getpdf/<id>`, no Playwright needed):
+- **S.L. 436.07** "D.O.K. Wines Production Protocols" — varieties /
+  yields / winemaking practices; **no terroir narrative**.
+- **S.L. 436.05** "Denomination of Origin & Geographic Indications" —
+  GI framework regulation; soil/climate appear only as a generic legal
+  definition, not a Malta/Gozo-specific description.
+
+So the Maltese regulator publishes **no appellation-specific terroir
+prose** anywhere (the CH situation). The EU single-document section 8
+was never populated (Malta's 2009 protection predates the EU
+single-document regime; AM01 is the first one and deferred section 8).
+**Decision:** terroir stays Wikipedia-grounded (CH/LU pattern); this is
+the honest narrative surface, not a fixable gap.
+
+Optional future enhancement (NOT a terroir fix): a national-spec layer
+(stage 01c/02f, `legislation.mt/getpdf`) could pull S.L. 436.07's wine-
+style descriptions + variety/yield rules to replace the amendment-
+boilerplate summary and add regulator-grounded data. Licence: Maltese
+legislation © Govt of Malta — verify reuse terms before ingesting.
+
+### Indigenous varieties — ✅
+
+Ġellewża (red) + Girgentina (white) folded into `grape_lexicon.py`
+(`DEFAULT_COLOUR` + `GRAPE_ALIAS`). VIVC IDs + grape-Wikipedia tooltips
+not yet resolved (02g/02b not re-run for the 2 new slugs) — optional
+enrichment; pills render with colour but no tooltip card. Run
+`scripts/02g_fetch_vivc.py` + `scripts/02b_fetch_grape_lexicon.py --only
+gellewza --only girgentina` to add them.
+
 ## Style taxonomy follow-ups
 
 - **Sweet/oxidative cross-cut** — `generoso` (sherry-family) sits under `oxidative` because most sherries are dry; PX cream sherries and dulces are nominally oxidative *and* sweet. Currently they only emit `oxidative + generoso + (sub-tag)`; the `sweet` bucket is *not* added. Decide whether to surface dual-tagging (record carries both `oxidative` and `sweet`) when the pliego describes a PX / cream / sweet-oloroso style. Currently affects ~5 sherry pliegos. Defer to v2.

@@ -48,6 +48,8 @@ _SOURCES: tuple[tuple[str, Path], ...] = (
     ("sk", ROOT / "raw" / "sk" / "dokumenty-extracted"),
     ("cz", ROOT / "raw" / "cz" / "dokumenty-extracted"),
     ("ch", ROOT / "raw" / "ch" / "dokumente-extracted"),
+    # Malta — source language is English (EU single documents are EN).
+    ("en", ROOT / "raw" / "mt" / "dokumente-extracted"),
 )
 
 
