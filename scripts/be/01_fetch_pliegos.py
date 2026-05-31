@@ -61,6 +61,22 @@ UA = (
     "mailto:winemap@devloed.com) python-requests"
 )
 
+# The eAmbrosia register attachment endpoint is browser-gated: it serves a
+# stub HTML page unless the request carries a real browser User-Agent AND a
+# browser-style Accept WITHOUT an explicit `application/pdf` (which itself
+# trips the gate). Used only for `*/geographical-indications-register/*` URLs.
+_EAMBROSIA_REGISTER_HOST = "geographical-indications-register"
+_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    ),
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;q=0.9,"
+        "image/avif,image/webp,*/*;q=0.8"
+    ),
+}
+
 # Per-source-lang URL-rewrite anchors. EU-OJ uses ISO 639-2/B "FRA"/"NLD"
 # in the language-tagged uriserv parameters and 3-letter codes "fra"/"nld"
 # in the new `/oj/<lang>/...` style.
@@ -147,19 +163,27 @@ def first_http_publication(pubs: list[dict]) -> str | None:
     return None
 
 
-def fetch_page(session: requests.Session, url: str) -> requests.Response | None:
+def fetch_page(
+    session: requests.Session, url: str, headers: dict | None = None,
+) -> requests.Response | None:
     backoff = (1.0, 3.0, 9.0)
     last: requests.Response | None = None
     for delay in (0.0, *backoff):
         if delay:
             time.sleep(delay)
         try:
-            r = session.get(url, timeout=60, allow_redirects=True)
+            r = session.get(url, timeout=60, allow_redirects=True, headers=headers)
         except requests.RequestException as exc:
             print(f"[err] {url[:80]}: {exc}", file=sys.stderr)
             return None
         last = r
         if r.status_code != 202:
+            return r
+        # The eAmbrosia register attachment endpoint answers 202 with the
+        # PDF body inline (not a WAF challenge) — accept it immediately
+        # rather than burning the retry budget. EUR-Lex's 202 WAF challenge
+        # is HTML, so it still falls through to the backoff retries.
+        if "pdf" in (r.headers.get("Content-Type") or "").lower():
             return r
     return last
 
@@ -273,9 +297,14 @@ def main() -> int:
             continue
 
         session.headers["Accept-Language"] = f"{lang}-BE,{lang};q=0.9,en;q=0.8"
-        r = fetch_page(session, source_url)
+        req_headers = (
+            _BROWSER_HEADERS if _EAMBROSIA_REGISTER_HOST in source_url else None
+        )
+        r = fetch_page(session, source_url, headers=req_headers)
         time.sleep(args.throttle)
-        if r is None or r.status_code != 200:
+        # 200, or the register attachment endpoint's 202-with-body; the
+        # content-type check in _save_response is the real gate.
+        if r is None or r.status_code not in (200, 202):
             manifest[slug] = {
                 "status": "fetch-error",
                 "source_lang": lang,

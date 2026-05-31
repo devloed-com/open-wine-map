@@ -148,6 +148,7 @@ SECTION_ROLE_KEYWORDS: dict[str, dict[str, tuple[str, ...]]] = {
             "description des vins",
             "description du / des vin",
             "description du/des vin",
+            "description du ou des vin",
         ),
         "viticultural_practices": (
             "pratiques vitivinicoles",
@@ -181,6 +182,7 @@ SECTION_ROLE_KEYWORDS: dict[str, dict[str, tuple[str, ...]]] = {
             "description du (des) lien(s)",
             "description du / des lien",
             "description du/des lien",
+            "description du ou des lien",
             "description du lien",
             "description des liens",
             "lien avec",
