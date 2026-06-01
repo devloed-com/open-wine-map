@@ -47,21 +47,34 @@ _PAGE_NOISE_RE = re.compile(
 _TOP_LEVEL_MAX_INDENT = 6
 
 
+# Length-preserving accent fold (1:1, so match offsets stay valid on the
+# original text) for anchor matching — the Greek section headings carry
+# tonos accents (ΠΡΟΔΙΑΓΡΑΦΈΣ) that a literal anchor would miss.
+_ANCHOR_FOLD = str.maketrans(
+    "ΆΈΉΊΌΎΏΪΫάέήίόύώϊϋ",
+    "ΑΕΗΙΟΥΩΙΥαεηιουωιυ",
+)
+
+
+def _anchor_search(terms: tuple[str, ...], text: str) -> re.Match | None:
+    if not terms:
+        return None
+    pat = re.compile("|".join(re.escape(t.translate(_ANCHOR_FOLD)) for t in terms), re.I)
+    return pat.search(text.translate(_ANCHOR_FOLD))
+
+
 def parse_fiche_sections(
     text: str, anchor_terms: tuple[str, ...], end_terms: tuple[str, ...],
 ) -> tuple[dict[str, str], dict[str, str]]:
     """Slice the `I. <single document>` block into (sections, titles)."""
     text = text.replace("\x0c", "")
-    anchor_re = re.compile("|".join(re.escape(t) for t in anchor_terms), re.I)
-    a = anchor_re.search(text)
+    a = _anchor_search(anchor_terms, text)
     if not a:
         return {}, {}
     region = text[a.end():]
-    if end_terms:
-        end_re = re.compile("|".join(re.escape(t) for t in end_terms), re.I)
-        e = end_re.search(region)
-        if e:
-            region = region[: e.start()]
+    e = _anchor_search(end_terms, region)
+    if e:
+        region = region[: e.start()]
     region = _LABEL_NOISE_RE.sub("", region)
     region = _PAGE_NOISE_RE.sub("", region)
 

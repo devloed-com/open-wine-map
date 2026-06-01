@@ -50,20 +50,41 @@ COUNTRY_CONFIG: dict[str, dict] = {
            "kw": "_lib.hr.jedinstveni_dokument"},
     "hu": {"anchor": ("ÖSSZEFOGLALÓ DOKUMENTUM", "EGYSÉGES DOKUMENTUM"), "end": ("EGYÉB INFORMÁCIÓK",),
            "kw": "_lib.hu.egyseges_dokumentum"},
-    # Family B — spec is nested under `III. <product specification>`
+    # Family B — spec is nested under `III. <product specification>`. The
+    # per-country EU-OJ keyword tables miss the fiche's section titles, so
+    # supply them as `extra_kw` (merged in `_route`, country libs untouched).
     "sk": {"anchor": ("ŠPECIFIKÁCIA VÝROBKU",), "end": (),
-           "kw": "_lib.sk.jednotny_dokument"},
+           "kw": "_lib.sk.jednotny_dokument",
+           "extra_kw": {"geo_area": ["vymedzená oblasť"], "grape_varieties": ["vinič hroznorodý"],
+                        "link_to_terroir": ["spojenie so zemepisnou oblasťou"]}},
     "si": {"anchor": ("SPECIFIKACIJA PROIZVODA", "ENOTNI DOKUMENT"), "end": (),
-           "kw": "_lib.si.enotni_dokument"},
+           "kw": "_lib.si.enotni_dokument",
+           "extra_kw": {"geo_area": ["opredeljeno območje"], "grape_varieties": ["vinsko grozdje"],
+                        "link_to_terroir": ["povezava z geografskim območjem"]}},
     "bg": {"anchor": ("СПЕЦИФИКАЦИЯ НА ПРОДУКТА", "ЕДИНЕН ДОКУМЕНТ"), "end": (),
-           "kw": "_lib.bg.edinen_dokument"},
+           "kw": "_lib.bg.edinen_dokument",
+           "extra_kw": {"geo_area": ["определен район"], "grape_varieties": ["винен сорт лоза"],
+                        "link_to_terroir": ["връзка с географския район"]}},
     "gr": {"anchor": ("ΠΡΟΔΙΑΓΡΑΦΕΣ ΠΡΟΪΟΝΤΟΣ", "ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ"), "end": (),
-           "kw": "_lib.gr.eniaio_engrafo"},
+           "kw": "_lib.gr.eniaio_engrafo",
+           "extra_kw": {"geo_area": ["οριοθετημένη περιοχή"], "grape_varieties": ["οινοποιήσιμες ποικιλίες αμπέλου"],
+                        "link_to_terroir": ["δεσμός με την γεωγραφική περιοχή"]}},
     "ro": {"anchor": ("CAIETUL DE SARCINI AL PRODUSULUI", "DOCUMENT UNIC"), "end": (),
-           "kw": "_lib.ro.document_unic"},
+           "kw": "_lib.ro.document_unic",
+           "extra_kw": {"geo_area": ["zonă delimitată"], "grape_varieties": ["struguri de vinificaţie"],
+                        "link_to_terroir": ["legătura cu zona geografică"]}},
 }
 
 _PAREN_RE = re.compile(r"\s*\(.*?\)\s*")
+
+
+def _norm(s: str) -> str:
+    """Casefold + strip combining accents + fold Greek final sigma, so
+    title↔keyword matching is robust across Latin-accented / Greek /
+    Cyrillic scripts (the GR/BG section titles carry accents/final-σ)."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", s.casefold())
+    return "".join(c for c in s if not unicodedata.combining(c)).replace("ς", "σ")
 
 
 def _pdftotext(pdf: Path) -> str:
@@ -77,11 +98,14 @@ def _pdftotext(pdf: Path) -> str:
     return r.stdout or ""
 
 
-def _route(sections, titles, role_keywords):
+def _route(sections, titles, role_keywords, extra_kw=None):
+    norm_titles = {n: _norm(t) for n, t in titles.items()}
     routed = {}
-    for role, kws in role_keywords.items():
+    for role in set(role_keywords) | set(extra_kw or {}):
+        kws = list(role_keywords.get(role, ())) + list((extra_kw or {}).get(role, ()))
         for kw in kws:
-            hit = next((n for n, t in titles.items() if kw.lower() in t.lower()), None)
+            nkw = _norm(kw)
+            hit = next((n for n, nt in norm_titles.items() if nkw in nt), None)
             if hit is not None:
                 routed[role] = sections.get(hit, "")
                 break
@@ -155,7 +179,7 @@ def main() -> int:
             print(f"[warn] no spec-block sections: {slug}", file=sys.stderr)
             n_miss += 1
             continue
-        routed = _route(sections, titles, role_keywords)
+        routed = _route(sections, titles, role_keywords, cfg.get("extra_kw"))
         grapes = _parse_grapes(routed.get("grape_varieties", ""))
         link = routed.get("link_to_terroir", "")
         (out_dir / f"{slug}.json").write_text(json.dumps({
