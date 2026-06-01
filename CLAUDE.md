@@ -3766,24 +3766,36 @@ cahier des charges** (`productSpecifications[].uri`) as
 `Ares(...)`-only population, not just BE. Discovery chain:
 
 ```
-giIdentifier "EUGI0000000NNNN" → strip prefix → /api/gi-applications/id/<NNNN>
-  → singleDocTechFile[].uri → /api/v1/attachments/<uri>   (EU single document, uniform template)
-  → productSpecifications[].uri → /api/v1/attachments/<uri> (full national cahier, varied layout)
+fileNumber  →  POST /api/gi-applications/filter {"first":0,"rows":5000,"showTSGs":"false","filters":[]}
+            →  map row.fileName → row.id          (cache the one ~4 MB response)
+id          →  GET /api/gi-applications/id/<id>    (NOTE: no /v1/ in this path)
+            →  singleDocTechFile[].uri → /api/v1/attachments/<uri>   (EU single document, uniform template)
+            →  productSpecifications[].uri → /api/v1/attachments/<uri> (full national cahier, varied layout)
 ```
 
-Gotchas: the GI detail is `GET /api/gi-applications/id/<n>` where `<n>` is
-the integer part of the EUGI id (the `POST /api/gi-applications/filter`
-body shape is finicky — an empty `{"filters":[]}` returns all rows with
-`id` / `appUniqueId`); and the attachment endpoint is **browser-gated** —
-it serves an HTML stub unless the request sends a real browser UA **and an
+Gotchas (verified 2026-06-01 spike): the internal `id` is **not**
+`int(giIdentifier[4:])` — that 500s for ~1/3 of GIs (e.g. PDO-CZ-A0888 =
+appUniqueId EUGI…2821 but real id 8225), so resolve it from the bulk
+filter listing above (the per-wine fileNumber filter's operation enum is
+finicky; the empty `{"filters":[]}` list is reliable). The GI-detail path
+is `/api/gi-applications/id/<id>` with **no `/v1/`** (the attachment
+endpoint DOES use `/api/v1/`). The attachment endpoint is **browser-gated**
+— it serves an HTML stub unless the request sends a real browser UA **and an
 Accept WITHOUT `application/pdf`** (an explicit pdf Accept trips the gate),
 and answers **HTTP 202 with the PDF body**. Stage 01 special-cases the
-register host (`_BROWSER_HEADERS`) and accepts 202-with-pdf. This is
-plausibly the canonical EU source for the corpus-wide stub population that
-currently relies on bespoke national-spec parsers
-(ES MAPA / IT MASAF / SI–HR–BG IAVV-style / RO ONVPV / SK ÚPV / CZ SZPI /
-HU termékleírás). Migration is **deferred** — a spike (sample a few
-countries, confirm coverage + parser cost) is a CURATOR_TODO item.
+register host (`_BROWSER_HEADERS`) and accepts 202-with-pdf.
+
+**Spike result (2026-06-01, `tmp/eambrosia-spike-findings.md`):** 47/47
+sampled grandfathered/stub wines across ES/IT/SI/HR/BG/GR/HU/RO/CZ/SK/LU
+resolved to a fetchable `singleDocTechFile`; all inspected (10, across 9
+languages/scripts) were text-layer, uniform EU template, with terroir +
+variety sections. **Viable as the primary stub fallback behind one
+per-language fiche-technique parser** (role keywords already exist in the
+per-country parsers); keep the bespoke national-spec scrapers (ES MAPA /
+IT MASAF / SI–HR–BG / RO ONVPV / SK ÚPV / CZ SZPI / HU termékleírás) as
+secondary. Implementation pending — **CZ is the recommended first build**
+(today its terroir is shared-region only; the per-DOP fiche would give
+per-DOP terroir + varieties). Tracked in CURATOR_TODO (cross-country).
 
 ### Curator workflow for BE wines without an OJ publication
 

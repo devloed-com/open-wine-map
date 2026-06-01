@@ -1983,31 +1983,47 @@ conf); VIVC IDs not yet pinned for giannoudi/ofthalmo/promara/kanella/
 vasilissa (not catalogued under searchable Latin names) — optional 02g
 enrichment, pills render with colour but no VIVC bracket.
 
-## Cross-country — eAmbrosia register attachment endpoint (deferred spike, 2026-05-31)
+## Cross-country — eAmbrosia register attachment endpoint (spike ✅ 2026-06-01; implementation pending)
 
-⏳ The EU GI register public API
+The EU GI register public API
 (`ec.europa.eu/geographical-indications-register/eambrosia-public-api`,
 OpenAPI at `/v3/api-docs`) exposes, per GI, BOTH the EU **single document
 / fiche technique** (`singleDocTechFile[].uri`) and the **full national
 cahier des charges** (`productSpecifications[].uri`) as
 `/api/v1/attachments/<uri>` PDFs — reachable for the grandfathered
 `Ares(...)`-only population that currently rides bespoke national-spec
-parsers. Discovery: giIdentifier `EUGI0000000NNNN` → integer `NNNN` →
-`GET /api/gi-applications/id/<NNNN>` → read the two `*.uri` fields.
-Gotchas: empty `POST /api/gi-applications/filter {"filters":[]}` lists all
-rows with `id`/`appUniqueId`; the attachment endpoint is browser-gated
-(real browser UA + Accept WITHOUT `application/pdf`) and answers HTTP 202
-with the PDF body.
+parsers.
 
-- Proven in use: **BE** (4 Walloon wines → fiche technique, 2026-05-31)
-  and **CY** (3 image-only specs replaced by text-layer fiche technique).
-- **Spike (deferred):** sample grandfathered wines across ES / IT / SI /
-  HR / BG / GR / HU / RO / CZ / SK, confirm `singleDocTechFile` /
-  `productSpecifications` exist + parse, and report coverage + parser cost
-  before proposing migration off the per-country national-spec scrapers.
-  The single document is a uniform per-language template → one text-mode
-  parser per language could replace much of the bespoke layer; the full
-  cahier is richer but layout-varied. No migration without the spike.
+**Resolver recipe (verified):**
+1. `fileNumber → id`: `POST /api/gi-applications/filter`
+   `{"first":0,"rows":5000,"showTSGs":"false","filters":[]}` → map row
+   `fileName`→`id` (one ~4 MB response, cache it). **Do NOT use
+   `int(giIdentifier[4:])`** — it 500s for ~1/3 of GIs (PDO-CZ-A0888 =
+   appUniqueId EUGI…2821 but real id 8225).
+2. `GET /api/gi-applications/id/<id>` (**no `/v1/`**) → read the two `*.uri`.
+3. `GET /api/v1/attachments/<uri>` — browser-gated (real browser UA +
+   `Accept` WITHOUT `application/pdf`), answers HTTP 202 + PDF body.
+
+**Spike result (`tmp/eambrosia-spike-findings.md`):** 47/47 sampled
+grandfathered/stub wines across ES/IT/SI/HR/BG/GR/HU/RO/CZ/SK/LU resolved
+to a fetchable `singleDocTechFile`; all inspected (10 across 9 langs/scripts)
+text-layer, uniform EU template, with terroir + variety sections. **Viable
+as the primary stub fallback behind one per-language fiche-technique parser**
+(role keywords already exist in the per-country parsers); keep bespoke
+scrapers secondary. Proven in use: **BE** (4 Walloon → fiche) + **CY** (3
+image-only specs).
+
+- ⏳ **Implement: CZ first** (the recommended proof — today CZ terroir is
+  shared-region only via the SZPI CHZO specs; the per-DOP fiche gives
+  per-DOP terroir + varieties). Then SI / HR / SK / BG / GR / RO / HU.
+- Build a shared `scripts/_lib/eambrosia_register.py` resolver
+  (fileNumber→id→attachment URLs, with the browser-header/202 handling) so
+  the per-country 01c just pins register URLs and `national-spec-layer`'s
+  fiche branch reuses it.
+- Caveats: be a polite low-rate client (the 202 + UA gate is deliberate
+  anti-bot); add a PDF size/text-layer guard for the untested image-scan
+  long tail; ES/IT have the most stubs (48 / 329 in-index) → biggest payoff
+  but also the most fetches.
 
 ## Style taxonomy follow-ups
 
