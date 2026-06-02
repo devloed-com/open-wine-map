@@ -3036,8 +3036,8 @@
       "label": "Wikipedia (българска) — Оряховица"
     },
     "pavlikeni": {
-      "url": "https://bg.wikipedia.org/wiki/Павликени",
-      "label": "Wikipedia (българска) — Павликени"
+      "url": "https://eavw.com/",
+      "label": "Изпълнителна агенция по лозата и виното (ИАЛВ)"
     },
     "pazardzhik": {
       "url": "https://bg.wikipedia.org/wiki/Пазарджик",
@@ -3052,16 +3052,16 @@
       "label": "Wikipedia (българска) — Плевен"
     },
     "pomorie": {
-      "url": "https://bg.wikipedia.org/wiki/Поморие",
-      "label": "Wikipedia (българска) — Поморие"
+      "url": "http://www.rlvk-burgas.com/",
+      "label": "РЛВК Южно Черноморие"
     },
     "sakar": {
-      "url": "https://bg.wikipedia.org/wiki/Сакар",
-      "label": "Wikipedia (българска) — Сакар"
+      "url": "https://eavw.com/",
+      "label": "Изпълнителна агенция по лозата и виното (ИАЛВ)"
     },
     "sandanski": {
-      "url": "https://bg.wikipedia.org/wiki/Сандански",
-      "label": "Wikipedia (българска) — Сандански"
+      "url": "https://eavw.com/",
+      "label": "Изпълнителна агенция по лозата и виното (ИАЛВ)"
     },
     "shivachevo": {
       "url": "https://bg.wikipedia.org/wiki/Шивачево",
@@ -3072,8 +3072,8 @@
       "label": "Wikipedia (българска) — Славянци"
     },
     "sliven": {
-      "url": "https://bg.wikipedia.org/wiki/Сливен",
-      "label": "Wikipedia (българска) — Сливен"
+      "url": "https://eavw.com/",
+      "label": "Изпълнителна агенция по лозата и виното (ИАЛВ)"
     },
     "stambolovo": {
       "url": "https://bg.wikipedia.org/wiki/Винарска_изба_Стамболово",
@@ -3114,6 +3114,1094 @@
     "vratsa": {
       "url": "https://bg.wikipedia.org/wiki/Враца",
       "label": "Wikipedia (българска) — Враца"
+    },
+    "almansa": {
+      "url": "https://denominacion-origen-almansa.com",
+      "label": "Consejo Regulador DO Almansa"
+    },
+    "campo-de-calatrava": {
+      "url": "https://www.vinocampodecalatrava.com",
+      "label": "DO Campo de Calatrava"
+    },
+    "moselle-luxembourgeoise": {
+      "url": "https://vins-cremants.lu/en/",
+      "label": "IVV / Fonds de Solidarité Viticole"
+    },
+    "malta": {
+      "url": "https://winesofmalta.gov.mt",
+      "label": "Wines of Malta"
+    },
+    "gozo": {
+      "url": "https://winesofmalta.gov.mt",
+      "label": "Wines of Malta"
+    },
+    "maltese-islands": {
+      "url": "https://winesofmalta.gov.mt",
+      "label": "Wines of Malta"
+    },
+    "malokarpatska": {
+      "url": "https://www.zvvs.sk/en/small-carpathian/",
+      "label": "ZVVS — Malokarpatská oblasť"
+    },
+    "juznoslovenska": {
+      "url": "https://www.zvvs.sk/en/south-slovak-region/",
+      "label": "ZVVS — Južnoslovenská oblasť"
+    },
+    "nitrianska": {
+      "url": "https://www.zvvs.sk/slovak-wines/nitrianska-vinohradnicka-oblast/",
+      "label": "ZVVS — Nitrianska oblasť"
+    },
+    "stredoslovenska": {
+      "url": "https://www.zvvs.sk/slovak-wines/stredoslovenska-vinohradnicka-oblast/",
+      "label": "ZVVS — Stredoslovenská oblasť"
+    },
+    "vychodoslovenska": {
+      "url": "https://www.zvvs.sk/slovak-wines/vychodoslovenska-vinohradnicka-oblast/",
+      "label": "ZVVS — Východoslovenská oblasť"
+    },
+    "vinohradnicka-oblast-tokaj": {
+      "url": "https://tokajregion.sk/en/",
+      "label": "Tokaj Wine Road Association"
+    },
+    "tokajske-vino": {
+      "url": "https://tokajregion.sk/en/",
+      "label": "Tokaj Wine Road Association"
+    },
+    "karpatska-perla": {
+      "url": "https://www.zvvs.sk/en/",
+      "label": "Zväz vinohradníkov a vinárov Slovenska (ZVVS)"
+    },
+    "skalicky-rubin": {
+      "url": "https://vcz.sk/domov/skalicky-rubin/",
+      "label": "Vínna cesta Záhorie — Skalický rubín"
+    },
+    "slovenska": {
+      "url": "https://www.zvvs.sk/en/",
+      "label": "Zväz vinohradníkov a vinárov Slovenska (ZVVS)"
+    },
+    "cechy": {
+      "url": "https://www.vinazmoravyvinazcech.cz/en/encyclopedia/wine-regions/the-bohemian-wine-region",
+      "label": "Vinařský fond — Vinařská oblast Čechy"
+    },
+    "ceske": {
+      "url": "https://www.vinazmoravyvinazcech.cz/en/encyclopedia/wine-regions/the-bohemian-wine-region",
+      "label": "Vinařský fond — Vinařská oblast Čechy"
+    },
+    "litomericka": {
+      "url": "https://www.vinazmoravyvinazcech.cz/en/encyclopedia/wine-regions/the-bohemian-wine-region/the-litomerice-sub-region",
+      "label": "Vinařský fond — Litoměřická podoblast"
+    },
+    "melnicka": {
+      "url": "https://www.vinazmoravyvinazcech.cz/en/encyclopedia/wine-regions/the-bohemian-wine-region/the-melnik-sub-region",
+      "label": "Vinařský fond — Mělnická podoblast"
+    },
+    "morava": {
+      "url": "https://www.vinazmoravyvinazcech.cz/en/encyclopedia/wine-regions/wine-region-moravia",
+      "label": "Vinařský fond — Vinařská oblast Morava"
+    },
+    "moravske": {
+      "url": "https://www.vinazmoravyvinazcech.cz/en/encyclopedia/wine-regions/wine-region-moravia",
+      "label": "Vinařský fond — Vinařská oblast Morava"
+    },
+    "slovacka": {
+      "url": "https://voc-slovacko.cz/",
+      "label": "VOC Slovácko z.s."
+    },
+    "znojemska": {
+      "url": "https://www.vocznojmo.cz/en/",
+      "label": "VOC Znojmo"
+    },
+    "velkopavlovicka": {
+      "url": "https://www.vocvelkepavlovice.cz/",
+      "label": "VOC Velké Pavlovice"
+    },
+    "mikulovska": {
+      "url": "https://vocmikulovsko.cz/",
+      "label": "VOC Mikulovsko z.s."
+    },
+    "znojmo": {
+      "url": "https://www.vocznojmo.cz/en/",
+      "label": "VOC Znojmo"
+    },
+    "sobes": {
+      "url": "https://www.znovin.cz/en/vineyards-sobes-in-podyji-national-park",
+      "label": "Znovín Znojmo — Vinice Šobes"
+    },
+    "novosedelske-slamove-vino": {
+      "url": "https://www.slamovevino.cz/",
+      "label": "Slámové víno Marcinčák — Novosedelské slámové víno"
+    },
+    "hagelandse-wijn": {
+      "url": "https://wob.belgischewijnbouwers.be/",
+      "label": "Belgische Wijnbouwers vzw"
+    },
+    "haspengouwse-wijn": {
+      "url": "https://wob.belgischewijnbouwers.be/",
+      "label": "Belgische Wijnbouwers vzw"
+    },
+    "heuvellandse-wijn": {
+      "url": "https://wob.belgischewijnbouwers.be/",
+      "label": "Belgische Wijnbouwers vzw"
+    },
+    "maasvallei-limburg": {
+      "url": "https://wob.belgischewijnbouwers.be/",
+      "label": "Belgische Wijnbouwers vzw"
+    },
+    "vlaamse-mousserende-kwaliteitswijn": {
+      "url": "https://wob.belgischewijnbouwers.be/",
+      "label": "Belgische Wijnbouwers vzw"
+    },
+    "vlaamse-landwijn": {
+      "url": "https://wob.belgischewijnbouwers.be/",
+      "label": "Belgische Wijnbouwers vzw"
+    },
+    "cotes-de-sambre-et-meuse": {
+      "url": "https://www.vigneronsdewallonie.be/",
+      "label": "Association des Vignerons de Wallonie (AVW)"
+    },
+    "cremant-de-wallonie": {
+      "url": "https://www.vigneronsdewallonie.be/",
+      "label": "Association des Vignerons de Wallonie (AVW)"
+    },
+    "vin-de-pays-des-jardins-de-wallonie": {
+      "url": "https://www.vigneronsdewallonie.be/",
+      "label": "Association des Vignerons de Wallonie (AVW)"
+    },
+    "vin-mousseux-de-qualite-de-wallonie": {
+      "url": "https://www.vigneronsdewallonie.be/",
+      "label": "Association des Vignerons de Wallonie (AVW)"
+    },
+    "mergelland": {
+      "url": "https://bobmergelland.nl/",
+      "label": "BOB Mergelland"
+    },
+    "vijlen": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "de-voerendaalse-bergen": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "achterhoek-winterswijk": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "ambt-delden": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "oolde": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "rivierenland": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "schouwen-duiveland": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "twente": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "limburg": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "gelderland": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "zeeland": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "noord-brabant": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "zuid-holland": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "noord-holland": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "utrecht": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "overijssel": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "flevoland": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "drenthe": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "groningen": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "friesland": {
+      "url": "https://www.nederlandsewijninfo.nl/",
+      "label": "Vereniging Nederlandse Wijn Producenten (VNWP)"
+    },
+    "karlovo": {
+      "url": "https://www.rlvktrakia.com/",
+      "label": "РЛВК Тракия"
+    },
+    "oryahovitsa": {
+      "url": "https://www.rlvktrakia.com/",
+      "label": "РЛВК Тракия"
+    },
+    "iuzhno-chernomorie": {
+      "url": "http://www.rlvk-burgas.com/",
+      "label": "РЛВК Южно Черноморие"
+    },
+    "cinque-terre": {
+      "url": "https://www.viteinriviera.it/",
+      "label": "Vite in Riviera — Consorzio tutela DOP/IGP Levante ligure"
+    },
+    "colli-di-luni": {
+      "url": "https://www.viteinriviera.it/",
+      "label": "Vite in Riviera — Consorzio tutela DOP/IGP Levante ligure"
+    },
+    "colline-di-levanto": {
+      "url": "https://www.viteinriviera.it/",
+      "label": "Vite in Riviera — Consorzio tutela DOP/IGP Levante ligure"
+    },
+    "colline-savonesi": {
+      "url": "https://www.viteinriviera.it/",
+      "label": "Vite in Riviera — Consorzio tutela DOP/IGP Levante ligure"
+    },
+    "liguria-di-levante": {
+      "url": "https://www.viteinriviera.it/",
+      "label": "Vite in Riviera — Consorzio tutela DOP/IGP Levante ligure"
+    },
+    "pornassio": {
+      "url": "https://www.viteinriviera.it/",
+      "label": "Vite in Riviera — Consorzio tutela DOP/IGP Levante ligure"
+    },
+    "riviera-ligure-di-ponente": {
+      "url": "https://www.viteinriviera.it/",
+      "label": "Vite in Riviera — Consorzio tutela DOP/IGP Levante ligure"
+    },
+    "rossese-di-dolceacqua": {
+      "url": "https://www.viteinriviera.it/",
+      "label": "Vite in Riviera — Consorzio tutela DOP/IGP Levante ligure"
+    },
+    "terrazze-dell-imperiese": {
+      "url": "https://www.viteinriviera.it/",
+      "label": "Vite in Riviera — Consorzio tutela DOP/IGP Levante ligure"
+    },
+    "cellatica": {
+      "url": "https://www.entevinibresciani.it/",
+      "label": "Ente Vini Bresciani"
+    },
+    "terre-di-veleja": {
+      "url": "https://collipiacentini.it/",
+      "label": "Consorzio Tutela Vini DOC Colli Piacentini"
+    },
+    "val-tidone": {
+      "url": "https://collipiacentini.it/",
+      "label": "Consorzio Tutela Vini DOC Colli Piacentini"
+    },
+    "trevenezie": {
+      "url": "https://dellevenezie.it/",
+      "label": "Consorzio Tutela Vini DOC delle Venezie"
+    },
+    "valdadige-terradeiforti": {
+      "url": "https://terradeiforti.com/",
+      "label": "Consorzio di Tutela Vini DOC Valdadige Terradeiforti"
+    },
+    "venezia-giulia": {
+      "url": "https://www.docfriuli.eu/",
+      "label": "Consorzio Tutela Vini Friuli Venezia Giulia (DOC Friuli)"
+    },
+    "vigneti-della-serenissima": {
+      "url": "https://www.consorziovinivenezia.it/",
+      "label": "Consorzio Vini Venezia"
+    },
+    "ansonica-costa-dell-argentario": {
+      "url": "https://www.consorziovinimaremma.it/",
+      "label": "Consorzio Tutela Vini Maremma Toscana"
+    },
+    "capalbio": {
+      "url": "https://www.consorziovinimaremma.it/",
+      "label": "Consorzio Tutela Vini Maremma Toscana"
+    },
+    "parrina": {
+      "url": "https://www.consorziovinimaremma.it/",
+      "label": "Consorzio Tutela Vini Maremma Toscana"
+    },
+    "colli-della-toscana-centrale": {
+      "url": "https://www.consorziovinotoscana.it/",
+      "label": "Consorzio Vino Toscana"
+    },
+    "costa-toscana": {
+      "url": "https://www.consorziovinotoscana.it/",
+      "label": "Consorzio Vino Toscana"
+    },
+    "montecastelli": {
+      "url": "https://www.consorziovinotoscana.it/",
+      "label": "Consorzio Vino Toscana"
+    },
+    "marche": {
+      "url": "https://imtdoc.it/",
+      "label": "Istituto Marchigiano di Tutela Vini (IMT)"
+    },
+    "montecarlo": {
+      "url": "https://www.viavinariamontecarlo.it/",
+      "label": "Via Vinaria Montecarlo — Consorzio Vini DOC Montecarlo"
+    },
+    "monteregio-di-massa-marittima": {
+      "url": "https://www.consorziomonteregio.it/",
+      "label": "Consorzio del Monteregio di Massa Marittima"
+    },
+    "ortona": {
+      "url": "https://www.vinidabruzzo.it/",
+      "label": "Consorzio Tutela Vini d'Abruzzo"
+    },
+    "terre-abruzzesi": {
+      "url": "https://www.vinidabruzzo.it/",
+      "label": "Consorzio Tutela Vini d'Abruzzo"
+    },
+    "umbria": {
+      "url": "https://www.umbriatopwines.it/",
+      "label": "UmbriaTop Wines"
+    },
+    "cori": {
+      "url": "https://coridoc.it/",
+      "label": "Consorzio Volontario per la Tutela e la Valorizzazione dei Vini DOC Cori"
+    },
+    "arghilla": {
+      "url": "https://www.terredireggiocalabria.it/",
+      "label": "Consorzio Tutela Terre di Reggio Calabria"
+    },
+    "scilla": {
+      "url": "https://www.terredireggiocalabria.it/",
+      "label": "Consorzio Tutela Terre di Reggio Calabria"
+    },
+    "campania": {
+      "url": "https://www.campania.wine/",
+      "label": "Campania.Wine — federazione consorzi campani"
+    },
+    "matera": {
+      "url": "http://www.vinomateradoc.it/",
+      "label": "Consorzio di Tutela Vini DOC Matera"
+    },
+    "tintilia-del-molise": {
+      "url": "https://www.tintilia.it/",
+      "label": "Consorzio di Tutela Tintilia del Molise"
+    },
+    "alcamo": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Assovini Sicilia"
+    },
+    "camarro": {
+      "url": "https://www.irvos.it/",
+      "label": "Istituto Regionale del Vino e dell'Olio di Sicilia (IRVO)"
+    },
+    "contea-di-sclafani": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Assovini Sicilia"
+    },
+    "contessa-entellina": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Assovini Sicilia"
+    },
+    "delia-nivolelli": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Assovini Sicilia"
+    },
+    "erice": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Assovini Sicilia"
+    },
+    "fontanarossa-di-cerda": {
+      "url": "https://www.irvos.it/",
+      "label": "Istituto Regionale del Vino e dell'Olio di Sicilia (IRVO)"
+    },
+    "menfi": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Assovini Sicilia"
+    },
+    "riesi": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Assovini Sicilia"
+    },
+    "sambuca-di-sicilia": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Assovini Sicilia"
+    },
+    "santa-margherita-di-belice": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Assovini Sicilia"
+    },
+    "sciacca": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Assovini Sicilia"
+    },
+    "terre-siciliane": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Assovini Sicilia"
+    },
+    "valle-belice": {
+      "url": "https://www.irvos.it/",
+      "label": "Istituto Regionale del Vino e dell'Olio di Sicilia (IRVO)"
+    },
+    "avola": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Consorzio Tutela Vini Valdinoto (c/o Assovini Sicilia)"
+    },
+    "eloro": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Consorzio Tutela Vini Valdinoto (c/o Assovini Sicilia)"
+    },
+    "noto": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Consorzio Tutela Vini Valdinoto (c/o Assovini Sicilia)"
+    },
+    "siracusa": {
+      "url": "https://www.assovinisicilia.it/",
+      "label": "Consorzio Tutela Vini Valdinoto (c/o Assovini Sicilia)"
+    },
+    "arborea": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "barbagia": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "cagliari": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "campidano-di-terralba": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "cannonau-di-sardegna": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "carignano-del-sulcis": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "colli-del-limbara": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "giro-di-cagliari": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "isola-dei-nuraghi": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "mandrolisai": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "marmilla": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "monica-di-sardegna": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "moscato-di-sardegna": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "nasco-di-cagliari": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "nuragus-di-cagliari": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "nurra": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "ogliastra": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "parteolla": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "provincia-di-nuoro": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "sardegna-semidano": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "sibiola": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "tharros": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "trexenta": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "valle-del-tirso": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "valli-di-porto-pino": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "vermentino-di-sardegna": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "vernaccia-di-oristano": {
+      "url": "https://www.agenzialaore.it/",
+      "label": "Laore Sardegna"
+    },
+    "planargia": {
+      "url": "https://consorziotutelamalvasiadibosa.it/",
+      "label": "Consorzio per la Tutela della Malvasia di Bosa DOC"
+    },
+    "amynteo": {
+      "url": "https://www.easamyntaiou.gr/",
+      "label": "ΕΑΣ Αμυνταίου — Coop Amynteo"
+    },
+    "limnos": {
+      "url": "https://limnoswines.gr/en/",
+      "label": "Agricultural Cooperative of Limnos (Limnos Wines)"
+    },
+    "moschatos-limnou": {
+      "url": "https://limnoswines.gr/en/",
+      "label": "Agricultural Cooperative of Limnos (Limnos Wines)"
+    },
+    "mavrodafni-kefallinias": {
+      "url": "https://www.kefaloniawinemakers.gr/en/",
+      "label": "Kefalonia Winemakers Association"
+    },
+    "moschato-kefallinias": {
+      "url": "https://www.kefaloniawinemakers.gr/en/",
+      "label": "Kefalonia Winemakers Association"
+    },
+    "monemvasia-malvasia": {
+      "url": "https://www.monemvasiawinery.gr/en/",
+      "label": "Monemvasia Winery (Tsimbidi)"
+    },
+    "moschato-rodou": {
+      "url": "https://cair.gr/en/",
+      "label": "CAIR — Agricultural Cooperative of Rhodes"
+    },
+    "rodos": {
+      "url": "https://cair.gr/en/",
+      "label": "CAIR — Agricultural Cooperative of Rhodes"
+    },
+    "naoussa": {
+      "url": "https://www.vaeni-naoussa.com/en/",
+      "label": "VAENI Naoussa — Cooperative Winery of Naoussa"
+    },
+    "nemea": {
+      "url": "https://nemeawineland.com/",
+      "label": "Σύνδεσμος Οινοποιών ΠΟΠ Νεμέας — Nemea PDO Winemakers"
+    },
+    "peza": {
+      "url": "https://pezaunion.gr/",
+      "label": "Ένωση Αγροτικών Συνεταιρισμών Πεζών — Peza Union"
+    },
+    "playies-melitona": {
+      "url": "https://domaineportocarras.com/",
+      "label": "Domaine Porto Carras"
+    },
+    "robola-kefallinias": {
+      "url": "https://www.orealios.gr/en/",
+      "label": "Robola Cooperative of Kefalonia — Orealios Gaea"
+    },
+    "samos": {
+      "url": "https://www.samoswine.gr/en/",
+      "label": "United Winemaking Cooperative of Samos (EOSS)"
+    },
+    "santorini": {
+      "url": "https://santowines.gr/",
+      "label": "Union of Santorini Cooperatives — Santo Wines"
+    },
+    "achaia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "aegeo-pelagos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "agora": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "anavyssos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "argolida": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "arkadia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "attiki": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "avdira": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "ayio-oros": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "chios": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "dodekanisos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "drama": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "elassona": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "epanomi": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "evia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "evros": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "florina": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "fthiotida": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "gerania": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "grevena": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "halikouna": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "halkidiki": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "hania": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "ikaria": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "ilia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "ilion": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "imathia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "ioannina": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "ipiros": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "iraklio": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "ismaros": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "karditsa": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "karystos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "kastoria": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "kavala": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "kerkira": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "kiklades": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "kilada-atalantis": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "kissamos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "klimenti": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "korinthos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "kos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "kozani": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "krania": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "krannona": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "kriti": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "lakonia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "lasithi": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "lefkada": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "lesvos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "letrini": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "lilantio-pedio": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "magnisia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "makedonia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "mantzavinata": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "markopoulo": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "martino": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "messinia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "metaxaton": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "meteora": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "metsovo": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "nea-mesimvria": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "opountia-lokridas": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "paggeo": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "pallini": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "parnassos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "pella": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "peloponnisos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "pieria": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "pisatis": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "playies-abelou": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "playies-egialias": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "playies-enou": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "playies-kitherona": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "playies-knimidas": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "playies-paikou": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "playies-parnithas": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "playies-pentelikou": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "playies-vertiskou": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "pylia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "rethimno": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-attikis": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-evias": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-gialtron": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-halkidas-evias": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-karistou": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-koropiou": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-markopoulou-attikis": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-megaron": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-mesogion-attikis": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-of-viotia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-pallinis": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-peanias": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-pikermiou": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-spaton": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "retsina-thivon-viotias": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "ritsona": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "serres": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "siatista": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "sithonia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "spata": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "sterea-ellada": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "tegea": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "thapsana": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "thasos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "thessalia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "thessaloniki": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "thiva": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "thraki": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "trifilia": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "tyrnavos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "velvedo": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "verdea-zakyntou": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
+    },
+    "zakynthos": {
+      "url": "https://winesofgreece.org/",
+      "label": "Wines of Greece (EDOAO)"
     }
   },
   "by_bassin": {
