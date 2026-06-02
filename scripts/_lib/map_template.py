@@ -2940,7 +2940,7 @@ _TEMPLATE = """<!doctype html>
     return Number.isFinite(a) ? a : bboxArea(fallback);
   }}
 
-  function renderPanelStack(slugs, focusIndex) {{
+  function renderPanelStack(slugs, focusIndex, doTrack) {{
     if (!slugs.length) return;
     const sorted = slugs
       .filter(s => AOCS[s])
@@ -2958,6 +2958,23 @@ _TEMPLATE = """<!doctype html>
     panelBody.innerHTML = header + ordered.map((s, i) => renderAocCard(s, i === 0)).join('');
     panel.classList.add('open');
     setSelection(ordered.slice(0, 1));
+    // Popularity signal: the appellation brought to the front of the stack.
+    // doTrack is suppressed for the localStorage restore (fires on every
+    // reload / language switch — not a fresh view).
+    if (doTrack !== false) {{
+      const focusSlug = ordered[0];
+      const fr = AOCS[focusSlug];
+      if (fr) {{
+        track('Appellation Viewed', {{
+          slug: focusSlug,
+          country: fr.country || '(none)',
+          kind: fr.kind || '(none)',
+          region: fr.region || '(none)',
+          stacked: sorted.length > 1 ? 'true' : 'false',
+          locale: LANG,
+        }});
+      }}
+    }}
   }}
 
   function escapeHtml(s) {{
@@ -3006,7 +3023,7 @@ _TEMPLATE = """<!doctype html>
     if (!Array.isArray(slugs) || !slugs.length) return;
     const valid = slugs.filter(s => AOCS[s]);
     if (!valid.length) return;
-    renderPanelStack(valid);
+    renderPanelStack(valid, 0, false);
   }})();
 
   document.querySelector('#panel .close').addEventListener('click', () => {{
