@@ -196,7 +196,32 @@ once this returns a source.
   stub bucket. The actionable set is every stub wine (usually all of them).
 - **Triage:** typically all stubs are in scope (small corpora). Confirm the
   count with the user only if > 60.
-- **Dispatch (discovery-first, the BG pattern):** spawn **two** agents in
+- **Step 0 — eAmbrosia register attachment check (try this FIRST, before any
+  agent hunt).** The new EU GI register
+  (`ec.europa.eu/geographical-indications-register/eambrosia-public-api`,
+  OpenAPI at `/v3/api-docs`) hosts, per GI, the official EU **single document
+  / fiche technique** (`singleDocTechFile[].uri`, uniform per-language
+  template, includes a terroir §) and the **full national cahier**
+  (`productSpecifications[].uri`) — reachable even for the grandfathered
+  `Ares(...)`-only wines whose old-API `publications` array is empty. Chain
+  (verified 2026-06-01): (1) resolve the internal id — `int(giIdentifier[4:])`
+  is **wrong** (500s for ~1/3 of GIs), so `POST /api/gi-applications/filter`
+  `{"first":0,"rows":5000,"showTSGs":"false","filters":[]}` → map row
+  `fileName`→`id` (cache the one big response); (2) `GET
+  /api/gi-applications/id/<id>` (**no `/v1/`** in this path) → read
+  `singleDocTechFile[].uri` + `productSpecifications[].uri`; (3) `GET
+  /api/v1/attachments/<uri>`. **Browser-gated**: send a real browser UA AND
+  an `Accept` WITHOUT `application/pdf` (an explicit pdf Accept trips the stub
+  gate); the endpoint answers **HTTP 202 with the PDF body**. If this resolves
+  a licence-clear spec carrying a
+  terroir section, you are done — pin it (the single doc rides a fiche-
+  technique parser; see the `national-spec-layer` skill) and skip the agent
+  hunt below. Verified on BE (4 Walloon → fiche technique) + CY (3 image-only
+  specs). Whether this covers a given country corpus-wide is the open
+  CURATOR_TODO spike — but it costs one deterministic lookup per wine, so
+  always try it before web research. See [[project_eambrosia_attachment_endpoint]].
+- **Dispatch (discovery-first, the BG pattern) — only if Step 0 misses:**
+  spawn **two** agents in
   parallel rather than chunking per-wine, because the source structure is
   unknown until found:
   1. **national-source scout** — find the regulator's per-wine spec listing

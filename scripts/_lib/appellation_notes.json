@@ -1,41 +1,5 @@
 {
   "__doc__": "Curated, source-cited per-appellation notes — a bounded narrative layer (same category as terroir-facts / translations). Keyed by appellation slug. Each entry: {note: {en,fr,es,nl}, sources: [{label,url}]}. EVERY note MUST cite a public, licence-clear source (EUR-Lex regulation, CURIA judgment, official register). Notes are hand-authored in the 4 map-panel locales and kept out of the LLM translation flow. Stage 04 loads this file into the aocs blob; the map detail panel and the per-country stage-03 wiki generator render it as an 'ⓘ' / '## Note' block. Used for cross-border GI-name situations such as Teran (SI PDO) vs the labelling term permitted on Croatian Hrvatska Istra wines, and for terroir-narrative inheritance disclosures where a wine's canonical regulator source carries no terroir text and the bullets are inherited from a regional source one tier up.",
-  "bela-krajina": {
-    "note": {
-      "en": "The terroir narrative shown for «Bela krajina» is inherited from the regional MKGP specifikacija for the Posavje PGI, which geographically contains the Bela krajina okoliš. The Bela krajina PDO itself is defined only by Pravilnik o seznamu geografskih označb za vina in trsnem izboru (Uradni list RS 49/2007), which lists podokoliši, vinorodne lege and authorised varieties but carries no terroir-link section. No standalone MKGP specifikacija PDF exists for this okoliš.",
-      "fr": "Le récit de terroir présenté pour «Bela krajina» est hérité de la specifikacija régionale du MKGP pour l'IGP Posavje, qui contient géographiquement le sous-vignoble (okoliš) de Bela krajina. L'AOP Bela krajina elle-même n'est définie que par le Pravilnik o seznamu geografskih označb za vina in trsnem izboru (Uradni list RS 49/2007), qui énumère les sous-okolichi, les climats viticoles et les cépages autorisés mais ne comporte pas de section de lien au terroir. Aucune specifikacija MKGP autonome n'existe pour cet okoliš.",
-      "es": "La narrativa de terroir mostrada para «Bela krajina» se hereda de la specifikacija regional del MKGP para la IGP Posavje, que contiene geográficamente el subvignoble (okoliš) de Bela krajina. La DOP Bela krajina en sí solo está definida por el Pravilnik o seznamu geografskih označb za vina in trsnem izboru (Uradni list RS 49/2007), que enumera los subokoliši, los pagos vitícolas y las variedades autorizadas pero no incluye una sección sobre el vínculo con el terroir. No existe una specifikacija MKGP autónoma para este okoliš.",
-      "nl": "Het terroir-verhaal dat voor «Bela krajina» wordt getoond, is overgenomen van de regionale MKGP specifikacija voor de BGA Posavje, die het subdistrict (okoliš) Bela krajina geografisch omvat. De BOB Bela krajina zelf wordt alleen gedefinieerd door de Pravilnik o seznamu geografskih označb za vina in trsnem izboru (Uradni list RS 49/2007), die de subokoliši, wijnbouwlocaties en toegelaten druivenrassen opsomt maar geen sectie over de band met het terroir bevat. Voor deze okoliš bestaat geen zelfstandige MKGP specifikacija."
-    },
-    "sources": [
-      {
-        "label": "Pravilnik o seznamu geografskih označb za vina in trsnem izboru (Uradni list RS 49/2007, predpis 2634)",
-        "url": "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2007-01-2634"
-      },
-      {
-        "label": "MKGP specifikacija proizvoda — Posavje ZGO (inherited terroir source)",
-        "url": "https://www.gov.si/assets/ministrstva/MKGP/DOKUMENTI/HRANA/VINO/ZGO/S_Posavje.doc"
-      }
-    ]
-  },
-  "belokranjec": {
-    "note": {
-      "en": "«Belokranjec» is a PTP (priznano tradicionalno poimenovanje, traditional designation) for a dry white wine produced exclusively inside the Bela krajina okoliš. The 2022 PTP Pravilnik (Uradni list RS 112/2022) defines production rules, authorised varieties and labelling but contains no terroir-narrative section. The terroir bullets shown here are inherited from the regional MKGP specifikacija for the Posavje PGI — the same source the Bela krajina entry inherits from.",
-      "fr": "«Belokranjec» est une PTP (priznano tradicionalno poimenovanje, dénomination traditionnelle reconnue) désignant un vin blanc sec produit exclusivement dans l'okoliš de Bela krajina. Le Pravilnik PTP de 2022 (Uradni list RS 112/2022) définit les règles de production, les cépages autorisés et l'étiquetage mais ne contient pas de section de lien au terroir. Les bullets de terroir affichées ici sont héritées de la specifikacija régionale du MKGP pour l'IGP Posavje — la même source dont hérite la fiche Bela krajina.",
-      "es": "«Belokranjec» es una PTP (priznano tradicionalno poimenovanje, denominación tradicional reconocida) que designa un vino blanco seco producido exclusivamente dentro del okoliš de Bela krajina. El Pravilnik PTP de 2022 (Uradni list RS 112/2022) define las reglas de producción, las variedades autorizadas y el etiquetado pero no incluye una sección sobre el vínculo con el terroir. Las viñetas de terroir mostradas aquí se heredan de la specifikacija regional del MKGP para la IGP Posavje — la misma fuente que hereda la ficha de Bela krajina.",
-      "nl": "«Belokranjec» is een PTP (priznano tradicionalno poimenovanje, erkende traditionele benaming) voor een droge witte wijn die uitsluitend binnen de okoliš Bela krajina wordt geproduceerd. De PTP Pravilnik van 2022 (Uradni list RS 112/2022) legt productieregels, toegelaten druivenrassen en etikettering vast maar bevat geen sectie over de band met het terroir. De hier getoonde terroir-bullets zijn overgenomen van de regionale MKGP specifikacija voor de BGA Posavje — dezelfde bron waarvan de Bela krajina-pagina erft."
-    },
-    "sources": [
-      {
-        "label": "Pravilnik o vinu s priznanim tradicionalnim poimenovanjem Metliška črnina in vinu s priznanim tradicionalnim poimenovanjem Belokranjec (Uradni list RS 112/2022, predpis 2690)",
-        "url": "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2022-01-2690"
-      },
-      {
-        "label": "MKGP specifikacija proizvoda — Posavje ZGO (inherited terroir source)",
-        "url": "https://www.gov.si/assets/ministrstva/MKGP/DOKUMENTI/HRANA/VINO/ZGO/S_Posavje.doc"
-      }
-    ]
-  },
   "hrvatska-istra": {
     "note": {
       "en": "«Hrvatska Istra» is a Croatian protected designation of origin (PDO) covering the Istrian peninsula. Under Commission Delegated Regulation (EU) 2017/1353, wines bearing this PDO are permitted to carry the name «Teran» on the label as a wine-grape-variety reference, under defined labelling conditions — even though «Teran» itself is a Slovenian PDO in the neighbouring Kras region. Slovenia's action for annulment of that regulation was dismissed by the General Court of the European Union in Case T-626/17 (judgment of 9 September 2020). «Teran» on a Croatian Hrvatska Istra label is therefore a permitted labelling term, not a separate Croatian GI.",

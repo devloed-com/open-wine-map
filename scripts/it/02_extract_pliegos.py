@@ -47,7 +47,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.it.documento_unico import (  # noqa: E402
     DOC_UNICO_ANCHOR_RE, SECTION_HEADER_RE, SECTION_NUM_RE,
     SECTION_ROLE_KEYWORDS, ROLE_BY_KEYWORD, INLINE_ROLE_RE,
-    STYLE_MARKERS, COLOUR_BY_KEYWORD,
+    scan_styles,
 )
 from _lib.it.sottozona import extract_sottozone  # noqa: E402
 from _lib.it.menzione import extract_menzioni  # noqa: E402
@@ -300,15 +300,7 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
         title_low = titles.get(num, "").lower()
         if "descrizione" in title_low or "categori" in title_low or "ulterior" in title_low:
             blob_parts.append(body)
-    blob = " ".join(blob_parts)
-    found: set[str] = set()
-    for kw, colour_slug in COLOUR_BY_KEYWORD.items():
-        if re.search(rf"\b{re.escape(kw)}\b", blob, re.I):
-            found.add(colour_slug)
-    for pattern, slug in STYLE_MARKERS:
-        if pattern.search(blob):
-            found.add(slug)
-    return sorted(found)
+    return scan_styles(" ".join(blob_parts))
 
 
 def derive_summary(role_text: str, max_chars: int = 600) -> str:

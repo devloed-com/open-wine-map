@@ -58,9 +58,26 @@ country).
 
 ### 1 — Pick the sibling template
 
-Read `reference/parser-templates.md` and choose the closest existing country
-by `source_format`. Read that sibling's three files end-to-end before copying
-— they are the source of truth, not this skill's prose.
+**First, check the source shape `/research-gaps national-spec` resolved.** If
+the source is the **eAmbrosia EU-register fiche technique** (the uniform EU
+single-document template — `I. DOCUMENT UNIQUE`, sections 1 Dénomination … 6
+varieties, 7 link/terroir; reached via the register's
+`singleDocTechFile` attachment, not a national-format PDF), you likely **do
+not need a bespoke `specifikacija.py`** at all — the document is the standard
+single document, just delivered as a browser-gated 202 PDF. Reuse a
+fiche-technique-style parser instead (BE's `parse_fiche_technique_text` in
+[scripts/_lib/be/text_parser.py](scripts/_lib/be/text_parser.py) is the worked
+example: slice the `I. DOCUMENT UNIQUE` block, monotonic 1→N headers, route via
+the existing per-language `SECTION_ROLE_KEYWORDS`), and point 01c at the
+register attachment URL with browser-header + 202-with-pdf handling (BE
+`01_fetch_pliegos.py` `_BROWSER_HEADERS`). This skips the country-specific
+keyword-table TODO entirely. See [[project_eambrosia_attachment_endpoint]].
+The bespoke-parser path below is for the **national-format** specs (BOE/JCCM/
+MASAF/IAVV/ONVPV/SZPI/… layouts) that the fiche technique does not replace.
+
+Otherwise: read `reference/parser-templates.md` and choose the closest existing
+country by `source_format`. Read that sibling's three files end-to-end before
+copying — they are the source of truth, not this skill's prose.
 
 ### 2 — Scaffold the three per-country files
 
@@ -172,3 +189,9 @@ new source format, a missed lint check). Keep it terse.
   sk. zsh-portable uppercasing; hook-5 greps `_XX_NATIONAL_SPEC_BY_SLUG.get`
   (not the bare `country == "xx"` string, which over-counts the geometry
   branch).
+- 2026-06-01 — added the fiche-technique branch to step 1: when
+  `/research-gaps` resolves the source to the eAmbrosia EU-register fiche
+  technique (uniform EU single doc), reuse BE's `parse_fiche_technique_text`
+  instead of scaffolding a bespoke `specifikacija.py` — skips the keyword-table
+  TODO. The bespoke path stays for national-format specs. Whether the register
+  covers a country corpus-wide is the deferred CURATOR_TODO spike.

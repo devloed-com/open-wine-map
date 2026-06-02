@@ -157,3 +157,21 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\b(dolce)\b", re.I), "sweet"),
     (re.compile(r"\b(secco|asciutto)\b", re.I), "dry"),
 )
+
+
+def scan_styles(text: str) -> list[str]:
+    """Detect wine-style tags in Italian regulator prose: colour adjectives
+    (rosso/bianco/rosato → noir/blanc/rose) + style markers (spumante,
+    frizzante, passito, vin santo, …). Colour values are the FR colour words
+    the rest of the corpus uses; stage 04 `_canonical_styles` folds them to the
+    taxonomy slugs (blanc→white, noir→red, rose→rose). Shared by the EU
+    documento-unico parser (stage 02) and the MASAF disciplinare parser
+    (stage 02f)."""
+    found: set[str] = set()
+    for kw, colour_slug in COLOUR_BY_KEYWORD.items():
+        if re.search(rf"\b{re.escape(kw)}\b", text, re.I):
+            found.add(colour_slug)
+    for pattern, slug in STYLE_MARKERS:
+        if pattern.search(text):
+            found.add(slug)
+    return sorted(found)

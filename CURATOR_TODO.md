@@ -1709,6 +1709,17 @@ Malokarpatská corridor.
 Country #14 (added 2026-05-24). 13 wine GIs (11 DOP + 2 PGI), all 13
 on the map.
 
+### Register-fiche variety `Ryzlink buketový` — ⏳ verify before minting
+
+The EU-register fiche §6 for some CZ wines lists `Ryzlink buketový`
+("bouquet Riesling"). Research (2026-06) could not ground it in VIVC /
+wein.plus / the Czech Státní odrůdová kniha; the name is ambiguous
+(Bukettriesling is a documented synonym of BOTH Riesling and the distinct
+German Bukettraube). Left UNFOLDED (own queue entry) pending a check
+against **Vyhláška 88/2017 Sb. Příloha 2 / ÚKZÚZ register** — it may be a
+label term rather than a registered variety. All other CZ/GR/SI/BG/HU/HR
+fiche natives resolved + folded into `grape_lexicon.py`.
+
 ### JEDNOTNÝ DOKUMENT — ❌ 0 / 13 extracted
 
 All 13 CZ wines are Art. 107 / Reg. 1308/2013 grandfathered names with
@@ -1983,31 +1994,74 @@ conf); VIVC IDs not yet pinned for giannoudi/ofthalmo/promara/kanella/
 vasilissa (not catalogued under searchable Latin names) — optional 02g
 enrichment, pills render with colour but no VIVC bracket.
 
-## Cross-country — eAmbrosia register attachment endpoint (deferred spike, 2026-05-31)
+## Cross-country — eAmbrosia register attachment endpoint (spike ✅; CZ + SI live; Phase-2 retrofit planned)
 
-⏳ The EU GI register public API
+The EU GI register public API
 (`ec.europa.eu/geographical-indications-register/eambrosia-public-api`,
 OpenAPI at `/v3/api-docs`) exposes, per GI, BOTH the EU **single document
 / fiche technique** (`singleDocTechFile[].uri`) and the **full national
 cahier des charges** (`productSpecifications[].uri`) as
 `/api/v1/attachments/<uri>` PDFs — reachable for the grandfathered
 `Ares(...)`-only population that currently rides bespoke national-spec
-parsers. Discovery: giIdentifier `EUGI0000000NNNN` → integer `NNNN` →
-`GET /api/gi-applications/id/<NNNN>` → read the two `*.uri` fields.
-Gotchas: empty `POST /api/gi-applications/filter {"filters":[]}` lists all
-rows with `id`/`appUniqueId`; the attachment endpoint is browser-gated
-(real browser UA + Accept WITHOUT `application/pdf`) and answers HTTP 202
-with the PDF body.
+parsers.
 
-- Proven in use: **BE** (4 Walloon wines → fiche technique, 2026-05-31)
-  and **CY** (3 image-only specs replaced by text-layer fiche technique).
-- **Spike (deferred):** sample grandfathered wines across ES / IT / SI /
-  HR / BG / GR / HU / RO / CZ / SK, confirm `singleDocTechFile` /
-  `productSpecifications` exist + parse, and report coverage + parser cost
-  before proposing migration off the per-country national-spec scrapers.
-  The single document is a uniform per-language template → one text-mode
-  parser per language could replace much of the bespoke layer; the full
-  cahier is richer but layout-varied. No migration without the spike.
+**Resolver recipe (verified):**
+1. `fileNumber → id`: `POST /api/gi-applications/filter`
+   `{"first":0,"rows":5000,"showTSGs":"false","filters":[]}` → map row
+   `fileName`→`id` (one ~4 MB response, cache it). **Do NOT use
+   `int(giIdentifier[4:])`** — it 500s for ~1/3 of GIs (PDO-CZ-A0888 =
+   appUniqueId EUGI…2821 but real id 8225).
+2. `GET /api/gi-applications/id/<id>` (**no `/v1/`**) → read the two `*.uri`.
+3. `GET /api/v1/attachments/<uri>` — browser-gated (real browser UA +
+   `Accept` WITHOUT `application/pdf`), answers HTTP 202 + PDF body.
+
+**Spike result (`tmp/eambrosia-spike-findings.md`):** 47/47 sampled
+grandfathered/stub wines across ES/IT/SI/HR/BG/GR/HU/RO/CZ/SK/LU resolved
+to a fetchable `singleDocTechFile`; all inspected (10 across 9 langs/scripts)
+text-layer, uniform EU template, with terroir + variety sections. **Viable
+as the primary stub fallback behind one per-language fiche-technique parser**
+(role keywords already exist in the per-country parsers); keep bespoke
+scrapers secondary. Proven in use: **BE** (4 Walloon → fiche) + **CY** (3
+image-only specs).
+
+### Implementation status (2026-06-02)
+
+Shared infra shipped: `scripts/_lib/eambrosia_register.py` (resolver +
+browser/202 fetch), `scripts/_lib/fiche_technique.py` (2-family parser),
+`scripts/extract_register_fiches.py` (config-driven, 8 countries),
+`scripts/_lib/register_fiche.py` (sidecar accessor for stage-04 / 02d).
+66 fiche-surfaced natives folded into `grape_lexicon.py` (queues drained).
+
+Applied **where there was an actual terroir gap** — not as a rip-and-replace:
+- ✅ **CZ** — per-DOP terroir now live (was shared-region SZPI CHZO for all
+  Morava/Čechy wines); `cz/02d` grounds on the fiche §7.
+- ✅ **SI** — bela-krajina + belokranjec get their OWN per-DOP terroir from
+  the fiche (`si/02d` fill-if-empty), replacing the "inherited from Posavje"
+  `appellation_notes` workaround.
+- **No action needed for HR/HU/SK/BG/GR/RO** — they were already terroir- +
+  grape-covered by their own national-spec/EU-OJ layers (hu 41/41, gr 147/147,
+  bg 54/54, ro 46/46 already had per-DOP facts). Re-sourcing them via the
+  fiche would be churn + regression risk for no gain.
+
+### Phase 2 — unify source-fetch on the register API (elegance retrofit, NON-URGENT)
+
+Forward-looking cleanup, not user-visible: make the register API the
+**canonical first-fetch** for the source document, so the codebase is more
+uniform and sheds fragile dependencies. The register single-document is
+reachable even for grandfathered `Ares`-only wines, needs **no AWS-WAF /
+Playwright** (unlike the EUR-Lex `01`/`01b` path), and follows one uniform
+template. Candidate wins, in priority order:
+1. Retire the per-country EUR-Lex WAF + `01b_solve_waf.py` Playwright
+   bootstrap where the register fiche carries the same single document.
+2. Replace the most fragile bespoke national-spec scrapers (rotating tokens,
+   WAF-blocked hosts) with the register fetch.
+3. Fold `extract_register_fiches.py` + the per-country 02d hook into a
+   single shared stage so new countries are config-only.
+Keep the bespoke scrapers as fallback (the register lacks the *full national
+cahier*'s richer per-variety detail for some countries). Caveats: polite
+low-rate client (202 + UA gate is deliberate anti-bot); PDF size/text-layer
+guard for image-scan long tail; the resolver's bulk filter-list is ~4 MB
+(cache it). Do this as a deliberate refactor pass, not piecemeal.
 
 ## Style taxonomy follow-ups
 

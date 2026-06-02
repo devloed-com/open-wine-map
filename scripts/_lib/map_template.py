@@ -74,6 +74,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "sidebar_aria": _("Filtres et options de la carte"),
         "lang_switcher_aria": _("Langue"),
         "map_aria": _("Carte des appellations viticoles"),
+        "skip_to_map": _("Aller à la carte"),
         "panel_styles_h": _("Styles"),
         "panel_observation_h": _("Variétés d'intérêt"),
         "panel_sources_h": _("Sources"),
@@ -949,7 +950,8 @@ _TEMPLATE = """<!doctype html>
 <title>{labels[page_title]}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{labels[meta_description]}">
-<meta name="theme-color" content="#7A1F2B">
+<meta name="theme-color" content="#7A1F2B" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="icon" href="/assets/favicon-16.png" sizes="16x16" type="image/png">
@@ -1267,6 +1269,85 @@ _TEMPLATE = """<!doctype html>
   #about-dialog button:focus-visible,
   #about-dialog a:focus-visible {{ outline:2px solid #934050; outline-offset:2px; border-radius:3px }}
   .maplibregl-popup-content a:focus-visible {{ outline:2px solid #934050; outline-offset:2px }}
+  /* Skip-to-map link: off-screen until focused, so keyboard users can bypass
+     the filter sidebar and jump straight to the map. */
+  .skip-link {{ position:absolute; left:8px; top:-48px; z-index:60; background:#7A1F2B; color:#fff;
+               padding:8px 14px; border-radius:0 0 4px 4px; font-size:13px; text-decoration:none;
+               transition:top 0.15s ease }}
+  .skip-link:focus {{ top:0 }}
+  /* Respect the OS "reduce motion" setting (WCAG 2.3.3): neutralise the
+     panel/sidebar slides, toast fades and any animation. */
+  @media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{ animation-duration:0.01ms !important; animation-iteration-count:1 !important;
+                              transition-duration:0.01ms !important; scroll-behavior:auto !important }}
+  }}
+  /* Dark mode (prefers-color-scheme). The sidebar is already dark; this flips
+     the light detail panel, about dialog, grape tooltip and map popup to dark
+     surfaces. Pills stay as light chips by design; polygon fill tints are
+     unchanged (map layers, not CSS). The map basemap swaps to CARTO dark_all
+     at init (see the basemap source below). */
+  @media (prefers-color-scheme: dark) {{
+    #panel {{ background:#1c1c1e; border-left-color:#333 }}
+    #panel .body {{ color:#e3e3e3 }}
+    #panel .body h1, #panel .body h2 {{ color:#d98b97; border-bottom-color:#5a2a33 }}
+    #panel .body a, #panel .translation-attr a,
+    #about-dialog a, #grape-tooltip a, #grape-tooltip .src a {{ color:#d98b97 }}
+    #panel .close, #about-dialog .close {{ background:#333; color:#bbb }}
+    #panel .close:hover, #about-dialog .close:hover {{ background:#444; color:#fff }}
+    #panel .meta {{ color:#9a9a9a }}
+    #panel .meta .meta-country {{ color:#cfcfcf }}
+    #panel .stack-header {{ border-bottom-color:#333 }}
+    #panel .aoc-card + .aoc-card {{ border-top-color:#444 }}
+    #panel .aoc-card.subordinate h1 {{ color:#bbb; border-bottom-color:#444 }}
+    #panel .sources, #panel .facts-sub-h {{ color:#bbb }}
+    #panel ul.facts {{ color:#e0e0e0 }}
+    #panel blockquote.facts-verbatim {{ background:#262320; color:#dcdcdc; border-left-color:#555 }}
+    #panel .approx-line {{ background:#322b18; color:#e6cf86; border-left-color:#6a5a2a }}
+    #panel .approx-line a.parent-link {{ color:#e6cf86 }}
+    #panel .appellation-note {{ background:#1e2a36; color:#aecbe6; border-left-color:#3f6182 }}
+    #panel .appellation-note a {{ color:#aecbe6 }}
+    #panel details.dulok {{ color:#ccc }}
+    #panel details.dulok > summary, #panel details.dulok .dulo-tel {{ color:#d8b86a }}
+    #panel details.dulok .dulo-row {{ border-top-color:#333 }}
+    #about-dialog {{ background:#1c1c1e; color:#e3e3e3; border-color:#444 }}
+    #about-dialog h1 {{ color:#d98b97; border-bottom-color:#5a2a33 }}
+    #grape-tooltip {{ background:#1c1c1e; color:#e3e3e3; border-color:#444; box-shadow:0 4px 16px rgba(0,0,0,0.5) }}
+    #grape-tooltip .note {{ color:#bbb }}
+    #grape-tooltip .thumb {{ background:#333 }}
+    .maplibregl-popup-content {{ background:#1c1c1e; color:#e3e3e3 }}
+    .maplibregl-popup-content h3 {{ color:#d98b97 }}
+    .maplibregl-popup-content .meta {{ color:#aaa }}
+    .maplibregl-popup-close-button {{ color:#aaa }}
+    .maplibregl-popup-anchor-top .maplibregl-popup-tip,
+    .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+    .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {{ border-bottom-color:#1c1c1e }}
+    .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+    .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+    .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {{ border-top-color:#1c1c1e }}
+    .maplibregl-popup-anchor-left .maplibregl-popup-tip {{ border-right-color:#1c1c1e }}
+    .maplibregl-popup-anchor-right .maplibregl-popup-tip {{ border-left-color:#1c1c1e }}
+    /* Pills: the light pastel chips glow on the dark panel — re-tint to dark,
+       muted, hue-preserving backgrounds with light text so they read calmly. */
+    .pill {{ background:#2d2d30; color:#d6d6d6 }}
+    .pill.style {{ background:#34232a; color:#e3aab4 }}
+    .pill.style.style--red, .pill.style.style--clairet, .pill.style.style--primeur {{ background:#3a1f24; color:#e7a3ab }}
+    .pill.style.style--white, .pill.style.style--dry, .pill.style.style--tranquille {{ background:#2f2a16; color:#d9c886 }}
+    .pill.style.style--rose {{ background:#371f2b; color:#e7a6c1 }}
+    .pill.style.style--sparkling, .pill.style.style--cremant {{ background:#1f2a36; color:#a8c5e1 }}
+    .pill.style.style--sweet, .pill.style.style--vendanges-tardives, .pill.style.style--grains-nobles {{ background:#33290f; color:#e6c684 }}
+    .pill.style.style--vdn, .pill.style.style--vin-de-liqueur {{ background:#2f2110; color:#e2b97e }}
+    .pill.style.style--vin-jaune {{ background:#2f2914; color:#e7d186 }}
+    .pill.style.style--vin-de-paille {{ background:#2f2614; color:#e7c987 }}
+    .pill.grape {{ background:#202d3b; color:#aecbe8 }}
+    a.pill.grape:hover {{ background:#2a3a4c }}
+    .pill.grape.accessory {{ background:#2a2a2c; color:#aeaeae }}
+    a.pill.grape.accessory:hover {{ background:#343437 }}
+    .pill.grape.observation {{ background:#2e2a14; color:#e0cb84 }}
+    a.pill.grape.observation:hover {{ background:#383218 }}
+    #panel .stack-pos {{ background:#2e2a1c; color:#d8c79a }}
+    #panel .verbatim-badge {{ background:#33280f; color:#e6b86a; border-color:#5a4a1e }}
+    #panel details.menzioni .pill.menzione {{ background:#2c2a20; color:#d8c89a; border-color:#3e3a2c }}
+  }}
 </style>
 <!-- Privacy-friendly analytics by Plausible -->
 <script async src="https://analytics.dev.devloed.com/js/pa-QAprx84urDZKvC3I6r6bc.js"></script>
@@ -1276,6 +1357,7 @@ _TEMPLATE = """<!doctype html>
 </script>
 </head>
 <body>
+<a class="skip-link" href="#map">{labels[skip_to_map]}</a>
 <div id="app">
   <aside id="sidebar" data-nosnippet aria-label="{labels[sidebar_aria]}">
     <h1><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</h1>
@@ -1357,7 +1439,7 @@ _TEMPLATE = """<!doctype html>
 
   <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}">☰</button>
 
-  <main id="map" aria-label="{labels[map_aria]}"></main>
+  <main id="map" tabindex="-1" aria-label="{labels[map_aria]}"></main>
 
   <div id="panel">
     <button class="close" type="button" aria-label="{labels[close_aria]}">×</button>
@@ -1748,6 +1830,13 @@ _TEMPLATE = """<!doctype html>
   const proto = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', proto.tile);
 
+  // Match the basemap to the OS colour scheme at load: CARTO Voyager (light)
+  // or dark_all (dark). Same CARTO / OpenStreetMap attribution either way.
+  const basemapStyle = (window.matchMedia
+    && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    ? 'dark_all' : 'rastertiles/voyager';
+  const basemapTiles = ['a', 'b', 'c'].map(s =>
+    'https://' + s + '.basemaps.cartocdn.com/' + basemapStyle + '/{{z}}/{{x}}/{{y}}.png');
   const map = new maplibregl.Map({{
     container: 'map',
     style: {{
@@ -1755,11 +1844,7 @@ _TEMPLATE = """<!doctype html>
       sources: {{
         basemap: {{
           type: 'raster', tileSize: 256,
-          tiles: [
-            'https://a.basemaps.cartocdn.com/rastertiles/voyager/{{z}}/{{x}}/{{y}}.png',
-            'https://b.basemaps.cartocdn.com/rastertiles/voyager/{{z}}/{{x}}/{{y}}.png',
-            'https://c.basemaps.cartocdn.com/rastertiles/voyager/{{z}}/{{x}}/{{y}}.png'
-          ],
+          tiles: basemapTiles,
           attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
         }}
       }},
@@ -1777,6 +1862,18 @@ _TEMPLATE = """<!doctype html>
       window.location.href = a.dataset.href + window.location.hash;
     }});
   }});
+
+  // Skip-to-map link: focus the map canvas (keyboard-pannable) rather than
+  // letting the "#map" fragment overwrite the maplibre position hash.
+  const skipLink = document.querySelector('.skip-link');
+  if (skipLink) {{
+    skipLink.addEventListener('click', e => {{
+      e.preventDefault();
+      const canvas = map.getCanvas();
+      if (!canvas.hasAttribute('tabindex')) canvas.setAttribute('tabindex', '0');
+      canvas.focus();
+    }});
+  }}
 
   // Mobile sidebar toggle.
   const sidebarEl = document.getElementById('sidebar');
@@ -2812,7 +2909,10 @@ _TEMPLATE = """<!doctype html>
       if (has && info.page_url) {{
         return `<a class="${{cls}}" data-slug="${{safe}}" href="${{escapeAttr(info.page_url)}}" target="_blank" rel="noopener">${{label}}</a>`;
       }}
-      return `<span class="${{cls}}" data-slug="${{safe}}">${{label}}</span>`;
+      // has-info spans (extract but no Wikipedia URL) aren't links, so make
+      // them keyboard-focusable to surface the tooltip without a mouse.
+      const tab = has ? ' tabindex="0"' : '';
+      return `<span class="${{cls}}" data-slug="${{safe}}"${{tab}}>${{label}}</span>`;
     }}).join('');
     const grapePill = (g, cls) => {{
       const info = GRAPES_INFO[g];
@@ -2940,7 +3040,7 @@ _TEMPLATE = """<!doctype html>
     return Number.isFinite(a) ? a : bboxArea(fallback);
   }}
 
-  function renderPanelStack(slugs, focusIndex) {{
+  function renderPanelStack(slugs, focusIndex, doTrack) {{
     if (!slugs.length) return;
     const sorted = slugs
       .filter(s => AOCS[s])
@@ -2958,6 +3058,23 @@ _TEMPLATE = """<!doctype html>
     panelBody.innerHTML = header + ordered.map((s, i) => renderAocCard(s, i === 0)).join('');
     panel.classList.add('open');
     setSelection(ordered.slice(0, 1));
+    // Popularity signal: the appellation brought to the front of the stack.
+    // doTrack is suppressed for the localStorage restore (fires on every
+    // reload / language switch — not a fresh view).
+    if (doTrack !== false) {{
+      const focusSlug = ordered[0];
+      const fr = AOCS[focusSlug];
+      if (fr) {{
+        track('Appellation Viewed', {{
+          slug: focusSlug,
+          country: fr.country || '(none)',
+          kind: fr.kind || '(none)',
+          region: fr.region || '(none)',
+          stacked: sorted.length > 1 ? 'true' : 'false',
+          locale: LANG,
+        }});
+      }}
+    }}
   }}
 
   function escapeHtml(s) {{
@@ -3006,7 +3123,7 @@ _TEMPLATE = """<!doctype html>
     if (!Array.isArray(slugs) || !slugs.length) return;
     const valid = slugs.filter(s => AOCS[s]);
     if (!valid.length) return;
-    renderPanelStack(valid);
+    renderPanelStack(valid, 0, false);
   }})();
 
   document.querySelector('#panel .close').addEventListener('click', () => {{
@@ -3019,14 +3136,22 @@ _TEMPLATE = """<!doctype html>
   // ----- pill tooltip (Wikipedia, CC BY-SA 4.0) — grapes + styles -----
   const grapeTip = document.createElement('div');
   grapeTip.id = 'grape-tooltip';
+  grapeTip.setAttribute('role', 'tooltip');
   document.body.appendChild(grapeTip);
   let grapeTipCloseTimer = null;
+  // The pill the tooltip currently describes, so a screen reader announces
+  // the extract / VIVC id / attribution when a keyboard user focuses a pill.
+  let describedPill = null;
   const cancelGrapeTipClose = () => {{
     if (grapeTipCloseTimer) {{ clearTimeout(grapeTipCloseTimer); grapeTipCloseTimer = null; }}
   }};
+  const hideGrapeTip = () => {{
+    grapeTip.style.display = 'none';
+    if (describedPill) {{ describedPill.removeAttribute('aria-describedby'); describedPill = null; }}
+  }};
   const scheduleGrapeTipClose = () => {{
     cancelGrapeTipClose();
-    grapeTipCloseTimer = setTimeout(() => {{ grapeTip.style.display = 'none'; grapeTipCloseTimer = null; }}, 150);
+    grapeTipCloseTimer = setTimeout(() => {{ hideGrapeTip(); grapeTipCloseTimer = null; }}, 150);
   }};
   grapeTip.addEventListener('mouseenter', cancelGrapeTipClose);
   grapeTip.addEventListener('mouseleave', scheduleGrapeTipClose);
@@ -3054,7 +3179,7 @@ _TEMPLATE = """<!doctype html>
     return null;
   }}
 
-  panel.addEventListener('mouseover', e => {{
+  const showPillTip = (e) => {{
     const el = e.target.closest('a.pill.grape.has-info, .pill.style.has-info');
     if (!el) return;
     const resolved = resolvePillInfo(el);
@@ -3063,7 +3188,7 @@ _TEMPLATE = """<!doctype html>
     const safeUrl = escapeAttr(url);
     const hasExtract = !!info.extract;
     const thumb = (hasExtract && info.thumbnail)
-      ? `<img class="thumb" src="${{escapeAttr(info.thumbnail)}}" alt="">` : '';
+      ? `<img class="thumb" src="${{escapeAttr(info.thumbnail)}}" alt="" loading="lazy" decoding="async">` : '';
     // Two translation paths now feed the source-block:
     //   1. info.translation — legacy styles path (raw/translations/styles/)
     //   2. info.is_translated — grapes path (raw/translations/grapes/),
@@ -3099,11 +3224,25 @@ _TEMPLATE = """<!doctype html>
     grapeTip.innerHTML = thumb + extPara + notePara + srcDiv;
     cancelGrapeTipClose();
     grapeTip.style.display = 'block';
+    if (describedPill && describedPill !== el) describedPill.removeAttribute('aria-describedby');
+    describedPill = el;
+    el.setAttribute('aria-describedby', 'grape-tooltip');
     positionGrapeTip(el);
-  }});
+  }};
 
-  panel.addEventListener('mouseout', e => {{
+  const hidePillTip = (e) => {{
     if (e.target.closest('a.pill.grape.has-info, .pill.style.has-info')) scheduleGrapeTipClose();
+  }};
+  // Show on hover (mouseover) and on keyboard focus (focusin); hide on the
+  // matching mouseout/focusout; Escape dismisses immediately.
+  panel.addEventListener('mouseover', showPillTip);
+  panel.addEventListener('focusin', showPillTip);
+  panel.addEventListener('mouseout', hidePillTip);
+  panel.addEventListener('focusout', hidePillTip);
+  panel.addEventListener('keydown', e => {{
+    if (e.key === 'Escape' && grapeTip.style.display === 'block') {{
+      cancelGrapeTipClose(); hideGrapeTip();
+    }}
   }});
 
   panel.addEventListener('click', e => {{
