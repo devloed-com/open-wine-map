@@ -76,6 +76,22 @@ COUNTRY_CONFIG: dict[str, dict] = {
 }
 
 _PAREN_RE = re.compile(r"\s*\(.*?\)\s*")
+# The §6 list is numbered/bulleted: "* 01 Müller Thurgau", "01. SAVATIANO",
+# "** 01. Fetească albă". Strip the leading bullets + ordinal so the real
+# variety name reaches the matcher.
+_LIST_PREFIX_RE = re.compile(r"^[\s*•·∙‣◦\-–—]*(?:\d{1,3}[.)]\s*|\d{1,3}\s+)?[\s*•·∙‣◦\-–—]*")
+# §6 sub-structure headers + OIV/EU/national catch-all phrases + register
+# page furniture that are not varieties (multilingual stoplist).
+_NON_VARIETY = (
+    "inventory", "súpis", "popis osnovnih", "apogr", "απογρ", "inventar",
+    "списък", "seznam", "soupis",
+    "oiv", "organiz", "organisation", "mednarodn", "medzinárodn", "международн",
+    "internațion", "internation", "διεθν", "organizáci",
+    "všechny další", "všetky odrody", "all other", "ostatní", "iné odrody",
+    "druge sorte", "други сортове", "alte soiuri", "λοιπές", "egyéb fajt",
+    "stvoreno dana", "tehnička dokumentacija", "vytvoř", "създаден",
+    "e-bacchus", "e bacchus", "podklady", "podpůrné", "supporting",
+)
 
 
 def _norm(s: str) -> str:
@@ -116,8 +132,12 @@ def _parse_grapes(section_text):
     out = {"principal": [], "accessory": [], "observation": [], "details": []}
     seen = set()
     for line in (section_text or "").splitlines():
-        cand = _PAREN_RE.sub(" ", line).strip(" .,;\t·–-")
-        if len(cand) < 3:
+        low = line.lower()
+        if any(p in low for p in _NON_VARIETY):
+            continue
+        cand = _PAREN_RE.sub(" ", line)
+        cand = _LIST_PREFIX_RE.sub("", cand).strip(" .,;:\t·–-")
+        if len(cand) < 3 or cand.startswith(("PDO-", "PGI-")) or len(cand) > 45:
             continue
         m = match_variety(cand)
         if m is None or m.slug in seen:
