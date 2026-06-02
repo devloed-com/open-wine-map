@@ -65,6 +65,7 @@ from _lib.it.masaf import (  # noqa: E402
     extract_articles, match_wines_to_pdfs, parse_annex_grapes_with,
     parse_grapes_with, pick_terroir_article,
 )
+from _lib.it.documento_unico import scan_styles  # noqa: E402
 from _lib.it.menzione import extract_menzioni  # noqa: E402
 from _lib.it.region import derive_regione  # noqa: E402
 from _lib.it.province import load_comune_regione_map, resolve_gisco_lau  # noqa: E402
@@ -250,6 +251,16 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
     geo_area = derive_geo_area(articles.get(3, ""))
     terroir_article_num, terroir = pick_terroir_article(articles, raw_text=raw_text)
 
+    # Wine-style tags: scan the denominazione/tipologie block (art 1) + the
+    # organoleptic "Caratteristiche al consumo" (art 6). Those are colour- and
+    # marker-dense (spumante / passito / vin santo / dolce …) and free of the
+    # commune lists in the geo (art 3) / terroir (art 9) articles, which collide
+    # with style words — e.g. the Novello comune in the Barolo zone matched
+    # `novello` → spurious primeur. Colour is additionally backfilled from the
+    # grape roster by the stage-04 floor, so a vague organoleptic that names no
+    # colour keyword ("colore giallo paglierino") still resolves downstream.
+    styles = scan_styles(" ".join(articles.get(n, "") for n in (1, 6)))
+
     # If the wine's name is already DOC/DOCG-prefixed in article 1, the
     # summary tends to be a self-referential opening sentence. Cap at
     # ~600 chars (handled in derive_summary).
@@ -273,6 +284,7 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
         "regione": regione,
         "summary": summary,
         "grapes": grapes,
+        "styles": styles,
         "menzioni": menzioni,
         "geo_area_brief": geo_area,
         "link_to_terroir": terroir,

@@ -1142,6 +1142,13 @@ def augment_it_records_with_masaf(records: list[dict]) -> int:
             record["geo_area_brief"] = sidecar["geo_area_brief"]
         if sidecar.get("link_to_terroir"):
             record["link_to_terroir"] = sidecar["link_to_terroir"]
+        # IT MASAF is the last national-spec layer to carry styles; merge them
+        # the same way every other augment does (union, never clobber). The
+        # disciplinare's tipologie + organoleptic articles supply the markers
+        # (spumante / passito / vin santo / dolce) the grape-colour floor can't
+        # infer; the floor still backfills any colour the scan missed.
+        if sidecar.get("styles"):
+            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
         section_roles = dict(record.get("section_roles") or {})
         if sidecar.get("grapes"):
             section_roles.setdefault("grape_varieties", "")
@@ -1679,13 +1686,67 @@ _COLOUR_WORD_TO_STYLE_SLUG: dict[str, str] = {
 }
 
 
+# `tranquille` (still wine) and `dry` (sec) are the assumed defaults for every
+# appellation — a still, dry wine is the baseline — so rendering them as style
+# pills is noise. Drop them corpus-wide on the map. This is map-only: stage-03
+# wiki pages read the raw `styles` field, not this.
+_DROP_STYLES: frozenset[str] = frozenset({"tranquille", "dry"})
+
+
 def _canonical_styles(values: list[str]) -> list[str]:
-    """Map legacy colour-word style tags to canonical taxonomy slugs, dedupe,
-    and keep the order stable so the MVT `in` filter strings stay clean."""
+    """Map legacy colour-word style tags to canonical taxonomy slugs, drop the
+    assumed-default `tranquille`, dedupe, and keep the order stable so the MVT
+    `in` filter strings stay clean."""
     seen: dict[str, None] = {}
     for s in values or ():
-        seen.setdefault(_COLOUR_WORD_TO_STYLE_SLUG.get(s, s), None)
+        canon = _COLOUR_WORD_TO_STYLE_SLUG.get(s, s)
+        if canon in _DROP_STYLES:
+            continue
+        seen.setdefault(canon, None)
     return list(seen)
+
+
+# Berry colour -> wine-style FLOOR. blanc / gris / rose-berried grapes (Pinot
+# Gris, Gewürztraminer, …) all make WHITE wine; noir makes RED. Rosé WINE is a
+# vinification choice, never inferred from grape colour. Applied at the single
+# style chokepoint, and only when a wine record carries no colour style of its
+# own (see the call site) — so it is a floor that never overrides real data.
+_BERRY_COLOUR_TO_WINE_STYLE: dict[str, str] = {
+    "blanc": "white", "gris": "white", "rose": "white", "noir": "red",
+}
+_COLOUR_STYLES: frozenset[str] = frozenset({"white", "red", "rose"})
+_SPARKLING_FAMILY: frozenset[str] = frozenset({"sparkling", "semi-sparkling", "cremant"})
+
+
+def _base_colour_styles_from_grapes(grapes: dict, existing_styles: set[str]) -> set[str]:
+    """Wine-colour styles implied by the authorised varieties' berry colour.
+    Per slug, first hit wins: (1) the record's own `details[].colour`, (2) the
+    curated DEFAULT_COLOUR, (3) VIVC's `color` (which covers slugs DEFAULT_COLOUR
+    misses, e.g. nebbiolo / chasselas). Returns the colours to ADD (white / red);
+    never invents rosé. The caller gates on no-colour-style + is_wine."""
+    from _lib.grape_lexicon import DEFAULT_COLOUR  # noqa: E402
+    vivc_colour = _load_vivc_colour_by_slug()
+    detail_colour = {
+        d.get("slug"): (d.get("colour") or "").strip()
+        for d in (grapes.get("details") or [])
+        if d.get("slug") and (d.get("colour") or "").strip()
+    }
+    slugs = (set(grapes.get("principal") or [])
+             | set(grapes.get("accessory") or [])
+             | set(grapes.get("observation") or []))
+    add: set[str] = set()
+    for s in slugs:
+        berry = detail_colour.get(s) or DEFAULT_COLOUR.get(s) or vivc_colour.get(s)
+        style = _BERRY_COLOUR_TO_WINE_STYLE.get(berry or "")
+        if style:
+            add.add(style)
+    # Sparkling-only refinement: don't assert a still `red` from a noir grape
+    # when the record's only declared styles are sparkling-family — those reds
+    # are for blanc-de-noirs / rosé sparkling, not still red (Franciacorta,
+    # Crémant d'Alsace, …).
+    if "red" in add and existing_styles and existing_styles <= _SPARKLING_FAMILY:
+        add.discard("red")
+    return add
 
 
 def load_grape_lexicon(lang: str, max_chars: int = 280) -> dict:
@@ -1780,6 +1841,32 @@ def _load_vivc_by_slug() -> dict[str, dict]:
             "vivc_url": rec.get("source_url"),
         }
     _VIVC_BY_SLUG_CACHE = out
+    return out
+
+
+_VIVC_COLOUR_BY_SLUG_CACHE: dict[str, str] | None = None
+
+
+def _load_vivc_colour_by_slug() -> dict[str, str]:
+    """`{slug: 'blanc'|'gris'|'noir'|'rose'}` from raw/vivc/by-slug/<slug>.json
+    `color` (UPPERCASE NOIR/BLANC/GRIS/ROSE). Berry colour — not a wine style.
+    VIVC carries colours absent from the curated DEFAULT_COLOUR table
+    (nebbiolo, chasselas, …), so it is the gap-filler for the style floor.
+    Kept separate from `_load_vivc_by_slug` so that function's return shape
+    (consumed by `facets`) is untouched."""
+    global _VIVC_COLOUR_BY_SLUG_CACHE
+    if _VIVC_COLOUR_BY_SLUG_CACHE is not None:
+        return _VIVC_COLOUR_BY_SLUG_CACHE
+    out: dict[str, str] = {}
+    _MAP = {"NOIR": "noir", "BLANC": "blanc", "GRIS": "gris", "ROSE": "rose"}
+    if VIVC_BY_SLUG.exists():
+        for f in VIVC_BY_SLUG.glob("*.json"):
+            rec = json.loads(f.read_text(encoding="utf-8"))
+            colour = _MAP.get((rec.get("color") or "").strip().upper())
+            slug = rec.get("slug")
+            if colour and slug:
+                out[slug] = colour
+    _VIVC_COLOUR_BY_SLUG_CACHE = out
     return out
 
 
@@ -3983,6 +4070,17 @@ def main() -> int:
             is_wine = "1"
         else:
             is_wine = "1" if categorie.startswith("Vin") else "0"
+        # Grape-colour style floor: many regulator specs enumerate varieties but
+        # describe colour as prose ("colore giallo paglierino") instead of the
+        # keyword, or are stubs whose grapes are merged only here — so the
+        # text-scan parse_styles left no colour. When a wine has no colour style
+        # at all, derive the base colour(s) from its grapes' berry colour so it
+        # gets a Styles section + is findable in the style facet. Additive only
+        # (never overrides a real colour); skips spirits and grape-less records.
+        if is_wine == "1" and not (set(styles) & _COLOUR_STYLES):
+            extra = _base_colour_styles_from_grapes(grapes, set(styles))
+            if extra:
+                styles = _canonical_styles(list(styles) + sorted(extra))
         # When the geometry came from a sibling-DGC umbrella, surface the
         # umbrella's slug/name so the panel can explain "approximate area
         # — within {umbrella}".
