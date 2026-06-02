@@ -63,6 +63,19 @@ def _anchor_search(terms: tuple[str, ...], text: str) -> re.Match | None:
     return pat.search(text.translate(_ANCHOR_FOLD))
 
 
+def _is_uppercase_title(title: str) -> bool:
+    """True if the title is UPPERCASE-dominant — the discriminator between a
+    real section header (e.g. 'ZONĂ DELIMITATĂ', 'ΟΡΙΟΘΕΤΗΜΈΝΗ ΠΕΡΙΟΧΉ') and a
+    per-variety / product-category sub-item (e.g. 'Muscat Ottonel:', 'Víno').
+    Robust across Latin-accented / Greek / Cyrillic scripts via per-char
+    case test; tolerant of a few lowercase connectors."""
+    alpha = [c for c in title if c.isalpha()]
+    if len(alpha) < 2:
+        return False
+    upper = sum(1 for c in alpha if c.isupper())
+    return upper / len(alpha) >= 0.6
+
+
 def parse_fiche_sections(
     text: str, anchor_terms: tuple[str, ...], end_terms: tuple[str, ...],
 ) -> tuple[dict[str, str], dict[str, str]]:
@@ -84,8 +97,11 @@ def parse_fiche_sections(
         indent, num, title = m.group(1), m.group(2), m.group(3).strip().rstrip(":").strip()
         if len(indent.expandtabs()) > _TOP_LEVEL_MAX_INDENT:
             continue  # category sub-item, not a top-level header
-        if not title[:1].isalpha():
-            continue
+        if not title[:1].isalpha() or not _is_uppercase_title(title):
+            continue  # real section titles are UPPERCASE; per-variety
+            # sub-items ("Muscat Ottonel:", "1. Víno") are Title-/lower-case
+            # and can be shallow-indented (RO), so the indent guard alone
+            # isn't enough — they'd otherwise derail the monotonic chain.
         n = int(num)
         if n != last_top + 1:
             continue
