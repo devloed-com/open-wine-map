@@ -88,7 +88,7 @@ _NON_VARIETY = (
     "oiv", "organiz", "organisation", "mednarodn", "medzinárodn", "международн",
     "internațion", "internation", "διεθν", "organizáci",
     "všechny další", "všetky odrody", "all other", "ostatní", "iné odrody",
-    "druge sorte", "други сортове", "alte soiuri", "λοιπές", "egyéb fajt",
+    "druge sorte", "други сортове", "alte soiuri", "λοιπές", "άλλες ποικιλ", "egyéb fajt",
     "stvoreno dana", "tehnička dokumentacija", "vytvoř", "създаден",
     "e-bacchus", "e bacchus", "podklady", "podpůrné", "supporting",
 )

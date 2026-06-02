@@ -1709,6 +1709,17 @@ Malokarpatská corridor.
 Country #14 (added 2026-05-24). 13 wine GIs (11 DOP + 2 PGI), all 13
 on the map.
 
+### Register-fiche variety `Ryzlink buketový` — ⏳ verify before minting
+
+The EU-register fiche §6 for some CZ wines lists `Ryzlink buketový`
+("bouquet Riesling"). Research (2026-06) could not ground it in VIVC /
+wein.plus / the Czech Státní odrůdová kniha; the name is ambiguous
+(Bukettriesling is a documented synonym of BOTH Riesling and the distinct
+German Bukettraube). Left UNFOLDED (own queue entry) pending a check
+against **Vyhláška 88/2017 Sb. Příloha 2 / ÚKZÚZ register** — it may be a
+label term rather than a registered variety. All other CZ/GR/SI/BG/HU/HR
+fiche natives resolved + folded into `grape_lexicon.py`.
+
 ### JEDNOTNÝ DOKUMENT — ❌ 0 / 13 extracted
 
 All 13 CZ wines are Art. 107 / Reg. 1308/2013 grandfathered names with
