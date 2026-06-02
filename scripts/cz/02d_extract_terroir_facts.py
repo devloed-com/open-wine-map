@@ -43,6 +43,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
+from _lib import register_fiche  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "cz" / "dokumenty-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "cs"
@@ -288,6 +289,13 @@ def _resolve_lien_and_source(rec: dict) -> tuple[str, dict]:
         src = rec.get("source") or {}
         eu_url = src.get("final_url") or src.get("source_url") or ""
         return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
+
+    # Per-DOP EU-register fiche technique (§7 Popis souvislostí) — preferred
+    # over the shared-region SZPI CHZO text, which is identical across all
+    # Morava / Čechy wines. Gives each CZ DOP its own terroir narrative.
+    fiche = register_fiche.fiche_terroir("cz", rec.get("slug") or "", MIN_LIEN_CHARS)
+    if fiche:
+        return fiche
 
     chzo = _chzo_for_region(rec.get("region") or "")
     text = chzo.get("region_terroir_text") or ""
