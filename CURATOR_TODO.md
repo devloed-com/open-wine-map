@@ -1994,7 +1994,7 @@ conf); VIVC IDs not yet pinned for giannoudi/ofthalmo/promara/kanella/
 vasilissa (not catalogued under searchable Latin names) — optional 02g
 enrichment, pills render with colour but no VIVC bracket.
 
-## Cross-country — eAmbrosia register attachment endpoint (spike ✅ 2026-06-01; implementation pending)
+## Cross-country — eAmbrosia register attachment endpoint (spike ✅; CZ + SI live; Phase-2 retrofit planned)
 
 The EU GI register public API
 (`ec.europa.eu/geographical-indications-register/eambrosia-public-api`,
@@ -2024,17 +2024,44 @@ as the primary stub fallback behind one per-language fiche-technique parser**
 scrapers secondary. Proven in use: **BE** (4 Walloon → fiche) + **CY** (3
 image-only specs).
 
-- ⏳ **Implement: CZ first** (the recommended proof — today CZ terroir is
-  shared-region only via the SZPI CHZO specs; the per-DOP fiche gives
-  per-DOP terroir + varieties). Then SI / HR / SK / BG / GR / RO / HU.
-- Build a shared `scripts/_lib/eambrosia_register.py` resolver
-  (fileNumber→id→attachment URLs, with the browser-header/202 handling) so
-  the per-country 01c just pins register URLs and `national-spec-layer`'s
-  fiche branch reuses it.
-- Caveats: be a polite low-rate client (the 202 + UA gate is deliberate
-  anti-bot); add a PDF size/text-layer guard for the untested image-scan
-  long tail; ES/IT have the most stubs (48 / 329 in-index) → biggest payoff
-  but also the most fetches.
+### Implementation status (2026-06-02)
+
+Shared infra shipped: `scripts/_lib/eambrosia_register.py` (resolver +
+browser/202 fetch), `scripts/_lib/fiche_technique.py` (2-family parser),
+`scripts/extract_register_fiches.py` (config-driven, 8 countries),
+`scripts/_lib/register_fiche.py` (sidecar accessor for stage-04 / 02d).
+66 fiche-surfaced natives folded into `grape_lexicon.py` (queues drained).
+
+Applied **where there was an actual terroir gap** — not as a rip-and-replace:
+- ✅ **CZ** — per-DOP terroir now live (was shared-region SZPI CHZO for all
+  Morava/Čechy wines); `cz/02d` grounds on the fiche §7.
+- ✅ **SI** — bela-krajina + belokranjec get their OWN per-DOP terroir from
+  the fiche (`si/02d` fill-if-empty), replacing the "inherited from Posavje"
+  `appellation_notes` workaround.
+- **No action needed for HR/HU/SK/BG/GR/RO** — they were already terroir- +
+  grape-covered by their own national-spec/EU-OJ layers (hu 41/41, gr 147/147,
+  bg 54/54, ro 46/46 already had per-DOP facts). Re-sourcing them via the
+  fiche would be churn + regression risk for no gain.
+
+### Phase 2 — unify source-fetch on the register API (elegance retrofit, NON-URGENT)
+
+Forward-looking cleanup, not user-visible: make the register API the
+**canonical first-fetch** for the source document, so the codebase is more
+uniform and sheds fragile dependencies. The register single-document is
+reachable even for grandfathered `Ares`-only wines, needs **no AWS-WAF /
+Playwright** (unlike the EUR-Lex `01`/`01b` path), and follows one uniform
+template. Candidate wins, in priority order:
+1. Retire the per-country EUR-Lex WAF + `01b_solve_waf.py` Playwright
+   bootstrap where the register fiche carries the same single document.
+2. Replace the most fragile bespoke national-spec scrapers (rotating tokens,
+   WAF-blocked hosts) with the register fetch.
+3. Fold `extract_register_fiches.py` + the per-country 02d hook into a
+   single shared stage so new countries are config-only.
+Keep the bespoke scrapers as fallback (the register lacks the *full national
+cahier*'s richer per-variety detail for some countries). Caveats: polite
+low-rate client (202 + UA gate is deliberate anti-bot); PDF size/text-layer
+guard for image-scan long tail; the resolver's bulk filter-list is ~4 MB
+(cache it). Do this as a deliberate refactor pass, not piecemeal.
 
 ## Style taxonomy follow-ups
 

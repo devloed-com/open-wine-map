@@ -41,6 +41,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
+from _lib import register_fiche  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "si" / "dokumenti-extracted"
 SPECIFIKACIJE = ROOT / "raw" / "si" / "specifikacije-extracted"
@@ -283,6 +284,13 @@ def _resolve_lien_and_source(rec: dict) -> tuple[str, dict]:
                         else "uradni-list-pravilnik"
                     ),
                 }
+    # Fill-if-empty: wines with no EU-OJ link and no usable specifikacija
+    # terroir (bela-krajina, belokranjec — which otherwise inherit the
+    # regional Posavje text via appellation_notes) get their OWN per-DOP
+    # terroir from the EU-register fiche technique §7 when it carries one.
+    fiche = register_fiche.fiche_terroir("si", rec.get("slug") or "", MIN_LIEN_CHARS)
+    if fiche:
+        return fiche
     eu_url = src.get("final_url") or src.get("source_url") or ""
     return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
 
