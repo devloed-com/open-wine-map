@@ -1326,6 +1326,27 @@ _TEMPLATE = """<!doctype html>
     .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {{ border-top-color:#1c1c1e }}
     .maplibregl-popup-anchor-left .maplibregl-popup-tip {{ border-right-color:#1c1c1e }}
     .maplibregl-popup-anchor-right .maplibregl-popup-tip {{ border-left-color:#1c1c1e }}
+    /* Pills: the light pastel chips glow on the dark panel — re-tint to dark,
+       muted, hue-preserving backgrounds with light text so they read calmly. */
+    .pill {{ background:#2d2d30; color:#d6d6d6 }}
+    .pill.style {{ background:#34232a; color:#e3aab4 }}
+    .pill.style.style--red, .pill.style.style--clairet, .pill.style.style--primeur {{ background:#3a1f24; color:#e7a3ab }}
+    .pill.style.style--white, .pill.style.style--dry, .pill.style.style--tranquille {{ background:#2f2a16; color:#d9c886 }}
+    .pill.style.style--rose {{ background:#371f2b; color:#e7a6c1 }}
+    .pill.style.style--sparkling, .pill.style.style--cremant {{ background:#1f2a36; color:#a8c5e1 }}
+    .pill.style.style--sweet, .pill.style.style--vendanges-tardives, .pill.style.style--grains-nobles {{ background:#33290f; color:#e6c684 }}
+    .pill.style.style--vdn, .pill.style.style--vin-de-liqueur {{ background:#2f2110; color:#e2b97e }}
+    .pill.style.style--vin-jaune {{ background:#2f2914; color:#e7d186 }}
+    .pill.style.style--vin-de-paille {{ background:#2f2614; color:#e7c987 }}
+    .pill.grape {{ background:#202d3b; color:#aecbe8 }}
+    a.pill.grape:hover {{ background:#2a3a4c }}
+    .pill.grape.accessory {{ background:#2a2a2c; color:#aeaeae }}
+    a.pill.grape.accessory:hover {{ background:#343437 }}
+    .pill.grape.observation {{ background:#2e2a14; color:#e0cb84 }}
+    a.pill.grape.observation:hover {{ background:#383218 }}
+    #panel .stack-pos {{ background:#2e2a1c; color:#d8c79a }}
+    #panel .verbatim-badge {{ background:#33280f; color:#e6b86a; border-color:#5a4a1e }}
+    #panel details.menzioni .pill.menzione {{ background:#2c2a20; color:#d8c89a; border-color:#3e3a2c }}
   }}
 </style>
 <!-- Privacy-friendly analytics by Plausible -->
