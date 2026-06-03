@@ -45,6 +45,8 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "search_grape_placeholder": _("Recherche de cépage…"),
         "active_filters_aria": _("Filtres actifs"),
         "select_all_aria": _("Tout sélectionner"),
+        "open_appellation_aria": _("Ouvrir la fiche de {name}"),
+        "open_appellation_title": _("Ouvrir la fiche"),
         "show_spirits_label": _("Inclure les spiritueux"),
         "facet_styles_h": _("Style de vin"),
         "facet_principal_h": _("Cépages principaux"),
@@ -58,6 +60,10 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "view_mode_h": _("Vue"),
         "view_mode_simple": _("Simple"),
         "view_mode_advanced": _("Avancée"),
+        "theme_h": _("Thème"),
+        "theme_light": _("Clair"),
+        "theme_dark": _("Sombre"),
+        "theme_system": _("Système"),
         "show_igp_label": _("Afficher les IGP"),
         "style_simple_red": _("rouge"),
         "style_simple_white": _("blanc"),
@@ -70,6 +76,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "count_filtered": _("{n} / {total} appellations"),
         "count_hidden_igp_hint": _("{n} dans IGP masquées — afficher"),
         "close_aria": _("Fermer"),
+        "panel_aria": _("Détails de l'appellation"),
         "remove_filter_aria": _("Retirer le filtre {label}"),
         "sidebar_aria": _("Filtres et options de la carte"),
         "lang_switcher_aria": _("Langue"),
@@ -151,6 +158,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "stub_message": _(
             "Open Wine Map n'a pas encore trouvé de {doc} pour cette appellation."
         ),
+        "stub_help_label": _("aidez-nous à le trouver"),
         "fr_marker": _("(français)"),
         "fr_marker_aria": _("Texte source en français"),
         "es_marker": _("(español)"),
@@ -917,6 +925,7 @@ def render(
         lang_switcher_html=_lang_switcher(locale, labels["lang_switcher_aria"]),
         about_dialog_html=_build_about_dialog(labels),
         sidebar_disclaimer_html=_build_sidebar_disclaimer(labels),
+        github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
         source_block=source_block,
         aocs_json=json.dumps(aocs, ensure_ascii=False),
         styles_tree_json=json.dumps(facet_styles_tree, ensure_ascii=False),
@@ -990,7 +999,14 @@ _TEMPLATE = """<!doctype html>
     function go(code) {{
       if (code === here) return;
       var hash = window.location.hash || '';
-      window.location.replace(pathFor(code) + hash);
+      // Carry the appellation deep-link (/<lang>/<slug>) across the locale
+      // change so a shared link survives an auto-redirect; EN home stays at /.
+      var base = '/' + here + '/';
+      var rest = window.location.pathname || '/';
+      rest = (rest.indexOf(base) === 0) ? rest.slice(base.length) : rest.replace(/^\\//, '');
+      rest = rest.replace(/\\/+$/, '').split('/')[0];
+      var dest = rest ? ('/' + code + '/' + rest) : pathFor(code);
+      window.location.replace(dest + hash);
     }}
     var saved = null;
     try {{ saved = localStorage.getItem('lang_choice'); }} catch (e) {{}}
@@ -1012,6 +1028,16 @@ _TEMPLATE = """<!doctype html>
     var mode = 'simple';
     try {{ if (localStorage.getItem('view_mode') === 'advanced') mode = 'advanced'; }} catch (e) {{}}
     document.documentElement.classList.add('mode-' + mode);
+  }})();
+  (function () {{
+    // Resolve the effective theme before first paint so dark mode never
+    // flashes light. `theme` in localStorage is 'light' | 'dark'; absent /
+    // 'system' defers to the OS. Mirrors effectiveTheme() in the main bundle.
+    var t = null;
+    try {{ t = localStorage.getItem('theme'); }} catch (e) {{}}
+    var dark = (t === 'dark') || (t !== 'light'
+      && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (dark) document.documentElement.classList.add('theme-dark');
   }})();
 </script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
@@ -1041,6 +1067,12 @@ _TEMPLATE = """<!doctype html>
   #mode-toggle .mode-btn:last-child {{ border-radius:0 3px 3px 0; border-left:none }}
   #mode-toggle .mode-btn:hover {{ color:#fff }}
   #mode-toggle .mode-btn.active {{ background:#934050; color:#fff; border-color:#934050 }}
+  #theme-toggle {{ display:flex; gap:0; padding:6px 16px 8px }}
+  #theme-toggle .theme-btn {{ flex:1; background:#222; color:#888; border:1px solid #444; border-left:none; padding:5px 8px; cursor:pointer; font-size:13px; line-height:1.2 }}
+  #theme-toggle .theme-btn:first-child {{ border-left:1px solid #444; border-radius:3px 0 0 3px }}
+  #theme-toggle .theme-btn:last-child {{ border-radius:0 3px 3px 0 }}
+  #theme-toggle .theme-btn:hover {{ color:#fff }}
+  #theme-toggle .theme-btn.active {{ background:#934050; color:#fff; border-color:#934050 }}
   #sidebar [data-modes="simple"].mode-hidden, #sidebar [data-modes="advanced"].mode-hidden {{ display:none }}
   html.mode-simple #sidebar [data-modes="advanced"] {{ display:none }}
   html.mode-advanced #sidebar [data-modes="simple"] {{ display:none }}
@@ -1114,6 +1146,12 @@ _TEMPLATE = """<!doctype html>
   .facet .name {{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
   .facet .count {{ color:#666; font-size:11px; margin-left:4px }}
   .facet .syns {{ color:#888; font-size:11px; font-weight:normal }}
+  /* Keyboard/SR path to open an appellation panel (the WebGL polygons aren't
+     DOM-reachable). Subtle until the row is hovered or the button is focused. */
+  .facet .open-aoc {{ flex:0 0 auto; margin-left:auto; background:none; border:none; color:#8a8a8a; cursor:pointer; font-size:14px; line-height:1; padding:0 4px; border-radius:3px; opacity:0.55; transition:opacity 0.12s ease, color 0.12s ease, background 0.12s ease }}
+  .facet label:hover .open-aoc {{ opacity:1; color:#cfa }}
+  .facet .open-aoc:hover {{ color:#fff; background:#333 }}
+  .facet .open-aoc:focus-visible {{ opacity:1 }}
   .facet label.facet-unavailable {{ display:none }}
   .facet .region-group-wrap.facet-unavailable {{ display:none }}
   .facet .tree-row[data-depth="0"] {{ padding-left:0 }}
@@ -1144,7 +1182,7 @@ _TEMPLATE = """<!doctype html>
   #panel .meta .meta-country {{ display:inline-flex; align-items:center; gap:5px; color:#444 }}
   #panel .meta .country-flag {{ font-size:13px; line-height:1 }}
   #panel .meta .country-name {{ font-weight:600 }}
-  #panel .translation-attr {{ font-size:10.5px; color:#888; font-style:italic; margin:0 0 8px }}
+  #panel .translation-attr {{ font-size:11.5px; color:#666; font-style:italic; margin:0 0 8px }}
   #panel .translation-attr a {{ color:#888 }}
   #panel .stack-header {{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#888; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:6px }}
   #panel .stack-pos {{ font-size:10.5px; padding:1px 7px; background:#efe7d8; color:#5a4a2a; border-radius:9px; font-variant-numeric:tabular-nums; letter-spacing:0; text-transform:none; cursor:default }}
@@ -1165,13 +1203,13 @@ _TEMPLATE = """<!doctype html>
   #panel .aoc-card + .aoc-card {{ margin-top:24px; padding-top:20px; border-top:1px dashed #ccc }}
   #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid #934050 }}
   #panel .aoc-card.subordinate h1 {{ font-size:16px; color:#444; border-bottom-color:#ccc }}
-  #panel .sources {{ margin:4px 0 0; padding-left:18px; font-size:12px; color:#444 }}
+  #panel .sources {{ margin:4px 0 0; padding-left:18px; font-size:12.5px; color:#3a3a3a }}
   #panel .sources li {{ margin:3px 0 }}
   #panel .sources code {{ font-size:11px; color:#888 }}
   #panel .facts-sub-h {{ font-size:11px; font-weight:600; color:#555; margin:8px 0 2px; text-transform:none; letter-spacing:0 }}
   #panel ul.facts {{ margin:0 0 6px; padding-left:18px; font-size:13px; color:#222 }}
   #panel ul.facts li {{ margin:2px 0 }}
-  #panel ul.facts .wiki-attr {{ font-size:10.5px; color:#888; font-style:italic }}
+  #panel ul.facts .wiki-attr {{ font-size:11px; color:#666; font-style:italic }}
   #panel ul.facts .wiki-attr a {{ color:#888 }}
   #panel blockquote.facts-verbatim {{ margin:4px 0 6px; padding:6px 10px; border-left:3px solid #ddd; background:#f9f7f4; font-size:13px; color:#333; font-style:italic; white-space:pre-wrap }}
   #panel .verbatim-badge {{ display:inline-block; margin-left:8px; padding:1px 8px; background:#fff5e5; color:#a05a00; border:1px solid #f0d8a8; border-radius:9px; font-size:10.5px; font-weight:600; font-style:normal; vertical-align:middle }}
@@ -1227,6 +1265,7 @@ _TEMPLATE = """<!doctype html>
     #panel.open {{ width:auto; height:75vh; flex-basis:auto }}
     #panel .close {{ width:44px; height:44px; font-size:20px }}
     .facet input[type=checkbox] {{ width:18px; height:18px }}
+    .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
     #actions button {{ min-height:36px }}
   }}
   #sidebar-footer {{ padding:12px 16px 16px; margin-top:8px; border-top:1px solid #2a2a2a; font-size:11px; color:#888; text-align:center }}
@@ -1281,73 +1320,78 @@ _TEMPLATE = """<!doctype html>
     *, *::before, *::after {{ animation-duration:0.01ms !important; animation-iteration-count:1 !important;
                               transition-duration:0.01ms !important; scroll-behavior:auto !important }}
   }}
-  /* Dark mode (prefers-color-scheme). The sidebar is already dark; this flips
-     the light detail panel, about dialog, grape tooltip and map popup to dark
-     surfaces. Pills stay as light chips by design; polygon fill tints are
-     unchanged (map layers, not CSS). The map basemap swaps to CARTO dark_all
-     at init (see the basemap source below). */
-  @media (prefers-color-scheme: dark) {{
-    #panel {{ background:#1c1c1e; border-left-color:#333 }}
-    #panel .body {{ color:#e3e3e3 }}
-    #panel .body h1, #panel .body h2 {{ color:#d98b97; border-bottom-color:#5a2a33 }}
-    #panel .body a, #panel .translation-attr a,
-    #about-dialog a, #grape-tooltip a, #grape-tooltip .src a {{ color:#d98b97 }}
-    #panel .close, #about-dialog .close {{ background:#333; color:#bbb }}
-    #panel .close:hover, #about-dialog .close:hover {{ background:#444; color:#fff }}
-    #panel .meta {{ color:#9a9a9a }}
-    #panel .meta .meta-country {{ color:#cfcfcf }}
-    #panel .stack-header {{ border-bottom-color:#333 }}
-    #panel .aoc-card + .aoc-card {{ border-top-color:#444 }}
-    #panel .aoc-card.subordinate h1 {{ color:#bbb; border-bottom-color:#444 }}
-    #panel .sources, #panel .facts-sub-h {{ color:#bbb }}
-    #panel ul.facts {{ color:#e0e0e0 }}
-    #panel blockquote.facts-verbatim {{ background:#262320; color:#dcdcdc; border-left-color:#555 }}
-    #panel .approx-line {{ background:#322b18; color:#e6cf86; border-left-color:#6a5a2a }}
-    #panel .approx-line a.parent-link {{ color:#e6cf86 }}
-    #panel .appellation-note {{ background:#1e2a36; color:#aecbe6; border-left-color:#3f6182 }}
-    #panel .appellation-note a {{ color:#aecbe6 }}
-    #panel details.dulok {{ color:#ccc }}
-    #panel details.dulok > summary, #panel details.dulok .dulo-tel {{ color:#d8b86a }}
-    #panel details.dulok .dulo-row {{ border-top-color:#333 }}
-    #about-dialog {{ background:#1c1c1e; color:#e3e3e3; border-color:#444 }}
-    #about-dialog h1 {{ color:#d98b97; border-bottom-color:#5a2a33 }}
-    #grape-tooltip {{ background:#1c1c1e; color:#e3e3e3; border-color:#444; box-shadow:0 4px 16px rgba(0,0,0,0.5) }}
-    #grape-tooltip .note {{ color:#bbb }}
-    #grape-tooltip .thumb {{ background:#333 }}
-    .maplibregl-popup-content {{ background:#1c1c1e; color:#e3e3e3 }}
-    .maplibregl-popup-content h3 {{ color:#d98b97 }}
-    .maplibregl-popup-content .meta {{ color:#aaa }}
-    .maplibregl-popup-close-button {{ color:#aaa }}
-    .maplibregl-popup-anchor-top .maplibregl-popup-tip,
-    .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
-    .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {{ border-bottom-color:#1c1c1e }}
-    .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
-    .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
-    .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {{ border-top-color:#1c1c1e }}
-    .maplibregl-popup-anchor-left .maplibregl-popup-tip {{ border-right-color:#1c1c1e }}
-    .maplibregl-popup-anchor-right .maplibregl-popup-tip {{ border-left-color:#1c1c1e }}
-    /* Pills: the light pastel chips glow on the dark panel — re-tint to dark,
-       muted, hue-preserving backgrounds with light text so they read calmly. */
-    .pill {{ background:#2d2d30; color:#d6d6d6 }}
-    .pill.style {{ background:#34232a; color:#e3aab4 }}
-    .pill.style.style--red, .pill.style.style--clairet, .pill.style.style--primeur {{ background:#3a1f24; color:#e7a3ab }}
-    .pill.style.style--white, .pill.style.style--dry, .pill.style.style--tranquille {{ background:#2f2a16; color:#d9c886 }}
-    .pill.style.style--rose {{ background:#371f2b; color:#e7a6c1 }}
-    .pill.style.style--sparkling, .pill.style.style--cremant {{ background:#1f2a36; color:#a8c5e1 }}
-    .pill.style.style--sweet, .pill.style.style--vendanges-tardives, .pill.style.style--grains-nobles {{ background:#33290f; color:#e6c684 }}
-    .pill.style.style--vdn, .pill.style.style--vin-de-liqueur {{ background:#2f2110; color:#e2b97e }}
-    .pill.style.style--vin-jaune {{ background:#2f2914; color:#e7d186 }}
-    .pill.style.style--vin-de-paille {{ background:#2f2614; color:#e7c987 }}
-    .pill.grape {{ background:#202d3b; color:#aecbe8 }}
-    a.pill.grape:hover {{ background:#2a3a4c }}
-    .pill.grape.accessory {{ background:#2a2a2c; color:#aeaeae }}
-    a.pill.grape.accessory:hover {{ background:#343437 }}
-    .pill.grape.observation {{ background:#2e2a14; color:#e0cb84 }}
-    a.pill.grape.observation:hover {{ background:#383218 }}
-    #panel .stack-pos {{ background:#2e2a1c; color:#d8c79a }}
-    #panel .verbatim-badge {{ background:#33280f; color:#e6b86a; border-color:#5a4a1e }}
-    #panel details.menzioni .pill.menzione {{ background:#2c2a20; color:#d8c89a; border-color:#3e3a2c }}
-  }}
+  /* Dark mode. Gated on the `html.theme-dark` class (NOT a media query) so the
+     manual light/dark/system toggle works: a pre-paint inline script adds the
+     class for system-dark OR a manual dark choice, and removing it forces light
+     even on a dark OS — no light-mode reset rules needed. The sidebar is already
+     dark; this flips the detail panel, about dialog, grape tooltip and map
+     popup. Polygon fill tints are unchanged (map layers, not CSS); the basemap
+     swaps live via setLayoutProperty (see the dual basemap sources below). */
+  html.theme-dark #panel {{ background:#1c1c1e; border-left-color:#333 }}
+  html.theme-dark #panel .body {{ color:#e3e3e3 }}
+  html.theme-dark #panel .body h1, html.theme-dark #panel .body h2 {{ color:#d98b97; border-bottom-color:#5a2a33 }}
+  html.theme-dark #panel .body a, html.theme-dark #panel .translation-attr a,
+  html.theme-dark #about-dialog a, html.theme-dark #grape-tooltip a, html.theme-dark #grape-tooltip .src a {{ color:#d98b97 }}
+  /* Focus ring must keep ≥3:1 against the dark surface (WCAG 1.4.11/2.4.11):
+     the burgundy #934050 ring drops to ~2:1 on #1c1c1e, so brighten it. */
+  html.theme-dark #panel button:focus-visible, html.theme-dark #panel a:focus-visible,
+  html.theme-dark #about-dialog button:focus-visible, html.theme-dark #about-dialog a:focus-visible {{ outline-color:#d98b97 }}
+  html.theme-dark #panel .close, html.theme-dark #about-dialog .close {{ background:#333; color:#bbb }}
+  html.theme-dark #panel .close:hover, html.theme-dark #about-dialog .close:hover {{ background:#444; color:#fff }}
+  html.theme-dark #panel .meta {{ color:#9a9a9a }}
+  html.theme-dark #panel .meta .meta-country {{ color:#cfcfcf }}
+  html.theme-dark #panel .stack-header {{ border-bottom-color:#333 }}
+  html.theme-dark #panel .aoc-card + .aoc-card {{ border-top-color:#444 }}
+  html.theme-dark #panel .aoc-card.subordinate h1 {{ color:#bbb; border-bottom-color:#444 }}
+  html.theme-dark #panel .sources, html.theme-dark #panel .facts-sub-h {{ color:#bbb }}
+  html.theme-dark #panel ul.facts {{ color:#e0e0e0 }}
+  html.theme-dark #panel .translation-attr, html.theme-dark #panel ul.facts .wiki-attr {{ color:#a3a3a3 }}
+  html.theme-dark #panel blockquote.facts-verbatim {{ background:#262320; color:#dcdcdc; border-left-color:#555 }}
+  html.theme-dark #panel .approx-line {{ background:#322b18; color:#e6cf86; border-left-color:#6a5a2a }}
+  html.theme-dark #panel .approx-line a.parent-link {{ color:#e6cf86 }}
+  html.theme-dark #panel .appellation-note {{ background:#1e2a36; color:#aecbe6; border-left-color:#3f6182 }}
+  html.theme-dark #panel .appellation-note a {{ color:#aecbe6 }}
+  html.theme-dark #panel details.dulok {{ color:#ccc }}
+  html.theme-dark #panel details.dulok > summary, html.theme-dark #panel details.dulok .dulo-tel {{ color:#d8b86a }}
+  html.theme-dark #panel details.dulok .dulo-row {{ border-top-color:#333 }}
+  html.theme-dark #about-dialog {{ background:#1c1c1e; color:#e3e3e3; border-color:#444 }}
+  html.theme-dark #about-dialog h1 {{ color:#d98b97; border-bottom-color:#5a2a33 }}
+  html.theme-dark #grape-tooltip {{ background:#1c1c1e; color:#e3e3e3; border-color:#444; box-shadow:0 4px 16px rgba(0,0,0,0.5) }}
+  html.theme-dark #grape-tooltip .note {{ color:#bbb }}
+  html.theme-dark #grape-tooltip .thumb {{ background:#333 }}
+  html.theme-dark .maplibregl-popup-content {{ background:#1c1c1e; color:#e3e3e3 }}
+  html.theme-dark .maplibregl-popup-content h3 {{ color:#d98b97 }}
+  html.theme-dark .maplibregl-popup-content .meta {{ color:#aaa }}
+  html.theme-dark .maplibregl-popup-close-button {{ color:#aaa }}
+  html.theme-dark .maplibregl-popup-anchor-top .maplibregl-popup-tip,
+  html.theme-dark .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+  html.theme-dark .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {{ border-bottom-color:#1c1c1e }}
+  html.theme-dark .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+  html.theme-dark .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+  html.theme-dark .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {{ border-top-color:#1c1c1e }}
+  html.theme-dark .maplibregl-popup-anchor-left .maplibregl-popup-tip {{ border-right-color:#1c1c1e }}
+  html.theme-dark .maplibregl-popup-anchor-right .maplibregl-popup-tip {{ border-left-color:#1c1c1e }}
+  /* Pills: the light pastel chips glow on the dark panel — re-tint to dark,
+     muted, hue-preserving backgrounds with light text so they read calmly. */
+  html.theme-dark .pill {{ background:#2d2d30; color:#d6d6d6 }}
+  html.theme-dark .pill.style {{ background:#34232a; color:#e3aab4 }}
+  html.theme-dark .pill.style.style--red, html.theme-dark .pill.style.style--clairet, html.theme-dark .pill.style.style--primeur {{ background:#3a1f24; color:#e7a3ab }}
+  html.theme-dark .pill.style.style--white, html.theme-dark .pill.style.style--dry, html.theme-dark .pill.style.style--tranquille {{ background:#2f2a16; color:#d9c886 }}
+  html.theme-dark .pill.style.style--rose {{ background:#371f2b; color:#e7a6c1 }}
+  html.theme-dark .pill.style.style--sparkling, html.theme-dark .pill.style.style--cremant {{ background:#1f2a36; color:#a8c5e1 }}
+  html.theme-dark .pill.style.style--sweet, html.theme-dark .pill.style.style--vendanges-tardives, html.theme-dark .pill.style.style--grains-nobles {{ background:#33290f; color:#e6c684 }}
+  html.theme-dark .pill.style.style--vdn, html.theme-dark .pill.style.style--vin-de-liqueur {{ background:#2f2110; color:#e2b97e }}
+  html.theme-dark .pill.style.style--vin-jaune {{ background:#2f2914; color:#e7d186 }}
+  html.theme-dark .pill.style.style--vin-de-paille {{ background:#2f2614; color:#e7c987 }}
+  html.theme-dark .pill.grape {{ background:#202d3b; color:#aecbe8 }}
+  html.theme-dark a.pill.grape:hover {{ background:#2a3a4c }}
+  html.theme-dark .pill.grape.accessory {{ background:#2a2a2c; color:#aeaeae }}
+  html.theme-dark a.pill.grape.accessory:hover {{ background:#343437 }}
+  html.theme-dark .pill.grape.observation {{ background:#2e2a14; color:#e0cb84 }}
+  html.theme-dark a.pill.grape.observation:hover {{ background:#383218 }}
+  html.theme-dark #panel .stack-pos {{ background:#2e2a1c; color:#d8c79a }}
+  html.theme-dark #panel .verbatim-badge {{ background:#33280f; color:#e6b86a; border-color:#5a4a1e }}
+  html.theme-dark #panel details.menzioni .pill.menzione {{ background:#2c2a20; color:#d8c89a; border-color:#3e3a2c }}
 </style>
 <!-- Privacy-friendly analytics by Plausible -->
 <script async src="https://analytics.dev.devloed.com/js/pa-QAprx84urDZKvC3I6r6bc.js"></script>
@@ -1363,7 +1407,12 @@ _TEMPLATE = """<!doctype html>
     <h1><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</h1>
     <div class="subtitle">{labels[subtitle]}</div>
     {lang_switcher_html}
-    <div id="status">{labels[loading]}</div>
+    <div id="theme-toggle" role="group" aria-label="{labels[theme_h]}">
+      <button type="button" data-theme-mode="light" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_light]}" title="{labels[theme_light]}">☀</button>
+      <button type="button" data-theme-mode="system" class="theme-btn active" aria-pressed="true" aria-label="{labels[theme_system]}" title="{labels[theme_system]}">◐</button>
+      <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_dark]}" title="{labels[theme_dark]}">☾</button>
+    </div>
+    <div id="status" role="status" aria-live="polite" aria-atomic="true">{labels[loading]}</div>
 
     <div id="mode-toggle" role="group" aria-label="{labels[view_mode_h]}">
       <button type="button" data-mode="simple" class="mode-btn active" aria-pressed="true">{labels[view_mode_simple]}</button>
@@ -1441,7 +1490,7 @@ _TEMPLATE = """<!doctype html>
 
   <main id="map" tabindex="-1" aria-label="{labels[map_aria]}"></main>
 
-  <div id="panel">
+  <div id="panel" tabindex="-1" role="dialog" aria-modal="false" aria-label="{labels[panel_aria]}">
     <button class="close" type="button" aria-label="{labels[close_aria]}">×</button>
     <div class="body" id="panel-body"></div>
   </div>
@@ -1464,6 +1513,7 @@ _TEMPLATE = """<!doctype html>
   const SIMPLE_STYLE_LABELS = {simple_style_labels_json};
   const SIMPLE_STYLE_BUCKETS = {simple_style_buckets_json};
   const LABELS = {labels_json};
+  const GITHUB_NEW_ISSUE_URL = "{github_new_issue_url}";
   // Per-jurisdiction regulator-published specification document name,
   // in the regulator's own language. Used by the stub-message block
   // when no source document has been located for an appellation yet.
@@ -1830,36 +1880,92 @@ _TEMPLATE = """<!doctype html>
   const proto = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', proto.tile);
 
-  // Match the basemap to the OS colour scheme at load: CARTO Voyager (light)
-  // or dark_all (dark). Same CARTO / OpenStreetMap attribution either way.
-  const basemapStyle = (window.matchMedia
-    && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    ? 'dark_all' : 'rastertiles/voyager';
-  const basemapTiles = ['a', 'b', 'c'].map(s =>
-    'https://' + s + '.basemaps.cartocdn.com/' + basemapStyle + '/{{z}}/{{x}}/{{y}}.png');
+  // Basemap: CARTO Voyager (light) + dark_all (dark). BOTH rasters are added up
+  // front and switched by layer visibility, so the theme toggle is live — no
+  // source remove/re-add (which would reorder layers above the appellation
+  // polygons and drop their selection feature-state). Same CARTO / OSM credit.
+  function cartoTiles(style) {{
+    return ['a', 'b', 'c'].map(function (s) {{
+      return 'https://' + s + '.basemaps.cartocdn.com/' + style + '/{{z}}/{{x}}/{{y}}.png';
+    }});
+  }}
+  function effectiveTheme() {{
+    var t = null;
+    try {{ t = localStorage.getItem('theme'); }} catch (e) {{}}
+    if (t === 'light' || t === 'dark') return t;
+    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }}
+  const basemapAttribution = '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+  const initialDark = effectiveTheme() === 'dark';
   const map = new maplibregl.Map({{
     container: 'map',
     style: {{
       version: 8,
       sources: {{
-        basemap: {{
-          type: 'raster', tileSize: 256,
-          tiles: basemapTiles,
-          attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        }}
+        'basemap-light': {{ type: 'raster', tileSize: 256, tiles: cartoTiles('rastertiles/voyager'), attribution: basemapAttribution }},
+        'basemap-dark': {{ type: 'raster', tileSize: 256, tiles: cartoTiles('dark_all'), attribution: basemapAttribution }}
       }},
-      layers: [{{ id: 'basemap', type: 'raster', source: 'basemap' }}]
+      layers: [
+        {{ id: 'basemap-light', type: 'raster', source: 'basemap-light', layout: {{ visibility: initialDark ? 'none' : 'visible' }} }},
+        {{ id: 'basemap-dark', type: 'raster', source: 'basemap-dark', layout: {{ visibility: initialDark ? 'visible' : 'none' }} }}
+      ]
     }},
     center: [2.6, 46.5], zoom: 5.4, hash: true
   }});
 
-  // Preserve URL hash (zoom/lat/lon) when switching locale, and remember
-  // the manual choice so future visits stick.
+  // ----- theme switch (light / dark / system) -----
+  function applyBasemap() {{
+    const dark = effectiveTheme() === 'dark';
+    if (map.getLayer('basemap-dark')) map.setLayoutProperty('basemap-dark', 'visibility', dark ? 'visible' : 'none');
+    if (map.getLayer('basemap-light')) map.setLayoutProperty('basemap-light', 'visibility', dark ? 'none' : 'visible');
+  }}
+  function updateThemeButtons(mode) {{
+    document.querySelectorAll('#theme-toggle .theme-btn').forEach(function (b) {{
+      const on = b.dataset.themeMode === mode;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }});
+  }}
+  function setTheme(mode) {{
+    try {{ if (mode === 'system') localStorage.removeItem('theme'); else localStorage.setItem('theme', mode); }} catch (e) {{}}
+    document.documentElement.classList.toggle('theme-dark', effectiveTheme() === 'dark');
+    applyBasemap();
+    updateThemeButtons(mode);
+    track('Theme Changed', {{ theme: mode, locale: LANG }});
+  }}
+  (function () {{
+    let saved = 'system';
+    try {{ const t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') saved = t; }} catch (e) {{}}
+    updateThemeButtons(saved);
+    document.querySelectorAll('#theme-toggle .theme-btn').forEach(function (b) {{
+      b.addEventListener('click', function () {{ setTheme(b.dataset.themeMode); }});
+    }});
+    // In system mode, follow live OS theme changes (CSS re-evaluates the class;
+    // the basemap needs the explicit nudge).
+    if (window.matchMedia) {{
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const onChange = function () {{
+        let cur = null;
+        try {{ cur = localStorage.getItem('theme'); }} catch (e) {{}}
+        if (cur === 'light' || cur === 'dark') return;
+        document.documentElement.classList.toggle('theme-dark', mq.matches);
+        applyBasemap();
+      }};
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+    }}
+  }})();
+
+  // Preserve the camera hash AND the open-appellation path segment when
+  // switching locale (/<lang>/<slug>), and remember the manual choice.
   document.querySelectorAll('#lang-switcher a').forEach(a => {{
     a.addEventListener('click', e => {{
       e.preventDefault();
       try {{ localStorage.setItem('lang_choice', a.dataset.lang); }} catch (err) {{}}
-      window.location.href = a.dataset.href + window.location.hash;
+      const slug = slugFromPath();
+      const code = a.dataset.lang;
+      const dest = (slug && AOCS[slug]) ? ('/' + code + '/' + encodeURIComponent(slug)) : a.dataset.href;
+      window.location.href = dest + window.location.hash;
     }});
   }});
 
@@ -2484,7 +2590,8 @@ _TEMPLATE = """<!doctype html>
         const rec = AOCS[slug];
         const nameHtml = nameWithLatin(rec);
         const checked = filters.appellations.has(slug) ? ' checked' : '';
-        return `<label data-slug="${{safeSlug}}" data-name="${{escapeAttr(searchableText(rec))}}"><input type="checkbox" data-key="${{safeSlug}}"${{checked}}><span class="name">${{nameHtml}}</span></label>`;
+        const openLbl = escapeAttr(fmt(LABELS.open_appellation_aria, {{ name: rec.name || slug }}));
+        return `<label data-slug="${{safeSlug}}" data-name="${{escapeAttr(searchableText(rec))}}"><input type="checkbox" data-key="${{safeSlug}}"${{checked}}><span class="name">${{nameHtml}}</span><button type="button" class="open-aoc" data-slug="${{safeSlug}}" aria-label="${{openLbl}}" title="${{escapeAttr(LABELS.open_appellation_title)}}">→</button></label>`;
       }}).join('');
       const safeRegion = escapeAttr(region);
       // Checkbox lives outside `<summary>` (sibling of `<details>`,
@@ -2527,6 +2634,28 @@ _TEMPLATE = """<!doctype html>
     }}
     refreshRegionTriStates();
     applyFilter({{ fit: true }});
+  }});
+
+  // Keyboard/SR path to open an appellation's detail panel — the WebGL polygons
+  // aren't DOM-reachable, so the facet "open" button is the only non-mouse way
+  // in. preventDefault/stopPropagation stop the click from toggling the
+  // enclosing label's filter checkbox.
+  document.getElementById('facet-appellations').addEventListener('click', e => {{
+    const btn = e.target.closest('.open-aoc');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const slug = btn.dataset.slug;
+    if (!AOCS[slug]) return;
+    lastPanelTrigger = btn;
+    lastStackKey = slug;
+    stackFocusIndex = 0;
+    renderPanelStack([slug], 0);
+    track('Appellation Opened', {{ slug: slug, via: 'facet', locale: LANG }});
+    const b = (viewMode === 'simple' && AOCS[slug].bbox_villages) ? AOCS[slug].bbox_villages : AOCS[slug].bbox;
+    if (b && typeof map.fitBounds === 'function') {{
+      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], {{ padding: 40, maxZoom: 11, duration: 500 }});
+    }}
   }});
 
   function refreshRegionTriStates() {{
@@ -2979,7 +3108,7 @@ _TEMPLATE = """<!doctype html>
       approxLine = `<div class="approx-line">${{fmt(LABELS.geom_approx_cadastre, {{ lieu_dit: escapeHtml(r.cadastre_lieu_dit), commune: escapeHtml(r.cadastre_commune || ''), source: src }})}}</div>`;
     }}
     const stubLine = r.is_stub
-      ? `<div class="approx-line">${{fmt(LABELS.stub_message, {{ doc: '<em>' + escapeHtml(STUB_DOC_NAMES[r.country] || STUB_DOC_NAMES.fr) + '</em>' }})}}</div>`
+      ? `<div class="approx-line">${{fmt(LABELS.stub_message, {{ doc: '<em>' + escapeHtml(STUB_DOC_NAMES[r.country] || STUB_DOC_NAMES.fr) + '</em>' }})}} <a class="stub-help" href="${{escapeAttr(GITHUB_NEW_ISSUE_URL)}}" target="_blank" rel="noopener">${{escapeHtml(LABELS.stub_help_label)}}</a></div>`
       : '';
     const dulokBlock = renderDulok(r);
     const menzioniBlock = renderMenzioni(r);
@@ -3058,6 +3187,14 @@ _TEMPLATE = """<!doctype html>
     panelBody.innerHTML = header + ordered.map((s, i) => renderAocCard(s, i === 0)).join('');
     panel.classList.add('open');
     setSelection(ordered.slice(0, 1));
+    // Fresh opens only (doTrack !== false): move keyboard focus into the panel
+    // (WCAG 2.4.3) and reflect the appellation in the URL so it is shareable.
+    // The localStorage restore passes doTrack === false so it neither steals
+    // focus nor rewrites the URL on every reload / language switch.
+    if (doTrack !== false) {{
+      setAocPath(ordered[0]);
+      if (typeof panel.focus === 'function') panel.focus({{ preventScroll: true }});
+    }}
     // Popularity signal: the appellation brought to the front of the stack.
     // doTrack is suppressed for the localStorage restore (fires on every
     // reload / language switch — not a fresh view).
@@ -3088,6 +3225,10 @@ _TEMPLATE = """<!doctype html>
   // throw because the source isn't registered yet — we swallow and re-apply
   // at the end of map.on('load').
   let selectedSlugs = [];
+  // The element that opened the panel (a facet "open" button), so focus can
+  // return there on close (WCAG 2.4.3). Null for map clicks / in-panel
+  // cross-links, which have no sensible DOM element to return focus to.
+  let lastPanelTrigger = null;
 
   // Cycling: clicking on the same overlap rotates focus through the stack.
   // Key is the deduped slug set (order-independent) so the user can wobble
@@ -3113,8 +3254,72 @@ _TEMPLATE = """<!doctype html>
     }} catch (e) {{}}
   }}
 
-  // Restore previously open detail panel after a language switch / reload.
+  // Deep-link an appellation as a real path segment: /<lang>/<slug> for every
+  // locale, EN included (/en/<slug>) — so one CDN rewrite covers all four. EN's
+  // *home* stays at / (HOME_BASE); only its deep-links live under /en/. The slug
+  // rides the path; the camera stays in MapLibre's hash, so the two never
+  // collide. replaceState keeps it out of the back-button history.
+  // Static-host caveat: in-session navigation is pure client-side (no reload),
+  // but a fresh load / shared link of /<lang>/<slug> needs the server to serve
+  // the locale index for that path — scripts/serve.py locally, a CDN rewrite in
+  // prod. A legacy ?aoc= query is still read on load (and upgraded to a path).
+  const SLUG_BASE = '/' + LANG + '/';
+  const HOME_BASE = (LANG === 'en') ? '/' : SLUG_BASE;
+  function slugFromPath() {{
+    let p = window.location.pathname || '/';
+    p = (p.indexOf(SLUG_BASE) === 0) ? p.slice(SLUG_BASE.length) : p.replace(/^\\//, '');
+    p = p.replace(/\\/+$/, '').split('/')[0];
+    try {{ p = decodeURIComponent(p); }} catch (e) {{}}
+    return p || null;
+  }}
+  function setAocPath(slug) {{
+    try {{
+      const path = slug ? SLUG_BASE + encodeURIComponent(slug) : HOME_BASE;
+      history.replaceState(history.state, '', path + window.location.hash);
+    }} catch (e) {{}}
+  }}
+
+  // Single close path: clears selection + stack state + URL param, and returns
+  // focus to the panel's trigger when asked (WCAG 2.4.3). Map clicks pass
+  // returnFocus=false — the user's intent already moved to the map.
+  function closePanel(returnFocus) {{
+    const wasOpen = panel.classList.contains('open');
+    panel.classList.remove('open');
+    setSelection([]);
+    lastStackKey = '';
+    stackFocusIndex = 0;
+    setAocPath(null);
+    if (returnFocus && wasOpen) {{
+      const target = (lastPanelTrigger && document.contains(lastPanelTrigger))
+        ? lastPanelTrigger : document.getElementById('q');
+      if (target) {{ try {{ target.focus(); }} catch (e) {{}} }}
+    }}
+    lastPanelTrigger = null;
+  }}
+
+  // Restore an open detail panel: a shared /<lang>/<slug> path (or a legacy
+  // ?aoc= query) wins over the localStorage restore; otherwise reopen whatever
+  // was last open. Both run before map.on('load') — the setFeatureState
+  // highlight throws are swallowed and re-applied at the end of map.on('load').
   (function () {{
+    let urlSlug = slugFromPath();
+    if (!(urlSlug && AOCS[urlSlug])) {{
+      try {{ const q = new URLSearchParams(window.location.search).get('aoc'); if (q && AOCS[q]) urlSlug = q; }} catch (e) {{}}
+    }}
+    if (urlSlug && AOCS[urlSlug]) {{
+      lastStackKey = urlSlug;
+      stackFocusIndex = 0;
+      renderPanelStack([urlSlug], 0);
+      // Frame the shared appellation, but only when the link carries no
+      // explicit camera hash (respect a co-shared #zoom/lat/lon).
+      if (!window.location.hash) {{
+        // Mode-aware like fitToFiltered / the facet-open handler: simple mode
+        // renders the villages geometry, so frame that extent, not parcellaire.
+        const b = (viewMode === 'simple' && AOCS[urlSlug].bbox_villages) ? AOCS[urlSlug].bbox_villages : AOCS[urlSlug].bbox;
+        if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], {{ padding: 60, maxZoom: 11, duration: 0 }}));
+      }}
+      return;
+    }}
     let saved = null;
     try {{ saved = localStorage.getItem('selected_slugs'); }} catch (e) {{}}
     if (!saved) return;
@@ -3126,11 +3331,14 @@ _TEMPLATE = """<!doctype html>
     renderPanelStack(valid, 0, false);
   }})();
 
-  document.querySelector('#panel .close').addEventListener('click', () => {{
-    panel.classList.remove('open');
-    setSelection([]);
-    lastStackKey = '';
-    stackFocusIndex = 0;
+  document.querySelector('#panel .close').addEventListener('click', () => closePanel(true));
+
+  // Esc closes the detail panel and returns focus to its trigger (WCAG 2.1.2).
+  // The native About <dialog> owns Esc while open, so defer to it.
+  document.addEventListener('keydown', e => {{
+    if (e.key !== 'Escape') return;
+    if (aboutDialog && aboutDialog.open) return;
+    if (panel.classList.contains('open')) {{ e.stopPropagation(); closePanel(true); }}
   }});
 
   // ----- pill tooltip (Wikipedia, CC BY-SA 4.0) — grapes + styles -----
@@ -3241,6 +3449,9 @@ _TEMPLATE = """<!doctype html>
   panel.addEventListener('focusout', hidePillTip);
   panel.addEventListener('keydown', e => {{
     if (e.key === 'Escape' && grapeTip.style.display === 'block') {{
+      // Esc dismisses the innermost layer first: kill the tooltip and stop the
+      // event so the document-level handler doesn't also close the panel.
+      e.stopPropagation();
       cancelGrapeTipClose(); hideGrapeTip();
     }}
   }});
@@ -3251,6 +3462,7 @@ _TEMPLATE = """<!doctype html>
     e.preventDefault();
     const slug = a.dataset.slug;
     if (slug && AOCS[slug]) {{
+      lastPanelTrigger = null;
       lastStackKey = '';
       stackFocusIndex = 0;
       renderPanelStack([slug]);
@@ -3291,13 +3503,7 @@ _TEMPLATE = """<!doctype html>
       const features = map.queryRenderedFeatures(bbox, {{
         layers: ['appellations-fill', 'appellations-fill-villages'],
       }});
-      if (!features.length) {{
-        panel.classList.remove('open');
-        setSelection([]);
-        lastStackKey = '';
-        stackFocusIndex = 0;
-        return;
-      }}
+      if (!features.length) {{ closePanel(false); return; }}
       // Dedupe by slug, and drop DGCs that share another AOC's polygon
       // (geom_source = parent-appellation / sibling-dgc). They're returned
       // because the underlying geometry was inherited, but they have no
@@ -3314,13 +3520,7 @@ _TEMPLATE = """<!doctype html>
         if (src === 'parent-appellation' || src === 'sibling-dgc') continue;
         slugs.push(s);
       }}
-      if (!slugs.length) {{
-        panel.classList.remove('open');
-        setSelection([]);
-        lastStackKey = '';
-        stackFocusIndex = 0;
-        return;
-      }}
+      if (!slugs.length) {{ closePanel(false); return; }}
       const key = slugs.slice().sort().join('|');
       if (key === lastStackKey && slugs.length > 1) {{
         stackFocusIndex = (stackFocusIndex + 1) % slugs.length;
@@ -3328,6 +3528,7 @@ _TEMPLATE = """<!doctype html>
         lastStackKey = key;
         stackFocusIndex = 0;
       }}
+      lastPanelTrigger = null;
       renderPanelStack(slugs, stackFocusIndex);
     }});
 

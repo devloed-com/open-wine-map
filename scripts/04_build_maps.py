@@ -5658,9 +5658,18 @@ def emit_html(
         out.parent.mkdir(parents=True, exist_ok=True)
         # Pass a swapped facets dict so the per-locale `aocs` is what gets serialised.
         per_locale_facets = {**facets, "aocs": aocs_for_lang}
-        out.write_text(render_map_html(
+        html_out = render_map_html(
             **per_locale_facets, locale=lang, grapes_info=lex, styles_info=styles_lex,
-        ), encoding="utf-8")
+        )
+        out.write_text(html_out, encoding="utf-8")
+        # EN's home stays at / (canonical), but its appellation deep-links live
+        # under /en/<slug> so a single CDN rewrite ( /<lang>/<slug> →
+        # /<lang>/index.html ) covers all four locales. Emit the same page at
+        # /en/index.html as the origin those paths resolve to.
+        if lang == "en":
+            en_alias = WIKI / "en" / "index.html"
+            en_alias.parent.mkdir(parents=True, exist_ok=True)
+            en_alias.write_text(html_out, encoding="utf-8")
         translated_n = sum(1 for v in lex.values() if v.get("is_translated"))
         with_vivc_n = sum(1 for v in lex.values() if v.get("vivc_id"))
         styles_fallback_n = sum(1 for v in styles_lex.values() if v.get("lang_fallback"))
