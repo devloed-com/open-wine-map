@@ -5572,6 +5572,42 @@ def emit_html(
         vivc_by_slug=_load_vivc_by_slug(),
     )
     fr_styles_lex = load_style_lexicon("fr")
+
+    # --- Phase 3 pilot: gated per-appellation entity pages ----------------
+    # gate_classify decides which records earn an indexable, crawlable page.
+    # v1 FOLDS every sub-denomination (its narrative/grapes are parent-
+    # inherited at render time — CLAUDE.md) and any stub / no-geometry record;
+    # an indexable record needs resolved geometry plus its own grapes / summary
+    # / terroir. The pilot emits only a small hand-picked allowlist (intersected
+    # with the gate) so indexation + demand can be validated before a corpus-
+    # wide rollout. Slugs absent from the corpus are silently dropped.
+    def gate_classify(rec: dict) -> tuple[str, str | None]:
+        if rec.get("is_sub_denomination"):
+            return ("fold", rec.get("parent_slug"))
+        if rec.get("is_stub") or rec.get("geom_source") == "stub-no-geometry" or not rec.get("bbox"):
+            return ("fold", None)
+        has_own = bool(
+            rec.get("terroir_facts") or rec.get("summary") or (rec.get("grapes_principal") or [])
+        )
+        return ("index", None) if has_own else ("fold", None)
+
+    pilot_candidates = [
+        "priorat", "montsant", "rioja", "ribera-del-duero", "rias-baixas",
+        "barolo", "barbaresco", "chianti", "brunello-di-montalcino", "soave",
+        "chablis", "sancerre", "chateauneuf-du-pape", "bandol", "pauillac",
+        "margaux", "douro", "alentejo", "rheingau", "mosel", "tokaj",
+        "santorini", "nemea",
+    ]
+    pilot_entity_slugs = [
+        s for s in pilot_candidates if aocs.get(s) and gate_classify(aocs[s])[0] == "index"
+    ]
+    _pilot_dropped = [s for s in pilot_candidates if s not in pilot_entity_slugs]
+    print(
+        f"[entity-pilot] {len(pilot_entity_slugs)}/{len(pilot_candidates)} pilot slugs indexable; "
+        f"dropped (missing or gated): {_pilot_dropped}",
+        file=sys.stderr,
+    )
+
     for lang in LOCALES:
         lex = build_grapes_info(lang)
         if lang == "fr":
@@ -5658,8 +5694,9 @@ def emit_html(
         out.parent.mkdir(parents=True, exist_ok=True)
         # Pass a swapped facets dict so the per-locale `aocs` is the data bundle.
         per_locale_facets = {**facets, "aocs": aocs_for_lang}
-        html_out, data_filename, data_bytes = render_map_html(
+        html_out, data_filename, data_bytes, entity_pages = render_map_html(
             **per_locale_facets, locale=lang, grapes_info=lex, styles_info=styles_lex,
+            entity_slugs=pilot_entity_slugs,
         )
         out.write_text(html_out, encoding="utf-8")
         # External per-locale data bundle (AOCS + grape tooltips) referenced by
@@ -5671,6 +5708,13 @@ def emit_html(
         for _old in data_dir.glob(f"aocs.{lang}.*.js"):
             _old.unlink()
         (data_dir / data_filename).write_bytes(data_bytes)
+        # Pre-rendered per-appellation pages (the gated pilot set; empty unless
+        # entity_slugs was passed to render). EN entities live under /en/<slug>
+        # (the CDN serves the EN shell for /en/*), fr/es/nl under /<lang>/<slug>.
+        for ent_slug, ent_html in entity_pages.items():
+            ent_dir = WIKI / ("en" if lang == "en" else lang) / ent_slug
+            ent_dir.mkdir(parents=True, exist_ok=True)
+            (ent_dir / "index.html").write_text(ent_html, encoding="utf-8")
         # EN's home stays at / (canonical), but its appellation deep-links live
         # under /en/<slug> so a single CDN rewrite ( /<lang>/<slug> →
         # /<lang>/index.html ) covers all four locales. Emit the same page at
@@ -5698,7 +5742,7 @@ def emit_html(
         file=sys.stderr,
     )
 
-    write_seo_files()
+    write_seo_files(pilot_entity_slugs)
 
 
 def _hreflang_alternates(paths_by_lang: dict[str, str]) -> str:
@@ -5773,7 +5817,7 @@ def copy_brand_assets() -> None:
     print(f"[assets] mirrored {ASSETS_SRC.relative_to(ROOT)} → {ASSETS_OUT.relative_to(ROOT)} ({copied} updated)", file=sys.stderr)
 
 
-def write_seo_files() -> None:
+def write_seo_files(entity_slugs: list[str] | None = None) -> None:
     """Emit wiki/robots.txt and wiki/sitemap.xml.
 
     The map IS the homepage: `/` (EN canonical), `/fr/`, `/es/`, `/nl/`. The
@@ -5790,6 +5834,19 @@ def write_seo_files() -> None:
         _sitemap_url_block(f"{SITE_BASE_URL}{home_paths[lang]}", today, home_alternates)
         for lang in LOCALES
     ]
+
+    # Per-appellation entity pages (gated pilot): one <url> per locale per slug
+    # (en under /en/<slug>), each carrying the slug's hreflang cluster
+    # (x-default -> EN).
+    n_entity = 0
+    for slug in entity_slugs or []:
+        ent_paths = {lang: f"/{lang}/{slug}" for lang in LOCALES}
+        ent_alts = _hreflang_alternates(ent_paths)
+        for lang in LOCALES:
+            url_blocks.append(
+                _sitemap_url_block(f"{SITE_BASE_URL}{ent_paths[lang]}", today, ent_alts)
+            )
+            n_entity += 1
 
     sitemap = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -5809,7 +5866,7 @@ def write_seo_files() -> None:
     (WIKI / "robots.txt").write_text(robots, encoding="utf-8")
     print(
         f"[seo] wrote {WIKI.relative_to(ROOT)}/robots.txt and sitemap.xml "
-        f"({len(LOCALES)} URLs)",
+        f"({len(url_blocks)} URLs: {len(LOCALES)} home + {n_entity} entity)",
         file=sys.stderr,
     )
 

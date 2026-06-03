@@ -17,6 +17,7 @@ import hashlib
 import json
 from collections.abc import Callable
 
+from _lib.content_block import RenderCtx, esc, render_content_block
 from _lib.i18n import load_translations
 
 
@@ -751,8 +752,135 @@ def _build_grape_search_index(
             "count_principal": counts["principal"].get(canon, 0),
             "count_accessory": counts["accessory"].get(canon, 0),
         })
-    index.sort(key=lambda e: (-e["count"], e["label"].casefold()))
+    index.sort(key=lambda e: (-e["count"], e["label"].casefold(), e["slug"]))
     return index
+
+
+_HOMEPAGE_HREFLANG = (
+    '<link rel="alternate" hreflang="en" href="https://www.openwinemap.com/">\n'
+    '<link rel="alternate" hreflang="fr" href="https://www.openwinemap.com/fr/">\n'
+    '<link rel="alternate" hreflang="es" href="https://www.openwinemap.com/es/">\n'
+    '<link rel="alternate" hreflang="nl" href="https://www.openwinemap.com/nl/">\n'
+    '<link rel="alternate" hreflang="x-default" href="https://www.openwinemap.com/">'
+)
+
+
+def _entity_path(locale: str, slug: str) -> str:
+    """Per-appellation URL path. EN entities live under /en/<slug> (the CDN
+    serves the EN shell for /en/*; bare /<slug> 404s); fr/es/nl under
+    /<locale>/<slug>. Matches the shipped client deep-link form (no trailing
+    slash)."""
+    return f"/en/{slug}" if locale == "en" else f"/{locale}/{slug}"
+
+
+def _entity_hreflang_block(slug: str) -> str:
+    rows = [
+        f'<link rel="alternate" hreflang="{lg}" href="{_SITE_BASE_URL}/{lg}/{slug}">'
+        for lg in ("en", "fr", "es", "nl")
+    ]
+    rows.append(f'<link rel="alternate" hreflang="x-default" href="{_SITE_BASE_URL}/en/{slug}">')
+    return "\n".join(rows)
+
+
+def _clamp(text: str, n: int = 160) -> str:
+    text = " ".join((text or "").split())
+    if len(text) <= n:
+        return text
+    return text[:n].rsplit(" ", 1)[0].rstrip(" ,.;:") + "…"
+
+
+def _entity_grape_names(rec: dict, grapes_info: dict, limit: int) -> list[str]:
+    out = []
+    for g in (rec.get("grapes_principal") or [])[:limit]:
+        nm = (
+            (rec.get("grape_names") or {}).get(g)
+            or (grapes_info.get(g) or {}).get("name")
+            or g.replace("-", " ")
+        )
+        out.append(nm)
+    return out
+
+
+def _build_entity_jsonld(slug, rec, canonical_url, locale, country_labels, region) -> str:
+    """schema.org Place (AdministrativeArea) + BreadcrumbList for one
+    appellation. Pre-serialised to an opaque string (its braces are data, not
+    str.format slots)."""
+    name = rec.get("name") or slug
+    country = country_labels.get(rec.get("country") or "", "")
+    contained: list[dict] = []
+    if rec.get("is_sub_denomination") and rec.get("parent_name"):
+        contained.append({"@type": "AdministrativeArea", "name": rec["parent_name"]})
+    if region:
+        contained.append({"@type": "AdministrativeArea", "name": region})
+    if country:
+        contained.append({"@type": "Country", "name": country})
+    for alias in rec.get("country_aliases") or []:
+        an = country_labels.get(alias, "")
+        if an:
+            contained.append({"@type": "Country", "name": an})
+    place = {
+        "@context": "https://schema.org",
+        "@type": "AdministrativeArea",
+        "name": name,
+        "url": canonical_url,
+    }
+    bbox = rec.get("bbox")
+    if bbox and len(bbox) == 4:
+        # stored [minLng, minLat, maxLng, maxLat]; GeoShape box wants
+        # "minLat minLng maxLat maxLng".
+        place["geo"] = {"@type": "GeoShape", "box": f"{bbox[1]} {bbox[0]} {bbox[3]} {bbox[2]}"}
+    if contained:
+        place["containedInPlace"] = contained if len(contained) > 1 else contained[0]
+    home = f"{_SITE_BASE_URL}/" if locale == "en" else f"{_SITE_BASE_URL}/{locale}/"
+    crumbs = [{"@type": "ListItem", "position": 1, "name": "Open Wine Map", "item": home}]
+    pos = 2
+    if country:
+        crumbs.append({"@type": "ListItem", "position": pos, "name": country})
+        pos += 1
+    if rec.get("is_sub_denomination") and rec.get("parent_name") and rec.get("parent_slug"):
+        crumbs.append({
+            "@type": "ListItem", "position": pos, "name": rec["parent_name"],
+            "item": f"{_SITE_BASE_URL}{_entity_path(locale, rec['parent_slug'])}",
+        })
+        pos += 1
+    crumbs.append({"@type": "ListItem", "position": pos, "name": name, "item": canonical_url})
+    breadcrumb = {"@context": "https://schema.org", "@type": "BreadcrumbList",
+                  "itemListElement": crumbs}
+    return (
+        '<script type="application/ld+json">'
+        + json.dumps([place, breadcrumb], ensure_ascii=False)
+        + "</script>"
+    )
+
+
+def _build_entity_meta(slug, rec, locale, labels, region_labels, country_labels, grapes_info) -> dict:
+    """Per-appellation <head> values: self-canonical, per-slug hreflang cluster,
+    templated (non-verbatim) title + meta description, and Place/BreadcrumbList
+    JSON-LD."""
+    name = rec.get("name") or slug
+    kind = rec.get("kind") or ""
+    region = region_labels.get(rec.get("region") or "", rec.get("region") or "")
+    country = country_labels.get(rec.get("country") or "", "")
+    canonical_url = f"{_SITE_BASE_URL}{_entity_path(locale, slug)}"
+    geo = ", ".join(x for x in (region, country) if x)
+    head_bits = " · ".join(x for x in (kind, geo) if x)
+    title = f"{name} — {head_bits} · Open Wine Map" if head_bits else f"{name} · Open Wine Map"
+    gnames = _entity_grape_names(rec, grapes_info, 4)
+    desc = f"{name}, {geo}" if geo else name
+    if kind:
+        desc = f"{desc} · {kind}"
+    if gnames:
+        desc = f"{desc}. {labels.get('facet_principal_h', '')}: {', '.join(gnames)}"
+    desc = _clamp(desc, 160)
+    return {
+        "canonical_url": canonical_url,
+        "page_title": esc(title),
+        "meta_description": esc(desc),
+        "og_title": esc(title),
+        "og_description": esc(desc),
+        "hreflang_block": _entity_hreflang_block(slug),
+        "jsonld_html": _build_entity_jsonld(slug, rec, canonical_url, locale, country_labels, region),
+    }
 
 
 def render(
@@ -770,10 +898,14 @@ def render(
     styles_info: dict | None = None,
     vivc_by_slug: dict | None = None,
     area_quartiles: tuple[float, float] = (0.0, 1.0),
-) -> tuple[str, str, bytes]:
+    entity_slugs: list[str] | None = None,
+) -> tuple[str, str, bytes, dict[str, str]]:
     """Render the full map page (index.html) for one locale.
 
-    Returns `(html, data_filename, data_bytes)`. The large per-locale `aocs`
+    Returns `(html, data_filename, data_bytes, entity_pages)`, where
+    `entity_pages` is `{slug: html}` for each `entity_slugs` member — the
+    pre-rendered per-appellation pages reusing this locale's shell + data bundle
+    (empty unless `entity_slugs` is given). The large per-locale `aocs`
     and `grapes_info` blobs are NOT inlined; they are serialised into
     `data_bytes` (a `window.__OWM_DATA=…;` script) which the caller writes to
     `wiki/data/<data_filename>`, referenced by a render-blocking `<script>`.
@@ -818,6 +950,12 @@ def render(
         if vid is None:
             continue
         vivc_groups.setdefault(vid, []).append(slug)
+    # Sort member lists so the VIVC-derived structures (siblings / synonyms /
+    # search aliases) are reproducible across builds — grapes_info iteration
+    # order is set-derived, so without this the inline blobs vary build-to-build
+    # and the homepage HTML is never a no-op rerun.
+    for _members in vivc_groups.values():
+        _members.sort()
     vivc_siblings: dict[str, list[str]] = {}
     for members in vivc_groups.values():
         if len(members) < 2:
@@ -943,13 +1081,15 @@ def render(
     data_filename = f"aocs.{locale}.{hashlib.sha256(data_bytes).hexdigest()[:10]}.js"
     aocs_data_src = f"/data/{data_filename}"
 
-    html = _TEMPLATE.format(
+    # Slots constant across every page of this locale (homepage + entity pages
+    # share one shell + one external data bundle). The per-page slots
+    # (canonical_url / jsonld_html / page_title / meta_description / og_* /
+    # hreflang_block / ssr_content) are merged in per call below.
+    shell_kwargs = dict(
         lang_attr=locale,
         labels=labels,
-        canonical_url=canonical_url,
         og_locale=og_locale,
         og_alt_locales_html=og_alt_locales_html,
-        jsonld_html=jsonld_html,
         lang_switcher_html=_lang_switcher(locale, labels["lang_switcher_aria"]),
         about_dialog_html=_build_about_dialog(labels),
         sidebar_disclaimer_html=_build_sidebar_disclaimer(labels),
@@ -968,25 +1108,65 @@ def render(
         simple_style_buckets_json=json.dumps(simple_style_buckets, ensure_ascii=False),
         labels_json=json.dumps(labels, ensure_ascii=False),
         grape_search_index_json=json.dumps(grape_search_index, ensure_ascii=False),
-        vivc_siblings_json=json.dumps(vivc_siblings, ensure_ascii=False),
-        slug_to_canonical_json=json.dumps(slug_to_canonical, ensure_ascii=False),
-        grape_synonyms_json=json.dumps(grape_synonyms, ensure_ascii=False),
+        vivc_siblings_json=json.dumps(vivc_siblings, ensure_ascii=False, sort_keys=True),
+        slug_to_canonical_json=json.dumps(slug_to_canonical, ensure_ascii=False, sort_keys=True),
+        grape_synonyms_json=json.dumps(grape_synonyms, ensure_ascii=False, sort_keys=True),
         styles_info_json=json.dumps(styles_info or {}, ensure_ascii=False),
         region_labels_json=json.dumps(region_labels, ensure_ascii=False),
         country_labels_json=json.dumps(country_labels, ensure_ascii=False),
         country_flag_emoji_json=json.dumps(_COUNTRY_FLAG_EMOJI, ensure_ascii=False),
         source_type=source_type,
     )
-    return html, data_filename, data_bytes
+
+    html = _TEMPLATE.format(
+        **shell_kwargs,
+        canonical_url=canonical_url,
+        jsonld_html=jsonld_html,
+        page_title=labels["page_title"],
+        meta_description=labels["meta_description"],
+        og_title=labels["page_title"],
+        og_description=labels["meta_description"],
+        hreflang_block=_HOMEPAGE_HREFLANG,
+        ssr_content="",
+    )
+
+    entity_pages: dict[str, str] = {}
+    if entity_slugs:
+        ctx = RenderCtx(
+            locale=locale, labels=labels, region_labels=region_labels,
+            country_labels=country_labels, country_flag_emoji=_COUNTRY_FLAG_EMOJI,
+            grapes_info=grapes_info or {}, styles_info=styles_info or {},
+            style_labels=style_labels, github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
+        )
+        for slug in entity_slugs:
+            rec = aocs.get(slug)
+            if not rec:
+                continue
+            meta = _build_entity_meta(
+                slug, rec, locale, labels, region_labels, country_labels, grapes_info or {}
+            )
+            entity_pages[slug] = _TEMPLATE.format(
+                **shell_kwargs,
+                canonical_url=meta["canonical_url"],
+                jsonld_html=meta["jsonld_html"],
+                page_title=meta["page_title"],
+                meta_description=meta["meta_description"],
+                og_title=meta["og_title"],
+                og_description=meta["og_description"],
+                hreflang_block=meta["hreflang_block"],
+                ssr_content=render_content_block(rec, slug, ctx),
+            )
+
+    return html, data_filename, data_bytes, entity_pages
 
 
 _TEMPLATE = """<!doctype html>
 <html lang="{lang_attr}">
 <head>
 <meta charset="utf-8">
-<title>{labels[page_title]}</title>
+<title>{page_title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="{labels[meta_description]}">
+<meta name="description" content="{meta_description}">
 <meta name="theme-color" content="#7A1F2B" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
@@ -995,25 +1175,21 @@ _TEMPLATE = """<!doctype html>
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="canonical" href="{canonical_url}">
-<link rel="alternate" hreflang="en" href="https://www.openwinemap.com/">
-<link rel="alternate" hreflang="fr" href="https://www.openwinemap.com/fr/">
-<link rel="alternate" hreflang="es" href="https://www.openwinemap.com/es/">
-<link rel="alternate" hreflang="nl" href="https://www.openwinemap.com/nl/">
-<link rel="alternate" hreflang="x-default" href="https://www.openwinemap.com/">
+{hreflang_block}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Open Wine Map">
-<meta property="og:title" content="{labels[page_title]}">
-<meta property="og:description" content="{labels[meta_description]}">
+<meta property="og:title" content="{og_title}">
+<meta property="og:description" content="{og_description}">
 <meta property="og:url" content="{canonical_url}">
 <meta property="og:locale" content="{og_locale}">
 <meta property="og:image" content="https://www.openwinemap.com/assets/social-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="{labels[page_title]}">
+<meta property="og:image:alt" content="{og_title}">
 {og_alt_locales_html}
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{labels[page_title]}">
-<meta name="twitter:description" content="{labels[meta_description]}">
+<meta name="twitter:title" content="{og_title}">
+<meta name="twitter:description" content="{og_description}">
 <meta name="twitter:image" content="https://www.openwinemap.com/assets/social-card.png">
 {jsonld_html}
 <script>
@@ -1430,7 +1606,7 @@ _TEMPLATE = """<!doctype html>
 </head>
 <body>
 <a class="skip-link" href="#map">{labels[skip_to_map]}</a>
-<div id="app">
+<div id="app">{ssr_content}
   <aside id="sidebar" data-nosnippet aria-label="{labels[sidebar_aria]}">
     <h1><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</h1>
     <div class="subtitle">{labels[subtitle]}</div>
@@ -3338,6 +3514,10 @@ _TEMPLATE = """<!doctype html>
   // was last open. Both run before map.on('load') — the setFeatureState
   // highlight throws are swallowed and re-applied at the end of map.on('load').
   (function () {{
+    // JS is live, so drop the no-JS / crawler SSR fallback article — the
+    // interactive panel below supersedes it. No-op on the homepage (no article).
+    var _ssr = document.getElementById('ssr-content');
+    if (_ssr) _ssr.remove();
     let urlSlug = slugFromPath();
     if (!(urlSlug && AOCS[urlSlug])) {{
       try {{ const q = new URLSearchParams(window.location.search).get('aoc'); if (q && AOCS[q]) urlSlug = q; }} catch (e) {{}}
