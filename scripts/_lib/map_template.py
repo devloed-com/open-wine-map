@@ -1725,6 +1725,10 @@ _TEMPLATE = """<!doctype html>
   const SIMPLE_STYLE_LABELS = {simple_style_labels_json};
   const SIMPLE_STYLE_BUCKETS = {simple_style_buckets_json};
   const LABELS = {labels_json};
+  // Default document title (the locale homepage title). The tab title tracks
+  // the open appellation so it doesn't get stuck on whichever entity page the
+  // user landed on / first opened; reset to this when the panel closes.
+  const DEFAULT_TITLE = LABELS.page_title;
   const GITHUB_NEW_ISSUE_URL = "{github_new_issue_url}";
   // Per-jurisdiction regulator-published specification document name,
   // in the regulator's own language. Used by the stub-message block
@@ -3381,6 +3385,19 @@ _TEMPLATE = """<!doctype html>
     return Number.isFinite(a) ? a : bboxArea(fallback);
   }}
 
+  // Tab title for an open appellation — mirrors the server-rendered entity
+  // <title> (see _build_entity_meta) so navigating within the SPA and landing
+  // on a pre-rendered /<locale>/<slug> page show the same title.
+  function docTitleFor(slug) {{
+    const r = AOCS[slug];
+    if (!r) return DEFAULT_TITLE;
+    const region = r.region ? regionLabel(r.region) : '';
+    const country = COUNTRY_LABELS[r.country] || '';
+    const geo = [region, country].filter(Boolean).join(', ');
+    const head = [r.kind, geo].filter(Boolean).join(' · ');
+    return r.name + (head ? ' — ' + head : '') + ' · Open Wine Map';
+  }}
+
   function renderPanelStack(slugs, focusIndex, doTrack) {{
     if (!slugs.length) return;
     const sorted = slugs
@@ -3398,6 +3415,7 @@ _TEMPLATE = """<!doctype html>
     }}
     panelBody.innerHTML = header + ordered.map((s, i) => renderAocCard(s, i === 0)).join('');
     panel.classList.add('open');
+    document.title = docTitleFor(ordered[0]);
     setSelection(ordered.slice(0, 1));
     // Fresh opens only (doTrack !== false): move keyboard focus into the panel
     // (WCAG 2.4.3) and reflect the appellation in the URL so it is shareable.
@@ -3497,6 +3515,7 @@ _TEMPLATE = """<!doctype html>
   function closePanel(returnFocus) {{
     const wasOpen = panel.classList.contains('open');
     panel.classList.remove('open');
+    document.title = DEFAULT_TITLE;
     setSelection([]);
     lastStackKey = '';
     stackFocusIndex = 0;
