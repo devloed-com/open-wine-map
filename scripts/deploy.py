@@ -94,6 +94,31 @@ def hash_local(root: pathlib.Path) -> dict[str, str]:
     return out
 
 
+# Set Content-Type at upload so served files don't depend on a Bunny edge
+# rule sniffing the extension (and so an HTML page never ships as a binary
+# download under X-Content-Type-Options: nosniff). Anything not listed —
+# .pmtiles, .md, fonts — keeps the octet-stream default, unchanged behaviour.
+_CONTENT_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".xml": "application/xml; charset=utf-8",
+    ".webmanifest": "application/manifest+json",
+    ".txt": "text/plain; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".ico": "image/x-icon",
+}
+
+
+def content_type_for(rel: str) -> str:
+    ext = pathlib.PurePosixPath(rel).suffix.lower()
+    return _CONTENT_TYPES.get(ext, "application/octet-stream")
+
+
 def put(session: requests.Session, host: str, zone: str,
         root: pathlib.Path, rel: str, checksum: str) -> None:
     url = f"https://{host}/{zone}/{rel}"
@@ -103,7 +128,7 @@ def put(session: requests.Session, host: str, zone: str,
             data=body,
             headers={
                 "Checksum": checksum.upper(),
-                "Content-Type": "application/octet-stream",
+                "Content-Type": content_type_for(rel),
             },
             timeout=600,
         )
@@ -116,6 +141,41 @@ def delete(session: requests.Session, host: str, zone: str, rel: str) -> None:
     r = session.delete(url, timeout=60)
     if r.status_code not in (200, 404):
         raise SystemExit(f"DELETE {rel} → {r.status_code} {r.text[:200]}")
+
+
+# The apex → www 301 is a Bunny edge rule (dashboard config, NOT in this repo).
+# Without it Google indexes both hosts and splits ranking signals — Search
+# Console flags "Duplicate without user-selected canonical". This post-deploy
+# smoke check surfaces a missing / regressed redirect loudly but never fails the
+# deploy (the redirect lives outside this script's control).
+_CANONICAL_HOST = "www.openwinemap.com"
+_APEX_HOST = "openwinemap.com"
+
+
+def check_apex_redirect() -> None:
+    bad: list[str] = []
+    for path in ("/", "/fr/"):
+        url = f"https://{_APEX_HOST}{path}"
+        try:
+            r = requests.head(url, allow_redirects=False, timeout=30)
+        except requests.RequestException as e:
+            print(f"warn: apex redirect check skipped ({url}): {e}", file=sys.stderr)
+            return
+        loc = r.headers.get("Location", "")
+        want = f"https://{_CANONICAL_HOST}{path}"
+        if r.status_code not in (301, 308) or loc.rstrip("/") != want.rstrip("/"):
+            bad.append(f"  {url} → {r.status_code} {loc or '(no Location)'}  (want 301 → {want})")
+    if bad:
+        print(
+            "\nwarn: apex host is NOT 301-redirecting to the www canonical:\n"
+            + "\n".join(bad)
+            + f"\n  Fix in Bunny: Pull Zone → Edge Rules → if request host = {_APEX_HOST},"
+            f"\n  Redirect (301) to https://{_CANONICAL_HOST}/<path> (preserve path + query)."
+            "\n  Until then Search Console reports 'Duplicate without user-selected canonical'.",
+            file=sys.stderr,
+        )
+    else:
+        print(f"apex → {_CANONICAL_HOST} 301 redirect: OK", file=sys.stderr)
 
 
 def main() -> int:
@@ -179,6 +239,7 @@ def main() -> int:
     if r.status_code not in (200, 204):
         sys.exit(f"purgeCache → {r.status_code} {r.text[:200]}")
 
+    check_apex_redirect()
     print("\ndeployed. https://www.openwinemap.com/", file=sys.stderr)
     return 0
 

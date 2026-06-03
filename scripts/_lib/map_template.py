@@ -13,6 +13,7 @@ data and translating it would break the public-sources rule in CLAUDE.md.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable
 
@@ -769,10 +770,15 @@ def render(
     styles_info: dict | None = None,
     vivc_by_slug: dict | None = None,
     area_quartiles: tuple[float, float] = (0.0, 1.0),
-) -> str:
+) -> tuple[str, str, bytes]:
     """Render the full map page (index.html) for one locale.
 
-    `aocs` is a {slug: {name, kind, region, ...}} dict serialised inline.
+    Returns `(html, data_filename, data_bytes)`. The large per-locale `aocs`
+    and `grapes_info` blobs are NOT inlined; they are serialised into
+    `data_bytes` (a `window.__OWM_DATA=…;` script) which the caller writes to
+    `wiki/data/<data_filename>`, referenced by a render-blocking `<script>`.
+
+    `aocs` is a {slug: {name, kind, region, ...}} dict (externalised, see above).
     `facet_*` lists are pre-sorted (by frequency desc, then alpha) and
     rendered as filter checkbox groups. `locale` selects the gettext catalog
     used for UI chrome; the data inside `aocs` is not translated.
@@ -915,7 +921,29 @@ def render(
         + "</script>"
     )
 
-    return _TEMPLATE.format(
+    # The two large per-locale reference blobs (AOCS ~12 MB, grape tooltips
+    # ~0.6 MB) ship in an external hashed /data/ script rather than inline, so
+    # the HTML shell is small and the data caches once per locale across every
+    # page that locale will serve (homepages now; per-appellation pages later).
+    # Serialise after the grapes_info mutation above so the bianchello note is
+    # included. A render-blocking <script> assigns window.__OWM_DATA before the
+    # main bundle runs, so the app reads it synchronously with no boot re-thread.
+    # `aocs` keeps its build order (deterministic, and it drives the sidebar
+    # appellation order — do NOT re-sort it); `grapes_info` is a by-key lookup
+    # whose dict order is set-derived and varies across runs, so sort its keys
+    # to keep the hashed filename stable (reproducible build / long-cacheable).
+    data_payload = (
+        'window.__OWM_DATA={"aocs":'
+        + json.dumps(aocs, ensure_ascii=False)
+        + ',"grapes_info":'
+        + json.dumps(grapes_info or {}, ensure_ascii=False, sort_keys=True)
+        + "};"
+    )
+    data_bytes = data_payload.encode("utf-8")
+    data_filename = f"aocs.{locale}.{hashlib.sha256(data_bytes).hexdigest()[:10]}.js"
+    aocs_data_src = f"/data/{data_filename}"
+
+    html = _TEMPLATE.format(
         lang_attr=locale,
         labels=labels,
         canonical_url=canonical_url,
@@ -927,7 +955,7 @@ def render(
         sidebar_disclaimer_html=_build_sidebar_disclaimer(labels),
         github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
         source_block=source_block,
-        aocs_json=json.dumps(aocs, ensure_ascii=False),
+        aocs_data_src=aocs_data_src,
         styles_tree_json=json.dumps(facet_styles_tree, ensure_ascii=False),
         style_descendants_json=json.dumps(style_descendants, ensure_ascii=False),
         styles_simple_json=json.dumps(facet_styles_simple, ensure_ascii=False),
@@ -939,7 +967,6 @@ def render(
         simple_style_labels_json=json.dumps(simple_style_labels, ensure_ascii=False),
         simple_style_buckets_json=json.dumps(simple_style_buckets, ensure_ascii=False),
         labels_json=json.dumps(labels, ensure_ascii=False),
-        grapes_info_json=json.dumps(grapes_info or {}, ensure_ascii=False),
         grape_search_index_json=json.dumps(grape_search_index, ensure_ascii=False),
         vivc_siblings_json=json.dumps(vivc_siblings, ensure_ascii=False),
         slug_to_canonical_json=json.dumps(slug_to_canonical, ensure_ascii=False),
@@ -950,6 +977,7 @@ def render(
         country_flag_emoji_json=json.dumps(_COUNTRY_FLAG_EMOJI, ensure_ascii=False),
         source_type=source_type,
     )
+    return html, data_filename, data_bytes
 
 
 _TEMPLATE = """<!doctype html>
@@ -1500,8 +1528,16 @@ _TEMPLATE = """<!doctype html>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js"></script>
+<!-- Per-locale data bundle (appellation records + grape tooltips). Render-
+     blocking on purpose so window.__OWM_DATA is defined before the app below
+     reads it; hashed filename = immutable, long-cacheable, shared across every
+     page of this locale. -->
+<script src="{aocs_data_src}"></script>
 <script>
-  const AOCS = {aocs_json};
+  const AOCS = (window.__OWM_DATA && window.__OWM_DATA.aocs) || {{}};
+  if (!window.__OWM_DATA) {{
+    console.error('Open Wine Map: data bundle failed to load — appellation details unavailable. Try reloading.');
+  }}
   const FACET_STYLES_TREE = {styles_tree_json};
   const STYLE_DESCENDANTS = {style_descendants_json};
   const FACET_STYLES_SIMPLE = {styles_simple_json};
@@ -1527,7 +1563,7 @@ _TEMPLATE = """<!doctype html>
     hr: 'specifikacija proizvoda',
     ro: 'caiet de sarcini',
   }};
-  const GRAPES_INFO = {grapes_info_json};
+  const GRAPES_INFO = (window.__OWM_DATA && window.__OWM_DATA.grapes_info) || {{}};
   // Slug -> siblings sharing the same VIVC variety id. Used to make the
   // grape filter synonym-aware: toggling Cot also matches AOCs that
   // list Malbec / Auxerrois / any other regulatory spelling of vivc_id

@@ -5656,12 +5656,21 @@ def emit_html(
                 aocs_for_lang = overlay_translated_facts(aocs_for_lang, facts_translations)
         out = (WIKI / "index.html") if lang == "en" else (WIKI / lang / "index.html")
         out.parent.mkdir(parents=True, exist_ok=True)
-        # Pass a swapped facets dict so the per-locale `aocs` is what gets serialised.
+        # Pass a swapped facets dict so the per-locale `aocs` is the data bundle.
         per_locale_facets = {**facets, "aocs": aocs_for_lang}
-        html_out = render_map_html(
+        html_out, data_filename, data_bytes = render_map_html(
             **per_locale_facets, locale=lang, grapes_info=lex, styles_info=styles_lex,
         )
         out.write_text(html_out, encoding="utf-8")
+        # External per-locale data bundle (AOCS + grape tooltips) referenced by
+        # the page's render-blocking <script>. Prune stale hashed bundles for
+        # this locale first so the dir doesn't accumulate across rebuilds
+        # (deploy prunes the remote; this keeps the local tree clean too).
+        data_dir = WIKI / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        for _old in data_dir.glob(f"aocs.{lang}.*.js"):
+            _old.unlink()
+        (data_dir / data_filename).write_bytes(data_bytes)
         # EN's home stays at / (canonical), but its appellation deep-links live
         # under /en/<slug> so a single CDN rewrite ( /<lang>/<slug> →
         # /<lang>/index.html ) covers all four locales. Emit the same page at
