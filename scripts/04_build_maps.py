@@ -5591,20 +5591,18 @@ def emit_html(
         )
         return ("index", None) if has_own else ("fold", None)
 
-    pilot_candidates = [
-        "priorat", "montsant", "rioja", "ribera-del-duero", "rias-baixas",
-        "barolo", "barbaresco", "chianti", "brunello-di-montalcino", "soave",
-        "chablis", "sancerre", "chateauneuf-du-pape", "bandol", "pauillac",
-        "margaux", "douro", "alentejo", "rheingau", "mosel", "tokaj",
-        "santorini", "nemea",
-    ]
-    pilot_entity_slugs = [
-        s for s in pilot_candidates if aocs.get(s) and gate_classify(aocs[s])[0] == "index"
-    ]
-    _pilot_dropped = [s for s in pilot_candidates if s not in pilot_entity_slugs]
+    # Full-corpus gate: every record gets a pre-rendered file (so the CDN can
+    # serve any /<locale>/<slug> deep-link). index slugs get a full, indexable
+    # entity page; fold slugs (sub-denominations, stubs, no-geometry, thin) get a
+    # lightweight noindex page that canonicalises to the parent — on the map for
+    # the deep-link, kept out of the index as a near-duplicate of the parent.
+    index_slugs: list[str] = []
+    fold_slugs: list[str] = []
+    for _slug, _rec in aocs.items():
+        (index_slugs if gate_classify(_rec)[0] == "index" else fold_slugs).append(_slug)
     print(
-        f"[entity-pilot] {len(pilot_entity_slugs)}/{len(pilot_candidates)} pilot slugs indexable; "
-        f"dropped (missing or gated): {_pilot_dropped}",
+        f"[entity] gate: {len(index_slugs)} index + {len(fold_slugs)} fold "
+        f"= {len(index_slugs) + len(fold_slugs)}/{len(aocs)} records",
         file=sys.stderr,
     )
 
@@ -5694,9 +5692,11 @@ def emit_html(
         out.parent.mkdir(parents=True, exist_ok=True)
         # Pass a swapped facets dict so the per-locale `aocs` is the data bundle.
         per_locale_facets = {**facets, "aocs": aocs_for_lang}
-        html_out, data_filename, data_bytes, entity_pages = render_map_html(
+        # EN entities live under /en/<slug>, fr/es/nl under /<lang>/<slug>.
+        entity_out_dir = WIKI / ("en" if lang == "en" else lang)
+        html_out, data_filename, data_bytes, n_index, n_fold = render_map_html(
             **per_locale_facets, locale=lang, grapes_info=lex, styles_info=styles_lex,
-            entity_slugs=pilot_entity_slugs,
+            index_slugs=index_slugs, fold_slugs=fold_slugs, entity_out_dir=entity_out_dir,
         )
         out.write_text(html_out, encoding="utf-8")
         # External per-locale data bundle (AOCS + grape tooltips) referenced by
@@ -5708,13 +5708,10 @@ def emit_html(
         for _old in data_dir.glob(f"aocs.{lang}.*.js"):
             _old.unlink()
         (data_dir / data_filename).write_bytes(data_bytes)
-        # Pre-rendered per-appellation pages (the gated pilot set; empty unless
-        # entity_slugs was passed to render). EN entities live under /en/<slug>
-        # (the CDN serves the EN shell for /en/*), fr/es/nl under /<lang>/<slug>.
-        for ent_slug, ent_html in entity_pages.items():
-            ent_dir = WIKI / ("en" if lang == "en" else lang) / ent_slug
-            ent_dir.mkdir(parents=True, exist_ok=True)
-            (ent_dir / "index.html").write_text(ent_html, encoding="utf-8")
+        # Per-appellation pages are streamed straight to disk by render (to
+        # entity_out_dir/<slug>/index.html) so the whole corpus never sits in
+        # memory at once.
+        print(f"[entity] {lang}: wrote {n_index} index + {n_fold} fold pages", file=sys.stderr)
         # EN's home stays at / (canonical), but its appellation deep-links live
         # under /en/<slug> so a single CDN rewrite ( /<lang>/<slug> →
         # /<lang>/index.html ) covers all four locales. Emit the same page at
@@ -5742,7 +5739,7 @@ def emit_html(
         file=sys.stderr,
     )
 
-    write_seo_files(pilot_entity_slugs)
+    write_seo_files(index_slugs)
 
 
 def _hreflang_alternates(paths_by_lang: dict[str, str]) -> str:
@@ -5835,9 +5832,9 @@ def write_seo_files(entity_slugs: list[str] | None = None) -> None:
         for lang in LOCALES
     ]
 
-    # Per-appellation entity pages (gated pilot): one <url> per locale per slug
+    # Indexable per-appellation entity pages: one <url> per locale per slug
     # (en under /en/<slug>), each carrying the slug's hreflang cluster
-    # (x-default -> EN).
+    # (x-default -> EN). Folded (noindex) slugs are deliberately excluded.
     n_entity = 0
     for slug in entity_slugs or []:
         ent_paths = {lang: f"/{lang}/{slug}" for lang in LOCALES}

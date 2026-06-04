@@ -853,15 +853,26 @@ def _build_entity_jsonld(slug, rec, canonical_url, locale, country_labels, regio
     )
 
 
-def _build_entity_meta(slug, rec, locale, labels, region_labels, country_labels, grapes_info) -> dict:
-    """Per-appellation <head> values: self-canonical, per-slug hreflang cluster,
-    templated (non-verbatim) title + meta description, and Place/BreadcrumbList
-    JSON-LD."""
+def _build_entity_meta(
+    slug, rec, locale, labels, region_labels, country_labels, grapes_info, folded=False
+) -> dict:
+    """Per-appellation <head> values.
+
+    index pages (`folded=False`): self-canonical, per-slug hreflang cluster, and
+    Place/BreadcrumbList JSON-LD. folded pages (`folded=True` — sub-denominations,
+    stubs, no-geometry, thin records): `noindex, follow` + self-canonical, no
+    JSON-LD. A folded page still boots the map for its deep-link, but is kept out
+    of the index as a near-duplicate of the parent. (Self-canonical, NOT
+    canonical->parent: Google treats noindex combined with a canonical to a
+    *different* URL as a contradictory signal and may ignore one; the parent is
+    indexed independently, and the folded page's empty SSR means no
+    near-duplicate-of-parent body is ever server-exposed, so the page simply
+    drops out of the index cleanly.)"""
     name = rec.get("name") or slug
     kind = rec.get("kind") or ""
     region = region_labels.get(rec.get("region") or "", rec.get("region") or "")
     country = country_labels.get(rec.get("country") or "", "")
-    canonical_url = f"{_SITE_BASE_URL}{_entity_path(locale, slug)}"
+    self_url = f"{_SITE_BASE_URL}{_entity_path(locale, slug)}"
     geo = ", ".join(x for x in (region, country) if x)
     head_bits = " · ".join(x for x in (kind, geo) if x)
     title = f"{name} — {head_bits} · Open Wine Map" if head_bits else f"{name} · Open Wine Map"
@@ -872,6 +883,14 @@ def _build_entity_meta(slug, rec, locale, labels, region_labels, country_labels,
     if gnames:
         desc = f"{desc}. {labels.get('facet_principal_h', '')}: {', '.join(gnames)}"
     desc = _clamp(desc, 160)
+    if folded:
+        canonical_url = self_url
+        jsonld_html = ""
+        robots_meta = '<meta name="robots" content="noindex, follow">\n'
+    else:
+        canonical_url = self_url
+        jsonld_html = _build_entity_jsonld(slug, rec, self_url, locale, country_labels, region)
+        robots_meta = ""
     return {
         "canonical_url": canonical_url,
         "page_title": esc(title),
@@ -879,7 +898,8 @@ def _build_entity_meta(slug, rec, locale, labels, region_labels, country_labels,
         "og_title": esc(title),
         "og_description": esc(desc),
         "hreflang_block": _entity_hreflang_block(slug),
-        "jsonld_html": _build_entity_jsonld(slug, rec, canonical_url, locale, country_labels, region),
+        "jsonld_html": jsonld_html,
+        "robots_meta": robots_meta,
     }
 
 
@@ -898,7 +918,9 @@ def render(
     styles_info: dict | None = None,
     vivc_by_slug: dict | None = None,
     area_quartiles: tuple[float, float] = (0.0, 1.0),
-    entity_slugs: list[str] | None = None,
+    index_slugs: list[str] | None = None,
+    fold_slugs: list[str] | None = None,
+    entity_out_dir=None,
 ) -> tuple[str, str, bytes, dict[str, str]]:
     """Render the full map page (index.html) for one locale.
 
@@ -1127,25 +1149,25 @@ def render(
         og_title=labels["page_title"],
         og_description=labels["meta_description"],
         hreflang_block=_HOMEPAGE_HREFLANG,
+        robots_meta="",
         ssr_content="",
     )
 
-    entity_pages: dict[str, str] = {}
-    if entity_slugs:
+    # Per-appellation pages are streamed straight to disk (one per slug) rather
+    # than accumulated in a dict — at full-corpus scale the in-memory set would
+    # be gigabytes. index slugs get a full, indexable card; fold slugs get a
+    # noindex shell (canonical to the parent) that still boots the map.
+    n_index = n_fold = 0
+    if entity_out_dir is not None and (index_slugs or fold_slugs):
         ctx = RenderCtx(
             locale=locale, labels=labels, region_labels=region_labels,
             country_labels=country_labels, country_flag_emoji=_COUNTRY_FLAG_EMOJI,
             grapes_info=grapes_info or {}, styles_info=styles_info or {},
             style_labels=style_labels, github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
         )
-        for slug in entity_slugs:
-            rec = aocs.get(slug)
-            if not rec:
-                continue
-            meta = _build_entity_meta(
-                slug, rec, locale, labels, region_labels, country_labels, grapes_info or {}
-            )
-            entity_pages[slug] = _TEMPLATE.format(
+
+        def _emit(slug: str, meta: dict, ssr: str) -> None:
+            page = _TEMPLATE.format(
                 **shell_kwargs,
                 canonical_url=meta["canonical_url"],
                 jsonld_html=meta["jsonld_html"],
@@ -1154,10 +1176,36 @@ def render(
                 og_title=meta["og_title"],
                 og_description=meta["og_description"],
                 hreflang_block=meta["hreflang_block"],
-                ssr_content=render_content_block(rec, slug, ctx),
+                robots_meta=meta["robots_meta"],
+                ssr_content=ssr,
             )
+            d = entity_out_dir / slug
+            d.mkdir(parents=True, exist_ok=True)
+            (d / "index.html").write_text(page, encoding="utf-8")
 
-    return html, data_filename, data_bytes, entity_pages
+        for slug in index_slugs or []:
+            rec = aocs.get(slug)
+            if not rec:
+                continue
+            meta = _build_entity_meta(
+                slug, rec, locale, labels, region_labels, country_labels,
+                grapes_info or {}, folded=False,
+            )
+            _emit(slug, meta, render_content_block(rec, slug, ctx))
+            n_index += 1
+
+        for slug in fold_slugs or []:
+            rec = aocs.get(slug)
+            if not rec:
+                continue
+            meta = _build_entity_meta(
+                slug, rec, locale, labels, region_labels, country_labels,
+                grapes_info or {}, folded=True,
+            )
+            _emit(slug, meta, "")
+            n_fold += 1
+
+    return html, data_filename, data_bytes, n_index, n_fold
 
 
 _TEMPLATE = """<!doctype html>
@@ -1167,7 +1215,7 @@ _TEMPLATE = """<!doctype html>
 <title>{page_title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{meta_description}">
-<meta name="theme-color" content="#7A1F2B" media="(prefers-color-scheme: light)">
+{robots_meta}<meta name="theme-color" content="#7A1F2B" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
