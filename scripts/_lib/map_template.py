@@ -1305,6 +1305,11 @@ _TEMPLATE = """<!doctype html>
     var mode = 'simple';
     try {{ if (localStorage.getItem('view_mode') === 'advanced') mode = 'advanced'; }} catch (e) {{}}
     document.documentElement.classList.add('mode-' + mode);
+    // Mark JS available before paint so the server-rendered #ssr-content card
+    // can be hidden via CSS (rule below). The app swaps it for the live panel,
+    // so JS users skip the brief boot flash; non-JS visitors and non-rendering
+    // crawlers still receive the card in the HTML.
+    document.documentElement.classList.add('js');
   }})();
   (function () {{
     // Resolve the effective theme before first paint so dark mode never
@@ -1320,6 +1325,10 @@ _TEMPLATE = """<!doctype html>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
   html, body {{ margin:0; padding:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14px }}
+  /* Hide the server-rendered card once JS is available (class set pre-paint):
+     the app swaps it for the live panel, so JS users skip the boot-time flash;
+     non-JS visitors and non-rendering crawlers still receive it in the HTML. */
+  html.js #ssr-content {{ display:none }}
   #app {{ display:flex; height:100vh }}
   #sidebar {{ width:300px; flex:0 0 300px; background:#1a1a1a; color:#eee; overflow-y:auto; border-right:1px solid #333 }}
   #sidebar h1 {{ font-size:15px; padding:14px 16px 4px; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px }}
