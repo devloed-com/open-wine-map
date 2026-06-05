@@ -5694,20 +5694,35 @@ def emit_html(
         per_locale_facets = {**facets, "aocs": aocs_for_lang}
         # EN entities live under /en/<slug>, fr/es/nl under /<lang>/<slug>.
         entity_out_dir = WIKI / ("en" if lang == "en" else lang)
-        html_out, data_filename, data_bytes, n_index, n_fold = render_map_html(
+        html_out, assets, n_index, n_fold = render_map_html(
             **per_locale_facets, locale=lang, grapes_info=lex, styles_info=styles_lex,
             index_slugs=index_slugs, fold_slugs=fold_slugs, entity_out_dir=entity_out_dir,
         )
         out.write_text(html_out, encoding="utf-8")
-        # External per-locale data bundle (AOCS + grape tooltips) referenced by
-        # the page's render-blocking <script>. Prune stale hashed bundles for
-        # this locale first so the dir doesn't accumulate across rebuilds
-        # (deploy prunes the remote; this keeps the local tree clean too).
+        # Three external, content-hashed bundles every page of this locale
+        # references: the data bundle (AOCS + grape tooltips) under /data/, the
+        # shared stylesheet and the per-locale app script under /assets/. Prune
+        # stale hashes (keeping the current one) so the dirs don't accumulate
+        # across rebuilds; deploy prunes the remote, this keeps the tree clean.
         data_dir = WIKI / "data"
         data_dir.mkdir(parents=True, exist_ok=True)
+        assets_dir = WIKI / "assets"
+        assets_dir.mkdir(parents=True, exist_ok=True)
+        data_filename, data_bytes = assets["data"]
+        style_filename, style_bytes = assets["style"]
+        app_filename, app_bytes = assets["app"]
         for _old in data_dir.glob(f"aocs.{lang}.*.js"):
-            _old.unlink()
+            if _old.name != data_filename:
+                _old.unlink()
         (data_dir / data_filename).write_bytes(data_bytes)
+        for _old in assets_dir.glob("style.*.css"):
+            if _old.name != style_filename:
+                _old.unlink()
+        (assets_dir / style_filename).write_bytes(style_bytes)
+        for _old in assets_dir.glob(f"app.{lang}.*.js"):
+            if _old.name != app_filename:
+                _old.unlink()
+        (assets_dir / app_filename).write_bytes(app_bytes)
         # Per-appellation pages are streamed straight to disk by render (to
         # entity_out_dir/<slug>/index.html) so the whole corpus never sits in
         # memory at once.

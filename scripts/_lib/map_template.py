@@ -1103,21 +1103,18 @@ def render(
     data_filename = f"aocs.{locale}.{hashlib.sha256(data_bytes).hexdigest()[:10]}.js"
     aocs_data_src = f"/data/{data_filename}"
 
-    # Slots constant across every page of this locale (homepage + entity pages
-    # share one shell + one external data bundle). The per-page slots
-    # (canonical_url / jsonld_html / page_title / meta_description / og_* /
-    # hreflang_block / ssr_content) are merged in per call below.
-    shell_kwargs = dict(
+    # Slots split two ways. script_kwargs fill the externalised app <script>
+    # (one cached /assets/app.<locale>.<hash>.js shared by every page this
+    # locale serves); page_shell + the per-call slots fill the lightweight page
+    # shell (head + chrome + asset refs). The CSS carries no fields and ships as
+    # one shared, content-hashed stylesheet for the whole corpus. So each of the
+    # ~11.6k pages is a small shell referencing three cached bundles
+    # (data + app + style) instead of inlining ~450 KB.
+    script_kwargs = dict(
         lang_attr=locale,
-        labels=labels,
-        og_locale=og_locale,
-        og_alt_locales_html=og_alt_locales_html,
-        lang_switcher_html=_lang_switcher(locale, labels["lang_switcher_aria"]),
-        about_dialog_html=_build_about_dialog(labels),
-        sidebar_disclaimer_html=_build_sidebar_disclaimer(labels),
         github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
         source_block=source_block,
-        aocs_data_src=aocs_data_src,
+        source_type=source_type,
         styles_tree_json=json.dumps(facet_styles_tree, ensure_ascii=False),
         style_descendants_json=json.dumps(style_descendants, ensure_ascii=False),
         styles_simple_json=json.dumps(facet_styles_simple, ensure_ascii=False),
@@ -1137,11 +1134,35 @@ def render(
         region_labels_json=json.dumps(region_labels, ensure_ascii=False),
         country_labels_json=json.dumps(country_labels, ensure_ascii=False),
         country_flag_emoji_json=json.dumps(_COUNTRY_FLAG_EMOJI, ensure_ascii=False),
-        source_type=source_type,
     )
 
-    html = _TEMPLATE.format(
-        **shell_kwargs,
+    style_body = _STYLE_CSS.replace("{{", "{").replace("}}", "}")
+    style_bytes = style_body.encode("utf-8")
+    style_filename = f"style.{hashlib.sha256(style_bytes).hexdigest()[:10]}.css"
+    style_href = f"/assets/{style_filename}"
+
+    app_body = _APP_JS.format(**script_kwargs)
+    app_bytes = app_body.encode("utf-8")
+    app_filename = f"app.{locale}.{hashlib.sha256(app_bytes).hexdigest()[:10]}.js"
+    app_src = f"/assets/{app_filename}"
+
+    page_shell = dict(
+        lang_attr=locale,
+        labels=labels,
+        og_locale=og_locale,
+        og_alt_locales_html=og_alt_locales_html,
+        lang_switcher_html=_lang_switcher(locale, labels["lang_switcher_aria"]),
+        about_dialog_html=_build_about_dialog(labels),
+        sidebar_disclaimer_html=_build_sidebar_disclaimer(labels),
+        aocs_data_src=aocs_data_src,
+        style_href=style_href,
+        app_src=app_src,
+    )
+
+    def _fill(**per_page) -> str:
+        return _PAGE_TEMPLATE.format(**page_shell, **per_page)
+
+    html = _fill(
         canonical_url=canonical_url,
         jsonld_html=jsonld_html,
         page_title=labels["page_title"],
@@ -1156,7 +1177,7 @@ def render(
     # Per-appellation pages are streamed straight to disk (one per slug) rather
     # than accumulated in a dict — at full-corpus scale the in-memory set would
     # be gigabytes. index slugs get a full, indexable card; fold slugs get a
-    # noindex shell (canonical to the parent) that still boots the map.
+    # noindex shell (self-canonical) that still boots the map.
     n_index = n_fold = 0
     if entity_out_dir is not None and (index_slugs or fold_slugs):
         ctx = RenderCtx(
@@ -1167,8 +1188,7 @@ def render(
         )
 
         def _emit(slug: str, meta: dict, ssr: str) -> None:
-            page = _TEMPLATE.format(
-                **shell_kwargs,
+            page = _fill(
                 canonical_url=meta["canonical_url"],
                 jsonld_html=meta["jsonld_html"],
                 page_title=meta["page_title"],
@@ -1205,7 +1225,12 @@ def render(
             _emit(slug, meta, "")
             n_fold += 1
 
-    return html, data_filename, data_bytes, n_index, n_fold
+    assets = {
+        "data": (data_filename, data_bytes),
+        "style": (style_filename, style_bytes),
+        "app": (app_filename, app_bytes),
+    }
+    return html, assets, n_index, n_fold
 
 
 _TEMPLATE = """<!doctype html>
@@ -3827,3 +3852,46 @@ _TEMPLATE = """<!doctype html>
 </body>
 </html>
 """
+
+
+def _split_template(t: str) -> tuple[str, str, str]:
+    """Lift the inline CSS and the main app <script> out of the monolithic
+    template so they can ship as shared, content-hashed /assets/ files.
+
+    Returns (page_template, style_css, app_js):
+      * page_template references the two assets via {style_href} / {app_src}
+        (and still carries the per-page + per-locale head/chrome fields).
+      * style_css is the CSS body (doubled braces, no format fields).
+      * app_js is the app-logic body (doubled braces + the 23 per-locale data
+        fields), formatted per locale into /assets/app.<locale>.<hash>.js.
+
+    The delimiters are each unique in the template (verified: one <style>, one
+    main <script> after the data bundle, no '</script>'/'</style>' inside their
+    bodies). A lossless-reconstruction assert guards against future drift."""
+    style_open, style_close = "<style>", "</style>"
+    data_tag = '<script src="{aocs_data_src}"></script>'
+    app_open, app_close = "<script>", "</script>"
+    pre, _r = t.split(style_open, 1)
+    css, post = _r.split(style_close, 1)
+    mid, _a = post.split(data_tag, 1)
+    gap, _a2 = _a.split(app_open, 1)
+    app, foot = _a2.split(app_close, 1)
+    reconstructed = (
+        pre + style_open + css + style_close
+        + mid + data_tag + gap + app_open + app + app_close + foot
+    )
+    if reconstructed != t:
+        raise AssertionError("map_template: _split_template is not lossless")
+    page_template = (
+        pre
+        + '<link rel="stylesheet" href="{style_href}">'
+        + mid
+        + data_tag
+        + gap
+        + '<script src="{app_src}"></script>'
+        + foot
+    )
+    return page_template, css, app
+
+
+_PAGE_TEMPLATE, _STYLE_CSS, _APP_JS = _split_template(_TEMPLATE)
