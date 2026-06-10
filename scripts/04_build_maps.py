@@ -182,6 +182,7 @@ SITE_BASE_URL = "https://www.openwinemap.com"
 MAP_DATA = WIKI / "map-data"
 ASSETS_SRC = ROOT / "raw" / "assets"
 ASSETS_OUT = WIKI / "assets"
+VENDOR_SRC = ROOT / "scripts" / "_lib" / "vendor"
 GEOJSON_OUT = MAP_DATA / "appellations.geojson"
 PMTILES_OUT = MAP_DATA / "appellations.pmtiles"
 GEOJSON_VILLAGES_OUT = MAP_DATA / "appellations-villages.geojson"
@@ -5842,6 +5843,22 @@ def copy_brand_assets() -> None:
             continue
         shutil.copy2(src, dst)
         copied += 1
+
+    # Self-hosted runtime libs (maplibre-gl, pmtiles) — tracked git inputs
+    # under scripts/_lib/vendor/, mirrored to /assets/vendor/ so the map has
+    # no third-party CDN dependency. Versioned filenames = immutable; only
+    # .js/.css ship (README.md stays out of the published tree).
+    if VENDOR_SRC.exists():
+        vendor_out = ASSETS_OUT / "vendor"
+        vendor_out.mkdir(parents=True, exist_ok=True)
+        for src in sorted(VENDOR_SRC.iterdir()):
+            if src.suffix not in (".js", ".css"):
+                continue
+            dst = vendor_out / src.name
+            if dst.exists() and dst.stat().st_size == src.stat().st_size and dst.read_bytes() == src.read_bytes():
+                continue
+            shutil.copy2(src, dst)
+            copied += 1
 
     manifest_path = WIKI / "site.webmanifest"
     manifest_bytes = (json.dumps(_WEBMANIFEST, indent=2) + "\n").encode()

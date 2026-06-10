@@ -1439,7 +1439,7 @@ _TEMPLATE = """<!doctype html>
     if (dark) document.documentElement.classList.add('theme-dark');
   }})();
 </script>
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous">
+<link rel="stylesheet" href="/assets/vendor/maplibre-gl-4.7.1.css">
 <style>
   html, body {{ margin:0; padding:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14px }}
   /* Hide the server-rendered card once JS is available (class set pre-paint):
@@ -1901,8 +1901,8 @@ _TEMPLATE = """<!doctype html>
   {about_dialog_html}
 </div>
 
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js" integrity="sha384-QfbOCebHNw8pQiPAOd2IFee2v2A5VYZxBk0+JGZ5H+3mfzVIp6zsQNkTsfGJot93" crossorigin="anonymous"></script>
+<script src="/assets/vendor/maplibre-gl-4.7.1.js"></script>
+<script src="/assets/vendor/pmtiles-3.2.0.js"></script>
 <!-- Per-locale data bundle (appellation records + grape tooltips). Render-
      blocking on purpose so window.__OWM_DATA is defined before the app below
      reads it; hashed filename = immutable, long-cacheable, shared across every
