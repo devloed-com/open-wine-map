@@ -4132,6 +4132,36 @@ uv run pybabel init   -i locale/messages.pot -d locale -l <lang>   # to add a ne
 
 After editing a `.po`, just rerun `uv run scripts/04_build_maps.py`.
 
+## Data bundle: startup blob + lazy panel detail
+
+The map's per-appellation data ships in two tiers so the front page is light
+(the corpus is ~2,900 records). The render-blocking startup bundle
+`wiki/data/aocs.<locale>.<hash>.js` (`window.__OWM_DATA`) carries only
+`STARTUP_AOCS_FIELDS` ([scripts/_lib/map_template.py](scripts/_lib/map_template.py))
+— the fields every startup path reads: the sidebar appellation list, search,
+facet filtering (`matchesClient`/`matchesExceptFacets`), fly-to
+(`fitToFiltered`/`localityRank`), the active-filter chips
+(`renderActiveFilters`→`grapeName`→`grapes_info`), and the map-click stack
+dedup (`geom_source`). It is **the contract between the Python emitter and the
+JS app**: a field read by any of those paths MUST be in the set, or the
+sidebar/map silently breaks (there is no golden-diff guard here — Phase 3
+deliberately changes this bundle).
+
+Everything else on a record (summary, terroir facts, sources, grape
+display-names, dűlők, menzioni, notes, attribution/geometry-provenance fields)
+is the **panel payload**, emitted per slug per locale as
+`wiki/data/d/<locale>/<slug>.json` (the complement of `STARTUP_AOCS_FIELDS`;
+write-if-changed + stale-prune in `emit_html`). The JS fetches it on first
+panel open (`hydratePanel` → `Object.assign` into `AOCS[slug]`, deduped while
+in flight, graceful degrade on failure), showing a skeleton placeholder
+meanwhile; repeat opens are instant. This cut the startup bundle from ~13.2 MB
+raw / 1.9 MB gz to ~3.2 MB / ~0.4 MB. `grapes_info` stays inline — it is a
+startup dependency via the active-filter chips. The full record is still used
+for the server-rendered entity cards (SSR is unchanged), so crawlers see the
+same content; only the JS map lazy-loads. The per-slug JSON is not
+content-hashed (stable path, fetched at runtime, not referenced from cacheable
+HTML) and never enters the sitemap.
+
 ## Structured data (JSON-LD) on entity pages
 
 Each **indexable** per-appellation entity page (`/<lang>/<slug>`) carries a

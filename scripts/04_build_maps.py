@@ -91,6 +91,7 @@ from _lib.it.zones import ITZoneIndex
 from _lib.lieu_dit import LieuDitIndex, derive_climat_name
 from _lib.lu.geometry import LUPolygonIndex
 from _lib.lu.region import derive_region as derive_lu_region
+from _lib.map_template import STARTUP_AOCS_FIELDS
 from _lib.map_template import render as render_map_html
 from _lib.mt.geometry import MTPolygonIndex
 from _lib.nl.geometry import NLPolygonIndex
@@ -5746,6 +5747,33 @@ def emit_html(
             if _old.name != app_filename:
                 _old.unlink()
         (assets_dir / app_filename).write_bytes(app_bytes)
+        # Per-slug panel payload — the heavy detail the map loads lazily on
+        # panel open (summary, terroir facts, sources, grape display-names,
+        # dűlők, menzioni, notes, …). One small JSON per slug per locale at
+        # /data/d/<locale>/<slug>.json; the startup bundle above ships only
+        # STARTUP_AOCS_FIELDS, so the JS merges this in on first open. Write-
+        # if-changed keeps reruns near-no-op; the stale-prune drops slugs that
+        # left the corpus. Not content-hashed — the slug path is stable and the
+        # file is fetched at runtime, not referenced from cacheable HTML.
+        panel_dir = WIKI / "data" / "d" / lang
+        panel_dir.mkdir(parents=True, exist_ok=True)
+        panel_written: set[str] = set()
+        for slug, rec in aocs_for_lang.items():
+            panel_rec = {k: v for k, v in rec.items() if k not in STARTUP_AOCS_FIELDS}
+            payload = json.dumps(panel_rec, ensure_ascii=False).encode("utf-8")
+            fname = f"{slug}.json"
+            fp = panel_dir / fname
+            if not fp.exists() or fp.read_bytes() != payload:
+                fp.write_bytes(payload)
+            panel_written.add(fname)
+        for _stale in panel_dir.glob("*.json"):
+            if _stale.name not in panel_written:
+                _stale.unlink()
+        print(
+            f"[data] {lang}: wrote {len(panel_written)} per-slug panel JSON → "
+            f"{panel_dir.relative_to(ROOT)}",
+            file=sys.stderr,
+        )
         # Per-appellation pages are streamed straight to disk by render (to
         # entity_out_dir/<slug>/index.html) so the whole corpus never sits in
         # memory at once.

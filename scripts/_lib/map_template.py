@@ -1012,6 +1012,24 @@ def _build_entity_meta(
     }
 
 
+# Per-slug record fields the map needs at STARTUP — the sidebar appellation
+# list, search, facet filtering, fly-to, the active-filter chips, and the
+# map-click stack dedup. Everything else on a record is panel-open-only and
+# ships lazily as /data/d/<locale>/<slug>.json (Phase 3 data-bundle diet), so
+# the startup bundle drops from ~13 MB to ~3 MB. This set is the contract
+# between the Python emitter and the JS app: a field read by any startup path
+# — buildAppellationFacet / searchableText / matchesClient / fitToFiltered /
+# localityRank / renderActiveFilters→grapeName / the map-click geom_source
+# guard — MUST be listed here, or the sidebar/map silently breaks. 04_build_
+# maps.py imports this to emit the complement as the per-slug panel JSON.
+STARTUP_AOCS_FIELDS = frozenset({
+    "name", "name_latin", "kind", "region", "country", "is_wine",
+    "styles", "styles_simple",
+    "grapes_principal", "grapes_accessory", "grapes_all",
+    "bbox", "bbox_villages", "geom_source",
+})
+
+
 def render(
     *,
     layer_url: str,
@@ -1201,9 +1219,17 @@ def render(
     # appellation order — do NOT re-sort it); `grapes_info` is a by-key lookup
     # whose dict order is set-derived and varies across runs, so sort its keys
     # to keep the hashed filename stable (reproducible build / long-cacheable).
+    # Only the STARTUP_AOCS_FIELDS subset ships inline; the heavy panel payload
+    # (summary, terroir facts, sources, grape display-names, …) loads lazily
+    # per slug from /data/d/<locale>/<slug>.json (emitted by 04_build_maps.py).
+    # The full `aocs` is still used above for the server-rendered entity cards.
+    startup_aocs = {
+        slug: {k: v for k, v in rec.items() if k in STARTUP_AOCS_FIELDS}
+        for slug, rec in aocs.items()
+    }
     data_payload = (
         'window.__OWM_DATA={"aocs":'
-        + json.dumps(aocs, ensure_ascii=False)
+        + json.dumps(startup_aocs, ensure_ascii=False)
         + ',"grapes_info":'
         + json.dumps(grapes_info or {}, ensure_ascii=False, sort_keys=True)
         + "};"
@@ -1606,6 +1632,16 @@ _TEMPLATE = """<!doctype html>
   #panel .aoc-card + .aoc-card {{ margin-top:24px; padding-top:20px; border-top:1px dashed #ccc }}
   #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid #934050 }}
   #panel .aoc-card.subordinate h1 {{ font-size:16px; color:#444; border-bottom-color:#ccc }}
+  /* First-open skeleton: real title shows from startup data; the body shimmers
+     until the lazy panel-detail JSON lands (Phase 3 data-bundle diet). */
+  #panel .aoc-skeleton .skel {{ display:block; border-radius:4px; height:13px; margin:9px 0;
+    background:linear-gradient(90deg,#ececec 25%,#f6f6f6 37%,#ececec 63%);
+    background-size:400% 100%; animation:skel-shimmer 1.3s ease infinite }}
+  #panel .aoc-skeleton .skel-meta {{ width:55%; height:11px; margin:6px 0 0 }}
+  #panel .aoc-skeleton .skel-h {{ width:34%; height:11px; margin:20px 0 10px }}
+  #panel .aoc-skeleton .skel-line.short {{ width:68% }}
+  @keyframes skel-shimmer {{ 0% {{ background-position:100% 0 }} 100% {{ background-position:0 0 }} }}
+  @media (prefers-reduced-motion: reduce) {{ #panel .aoc-skeleton .skel {{ animation:none }} }}
   #panel .sources {{ margin:4px 0 0; padding-left:18px; font-size:12.5px; color:#3a3a3a }}
   #panel .sources li {{ margin:3px 0 }}
   #panel .sources code {{ font-size:11px; color:#888 }}
@@ -1746,6 +1782,7 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel .stack-header {{ border-bottom-color:#333 }}
   html.theme-dark #panel .aoc-card + .aoc-card {{ border-top-color:#444 }}
   html.theme-dark #panel .aoc-card.subordinate h1 {{ color:#bbb; border-bottom-color:#444 }}
+  html.theme-dark #panel .aoc-skeleton .skel {{ background:linear-gradient(90deg,#2b2b2b 25%,#363636 37%,#2b2b2b 63%); background-size:400% 100% }}
   html.theme-dark #panel .sources, html.theme-dark #panel .facts-sub-h {{ color:#bbb }}
   html.theme-dark #panel ul.facts {{ color:#e0e0e0 }}
   html.theme-dark #panel .translation-attr, html.theme-dark #panel ul.facts .wiki-attr {{ color:#a3a3a3 }}
@@ -3598,6 +3635,45 @@ _TEMPLATE = """<!doctype html>
     return r.name + (head ? ' — ' + head : '') + ' · Open Wine Map';
   }}
 
+  // ---- lazy panel-detail hydration (Phase 3 data-bundle diet) -------------
+  // The startup bundle ships only STARTUP_AOCS_FIELDS (see map_template.py);
+  // the heavy per-appellation detail (summary, terroir facts, sources, grape
+  // display-names, dűlők, menzioni, notes …) loads on first open from
+  // /data/d/<locale>/<slug>.json and is merged into AOCS[slug]. A fetch is
+  // issued at most once per slug (deduped while in flight); repeat opens are
+  // instant. A failed fetch degrades to the startup fields rather than hanging.
+  const PANEL_DATA_BASE = '/data/d/' + LANG + '/';
+  const _panelFetches = {{}};
+  let panelGen = 0;
+  function hydratePanel(slug) {{
+    const r = AOCS[slug];
+    if (!r) return Promise.resolve();
+    if (r._hydrated) return Promise.resolve();
+    if (_panelFetches[slug]) return _panelFetches[slug];
+    const p = fetch(PANEL_DATA_BASE + encodeURIComponent(slug) + '.json')
+      .then(resp => resp.ok ? resp.json() : null)
+      .then(data => {{ if (data) Object.assign(r, data); r._hydrated = true; }})
+      .catch(() => {{ r._hydrated = true; }})
+      .then(() => {{ delete _panelFetches[slug]; }});
+    _panelFetches[slug] = p;
+    return p;
+  }}
+  function ensurePanelData(slugs) {{ return Promise.all(slugs.map(hydratePanel)); }}
+
+  // Skeleton shown for the brief first-open fetch: the real title comes from
+  // startup fields (instant), the body shimmers until the detail JSON lands.
+  function skeletonCard(slug, isPrimary) {{
+    const r = AOCS[slug] || {{}};
+    const klass = isPrimary ? 'aoc-card' : 'aoc-card subordinate';
+    return `<div class="${{klass}} aoc-skeleton" aria-busy="true">`
+      + `<h1>${{nameWithLatin(r)}}</h1>`
+      + `<div class="meta"><span class="skel skel-meta"></span></div>`
+      + `<div class="skel skel-h"></div>`
+      + `<div class="skel skel-line"></div><div class="skel skel-line"></div>`
+      + `<div class="skel skel-line short"></div>`
+      + `</div>`;
+  }}
+
   function renderPanelStack(slugs, focusIndex, doTrack) {{
     if (!slugs.length) return;
     const sorted = slugs
@@ -3613,7 +3689,12 @@ _TEMPLATE = """<!doctype html>
       const pos = `<span class="stack-pos" title="${{escapeAttr(LABELS.stack_cycle_hint)}}">${{focus + 1}} / ${{sorted.length}}</span>`;
       header = `<div class="stack-header"><span>${{fmt(LABELS.stack_header, {{ n: sorted.length }})}}</span>${{pos}}</div>`;
     }}
-    panelBody.innerHTML = header + ordered.map((s, i) => renderAocCard(s, i === 0)).join('');
+    // A generation token cancels a stale fetch's render when the user opens or
+    // cycles to a different stack before this one's detail arrives.
+    const myGen = ++panelGen;
+    const renderFull = () => {{
+      panelBody.innerHTML = header + ordered.map((s, i) => renderAocCard(s, i === 0)).join('');
+    }};
     panel.classList.add('open');
     document.title = docTitleFor(ordered[0]);
     setSelection(ordered.slice(0, 1));
@@ -3642,6 +3723,14 @@ _TEMPLATE = """<!doctype html>
         }});
       }}
     }}
+    // Cached opens render synchronously (no skeleton flash); first opens show
+    // the skeleton, fetch the stack's detail, then swap in the full cards.
+    if (ordered.every(s => AOCS[s] && AOCS[s]._hydrated)) {{
+      renderFull();
+      return;
+    }}
+    panelBody.innerHTML = header + ordered.map((s, i) => skeletonCard(s, i === 0)).join('');
+    ensurePanelData(ordered).then(() => {{ if (myGen === panelGen) renderFull(); }});
   }}
 
   function escapeHtml(s) {{
@@ -3714,6 +3803,9 @@ _TEMPLATE = """<!doctype html>
   // returnFocus=false — the user's intent already moved to the map.
   function closePanel(returnFocus) {{
     const wasOpen = panel.classList.contains('open');
+    // Bump the generation so an in-flight panel-detail fetch doesn't repaint
+    // the body after the panel has been closed.
+    panelGen++;
     panel.classList.remove('open');
     document.title = DEFAULT_TITLE;
     setSelection([]);
