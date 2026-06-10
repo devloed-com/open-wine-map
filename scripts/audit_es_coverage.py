@@ -102,32 +102,32 @@ def main() -> int:
             if p.get("file_number") not in es_pdo_ids
         ]
 
-    print(f"=== ES pipeline coverage ===")
-    print(f"eAmbrosia ES wines (filtered to status=registered + productType=WINE):")
+    print("=== ES pipeline coverage ===")
+    print("eAmbrosia ES wines (filtered to status=registered + productType=WINE):")
     print(f"  total       : {n_wines}")
     for k, n in by_kind.most_common():
         print(f"  {k:11s} : {n}")
     print()
-    print(f"Stage 01 (oj-pages, EUR-Lex single-document HTML):")
+    print("Stage 01 (oj-pages, EUR-Lex single-document HTML):")
     for status, n in oj_status.most_common():
         print(f"  {status:30s}: {n}")
     print(f"  HTML cached (ok)              : {n_html_cached}/{n_wines}"
           f" ({100*n_html_cached//n_wines}%)")
     print()
-    print(f"Stage 02 (pliegos-extracted records):")
+    print("Stage 02 (pliegos-extracted records):")
     print(f"  parents (full extraction)      : {parents}")
     print(f"  subzonas (DGC-equivalent)      : {subzonas}")
     print(f"  stubs (no HTML cached)         : {stubs}")
     print(f"  parse_failed (HTML had no DOCUMENTO ÚNICO): {parse_failed}")
     print()
-    print(f"Stage 02c (summary translations into target locales):")
+    print("Stage 02c (summary translations into target locales):")
     for lang, n in sorted(summary_translations.items()):
         print(f"  {lang:>4s}: {n}")
     print()
-    print(f"Stage 04 (geometry source: Figshare EU_PDO.gpkg):")
+    print("Stage 04 (geometry source: Figshare EU_PDO.gpkg):")
     print(f"  parents with Figshare polygon  : {len(figshare_covered)}/{parents}"
           f" ({100*len(figshare_covered)//parents if parents else 0}%)")
-    print(f"  parents WITHOUT Figshare polygon (need MAPA fallback or commune-union):")
+    print("  parents WITHOUT Figshare polygon (need MAPA fallback or commune-union):")
     for slug, fn, kind in figshare_uncovered_parents[:20]:
         print(f"    {slug:30s}  {fn:18s}  {kind}")
     if len(figshare_uncovered_parents) > 20:
@@ -148,16 +148,16 @@ def main() -> int:
                 needs_curation.append(entry)
         n_total = len(needs_curation) + len(curated)
         print()
-        print(f"Curation queue (manual_overrides.json):")
+        print("Curation queue (manual_overrides.json):")
         print(f"  curated (URL filled in)        : {len(curated)}/{n_total}")
         print(f"  still needs URL                : {len(needs_curation)}")
         if needs_curation:
-            print(f"  by kind: " + ", ".join(
+            print("  by kind: " + ", ".join(
                 f"{k}={sum(1 for e in needs_curation if e.get('kind')==k)}"
                 for k in ("DOP", "IGP")
             ))
             print()
-            print(f"  -- Top-priority IGPs needing curation (sorted by name) --")
+            print("  -- Top-priority IGPs needing curation (sorted by name) --")
             igps = sorted(
                 (e for e in needs_curation if e.get("kind") == "IGP"),
                 key=lambda e: e.get("name", "").lower(),
@@ -175,7 +175,7 @@ def main() -> int:
             )
             if dops:
                 print()
-                print(f"  -- DOPs needing curation --")
+                print("  -- DOPs needing curation --")
                 for e in dops:
                     print(
                         f"    [DOP] {e.get('name', '?'):40s}  "

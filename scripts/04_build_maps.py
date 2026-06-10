@@ -69,7 +69,6 @@ from _lib.it.geometry import ITPolygonIndex
 from _lib.it.zones import ITZoneIndex
 from _lib.it.region import derive_regione as derive_it_regione
 from _lib.it.sottozona import extract_sottozone as extract_it_sottozone
-from _lib.it.sottozona import slugify as it_sottozona_slugify
 from _lib.at.geometry import ATPolygonIndex
 from _lib.at.gemeinde import ATCommuneIndex
 from _lib.at.region import derive_bundesland as derive_at_bundesland
@@ -113,7 +112,7 @@ from _lib.style_taxonomy import (
     simple_bucket as _taxonomy_simple_bucket,
     taxonomy_dfs_order as _taxonomy_dfs_order,
 )
-from _lib.summaries import derive_summary, summary_sha
+from _lib.summaries import derive_summary
 from _lib.wiki import is_grape_summary
 
 ROOT = Path(__file__).resolve().parent.parent

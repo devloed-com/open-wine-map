@@ -37,7 +37,6 @@ import html as html_lib
 import json
 import re
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 from tqdm import tqdm
@@ -56,7 +55,6 @@ from _lib.it.province import load_comune_regione_map, resolve_gisco_lau  # noqa:
 from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue, match_variety, set_pliego_context,
 )
-from _lib.grape_lexicon import slugify as _grape_slug  # noqa: E402
 
 INDEX_IN = ROOT / "raw" / "it" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "it" / "oj-pages"

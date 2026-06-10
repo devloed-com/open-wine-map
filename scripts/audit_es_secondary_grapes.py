@@ -207,7 +207,7 @@ def main() -> int:
         for slug, _, _ in new:
             distinct_added_slugs[slug] += 1
 
-    print(f"# ES secondary-variety audit\n")
+    print("# ES secondary-variety audit\n")
     print(f"Non-stub, non-DGC records scanned: {total_records}")
     print(f"Records with candidate additions : {len(affected)}")
     print(f"Distinct candidate variety slugs : {len(distinct_added_slugs)}")

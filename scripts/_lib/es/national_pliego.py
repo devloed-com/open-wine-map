@@ -34,7 +34,7 @@ _LIB_ROOT = Path(__file__).resolve().parents[1]
 if str(_LIB_ROOT.parent) not in sys.path:
     sys.path.insert(0, str(_LIB_ROOT.parent))
 from _lib.grape_entity import match_variety  # noqa: E402
-from _lib.grape_lexicon import DEFAULT_COLOUR, GRAPE_ALIAS, slugify  # noqa: E402
+from _lib.grape_lexicon import GRAPE_ALIAS  # noqa: E402
 
 _REPO_ROOT = _LIB_ROOT.parent.parent
 # Sources for the "known variety" vocabulary used by the in-line typo

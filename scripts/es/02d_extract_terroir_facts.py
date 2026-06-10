@@ -40,7 +40,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
+from _lib import batch, cache, llm_json, providers, terroir_verbatim  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "es" / "pliegos-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "es"
@@ -471,7 +471,7 @@ def main() -> int:
         mistral_url=args.mistral_url,
     )
     if provider is None:
-        print(f"[02d/es] manual provider not yet wired for ES; pass --provider ollama",
+        print("[02d/es] manual provider not yet wired for ES; pass --provider ollama",
               file=sys.stderr)
         return 1
 

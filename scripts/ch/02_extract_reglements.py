@@ -57,7 +57,7 @@ from __future__ import annotations
 
 import json
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -66,7 +66,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib.ch.canton import canton_name, source_lang_for_canton  # noqa: E402
 from _lib.ch.geometry import CHCommuneIndex  # noqa: E402
-from _lib.ch.ofag_register import parse_path as parse_ofag, slugify  # noqa: E402
+from _lib.ch.ofag_register import slugify  # noqa: E402
 from _lib.ch.per_aoc_carving import (  # noqa: E402
     CARVE_TEXT_BLOCKS, PER_AOC_COMMUNE_LISTS, VS_GRAND_CRU,
 )

@@ -179,7 +179,7 @@ def render_record(record: dict) -> str:
         f"- eAmbrosia GI register: <https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/details/{record.get('id_eambrosia') or ''}>",
         f"- File number: `{record.get('file_number') or ''}`",
         "",
-        f"_Texto del pliego: © Unión Europea / EUR-Lex. Reutilización con atribución._",
+        "_Texto del pliego: © Unión Europea / EUR-Lex. Reutilización con atribución._",
         "",
     ]
     return "\n".join(fm + body)

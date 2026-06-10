@@ -48,7 +48,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Iterable
 
-from .canton import CANTON_CODE_BY_ABBREV, CANTON_NAME, CANTON_CODES
+from .canton import CANTON_CODE_BY_ABBREV, CANTON_NAME
 
 # Column-position thresholds.
 COL_CANTONALE_MIN, COL_CANTONALE_MAX = 30, 60
