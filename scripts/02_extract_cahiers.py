@@ -38,12 +38,13 @@ import unicodedata
 from collections import defaultdict
 from pathlib import Path
 
-from tqdm import tqdm
-
 from _lib.grape_entity import (
-    flush_unknowns_queue, preheat_vocabulary, set_pliego_context,
+    flush_unknowns_queue,
+    preheat_vocabulary,
+    set_pliego_context,
 )
 from _lib.grape_lexicon import parse_grapes, parse_styles
+from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parent.parent
 CAHIERS = ROOT / "raw" / "inao" / "cahiers"

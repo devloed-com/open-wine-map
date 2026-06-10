@@ -35,8 +35,12 @@ from collections import Counter
 from pathlib import Path
 
 from _lib.it.province import (  # noqa: F401 — REGIONI re-exported for callers
-    REGIONI, _norm, dominant_regione, scan_commune_mentions,
-    scan_province_mentions, truncate_at_delimitation,
+    REGIONI,
+    _norm,
+    dominant_regione,
+    scan_commune_mentions,
+    scan_province_mentions,
+    truncate_at_delimitation,
 )
 
 # Alternate regione spellings / common variants → canonical name. Keys

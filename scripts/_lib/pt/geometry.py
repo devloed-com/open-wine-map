@@ -33,7 +33,6 @@ import geopandas as gpd
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 
-
 # Macro-region expansions: when the caderno declares the production
 # area as the whole autonomous region (Açores or Madeira) rather than
 # enumerating concelhos, expand the token into the constituent ilhas.

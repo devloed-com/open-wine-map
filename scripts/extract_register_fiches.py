@@ -35,7 +35,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _lib import eambrosia_register as er  # noqa: E402
 from _lib.fiche_technique import parse_fiche_sections  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
 )
 
 # Per-country config. `anchor` = the spec-block heading term(s); `end` =

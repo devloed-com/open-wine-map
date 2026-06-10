@@ -23,7 +23,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from _lib.grape_lexicon import DEFAULT_COLOUR, GRAPE_ALIAS, slugify as _grape_slug  # noqa: E402
+from _lib.grape_lexicon import DEFAULT_COLOUR, GRAPE_ALIAS  # noqa: E402
+from _lib.grape_lexicon import slugify as _grape_slug
 
 PLIEGOS_DIR = ROOT / "raw" / "es" / "pliegos-extracted"
 

@@ -35,16 +35,24 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.gr.commune import parse_commune_list  # noqa: E402
 from _lib.gr.eniaio_engrafo import (  # noqa: E402
-    DOC_ANCHOR_NORM, SECTION_HEADER_RE, SECTION_NUM_RE,
-    SECTION_ROLE_KEYWORDS, ROLE_BY_KEYWORD, INLINE_ROLE_RE,
-    STYLE_MARKERS, COLOUR_BY_KEYWORD, _GEO_AREA_TITLE_BLOCKLIST,
+    _GEO_AREA_TITLE_BLOCKLIST,
+    COLOUR_BY_KEYWORD,
+    DOC_ANCHOR_NORM,
+    INLINE_ROLE_RE,
+    ROLE_BY_KEYWORD,
+    SECTION_HEADER_RE,
+    SECTION_NUM_RE,
+    SECTION_ROLE_KEYWORDS,
+    STYLE_MARKERS,
     greek_norm,
 )
 from _lib.gr.region import derive_region  # noqa: E402
-from _lib.gr.commune import parse_commune_list  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
 )
 
 INDEX_IN = ROOT / "raw" / "gr" / "eambrosia" / "index.json"

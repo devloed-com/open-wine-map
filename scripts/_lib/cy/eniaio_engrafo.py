@@ -11,6 +11,7 @@ churning the shared Greek machinery.
 from __future__ import annotations
 
 from _lib.gr.eniaio_engrafo import (  # noqa: F401
+    _GEO_AREA_TITLE_BLOCKLIST,
     COLOUR_BY_KEYWORD,
     DOC_ANCHOR_NORM,
     INLINE_ROLE_RE,
@@ -20,6 +21,5 @@ from _lib.gr.eniaio_engrafo import (  # noqa: F401
     SECTION_NUM_RE,
     SECTION_ROLE_KEYWORDS,
     STYLE_MARKERS,
-    _GEO_AREA_TITLE_BLOCKLIST,
     greek_norm,
 )

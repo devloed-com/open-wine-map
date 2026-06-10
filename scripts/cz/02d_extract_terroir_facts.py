@@ -42,8 +42,15 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
-from _lib import register_fiche  # noqa: E402
+from _lib import (  # noqa: E402
+    batch,
+    cache,
+    llm_json,
+    providers,
+    register_fiche,  # noqa: E402
+    roundtrip,
+    terroir_verbatim,
+)
 
 EXTRACTED = ROOT / "raw" / "cz" / "dokumenty-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "cs"

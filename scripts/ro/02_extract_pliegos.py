@@ -36,16 +36,24 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.grape_entity import (  # noqa: E402
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
+)
+from _lib.ro.commune import parse_commune_list  # noqa: E402
 from _lib.ro.document_unic import (  # noqa: E402
-    DOC_ANCHOR_RE, SECTION_HEADER_RE, SECTION_NUM_RE,
-    SECTION_ROLE_KEYWORDS, ROLE_BY_KEYWORD, INLINE_ROLE_RE,
-    STYLE_MARKERS, COLOUR_BY_KEYWORD, _GEO_AREA_TITLE_BLOCKLIST,
+    _GEO_AREA_TITLE_BLOCKLIST,
+    COLOUR_BY_KEYWORD,
+    DOC_ANCHOR_RE,
+    INLINE_ROLE_RE,
+    ROLE_BY_KEYWORD,
+    SECTION_HEADER_RE,
+    SECTION_NUM_RE,
+    SECTION_ROLE_KEYWORDS,
+    STYLE_MARKERS,
 )
 from _lib.ro.region import derive_region  # noqa: E402
-from _lib.ro.commune import parse_commune_list  # noqa: E402
-from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
-)
 
 INDEX_IN = ROOT / "raw" / "ro" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "ro" / "oj-pages"

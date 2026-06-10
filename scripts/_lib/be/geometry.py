@@ -34,7 +34,6 @@ import geopandas as gpd
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 
-
 # PGI file_number → the member-PDO file_numbers whose union forms the
 # PGI's territory. The two BE PGIs each union the PDO polygons of their
 # language community.

@@ -23,7 +23,6 @@ from shapely.ops import unary_union
 
 from _lib.it.zone_sources import active_sources
 
-
 # Italian connector words dropped before matching — regional layers
 # spell appellations inconsistently ("Amarone della Valpolicella" vs the
 # Veneto layer's "AMARONE VALPOLICELLA"; "Recioto di Soave" vs "RECIOTO

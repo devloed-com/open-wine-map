@@ -32,7 +32,6 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.grape_lexicon import DEFAULT_COLOUR, GRAPE_ALIAS  # noqa: E402
 
-
 PLIEGOS_DIR = ROOT / "raw" / "es" / "pliegos-extracted"
 
 

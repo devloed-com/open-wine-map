@@ -30,17 +30,30 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-from shapely.geometry import shape, mapping
-from shapely.ops import unary_union
-from tqdm import tqdm
-from unidecode import unidecode
-
-from _lib.aires import load_aires, lookup as lookup_aire
+from _lib.aires import load_aires
+from _lib.aires import lookup as lookup_aire
 from _lib.aoc_translations import (
     load_summary_translations,
     load_terroir_facts_translations,
 )
-from _lib.appellation_urls import load as load_appellation_urls, resolve as resolve_appellation_url
+from _lib.appellation_urls import load as load_appellation_urls
+from _lib.appellation_urls import resolve as resolve_appellation_url
+from _lib.at.gemeinde import ATCommuneIndex
+from _lib.at.geometry import ATPolygonIndex
+from _lib.at.region import derive_bundesland as derive_at_bundesland
+from _lib.be.geometry import BEPolygonIndex
+from _lib.be.region import derive_region as derive_be_region
+from _lib.bg.geometry import BGPolygonIndex
+from _lib.bg.region import derive_region as derive_bg_region
+from _lib.ch.geometry import CHCommuneIndex, GESitgIndex
+from _lib.ch.geometry import resolve as ch_resolve_geometry
+from _lib.ch.region import derive_region as derive_ch_region
+from _lib.cy.geometry import CYPolygonIndex
+from _lib.cy.region import derive_region as derive_cy_region
+from _lib.cz.geometry import CZPolygonIndex
+from _lib.cz.region import derive_region as derive_cz_region
+from _lib.de.geometry import DEPolygonIndex
+from _lib.de.region import derive_region as derive_de_region
 from _lib.dgc_village_overrides import DGC_VILLAGE_INSEE
 from _lib.es.baleares import ines_for_island
 from _lib.es.commune_list import (
@@ -51,69 +64,68 @@ from _lib.es.commune_list import (
     parse_whole_commune_prefix,
 )
 from _lib.es.geometry import ESPolygonIndex
-from _lib.es.zones import ESZoneIndex, MAPA_ZONES_FILE
 from _lib.es.pliego_parcels import parse_polygon_inclusions
 from _lib.es.region import (
     CCAA_TO_PROVINCE_INES,
     PROVINCE_TO_INE,
+)
+from _lib.es.region import (
     derive_ccaa as derive_es_ccaa,
 )
 from _lib.es.sigpac import SigpacIndex
+from _lib.es.zones import MAPA_ZONES_FILE, ESZoneIndex
 from _lib.fr_wine_region import derive_wine_region as derive_fr_wine_region
 from _lib.geometry_overrides import ClipResult, GeometryOverrides
-from _lib.pt.commune_list import parse_commune_list as parse_pt_commune_list
-from _lib.pt.geometry import PTPolygonIndex
-from _lib.pt.region import derive_region as derive_pt_region
-from _lib.it.comune import ITCommuneIndex
-from _lib.it.geometry import ITPolygonIndex
-from _lib.it.zones import ITZoneIndex
-from _lib.it.region import derive_regione as derive_it_regione
-from _lib.it.sottozona import extract_sottozone as extract_it_sottozone
-from _lib.at.geometry import ATPolygonIndex
-from _lib.at.gemeinde import ATCommuneIndex
-from _lib.at.region import derive_bundesland as derive_at_bundesland
-from _lib.de.geometry import DEPolygonIndex
-from _lib.de.region import derive_region as derive_de_region
-from _lib.si.geometry import SIPolygonIndex
-from _lib.si.region import derive_region as derive_si_region
+from _lib.gr.geometry import GRPolygonIndex
+from _lib.gr.region import derive_region as derive_gr_region
 from _lib.hr.geometry import HRPolygonIndex
 from _lib.hr.region import derive_region as derive_hr_region
 from _lib.hu.geometry import HUPolygonIndex
 from _lib.hu.region import derive_region as derive_hu_region
-from _lib.ro.geometry import ROPolygonIndex
-from _lib.ro.region import derive_region as derive_ro_region
-from _lib.bg.geometry import BGPolygonIndex
-from _lib.bg.region import derive_region as derive_bg_region
-from _lib.gr.geometry import GRPolygonIndex
-from _lib.gr.region import derive_region as derive_gr_region
-from _lib.cy.geometry import CYPolygonIndex
-from _lib.cy.region import derive_region as derive_cy_region
-from _lib.sk.geometry import SKPolygonIndex
-from _lib.sk.region import derive_region as derive_sk_region
-from _lib.cz.geometry import CZPolygonIndex
-from _lib.cz.region import derive_region as derive_cz_region
-from _lib.ch.geometry import CHCommuneIndex, GESitgIndex, resolve as ch_resolve_geometry
-from _lib.ch.region import derive_region as derive_ch_region
+from _lib.i18n import LOCALES, compile_catalogs
+from _lib.it.comune import ITCommuneIndex
+from _lib.it.geometry import ITPolygonIndex
+from _lib.it.region import derive_regione as derive_it_regione
+from _lib.it.sottozona import extract_sottozone as extract_it_sottozone
+from _lib.it.zones import ITZoneIndex
+from _lib.lieu_dit import LieuDitIndex, derive_climat_name
 from _lib.lu.geometry import LUPolygonIndex
 from _lib.lu.region import derive_region as derive_lu_region
-from _lib.be.geometry import BEPolygonIndex
-from _lib.be.region import derive_region as derive_be_region
+from _lib.map_template import render as render_map_html
+from _lib.mt.geometry import MTPolygonIndex
 from _lib.nl.geometry import NLPolygonIndex
 from _lib.nl.region import derive_region as derive_nl_region
-from _lib.mt.geometry import MTPolygonIndex
-from _lib.i18n import LOCALES, compile_catalogs
-from _lib.lieu_dit import LieuDitIndex, derive_climat_name
-from _lib.map_template import render as render_map_html
 from _lib.parcellaire import build_aoc_polygons
+from _lib.pt.commune_list import parse_commune_list as parse_pt_commune_list
+from _lib.pt.geometry import PTPolygonIndex
+from _lib.pt.region import derive_region as derive_pt_region
+from _lib.ro.geometry import ROPolygonIndex
+from _lib.ro.region import derive_region as derive_ro_region
+from _lib.si.geometry import SIPolygonIndex
+from _lib.si.region import derive_region as derive_si_region
+from _lib.sk.geometry import SKPolygonIndex
+from _lib.sk.region import derive_region as derive_sk_region
 from _lib.style_taxonomy import (
     all_slugs as _taxonomy_all_slugs,
+)
+from _lib.style_taxonomy import (
     descendants as _taxonomy_descendants,
+)
+from _lib.style_taxonomy import (
     descendants_map as _taxonomy_descendants_map,
+)
+from _lib.style_taxonomy import (
     simple_bucket as _taxonomy_simple_bucket,
+)
+from _lib.style_taxonomy import (
     taxonomy_dfs_order as _taxonomy_dfs_order,
 )
 from _lib.summaries import derive_summary
 from _lib.wiki import is_grape_summary
+from shapely.geometry import mapping, shape
+from shapely.ops import unary_union
+from tqdm import tqdm
+from unidecode import unidecode
 
 ROOT = Path(__file__).resolve().parent.parent
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"

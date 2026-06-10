@@ -48,11 +48,13 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-from _lib.si.specifikacija import (  # noqa: E402
-    parse_mkgp_doc, parse_uradni_list_pravilnik,
-)
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, set_pliego_context,
+    flush_unknowns_queue,
+    set_pliego_context,
+)
+from _lib.si.specifikacija import (  # noqa: E402
+    parse_mkgp_doc,
+    parse_uradni_list_pravilnik,
 )
 
 OVERRIDES_PATH = ROOT / "raw" / "si" / "oj-pages" / "manual_overrides.json"

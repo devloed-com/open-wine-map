@@ -42,7 +42,6 @@ import html as html_lib
 import re
 import unicodedata
 
-
 # ─── HTML → plaintext ──────────────────────────────────────────
 
 

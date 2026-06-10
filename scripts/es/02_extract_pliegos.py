@@ -47,10 +47,12 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-from _lib.es.subzona import extract_subzonas  # noqa: E402
 from _lib.es.national_pliego import _split_concatenated  # noqa: E402
+from _lib.es.subzona import extract_subzonas  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
 )
 from _lib.grape_lexicon import (  # noqa: E402
     GRAPE_BLOCKLIST,

@@ -28,6 +28,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from _lib.cy.eniaio_engrafo import greek_norm
 from _lib.gr.specifikacija import (
     _derive_summary,
     _grape_windows,
@@ -39,7 +40,6 @@ from _lib.gr.specifikacija import (
     scan_grapes_prose,
 )
 from _lib.grape_entity import match_variety  # noqa: F401  (kept for parity / debug)
-from _lib.cy.eniaio_engrafo import greek_norm
 
 _MIN_TEXT_CHARS = 400
 

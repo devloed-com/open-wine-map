@@ -44,7 +44,6 @@ import re
 
 from _lib.grape_entity import match_variety
 
-
 # ───────────────────────────────────────────────────────── lettered slicing ──
 
 # Line-start letter anchor: `a)` … `i)` optionally tab/space-prefixed.

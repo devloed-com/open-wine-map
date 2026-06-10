@@ -32,7 +32,6 @@ from __future__ import annotations
 import re
 import unicodedata
 
-
 # Historic-cahier commune name → modern GISCO LAU 2024 commune name.
 # Identity entries are kept explicit so the parser can validate every
 # extracted name against this table without ambiguity.

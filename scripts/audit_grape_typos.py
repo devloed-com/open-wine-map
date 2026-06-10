@@ -22,12 +22,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.grape_lexicon import (  # noqa: E402
-    DEFAULT_COLOUR,
-    GRAPE_ALIAS,
-    GRAPE_BLOCKLIST,
     _HARD_STOP,
     _SOFT_STOP,
     _WORD_RE,
+    DEFAULT_COLOUR,
+    GRAPE_ALIAS,
+    GRAPE_BLOCKLIST,
     slugify,
 )
 

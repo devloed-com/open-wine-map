@@ -68,15 +68,21 @@ from _lib.ch.canton import canton_name, source_lang_for_canton  # noqa: E402
 from _lib.ch.geometry import CHCommuneIndex  # noqa: E402
 from _lib.ch.ofag_register import slugify  # noqa: E402
 from _lib.ch.per_aoc_carving import (  # noqa: E402
-    CARVE_TEXT_BLOCKS, PER_AOC_COMMUNE_LISTS, VS_GRAND_CRU,
-)
-from _lib.ch.reglement import (  # noqa: E402
-    extract_communes, extract_plaintext, extract_varieties,
-    summary_paragraph,
+    CARVE_TEXT_BLOCKS,
+    PER_AOC_COMMUNE_LISTS,
+    VS_GRAND_CRU,
 )
 from _lib.ch.region import region_for_canton  # noqa: E402
+from _lib.ch.reglement import (  # noqa: E402
+    extract_communes,
+    extract_plaintext,
+    extract_varieties,
+    summary_paragraph,
+)
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
 )
 
 OFAG_PDF = ROOT / "raw" / "ch" / "ofag" / "repertoire-aoc-2026.pdf"

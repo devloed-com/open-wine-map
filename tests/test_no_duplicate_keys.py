@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from audit_dup_keys import find_clashes, _format  # noqa: E402
+from audit_dup_keys import _format, find_clashes  # noqa: E402
 
 
 def test_no_conflicting_duplicate_dict_keys() -> None:

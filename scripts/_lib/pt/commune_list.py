@@ -39,7 +39,6 @@ from __future__ import annotations
 import re
 import unicodedata
 
-
 _MUNICIPIO_RE = re.compile(
     r"munic[íi]pios?\s+(?:de|da|do|das|dos)\s+([^.;:]+?)"
     r"(?:[.;:]|\bcom\s+exce[çc][ãa]o\b|$)",

@@ -58,17 +58,25 @@ import py7zr
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
-)
-from _lib.it.masaf import (  # noqa: E402
-    PdfRecord, build_pdf_index, derive_geo_area, derive_summary,
-    extract_articles, match_wines_to_pdfs, parse_annex_grapes_with,
-    parse_grapes_with, pick_terroir_article,
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
 )
 from _lib.it.documento_unico import scan_styles  # noqa: E402
+from _lib.it.masaf import (  # noqa: E402
+    PdfRecord,
+    build_pdf_index,
+    derive_geo_area,
+    derive_summary,
+    extract_articles,
+    match_wines_to_pdfs,
+    parse_annex_grapes_with,
+    parse_grapes_with,
+    pick_terroir_article,
+)
 from _lib.it.menzione import extract_menzioni  # noqa: E402
-from _lib.it.region import derive_regione  # noqa: E402
 from _lib.it.province import load_comune_regione_map, resolve_gisco_lau  # noqa: E402
+from _lib.it.region import derive_regione  # noqa: E402
 
 EAMBROSIA_INDEX = ROOT / "raw" / "it" / "eambrosia" / "index.json"
 EXTRACTED_DIR = ROOT / "raw" / "it" / "disciplinari-extracted"

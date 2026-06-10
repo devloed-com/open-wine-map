@@ -54,7 +54,9 @@ import requests
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.es.zones import (  # noqa: E402
-    MAPA_LICENCE, MAPA_ZONES_FILE, MAPA_ZONES_URL,
+    MAPA_LICENCE,
+    MAPA_ZONES_FILE,
+    MAPA_ZONES_URL,
 )
 
 OUT_DIR = ROOT / "raw" / "es" / "eambrosia"

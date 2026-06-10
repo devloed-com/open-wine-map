@@ -39,7 +39,6 @@ from typing import Iterable
 
 from rapidfuzz import fuzz
 
-
 # Filename markers that should be stripped before slugifying — these
 # are doc-type qualifiers MASAF embeds inconsistently.
 _JUNK_RE = re.compile(

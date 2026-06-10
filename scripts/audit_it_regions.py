@@ -45,7 +45,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.it.province import (  # noqa: E402
-    load_comune_regione_map, regione_for_gisco_id, resolve_gisco_lau,
+    load_comune_regione_map,
+    regione_for_gisco_id,
+    resolve_gisco_lau,
 )
 from _lib.it.region import derive_regione  # noqa: E402
 

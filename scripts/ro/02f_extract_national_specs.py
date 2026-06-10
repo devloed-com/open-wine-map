@@ -30,7 +30,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, set_pliego_context,
+    flush_unknowns_queue,
+    set_pliego_context,
 )
 from _lib.ro.caiet import parse_caiet  # noqa: E402
 

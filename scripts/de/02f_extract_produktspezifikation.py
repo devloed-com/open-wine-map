@@ -56,10 +56,12 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-from _lib.de.produktspezifikation import extract as parse_anbaugebiet_pdf  # noqa: E402
 from _lib.de.landwein_spezifikation import extract as parse_landwein_pdf  # noqa: E402
+from _lib.de.produktspezifikation import extract as parse_anbaugebiet_pdf  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
 )
 
 PDF_DIR = ROOT / "raw" / "de" / "produktspezifikationen"

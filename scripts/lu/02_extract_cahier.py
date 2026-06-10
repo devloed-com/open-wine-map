@@ -39,16 +39,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.grape_entity import (  # noqa: E402
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
+)
 from _lib.lu.cahier import (  # noqa: E402
-    parse_cahier, iter_variety_canonical_slugs,
+    iter_variety_canonical_slugs,
+    parse_cahier,
 )
 from _lib.lu.commune import (  # noqa: E402
-    extract_communes_from_perimetre, MODERN_TO_HISTORIC, slugify_commune,
+    MODERN_TO_HISTORIC,
+    extract_communes_from_perimetre,
+    slugify_commune,
 )
 from _lib.lu.region import derive_region  # noqa: E402
-from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
-)
 
 EAMBROSIA_INDEX = ROOT / "raw" / "lu" / "eambrosia" / "index.json"
 CAHIER_TXT = ROOT / "raw" / "lu" / "ivv" / "cahiers" / "2020-cahier.txt"
