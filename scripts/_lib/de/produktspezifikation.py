@@ -580,7 +580,8 @@ def parse_section_3_2_principal_names(text: str) -> list[str]:
     def _add(names: list[str]) -> None:
         for n in names:
             if n and n not in seen:
-                out.append(n); seen.add(n)
+                out.append(n)
+                seen.add(n)
 
     if template == "A":
         _add(_parse_template_a_principal(text))

@@ -152,11 +152,20 @@ class ITCommuneIndex:
         while i < len(words):
             wn = _norm(words[i])
             if wn in _KW_COMUNE:
-                bucket = "comuni"; miss_run = 0; i += 1; continue
+                bucket = "comuni"
+                miss_run = 0
+                i += 1
+                continue
             if wn in _KW_PROVINCE:
-                bucket = "province"; miss_run = 0; i += 1; continue
+                bucket = "province"
+                miss_run = 0
+                i += 1
+                continue
             if wn in _KW_REGION:
-                bucket = "regioni"; miss_run = 0; i += 1; continue
+                bucket = "regioni"
+                miss_run = 0
+                i += 1
+                continue
             matched = self._greedy_match(words, i, bucket)
             if matched is not None:
                 name, span = matched

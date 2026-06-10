@@ -162,13 +162,21 @@ class ATCommuneIndex:
             if w == _EXCL_SENTINEL or wn == "excl":
                 # The "ausgenommen die Gemeinden" lead-in is absorbed
                 # into the sentinel, so excluded names follow directly.
-                bucket = "_excl"; i += 1; continue
+                bucket = "_excl"
+                i += 1
+                continue
             if wn in _KW_BEZIRK:
-                bucket = "bezirke"; i += 1; continue
+                bucket = "bezirke"
+                i += 1
+                continue
             if wn in _KW_GEMEINDE or wn in _KW_STADT or wn == "gerichtsbezirk":
-                bucket = "gemeinden"; i += 1; continue
+                bucket = "gemeinden"
+                i += 1
+                continue
             if wn in _KW_BUNDESLAND:
-                bucket = "bundeslaender"; i += 1; continue
+                bucket = "bundeslaender"
+                i += 1
+                continue
             matched = self._greedy_match(words, i, bucket)
             if matched is not None:
                 name, span = matched
