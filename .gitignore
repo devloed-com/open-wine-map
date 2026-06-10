@@ -6,6 +6,11 @@ __pycache__/
 .DS_Store
 *.log
 
+# Bunny CDN access logs pulled via scripts/fetch_bunny_logs.py (v2 logging API)
+logs/
+
+.hermes/*
+
 # secrets — PISTE / Légifrance OAuth credentials, etc.
 .env
 .env.*

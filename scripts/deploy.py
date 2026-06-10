@@ -5,12 +5,15 @@ its LIST response, accepts a `Checksum` header on PUT for server-side
 integrity verification, and has no session limits, so the diff is
 content-addressed and uploads can fan out further than FTP allowed.
 
+Also configures security response headers on the pull zone via Edge Rules
+(idempotent: compares against existing rules and only adds what's missing).
+
 Env:
   BUNNY_STORAGE_KEY    storage zone password (Bunny dash → Storage →
                        <zone> → FTP & API access → Password; same value
                        as the FTP password)
-  BUNNY_API_KEY        account API key, for the cache purge
-  BUNNY_PULLZONE_ID    numeric pullzone id, for the cache purge
+  BUNNY_API_KEY        account API key, for the cache purge + edge rules
+  BUNNY_PULLZONE_ID    numeric pullzone id, for the cache purge + edge rules
 
 Optional:
   BUNNY_STORAGE_HOST   default: storage.bunnycdn.com
@@ -26,8 +29,11 @@ import hashlib
 import os
 import pathlib
 import sys
+import threading
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # Mirror the rclone --exclude globs from the old deploy.sh.
 # Patterns are matched against the wiki/-relative POSIX path.
@@ -54,31 +60,52 @@ def sha256_hex(path: pathlib.Path) -> str:
     return h.hexdigest()
 
 
-def list_remote(session: requests.Session, host: str, zone: str) -> dict[str, str]:
-    """Recursively list the storage zone.
+def list_remote(session: requests.Session, host: str, zone: str, workers: int) -> dict[str, str]:
+    """Recursively list the storage zone, fanning out across directories.
 
     Returns {relative_posix_path: sha256_hex_lowercase}. Bunny serves
     `Checksum` as uppercase hex; we lowercase for comparison.
+
+    Bunny's Storage API has no flat recursive listing — one GET per
+    directory is unavoidable — and the clean-URL `<slug>/index.html`
+    layout means ~11k leaf directories. A sequential walk turns that
+    into a ~30-minute "hang" before any diff, so directories are listed
+    concurrently: each completed listing feeds its subdirectories back
+    into the pool, keeping `workers` GETs in flight.
     """
     out: dict[str, str] = {}
+    lock = threading.Lock()
 
-    def walk(prefix: str) -> None:
+    def fetch_dir(prefix: str) -> list[str]:
         url = f"https://{host}/{zone}/{prefix}"
         if not url.endswith("/"):
             url += "/"
         r = session.get(url, timeout=60)
         if r.status_code == 404:
-            return
+            return []
         r.raise_for_status()
+        subdirs: list[str] = []
         for entry in r.json():
             name = entry["ObjectName"]
             if entry.get("IsDirectory"):
-                walk(f"{prefix}{name}/")
+                subdirs.append(f"{prefix}{name}/")
             else:
                 checksum = (entry.get("Checksum") or "").lower()
-                out[f"{prefix}{name}"] = checksum
+                with lock:
+                    out[f"{prefix}{name}"] = checksum
+        return subdirs
 
-    walk("")
+    n_dirs = 0
+    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+        pending = {ex.submit(fetch_dir, "")}
+        while pending:
+            done, pending = cf.wait(pending, return_when=cf.FIRST_COMPLETED)
+            for fut in done:
+                for sub in fut.result():
+                    pending.add(ex.submit(fetch_dir, sub))
+                n_dirs += 1
+                if n_dirs % 1000 == 0:
+                    print(f"  listed {n_dirs} dirs, {len(out)} files so far ...", file=sys.stderr)
     return out
 
 
@@ -152,6 +179,70 @@ _CANONICAL_HOST = "www.openwinemap.com"
 _APEX_HOST = "openwinemap.com"
 
 
+# Security response headers to enforce on every response.
+# Bunny Edge Rule ActionType 5 = SetResponseHeader.
+# Empty Triggers list = apply unconditionally to all requests.
+_SECURITY_HEADERS: list[tuple[str, str]] = [
+    ("Strict-Transport-Security", "max-age=31536000"),
+    ("X-Content-Type-Options", "nosniff"),
+    ("X-Frame-Options", "SAMEORIGIN"),
+    ("Referrer-Policy", "strict-origin-when-cross-origin"),
+    ("Permissions-Policy", "geolocation=(), microphone=(), camera=()"),
+]
+
+
+def ensure_security_headers(api_key: str, pullzone: str) -> None:
+    """Idempotently set security response headers via Bunny Edge Rules.
+
+    Fetches the current pull zone to find existing header rules, then adds
+    only the rules that are missing or have the wrong value.
+    """
+    base = "https://api.bunny.net"
+    headers = {"AccessKey": api_key, "Content-Type": "application/json", "Accept": "application/json"}
+
+    r = requests.get(f"{base}/pullzone/{pullzone}", headers=headers, timeout=30)
+    if r.status_code != 200:
+        print(f"  warn: could not fetch pull zone for edge rule check ({r.status_code})", file=sys.stderr)
+        return
+
+    existing: dict[str, dict] = {}
+    for rule in r.json().get("EdgeRules") or []:
+        if rule.get("ActionType") == 5:
+            name = (rule.get("ActionParameter1") or "").lower()
+            existing[name] = rule
+
+    for header_name, header_value in _SECURITY_HEADERS:
+        key = header_name.lower()
+        current = existing.get(key)
+        if current and current.get("ActionParameter2") == header_value:
+            print(f"  security header {header_name}: already set", file=sys.stderr)
+            continue
+
+        body: dict = {
+            "ActionType": 5,
+            "ActionParameter1": header_name,
+            "ActionParameter2": header_value,
+            "Description": f"Security: {header_name}",
+            "Enabled": True,
+            "Triggers": [],
+            "TriggerMatchingType": 0,
+        }
+        if current:
+            body["Guid"] = current.get("Guid") or current.get("Id") or ""
+
+        resp = requests.post(
+            f"{base}/pullzone/{pullzone}/edgerules/addOrUpdate",
+            headers=headers,
+            json=body,
+            timeout=30,
+        )
+        if resp.status_code in (200, 201, 204):
+            action = "updated" if current else "added"
+            print(f"  security header {header_name}: {action}", file=sys.stderr)
+        else:
+            print(f"  warn: edge rule for {header_name} → {resp.status_code} {resp.text[:120]}", file=sys.stderr)
+
+
 def check_apex_redirect() -> None:
     bad: list[str] = []
     for path in ("/", "/fr/"):
@@ -190,6 +281,9 @@ def main() -> int:
     host = os.environ.get("BUNNY_STORAGE_HOST", "storage.bunnycdn.com")
     zone = os.environ.get("BUNNY_STORAGE_ZONE", "open-wine-map")
     workers = int(os.environ.get("BUNNY_WORKERS", "8"))
+    # Listing is one cheap GET per directory over ~11k leaf dirs, so fan
+    # out far wider than the (heavier) upload PUTs.
+    list_workers = int(os.environ.get("BUNNY_LIST_WORKERS", "32"))
 
     root = pathlib.Path(__file__).resolve().parent.parent / "wiki"
     if not root.is_dir():
@@ -198,9 +292,20 @@ def main() -> int:
     storage = requests.Session()
     storage.headers["AccessKey"] = storage_key
     storage.headers["Accept"] = "application/json"
+    # Fanning out list/upload across many threads means one transient DNS or
+    # 5xx blip would otherwise abort the whole run; retry with backoff and
+    # size the connection pool to the widest concurrency so threads don't
+    # contend for (or discard) pooled sockets.
+    pool = max(workers, list_workers)
+    retry = Retry(
+        total=5, connect=5, read=3, backoff_factor=0.5,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset(["GET", "PUT", "DELETE", "HEAD", "POST"]),
+    )
+    storage.mount("https://", HTTPAdapter(max_retries=retry, pool_maxsize=pool))
 
     print(f"listing {host}/{zone}/ ...", file=sys.stderr)
-    remote = list_remote(storage, host, zone)
+    remote = list_remote(storage, host, zone, list_workers)
     print(f"  {len(remote)} remote files", file=sys.stderr)
 
     print(f"hashing {root} ...", file=sys.stderr)
@@ -239,6 +344,8 @@ def main() -> int:
     if r.status_code not in (200, 204):
         sys.exit(f"purgeCache → {r.status_code} {r.text[:200]}")
 
+    print("configuring security headers ...", file=sys.stderr)
+    ensure_security_headers(api_key, pullzone)
     check_apex_redirect()
     print("\ndeployed. https://www.openwinemap.com/", file=sys.stderr)
     return 0
