@@ -18,3 +18,18 @@ jobs:
         run: uv run ruff check scripts/ tests/
       - name: Pytest
         run: uv run python -m pytest -q
+
+  eslint:
+    # Advisory only — the map app JS lives in scripts/_lib/assets/app.js
+    # (extracted from the Python template in Phase 4). Build correctness is
+    # guarded by the byte-identity golden check, not by lint, so this job is
+    # non-blocking (continue-on-error).
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: ESLint (map app JS)
+        run: npx --yes eslint@9 scripts/_lib/assets/app.js

@@ -4162,6 +4162,22 @@ same content; only the JS map lazy-loads. The per-slug JSON is not
 content-hashed (stable path, fetched at runtime, not referenced from cacheable
 HTML) and never enters the sitemap.
 
+### Map app JS source
+
+The map application JS lives in
+[scripts/_lib/assets/app.js](scripts/_lib/assets/app.js) — a real, lint-able
+`.js` file, not an escaped Python string. `_render_app_js` in
+[scripts/_lib/map_template.py](scripts/_lib/map_template.py) injects the
+per-locale build values by replacing `__OWM_<slot>__` tokens (one per former
+`{slot}` format field) and emits `wiki/assets/app.<locale>.<hash>.js` exactly
+as before — byte-for-byte equivalent to the old `_APP_JS.format(**kwargs)`
+(verified by the golden comparator). `eslint.config.js` (flat config, advisory)
+lints it: `npx --yes eslint@9 scripts/_lib/assets/app.js`; the OWM token
+identifiers are declared as globals there, and a non-blocking `eslint` CI job
+runs it. Edit app.js directly; do not move the JS back into the template. The
+CSS still ships inline in `_TEMPLATE` and is lifted to the shared
+`style.<hash>.css` by `_split_template`.
+
 ## Structured data (JSON-LD) on entity pages
 
 Each **indexable** per-appellation entity page (`/<lang>/<slug>`) carries a
