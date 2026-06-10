@@ -41,6 +41,24 @@ from _lib.appellation_urls import resolve as resolve_appellation_url
 from _lib.at.gemeinde import ATCommuneIndex
 from _lib.at.geometry import ATPolygonIndex
 from _lib.at.region import derive_bundesland as derive_at_bundesland
+from _lib.augment._shared import (
+    _BG_NATIONAL_SPEC_BY_SLUG,
+    _CY_NATIONAL_SPEC_BY_SLUG,
+    _CZ_CHZO_BY_SLUG,
+    _CZ_NATIONAL_SPEC_BY_SLUG,
+    _DE_PRODUKTSPEZIFIKATION_BY_SLUG,
+    _ES_NATIONAL_PLIEGO_BY_SLUG,
+    _GR_NATIONAL_SPEC_BY_SLUG,
+    _HR_SPECIFIKACIJA_BY_SLUG,
+    _HU_NATIONAL_SPEC_BY_SLUG,
+    _IT_MASAF_BY_SLUG,
+    _RO_NATIONAL_SPEC_BY_SLUG,
+    _SI_SPECIFIKACIJA_BY_SLUG,
+    _SK_NATIONAL_SPEC_BY_SLUG,
+)
+from _lib.augment.es import augment_es_records_with_national_pliegos
+from _lib.augment.hr import augment_hr_records_with_specifikacija
+from _lib.augment.si import augment_si_records_with_specifikacija
 from _lib.be.geometry import BEPolygonIndex
 from _lib.be.region import derive_region as derive_be_region
 from _lib.bg.geometry import BGPolygonIndex
@@ -131,7 +149,6 @@ from unidecode import unidecode
 ROOT = Path(__file__).resolve().parent.parent
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 EXTRACTED_ES = ROOT / "raw" / "es" / "pliegos-extracted"
-NATIONAL_PLIEGOS_ES = ROOT / "raw" / "es" / "national-pliegos-extracted"
 ES_FIGSHARE_GPKG = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
 ES_GISCO_LAU_ZIP = ROOT / "raw" / "es" / "gisco" / "LAU_RG_01M_2024_3035.shp.zip"
 ES_SIGPAC_DIR = ROOT / "raw" / "es" / "sigpac"
@@ -149,9 +166,7 @@ AT_STATISTIK_DIR = ROOT / "raw" / "at" / "statistik"
 EXTRACTED_DE = ROOT / "raw" / "de" / "dokumente-extracted"
 PRODUKTSPEZIFIKATION_DE = ROOT / "raw" / "de" / "produktspezifikationen-extracted"
 EXTRACTED_SI = ROOT / "raw" / "si" / "dokumenti-extracted"
-SPECIFIKACIJE_SI = ROOT / "raw" / "si" / "specifikacije-extracted"
 EXTRACTED_HR = ROOT / "raw" / "hr" / "dokumenti-extracted"
-SPECIFIKACIJE_HR = ROOT / "raw" / "hr" / "specifikacije-extracted"
 EXTRACTED_HU = ROOT / "raw" / "hu" / "dokumentumok-extracted"
 EXTRACTED_RO = ROOT / "raw" / "ro" / "dokumente-extracted"
 EXTRACTED_BG = ROOT / "raw" / "bg" / "dokumenti-extracted"
@@ -199,99 +214,6 @@ STYLE_TRANSLATIONS_DIR = ROOT / "raw" / "translations" / "styles"
 _DISAMBIG_SUFFIX = re.compile(r"\s*\([^)]*\)\s*$")
 
 
-# Slug-keyed cache of national-pliego provenance, populated by
-# augment_es_records_with_national_pliegos() and read by _sources_for()
-# later in the build. Needed because the AOC-blob phase re-reads each
-# extracted JSON from disk (where the augmentation isn't persisted) —
-# this lookup gives that phase access to the same provenance the
-# in-memory record carries.
-_ES_NATIONAL_PLIEGO_BY_SLUG: dict[str, dict] = {}
-
-
-# Slug-keyed cache of MASAF disciplinare provenance + augmented payload,
-# populated by augment_de_records_with_produktspezifikation() and read
-# by _sources_for() / panel rendering — same shape as the IT/ES caches.
-_DE_PRODUKTSPEZIFIKATION_BY_SLUG: dict[str, dict] = {}
-
-# populated by augment_it_records_with_masaf() and read by _sources_for()
-# / the AOC-blob phase (which re-reads each on-disk extracted JSON,
-# bypassing in-memory augmentation).
-_IT_MASAF_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of CZ national-spec provenance, populated by
-# augment_cz_records_with_national_specs(). Mirrors the ES/IT/DE caches.
-# Czech wine law publishes one national variety roster (Vyhláška 88/2017
-# Sb. Příloha č. 2) that applies to every jakostní víno regardless of
-# podoblast, so every augmented CZ wine carries the same provenance
-# block — but per-record so _sources_for() can surface it uniformly.
-_CZ_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of CZ CHZO-spec provenance (the SZPI „moravské“ /
-# „české“ product specifications). Every CZ wine sits in one of the two
-# regions (Morava / Čechy), so all 13 carry the region spec's provenance
-# — the terroir bullets (02d) ground on its section-1 region description.
-# Populated by augment_cz_records_with_national_specs().
-_CZ_CHZO_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of SI specifikacija provenance + augmented payload,
-# populated by augment_si_records_with_specifikacija(). Two source
-# patterns feed it (MKGP per-wine .doc, Uradni list RS pravilnik HTML);
-# the sidecar's `parser_template` distinguishes them for attribution.
-_SI_SPECIFIKACIJA_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of HR specifikacija provenance, populated by
-# augment_hr_records_with_specifikacija(). The 16 grandfathered HR wines
-# whose EU-OJ JEDINSTVENI DOKUMENT was never published are augmented from
-# the Ministarstvo poljoprivrede per-wine SPECIFIKACIJA PROIZVODA (stage
-# 02f). `parser_template` distinguishes the lettered .doc/.pdf path
-# (mps-specifikacija-v1) from the docx fallback (mps-specifikacija-docx).
-_HR_SPECIFIKACIJA_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of GR national-spec provenance, populated by
-# augment_gr_records_with_national_specs(). 132 of the 138 grandfathered
-# GR wines are augmented from the ΥΠΑΑΤ national προδιαγραφή / τεχνικός
-# φάκελος (stage 02f) — 87 structured-PDF ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ, 43 `.doc`,
-# 2 `.docx`. `parser_template` (gr-national-{pdf,doc,docx}) distinguishes.
-_GR_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-# Slug-keyed cache of CY national-spec provenance, populated by
-# augment_cy_records_with_national_specs(). All 11 CY wines are
-# grandfathered names augmented from the moa.gov.cy τεχνικός φάκελος
-# (stage 02f) — a Greek ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ PDF, OCR'd when image-only.
-_CY_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of RO national-spec provenance, populated by
-# augment_ro_records_with_national_specs(). The 14 grandfathered RO wines
-# (only an Ares(...) reference in eAmbrosia, no EU-OJ DOCUMENT UNIC) are
-# augmented from the ONVPV caiet de sarcini (stage 02f, onvpv-caiet-de-
-# sarcini-v1 parser). Unlike GR/HR, the merge also carries `geo_communes`
-# so the 2 grandfathered IGPs resolve via the GISCO commune-union chain.
-_RO_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of HU national-spec provenance, populated by
-# augment_hu_records_with_national_specs(). The 15 grandfathered HU wines
-# (only an Ares(...) reference in eAmbrosia, no EU-OJ EGYSÉGES DOKUMENTUM)
-# are augmented from the Agrárminisztérium termékleírás PDF (stage 02f,
-# hu-termekleiras-v1 parser). The merge carries grapes + terroir text +
-# geo_communes so the panel + 02d ground on the national spec.
-_HU_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of BG national-spec provenance, populated by
-# augment_bg_records_with_national_specs(). The 51 grandfathered BG wines
-# (only an Ares(...) reference in eAmbrosia, no EU-OJ ЕДИНЕН ДОКУМЕНТ) are
-# augmented from the ИАЛВ / IAVV per-wine продуктова спецификация (stage
-# 02f, iavv-specifikacija-v1 parser — eavw.com PDF, numbered 1–8 template:
-# 5 сортове / 6 Връзка с географския район / 3 район).
-_BG_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of SK national-spec provenance, populated by
-# augment_sk_records_with_national_specs(). The 5 grandfathered SK wines
-# (only an Ares(...) reference in eAmbrosia, no EU-OJ JEDNOTNÝ DOKUMENT) are
-# augmented from the ÚPV SR per-wine špecifikácia výrobku (stage 02f,
-# upv-sr-specifikacia-v1 parser — indprop.gov.sk PDF, lettered a–i template:
-# f) označenie odrôd / g) údaje potvrdzujúce spojitosť / d) zemepisná oblasť).
-_SK_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-
-
 # Cross-border PDOs that physically extend across more than one country.
 # Keyed by eAmbrosia file_number → list of secondary country codes (the
 # primary country sits in `record.country` from stage 02). The map shows
@@ -304,271 +226,6 @@ _CROSS_BORDER_COUNTRY_ALIASES: dict[str, list[str]] = {
     # is the southern tip of the Dutch province of Limburg.
     "PDO-BE+NL-02172": ["nl"],
 }
-
-
-def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
-    """In-place merge of national-pliego sidecar varieties into each ES
-    record's `grapes` field. Returns the number of records augmented.
-
-    Mutations per record:
-      - new variety slugs (those NOT already in principal ∪ accessory) are
-        appended to `grapes.accessory`
-      - matching entries are appended to `grapes.details` with
-        `role="accessory"` and `source="national-pliego"` so the UI can
-        distinguish doc-único-canonical varieties from pliego-augmented ones
-      - a top-level `national_pliego` block carries provenance for
-        `_sources_for()` to surface in the panel
-    """
-    _ES_NATIONAL_PLIEGO_BY_SLUG.clear()
-    if not NATIONAL_PLIEGOS_ES.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "es":
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = NATIONAL_PLIEGOS_ES / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        new_slugs = list(sidecar.get("delta_vs_oj", {}).get("new_slugs") or [])
-        if not new_slugs:
-            # Still stamp provenance — the pliego was parsed even if it
-            # added nothing new. Skip the merge but keep attribution
-            # consistent for the audit.
-            nat_provenance = {
-                "url": sidecar.get("source", {}).get("url", ""),
-                "sha256": sidecar.get("source", {}).get("sha256", ""),
-                "fetched_at": sidecar.get("source", {}).get("fetched_at", ""),
-                "parser_template": sidecar.get("parser_template", ""),
-                "added_slugs": [],
-            }
-            record["national_pliego"] = nat_provenance
-            _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
-            continue
-        grapes = dict(record.get("grapes") or {})
-        principal = list(grapes.get("principal") or [])
-        accessory = list(grapes.get("accessory") or [])
-        details = list(grapes.get("details") or [])
-        existing = set(principal) | set(accessory)
-        added: list[str] = []
-        slug_to_detail = {d.get("slug"): d for d in sidecar.get("varieties", [])}
-        for s in new_slugs:
-            if s in existing:
-                continue
-            accessory.append(s)
-            existing.add(s)
-            added.append(s)
-            detail = dict(slug_to_detail.get(s) or {"slug": s, "name": s, "colour": ""})
-            detail["role"] = "accessory"
-            detail["source"] = "national-pliego"
-            details.append(detail)
-        grapes["accessory"] = accessory
-        grapes["details"] = details
-        record["grapes"] = grapes
-        nat_provenance = {
-            "url": sidecar.get("source", {}).get("url", ""),
-            "sha256": sidecar.get("source", {}).get("sha256", ""),
-            "fetched_at": sidecar.get("source", {}).get("fetched_at", ""),
-            "parser_template": sidecar.get("parser_template", ""),
-            "added_slugs": added,
-        }
-        record["national_pliego"] = nat_provenance
-        _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
-        if added:
-            augmented += 1
-    return augmented
-
-
-def augment_si_records_with_specifikacija(records: list[dict]) -> int:
-    """In-place merge of SI national-spec sidecar data into stub records.
-
-    Sibling of `augment_it_records_with_masaf`. The 16 grandfathered SI
-    wines (every wine except Cviček) ship as content-stubs because their
-    eAmbrosia entry has no fetchable EU-OJ ENOTNI DOKUMENT URL. Stage
-    02f (`scripts/si/02f_extract_specifikacije.py`) extracts the
-    canonical Slovenian regulator source — either an MKGP per-wine
-    `.doc` specifikacija proizvoda or an Uradni list RS pravilnik HTML —
-    into a sidecar at `raw/si/specifikacije-extracted/<slug>.json`.
-
-    For each SI stub with a matching sidecar:
-      - summary           ← MKGP §2 (opis vin) or pravilnik §2
-      - grapes            ← MKGP §6 (sorte) or pravilnik Article-5 +
-                            priloga 2 (priporočene → principal,
-                            dovoljene → accessory)
-      - geo_area_brief    ← MKGP §4 (opredelitev geografskega območja)
-      - link_to_terroir   ← MKGP §7 (povezava z geografskim območjem)
-                            (pravilnik-derived records have empty
-                            link_to_terroir — pravilniki are regulatory
-                            lists, not narrative documents)
-      - styles            ← MKGP-derived colour/sparkling/predikat tags
-      - section_roles     ← unified role dict so 02d can read terroir
-                            text uniformly
-      - stub_reason       ← prefixed `specifikacija:` so the audit can
-                            tell EU-OJ-extracted from spec-augmented
-      - specifikacija     ← provenance block (url, sha256, fetched_at,
-                            parser_template, source_org, license)
-
-    `record["stub"]` stays True — the record is still NOT an EU-OJ
-    extraction, just augmented with the canonical Slovenian regulator
-    source. Stage 03 / 04 callers use the `specifikacija` block to
-    distinguish and to render attribution.
-
-    Returns the number of records augmented.
-    """
-    _SI_SPECIFIKACIJA_BY_SLUG.clear()
-    if not SPECIFIKACIJE_SI.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "si":
-            continue
-        if not record.get("stub"):
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = SPECIFIKACIJE_SI / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        src = sidecar.get("source") or {}
-        provenance = {
-            "url": src.get("url") or "",
-            "final_url": src.get("final_url") or "",
-            "sha256": src.get("sha256") or "",
-            "bytes": src.get("bytes") or 0,
-            "fetched_at": src.get("fetched_at") or "",
-            "format": src.get("format") or "",
-            "source_org": src.get("source_org") or "",
-            "license": src.get("license") or "",
-            "parser_template": sidecar.get("parser_template") or "",
-            "matched_okoliši": sidecar.get("matched_okoliši") or [],
-        }
-
-        if sidecar.get("summary"):
-            record["summary"] = sidecar["summary"]
-        if sidecar.get("grapes"):
-            record["grapes"] = sidecar["grapes"]
-        if sidecar.get("geo_area_brief"):
-            record["geo_area_brief"] = sidecar["geo_area_brief"]
-        if sidecar.get("link_to_terroir"):
-            record["link_to_terroir"] = sidecar["link_to_terroir"]
-        if sidecar.get("styles"):
-            existing_styles = set(record.get("styles") or [])
-            record["styles"] = sorted(existing_styles | set(sidecar["styles"]))
-
-        section_roles = dict(record.get("section_roles") or {})
-        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
-            sidecar_roles = sidecar.get("section_roles") or {}
-            if sidecar_roles.get(role):
-                section_roles[role] = sidecar_roles[role]
-        record["section_roles"] = section_roles
-
-        if record.get("stub_reason") and not record["stub_reason"].startswith("specifikacija:"):
-            record["stub_reason"] = f"specifikacija:{record['stub_reason']}"
-        record["specifikacija"] = provenance
-        _SI_SPECIFIKACIJA_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-def augment_hr_records_with_specifikacija(records: list[dict]) -> int:
-    """In-place merge of HR national-spec sidecar data into stub records.
-
-    Sibling of `augment_si_records_with_specifikacija`. The 16
-    grandfathered HR wines (everything except Muškat momjanski + Ponikve)
-    ship as content-stubs because their eAmbrosia entry has no fetchable
-    EU-OJ JEDINSTVENI DOKUMENT URL. Stage 02f
-    (`scripts/hr/02f_extract_specifikacije.py`) extracts the canonical
-    Ministarstvo poljoprivrede per-wine SPECIFIKACIJA PROIZVODA (14
-    `.doc`, 1 `.docx`, 1 PDF) into a sidecar at
-    `raw/hr/specifikacije-extracted/<slug>.json`.
-
-    For each HR stub with a matching sidecar:
-      - summary           ← lettered section b) (opis svojstava vina)
-      - grapes            ← section f) (sorte vinove loze; colour-grouped,
-                            all principal — the MPS spec has no
-                            principal/accessory split, same as PT/IT)
-      - geo_area_brief    ← section d) (granice područja)
-      - link_to_terroir   ← section g) (…povezane sa zemljopisnim
-                            uvjetima); empty for the Primorska docx
-      - styles            ← colour/sparkling/dessert/liqueur tags
-      - section_roles     ← unified role dict so 02d reads terroir text
-      - stub_reason       ← prefixed `specifikacija:` so the audit can
-                            tell EU-OJ-extracted from spec-augmented
-      - specifikacija     ← provenance block (url, sha256, fetched_at,
-                            parser_template, source_org, license)
-
-    `record["stub"]` stays True — the record is still NOT an EU-OJ
-    extraction, just augmented with the canonical Croatian regulator
-    source. Returns the number of records augmented.
-    """
-    _HR_SPECIFIKACIJA_BY_SLUG.clear()
-    if not SPECIFIKACIJE_HR.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "hr":
-            continue
-        if not record.get("stub"):
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = SPECIFIKACIJE_HR / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        src = sidecar.get("source") or {}
-        provenance = {
-            "url": src.get("url") or "",
-            "final_url": src.get("final_url") or "",
-            "sha256": src.get("sha256") or "",
-            "bytes": src.get("bytes") or 0,
-            "fetched_at": src.get("fetched_at") or "",
-            "format": src.get("format") or "",
-            "source_org": src.get("source_org") or "",
-            "license": src.get("license") or "",
-            "parser_template": sidecar.get("parser_template") or "",
-        }
-
-        if sidecar.get("summary"):
-            record["summary"] = sidecar["summary"]
-        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
-                                      or sidecar["grapes"].get("accessory")):
-            record["grapes"] = sidecar["grapes"]
-        if sidecar.get("geo_area_brief"):
-            record["geo_area_brief"] = sidecar["geo_area_brief"]
-        if sidecar.get("link_to_terroir"):
-            record["link_to_terroir"] = sidecar["link_to_terroir"]
-        if sidecar.get("styles"):
-            existing_styles = set(record.get("styles") or [])
-            record["styles"] = sorted(existing_styles | set(sidecar["styles"]))
-
-        section_roles = dict(record.get("section_roles") or {})
-        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
-            sidecar_roles = sidecar.get("section_roles") or {}
-            if sidecar_roles.get(role):
-                section_roles[role] = sidecar_roles[role]
-        record["section_roles"] = section_roles
-
-        if record.get("stub_reason") and not record["stub_reason"].startswith("specifikacija:"):
-            record["stub_reason"] = f"specifikacija:{record['stub_reason']}"
-        record["specifikacija"] = provenance
-        _HR_SPECIFIKACIJA_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
 
 
 def augment_gr_records_with_national_specs(records: list[dict]) -> int:
