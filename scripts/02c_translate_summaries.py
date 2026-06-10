@@ -329,7 +329,7 @@ def emit_todo_file(
     `single_lang=True`, otherwise dict-keyed-by-locale."""
     files = _iter_record_files(extracted_dir)
     jobs = _enumerate_jobs(files, languages, source_lang=source_lang, skip_cached=skip_cached)
-    by_lang: dict[str, list[dict]] = {l: [] for l in languages}
+    by_lang: dict[str, list[dict]] = {lang: [] for lang in languages}
     for j in jobs:
         by_lang[j["lang"]].append(_job_to_todo_item(j))
     timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -620,7 +620,7 @@ def main() -> int:
         return 1
 
     if args.lang:
-        invalid = [l for l in args.lang if l not in target_locales]
+        invalid = [lang for lang in args.lang if lang not in target_locales]
         if invalid:
             print(f"error: --lang values {invalid} not in source-lang `{args.source_lang}` "
                   f"target locales {target_locales}", file=sys.stderr)

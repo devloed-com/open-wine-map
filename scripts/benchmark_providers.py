@@ -1064,15 +1064,15 @@ def build_html(data: dict) -> str:
     results = data.get("results") or {}
     sample = [tuple(s) for s in data.get("sample") or []]
     langs = list(data.get("target_langs") or TARGET_LANGS)
-    order = ([l for l in CANDIDATES if l in results]
-             + [l for l in results if l not in CANDIDATES])
-    shown = [l for l in order if "error" not in results[l]
+    order = ([cand for cand in CANDIDATES if cand in results]
+             + [cand for cand in results if cand not in CANDIDATES])
+    shown = [cand for cand in order if "error" not in results[cand]
              and any("extraction" in e or "facts_translation" in e
-                     for e in (results[l].get("sources") or {}).values())]
+                     for e in (results[cand].get("sources") or {}).values())]
 
     rules = [f"body.hide-loc-{lg} .loc-{lg}{{display:none}}" for lg in langs]
-    rules += [f"body.hide-cand-{_cand_key(l)} .col-cand-{_cand_key(l)}{{display:none}}"
-              for l in shown]
+    rules += [f"body.hide-cand-{_cand_key(cand)} .col-cand-{_cand_key(cand)}{{display:none}}"
+              for cand in shown]
 
     o = ["<!doctype html><html lang='en'><head><meta charset='utf-8'>",
          "<meta name='viewport' content='width=device-width,initial-scale=1'>",

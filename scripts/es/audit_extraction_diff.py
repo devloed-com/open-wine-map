@@ -61,15 +61,15 @@ def main() -> int:
     for slug in all_keys:
         old = baseline.get(slug, set())
         new = current.get(slug, set())
-        l = sorted(old - new)
+        removed = sorted(old - new)
         g = sorted(new - old)
-        if l:
-            lost[slug] = l
-            total_lost += len(l)
+        if removed:
+            lost[slug] = removed
+            total_lost += len(removed)
         if g:
             gained[slug] = g
             total_gained += len(g)
-        if not l and not g:
+        if not removed and not g:
             unchanged += 1
 
     report = {
