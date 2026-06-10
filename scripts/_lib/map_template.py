@@ -19,6 +19,7 @@ from collections.abc import Callable
 
 from _lib.content_block import RenderCtx, esc, render_content_block
 from _lib.i18n import load_translations
+from _lib.wikidata import wikidata_url
 
 
 def build_style_labels(_: Callable[[str], str]) -> dict[str, str]:
@@ -211,14 +212,13 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Signalez-les via {issue} ou {email}."
         ),
         "about_roadmap_html": _(
-            "Extension de la couverture européenne en cours : France, "
-            "Espagne, Portugal, Italie, Autriche, Allemagne, Slovénie, "
-            "Croatie, Hongrie, Roumanie, Bulgarie et Grèce sont déjà "
-            "cartographiés. Quelques itérations supplémentaires "
-            "viendront affiner la qualité des données existantes ; "
-            "l'Europe centrale et orientale est à considérer comme une "
-            "première version, appelée à être améliorée. À plus long "
-            "terme, des classifications hors AOP pourront être ajoutées."
+            "20 pays européens cartographiés : France, Espagne, Portugal, "
+            "Italie, Autriche, Allemagne, Suisse, Slovénie, Croatie, "
+            "Hongrie, Roumanie, Bulgarie, Grèce, Slovaquie, Tchéquie, "
+            "Luxembourg, Belgique, Pays-Bas, Malte et Chypre. Des "
+            "itérations supplémentaires viendront affiner la qualité des "
+            "données. La couverture sera étendue au-delà de l'UE et de "
+            "la Suisse, ainsi qu'aux classifications hors AOP."
         ),
     }
 
@@ -439,7 +439,7 @@ def _build_about_dialog(labels: dict[str, str]) -> str:
         f'<dialog id="about-dialog" aria-labelledby="about-dialog-h">\n'
         f'  <button class="close" type="button" aria-label="{labels["close_aria"]}">×</button>\n'
         f'  <div class="about-body">\n'
-        f'    <h1 id="about-dialog-h">{labels["about_h"]}</h1>\n'
+        f'    <h2 id="about-dialog-h">{labels["about_h"]}</h2>\n'
         f"      {body}\n"
         f'  </div>\n'
         f'</dialog>'
@@ -801,12 +801,107 @@ def _entity_grape_names(rec: dict, grapes_info: dict, limit: int) -> list[str]:
     return out
 
 
-def _build_entity_jsonld(slug, rec, canonical_url, locale, country_labels, region) -> str:
-    """schema.org Place (AdministrativeArea) + BreadcrumbList for one
-    appellation. Pre-serialised to an opaque string (its braces are data, not
-    str.format slots)."""
+# Wikidata class for the Place.additionalType — "wine-producing region"
+# (Q2140699, "type of region"): an honest place-class true for every record,
+# EU and non-EU alike, that types the appellation as a wine region without a
+# native schema.org type. Set to "" to omit. The EU PDO/PGI regulatory classes
+# (Q13439060 / Q3104453) are deliberately NOT used here — they're EU-only (would
+# mis-tag the Swiss AOCs) and assert "protected-as", not "is-a".
+_WIKIDATA_GI_TYPE = "https://www.wikidata.org/wiki/Q2140699"
+
+# Regulator source-document URL keys in rec["sources"], in rough canonical
+# order — surfaced as the WebPage's isBasedOn (honest provenance: the page is
+# generated from these official specs). Identity pages (Wikipedia / Wikidata /
+# regulator site) go in sameAs instead; PDFs and legal acts belong here.
+_SOURCE_DOC_KEYS = (
+    "eur_lex_url", "eu_oj_publication_url", "national_pliego_url",
+    "national_spec_url", "specifikacija_url", "specifikacija_final_url",
+    "ble_produktspezifikation_url", "masaf_override_url", "ivv_caderno_url",
+    "cahier_url", "chzo_spec_url",
+)
+
+
+def _dedupe_urls(urls, cap: int | None = None) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for u in urls:
+        u = (u or "").strip()
+        if u.startswith(("http://", "https://")) and u not in seen:
+            seen.add(u)
+            out.append(u)
+            if cap and len(out) >= cap:
+                break
+    return out
+
+
+def _entity_same_as(rec: dict) -> list[str]:
+    """Authoritative external *identity* URLs for the appellation, de-duped and
+    order-stable: Wikidata QID (highest reconciliation value) → per-locale
+    Wikipedia article → official regulator / producer-body site. Source PDFs and
+    legal acts are NOT identity pages (they go in isBasedOn), and the eAmbrosia
+    register is a hash-route SPA — one shell for every GI — so it is excluded."""
+    s = rec.get("sources") or {}
+    tf = rec.get("terroir_facts") or {}
+    return _dedupe_urls([
+        wikidata_url(rec.get("wikidata_qid") or ""),
+        tf.get("wiki_source_url") or "",
+        (s.get("syndicate") or {}).get("url") or "",
+    ])
+
+
+def _entity_source_docs(rec: dict) -> list[str]:
+    """Up to 3 regulator source-document URLs for WebPage.isBasedOn."""
+    s = rec.get("sources") or {}
+    return _dedupe_urls((s.get(k) for k in _SOURCE_DOC_KEYS), cap=3)
+
+
+def _entity_jsonld_description(rec: dict, fallback: str) -> str:
+    """Localized one-paragraph description: the translated summary, else the
+    first 1–2 terroir-fact bullets, else the 160-char meta description."""
+    summary = (rec.get("summary") or "").strip()
+    if summary:
+        return _clamp(summary, 300)
+    facts = ((rec.get("terroir_facts") or {}).get("facts")) or []
+    joined = " ".join((f.get("bullet") or "").strip() for f in facts[:2]).strip()
+    if joined:
+        return _clamp(joined, 300)
+    return fallback
+
+
+def _entity_breadcrumb(slug, rec, canonical_url, locale, breadcrumb_id) -> dict:
+    """BreadcrumbList: Open Wine Map → [parent →] appellation. The country level
+    is deliberately omitted — there is no per-country landing page, and a
+    non-final ListItem without an `item` URL is invalid for Google's
+    BreadcrumbList rich result (so every ListItem here carries an `item`)."""
+    home = f"{_SITE_BASE_URL}/" if locale == "en" else f"{_SITE_BASE_URL}/{locale}/"
+    crumbs = [{"@type": "ListItem", "position": 1, "name": "Open Wine Map", "item": home}]
+    pos = 2
+    if rec.get("is_sub_denomination") and rec.get("parent_name") and rec.get("parent_slug"):
+        crumbs.append({
+            "@type": "ListItem", "position": pos, "name": rec["parent_name"],
+            "item": f"{_SITE_BASE_URL}{_entity_path(locale, rec['parent_slug'])}",
+        })
+        pos += 1
+    crumbs.append({
+        "@type": "ListItem", "position": pos, "name": rec.get("name") or slug,
+        "item": canonical_url,
+    })
+    return {"@type": "BreadcrumbList", "@id": breadcrumb_id, "itemListElement": crumbs}
+
+
+def _build_entity_jsonld(
+    slug, rec, canonical_url, locale, country_labels, region, desc=""
+) -> str:
+    """schema.org @graph (WebSite → WebPage → Place → BreadcrumbList) for one
+    appellation, pre-serialised to an opaque string (its braces are JSON data,
+    NOT str.format slots — do not double-brace or esc() it). Modelled as a
+    WebPage about an AdministrativeArea (the delimited GI region) with a
+    sameAs identity cluster; no Article markup, which would require fabricated
+    author / editorial dates for a mechanically generated reference page."""
     name = rec.get("name") or slug
     country = country_labels.get(rec.get("country") or "", "")
+    description = _entity_jsonld_description(rec, desc)
+
     contained: list[dict] = []
     if rec.get("is_sub_denomination") and rec.get("parent_name"):
         contained.append({"@type": "AdministrativeArea", "name": rec["parent_name"]})
@@ -818,12 +913,32 @@ def _build_entity_jsonld(slug, rec, canonical_url, locale, country_labels, regio
         an = country_labels.get(alias, "")
         if an:
             contained.append({"@type": "Country", "name": an})
-    place = {
-        "@context": "https://schema.org",
-        "@type": "AdministrativeArea",
-        "name": name,
-        "url": canonical_url,
+
+    website_id = f"{_SITE_BASE_URL}/#website"
+    webpage_id = f"{canonical_url}#webpage"
+    place_id = f"{canonical_url}#place"
+    breadcrumb_id = f"{canonical_url}#breadcrumb"
+
+    website = {
+        "@type": "WebSite", "@id": website_id, "name": "Open Wine Map",
+        "url": f"{_SITE_BASE_URL}/", "inLanguage": locale,
     }
+    webpage = {
+        "@type": "WebPage", "@id": webpage_id, "url": canonical_url, "name": name,
+        "description": description, "inLanguage": locale,
+        "isPartOf": {"@id": website_id}, "mainEntity": {"@id": place_id},
+        "breadcrumb": {"@id": breadcrumb_id},
+    }
+    based_on = _entity_source_docs(rec)
+    if based_on:
+        webpage["isBasedOn"] = based_on if len(based_on) > 1 else based_on[0]
+
+    place = {
+        "@type": "AdministrativeArea", "@id": place_id, "name": name,
+        "url": canonical_url, "description": description, "inLanguage": locale,
+    }
+    if _WIKIDATA_GI_TYPE:
+        place["additionalType"] = _WIKIDATA_GI_TYPE
     bbox = rec.get("bbox")
     if bbox and len(bbox) == 4:
         # stored [minLng, minLat, maxLng, maxLat]; GeoShape box wants
@@ -831,24 +946,16 @@ def _build_entity_jsonld(slug, rec, canonical_url, locale, country_labels, regio
         place["geo"] = {"@type": "GeoShape", "box": f"{bbox[1]} {bbox[0]} {bbox[3]} {bbox[2]}"}
     if contained:
         place["containedInPlace"] = contained if len(contained) > 1 else contained[0]
-    home = f"{_SITE_BASE_URL}/" if locale == "en" else f"{_SITE_BASE_URL}/{locale}/"
-    crumbs = [{"@type": "ListItem", "position": 1, "name": "Open Wine Map", "item": home}]
-    pos = 2
-    if country:
-        crumbs.append({"@type": "ListItem", "position": pos, "name": country})
-        pos += 1
-    if rec.get("is_sub_denomination") and rec.get("parent_name") and rec.get("parent_slug"):
-        crumbs.append({
-            "@type": "ListItem", "position": pos, "name": rec["parent_name"],
-            "item": f"{_SITE_BASE_URL}{_entity_path(locale, rec['parent_slug'])}",
-        })
-        pos += 1
-    crumbs.append({"@type": "ListItem", "position": pos, "name": name, "item": canonical_url})
-    breadcrumb = {"@context": "https://schema.org", "@type": "BreadcrumbList",
-                  "itemListElement": crumbs}
+    same_as = _entity_same_as(rec)
+    if same_as:
+        place["sameAs"] = same_as
+
+    breadcrumb = _entity_breadcrumb(slug, rec, canonical_url, locale, breadcrumb_id)
+    graph = {"@context": "https://schema.org",
+             "@graph": [website, webpage, place, breadcrumb]}
     return (
         '<script type="application/ld+json">'
-        + json.dumps([place, breadcrumb], ensure_ascii=False)
+        + json.dumps(graph, ensure_ascii=False)
         + "</script>"
     )
 
@@ -889,7 +996,9 @@ def _build_entity_meta(
         robots_meta = '<meta name="robots" content="noindex, follow">\n'
     else:
         canonical_url = self_url
-        jsonld_html = _build_entity_jsonld(slug, rec, self_url, locale, country_labels, region)
+        jsonld_html = _build_entity_jsonld(
+            slug, rec, self_url, locale, country_labels, region, desc=desc
+        )
         robots_meta = ""
     return {
         "canonical_url": canonical_url,
@@ -1172,6 +1281,9 @@ def render(
         hreflang_block=_HOMEPAGE_HREFLANG,
         robots_meta="",
         ssr_content="",
+        # Homepage has no appellation SSR card, so the brand wordmark is the
+        # page's single <h1>.
+        brand_tag="h1",
     )
 
     # Per-appellation pages are streamed straight to disk (one per slug) rather
@@ -1198,6 +1310,10 @@ def render(
                 hreflang_block=meta["hreflang_block"],
                 robots_meta=meta["robots_meta"],
                 ssr_content=ssr,
+                # Index pages carry the appellation <h1> in their SSR card, so
+                # the brand wordmark demotes to a <p>; fold pages (empty SSR)
+                # keep the brand as their single <h1>.
+                brand_tag="p" if ssr else "h1",
             )
             d = entity_out_dir / slug
             d.mkdir(parents=True, exist_ok=True)
@@ -1240,6 +1356,7 @@ _TEMPLATE = """<!doctype html>
 <title>{page_title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{meta_description}">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 {robots_meta}<meta name="theme-color" content="#7A1F2B" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
@@ -1322,7 +1439,7 @@ _TEMPLATE = """<!doctype html>
     if (dark) document.documentElement.classList.add('theme-dark');
   }})();
 </script>
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous">
 <style>
   html, body {{ margin:0; padding:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14px }}
   /* Hide the server-rendered card once JS is available (class set pre-paint):
@@ -1331,8 +1448,8 @@ _TEMPLATE = """<!doctype html>
   html.js #ssr-content {{ display:none }}
   #app {{ display:flex; height:100vh }}
   #sidebar {{ width:300px; flex:0 0 300px; background:#1a1a1a; color:#eee; overflow-y:auto; border-right:1px solid #333 }}
-  #sidebar h1 {{ font-size:15px; padding:14px 16px 4px; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px }}
-  #sidebar h1 .brand-mark {{ width:18px; height:18px; flex:0 0 18px; display:inline-block }}
+  #sidebar .brand-title {{ font-size:15px; padding:14px 16px 4px; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px }}
+  #sidebar .brand-title .brand-mark {{ width:18px; height:18px; flex:0 0 18px; display:inline-block }}
   #sidebar .subtitle {{ font-size:11px; color:#888; padding:0 16px 10px; border-bottom:1px solid #333 }}
   #sidebar h2 {{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#888; padding:14px 16px 4px; margin:0 }}
   /* `:not(.grape-search)` excludes the chip-filter's typeahead input —
@@ -1690,7 +1807,7 @@ _TEMPLATE = """<!doctype html>
 <a class="skip-link" href="#map">{labels[skip_to_map]}</a>
 <div id="app">{ssr_content}
   <aside id="sidebar" data-nosnippet aria-label="{labels[sidebar_aria]}">
-    <h1><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</h1>
+    <{brand_tag} class="brand-title"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</{brand_tag}>
     <div class="subtitle">{labels[subtitle]}</div>
     {lang_switcher_html}
     <div id="theme-toggle" role="group" aria-label="{labels[theme_h]}">
@@ -1784,8 +1901,8 @@ _TEMPLATE = """<!doctype html>
   {about_dialog_html}
 </div>
 
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js" integrity="sha384-QfbOCebHNw8pQiPAOd2IFee2v2A5VYZxBk0+JGZ5H+3mfzVIp6zsQNkTsfGJot93" crossorigin="anonymous"></script>
 <!-- Per-locale data bundle (appellation records + grape tooltips). Render-
      blocking on purpose so window.__OWM_DATA is defined before the app below
      reads it; hashed filename = immutable, long-cacheable, shared across every
@@ -3382,9 +3499,10 @@ _TEMPLATE = """<!doctype html>
     }} else if (
       r.geom_source !== 'parcellaire' && r.geom_source !== 'parcellaire-dgc' &&
       r.geom_source !== 'aires-csv-dgc' && r.geom_source !== 'cadastre-lieu-dit-dgc' &&
-      r.geom_source !== 'sibling-dgc' && r.geom_source !== 'parent-appellation'
+      r.geom_source !== 'sibling-dgc' && r.geom_source !== 'parent-appellation' &&
+      r.communes_matched > 0
     ) {{
-      metaTail = ' · ' + fmt(LABELS.meta_communes, {{ n: r.communes_matched || 0 }});
+      metaTail = ' · ' + fmt(LABELS.meta_communes, {{ n: r.communes_matched }});
     }}
     const region = r.region ? regionLabel(r.region) : '';
     const regionSeg = region ? ` · ${{escapeHtml(region)}}` : '';

@@ -381,8 +381,9 @@ twice with no changes upstream must be a no-op (cache hits).
 | 02d_extract_terroir_facts.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/aocs/fr/ | raw/terroir-facts/*.json + manifest.json |
 | 02e_translate_terroir_facts.py | raw/terroir-facts/*.json | raw/translations/terroir-facts/<lang>/*.json |
 | 02g_fetch_vivc.py | raw/inao/cahier-extracted/*.json + raw/es/pliegos-extracted/ + raw/pt/cadernos-extracted/ + raw/vivc/slug_overrides.json | raw/vivc/{search,passport,by-slug}/*.html\|json + manifest.json + slug_overrides.example.json |
+| 02i_fetch_wikidata_qids.py | raw/*/*-extracted/*.json (slug + id_eambrosia) + raw/wikipedia/aocs/<lang>/ + raw/wikidata/slug_overrides.json | raw/wikidata/qids-by-slug.json + p9854.json + manifest.json + slug_overrides.example.json |
 | 03_generate_wiki.py | raw/inao/cahier-extracted/*.json + raw/terroir-facts/ | wiki/*.md, wiki/_index.json |
-| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (homepage × 4 locales) |
+| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (homepage × 4 locales) |
 
 ## Spain pipeline (`scripts/es/`)
 
@@ -4130,6 +4131,44 @@ uv run pybabel init   -i locale/messages.pot -d locale -l <lang>   # to add a ne
 ```
 
 After editing a `.po`, just rerun `uv run scripts/04_build_maps.py`.
+
+## Structured data (JSON-LD) on entity pages
+
+Each **indexable** per-appellation entity page (`/<lang>/<slug>`) carries a
+single schema.org `@graph` — `WebSite → WebPage → Place(AdministrativeArea) →
+BreadcrumbList`, with stable fragment `@id`s cross-linked via
+`mainEntity` / `breadcrumb` / `isPartOf`. Built by `_build_entity_jsonld()`
+in [scripts/_lib/map_template.py](scripts/_lib/map_template.py); **folded**
+pages (sub-denominations, stubs, no-geometry, thin records) emit none, by
+design. Honest modelling only — no `Article` markup (would need fabricated
+author / editorial dates for a generated page).
+
+- **`sameAs`** (entity reconciliation — the highest-value SEO/GEO signal):
+  Wikidata QID → per-locale Wikipedia article → official regulator / producer
+  body. Source PDFs and legal acts are *not* identity pages, so they go in the
+  WebPage's **`isBasedOn`** instead. The eAmbrosia register is excluded — it's
+  a hash-route SPA (`…/#/detail/EUGI…`), one server shell for every GI, so it's
+  a poor `sameAs` target.
+- **Wikidata QIDs** come from stage **02i**
+  ([scripts/02i_fetch_wikidata_qids.py](scripts/02i_fetch_wikidata_qids.py)),
+  a cached, incremental network stage (run between 02g and 04). Two resolution
+  paths: (1) Wikidata property **P9854 "eAmbrosia ID"** joined on each record's
+  `id_eambrosia` (the eAmbrosia-sourced countries), and (2) **Wikipedia
+  sitelink → QID** via the MediaWiki `pageprops.wikibase_item` API, keyed on the
+  02b/aocs validated article title (covers FR, which is INAO-sourced and carries
+  no `id_eambrosia`, plus the P9854 gaps). Coverage is partial by design
+  (~1.2 k of the corpus at v1; the rest fall back to Wikipedia/regulator
+  `sameAs` or none). Pin/suppress a QID via `raw/wikidata/slug_overrides.json`.
+  Stage 04 joins `qids-by-slug.json` onto each record as `wikidata_qid`.
+- **BreadcrumbList**: `Open Wine Map → [parent →] appellation`. The country
+  level is deliberately omitted — there is no per-country landing page, and a
+  non-final `ListItem` without an `item` URL is invalid for Google's
+  BreadcrumbList rich result. Every emitted crumb carries an `item`.
+- `description` is the localized summary → first terroir-fact bullets → the
+  160-char meta description; `inLanguage` is the page locale.
+- Contract: the builder returns a pre-serialised opaque string filling the
+  `{jsonld_html}` `str.format` slot — its JSON braces are data, not format
+  fields, so it must not be double-braced or `esc()`-ed.
 
 ## Code style
 

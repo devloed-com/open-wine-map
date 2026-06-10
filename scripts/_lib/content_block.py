@@ -455,11 +455,12 @@ def _meta_tail(rec: dict, ctx: RenderCtx) -> str:
     gs = rec.get("geom_source")
     if gs in ("aires-csv", "dgc-village-override"):
         return " · " + fmt(ctx.labels["meta_communes_inao"], {"n": rec.get("communes_matched") or 0})
+    cm = rec.get("communes_matched")
     if gs not in (
         "parcellaire", "parcellaire-dgc", "aires-csv-dgc",
         "cadastre-lieu-dit-dgc", "sibling-dgc", "parent-appellation",
-    ):
-        return " · " + fmt(ctx.labels["meta_communes"], {"n": rec.get("communes_matched") or 0})
+    ) and cm is not None and cm > 0:
+        return " · " + fmt(ctx.labels["meta_communes"], {"n": cm})
     return ""
 
 

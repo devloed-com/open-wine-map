@@ -178,6 +178,7 @@ PMTILES_VILLAGES_OUT = MAP_DATA / "appellations-villages.pmtiles"
 LEXICON_DIR = ROOT / "raw" / "wikipedia" / "grapes"
 GRAPE_TRANSLATIONS_DIR = ROOT / "raw" / "translations" / "grapes"
 VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
+WIKIDATA_QIDS = ROOT / "raw" / "wikidata" / "qids-by-slug.json"
 STYLE_LEXICON_DIR = ROOT / "raw" / "wikipedia" / "styles"
 STYLE_TRANSLATIONS_DIR = ROOT / "raw" / "translations" / "styles"
 
@@ -5339,6 +5340,15 @@ def emit_html(
         except (ValueError, OSError) as exc:
             print(f"[warn] appellation_notes.json: {exc}", file=sys.stderr)
 
+    # Wikidata QIDs (stage 02i) → JSON-LD `sameAs` entity reconciliation.
+    # Slug-keyed `{slug: {qid, via, …}}`; absent file / unresolved slug → "".
+    wikidata_qids: dict[str, dict] = {}
+    if WIKIDATA_QIDS.exists():
+        try:
+            wikidata_qids = json.loads(WIKIDATA_QIDS.read_text(encoding="utf-8"))
+        except (ValueError, OSError) as exc:
+            print(f"[warn] wikidata qids-by-slug.json: {exc}", file=sys.stderr)
+
     for feat in features:
         p = feat["properties"]
         slug = p["slug"]
@@ -5484,6 +5494,7 @@ def emit_html(
             "grape_names_latin": grape_names_latin,
             "summary": summary,
             "sources": sources,
+            "wikidata_qid": (wikidata_qids.get(slug) or {}).get("qid", ""),
             "terroir_facts": terroir_facts,
             "dulok": dulok,
             "menzioni": _IT_MENZIONI_BY_SLUG.get(slug, []),
