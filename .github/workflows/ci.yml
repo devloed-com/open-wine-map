@@ -1,0 +1,20 @@
+name: ci
+on:
+  push:
+    branches: [main, seo-geo-prerender]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Sync dev dependencies
+        run: uv sync --group dev
+      - name: Ruff (lint, pinned at zero)
+        run: uv run ruff check scripts/ tests/
+      - name: Pytest
+        run: uv run python -m pytest -q
