@@ -95,7 +95,10 @@ details and "Hard rules" for invariants that apply to every country.
   in the tooltip source-block alongside the Wikipedia attribution.
   JKI publishes no explicit data licence — the codebase therefore ships
   VIVC IDs + prime names (factual citation) and does **not** republish
-  verbatim synonym strings in the UI pending JKI confirmation. Citation:
+  verbatim synonym strings in the UI pending JKI confirmation (a draft
+  licence-query email to JKI is staged at
+  [docs/vivc-jki-licence-query.md](docs/vivc-jki-licence-query.md) for a
+  human to send; record the reply there). Citation:
   Röckel et al., Vitis International Variety Catalogue — www.vivc.de.
   Ambiguous slugs (multiple candidate VIVC entries) get pinned via
   `raw/vivc/slug_overrides.json` (template at `slug_overrides.example.json`).
