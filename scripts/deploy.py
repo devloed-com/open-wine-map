@@ -181,7 +181,15 @@ _APEX_HOST = "openwinemap.com"
 
 # Security response headers to enforce on every response.
 # Bunny Edge Rule ActionType 5 = SetResponseHeader.
-# Empty Triggers list = apply unconditionally to all requests.
+# Bunny rejects an empty Triggers list ("At least one condition is required"),
+# so each rule carries a catch-all Url trigger (Type 0, pattern "*") to apply
+# unconditionally.
+_CATCH_ALL_TRIGGER: dict = {
+    "Type": 0,
+    "PatternMatches": ["*"],
+    "PatternMatchingType": 0,
+    "Parameter1": "",
+}
 _SECURITY_HEADERS: list[tuple[str, str]] = [
     ("Strict-Transport-Security", "max-age=31536000"),
     ("X-Content-Type-Options", "nosniff"),
@@ -224,7 +232,7 @@ def ensure_security_headers(api_key: str, pullzone: str) -> None:
             "ActionParameter2": header_value,
             "Description": f"Security: {header_name}",
             "Enabled": True,
-            "Triggers": [],
+            "Triggers": [dict(_CATCH_ALL_TRIGGER)],
             "TriggerMatchingType": 0,
         }
         if current:
