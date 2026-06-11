@@ -1,0 +1,18 @@
+# synthetic
+# No document in the current IT corpus fires Pattern A — every real
+# sottozona case in raw/it/ is Pattern B (preamble + list). Pattern A is
+# the parser's defensive branch for a "Sottozona NAME:" header that
+# starts its own line followed by a commune body. This fixture mirrors
+# that header form using the real Irpinia "Campi Taurasini" sottozona
+# commune content (Irpinia DOC, MASAF disciplinare Article 3) recast to
+# the line-start header layout the regex actually matches. The mid-
+# sentence form Irpinia really uses ("...con l'indicazione della
+# sottozona Campi Taurasini:") does NOT match Pattern A by design.
+
+Articolo 3
+Zona di produzione delle uve
+
+Sottozona Campi Taurasini: l'intero territorio amministrativo dei comuni di Taurasi,
+Bonito, Castelfranci, Castelvetere sul Calore, Fontanarosa e Lapio.
+
+Sottozona Serra: comprende l'intero territorio amministrativo del comune di Serra.

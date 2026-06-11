@@ -1,0 +1,48 @@
+CAIET DE SARCINI redacted excerpt — IANA (DOC-RO, ONVPV caiet de sarcini).
+Public, licence-clear regulator document (onvpv.ro). pdftotext -layout output,
+trimmed to sections I-IV plus the V header that terminates section IV. The
+"Page 3 of 10" page-furniture line inside the IV. colour list is kept verbatim
+because it sits between "Băbească neagră," and "Busuioacă de Bohotin." — i.e.
+the wrapped-variety-name case the line-wise colour-segment join must survive.
+A form-feed page break precedes "III." to exercise the \x0c→newline fold.
+
+
+                                      I.         DEFINIŢIE
+Denumirea de origine controlată „IANA” se atribuie vinurilor obţinute din struguri produşi în
+arealul delimitat pentru această denumire, cu condiţia respectării tuturor prevederilor din prezentul
+caiet de sarcini.
+
+
+
+                           II.    LEGĂTURA CU ARIA GEOGRAFICĂ
+Calitatea şi caracteristicile vinurilor produse în arealul delimitat pentru denumirea de origine
+controlată “IANA” se datorează în mod esenţial mediului geografic, cu factorii săi naturali şi umani.
+Climatul temperat continental, cu vădit caracter de excesivitate est-europeană, se reflectă în ierni
+aspre şi veri toride. Solurile reprezentative pentru această podgorie sunt: solurile cenuşii,
+cernoziomurile cambice, regosolurile şi solurile antropice.
+
+   III.        DELIMITAREA TERITORIALĂ PENTRU PRODUCEREA VINULUI CU D.O.C.
+                                                „IANA”
+ 1. Arealul delimitat pentru producerea vinurilor cu denumirea de origine controlată “IANA”, se
+întinde pe teritoriul judeţului Vaslui, astfel:
+Judeţul Vaslui:
+- Comuna Iana, satul Iana;
+- Comuna Perieni, satul Perieni;
+- Comuna Ciocani, satul Ciocani;
+- Comuna Băcani, satele Băcani, Suseni, Vulpăşeni ;
+- Comuna Pogana, satul Pogana ;
+2. Denumirea de origine controlată “IANA” poate fi completată, în funcţie de interesul
+producătorilor, cu una din următoarele denumiri de plai viticol: DEALUL PERIENI, DEALUL
+SEACA, DEALUL POGANA.
+
+
+                                   IV.    SOIURILE DE STRUGURI
+Soiurile de struguri care pot fi folosite pentru obţinerea vinurilor cu D.O.C. „IANA” sunt
+următoarele:
+- soiuri albe: Aligoté, Fetească regală, Riesling italian, Fetească albă, Sauvignon, Muscat Ottonel;
+                                                                                          Page 3 of 10
+- soiuri roşii/roze: Cabernet Sauvignon, Merlot, Pinot noir, Fetească neagră, Băbească neagră,
+Busuioacă de Bohotin.
+
+
+                           V.     PRODUCŢIA DE STRUGURI (kg/ha)

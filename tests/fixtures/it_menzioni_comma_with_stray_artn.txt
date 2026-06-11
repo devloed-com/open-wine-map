@@ -1,0 +1,10 @@
+# synthetic
+# Directly targets the "shape chosen by yield, not marker count" guard in
+# menzione.py: a SHORT comma list of UGAs that also carries a stray
+# numbered cross-reference ("di cui all'art. 5 ...") in the same block.
+# A marker-count heuristic could be tempted toward the numbered parser by
+# the "5." token; the comma parser must win because it recovers more
+# names. Modelled on the small-DOP comma form documented in menzione.py.
+
+È consentito l'uso in etichetta di una delle seguenti unità geografiche aggiuntive, di cui all'art. 5
+comma 2 del presente disciplinare: Pian d'Albola, Vistarenni e Monteluco.
