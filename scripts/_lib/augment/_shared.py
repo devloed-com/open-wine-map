@@ -46,6 +46,10 @@ _DE_PRODUKTSPEZIFIKATION_BY_SLUG: dict[str, dict] = {}
 # bypassing in-memory augmentation).
 _IT_MASAF_BY_SLUG: dict[str, dict] = {}
 
+# Slug-keyed cache of IT regional-variety-register provenance, populated by
+# augment_it_records_with_regional_registers() and read by _sources_for().
+_IT_REGISTER_BY_SLUG: dict[str, dict] = {}
+
 # Slug-keyed cache of CZ national-spec provenance, populated by
 # augment_cz_records_with_national_specs(). Mirrors the ES/IT/DE caches.
 # Czech wine law publishes one national variety roster (Vyhláška 88/2017
