@@ -4220,6 +4220,19 @@ author / editorial dates for a generated page).
 
 - Python 3.12, ruff line length 100.
 - Single-purpose scripts; share helpers via `scripts/_lib/`.
+- **Stage 04 module layout.** `04_build_maps.py` orchestrates; the bulk of its
+  logic lives in `scripts/_lib/`. The per-country national-spec augmenters are
+  in `_lib/augment/<cc>.py` (their shared slug-keyed provenance caches +
+  sidecar dirs in `_lib/augment/_shared.py` — imported by both the augmenter
+  that writes them and `_sources_for()`/the panel-blob phase that reads them,
+  so the dict objects stay identical across the split). Grape/style lexicon
+  loading is in `_lib/lexicon_loading.py`; the commune-index + DGC/ES geometry
+  resolution chain (incl. the `DGCGeomResult` dataclass) is in
+  `_lib/geom_chain.py`. These were move-only extractions verified by the
+  golden comparator (see below); when moving more out of `04_build_maps.py`,
+  use the `stage04-extraction` skill — stage-04 failures are silent (a country
+  or feature just vanishes from the map), so a full-build golden diff, not
+  "it didn't crash", is the proof.
 - No comments unless the *why* is non-obvious. Identifiers carry the *what*.
 - Logs to stderr, structured progress (per-AOC) so reruns are debuggable.
 - **No silent dict-key overrides.** Python keeps the *last* value when a dict
