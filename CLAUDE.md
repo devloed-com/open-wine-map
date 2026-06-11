@@ -321,6 +321,26 @@ correcting the upstream commune list / resolver. Thresholds are
 CLI-configurable (`--sliver-max`, `--max-sliver-km2`, …); `--strict`
 exits non-zero on unreviewed slivers.
 
+## Bétard-snapshot delta audit
+
+[scripts/audit_betard_delta.py](scripts/audit_betard_delta.py) flags
+appellations whose geometry comes from Bétard 2022 (`geom_source`
+`figshare-pdo` / `figshare-pdo-alias`) but whose GI was **registered or
+amended after the dataset's data snapshot** (Nov-2021 cutoff) — those
+polygons may not reflect a post-snapshot boundary change, and a brand-new GI
+may only be on the map via an incidental file-number match. It reads the
+compact `wiki/data/aocs.en.*.js` startup blob (geom_source is a startup
+field) cross-referenced against each `raw/<cc>/eambrosia/index.json`'s
+`eu_protection_date` / `modification_date`, and buckets each record
+**FLAGGED** / **REVIEWED** / **OK** / **NO-DATE** (the sibling-audit pattern).
+Curator-confirmed-unchanged boundaries go in
+[scripts/_lib/betard_delta_overrides.json](scripts/_lib/betard_delta_overrides.json)
+(slug → `{reason, source}`) and report as REVIEWED. Read-only detector —
+changes no geometry; a real FLAGGED finding is fixed upstream (a newer Bétard
+release, a regional zone layer, or a commune-list resolver). `--strict` exits
+non-zero on any unreviewed FLAGGED finding; `--cutoff` overrides the snapshot
+date.
+
 ## Page format (per-AOC pages)
 
 ```
