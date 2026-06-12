@@ -20,8 +20,8 @@ The fixtures here are short redacted excerpts under tests/fixtures/.
 
 Assertions are on STRUCTURE (routed roles, slug sets, commune membership,
 colour split), not on full-output snapshots. Where a test pins ACTUAL parser
-behaviour that diverges from the docstring's ideal (the "/roze" header-suffix
-quirk, the cedilla-"şi" split gap), the divergence is called out inline.
+behaviour that diverges from the docstring's ideal (the cedilla-"şi" split
+gap), the divergence is called out inline.
 """
 from __future__ import annotations
 
@@ -305,13 +305,11 @@ def test_caiet_colour_split_white_vs_red(fixture_text):
     """"- soiuri albe:" → blanc, "- soiuri roşii/roze:" → noir. Each variety
     carries the colour of its header bucket.
 
-    QUIRK pinned here: the red header "soiuri roşii/roze:" has a "/roze"
-    second-colour suffix that the _COLOUR_HEADER_RE consumes only up to
-    "roşii"; the leftover "roze: " glues onto the first variety
-    ("roze: Cabernet Sauvignon"), so Cabernet Sauvignon does NOT resolve in
-    the red list. This matches the production sidecar
-    (raw/ro/national-specs-extracted/iana.json — 11 grapes, no
-    cabernet-sauvignon). The whites and the remaining reds resolve fine."""
+    The red header "soiuri roşii/roze:" carries a "/roze" second-colour
+    suffix; _COLOUR_HEADER_RE now consumes it (and the trailing colon), so
+    the first red variety — Cabernet Sauvignon — resolves instead of being
+    glued to a leftover "roze: " prefix. The bucket colour is the FIRST
+    captured colour (roşii → noir)."""
     text = _iana_caiet_text(fixture_text)
     bodies, _titles = caiet.split_sections(text)
     grapes = caiet.parse_grapes(bodies["grape_varieties"])
@@ -320,11 +318,11 @@ def test_caiet_colour_split_white_vs_red(fixture_text):
     for slug in ("aligote", "feteasca-regala", "welschriesling",
                  "feteasca-alba", "sauvignon", "muscat-ottonel"):
         assert by_slug[slug]["colour"] == "blanc", slug
-    # Reds that resolve (Cabernet Sauvignon is eaten by the "/roze" suffix).
-    for slug in ("merlot", "pinot-noir", "feteasca-neagra",
-                 "babeasca-neagra", "busuioaca-de-bohotin"):
+    # Reds — Cabernet Sauvignon (the first, formerly eaten by "/roze") now
+    # resolves alongside the rest of the red list.
+    for slug in ("cabernet-sauvignon", "merlot", "pinot-noir",
+                 "feteasca-neagra", "babeasca-neagra", "busuioaca-de-bohotin"):
         assert by_slug[slug]["colour"] == "noir", slug
-    assert "cabernet-sauvignon" not in by_slug  # the documented quirk
     # No principal/accessory split — all principal.
     assert grapes["accessory"] == []
     assert set(grapes["principal"]) == set(by_slug)
@@ -353,7 +351,7 @@ def test_caiet_parse_caiet_record_fragment(fixture_text):
     text = _iana_caiet_text(fixture_text)
     frag = caiet.parse_caiet(text, "iana")
     assert frag["parser_template"] == "onvpv-caiet-de-sarcini-v1"
-    assert frag["n_grapes"] == 11
+    assert frag["n_grapes"] == 12
     assert "blanc" in frag["styles"] and "rouge" in frag["styles"]
     # Communes from section III resolve (head names, satul-tails dropped).
     low = {c.lower() for c in frag["geo_communes"]}

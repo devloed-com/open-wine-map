@@ -31,10 +31,9 @@ cached raw/ document exercises the branch (Pattern A; the stray-art.-N
 guard in isolation).
 
 Assertions follow ACTUAL parser behaviour, not the regulator's intent.
-One discrepancy is pinned explicitly:
-test_menzione_numbered_list_drops_name_with_lowercase_connector documents
-that the next-line numbered parser silently drops a UGA whose name
-contains a lowercase Italian connector ("San Donato in Poggio").
+test_menzione_numbered_list_keeps_name_with_lowercase_connector exercises
+the widened _NAME_TOKEN_RE that keeps a UGA whose name carries a lowercase
+Italian connector ("San Donato in Poggio") intact.
 """
 
 from __future__ import annotations
@@ -168,11 +167,9 @@ def test_menzione_numbered_list_chianti_classico(fixture_text):
     text = fixture_text("it_menzioni_chianti_classico_numbered.txt")
     out = extract_menzioni(text, "Chianti Classico")
 
-    # ACTUAL behaviour (not the regulator's full 11-UGA roster): the
-    # numbered parser drops "San Donato in Poggio" — see
-    # test_menzione_numbered_list_drops_name_with_lowercase_connector for
-    # why. Single-word and "San X" two-word UGAs all survive; only the one
-    # with a lowercase connector ("... in ...") is lost.
+    # All 11 UGAs, including "San Donato in Poggio" whose lowercase Italian
+    # connector ("... in ...") the widened _NAME_TOKEN_RE now keeps — see
+    # test_menzione_numbered_list_keeps_name_with_lowercase_connector.
     names = _names(out)
     assert names == [
         "Castellina",
@@ -184,25 +181,26 @@ def test_menzione_numbered_list_chianti_classico(fixture_text):
         "Panzano",
         "Radda",
         "San Casciano",
+        "San Donato in Poggio",
         "Vagliagli",
     ]
     assert _patterns(out) == {"numbered-list"}
 
 
-def test_menzione_numbered_list_drops_name_with_lowercase_connector():
-    # QUIRK / DISCREPANCY: _NAME_TOKEN_RE in menzione.py does not allow a
-    # lowercase Italian connector ("in", "di", "del") *inside* a name, so
-    # the next-line numbered parser silently drops a UGA like "San Donato
-    # in Poggio" (the regex matches only "San Donato", which != the full
-    # line, so the line is rejected). Pinned here so the day the regex is
-    # widened to keep the connector, this test flips and flags the change.
+def test_menzione_numbered_list_keeps_name_with_lowercase_connector():
+    # _NAME_TOKEN_RE in menzione.py allows a lowercase Italian connector
+    # ("in", "di", "del", …) *inside* a name, glued to a following
+    # capitalised word, so the next-line numbered parser keeps a UGA like
+    # "San Donato in Poggio" intact. (Previously the regex matched only
+    # "San Donato" != the full line and dropped it; the widened token
+    # regex fixed that.)
     block = "9.\nSan Casciano\n10.\nSan Donato in Poggio\n11.\nVagliagli"
     text = "Unità Geografiche Aggiuntive:\n" + block + "\nLink al disciplinare"
     out = extract_menzioni(text, "Chianti Classico")
     names = _names(out)
     assert "San Casciano" in names
     assert "Vagliagli" in names
-    assert "San Donato in Poggio" not in names  # the dropped connector name
+    assert "San Donato in Poggio" in names  # connector name kept intact
 
 
 def test_menzione_numbered_list_stops_at_terminator(fixture_text):
