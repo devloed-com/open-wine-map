@@ -1,0 +1,57 @@
+# synthetic
+# Synthetic minimal fixture mirroring the MKGP per-wine ".doc" SPECIFIKACIJA
+# PROIZVODA layout (parser_template mkgp-doc-v1). The real inputs are MS Word
+# 97-2003 binary .doc files that need antiword (Docker) to convert — not run
+# here. Section numbering (1..9 with trailing colon), the §6 "Sorte" colour
+# split (bele:/rdeče:), and the "Tradicionalna imena" predikat-roster boiler-
+# plate in §2 are reproduced from the real bizeljcan/teran extracts under
+# raw/si/specifikacije-extracted/ so the asserted slugs + style truncation
+# match the live parser output.
+
+SPECIFIKACIJA PROIZVODA v skladu s 118 c členom Uredbe Sveta 1234/2007
+
+1. Ime, ki naj se zaščiti:
+
+Bizeljčan
+
+2. Opis vin:
+
+Bela vina so sveža, sortna, z izrazito kislino. Rdeča vina so lahkotna.
+Pridelujejo se mirna bela in rdeča vina.
+
+Tradicionalna imena: vrhunsko vino ZGP, pozna trgatev, izbor, jagodni izbor,
+suhi jagodni izbor, ledeno vino, slamno vino, penina, vrhunsko peneče vino.
+
+3. Posebni enološki postopki:
+
+Brez posebnosti.
+
+4. Opredelitev geografskega območja:
+
+Vino se prideluje v vinorodnem okolišu Bizeljsko Sremič, na območju občin
+Brežice in Krško.
+
+5. Največji donos:
+
+Bela: 10 000 kg grozdja na hektar. Rdeča: 9 000 kg grozdja na hektar.
+
+6. Sorte:
+
+bele: Laški rizling, Beli pinot, Sivi pinot, Chardonnay, Sauvignon,
+Rumeni plavec, Zeleni silvanec, Renski rizling, Dišeči traminec, Šipon,
+Ranina, Ranfol, Rumeni muškat, Rizvanec, Kraljevina, Bela žlahtnina, Kerner;
+rdeče: Modra frankinja, Žametovka, Modri pinot, Portugalka, Šentlovrenka,
+Gamay, Zweigelt, Rdeča žlahtnina;
+
+7. Povezava z geografskim območjem:
+
+Gričevnata pokrajina ob reki Sotli z meljasto-glinastimi tlemi in toplim
+celinskim podnebjem daje vinom polnost in svežino.
+
+8. Veljavne zahteve:
+
+Označevanje v skladu z nacionalno zakonodajo.
+
+9. Pregledi (preverjanje skladnosti s specifikacijo proizvoda):
+
+Nadzor izvaja pooblaščena organizacija.

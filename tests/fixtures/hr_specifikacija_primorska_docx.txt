@@ -1,0 +1,24 @@
+# synthetic
+# Mirrors the Primorska Hrvatska .docx shape: Word auto-numbering strips the
+# lettered a)-j) prefixes, so the lettered slicer (_lettered_sections) finds
+# < 5 sections and parse_specifikacija falls through to the keyword-title
+# slicer (_keyword_sections). The role-keyword heading lines must START the
+# line for the fallback to anchor. parser_template => "mps-specifikacija-docx".
+# Cross-checked against raw/hr/specifikacije-extracted/primorska-hrvatska.json.
+Naziv koji se zaštićuje:
+Primorska Hrvatska
+
+Opis najznačajnijih svojstava vina:
+Vina su svježa i mineralna.
+
+Granice područja:
+Obuhvaća priobalno područje i otoke.
+
+Sorte vinove loze:
+Bijele sorte:
+Maraština, Pošip bijeli, Debit.
+Crne sorte:
+Plavac mali crni, Babić, Plavina.
+
+Pojedinosti koje se odnose na kakvoću ili svojstva vina povezane sa zemljopisnim uvjetima:
+Sredozemna klima i kamenita tla daju prepoznatljiva sortna vina.

@@ -1,0 +1,28 @@
+# Redacted excerpt — BLE Produktspezifikation "Rheingau" (Template C).
+# Source: raw/de/produktspezifikationen/rheingau.pdf via `pdftotext -layout`.
+# Public, licence-clear: Amtliches Werk §5 UrhG (BLE). Trimmed to the
+# §5.1 named-Mostgewicht row ("Spätburgunder Rotwein 8,4 66°"), the
+# "7. Rebsorten" section with "• Rebsorten für Weißwein" / "• Rebsorten
+# für Rot- und Roséwein" bullets, the inline "insbes. Weißer Riesling
+# mit rd. 80 %" principal, and the §8 Zusammenhang header bound.
+Rotweinsorten:
+Spätburgunder Rotwein             8,4                     66°
+Sonstige Sorten Rotwein           7,8                     62°
+
+7. Rebsorten
+Angabe der Keltertraubensorten, aus denen der Wein / die Weine des Rheingaus
+gewonnen wird / werden:
+
+•   Rebsorten für Weißwein
+    insbes. Weißer Riesling mit rd. 80 % auf der Rebfläche im Rheingau vertreten sowie
+    für Rheingau zugelassene, klassifizierte Rebsorten:
+    Albalonga, Auxerrois, Bacchus, Chardonnay, Ehrenfelser, Kerner, Müller-Thurgau,
+    Weißer Riesling, Scheurebe, Grüner Silvaner.
+
+•   Rebsorten für Rot- und Roséwein
+    Blauer Spätburgunder mit rd. 13 % auf der Rebfläche im Rheingau vertreten sowie
+    für Rheingau zugelassene, klassifizierte Rebsorten:
+    Acolon, Cabernet Sauvignon, Dornfelder, Merlot, Regent, Blauer Spätburgunder.
+
+8.    Angaben, aus denen sich der Zusammenhang gemäß Artikel 118b Absatz 1
+      Buchstabe a Ziffer i der VO (EG) Nr. 1234/2007 ergibt

@@ -1,0 +1,33 @@
+Redacted excerpt of the 1996-era UPV SR "Prihlaska oznacenia povodu"
+for Karpatska perla (application 0005-96; pdftotext -layout of
+raw/sk/national-specs/karpatska-perla.pdf). This is the OLDER numbered
+03.N template (not the modern lettered a-i one) with a FLAT inline
+variety list in 03.5 ("z ... odrod vinnej revy: ...") rather than a
+two-column Odroda/Synonymum table. The PDF is an OCR-scanned image, so
+the variety blob is noisy ("C hardonnay", "Mu ~kat Ottonel", "MUller
+Thurgau", "Dievc i c hrozno") — the fuzzy matcher + targeted OCR repairs
+recover it. Public source (uradne dielo), licence-clear.
+
+03.1   Názov výrobku vrátane znenia označenia pôvodu:
+
+       Karpatská perla
+
+03.2   Zemepisné vymedzenie územia, na ktorom sa uskutočňuje výroba:
+
+       Územie sa nachádza na svahoch Malých Karpát s pôdami vzniknutými
+       zvetrávaním žuly. Podnebie je teplé, kontinentálne.
+
+03.4   Opis vlastností výrobku daných zemepisným prostredím:
+
+       Vína sú charakteristické vyššou extraktívnosťou a buketnosťou,
+       ktorú podmieňuje terroir a história karpatských Nemcov.
+
+03.5   Opis spôsobu získavania, prípadne opis originálnych miestnych spôsobov výroby:
+
+       Karpatská perla sa vyrába z tradič n ých odrôd vinnej révy: Aurelius, Bouvierovo hrozno, Devín,
+       Dievč í c hrozno, Feteasca regala, C hardonnay, Irsai Oliver, Muškát moravský, Mu ~kát Ottonel,
+       MUller Thurgau, Neubu rské, Pálava, Rizling rýnsky, Rizling vlašský, Rulandské biele, Rulandské
+       šedé, Sauvignon, Silvánske zelené, Tramín červený, Veltlinske červené skoré, Veltllnske zelené,
+       Alibernet, André, Cabernet Sauvignon, Dunaj, Frankovka modr á, Modrý Portugal, Neronet,
+       Rulandské modré, Svätovavrinecké, Zweigeltrebe z hrozna, ktorého cukornatosť dosiahla najmenej
+       16 °NM s naj vyšším hektá rovým výnosom 14 000 kg.

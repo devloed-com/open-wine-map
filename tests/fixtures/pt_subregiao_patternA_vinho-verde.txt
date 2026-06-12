@@ -1,0 +1,55 @@
+VINHO VERDE — PDO-PT-A1545 — section 6 sub-região casta tables (redacted excerpt).
+Pattern A: "Sub-região [de|do|da] NAME" line headers, each followed by a casta-list body.
+
+Os vinhos e produtos vitivinícolas com indicação de sub-região devem ser exclusivamente obtidos
+a partir das castas enumeradas nos quadros seguintes para a respetiva sub-região.
+
+Sub-região de Amarante
+Amaral
+Arinto; Pedernã
+Avesso
+Trajadura; Treixadura
+Vinhão; Sousão
+
+Sub-região de Ave
+Amaral
+Loureiro
+Padeiro
+Vinhão; Sousão
+
+Sub-região de Baião
+Alvarelhão Brancelho
+Avesso
+Azal
+
+Sub-região de Basto
+Batoca; Alvaraça
+Rabo-de-Anho
+Trajadura; Treixadura
+
+Sub-região do Cávado
+Loureiro
+Padeiro
+Trajadura; Treixadura
+
+Sub-região do Lima
+Borraçal
+Loureiro
+Padeiro
+
+Sub-região de Monção e Melgaço
+Alvarinho
+Pedral
+Loureiro
+
+Sub-região do Paiva
+Amaral
+Avesso
+Loureiro
+
+Sub-região do Sousa
+Amaral
+Azal
+Espadeiro
+Trajadura; Treixadura
+Vinhão; Sousão

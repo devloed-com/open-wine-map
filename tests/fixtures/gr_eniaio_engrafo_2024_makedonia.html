@@ -1,0 +1,43 @@
+<!--
+  Redacted excerpt of the post-2024 (Reg. (EU) 2024/1143) EUR-Lex
+  "ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ" for ΠΓΕ Μακεδονία (Makedonia, PGI). Public EU-OJ
+  document. Bodies trimmed to the minimal text the parser routes on.
+
+  Pins the newer template's deltas vs. the older one:
+    - section headers use the `oj-ti-grseq-1` class (the `\bti-grseq-1\b`
+      word-boundary regex still matches the `oj-` prefixed form);
+    - the "Χώρα στην οποία ανήκει η γεωγραφική περιοχή" COUNTRY decoy
+      (section 4) whose body is just "Ελλάδα" — it carries "γεωγραφική
+      περιοχή" so it COLLIDES with the geo_area keyword (DISCREPANCY:
+      it is NOT in _GEO_AREA_TITLE_BLOCKLIST, so the parser actually
+      routes the "Ελλάδα" decoy as geo_area — see the regression test);
+    - varieties move to section 8, terroir to section 10;
+    - §8 em-dash-bulleted list with Greek (Ν/Β) + Latin (N/B/Rs) codes,
+      and a "Name B - Latin synonym" line (Ugni Blanc B - Trebbiano).
+-->
+<html><body>
+<p id="d1e285-1-1" class="oj-ti-grseq-1">ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ</p>
+<p class="oj-ti-grseq-1" id="d1e100-1-1">1.&#160;&#160;&#160;<span class="oj-bold">Ονομασία(ες)</span></p>
+<p class="oj-normal">Μακεδονία (Makedonia)</p>
+<p class="oj-ti-grseq-1" id="d1e120-1-1">2.&#160;&#160;&#160;<span class="oj-bold">Τύπος γεωγραφικής ένδειξης</span></p>
+<p class="oj-normal">ΠΓΕ — Προστατευόμενη Γεωγραφική Ένδειξη</p>
+<p class="oj-ti-grseq-1" id="d1e139-1-1">4.&#160;&#160;&#160;<span class="oj-bold">Χώρα στην οποία ανήκει η γεωγραφική περιοχή</span></p>
+<p class="oj-normal">Ελλάδα</p>
+<p class="oj-ti-grseq-1" id="d1e600-1-1">6.&#160;&#160;&#160;<span class="oj-bold">Περιγραφή του οίνου ή των οίνων</span></p>
+<p class="oj-normal">Λευκοί, ερυθροί και ροζέ οίνοι.</p>
+<p class="oj-ti-grseq-1" id="d1e2517-1-1">8.&#160;&#160;&#160;<span class="oj-bold">Ένδειξη της/των οινοποιήσιμης/-ων ποικιλίας/-ών αμπέλου από την/τις οποία/-ες παράγεται ο οίνος ή οι οίνοι</span></p>
+<p class="oj-normal">—</p>
+<p class="oj-normal">Cabernet Sauvignon N</p>
+<p class="oj-normal">—</p>
+<p class="oj-normal">Chardonnay B</p>
+<p class="oj-normal">—</p>
+<p class="oj-normal">Gewurtztraminer Rs</p>
+<p class="oj-normal">—</p>
+<p class="oj-normal">Ugni Blanc B - Trebbiano</p>
+<p class="oj-normal">—</p>
+<p class="oj-normal">Αγιωργίτικο Ν</p>
+<p class="oj-normal">—</p>
+<p class="oj-normal">Ξινόμαυρο Ν</p>
+<p class="oj-ti-grseq-1" id="d1e2772-1-1">10.&#160;&#160;&#160;<span class="oj-bold">Δεσμός με τη γεωγραφική περιοχή</span></p>
+<p class="oj-normal">Η Μακεδονία χαρακτηρίζεται από ηπειρωτικό και μεσογειακό κλίμα.</p>
+</body></html>

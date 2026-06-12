@@ -1,0 +1,12 @@
+# synthetic
+Minimal one-line samples of each "Área Delimitada" concelho/distrito pattern the
+commune_list parser handles. Each line is a verbatim-shape (but trimmed) excerpt of
+the area-section grammar seen across PT cadernos (Dão municípios list, Vinho Verde
+distrito-all, Algarve whole-distrito, Península de Setúbal bare distrito, Açores
+archipelago). Kept minimal — no full document.
+
+Do distrito de Coimbra, os municípios de Arganil, Oliveira do Hospital e Tábua.
+Todos os municípios dos distritos de Braga e de Viana do Castelo.
+A área geográfica abrange todo o distrito de Faro.
+Distrito de Setúbal.
+A área geográfica de produção da IG "Açores" abrange todas as ilhas do Arquipélago dos Açores.

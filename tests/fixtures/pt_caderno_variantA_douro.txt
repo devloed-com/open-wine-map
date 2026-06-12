@@ -1,0 +1,40 @@
+CADERNO DE ESPECIFICAÇÕES DO "DOURO" — PDO-PT-A1539 (redacted excerpt).
+Variant A: "Roman + Arabic" template — the Roman preamble (I..IV) then "V. DOCUMENTO ÚNICO"
+wrapping numbered Arabic interior sections (1..8). The keyword anchors must carve the
+numbered interior bodies (last-write-wins), not the Roman preamble.
+
+I. NOME(S) A REGISTAR: Douro
+
+II. DADOS RELATIVOS AO REQUERENTE:
+
+III. CADERNO DE ESPECIFICAÇÕES
+
+IV. DECISÃO NACIONAL DE APROVAÇÃO:
+
+V. DOCUMENTO ÚNICO:
+
+2. CATEGORIAS DOS PRODUTOS VITIVINÍCOLAS
+Vinho; Vinho licoroso (Moscatel do Douro).
+
+5. ÁREA DELIMITADA
+A área geográfica correspondente à Denominação de Origem "Porto" é a mesma que se
+encontra demarcada para a produção do vinho do Douro e abrange os seguintes distritos,
+concelhos e freguesias, tradicionalmente agrupadas em três áreas geográficas mais restritas:
+Baixo Corgo: no distrito de Vila Real abrange os concelhos de Mesão Frio, de Peso da Régua e
+de Santa Marta de Penaguião; as freguesias de Abaças, Ermida e Folhadela, do concelho de Vila Real.
+Cima Corgo: no distrito de Vila Real abrange as freguesias de Alijó, Amieiro e Carlão, do concelho
+de Alijó; as freguesias de Candedo, Murça e Noura, do concelho de Murça.
+Douro Superior: no distrito de Bragança abrange a freguesia de Vilarelhos, do concelho de
+Alfândega da Fé; as freguesias de Freixo de Espada à Cinta, Ligares e Mazouco; o concelho de
+Vila Nova de Foz Côa.
+
+6. UVAS DE VINHO
+a. Inventário das principais castas de uvas de vinho
+b. Castas de uvas de vinho recomendadas: Touriga Nacional, Touriga Franca, Tinta Roriz.
+
+7. RELAÇÃO COM A ÁREA GEOGRÁFICA
+Elementos relativos à área geográfica:
+Situada no nordeste de Portugal, na bacia hidrográfica do Douro, rodeada de montanhas que a
+isolam das influências atlânticas, a região beneficia de solos xistosos.
+
+VI. OUTRAS INFORMAÇÕES
