@@ -805,12 +805,12 @@ Region tracker:
 | Toscana | ✅ active | CC-BY 4.0 (GEOscopio; download page links CC-BY) | direct zip, `zo_vin_nom_zon` layer; 55 wines |
 | Lazio | ✅ active | CC-BY 4.0 | GeoServer WFS, DOC+DOCG+IGT; 29 wines |
 | Lombardia | ✅ active | CC-BY 4.0 | ArcGIS MapServer, DOC+DOCG+IGT; 34 wines |
-| Umbria | ⏳ todo | CC-BY 4.0 | needs a bespoke fetch — ~23 separate per-appellation `.7z` shapefiles via the dati.regione.umbria.it CKAN API |
+| Umbria | ✅ active | CC-BY 4.0 | CKAN `package_search` → 19 per-appellation `.zip`/`.7z` shapefiles (`fetch_type: ckan_shapefiles`); 20 wines matched (all but Narni, which publishes no shapefile) |
 | Puglia | ⏳ todo | IODL 2.0 | endpoint not reachable (SIT Puglia WFS/ArcGIS hosts 404 / login-gated) — needs the live WFS layer name |
 
-**5 of 7 regions harvested → 218 IT wines on official zone polygons**
-(`geoportal-zone`); the rest fall back to Bétard. Umbria + Puglia are
-real to-dos, not skips — see the per-region notes and
+**6 of 7 regions harvested → ~237 IT wines on official zone polygons**
+(`geoportal-zone`); the rest fall back to Bétard. Puglia is the one
+remaining to-do, not a skip — see the per-region notes and
 [scripts/_lib/it/zone_sources.py](scripts/_lib/it/zone_sources.py).
 | Abruzzo | ❌ fallback | custom, unconfirmed | portal SSL cert expired; stays on Bétard |
 | Campania | ❌ fallback | unconfirmed | dataset page 404s; stays on Bétard |

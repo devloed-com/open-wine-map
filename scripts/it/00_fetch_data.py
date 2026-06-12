@@ -53,8 +53,10 @@ import json
 import re
 import sys
 import unicodedata
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 import requests
 
@@ -381,6 +383,89 @@ def fetch_istat_comuni() -> dict:
     return manifest
 
 
+def fetch_ckan_shapefiles(region: str, spec: dict) -> dict:
+    """Harvest a CKAN per-appellation shapefile catalog (Umbria): enumerate
+    the catalog, then download + extract each "Zona/Zone di produzione vin…"
+    dataset's `.zip`/`.7z` shapefile into
+    `raw/it/regional-zones/<extract_dir>/<dataset>/`.
+
+    `.zip` is extracted with the stdlib; `.7z` needs `py7zr` (the `bootstrap`
+    dependency group). py7zr is imported lazily — if it is absent the `.7z`
+    datasets are skipped with a loud warning (the `.zip` ones still harvest),
+    mirroring the Playwright-gated WAF bootstrap. Cached by presence of an
+    extracted `.shp`; delete the dataset dir to re-fetch."""
+    extract_root = REGIONAL_ZONES_DIR / spec.get("extract_dir", region)
+    extract_root.mkdir(parents=True, exist_ok=True)
+    try:
+        import py7zr
+        have_7z = True
+    except ImportError:
+        py7zr = None
+        have_7z = False
+
+    datasets: dict[str, dict] = {}
+    for q in spec.get("ckan_queries") or ["vini"]:
+        url = f"{spec['ckan_base']}?q={quote(q)}&rows=500"
+        r = requests.get(url, headers={"User-Agent": UA, "Accept": "application/json"},
+                         timeout=120)
+        r.raise_for_status()
+        for p in r.json().get("result", {}).get("results", []):
+            title = p.get("title") or ""
+            if not title.lower().startswith(
+                ("zona di produzione vin", "zone di produzione vin")
+            ):
+                continue
+            res = next((rs for rs in p.get("resources", [])
+                        if (rs.get("url") or "").lower().endswith((".zip", ".7z"))), None)
+            if res:
+                datasets[p["name"]] = {"title": title, "url": res["url"]}
+
+    files: list[dict] = []
+    skipped_7z: list[str] = []
+    for name, meta in sorted(datasets.items()):
+        url = meta["url"]
+        is_7z = url.lower().endswith(".7z")
+        dest_dir = extract_root / name
+        if list(dest_dir.glob("**/*.shp")):
+            print(f"[zones] cache hit  {region}/{name}", file=sys.stderr)
+            files.append({"dataset": name, "title": meta["title"], "url": url,
+                          "from_cache": True})
+            continue
+        if is_7z and not have_7z:
+            skipped_7z.append(name)
+            continue
+        print(f"[zones] fetch {region}/{name}", file=sys.stderr)
+        resp = requests.get(url, headers={"User-Agent": UA}, timeout=300)
+        resp.raise_for_status()
+        archive = extract_root / (name + (".7z" if is_7z else ".zip"))
+        archive.write_bytes(resp.content)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            if is_7z:
+                with py7zr.SevenZipFile(archive) as z:
+                    z.extractall(dest_dir)
+            else:
+                with zipfile.ZipFile(archive) as z:
+                    z.extractall(dest_dir)
+        finally:
+            archive.unlink(missing_ok=True)
+        print(f"[zones] saved {region}/{name} ({len(resp.content):,} b)", file=sys.stderr)
+        files.append({"dataset": name, "title": meta["title"], "url": url,
+                      "from_cache": False})
+
+    if skipped_7z:
+        print(
+            f"[zones] WARNING py7zr missing — skipped {len(skipped_7z)} .7z "
+            f"{region} datasets; install the `bootstrap` group to harvest them: "
+            f"{', '.join(skipped_7z)}",
+            file=sys.stderr,
+        )
+    return {"licence": spec.get("licence", ""),
+            "attribution": spec.get("attribution", ""),
+            "fetch_type": "ckan_shapefiles",
+            "files": files, "skipped_7z": skipped_7z}
+
+
 def fetch_regional_zones() -> dict:
     """Download each active regional wine production-zone layer. A region
     may have several layers (DOC / DOCG / IGT). Cached by presence —
@@ -388,6 +473,9 @@ def fetch_regional_zones() -> dict:
     REGIONAL_ZONES_DIR.mkdir(parents=True, exist_ok=True)
     out: dict[str, dict] = {}
     for region, spec in active_sources().items():
+        if spec.get("fetch_type") == "ckan_shapefiles":
+            out[region] = fetch_ckan_shapefiles(region, spec)
+            continue
         files = []
         for layer in spec["layers"]:
             dest = REGIONAL_ZONES_DIR / layer["filename"]

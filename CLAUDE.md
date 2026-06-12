@@ -939,13 +939,16 @@ Per IT record, in priority order (each step records the chosen
 source in `geom_source` so the panel can attribute correctly):
 
 1. **`geoportal-zone:<region>`** — official regional-geoportal
-   production-zone polygon, matched by appellation name. Five regions
-   are harvested (Piemonte, Veneto, Lazio, Lombardia, Toscana — all
-   CC-BY 4.0 / IODL 2.0); ~218 of 531 IT wines resolve here, including
-   every flagship (Barolo, Soave, Valpolicella, Chianti, Brunello,
-   Bolgheri, Franciacorta, Frascati). An appellation spanning regions
-   is the union of its per-region pieces. Umbria + Puglia are tracked
-   to-dos (see CURATOR_TODO.md).
+   production-zone polygon, matched by appellation name. Six regions
+   are harvested (Piemonte, Veneto, Lazio, Lombardia, Toscana, Umbria —
+   all CC-BY 4.0 / IODL 2.0); ~237 of 531 IT wines resolve here,
+   including every flagship (Barolo, Soave, Valpolicella, Chianti,
+   Brunello, Bolgheri, Franciacorta, Frascati, Sagrantino di
+   Montefalco). An appellation spanning regions is the union of its
+   per-region pieces (e.g. Orvieto = `lazio+umbria`). Umbria is harvested
+   via a bespoke CKAN per-appellation `.zip`/`.7z` shapefile fetch
+   (`fetch_type: ckan_shapefiles` in `zone_sources.py`); Puglia is the
+   remaining tracked to-do (see CURATOR_TODO.md).
 2. **`parent-appellation`** — sottozone (sub-denominations) inherit
    the parent's polygon.
 3. **`figshare-pdo`** — exact `file_number` (`PDO-IT-A*` /
