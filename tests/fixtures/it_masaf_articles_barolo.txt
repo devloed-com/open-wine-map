@@ -1,0 +1,31 @@
+Redacted excerpt — Barolo DOCG national disciplinare (MASAF),
+pdftotext -layout output, Articoli 1-3. Public source: MASAF
+consolidated disciplinare di produzione. Exercises extract_articles
+(article carving on the "Articolo N" header, last-occurrence-wins) and
+the Article-2 vitigno-prose grape candidate scan (Nebbiolo from
+"...esclusivamente dal vitigno Nebbiolo."). The Article-3 commune list
+is truncated. Form-feeds and right-aligned page numbers from the layout
+output are preserved on a couple of lines so the header anchor's
+[ \t\x0c] leading-whitespace tolerance is exercised.
+
+                                       Articolo 1
+                                  Denominazione e vini
+
+1. La denominazione di origine controllata e garantita “Barolo” è riservata ai vini rossi che
+rispondono alle condizioni ed ai requisiti stabiliti dal presente disciplinare di produzione, per le
+seguenti tipologie:
+- «Barolo»,
+- «Barolo» riserva.
+
+                                       Articolo 2
+                                  Base ampelografica
+
+1. I vini a denominazione di origine controllata e garantita «Barolo», devono essere ottenuti da uve
+provenienti dai vigneti composti esclusivamente dal vitigno Nebbiolo.
+
+                                       Articolo 3
+                            Zona di produzione delle uve
+
+1. Le uve destinate alla produzione dei vini di cui all'articolo 1 devono essere prodotte nella zona
+appresso indicata che comprende, in tutto o in parte, il territorio dei comuni di Barolo, Castiglione
+Falletto e Serralunga d'Alba, in provincia di Cuneo.

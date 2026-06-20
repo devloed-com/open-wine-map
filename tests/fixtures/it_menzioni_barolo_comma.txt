@@ -1,0 +1,29 @@
+Redacted excerpt — Barolo DOCG national disciplinare (MASAF), Article 8,
+pdftotext -layout output. Public source: MASAF consolidated disciplinare
+di produzione. The full 181-MGA roster is enumerated as a COMMA list
+(not a numbered one) carrying "del comune di X" prose entries — the
+"shape chosen by yield" guard must route this to the comma parser even
+though a marker-count heuristic could be misled. Truncated to the first
+~70 names plus the tail for size; behaviour is identical at any length.
+
+La denominazione di origine controllata e garantita dei vini «Barolo» e «Barolo» riserva può essere
+seguita da una delle seguenti «menzioni geografiche aggiuntive», amministrativamente definite
+nell’allegato al presente disciplinare di produzione:
+Albarella, Altenasso o Garblet Suè o Garbelletto Superiore, Annunziata, Arborina, Arione, Ascheri,
+Bablino, Badarina, Baudana, Bergeisa, Bergera-Pezzole, Berri, Bettolotti, Boiolo, Borzone,
+Boscareto, Boscatto, Boschetti, Brandini, Brea, Breri, Bricco Ambrogio, Bricco Boschis, Bricco
+Chiesa, Bricco Cogni, Bricco delle Viole, Bricco Luciani, Bricco Manescotto, Bricco Manzoni,
+Bricco Rocca, Bricco Rocche, Bricco San Biagio, Bricco San Giovanni, Bricco San Pietro, Bricco
+Voghera, Briccolina, Broglio, Brunate, Brunella, Bussia, Campasso, Cannubi, Cannubi Boschis o
+Cannubi, Cannubi Muscatel o Cannubi, Cannubi San Lorenzo o Cannubi, Cannubi Valletta o
+Cannubi, Canova, Capalot, Cappallotto, Carpegna, Case Nere, Castagni, Castellero, Castelletto,
+Castello, Cerequio, Cerrati, Cerretta, Cerviano- Merli, Ciocchini, Ciocchini-Loschetto, Codana,
+Collaretto, Colombaro, Conca, Corini-Pallaretta, Costabella, Coste di Rose, Coste di Vergne, Crosia,
+Damiano, del comune di Barolo, del comune di Castiglione Falletto, del comune di Cherasco, del
+comune di Diano d'Alba, del comune di Grinzane Cavour, del comune di La Morra, del comune di
+Manforte d'Alba, del comune di Novello, del comune di Roddi, del comune di Serralunga d’Alba, del
+comune di Verduno, Drucà, Falletto, Fiasco, Fontanafredda, Fossati, Francia, Gabutti, Galina,
+Monprivato, Monrobiolo di Bussia, Montanello, Monvigliero, Mosconi, Neirane, Ornato,
+Ravera, Ravera di Monforte, Sarmassa, Vignarionda, Villero, Zoccolaio, Zonchetta, Zuncai.
+Le suddette menzioni geografiche aggiuntive, possono essere accompagnate dalla menzione «vigna»
+seguita dal relativo toponimo o nome tradizionale, alle condizioni previste al successivo comma 4.

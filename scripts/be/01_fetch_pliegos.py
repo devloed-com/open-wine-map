@@ -94,7 +94,6 @@ def rewrite_lang(url: str, lang: str) -> str:
     HTML variant. Idempotent — already-`lang` URLs pass through."""
     legal2 = _LEGAL_LANG_2[lang]
     uriserv3 = _URISERV_LANG_3[lang]
-    modern_oj3 = _MODERN_OJ_LANG_3[lang]
     oj_lang3_low = _OJ_LANG_3[lang]
 
     # /oj/?uri=OJ:C_NNNN → /legal-content/<LANG>/TXT/HTML/?uri=OJ:C_NNNN

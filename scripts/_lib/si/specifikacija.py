@@ -58,7 +58,6 @@ import re
 
 from _lib.grape_entity import match_variety
 
-
 # ----------------------------------------------------------------- shared
 
 # `priporočene sorte` ↔ recommended (principal-tier in SI law)

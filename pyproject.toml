@@ -34,3 +34,17 @@ bootstrap = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.ruff.lint]
+# Pinned at zero (see CI). The default E4/E7/E9 + F set, plus pycodestyle
+# warnings (W) and import-sorting (I). E501 (line-too-long) is deliberately
+# excluded — 900 long lines, many inside template strings, not worth reflowing.
+select = ["E4", "E7", "E9", "F", "W", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# Pipeline scripts bootstrap sys.path before importing the in-repo `_lib`
+# package, so their `_lib` imports are necessarily not at top-of-file. The
+# imports already carry `# noqa: E402` individually; this blanket ignore keeps
+# isort-split import lines from re-triggering E402 when they lose the inline
+# marker.
+"scripts/**" = ["E402"]

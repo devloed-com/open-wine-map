@@ -260,7 +260,7 @@ def emit_todo_file(
     skip_cached: bool, single_lang: bool,
 ) -> int:
     jobs = _enumerate_jobs(curated, target_locales, skip_cached=skip_cached)
-    by_lang: dict[str, list[dict]] = {l: [] for l in target_locales}
+    by_lang: dict[str, list[dict]] = {lang: [] for lang in target_locales}
     for j in jobs:
         by_lang[j["lang"]].append(_job_to_todo_item(j))
     timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -272,7 +272,7 @@ def emit_todo_file(
         payload = {"exported_at": timestamp}
         for lang in target_locales:
             payload[lang] = {"items": by_lang[lang]}
-        total = sum(len(by_lang[l]) for l in target_locales)
+        total = sum(len(by_lang[lang]) for lang in target_locales)
     cache.write_json(out_path, payload)
     counts = ", ".join(f"{lang}={len(by_lang[lang])}" for lang in target_locales)
     print(f"[02b-tx] wrote {out_path} ({total} items: {counts})", file=sys.stderr)
@@ -362,7 +362,7 @@ def _write_manifest(provider_kind: str, model_id: str,
         "translator_kind": provider_kind,
         "translator": model_id,
         "translated_by_lang": done_by_lang,
-        "skipped": [{"lang": l, "slug": s, "reason": r} for (l, s, r) in skipped],
+        "skipped": [{"lang": lang, "slug": s, "reason": r} for (lang, s, r) in skipped],
     }
     cache.write_json(MANIFEST, payload, sort_keys=True)
 
@@ -468,10 +468,10 @@ def main() -> int:
 
     done_by_lang = dict.fromkeys(target_locales, 0)
     for slug in curated:
-        for l in target_locales:
-            entry = _existing_cache(l, slug)
+        for lang in target_locales:
+            entry = _existing_cache(lang, slug)
             if entry and entry.get("extract"):
-                done_by_lang[l] += 1
+                done_by_lang[lang] += 1
 
     print(f"[02b-tx] done={done}, skipped={len(skipped)}", file=sys.stderr)
     for lang, slug, err in skipped[:20]:

@@ -33,7 +33,16 @@
     "manzanilla",
     "amontillado",
     "oloroso",
-    "palo-cortado"
+    "palo-cortado",
+    "sur-lie",
+    "icewine",
+    "semi-sweet",
+    "semi-dry",
+    "vin-santo",
+    "methode-ancestrale",
+    "methode-traditionnelle",
+    "methode-charmat",
+    "methode-dioise"
   ],
   "fr": {
     "red": "Vin rouge",
@@ -63,7 +72,13 @@
     "manzanilla": "Manzanilla (vin)",
     "amontillado": "Amontillado",
     "oloroso": "Oloroso",
-    "palo-cortado": "Palo cortado"
+    "palo-cortado": "Palo cortado",
+    "icewine": "Vin de glace",
+    "vin-santo": "Vin santo",
+    "methode-ancestrale": "Méthode ancestrale",
+    "methode-traditionnelle": "Méthode traditionnelle",
+    "methode-charmat": "Méthode Charmat",
+    "methode-dioise": "Clairette de Die"
   },
   "en": {
     "red": "Red wine",
@@ -94,7 +109,15 @@
     "manzanilla": "Manzanilla (wine)",
     "amontillado": "Amontillado",
     "oloroso": "Oloroso",
-    "palo-cortado": "Palo Cortado"
+    "palo-cortado": "Palo Cortado",
+    "sur-lie": "Sur lie",
+    "icewine": "Ice wine",
+    "semi-sweet": "Sweetness of wine",
+    "semi-dry": "Sweetness of wine",
+    "vin-santo": "Vin Santo",
+    "methode-ancestrale": "Ancestral method",
+    "methode-traditionnelle": "Traditional method",
+    "methode-charmat": "Charmat process"
   },
   "es": {
     "red": "Vino tinto",
@@ -128,7 +151,9 @@
     "manzanilla": "Manzanilla (vino)",
     "amontillado": "Amontillado",
     "oloroso": "Oloroso",
-    "palo-cortado": "Palo cortado"
+    "palo-cortado": "Palo cortado",
+    "icewine": "Vino de hielo",
+    "vin-santo": "Vin Santo"
   },
   "nl": {
     "red": "Rode wijn",
@@ -143,6 +168,8 @@
     "raisin-wine": "Strowijn",
     "grains-nobles": "Botrytis cinerea",
     "vin-de-paille": "Strowijn",
-    "vin-jaune": "Vin jaune"
+    "vin-jaune": "Vin jaune",
+    "icewine": "IJswijn",
+    "vin-santo": "Vin Santo"
   }
 }

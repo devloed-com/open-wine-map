@@ -34,10 +34,12 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib import eambrosia_register as er  # noqa: E402
-from _lib.fiche_technique import parse_fiche_sections  # noqa: E402
 from _lib.cz.jednotny_dokument import SECTION_ROLE_KEYWORDS  # noqa: E402
+from _lib.fiche_technique import parse_fiche_sections  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
 )
 
 INDEX_IN = ROOT / "raw" / "cz" / "eambrosia" / "index.json"

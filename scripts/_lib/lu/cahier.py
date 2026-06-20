@@ -32,7 +32,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Iterable
 
-
 # Section letter → keyword substring (lowercase) that must appear in the
 # heading line. Used as a sanity guard so a stray `a)` inside body text
 # doesn't get mistaken for a section anchor.

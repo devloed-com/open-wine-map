@@ -86,9 +86,17 @@ _NAME_DROP_TOKENS = frozenset({
 
 # A single name in the captured block. Italian proper nouns: starts
 # with uppercase, may include apostrophes, hyphens, accents. We cap
-# length at 60 chars to filter prose fragments.
+# length at 60 chars to filter prose fragments. A lowercase Italian
+# connector ("in"/"di"/"del"/…) may sit *between* two capitalised words
+# — "San Donato in Poggio" — so each continuation segment optionally
+# carries a connector glued to the following capitalised word. The
+# connector is only accepted when followed by a capitalised word, so a
+# trailing/standalone "in" can never extend a name.
 _NAME_TOKEN_RE = re.compile(
-    r"[A-ZÀ-Þ][A-Za-zÀ-ÿ'’\-]+(?:[ \-][A-ZÀ-Þ][A-Za-zÀ-ÿ'’\-]+)*"
+    r"[A-ZÀ-Þ][A-Za-zÀ-ÿ'’\-]+"
+    r"(?:[ \-]"
+    r"(?:(?:della|delle|dei|del|di|in|da|de|al|alla|sul|sulla|e)[ \-])?"
+    r"[A-ZÀ-Þ][A-Za-zÀ-ÿ'’\-]+)*"
 )
 
 

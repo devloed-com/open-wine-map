@@ -47,13 +47,15 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-from _lib.es.subzona import extract_subzonas, slugify as _subzona_slug  # noqa: E402
 from _lib.es.national_pliego import _split_concatenated  # noqa: E402
+from _lib.es.subzona import extract_subzonas  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
 )
 from _lib.grape_lexicon import (  # noqa: E402
-    DEFAULT_COLOUR, GRAPE_ALIAS, GRAPE_BLOCKLIST, slugify as _grape_slug,
+    GRAPE_BLOCKLIST,
 )
 
 INDEX_IN = ROOT / "raw" / "es" / "eambrosia" / "index.json"
@@ -781,9 +783,15 @@ def parse_styles_es(sections: dict[str, str], titles: dict[str, str]) -> list[st
     # description sections (3, 4, 6) to limit false positives. Kept
     # narrow so grape-variety sections ("Variedad(es) de uva de
     # vinificación", body: "Palomino Fino") don't promote "fino".
+    # The plural "vinos " catches the Sherry-category titles "Vinos
+    # generosos (categoría 1)" / "Vinos de licor …" (Montilla-Moriles)
+    # that the singular "vino " missed — they carry the "Fino:" /
+    # "Amontillado:" descriptors. The variety section ("…variedades de
+    # uva de vinificación") has no "vinos " substring, so it stays out.
     descr_keys = {k for k, t in titles.items()
                   if any(kw in (t or "").lower()
-                         for kw in ("descripción", "descripcion", "tipos", "vino "))}
+                         for kw in ("descripción", "descripcion", "tipos",
+                                    "vino ", "vinos "))}
     descr_blob = " ".join(sections.get(k, "") for k in descr_keys) or body
     for pat, slugs in _STYLE_BODY_PATTERNS:
         if pat.search(descr_blob):

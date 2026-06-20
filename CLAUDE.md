@@ -95,7 +95,10 @@ details and "Hard rules" for invariants that apply to every country.
   in the tooltip source-block alongside the Wikipedia attribution.
   JKI publishes no explicit data licence — the codebase therefore ships
   VIVC IDs + prime names (factual citation) and does **not** republish
-  verbatim synonym strings in the UI pending JKI confirmation. Citation:
+  verbatim synonym strings in the UI pending JKI confirmation (a draft
+  licence-query email to JKI is staged at
+  [docs/vivc-jki-licence-query.md](docs/vivc-jki-licence-query.md) for a
+  human to send; record the reply there). Citation:
   Röckel et al., Vitis International Variety Catalogue — www.vivc.de.
   Ambiguous slugs (multiple candidate VIVC entries) get pinned via
   `raw/vivc/slug_overrides.json` (template at `slug_overrides.example.json`).
@@ -321,6 +324,26 @@ correcting the upstream commune list / resolver. Thresholds are
 CLI-configurable (`--sliver-max`, `--max-sliver-km2`, …); `--strict`
 exits non-zero on unreviewed slivers.
 
+## Bétard-snapshot delta audit
+
+[scripts/audit_betard_delta.py](scripts/audit_betard_delta.py) flags
+appellations whose geometry comes from Bétard 2022 (`geom_source`
+`figshare-pdo` / `figshare-pdo-alias`) but whose GI was **registered or
+amended after the dataset's data snapshot** (Nov-2021 cutoff) — those
+polygons may not reflect a post-snapshot boundary change, and a brand-new GI
+may only be on the map via an incidental file-number match. It reads the
+compact `wiki/data/aocs.en.*.js` startup blob (geom_source is a startup
+field) cross-referenced against each `raw/<cc>/eambrosia/index.json`'s
+`eu_protection_date` / `modification_date`, and buckets each record
+**FLAGGED** / **REVIEWED** / **OK** / **NO-DATE** (the sibling-audit pattern).
+Curator-confirmed-unchanged boundaries go in
+[scripts/_lib/betard_delta_overrides.json](scripts/_lib/betard_delta_overrides.json)
+(slug → `{reason, source}`) and report as REVIEWED. Read-only detector —
+changes no geometry; a real FLAGGED finding is fixed upstream (a newer Bétard
+release, a regional zone layer, or a commune-list resolver). `--strict` exits
+non-zero on any unreviewed FLAGGED finding; `--cutoff` overrides the snapshot
+date.
+
 ## Page format (per-AOC pages)
 
 ```
@@ -381,8 +404,9 @@ twice with no changes upstream must be a no-op (cache hits).
 | 02d_extract_terroir_facts.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/aocs/fr/ | raw/terroir-facts/*.json + manifest.json |
 | 02e_translate_terroir_facts.py | raw/terroir-facts/*.json | raw/translations/terroir-facts/<lang>/*.json |
 | 02g_fetch_vivc.py | raw/inao/cahier-extracted/*.json + raw/es/pliegos-extracted/ + raw/pt/cadernos-extracted/ + raw/vivc/slug_overrides.json | raw/vivc/{search,passport,by-slug}/*.html\|json + manifest.json + slug_overrides.example.json |
+| 02i_fetch_wikidata_qids.py | raw/*/*-extracted/*.json (slug + id_eambrosia) + raw/wikipedia/aocs/<lang>/ + raw/wikidata/slug_overrides.json | raw/wikidata/qids-by-slug.json + p9854.json + manifest.json + slug_overrides.example.json |
 | 03_generate_wiki.py | raw/inao/cahier-extracted/*.json + raw/terroir-facts/ | wiki/*.md, wiki/_index.json |
-| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (homepage × 4 locales) |
+| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/{en,fr,es,nl}/<slug>/index.html (per-appellation entity pages), wiki/{en,fr,es,nl}/appellations/index.html (browse-index hub linking every indexable slug, grouped by country — fixes the entity-page link-graph orphan problem), wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (4 home + 4 browse + 1,638 index slugs × 4 locales), wiki/llms.txt (AI-crawler index), wiki/404.html |
 
 ## Spain pipeline (`scripts/es/`)
 
@@ -915,13 +939,16 @@ Per IT record, in priority order (each step records the chosen
 source in `geom_source` so the panel can attribute correctly):
 
 1. **`geoportal-zone:<region>`** — official regional-geoportal
-   production-zone polygon, matched by appellation name. Five regions
-   are harvested (Piemonte, Veneto, Lazio, Lombardia, Toscana — all
-   CC-BY 4.0 / IODL 2.0); ~218 of 531 IT wines resolve here, including
-   every flagship (Barolo, Soave, Valpolicella, Chianti, Brunello,
-   Bolgheri, Franciacorta, Frascati). An appellation spanning regions
-   is the union of its per-region pieces. Umbria + Puglia are tracked
-   to-dos (see CURATOR_TODO.md).
+   production-zone polygon, matched by appellation name. Six regions
+   are harvested (Piemonte, Veneto, Lazio, Lombardia, Toscana, Umbria —
+   all CC-BY 4.0 / IODL 2.0); ~237 of 531 IT wines resolve here,
+   including every flagship (Barolo, Soave, Valpolicella, Chianti,
+   Brunello, Bolgheri, Franciacorta, Frascati, Sagrantino di
+   Montefalco). An appellation spanning regions is the union of its
+   per-region pieces (e.g. Orvieto = `lazio+umbria`). Umbria is harvested
+   via a bespoke CKAN per-appellation `.zip`/`.7z` shapefile fetch
+   (`fetch_type: ckan_shapefiles` in `zone_sources.py`); Puglia is the
+   remaining tracked to-do (see CURATOR_TODO.md).
 2. **`parent-appellation`** — sottozone (sub-denominations) inherit
    the parent's polygon.
 3. **`figshare-pdo`** — exact `file_number` (`PDO-IT-A*` /
@@ -2711,20 +2738,44 @@ CH-specific notes:
 - The per-canton règlement parser at
   [scripts/_lib/ch/reglement.py](scripts/_lib/ch/reglement.py) uses
   a **whole-document grape-lexicon scan** rather than section-scoped
-  extraction. The shared `_lib.grape_entity.match_variety` is robust
-  enough (lexicon-based + per-token rejection) to scan ~50 KB of
-  règlement text without false positives, and cantonal règlements
-  frequently bury the variety list in an annex or refer to an
-  external annex by article — section-scoped extraction missed most
-  of the recall. Commune extraction stays section-scoped because
+  extraction, because cantonal règlements frequently bury the variety
+  list in an annex or refer to an external annex by article —
+  section-scoped extraction missed most of the recall. Scanning ~50 KB
+  of regulatory prose is noise-prone, though, so `extract_varieties`
+  guards the shared `match_variety` three ways (2026-06): a
+  **commune-name guard** (a chunk that is a Swiss commune — Genève,
+  Sion, Cortaillod — is area prose, not a grape), a **fuzzy floor**
+  (`_CH_FUZZY_FLOOR`=95: weak fuzzy hits matched common words / place
+  fragments to obscure non-Swiss grapes — `vigne`→viognier,
+  `Nein`→durif), and a small **`_CH_STOP_SURFACES`** set for prose
+  words that are exact grape aliases out of context (`canton`→chenin,
+  `Säure`→calitor, `weisse`→valente). Candidate cleaning strips
+  leading FR/IT/DE determiners (`il Merlot`, `la Bondola`), `a)`/`°`
+  ordinal markers, and footnote tails, and adds a name-before-number
+  variant to recover must-weight (Mostgewicht) lines
+  (`a) Blauburgunder 19,4 °Brix`). The Swiss Agroscope crossings +
+  natives the scan surfaces (Garanoir, Mara, Galotta, Doral, Divico,
+  Carminoir, Diolinoir, Bondola, Completer, Gouais→heunisch) live in
+  the shared `grape_lexicon.py`; Cornalin / Humagne are deliberately
+  NOT folded yet (Valais Cornalin = Rouge du Pays vs Humagne Rouge =
+  Cornalin d'Aoste is an identity tangle that needs a VIVC pass).
+  Commune extraction stays section-scoped because
   whole-document commune scans generate huge false-positive lists.
-  Variety extraction recall: 20 of 26 cantons return non-zero
-  varieties; AG (29), GE (47), VD (16), VS (25), FR (66), NE (18),
-  TI (14), JU (4), LU (7), BL (8), GR (5), SG (5), OW (4), TG (4),
-  ZH (3), SH (2), SO (1), BE (1), GL (1), ZG (1). Cantons with 0
-  varieties (AI, AR, BS, NW, SZ, UR) defer to federal OVin without
-  cataloguing varieties locally (BS defers to BL via inter-cantonal
-  Vereinbarung; the others are tiny corpora ~5 ha each).
+  Variety extraction recall (post-2026-06 FP cleanup — counts dropped
+  because the prior figures double-counted prose/place false positives
+  that the new guards remove, and rose where Mostgewicht recall recovers
+  real lists): 11 cantons return non-zero cantonale-tier varieties;
+  AG (65), GE (51), VS (44), VD (38), LU (25), TI (22), NE (15), BL (7),
+  SG (4), OW (4), GR (2). The other cantons (AI, AR, BE, BS, GL, JU, NW,
+  SH, SO, SZ, TG, UR, ZG, ZH) now return 0 at the cantonale tier:
+  some defer to federal OVin without cataloguing varieties locally
+  (AI/AR/BS/NW/SZ/UR; BS defers to BL via inter-cantonal Vereinbarung;
+  tiny corpora ~5 ha each), and the rest (BE, GL, JU, SH, SO, TG, ZG,
+  ZH) DO grow wine but either publish a règlement too sparse to parse
+  (ZH/SO are ~3 KB with no variety list) or enumerate varieties in a
+  Mostgewicht / annex form the scan doesn't yet recover — a known
+  recall gap, not a regression (their prior non-zero counts were
+  entirely prose/place false positives now removed).
 - For the 5 multi-AOC cantons (VD has 10 AOCs, GE has 23, TI has 4,
   BE has 3, FR has 2), the canton-wide règlement body is the v1
   default for variety lists. Per-AOC commune-list carving (Phase 2.5)
@@ -4131,10 +4182,148 @@ uv run pybabel init   -i locale/messages.pot -d locale -l <lang>   # to add a ne
 
 After editing a `.po`, just rerun `uv run scripts/04_build_maps.py`.
 
+## Data bundle: startup blob + lazy panel detail
+
+The map's per-appellation data ships in two tiers so the front page is light
+(the corpus is ~2,900 records). The render-blocking startup bundle
+`wiki/data/aocs.<locale>.<hash>.js` (`window.__OWM_DATA`) carries only
+`STARTUP_AOCS_FIELDS` ([scripts/_lib/map_template.py](scripts/_lib/map_template.py))
+— the fields every startup path reads: the sidebar appellation list, search,
+facet filtering (`matchesClient`/`matchesExceptFacets`), fly-to
+(`fitToFiltered`/`localityRank`), the active-filter chips
+(`renderActiveFilters`→`grapeName`→`grapes_info`), and the map-click stack
+dedup (`geom_source`). It is **the contract between the Python emitter and the
+JS app**: a field read by any of those paths MUST be in the set, or the
+sidebar/map silently breaks (there is no golden-diff guard here — Phase 3
+deliberately changes this bundle).
+
+Everything else on a record (summary, terroir facts, sources, grape
+display-names, dűlők, menzioni, notes, attribution/geometry-provenance fields)
+is the **panel payload**, emitted per slug per locale as
+`wiki/data/d/<locale>/<slug>.json` (the complement of `STARTUP_AOCS_FIELDS`;
+write-if-changed + stale-prune in `emit_html`). The JS fetches it on first
+panel open (`hydratePanel` → `Object.assign` into `AOCS[slug]`, deduped while
+in flight, graceful degrade on failure), showing a skeleton placeholder
+meanwhile; repeat opens are instant. This cut the startup bundle from ~13.2 MB
+raw / 1.9 MB gz to ~3.2 MB / ~0.4 MB. `grapes_info` stays inline — it is a
+startup dependency via the active-filter chips. The full record is still used
+for the server-rendered entity cards (SSR is unchanged), so crawlers see the
+same content; only the JS map lazy-loads. The per-slug JSON is not
+content-hashed (stable path, fetched at runtime, not referenced from cacheable
+HTML) and never enters the sitemap.
+
+### Map app JS source
+
+The map application JS lives in
+[scripts/_lib/assets/app.js](scripts/_lib/assets/app.js) — a real, lint-able
+`.js` file, not an escaped Python string. `_render_app_js` in
+[scripts/_lib/map_template.py](scripts/_lib/map_template.py) injects the
+per-locale build values by replacing `__OWM_<slot>__` tokens (one per former
+`{slot}` format field) and emits `wiki/assets/app.<locale>.<hash>.js` exactly
+as before — byte-for-byte equivalent to the old `_APP_JS.format(**kwargs)`
+(verified by the golden comparator). `eslint.config.js` (flat config, advisory)
+lints it: `npx --yes eslint@9 scripts/_lib/assets/app.js`; the OWM token
+identifiers are declared as globals there, and a non-blocking `eslint` CI job
+runs it. Edit app.js directly; do not move the JS back into the template. The
+CSS still ships inline in `_TEMPLATE` and is lifted to the shared
+`style.<hash>.css` by `_split_template`.
+
+## Structured data (JSON-LD) on entity pages
+
+Each **indexable** per-appellation entity page (`/<lang>/<slug>`) carries a
+single schema.org `@graph` — `WebSite → WebPage → Place(AdministrativeArea) →
+BreadcrumbList`, with stable fragment `@id`s cross-linked via
+`mainEntity` / `breadcrumb` / `isPartOf`. Built by `_build_entity_jsonld()`
+in [scripts/_lib/map_template.py](scripts/_lib/map_template.py); **folded**
+pages (sub-denominations, stubs, no-geometry, thin records) emit none, by
+design. Honest modelling only — no `Article` markup (would need fabricated
+author / editorial dates for a generated page).
+
+- **`sameAs`** (entity reconciliation — the highest-value SEO/GEO signal):
+  Wikidata QID → per-locale Wikipedia article → official regulator / producer
+  body. Source PDFs and legal acts are *not* identity pages, so they go in the
+  WebPage's **`isBasedOn`** instead. The eAmbrosia register is excluded — it's
+  a hash-route SPA (`…/#/detail/EUGI…`), one server shell for every GI, so it's
+  a poor `sameAs` target.
+- **Wikidata QIDs** come from stage **02i**
+  ([scripts/02i_fetch_wikidata_qids.py](scripts/02i_fetch_wikidata_qids.py)),
+  a cached, incremental network stage (run between 02g and 04). Two resolution
+  paths: (1) Wikidata property **P9854 "eAmbrosia ID"** joined on each record's
+  `id_eambrosia` (the eAmbrosia-sourced countries), and (2) **Wikipedia
+  sitelink → QID** via the MediaWiki `pageprops.wikibase_item` API, keyed on the
+  02b/aocs validated article title (covers FR, which is INAO-sourced and carries
+  no `id_eambrosia`, plus the P9854 gaps). Coverage is partial by design
+  (~1.2 k of the corpus at v1; the rest fall back to Wikipedia/regulator
+  `sameAs` or none). Pin/suppress a QID via `raw/wikidata/slug_overrides.json`.
+  Stage 04 joins `qids-by-slug.json` onto each record as `wikidata_qid`.
+- **BreadcrumbList**: `Open Wine Map → [parent →] appellation`. The country
+  level is deliberately omitted — there is no per-country landing page, and a
+  non-final `ListItem` without an `item` URL is invalid for Google's
+  BreadcrumbList rich result. Every emitted crumb carries an `item`.
+- `description` is the localized summary → first terroir-fact bullets → the
+  160-char meta description; `inLanguage` is the page locale.
+- Contract: the builder returns a pre-serialised opaque string filling the
+  `{jsonld_html}` `str.format` slot — its JSON braces are data, not format
+  fields, so it must not be double-braced or `esc()`-ed.
+
+## Internal linking & crawlability (browse index, cross-links, llms.txt, 404)
+
+The map homepage is a JS app shell with no crawlable `<a>` links to entity
+pages (the sidebar list is client-rendered), so the per-appellation pages were
+link-graph orphans discoverable only via the sitemap. Stage 04 now emits a
+static link layer (all in [scripts/_lib/map_template.py](scripts/_lib/map_template.py)
++ [scripts/04_build_maps.py](scripts/04_build_maps.py)):
+
+- **Browse-index pages** — `wiki/<locale>/appellations/index.html` per locale,
+  a self-contained page (`_render_browse_page` + `_BROWSE_TEMPLATE`, NOT the
+  map shell) listing every **index**-classified appellation as a real `<a>`,
+  grouped by country and sorted by localized name. The static crawl hub.
+  A namespace `assert "appellations" not in aocs` guards the path collision.
+- **Inbound links** to the browse hub: the sidebar footer (`{browse_path}`
+  slot, on the homepage AND every entity page) + a paragraph in the About
+  dialog (`about_browse_html`).
+- **Entity cross-link nav** (`_entity_nav_html` → `<nav class="entity-nav">`):
+  browse link + parent (when `parent_slug` resolves) + children (from
+  `children_by_parent`, built once in `emit_html`, passed as `children_map`).
+  Emitted into `ssr_content` for index AND fold pages, hidden under `html.js`
+  alongside `#ssr-content` (no-JS / crawler only). Because folds now carry a
+  non-empty `ssr`, the brand-`<h1>` invariant is tracked by an explicit
+  `has_card` flag, not `ssr` truthiness.
+- **`wiki/llms.txt`** (`_write_llms_txt`) — llmstxt.org markdown index: the EN
+  meta description as the blockquote, the site links, then every index slug as
+  an EN deep-link grouped by country. No build date inside (byte-stable for the
+  deploy SHA256 diff).
+- **`wiki/404.html`** (`_write_404_page`) — self-contained noindex branded
+  error page; Bunny serves it via `Custom404FilePath`.
+- **Data-updated date** — only the 5 homepages carry it (`about_updated_html`
+  in the About dialog). `about_dialog_html` is built per-`_fill` (date for the
+  homepage, dateless for entities) instead of living in `page_shell`, so a
+  rebuild churns 5 files, not all ~11.6k entity pages.
+- **Sitemap** grows to 4 home + 4 browse + (index slugs × 4 locales).
+- **Deploy** ([scripts/deploy.py](scripts/deploy.py)) gained two idempotent,
+  warn-don't-fail Bunny config steps called from `main()`: `ensure_force_ssl`
+  (POST `/pullzone/<id>/setForceSSL` per hostname whose `ForceSSL` is off — was
+  serving `http://www.openwinemap.com/` as 200) and `ensure_custom_404`
+  (resolve storage zone by name, set `Custom404FilePath=/404.html`). Apex→www
+  301 stays a manual dashboard rule (smoke-checked by `check_apex_redirect`).
+
 ## Code style
 
 - Python 3.12, ruff line length 100.
 - Single-purpose scripts; share helpers via `scripts/_lib/`.
+- **Stage 04 module layout.** `04_build_maps.py` orchestrates; the bulk of its
+  logic lives in `scripts/_lib/`. The per-country national-spec augmenters are
+  in `_lib/augment/<cc>.py` (their shared slug-keyed provenance caches +
+  sidecar dirs in `_lib/augment/_shared.py` — imported by both the augmenter
+  that writes them and `_sources_for()`/the panel-blob phase that reads them,
+  so the dict objects stay identical across the split). Grape/style lexicon
+  loading is in `_lib/lexicon_loading.py`; the commune-index + DGC/ES geometry
+  resolution chain (incl. the `DGCGeomResult` dataclass) is in
+  `_lib/geom_chain.py`. These were move-only extractions verified by the
+  golden comparator (see below); when moving more out of `04_build_maps.py`,
+  use the `stage04-extraction` skill — stage-04 failures are silent (a country
+  or feature just vanishes from the map), so a full-build golden diff, not
+  "it didn't crash", is the proof.
 - No comments unless the *why* is non-obvious. Identifiers carry the *what*.
 - Logs to stderr, structured progress (per-AOC) so reruns are debuggable.
 - **No silent dict-key overrides.** Python keeps the *last* value when a dict

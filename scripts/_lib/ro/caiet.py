@@ -118,9 +118,14 @@ def split_sections(text: str) -> tuple[dict[str, str], dict[str, str]]:
 
 # Grape-section colour headers: "Soiurile albe:", "- Soiuri roşii:",
 # "soiuri roze:", "soiuri aromate". The variety list may follow on the
-# same line after the colon.
+# same line after the colon. A header may carry a "/roze" (or "/rose")
+# second-colour suffix — "- soiuri roşii/roze:" — which the trailing
+# `(?:/colour)*` group consumes so the colon isn't left glued to the
+# first variety name (else "roze: Cabernet Sauvignon" never resolves).
+# The bucket colour is the FIRST captured colour (roşii → noir).
 _COLOUR_HEADER_RE = re.compile(
     r"^[ \t]*[-•·]?\s*soiur?i(?:le)?\s+(albe|ro[șşs-]?ii|ro[șş]ii|roze|rose|aromate)"
+    r"(?:\s*/\s*(?:albe|ro[șşs-]?ii|ro[șş]ii|roze|rose|aromate))*"
     r"\s*:?",
     re.I,
 )

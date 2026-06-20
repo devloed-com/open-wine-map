@@ -186,8 +186,8 @@ def emit_todo(out_path: Path, *, languages: tuple[str, ...], skip_cached: bool) 
         "items": items,
     }
     cache.write_json(out_path, payload)
-    counts = {l: sum(1 for j in jobs if j["lang"] == l) for l in languages}
-    pretty = ", ".join(f"{l}={n}" for l, n in counts.items())
+    counts = {lang: sum(1 for j in jobs if j["lang"] == lang) for lang in languages}
+    pretty = ", ".join(f"{lang}={n}" for lang, n in counts.items())
     print(f"[02e/ch] wrote {out_path} ({len(items)} items: {pretty})",
           file=sys.stderr)
     return 0

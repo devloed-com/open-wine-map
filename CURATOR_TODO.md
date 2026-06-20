@@ -4,7 +4,7 @@ Actionable manual lookups across the corpus. One section per country. Reconcile 
 
 Legend: ✅ done · 🟡 URL queued, awaiting pipeline rerun · 🟢 in progress · ⏳ blocked on code · ❌ open
 
-Last reconciled: 2026-05-14 (Rully + Maranges CAVB cahiers landed via Type 1C OCR fallback — 35 new slugs (24 Rully premier-crus + 9 Maranges climats), section X 8050/9349 chars, 02d ran fine on both, 02e produced 7 EN/ES/NL translations; stale audit confirmed three "code follow-ups" already shipped — AOC Wikipedia override consumption live in scripts/02b_fetch_aoc_lexicon.py:64-66,322-373,388-390 (cache carries `override_source=curator`), ES grape lexicon already iterates raw/es/pliegos-extracted/ via collect_grape_slugs in scripts/02b_fetch_grape_lexicon.py:76-95, DOCUMENTO ÚNICO anchor regex matches both Toro + Ribera del Guadiana (RDG's "0 grapes principal" was role-routing, not anchor); earlier same day — Wikipedia AOC override merge — fr 44→101, es 0→29; ES national-pliego URL research merged 12 entries into raw/es/national-pliegos/manual_overrides.json + stage 02f override-priority read wired in scripts/es/02f_extract_national_pliegos.py + parser tightened in scripts/_lib/es/national_pliego.py → 138 new variety-DOP additions, zero regressions; 6 stale research prompts under scripts/_lib/ deleted after their batches closed; ES consejo regulador URL merge earlier same day — 56 new entries to appellation_urls.json, by_slug now 205)
+Last reconciled: 2026-05-14 — full pass history in [docs/reconciliation-log.md](docs/reconciliation-log.md).
 
 ---
 
@@ -380,6 +380,7 @@ These surfaced in the audit but require code changes, not lookups:
 - **ES Xunta parroquia data source** — Terras do Navia delimits by Galician parroquias (sub-municipal civil parishes). Currently renders 3 whole municipios; pliego limits 2 of them to specific parroquias. Needs a Xunta / IGN parroquia cartography fetch in stage 00 plus a new `xunta-parroquia-list` step in the stage-04 ES geometry chain. Whole-municipio polygon overcounts but is visible.
 - **ES role-routing coverage** — 74 parents have an unrouted `name` role, 14 unrouted `geo_area`, 9 unrouted `link_to_terroir`, 4 each for `description` / `grape_varieties`. Section bodies are present, just not labelled with the canonical role. A handful more keyword additions to the stage-02 router would close most of these. Worth a separate pass when stage-04 rendering surfaces specific gaps.
 - **ES stage-01 `--refresh` manifest footgun** — `--refresh --only X` wipes manifest entries for wines outside the `--only` filter. Doesn't block extraction (stage 02 dispatches by file existence) but the manifest stats audit reports incorrect counts. Cosmetic.
+- **SSR content block omits HU dűlők / IT menzioni** ([scripts/_lib/content_block.py](scripts/_lib/content_block.py)) — the Phase-3 server-rendered `<article id="ssr-content">` deliberately leaves out the Hungarian *dűlők* and Italian *menzioni / UGA* collapsible chip sections. They still render client-side via `renderDulok` / `renderMenzioni` in [scripts/_lib/map_template.py](scripts/_lib/map_template.py) (so users see them in the live panel; crawlers / no-JS do not). Port those two renderers to Python in `content_block.py` so the crawlable HTML matches the panel for HU/IT appellations. Low priority — niche chip data, the rest of the card is already server-rendered; left out initially because their per-record shape churns more than the stable fields.
 
 ## Portugal
 
@@ -804,12 +805,12 @@ Region tracker:
 | Toscana | ✅ active | CC-BY 4.0 (GEOscopio; download page links CC-BY) | direct zip, `zo_vin_nom_zon` layer; 55 wines |
 | Lazio | ✅ active | CC-BY 4.0 | GeoServer WFS, DOC+DOCG+IGT; 29 wines |
 | Lombardia | ✅ active | CC-BY 4.0 | ArcGIS MapServer, DOC+DOCG+IGT; 34 wines |
-| Umbria | ⏳ todo | CC-BY 4.0 | needs a bespoke fetch — ~23 separate per-appellation `.7z` shapefiles via the dati.regione.umbria.it CKAN API |
+| Umbria | ✅ active | CC-BY 4.0 | CKAN `package_search` → 19 per-appellation `.zip`/`.7z` shapefiles (`fetch_type: ckan_shapefiles`); 20 wines matched (all but Narni, which publishes no shapefile) |
 | Puglia | ⏳ todo | IODL 2.0 | endpoint not reachable (SIT Puglia WFS/ArcGIS hosts 404 / login-gated) — needs the live WFS layer name |
 
-**5 of 7 regions harvested → 218 IT wines on official zone polygons**
-(`geoportal-zone`); the rest fall back to Bétard. Umbria + Puglia are
-real to-dos, not skips — see the per-region notes and
+**6 of 7 regions harvested → ~237 IT wines on official zone polygons**
+(`geoportal-zone`); the rest fall back to Bétard. Puglia is the one
+remaining to-do, not a skip — see the per-region notes and
 [scripts/_lib/it/zone_sources.py](scripts/_lib/it/zone_sources.py).
 | Abruzzo | ❌ fallback | custom, unconfirmed | portal SSL cert expired; stays on Bétard |
 | Campania | ❌ fallback | unconfirmed | dataset page 404s; stays on Bétard |
@@ -2071,33 +2072,28 @@ guard for image-scan long tail; the resolver's bulk filter-list is ~4 MB
 - **ES grape alias gaps** — [scripts/audit_es_grape_aliases.py](scripts/audit_es_grape_aliases.py) lists tokens that don't resolve through `GRAPE_ALIAS` / `DEFAULT_COLOUR`. ~250 distinct tokens after current seeding; biggest residual classes are Canary Islands varieties (Bermejuela, Marmajuelo, Vijariego, Listán Negro, …) and Galician varieties (Brancellao, Sousón, Loureira, Caíño…). Most are genuine ES-only varieties — register their canonical slug in `DEFAULT_COLOUR` rather than aliasing.
 - **Parenthesised synonyms in ES variety lists** — pliegos like 3-riberas write "Albillo Mayor (Turruntés)" where the parenthetical is the regional synonym. Parser currently keeps the parenthesis in the name → 3-token slug. Extract the parenthesised tail as a synonym (route through `GRAPE_ALIAS`) and slug from the primary token only.
 
-## VIVC grape resolution — open queue (2026-05-22)
+## VIVC grape resolution — ✅ closed 2026-06-03
 
-Curator action: for each row below, open the VIVC search URL, pick the variety number that best matches the slug's actual identity, and add `{"vivc_id": <id>}` to [raw/vivc/slug_overrides.json](raw/vivc/slug_overrides.json). Then `./.venv/bin/python scripts/02g_fetch_vivc.py` re-runs the passport fetch for the pinned slugs.
+All 11 ambiguous slugs + all 17 IT VIVC pins from the earlier pass are now
+resolved. Passports re-fetched; 02b run for synonym-recovered slugs.
 
-Latest `scripts/02g_fetch_vivc.py` run (2026-05-22, after the AT corpus
-landed): `buckets = {exact-cultivar: 625, override: 363, ambiguous: 11,
-miss: 5}`.
+**9 ambiguous slugs — ✅ pinned 2026-06-03** via VIVC + grape-colour-researcher:
 
-**11 ambiguous slugs — curator queue at
-[raw/vivc/slug_overrides.example.json](raw/vivc/slug_overrides.example.json)**
-(`[02g] 11 ambiguous slug(s)`). Each has multiple candidate VIVC
-entries; copy the file to `raw/vivc/slug_overrides.json` and pin the
-right `vivc_id`:
+| slug | vivc_id | prime | colour | note |
+|---|---|---|---|---|
+| `sanktt-laurent` | 10470 | SAINT LAURENT | NOIR | AT red; candidate 8252 ruled out |
+| `inzolia` | 492 | ANSONICA | BLANC | Sicilian white; #122 = unrelated table grape AFUS ALI |
+| `siria` | 2742 | SIRIA | BLANC | Same variety as `dona-blanca`; 55 ES uses (Galicia, Castile) |
+| `maresco` | 1660 | BRATKOVINA BIJELA | BLANC | Valle d'Itria; #4019 ESCURSAC is NOIR (wrong colour) |
+| `moscatel-negro` | 8226 | MUSCAT HAMBURG | NOIR | Official Spanish name MOSCATEL NEGRO; 9 Canary IS. DOPs |
+| `moscatel-negra` | 8226 | MUSCAT HAMBURG | NOIR | Feminine gender variant of moscatel-negro; 1 use (Ycoden) |
+| `loureiro-tinto` | 17346 | LOUREIRO TINTO | NOIR | Galician red; distinct from white Loureiro #7623 |
+| `tempranillo-blanco` | 25057 | TEMPRANILLO BLANCO | BLANC | White Tempranillo mutation; #10690 is NOIR parent |
+| `verdejo-negro` | 12668 | TROUSSEAU NOIR | NOIR | Cangas (Asturias); VIVC lists VERDEJO NEGRO as explicit synonym |
 
-| slug | query | candidate VIVC ids |
-|---|---|---|
-| `sankt-laurent` | St. Laurent | 10470, 8252 — **AT** (Austrian red Sankt Laurent) |
-| `groppello` | Groppello | 16969, 5076, 6698, … (23) |
-| `inzolia` | Insolia | 122, 492, 5533 |
-| `loureiro-tinto` | loureiro tinto | 17346, 7623 |
-| `maresco` | Maresco | 1660, 4019 |
-| `moscatel-negra` | moscatel negra | 25847, 24609 |
-| `moscatel-negro` | moscatel negro | 6860, 40043, 23166, … (12) |
-| `schiava` | Schiava | 10821–10826, 22368, … (19) |
-| `siria` | doña blanca | 2742, 17676 |
-| `tempranillo-blanco` | tempranillo blanco | 25057, 10690 |
-| `verdejo-negro` | verdejo negro | 15678, 12668, 9694 |
+**2 family names — left unpinned** (genuinely ambiguous, curator intent per 2026-05-22 note):
+- `groppello` — 23+ VIVC sub-variety candidates; `groppello-gentile` (#5078) already pinned
+- `schiava` — 19+ VIVC sub-variety candidates; `schiava-grossa` (#10823) + `schiava-grigia` (#10822) already pinned
 
 **5 misses** (no VIVC candidate at all): `blutenmuskateller` (**AT** —
 Blütenmuskateller, an Austrian Muscat selection that VIVC may not
@@ -2105,4 +2101,65 @@ carry under that name), plus pre-existing `bianco-di-alessano`,
 `incrocio-manzoni`, `nerello-cappuccio`, `siria`-class IT/ES varieties.
 JKI publishes no data licence, so unresolved slugs simply ship without
 a VIVC bracket — not blocking.
+
+## Cross-country — SEO / structured-data (JSON-LD on entity pages)
+
+### `additionalType` — minimal shipped ✅ / kind-aware variant ⏳
+
+Shipped (2026-06-05): every indexable entity page's `Place` carries
+`additionalType = https://www.wikidata.org/wiki/Q2140699` ("wine-producing
+region") — the universal, EU-and-non-EU-safe place-class. Constant
+`_WIKIDATA_GI_TYPE` in [scripts/_lib/map_template.py](scripts/_lib/map_template.py).
+
+⏳ **Kind-aware regulatory class** (richer typing, optional, NON-URGENT):
+emit `additionalType` as an array `[Q2140699, <regulatory-class>]` keyed on
+`rec["kind"]`:
+- DOP / AOP → `Q13439060` (EU "Protected designation of origin")
+- IGP / PGI → `Q3104453` (EU "protected geographical indication")
+- **must exclude `country=="ch"`** (Swiss AOCs are NOT EU PDOs) and any other
+  non-EU — fall back to `Q325668` ("designation of origin") or just `Q2140699`
+  alone.
+
+Caveat to weigh before doing it: a PDO/PGI is the *designation / legal
+protection*, not the *area* — so tagging the `Place` with it is a mild
+"protected-as" vs "is-a" blur (the reason it wasn't shipped in v1). Turns the
+single constant into a small kind+country→QID helper + the array-emit branch in
+`_build_entity_jsonld`. Low value (KG/LLM typing hint only; `Place` isn't
+rich-result-eligible), so deferred.
+
+### Wikidata QID coverage (stage 02i) — long-tail unlock ⏳
+
+`02i_fetch_wikidata_qids.py` resolves 1,230 / 2,886 slugs to a QID (167 via
+P9854 eAmbrosia-ID join, 1,063 via Wikipedia sitelink). The ~1,656 misses are
+records with neither an eAmbrosia P9854 match nor a validated Wikipedia
+article. Two levers to raise coverage: (a) re-run `02b_fetch_aoc_lexicon.py`
+for the locales where AOC articles are pinned `missing` (each new article a
+sitelink can resolve); (b) curator pins in `raw/wikidata/slug_overrides.json`
+(`{slug: {qid}}`) for notable misses — e.g. `crozes-hermitage` resolved to no
+QID despite having a fr.wikipedia article + Wikidata item.
+
+### Page weight — 13 MB `aocs.<lang>.*.js` data blob loaded on every page ⏳ (perf, not SEO-blocking)
+
+Bing URL-inspection flags a low-severity Notice "Html size is too long" on
+entity pages. The HTML itself is tiny (~20 KB / ~180 lines) — the trigger is
+the **`/data/aocs.<lang>.*.js` corpus blob: ~13.25 MB uncompressed** (3,823
+records × ~3.5 KB), loaded as a render-blocking `<script src>` (no `defer`/
+`async`) on **every** page because each page boots the full map. Bunny serves
+it Brotli (`content-encoding: br`, ~2–3 MB on the wire), but the uncompressed
+payload is what the page-weight heuristic counts. **Non-blocking for indexing**
+(`URL can be indexed ✓`); this is a real-performance / LCP / mobile / crawl-
+budget improvement, not an SEO fix.
+
+Levers, by effort/payoff:
+1. **`defer` the data `<script>`** — stops it blocking parse/render; quick, no
+   size change. (`aocs_data_src` slot in [scripts/_lib/map_template.py](scripts/_lib/map_template.py).)
+2. **Lazy-load on first paint / interaction** (best effort:payoff) — the entity
+   page's SSR card + the map polygons (pmtiles) don't need the blob; only
+   sidebar search/filter does. Fetch it after first paint or on first sidebar
+   interaction so the initial load (and the crawler) never pulls 13 MB.
+   App-side change in `_APP_JS`.
+3. **Split the blob** (biggest win) — ship a light search/facet index
+   (slug + name + facets, ~hundreds of KB) eagerly + fetch per-appellation
+   detail on panel open. Stage-04 data-emit + `_APP_JS` refactor; QA the
+   search/filter parity.
 

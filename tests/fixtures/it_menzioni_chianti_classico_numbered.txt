@@ -1,0 +1,35 @@
+Redacted excerpt — Chianti Classico DOCG documento unico (EUR-Lex single
+document), the additional-conditions section, flattened to the exact text
+shape stage 02 feeds extract_menzioni (geo_area + "\n" + additional). The
+11 UGAs are a NUMBERED list: EUR-Lex's table renderer puts the "N."
+marker on its own line and the name on the next, separated by single
+newlines (no blank lines). The "Link al disciplinare del prodotto" line
+is the real list terminator (matched by _LIST_END_RE). The trailing
+ELI/ISSN furniture is real and must not be harvested.
+
+Le seguenti Unità Geografiche Aggiuntive riferite ad aree dalle quali provengono effettivamente le uve da cui il vino è stato ottenuto e la cui delimitazione territoriale è definita nell’allegato 3 del disciplinare di produzione:
+1.
+Castellina
+2.
+Castelnuovo Berardenga
+3.
+Gaiole
+4.
+Greve
+5.
+Lamole
+6.
+Montefioralle
+7.
+Panzano
+8.
+Radda
+9.
+San Casciano
+10.
+San Donato in Poggio
+11.
+Vagliagli
+Link al disciplinare del prodotto
+https://www.politicheagricole.it/flex/cm/pages/ServeBLOB.php/L/IT/IDPagina/20089
+ELI: http://data.europa.eu/eli/C/2024/1036/oj

@@ -33,7 +33,6 @@ from pathlib import Path
 from typing import Iterable
 
 import geopandas as gpd
-from shapely.geometry import shape
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 

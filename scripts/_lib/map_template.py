@@ -13,10 +13,15 @@ data and translating it would break the public-sources rule in CLAUDE.md.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 from collections.abc import Callable
+from pathlib import Path
 
+from _lib.content_block import RenderCtx, esc, render_content_block
 from _lib.i18n import load_translations
+from _lib.wikidata import wikidata_url
 
 
 def build_style_labels(_: Callable[[str], str]) -> dict[str, str]:
@@ -34,21 +39,26 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "subtitle": _("carte des appellations viticoles"),
         "meta_description": _(
             "Carte interactive des appellations viticoles européennes "
-            "(AOC, AOP, IGP, DOP) — communes, cépages, styles et liens au "
-            "terroir, à partir des données publiques des registres "
-            "officiels (INAO, EUR-Lex, eAmbrosia) et de l'IGN."
+            "(AOC, AOP, IGP, DOP) : cépages, styles et terroir, d'après "
+            "les registres officiels (INAO, EUR-Lex)."
         ),
         "loading": _("Chargement…"),
         "search_h": _("Recherche"),
         "search_placeholder": _("nom d'appellation…"),
         "search_appellation_placeholder": _("Recherche d'appellation…"),
         "search_grape_placeholder": _("Recherche de cépage…"),
+        # Search-UX experiment (lab variants only — see _render_sidebar).
+        "omnisearch_placeholder": _("Rechercher une appellation, un cépage, une région…"),
+        "main_grape_only_label": _("Cépage principal uniquement"),
+        "omni_no_results": _("Aucun résultat pour « {q} »"),
+        "options_h": _("Options"),
         "active_filters_aria": _("Filtres actifs"),
         "select_all_aria": _("Tout sélectionner"),
         "open_appellation_aria": _("Ouvrir la fiche de {name}"),
         "open_appellation_title": _("Ouvrir la fiche"),
         "show_spirits_label": _("Inclure les spiritueux"),
         "facet_styles_h": _("Style de vin"),
+        "facet_classification_h": _("Classement"),
         "facet_principal_h": _("Cépages principaux"),
         "facet_accessory_h": _("Cépages accessoires"),
         "facet_grapes_h": _("Cépages"),
@@ -70,6 +80,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "style_simple_rose": _("rosé"),
         "style_simple_sparkling": _("mousseux"),
         "style_simple_sweet": _("moelleux / liquoreux"),
+        "style_simple_oxidative": _("oxydatif"),
         "style_simple_other": _("autre"),
         "reset": _("Réinitialiser"),
         "count_total": _("{n} appellations"),
@@ -139,6 +150,8 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_regional_register": _("Registre régional des cépages (PDF)"),
         "src_eambrosia": _("Registre eAmbrosia (UE)"),
         "src_eambrosia_id": _("Numéro de dossier"),
+        "src_cantonal_reglement": _("Règlement cantonal sur la vigne et le vin"),
+        "src_ofag_repertoire": _("Répertoire suisse des AOC (OFAG/BLW)"),
         "legend_h": _("Légende couleurs"),
         "legend_bassin_h": _("Bassin viticole"),
         "legend_area_hint": _("Plus l'aire est petite, plus la teinte est dense."),
@@ -209,15 +222,32 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Signalez-les via {issue} ou {email}."
         ),
         "about_roadmap_html": _(
-            "Extension de la couverture européenne en cours : France, "
-            "Espagne, Portugal, Italie, Autriche, Allemagne, Slovénie, "
-            "Croatie, Hongrie, Roumanie, Bulgarie et Grèce sont déjà "
-            "cartographiés. Quelques itérations supplémentaires "
-            "viendront affiner la qualité des données existantes ; "
-            "l'Europe centrale et orientale est à considérer comme une "
-            "première version, appelée à être améliorée. À plus long "
-            "terme, des classifications hors AOP pourront être ajoutées."
+            "20 pays européens cartographiés : France, Espagne, Portugal, "
+            "Italie, Autriche, Allemagne, Suisse, Slovénie, Croatie, "
+            "Hongrie, Roumanie, Bulgarie, Grèce, Slovaquie, Tchéquie, "
+            "Luxembourg, Belgique, Pays-Bas, Malte et Chypre. Des "
+            "itérations supplémentaires viendront affiner la qualité des "
+            "données. La couverture sera étendue au-delà de l'UE et de "
+            "la Suisse, ainsi qu'aux classifications hors AOP."
         ),
+        "browse_all_label": _("Toutes les appellations"),
+        "browse_title": _("Toutes les appellations viticoles — Open Wine Map"),
+        "browse_meta_description": _(
+            "Liste des {n} appellations viticoles européennes cartographiées "
+            "sur Open Wine Map, classées par pays — AOC, AOP, IGP, DOP."
+        ),
+        "browse_intro_html": _(
+            "Les {n} appellations ci-dessous sont classées par pays. "
+            "Retour à la {map_link}."
+        ),
+        "browse_map_link_label": _("carte interactive"),
+        "browse_aria": _("Liste des appellations par pays"),
+        "entity_nav_parent": _("Appellation parente"),
+        "entity_nav_children": _("Dénominations rattachées"),
+        "about_browse_html": _(
+            "Parcourir la liste complète des appellations : {browse_link}."
+        ),
+        "about_updated_html": _("Données mises à jour le {date}."),
     }
 
 
@@ -415,7 +445,9 @@ def _build_sidebar_disclaimer(labels: dict[str, str]) -> str:
     )
 
 
-def _build_about_dialog(labels: dict[str, str]) -> str:
+def _build_about_dialog(
+    labels: dict[str, str], *, browse_path: str = "", data_updated_html: str = ""
+) -> str:
     devloed = _ext_link(_DEVLOED_URL, "devloed.com")
     github = _ext_link(_GITHUB_URL, "GitHub")
     inao = _ext_link(_INAO_URL, "INAO")
@@ -432,12 +464,17 @@ def _build_about_dialog(labels: dict[str, str]) -> str:
         labels["about_roadmap_html"],
         labels["about_contrib_html"].format(github=github),
     ]
+    if browse_path:
+        browse_link = f'<a href="{browse_path}">{esc(labels["browse_all_label"])}</a>'
+        paragraphs.append(labels["about_browse_html"].format(browse_link=browse_link))
     body = "\n      ".join(f"<p>{p}</p>" for p in paragraphs)
+    if data_updated_html:
+        body += f'\n      <p class="data-updated">{data_updated_html}</p>'
     return (
         f'<dialog id="about-dialog" aria-labelledby="about-dialog-h">\n'
         f'  <button class="close" type="button" aria-label="{labels["close_aria"]}">×</button>\n'
         f'  <div class="about-body">\n'
-        f'    <h1 id="about-dialog-h">{labels["about_h"]}</h1>\n'
+        f'    <h2 id="about-dialog-h">{labels["about_h"]}</h2>\n'
         f"      {body}\n"
         f'  </div>\n'
         f'</dialog>'
@@ -606,7 +643,10 @@ def _build_source_block(
         # add it once (to the villages source — visibility unaffected by
         # which appellation layer is active because bassin is a fill of
         # `region` polygons, not appellation outlines).
-        + _layer_block("-villages", "appellations-villages", layer_meta, with_bassin=True)
+        # Bassin underlay temporarily disabled: the regional colour fill made
+        # it hard to tell which appellations are actually visible. Flip back to
+        # with_bassin=True to restore it.
+        + _layer_block("-villages", "appellations-villages", layer_meta, with_bassin=False)
         + _layer_block("", "appellations", layer_meta, with_bassin=False)
     )
 
@@ -750,8 +790,499 @@ def _build_grape_search_index(
             "count_principal": counts["principal"].get(canon, 0),
             "count_accessory": counts["accessory"].get(canon, 0),
         })
-    index.sort(key=lambda e: (-e["count"], e["label"].casefold()))
+    index.sort(key=lambda e: (-e["count"], e["label"].casefold(), e["slug"]))
     return index
+
+
+_HOMEPAGE_HREFLANG = (
+    '<link rel="alternate" hreflang="en" href="https://www.openwinemap.com/">\n'
+    '<link rel="alternate" hreflang="fr" href="https://www.openwinemap.com/fr/">\n'
+    '<link rel="alternate" hreflang="es" href="https://www.openwinemap.com/es/">\n'
+    '<link rel="alternate" hreflang="nl" href="https://www.openwinemap.com/nl/">\n'
+    '<link rel="alternate" hreflang="x-default" href="https://www.openwinemap.com/">'
+)
+
+
+def _entity_path(locale: str, slug: str) -> str:
+    """Per-appellation URL path. EN entities live under /en/<slug> (the CDN
+    serves the EN shell for /en/*; bare /<slug> 404s); fr/es/nl under
+    /<locale>/<slug>. Matches the shipped client deep-link form (no trailing
+    slash)."""
+    return f"/en/{slug}" if locale == "en" else f"/{locale}/{slug}"
+
+
+def _entity_hreflang_block(slug: str) -> str:
+    rows = [
+        f'<link rel="alternate" hreflang="{lg}" href="{_SITE_BASE_URL}/{lg}/{slug}">'
+        for lg in ("en", "fr", "es", "nl")
+    ]
+    rows.append(f'<link rel="alternate" hreflang="x-default" href="{_SITE_BASE_URL}/en/{slug}">')
+    return "\n".join(rows)
+
+
+def _browse_path(locale: str) -> str:
+    """Per-locale browse-index URL path. EN lives at /en/appellations/ (the CDN
+    serves the EN shell for /en/*; bare /appellations/ would 404), fr/es/nl at
+    /<locale>/appellations/."""
+    return f"/{locale}/appellations/"
+
+
+def _browse_hreflang_block() -> str:
+    rows = [
+        f'<link rel="alternate" hreflang="{lg}" href="{_SITE_BASE_URL}/{lg}/appellations/">'
+        for lg in ("en", "fr", "es", "nl")
+    ]
+    rows.append(
+        f'<link rel="alternate" hreflang="x-default" '
+        f'href="{_SITE_BASE_URL}/en/appellations/">'
+    )
+    return "\n".join(rows)
+
+
+def _browse_lang_switcher(active: str, aria_label: str) -> str:
+    parts = []
+    for code, label in _LOCALES_DISPLAY:
+        path = f"/{code}/appellations/"
+        is_active = code == active
+        cls = " active" if is_active else ""
+        current_attr = ' aria-current="page"' if is_active else ""
+        parts.append(f'<a href="{path}" class="lang{cls}"{current_attr}>{label}</a>')
+    return f'<nav class="browse-lang" aria-label="{esc(aria_label)}">' + "".join(parts) + "</nav>"
+
+
+def _clamp(text: str, n: int = 160) -> str:
+    text = " ".join((text or "").split())
+    if len(text) <= n:
+        return text
+    return text[:n].rsplit(" ", 1)[0].rstrip(" ,.;:") + "…"
+
+
+def _entity_grape_names(rec: dict, grapes_info: dict, limit: int) -> list[str]:
+    out = []
+    for g in (rec.get("grapes_principal") or [])[:limit]:
+        nm = (
+            (rec.get("grape_names") or {}).get(g)
+            or (grapes_info.get(g) or {}).get("name")
+            or g.replace("-", " ")
+        )
+        out.append(nm)
+    return out
+
+
+# Wikidata class for the Place.additionalType — "wine-producing region"
+# (Q2140699, "type of region"): an honest place-class true for every record,
+# EU and non-EU alike, that types the appellation as a wine region without a
+# native schema.org type. Set to "" to omit. The EU PDO/PGI regulatory classes
+# (Q13439060 / Q3104453) are deliberately NOT used here — they're EU-only (would
+# mis-tag the Swiss AOCs) and assert "protected-as", not "is-a".
+_WIKIDATA_GI_TYPE = "https://www.wikidata.org/wiki/Q2140699"
+
+# Regulator source-document URL keys in rec["sources"], in rough canonical
+# order — surfaced as the WebPage's isBasedOn (honest provenance: the page is
+# generated from these official specs). Identity pages (Wikipedia / Wikidata /
+# regulator site) go in sameAs instead; PDFs and legal acts belong here.
+_SOURCE_DOC_KEYS = (
+    "eur_lex_url", "eu_oj_publication_url", "national_pliego_url",
+    "national_spec_url", "specifikacija_url", "specifikacija_final_url",
+    "ble_produktspezifikation_url", "masaf_override_url", "ivv_caderno_url",
+    "cahier_url", "chzo_spec_url",
+)
+
+
+def _dedupe_urls(urls, cap: int | None = None) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for u in urls:
+        u = (u or "").strip()
+        if u.startswith(("http://", "https://")) and u not in seen:
+            seen.add(u)
+            out.append(u)
+            if cap and len(out) >= cap:
+                break
+    return out
+
+
+def _entity_same_as(rec: dict) -> list[str]:
+    """Authoritative external *identity* URLs for the appellation, de-duped and
+    order-stable: Wikidata QID (highest reconciliation value) → per-locale
+    Wikipedia article → official regulator / producer-body site. Source PDFs and
+    legal acts are NOT identity pages (they go in isBasedOn), and the eAmbrosia
+    register is a hash-route SPA — one shell for every GI — so it is excluded."""
+    s = rec.get("sources") or {}
+    tf = rec.get("terroir_facts") or {}
+    return _dedupe_urls([
+        wikidata_url(rec.get("wikidata_qid") or ""),
+        tf.get("wiki_source_url") or "",
+        (s.get("syndicate") or {}).get("url") or "",
+    ])
+
+
+def _entity_source_docs(rec: dict) -> list[str]:
+    """Up to 3 regulator source-document URLs for WebPage.isBasedOn."""
+    s = rec.get("sources") or {}
+    return _dedupe_urls((s.get(k) for k in _SOURCE_DOC_KEYS), cap=3)
+
+
+def _entity_jsonld_description(rec: dict, fallback: str) -> str:
+    """Localized one-paragraph description: the translated summary, else the
+    first 1–2 terroir-fact bullets, else the 160-char meta description."""
+    summary = (rec.get("summary") or "").strip()
+    if summary:
+        return _clamp(summary, 300)
+    facts = ((rec.get("terroir_facts") or {}).get("facts")) or []
+    joined = " ".join((f.get("bullet") or "").strip() for f in facts[:2]).strip()
+    if joined:
+        return _clamp(joined, 300)
+    return fallback
+
+
+def _entity_breadcrumb(slug, rec, canonical_url, locale, breadcrumb_id) -> dict:
+    """BreadcrumbList: Open Wine Map → [parent →] appellation. The country level
+    is deliberately omitted — there is no per-country landing page, and a
+    non-final ListItem without an `item` URL is invalid for Google's
+    BreadcrumbList rich result (so every ListItem here carries an `item`)."""
+    home = f"{_SITE_BASE_URL}/" if locale == "en" else f"{_SITE_BASE_URL}/{locale}/"
+    crumbs = [{"@type": "ListItem", "position": 1, "name": "Open Wine Map", "item": home}]
+    pos = 2
+    if rec.get("is_sub_denomination") and rec.get("parent_name") and rec.get("parent_slug"):
+        crumbs.append({
+            "@type": "ListItem", "position": pos, "name": rec["parent_name"],
+            "item": f"{_SITE_BASE_URL}{_entity_path(locale, rec['parent_slug'])}",
+        })
+        pos += 1
+    crumbs.append({
+        "@type": "ListItem", "position": pos, "name": rec.get("name") or slug,
+        "item": canonical_url,
+    })
+    return {"@type": "BreadcrumbList", "@id": breadcrumb_id, "itemListElement": crumbs}
+
+
+def _build_entity_jsonld(
+    slug, rec, canonical_url, locale, country_labels, region, desc="", children=None
+) -> str:
+    """schema.org @graph (WebSite → WebPage → Place → BreadcrumbList) for one
+    appellation, pre-serialised to an opaque string (its braces are JSON data,
+    NOT str.format slots — do not double-brace or esc() it). Modelled as a
+    WebPage about an AdministrativeArea (the delimited GI region) with a
+    sameAs identity cluster; no Article markup, which would require fabricated
+    author / editorial dates for a mechanically generated reference page."""
+    name = rec.get("name") or slug
+    country = country_labels.get(rec.get("country") or "", "")
+    description = _entity_jsonld_description(rec, desc)
+
+    contained: list[dict] = []
+    if rec.get("is_sub_denomination") and rec.get("parent_name"):
+        contained.append({"@type": "AdministrativeArea", "name": rec["parent_name"]})
+    if region:
+        contained.append({"@type": "AdministrativeArea", "name": region})
+    if country:
+        contained.append({"@type": "Country", "name": country})
+    for alias in rec.get("country_aliases") or []:
+        an = country_labels.get(alias, "")
+        if an:
+            contained.append({"@type": "Country", "name": an})
+
+    website_id = f"{_SITE_BASE_URL}/#website"
+    webpage_id = f"{canonical_url}#webpage"
+    place_id = f"{canonical_url}#place"
+    breadcrumb_id = f"{canonical_url}#breadcrumb"
+
+    website = {
+        "@type": "WebSite", "@id": website_id, "name": "Open Wine Map",
+        "url": f"{_SITE_BASE_URL}/", "inLanguage": locale,
+    }
+    webpage = {
+        "@type": "WebPage", "@id": webpage_id, "url": canonical_url, "name": name,
+        "description": description, "inLanguage": locale,
+        "isPartOf": {"@id": website_id}, "mainEntity": {"@id": place_id},
+        "breadcrumb": {"@id": breadcrumb_id},
+    }
+    based_on = _entity_source_docs(rec)
+    if based_on:
+        webpage["isBasedOn"] = based_on if len(based_on) > 1 else based_on[0]
+
+    place = {
+        "@type": "AdministrativeArea", "@id": place_id, "name": name,
+        "url": canonical_url, "description": description, "inLanguage": locale,
+    }
+    if _WIKIDATA_GI_TYPE:
+        place["additionalType"] = _WIKIDATA_GI_TYPE
+    bbox = rec.get("bbox")
+    if bbox and len(bbox) == 4:
+        # stored [minLng, minLat, maxLng, maxLat]; GeoShape box wants
+        # "minLat minLng maxLat maxLng".
+        place["geo"] = {"@type": "GeoShape", "box": f"{bbox[1]} {bbox[0]} {bbox[3]} {bbox[2]}"}
+    if contained:
+        place["containedInPlace"] = contained if len(contained) > 1 else contained[0]
+    # Parent → folded sub-denominations: the entity-graph half of surfacing the
+    # children. They have no indexable page, so the parent declares them here as
+    # the places it contains (inverse of containedInPlace).
+    if children:
+        place["containsPlace"] = [
+            {"@type": "AdministrativeArea", "name": c["name"],
+             "url": f"{_SITE_BASE_URL}{c['path']}"}
+            for c in children
+        ]
+    same_as = _entity_same_as(rec)
+    if same_as:
+        place["sameAs"] = same_as
+
+    breadcrumb = _entity_breadcrumb(slug, rec, canonical_url, locale, breadcrumb_id)
+    graph = {"@context": "https://schema.org",
+             "@graph": [website, webpage, place, breadcrumb]}
+    return (
+        '<script type="application/ld+json">'
+        + json.dumps(graph, ensure_ascii=False)
+        + "</script>"
+    )
+
+
+def _build_entity_meta(
+    slug, rec, locale, labels, region_labels, country_labels, grapes_info,
+    folded=False, children=None,
+) -> dict:
+    """Per-appellation <head> values.
+
+    index pages (`folded=False`): self-canonical, per-slug hreflang cluster, and
+    Place/BreadcrumbList JSON-LD. folded pages (`folded=True` — sub-denominations,
+    stubs, no-geometry, thin records): `noindex, follow` + self-canonical, no
+    JSON-LD. A folded page still boots the map for its deep-link, but is kept out
+    of the index as a near-duplicate of the parent. (Self-canonical, NOT
+    canonical->parent: Google treats noindex combined with a canonical to a
+    *different* URL as a contradictory signal and may ignore one; the parent is
+    indexed independently, and the folded page's empty SSR means no
+    near-duplicate-of-parent body is ever server-exposed, so the page simply
+    drops out of the index cleanly.)"""
+    name = rec.get("name") or slug
+    kind = rec.get("kind") or ""
+    region = region_labels.get(rec.get("region") or "", rec.get("region") or "")
+    country = country_labels.get(rec.get("country") or "", "")
+    self_url = f"{_SITE_BASE_URL}{_entity_path(locale, slug)}"
+    geo = ", ".join(x for x in (region, country) if x)
+    head_bits = " · ".join(x for x in (kind, geo) if x)
+    title = f"{name} — {head_bits} · Open Wine Map" if head_bits else f"{name} · Open Wine Map"
+    gnames = _entity_grape_names(rec, grapes_info, 4)
+    desc = f"{name}, {geo}" if geo else name
+    if kind:
+        desc = f"{desc} · {kind}"
+    if gnames:
+        desc = f"{desc}. {labels.get('facet_principal_h', '')}: {', '.join(gnames)}"
+    desc = _clamp(desc, 160)
+    if folded:
+        canonical_url = self_url
+        jsonld_html = ""
+        robots_meta = '<meta name="robots" content="noindex, follow">\n'
+    else:
+        canonical_url = self_url
+        jsonld_html = _build_entity_jsonld(
+            slug, rec, self_url, locale, country_labels, region, desc=desc, children=children
+        )
+        robots_meta = ""
+    return {
+        "canonical_url": canonical_url,
+        "page_title": esc(title),
+        "meta_description": esc(desc),
+        "og_title": esc(title),
+        "og_description": esc(desc),
+        "hreflang_block": _entity_hreflang_block(slug),
+        "jsonld_html": jsonld_html,
+        "robots_meta": robots_meta,
+    }
+
+
+def _entity_nav_html(slug, rec, *, locale, labels, aocs, children_map) -> str:
+    """Server-rendered cross-link nav for a per-appellation page (browse +
+    parent + children). Shown only to no-JS visitors and crawlers — hidden
+    under `html.js` alongside the SSR card — so it feeds internal links into
+    the link graph without touching the live map UI."""
+    parts = [f'<a href="{_browse_path(locale)}">{esc(labels["browse_all_label"])}</a>']
+    parent_slug = rec.get("parent_slug")
+    if parent_slug and parent_slug in aocs:
+        pname = aocs[parent_slug].get("name") or parent_slug
+        parts.append(
+            f'<span class="entity-nav-parent">{esc(labels["entity_nav_parent"])}: '
+            f'<a href="{_entity_path(locale, parent_slug)}">{esc(pname)}</a></span>'
+        )
+    kids = [k for k in (children_map or {}).get(slug, []) if k in aocs]
+    if kids:
+        links = " · ".join(
+            f'<a href="{_entity_path(locale, k)}">{esc(aocs[k].get("name") or k)}</a>'
+            for k in kids
+        )
+        parts.append(
+            f'<span class="entity-nav-children">'
+            f'{esc(labels["entity_nav_children"])}: {links}</span>'
+        )
+    return (
+        f'<nav class="entity-nav" aria-label="{esc(labels["browse_all_label"])}">'
+        + "".join(parts)
+        + "</nav>"
+    )
+
+
+# Self-contained CSS for the browse-index page (its own lightweight document,
+# not the map shell). Real braces — injected as a {browse_css} value, never
+# passed through str.format, so no brace doubling.
+_BROWSE_CSS = """
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#222; background:#fafafa; line-height:1.5; }
+a { color:#7A1F2B; }
+.browse-header { background:#7A1F2B; color:#fff; padding:14px 20px; overflow:hidden; }
+.browse-header a { color:#fff; text-decoration:none; }
+.browse-brand { font-size:18px; font-weight:600; display:inline-flex; align-items:center; gap:8px; }
+.browse-brand .brand-mark { filter:brightness(0) invert(1); }
+.browse-lang { float:right; }
+.browse-lang a { margin-left:10px; opacity:0.75; text-decoration:none; }
+.browse-lang a.active { opacity:1; font-weight:700; text-decoration:underline; }
+.browse-main { max-width:1100px; margin:0 auto; padding:24px 20px 64px; }
+.browse-main h1 { font-size:26px; margin:0 0 8px; }
+.browse-intro { color:#555; margin:0 0 8px; }
+.browse-intro a { color:#7A1F2B; }
+.browse-country { margin-top:28px; }
+.browse-country h2 { font-size:18px; margin:0 0 10px; border-bottom:2px solid #eadfe0; padding-bottom:4px; }
+.browse-list { list-style:none; padding:0; margin:0; column-width:250px; column-gap:28px; }
+.browse-list li { break-inside:avoid; padding:2px 0; }
+.browse-list li small { color:#999; }
+@media (prefers-color-scheme: dark) {
+  body { color:#ddd; background:#161616; }
+  a, .browse-intro a, .browse-country h2 { color:#e6a3ad; }
+  .browse-country h2 { border-bottom-color:#333; }
+  .browse-list li small { color:#777; }
+}
+"""
+
+
+_BROWSE_TEMPLATE = """<!doctype html>
+<html lang="{lang_attr}">
+<head>
+<meta charset="utf-8">
+<title>{page_title}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="{meta_description}">
+<meta name="theme-color" content="#7A1F2B">
+<link rel="canonical" href="{canonical_url}">
+{hreflang_block}
+<meta property="og:type" content="website">
+<meta property="og:title" content="{og_title}">
+<meta property="og:description" content="{meta_description}">
+<meta property="og:url" content="{canonical_url}">
+{jsonld_html}
+<style>{browse_css}</style>
+</head>
+<body>
+<header class="browse-header">
+{lang_switcher_html}
+<a class="browse-brand" href="{home_path}"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18"> Open Wine Map</a>
+</header>
+<main class="browse-main">
+<h1>{h1}</h1>
+<p class="browse-intro">{intro_html}</p>
+{body_html}
+</main>
+</body>
+</html>
+"""
+
+
+def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) -> str:
+    """One self-contained browse-index page per locale (`/<locale>/appellations/`)
+    listing every index-classified appellation as a real `<a>` link, grouped by
+    country. Fixes the link-graph orphan problem: the map homepage is a JS shell
+    with no crawlable links to entity pages, so this page is the static hub."""
+    n = len(index_slugs)
+    home_path = "/" if locale == "en" else f"/{locale}/"
+    canonical_url = f"{_SITE_BASE_URL}{_browse_path(locale)}"
+
+    by_country: dict[str, list[tuple[str, str, str]]] = {}
+    for slug in index_slugs:
+        rec = aocs.get(slug)
+        if not rec:
+            continue
+        cc = rec.get("country") or ""
+        by_country.setdefault(cc, []).append(
+            (rec.get("name") or slug, slug, rec.get("kind") or "")
+        )
+
+    def _country_name(cc: str) -> str:
+        return country_labels.get(cc, cc) or cc
+
+    sections = []
+    for cc in sorted(by_country, key=lambda c: _country_name(c).casefold()):
+        entries = sorted(by_country[cc], key=lambda e: e[0].casefold())
+        flag = _COUNTRY_FLAG_EMOJI.get(cc, "")
+        heading = f"{flag} {esc(_country_name(cc))} ({len(entries)})".strip()
+        items = "\n".join(
+            f'<li><a href="{_entity_path(locale, slug)}">{esc(name)}</a>'
+            + (f" <small>{esc(kind)}</small>" if kind else "")
+            + "</li>"
+            for name, slug, kind in entries
+        )
+        sections.append(
+            '<section class="browse-country">\n'
+            f"<h2>{heading}</h2>\n"
+            f'<ul class="browse-list">\n{items}\n</ul>\n'
+            "</section>"
+        )
+    body_html = "\n".join(sections)
+
+    map_link = f'<a href="{home_path}">{esc(labels["browse_map_link_label"])}</a>'
+    intro_html = labels["browse_intro_html"].format(n=n, map_link=map_link)
+    meta_description = esc(labels["browse_meta_description"].format(n=n))
+
+    jsonld_html = (
+        '<script type="application/ld+json">'
+        + json.dumps(
+            {
+                "@context": "https://schema.org",
+                "@type": "CollectionPage",
+                "name": labels["browse_all_label"],
+                "url": canonical_url,
+                "inLanguage": locale,
+                "isPartOf": {
+                    "@type": "WebSite",
+                    "name": "Open Wine Map",
+                    "url": f"{_SITE_BASE_URL}{home_path}",
+                },
+            },
+            ensure_ascii=False,
+        )
+        + "</script>"
+    )
+
+    return _BROWSE_TEMPLATE.format(
+        lang_attr=locale,
+        page_title=esc(labels["browse_title"]),
+        meta_description=meta_description,
+        canonical_url=canonical_url,
+        hreflang_block=_browse_hreflang_block(),
+        og_title=esc(labels["browse_title"]),
+        jsonld_html=jsonld_html,
+        browse_css=_BROWSE_CSS,
+        lang_switcher_html=_browse_lang_switcher(locale, labels["browse_aria"]),
+        home_path=home_path,
+        h1=esc(labels["browse_all_label"]),
+        intro_html=intro_html,
+        body_html=body_html,
+    )
+
+
+# Per-slug record fields the map needs at STARTUP — the sidebar appellation
+# list, search, facet filtering, fly-to, the active-filter chips, and the
+# map-click stack dedup. Everything else on a record is panel-open-only and
+# ships lazily as /data/d/<locale>/<slug>.json (Phase 3 data-bundle diet), so
+# the startup bundle drops from ~13 MB to ~3 MB. This set is the contract
+# between the Python emitter and the JS app: a field read by any startup path
+# — buildAppellationFacet / searchableText / matchesClient / fitToFiltered /
+# localityRank / renderActiveFilters→grapeName / the map-click geom_source
+# guard — MUST be listed here, or the sidebar/map silently breaks. 04_build_
+# maps.py imports this to emit the complement as the per-slug panel JSON.
+STARTUP_AOCS_FIELDS = frozenset({
+    "name", "name_latin", "kind", "region", "country", "is_wine",
+    "styles", "styles_simple", "classifications",
+    "grapes_principal", "grapes_accessory", "grapes_all",
+    "bbox", "bbox_villages", "geom_source",
+})
 
 
 def render(
@@ -763,16 +1294,31 @@ def render(
     facet_styles_tree: list[dict],
     style_descendants: dict[str, list[str]],
     facet_styles_simple: list[tuple[str, int]],
+    facet_class_tree: list[dict],
+    class_descendants: dict[str, list[str]],
     facet_regions: list[tuple[str, int]],
     locale: str = "fr",
     grapes_info: dict | None = None,
     styles_info: dict | None = None,
     vivc_by_slug: dict | None = None,
     area_quartiles: tuple[float, float] = (0.0, 1.0),
-) -> str:
+    index_slugs: list[str] | None = None,
+    fold_slugs: list[str] | None = None,
+    entity_out_dir=None,
+    children_map: dict[str, list[str]] | None = None,
+    build_date: str = "",
+) -> tuple[str, str, bytes, dict[str, str]]:
     """Render the full map page (index.html) for one locale.
 
-    `aocs` is a {slug: {name, kind, region, ...}} dict serialised inline.
+    Returns `(html, data_filename, data_bytes, entity_pages)`, where
+    `entity_pages` is `{slug: html}` for each `entity_slugs` member — the
+    pre-rendered per-appellation pages reusing this locale's shell + data bundle
+    (empty unless `entity_slugs` is given). The large per-locale `aocs`
+    and `grapes_info` blobs are NOT inlined; they are serialised into
+    `data_bytes` (a `window.__OWM_DATA=…;` script) which the caller writes to
+    `wiki/data/<data_filename>`, referenced by a render-blocking `<script>`.
+
+    `aocs` is a {slug: {name, kind, region, ...}} dict (externalised, see above).
     `facet_*` lists are pre-sorted (by frequency desc, then alpha) and
     rendered as filter checkbox groups. `locale` selects the gettext catalog
     used for UI chrome; the data inside `aocs` is not translated.
@@ -801,10 +1347,20 @@ def render(
         "red": labels["style_simple_red"],
         "sparkling": labels["style_simple_sparkling"],
         "sweet": labels["style_simple_sweet"],
+        "oxidative": labels["style_simple_oxidative"],
         "other": labels["style_simple_other"],
     }
-    from .style_taxonomy import bucket_descendants
+    from .style_taxonomy import bucket_descendants, style_search_terms
     simple_style_buckets = bucket_descendants()
+    # {canonical style slug -> [searchable synonym terms]} — the wine-style
+    # analogue of grape_synonyms; lets the omnisearch find a style by a local
+    # name (fondillón → rancio, eiswein → icewine, vinsanto → vin-santo).
+    style_search_index = style_search_terms()
+    # Classification facet (aging / Prädikat / selection tiers): group labels are
+    # gettext-translated; tier labels stay native (Crianza/Spätlese/Aszú).
+    from . import aging_taxonomy
+    class_labels = aging_taxonomy.build_tier_labels(_)
+    class_search_index = aging_taxonomy.tier_search_terms()
 
     vivc_groups: dict[int, list[str]] = {}
     for slug, info in (grapes_info or {}).items():
@@ -812,6 +1368,12 @@ def render(
         if vid is None:
             continue
         vivc_groups.setdefault(vid, []).append(slug)
+    # Sort member lists so the VIVC-derived structures (siblings / synonyms /
+    # search aliases) are reproducible across builds — grapes_info iteration
+    # order is set-derived, so without this the inline blobs vary build-to-build
+    # and the homepage HTML is never a no-op rerun.
+    for _members in vivc_groups.values():
+        _members.sort()
     vivc_siblings: dict[str, list[str]] = {}
     for members in vivc_groups.values():
         if len(members) < 2:
@@ -895,6 +1457,9 @@ def render(
 
     canonical_path = "/" if locale == "en" else f"/{locale}/"
     canonical_url = f"{_SITE_BASE_URL}{canonical_path}"
+    home_robots_meta = ""
+    home_hreflang_block = _HOMEPAGE_HREFLANG
+    home_page_title = labels["page_title"]
     og_locale = _OG_LOCALES[locale]
     og_alt_locales_html = "\n".join(
         f'<meta property="og:locale:alternate" content="{_OG_LOCALES[other]}">'
@@ -915,22 +1480,55 @@ def render(
         + "</script>"
     )
 
-    return _TEMPLATE.format(
+    # The two large per-locale reference blobs (AOCS ~12 MB, grape tooltips
+    # ~0.6 MB) ship in an external hashed /data/ script rather than inline, so
+    # the HTML shell is small and the data caches once per locale across every
+    # page that locale will serve (homepages now; per-appellation pages later).
+    # Serialise after the grapes_info mutation above so the bianchello note is
+    # included. A render-blocking <script> assigns window.__OWM_DATA before the
+    # main bundle runs, so the app reads it synchronously with no boot re-thread.
+    # `aocs` keeps its build order (deterministic, and it drives the sidebar
+    # appellation order — do NOT re-sort it); `grapes_info` is a by-key lookup
+    # whose dict order is set-derived and varies across runs, so sort its keys
+    # to keep the hashed filename stable (reproducible build / long-cacheable).
+    # Only the STARTUP_AOCS_FIELDS subset ships inline; the heavy panel payload
+    # (summary, terroir facts, sources, grape display-names, …) loads lazily
+    # per slug from /data/d/<locale>/<slug>.json (emitted by 04_build_maps.py).
+    # The full `aocs` is still used above for the server-rendered entity cards.
+    startup_aocs = {
+        slug: {k: v for k, v in rec.items() if k in STARTUP_AOCS_FIELDS}
+        for slug, rec in aocs.items()
+    }
+    data_payload = (
+        'window.__OWM_DATA={"aocs":'
+        + json.dumps(startup_aocs, ensure_ascii=False)
+        + ',"grapes_info":'
+        + json.dumps(grapes_info or {}, ensure_ascii=False, sort_keys=True)
+        + "};"
+    )
+    data_bytes = data_payload.encode("utf-8")
+    data_filename = f"aocs.{locale}.{hashlib.sha256(data_bytes).hexdigest()[:10]}.js"
+    aocs_data_src = f"/data/{data_filename}"
+
+    # Slots split two ways. script_kwargs fill the externalised app <script>
+    # (one cached /assets/app.<locale>.<hash>.js shared by every page this
+    # locale serves); page_shell + the per-call slots fill the lightweight page
+    # shell (head + chrome + asset refs). The CSS carries no fields and ships as
+    # one shared, content-hashed stylesheet for the whole corpus. So each of the
+    # ~11.6k pages is a small shell referencing three cached bundles
+    # (data + app + style) instead of inlining ~450 KB.
+    script_kwargs = dict(
         lang_attr=locale,
-        labels=labels,
-        canonical_url=canonical_url,
-        og_locale=og_locale,
-        og_alt_locales_html=og_alt_locales_html,
-        jsonld_html=jsonld_html,
-        lang_switcher_html=_lang_switcher(locale, labels["lang_switcher_aria"]),
-        about_dialog_html=_build_about_dialog(labels),
-        sidebar_disclaimer_html=_build_sidebar_disclaimer(labels),
         github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
         source_block=source_block,
-        aocs_json=json.dumps(aocs, ensure_ascii=False),
+        source_type=source_type,
         styles_tree_json=json.dumps(facet_styles_tree, ensure_ascii=False),
         style_descendants_json=json.dumps(style_descendants, ensure_ascii=False),
         styles_simple_json=json.dumps(facet_styles_simple, ensure_ascii=False),
+        class_tree_json=json.dumps(facet_class_tree, ensure_ascii=False),
+        class_descendants_json=json.dumps(class_descendants, ensure_ascii=False),
+        class_labels_json=json.dumps(class_labels, ensure_ascii=False),
+        class_search_terms_json=json.dumps(class_search_index, ensure_ascii=False, sort_keys=True),
         principal_json=json.dumps(facet_principal_merged, ensure_ascii=False),
         accessory_json=json.dumps(facet_accessory_merged, ensure_ascii=False),
         grapes_all_json=json.dumps(facet_grapes_all_merged, ensure_ascii=False),
@@ -939,27 +1537,175 @@ def render(
         simple_style_labels_json=json.dumps(simple_style_labels, ensure_ascii=False),
         simple_style_buckets_json=json.dumps(simple_style_buckets, ensure_ascii=False),
         labels_json=json.dumps(labels, ensure_ascii=False),
-        grapes_info_json=json.dumps(grapes_info or {}, ensure_ascii=False),
         grape_search_index_json=json.dumps(grape_search_index, ensure_ascii=False),
-        vivc_siblings_json=json.dumps(vivc_siblings, ensure_ascii=False),
-        slug_to_canonical_json=json.dumps(slug_to_canonical, ensure_ascii=False),
-        grape_synonyms_json=json.dumps(grape_synonyms, ensure_ascii=False),
+        vivc_siblings_json=json.dumps(vivc_siblings, ensure_ascii=False, sort_keys=True),
+        slug_to_canonical_json=json.dumps(slug_to_canonical, ensure_ascii=False, sort_keys=True),
+        grape_synonyms_json=json.dumps(grape_synonyms, ensure_ascii=False, sort_keys=True),
+        style_search_terms_json=json.dumps(style_search_index, ensure_ascii=False, sort_keys=True),
         styles_info_json=json.dumps(styles_info or {}, ensure_ascii=False),
         region_labels_json=json.dumps(region_labels, ensure_ascii=False),
         country_labels_json=json.dumps(country_labels, ensure_ascii=False),
         country_flag_emoji_json=json.dumps(_COUNTRY_FLAG_EMOJI, ensure_ascii=False),
-        source_type=source_type,
     )
+
+    style_body = _STYLE_CSS.replace("{{", "{").replace("}}", "}")
+    style_bytes = style_body.encode("utf-8")
+    style_filename = f"style.{hashlib.sha256(style_bytes).hexdigest()[:10]}.css"
+    style_href = f"/assets/{style_filename}"
+
+    app_body = _render_app_js(script_kwargs)
+    app_bytes = app_body.encode("utf-8")
+    app_filename = f"app.{locale}.{hashlib.sha256(app_bytes).hexdigest()[:10]}.js"
+    app_src = f"/assets/{app_filename}"
+
+    browse_path = _browse_path(locale)
+    # `about_dialog_html` is per-fill (NOT in page_shell): the homepage variant
+    # carries the data-updated date, the entity variant doesn't — keeping the
+    # build date out of the ~11.6k entity pages so a rebuild only churns the 5
+    # homepages, not the whole corpus.
+    page_shell = dict(
+        lang_attr=locale,
+        labels=labels,
+        og_locale=og_locale,
+        og_alt_locales_html=og_alt_locales_html,
+        lang_switcher_html=_lang_switcher(locale, labels["lang_switcher_aria"]),
+        sidebar_disclaimer_html=_build_sidebar_disclaimer(labels),
+        browse_path=browse_path,
+        aocs_data_src=aocs_data_src,
+        style_href=style_href,
+        app_src=app_src,
+    )
+
+    _sidebar_html = _render_sidebar()
+
+    def _fill(**per_page) -> str:
+        return _PAGE_TEMPLATE.replace("%%SIDEBAR%%", _sidebar_html).format(
+            **page_shell, **per_page
+        )
+
+    home_about_html = _build_about_dialog(
+        labels,
+        browse_path=browse_path,
+        data_updated_html=(
+            labels["about_updated_html"].format(date=esc(build_date)) if build_date else ""
+        ),
+    )
+    html = _fill(
+        canonical_url=canonical_url,
+        jsonld_html=jsonld_html,
+        page_title=home_page_title,
+        meta_description=labels["meta_description"],
+        og_title=home_page_title,
+        og_description=labels["meta_description"],
+        hreflang_block=home_hreflang_block,
+        robots_meta=home_robots_meta,
+        ssr_content="",
+        about_dialog_html=home_about_html,
+        # Homepage has no appellation SSR card, so the brand wordmark is the
+        # page's single <h1>.
+        brand_tag="h1",
+    )
+
+    # Per-appellation pages are streamed straight to disk (one per slug) rather
+    # than accumulated in a dict — at full-corpus scale the in-memory set would
+    # be gigabytes. index slugs get a full, indexable card; fold slugs get a
+    # noindex shell (self-canonical) that still boots the map. Both carry a
+    # crawlable cross-link nav (browse + parent + children).
+    n_index = n_fold = 0
+    if entity_out_dir is not None and (index_slugs or fold_slugs):
+        ctx = RenderCtx(
+            locale=locale, labels=labels, region_labels=region_labels,
+            country_labels=country_labels, country_flag_emoji=_COUNTRY_FLAG_EMOJI,
+            grapes_info=grapes_info or {}, styles_info=styles_info or {},
+            style_labels=style_labels, github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
+        )
+        entity_about_html = _build_about_dialog(labels, browse_path=browse_path)
+
+        def _emit(slug: str, meta: dict, ssr: str, has_card: bool) -> None:
+            page = _fill(
+                canonical_url=meta["canonical_url"],
+                jsonld_html=meta["jsonld_html"],
+                page_title=meta["page_title"],
+                meta_description=meta["meta_description"],
+                og_title=meta["og_title"],
+                og_description=meta["og_description"],
+                hreflang_block=meta["hreflang_block"],
+                robots_meta=meta["robots_meta"],
+                ssr_content=ssr,
+                about_dialog_html=entity_about_html,
+                # Index pages carry the appellation <h1> in their SSR card, so
+                # the brand wordmark demotes to a <p>; fold pages have no card
+                # (only the cross-link nav) so the brand stays their single
+                # <h1>. The nav makes `ssr` non-empty for folds too, so the
+                # card presence is tracked explicitly rather than via truthiness.
+                brand_tag="p" if has_card else "h1",
+            )
+            d = entity_out_dir / slug
+            d.mkdir(parents=True, exist_ok=True)
+            (d / "index.html").write_text(page, encoding="utf-8")
+
+        for slug in index_slugs or []:
+            rec = aocs.get(slug)
+            if not rec:
+                continue
+            kids = [
+                {"name": aocs[k].get("name") or k, "path": _entity_path(locale, k),
+                 "kind": aocs[k].get("kind") or ""}
+                for k in (children_map or {}).get(slug, [])
+                if k in aocs
+            ]
+            meta = _build_entity_meta(
+                slug, rec, locale, labels, region_labels, country_labels,
+                grapes_info or {}, folded=False, children=kids,
+            )
+            nav = _entity_nav_html(
+                slug, rec, locale=locale, labels=labels, aocs=aocs,
+                children_map=children_map,
+            )
+            _emit(slug, meta, render_content_block(rec, slug, ctx, children=kids) + "\n" + nav, True)
+            n_index += 1
+
+        for slug in fold_slugs or []:
+            rec = aocs.get(slug)
+            if not rec:
+                continue
+            meta = _build_entity_meta(
+                slug, rec, locale, labels, region_labels, country_labels,
+                grapes_info or {}, folded=True,
+            )
+            nav = _entity_nav_html(
+                slug, rec, locale=locale, labels=labels, aocs=aocs,
+                children_map=children_map,
+            )
+            _emit(slug, meta, nav, False)
+            n_fold += 1
+
+        if index_slugs:
+            browse_html = _render_browse_page(
+                locale=locale, labels=labels, country_labels=country_labels,
+                aocs=aocs, index_slugs=index_slugs,
+            )
+            bd = entity_out_dir / "appellations"
+            bd.mkdir(parents=True, exist_ok=True)
+            (bd / "index.html").write_text(browse_html, encoding="utf-8")
+
+    assets = {
+        "data": (data_filename, data_bytes),
+        "style": (style_filename, style_bytes),
+        "app": (app_filename, app_bytes),
+    }
+    return html, assets, n_index, n_fold
 
 
 _TEMPLATE = """<!doctype html>
 <html lang="{lang_attr}">
 <head>
 <meta charset="utf-8">
-<title>{labels[page_title]}</title>
+<title>{page_title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="{labels[meta_description]}">
-<meta name="theme-color" content="#7A1F2B" media="(prefers-color-scheme: light)">
+<meta name="description" content="{meta_description}">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+{robots_meta}<meta name="theme-color" content="#7A1F2B" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
@@ -967,25 +1713,21 @@ _TEMPLATE = """<!doctype html>
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="canonical" href="{canonical_url}">
-<link rel="alternate" hreflang="en" href="https://www.openwinemap.com/">
-<link rel="alternate" hreflang="fr" href="https://www.openwinemap.com/fr/">
-<link rel="alternate" hreflang="es" href="https://www.openwinemap.com/es/">
-<link rel="alternate" hreflang="nl" href="https://www.openwinemap.com/nl/">
-<link rel="alternate" hreflang="x-default" href="https://www.openwinemap.com/">
+{hreflang_block}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Open Wine Map">
-<meta property="og:title" content="{labels[page_title]}">
-<meta property="og:description" content="{labels[meta_description]}">
+<meta property="og:title" content="{og_title}">
+<meta property="og:description" content="{og_description}">
 <meta property="og:url" content="{canonical_url}">
 <meta property="og:locale" content="{og_locale}">
 <meta property="og:image" content="https://www.openwinemap.com/assets/social-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="{labels[page_title]}">
+<meta property="og:image:alt" content="{og_title}">
 {og_alt_locales_html}
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{labels[page_title]}">
-<meta name="twitter:description" content="{labels[meta_description]}">
+<meta name="twitter:title" content="{og_title}">
+<meta name="twitter:description" content="{og_description}">
 <meta name="twitter:image" content="https://www.openwinemap.com/assets/social-card.png">
 {jsonld_html}
 <script>
@@ -1028,6 +1770,11 @@ _TEMPLATE = """<!doctype html>
     var mode = 'simple';
     try {{ if (localStorage.getItem('view_mode') === 'advanced') mode = 'advanced'; }} catch (e) {{}}
     document.documentElement.classList.add('mode-' + mode);
+    // Mark JS available before paint so the server-rendered #ssr-content card
+    // can be hidden via CSS (rule below). The app swaps it for the live panel,
+    // so JS users skip the brief boot flash; non-JS visitors and non-rendering
+    // crawlers still receive the card in the HTML.
+    document.documentElement.classList.add('js');
   }})();
   (function () {{
     // Resolve the effective theme before first paint so dark mode never
@@ -1040,13 +1787,22 @@ _TEMPLATE = """<!doctype html>
     if (dark) document.documentElement.classList.add('theme-dark');
   }})();
 </script>
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="/assets/vendor/maplibre-gl-4.7.1.css">
 <style>
   html, body {{ margin:0; padding:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14px }}
+  /* Hide the server-rendered card once JS is available (class set pre-paint):
+     the app swaps it for the live panel, so JS users skip the boot-time flash;
+     non-JS visitors and non-rendering crawlers still receive it in the HTML. */
+  html.js #ssr-content, html.js .entity-nav {{ display:none }}
+  /* No-JS / crawler cross-link nav (browse + parent + children). Hidden once
+     the map boots; it exists to feed internal links into the link graph. */
+  .entity-nav {{ padding:12px 16px; font-size:13px; line-height:1.7; border-top:1px solid #eee; background:#fafafa; color:#333 }}
+  .entity-nav a {{ color:#7A1F2B }}
+  .entity-nav .entity-nav-parent, .entity-nav .entity-nav-children {{ display:block; margin-top:4px; color:#555 }}
   #app {{ display:flex; height:100vh }}
   #sidebar {{ width:300px; flex:0 0 300px; background:#1a1a1a; color:#eee; overflow-y:auto; border-right:1px solid #333 }}
-  #sidebar h1 {{ font-size:15px; padding:14px 16px 4px; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px }}
-  #sidebar h1 .brand-mark {{ width:18px; height:18px; flex:0 0 18px; display:inline-block }}
+  #sidebar .brand-title {{ font-size:15px; padding:14px 16px 4px; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px }}
+  #sidebar .brand-title .brand-mark {{ width:18px; height:18px; flex:0 0 18px; display:inline-block }}
   #sidebar .subtitle {{ font-size:11px; color:#888; padding:0 16px 10px; border-bottom:1px solid #333 }}
   #sidebar h2 {{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#888; padding:14px 16px 4px; margin:0 }}
   /* `:not(.grape-search)` excludes the chip-filter's typeahead input —
@@ -1054,9 +1810,30 @@ _TEMPLATE = """<!doctype html>
      applies the 16/16 horizontal margin. Without the exclusion the
      catch-all rule stacks margin on top of the wrap's, leaving the
      grape input 32px narrower than the appellation search. */
-  #sidebar input[type=text]:not(.grape-search) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; border-radius:3px; font-size:13px }}
+  #sidebar input[type=text]:not(.grape-search):not(.omni-input) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; border-radius:3px; font-size:13px }}
   #sidebar input[type=text]:focus {{ outline:none; border-color:#934050 }}
   #sidebar input[type=text]:focus-visible {{ outline:2px solid #fff8e8; outline-offset:1px; border-color:#934050 }}
+  /* Search-UX lab variants (a/b/c): unified omnisearch box + grouped dropdown
+     + the "main grape only" sub-option. Inert on canonical pages (no markup). */
+  .visually-hidden {{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }}
+  #omnisearch {{ position:relative; padding:8px 16px; border-bottom:1px solid #333 }}
+  .omni-input {{ width:100%; box-sizing:border-box; padding:8px 10px; background:#222; color:#eee; border:1px solid #444; border-radius:4px; font-size:13.5px }}
+  .omni-suggestions {{ position:absolute; left:16px; right:16px; top:calc(100% - 2px); z-index:60; max-height:min(60vh, 360px); overflow-y:auto; background:#1a1a1a; border:1px solid #3a3a3a; border-radius:3px; box-shadow:0 6px 16px rgba(0,0,0,0.45) }}
+  .omni-suggestions[hidden] {{ display:none }}
+  .omni-group-header {{ position:sticky; top:0; padding:4px 8px; background:#202020; color:#a0a0a0; font-size:9.5px; text-transform:uppercase; letter-spacing:0.09em }}
+  .omni-suggestions .suggestion {{ display:flex; align-items:center; gap:6px; padding:6px 8px; cursor:pointer; font-size:12.5px; color:#ddd; border-bottom:1px solid #2a2a2a }}
+  .omni-suggestions .suggestion:last-child {{ border-bottom:none }}
+  .omni-suggestions .suggestion.active, .omni-suggestions .suggestion:hover {{ background:#2a1f25 }}
+  .omni-suggestions .suggestion .name {{ flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
+  .omni-suggestions .suggestion .sub {{ color:#999; font-style:italic; font-size:11px; flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
+  .omni-suggestions .suggestion .count {{ margin-left:auto; color:#9a9a9a; font-size:11px; font-variant-numeric:tabular-nums; flex:0 0 auto }}
+  /* No-match feedback row (variant fix: the dropdown used to silently hide). */
+  .omni-empty {{ padding:10px 12px; color:#9a9a9a; font-size:12.5px; font-style:italic }}
+  .omni-subopt {{ padding:2px 16px 8px; border-bottom:1px solid #333 }}
+  .omni-subopt label {{ display:flex; align-items:center; gap:6px; font-size:12px; color:#bbb; cursor:pointer }}
+  /* "Main grape only" relocated inside the Grapes facet (variant c). */
+  .grape-subopt {{ padding:6px 16px 4px; border-bottom:none }}
+  .omni-subopt input {{ accent-color:#934050; flex:0 0 auto }}
   #lang-switcher {{ display:flex; gap:2px; padding:6px 12px 8px; border-bottom:1px solid #333 }}
   #lang-switcher a {{ color:#888; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; text-decoration:none; padding:3px 8px; border-radius:3px }}
   #lang-switcher a:hover {{ color:#fff }}
@@ -1203,6 +1980,16 @@ _TEMPLATE = """<!doctype html>
   #panel .aoc-card + .aoc-card {{ margin-top:24px; padding-top:20px; border-top:1px dashed #ccc }}
   #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid #934050 }}
   #panel .aoc-card.subordinate h1 {{ font-size:16px; color:#444; border-bottom-color:#ccc }}
+  /* First-open skeleton: real title shows from startup data; the body shimmers
+     until the lazy panel-detail JSON lands (Phase 3 data-bundle diet). */
+  #panel .aoc-skeleton .skel {{ display:block; border-radius:4px; height:13px; margin:9px 0;
+    background:linear-gradient(90deg,#ececec 25%,#f6f6f6 37%,#ececec 63%);
+    background-size:400% 100%; animation:skel-shimmer 1.3s ease infinite }}
+  #panel .aoc-skeleton .skel-meta {{ width:55%; height:11px; margin:6px 0 0 }}
+  #panel .aoc-skeleton .skel-h {{ width:34%; height:11px; margin:20px 0 10px }}
+  #panel .aoc-skeleton .skel-line.short {{ width:68% }}
+  @keyframes skel-shimmer {{ 0% {{ background-position:100% 0 }} 100% {{ background-position:0 0 }} }}
+  @media (prefers-reduced-motion: reduce) {{ #panel .aoc-skeleton .skel {{ animation:none }} }}
   #panel .sources {{ margin:4px 0 0; padding-left:18px; font-size:12.5px; color:#3a3a3a }}
   #panel .sources li {{ margin:3px 0 }}
   #panel .sources code {{ font-size:11px; color:#888 }}
@@ -1267,6 +2054,8 @@ _TEMPLATE = """<!doctype html>
     .facet input[type=checkbox] {{ width:18px; height:18px }}
     .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
     #actions button {{ min-height:36px }}
+    /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */
+    .omni-input {{ font-size:16px }}
   }}
   #sidebar-footer {{ padding:12px 16px 16px; margin-top:8px; border-top:1px solid #2a2a2a; font-size:11px; color:#888; text-align:center }}
   #sidebar-footer a {{ color:#888; text-decoration:none }}
@@ -1343,6 +2132,7 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel .stack-header {{ border-bottom-color:#333 }}
   html.theme-dark #panel .aoc-card + .aoc-card {{ border-top-color:#444 }}
   html.theme-dark #panel .aoc-card.subordinate h1 {{ color:#bbb; border-bottom-color:#444 }}
+  html.theme-dark #panel .aoc-skeleton .skel {{ background:linear-gradient(90deg,#2b2b2b 25%,#363636 37%,#2b2b2b 63%); background-size:400% 100% }}
   html.theme-dark #panel .sources, html.theme-dark #panel .facts-sub-h {{ color:#bbb }}
   html.theme-dark #panel ul.facts {{ color:#e0e0e0 }}
   html.theme-dark #panel .translation-attr, html.theme-dark #panel ul.facts .wiki-attr {{ color:#a3a3a3 }}
@@ -1402,9 +2192,67 @@ _TEMPLATE = """<!doctype html>
 </head>
 <body>
 <a class="skip-link" href="#map">{labels[skip_to_map]}</a>
-<div id="app">
-  <aside id="sidebar" data-nosnippet aria-label="{labels[sidebar_aria]}">
-    <h1><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</h1>
+<div id="app">{ssr_content}
+  %%SIDEBAR%%
+
+  <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}">☰</button>
+
+  <main id="map" tabindex="-1" aria-label="{labels[map_aria]}"></main>
+
+  <div id="panel" tabindex="-1" role="dialog" aria-modal="false" aria-label="{labels[panel_aria]}">
+    <button class="close" type="button" aria-label="{labels[close_aria]}">×</button>
+    <div class="body" id="panel-body"></div>
+  </div>
+
+  {about_dialog_html}
+</div>
+
+<script src="/assets/vendor/maplibre-gl-4.7.1.js"></script>
+<script src="/assets/vendor/pmtiles-3.2.0.js"></script>
+<!-- Per-locale data bundle (appellation records + grape tooltips). Render-
+     blocking on purpose so window.__OWM_DATA is defined before the app below
+     reads it; hashed filename = immutable, long-cacheable, shared across every
+     page of this locale. -->
+<script src="{aocs_data_src}"></script>
+<script src="{app_src}"></script>
+</body>
+</html>
+"""
+
+
+def _split_template(t: str) -> tuple[str, str]:
+    """Lift the inline CSS out of the monolithic template so it ships as a
+    shared, content-hashed /assets/ file. The app JS lives in
+    `assets/app.js` (a real, lint-able source file loaded by `_render_app_js`);
+    the template references both assets via {style_href} / {app_src}.
+
+    Returns (page_template, style_css):
+      * page_template references the two assets via {style_href} / {app_src}
+        (and still carries the per-page + per-locale head/chrome fields).
+      * style_css is the CSS body (doubled braces, no format fields).
+
+    The <style> delimiter is unique in the template (one <style>, no '</style>'
+    inside its body); a lossless-reconstruction assert guards against drift."""
+    style_open, style_close = "<style>", "</style>"
+    pre, _r = t.split(style_open, 1)
+    css, post = _r.split(style_close, 1)
+    if pre + style_open + css + style_close + post != t:
+        raise AssertionError("map_template: _split_template is not lossless")
+    page_template = pre + '<link rel="stylesheet" href="{style_href}">' + post
+    return page_template, css
+
+
+_PAGE_TEMPLATE, _STYLE_CSS = _split_template(_TEMPLATE)
+
+
+# Production sidebar, split into composable pieces (the `_LAB_` prefix is
+# historical — these were the shared chrome of the lab search variants):
+#   _LAB_HEAD_TOP        brand → theme → status → omnisearch (+ a visually-hidden
+#                        aria-live region announcing result counts / no-match)
+#   _LAB_ACTIVE          the active-filters chip tray + reset
+#   _LAB_LEGEND_FOOTER   legend + footer (closes the <aside>)
+_LAB_HEAD_TOP = """<aside id="sidebar" data-nosnippet aria-label="{labels[sidebar_aria]}">
+    <{brand_tag} class="brand-title"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</{brand_tag}>
     <div class="subtitle">{labels[subtitle]}</div>
     {lang_switcher_html}
     <div id="theme-toggle" role="group" aria-label="{labels[theme_h]}">
@@ -1414,55 +2262,23 @@ _TEMPLATE = """<!doctype html>
     </div>
     <div id="status" role="status" aria-live="polite" aria-atomic="true">{labels[loading]}</div>
 
-    <div id="mode-toggle" role="group" aria-label="{labels[view_mode_h]}">
-      <button type="button" data-mode="simple" class="mode-btn active" aria-pressed="true">{labels[view_mode_simple]}</button>
-      <button type="button" data-mode="advanced" class="mode-btn" aria-pressed="false">{labels[view_mode_advanced]}</button>
+    <div id="omnisearch" role="search">
+      <input type="text" id="omni" class="omni-input" placeholder="{labels[omnisearch_placeholder]}" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="omni-suggestions" aria-label="{labels[search_h]}">
+      <div id="omni-suggestions" class="omni-suggestions" role="listbox" hidden></div>
+      <span id="omni-live" class="visually-hidden" role="status" aria-live="polite"></span>
     </div>
+"""
 
+
+_LAB_ACTIVE = """
     <div id="active-filters" aria-label="{labels[active_filters_aria]}">
       <div id="active-filters-chips"></div>
       <button id="reset" type="button">{labels[reset]}</button>
     </div>
+"""
 
-    <details open data-modes="simple" data-facet="styles">
-      <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
-      <div class="facet" id="facet-styles-simple"></div>
-    </details>
 
-    <details open data-modes="advanced" data-facet="styles">
-      <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
-      <div class="facet" id="facet-styles"></div>
-    </details>
-
-    <details open data-modes="simple" data-facet="grapes">
-      <summary><span class="facet-label">{labels[facet_grapes_h]}</span><span class="facet-badge"></span></summary>
-      <div class="grape-chip-filter" data-role="all"></div>
-    </details>
-
-    <details data-modes="advanced" data-facet="grapes">
-      <summary><span class="facet-label">{labels[facet_principal_h]}</span><span class="facet-badge"></span></summary>
-      <div class="grape-chip-filter" data-role="principal"></div>
-    </details>
-
-    <details data-modes="advanced" data-facet="accessory">
-      <summary><span class="facet-label">{labels[facet_accessory_h]}</span><span class="facet-badge"></span></summary>
-      <div class="grape-chip-filter" data-role="accessory"></div>
-    </details>
-
-    <details open data-facet="appellations">
-      <summary><span class="facet-label">{labels[facet_appellations_h]}</span><span class="facet-badge"></span></summary>
-      <input type="text" id="q" class="facet-search" placeholder="{labels[search_appellation_placeholder]}" autocomplete="off">
-      <div class="facet facet-appellations" id="facet-appellations"></div>
-    </details>
-
-    <div id="igp-toggle">
-      <label><input type="checkbox" id="show-igp"> <span class="name">{labels[show_igp_label]}</span></label>
-    </div>
-
-    <div id="spirits-toggle" data-modes="advanced">
-      <label><input type="checkbox" id="show-spirits"> <span class="name">{labels[show_spirits_label]}</span></label>
-    </div>
-
+_LAB_LEGEND_FOOTER = """
     <details id="legend" open>
       <summary>{labels[legend_h]}</summary>
       <div class="legend-body">
@@ -1480,2067 +2296,97 @@ _TEMPLATE = """<!doctype html>
     <div id="sidebar-footer">
       {sidebar_disclaimer_html}
       <div id="sidebar-footer-links">
+        <a href="{browse_path}" id="browse-link">{labels[browse_all_label]}</a>
+        <span class="sep">·</span>
         <a href="#" id="about-link">{labels[about_link_label]}</a>
       </div>
     </div>
 
-  </aside>
-
-  <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}">☰</button>
-
-  <main id="map" tabindex="-1" aria-label="{labels[map_aria]}"></main>
-
-  <div id="panel" tabindex="-1" role="dialog" aria-modal="false" aria-label="{labels[panel_aria]}">
-    <button class="close" type="button" aria-label="{labels[close_aria]}">×</button>
-    <div class="body" id="panel-body"></div>
-  </div>
-
-  {about_dialog_html}
-</div>
-
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js"></script>
-<script>
-  const AOCS = {aocs_json};
-  const FACET_STYLES_TREE = {styles_tree_json};
-  const STYLE_DESCENDANTS = {style_descendants_json};
-  const FACET_STYLES_SIMPLE = {styles_simple_json};
-  const FACET_PRINCIPAL = {principal_json};
-  const FACET_ACCESSORY = {accessory_json};
-  const FACET_GRAPES_ALL = {grapes_all_json};
-  const FACET_REGIONS = {regions_json};
-  const STYLE_LABELS = {style_labels_json};
-  const SIMPLE_STYLE_LABELS = {simple_style_labels_json};
-  const SIMPLE_STYLE_BUCKETS = {simple_style_buckets_json};
-  const LABELS = {labels_json};
-  const GITHUB_NEW_ISSUE_URL = "{github_new_issue_url}";
-  // Per-jurisdiction regulator-published specification document name,
-  // in the regulator's own language. Used by the stub-message block
-  // when no source document has been located for an appellation yet.
-  const STUB_DOC_NAMES = {{
-    fr: 'cahier des charges',
-    es: 'pliego de condiciones',
-    pt: 'caderno de especificações',
-    it: 'disciplinare di produzione',
-    at: 'Produktspezifikation',
-    si: 'specifikacija proizvoda',
-    hr: 'specifikacija proizvoda',
-    ro: 'caiet de sarcini',
-  }};
-  const GRAPES_INFO = {grapes_info_json};
-  // Slug -> siblings sharing the same VIVC variety id. Used to make the
-  // grape filter synonym-aware: toggling Cot also matches AOCs that
-  // list Malbec / Auxerrois / any other regulatory spelling of vivc_id
-  // 2889. The facet list keeps each spelling as its own row (so the user
-  // sees the regulator's terminology) — the expansion happens only in
-  // the filter predicate.
-  const VIVC_SIBLINGS = {vivc_siblings_json};
-  // Per-locale canonical row label: each member of a VIVC group maps to
-  // the single canonical slug under which the facet renders. Cross-narrow
-  // counts roll up via this map so a record using "malbec" increments the
-  // canonical "cot" row.
-  const SLUG_TO_CANONICAL = {slug_to_canonical_json};
-  // Synonyms shown inline on each canonical row (e.g. Côt → [malbec,
-  // auxerrois]). Sorted by global usage; the row's `.name` span includes
-  // every synonym so the per-facet search input matches any spelling.
-  const GRAPE_SYNONYMS = {grape_synonyms_json};
-  function expandGrapeSet(set) {{
-    if (!set || !set.size) return set;
-    const out = new Set(set);
-    for (const slug of set) {{
-      const sibs = VIVC_SIBLINGS[slug];
-      if (sibs) for (const s of sibs) out.add(s);
-    }}
-    return out;
-  }}
-  function grapeSynonymsHtml(canonSlug) {{
-    const syns = GRAPE_SYNONYMS[canonSlug];
-    if (!syns || !syns.length) return '';
-    const labels = syns.map(s => grapeName(s)).join(', ');
-    return ` <span class="syns">(${{labels}})</span>`;
-  }}
-
-  // -------------------------- grape chip filter --------------------------
-  //
-  // Replaces the long-list checkbox facet for grapes with a typeahead +
-  // selected-chip UX. The index ships pre-built (one entry per canonical
-  // slug with cahier label + VIVC prime + full alias vocabulary + per-role
-  // counts). Match logic: substring against the label and any alias, with
-  // a score (prefix > substring, label > alias) so "garna" surfaces
-  // Grenache (Garnacha) and "shiraz" surfaces Syrah.
-  const GRAPE_SEARCH_INDEX = {grape_search_index_json};
-  const _GRAPE_INDEX_NORM = GRAPE_SEARCH_INDEX.map(entry => ({{
-    entry,
-    labelN: searchNormalize(entry.label),
-    aliasesN: (entry.aliases || []).map(a => searchNormalize(a)),
-  }}));
-
-  function rankGrapeSuggestions(query, role, limit) {{
-    const countKey = role === 'principal' ? 'count_principal'
-                   : role === 'accessory' ? 'count_accessory' : 'count';
-    const nq = searchNormalize(query || '');
-    if (!nq) {{
-      return _GRAPE_INDEX_NORM
-        .filter(e => e.entry[countKey] > 0)
-        .slice(0, limit)
-        .map(e => ({{ entry: e.entry, matched: null }}));
-    }}
-    const out = [];
-    for (const e of _GRAPE_INDEX_NORM) {{
-      if (e.entry[countKey] === 0) continue;
-      let score = -1;
-      let matched = null;  // The alias string that matched, if any.
-      if (e.labelN.startsWith(nq)) score = 100;
-      else if (e.labelN.includes(nq)) score = 80;
-      else {{
-        // Walk aliases; remember which one matched best so the suggestion
-        // can promote that spelling to the primary slot ("Ull de Llebre
-        // (Tempranillo)" instead of plain "Tempranillo" when the user
-        // typed "ull").
-        let bestAliasScore = -1;
-        let bestAliasIdx = -1;
-        for (let i = 0; i < e.aliasesN.length; i++) {{
-          const a = e.aliasesN[i];
-          let s = -1;
-          if (a.startsWith(nq)) s = 60;
-          else if (a.includes(nq)) s = 40;
-          if (s > bestAliasScore) {{ bestAliasScore = s; bestAliasIdx = i; }}
-        }}
-        if (bestAliasScore >= 0) {{
-          score = bestAliasScore;
-          matched = e.entry.aliases[bestAliasIdx];
-        }}
-      }}
-      if (score >= 0) out.push({{ entry: e.entry, matched, score }});
-    }}
-    out.sort((a, b) => b.score - a.score || b.entry[countKey] - a.entry[countKey]);
-    return out.slice(0, limit).map(o => ({{ entry: o.entry, matched: o.matched }}));
-  }}
-
-  function _findGrapeEntry(slug) {{
-    for (const e of _GRAPE_INDEX_NORM) if (e.entry.slug === slug) return e.entry;
-    return null;
-  }}
-
-  function _grapeChipHtml(entry) {{
-    const canon = entry.canonical && !canonicalEqualsCahier(entry.canonical, entry.label)
-      ? ` <span class="canon">(${{escapeHtml(entry.canonical)}})</span>` : '';
-    return (
-      `<span class="chip" data-slug="${{escapeAttr(entry.slug)}}">` +
-        `<span class="name">${{escapeHtml(toTitleCase(entry.label))}}</span>${{canon}}` +
-        `<button class="chip-x" type="button" aria-label="Remove ${{escapeAttr(entry.label)}}">×</button>` +
-      `</span>`
-    );
-  }}
-
-  function _grapeSuggestionHtml(entry, matched, role, active) {{
-    // When the query matched on an alias (e.g. "ull de llebre" → Tempranillo
-    // via the GRAPE_ALIAS reverse-key "ull-de-llebre"), promote the
-    // matched alias to the primary slot so the suggestion reads in the
-    // user's terminology — "Ull de Llebre (Tempranillo)" — instead of
-    // burying the match in the canonical row label.
-    const primary = matched || entry.label;
-    const secondary = matched && matched.toLowerCase() !== entry.label.toLowerCase()
-      ? entry.label
-      : (entry.canonical && !canonicalEqualsCahier(entry.canonical, entry.label) ? entry.canonical : '');
-    const secondaryHtml = secondary
-      ? ` <span class="canon">${{escapeHtml(toTitleCase(secondary))}}</span>` : '';
-    const countKey = role === 'principal' ? 'count_principal'
-                   : role === 'accessory' ? 'count_accessory' : 'count';
-    const cls = ['suggestion'];
-    if (active) cls.push('active');
-    return (
-      `<div class="${{cls.join(' ')}}" role="option" data-slug="${{escapeAttr(entry.slug)}}">` +
-        `<span class="name">${{escapeHtml(toTitleCase(primary))}}</span>${{secondaryHtml}}` +
-        `<span class="count">${{entry[countKey]}}</span>` +
-      `</div>`
-    );
-  }}
-
-  function buildGrapeChipFilter(container, role, filterSet) {{
-    container.innerHTML =
-      `<div class="chip-tray" aria-live="polite"></div>` +
-      `<div class="grape-search-wrap">` +
-        `<input type="text" class="grape-search" name="grape-search-${{escapeAttr(role)}}" placeholder="${{escapeAttr(LABELS.search_grape_placeholder)}}" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list">` +
-        `<div class="grape-suggestions" role="listbox" hidden></div>` +
-      `</div>`;
-    const tray = container.querySelector('.chip-tray');
-    const input = container.querySelector('.grape-search');
-    const drop  = container.querySelector('.grape-suggestions');
-    let activeIdx = 0;
-    let currentSuggestions = [];
-
-    function renderChips() {{
-      const chips = [];
-      for (const slug of filterSet) {{
-        const e = _findGrapeEntry(slug);
-        if (e) chips.push(_grapeChipHtml(e));
-      }}
-      tray.innerHTML = chips.join('');
-    }}
-
-    function renderSuggestions(q) {{
-      currentSuggestions = rankGrapeSuggestions(q, role, 12)
-        .filter(s => !filterSet.has(s.entry.slug));
-      activeIdx = 0;
-      if (!currentSuggestions.length) {{
-        drop.innerHTML = '';
-        drop.hidden = true;
-        input.setAttribute('aria-expanded', 'false');
-        return;
-      }}
-      drop.innerHTML = currentSuggestions
-        .map((s, i) => _grapeSuggestionHtml(s.entry, s.matched, role, i === activeIdx)).join('');
-      drop.hidden = false;
-      input.setAttribute('aria-expanded', 'true');
-    }}
-
-    function highlight(i) {{
-      const items = drop.querySelectorAll('.suggestion');
-      if (!items.length) return;
-      items.forEach((el, k) => el.classList.toggle('active', k === i));
-      activeIdx = i;
-      const cur = items[i];
-      if (cur) cur.scrollIntoView({{ block: 'nearest' }});
-    }}
-
-    function pick(slug) {{
-      filterSet.add(slug);
-      input.value = '';
-      renderChips();
-      renderSuggestions('');
-      applyFilter();
-      input.focus();
-    }}
-
-    function remove(slug) {{
-      filterSet.delete(slug);
-      renderChips();
-      renderSuggestions(input.value);
-      applyFilter();
-    }}
-
-    tray.addEventListener('click', (e) => {{
-      const btn = e.target.closest('.chip-x');
-      if (!btn) return;
-      const chip = btn.closest('.chip');
-      if (chip) remove(chip.dataset.slug);
-    }});
-
-    drop.addEventListener('mousedown', (e) => {{
-      const s = e.target.closest('.suggestion');
-      if (!s) return;
-      e.preventDefault();  // keep focus on input
-      pick(s.dataset.slug);
-    }});
-
-    drop.addEventListener('mousemove', (e) => {{
-      const s = e.target.closest('.suggestion');
-      if (!s) return;
-      const items = Array.from(drop.querySelectorAll('.suggestion'));
-      highlight(items.indexOf(s));
-    }});
-
-    input.addEventListener('input', () => renderSuggestions(input.value));
-    input.addEventListener('focus', () => renderSuggestions(input.value));
-    input.addEventListener('blur', () => {{
-      // Delay so the mousedown handler runs before we hide.
-      setTimeout(() => {{ drop.hidden = true; input.setAttribute('aria-expanded', 'false'); }}, 120);
-    }});
-    input.addEventListener('keydown', (e) => {{
-      if (e.key === 'ArrowDown') {{
-        e.preventDefault();
-        if (drop.hidden) renderSuggestions(input.value);
-        else highlight((activeIdx + 1) % currentSuggestions.length);
-      }} else if (e.key === 'ArrowUp') {{
-        e.preventDefault();
-        if (!drop.hidden) highlight((activeIdx - 1 + currentSuggestions.length) % currentSuggestions.length);
-      }} else if (e.key === 'Enter') {{
-        if (!drop.hidden && currentSuggestions[activeIdx]) {{
-          e.preventDefault();
-          pick(currentSuggestions[activeIdx].entry.slug);
-        }}
-      }} else if (e.key === 'Escape') {{
-        drop.hidden = true;
-        input.setAttribute('aria-expanded', 'false');
-      }} else if (e.key === 'Backspace' && !input.value && filterSet.size) {{
-        // Remove the most-recently-added chip.
-        const last = [...filterSet].pop();
-        remove(last);
-      }}
-    }});
-
-    renderChips();
-    container._refresh = () => {{ renderChips(); if (!drop.hidden) renderSuggestions(input.value); }};
-  }}
-
-  function refreshAllGrapeChipFilters() {{
-    document.querySelectorAll('.grape-chip-filter').forEach(c => c._refresh && c._refresh());
-  }}
-  const STYLES_INFO = {styles_info_json};
-  const REGION_LABELS = {region_labels_json};
-  const COUNTRY_LABELS = {country_labels_json};
-  const COUNTRY_FLAG_EMOJI = {country_flag_emoji_json};
-  const LANG = "{lang_attr}";
-  const SOURCE_TYPE = "{source_type}";
-
-  // Plausible custom-event helper. No-ops gracefully if the analytics
-  // script failed to load (ad-blocker, offline preview, dev build).
-  // All props use bounded slug vocabularies — never raw user text — so
-  // the breakdown UI stays useful and no PII can leak.
-  function track(name, props) {{
-    try {{
-      if (typeof window.plausible !== 'function') return;
-      window.plausible(name, props ? {{ props: props }} : undefined);
-    }} catch (e) {{}}
-  }}
-
-  // Title-case the first letter of each word (after start, whitespace,
-  // hyphen, or apostrophe). Wikipedia grape titles aren't uniformly
-  // cased (FR uses "Cabernet sauvignon" sentence case while EN uses
-  // "Cabernet Sauvignon" title case), and the slug fallback is pure
-  // lowercase — normalising here makes pills and filter entries
-  // consistent regardless of source.
-  function toTitleCase(s) {{
-    return s.replace(/(?:^|[\\s\\-'(])\\p{{L}}/gu, c => c.toUpperCase());
-  }}
-
-  function grapeName(slug) {{
-    const info = GRAPES_INFO[slug];
-    const raw = (info && info.name) ? info.name : slug.replace(/-/g, ' ');
-    return toTitleCase(raw);
-  }}
-
-  function regionLabel(region) {{
-    if (!region) return LABELS.meta_no_region;
-    return REGION_LABELS[region] || region;
-  }}
-
-  function oneCountryChip(countryCode) {{
-    const flag = COUNTRY_FLAG_EMOJI[countryCode] || '';
-    const name = COUNTRY_LABELS[countryCode] || '';
-    if (!flag && !name) return '';
-    const flagSpan = flag ? `<span class="country-flag" aria-hidden="true">${{flag}}</span>` : '';
-    const nameSpan = name ? `<span class="country-name">${{escapeHtml(name)}}</span>` : '';
-    return `<span class="meta-country">${{flagSpan}}${{nameSpan}}</span>`;
-  }}
-
-  // Cross-border PDOs (e.g. Maasvallei Limburg BE+NL) get a chip per
-  // country, joined with " · ". Single-country records render one chip.
-  function countryChipHtml(countryCode, aliases) {{
-    if (!countryCode) return '';
-    const codes = [countryCode].concat(aliases || []);
-    return codes.map(oneCountryChip).filter(Boolean).join(' · ');
-  }}
-
-  function grapeUrl(slug) {{
-    const info = GRAPES_INFO[slug];
-    if (info && info.page_url) return info.page_url;
-    const title = slug.replace(/-/g, '_').replace(/^./, c => c.toUpperCase());
-    return `https://${{LANG}}.wikipedia.org/wiki/${{title}}`;
-  }}
-
-  // True when the per-AOC cahier spelling and the VIVC prime name refer
-  // to the same variety after a light normalisation (strip diacritics,
-  // the INAO trailing colour letter, and the VIVC trailing color word).
-  // When equal, we suppress the canonical bracket to avoid pills like
-  // "Touriga Nacional (Touriga Nacional)".
-  const CANON_COLOR_WORD_RE = /\\b(tinto|tinta|blanco|blanca|noir|blanc|gris|rouge|ros[eé])\\b/gi;
-  const CANON_COLOR_LETTER_RE = /\\s+(b|n|g|rs|rg)$/i;
-  function canonicalEqualsCahier(canon, cahier) {{
-    const norm = s => s
-      .normalize('NFKD')
-      .replace(/\\p{{Diacritic}}/gu, '')
-      .replace(CANON_COLOR_LETTER_RE, '')
-      .replace(CANON_COLOR_WORD_RE, '')
-      .replace(/[^a-z0-9]/gi, '')
-      .toLowerCase();
-    return norm(canon) === norm(cahier);
-  }}
-
-  function searchNormalize(s) {{
-    return (s || '').normalize('NFD').replace(/\\p{{Diacritic}}/gu, '').toLowerCase();
-  }}
-
-  // BG / GR appellations carry both a native-script name (Cyrillic /
-  // Greek) and an informational Latin transliteration (`name_latin`).
-  // Search has to match either form so a user typing "Mavrud" finds
-  // "Мавруд".
-  function searchableText(rec) {{
-    return searchNormalize(((rec && rec.name) || '') + ' ' + ((rec && rec.name_latin) || ''));
-  }}
-
-  function nameWithLatin(rec) {{
-    const native = escapeHtml((rec && rec.name) || '');
-    const latin = (rec && rec.name_latin) || '';
-    if (!latin || latin === rec.name) return native;
-    return native + ' <span class="latin">(' + escapeHtml(latin) + ')</span>';
-  }}
-
-  const proto = new pmtiles.Protocol();
-  maplibregl.addProtocol('pmtiles', proto.tile);
-
-  // Basemap: CARTO Voyager (light) + dark_all (dark). BOTH rasters are added up
-  // front and switched by layer visibility, so the theme toggle is live — no
-  // source remove/re-add (which would reorder layers above the appellation
-  // polygons and drop their selection feature-state). Same CARTO / OSM credit.
-  function cartoTiles(style) {{
-    return ['a', 'b', 'c'].map(function (s) {{
-      return 'https://' + s + '.basemaps.cartocdn.com/' + style + '/{{z}}/{{x}}/{{y}}.png';
-    }});
-  }}
-  function effectiveTheme() {{
-    var t = null;
-    try {{ t = localStorage.getItem('theme'); }} catch (e) {{}}
-    if (t === 'light' || t === 'dark') return t;
-    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
-  }}
-  const basemapAttribution = '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
-  const initialDark = effectiveTheme() === 'dark';
-  const map = new maplibregl.Map({{
-    container: 'map',
-    style: {{
-      version: 8,
-      sources: {{
-        'basemap-light': {{ type: 'raster', tileSize: 256, tiles: cartoTiles('rastertiles/voyager'), attribution: basemapAttribution }},
-        'basemap-dark': {{ type: 'raster', tileSize: 256, tiles: cartoTiles('dark_all'), attribution: basemapAttribution }}
-      }},
-      layers: [
-        {{ id: 'basemap-light', type: 'raster', source: 'basemap-light', layout: {{ visibility: initialDark ? 'none' : 'visible' }} }},
-        {{ id: 'basemap-dark', type: 'raster', source: 'basemap-dark', layout: {{ visibility: initialDark ? 'visible' : 'none' }} }}
-      ]
-    }},
-    center: [2.6, 46.5], zoom: 5.4, hash: true
-  }});
-
-  // ----- theme switch (light / dark / system) -----
-  function applyBasemap() {{
-    const dark = effectiveTheme() === 'dark';
-    if (map.getLayer('basemap-dark')) map.setLayoutProperty('basemap-dark', 'visibility', dark ? 'visible' : 'none');
-    if (map.getLayer('basemap-light')) map.setLayoutProperty('basemap-light', 'visibility', dark ? 'none' : 'visible');
-  }}
-  function updateThemeButtons(mode) {{
-    document.querySelectorAll('#theme-toggle .theme-btn').forEach(function (b) {{
-      const on = b.dataset.themeMode === mode;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
-    }});
-  }}
-  function setTheme(mode) {{
-    try {{ if (mode === 'system') localStorage.removeItem('theme'); else localStorage.setItem('theme', mode); }} catch (e) {{}}
-    document.documentElement.classList.toggle('theme-dark', effectiveTheme() === 'dark');
-    applyBasemap();
-    updateThemeButtons(mode);
-    track('Theme Changed', {{ theme: mode, locale: LANG }});
-  }}
-  (function () {{
-    let saved = 'system';
-    try {{ const t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') saved = t; }} catch (e) {{}}
-    updateThemeButtons(saved);
-    document.querySelectorAll('#theme-toggle .theme-btn').forEach(function (b) {{
-      b.addEventListener('click', function () {{ setTheme(b.dataset.themeMode); }});
-    }});
-    // In system mode, follow live OS theme changes (CSS re-evaluates the class;
-    // the basemap needs the explicit nudge).
-    if (window.matchMedia) {{
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      const onChange = function () {{
-        let cur = null;
-        try {{ cur = localStorage.getItem('theme'); }} catch (e) {{}}
-        if (cur === 'light' || cur === 'dark') return;
-        document.documentElement.classList.toggle('theme-dark', mq.matches);
-        applyBasemap();
-      }};
-      if (mq.addEventListener) mq.addEventListener('change', onChange);
-      else if (mq.addListener) mq.addListener(onChange);
-    }}
-  }})();
-
-  // Preserve the camera hash AND the open-appellation path segment when
-  // switching locale (/<lang>/<slug>), and remember the manual choice.
-  document.querySelectorAll('#lang-switcher a').forEach(a => {{
-    a.addEventListener('click', e => {{
-      e.preventDefault();
-      try {{ localStorage.setItem('lang_choice', a.dataset.lang); }} catch (err) {{}}
-      const slug = slugFromPath();
-      const code = a.dataset.lang;
-      const dest = (slug && AOCS[slug]) ? ('/' + code + '/' + encodeURIComponent(slug)) : a.dataset.href;
-      window.location.href = dest + window.location.hash;
-    }});
-  }});
-
-  // Skip-to-map link: focus the map canvas (keyboard-pannable) rather than
-  // letting the "#map" fragment overwrite the maplibre position hash.
-  const skipLink = document.querySelector('.skip-link');
-  if (skipLink) {{
-    skipLink.addEventListener('click', e => {{
-      e.preventDefault();
-      const canvas = map.getCanvas();
-      if (!canvas.hasAttribute('tabindex')) canvas.setAttribute('tabindex', '0');
-      canvas.focus();
-    }});
-  }}
-
-  // Mobile sidebar toggle.
-  const sidebarEl = document.getElementById('sidebar');
-  const sidebarToggle = document.getElementById('sidebar-toggle');
-  if (sidebarToggle) {{
-    sidebarToggle.addEventListener('click', () => sidebarEl.classList.toggle('open'));
-  }}
-
-  // About dialog. Native <dialog>; backdrop click closes.
-  const aboutDialog = document.getElementById('about-dialog');
-  const aboutLink = document.getElementById('about-link');
-  if (aboutDialog && aboutLink) {{
-    aboutLink.addEventListener('click', e => {{
-      e.preventDefault();
-      if (typeof aboutDialog.showModal === 'function') aboutDialog.showModal();
-      else aboutDialog.setAttribute('open', '');
-    }});
-    aboutDialog.querySelector('.close').addEventListener('click', () => aboutDialog.close());
-    aboutDialog.addEventListener('click', e => {{
-      const r = aboutDialog.getBoundingClientRect();
-      const inside = e.clientX >= r.left && e.clientX <= r.right
-                  && e.clientY >= r.top  && e.clientY <= r.bottom;
-      if (!inside) aboutDialog.close();
-    }});
-  }}
-
-  // Defeat naive scrapers: the address never appears as a contiguous
-  // string in rendered HTML. We arm the anchor's href on first
-  // interaction (mousedown/focus/touchstart, all of which fire before
-  // the click that actually navigates), so the browser handles the
-  // mailto: protocol natively. We also copy the address to the
-  // clipboard on click so the link still works for users without a
-  // configured mailto handler (Firefox silently drops navigation in
-  // that case).
-  document.querySelectorAll('a.feedback-mail').forEach(a => {{
-    const address = () => a.dataset.u + '@' + a.dataset.d;
-    const arm = () => {{
-      if (a.dataset.u && a.dataset.d) {{
-        a.href = 'mailto:' + address() + '?subject=open%20wine%20map';
-      }}
-    }};
-    a.addEventListener('mousedown', arm);
-    a.addEventListener('focus', arm);
-    a.addEventListener('touchstart', arm, {{ passive: true }});
-    a.addEventListener('click', () => {{
-      const addr = address();
-      if (navigator.clipboard && navigator.clipboard.writeText) {{
-        navigator.clipboard.writeText(addr).catch(() => {{}});
-      }}
-      const toast = document.createElement('span');
-      toast.className = 'feedback-copied';
-      toast.textContent = LABELS.feedback_copied_label;
-      a.insertAdjacentElement('afterend', toast);
-      requestAnimationFrame(() => toast.classList.add('visible'));
-      setTimeout(() => {{
-        toast.classList.remove('visible');
-        toast.addEventListener('transitionend', () => toast.remove(), {{ once: true }});
-      }}, 1800);
-    }});
-  }});
-
-  let viewMode = 'simple';
-  try {{ viewMode = localStorage.getItem('view_mode') || 'simple'; }} catch (e) {{}}
-  if (viewMode !== 'advanced') viewMode = 'simple';
-
-  let showIgp = false;
-  try {{ showIgp = localStorage.getItem('show_igp') === '1'; }} catch (e) {{}}
-
-  let showSpirits = false;
-  try {{ showSpirits = localStorage.getItem('show_spirits') === '1'; }} catch (e) {{}}
-
-  // Spirits toggle is Advanced-only; in Simple mode spirits are always
-  // hidden regardless of the persisted preference.
-  function spiritsVisible() {{ return viewMode === 'advanced' && showSpirits; }}
-
-  const filters = {{
-    q: '',
-    styles: new Set(),
-    stylesSimple: new Set(),
-    principal: new Set(),
-    accessory: new Set(),
-    grapesAll: new Set(),
-    appellations: new Set(),
-  }};
-
-  function buildFilterExpr() {{
-    const parts = ['all'];
-    if (!showIgp) parts.push(['!=', ['get', 'kind'], 'IGP']);
-    if (!spiritsVisible()) parts.push(['==', ['get', 'is_wine'], '1']);
-    function inField(field, set) {{
-      if (set.size === 0) return null;
-      const tests = [];
-      for (const v of set) tests.push(['in', ';' + v + ';', ['get', field]]);
-      return tests.length === 1 ? tests[0] : ['any', ...tests];
-    }}
-    if (viewMode === 'simple') {{
-      if (filters.stylesSimple.size) {{
-        const fineSet = new Set();
-        for (const b of filters.stylesSimple) {{
-          for (const s of (SIMPLE_STYLE_BUCKETS[b] || [])) fineSet.add(s);
-        }}
-        const sExpr = inField('styles', fineSet);
-        if (sExpr) parts.push(sExpr);
-      }}
-      const gExpr = inField('grapes_all', expandGrapeSet(filters.grapesAll));
-      if (gExpr) parts.push(gExpr);
-    }} else {{
-      const fineStyles = expandStyles(filters.styles);
-      const sExpr = fineStyles ? inField('styles', fineStyles) : null;
-      const pExpr = inField('grapes_principal', expandGrapeSet(filters.principal));
-      const aExpr = inField('grapes_accessory', expandGrapeSet(filters.accessory));
-      if (sExpr) parts.push(sExpr);
-      if (pExpr) parts.push(pExpr);
-      if (aExpr) parts.push(aExpr);
-    }}
-    if (filters.appellations.size) {{
-      const tests = [];
-      for (const s of filters.appellations) tests.push(['==', ['get', 'slug'], s]);
-      parts.push(tests.length === 1 ? tests[0] : ['any', ...tests]);
-    }}
-    return parts.length === 1 ? null : parts;
-  }}
-
-  function applyFilter(opts) {{
-    const expr = buildFilterExpr();
-    for (const id of ['appellations-fill', 'appellations-outline',
-                       'appellations-fill-villages', 'appellations-outline-villages']) {{
-      if (map.getLayer(id)) map.setFilter(id, expr);
-    }}
-    updateStatus();
-    refreshFacetBadges();
-    refreshFacetAvailability();
-    renderActiveFilters();
-    if (opts && opts.fit) fitToFiltered();
-  }}
-
-  // Cross-narrow each facet: an option is shown only if at least one record
-  // matches every OTHER active filter while carrying that option's key. Counts
-  // are recomputed against the same per-facet "other filters" set. Already-
-  // checked options stay visible even when their count drops to 0, so the
-  // user can always unselect what they selected.
-  function refreshFacetAvailability() {{
-    const flatFacets = [
-      {{ id: 'facet-styles-simple', except: 'stylesSimple', field: 'styles_simple', mode: 'simple' }},
-      {{ id: 'facet-grapes-all',    except: 'grapesAll',    field: 'grapes_all',    mode: 'simple' }},
-      {{ id: 'facet-principal',     except: 'principal',    field: 'grapes_principal', mode: 'advanced' }},
-      {{ id: 'facet-accessory',     except: 'accessory',    field: 'grapes_accessory', mode: 'advanced' }},
-    ];
-    for (const f of flatFacets) {{
-      if (f.mode && f.mode !== viewMode) continue;
-      const el = document.getElementById(f.id);
-      if (!el) continue;
-      const except = new Set([f.except]);
-      const counts = new Map();
-      const isGrape = f.id !== 'facet-styles-simple';
-      for (const slug in AOCS) {{
-        const rec = AOCS[slug];
-        if (!matchesExceptFacets(rec, slug, except)) continue;
-        const vals = rec[f.field] || [];
-        if (isGrape) {{
-          // Roll up by canonical slug so a record using "malbec" increments
-          // the merged "cot" row exactly once even when it carries multiple
-          // synonyms of the same VIVC variety.
-          const canons = new Set();
-          for (const v of vals) canons.add(SLUG_TO_CANONICAL[v] || v);
-          for (const c of canons) counts.set(c, (counts.get(c) || 0) + 1);
-        }} else {{
-          for (const v of vals) counts.set(v, (counts.get(v) || 0) + 1);
-        }}
-      }}
-      el.querySelectorAll('label').forEach(lbl => {{
-        const inp = lbl.querySelector('input[type=checkbox]');
-        if (!inp) return;
-        const key = inp.dataset.key;
-        const n = counts.get(key) || 0;
-        const countSpan = lbl.querySelector('.count');
-        if (countSpan) countSpan.textContent = String(n);
-        lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
-      }});
-    }}
-    // Style tree (advanced mode): each node's count is the number of records
-    // (in the cross-narrowed set) whose styles intersect that node's
-    // descendant slug set — same aggregation the build-time pre-count uses.
-    if (viewMode === 'advanced') {{
-      const treeEl = document.getElementById('facet-styles');
-      if (treeEl) {{
-        const except = new Set(['styles']);
-        const treeCounts = new Map();
-        for (const slug in AOCS) {{
-          const rec = AOCS[slug];
-          if (!matchesExceptFacets(rec, slug, except)) continue;
-          const recStyles = rec.styles || [];
-          if (!recStyles.length) continue;
-          const recStyleSet = new Set(recStyles);
-          for (const node in STYLE_DESCENDANTS) {{
-            const ds = STYLE_DESCENDANTS[node];
-            for (let i = 0; i < ds.length; i++) {{
-              if (recStyleSet.has(ds[i])) {{
-                treeCounts.set(node, (treeCounts.get(node) || 0) + 1);
-                break;
-              }}
-            }}
-          }}
-        }}
-        treeEl.querySelectorAll('label').forEach(lbl => {{
-          const inp = lbl.querySelector('input[type=checkbox]');
-          if (!inp) return;
-          const key = inp.dataset.key;
-          const n = treeCounts.get(key) || 0;
-          const countSpan = lbl.querySelector('.count');
-          if (countSpan) countSpan.textContent = String(n);
-          lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
-        }});
-      }}
-    }}
-    // Appellation facet: per-slug reachability + per-region rollup. The
-    // group-level count span shows the number of currently-reachable
-    // appellations in the region.
-    const appEl = document.getElementById('facet-appellations');
-    if (appEl) {{
-      const except = new Set(['appellations']);
-      appEl.querySelectorAll('.region-group').forEach(group => {{
-        let visible = 0;
-        group.querySelectorAll('label').forEach(lbl => {{
-          const inp = lbl.querySelector('input[type=checkbox]');
-          if (!inp) return;
-          const slug = inp.dataset.key;
-          const rec = AOCS[slug];
-          const reachable = rec ? matchesExceptFacets(rec, slug, except) : false;
-          const hide = !reachable && !inp.checked;
-          lbl.classList.toggle('facet-unavailable', hide);
-          if (!hide) visible++;
-        }});
-        // `.region-group` is now the inner `<details>`; hide the
-        // outer `.region-group-wrap` so the sibling checkbox vanishes
-        // alongside the disclosure when no AOCs remain visible.
-        (group.parentElement || group).classList.toggle('facet-unavailable', visible === 0);
-        const countSpan = group.querySelector(':scope > summary > .count');
-        if (countSpan) countSpan.textContent = String(visible);
-      }});
-    }}
-  }}
-
-  function facetCounts() {{
-    const grapes = (viewMode === 'simple')
-      ? filters.grapesAll.size
-      : (filters.principal.size + filters.accessory.size);
-    const styles = (viewMode === 'simple') ? filters.stylesSimple.size : filters.styles.size;
-    return {{
-      styles,
-      grapes,
-      accessory: filters.accessory.size,
-      appellations: filters.appellations.size,
-    }};
-  }}
-
-  function refreshFacetBadges() {{
-    const counts = facetCounts();
-    const map_ = {{
-      styles: counts.styles,
-      grapes: viewMode === 'simple' ? counts.grapes : filters.principal.size,
-      accessory: filters.accessory.size,
-      appellations: counts.appellations,
-    }};
-    document.querySelectorAll('#sidebar > details[data-facet]').forEach(det => {{
-      const key = det.dataset.facet;
-      const badge = det.querySelector(':scope > summary .facet-badge');
-      if (!badge) return;
-      const n = map_[key] || 0;
-      badge.textContent = n > 0 ? String(n) : '';
-    }});
-  }}
-
-  function renderActiveFilters() {{
-    const el = document.getElementById('active-filters-chips');
-    if (!el) return;
-    const chips = [];
-    // Style chips (mode-aware).
-    if (viewMode === 'simple') {{
-      for (const k of filters.stylesSimple) {{
-        chips.push({{ kind: 'styleSimple', key: k, label: SIMPLE_STYLE_LABELS[k] || k }});
-      }}
-    }} else {{
-      for (const k of filters.styles) {{
-        chips.push({{ kind: 'style', key: k, label: STYLE_LABELS[k] || k }});
-      }}
-    }}
-    // Grape chips.
-    if (viewMode === 'simple') {{
-      for (const k of filters.grapesAll) {{
-        chips.push({{ kind: 'grapeAll', key: k, label: grapeName(k) }});
-      }}
-    }} else {{
-      for (const k of filters.principal) {{
-        chips.push({{ kind: 'principal', key: k, label: grapeName(k) }});
-      }}
-      for (const k of filters.accessory) {{
-        chips.push({{ kind: 'accessory', key: k, label: grapeName(k) + ' ·' }});
-      }}
-    }}
-    // Region/appellation chips: collapse fully-selected regions into a
-    // single chip; render leftover slugs individually.
-    const collapsedSlugs = new Set();
-    for (const [region, allSlugs] of REGION_SLUGS) {{
-      const slugs = visibleSlugsInRegion(region);
-      if (!slugs.length) continue;
-      const allIn = slugs.every(s => filters.appellations.has(s));
-      if (allIn) {{
-        chips.push({{ kind: 'region', key: region, label: region ? regionLabel(region) : LABELS.meta_no_region }});
-        for (const s of slugs) collapsedSlugs.add(s);
-      }}
-    }}
-    for (const slug of filters.appellations) {{
-      if (collapsedSlugs.has(slug)) continue;
-      const rec = AOCS[slug];
-      if (!rec) continue;
-      chips.push({{ kind: 'appellation', key: slug, label: rec.name }});
-    }}
-    el.innerHTML = chips.map(c => {{
-      const cls = c.kind === 'region' ? 'filter-chip region-chip' : 'filter-chip';
-      const removeAria = fmt(LABELS.remove_filter_aria, {{ label: c.label }});
-      return `<span class="${{cls}}" data-kind="${{escapeAttr(c.kind)}}" data-key="${{escapeAttr(c.key)}}"><span>${{escapeHtml(c.label)}}</span><button type="button" aria-label="${{escapeAttr(removeAria)}}">×</button></span>`;
-    }}).join('');
-  }}
-
-  document.getElementById('active-filters-chips').addEventListener('click', e => {{
-    const btn = e.target.closest('button');
-    if (!btn) return;
-    const chip = btn.closest('.filter-chip');
-    if (!chip) return;
-    const kind = chip.dataset.kind;
-    const key = chip.dataset.key;
-    if (kind === 'styleSimple') filters.stylesSimple.delete(key);
-    else if (kind === 'style') filters.styles.delete(key);
-    else if (kind === 'grapeAll') filters.grapesAll.delete(key);
-    else if (kind === 'principal') filters.principal.delete(key);
-    else if (kind === 'accessory') filters.accessory.delete(key);
-    else if (kind === 'appellation') filters.appellations.delete(key);
-    else if (kind === 'region') setRegionSelection(key, false);
-    // Sync the underlying checkboxes for the cleared filter.
-    document.querySelectorAll('#sidebar .facet input[type=checkbox]').forEach(inp => {{
-      const k = inp.dataset.key;
-      const isApp = inp.closest('#facet-appellations');
-      if (isApp && k) {{
-        inp.checked = filters.appellations.has(k);
-      }}
-    }});
-    refreshSidebarCheckedState();
-    refreshRegionTriStates();
-    applyFilter();
-  }});
-
-  function refreshSidebarCheckedState() {{
-    // Re-sync facet checkboxes (styles only — grapes are chip filters
-    // and re-render their chip tray via `refreshAllGrapeChipFilters`).
-    const sets = {{
-      'facet-styles': filters.styles,
-      'facet-styles-simple': filters.stylesSimple,
-    }};
-    for (const [id, set] of Object.entries(sets)) {{
-      const el = document.getElementById(id);
-      if (!el) continue;
-      el.querySelectorAll('input[type=checkbox]').forEach(inp => {{
-        inp.checked = set.has(inp.dataset.key);
-      }});
-    }}
-    refreshAllGrapeChipFilters();
-  }}
-
-  function fitToFiltered() {{
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    let any = false;
-    for (const slug in AOCS) {{
-      const rec = AOCS[slug];
-      const b = (viewMode === 'simple' && rec.bbox_villages) ? rec.bbox_villages : rec.bbox;
-      if (!b) continue;
-      if (!matchesClient(rec, slug)) continue;
-      if (b[0] < minX) minX = b[0];
-      if (b[1] < minY) minY = b[1];
-      if (b[2] > maxX) maxX = b[2];
-      if (b[3] > maxY) maxY = b[3];
-      any = true;
-    }}
-    if (!any) return;
-    if (minX >= maxX || minY >= maxY) return;
-    map.fitBounds([[minX, minY], [maxX, maxY]], {{ padding: 40, maxZoom: 10, duration: 500 }});
-  }}
-
-  function fmt(tpl, vars) {{
-    return tpl.replace(/\\{{(\\w+)\\}}/g, (_, k) => vars[k] != null ? vars[k] : '');
-  }}
-
-  function updateStatus() {{
-    const el = document.getElementById('status');
-    const total = Object.keys(AOCS).length;
-    const expr = buildFilterExpr();
-    if (!expr) {{ el.textContent = fmt(LABELS.count_total, {{ n: total }}); return; }}
-    let n = 0;
-    for (const slug in AOCS) if (matchesClient(AOCS[slug], slug)) n++;
-    // When the filter excludes every visible record but matches one or
-    // more hidden IGPs, surface a one-click reveal so the user understands
-    // *why* the camera didn't move. Same idea for hidden spirits.
-    if (n === 0) {{
-      let nHiddenIgp = 0;
-      if (!showIgp) {{
-        for (const slug in AOCS) {{
-          const rec = AOCS[slug];
-          if ((rec.kind || 'AOC') !== 'IGP') continue;
-          if (matchesClient(rec, slug, {{ ignoreIgpGate: true }})) nHiddenIgp++;
-        }}
-      }}
-      if (nHiddenIgp > 0) {{
-        const prefix = fmt(LABELS.count_filtered, {{ n: 0, total: total }});
-        el.textContent = prefix + ' · ';
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'hint-action';
-        btn.textContent = fmt(LABELS.count_hidden_igp_hint, {{ n: nHiddenIgp }});
-        btn.addEventListener('click', () => {{
-          showIgp = true;
-          const igpEl = document.getElementById('show-igp');
-          if (igpEl) igpEl.checked = true;
-          try {{ localStorage.setItem('show_igp', '1'); }} catch (err) {{}}
-          track('Kind Toggled', {{ kind: 'igp', enabled: 'true', locale: LANG, via: 'reveal-hint' }});
-          applyFilter({{ fit: true }});
-        }});
-        el.appendChild(btn);
-        return;
-      }}
-    }}
-    el.textContent = fmt(LABELS.count_filtered, {{ n: n, total: total }});
-  }}
-
-  function matchesClient(rec, slug, opts) {{
-    if (!(opts && opts.ignoreIgpGate) && !showIgp && (rec.kind || 'AOC') === 'IGP') return false;
-    if (!spiritsVisible() && rec.is_wine === false) return false;
-    if (viewMode === 'simple') {{
-      if (filters.stylesSimple.size && !setIntersects(filters.stylesSimple, rec.styles_simple || [])) return false;
-      if (filters.grapesAll.size && !setIntersects(expandGrapeSet(filters.grapesAll), rec.grapes_all || [])) return false;
-    }} else {{
-      if (filters.styles.size) {{
-        const fineStyles = expandStyles(filters.styles);
-        if (!fineStyles || !setIntersects(fineStyles, rec.styles)) return false;
-      }}
-      if (filters.principal.size && !setIntersects(expandGrapeSet(filters.principal), rec.grapes_principal)) return false;
-      if (filters.accessory.size && !setIntersects(expandGrapeSet(filters.accessory), rec.grapes_accessory)) return false;
-    }}
-    if (filters.appellations.size && !filters.appellations.has(slug)) return false;
-    return true;
-  }}
-
-  // Mirrors buildFilterExpr semantics (style/grape expansion via taxonomy +
-  // VIVC siblings), but skips facets named in `except` so each facet's own
-  // availability can be computed against ONLY the other active filters —
-  // the standard faceted-search expansion pattern.
-  function matchesExceptFacets(rec, slug, except) {{
-    if (!showIgp && (rec.kind || 'AOC') === 'IGP') return false;
-    if (!spiritsVisible() && rec.is_wine === false) return false;
-    if (viewMode === 'simple') {{
-      if (!except.has('stylesSimple') && filters.stylesSimple.size) {{
-        const fineSet = new Set();
-        for (const b of filters.stylesSimple) {{
-          for (const s of (SIMPLE_STYLE_BUCKETS[b] || [])) fineSet.add(s);
-        }}
-        if (!setIntersects(fineSet, rec.styles || [])) return false;
-      }}
-      if (!except.has('grapesAll') && filters.grapesAll.size) {{
-        if (!setIntersects(expandGrapeSet(filters.grapesAll), rec.grapes_all || [])) return false;
-      }}
-    }} else {{
-      if (!except.has('styles') && filters.styles.size) {{
-        const fineStyles = expandStyles(filters.styles);
-        if (!fineStyles || !setIntersects(fineStyles, rec.styles || [])) return false;
-      }}
-      if (!except.has('principal') && filters.principal.size) {{
-        if (!setIntersects(expandGrapeSet(filters.principal), rec.grapes_principal || [])) return false;
-      }}
-      if (!except.has('accessory') && filters.accessory.size) {{
-        if (!setIntersects(expandGrapeSet(filters.accessory), rec.grapes_accessory || [])) return false;
-      }}
-    }}
-    if (!except.has('appellations') && filters.appellations.size && !filters.appellations.has(slug)) return false;
-    return true;
-  }}
-
-  function setIntersects(set, arr) {{
-    if (!arr) return false;
-    for (const v of arr) if (set.has(v)) return true;
-    return false;
-  }}
-
-  function buildFacet(containerId, items, store, format, extraFormat) {{
-    const el = document.getElementById(containerId);
-    const html = items.map(([key, count]) => {{
-      const safeKey = String(key).replace(/"/g, '&quot;');
-      const label = format ? format(key) : key;
-      const extra = extraFormat ? extraFormat(key) : '';
-      return `<label><input type="checkbox" data-key="${{safeKey}}"><span class="name">${{label}}${{extra}}</span><span class="count">${{count}}</span></label>`;
-    }}).join('');
-    el.innerHTML = html;
-    el.addEventListener('change', e => {{
-      if (e.target.tagName !== 'INPUT') return;
-      const k = e.target.dataset.key;
-      if (e.target.checked) store.add(k); else store.delete(k);
-      if (e.target.checked) {{
-        track('Filter Applied', {{ facet: containerId.replace(/^facet-/, ''), value: k, locale: LANG }});
-      }}
-      applyFilter({{ fit: true }});
-    }});
-  }}
-
-  function buildStyleTreeFacet(containerId, tree, store) {{
-    const el = document.getElementById(containerId);
-    const html = tree.map(node => {{
-      const safeKey = String(node.slug).replace(/"/g, '&quot;');
-      const label = STYLE_LABELS[node.slug] || node.slug;
-      const hasChildren = (STYLE_DESCENDANTS[node.slug] || []).length > 1;
-      const cls = `tree-row${{ hasChildren ? ' tree-row-parent' : '' }}`;
-      return `<label class="${{cls}}" data-depth="${{node.depth}}"><input type="checkbox" data-key="${{safeKey}}"><span class="name">${{label}}</span><span class="count">${{node.count}}</span></label>`;
-    }}).join('');
-    el.innerHTML = html;
-    el.addEventListener('change', e => {{
-      if (e.target.tagName !== 'INPUT') return;
-      const k = e.target.dataset.key;
-      if (e.target.checked) store.add(k); else store.delete(k);
-      if (e.target.checked) {{
-        track('Filter Applied', {{ facet: 'styles', value: k, locale: LANG }});
-      }}
-      applyFilter({{ fit: true }});
-    }});
-  }}
-
-  // Expand a set of taxonomy slugs to the leaf slugs records actually carry,
-  // so a click on a parent (e.g. "sweet") catches every descendant record.
-  function expandStyles(set) {{
-    if (!set.size) return null;
-    const out = new Set();
-    for (const s of set) {{
-      const ds = STYLE_DESCENDANTS[s];
-      if (ds && ds.length) for (const d of ds) out.add(d);
-      else out.add(s);
-    }}
-    return out;
-  }}
-
-  buildStyleTreeFacet('facet-styles', FACET_STYLES_TREE, filters.styles);
-  buildFacet('facet-styles-simple', FACET_STYLES_SIMPLE, filters.stylesSimple, k => SIMPLE_STYLE_LABELS[k] || k);
-  document.querySelectorAll('.grape-chip-filter').forEach(container => {{
-    const role = container.dataset.role || 'all';
-    const set = role === 'principal' ? filters.principal
-              : role === 'accessory' ? filters.accessory
-              : filters.grapesAll;
-    buildGrapeChipFilter(container, role, set);
-  }});
-
-  // Map of region → list of slugs, computed once. The appellation tree
-  // re-renders on spirits-toggle (entries appear/disappear), but the
-  // per-region grouping itself is stable across rebuilds.
-  const REGION_SLUGS = (() => {{
-    const m = new Map();
-    const order = FACET_REGIONS.map(([r]) => r);
-    for (const r of order) m.set(r, []);
-    m.set('', []);
-    for (const slug in AOCS) {{
-      const r = AOCS[slug].region || '';
-      if (!m.has(r)) m.set(r, []);
-      m.get(r).push(slug);
-    }}
-    for (const arr of m.values()) {{
-      arr.sort((a, b) => AOCS[a].name.localeCompare(AOCS[b].name, 'fr'));
-    }}
-    return m;
-  }})();
-
-  function visibleSlugsInRegion(region) {{
-    const all = REGION_SLUGS.get(region) || [];
-    if (spiritsVisible()) return all;
-    return all.filter(s => AOCS[s].is_wine !== false);
-  }}
-
-  function setRegionSelection(region, on) {{
-    const slugs = visibleSlugsInRegion(region);
-    for (const s of slugs) {{
-      if (on) filters.appellations.add(s);
-      else filters.appellations.delete(s);
-    }}
-  }}
-
-  function regionTriState(region) {{
-    const slugs = visibleSlugsInRegion(region);
-    if (!slugs.length) return 'empty';
-    let n = 0;
-    for (const s of slugs) if (filters.appellations.has(s)) n++;
-    if (n === 0) return 'unchecked';
-    if (n === slugs.length) return 'checked';
-    return 'indeterminate';
-  }}
-
-  function buildAppellationFacet() {{
-    const el = document.getElementById('facet-appellations');
-    const html = [];
-    for (const [region, allSlugs] of REGION_SLUGS) {{
-      const slugs = spiritsVisible() ? allSlugs : allSlugs.filter(s => AOCS[s].is_wine !== false);
-      if (!slugs.length) continue;
-      const label = region ? regionLabel(region) : LABELS.meta_no_region;
-      const items = slugs.map(slug => {{
-        const safeSlug = escapeAttr(slug);
-        const rec = AOCS[slug];
-        const nameHtml = nameWithLatin(rec);
-        const checked = filters.appellations.has(slug) ? ' checked' : '';
-        const openLbl = escapeAttr(fmt(LABELS.open_appellation_aria, {{ name: rec.name || slug }}));
-        return `<label data-slug="${{safeSlug}}" data-name="${{escapeAttr(searchableText(rec))}}"><input type="checkbox" data-key="${{safeSlug}}"${{checked}}><span class="name">${{nameHtml}}</span><button type="button" class="open-aoc" data-slug="${{safeSlug}}" aria-label="${{openLbl}}" title="${{escapeAttr(LABELS.open_appellation_title)}}">→</button></label>`;
-      }}).join('');
-      const safeRegion = escapeAttr(region);
-      // Checkbox lives outside `<summary>` (sibling of `<details>`,
-      // not a descendant) so the nested-interactive-in-summary
-      // accessibility warning doesn't fire. Visual layout is restored
-      // via `.region-group-wrap`'s flex rule — checkbox + disclosure
-      // sit in the same row.
-      html.push(`<div class="region-group-wrap" data-region="${{safeRegion}}"><input type="checkbox" class="region-select" data-region="${{safeRegion}}" aria-label="${{escapeAttr(LABELS.select_all_aria)}}"><details class="region-group" data-region="${{safeRegion}}"><summary><span class="name">${{escapeHtml(label)}}</span><span class="count">${{slugs.length}}</span></summary><div class="region-items">${{items}}</div></details></div>`);
-    }}
-    el.innerHTML = html.join('');
-    // Reapply current search visibility (so a tree rebuild during a typed
-    // query keeps the filtered view).
-    refreshFacetVisibility('facet-appellations', filters.q);
-    refreshRegionTriStates();
-  }}
-
-  // Single delegated listener — buildAppellationFacet may run multiple
-  // times (mode swap, spirits toggle), so the handler stays on the
-  // container instead of being re-attached each time.
-  document.getElementById('facet-appellations').addEventListener('change', e => {{
-    const el = document.getElementById('facet-appellations');
-    if (e.target.tagName !== 'INPUT') return;
-    if (e.target.classList.contains('region-select')) {{
-      const region = e.target.dataset.region;
-      setRegionSelection(region, e.target.checked);
-      for (const inp of el.querySelectorAll(
-        `.region-group[data-region="${{CSS.escape(region)}}"] .region-items input[type=checkbox]`
-      )) {{
-        inp.checked = filters.appellations.has(inp.dataset.key);
-      }}
-      if (e.target.checked) {{
-        track('Filter Applied', {{ facet: 'region', value: region || '(none)', locale: LANG }});
-      }}
-    }} else {{
-      const k = e.target.dataset.key;
-      if (e.target.checked) filters.appellations.add(k); else filters.appellations.delete(k);
-      if (e.target.checked) {{
-        track('Filter Applied', {{ facet: 'appellation', value: k, locale: LANG }});
-      }}
-    }}
-    refreshRegionTriStates();
-    applyFilter({{ fit: true }});
-  }});
-
-  // Keyboard/SR path to open an appellation's detail panel — the WebGL polygons
-  // aren't DOM-reachable, so the facet "open" button is the only non-mouse way
-  // in. preventDefault/stopPropagation stop the click from toggling the
-  // enclosing label's filter checkbox.
-  document.getElementById('facet-appellations').addEventListener('click', e => {{
-    const btn = e.target.closest('.open-aoc');
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const slug = btn.dataset.slug;
-    if (!AOCS[slug]) return;
-    lastPanelTrigger = btn;
-    lastStackKey = slug;
-    stackFocusIndex = 0;
-    renderPanelStack([slug], 0);
-    track('Appellation Opened', {{ slug: slug, via: 'facet', locale: LANG }});
-    const b = (viewMode === 'simple' && AOCS[slug].bbox_villages) ? AOCS[slug].bbox_villages : AOCS[slug].bbox;
-    if (b && typeof map.fitBounds === 'function') {{
-      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], {{ padding: 40, maxZoom: 11, duration: 500 }});
-    }}
-  }});
-
-  function refreshRegionTriStates() {{
-    const el = document.getElementById('facet-appellations');
-    if (!el) return;
-    el.querySelectorAll('.region-group').forEach(group => {{
-      const region = group.dataset.region;
-      // `.region-select` is a sibling of `.region-group` inside the
-      // `.region-group-wrap`, not a descendant. Reach via the parent.
-      const cb = (group.parentElement || group).querySelector('.region-select');
-      if (!cb) return;
-      const state = regionTriState(region);
-      cb.checked = state === 'checked';
-      cb.indeterminate = state === 'indeterminate';
-    }});
-  }}
-
-  function refreshFacetVisibility(containerId, q) {{
-    const el = document.getElementById(containerId);
-    if (!el) return;
-    const nq = searchNormalize(q);
-    // Appellation tree: groups + labels with data-name dataset.
-    const groups = el.querySelectorAll('.region-group');
-    if (groups.length) {{
-      groups.forEach(group => {{
-        let visible = 0;
-        group.querySelectorAll('label').forEach(lbl => {{
-          const match = !nq || lbl.dataset.name.includes(nq);
-          lbl.style.display = match ? '' : 'none';
-          if (match) visible++;
-        }});
-        const wrap = group.parentElement;
-        if (wrap && wrap.classList.contains('region-group-wrap')) {{
-          wrap.style.display = visible ? '' : 'none';
-        }} else {{
-          group.style.display = visible ? '' : 'none';
-        }}
-        if (nq && visible) group.open = true;
-      }});
-      return;
-    }}
-    // Flat facet (grapes etc.) — match against the .name span text.
-    el.querySelectorAll('label').forEach(lbl => {{
-      const span = lbl.querySelector('.name');
-      const text = searchNormalize(span ? span.textContent : '');
-      lbl.style.display = (!nq || text.includes(nq)) ? '' : 'none';
-    }});
-  }}
-
-  buildAppellationFacet();
-
-  function applyMode() {{
-    document.documentElement.classList.toggle('mode-simple', viewMode === 'simple');
-    document.documentElement.classList.toggle('mode-advanced', viewMode === 'advanced');
-    document.querySelectorAll('#mode-toggle .mode-btn').forEach(b => {{
-      const on = b.dataset.mode === viewMode;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
-    }});
-    document.querySelectorAll('#sidebar [data-modes]').forEach(el => {{
-      const modes = el.dataset.modes.split(/\\s+/);
-      el.classList.toggle('mode-hidden', !modes.includes(viewMode));
-    }});
-    swapMapLayers();
-    // The appellation tree's contents depend on spiritsVisible(), which
-    // depends on viewMode — rebuild on every mode switch.
-    if (document.getElementById('facet-appellations').children.length) {{
-      buildAppellationFacet();
-    }}
-  }}
-
-  function swapMapLayers() {{
-    const advLayers = ['appellations-fill', 'appellations-outline'];
-    const vilLayers = ['appellations-fill-villages', 'appellations-outline-villages'];
-    const showAdv = viewMode === 'advanced';
-    for (const id of advLayers) {{
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showAdv ? 'visible' : 'none');
-    }}
-    for (const id of vilLayers) {{
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showAdv ? 'none' : 'visible');
-    }}
-  }}
-
-  document.querySelectorAll('#mode-toggle .mode-btn').forEach(b => {{
-    b.addEventListener('click', () => {{
-      const next = b.dataset.mode;
-      if (next === viewMode) return;
-      viewMode = next;
-      try {{ localStorage.setItem('view_mode', viewMode); }} catch (e) {{}}
-      track('View Mode Switched', {{ mode: viewMode, locale: LANG }});
-      applyMode();
-      applyFilter({{ fit: true }});
-    }});
-  }});
-
-  const igpEl = document.getElementById('show-igp');
-  igpEl.checked = showIgp;
-  igpEl.addEventListener('change', e => {{
-    showIgp = e.target.checked;
-    try {{ localStorage.setItem('show_igp', showIgp ? '1' : '0'); }} catch (err) {{}}
-    track('Kind Toggled', {{ kind: 'igp', enabled: showIgp ? 'true' : 'false', locale: LANG }});
-    applyFilter({{ fit: true }});
-  }});
-
-  const spiritsEl = document.getElementById('show-spirits');
-  spiritsEl.checked = showSpirits;
-  spiritsEl.addEventListener('change', e => {{
-    showSpirits = e.target.checked;
-    try {{ localStorage.setItem('show_spirits', showSpirits ? '1' : '0'); }} catch (err) {{}}
-    track('Kind Toggled', {{ kind: 'spirits', enabled: showSpirits ? 'true' : 'false', locale: LANG }});
-    // Spirit AOCs join/leave the appellation tree; rebuild + reapply.
-    buildAppellationFacet();
-    applyFilter({{ fit: true }});
-  }});
-
-  // The merged Appellation facet hosts the appellation search; typing in
-  // it auto-expands the section if collapsed, since otherwise the tree
-  // updates would be invisible to the user.
-  const qInput = document.getElementById('q');
-  // Debounced search analytics: fire once after the user stops typing.
-  // We send result_count / had_match / query_len only — never the raw
-  // string, since search boxes attract typos, names, and assorted junk.
-  let searchTrackTimer = null;
-  qInput.addEventListener('input', e => {{
-    filters.q = e.target.value.trim();
-    refreshFacetVisibility('facet-appellations', filters.q);
-    const det = qInput.closest('details');
-    if (filters.q && det && !det.open) det.open = true;
-    if (searchTrackTimer) clearTimeout(searchTrackTimer);
-    if (filters.q) {{
-      searchTrackTimer = setTimeout(() => {{
-        const nq = searchNormalize(filters.q);
-        let n = 0;
-        for (const slug in AOCS) {{
-          if (searchableText(AOCS[slug]).includes(nq)) n++;
-        }}
-        track('Search Used', {{
-          result_count: String(n),
-          had_match: n > 0 ? 'true' : 'false',
-          query_len: String(filters.q.length),
-          locale: LANG,
-        }});
-      }}, 1000);
-    }}
-  }});
-
-  // Per-facet search inputs (cépages). They filter only the visible
-  // checkboxes in their target facet; they do not affect the map filter.
-  document.querySelectorAll('.facet-search[data-facet]').forEach(input => {{
-    input.addEventListener('input', e => {{
-      refreshFacetVisibility(input.dataset.facet, e.target.value.trim());
-    }});
-  }});
-
-  document.getElementById('reset').addEventListener('click', () => {{
-    track('Filters Reset', {{ locale: LANG }});
-    filters.q = '';
-    filters.styles.clear(); filters.stylesSimple.clear();
-    filters.principal.clear(); filters.accessory.clear(); filters.grapesAll.clear();
-    filters.appellations.clear();
-    document.querySelectorAll('#sidebar .facet input[type=checkbox]').forEach(c => {{
-      c.checked = false;
-      c.indeterminate = false;
-    }});
-    document.querySelectorAll('.facet-search').forEach(i => {{ i.value = ''; }});
-    refreshFacetVisibility('facet-appellations', '');
-    refreshFacetVisibility('facet-grapes-all', '');
-    refreshFacetVisibility('facet-principal', '');
-    refreshFacetVisibility('facet-accessory', '');
-    applyFilter();
-  }});
-
-  // ----- detail panel -----
-  const panel = document.getElementById('panel');
-  const panelBody = document.getElementById('panel-body');
-
-  function renderSources(slug, sources) {{
-    if (!sources) sources = {{}};
-    const links = [];
-    if (sources.boagri) {{
-      const homo = sources.homologation_date ? ' — ' + LABELS.src_homologated + ' ' + escapeHtml(sources.homologation_date) : '';
-      const jorf = sources.jorf_date ? ', ' + LABELS.src_jorf + ' ' + escapeHtml(sources.jorf_date) : '';
-      links.push(`<li><a href="${{escapeAttr(sources.boagri)}}" target="_blank" rel="noopener">${{LABELS.src_cahier}}</a>${{homo}}${{jorf}}</li>`);
-    }}
-    if (sources.show_texte) {{
-      links.push(`<li><a href="${{escapeAttr(sources.show_texte)}}" target="_blank" rel="noopener">${{LABELS.src_show_texte}}</a></li>`);
-    }}
-    if (sources.product) {{
-      links.push(`<li><a href="${{escapeAttr(sources.product)}}" target="_blank" rel="noopener">${{LABELS.src_product}}</a></li>`);
-    }}
-    if (sources.eur_lex_url) {{
-      links.push(`<li><a href="${{escapeAttr(sources.eur_lex_url)}}" target="_blank" rel="noopener">${{LABELS.src_eur_lex}}</a></li>`);
-    }}
-    if (sources.national_pliego_url) {{
-      const added = (sources.national_pliego_added_slugs || []).length;
-      const note = added ? ' — +' + added + ' ' + LABELS.src_national_pliego_added : '';
-      links.push(`<li><a href="${{escapeAttr(sources.national_pliego_url)}}" target="_blank" rel="noopener">${{LABELS.src_national_pliego}}</a>${{note}}</li>`);
-    }}
-    if (sources.national_spec_url) {{
-      const org = sources.national_spec_source_org ? ' — ' + escapeHtml(sources.national_spec_source_org) : '';
-      links.push(`<li><a href="${{escapeAttr(sources.national_spec_url)}}" target="_blank" rel="noopener">${{LABELS.src_national_spec}}</a>${{org}}</li>`);
-    }}
-    if (sources.chzo_spec_url) {{
-      const reg = sources.chzo_spec_region ? ' — ' + escapeHtml(sources.chzo_spec_region) : '';
-      const org = sources.chzo_spec_source_org ? ' (' + escapeHtml(sources.chzo_spec_source_org.toUpperCase()) + ')' : '';
-      links.push(`<li><a href="${{escapeAttr(sources.chzo_spec_url)}}" target="_blank" rel="noopener">${{LABELS.src_chzo_spec}}</a>${{reg}}${{org}}</li>`);
-    }}
-    if (sources.regional_register_url) {{
-      const reg = sources.regional_register_region ? ' — ' + escapeHtml(sources.regional_register_region) : '';
-      links.push(`<li><a href="${{escapeAttr(sources.regional_register_url)}}" target="_blank" rel="noopener">${{LABELS.src_regional_register}}</a>${{reg}}</li>`);
-    }}
-    if (sources.id_eambrosia) {{
-      const eambrosiaUrl = `https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/details/${{encodeURIComponent(sources.id_eambrosia)}}`;
-      const fileNum = sources.file_number ? ' — ' + LABELS.src_eambrosia_id + ' ' + escapeHtml(sources.file_number) : '';
-      links.push(`<li><a href="${{escapeAttr(eambrosiaUrl)}}" target="_blank" rel="noopener">${{LABELS.src_eambrosia}}</a>${{fileNum}}</li>`);
-    }}
-    if (sources.syndicate && sources.syndicate.url) {{
-      const syLabel = sources.syndicate.label ? ' — ' + escapeHtml(sources.syndicate.label) : '';
-      links.push(`<li><a href="${{escapeAttr(sources.syndicate.url)}}" target="_blank" rel="noopener">${{LABELS.src_syndicate}}</a>${{syLabel}}</li>`);
-    }}
-    return '<h2>' + LABELS.panel_sources_h + '</h2><ul class="sources">' + links.join('') + '</ul>';
-  }}
-
-  function escapeAttr(s) {{
-    return String(s).replace(/[&<>"']/g, c => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[c]));
-  }}
-
-  function frMarker() {{
-    return LANG === 'fr'
-      ? ''
-      : ` <span class="fr-marker" title="${{escapeAttr(LABELS.fr_marker_aria)}}">${{escapeHtml(LABELS.fr_marker)}}</span>`;
-  }}
-
-  function srcMarker(country) {{
-    const sourceLang = (country === 'es' || country === 'pt') ? country : 'fr';
-    if (LANG === sourceLang) return '';
-    const text = country === 'es' ? LABELS.es_marker
-      : country === 'pt' ? (LABELS.pt_marker || LABELS.fr_marker)
-      : LABELS.fr_marker;
-    const aria = country === 'es' ? LABELS.es_marker_aria
-      : country === 'pt' ? (LABELS.pt_marker_aria || LABELS.fr_marker_aria)
-      : LABELS.fr_marker_aria;
-    return ` <span class="fr-marker" title="${{escapeAttr(aria)}}">${{escapeHtml(text)}}</span>`;
-  }}
-
-  function translationAttribution(t, country) {{
-    if (!t) return '';
-    const labelText = country === 'es'
-      ? LABELS.translation_source_label_es
-      : country === 'pt'
-      ? (LABELS.translation_source_label_pt || LABELS.translation_source_label)
-      : LABELS.translation_source_label;
-    const url = t.source_pdf_url;
-    const sourceHtml = url
-      ? `<a href="${{escapeAttr(url)}}" target="_blank" rel="noopener">${{escapeHtml(labelText)}}</a>`
-      : escapeHtml(labelText);
-    const tpl = LABELS.translation_attribution;
-    const placeholder = '{{source}}';
-    const idx = tpl.indexOf(placeholder);
-    const pre = idx >= 0 ? tpl.slice(0, idx) : (tpl + ' ');
-    const post = idx >= 0 ? tpl.slice(idx + placeholder.length) : '';
-    return `<p class="translation-attr">${{escapeHtml(pre)}}${{sourceHtml}}${{escapeHtml(post)}}</p>`;
-  }}
-
-  const FACTS_SUB_ORDER = ['facteurs_naturels', 'facteurs_humains', 'produit', 'interactions'];
-  const FACTS_SUB_LABELS = {{
-    facteurs_naturels: LABELS.facts_sub_facteurs_naturels,
-    facteurs_humains: LABELS.facts_sub_facteurs_humains,
-    produit: LABELS.facts_sub_produit,
-    interactions: LABELS.facts_sub_interactions,
-  }};
-
-  function buildFactsSourceLabel(country) {{
-    if (country === 'es') return LABELS.facts_attribution_source_label_es;
-    if (country === 'pt') return LABELS.facts_attribution_source_label_pt;
-    return LABELS.facts_attribution_source_label;
-  }}
-
-  function buildFactsAttribution(tplKey, country, cahierUrl) {{
-    const labelText = buildFactsSourceLabel(country);
-    const sourceHtml = cahierUrl
-      ? `<a href="${{escapeAttr(cahierUrl)}}" target="_blank" rel="noopener">${{escapeHtml(labelText)}}</a>`
-      : escapeHtml(labelText);
-    const tpl = LABELS[tplKey];
-    const placeholder = '{{source}}';
-    const idx = tpl.indexOf(placeholder);
-    const pre = idx >= 0 ? tpl.slice(0, idx) : (tpl + ' ');
-    const post = idx >= 0 ? tpl.slice(idx + placeholder.length) : '';
-    return `<p class="translation-attr">${{escapeHtml(pre)}}${{sourceHtml}}${{escapeHtml(post)}}</p>`;
-  }}
-
-  function renderVerbatimFacts(r, tf) {{
-    const text = tf.verbatim_text || '';
-    if (!text) return '';
-    const cahierUrl = tf.cahier_source_pdf_url || '';
-    const flag = tf.validation_flag || '';
-    const badge = flag
-      ? `<span class="verbatim-badge" title="${{escapeAttr(flag)}}">${{escapeHtml(LABELS.facts_verbatim_to_verify)}}</span>`
-      : '';
-    const body = `<blockquote class="facts-verbatim">${{escapeHtml(text)}}</blockquote>`;
-    const attribution = buildFactsAttribution('facts_verbatim_attribution', r.country, cahierUrl);
-    return `<h2>${{LABELS.panel_facts_h}}${{badge ? ' ' + badge : ''}}</h2>${{body}}${{attribution}}`;
-  }}
-
-  function renderTerroirFacts(r) {{
-    const tf = r.terroir_facts;
-    if (!tf) return '';
-    if (tf.mode === 'verbatim') return renderVerbatimFacts(r, tf);
-    if (!tf.facts || !tf.facts.length) return '';
-    const wikiUrl = tf.wiki_source_url || '';
-    const wikiAttr = wikiUrl
-      ? ` <span class="wiki-attr">(<a href="${{escapeAttr(wikiUrl)}}" target="_blank" rel="noopener">${{escapeHtml(LABELS.facts_wiki_marker)}}</a>)</span>`
-      : ` <span class="wiki-attr">(${{escapeHtml(LABELS.facts_wiki_marker)}})</span>`;
-    const grouped = {{}};
-    for (const f of tf.facts) {{
-      const k = f.subsection || 'facteurs_naturels';
-      (grouped[k] = grouped[k] || []).push(f);
-    }}
-    const blocks = FACTS_SUB_ORDER.flatMap(k => {{
-      const facts = grouped[k];
-      if (!facts || !facts.length) return [];
-      const items = facts.map(f => {{
-        const marker = f.provenance === 'wiki' ? wikiAttr : '';
-        return `<li>${{escapeHtml(f.bullet)}}${{marker}}</li>`;
-      }}).join('');
-      return [`<div class="facts-sub-h">${{escapeHtml(FACTS_SUB_LABELS[k] || k)}}</div><ul class="facts">${{items}}</ul>`];
-    }});
-    if (!blocks.length) return '';
-    const attribution = buildFactsAttribution(
-      'facts_attribution', r.country, tf.cahier_source_pdf_url || ''
-    );
-    return `<h2>${{LABELS.panel_facts_h}}</h2>${{blocks.join('')}}${{attribution}}`;
-  }}
-
-  function renderDulok(r) {{
-    // HU named single-vineyards (dűlők), grouped by település, in a
-    // collapsible block. Names are verbatim regulator data (not
-    // translated); the termékleírás source is attributed in Sources.
-    const dulok = r.dulok || [];
-    if (!dulok.length) return '';
-    const groups = {{}};
-    const order = [];
-    for (const d of dulok) {{
-      const tel = d.telepules || '';
-      let name = d.dulo || '';
-      if (d.aldulok && d.aldulok.length) name += ' (' + d.aldulok.join(', ') + ')';
-      if (!(tel in groups)) {{ groups[tel] = []; order.push(tel); }}
-      groups[tel].push(name);
-    }}
-    const rows = order.map(tel =>
-      `<div class="dulo-row"><span class="dulo-tel">${{escapeHtml(tel)}}</span> ${{
-        groups[tel].map(n => escapeHtml(n)).join(', ')}}</div>`).join('');
-    return `<details class="dulok"><summary>${{
-      fmt(LABELS.panel_dulok_h, {{ n: dulok.length }})}}</summary>${{rows}}</details>`;
-  }}
-
-  function renderMenzioni(r) {{
-    // IT menzioni geografiche aggiuntive (MGA/UGA crus) — a flat,
-    // collapsible name-chip list on the parent panel. Verbatim regulator
-    // data (not translated); the disciplinare is attributed in Sources.
-    // No per-cru polygons: no licence-clear public GIS layer exists.
-    const mz = r.menzioni || [];
-    if (!mz.length) return '';
-    const chips = mz.map(n =>
-      `<span class="pill menzione">${{escapeHtml(toTitleCase(n))}}</span>`).join('');
-    return `<details class="dulok menzioni"><summary>${{
-      fmt(LABELS.panel_menzioni_h, {{ n: mz.length }})}}</summary>` +
-      `<div class="menzioni-chips">${{chips}}</div></details>`;
-  }}
-
-  function renderAocCard(slug, isPrimary) {{
-    const r = AOCS[slug];
-    if (!r) return '';
-    const styleChips = (r.styles || []).map(s => {{
-      const safe = escapeAttr(s);
-      const info = STYLES_INFO[s];
-      const has = !!(info && info.extract);
-      const cls = ['pill', 'style', `style--${{safe}}`, has ? 'has-info' : ''].filter(Boolean).join(' ');
-      const label = toTitleCase(STYLE_LABELS[s] || s);
-      if (has && info.page_url) {{
-        return `<a class="${{cls}}" data-slug="${{safe}}" href="${{escapeAttr(info.page_url)}}" target="_blank" rel="noopener">${{label}}</a>`;
-      }}
-      // has-info spans (extract but no Wikipedia URL) aren't links, so make
-      // them keyboard-focusable to surface the tooltip without a mouse.
-      const tab = has ? ' tabindex="0"' : '';
-      return `<span class="${{cls}}" data-slug="${{safe}}"${{tab}}>${{label}}</span>`;
-    }}).join('');
-    const grapePill = (g, cls) => {{
-      const info = GRAPES_INFO[g];
-      const has = !!(info && (info.extract || (info.vivc_id && info.vivc_url) || info.note));
-      const cls2 = ['pill', 'grape', cls, has ? 'has-info' : ''].filter(Boolean).join(' ');
-      // Title-case both the cahier spelling and the canonical bracket so
-      // pills stay consistent regardless of source casing ("mourvèdre" /
-      // "MOURVEDRE" → "Mourvèdre").
-      const cahierName = toTitleCase((r.grape_names && r.grape_names[g]) || grapeName(g));
-      // Prefer VIVC's prime name when resolved; fall back to a Latin
-      // transliteration of the cahier spelling for non-Latin scripts
-      // (Cyrillic / Greek native varieties that VIVC hasn't catalogued)
-      // so pills still surface a readable Latin form alongside the
-      // native one. Per-record `grape_names_latin` covers slugs that
-      // never make it into GRAPES_INFO (no Wikipedia + no VIVC).
-      const canon = (info && info.canonical_name)
-        || (info && info.name_latin)
-        || (r.grape_names_latin && r.grape_names_latin[g])
-        || '';
-      const labelInner = canon && !canonicalEqualsCahier(canon, cahierName)
-        ? `${{escapeHtml(cahierName)}} <span class="canon">(${{escapeHtml(canon)}})</span>`
-        : escapeHtml(cahierName);
-      return `<a class="${{cls2}}" data-slug="${{escapeAttr(g)}}" href="${{escapeAttr(grapeUrl(g))}}" target="_blank" rel="noopener">${{labelInner}}</a>`;
-    }};
-    const principal = (r.grapes_principal || []).map(g => grapePill(g, '')).join('');
-    const accessory = (r.grapes_accessory || []).map(g => grapePill(g, 'accessory')).join('');
-    const observation = (r.grapes_observation || []).map(g => grapePill(g, 'observation')).join('');
-    // PT cadernos enumerate every authorised casta as `principal` because
-    // the IVV documento-único format doesn't carry a role split (see
-    // CLAUDE.md "PT grape role classification — not published by the
-    // regulator"). Surface that limitation inline under the principal
-    // pills so the rendering is honest about what the regulator publishes.
-    const ptRoleDisclaimer = (r.country === 'pt' && principal)
-      ? `<div class="role-disclaimer">${{escapeHtml(LABELS.pt_role_disclaimer)}}</div>`
-      : '';
-    const klass = isPrimary ? 'aoc-card' : 'aoc-card subordinate';
-    let metaTail = '';
-    if (r.geom_source === 'aires-csv' || r.geom_source === 'dgc-village-override') {{
-      metaTail = ' · ' + fmt(LABELS.meta_communes_inao, {{ n: r.communes_matched || 0 }});
-    }} else if (
-      r.geom_source !== 'parcellaire' && r.geom_source !== 'parcellaire-dgc' &&
-      r.geom_source !== 'aires-csv-dgc' && r.geom_source !== 'cadastre-lieu-dit-dgc' &&
-      r.geom_source !== 'sibling-dgc' && r.geom_source !== 'parent-appellation'
-    ) {{
-      metaTail = ' · ' + fmt(LABELS.meta_communes, {{ n: r.communes_matched || 0 }});
-    }}
-    const region = r.region ? regionLabel(r.region) : '';
-    const regionSeg = region ? ` · ${{escapeHtml(region)}}` : '';
-    const countryChip = countryChipHtml(r.country, r.country_aliases);
-    const countrySeg = countryChip ? `${{countryChip}} · ` : '';
-    const dgcLine = r.is_sub_denomination && r.parent_slug
-      ? `<div class="dgc-line">${{escapeHtml(LABELS.dgc_of)}} <a class="parent-link" data-slug="${{escapeAttr(r.parent_slug)}}" href="#">${{escapeHtml(r.parent_name || r.parent_slug)}}</a></div>`
-      : '';
-    let approxLine = '';
-    if (r.geom_source === 'sibling-dgc' && r.geom_fallback_slug) {{
-      const u = `<a class="parent-link" data-slug="${{escapeAttr(r.geom_fallback_slug)}}" href="#">${{escapeHtml(r.geom_fallback_name || r.geom_fallback_slug)}}</a>`;
-      approxLine = `<div class="approx-line">${{fmt(LABELS.geom_approx_within, {{ umbrella: u }})}}</div>`;
-    }} else if (r.geom_source === 'parent-appellation') {{
-      approxLine = `<div class="approx-line">${{escapeHtml(LABELS.geom_approx_parent)}}</div>`;
-    }} else if (r.geom_source === 'aires-csv-dgc') {{
-      approxLine = `<div class="approx-line">${{escapeHtml(LABELS.geom_approx_aires)}}</div>`;
-    }} else if (r.geom_source === 'cadastre-lieu-dit-dgc' && r.cadastre_lieu_dit) {{
-      const src = `<a href="https://cadastre.data.gouv.fr/" target="_blank" rel="noopener">${{escapeHtml(LABELS.geom_approx_cadastre_source_label)}}</a>`;
-      approxLine = `<div class="approx-line">${{fmt(LABELS.geom_approx_cadastre, {{ lieu_dit: escapeHtml(r.cadastre_lieu_dit), commune: escapeHtml(r.cadastre_commune || ''), source: src }})}}</div>`;
-    }}
-    const stubLine = r.is_stub
-      ? `<div class="approx-line">${{fmt(LABELS.stub_message, {{ doc: '<em>' + escapeHtml(STUB_DOC_NAMES[r.country] || STUB_DOC_NAMES.fr) + '</em>' }})}} <a class="stub-help" href="${{escapeAttr(GITHUB_NEW_ISSUE_URL)}}" target="_blank" rel="noopener">${{escapeHtml(LABELS.stub_help_label)}}</a></div>`
-      : '';
-    const dulokBlock = renderDulok(r);
-    const menzioniBlock = renderMenzioni(r);
-    const factsBlock = renderTerroirFacts(r);
-    const isTranslated = !!r.summary_translation;
-    const summaryMarker = isTranslated ? '' : srcMarker(r.country);
-    const summary = (!factsBlock && r.summary)
-      ? `<p>${{escapeHtml(r.summary)}}${{summaryMarker}}</p>${{translationAttribution(r.summary_translation, r.country)}}`
-      : '';
-    // Curated, source-cited cross-border note (e.g. Teran SI/HR). Only a
-    // handful of appellations carry one — see _lib/appellation_notes.json.
-    const noteBlock = (r.note && r.note.text)
-      ? `<div class="appellation-note"><div class="note-text">ⓘ ${{escapeHtml(r.note.text)}}</div>${{
-          (r.note.sources && r.note.sources.length)
-            ? '<div class="note-srcs">' + r.note.sources.map(s =>
-                `<a href="${{escapeAttr(s.url)}}" target="_blank" rel="noopener">${{escapeHtml(s.label)}}</a>`).join('') + '</div>'
-            : ''
-        }}</div>`
-      : '';
-    return `
-      <div class="${{klass}}">
-        <h1>${{nameWithLatin(r)}}</h1>
-        <div class="meta">${{countrySeg}}${{r.kind}}${{regionSeg}}${{metaTail}}</div>
-        ${{dgcLine}}
-        ${{approxLine}}
-        ${{stubLine}}
-        ${{styleChips ? '<h2>' + LABELS.panel_styles_h + '</h2><div class="pills">' + styleChips + '</div>' : ''}}
-        ${{principal ? '<h2>' + LABELS.facet_principal_h + '</h2><div class="pills">' + principal + '</div>' : ''}}
-        ${{ptRoleDisclaimer}}
-        ${{accessory ? '<h2>' + LABELS.facet_accessory_h + '</h2><div class="pills">' + accessory + '</div>' : ''}}
-        ${{observation ? '<h2>' + LABELS.panel_observation_h + '</h2><div class="pills">' + observation + '</div>' : ''}}
-        ${{factsBlock || summary}}
-        ${{dulokBlock}}
-        ${{menzioniBlock}}
-        ${{noteBlock}}
-        ${{renderSources(slug, r.sources)}}
+  </aside>"""
+
+
+
+# The production sidebar — "Search + Browse rail" (promoted from lab variant D):
+# a unified omnisearch bar (appellations + grapes + regions + styles; the
+# appellation tree below live-filters as you type) over the mode-gated style
+# tree, a browsable grape chip list ("main grape only" toggle inside it), and the
+# region/appellation tree. Built from the shared head/active/legend-footer pieces.
+_SIDEBAR = _LAB_HEAD_TOP + _LAB_ACTIVE + """
+    <div id="mode-toggle" role="group" aria-label="{labels[view_mode_h]}">
+      <button type="button" data-mode="simple" class="mode-btn active" aria-pressed="true">{labels[view_mode_simple]}</button>
+      <button type="button" data-mode="advanced" class="mode-btn" aria-pressed="false">{labels[view_mode_advanced]}</button>
+    </div>
+
+    <details open data-modes="simple" data-facet="styles">
+      <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
+      <div class="facet" id="facet-styles-simple"></div>
+    </details>
+
+    <details open data-modes="advanced" data-facet="styles">
+      <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
+      <div class="facet" id="facet-styles"></div>
+    </details>
+
+    <details data-modes="advanced" data-facet="classification">
+      <summary><span class="facet-label">{labels[facet_classification_h]}</span><span class="facet-badge"></span></summary>
+      <div class="facet" id="facet-classification"></div>
+    </details>
+
+    <details open data-facet="grapes">
+      <summary><span class="facet-label">{labels[facet_grapes_h]}</span><span class="facet-badge"></span></summary>
+      <div class="omni-subopt grape-subopt">
+        <label><input type="checkbox" id="main-grape-only"> <span class="name">{labels[main_grape_only_label]}</span></label>
       </div>
-    `;
-  }}
+      <div class="grape-chip-filter" data-role="all"></div>
+    </details>
 
-  function bboxArea(b) {{
-    if (!b || b.length < 4) return Infinity;
-    const w = b[2] - b[0], h = b[3] - b[1];
-    return w > 0 && h > 0 ? w * h : Infinity;
-  }}
+    <details open data-facet="appellations">
+      <summary><span class="facet-label">{labels[facet_appellations_h]}</span><span class="facet-badge"></span></summary>
+      <div class="facet facet-appellations" id="facet-appellations"></div>
+    </details>
 
-  function localityRank(slug) {{
-    // Sort key: bounding-box area of the rendered geometry, mode-aware.
-    // Bbox area penalises spread-out multipolygons (parent cuvée
-    // covering every premier-cru fragment in a region) so a localised
-    // climat outranks a scattered parent even when the parent's total
-    // polygon area is smaller.
-    const r = AOCS[slug];
-    if (!r) return Infinity;
-    const primary = viewMode === 'advanced' ? r.bbox : r.bbox_villages;
-    const fallback = viewMode === 'advanced' ? r.bbox_villages : r.bbox;
-    const a = bboxArea(primary);
-    return Number.isFinite(a) ? a : bboxArea(fallback);
-  }}
+    <div id="igp-toggle">
+      <label><input type="checkbox" id="show-igp"> <span class="name">{labels[show_igp_label]}</span></label>
+    </div>
 
-  function renderPanelStack(slugs, focusIndex, doTrack) {{
-    if (!slugs.length) return;
-    const sorted = slugs
-      .filter(s => AOCS[s])
-      .sort((a, b) => localityRank(a) - localityRank(b));
-    if (!sorted.length) return;
-    const focus = ((((focusIndex | 0) % sorted.length) + sorted.length) % sorted.length);
-    const ordered = focus === 0
-      ? sorted
-      : [sorted[focus], ...sorted.filter((_, i) => i !== focus)];
-    let header = '';
-    if (sorted.length > 1) {{
-      const pos = `<span class="stack-pos" title="${{escapeAttr(LABELS.stack_cycle_hint)}}">${{focus + 1}} / ${{sorted.length}}</span>`;
-      header = `<div class="stack-header"><span>${{fmt(LABELS.stack_header, {{ n: sorted.length }})}}</span>${{pos}}</div>`;
-    }}
-    panelBody.innerHTML = header + ordered.map((s, i) => renderAocCard(s, i === 0)).join('');
-    panel.classList.add('open');
-    setSelection(ordered.slice(0, 1));
-    // Fresh opens only (doTrack !== false): move keyboard focus into the panel
-    // (WCAG 2.4.3) and reflect the appellation in the URL so it is shareable.
-    // The localStorage restore passes doTrack === false so it neither steals
-    // focus nor rewrites the URL on every reload / language switch.
-    if (doTrack !== false) {{
-      setAocPath(ordered[0]);
-      if (typeof panel.focus === 'function') panel.focus({{ preventScroll: true }});
-    }}
-    // Popularity signal: the appellation brought to the front of the stack.
-    // doTrack is suppressed for the localStorage restore (fires on every
-    // reload / language switch — not a fresh view).
-    if (doTrack !== false) {{
-      const focusSlug = ordered[0];
-      const fr = AOCS[focusSlug];
-      if (fr) {{
-        track('Appellation Viewed', {{
-          slug: focusSlug,
-          country: fr.country || '(none)',
-          kind: fr.kind || '(none)',
-          region: fr.region || '(none)',
-          stacked: sorted.length > 1 ? 'true' : 'false',
-          locale: LANG,
-        }});
-      }}
-    }}
-  }}
+    <div id="spirits-toggle" data-modes="advanced">
+      <label><input type="checkbox" id="show-spirits"> <span class="name">{labels[show_spirits_label]}</span></label>
+    </div>
+""" + _LAB_LEGEND_FOOTER
 
-  function escapeHtml(s) {{
-    return String(s).replace(/[&<>"']/g, c => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[c]));
-  }}
 
-  // ----- selection highlight + persistence (across reload / language switch) -----
-  // Selection is mirrored into both `appellations` (advanced/parcellaire) and
-  // `appellations-villages` (simple/commune) sources so the highlight follows
-  // the user across mode toggles. setFeatureState calls before map.on('load')
-  // throw because the source isn't registered yet — we swallow and re-apply
-  // at the end of map.on('load').
-  let selectedSlugs = [];
-  // The element that opened the panel (a facet "open" button), so focus can
-  // return there on close (WCAG 2.4.3). Null for map clicks / in-panel
-  // cross-links, which have no sensible DOM element to return focus to.
-  let lastPanelTrigger = null;
+def _render_sidebar() -> str:
+    """Inner markup for the (single) production sidebar — the lab A/B/C/D variants
+    were removed when D was promoted. Still carries format fields — it is
+    `.replace`-injected into _PAGE_TEMPLATE before `.format`."""
+    return _SIDEBAR
 
-  // Cycling: clicking on the same overlap rotates focus through the stack.
-  // Key is the deduped slug set (order-independent) so the user can wobble
-  // a few pixels and still cycle; moving to a different overlap resets.
-  let lastStackKey = '';
-  let stackFocusIndex = 0;
+# The map application JS lives in assets/app.js — a real .js file (lint-able,
+# eslint-able) rather than an escaped Python string. Build-time per-locale
+# values are injected via `__OWM_<slot>__` tokens that sit exactly where the
+# old `{slot}` format fields were (literal braces are already real in the .js),
+# so `_render_app_js` is byte-for-byte equivalent to the old
+# `_APP_JS.format(**kwargs)` (verified by the golden comparator). app.js is now
+# the sole source — edit it directly; do not move the JS back into _TEMPLATE.
+_APP_JS_SOURCE = (Path(__file__).resolve().parent / "assets" / "app.js").read_text(
+    encoding="utf-8"
+)
+_OWM_TOKEN_RE = re.compile(r"__OWM_(\w+?)__")
 
-  function setSelectedState(slug, selected) {{
-    for (const source of ['appellations', 'appellations-villages']) {{
-      const opts = {{ source: source, id: slug }};
-      if (SOURCE_TYPE === 'pmtiles') opts.sourceLayer = 'appellations';
-      try {{ map.setFeatureState(opts, {{ selected: selected }}); }} catch (e) {{}}
-    }}
-  }}
 
-  function setSelection(slugs) {{
-    for (const s of selectedSlugs) setSelectedState(s, false);
-    selectedSlugs = slugs.slice();
-    for (const s of selectedSlugs) setSelectedState(s, true);
-    try {{
-      if (selectedSlugs.length) localStorage.setItem('selected_slugs', JSON.stringify(selectedSlugs));
-      else localStorage.removeItem('selected_slugs');
-    }} catch (e) {{}}
-  }}
+def _render_app_js(kwargs: dict[str, str]) -> str:
+    """Fill the per-locale build tokens in assets/app.js (single pass, so a
+    value can never be re-scanned for another token)."""
+    missing: list[str] = []
 
-  // Deep-link an appellation as a real path segment: /<lang>/<slug> for every
-  // locale, EN included (/en/<slug>) — so one CDN rewrite covers all four. EN's
-  // *home* stays at / (HOME_BASE); only its deep-links live under /en/. The slug
-  // rides the path; the camera stays in MapLibre's hash, so the two never
-  // collide. replaceState keeps it out of the back-button history.
-  // Static-host caveat: in-session navigation is pure client-side (no reload),
-  // but a fresh load / shared link of /<lang>/<slug> needs the server to serve
-  // the locale index for that path — scripts/serve.py locally, a CDN rewrite in
-  // prod. A legacy ?aoc= query is still read on load (and upgraded to a path).
-  const SLUG_BASE = '/' + LANG + '/';
-  const HOME_BASE = (LANG === 'en') ? '/' : SLUG_BASE;
-  function slugFromPath() {{
-    let p = window.location.pathname || '/';
-    p = (p.indexOf(SLUG_BASE) === 0) ? p.slice(SLUG_BASE.length) : p.replace(/^\\//, '');
-    p = p.replace(/\\/+$/, '').split('/')[0];
-    try {{ p = decodeURIComponent(p); }} catch (e) {{}}
-    return p || null;
-  }}
-  function setAocPath(slug) {{
-    try {{
-      const path = slug ? SLUG_BASE + encodeURIComponent(slug) : HOME_BASE;
-      history.replaceState(history.state, '', path + window.location.hash);
-    }} catch (e) {{}}
-  }}
+    def _sub(m: "re.Match[str]") -> str:
+        key = m.group(1)
+        if key not in kwargs:
+            missing.append(key)
+            return m.group(0)
+        return str(kwargs[key])
 
-  // Single close path: clears selection + stack state + URL param, and returns
-  // focus to the panel's trigger when asked (WCAG 2.4.3). Map clicks pass
-  // returnFocus=false — the user's intent already moved to the map.
-  function closePanel(returnFocus) {{
-    const wasOpen = panel.classList.contains('open');
-    panel.classList.remove('open');
-    setSelection([]);
-    lastStackKey = '';
-    stackFocusIndex = 0;
-    setAocPath(null);
-    if (returnFocus && wasOpen) {{
-      const target = (lastPanelTrigger && document.contains(lastPanelTrigger))
-        ? lastPanelTrigger : document.getElementById('q');
-      if (target) {{ try {{ target.focus(); }} catch (e) {{}} }}
-    }}
-    lastPanelTrigger = null;
-  }}
-
-  // Restore an open detail panel: a shared /<lang>/<slug> path (or a legacy
-  // ?aoc= query) wins over the localStorage restore; otherwise reopen whatever
-  // was last open. Both run before map.on('load') — the setFeatureState
-  // highlight throws are swallowed and re-applied at the end of map.on('load').
-  (function () {{
-    let urlSlug = slugFromPath();
-    if (!(urlSlug && AOCS[urlSlug])) {{
-      try {{ const q = new URLSearchParams(window.location.search).get('aoc'); if (q && AOCS[q]) urlSlug = q; }} catch (e) {{}}
-    }}
-    if (urlSlug && AOCS[urlSlug]) {{
-      lastStackKey = urlSlug;
-      stackFocusIndex = 0;
-      renderPanelStack([urlSlug], 0);
-      // Frame the shared appellation, but only when the link carries no
-      // explicit camera hash (respect a co-shared #zoom/lat/lon).
-      if (!window.location.hash) {{
-        // Mode-aware like fitToFiltered / the facet-open handler: simple mode
-        // renders the villages geometry, so frame that extent, not parcellaire.
-        const b = (viewMode === 'simple' && AOCS[urlSlug].bbox_villages) ? AOCS[urlSlug].bbox_villages : AOCS[urlSlug].bbox;
-        if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], {{ padding: 60, maxZoom: 11, duration: 0 }}));
-      }}
-      return;
-    }}
-    let saved = null;
-    try {{ saved = localStorage.getItem('selected_slugs'); }} catch (e) {{}}
-    if (!saved) return;
-    let slugs;
-    try {{ slugs = JSON.parse(saved); }} catch (e) {{ return; }}
-    if (!Array.isArray(slugs) || !slugs.length) return;
-    const valid = slugs.filter(s => AOCS[s]);
-    if (!valid.length) return;
-    renderPanelStack(valid, 0, false);
-  }})();
-
-  document.querySelector('#panel .close').addEventListener('click', () => closePanel(true));
-
-  // Esc closes the detail panel and returns focus to its trigger (WCAG 2.1.2).
-  // The native About <dialog> owns Esc while open, so defer to it.
-  document.addEventListener('keydown', e => {{
-    if (e.key !== 'Escape') return;
-    if (aboutDialog && aboutDialog.open) return;
-    if (panel.classList.contains('open')) {{ e.stopPropagation(); closePanel(true); }}
-  }});
-
-  // ----- pill tooltip (Wikipedia, CC BY-SA 4.0) — grapes + styles -----
-  const grapeTip = document.createElement('div');
-  grapeTip.id = 'grape-tooltip';
-  grapeTip.setAttribute('role', 'tooltip');
-  document.body.appendChild(grapeTip);
-  let grapeTipCloseTimer = null;
-  // The pill the tooltip currently describes, so a screen reader announces
-  // the extract / VIVC id / attribution when a keyboard user focuses a pill.
-  let describedPill = null;
-  const cancelGrapeTipClose = () => {{
-    if (grapeTipCloseTimer) {{ clearTimeout(grapeTipCloseTimer); grapeTipCloseTimer = null; }}
-  }};
-  const hideGrapeTip = () => {{
-    grapeTip.style.display = 'none';
-    if (describedPill) {{ describedPill.removeAttribute('aria-describedby'); describedPill = null; }}
-  }};
-  const scheduleGrapeTipClose = () => {{
-    cancelGrapeTipClose();
-    grapeTipCloseTimer = setTimeout(() => {{ hideGrapeTip(); grapeTipCloseTimer = null; }}, 150);
-  }};
-  grapeTip.addEventListener('mouseenter', cancelGrapeTipClose);
-  grapeTip.addEventListener('mouseleave', scheduleGrapeTipClose);
-
-  function positionGrapeTip(el) {{
-    const r = el.getBoundingClientRect();
-    const top = (r.bottom + 220 > window.innerHeight) ? (r.top - grapeTip.offsetHeight - 6) : (r.bottom + 6);
-    const left = Math.min(Math.max(8, r.left), window.innerWidth - grapeTip.offsetWidth - 8);
-    grapeTip.style.top = Math.max(8, top) + 'px';
-    grapeTip.style.left = left + 'px';
-  }}
-
-  function resolvePillInfo(el) {{
-    if (el.matches('a.pill.grape.has-info')) {{
-      const info = GRAPES_INFO[el.dataset.slug];
-      if (!info) return null;
-      if (!info.extract && !(info.vivc_id && info.vivc_url) && !info.note) return null;
-      return {{ info, url: info.page_url || grapeUrl(el.dataset.slug) }};
-    }}
-    if (el.matches('.pill.style.has-info')) {{
-      const info = STYLES_INFO[el.dataset.slug];
-      if (!info || !info.extract) return null;
-      return {{ info, url: info.page_url || '' }};
-    }}
-    return null;
-  }}
-
-  const showPillTip = (e) => {{
-    const el = e.target.closest('a.pill.grape.has-info, .pill.style.has-info');
-    if (!el) return;
-    const resolved = resolvePillInfo(el);
-    if (!resolved) return;
-    const {{ info, url }} = resolved;
-    const safeUrl = escapeAttr(url);
-    const hasExtract = !!info.extract;
-    const thumb = (hasExtract && info.thumbnail)
-      ? `<img class="thumb" src="${{escapeAttr(info.thumbnail)}}" alt="" loading="lazy" decoding="async">` : '';
-    // Two translation paths now feed the source-block:
-    //   1. info.translation — legacy styles path (raw/translations/styles/)
-    //   2. info.is_translated — grapes path (raw/translations/grapes/),
-    //      with source_lang on the entry itself.
-    const tx = info.translation;
-    const grapeTranslated = !tx && info.is_translated && info.source_lang;
-    let srcBlock = '';
-    if (hasExtract) {{
-      if (tx || grapeTranslated) {{
-        const srcLang = tx ? tx.source_lang : info.source_lang;
-        const srcUrl = (tx ? tx.source_page_url : info.page_url) || url;
-        const wikiLabel = LABELS['wiki_lang_' + srcLang]
-          || ('Wikipedia ' + (srcLang || '').toUpperCase());
-        const wikiLink = srcUrl
-          ? `<a href="${{escapeAttr(srcUrl)}}" target="_blank" rel="noopener">${{escapeHtml(wikiLabel)}}</a>`
-          : escapeHtml(wikiLabel);
-        srcBlock = LABELS.tooltip_translated_from.replace('{{wiki}}', wikiLink);
-      }} else {{
-        const srcLink = url
-          ? `<a href="${{safeUrl}}" target="_blank" rel="noopener">Wikipedia</a>`
-          : 'Wikipedia';
-        srcBlock = `via ${{srcLink}} · CC BY-SA 4.0${{info.thumbnail ? ' · image: Wikimedia Commons' : ''}}`;
-      }}
-    }}
-    if (info.vivc_id && info.vivc_url) {{
-      const vivcLabel = LABELS.vivc_link_label.replace('{{id}}', info.vivc_id);
-      const vivcLink = `<a href="${{escapeAttr(info.vivc_url)}}" target="_blank" rel="noopener" title="${{escapeAttr(LABELS.vivc_link_title)}}">${{escapeHtml(vivcLabel)}}</a>`;
-      srcBlock += srcBlock ? ` · ${{vivcLink}}` : vivcLink;
-    }}
-    const extPara = hasExtract ? `<p class="ext">${{escapeHtml(info.extract)}}</p>` : '';
-    const notePara = info.note ? `<p class="note">${{escapeHtml(info.note)}}</p>` : '';
-    const srcDiv = srcBlock ? `<div class="src">${{srcBlock}}</div>` : '';
-    grapeTip.innerHTML = thumb + extPara + notePara + srcDiv;
-    cancelGrapeTipClose();
-    grapeTip.style.display = 'block';
-    if (describedPill && describedPill !== el) describedPill.removeAttribute('aria-describedby');
-    describedPill = el;
-    el.setAttribute('aria-describedby', 'grape-tooltip');
-    positionGrapeTip(el);
-  }};
-
-  const hidePillTip = (e) => {{
-    if (e.target.closest('a.pill.grape.has-info, .pill.style.has-info')) scheduleGrapeTipClose();
-  }};
-  // Show on hover (mouseover) and on keyboard focus (focusin); hide on the
-  // matching mouseout/focusout; Escape dismisses immediately.
-  panel.addEventListener('mouseover', showPillTip);
-  panel.addEventListener('focusin', showPillTip);
-  panel.addEventListener('mouseout', hidePillTip);
-  panel.addEventListener('focusout', hidePillTip);
-  panel.addEventListener('keydown', e => {{
-    if (e.key === 'Escape' && grapeTip.style.display === 'block') {{
-      // Esc dismisses the innermost layer first: kill the tooltip and stop the
-      // event so the document-level handler doesn't also close the panel.
-      e.stopPropagation();
-      cancelGrapeTipClose(); hideGrapeTip();
-    }}
-  }});
-
-  panel.addEventListener('click', e => {{
-    const a = e.target.closest('a.parent-link');
-    if (!a) return;
-    e.preventDefault();
-    const slug = a.dataset.slug;
-    if (slug && AOCS[slug]) {{
-      lastPanelTrigger = null;
-      lastStackKey = '';
-      stackFocusIndex = 0;
-      renderPanelStack([slug]);
-    }}
-  }});
-
-  // ----- map interactions -----
-  let hoveredSlug = null;
-
-  map.on('load', () => {{
-{source_block}
-    for (const id of ['appellations-fill', 'appellations-outline',
-                      'appellations-fill-villages', 'appellations-outline-villages']) {{
-      map.on('mousemove', id, e => {{
-        if (!e.features.length) return;
-        map.getCanvas().style.cursor = 'pointer';
-        const f = e.features[0];
-        const slug = f.properties.slug;
-        if (slug !== hoveredSlug) hoveredSlug = slug;
-      }});
-      map.on('mouseleave', id, () => {{
-        map.getCanvas().style.cursor = '';
-        hoveredSlug = null;
-      }});
-    }}
-
-    // Single map-level click handler. Per-layer click handlers fired multiple
-    // times at boundaries (fill + outline), and the last handler's
-    // setSelection won — making the same spot select different things. Hit-
-    // testing once at the click point gives one deterministic feature set,
-    // and an empty hit becomes "click outside → deselect".
-    map.on('click', e => {{
-      // 4-pixel bbox around the click — vineyard polygons (grand-cru
-      // climats, narrow premier-cru slivers) are often sub-pixel thin at
-      // typical zoom; a point-only hit-test misses them.
-      const r = 4;
-      const bbox = [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
-      const features = map.queryRenderedFeatures(bbox, {{
-        layers: ['appellations-fill', 'appellations-fill-villages'],
-      }});
-      if (!features.length) {{ closePanel(false); return; }}
-      // Dedupe by slug, and drop DGCs that share another AOC's polygon
-      // (geom_source = parent-appellation / sibling-dgc). They're returned
-      // because the underlying geometry was inherited, but they have no
-      // distinct shape to click on — selecting one gold-outlines the whole
-      // parent and clutters the panel stack with siblings nobody pointed at.
-      const seen = new Set();
-      const slugs = [];
-      for (const f of features) {{
-        const s = f.properties.slug;
-        if (!s || seen.has(s)) continue;
-        seen.add(s);
-        const rec = AOCS[s];
-        const src = rec && rec.geom_source;
-        if (src === 'parent-appellation' || src === 'sibling-dgc') continue;
-        slugs.push(s);
-      }}
-      if (!slugs.length) {{ closePanel(false); return; }}
-      const key = slugs.slice().sort().join('|');
-      if (key === lastStackKey && slugs.length > 1) {{
-        stackFocusIndex = (stackFocusIndex + 1) % slugs.length;
-      }} else {{
-        lastStackKey = key;
-        stackFocusIndex = 0;
-      }}
-      lastPanelTrigger = null;
-      renderPanelStack(slugs, stackFocusIndex);
-    }});
-
-    // Re-apply feature-state for any selection restored from localStorage
-    // before sources existed. Safe no-op when nothing is selected.
-    for (const s of selectedSlugs) setSelectedState(s, true);
-
-    applyMode();
-    applyFilter();
-    updateStatus();
-  }});
-</script>
-</body>
-</html>
-"""
+    out = _OWM_TOKEN_RE.sub(_sub, _APP_JS_SOURCE)
+    if missing:
+        raise KeyError(f"app.js: unfilled build tokens {sorted(set(missing))}")
+    return out

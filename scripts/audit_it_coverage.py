@@ -81,7 +81,7 @@ def main() -> int:
     overrides = _load_overrides()
     figshare_ids = _load_figshare_file_numbers()
 
-    print(f"# IT pipeline audit\n")
+    print("# IT pipeline audit\n")
     print(f"eAmbrosia wines:      {len(wines)}")
     print(f"Extracted records:    {len(extracted)} (parents + sottozone)")
     print(f"OJ-page manifest:     {len(oj_manifest)} entries")
@@ -150,7 +150,7 @@ def main() -> int:
     print("## Geometry coverage (Bétard 2022)")
     print(f"  In Figshare:    {in_figshare} of {len(wines)} ({in_figshare/max(1,len(wines)):.1%})")
     print(f"  Missing from Figshare: {no_figshare}")
-    print(f"  (Most IGTs miss Figshare — it's PDO-only. Some newer DOPs may also miss.)")
+    print("  (Most IGTs miss Figshare — it's PDO-only. Some newer DOPs may also miss.)")
     print()
     print("## Sub-denominations + menzioni")
     print(f"  Sottozone records:      {sottozone_count}")

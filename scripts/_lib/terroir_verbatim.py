@@ -185,8 +185,11 @@ def emit_for_country(
     correct for the verbatim path.
     """
     import sys
-    if print_fn is None:
-        print_fn = lambda msg: print(msg, file=sys.stderr)
+    if print_fn is not None:
+        log = print_fn
+    else:
+        def log(msg):
+            print(msg, file=sys.stderr)
     if not extracted_dir.exists():
         return 0
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -212,7 +215,7 @@ def emit_for_country(
         write_verbatim_record(cache_dir / f"{slug}.json", payload)
         written += 1
         prefix = f"{log_prefix}: " if log_prefix else ""
-        print_fn(
+        log(
             f"{prefix}verbatim: {slug} ({len(lien)} chars, "
             f"flag={payload['validation_flag']})"
         )

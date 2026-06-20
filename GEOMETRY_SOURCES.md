@@ -46,7 +46,7 @@ wines stay on Bétard).
 
 ### Active — wired into `scripts/_lib/it/zone_sources.py`
 
-5 regions covering 218 of 531 IT wines, including most flagships.
+6 regions covering ~237 of 531 IT wines, including most flagships.
 
 | Regione | Layer | Endpoint | Licence | Attribution |
 |---|---|---|---|---|
@@ -55,6 +55,7 @@ wines stay on Bétard).
 | **Lazio** | Vini DOC / DOCG / IGT (ARSIAL, 3 layers) | `geoportale.regione.lazio.it/geoserver/wfs` — `geonode:Vini_{DOC,DOCG,IGT}_Regione_Lazio` | CC-BY 4.0 | Regione Lazio — ARSIAL |
 | **Lombardia** | Aree di pregio vitivinicolo (3 sub-layers, ArcGIS MapServer) | `cartografia.servizirl.it/expo/rest/services/gpt/Aree_Pregio_Viti_Vinicolo/MapServer/{0,1,2}/query` | CC-BY 4.0 | Regione Lombardia |
 | **Toscana** | Zone di produzione vitivinicola DOP/IGP | [regione.toscana.it/geoscopio shapefile zip](https://www502.regione.toscana.it/geoscopio/download/tematici/zone_prod_vini/zone_prod_vini.zip) (sub-layer `zo_vin_nom_zon_2026_05`) | CC-BY 4.0 | Regione Toscana — GEOscopio |
+| **Umbria** | Zone di produzione vini (per-appellation) | `dati.regione.umbria.it` CKAN `api/3/action/package_search` — 19 per-appellation `.zip`/`.7z` shapefiles, `fetch_type: ckan_shapefiles`; `ZONE` field, EPSG:3004 (no `.prj`), dotted tier-prefix strip | CC-BY 4.0 | Regione Umbria |
 
 Name-field varies (`denominazi` for most; `NOME_ZONA` for Lombardia with
 `strip_kind_prefix=True`; `NOM_ZON` for Toscana). Matching uses connector-
@@ -65,7 +66,6 @@ stripped + saint-folded normalisation in
 
 | Regione | What's there | Blocker |
 |---|---|---|
-| **Umbria** | dati.regione.umbria.it CKAN — ~23 separate per-appellation datasets, each a .7z shapefile | Bespoke CKAN-enumerate + 7z-extract fetch. Endpoint: `api/3/action/package_search?q=vini`. CC-BY 4.0. |
 | **Puglia** | SIT Puglia (WFS / ArcGIS) | Endpoint not reachable as of 2026-05-22 — WFS/ArcGIS hosts probed returned 404 / empty; cartography page is login-gated. Need the live layer name. IODL 2.0 expected. |
 
 ### Fallback — no licence-clear open layer
@@ -253,8 +253,8 @@ ES:
 
 IT:
   simple   = Bétard 2022
-  advanced = 5 regional geoportals → Bétard (current default; Umbria + Puglia
-             would land here when their fetches are unblocked)
+  advanced = 6 regional geoportals → Bétard (current default; Puglia would
+             land here when its fetch is unblocked)
 
 PT:
   simple   = Bétard 2022 (DOP only; IGPs invisible)

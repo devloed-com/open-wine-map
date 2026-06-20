@@ -33,7 +33,6 @@ from pathlib import Path
 import geopandas as gpd
 from shapely.geometry.base import BaseGeometry
 
-
 # Province name (native Dutch) → NUTS-2 code. The NUTS-2 layer labels
 # Limburg and Friesland with " (NL)" disambiguators since both names
 # also appear elsewhere in Europe; we resolve by NUTS_ID, not name.

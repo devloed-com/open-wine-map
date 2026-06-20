@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -33,12 +34,9 @@ INDEX_PATH = ROOT / "raw" / "es" / "eambrosia" / "index.json"
 OUT_DIR = ROOT / "raw" / "es" / "oj-pages"
 MANIFEST_PATH = OUT_DIR / "manifest.json"
 
+
 # Mirror of stage 01's URL transformer — Spanish-language variant per
 # `data.europa.eu/eli/...` or `eur-lex.europa.eu/legal-content/...` form.
-# We re-import rather than depend so this script can run standalone.
-import re
-
-
 def to_spanish(url: str) -> str:
     if re.search(r"/oj/?(?:[#?]|$)", url) and not re.search(r"/oj/[a-z]{3}", url):
         return re.sub(r"/oj(/?)([#?]|$)", r"/oj/spa\2", url)

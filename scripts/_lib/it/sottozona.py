@@ -39,7 +39,6 @@ from __future__ import annotations
 import re
 import unicodedata
 
-
 # Every quote glyph an Italian disciplinare wraps a sottozona name in —
 # guillemets, straight + smart double/single quotes — stripped off names.
 _QUOTES = "«»\"'“”„‚‛‘’"

@@ -29,7 +29,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, set_pliego_context,
+    flush_unknowns_queue,
+    set_pliego_context,
 )
 from _lib.hu.dulo import parse_dulok  # noqa: E402
 from _lib.hu.termekleiras import parse_termekleiras  # noqa: E402

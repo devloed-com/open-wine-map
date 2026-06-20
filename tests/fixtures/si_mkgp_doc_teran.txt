@@ -1,0 +1,36 @@
+# synthetic
+# Synthetic minimal fixture mirroring the MKGP per-wine ".doc" SPECIFIKACIJA
+# PROIZVODA for a SINGLE-variety wine (Teran). The real input is a binary .doc
+# needing antiword. §6 "Sorte" here has NO colour prefix (bele:/rdeče:) — it
+# exercises the no-colour-marker fallback that treats the whole §6 body as one
+# comma list. Cross-checked against raw/si/specifikacije-extracted/teran.json
+# (refošk -> refosco-dal-peduncolo-rosso, colour noir, style rouge).
+
+SPECIFIKACIJA PROIZVODA v skladu s 118 c členom Uredbe Sveta 1234/2007
+
+1. Ime, ki naj se zaščiti:
+
+Teran
+
+2. Opis vin:
+
+Teran je rdeče vino temno rubinaste barve z izrazito kislino in nizko stopnjo
+alkohola.
+
+4. Opredelitev geografskega območja:
+
+Vino teran se prideluje le na območju podokoliša Kraške planote, znotraj
+vinorodnega okoliša Kras.
+
+6. Sorte:
+
+refošk
+
+7. Povezava z geografskim območjem:
+
+Rdeča jerovica (terra rossa) na apnenčasti kraški planoti in vpliv burje dajeta
+teranu značilno barvo, kislino in mineralnost.
+
+8. Veljavne zahteve:
+
+Označevanje v skladu z nacionalno zakonodajo.

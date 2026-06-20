@@ -21,6 +21,20 @@ Per-region fields:
   - `layers`            — list of `{url, filename, layer?}` to download;
                           `layer` names the sub-layer for multi-layer files.
 
+Two fetch shapes:
+  - The default (`layers` list): each layer is one WFS/ArcGIS/zip download
+    with a per-feature `name_field`. Stage 00 downloads the files flat into
+    `raw/it/regional-zones/`; `ITZoneIndex` reads them by `layer["filename"]`.
+  - `fetch_type: "ckan_shapefiles"` (Umbria): the region publishes one
+    per-appellation shapefile per CKAN dataset (a mix of `.zip` and `.7z`).
+    Stage 00 enumerates the CKAN catalog, downloads + extracts each archive
+    into `raw/it/regional-zones/<extract_dir>/<dataset>/`, and `ITZoneIndex`
+    globs the extracted `.shp` files. These shapefiles carry no `.prj`, so a
+    `crs` must be declared; the `ZONE` field carries a dotted tier prefix
+    ("D.O.C. e D.O.C.G. Montefalco") stripped via `tier_prefix: "dotted"`,
+    may pack an "X o Y" alternate name (`alt_name_split`), and a combined
+    DOC+DOCG dataset covers the DOCG too (`extra_names`).
+
 Only "active" entries are fetched and indexed.
 """
 
@@ -119,15 +133,38 @@ ZONE_SOURCES: dict[str, dict] = {
             "layer": "zo_vin_nom_zon_2026_05",  # appellation-name zones (not subzones)
         }],
     },
-    # ─────────────── to-do: layer exists, harvesting still needs work ───────────────
     "umbria": {
-        "status": "todo",
+        "status": "active",
         "label": "Regione Umbria — Zone di produzione vini (per-appellation)",
         "licence": "CC-BY 4.0",
-        "note": "dati.regione.umbria.it CKAN — ~23 separate per-appellation "
-                "datasets, each a .7z shapefile. Needs a CKAN-enumerate + "
-                "7z-extract fetch (api/3/action/package_search?q=vini).",
+        "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+        "attribution": "Regione Umbria — dati.regione.umbria.it",
+        "fetch_type": "ckan_shapefiles",
+        # CKAN catalog endpoint; stage 00 merges these queries and keeps
+        # every dataset whose title is a "Zona/Zone di produzione vin…"
+        # carrying a .zip/.7z shapefile resource (19 appellations).
+        "ckan_base": "https://dati.regione.umbria.it/api/3/action/package_search",
+        "ckan_queries": ["vini", "produzione vini"],
+        "extract_dir": "umbria",
+        "name_field": "ZONE",
+        # The shapefiles ship with no .prj — coordinates are Monte Mario /
+        # Italy zone 2 (Gauss-Boaga Est); verified by reprojecting Orvieto
+        # to its true 12.14°E / 42.72°N centroid.
+        "crs": "EPSG:3004",
+        # ZONE = "D.O.C. e D.O.C.G. Montefalco" / "I.G.T. Umbria" — strip the
+        # dotted tier prefix before name matching.
+        "tier_prefix": "dotted",
+        # "DOC Rosso Orvietano o Orvietano Rosso" packs an alternate name.
+        "alt_name_split": True,
+        # The two combined DOC+DOCG datasets carry one polygon for the shared
+        # delimited area; the DOCG sub-name is enumerated here so it resolves
+        # to the same zone (keyed by the stripped+normalised base name).
+        "extra_names": {
+            "montefalco": ["Montefalco Sagrantino"],
+            "torgiano": ["Torgiano Rosso Riserva"],
+        },
     },
+    # ─────────────── to-do: layer exists, harvesting still needs work ───────────────
     "puglia": {
         "status": "todo",
         "label": "Regione Puglia — Vini DOC/DOCG/IGP (SIT Puglia)",

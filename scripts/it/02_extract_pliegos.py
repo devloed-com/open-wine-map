@@ -37,26 +37,30 @@ import html as html_lib
 import json
 import re
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.grape_entity import (  # noqa: E402
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
+)
 from _lib.it.documento_unico import (  # noqa: E402
-    DOC_UNICO_ANCHOR_RE, SECTION_HEADER_RE, SECTION_NUM_RE,
-    SECTION_ROLE_KEYWORDS, ROLE_BY_KEYWORD, INLINE_ROLE_RE,
+    DOC_UNICO_ANCHOR_RE,
+    INLINE_ROLE_RE,
+    ROLE_BY_KEYWORD,
+    SECTION_HEADER_RE,
+    SECTION_NUM_RE,
+    SECTION_ROLE_KEYWORDS,
     scan_styles,
 )
-from _lib.it.sottozona import extract_sottozone  # noqa: E402
 from _lib.it.menzione import extract_menzioni  # noqa: E402
-from _lib.it.region import derive_regione  # noqa: E402
 from _lib.it.province import load_comune_regione_map, resolve_gisco_lau  # noqa: E402
-from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
-)
-from _lib.grape_lexicon import slugify as _grape_slug  # noqa: E402
+from _lib.it.region import derive_regione  # noqa: E402
+from _lib.it.sottozona import extract_sottozone  # noqa: E402
 
 INDEX_IN = ROOT / "raw" / "it" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "it" / "oj-pages"

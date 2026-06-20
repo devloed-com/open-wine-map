@@ -34,7 +34,6 @@ import geopandas as gpd
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 
-
 # Bétard 2022 mis-labelled the Balaton PGI as `PDO-HU-A1507` (it is a
 # registered PGI in eAmbrosia under `PGI-HU-A1507`). We bridge the two
 # rather than carry forward the upstream typo.

@@ -21,105 +21,154 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
-import unicodedata
 from collections import Counter
-from dataclasses import dataclass
 from pathlib import Path
 
-from shapely.geometry import shape, mapping
-from shapely.ops import unary_union
-from tqdm import tqdm
-from unidecode import unidecode
-
-from _lib.aires import load_aires, lookup as lookup_aire
+from _lib import aging_taxonomy as _aging_tax
+from _lib.aires import load_aires
+from _lib.aires import lookup as lookup_aire
 from _lib.aoc_translations import (
     load_summary_translations,
     load_terroir_facts_translations,
 )
-from _lib.appellation_urls import load as load_appellation_urls, resolve as resolve_appellation_url
-from _lib.dgc_village_overrides import DGC_VILLAGE_INSEE
-from _lib.es.baleares import ines_for_island
-from _lib.es.commune_list import (
-    parse_ccaa_wide,
-    parse_commune_list,
-    parse_island_wide,
-    parse_province_wide_list,
-    parse_whole_commune_prefix,
+from _lib.appellation_urls import load as load_appellation_urls
+from _lib.appellation_urls import resolve as resolve_appellation_url
+from _lib.at.gemeinde import ATCommuneIndex
+from _lib.at.geometry import ATPolygonIndex
+from _lib.at.region import derive_bundesland as derive_at_bundesland
+from _lib.augment._shared import (
+    _BG_NATIONAL_SPEC_BY_SLUG,
+    _CY_NATIONAL_SPEC_BY_SLUG,
+    _CZ_CHZO_BY_SLUG,
+    _CZ_NATIONAL_SPEC_BY_SLUG,
+    _DE_PRODUKTSPEZIFIKATION_BY_SLUG,
+    _ES_NATIONAL_PLIEGO_BY_SLUG,
+    _GR_NATIONAL_SPEC_BY_SLUG,
+    _HR_SPECIFIKACIJA_BY_SLUG,
+    _HU_NATIONAL_SPEC_BY_SLUG,
+    _IT_MASAF_BY_SLUG,
+    _IT_REGISTER_BY_SLUG,
+    _RO_NATIONAL_SPEC_BY_SLUG,
+    _SI_SPECIFIKACIJA_BY_SLUG,
+    _SK_NATIONAL_SPEC_BY_SLUG,
+    NATIONAL_SPECS_CZ,
+    NATIONAL_SPECS_HU,
 )
+from _lib.augment.bg import augment_bg_records_with_national_specs
+from _lib.augment.cy import augment_cy_records_with_national_specs
+from _lib.augment.cz import augment_cz_records_with_national_specs
+from _lib.augment.de import augment_de_records_with_produktspezifikation
+from _lib.augment.es import augment_es_records_with_national_pliegos
+from _lib.augment.gr import augment_gr_records_with_national_specs
+from _lib.augment.hr import augment_hr_records_with_specifikacija
+from _lib.augment.hu import augment_hu_records_with_national_specs
+from _lib.augment.it import (
+    augment_it_records_with_masaf,
+    augment_it_records_with_regional_registers,
+    synthesize_it_sottozone_records,
+)
+from _lib.augment.ro import augment_ro_records_with_national_specs
+from _lib.augment.si import augment_si_records_with_specifikacija
+from _lib.augment.sk import augment_sk_records_with_national_specs
+from _lib.batch import _load_dotenv
+from _lib.be.geometry import BEPolygonIndex
+from _lib.be.region import derive_region as derive_be_region
+from _lib.bg.geometry import BGPolygonIndex
+from _lib.bg.region import derive_region as derive_bg_region
+from _lib.ch.geometry import CHCommuneIndex, GESitgIndex
+from _lib.ch.geometry import resolve as ch_resolve_geometry
+from _lib.ch.region import derive_region as derive_ch_region
+from _lib.cy.geometry import CYPolygonIndex
+from _lib.cy.region import derive_region as derive_cy_region
+from _lib.cz.geometry import CZPolygonIndex
+from _lib.cz.region import derive_region as derive_cz_region
+from _lib.de.geometry import DEPolygonIndex
+from _lib.de.region import derive_region as derive_de_region
 from _lib.es.geometry import ESPolygonIndex
-from _lib.es.zones import ESZoneIndex, MAPA_ZONES_FILE
-from _lib.es.pliego_parcels import parse_polygon_inclusions
 from _lib.es.region import (
-    CCAA_TO_PROVINCE_INES,
-    PROVINCE_TO_INE,
     derive_ccaa as derive_es_ccaa,
 )
 from _lib.es.sigpac import SigpacIndex
+from _lib.es.zones import MAPA_ZONES_FILE, ESZoneIndex
 from _lib.fr_wine_region import derive_wine_region as derive_fr_wine_region
+from _lib.geom_chain import (
+    _resolve_es_igp_fallback,
+    _resolve_es_sigpac,
+    cahier_insee,
+    load_commune_index,
+    resolve_dgc_geometry,
+    union_for_appellation,
+    union_from_insee,
+)
 from _lib.geometry_overrides import ClipResult, GeometryOverrides
-from _lib.pt.commune_list import parse_commune_list as parse_pt_commune_list
-from _lib.pt.geometry import PTPolygonIndex
-from _lib.pt.region import derive_region as derive_pt_region
-from _lib.it.comune import ITCommuneIndex
-from _lib.it.geometry import ITPolygonIndex
-from _lib.it.zones import ITZoneIndex
-from _lib.it.region import derive_regione as derive_it_regione
-from _lib.it.sottozona import extract_sottozone as extract_it_sottozone
-from _lib.it.sottozona import slugify as it_sottozona_slugify
-from _lib.at.geometry import ATPolygonIndex
-from _lib.at.gemeinde import ATCommuneIndex
-from _lib.at.region import derive_bundesland as derive_at_bundesland
-from _lib.de.geometry import DEPolygonIndex
-from _lib.de.region import derive_region as derive_de_region
-from _lib.si.geometry import SIPolygonIndex
-from _lib.si.region import derive_region as derive_si_region
+from _lib.gr.geometry import GRPolygonIndex
+from _lib.gr.region import derive_region as derive_gr_region
 from _lib.hr.geometry import HRPolygonIndex
 from _lib.hr.region import derive_region as derive_hr_region
 from _lib.hu.geometry import HUPolygonIndex
 from _lib.hu.region import derive_region as derive_hu_region
-from _lib.ro.geometry import ROPolygonIndex
-from _lib.ro.region import derive_region as derive_ro_region
-from _lib.bg.geometry import BGPolygonIndex
-from _lib.bg.region import derive_region as derive_bg_region
-from _lib.gr.geometry import GRPolygonIndex
-from _lib.gr.region import derive_region as derive_gr_region
-from _lib.cy.geometry import CYPolygonIndex
-from _lib.cy.region import derive_region as derive_cy_region
-from _lib.sk.geometry import SKPolygonIndex
-from _lib.sk.region import derive_region as derive_sk_region
-from _lib.cz.geometry import CZPolygonIndex
-from _lib.cz.region import derive_region as derive_cz_region
-from _lib.ch.geometry import CHCommuneIndex, GESitgIndex, resolve as ch_resolve_geometry
-from _lib.ch.region import derive_region as derive_ch_region
+from _lib.i18n import LOCALES, compile_catalogs, load_translations
+from _lib.it.comune import ITCommuneIndex
+from _lib.it.geometry import ITPolygonIndex
+from _lib.it.region import derive_regione as derive_it_regione
+from _lib.it.zones import ITZoneIndex
+from _lib.lexicon_loading import (
+    _latin_form_or_empty,
+    _load_vivc_by_slug,
+    _load_vivc_colour_by_slug,
+    build_grapes_info,
+    load_style_lexicon,
+    merge_style_lexicon,
+)
+from _lib.lieu_dit import LieuDitIndex
 from _lib.lu.geometry import LUPolygonIndex
 from _lib.lu.region import derive_region as derive_lu_region
-from _lib.be.geometry import BEPolygonIndex
-from _lib.be.region import derive_region as derive_be_region
+from _lib.map_template import STARTUP_AOCS_FIELDS, build_country_labels, build_labels
+from _lib.map_template import render as render_map_html
+from _lib.mt.geometry import MTPolygonIndex
 from _lib.nl.geometry import NLPolygonIndex
 from _lib.nl.region import derive_region as derive_nl_region
-from _lib.mt.geometry import MTPolygonIndex
-from _lib.i18n import LOCALES, compile_catalogs
-from _lib.lieu_dit import LieuDitIndex, derive_climat_name
-from _lib.map_template import render as render_map_html
 from _lib.parcellaire import build_aoc_polygons
+from _lib.pt.commune_list import parse_commune_list as parse_pt_commune_list
+from _lib.pt.geometry import PTPolygonIndex
+from _lib.pt.region import derive_region as derive_pt_region
+from _lib.ro.geometry import ROPolygonIndex
+from _lib.ro.region import derive_region as derive_ro_region
+from _lib.si.geometry import SIPolygonIndex
+from _lib.si.region import derive_region as derive_si_region
+from _lib.sk.geometry import SKPolygonIndex
+from _lib.sk.region import derive_region as derive_sk_region
 from _lib.style_taxonomy import (
     all_slugs as _taxonomy_all_slugs,
+)
+from _lib.style_taxonomy import (
+    canonical_style as _taxonomy_canonical_style,
+)
+from _lib.style_taxonomy import (
     descendants as _taxonomy_descendants,
+)
+from _lib.style_taxonomy import (
     descendants_map as _taxonomy_descendants_map,
-    simple_bucket as _taxonomy_simple_bucket,
+)
+from _lib.style_taxonomy import (
+    simple_buckets as _taxonomy_simple_buckets,
+)
+from _lib.style_taxonomy import (
     taxonomy_dfs_order as _taxonomy_dfs_order,
 )
-from _lib.summaries import derive_summary, summary_sha
-from _lib.wiki import is_grape_summary
+from _lib.summaries import derive_summary
+from shapely.geometry import mapping, shape
+from tqdm import tqdm
+from unidecode import unidecode as _unidecode
 
 ROOT = Path(__file__).resolve().parent.parent
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 EXTRACTED_ES = ROOT / "raw" / "es" / "pliegos-extracted"
-NATIONAL_PLIEGOS_ES = ROOT / "raw" / "es" / "national-pliegos-extracted"
 ES_FIGSHARE_GPKG = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
 ES_GISCO_LAU_ZIP = ROOT / "raw" / "es" / "gisco" / "LAU_RG_01M_2024_3035.shp.zip"
 ES_SIGPAC_DIR = ROOT / "raw" / "es" / "sigpac"
@@ -130,30 +179,18 @@ GR_NUTS2_GEOJSON = ROOT / "raw" / "nl" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_2.
 EXTRACTED_PT = ROOT / "raw" / "pt" / "cadernos-extracted"
 PT_CAOP_DIR = ROOT / "raw" / "pt" / "caop"
 EXTRACTED_IT = ROOT / "raw" / "it" / "disciplinari-extracted"
-MASAF_DISCIPLINARI_IT = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
-IT_REGIONAL_REGISTERS = ROOT / "raw" / "it" / "regional-variety-registers"
 EXTRACTED_AT = ROOT / "raw" / "at" / "dokumente-extracted"
 AT_STATISTIK_DIR = ROOT / "raw" / "at" / "statistik"
 EXTRACTED_DE = ROOT / "raw" / "de" / "dokumente-extracted"
-PRODUKTSPEZIFIKATION_DE = ROOT / "raw" / "de" / "produktspezifikationen-extracted"
 EXTRACTED_SI = ROOT / "raw" / "si" / "dokumenti-extracted"
-SPECIFIKACIJE_SI = ROOT / "raw" / "si" / "specifikacije-extracted"
 EXTRACTED_HR = ROOT / "raw" / "hr" / "dokumenti-extracted"
-SPECIFIKACIJE_HR = ROOT / "raw" / "hr" / "specifikacije-extracted"
 EXTRACTED_HU = ROOT / "raw" / "hu" / "dokumentumok-extracted"
 EXTRACTED_RO = ROOT / "raw" / "ro" / "dokumente-extracted"
 EXTRACTED_BG = ROOT / "raw" / "bg" / "dokumenti-extracted"
-NATIONAL_SPECS_BG = ROOT / "raw" / "bg" / "national-specs-extracted"
 EXTRACTED_GR = ROOT / "raw" / "gr" / "dokumenti-extracted"
-NATIONAL_SPECS_GR = ROOT / "raw" / "gr" / "national-specs-extracted"
 EXTRACTED_CY = ROOT / "raw" / "cy" / "dokumenti-extracted"
-NATIONAL_SPECS_CY = ROOT / "raw" / "cy" / "national-specs-extracted"
-NATIONAL_SPECS_RO = ROOT / "raw" / "ro" / "national-specs-extracted"
-NATIONAL_SPECS_HU = ROOT / "raw" / "hu" / "national-specs-extracted"
 EXTRACTED_SK = ROOT / "raw" / "sk" / "dokumenty-extracted"
-NATIONAL_SPECS_SK = ROOT / "raw" / "sk" / "national-specs-extracted"
 EXTRACTED_CZ = ROOT / "raw" / "cz" / "dokumenty-extracted"
-NATIONAL_SPECS_CZ = ROOT / "raw" / "cz" / "national-specs"
 EXTRACTED_CH = ROOT / "raw" / "ch" / "dokumente-extracted"
 CH_SWISSTOPO_GPKG = ROOT / "raw" / "ch" / "swisstopo" / "swissboundaries3d_2026-01_2056_5728.gpkg"
 CH_SITG_GEOJSON = ROOT / "raw" / "ch" / "geoportals" / "sitg-vit-vignoble-ao.geojson"
@@ -168,114 +205,18 @@ NL_NUTS_GEOJSON = ROOT / "raw" / "nl" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_2.g
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"
 WIKI = ROOT / "wiki"
 SITE_BASE_URL = "https://www.openwinemap.com"
+GITHUB_URL = "https://github.com/devloed-com/open-wine-map"
 MAP_DATA = WIKI / "map-data"
 ASSETS_SRC = ROOT / "raw" / "assets"
 ASSETS_OUT = WIKI / "assets"
+VENDOR_SRC = ROOT / "scripts" / "_lib" / "vendor"
 GEOJSON_OUT = MAP_DATA / "appellations.geojson"
 PMTILES_OUT = MAP_DATA / "appellations.pmtiles"
 GEOJSON_VILLAGES_OUT = MAP_DATA / "appellations-villages.geojson"
 PMTILES_VILLAGES_OUT = MAP_DATA / "appellations-villages.pmtiles"
-LEXICON_DIR = ROOT / "raw" / "wikipedia" / "grapes"
-GRAPE_TRANSLATIONS_DIR = ROOT / "raw" / "translations" / "grapes"
-VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
-STYLE_LEXICON_DIR = ROOT / "raw" / "wikipedia" / "styles"
-STYLE_TRANSLATIONS_DIR = ROOT / "raw" / "translations" / "styles"
+WIKIDATA_QIDS = ROOT / "raw" / "wikidata" / "qids-by-slug.json"
 
 
-_DISAMBIG_SUFFIX = re.compile(r"\s*\([^)]*\)\s*$")
-
-
-# Slug-keyed cache of national-pliego provenance, populated by
-# augment_es_records_with_national_pliegos() and read by _sources_for()
-# later in the build. Needed because the AOC-blob phase re-reads each
-# extracted JSON from disk (where the augmentation isn't persisted) —
-# this lookup gives that phase access to the same provenance the
-# in-memory record carries.
-_ES_NATIONAL_PLIEGO_BY_SLUG: dict[str, dict] = {}
-
-
-# Slug-keyed cache of MASAF disciplinare provenance + augmented payload,
-# populated by augment_de_records_with_produktspezifikation() and read
-# by _sources_for() / panel rendering — same shape as the IT/ES caches.
-_DE_PRODUKTSPEZIFIKATION_BY_SLUG: dict[str, dict] = {}
-
-# populated by augment_it_records_with_masaf() and read by _sources_for()
-# / the AOC-blob phase (which re-reads each on-disk extracted JSON,
-# bypassing in-memory augmentation).
-_IT_MASAF_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of CZ national-spec provenance, populated by
-# augment_cz_records_with_national_specs(). Mirrors the ES/IT/DE caches.
-# Czech wine law publishes one national variety roster (Vyhláška 88/2017
-# Sb. Příloha č. 2) that applies to every jakostní víno regardless of
-# podoblast, so every augmented CZ wine carries the same provenance
-# block — but per-record so _sources_for() can surface it uniformly.
-_CZ_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of CZ CHZO-spec provenance (the SZPI „moravské“ /
-# „české“ product specifications). Every CZ wine sits in one of the two
-# regions (Morava / Čechy), so all 13 carry the region spec's provenance
-# — the terroir bullets (02d) ground on its section-1 region description.
-# Populated by augment_cz_records_with_national_specs().
-_CZ_CHZO_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of SI specifikacija provenance + augmented payload,
-# populated by augment_si_records_with_specifikacija(). Two source
-# patterns feed it (MKGP per-wine .doc, Uradni list RS pravilnik HTML);
-# the sidecar's `parser_template` distinguishes them for attribution.
-_SI_SPECIFIKACIJA_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of HR specifikacija provenance, populated by
-# augment_hr_records_with_specifikacija(). The 16 grandfathered HR wines
-# whose EU-OJ JEDINSTVENI DOKUMENT was never published are augmented from
-# the Ministarstvo poljoprivrede per-wine SPECIFIKACIJA PROIZVODA (stage
-# 02f). `parser_template` distinguishes the lettered .doc/.pdf path
-# (mps-specifikacija-v1) from the docx fallback (mps-specifikacija-docx).
-_HR_SPECIFIKACIJA_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of GR national-spec provenance, populated by
-# augment_gr_records_with_national_specs(). 132 of the 138 grandfathered
-# GR wines are augmented from the ΥΠΑΑΤ national προδιαγραφή / τεχνικός
-# φάκελος (stage 02f) — 87 structured-PDF ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ, 43 `.doc`,
-# 2 `.docx`. `parser_template` (gr-national-{pdf,doc,docx}) distinguishes.
-_GR_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-# Slug-keyed cache of CY national-spec provenance, populated by
-# augment_cy_records_with_national_specs(). All 11 CY wines are
-# grandfathered names augmented from the moa.gov.cy τεχνικός φάκελος
-# (stage 02f) — a Greek ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ PDF, OCR'd when image-only.
-_CY_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of RO national-spec provenance, populated by
-# augment_ro_records_with_national_specs(). The 14 grandfathered RO wines
-# (only an Ares(...) reference in eAmbrosia, no EU-OJ DOCUMENT UNIC) are
-# augmented from the ONVPV caiet de sarcini (stage 02f, onvpv-caiet-de-
-# sarcini-v1 parser). Unlike GR/HR, the merge also carries `geo_communes`
-# so the 2 grandfathered IGPs resolve via the GISCO commune-union chain.
-_RO_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of HU national-spec provenance, populated by
-# augment_hu_records_with_national_specs(). The 15 grandfathered HU wines
-# (only an Ares(...) reference in eAmbrosia, no EU-OJ EGYSÉGES DOKUMENTUM)
-# are augmented from the Agrárminisztérium termékleírás PDF (stage 02f,
-# hu-termekleiras-v1 parser). The merge carries grapes + terroir text +
-# geo_communes so the panel + 02d ground on the national spec.
-_HU_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of BG national-spec provenance, populated by
-# augment_bg_records_with_national_specs(). The 51 grandfathered BG wines
-# (only an Ares(...) reference in eAmbrosia, no EU-OJ ЕДИНЕН ДОКУМЕНТ) are
-# augmented from the ИАЛВ / IAVV per-wine продуктова спецификация (stage
-# 02f, iavv-specifikacija-v1 parser — eavw.com PDF, numbered 1–8 template:
-# 5 сортове / 6 Връзка с географския район / 3 район).
-_BG_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
-
-# Slug-keyed cache of SK national-spec provenance, populated by
-# augment_sk_records_with_national_specs(). The 5 grandfathered SK wines
-# (only an Ares(...) reference in eAmbrosia, no EU-OJ JEDNOTNÝ DOKUMENT) are
-# augmented from the ÚPV SR per-wine špecifikácia výrobku (stage 02f,
-# upv-sr-specifikacia-v1 parser — indprop.gov.sk PDF, lettered a–i template:
-# f) označenie odrôd / g) údaje potvrdzujúce spojitosť / d) zemepisná oblasť).
-_SK_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
 
 
 # Cross-border PDOs that physically extend across more than one country.
@@ -292,1382 +233,12 @@ _CROSS_BORDER_COUNTRY_ALIASES: dict[str, list[str]] = {
 }
 
 
-def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
-    """In-place merge of national-pliego sidecar varieties into each ES
-    record's `grapes` field. Returns the number of records augmented.
-
-    Mutations per record:
-      - new variety slugs (those NOT already in principal ∪ accessory) are
-        appended to `grapes.accessory`
-      - matching entries are appended to `grapes.details` with
-        `role="accessory"` and `source="national-pliego"` so the UI can
-        distinguish doc-único-canonical varieties from pliego-augmented ones
-      - a top-level `national_pliego` block carries provenance for
-        `_sources_for()` to surface in the panel
-    """
-    _ES_NATIONAL_PLIEGO_BY_SLUG.clear()
-    if not NATIONAL_PLIEGOS_ES.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "es":
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = NATIONAL_PLIEGOS_ES / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        new_slugs = list(sidecar.get("delta_vs_oj", {}).get("new_slugs") or [])
-        if not new_slugs:
-            # Still stamp provenance — the pliego was parsed even if it
-            # added nothing new. Skip the merge but keep attribution
-            # consistent for the audit.
-            nat_provenance = {
-                "url": sidecar.get("source", {}).get("url", ""),
-                "sha256": sidecar.get("source", {}).get("sha256", ""),
-                "fetched_at": sidecar.get("source", {}).get("fetched_at", ""),
-                "parser_template": sidecar.get("parser_template", ""),
-                "added_slugs": [],
-            }
-            record["national_pliego"] = nat_provenance
-            _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
-            continue
-        grapes = dict(record.get("grapes") or {})
-        principal = list(grapes.get("principal") or [])
-        accessory = list(grapes.get("accessory") or [])
-        details = list(grapes.get("details") or [])
-        existing = set(principal) | set(accessory)
-        added: list[str] = []
-        slug_to_detail = {d.get("slug"): d for d in sidecar.get("varieties", [])}
-        for s in new_slugs:
-            if s in existing:
-                continue
-            accessory.append(s)
-            existing.add(s)
-            added.append(s)
-            detail = dict(slug_to_detail.get(s) or {"slug": s, "name": s, "colour": ""})
-            detail["role"] = "accessory"
-            detail["source"] = "national-pliego"
-            details.append(detail)
-        grapes["accessory"] = accessory
-        grapes["details"] = details
-        record["grapes"] = grapes
-        nat_provenance = {
-            "url": sidecar.get("source", {}).get("url", ""),
-            "sha256": sidecar.get("source", {}).get("sha256", ""),
-            "fetched_at": sidecar.get("source", {}).get("fetched_at", ""),
-            "parser_template": sidecar.get("parser_template", ""),
-            "added_slugs": added,
-        }
-        record["national_pliego"] = nat_provenance
-        _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
-        if added:
-            augmented += 1
-    return augmented
-
-
-def augment_si_records_with_specifikacija(records: list[dict]) -> int:
-    """In-place merge of SI national-spec sidecar data into stub records.
-
-    Sibling of `augment_it_records_with_masaf`. The 16 grandfathered SI
-    wines (every wine except Cviček) ship as content-stubs because their
-    eAmbrosia entry has no fetchable EU-OJ ENOTNI DOKUMENT URL. Stage
-    02f (`scripts/si/02f_extract_specifikacije.py`) extracts the
-    canonical Slovenian regulator source — either an MKGP per-wine
-    `.doc` specifikacija proizvoda or an Uradni list RS pravilnik HTML —
-    into a sidecar at `raw/si/specifikacije-extracted/<slug>.json`.
-
-    For each SI stub with a matching sidecar:
-      - summary           ← MKGP §2 (opis vin) or pravilnik §2
-      - grapes            ← MKGP §6 (sorte) or pravilnik Article-5 +
-                            priloga 2 (priporočene → principal,
-                            dovoljene → accessory)
-      - geo_area_brief    ← MKGP §4 (opredelitev geografskega območja)
-      - link_to_terroir   ← MKGP §7 (povezava z geografskim območjem)
-                            (pravilnik-derived records have empty
-                            link_to_terroir — pravilniki are regulatory
-                            lists, not narrative documents)
-      - styles            ← MKGP-derived colour/sparkling/predikat tags
-      - section_roles     ← unified role dict so 02d can read terroir
-                            text uniformly
-      - stub_reason       ← prefixed `specifikacija:` so the audit can
-                            tell EU-OJ-extracted from spec-augmented
-      - specifikacija     ← provenance block (url, sha256, fetched_at,
-                            parser_template, source_org, license)
-
-    `record["stub"]` stays True — the record is still NOT an EU-OJ
-    extraction, just augmented with the canonical Slovenian regulator
-    source. Stage 03 / 04 callers use the `specifikacija` block to
-    distinguish and to render attribution.
-
-    Returns the number of records augmented.
-    """
-    _SI_SPECIFIKACIJA_BY_SLUG.clear()
-    if not SPECIFIKACIJE_SI.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "si":
-            continue
-        if not record.get("stub"):
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = SPECIFIKACIJE_SI / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        src = sidecar.get("source") or {}
-        provenance = {
-            "url": src.get("url") or "",
-            "final_url": src.get("final_url") or "",
-            "sha256": src.get("sha256") or "",
-            "bytes": src.get("bytes") or 0,
-            "fetched_at": src.get("fetched_at") or "",
-            "format": src.get("format") or "",
-            "source_org": src.get("source_org") or "",
-            "license": src.get("license") or "",
-            "parser_template": sidecar.get("parser_template") or "",
-            "matched_okoliši": sidecar.get("matched_okoliši") or [],
-        }
-
-        if sidecar.get("summary"):
-            record["summary"] = sidecar["summary"]
-        if sidecar.get("grapes"):
-            record["grapes"] = sidecar["grapes"]
-        if sidecar.get("geo_area_brief"):
-            record["geo_area_brief"] = sidecar["geo_area_brief"]
-        if sidecar.get("link_to_terroir"):
-            record["link_to_terroir"] = sidecar["link_to_terroir"]
-        if sidecar.get("styles"):
-            existing_styles = set(record.get("styles") or [])
-            record["styles"] = sorted(existing_styles | set(sidecar["styles"]))
-
-        section_roles = dict(record.get("section_roles") or {})
-        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
-            sidecar_roles = sidecar.get("section_roles") or {}
-            if sidecar_roles.get(role):
-                section_roles[role] = sidecar_roles[role]
-        record["section_roles"] = section_roles
-
-        if record.get("stub_reason") and not record["stub_reason"].startswith("specifikacija:"):
-            record["stub_reason"] = f"specifikacija:{record['stub_reason']}"
-        record["specifikacija"] = provenance
-        _SI_SPECIFIKACIJA_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-def augment_hr_records_with_specifikacija(records: list[dict]) -> int:
-    """In-place merge of HR national-spec sidecar data into stub records.
-
-    Sibling of `augment_si_records_with_specifikacija`. The 16
-    grandfathered HR wines (everything except Muškat momjanski + Ponikve)
-    ship as content-stubs because their eAmbrosia entry has no fetchable
-    EU-OJ JEDINSTVENI DOKUMENT URL. Stage 02f
-    (`scripts/hr/02f_extract_specifikacije.py`) extracts the canonical
-    Ministarstvo poljoprivrede per-wine SPECIFIKACIJA PROIZVODA (14
-    `.doc`, 1 `.docx`, 1 PDF) into a sidecar at
-    `raw/hr/specifikacije-extracted/<slug>.json`.
-
-    For each HR stub with a matching sidecar:
-      - summary           ← lettered section b) (opis svojstava vina)
-      - grapes            ← section f) (sorte vinove loze; colour-grouped,
-                            all principal — the MPS spec has no
-                            principal/accessory split, same as PT/IT)
-      - geo_area_brief    ← section d) (granice područja)
-      - link_to_terroir   ← section g) (…povezane sa zemljopisnim
-                            uvjetima); empty for the Primorska docx
-      - styles            ← colour/sparkling/dessert/liqueur tags
-      - section_roles     ← unified role dict so 02d reads terroir text
-      - stub_reason       ← prefixed `specifikacija:` so the audit can
-                            tell EU-OJ-extracted from spec-augmented
-      - specifikacija     ← provenance block (url, sha256, fetched_at,
-                            parser_template, source_org, license)
-
-    `record["stub"]` stays True — the record is still NOT an EU-OJ
-    extraction, just augmented with the canonical Croatian regulator
-    source. Returns the number of records augmented.
-    """
-    _HR_SPECIFIKACIJA_BY_SLUG.clear()
-    if not SPECIFIKACIJE_HR.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "hr":
-            continue
-        if not record.get("stub"):
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = SPECIFIKACIJE_HR / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        src = sidecar.get("source") or {}
-        provenance = {
-            "url": src.get("url") or "",
-            "final_url": src.get("final_url") or "",
-            "sha256": src.get("sha256") or "",
-            "bytes": src.get("bytes") or 0,
-            "fetched_at": src.get("fetched_at") or "",
-            "format": src.get("format") or "",
-            "source_org": src.get("source_org") or "",
-            "license": src.get("license") or "",
-            "parser_template": sidecar.get("parser_template") or "",
-        }
-
-        if sidecar.get("summary"):
-            record["summary"] = sidecar["summary"]
-        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
-                                      or sidecar["grapes"].get("accessory")):
-            record["grapes"] = sidecar["grapes"]
-        if sidecar.get("geo_area_brief"):
-            record["geo_area_brief"] = sidecar["geo_area_brief"]
-        if sidecar.get("link_to_terroir"):
-            record["link_to_terroir"] = sidecar["link_to_terroir"]
-        if sidecar.get("styles"):
-            existing_styles = set(record.get("styles") or [])
-            record["styles"] = sorted(existing_styles | set(sidecar["styles"]))
-
-        section_roles = dict(record.get("section_roles") or {})
-        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
-            sidecar_roles = sidecar.get("section_roles") or {}
-            if sidecar_roles.get(role):
-                section_roles[role] = sidecar_roles[role]
-        record["section_roles"] = section_roles
-
-        if record.get("stub_reason") and not record["stub_reason"].startswith("specifikacija:"):
-            record["stub_reason"] = f"specifikacija:{record['stub_reason']}"
-        record["specifikacija"] = provenance
-        _HR_SPECIFIKACIJA_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-def augment_gr_records_with_national_specs(records: list[dict]) -> int:
-    """In-place merge of GR national-spec sidecar data into stub records.
-
-    Sibling of `augment_si_records_with_specifikacija`. 138 of 147 GR
-    wines ship as content-stubs (no fetchable EU-OJ ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ).
-    Stage 02f (`scripts/gr/02f_extract_national_specs.py`) parses the
-    ΥΠΑΑΤ national προδιαγραφή / τεχνικός φάκελος fetched by stage 01c
-    into `raw/gr/national-specs-extracted/<slug>.json` (132 of 138; the
-    other 6 are unresolved — see CURATOR_TODO.md).
-
-    For each GR stub with a matching sidecar:
-      - grapes            ← §6 ΟΙΝΟΠΟΙΗΣΙΜΕΣ ΠΟΙΚΙΛΙΕΣ (PDF list) or the
-                            grape section's capitalised-token scan (.doc prose)
-      - link_to_terroir   ← §7 ΔΕΣΜΟΣ ΜΕ ΤΗΝ ΓΕΩΓΡΑΦΙΚΗ ΠΕΡΙΟΧΗ
-      - geo_area_brief / summary / styles ← matching sections
-      - section_roles     ← unified role dict so 02d reads terroir uniformly
-      - stub_reason       ← prefixed `national-spec:` so the audit can tell
-                            EU-OJ-extracted from spec-augmented wines
-      - national_spec     ← provenance block (url, sha256, format, …)
-
-    `record["stub"]` stays True — still NOT an EU-OJ extraction, just
-    augmented with the canonical ΥΠΑΑΤ source. Returns count augmented.
-    """
-    _GR_NATIONAL_SPEC_BY_SLUG.clear()
-    if not NATIONAL_SPECS_GR.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "gr" or not record.get("stub"):
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = NATIONAL_SPECS_GR / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        src = sidecar.get("source") or {}
-        provenance = {
-            "url": src.get("source_url") or "",
-            "sha256": src.get("sha256") or "",
-            "fetched_at": src.get("fetched_at") or "",
-            "format": src.get("format") or "",
-            "source_org": src.get("source_org") or "ypaat",
-            "filename": src.get("filename") or "",
-            "parser_template": sidecar.get("parser_template") or "",
-        }
-
-        if sidecar.get("summary"):
-            record["summary"] = sidecar["summary"]
-        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
-                                      or sidecar["grapes"].get("accessory")):
-            record["grapes"] = sidecar["grapes"]
-        if sidecar.get("geo_area_brief"):
-            record["geo_area_brief"] = sidecar["geo_area_brief"]
-        if sidecar.get("link_to_terroir"):
-            record["link_to_terroir"] = sidecar["link_to_terroir"]
-        if sidecar.get("styles"):
-            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
-
-        section_roles = dict(record.get("section_roles") or {})
-        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
-            sidecar_roles = sidecar.get("section_roles") or {}
-            if sidecar_roles.get(role):
-                section_roles[role] = sidecar_roles[role]
-        record["section_roles"] = section_roles
-
-        if record.get("stub_reason") and not record["stub_reason"].startswith("national-spec:"):
-            record["stub_reason"] = f"national-spec:{record['stub_reason']}"
-        record["national_spec"] = provenance
-        _GR_NATIONAL_SPEC_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-def augment_cy_records_with_national_specs(records: list[dict]) -> int:
-    """In-place merge of CY national-spec sidecar data into stub records.
-
-    Sibling of `augment_gr_records_with_national_specs`. All 11 CY wines
-    ship as content-stubs (no fetchable EU-OJ ΕΝΙΑΙΟ ΕΓΓΡΑΦΟ). Stage 02f
-    (`scripts/cy/02f_extract_national_specs.py`) parses the moa.gov.cy
-    Department-of-Agriculture τεχνικός φάκελος (Greek single-document
-    PDF, OCR'd when image-only) into `raw/cy/national-specs-extracted/
-    <slug>.json`; this merges grapes / terroir text / styles / geo-area
-    into the in-memory stub. `record["stub"]` stays True. Returns the
-    count augmented."""
-    _CY_NATIONAL_SPEC_BY_SLUG.clear()
-    if not NATIONAL_SPECS_CY.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "cy" or not record.get("stub"):
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = NATIONAL_SPECS_CY / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        src = sidecar.get("source") or {}
-        provenance = {
-            "url": src.get("source_url") or "",
-            "sha256": src.get("sha256") or "",
-            "fetched_at": src.get("fetched_at") or "",
-            "format": src.get("format") or "",
-            "source_org": src.get("source_org") or "moa-cy",
-            "filename": src.get("filename") or "",
-            "parser_template": sidecar.get("parser_template") or "",
-        }
-
-        if sidecar.get("summary"):
-            record["summary"] = sidecar["summary"]
-        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
-                                      or sidecar["grapes"].get("accessory")):
-            record["grapes"] = sidecar["grapes"]
-        if sidecar.get("geo_area_brief"):
-            record["geo_area_brief"] = sidecar["geo_area_brief"]
-        if sidecar.get("link_to_terroir"):
-            record["link_to_terroir"] = sidecar["link_to_terroir"]
-        if sidecar.get("styles"):
-            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
-
-        section_roles = dict(record.get("section_roles") or {})
-        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
-            sidecar_roles = sidecar.get("section_roles") or {}
-            if sidecar_roles.get(role):
-                section_roles[role] = sidecar_roles[role]
-        record["section_roles"] = section_roles
-
-        if record.get("stub_reason") and not record["stub_reason"].startswith("national-spec:"):
-            record["stub_reason"] = f"national-spec:{record['stub_reason']}"
-        record["national_spec"] = provenance
-        _CY_NATIONAL_SPEC_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-def augment_bg_records_with_national_specs(records: list[dict]) -> int:
-    """In-place merge of BG national-spec sidecar data into stub records.
-
-    Sibling of `augment_gr_records_with_national_specs`. 51 of 54 BG wines
-    ship as content-stubs (no fetchable EU-OJ ЕДИНЕН ДОКУМЕНТ). Stage 02f
-    (`scripts/bg/02f_extract_national_specs.py`) parses the ИАЛВ / IAVV
-    per-wine продуктова спецификация PDF fetched by stage 01c into
-    `raw/bg/national-specs-extracted/<slug>.json` (51 of 51).
-
-    For each BG stub with a matching sidecar:
-      - grapes            ← section 5 (Винени сортове грозде, colour-split)
-      - link_to_terroir   ← section 6 (Връзка с географския район)
-      - geo_area_brief / summary / styles ← matching sections
-      - section_roles     ← unified role dict so 02d reads terroir uniformly
-      - stub_reason       ← prefixed `national-spec:` so the audit can tell
-                            EU-OJ-extracted from spec-augmented wines
-      - national_spec     ← provenance block (url, sha256, format, …)
-
-    `record["stub"]` stays True — still NOT an EU-OJ extraction, just
-    augmented with the canonical ИАЛВ source. Returns count augmented.
-    """
-    _BG_NATIONAL_SPEC_BY_SLUG.clear()
-    if not NATIONAL_SPECS_BG.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "bg" or not record.get("stub"):
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = NATIONAL_SPECS_BG / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        src = sidecar.get("source") or {}
-        provenance = {
-            "url": src.get("url") or "",
-            "sha256": src.get("sha256") or "",
-            "fetched_at": src.get("fetched_at") or "",
-            "format": src.get("format") or "",
-            "source_org": src.get("source_org") or "iavv",
-            "filename": src.get("filename") or "",
-            "parser_template": sidecar.get("parser_template") or "",
-        }
-
-        if sidecar.get("summary"):
-            record["summary"] = sidecar["summary"]
-        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
-                                      or sidecar["grapes"].get("accessory")):
-            record["grapes"] = sidecar["grapes"]
-        if sidecar.get("geo_area_brief"):
-            record["geo_area_brief"] = sidecar["geo_area_brief"]
-        if sidecar.get("link_to_terroir"):
-            record["link_to_terroir"] = sidecar["link_to_terroir"]
-        if sidecar.get("styles"):
-            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
-
-        section_roles = dict(record.get("section_roles") or {})
-        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
-            sidecar_roles = sidecar.get("section_roles") or {}
-            if sidecar_roles.get(role):
-                section_roles[role] = sidecar_roles[role]
-        record["section_roles"] = section_roles
-
-        if record.get("stub_reason") and not record["stub_reason"].startswith("national-spec:"):
-            record["stub_reason"] = f"national-spec:{record['stub_reason']}"
-        record["national_spec"] = provenance
-        _BG_NATIONAL_SPEC_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-def augment_sk_records_with_national_specs(records: list[dict]) -> int:
-    """In-place merge of SK national-spec sidecar data into stub records.
-
-    Sibling of `augment_bg_records_with_national_specs`. 5 of the SK
-    content-stubs (no fetchable EU-OJ JEDNOTNÝ DOKUMENT) are augmented from
-    the ÚPV SR (indprop.gov.sk) per-wine špecifikácia výrobku. Stage 02f
-    (`scripts/sk/02f_extract_national_specs.py`) parses each text-layer PDF
-    fetched by stage 01c into `raw/sk/national-specs-extracted/<slug>.json`.
-
-    For each SK stub with a matching sidecar:
-      - grapes            ← section f) označenie odrody alebo odrôd
-      - link_to_terroir   ← section g) údaje potvrdzujúce spojitosť
-      - geo_area_brief / summary / styles ← matching sections
-      - section_roles     ← unified role dict so 02d reads terroir uniformly
-      - stub_reason       ← prefixed `national-spec:` so the audit can tell
-                            EU-OJ-extracted from spec-augmented wines
-      - national_spec     ← provenance block (url, sha256, format, …)
-
-    `record["stub"]` stays True — still NOT an EU-OJ extraction, just
-    augmented with the canonical ÚPV SR source. Returns count augmented.
-    """
-    _SK_NATIONAL_SPEC_BY_SLUG.clear()
-    if not NATIONAL_SPECS_SK.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "sk" or not record.get("stub"):
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = NATIONAL_SPECS_SK / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        src = sidecar.get("source") or {}
-        provenance = {
-            "url": src.get("url") or "",
-            "sha256": src.get("sha256") or "",
-            "fetched_at": src.get("fetched_at") or "",
-            "format": src.get("format") or "",
-            "source_org": src.get("source_org") or "upv-sr",
-            "filename": src.get("filename") or "",
-            "parser_template": sidecar.get("parser_template") or "",
-        }
-
-        if sidecar.get("summary"):
-            record["summary"] = sidecar["summary"]
-        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
-                                      or sidecar["grapes"].get("accessory")):
-            record["grapes"] = sidecar["grapes"]
-        if sidecar.get("geo_area_brief"):
-            record["geo_area_brief"] = sidecar["geo_area_brief"]
-        if sidecar.get("link_to_terroir"):
-            record["link_to_terroir"] = sidecar["link_to_terroir"]
-        if sidecar.get("styles"):
-            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
-
-        section_roles = dict(record.get("section_roles") or {})
-        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
-            sidecar_roles = sidecar.get("section_roles") or {}
-            if sidecar_roles.get(role):
-                section_roles[role] = sidecar_roles[role]
-        record["section_roles"] = section_roles
-
-        if record.get("stub_reason") and not record["stub_reason"].startswith("national-spec:"):
-            record["stub_reason"] = f"national-spec:{record['stub_reason']}"
-        record["national_spec"] = provenance
-        _SK_NATIONAL_SPEC_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-def augment_ro_records_with_national_specs(records: list[dict]) -> int:
-    """In-place merge of RO national-spec sidecar data into stub records.
-
-    Sibling of `augment_gr_records_with_national_specs`. The 14
-    grandfathered RO wines (eAmbrosia carries only a non-fetchable
-    `Ares(...)` reference — no EU-OJ DOCUMENT UNIC) ship as content-stubs.
-    Stage 02f (`scripts/ro/02f_extract_national_specs.py`) parses the
-    ONVPV caiet de sarcini fetched by stage 01c into
-    `raw/ro/national-specs-extracted/<slug>.json`.
-
-    For each RO stub with a matching sidecar:
-      - grapes            ← §IV Soiurile de struguri (colour-grouped)
-      - link_to_terroir   ← §II Legătura cu aria geografică
-      - geo_communes      ← §III Delimitarea geografică (drives the GISCO
-                            commune-union geometry for the 2 grandfathered
-                            IGPs — the RO-specific delta vs. GR/HR)
-      - geo_area_brief / summary / styles ← matching sections
-      - section_roles     ← unified role dict so 02d reads terroir uniformly
-      - stub_reason       ← prefixed `national-spec:`
-      - national_spec     ← provenance block (url, sha256, format, …)
-
-    `record["stub"]` stays True. Returns count augmented.
-    """
-    _RO_NATIONAL_SPEC_BY_SLUG.clear()
-    if not NATIONAL_SPECS_RO.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "ro" or not record.get("stub"):
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = NATIONAL_SPECS_RO / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        src = sidecar.get("source") or {}
-        provenance = {
-            "url": src.get("source_url") or "",
-            "sha256": src.get("sha256") or "",
-            "fetched_at": src.get("fetched_at") or "",
-            "format": src.get("format") or "",
-            "source_org": src.get("source_org") or "onvpv",
-            "filename": src.get("filename") or "",
-            "parser_template": sidecar.get("parser_template") or "",
-        }
-
-        if sidecar.get("summary"):
-            record["summary"] = sidecar["summary"]
-        if sidecar.get("grapes") and (sidecar["grapes"].get("principal")
-                                      or sidecar["grapes"].get("accessory")):
-            record["grapes"] = sidecar["grapes"]
-        if sidecar.get("geo_area_brief"):
-            record["geo_area_brief"] = sidecar["geo_area_brief"]
-        if sidecar.get("geo_communes"):
-            record["geo_communes"] = sidecar["geo_communes"]
-        if sidecar.get("link_to_terroir"):
-            record["link_to_terroir"] = sidecar["link_to_terroir"]
-        if sidecar.get("styles"):
-            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
-
-        section_roles = dict(record.get("section_roles") or {})
-        for role in ("geo_area", "grape_varieties", "link_to_terroir"):
-            sidecar_roles = sidecar.get("section_roles") or {}
-            if sidecar_roles.get(role):
-                section_roles[role] = sidecar_roles[role]
-        record["section_roles"] = section_roles
-
-        if record.get("stub_reason") and not record["stub_reason"].startswith("national-spec:"):
-            record["stub_reason"] = f"national-spec:{record['stub_reason']}"
-        record["national_spec"] = provenance
-        _RO_NATIONAL_SPEC_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-def augment_hu_records_with_national_specs(records: list[dict]) -> int:
-    """In-place merge of HU national-spec sidecar data into stub records.
-
-    Sibling of `augment_ro_records_with_national_specs`. The 15
-    grandfathered HU wines (eAmbrosia carries only a non-fetchable
-    `Ares(...)` reference — no EU-OJ EGYSÉGES DOKUMENTUM) ship as
-    content-stubs. Stage 02f (`scripts/hu/02f_extract_national_specs.py`)
-    parses the Agrárminisztérium termékleírás PDF fetched by stage 01c
-    into `raw/hu/national-specs-extracted/<slug>.json`.
-
-    For each HU stub with a matching sidecar:
-      - grapes            ← VI. ENGEDÉLYEZETT SZŐLŐFAJTÁK
-      - link_to_terroir   ← VII. KAPCSOLAT A FÖLDRAJZI TERÜLETTEL
-      - geo_communes      ← IV. KÖRÜLHATÁROLT TERÜLET (commune-precision;
-                            geometry still prefers the Bétard polygon
-                            these wines already have, so this is a record)
-      - geo_area_brief / summary / styles ← matching sections
-      - section_roles     ← unified role dict so 02d reads terroir uniformly
-      - stub_reason       ← prefixed `national-spec:`
-      - national_spec     ← provenance block (url, sha256, format, …)
-
-    `record["stub"]` stays True. Returns count augmented.
-    """
-    _HU_NATIONAL_SPEC_BY_SLUG.clear()
-    if not NATIONAL_SPECS_HU.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "hu":
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = NATIONAL_SPECS_HU / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        src = sidecar.get("source") or {}
-        provenance = {
-            "url": src.get("source_url") or "",
-            "sha256": src.get("sha256") or "",
-            "fetched_at": src.get("fetched_at") or "",
-            "format": src.get("format") or "",
-            "source_org": src.get("source_org") or "agrarminiszterium",
-            "filename": src.get("filename") or "",
-            "parser_template": sidecar.get("parser_template") or "",
-        }
-
-        # Fill-if-empty: a stub is fully empty so this fills everything;
-        # a non-stub with a thin EU extraction (e.g. Badacsony, whose
-        # awkward doc structure left the grape section unrouted) gets only
-        # its EMPTY fields filled — good EUR-Lex data is never clobbered.
-        cur_grapes = record.get("grapes") or {}
-        if (sidecar.get("summary") and not record.get("summary")):
-            record["summary"] = sidecar["summary"]
-        if (sidecar.get("grapes")
-                and (sidecar["grapes"].get("principal") or sidecar["grapes"].get("accessory"))
-                and not (cur_grapes.get("principal") or cur_grapes.get("accessory"))):
-            record["grapes"] = sidecar["grapes"]
-        if sidecar.get("geo_area_brief") and not record.get("geo_area_brief"):
-            record["geo_area_brief"] = sidecar["geo_area_brief"]
-        if sidecar.get("geo_communes") and not record.get("geo_communes"):
-            record["geo_communes"] = sidecar["geo_communes"]
-        if sidecar.get("dulok") and not record.get("dulok"):
-            record["dulok"] = sidecar["dulok"]
-        if sidecar.get("link_to_terroir") and not record.get("link_to_terroir"):
-            record["link_to_terroir"] = sidecar["link_to_terroir"]
-        if sidecar.get("styles"):
-            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
-
-        section_roles = dict(record.get("section_roles") or {})
-        sidecar_roles = sidecar.get("section_roles") or {}
-        for role in ("geo_area", "grape_varieties", "link_to_terroir"):
-            if sidecar_roles.get(role) and not section_roles.get(role):
-                section_roles[role] = sidecar_roles[role]
-        record["section_roles"] = section_roles
-
-        if record.get("stub") and record.get("stub_reason") \
-                and not record["stub_reason"].startswith("national-spec:"):
-            record["stub_reason"] = f"national-spec:{record['stub_reason']}"
-        record["national_spec"] = provenance
-        _HU_NATIONAL_SPEC_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-def _backfill_it_nonstub_from_masaf(record: dict, sidecar: dict) -> bool:
-    """Fill ONLY the empty fields of a non-stub IT record from its MASAF
-    sidecar — the documento unico is canonical, but some OJ docs omit the
-    geo area or variety list, and the national disciplinare carries them.
-    Never overwrites populated docunico data. Returns True if anything
-    was filled."""
-    filled = False
-    g = record.get("grapes") or {}
-    if sidecar.get("grapes") and not (g.get("principal") or g.get("accessory")):
-        record["grapes"] = sidecar["grapes"]
-        filled = True
-    if sidecar.get("menzioni") and not record.get("menzioni"):
-        record["menzioni"] = sidecar["menzioni"]
-        filled = True
-    section_roles = dict(record.get("section_roles") or {})
-    if sidecar.get("geo_area_brief") and not (record.get("geo_area_brief") or "").strip():
-        record["geo_area_brief"] = sidecar["geo_area_brief"]
-        section_roles["geo_area"] = sidecar["geo_area_brief"]
-        filled = True
-    if sidecar.get("link_to_terroir") and not (record.get("link_to_terroir") or "").strip():
-        record["link_to_terroir"] = sidecar["link_to_terroir"]
-        section_roles["link_to_terroir"] = sidecar["link_to_terroir"]
-        filled = True
-    if filled:
-        record["section_roles"] = section_roles
-        record["masaf_backfill"] = True
-    return filled
-
-
-def augment_it_records_with_masaf(records: list[dict]) -> int:
-    """In-place merge of MASAF disciplinare sidecar data into IT stub
-    records. Only stubs are touched — wines whose documento unico was
-    extracted in stage 02 already carry canonical EUR-Lex data and
-    shouldn't be overwritten.
-
-    For each IT stub with a matching sidecar at
-    raw/it/masaf-disciplinari-extracted/<slug>.json the following
-    fields are merged:
-      - summary           ← Article 1 first paragraph
-      - regione           ← derived from Article 3 / 9 text
-      - grapes            ← parsed from Article 2 (principal-only)
-      - geo_area_brief    ← Article 3 body
-      - link_to_terroir   ← Article 9 body
-      - section_roles     ← {grape_varieties, geo_area, link_to_terroir, ...}
-      - stub_reason       ← prefixed "masaf:" so the audit can tell
-                            doc-unico-extracted from masaf-augmented
-      - masaf             ← provenance block (url, sha256, fetched_at,
-                            parser_template, bundle_key, archive_path)
-
-    `record["stub"]` stays True — the record is still NOT a documento
-    unico extraction, just augmented. Stage 03 / 04 callers use the
-    `masaf` block to distinguish.
-
-    Returns the number of records augmented.
-    """
-    _IT_MASAF_BY_SLUG.clear()
-    if not MASAF_DISCIPLINARI_IT.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "it":
-            continue
-        slug = record.get("slug")
-        if not slug:
-            continue
-        sidecar_path = MASAF_DISCIPLINARI_IT / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        # Non-stub records carry canonical EUR-Lex documento-unico data —
-        # only BACKFILL fields the documento unico left empty (some OJ
-        # docs omit the area or variety list), never overwrite. Stubs get
-        # the full merge below.
-        if not record.get("stub"):
-            if _backfill_it_nonstub_from_masaf(record, sidecar):
-                augmented += 1
-            continue
-
-        # Build the provenance block (also cached for the AOC-blob phase).
-        src = sidecar.get("source") or {}
-        match_info = sidecar.get("match") or {}
-        provenance = {
-            "filename": src.get("filename") or "",
-            "sha256": src.get("sha256") or "",
-            "bytes": src.get("bytes") or 0,
-            "fetched_at": src.get("fetched_at") or "",
-            "parser_template": sidecar.get("parser_template") or "",
-            "bundle_key": src.get("bundle_key") or "",
-            "archive_path": src.get("archive_path") or "",
-            "match_how": match_info.get("how") or "",
-            "pdf_filename": match_info.get("pdf_filename") or "",
-            # When an override pinned the URL, surface it for the panel.
-            "override_url": src.get("url") or "",
-            "override_source_org": src.get("source_org") or "",
-        }
-
-        # Merge augmented fields onto the record. Replace rather than
-        # union — the record was a stub so there's nothing to lose.
-        if sidecar.get("summary"):
-            record["summary"] = sidecar["summary"]
-        if sidecar.get("regione") and not record.get("regione"):
-            record["regione"] = sidecar["regione"]
-        if sidecar.get("grapes"):
-            record["grapes"] = sidecar["grapes"]
-        if sidecar.get("menzioni") and not record.get("menzioni"):
-            record["menzioni"] = sidecar["menzioni"]
-        if sidecar.get("geo_area_brief"):
-            record["geo_area_brief"] = sidecar["geo_area_brief"]
-        if sidecar.get("link_to_terroir"):
-            record["link_to_terroir"] = sidecar["link_to_terroir"]
-        # IT MASAF is the last national-spec layer to carry styles; merge them
-        # the same way every other augment does (union, never clobber). The
-        # disciplinare's tipologie + organoleptic articles supply the markers
-        # (spumante / passito / vin santo / dolce) the grape-colour floor can't
-        # infer; the floor still backfills any colour the scan missed.
-        if sidecar.get("styles"):
-            record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
-        section_roles = dict(record.get("section_roles") or {})
-        if sidecar.get("grapes"):
-            section_roles.setdefault("grape_varieties", "")
-        if sidecar.get("geo_area_brief"):
-            section_roles["geo_area"] = sidecar["geo_area_brief"]
-        if sidecar.get("link_to_terroir"):
-            section_roles["link_to_terroir"] = sidecar["link_to_terroir"]
-        if sidecar.get("summary"):
-            section_roles["description"] = sidecar["summary"]
-        record["section_roles"] = section_roles
-
-        if record.get("stub_reason") and not record["stub_reason"].startswith("masaf:"):
-            record["stub_reason"] = f"masaf:{record['stub_reason']}"
-        record["masaf"] = provenance
-        _IT_MASAF_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-_IT_REGISTER_BY_SLUG: dict[str, dict] = {}
 # Slug → menzioni (MGA/UGA cru name list) for the panel chip section.
 # Populated after the IT augments (menzioni live on the in-memory record,
 # not in the feature props or the on-disk stub) and read by the aocs blob.
 _IT_MENZIONI_BY_SLUG: dict[str, list] = {}
 
 
-def augment_it_records_with_regional_registers(records: list[dict]) -> int:
-    """Fill the grape roster of regional-IGT records whose disciplinare
-    defers to the Region's authorised-variety register (the annex is
-    absent from the MASAF PDF). Each region sidecar at
-    raw/it/regional-variety-registers/<region>.json lists the IGT slugs
-    (`igts`) that draw from it. Only applied when the record still has no
-    grapes, so a varietal IGT (e.g. catalanesca-del-monte-somma, excluded
-    from the `igts` lists) is never given a whole regional roster.
-
-    Returns the number of records given a roster."""
-    _IT_REGISTER_BY_SLUG.clear()
-    sources = IT_REGIONAL_REGISTERS / "sources.json"
-    if not sources.exists():
-        return 0
-    by_slug: dict[str, dict] = {}
-    for region in json.loads(sources.read_text(encoding="utf-8")):
-        if region.startswith("_"):
-            continue
-        sidecar_path = IT_REGIONAL_REGISTERS / f"{region}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-        for igt in sidecar.get("igts", []):
-            by_slug[igt] = sidecar
-
-    augmented = 0
-    for record in records:
-        if record.get("country") != "it":
-            continue
-        slug = record.get("slug")
-        sidecar = by_slug.get(slug)
-        if not sidecar:
-            continue
-        g = record.get("grapes") or {}
-        if g.get("principal") or g.get("accessory"):
-            continue
-        slugs = [v["slug"] for v in sidecar.get("varieties", [])]
-        if not slugs:
-            continue
-        record["grapes"] = {
-            "principal": slugs,
-            "accessory": [],
-            "observation": [],
-            "details": [
-                {"slug": v["slug"], "name": v["name"], "role": "principal",
-                 "colour": v.get("colour", ""),
-                 "source": "regional-variety-register"}
-                for v in sidecar["varieties"]
-            ],
-        }
-        src = sidecar.get("source") or {}
-        provenance = {
-            "region": sidecar.get("region", ""),
-            "url": src.get("url", ""),
-            "source_org": src.get("source_org", ""),
-            "note": src.get("note", ""),
-            "sha256": src.get("sha256", ""),
-            "n_varieties": len(slugs),
-        }
-        record["regional_register"] = provenance
-        _IT_REGISTER_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-def synthesize_it_sottozone_records(records: list[dict]) -> int:
-    """Emit first-class sub-denomination records for Italian sottozone
-    detected in the MASAF disciplinare (Chianti's 7, Valtellina's 5,
-    Bardolino's 3, …). The EU documento unico rarely names them, so
-    stage 02 emits none — they live in the national disciplinare's
-    Article 1, which 02f cached in the sidecar's `article_bodies`.
-
-    Each sottozona becomes a child record mirroring the ES subzona /
-    FR DGC model: `is_sub_denomination=True`, `parent_slug`,
-    `parent_name`, `parent_id_eambrosia`, inheriting the parent's
-    grapes / styles / terroir / regione. Geometry resolves via the
-    stage-04 `parent-appellation` inheritance step. Appended to
-    `records` (processed after every parent, so parent geometry is
-    available). Returns the number of sottozona records created."""
-    if not MASAF_DISCIPLINARI_IT.exists():
-        return 0
-    existing = {r.get("slug") for r in records if r.get("country") == "it"}
-    new_records: list[dict] = []
-    for record in list(records):
-        if record.get("country") != "it" or record.get("is_sub_denomination"):
-            continue
-        slug = record.get("slug")
-        sidecar_path = MASAF_DISCIPLINARI_IT / f"{slug}.json"
-        if not slug or not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-        bodies = sidecar.get("article_bodies") or {}
-        text = " ".join(
-            [sidecar.get("geo_area_brief") or "", bodies.get("1", ""), bodies.get("3", "")]
-        )
-        parent_name = record.get("name") or slug
-        for sz in extract_it_sottozone(text, parent_name):
-            sz_slug = f"{slug}-{sz['slug']}"
-            if not sz["slug"] or sz_slug in existing:
-                continue
-            existing.add(sz_slug)
-            child = dict(record)
-            child.update({
-                "slug": sz_slug,
-                "name": f"{parent_name} {sz['name']}",
-                "is_sub_denomination": True,
-                "parent_slug": slug,
-                "parent_name": parent_name,
-                "parent_id_eambrosia": record.get("id_eambrosia") or "",
-                "menzioni": [],
-                "sottozona_source": "masaf-disciplinare-article-1",
-            })
-            new_records.append(child)
-    records.extend(new_records)
-    return len(new_records)
-
-
-def augment_de_records_with_produktspezifikation(records: list[dict]) -> int:
-    """In-place merge of BLE-Produktspezifikation sidecar data into DE
-    parent-Anbaugebiet records.
-
-    The EU Einziges Dokument for German wines doesn't carry a principal/
-    accessory split — section 7 is a flat list. The BLE national
-    Produktspezifikation (Amtliches Werk §5 UrhG) names individual
-    varieties with their own Mindestmostgewicht threshold in §3.2 (Mosel
-    → Riesling/Elbling/Müller-Thurgau/Dornfelder). Stage 02f extracts
-    that split into raw/de/produktspezifikationen-extracted/<slug>.json;
-    this augment re-tags the in-memory record's grapes block accordingly.
-
-    Two sidecar categories are merged (both written by stage 02f):
-      - the 13 Anbaugebiete (regional PDOs), with a principal/accessory
-        split from §3.2 Mindestmostgewicht; and
-      - the 15 Landwein g.g.A. that ship as stubs (no EU Einziges
-        Dokument). Their BLE spec has no role split, so they arrive as
-        `section-8-flat-no-split` (all-principal) and fold their full
-        roster + §-Zusammenhang terroir text into the stub record.
-    Einzellage sub-denominations are still skipped (they inherit the
-    parent Anbaugebiet's varieties at render time).
-
-    For records with `role_split_method == "section-3.2-principal"`:
-      - re-tag existing record["grapes"]["details"] items as
-        principal/accessory based on the sidecar's slug sets
-      - rebuild record["grapes"]["principal"] / ["accessory"] lists
-      - fold any new sidecar slugs not already in the EU record
-
-    For records with `role_split_method == "section-8-flat-no-split"`
-    (Anbaugebiete whose §3.2 doesn't enumerate per-variety thresholds —
-    Franken, Württemberg in v1): the existing all-principal default
-    stands; the sidecar just records the BLE source as provenance.
-
-    Stage 04 reads the cached provenance later in the AOC-blob phase
-    via `_DE_PRODUKTSPEZIFIKATION_BY_SLUG`.
-
-    Returns the number of records augmented.
-    """
-    _DE_PRODUKTSPEZIFIKATION_BY_SLUG.clear()
-    if not PRODUKTSPEZIFIKATION_DE.exists():
-        return 0
-    augmented = 0
-    for record in records:
-        if record.get("country") != "de":
-            continue
-        if record.get("is_sub_denomination"):
-            continue
-        slug = record.get("slug") or ""
-        sidecar_path = PRODUKTSPEZIFIKATION_DE / f"{slug}.json"
-        if not sidecar_path.exists():
-            continue
-        try:
-            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-
-        method = sidecar.get("role_split_method") or ""
-        src = sidecar.get("source") or {}
-        provenance = {
-            "url": src.get("url") or "",
-            "sha256": src.get("sha256") or "",
-            "bytes": src.get("bytes") or 0,
-            "fetched_at": src.get("fetched_at") or "",
-            "source_org": src.get("source_org") or "BLE",
-            "license": src.get("license") or "Amtliches Werk §5 UrhG",
-            "role_split_method": method,
-            "n_principal": sidecar.get("n_principal") or 0,
-            "n_accessory": sidecar.get("n_accessory") or 0,
-        }
-
-        # BLE §8/§9 "Zusammenhang" terroir backfill — when the EU
-        # Einziges Dokument is sparse (stub or no link_to_terroir), use
-        # the BLE PDF's terroir block so 02d can extract facts from it.
-        # Affects Ahr, Baden, Hessische Bergstraße, Rheingau, Sachsen,
-        # Saale-Unstrut in v1. We also record the BLE PDF URL as the
-        # cahier_source for downstream provenance.
-        bz = (sidecar.get("zusammenhang_text") or "").strip()
-        eu_terroir = (record.get("link_to_terroir") or "").strip()
-        if bz and len(eu_terroir) < 400:
-            record["link_to_terroir"] = bz
-            section_roles = dict(record.get("section_roles") or {})
-            section_roles["link_to_terroir"] = bz
-            record["section_roles"] = section_roles
-            # Surface the BLE PDF as the canonical terroir source so the
-            # panel + 02d attribute it correctly.
-            rec_src = dict(record.get("source") or {})
-            rec_src["terroir_source_url"] = src.get("url") or ""
-            rec_src["terroir_source_org"] = "BLE"
-            record["source"] = rec_src
-            provenance["terroir_backfilled"] = True
-
-        # For both role-split methods, fold the sidecar's variety roster
-        # into the in-memory record. The default fold tags non-sidecar
-        # EU slugs as `accessory` (the BLE PDF's §3.2 is the principal
-        # allowlist); the flat-no-split method instead tags everything
-        # as principal because the document doesn't enumerate a split.
-        if method in ("section-3.2-principal", "section-8-flat-no-split"):
-            # Build slug → role from the sidecar.
-            sidecar_role: dict[str, str] = {}
-            sidecar_details: list[dict] = []
-            for g in sidecar.get("grapes") or []:
-                s = g.get("slug")
-                if s:
-                    sidecar_role[s] = g.get("role") or "principal"
-                    sidecar_details.append(g)
-
-            # Re-tag the EU-record's existing details. Keep the EU
-            # record's display name (matches the wine's own
-            # Einziges-Dokument spelling). When the sidecar has an
-            # authoritative §3.2 split, slugs NOT named in the sidecar
-            # default to "accessory" — the BLE PDF's §3.2 is the
-            # principal-allowlist, so anything outside it is
-            # implicitly "alle übrigen Rebsorten". When the sidecar is
-            # flat-no-split, every slug is principal (the regulator
-            # didn't enumerate a split).
-            unmatched_default = (
-                "principal" if method == "section-8-flat-no-split" else "accessory"
-            )
-            grapes = dict(record.get("grapes") or {})
-            details_in = grapes.get("details") or []
-            new_details: list[dict] = []
-            eu_slugs: set[str] = set()
-            for d in details_in:
-                new_d = dict(d)
-                s = new_d.get("slug")
-                if s:
-                    new_d["role"] = sidecar_role.get(s, unmatched_default)
-                new_details.append(new_d)
-                if s:
-                    eu_slugs.add(s)
-
-            # Fold in any sidecar varieties that the EU record missed
-            # (the §8 list is more complete than the EU section 7 for
-            # some Anbaugebiete).
-            for g in sidecar_details:
-                s = g.get("slug")
-                if s and s not in eu_slugs:
-                    new_details.append({
-                        "slug": s,
-                        "name": g.get("name", s),
-                        "role": g.get("role", "accessory"),
-                        "colour": g.get("colour", ""),
-                        "source": "ble-produktspezifikation",
-                    })
-
-            # Rebuild principal / accessory lists from the re-tagged
-            # details (deterministic + dedup-by-first-seen).
-            principal: list[str] = []
-            accessory: list[str] = []
-            seen_p: set[str] = set()
-            seen_a: set[str] = set()
-            for d in new_details:
-                s = d.get("slug")
-                if not s:
-                    continue
-                if d.get("role") == "accessory":
-                    if s in seen_a:
-                        continue
-                    seen_a.add(s)
-                    accessory.append(s)
-                else:
-                    if s in seen_p:
-                        continue
-                    seen_p.add(s)
-                    principal.append(s)
-            grapes["principal"] = principal
-            grapes["accessory"] = accessory
-            grapes["details"] = new_details
-            record["grapes"] = grapes
-
-        record["produktspezifikation"] = provenance
-        _DE_PRODUKTSPEZIFIKATION_BY_SLUG[slug] = provenance
-        augmented += 1
-    return augmented
-
-
-def augment_cz_records_with_national_specs(records: list[dict]) -> int:
-    """In-place merge of the Czech national variety roster (Vyhláška
-    č. 88/2017 Sb. Příloha č. 2) into every CZ wine record.
-
-    Czech wine law publishes one national variety list (35 white + 26
-    red + 6 zemské-víno = 67 varieties) that applies to every jakostní
-    víno regardless of podoblast — no per-appellation restriction. So
-    every CZ wine that *should* carry a variety list (10 of 13, all
-    except 3 newer single-vineyard / single-varietal PDOs whose
-    Vyhláška-88 status is undocumented) gets the same fold:
-
-      - white-wine PDOs/PGIs → all 35 white varieties as `principal`
-      - red-wine PDOs/PGIs → all 26 red varieties as `principal`
-      - mixed (most macros + podoblasti) → both lists folded;
-        zemské-víno-only varieties go under `accessory` (they apply
-        only to the lower zemské-víno PGI tier).
-
-    Since the Vyhláška doesn't enumerate a per-appellation principal/
-    accessory split (it's a flat national authorisation), we mark
-    everything `principal` and let the panel render "All Czech
-    jakostní vína authorise these 67 varieties — see Vyhláška č.
-    88/2017 Sb." in the provenance.
-
-    Stage 04 reads the cached provenance later via
-    `_CZ_NATIONAL_SPEC_BY_SLUG`.
-
-    Returns the number of records augmented.
-    """
-    _CZ_NATIONAL_SPEC_BY_SLUG.clear()
-    _CZ_CHZO_BY_SLUG.clear()
-    if not NATIONAL_SPECS_CZ.exists():
-        return 0
-
-    # Load the two SZPI CHZO region specs (terroir source + style roster +
-    # provenance), keyed by region. Both PGIs are the spec's own subject;
-    # the macro CHOPs + podoblasti in that region share its section-1
-    # terroir description (rendered by 02d) and cite the same SZPI PDF.
-    chzo_by_region: dict[str, dict] = {}
-    for key in ("chzo-moravske", "chzo-ceske"):
-        p = NATIONAL_SPECS_CZ / f"{key}.json"
-        if not p.exists():
-            continue
-        try:
-            d = json.loads(p.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-        if d.get("region"):
-            chzo_by_region[d["region"]] = d
-    # The 2 PGI slugs whose own product specification this is (they
-    # inherit the spec's per-style roster; the CHOPs/podoblasti keep
-    # grape-colour-inferred styles only).
-    chzo_pgi_slugs = {"moravske", "ceske"}
-
-    varieties_path = NATIONAL_SPECS_CZ / "varieties.json"
-    manifest_path = NATIONAL_SPECS_CZ / "manifest.json"
-    if not varieties_path.exists():
-        return 0
-    try:
-        spec = json.loads(varieties_path.read_text(encoding="utf-8"))
-    except (ValueError, OSError):
-        return 0
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
-    except (ValueError, OSError):
-        manifest = {}
-    src_meta = (manifest.get("sources") or {}).get("vyhlaska-88-2017") or {}
-
-    # Build a slug → match details index for the lexicon match.
-    from _lib.grape_entity import match_variety, set_pliego_context  # noqa: E402
-    sidecar_details: list[dict] = []
-    set_pliego_context("vyhlaska-88-2017")
-    for v in spec.get("varieties") or []:
-        m = match_variety(v.get("name") or "")
-        if m is None:
-            continue
-        sidecar_details.append({
-            "slug": m.slug,
-            "name": v.get("name"),
-            "role": "principal",
-            "colour": m.colour or _COLOUR_FROM_CZ_BLOCK.get(v.get("colour", ""), ""),
-            "source": "vyhlaska-88-2017",
-        })
-    set_pliego_context(None)
-
-    provenance_base = {
-        "url": src_meta.get("canonical_url") or src_meta.get("fetch_url") or "",
-        "fetch_url": src_meta.get("fetch_url") or "",
-        "title": src_meta.get("title") or "",
-        "sbirka_castka": src_meta.get("sbirka_castka") or "",
-        "sha256": src_meta.get("sha256") or "",
-        "fetched_at": (src_meta.get("fetched_at") or "")
-                       if isinstance(src_meta, dict) else "",
-        "source_org": "sbirka",
-        "license": "Czech law text per §3(d) of the Czech Copyright Act",
-        "n_varieties": spec.get("n_total") or 0,
-        "n_white": spec.get("n_white") or 0,
-        "n_red": spec.get("n_red") or 0,
-        "n_zemske": spec.get("n_zemske") or 0,
-    }
-
-    augmented = 0
-    for record in records:
-        if record.get("country") != "cz":
-            continue
-        slug = record.get("slug") or ""
-        # Build the per-record details list. Start from the sidecar
-        # (the national variety roster) since the EU-OJ extracted record
-        # has no grapes (every CZ wine is a stub in v1). Folding by
-        # role: everything `principal` because the Vyhláška doesn't
-        # split.
-        grapes = dict(record.get("grapes") or {})
-        existing_slugs = {d.get("slug") for d in (grapes.get("details") or []) if d.get("slug")}
-        new_details = list(grapes.get("details") or [])
-        for d in sidecar_details:
-            if d["slug"] in existing_slugs:
-                continue
-            existing_slugs.add(d["slug"])
-            new_details.append(d)
-        principal = [d["slug"] for d in new_details if d["slug"] and d.get("role") != "accessory"]
-        accessory = [d["slug"] for d in new_details if d["slug"] and d.get("role") == "accessory"]
-        # Dedup while preserving order.
-        principal_seen: set[str] = set()
-        principal_ordered = [s for s in principal if not (s in principal_seen or principal_seen.add(s))]
-        accessory_seen: set[str] = set()
-        accessory_ordered = [s for s in accessory if not (s in accessory_seen or accessory_seen.add(s))]
-        grapes["principal"] = principal_ordered
-        grapes["accessory"] = accessory_ordered
-        grapes["details"] = new_details
-        record["grapes"] = grapes
-        # Czech wine law publishes no per-appellation wine-description
-        # section, so styles can't be read from a spec the way HR/SI/BG
-        # do. Infer the base colour styles from the authorised variety
-        # roster instead (the BE colour-distribution fallback): a
-        # blanc/gris variety authorises white, a noir variety authorises
-        # red + rosé. Every CZ wine carries the national roster, so all
-        # carry white/red/rosé — honest (any CZ jakostní víno appellation
-        # may be made in any colour) and it makes CZ wines findable in the
-        # style facet instead of invisible. The single straw-wine PDO
-        # (Novosedelské Slámové víno) additionally carries vin-de-paille,
-        # evident from its own name.
-        colours = {d.get("colour") for d in new_details if d.get("colour")}
-        styles = set(record.get("styles") or [])
-        if colours & {"blanc", "gris"}:
-            styles.add("white")
-        if "noir" in colours:
-            styles.add("red")
-            styles.add("rose")
-        if slug == "novosedelske-slamove-vino":
-            styles.add("vin-de-paille")
-        # The 2 PGIs ("zemské víno") additionally carry the real style
-        # roster from their SZPI CHZO spec section 2 (sparkling /
-        # semi-sparkling / vin-de-liqueur on top of the colour bases).
-        chzo = chzo_by_region.get(record.get("region") or "")
-        if chzo and slug in chzo_pgi_slugs:
-            styles |= set(chzo.get("styles") or [])
-        record["styles"] = sorted(styles)
-        # All CZ wines cite the region's CHZO spec as their terroir
-        # source (02d grounds on its section-1 region description), so
-        # surface its provenance uniformly for the panel source block.
-        if chzo:
-            chzo_prov = {
-                "url": chzo.get("source_url") or "",
-                "title": chzo.get("source_title") or "",
-                "region": chzo.get("region") or "",
-                "source_org": chzo.get("source_org") or "szpi",
-                "sha256": chzo.get("source_sha256") or "",
-                "parser_template": chzo.get("parser_template") or "",
-            }
-            record["chzo_spec"] = chzo_prov
-            _CZ_CHZO_BY_SLUG[slug] = chzo_prov
-        record["national_spec"] = provenance_base
-        _CZ_NATIONAL_SPEC_BY_SLUG[slug] = provenance_base
-        augmented += 1
-    return augmented
-
-
-# CZ variety-block colour → grape-entity colour mapping. The Vyhláška
-# 88/2017 block headers are "Bílé moštové odrůdy" (blanc) / "Modré
-# moštové odrůdy" (noir) / "Odrůdy pro výrobu zemských vín" (mixed
-# colours, kept as `zemske` here — falls back via match_variety()).
-_COLOUR_FROM_CZ_BLOCK: dict[str, str] = {
-    "blanc": "blanc",
-    "noir": "noir",
-    "zemske": "",  # mixed; let match_variety supply the per-variety colour
-}
-
-
-# Simple-mode style buckets: collapses the fine-grained style tags into the
-# six top-level buckets the default view shows. Derived from the canonical
-# taxonomy in scripts/_lib/style_taxonomy so adding a new tag in one place
-# propagates here automatically.
-SIMPLE_STYLE_BUCKETS: dict[str, str] = {
-    s: _taxonomy_simple_bucket(s) for s in _taxonomy_all_slugs()
-}
 
 
 # Several non-FR stage-02 pipelines tag wine colour with the FR colour word
@@ -1706,6 +277,192 @@ def _canonical_styles(values: list[str]) -> list[str]:
     return list(seen)
 
 
+# Style synonyms safe to detect from descriptive prose corpus-wide: each is
+# unambiguous (no tasting-note or grape-name collision). rancio / sweetness
+# levels are NOT here — they need per-language context (FR is handled in stage
+# 02; ES below). The matched surface folds to its canonical slug via the
+# taxonomy synonym index, so this is the rendering-layer half of the general
+# style-alias pattern. Word-boundary-guarded; diacritic + ASCII spellings both
+# listed because the source text isn't normalised before matching.
+_TEXT_SCAN_STYLE_TERMS: tuple[str, ...] = (
+    "eiswein", "ice wine", "vin de glace", "jégbor", "jegbor",
+    "ľadové víno", "ladové víno", "ledové víno", "ledeno vino",
+    "vino de hielo", "vino di ghiaccio",
+    "vinsanto", "vino santo", "vin santo",
+    "fondillón", "fondillon",
+    # sparkling production methods (named in vinification prose, unambiguous)
+    "méthode ancestrale", "methode ancestrale", "metodo ancestrale",
+    "metodo ancestral", "pétillant naturel", "petillant naturel", "pet-nat",
+    "méthode traditionnelle", "methode traditionnelle",
+    "méthode classique", "methode classique",
+    "metodo classico", "metodo tradizionale", "método tradicional",
+    "metodo tradicional", "traditional method", "flaschengärung", "flaschengarung",
+    "méthode charmat", "methode charmat", "metodo charmat", "metodo martinotti",
+    "charmat", "martinotti", "cuve close", "método granvás", "metodo granvas",
+    "tankgärung", "tankgarung",
+    "méthode dioise", "methode dioise",
+)
+_TEXT_SCAN_STYLE_RE = re.compile(
+    r"(?<!\w)(" + "|".join(re.escape(t) for t in _TEXT_SCAN_STYLE_TERMS) + r")(?!\w)",
+    re.IGNORECASE,
+)
+# ES rancio is a category ("Vino rancio", "Rancio:", "los rancios"), distinct
+# from "«Rancio»" listed among the Crianza/Reserva aging-tier mentions (which
+# the user scoped OUT) and from a bare tasting-note "rancio". Category-only.
+_ES_RANCIO_RE = re.compile(
+    r"vinos?\s+(?:de\s+licor\s+)?rancios?\b|\brancios?\s*:|\blos\s+rancios\b",
+    re.IGNORECASE,
+)
+# Sparkling production-method tags only make sense for a sparkling wine. The
+# method names are generic enough to leak ("méthode traditionnelle" = traditional
+# DISTILLATION in an Armagnac cahier; "traditional method" of vinification on a
+# still wine), so these tags are kept only when the record already carries a base
+# sparkling style.
+_SPARKLING_METHOD_SLUGS: frozenset[str] = frozenset({
+    "methode-ancestrale", "methode-traditionnelle", "methode-charmat", "methode-dioise",
+})
+_SPARKLING_BASE_STYLES: frozenset[str] = frozenset({
+    "sparkling", "sparkling-quality", "cremant", "semi-sparkling",
+})
+
+
+def _record_style_scan_text(record: dict) -> str:
+    """Concatenate a record's descriptive prose (summary, link-to-terroir, and
+    the section / section-role bodies — which may be nested dicts) for the
+    style-synonym text scan."""
+    parts: list[str] = []
+    for key in ("summary", "link_to_terroir"):
+        v = record.get(key)
+        if isinstance(v, str):
+            parts.append(v)
+
+    def walk(x: object) -> None:
+        if isinstance(x, str):
+            parts.append(x)
+        elif isinstance(x, dict):
+            for vv in x.values():
+                walk(vv)
+
+    walk(record.get("sections"))
+    walk(record.get("section_roles"))
+    return " ".join(parts)
+
+
+def _styles_from_source_text(record: dict) -> set[str]:
+    """Canonical style slugs implied by unambiguous mentions in a record's
+    prose — icewine / vin-santo / fondillón corpus-wide, plus ES category
+    rancio. Additive; the caller merges via `_canonical_styles`."""
+    blob = _record_style_scan_text(record)
+    if not blob:
+        return set()
+    out: set[str] = set()
+    for m in _TEXT_SCAN_STYLE_RE.finditer(blob):
+        slug = _taxonomy_canonical_style(m.group(1))
+        if slug:
+            out.add(slug)
+    if record.get("country") == "es" and _ES_RANCIO_RE.search(blob):
+        out.add("rancio")
+    return out
+
+
+# --- Classification (aging / ripeness / selection tier) detection -------------
+_aging_tier_synonyms: dict[str, str] = _aging_tax.tier_synonyms()
+# Most tiers are specific words → matched by one alias regex and resolved via the
+# aging taxonomy. Three tiers are generic words needing tight gating:
+#   roble    — "barrica de roble" = oak BARREL, not the "Roble" aging tier
+#   colheita — "colheita" = harvest/vintage in nearly every PT spec; the Colheita
+#              CLASSIFICATION is a dated tawny Port / Madeira
+#   superiore— "qualità superiore" etc. = generic "superior", not the Superiore tier
+_AGING_GATED_SLUGS: frozenset[str] = frozenset({"roble", "colheita", "superiore"})
+# Match against RAW text, so collect the accented surface forms (Spätlese, Výber
+# z hrozna) AND an ASCII variant of each — the source text keeps diacritics, so a
+# regex built from the ASCII-normalised synonym keys would miss them.
+_AGING_PLAIN_TERMS: tuple[str, ...] = tuple(
+    dict.fromkeys(
+        surface
+        for node in _aging_tax.NODES.values()
+        if node.parent is not None and node.slug not in _AGING_GATED_SLUGS
+        for raw in (node.slug, *node.synonyms)
+        for surface in (raw, _unidecode(raw))
+    )
+)
+_AGING_PLAIN_RE = re.compile(
+    r"(?<!\w)(" + "|".join(re.escape(t) for t in sorted(_AGING_PLAIN_TERMS, key=len, reverse=True))
+    + r")(?!\w)",
+    re.IGNORECASE,
+)
+# roble: positive — "vino/tinto … (de) roble" as a category, never "barrica de roble".
+_ROBLE_RE = re.compile(r"\b(?:vinos?|tintos?|blancos?)\s+(?:de\s+)?roble\b", re.IGNORECASE)
+# superiore: the tier is capitalised "Superiore"; gate OUT the generic adjective.
+_SUPERIORE_RE = re.compile(r"\bSuperiore\b")  # case-sensitive
+_SUPERIORE_GENERIC_RE = re.compile(
+    r"(qualit|grado|gradazione|titolo|tenore|limite|parte|fascia|zona|porzione|"
+    r"met[àa]|grad\w*)\s+superiore|superiore\s+(a|al|ai|del|della|di)\b",
+    re.IGNORECASE,
+)
+_COLHEITA_RE = re.compile(r"\bcolheita\b", re.IGNORECASE)
+_PORT_CTX_RE = re.compile(r"\b(porto|tawny|madeira|envelhec)", re.IGNORECASE)
+
+# CZ records are content-stubs whose stage-04 augmentation (CHZO region spec)
+# carries only regional terroir prose — the Czech předikát ladder (výběr z
+# hroznů / bobulí / cibéb) lives instead in the per-DOP eAmbrosia register fiche
+# (a public EU-register document). Fold that fiche's prose into the CZ
+# classification scan so those tiers tag (SK předikát already lands via its
+# national spec). slug -> fiche prose, loaded once.
+_CZ_REGISTER_FICHES_DIR = ROOT / "raw" / "cz" / "register-fiches-extracted"
+
+
+def _load_cz_register_fiche_text() -> dict[str, str]:
+    out: dict[str, str] = {}
+    if not _CZ_REGISTER_FICHES_DIR.is_dir():
+        return out
+    for fp in _CZ_REGISTER_FICHES_DIR.glob("*.json"):
+        if fp.name == "_index.json":
+            continue
+        try:
+            d = json.loads(fp.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        slug = d.get("slug")
+        if not slug:
+            continue
+        out[slug] = " ".join(
+            v for v in (d.get("summary"), d.get("link_to_terroir")) if isinstance(v, str)
+        )
+    return out
+
+
+_CZ_REGISTER_FICHE_TEXT: dict[str, str] = _load_cz_register_fiche_text()
+
+
+def _aging_tiers_from_text(record: dict) -> set[str]:
+    """Canonical classification-tier slugs found in a record's prose, with
+    per-term gating for the generic words (roble / colheita / superiore)."""
+    blob = _record_style_scan_text(record)
+    if record.get("country") == "cz":
+        fiche = _CZ_REGISTER_FICHE_TEXT.get(record.get("slug", ""))
+        if fiche:
+            blob = blob + " " + fiche
+    if not blob:
+        return set()
+    out: set[str] = set()
+    for m in _AGING_PLAIN_RE.finditer(blob):
+        slug = _aging_tier_synonyms.get(_unidecode(m.group(1)).lower())
+        if slug:
+            out.add(slug)
+    if _ROBLE_RE.search(blob):
+        out.add("roble")
+    if _SUPERIORE_RE.search(blob) and not _SUPERIORE_GENERIC_RE.search(blob):
+        out.add("superiore")
+    if (
+        record.get("country") == "pt"
+        and _COLHEITA_RE.search(blob)
+        and _PORT_CTX_RE.search(blob)
+    ):
+        out.add("colheita")
+    return out
+
+
 # Berry colour -> wine-style FLOOR. blanc / gris / rose-berried grapes (Pinot
 # Gris, Gewürztraminer, …) all make WHITE wine; noir makes RED. Rosé WINE is a
 # vinification choice, never inferred from grape colour. Applied at the single
@@ -1716,6 +473,31 @@ _BERRY_COLOUR_TO_WINE_STYLE: dict[str, str] = {
 }
 _COLOUR_STYLES: frozenset[str] = frozenset({"white", "red", "rose"})
 _SPARKLING_FAMILY: frozenset[str] = frozenset({"sparkling", "semi-sparkling", "cremant"})
+
+
+def _grape_role_lists(grapes: dict) -> tuple[list[str], list[str], list[str]]:
+    """Return (principal, accessory, observation) slug lists from a record's
+    `grapes` dict. Most countries store these lists directly; CH stores grapes
+    as `details: [{slug, name, colour, role}]` (no principal/accessory split),
+    so derive the lists from `details` by role when the direct lists are absent.
+    Without this, CH grapes never reach the startup blob / map."""
+    principal = list(grapes.get("principal") or [])
+    accessory = list(grapes.get("accessory") or [])
+    observation = list(grapes.get("observation") or [])
+    details = grapes.get("details") or []
+    if details and not (principal or accessory or observation):
+        for d in details:
+            slug = d.get("slug")
+            if not slug:
+                continue
+            role = d.get("role") or "principal"
+            if role == "accessory":
+                accessory.append(slug)
+            elif role == "observation":
+                observation.append(slug)
+            else:
+                principal.append(slug)
+    return principal, accessory, observation
 
 
 def _base_colour_styles_from_grapes(grapes: dict, existing_styles: set[str]) -> set[str]:
@@ -1731,9 +513,8 @@ def _base_colour_styles_from_grapes(grapes: dict, existing_styles: set[str]) -> 
         for d in (grapes.get("details") or [])
         if d.get("slug") and (d.get("colour") or "").strip()
     }
-    slugs = (set(grapes.get("principal") or [])
-             | set(grapes.get("accessory") or [])
-             | set(grapes.get("observation") or []))
+    _p, _a, _o = _grape_role_lists(grapes)
+    slugs = set(_p) | set(_a) | set(_o)
     add: set[str] = set()
     for s in slugs:
         berry = detail_colour.get(s) or DEFAULT_COLOUR.get(s) or vivc_colour.get(s)
@@ -1749,509 +530,11 @@ def _base_colour_styles_from_grapes(grapes: dict, existing_styles: set[str]) -> 
     return add
 
 
-def load_grape_lexicon(lang: str, max_chars: int = 280) -> dict:
-    """Load Wikipedia grape data for a locale; returns {slug: {name, extract?,
-    page_url?, revision_id?, thumbnail?}} for any entry that has at least a
-    `wikipedia_title` (so a localised display name is available even when
-    the article summary is filtered out). Truncates `extract` to ~max_chars
-    at the nearest sentence boundary when present.
-
-    Wikipedia titles often include a parenthetical disambiguator —
-    "Pinot noir (cépage)", "Mauzac (grape)" — which is article-DB hygiene,
-    not how the variety is referenced in the wine world. Strip it for
-    display so the chip reads cleanly."""
-    lang_dir = LEXICON_DIR / lang
-    if not lang_dir.exists():
-        return {}
-    out: dict[str, dict] = {}
-    for f in lang_dir.glob("*.json"):
-        d = json.loads(f.read_text(encoding="utf-8"))
-        if d.get("missing") or d.get("error"):
-            continue
-        title = (d.get("wikipedia_title") or "").strip()
-        if not title:
-            continue
-        display_name = _DISAMBIG_SUFFIX.sub("", title).strip() or title
-        entry: dict = {
-            "name": display_name,
-            "page_url": d.get("page_url"),
-        }
-        extract = (d.get("extract") or "").strip()
-        if extract and is_grape_summary(lang, d.get("description", ""), extract):
-            if len(extract) > max_chars:
-                cut = extract[:max_chars].rsplit(". ", 1)[0]
-                extract = cut + ("." if not cut.endswith(".") else "") + " […]"
-            entry["extract"] = extract
-            entry["revision_id"] = d.get("revision_id")
-            if d.get("thumbnail"):
-                entry["thumbnail"] = d.get("thumbnail")
-        out[d["slug"]] = entry
-    return out
-
-
-def merge_grape_lexicon(lang_lex: dict, fr_lex: dict) -> dict:
-    """Legacy FR-fallback merge. Retained for the styles path which still
-    uses it; the grapes path now goes through `build_grapes_info()`."""
-    if lang_lex is fr_lex:
-        return lang_lex
-    out: dict[str, dict] = {}
-    for slug, fr_entry in fr_lex.items():
-        local = lang_lex.get(slug)
-        if local is None:
-            merged = dict(fr_entry)
-            merged["lang_fallback"] = True
-            out[slug] = merged
-        else:
-            merged = dict(local)
-            if "extract" not in merged and "extract" in fr_entry:
-                merged["extract"] = fr_entry["extract"]
-                if "thumbnail" not in merged and "thumbnail" in fr_entry:
-                    merged["thumbnail"] = fr_entry["thumbnail"]
-                merged["lang_fallback"] = True
-            out[slug] = merged
-    for slug, local in lang_lex.items():
-        out.setdefault(slug, local)
-    return out
-
-
-_VIVC_BY_SLUG_CACHE: dict[str, dict] | None = None
-
-
-def _load_vivc_by_slug() -> dict[str, dict]:
-    """`{slug: {canonical_name, vivc_id, vivc_url}}` from raw/vivc/by-slug/."""
-    global _VIVC_BY_SLUG_CACHE
-    if _VIVC_BY_SLUG_CACHE is not None:
-        return _VIVC_BY_SLUG_CACHE
-    out: dict[str, dict] = {}
-    if not VIVC_BY_SLUG.exists():
-        _VIVC_BY_SLUG_CACHE = out
-        return out
-    for f in VIVC_BY_SLUG.glob("*.json"):
-        rec = json.loads(f.read_text(encoding="utf-8"))
-        prime = (rec.get("prime_name") or "").strip()
-        vid = rec.get("vivc_id")
-        if not prime or not isinstance(vid, int):
-            continue
-        # str.title() handles apostrophes correctly ("D'AUNIS" → "D'Aunis"),
-        # which a per-token .capitalize() does not ("D'aunis").
-        canonical = prime.title()
-        out[rec["slug"]] = {
-            "canonical_name": canonical,
-            "vivc_id": vid,
-            "vivc_url": rec.get("source_url"),
-        }
-    _VIVC_BY_SLUG_CACHE = out
-    return out
-
-
-_VIVC_COLOUR_BY_SLUG_CACHE: dict[str, str] | None = None
-
-
-def _load_vivc_colour_by_slug() -> dict[str, str]:
-    """`{slug: 'blanc'|'gris'|'noir'|'rose'}` from raw/vivc/by-slug/<slug>.json
-    `color` (UPPERCASE NOIR/BLANC/GRIS/ROSE). Berry colour — not a wine style.
-    VIVC carries colours absent from the curated DEFAULT_COLOUR table
-    (nebbiolo, chasselas, …), so it is the gap-filler for the style floor.
-    Kept separate from `_load_vivc_by_slug` so that function's return shape
-    (consumed by `facets`) is untouched."""
-    global _VIVC_COLOUR_BY_SLUG_CACHE
-    if _VIVC_COLOUR_BY_SLUG_CACHE is not None:
-        return _VIVC_COLOUR_BY_SLUG_CACHE
-    out: dict[str, str] = {}
-    _MAP = {"NOIR": "noir", "BLANC": "blanc", "GRIS": "gris", "ROSE": "rose"}
-    if VIVC_BY_SLUG.exists():
-        for f in VIVC_BY_SLUG.glob("*.json"):
-            rec = json.loads(f.read_text(encoding="utf-8"))
-            colour = _MAP.get((rec.get("color") or "").strip().upper())
-            slug = rec.get("slug")
-            if colour and slug:
-                out[slug] = colour
-    _VIVC_COLOUR_BY_SLUG_CACHE = out
-    return out
-
-
-def _load_native_grape(lang: str, slug: str, max_chars: int = 280) -> dict | None:
-    """Native Wikipedia entry for (slug, lang), or None when missing/empty.
-    Returns the trimmed entry with name, extract, page_url, revision_id,
-    thumbnail, matched_via."""
-    f = LEXICON_DIR / lang / f"{slug}.json"
-    if not f.exists():
-        return None
-    d = json.loads(f.read_text(encoding="utf-8"))
-    if d.get("missing") or d.get("error"):
-        return None
-    title = (d.get("wikipedia_title") or "").strip()
-    extract = (d.get("extract") or "").strip()
-    if not extract or not is_grape_summary(lang, d.get("description", ""), extract):
-        return None
-    display = _DISAMBIG_SUFFIX.sub("", title).strip() if title else slug
-    if len(extract) > max_chars:
-        cut = extract[:max_chars].rsplit(". ", 1)[0]
-        extract = cut + ("." if not cut.endswith(".") else "") + " […]"
-    out: dict = {
-        "name": display or slug,
-        "extract": extract,
-        "page_url": d.get("page_url"),
-        "revision_id": d.get("revision_id"),
-        "matched_via": d.get("matched_via") or "primary",
-    }
-    if d.get("thumbnail"):
-        out["thumbnail"] = d["thumbnail"]
-    return out
-
-
-def _load_translated_grape(lang: str, slug: str, max_chars: int = 280) -> dict | None:
-    f = GRAPE_TRANSLATIONS_DIR / lang / f"{slug}.json"
-    if not f.exists():
-        return None
-    d = json.loads(f.read_text(encoding="utf-8"))
-    extract = (d.get("extract") or "").strip()
-    if not extract:
-        return None
-    if len(extract) > max_chars:
-        cut = extract[:max_chars].rsplit(". ", 1)[0]
-        extract = cut + ("." if not cut.endswith(".") else "") + " […]"
-    return {
-        "extract": extract,
-        "source_lang": d.get("source_lang"),
-        "page_url": d.get("source_page_url"),
-        "name": (d.get("source_wikipedia_title") or slug).strip() or slug,
-        "translator": d.get("translator"),
-        "translator_kind": d.get("translator_kind"),
-    }
-
-
-def _corpus_grape_names() -> dict[str, str]:
-    """Per-slug regulator spelling from the FR+ES+PT corpus, e.g.
-    `cot → 'cot'`, `malbec → 'malbec'`, `mancin → 'mancin'`. Used as the
-    canonical sidebar / pill label so three different slugs sharing a
-    Wikipedia article (Cot ↔ Malbec via vivc, plus a misattributed
-    Mancin) read as their three distinct cahier names — not three
-    identical "Malbec" rows."""
-    from _lib.grape_corpus import collect_grape_slugs as _c  # noqa: PLC0415
-    return {slug: entry["name"] for slug, entry in _c().items() if entry.get("name")}
-
-
-_CORPUS_GRAPE_NAMES: dict[str, str] | None = None
-
-
-def _corpus_name_for(slug: str) -> str | None:
-    global _CORPUS_GRAPE_NAMES
-    if _CORPUS_GRAPE_NAMES is None:
-        _CORPUS_GRAPE_NAMES = _corpus_grape_names()
-    return _CORPUS_GRAPE_NAMES.get(slug)
-
-
-def _latin_form_or_empty(name: str) -> str:
-    # Cyrillic / Greek / other non-Latin display strings get an
-    # informational ASCII transliteration so the grape-pill renderer can
-    # fall back to it when no VIVC canonical name is available (e.g.
-    # native BG varieties like `mavrud` that VIVC hasn't catalogued).
-    latin = unidecode(name or "").strip()
-    return latin if latin and latin != (name or "").strip() else ""
-
-
-def _override_name_with_corpus(entry: dict, slug: str) -> None:
-    """Replace `entry['name']` (which after `_load_native_grape` is the
-    Wikipedia article title) with the regulator's cahier spelling when
-    one exists. Keeps `wikipedia_title` intact for the tooltip header so
-    attribution stays accurate."""
-    cahier = _corpus_name_for(slug)
-    if not cahier:
-        return
-    if "wikipedia_title" not in entry and entry.get("name"):
-        entry["wikipedia_title"] = entry["name"]
-    entry["name"] = cahier
-    latin = _latin_form_or_empty(cahier)
-    if latin:
-        entry["name_latin"] = latin
-
-
-def build_grapes_info(target_locale: str) -> dict:
-    """Per-slug grape data for the target locale's map page.
-
-    Resolution per (slug, target_locale):
-      1. Native target-locale Wikipedia entry → `is_translated=false`,
-         `source_lang=target_locale`.
-      2. Translated cache (`02b_translate_grapes.py`) →
-         `is_translated=true`, `source_lang` from the cache record.
-      3. Neither → emit `{canonical_name, vivc_id, vivc_url}` only when
-         a VIVC record exists; the pill still renders (cahier name +
-         optional canonical bracket + VIVC link), just without a tooltip
-         body.
-
-    VIVC `canonical_name`/`vivc_id`/`vivc_url` ride alongside the
-    Wikipedia entry for every slug that has a resolved VIVC record;
-    unresolved/missed slugs simply lack those fields.
-    """
-    vivc = _load_vivc_by_slug()
-    slugs: set[str] = set()
-    if (LEXICON_DIR / target_locale).exists():
-        slugs.update(p.stem for p in (LEXICON_DIR / target_locale).glob("*.json"))
-    if (GRAPE_TRANSLATIONS_DIR / target_locale).exists():
-        slugs.update(p.stem for p in (GRAPE_TRANSLATIONS_DIR / target_locale).glob("*.json"))
-    slugs.update(vivc.keys())
-    # Keep only slugs that the *current* corpus actually emits. Stale
-    # Wikipedia / translation cache entries for slugs that no longer
-    # appear in the FR/ES/PT extracted JSONs (e.g. `tempranillo-cencibel`
-    # after the ES EU-OJ splitter fix) otherwise leak into GRAPES_INFO
-    # and reappear in the chip-filter index as ghost entries.
-    corpus_slugs = set(_corpus_grape_names().keys()) | set(vivc.keys())
-    slugs &= corpus_slugs
-
-    out: dict[str, dict] = {}
-    for slug in slugs:
-        vivc_fields = vivc.get(slug) or {}
-        native = _load_native_grape(target_locale, slug)
-        if native is not None:
-            entry = {
-                **vivc_fields,
-                **native,
-                "source_lang": target_locale,
-                "is_translated": False,
-            }
-            _override_name_with_corpus(entry, slug)
-            out[slug] = entry
-            continue
-        translated = _load_translated_grape(target_locale, slug)
-        if translated is not None:
-            entry = {
-                **vivc_fields,
-                **translated,
-                "is_translated": True,
-                "matched_via": "translation",
-            }
-            _override_name_with_corpus(entry, slug)
-            out[slug] = entry
-            continue
-        if vivc_fields:
-            out[slug] = {**vivc_fields, "is_translated": False, "source_lang": None}
-    return out
-
-
-def _truncate_extract(extract: str, max_chars: int) -> str:
-    extract = (extract or "").strip()
-    if not extract or len(extract) <= max_chars:
-        return extract
-    cut = extract[:max_chars].rsplit(". ", 1)[0]
-    return cut + ("." if not cut.endswith(".") else "") + " […]"
-
-
-def load_style_lexicon(lang: str, max_chars: int = 320) -> dict:
-    """Load wine-style data for a locale; returns
-    {slug: {extract, page_url, revision_id, thumbnail?, translation?}}
-    for each curated entry that has usable text.
-
-    Native Wikipedia fetches (raw/wikipedia/styles/<lang>/) are preferred.
-    When a slug has no native entry in `lang` but a translated entry exists
-    (raw/translations/styles/<lang>/), the translation is used and a
-    `translation` metadata block is attached so the UI can render the
-    "translated from <source-locale> Wikipedia" attribution."""
-    out: dict[str, dict] = {}
-    lang_dir = STYLE_LEXICON_DIR / lang
-    if lang_dir.exists():
-        for f in lang_dir.glob("*.json"):
-            d = json.loads(f.read_text(encoding="utf-8"))
-            if d.get("missing") or d.get("error"):
-                continue
-            extract = _truncate_extract(d.get("extract") or "", max_chars)
-            if not extract:
-                continue
-            entry: dict = {
-                "extract": extract,
-                "page_url": d.get("page_url"),
-                "revision_id": d.get("revision_id"),
-            }
-            if d.get("thumbnail"):
-                entry["thumbnail"] = d.get("thumbnail")
-            out[d["slug"]] = entry
-
-    tx_dir = STYLE_TRANSLATIONS_DIR / lang
-    if tx_dir.exists():
-        for f in tx_dir.glob("*.json"):
-            d = json.loads(f.read_text(encoding="utf-8"))
-            slug = d.get("slug") or f.stem
-            if slug in out:
-                continue  # native fetch wins
-            extract = _truncate_extract(d.get("extract") or "", max_chars)
-            if not extract:
-                continue
-            out[slug] = {
-                "extract": extract,
-                "page_url": d.get("source_page_url") or "",
-                "revision_id": d.get("source_revision_id"),
-                "translation": {
-                    "source_lang": d.get("source_lang") or "",
-                    "source_page_url": d.get("source_page_url") or "",
-                    "source_wikipedia_title": d.get("source_wikipedia_title") or "",
-                    "translator": d.get("translator") or "",
-                    "translator_kind": d.get("translator_kind") or "",
-                },
-            }
-    return out
-
-
-def merge_style_lexicon(lang_lex: dict, fr_lex: dict) -> dict:
-    """FR-fallback for slugs the target locale lacks entirely — both as a
-    native fetch and as a translation. Used as a last resort so the UI still
-    renders something rather than an empty pill."""
-    if lang_lex is fr_lex:
-        return lang_lex
-    out: dict[str, dict] = {}
-    for slug, fr_entry in fr_lex.items():
-        local = lang_lex.get(slug)
-        if local is None:
-            merged = dict(fr_entry)
-            merged["lang_fallback"] = True
-            out[slug] = merged
-        else:
-            out[slug] = dict(local)
-    for slug, local in lang_lex.items():
-        out.setdefault(slug, local)
-    return out
-
-
-# INSEE 2-digit département code → canonical name as written in cahiers.
-# Used for resolving "Côte-d'Or" → "21" so commune lookup stays inside the
-# correct département (avoids Saint-Pierre homonym collisions).
-DEPT_NAME_TO_CODE: dict[str, str] = {
-    "Ain": "01", "Aisne": "02", "Allier": "03", "Alpes-de-Haute-Provence": "04",
-    "Hautes-Alpes": "05", "Alpes-Maritimes": "06", "Ardèche": "07", "Ardennes": "08",
-    "Ariège": "09", "Aube": "10", "Aude": "11", "Aveyron": "12",
-    "Bouches-du-Rhône": "13", "Calvados": "14", "Cantal": "15", "Charente": "16",
-    "Charente-Maritime": "17", "Cher": "18", "Corrèze": "19", "Corse-du-Sud": "2A",
-    "Haute-Corse": "2B", "Côte-d'Or": "21", "Côte-d’Or": "21",
-    "Côtes-d'Armor": "22", "Côtes-d’Armor": "22", "Creuse": "23",
-    "Dordogne": "24", "Doubs": "25", "Drôme": "26", "Eure": "27", "Eure-et-Loir": "28",
-    "Finistère": "29", "Gard": "30", "Haute-Garonne": "31", "Gers": "32",
-    "Gironde": "33", "Hérault": "34", "Ille-et-Vilaine": "35", "Indre": "36",
-    "Indre-et-Loire": "37", "Isère": "38", "Jura": "39", "Landes": "40",
-    "Loir-et-Cher": "41", "Loire": "42", "Haute-Loire": "43", "Loire-Atlantique": "44",
-    "Loiret": "45", "Lot": "46", "Lot-et-Garonne": "47", "Lozère": "48",
-    "Maine-et-Loire": "49", "Manche": "50", "Marne": "51", "Haute-Marne": "52",
-    "Mayenne": "53", "Meurthe-et-Moselle": "54", "Meuse": "55", "Morbihan": "56",
-    "Moselle": "57", "Nièvre": "58", "Nord": "59", "Oise": "60", "Orne": "61",
-    "Pas-de-Calais": "62", "Puy-de-Dôme": "63", "Pyrénées-Atlantiques": "64",
-    "Hautes-Pyrénées": "65", "Pyrénées-Orientales": "66", "Bas-Rhin": "67",
-    "Haut-Rhin": "68", "Rhône": "69", "Haute-Saône": "70", "Saône-et-Loire": "71",
-    "Sarthe": "72", "Savoie": "73", "Haute-Savoie": "74", "Paris": "75",
-    "Seine-Maritime": "76", "Seine-et-Marne": "77", "Yvelines": "78",
-    "Deux-Sèvres": "79", "Somme": "80", "Tarn": "81", "Tarn-et-Garonne": "82",
-    "Var": "83", "Vaucluse": "84", "Vendée": "85", "Vienne": "86",
-    "Haute-Vienne": "87", "Vosges": "88", "Yonne": "89", "Territoire de Belfort": "90",
-    "Essonne": "91", "Hauts-de-Seine": "92", "Seine-Saint-Denis": "93",
-    "Val-de-Marne": "94", "Val-d'Oise": "95", "Val-d’Oise": "95",
-    "Guadeloupe": "971", "Martinique": "972", "Guyane": "973",
-    "La Réunion": "974", "Mayotte": "976",
-}
-
-
-def normalize_commune(s: str) -> str:
-    """Loose match key for commune names — strip diacritics, casing, spacing,
-    leading articles, parenthetical notes."""
-    s = re.sub(r"\(.*?\)", "", s)  # drop "(uniquement pour la partie ...)"
-    s = re.sub(r"^(?:Le|La|Les|L['’])\s+", "", s, flags=re.IGNORECASE)
-    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
-    return re.sub(r"[\W_]+", "", s).lower()
-
-
-def load_commune_index(
-    path: Path,
-) -> tuple[dict[tuple[str, str], tuple[dict, str]], dict[str, dict], dict[str, str]]:
-    """Build three indexes over IGN AdminExpress communes.
-
-    The first is `(dept_code, normalized_name) → (geometry, insee)`, used
-    by the legacy cahier-text resolver. The second is `insee → geometry`,
-    used when we resolve communes via the INAO authoritative aires CSV
-    (which gives INSEE codes directly, avoiding name-fuzzy-match work).
-    The third is `insee → commune name`, used to render attribution
-    strings for cadastre lieu-dit matches.
-    """
-    print(f"[load] {path.relative_to(ROOT)} ({path.stat().st_size // (1<<20)} MB)", file=sys.stderr)
-    fc = json.loads(path.read_text(encoding="utf-8"))
-    name_idx: dict[tuple[str, str], tuple[dict, str]] = {}
-    insee_idx: dict[str, dict] = {}
-    insee_to_name: dict[str, str] = {}
-    for feat in fc["features"]:
-        p = feat["properties"]
-        name_idx[(p["codeDepartement"], normalize_commune(p["nom"]))] = (
-            feat["geometry"], p["code"],
-        )
-        insee_idx[p["code"]] = feat["geometry"]
-        insee_to_name[p["code"]] = p["nom"]
-    return name_idx, insee_idx, insee_to_name
-
-
 def _join_set(values: list[str]) -> str:
     """Encode a slug list as ';value1;value2;' for MapLibre `in` filtering."""
     if not values:
         return ""
     return ";" + ";".join(values) + ";"
-
-
-def cahier_insee(record: dict, commune_idx: dict) -> set[str]:
-    """Resolve the cahier-extracted commune list to INSEE codes.
-
-    Used as a hint for `lookup_aire` to disambiguate aires-CSV name
-    collisions (Valençay wine vs chèvre): the wine cahier's commune set
-    overlaps the wine IDA strongly and the cheese IDA barely. Returns
-    an empty set when the cahier didn't list communes (Champagne and
-    similar legal-deferred AOCs).
-    """
-    out: set[str] = set()
-    by_dept = record.get("aire", {}).get("aire_geographique", {}) or {}
-    for dept_name, communes in by_dept.items():
-        dept_code = DEPT_NAME_TO_CODE.get(dept_name.replace("’", "'"))
-        if not dept_code:
-            continue
-        for commune in communes:
-            hit = commune_idx.get((dept_code, normalize_commune(commune)))
-            if hit is not None:
-                out.add(hit[1])
-    return out
-
-
-def union_for_appellation(record: dict, commune_idx: dict) -> tuple[object | None, dict]:
-    """Resolve commune names → polygons → union (cahier-text path).
-
-    Used as a fallback when neither parcellaire nor INAO aires CSV give
-    us a direct geometry/INSEE list for this appellation.
-    """
-    matched = unmatched = 0
-    geoms = []
-    by_dept = record["aire"]["aire_geographique"]
-    for dept_name, communes in by_dept.items():
-        dept_code = DEPT_NAME_TO_CODE.get(dept_name.replace("’", "'"))
-        if not dept_code:
-            unmatched += len(communes)
-            continue
-        for commune in communes:
-            key = (dept_code, normalize_commune(commune))
-            hit = commune_idx.get(key)
-            if hit is None:
-                unmatched += 1
-                continue
-            geoms.append(shape(hit[0]))
-            matched += 1
-    if not geoms:
-        return None, {"matched": matched, "unmatched": unmatched}
-    return unary_union(geoms), {"matched": matched, "unmatched": unmatched}
-
-
-def union_from_insee(insee_codes: set[str], insee_idx: dict[str, dict]) -> tuple[object | None, dict]:
-    """Resolve INSEE codes (from the INAO aires CSV) → polygons → union."""
-    matched = unmatched = 0
-    geoms = []
-    for code in insee_codes:
-        geom = insee_idx.get(code)
-        if geom is None:
-            unmatched += 1
-            continue
-        geoms.append(shape(geom))
-        matched += 1
-    if not geoms:
-        return None, {"matched": matched, "unmatched": unmatched}
-    return unary_union(geoms), {"matched": matched, "unmatched": unmatched}
 
 
 def _geojson_bounds(g: dict) -> tuple[float, float, float, float]:
@@ -2298,161 +581,6 @@ def communes_containing(needle, insee_idx: dict[str, dict]) -> set[str]:
         if shape(gd).intersects(needle):
             out.add(code)
     return out
-
-
-def _find_sibling_umbrella(
-    name: str,
-    siblings: list[tuple[str, object, object, str]] | None,
-) -> tuple[object | None, object | None, str, str]:
-    """Find the longest sibling DGC whose name strictly prefixes `name`.
-
-    Returns (geom, village_geom, sibling_name, sibling_slug) — all blank
-    when no match. Used to walk a Chablis premier cru lieu-dit up to the
-    "Chablis premier cru" umbrella DGC's polygon, instead of the entire
-    Chablis appellation.
-    """
-    if not siblings:
-        return None, None, "", ""
-    best: tuple[object, object, str, str] | None = None
-    best_len = 0
-    for sib_name, sib_geom, sib_v_geom, sib_slug in siblings:
-        prefix = sib_name + " "
-        if name.startswith(prefix) and len(sib_name) > best_len:
-            best = (sib_geom, sib_v_geom, sib_name, sib_slug)
-            best_len = len(sib_name)
-    if best is None:
-        return None, None, "", ""
-    return best
-
-
-@dataclass
-class DGCGeomResult:
-    """Outcome of `resolve_dgc_geometry()`. `source` is the wining strategy's
-    label (`parcellaire-dgc`, `dgc-village-override`, `cadastre-lieu-dit-dgc`,
-    `aires-csv-dgc`, `sibling-dgc`, `parent-appellation`, or `none`).
-    `sib_*` and `cadastre_match` are populated only by their respective
-    strategies; downstream consumers (v_geom resolution and MVT
-    fallback_*/cadastre_* properties) read them keyed on `source`."""
-    geom: object | None
-    source: str
-    stats: dict
-    sib_v_geom: object | None = None
-    sib_name: str = ""
-    sib_slug: str = ""
-    cadastre_match: dict | None = None
-
-
-def resolve_dgc_geometry(
-    record: dict,
-    *,
-    parcels_by_denom: dict,
-    aires_by_app: dict,
-    insee_idx: dict,
-    commune_idx: dict,
-    lieu_dit_index: LieuDitIndex,
-    parent_geom_by_slug: dict,
-    sibling_geom_by_id_app: dict,
-) -> DGCGeomResult:
-    """Resolve a DGC's detailed geometry by walking the priority chain:
-
-      1. parcellaire-dgc — parcel-precise polygon keyed on id_denomination_geo
-      2. dgc-village-override — hand-curated DGC_VILLAGE_INSEE table
-      3. cadastre-lieu-dit-dgc — sub-commune climat in cadastre lieux-dits
-         (Chablis premier-cru climats, Givry / Santenay premier cru, …)
-      4. aires-csv-dgc — DGC's own row in INAO aires-communes CSV
-      5. sibling-dgc — longest-prefix sibling DGC umbrella (Chablis premier
-         cru X → "Chablis premier cru" umbrella, not whole Chablis)
-      6. parent-appellation — inherit parent's polygon
-      7. none — no geometry available
-
-    Returns the first matching strategy's result; later strategies are
-    not evaluated. Adding a fallback = inserting a guarded block at the
-    right priority slot. Behavior matches the original 7-level cascade
-    in main() exactly.
-    """
-    id_denom = record.get("id_denomination_geo") or ""
-    parent_name = record.get("parent_name") or ""
-    cahier_hint = cahier_insee(record, commune_idx)
-    siblings = sibling_geom_by_id_app.get(record.get("id_appellation"))
-    sib_geom, sib_v_geom, sib_name, sib_slug = _find_sibling_umbrella(record["name"], siblings)
-
-    # 1. parcellaire-dgc
-    parcel_feat = parcels_by_denom.get(id_denom) if id_denom else None
-    if parcel_feat is not None:
-        return DGCGeomResult(
-            geom=shape(parcel_feat["geometry"]),
-            source="parcellaire-dgc",
-            stats={"matched": -1, "unmatched": 0},
-        )
-
-    # 2. dgc-village-override
-    override_insee = DGC_VILLAGE_INSEE.get(id_denom)
-    if override_insee:
-        geom, stats = union_from_insee(override_insee, insee_idx)
-        if geom is not None and not geom.is_empty:
-            return DGCGeomResult(geom=geom, source="dgc-village-override", stats=stats)
-
-    parent_aires_insee = (
-        lookup_aire(aires_by_app, parent_name, cahier_hint) if parent_name else None
-    )
-
-    # 3. cadastre-lieu-dit-dgc — sub-commune climat resolution. Strip the
-    #    parent / sibling-umbrella prefix before matching so "Chablis premier
-    #    cru Vaillons" looks up as "Vaillons" inside Chablis.
-    climat_name = derive_climat_name(
-        record["name"], parent_name=parent_name, umbrella_name=sib_name,
-    )
-    cadastre_match = lieu_dit_index.resolve(
-        climat_name, parent_aires_insee, id_denom=id_denom,
-    )
-    if cadastre_match is not None:
-        return DGCGeomResult(
-            geom=cadastre_match["geom"],
-            source="cadastre-lieu-dit-dgc",
-            stats={"matched": -1, "unmatched": 0},
-            cadastre_match=cadastre_match,
-        )
-
-    # 4. aires-csv-dgc — but first drop substring matches that round-trip
-    #    to the parent or to the sibling umbrella (those are not informative;
-    #    they signal the DGC has no row of its own and the lookup_aire
-    #    len≥6 fallback latched onto a containing row instead).
-    dgc_aires_insee = lookup_aire(aires_by_app, record["name"], cahier_hint)
-    if dgc_aires_insee and parent_aires_insee == dgc_aires_insee:
-        dgc_aires_insee = None
-    if dgc_aires_insee and sib_name:
-        sib_aires_insee = lookup_aire(aires_by_app, sib_name, cahier_hint)
-        if sib_aires_insee == dgc_aires_insee:
-            dgc_aires_insee = None
-    if dgc_aires_insee:
-        geom, stats = union_from_insee(dgc_aires_insee, insee_idx)
-        if geom is not None and not geom.is_empty:
-            return DGCGeomResult(geom=geom, source="aires-csv-dgc", stats=stats)
-
-    # 5. sibling-dgc — umbrella DGC's polygon, when one exists.
-    if sib_geom is not None:
-        return DGCGeomResult(
-            geom=sib_geom,
-            source="sibling-dgc",
-            stats={"matched": -1, "unmatched": 0},
-            sib_v_geom=sib_v_geom,
-            sib_name=sib_name,
-            sib_slug=sib_slug,
-        )
-
-    # 6. parent-appellation — inherit. Parents are processed before DGCs,
-    #    so parent_geom_by_slug already holds it.
-    parent_slug = record.get("parent_slug") or ""
-    parent_geom = parent_geom_by_slug.get(parent_slug)
-    if parent_geom is not None:
-        return DGCGeomResult(
-            geom=parent_geom,
-            source="parent-appellation",
-            stats={"matched": -1, "unmatched": 0},
-        )
-
-    # 7. none
-    return DGCGeomResult(geom=None, source="none", stats={"matched": 0, "unmatched": 0})
 
 
 def main() -> int:
@@ -4050,11 +2178,22 @@ def main() -> int:
         minx, miny, maxx, maxy = geom.bounds
         bbox = [float(minx), float(miny), float(maxx), float(maxy)]
         grapes = record.get("grapes") or {}
-        principal = grapes.get("principal") or []
-        accessory = grapes.get("accessory") or []
-        observation = grapes.get("observation") or []
+        principal, accessory, observation = _grape_role_lists(grapes)
         all_grapes = sorted(set(principal) | set(accessory) | set(observation))
         styles = _canonical_styles(record.get("styles") or [])
+        # Augment with unambiguous special-style mentions in the prose
+        # (icewine / vin-santo / fondillón corpus-wide; ES category rancio) —
+        # the rendering-layer half of the style-alias pattern.
+        text_styles = _styles_from_source_text(record)
+        # Sparkling-method tags require the wine to be sparkling (drops the
+        # Armagnac "méthode traditionnelle" = distillation false positive etc.).
+        if not (set(styles) & _SPARKLING_BASE_STYLES):
+            text_styles -= _SPARKLING_METHOD_SLUGS
+        if text_styles:
+            styles = _canonical_styles(list(styles) + sorted(text_styles))
+        # Classification tiers (aging / Prädikat / selection) — a facet parallel
+        # to styles, detected from prose with per-term gating.
+        classifications = sorted(_aging_tiers_from_text(record))
         categories = record.get("categories") or []
         categorie = record.get("categorie", "") or ""
         # Wine vs. non-wine split: every INAO `categorie` value beginning with
@@ -4349,6 +2488,7 @@ def main() -> int:
             "cadastre_score": cadastre_score,
             "categories": _join_set(categories),
             "styles": _join_set(styles),
+            "classifications": _join_set(classifications),
             "grapes_principal": _join_set(principal),
             "grapes_accessory": _join_set(accessory),
             "grapes_observation": _join_set(observation),
@@ -4510,182 +2650,6 @@ def main() -> int:
         use_translations=not args.no_translations,
     )
     return 0
-
-
-def _resolve_es_igp_fallback(record: dict, es_polygons: ESPolygonIndex):
-    """Resolve geometry for ES wines that miss Figshare (mostly IGPs +
-    a handful of post-Nov-2021 PDOs). Patterns tried in order:
-
-      1. **Province-wide** — pliego says "todos los términos municipales
-         de las provincias de X y Y" (Extremadura). Union all GISCO
-         municipios in those provinces.
-      2. **CCAA-wide** — "totalidad de los municipios de la Comunidad
-         Autónoma de Castilla y León". Union all province INEs of that
-         CCAA.
-      3. **Island-wide** — "toda la isla de Mallorca" (Balearic IGPs
-         like Mallorca / Menorca / Serra de Tramuntana).
-      4. **Commune-list** — pliego enumerates a flat commune list
-         (Ribeiras do Morrazo, Barbanza e Iria, Bajo Aragón). Union the
-         matching GISCO municipios.
-
-    Each pattern is tried against a chain of candidate texts:
-    `geo_area_brief` first (the canonical stage-02 routed field), then
-    `sections["9"]` (the EU 2024 single-document "Definición breve de
-    la zona geográfica delimitada" section — sometimes mis-routed by
-    stage 02 when section titles collide, e.g. Mallorca / Ribeiras do
-    Morrazo).
-
-    LAST RESORT — **wine-name → province**: when nothing else fires,
-    look up the wine's `name` (and the bracketed-form fallback strip)
-    against `PROVINCE_TO_INE`. Spanish-national-format pliegos for
-    province-named IGPs (Castelló) sometimes describe the geographic
-    area in pure prose without listing communes or saying "todos los
-    municipios de la provincia" — the IGP-covers-the-whole-province
-    relationship is implicit in the name. The wine's name must match
-    a known Spanish province (or co-official alias) exactly.
-
-    Returns (geom, source_label, stats) or (None, "none", {}) when
-    nothing fires."""
-    geo = record.get("geo_area_brief") or ""
-    sec9 = (record.get("sections") or {}).get("9") or ""
-
-    # Try the routed field first, then section 9. Stop on the first
-    # candidate that actually returns a non-empty polygon.
-    candidates = [c for c in (geo, sec9) if c]
-    if not candidates:
-        slug = record.get("slug", "?")
-        print(f"[no-commune-match] {slug}: empty geo_area_brief and section 9", file=sys.stderr)
-        return None, "none", {"matched": 0, "unmatched": 0}
-
-    for text in candidates:
-        provinces = parse_province_wide_list(text)
-        if provinces:
-            ines = [PROVINCE_TO_INE.get(p) for p in provinces if PROVINCE_TO_INE.get(p)]
-            if ines:
-                geom, stats = es_polygons.union_provinces(ines)
-                if geom is not None and not geom.is_empty:
-                    return geom, "gisco-province-wide", {
-                        "matched": stats.get("n_municipios", -1), "unmatched": 0,
-                    }
-
-        ccaa = parse_ccaa_wide(text)
-        if ccaa:
-            ines = list(CCAA_TO_PROVINCE_INES.get(ccaa, ()))
-            if ines:
-                geom, stats = es_polygons.union_provinces(ines)
-                if geom is not None and not geom.is_empty:
-                    return geom, "gisco-ccaa-wide", {
-                        "matched": stats.get("n_municipios", -1), "unmatched": 0,
-                    }
-
-        # Balearic islands: pliego says "toda la isla de Mallorca" /
-        # "todos los municipios de la isla de Menorca" / etc. GISCO LAU
-        # has no per-island metadata, so we lean on the curated INE-list-
-        # per-island in `_lib/es/baleares.py` (bbox-classified once from
-        # the LAU geometry).
-        island = parse_island_wide(text)
-        if island:
-            island_ines = list(ines_for_island(island))
-            if island_ines:
-                polys = []
-                for ine in island_ines:
-                    cand = es_polygons._munis_by_ine.get(ine)
-                    if cand and not cand.geom.is_empty:
-                        polys.append(cand.geom)
-                if polys:
-                    return unary_union(polys), "gisco-island-wide", {
-                        "matched": len(polys), "unmatched": 0,
-                    }
-
-        communes = parse_commune_list(text)
-        if communes:
-            geom, stats = es_polygons.union_communes(communes)
-            if geom is not None and not geom.is_empty:
-                return geom, "gisco-commune-list", stats
-
-    # Last resort: wine-name → province. The IGP/DOP covers the whole
-    # province by name (Castelló = Castellón province). Matched against
-    # PROVINCE_TO_INE's full alias list (Spanish + co-official forms).
-    name = (record.get("name") or "").strip()
-    ine = PROVINCE_TO_INE.get(name)
-    if ine:
-        geom, stats = es_polygons.union_provinces([ine])
-        if geom is not None and not geom.is_empty:
-            slug = record.get("slug", "?")
-            print(
-                f"[gisco-province-by-name] {slug}: name={name!r} → INE {ine} "
-                f"(no commune list anywhere; province-wide by name)",
-                file=sys.stderr,
-            )
-            return geom, "gisco-province-by-name", {
-                "matched": stats.get("n_municipios", -1), "unmatched": 0,
-            }
-
-    slug = record.get("slug", "?")
-    print(
-        f"[no-commune-match] {slug}: "
-        f"geo_area_brief={len(geo)} chars, section9={len(sec9)} chars, "
-        f"no province/ccaa/island/commune-list/name-province pattern fired",
-        file=sys.stderr,
-    )
-    return None, "none", {"matched": 0, "unmatched": 0}
-
-
-def _resolve_es_sigpac(
-    record: dict, sigpac: SigpacIndex, es_polygons: ESPolygonIndex,
-):
-    """Hybrid SIGPAC + GISCO whole-commune resolver for ES wine records
-    that have polygon-list inclusions in their pliego.
-
-    The hybrid is **only invoked when polygon-list inclusions exist**
-    (Priorat / Montsant pattern: pliego enumerates SIGPAC polygon
-    numbers within shared communes). Wines without polygon-list
-    inclusions fall through to Figshare which is more reliable for the
-    PDO commune-precision polygon — running our whole-commune-prefix
-    parser unconditionally would over-trigger on noisy text (Rioja's
-    subzona ALL-CAPS headers parsed as commune names, etc.).
-
-    When polygon-list inclusions ARE present, two passes union into one
-    appellation footprint:
-
-      1. **Whole-commune prefix** (the 9 fully-included Priorat
-         communes / 12 fully-included Montsant communes) → union of
-         GISCO LAU commune polygons.
-      2. **Polygon-list inclusions** (Falset: polígonos 1, 4, 5, 6, 7,
-         21, 25 enteros) → union of SIGPAC vineyard parcels at
-         polygon-precision.
-
-    Returns None when there are no polygon-list inclusions or when
-    SIGPAC isn't loaded for the relevant comarca."""
-    if not sigpac.n_comarques:
-        return None
-    geo = record.get("geo_area_brief") or ""
-    if not geo:
-        return None
-
-    inclusions = parse_polygon_inclusions(geo)
-    if not inclusions:
-        return None
-
-    polys = []
-
-    # Whole-commune prefix → GISCO union (supplements polygon-list when
-    # the pliego mixes both patterns).
-    whole_communes = parse_whole_commune_prefix(geo)
-    if whole_communes:
-        gc_geom, _ = es_polygons.union_communes(whole_communes)
-        if gc_geom is not None and not gc_geom.is_empty:
-            polys.append(gc_geom)
-
-    # Polygon-list inclusions → SIGPAC union
-    for inc in inclusions:
-        g = sigpac.polygons_in_municipi(inc.municipio_norm, inc.polygon_numbers)
-        if g is not None and not g.is_empty:
-            polys.append(g)
-
-    if not polys:
-        return None
-    return unary_union(polys)
 
 
 def _sources_for(record: dict) -> dict:
@@ -5339,17 +3303,29 @@ def emit_html(
         except (ValueError, OSError) as exc:
             print(f"[warn] appellation_notes.json: {exc}", file=sys.stderr)
 
+    # Wikidata QIDs (stage 02i) → JSON-LD `sameAs` entity reconciliation.
+    # Slug-keyed `{slug: {qid, via, …}}`; absent file / unresolved slug → "".
+    wikidata_qids: dict[str, dict] = {}
+    if WIKIDATA_QIDS.exists():
+        try:
+            wikidata_qids = json.loads(WIKIDATA_QIDS.read_text(encoding="utf-8"))
+        except (ValueError, OSError) as exc:
+            print(f"[warn] wikidata qids-by-slug.json: {exc}", file=sys.stderr)
+
     for feat in features:
         p = feat["properties"]
         slug = p["slug"]
         # Recover slug arrays from the ;-padded MVT-friendly strings.
         styles = [s for s in p.get("styles", "").split(";") if s]
+        classifications = [s for s in p.get("classifications", "").split(";") if s]
         principal = [s for s in p.get("grapes_principal", "").split(";") if s]
         accessory = [s for s in p.get("grapes_accessory", "").split(";") if s]
         observation = [s for s in p.get("grapes_observation", "").split(";") if s]
         categories = [s for s in p.get("categories", "").split(";") if s]
         all_grapes = sorted(set(principal) | set(accessory) | set(observation))
-        simple_styles = sorted({SIMPLE_STYLE_BUCKETS.get(s, "other") for s in styles}) if styles else []
+        # Multi-membership styles (vin-santo) report several buckets, so a wine
+        # filtered under either parent bucket surfaces it (see simple_buckets).
+        simple_styles = sorted({b for s in styles for b in _taxonomy_simple_buckets(s)}) if styles else []
 
         # Extracted JSON has a richer summary + source URLs; pull them.
         # Try the FR path first, then the ES path, then the PT path. Slugs
@@ -5476,6 +3452,7 @@ def emit_html(
             "categories": categories,
             "styles": styles,
             "styles_simple": simple_styles,
+            "classifications": classifications,
             "grapes_principal": principal,
             "grapes_accessory": accessory,
             "grapes_observation": observation,
@@ -5484,6 +3461,7 @@ def emit_html(
             "grape_names_latin": grape_names_latin,
             "summary": summary,
             "sources": sources,
+            "wikidata_qid": (wikidata_qids.get(slug) or {}).get("qid", ""),
             "terroir_facts": terroir_facts,
             "dulok": dulok,
             "menzioni": _IT_MENZIONI_BY_SLUG.get(slug, []),
@@ -5527,7 +3505,7 @@ def emit_html(
     # Simple-mode style facet uses the 6-bucket order white/rose/red/
     # sparkling/sweet/other, regardless of frequency, so chips read like a
     # canonical wine-style legend.
-    simple_style_order = ["white", "rose", "red", "sparkling", "sweet", "other"]
+    simple_style_order = ["white", "rose", "red", "sparkling", "sweet", "oxidative", "other"]
     facet_styles_simple = [
         (s, simple_style_counts.get(s, 0)) for s in simple_style_order
         if simple_style_counts.get(s, 0) > 0
@@ -5559,6 +3537,27 @@ def emit_html(
     ]
     style_descendants = _taxonomy_descendants_map()
 
+    # Classification facet tree (aging / Prädikat / selection tiers) — same shape
+    # as the styles tree; a family group's count is the # of records carrying any
+    # tier under it.
+    class_order = _aging_tax.taxonomy_dfs_order()
+    class_descendant_sets = {slug: _aging_tax.descendants(slug) for slug, _, _ in class_order}
+    agg_class_counts: dict[str, int] = {slug: 0 for slug in class_descendant_sets}
+    for rec in aocs.values():
+        rec_class = set(rec.get("classifications") or [])
+        if not rec_class:
+            continue
+        for slug, dset in class_descendant_sets.items():
+            if rec_class & dset:
+                agg_class_counts[slug] += 1
+    facet_class_tree = [
+        {"slug": slug, "parent": parent, "depth": depth,
+         "count": agg_class_counts.get(slug, 0)}
+        for slug, parent, depth in class_order
+        if agg_class_counts.get(slug, 0) > 0
+    ]
+    class_descendants = _aging_tax.descendants_map()
+
     facets = dict(
         layer_url=layer_url,
         villages_layer_url=villages_layer_url,
@@ -5566,12 +3565,72 @@ def emit_html(
         aocs=aocs,
         facet_styles_tree=facet_styles_tree,
         style_descendants=style_descendants,
+        facet_class_tree=facet_class_tree,
+        class_descendants=class_descendants,
         facet_styles_simple=facet_styles_simple,
         facet_regions=sort_facet(region_counts),
         area_quartiles=(area_q1, area_q3),
         vivc_by_slug=_load_vivc_by_slug(),
     )
     fr_styles_lex = load_style_lexicon("fr")
+
+    # --- Phase 3 pilot: gated per-appellation entity pages ----------------
+    # Cross-link nav data: parent slug -> sorted child slugs (any record whose
+    # parent_slug points at another record in the corpus — sub-denominations).
+    # Built BEFORE the gate so gate_classify can treat "is a parent of sub-
+    # denominations" as own content. Child display names resolve per-locale in
+    # render() from the per-locale aocs dict.
+    children_by_parent: dict[str, list[str]] = {}
+    for _slug, _rec in aocs.items():
+        _p = _rec.get("parent_slug")
+        if _p and _p in aocs:
+            children_by_parent.setdefault(_p, []).append(_slug)
+    for _kids in children_by_parent.values():
+        _kids.sort(key=lambda s: (aocs[s].get("name") or s).casefold())
+
+    # gate_classify decides which records earn an indexable, crawlable page.
+    # FOLDS every sub-denomination (its narrative/grapes are parent-inherited at
+    # render time — CLAUDE.md) and any stub / no-geometry record; an indexable
+    # record needs resolved geometry plus its own grapes / summary / terroir, OR
+    # being a parent of sub-denominations — the children list it enumerates is
+    # genuine, non-duplicate content (e.g. the thin CH cantonal AOCs bern-berne
+    # / schwyz, which carry no terroir of their own but parent real local AOCs).
+    # Slugs absent from the corpus are silently dropped.
+    def gate_classify(rec: dict, has_children: bool = False) -> tuple[str, str | None]:
+        if rec.get("is_sub_denomination"):
+            return ("fold", rec.get("parent_slug"))
+        if rec.get("is_stub") or rec.get("geom_source") == "stub-no-geometry" or not rec.get("bbox"):
+            return ("fold", None)
+        has_own = bool(
+            rec.get("terroir_facts") or rec.get("summary")
+            or (rec.get("grapes_principal") or []) or has_children
+        )
+        return ("index", None) if has_own else ("fold", None)
+
+    # Full-corpus gate: every record gets a pre-rendered file (so the CDN can
+    # serve any /<locale>/<slug> deep-link). index slugs get a full, indexable
+    # entity page; fold slugs (sub-denominations, stubs, no-geometry, thin) get a
+    # lightweight noindex page that canonicalises to the parent — on the map for
+    # the deep-link, kept out of the index as a near-duplicate of the parent.
+    index_slugs: list[str] = []
+    fold_slugs: list[str] = []
+    for _slug, _rec in aocs.items():
+        cls = gate_classify(_rec, _slug in children_by_parent)[0]
+        (index_slugs if cls == "index" else fold_slugs).append(_slug)
+    print(
+        f"[entity] gate: {len(index_slugs)} index + {len(fold_slugs)} fold "
+        f"= {len(index_slugs) + len(fold_slugs)}/{len(aocs)} records",
+        file=sys.stderr,
+    )
+
+    # The browse-index page lives at /<locale>/appellations/, so no appellation
+    # slug may be "appellations" (it would collide with that directory on disk).
+    assert "appellations" not in aocs, (
+        "slug 'appellations' collides with the browse-index path"
+    )
+
+    build_date = dt.date.today().isoformat()
+
     for lang in LOCALES:
         lex = build_grapes_info(lang)
         if lang == "fr":
@@ -5656,12 +3715,71 @@ def emit_html(
                 aocs_for_lang = overlay_translated_facts(aocs_for_lang, facts_translations)
         out = (WIKI / "index.html") if lang == "en" else (WIKI / lang / "index.html")
         out.parent.mkdir(parents=True, exist_ok=True)
-        # Pass a swapped facets dict so the per-locale `aocs` is what gets serialised.
+        # Pass a swapped facets dict so the per-locale `aocs` is the data bundle.
         per_locale_facets = {**facets, "aocs": aocs_for_lang}
-        html_out = render_map_html(
+        # EN entities live under /en/<slug>, fr/es/nl under /<lang>/<slug>.
+        entity_out_dir = WIKI / ("en" if lang == "en" else lang)
+        html_out, assets, n_index, n_fold = render_map_html(
             **per_locale_facets, locale=lang, grapes_info=lex, styles_info=styles_lex,
+            index_slugs=index_slugs, fold_slugs=fold_slugs, entity_out_dir=entity_out_dir,
+            children_map=children_by_parent, build_date=build_date,
         )
         out.write_text(html_out, encoding="utf-8")
+        # Three external, content-hashed bundles every page of this locale
+        # references: the data bundle (AOCS + grape tooltips) under /data/, the
+        # shared stylesheet and the per-locale app script under /assets/. Prune
+        # stale hashes (keeping the current one) so the dirs don't accumulate
+        # across rebuilds; deploy prunes the remote, this keeps the tree clean.
+        data_dir = WIKI / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        assets_dir = WIKI / "assets"
+        assets_dir.mkdir(parents=True, exist_ok=True)
+        data_filename, data_bytes = assets["data"]
+        style_filename, style_bytes = assets["style"]
+        app_filename, app_bytes = assets["app"]
+        for _old in data_dir.glob(f"aocs.{lang}.*.js"):
+            if _old.name != data_filename:
+                _old.unlink()
+        (data_dir / data_filename).write_bytes(data_bytes)
+        for _old in assets_dir.glob("style.*.css"):
+            if _old.name != style_filename:
+                _old.unlink()
+        (assets_dir / style_filename).write_bytes(style_bytes)
+        for _old in assets_dir.glob(f"app.{lang}.*.js"):
+            if _old.name != app_filename:
+                _old.unlink()
+        (assets_dir / app_filename).write_bytes(app_bytes)
+        # Per-slug panel payload — the heavy detail the map loads lazily on
+        # panel open (summary, terroir facts, sources, grape display-names,
+        # dűlők, menzioni, notes, …). One small JSON per slug per locale at
+        # /data/d/<locale>/<slug>.json; the startup bundle above ships only
+        # STARTUP_AOCS_FIELDS, so the JS merges this in on first open. Write-
+        # if-changed keeps reruns near-no-op; the stale-prune drops slugs that
+        # left the corpus. Not content-hashed — the slug path is stable and the
+        # file is fetched at runtime, not referenced from cacheable HTML.
+        panel_dir = WIKI / "data" / "d" / lang
+        panel_dir.mkdir(parents=True, exist_ok=True)
+        panel_written: set[str] = set()
+        for slug, rec in aocs_for_lang.items():
+            panel_rec = {k: v for k, v in rec.items() if k not in STARTUP_AOCS_FIELDS}
+            payload = json.dumps(panel_rec, ensure_ascii=False).encode("utf-8")
+            fname = f"{slug}.json"
+            fp = panel_dir / fname
+            if not fp.exists() or fp.read_bytes() != payload:
+                fp.write_bytes(payload)
+            panel_written.add(fname)
+        for _stale in panel_dir.glob("*.json"):
+            if _stale.name not in panel_written:
+                _stale.unlink()
+        print(
+            f"[data] {lang}: wrote {len(panel_written)} per-slug panel JSON → "
+            f"{panel_dir.relative_to(ROOT)}",
+            file=sys.stderr,
+        )
+        # Per-appellation pages are streamed straight to disk by render (to
+        # entity_out_dir/<slug>/index.html) so the whole corpus never sits in
+        # memory at once.
+        print(f"[entity] {lang}: wrote {n_index} index + {n_fold} fold pages", file=sys.stderr)
         # EN's home stays at / (canonical), but its appellation deep-links live
         # under /en/<slug> so a single CDN rewrite ( /<lang>/<slug> →
         # /<lang>/index.html ) covers all four locales. Emit the same page at
@@ -5689,7 +3807,11 @@ def emit_html(
         file=sys.stderr,
     )
 
-    write_seo_files()
+    entity_entries = [
+        (slug, aocs[slug].get("name") or slug, aocs[slug].get("country") or "")
+        for slug in index_slugs
+    ]
+    write_seo_files(entity_entries)
 
 
 def _hreflang_alternates(paths_by_lang: dict[str, str]) -> str:
@@ -5716,6 +3838,26 @@ def _sitemap_url_block(loc: str, lastmod: str, alternates: str) -> str:
         f"{alternates}\n"
         f"  </url>"
     )
+
+
+def _entity_lastmod(slug: str, lang: str, fallback: str) -> str:
+    """Per-page `<lastmod>` for an entity URL: the mtime of its panel JSON.
+
+    The per-(slug, locale) panel payload `wiki/data/d/<lang>/<slug>.json` is
+    write-if-changed, so its mtime advances only when that appellation's
+    rendered content actually changes — a far more honest lastmod than the
+    build date, which would otherwise stamp every page as modified on every
+    rerun (and which Google discounts when every URL shares one always-today
+    date). The entity HTML itself is unusable here: it references the
+    content-hashed startup blob / app.js / css, so a single corpus edit bumps
+    every page's mtime. The panel JSON carries pure content. Falls back to
+    `fallback` (today) when the JSON is absent.
+    """
+    panel = WIKI / "data" / "d" / lang / f"{slug}.json"
+    try:
+        return dt.date.fromtimestamp(panel.stat().st_mtime).isoformat()
+    except OSError:
+        return fallback
 
 
 _WEBMANIFEST = {
@@ -5756,6 +3898,22 @@ def copy_brand_assets() -> None:
         shutil.copy2(src, dst)
         copied += 1
 
+    # Self-hosted runtime libs (maplibre-gl, pmtiles) — tracked git inputs
+    # under scripts/_lib/vendor/, mirrored to /assets/vendor/ so the map has
+    # no third-party CDN dependency. Versioned filenames = immutable; only
+    # .js/.css ship (README.md stays out of the published tree).
+    if VENDOR_SRC.exists():
+        vendor_out = ASSETS_OUT / "vendor"
+        vendor_out.mkdir(parents=True, exist_ok=True)
+        for src in sorted(VENDOR_SRC.iterdir()):
+            if src.suffix not in (".js", ".css"):
+                continue
+            dst = vendor_out / src.name
+            if dst.exists() and dst.stat().st_size == src.stat().st_size and dst.read_bytes() == src.read_bytes():
+                continue
+            shutil.copy2(src, dst)
+            copied += 1
+
     manifest_path = WIKI / "site.webmanifest"
     manifest_bytes = (json.dumps(_WEBMANIFEST, indent=2) + "\n").encode()
     if not manifest_path.exists() or manifest_path.read_bytes() != manifest_bytes:
@@ -5764,14 +3922,21 @@ def copy_brand_assets() -> None:
     print(f"[assets] mirrored {ASSETS_SRC.relative_to(ROOT)} → {ASSETS_OUT.relative_to(ROOT)} ({copied} updated)", file=sys.stderr)
 
 
-def write_seo_files() -> None:
-    """Emit wiki/robots.txt and wiki/sitemap.xml.
+def write_seo_files(entity_entries: list[tuple[str, str, str]] | None = None) -> None:
+    """Emit wiki/{robots.txt, sitemap.xml, llms.txt, 404.html}.
 
     The map IS the homepage: `/` (EN canonical), `/fr/`, `/es/`, `/nl/`. The
-    sitemap covers those four URLs, each carrying the full hreflang alternate
-    set so search engines can pair locale variants. Updated whenever stage 04
-    reruns; lastmod is today.
+    sitemap covers those four homepages, the four browse-index pages
+    (`/<locale>/appellations/`), and one URL per locale per indexable slug —
+    each carrying the full hreflang alternate set so search engines can pair
+    locale variants. `entity_entries` is `(slug, name, country)` per indexable
+    appellation; the names/countries drive the AI-crawler `llms.txt` index.
+    Homepages and browse pages take today's build date as `lastmod`; each
+    entity URL takes a per-page lastmod from its panel-JSON mtime (see
+    `_entity_lastmod`), so reruns only re-date the appellations that actually
+    changed. Folded (noindex) slugs are deliberately excluded.
     """
+    entity_entries = entity_entries or []
     today = dt.date.today().isoformat()
 
     home_paths = {lang: ("/" if lang == "en" else f"/{lang}/") for lang in LOCALES}
@@ -5782,10 +3947,32 @@ def write_seo_files() -> None:
         for lang in LOCALES
     ]
 
+    # Browse-index pages: one <url> per locale (/<locale>/appellations/), each
+    # carrying the browse hreflang cluster (x-default -> /en/appellations/).
+    browse_paths = {lang: f"/{lang}/appellations/" for lang in LOCALES}
+    browse_alternates = _hreflang_alternates(browse_paths)
+    for lang in LOCALES:
+        url_blocks.append(
+            _sitemap_url_block(f"{SITE_BASE_URL}{browse_paths[lang]}", today, browse_alternates)
+        )
+
+    # Indexable per-appellation entity pages: one <url> per locale per slug
+    # (en under /en/<slug>), each carrying the slug's hreflang cluster
+    # (x-default -> EN).
+    n_entity = 0
+    for slug, _name, _country in entity_entries:
+        ent_paths = {lang: f"/{lang}/{slug}" for lang in LOCALES}
+        ent_alts = _hreflang_alternates(ent_paths)
+        for lang in LOCALES:
+            lastmod = _entity_lastmod(slug, lang, today)
+            url_blocks.append(
+                _sitemap_url_block(f"{SITE_BASE_URL}{ent_paths[lang]}", lastmod, ent_alts)
+            )
+            n_entity += 1
+
     sitemap = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap-0.9"\n'
-        '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
         + "\n".join(url_blocks)
         + "\n</urlset>\n"
     )
@@ -5798,11 +3985,119 @@ def write_seo_files() -> None:
         f"Sitemap: {SITE_BASE_URL}/sitemap.xml\n"
     )
     (WIKI / "robots.txt").write_text(robots, encoding="utf-8")
+
+    # IndexNow domain-ownership key file (optional). The key is read from the
+    # environment / repo-root .env — deliberately NOT committed — so a checkout
+    # without it simply skips the file while everything else in wiki/ still
+    # reproduces. File name == body, no trailing newline, served as text/plain.
+    _load_dotenv()
+    indexnow_key = os.environ.get("INDEXNOW_KEY", "").strip()
+    indexnow_note = ""
+    if indexnow_key:
+        (WIKI / f"{indexnow_key}.txt").write_text(indexnow_key, encoding="utf-8")
+        indexnow_note = f", {indexnow_key}.txt"
+
+    _write_llms_txt(entity_entries)
+    _write_404_page()
+
     print(
-        f"[seo] wrote {WIKI.relative_to(ROOT)}/robots.txt and sitemap.xml "
-        f"({len(LOCALES)} URLs)",
+        f"[seo] wrote {WIKI.relative_to(ROOT)}/robots.txt, sitemap.xml, llms.txt, 404.html"
+        f"{indexnow_note} "
+        f"({len(url_blocks)} URLs: {len(LOCALES)} home + {len(LOCALES)} browse + "
+        f"{n_entity} entity)",
         file=sys.stderr,
     )
+
+
+def _write_llms_txt(entity_entries: list[tuple[str, str, str]]) -> None:
+    """Emit wiki/llms.txt — the AI-crawler index (llmstxt.org convention): a
+    markdown map of the site keyed by country, every indexable appellation a
+    real EN deep-link. No build date inside (byte-stable so the deploy SHA256
+    diff treats an unchanged corpus as a no-op)."""
+    en = load_translations("en").gettext
+    labels = build_labels(en)
+    country_labels = build_country_labels(en)
+
+    lines = [
+        "# Open Wine Map",
+        "",
+        f"> {labels['meta_description']}",
+        "",
+        "Open Wine Map is a reference map and wiki of European wine "
+        "appellations, generated mechanically from official public registry "
+        "data (INAO, EUR-Lex / eAmbrosia, national wine regulators) and open "
+        "geodata (IGN, Eurostat GISCO, Bétard 2022). Every fact traces to a "
+        "public, licence-clear source.",
+        "",
+        "## Site",
+        "",
+    ]
+    for lang in LOCALES:
+        home = "/" if lang == "en" else f"/{lang}/"
+        lines.append(f"- [Homepage ({lang})]({SITE_BASE_URL}{home})")
+    for lang in LOCALES:
+        lines.append(
+            f"- [All appellations ({lang})]({SITE_BASE_URL}/{lang}/appellations/)"
+        )
+    lines.append(f"- [Source code (GitHub)]({GITHUB_URL})")
+    lines.append(f"- [Sitemap]({SITE_BASE_URL}/sitemap.xml)")
+    lines.append("")
+
+    by_country: dict[str, list[tuple[str, str]]] = {}
+    for slug, name, country in entity_entries:
+        by_country.setdefault(country, []).append((name, slug))
+
+    def _country_name(cc: str) -> str:
+        return country_labels.get(cc, cc) or cc
+
+    for cc in sorted(by_country, key=lambda c: _country_name(c).casefold()):
+        lines.append(f"## {_country_name(cc)}")
+        lines.append("")
+        for name, slug in sorted(by_country[cc], key=lambda e: e[0].casefold()):
+            lines.append(f"- [{name}]({SITE_BASE_URL}/en/{slug})")
+        lines.append("")
+
+    (WIKI / "llms.txt").write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+
+
+def _write_404_page() -> None:
+    """Emit wiki/404.html — a self-contained, noindex branded error page. Bunny
+    serves it via Custom404FilePath (set by deploy.py). Byte-stable."""
+    browse = f"{SITE_BASE_URL}/en/appellations/"
+    html = (
+        "<!doctype html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '<meta charset="utf-8">\n'
+        "<title>Page not found — Open Wine Map</title>\n"
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        '<meta name="robots" content="noindex">\n'
+        '<meta name="theme-color" content="#7A1F2B">\n'
+        "<style>\n"
+        "  body { margin:0; min-height:100vh; display:flex; align-items:center; "
+        "justify-content:center; text-align:center; "
+        "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; "
+        "color:#222; background:#fafafa; }\n"
+        "  main { padding:32px 24px; max-width:540px; }\n"
+        "  h1 { font-size:64px; margin:0; color:#7A1F2B; }\n"
+        "  p { font-size:17px; color:#555; line-height:1.5; }\n"
+        "  a { color:#7A1F2B; font-weight:600; }\n"
+        "  @media (prefers-color-scheme: dark) { body { color:#ddd; background:#161616; } "
+        "p { color:#aaa; } a, h1 { color:#e6a3ad; } }\n"
+        "</style>\n"
+        "</head>\n"
+        "<body>\n"
+        "<main>\n"
+        "<h1>404</h1>\n"
+        "<p>Page not found. The appellation you were looking for may have moved "
+        "or never existed.</p>\n"
+        f'<p><a href="{SITE_BASE_URL}/">Open the map</a> · '
+        f'<a href="{browse}">Browse all appellations</a></p>\n'
+        "</main>\n"
+        "</body>\n"
+        "</html>\n"
+    )
+    (WIKI / "404.html").write_text(html, encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,46 @@
+# Redacted excerpt — BLE Produktspezifikation "Baden" (Template D).
+# Source: raw/de/produktspezifikationen/baden.pdf via `pdftotext -layout`.
+# Public, licence-clear: Amtliches Werk §5 UrhG (BLE). Trimmed to one
+# §3.2.X Bereich block with "Weiße Rebsorten" / "Rote Rebsorten"
+# colour subheaders and the tiered "- Variety ... 8,X % vol und YY°Oe"
+# Mostgewicht rows (lowest tier = Leitsorten → principal). Includes the
+# "alle übrigen Rebsorten" + "als Versuch angebaute" accessory/skip
+# rows, AND the flat §8 list that Template A's §8 parser harvests.
+3.2.1. Bereich: Bereiche Markgräflerland, Tuniberg, Kaiserstuhl, Breisgau, Ortenau, Kraichgau
+und Badische Bergstraße
+
+Qualitätswein
+
+Weiße Rebsorten
+Rebsorten:
+
+    -   Gutedel, Riesling,                                        8,0 % vol und 63°Oe
+
+    -   Merzling, Müller Thurgau, Muskateller, Muskat Ottonel,
+
+        Nobling, Perle, Silvaner                                  8,4 % vol und 66°Oe
+
+    -   alle übrigen Rebsorten und Weine ohne Sortenangabe        8,9 % vol und 69°Oe
+
+    -   als Versuch angebaute, nicht in das Rebsortenverzeichnis
+
+        nach Nr. 8 eingetragene Rebsorten                         9,4 % vol und 72°Oe
+
+Rote Rebsorten
+Rebsorten:
+
+    -   Tempranillo, Trollinger                                   8,0 % vol und 63°oe
+
+    -   Deckrot, Tauberschwarz                                    8,4 % vol und 66°Oe
+
+    -   alle übrigen Rebsorten und Weine ohne Sortenangabe        8,9 % vol und 69°Oe
+
+3.3 Organoleptische Beschreibung
+
+8. Zugelassene Keltertraubensorten
+Weiße Rebsorten:
+Auxerrois, Bacchus, Chardonnay, Gutedel, Merzling, Müller Thurgau, Nobling,
+Perle, Riesling, Silvaner, Weißburgunder.
+Rote Rebsorten:
+Deckrot, Dornfelder, Merlot, Regent, Spätburgunder, Tauberschwarz,
+Tempranillo, Trollinger.

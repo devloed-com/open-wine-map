@@ -1,0 +1,58 @@
+Redacted excerpt of the UPV SR national specifikacia for Nitrianska
+vinohradnicka oblast (pdftotext -layout of
+raw/sk/national-specs/nitrianska.pdf). Kept to the b / d / f / g lettered
+sections. The seam is the f-section: a two-column Odroda / Synonymum
+table grouped under MUSTOVE BIELE (white) and MUSTOVE MODRE (blue-black).
+The parser must take ONLY the left Odroda column (the >=2-space gutter):
+the "Feteasca regala" row carries the synonym "Pesecka leanka" on the
+right, which on its own resolves to feteasca-ALBA (a different variety) —
+that synonym must never reach the matcher. Column gutter spacing is
+preserved verbatim. Public source (uradne dielo), licence-clear.
+
+b) Opis vína
+
+Biele, ružové a červené vína. Vyrábajú sa aj sekty a likérové vína.
+
+d) vymedzenie príslušnej zemepisnej oblasti
+
+Nitrianska vinohradnícka oblasť zahŕňa katastrálne územia obcí Nitra,
+Zlaté Moravce, Vráble.
+
+f) označenie odrody alebo odrôd viniča, z ktorého sa víno vyrába:
+
+V Nitrianskej vinohradníckej oblasti je povolené pestovať všetky odrody podľa aktuálnej Listiny
+registrovaných odrôd. Pre túto oblasť je povolené používať nasledujúce synonymá pre
+označenie odrôd:
+
+              Odroda                        Synonymum
+MUŠTOVÉ Aurelius
+
+ BIELE   Bouvierovo hrozno
+         Devín
+         Dievčie hrozno       Leányka, Mädchentraube, Dívčí hrozen, Feteasca alba
+         Feteasca regala      Pesecká leánka, Pesecké dievčie hrozno
+         Chardonnay           Chardonnay blanc, Pinot blanc Chardonnay, Pinot
+         Irsai Oliver         Irsay, Muskat Oliver
+         Muškát Ottonel       Ottonel muskotály, Muscat Ottonel, Miszket Otonel
+         Müller – Thurgau     Rizling szilváni, Rizvanac, Rivaner
+         Rizling vlašský      Olasz rizling, Welschriesling, Taljanska grasevina, Ryzlink
+                              vlašský
+         Rulandské šedé       Szürkebarát, Pinot gris, Ruländer, Pinot grigio, Klevner
+         Sauvignon            Sauvignon blanc, Sauvignon biely
+         Tramín červený       Tramín, Tramini, Roter traminer, Gewürtztraminer
+        Alibernet
+        Frankovka modrá       Frankovka
+        Modrý Portugal        Kékoportó, Blauer Portugieser, Portugalské modré
+MUŠTOVÉ
+        Nitranka
+ MODRÉ
+        Rudava
+        Rulandské modré       Pinot noir, Červený klevner, Blauer klewner, Pinot nero
+        Svätovavrinecké       Szentlörinc, Saint Laurent, Svatovařinecké
+        Zweigeltrebe          Rotburger, Blauer Zweigeltrebe, Zweigelt
+
+g) údaje potvrdzujúce spojitosť
+
+Údaje o zemepisnej oblasti. Nitrianska vinohradnícka oblasť patrí medzi
+najrozmanitejšie spomedzi všetkých slovenských. Vinohrady sú vysadené na
+sprašových pahorkatinách. V oblasti vládne veľmi teplé a suché klíma.

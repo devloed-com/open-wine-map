@@ -89,7 +89,7 @@ GRAPE_ALIAS = {
     "lladoner-blanco": "grenache-blanc",
     "garnacha-roja": "grenache-gris",
     "garnacha-gris": "grenache-gris",
-    "garnacha-tintorera": "alicante-bouschet",
+    "garnacha-tintorera": "alicante-bouschet",  # ES synonym
     "mazuela": "carignan",
     "mazuelo": "carignan",
     "carinena": "carignan",
@@ -248,7 +248,7 @@ GRAPE_ALIAS = {
     "rossola-nera": "rossola-nera",              # Valtellina red, NOT a Trebbiano
     # Pinot family — split from pinot-noir umbrella
     "pinot-bianco": "pinot-blanc",
-    "pinot-grigio": "pinot-gris",
+    "pinot-grigio": "pinot-gris",  # Italian name
     "pinot-nero": "pinot-noir",
     "pignola": "pignola-valtellinese",
     "pignola-valtellinese": "pignola-valtellinese",
@@ -408,7 +408,7 @@ GRAPE_ALIAS = {
     "pollera-nera": "pollera-nera",
     "sanforte": "sanforte",
     "vermentino-nero": "vermentino-nero",
-    "barbera": "barbera",
+    "barbera": "barbera",  # Italian red (used in some DE Sekt)
     "monica": "monica",
     "giro": "giro",
     "uva-rara": "uva-rara",
@@ -625,7 +625,7 @@ GRAPE_ALIAS = {
     "feher-burgundi": "pinot-blanc",            # Hungarian name for Pinot Blanc
     "kek-rulandi": "pinot-noir",                # Hungarian name for Pinot Noir
     "ottonel-muskotaly": "muscat-ottonel",      # Muscat Ottonel
-    "muscat-ottonel": "muscat-ottonel",
+    "muscat-ottonel": "muscat-ottonel",  # VIVC #8246
     "hamburgi-muskotaly": "muscat-hambourg",    # Hungarian for Muscat de Hambourg
     "muscat-de-hamburg": "muscat-hambourg",
     "sarga-muskotaly": "muscat-a-petits-grains",   # Hungarian "Yellow Muscat" = Muscat Lunel / Muscat à petits grains blancs (VIVC #8193)
@@ -657,7 +657,6 @@ GRAPE_ALIAS = {
     "czetenyi-feher": "pozsonyi-feher",
     "kereklevelu": "chardonnay",                # Hungarian synonym for Chardonnay
     "cabernet-dorsa": "cabernet-dorsa",         # German crossing, used in HU eAmbrosia
-    "cabernet-carbon": "cabernet-carbon",
     "blauburger": "blauburger",                 # Austrian crossing also used in HU
     # Additional HU varieties surfaced by stage 02 unknowns:
     "zefir": "zefir",                           # Hungarian crossing (white)
@@ -725,7 +724,6 @@ GRAPE_ALIAS = {
     "tamioasa-romaneasca": "muscat-a-petits-grains",  # alt spelling
     "busuioaca-de-bohotin": "busuioaca-de-bohotin",
                                                  # Busuioacă de Bohotin — Moldova native aromatic rosé
-    "grasa-de-cotnari": "grasa-de-cotnari",      # VIVC #5050 — botrytis-prone Cotnari white
     "grasa": "grasa-de-cotnari",                 # bare form
     "babeasca-neagra": "babeasca-neagra",        # VIVC #908 BĂBEASCĂ NEAGRĂ — Moldova red
     "negru-de-dragasani": "negru-de-dragasani",  # Negru de Drăgășani — RO crossing
@@ -779,7 +777,6 @@ GRAPE_ALIAS = {
     "grau-burgunder": "pinot-gris",              # German Pinot Gris synonym
     "grauer-monch": "pinot-gris",                # "Grauer Mönch"
     "pinot-cendre": "pinot-gris",                # French synonym
-    "pinot-grigio": "pinot-gris",                # Italian name
     "rulander": "pinot-gris",                    # German name
     "blauer-spatburgunder": "pinot-noir",        # German Pinot Noir synonym
     "burgund-mic": "pinot-noir",                 # RO "small Burgundy"
@@ -802,7 +799,6 @@ GRAPE_ALIAS = {
     # Internationally-known varieties on Romanian-language labels —
     # the Romanian spelling-variants land here so they fold to VIVC primes.
     "riesling-italian": "welschriesling",        # Riesling italian = Welschriesling family
-    "muscat-ottonel": "muscat-ottonel",          # VIVC #8246
     "pinot-gris-rulanda": "pinot-gris",          # RO synonym
     "rulanda": "pinot-gris",                     # RO bare form
     "traminer-rose": "gewurztraminer",           # Traminer roz = rosé-pink Traminer = Gewürztraminer
@@ -836,7 +832,6 @@ GRAPE_ALIAS = {
     "sandanski-misket": "sandanski-misket",       # BG SW native white
     "misket-sandanski": "sandanski-misket",
     "muskat-sandanski": "sandanski-misket",       # Latin transliteration variant
-    "rkatsiteli": "rkatsiteli",                   # VIVC #10063 — pan-Black-Sea white
     "gamza": "kadarka",                           # BG synonym for Kadarka (DNA match)
     "kerasuda": "kerasuda",                       # BG SW native white (Melnik area)
     "keratsuda": "kerasuda",                      # alt transliteration
@@ -1089,7 +1084,6 @@ GRAPE_ALIAS = {
     "regent": "regent",                           # VIVC #9788 REGENT (Diana × Chambourcin), Geilweilerhof
     "reberger": "reberger",                       # VIVC #19999 REBERGER (Regent × Lemberger), Geilweilerhof — red
     "rondo": "rondo",                             # VIVC #10153 RONDO (Saperavi Severnyi × St Laurent)
-    "domina": "domina",                           # VIVC #3754 DOMINA (Portugieser × Spätburgunder)
     "deckrot": "deckrot",                          # VIVC #3493 DECKROT (Pinot gris × Teinturier)
     "dunkelfelder": "dunkelfelder",                # VIVC #3815 DUNKELFELDER (teinturier red)
     "dakapo": "dakapo",                            # VIVC #3267 DAKAPO (Portugieser × Deckrot)
@@ -1097,11 +1091,9 @@ GRAPE_ALIAS = {
     "blauer-affenthaler": "blauer-affenthaler",    # VIVC #79 AFFENTHALER — old Württemberg red; not Trollinger
     "acolon": "acolon",                            # VIVC #82 ACOLON (Lemberger × Dornfelder), Weinsberg
     "cabernet-mitos": "cabernet-mitos",            # VIVC #2078 CABERNET MITOS (Lemberger × Teinturier)
-    "cabernet-dorsa": "cabernet-dorsa",            # VIVC #2030 CABERNET DORSA (Dornfelder × Cab Sauv)
     "cabernet-dorio": "cabernet-dorio",            # VIVC #2031 CABERNET DORIO (Dornfelder × Cab Sauv), sibling
     "cabernet-cubin": "cabernet-cubin",            # VIVC #2026 CABERNET CUBIN
     "cabernet-cortis": "cabernet-cortis",          # VIVC #2025 CABERNET CORTIS (Solaris × Cab Sauv)
-    "cabernet-carbon": "cabernet-carbon",          # VIVC #2018 CABERNET CARBON (Bronner × Cab Sauv)
     "cabernet-blanc": "cabernet-blanc",            # VIVC #16258 CABERNET BLANC
     "cabernet-cantor": "cabernet-cantor",          # VIVC #2017 CABERNET CANTOR (Bronner × Cab Sauv)
     "cabernet-jura": "cabernet-jura",              # Valentin Blattner CH crossing (Cab Sauv x resistant)
@@ -1123,10 +1115,7 @@ GRAPE_ALIAS = {
     "huxelrebe": "huxelrebe",                      # VIVC #5563 HUXELREBE (Chasselas × Courtillier Musqué)
     "huxel": "huxelrebe",
     "ehrenfelser": "ehrenfelser",                  # VIVC #3801 EHRENFELSER (Riesling × Knipperle)
-    "kerner": "kerner",                            # VIVC #5917 KERNER (Trollinger × Riesling), Weinsberg
     "kernling": "kernling",                        # VIVC #5918 KERNLING — Kerner mutation
-    "scheurebe": "scheurebe",                      # already present above; reaffirmed for DE corpus
-    "samling-88": "scheurebe",                     # AT synonym
     "samling": "scheurebe",
     "morio-muskat": "morio-muskat",                # VIVC #8194 MORIO-MUSKAT — Geilweilerhof
     "phoenix": "phoenix",                          # VIVC #9192 PHOENIX (Bacchus × Villard Blanc), Geilweilerhof
@@ -1176,7 +1165,6 @@ GRAPE_ALIAS = {
     "gutenborner": "gutenborner",                  # VIVC #5283 GUTENBORNER — Geisenheim
     "bukettsilvaner": "bukettsilvaner",            # VIVC #1812 BUKETTSILVANER — Alzey
     "noblessa": "noblessa",                        # VIVC #8506 NOBLESSA — Geilweilerhof
-    "blutenmuskateller": "blutenmuskateller",      # already present
     "muskat-trollinger": "muskat-trollinger",      # VIVC #8338 MUSCAT TROLLINGER
     "muskateller": "muscat-a-petits-grains",       # German Muscat (VIVC #8193)
     "gelber-muskateller": "muscat-a-petits-grains",  # Gelber Muskateller = Muscat à petits grains blancs
@@ -1187,9 +1175,7 @@ GRAPE_ALIAS = {
     "morio-muscat": "morio-muskat",
     "auxerrois": "auxerrois",                      # VIVC #913 AUXERROIS (sibling of Chardonnay)
     "auxerrois-blanc": "auxerrois",
-    "blauer-portugieser": "blauer-portugieser",    # already present
     "portugieser-blau": "blauer-portugieser",
-    "blauer-spatburgunder": "pinot-noir",          # already present
     "blauer-gaensfusser": "blauer-gaensfusser",     # VIVC GÄNSFÜSSER — Pfalz heritage red
     "blauer-gansfusser": "blauer-gaensfusser",
     "gelber-orleans": "gelber-orleans",            # VIVC #4622 ORLEANS — historical Rheingau white
@@ -1202,7 +1188,6 @@ GRAPE_ALIAS = {
     "gelber-kleinberger": "kleinberger",
     "donauriesling": "donauriesling",              # AT/DE interspecific white
     "donauveltliner": "donauveltliner",            # AT/DE interspecific white
-    "blauburger": "blauburger",                    # already present (AT)
     "schwarzer-heunisch": "heunisch",              # VIVC #5392 HEUNISCH WEISS — historical European parent grape, red mutation
     "weisser-heunisch": "heunisch",
     "heunisch": "heunisch",
@@ -1225,6 +1210,18 @@ GRAPE_ALIAS = {
     "rheinfelder": "rheinfelder",                  # interspecific white
     "comtessa": "comtessa",                        # Geilweilerhof
     "divona": "divona",                            # Agroscope CH white
+    "garanoir": "garanoir",                        # Agroscope CH red (Gamay × Reichensteiner, 1970)
+    "mara": "mara",                                # Agroscope CH red (Gamay × Reichensteiner)
+    "galotta": "galotta",                          # Agroscope CH red (Ancellotta × Gamay)
+    "doral": "doral",                              # Agroscope CH white (Chasselas × Chardonnay)
+    "gouais": "heunisch",                          # Gouais Blanc = Heunisch Weiss (VIVC) — Swiss "Gwäss"
+    "gouais-blanc": "heunisch",
+    "gwass": "heunisch",
+    "diolinoir": "diolinoir",                      # Agroscope CH red (Rouge de Diolly × Pinot noir)
+    "carminoir": "carminoir",                      # Agroscope CH red (Pinot noir × Cabernet Sauvignon)
+    "divico": "divico",                            # Agroscope CH red (Gamaret × Bronner, fungus-resistant)
+    "bondola": "bondola",                          # Ticino native red
+    "completer": "completer",                      # Graubünden native white (Malans)
     "aromera": "aromera",                          # Geilweilerhof crossing
     "merlot-khorus": "merlot-khorus",              # IT/DE interspecific red
     "merlot-kanthus": "merlot-kanthus",            # IT/DE interspecific red
@@ -1256,10 +1253,8 @@ GRAPE_ALIAS = {
     "hecker": "hecker",                            # Weinsberg crossing
     "allegro": "allegro",                          # Geilweilerhof crossing — separate from Galego Dourado
     "arneis": "arneis",                            # Italian white (used in DE Sekt blends)
-    "barbera": "barbera",                          # Italian red (used in some DE Sekt)
     "carmenere": "carmenere",                      # already mapped; reaffirmed
     "tannat": "tannat",                            # already mapped; reaffirmed
-    "garnacha-tintorera": "alicante-bouschet",     # ES synonym
     "alicante-bouschet": "alicante-bouschet",      # VIVC #234 ALICANTE BOUSCHET
     "alicante": "alicante-bouschet",
     "alvarinho": "albarino",                       # PT name for ES Albariño
@@ -1267,7 +1262,6 @@ GRAPE_ALIAS = {
     "voltis": "voltis",                            # VIVC #21163 VOLTIS — INRA interspecific white
     "floreal": "floreal",                          # VIVC #21162 FLOREAL — INRA interspecific white
     "vidoc": "vidoc",                              # VIVC #21164 VIDOC — INRA interspecific red
-    "sauvignac": "sauvignac",                      # reaffirmed
     "valerie": "valerie",                          # German interspecific
     "weisser-deckling": "weisser-deckling",         # heritage white
     "schwarzer-deckling": "schwarzer-deckling",     # heritage red
@@ -1780,7 +1774,6 @@ DEFAULT_COLOUR: dict[str, str] = {
     "plavac-mali": "noir",
     "babic": "noir",
     "tribidrag": "noir",
-    "welschriesling": "blanc",
     "posip": "blanc",
     "marastina": "blanc",
     "bogdanusa": "blanc",
@@ -1825,7 +1818,6 @@ DEFAULT_COLOUR: dict[str, str] = {
     "muscat-ottonel": "blanc",
     "muscat-hambourg": "noir",
     "cabernet-dorsa": "noir",
-    "cabernet-carbon": "noir",
     "blauburger": "noir",
     "zefir": "blanc",
     "ezerfurtu": "blanc",
@@ -1990,18 +1982,15 @@ DEFAULT_COLOUR: dict[str, str] = {
     "reberger": "noir",
     "blauer-affenthaler": "noir",
     "rondo": "noir",
-    "domina": "noir",
     "deckrot": "noir",
     "dunkelfelder": "noir",
     "dakapo": "noir",
     "tauberschwarz": "noir",
     "acolon": "noir",
     "cabernet-mitos": "noir",
-    "cabernet-dorsa": "noir",
     "cabernet-dorio": "noir",
     "cabernet-cubin": "noir",
     "cabernet-cortis": "noir",
-    "cabernet-carbon": "noir",
     "cabernet-blanc": "blanc",       # despite "Cabernet" — interspecific white
     "cabernet-cantor": "noir",
     "cabernet-jura": "noir",
@@ -2085,6 +2074,15 @@ DEFAULT_COLOUR: dict[str, str] = {
     "rheinfelder": "blanc",
     "comtessa": "blanc",
     "divona": "blanc",
+    "garanoir": "noir",
+    "mara": "noir",
+    "galotta": "noir",
+    "doral": "blanc",
+    "diolinoir": "noir",
+    "carminoir": "noir",
+    "divico": "noir",
+    "bondola": "noir",
+    "completer": "blanc",
     "aromera": "blanc",
     "merlot-khorus": "noir",
     "merlot-kanthus": "noir",
@@ -2108,7 +2106,6 @@ DEFAULT_COLOUR: dict[str, str] = {
     "staufer": "blanc",
     "hecker": "blanc",
     "allegro": "blanc",
-    "alicante-bouschet": "noir",
     "artaban": "noir",
     "voltis": "blanc",
     "floreal": "blanc",
@@ -2651,6 +2648,26 @@ STYLE_PATTERNS: list[tuple[str, list[re.Pattern]]] = [
 ]
 
 
+# Mentions complémentaires — optional label mentions the cahier declares with
+# "le nom ... peut être complété par la mention « X »". They live in the
+# dénomination / labelling sections, not the section III colour prose, so they
+# are matched against the whole cahier text (see parse_styles' mention_text
+# argument). Each pattern requires the word "mention(s)" earlier in the same
+# sentence (≤ 80 non-period chars before the guillemet) AND the term in
+# guillemets — together these reject the false positives: the bare term occurs
+# as a tasting note ("un léger rancio") or a vinification practice ("conservation
+# en bouteilles sur lie"), and a quoted-but-unmentioned term occurs as a quoted
+# practice ("une durée d'élevage « sur lies »"). The "mention(s) … et « X »"
+# window also catches list-form declarations ("les mentions « hors d'âge » et
+# « rancio »" — Banyuls Grand Cru).
+MENTION_PATTERNS: list[tuple[str, list[re.Pattern]]] = [
+    ("rancio", [re.compile(r"mentions?\b[^.]{0,80}?[«\"]\s*rancio", re.IGNORECASE)]),
+    ("sur-lie", [re.compile(r"mentions?\b[^.]{0,80}?[«\"]\s*sur\s+lie", re.IGNORECASE)]),
+    ("methode-ancestrale",
+     [re.compile(r"mentions?\b[^.]{0,80}?[«\"]\s*m[ée]thode\s+ancestrale", re.IGNORECASE)]),
+]
+
+
 # Mapping from SIQO `categorie` strings to canonical style tags. The SIQO
 # referentiel has multiple rows per appellation, one per category, so this
 # is the more reliable signal — section III prose is a sanity check.
@@ -2670,12 +2687,20 @@ CATEGORIE_TO_STYLES: dict[str, list[str]] = {
 }
 
 
-def parse_styles(section_iii: str, categories: Iterable[str] = ()) -> list[str]:
+def parse_styles(
+    section_iii: str,
+    categories: Iterable[str] = (),
+    mention_text: str = "",
+) -> list[str]:
     """Return a sorted, deduped list of canonical style tags for an AOC.
 
-    Combines two signals:
+    Combines three signals:
       - section III prose (colour adjectives + special mentions);
-      - SIQO `categorie` field(s), via CATEGORIE_TO_STYLES.
+      - SIQO `categorie` field(s), via CATEGORIE_TO_STYLES;
+      - mentions complémentaires (rancio / sur lie / méthode ancestrale)
+        declared anywhere in the cahier, matched against `mention_text`
+        (usually the full section text) with the « mention » context — see
+        MENTION_PATTERNS.
     """
     found: set[str] = set()
     text = section_iii or ""
@@ -2684,6 +2709,10 @@ def parse_styles(section_iii: str, categories: Iterable[str] = ()) -> list[str]:
             found.add(tag)
     for cat in categories:
         for tag in CATEGORIE_TO_STYLES.get(cat.strip(), []):
+            found.add(tag)
+    mtext = re.sub(r"\s+", " ", mention_text or "")
+    for tag, pats in MENTION_PATTERNS:
+        if any(p.search(mtext) for p in pats):
             found.add(tag)
     # If we have a special mention, the underlying wine is implicitly white
     # in the case of vendanges tardives / grains nobles (always) — but we

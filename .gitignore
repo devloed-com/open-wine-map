@@ -6,6 +6,11 @@ __pycache__/
 .DS_Store
 *.log
 
+# Bunny CDN access logs pulled via scripts/fetch_bunny_logs.py (v2 logging API)
+logs/
+
+.hermes/*
+
 # secrets — PISTE / Légifrance OAuth credentials, etc.
 .env
 .env.*
@@ -37,6 +42,9 @@ raw/wikipedia/*
 *.pmtiles
 *.zip
 *.html
+# …except test fixtures (short, redacted, licence-clear OJ-page HTML
+# excerpts) — these ARE committed; see tests/fixtures/README.md.
+!tests/fixtures/*.html
 
 # stage 02c round-trip work files (todo.json emitted by --emit-todo,
 # done*.json returned by the translator) — ephemeral

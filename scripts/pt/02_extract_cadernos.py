@@ -37,7 +37,9 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
 )
 from _lib.grape_lexicon import GRAPE_ALIAS, GRAPE_BLOCKLIST  # noqa: E402
 from _lib.pt.caderno_sections import (  # noqa: E402

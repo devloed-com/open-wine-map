@@ -1,0 +1,22 @@
+# Redacted excerpt — BLE Produktspezifikation "Ahr" (Template B).
+# Source: raw/de/produktspezifikationen/ahr.pdf via `pdftotext -layout`.
+# Public, licence-clear: Amtliches Werk §5 UrhG (BLE). Trimmed to the
+# un-numbered "Zugelassene Keltertraubensorten:" anchor + the bullet
+# "• Weißwein" / "• Rot- und Roséwein" colour blocks. Ahr has no §3.2
+# per-variety Mostgewicht split, so the role split is flat-no-split.
+Zugelassene Keltertraubensorten:
+
+Keltertraubensorten der Art Vitis vinifera, aus denen die Weine des bestimmten
+Anbaugebietes „Ahr“ gewonnen werden:
+   • Weißwein
+Bacchus, Chardonnay, Huxelrebe, Johanniter, Kerner,
+Müller-Thurgau, Optima, Ortega, Riesling, Ruländer, Solaris,
+Weißer Burgunder;
+   • Rot- und Roséwein
+Acolon, Blauer Frühburgunder, Blauer Portugieser, Blauer Spätburgunder,
+Cabernet Franc, Cabernet Sauvignon, Domina, Dornfelder, Merlot,
+Müllerrebe, Regent, St. Laurent.
+
+Zusammenhang mit dem geografischen Gebiet:
+Das Gebiet liegt im Rheinischen Schiefergebirge und gehört landschaftlich zur
+Eifel.

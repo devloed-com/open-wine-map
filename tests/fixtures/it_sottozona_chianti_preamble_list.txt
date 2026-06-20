@@ -1,0 +1,15 @@
+Redacted excerpt — Chianti DOCG national disciplinare (MASAF), Article 1
+("Denominazione e vini"), pdftotext -layout output. Public source: MASAF
+consolidated disciplinare di produzione. Pattern B: a preamble phrase
+("e le seguenti sottozone:") followed by a guillemet-wrapped, comma-and-
+"e"-separated list where every sottozona name is prefixed with the
+parent name ("«Chianti Colli Aretini»"). Exercises guillemet stripping,
+parent-name-prefix stripping, and the final "e" conjunction.
+
+(Denominazione e vini)
+ 1.1 La denominazione di origine controllata e garantita «Chianti» è riservata ai vini «Chianti», già
+ riconosciuti a denominazione di origine controllata con decreto del Presidente della Repubblica 9
+ agosto 1967, che rispondono alle condizioni ed ai requisiti stabiliti dal presente disciplinare di
+ produzione per le seguenti tipologie: «Chianti» e «Chianti Superiore» e le seguenti sottozone:
+ «Chianti Colli Aretini», «Chianti Colli Fiorentini», «Chianti Colli Senesi», «Chianti Colline Pisane»,
+ «Chianti Montalbano», «Chianti Montespertoli» e «Chianti Rufina».

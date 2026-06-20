@@ -25,7 +25,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-from _lib.aires import load_aires, lookup as lookup_aire  # noqa: E402
+from _lib.aires import load_aires  # noqa: E402
+from _lib.aires import lookup as lookup_aire
 from _lib.dgc_village_overrides import DGC_VILLAGE_INSEE  # noqa: E402
 from _lib.lieu_dit import LieuDitIndex, _score, derive_climat_name  # noqa: E402
 from _lib.parcellaire import build_aoc_polygons  # noqa: E402

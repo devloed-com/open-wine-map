@@ -31,7 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import cache, providers, roundtrip  # noqa: E402
+from _lib import cache, providers  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -82,7 +82,7 @@ def _iter_verbatim_records() -> list[dict]:
 
 def _target_locales_for(src: dict) -> tuple[str, ...]:
     src_lang = src.get("source_lang") or ""
-    return tuple(l for l in ALL_LOCALES if l != src_lang)
+    return tuple(lang for lang in ALL_LOCALES if lang != src_lang)
 
 
 def _is_fresh_cache(existing: dict | None, src_sha: str) -> bool:

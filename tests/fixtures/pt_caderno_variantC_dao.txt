@@ -1,0 +1,38 @@
+CADERNO DE ESPECIFICAÇÕES "DÃO" — PDO-PT-A1542 (redacted excerpt).
+Variant C: Arabic-short / older format — numbered 1..9 with lowercase mixed-case headers
+("Delimitação da Área Geográfica", "Relação com o Meio Geográfico"), no DOCUMENTO ÚNICO
+wrapper. Tests the "MEIO GEOGRÁFICO" link variant + the "DELIMITAÇÃO DA ÁREA GEOGRÁFICA"
+area variant + the enumerated "os municípios de X, Y e Z" concelho list.
+
+1. Identificação do Nome: DÃO
+
+2. Descrição do Vinho
+
+2.1. Características do Produto
+
+4. Delimitação da Área Geográfica
+A área da Região Demarcada do Dão, conforme representada cartograficamente no anexo do
+Decreto-Lei n.º 376/93 de 5 de Novembro, compreende:
+a) Do distrito de Coimbra, os municípios de Arganil, Oliveira do Hospital e Tábua;
+b) Do distrito da Guarda, os municípios de Aguiar da Beira, Fornos de Algodres, Gouveia e Seia;
+c) Do distrito de Viseu, os municípios de Carregal do Sal, Mangualde, Mortágua, Nelas,
+Penalva do Castelo, Santa Comba Dão, Sátão e Tondela.
+
+5. Rendimentos Máximos por Hectare
+O Rendimento máximo por hectare das vinhas é de:
+a) Vinhos Tintos: 80 hl
+b) Vinhos Brancos: 100 hl
+
+6. Castas Utilizadas:
+a) Castas tintas:
+1 - Alfrocheiro, Aragonês, Jaen, Tinto-Cão, Touriga-Nacional e Trincadeira.
+b) Castas brancas:
+1 - Bical, Cerceal-Branco, Encruzado, Malvasia-Fina e Verdelho.
+
+7. Relação com o Meio Geográfico
+
+7.1 Factores Naturais
+As vinhas destinadas à elaboração dos vinhos DOP Dão devem ser instaladas em terrenos
+predominantemente graníticos, abrigados pelas serras envolventes.
+
+8. Exigências Aplicáveis

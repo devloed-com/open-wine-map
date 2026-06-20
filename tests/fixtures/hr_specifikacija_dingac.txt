@@ -1,0 +1,45 @@
+# synthetic
+# Mirrors the MPS SPECIFIKACIJA PROIZVODA lettered a)-h) outline (the
+# antiword/.doc -> text and pdftotext shape) so scripts/_lib/hr/specifikacija.py
+# can be exercised without running the antiword Docker converter. Real
+# Croatian section titles + a redacted, representative variety roster.
+# Cross-checked against raw/hr/specifikacije-extracted/{dingac,sjeverna-dalmacija}.json
+# so the asserted grape slugs match what parse_specifikacija actually emits.
+#
+# Exercised seams:
+#   - lettered a)-h) slicer (_lettered_sections) + role routing (_route_sections)
+#   - colour markers "Bijele sorte:" -> blanc / "Crne sorte:" -> noir
+#   - trailing-colour-adjective fallback (Chardonnay crni / Riesling zuti)
+#   - the FORWARD-ONLY letter guard: the "...prema tocki e) ..." cross-reference
+#     inside section c) is a backward jump and must NOT register as a heading.
+#   - the \x0c form-feed normalisation is injected by the test before g).
+a)   Naziv koji se zaštićuje:
+     Dingač
+
+b)   Opis najznačajnijih fizikalno kemijskih i organoleptičnih (senzornih) svojstava vina:
+     Vino je tamno rubin crvene boje, punog okusa i izraženih sortnih svojstava.
+
+c)   Specifični enološki postupci i ograničenja:
+     Svi enološki postupci za proizvodnju moraju biti u skladu s propisima, a najveći
+     dozvoljeni urod naveden je prema točki e) Maksimalni urod po hektaru.
+
+d)   Granice područja:
+     Područje ZOI „Dingač" smješteno je na strminama uz južnu morsku obalu poluotoka
+     Pelješac, unutar katastarskih općina Potomje, Pijavičino i Kuna.
+
+e)   Maksimalni urod po ha:
+     Najveći dozvoljeni urod iznosi 9 000 kg grožđa po hektaru.
+
+f)   Sorte vinove loze:
+     Bijele sorte:
+     Chardonnay crni, Maraština, Pošip bijeli, Debit, Riesling žuti.
+
+     Crne sorte:
+     Plavac mali crni, Babić, Plavina, Merlot, Croatina crna, Syrah.
+
+g)   Pojedinosti koje se odnose na kakvoću ili svojstva vina povezane sa zemljopisnim uvjetima:
+     Karakteristike tla i klime južne obale Pelješca, uz jaku insolaciju i utjecaj mora,
+     daju grožđu visoku koncentraciju šećera i bojila.
+
+h)   Prihvatljivi zahtjevi:
+     Sukladno Uredbi (EU) br. 1308/2013.

@@ -32,7 +32,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib.aires import _normalize  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"

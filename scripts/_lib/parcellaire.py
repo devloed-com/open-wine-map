@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import csv
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import geopandas as gpd
 from shapely.validation import make_valid

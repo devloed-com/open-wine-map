@@ -57,7 +57,7 @@ from __future__ import annotations
 
 import json
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -66,17 +66,23 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib.ch.canton import canton_name, source_lang_for_canton  # noqa: E402
 from _lib.ch.geometry import CHCommuneIndex  # noqa: E402
-from _lib.ch.ofag_register import parse_path as parse_ofag, slugify  # noqa: E402
+from _lib.ch.ofag_register import slugify  # noqa: E402
 from _lib.ch.per_aoc_carving import (  # noqa: E402
-    CARVE_TEXT_BLOCKS, PER_AOC_COMMUNE_LISTS, VS_GRAND_CRU,
-)
-from _lib.ch.reglement import (  # noqa: E402
-    extract_communes, extract_plaintext, extract_varieties,
-    summary_paragraph,
+    CARVE_TEXT_BLOCKS,
+    PER_AOC_COMMUNE_LISTS,
+    VS_GRAND_CRU,
 )
 from _lib.ch.region import region_for_canton  # noqa: E402
+from _lib.ch.reglement import (  # noqa: E402
+    extract_communes,
+    extract_plaintext,
+    extract_varieties,
+    summary_paragraph,
+)
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, match_variety, set_pliego_context,
+    flush_unknowns_queue,
+    match_variety,
+    set_pliego_context,
 )
 
 OFAG_PDF = ROOT / "raw" / "ch" / "ofag" / "repertoire-aoc-2026.pdf"
@@ -130,7 +136,7 @@ def _build_canton_extracts(commune_idx: CHCommuneIndex,
         set_pliego_context(f"ch::{canton}::reglement")
         text = extract_plaintext(path)
         lang = entry.get("lang") or source_lang_for_canton(canton)
-        varieties = extract_varieties(text, lang, match_variety)
+        varieties = extract_varieties(text, lang, match_variety, commune_idx)
         communes = extract_communes(text, lang, commune_idx)
         # Restrict commune hits to the canton itself (the règlement's
         # area-of-application). A canton's règlement that name-drops

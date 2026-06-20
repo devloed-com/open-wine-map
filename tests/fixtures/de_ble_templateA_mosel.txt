@@ -1,0 +1,31 @@
+# Redacted excerpt — BLE Produktspezifikation "Mosel" (Template A).
+# Source: raw/de/produktspezifikationen/mosel.pdf via `pdftotext -layout`.
+# Public, licence-clear: Amtliches Werk §5 UrhG (BLE). Trimmed to the
+# §3.2 Mindestmostgewicht block (per-variety thresholds → de-facto
+# principal) + §8 Zugelassene Keltertraubensorten white/red lists +
+# the §9 Zusammenhang header that bounds §8.
+3.2 Natürlicher Mindestalkoholgehalt und Mindestmostgewichte (Angabe in % vol Alkohol
+und Grad Öchsle)
+Qualitätswein:
+Rebsorten Elbling (Weißer/Blauer/Roter/Schwarzer Elbling)     6,7 % vol und 55° Öchsle
+Riesling (Weißer/Roter/Schwarzblauer Riesling)                6,7 % vol und 55° Öchsle
+Rebsorte Müller Thurgau                                       7,2 % vol und 58° Öchsle
+Rebsorte Dornfelder                                           8,8 % vol und 68° Öchsle
+alle übrigen Rebsorten                                        7,5 % vol und 60° Öchsle
+
+Kabinett:
+Rebsorte Elbling (Weißer/Blauer/Roter/Schwarzer Elbling)      9,1 % vol und 70° Öchsle
+alle übrigen Rebsorten                                        9,5 % vol und 73° Öchsle
+
+3.3 Organoleptische Beschreibung
+
+8 Zugelassene Keltertraubensorten
+Weiße Rebsorten:
+Auxerrois, Bacchus, Chardonnay, Elbling, Kerner, Müller Thurgau, Riesling,
+Ruländer, Scheurebe, Weißer Burgunder, Weißer Riesling.
+Rote Rebsorten:
+Blauer Spätburgunder, Dornfelder, Merlot, Müllerrebe, Regent, St. Laurent,
+Tempranillo.
+
+9    Angaben, aus denen sich der Zusammenhang gemäß Verordnung (EU) Nr. 1308/2013
+    Artikel 93 Absatz 1 Buchstabe a Ziffer i ergibt

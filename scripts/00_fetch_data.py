@@ -27,7 +27,8 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "raw"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib.aires import load_aires, lookup as lookup_aire  # noqa: E402
+from _lib.aires import load_aires  # noqa: E402
+from _lib.aires import lookup as lookup_aire
 
 DATAGOUV_API = "https://www.data.gouv.fr/api/1/datasets/{slug}/"
 GEO_API = "https://geo.api.gouv.fr/communes"

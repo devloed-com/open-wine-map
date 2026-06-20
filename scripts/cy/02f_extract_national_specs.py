@@ -28,7 +28,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib.cy.specifikacija import parse_spec  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
-    flush_unknowns_queue, set_pliego_context,
+    flush_unknowns_queue,
+    set_pliego_context,
 )
 
 SPECS_DIR = ROOT / "raw" / "cy" / "national-specs"

@@ -45,8 +45,8 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-from _lib.sk.specifikacija import parse_specifikacija  # noqa: E402
 from _lib.grape_entity import flush_unknowns_queue, set_pliego_context  # noqa: E402
+from _lib.sk.specifikacija import parse_specifikacija  # noqa: E402
 
 OVERRIDES_PATH = ROOT / "raw" / "sk" / "national-specs" / "manual_overrides.json"
 SPECS_DIR = ROOT / "raw" / "sk" / "national-specs"
