@@ -5,8 +5,10 @@ its LIST response, accepts a `Checksum` header on PUT for server-side
 integrity verification, and has no session limits, so the diff is
 content-addressed and uploads can fan out further than FTP allowed.
 
-Also configures security response headers on the pull zone via Edge Rules
-(idempotent: compares against existing rules and only adds what's missing).
+Also configures, idempotently, the pull zone's security response headers
+(via Edge Rules) and Force-SSL on every hostname, plus the storage zone's
+Custom404FilePath (/404.html) — each compares against the current state and
+only writes what's missing.
 
 Env:
   BUNNY_STORAGE_KEY    storage zone password (Bunny dash → Storage →
@@ -28,8 +30,10 @@ import fnmatch
 import hashlib
 import os
 import pathlib
+import re
 import sys
 import threading
+import time
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -179,6 +183,99 @@ _CANONICAL_HOST = "www.openwinemap.com"
 _APEX_HOST = "openwinemap.com"
 
 
+# IndexNow: notify the participating search engines (Bing / Yandex / Seznam /
+# Naver share one endpoint) when pages change, so they re-crawl promptly. The
+# key value is never hard-coded here — it lives only in the `<key>.txt` file
+# stage 04 emits into wiki/ (sourced from .env at build time), so it stays out
+# of version control.
+#
+# Submission is per-URL via the single-URL GET endpoint, NOT one bulk POST with
+# a urlList: Bing's IndexNow Insights flags a single large batch as "batch mode"
+# and recommends streaming (one URL at a time, as changes occur), which also
+# yields per-URL accept/reject feedback and spreads load. The changed set is
+# streamed through a small thread pool so the common small-diff deploy still
+# finishes near-instantly.
+_INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow"
+_INDEXNOW_WORKERS = 6
+_INDEXNOW_KEY_RE = re.compile(r"^[0-9a-f]{32}$")
+
+
+def find_indexnow_key(root: pathlib.Path) -> tuple[str, str] | None:
+    """Locate the IndexNow key file in wiki/ — a 32-hex `<key>.txt` whose body
+    equals its own name (the IndexNow convention). Returns (key, keyLocation
+    URL) or None when no key file is present (IndexNow then skipped)."""
+    for p in sorted(root.glob("*.txt")):
+        stem = p.stem
+        if _INDEXNOW_KEY_RE.match(stem) and p.read_text(encoding="utf-8").strip() == stem:
+            return stem, f"https://{_CANONICAL_HOST}/{p.name}"
+    return None
+
+
+def public_url(rel: str) -> str | None:
+    """Map a wiki/-relative path to its public clean URL, or None if it is not a
+    crawlable page. Only `.html` pages map (404.html is noindex). The clean-URL
+    layout means every page is `<dir>/index.html`; we emit the directory URL
+    (trailing slash) and engines consolidate to the page's <link rel=canonical>."""
+    if not rel.endswith(".html") or rel == "404.html":
+        return None
+    base = f"https://{_CANONICAL_HOST}"
+    if rel == "index.html":
+        return base + "/"
+    if rel.endswith("/index.html"):
+        return f"{base}/{rel[: -len('index.html')]}"
+    return f"{base}/{rel}"
+
+
+def _indexnow_ping(url: str, key: str, key_location: str) -> tuple[str, object]:
+    """Submit one URL to the IndexNow single-URL GET endpoint, retrying once on
+    a 429 rate-limit. Returns (url, status) where status is the HTTP code or an
+    `error: …` string; never raises (warn-don't-fail is the caller's policy)."""
+    for attempt in (0, 1):
+        try:
+            r = requests.get(
+                _INDEXNOW_ENDPOINT,
+                params={"url": url, "key": key, "keyLocation": key_location},
+                timeout=30,
+            )
+        except requests.RequestException as e:
+            return url, f"error: {e}"
+        if r.status_code == 429 and attempt == 0:
+            time.sleep(2)
+            continue
+        return url, r.status_code
+    return url, 429
+
+
+def submit_indexnow(key: str, key_location: str, urls: list[str]) -> None:
+    """Stream changed URLs to IndexNow one at a time via the single-URL GET
+    endpoint (see the note above on streaming vs. batch). Warn-don't-fail — a
+    deploy must not abort on an SEO-ping blip. Uses fresh requests (NOT the
+    Bunny storage session) so the Bunny AccessKey is never sent to a 3rd party."""
+    if not urls:
+        print("  indexnow: no changed pages to submit", file=sys.stderr)
+        return
+
+    accepted = 0
+    failures: list[tuple[str, object]] = []
+    with cf.ThreadPoolExecutor(max_workers=min(_INDEXNOW_WORKERS, len(urls))) as ex:
+        for url, status in ex.map(lambda u: _indexnow_ping(u, key, key_location), urls):
+            # 200 = accepted, 202 = accepted/validation pending — both success.
+            if status in (200, 202):
+                accepted += 1
+            else:
+                failures.append((url, status))
+
+    print(
+        f"  indexnow: streamed {len(urls)} URLs ({accepted} accepted, "
+        f"{len(failures)} failed)",
+        file=sys.stderr,
+    )
+    for url, status in failures[:5]:
+        print(f"  warn: indexnow {url} → {status}", file=sys.stderr)
+    if len(failures) > 5:
+        print(f"  warn: indexnow … and {len(failures) - 5} more failures", file=sys.stderr)
+
+
 # Security response headers to enforce on every response.
 # Bunny Edge Rule ActionType 5 = SetResponseHeader.
 # Bunny rejects an empty Triggers list ("At least one condition is required"),
@@ -277,6 +374,79 @@ def check_apex_redirect() -> None:
         print(f"apex → {_CANONICAL_HOST} 301 redirect: OK", file=sys.stderr)
 
 
+def ensure_force_ssl(api_key: str, pullzone: str) -> None:
+    """Idempotently force HTTPS on every pull-zone hostname.
+
+    Without this, `http://www.openwinemap.com/` serves 200 over plain HTTP
+    (the apex 301-redirects, but the www host did not). Fetches the pull zone,
+    and for each hostname whose `ForceSSL` is off, POSTs setForceSSL. Warn,
+    don't fail — a deploy shouldn't abort on a config-API blip.
+    """
+    base = "https://api.bunny.net"
+    headers = {"AccessKey": api_key, "Content-Type": "application/json", "Accept": "application/json"}
+
+    r = requests.get(f"{base}/pullzone/{pullzone}", headers=headers, timeout=30)
+    if r.status_code != 200:
+        print(f"  warn: could not fetch pull zone for Force-SSL check ({r.status_code})", file=sys.stderr)
+        return
+
+    for hn in r.json().get("Hostnames") or []:
+        name = hn.get("Value") or ""
+        if not name:
+            continue
+        if hn.get("ForceSSL"):
+            print(f"  force-SSL {name}: already on", file=sys.stderr)
+            continue
+        resp = requests.post(
+            f"{base}/pullzone/{pullzone}/setForceSSL",
+            headers=headers,
+            json={"Hostname": name, "ForceSSL": True},
+            timeout=30,
+        )
+        if resp.status_code in (200, 201, 204):
+            print(f"  force-SSL {name}: enabled", file=sys.stderr)
+        else:
+            print(f"  warn: setForceSSL {name} → {resp.status_code} {resp.text[:120]}", file=sys.stderr)
+
+
+def ensure_custom_404(api_key: str, zone_name: str) -> None:
+    """Idempotently point the storage zone's Custom404FilePath at /404.html.
+
+    Without it Bunny serves its generic error page. Resolves the storage zone
+    id by name (the deploy only knows the zone name), and updates only when the
+    path differs. Warn, don't fail; the dashboard fallback is Storage → <zone>
+    → Custom 404 file path.
+    """
+    base = "https://api.bunny.net"
+    headers = {"AccessKey": api_key, "Content-Type": "application/json", "Accept": "application/json"}
+    want = "/404.html"
+
+    r = requests.get(f"{base}/storagezone", headers=headers, timeout=30)
+    if r.status_code != 200:
+        print(f"  warn: could not list storage zones for custom-404 check ({r.status_code})", file=sys.stderr)
+        return
+
+    zone = next((z for z in r.json() if z.get("Name") == zone_name), None)
+    if zone is None:
+        print(f"  warn: storage zone {zone_name!r} not found for custom-404 check", file=sys.stderr)
+        return
+    if zone.get("Custom404FilePath") == want:
+        print("  custom 404: already set", file=sys.stderr)
+        return
+
+    body = {
+        "ReplicationZones": zone.get("ReplicationZones") or [],
+        "OriginUrl": zone.get("OriginUrl") or "",
+        "Rewrite404To200": bool(zone.get("Rewrite404To200")),
+        "Custom404FilePath": want,
+    }
+    resp = requests.post(f"{base}/storagezone/{zone.get('Id')}", headers=headers, json=body, timeout=30)
+    if resp.status_code in (200, 201, 204):
+        print(f"  custom 404: set to {want}", file=sys.stderr)
+    else:
+        print(f"  warn: storage zone update → {resp.status_code} {resp.text[:120]}", file=sys.stderr)
+
+
 def main() -> int:
     storage_key = os.environ.get("BUNNY_STORAGE_KEY")
     api_key = os.environ.get("BUNNY_API_KEY")
@@ -352,8 +522,20 @@ def main() -> int:
     if r.status_code not in (200, 204):
         sys.exit(f"purgeCache → {r.status_code} {r.text[:200]}")
 
+    print("notifying IndexNow of changed pages ...", file=sys.stderr)
+    keyinfo = find_indexnow_key(root)
+    if keyinfo is None:
+        print("  indexnow: no key file in wiki/ — skipping (set INDEXNOW_KEY in .env, rerun stage 04)", file=sys.stderr)
+    else:
+        key, key_location = keyinfo
+        changed = sorted({u for rel in (*to_upload, *to_delete) if (u := public_url(rel))})
+        submit_indexnow(key, key_location, changed)
+
     print("configuring security headers ...", file=sys.stderr)
     ensure_security_headers(api_key, pullzone)
+    print("configuring Force-SSL + custom 404 ...", file=sys.stderr)
+    ensure_force_ssl(api_key, pullzone)
+    ensure_custom_404(api_key, zone)
     check_apex_redirect()
     print("\ndeployed. https://www.openwinemap.com/", file=sys.stderr)
     return 0

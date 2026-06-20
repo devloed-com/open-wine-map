@@ -4356,6 +4356,30 @@
     "Deutschland": {
       "url": "https://www.deutscheweine.de/",
       "label": "Deutsches Weininstitut (DWI)"
+    },
+    "Valais": {
+      "url": "https://www.lesvinsduvalais.ch/",
+      "label": "Interprofession de la Vigne et du Vin du Valais (IVV)"
+    },
+    "Vaud": {
+      "url": "https://www.ovv.ch/",
+      "label": "Office des Vins Vaudois (OVV)"
+    },
+    "Genève": {
+      "url": "https://www.geneveterroir.ch/",
+      "label": "OPAGE — Genève Terroir"
+    },
+    "Ticino": {
+      "url": "https://ticinowine.ch/",
+      "label": "Ticinowine"
+    },
+    "Trois-Lacs": {
+      "url": "https://neuchatel-vins-terroir.ch/",
+      "label": "Neuchâtel Vins et Terroir"
+    },
+    "Deutschschweiz": {
+      "url": "https://deutschschweizerwein.ch/",
+      "label": "Branchenverband Deutschschweizer Wein (BDW)"
     }
   }
 }

@@ -30,6 +30,26 @@ import re
 import subprocess
 from pathlib import Path
 
+# Scanning a whole règlement (≈50 KB of regulatory prose) with the
+# shared grape lexicon is noise-prone in two ways, both observed in the
+# CH corpus:
+#   1. Weak fuzzy hits — common words / place fragments matched to
+#      obscure non-Swiss grape slugs (vigne→viognier, "Nein"→durif,
+#      blanc→alicante-branco). token_sort_ratio in the 85-94 band is
+#      almost never a real variety in prose. Require fuzzy ≥ this floor.
+_CH_FUZZY_FLOOR = 95
+#   2. A handful of French/German prose words that are EXACT grape
+#      aliases out of context (the word "canton"→chenin, "Dame"→folle-
+#      blanche, "Menu"→orbois, "aucun"→altesse, "Roussillon"→alicante-
+#      bouschet). These survive the fuzzy floor, so drop them by surface.
+#      Normalised (lowercase, diacritic-stripped) forms.
+_CH_STOP_SURFACES = frozenset({
+    "canton", "dame", "menu", "aucun", "roussillon",
+    "saure",          # German "Säure" (acid) → calitor
+    "ferneyvoltaire",  # French town near Geneva → sacy (hyphen-split)
+    "weisse", "weiss", "rote", "roten",  # German colour headers → obscure grapes
+})
+
 # Section-keyword tables — earliest match wins; ordering is most-
 # specific first. The keyword body is matched case-insensitively
 # against the plain-text lines.
@@ -187,41 +207,92 @@ def extract_section_body(text: str, lang: str, kind: str) -> str:
     return text[span[0]:span[1]]
 
 
-def extract_varieties(text: str, lang: str, match_fn) -> list[dict]:
+def _surface_norm(s: str) -> str:
+    """Lowercase + diacritic-strip + keep letters only — for matching a
+    candidate chunk against `_CH_STOP_SURFACES`."""
+    import unicodedata
+    decomposed = unicodedata.normalize("NFKD", s.casefold())
+    return "".join(c for c in decomposed if c.isalpha() and not unicodedata.combining(c))
+
+
+def extract_varieties(text: str, lang: str, match_fn, commune_index=None) -> list[dict]:
     """Run `match_fn` (the shared `_lib.grape_entity.match_variety`)
     over candidate variety-name tokens in the variety section. Returns
     `[{slug, name, colour}]` deduplicated by slug.
 
-    `match_fn(name)` returns a `MatchResult` with `.slug` and
-    `.colour`, or `None`.
+    `match_fn(name)` returns a `MatchResult` with `.slug`, `.colour`
+    and `.method`, or `None`.
 
     Token candidates: lines stripped of leading list markers
     (digits / dots / dashes / parentheses). The match function does
-    its own normalisation."""
-    # The grape lexicon is robust enough to scan an entire règlement
-    # without false positives (lexicon-based + per-token rejection),
-    # and cantonal règlements frequently bury the variety list in an
-    # annex or refer to an external annex by article. Whole-document
-    # scan gives the best recall.
+    its own normalisation.
+
+    `commune_index` (a `CHCommuneIndex`, optional) is the place-name
+    guard: a chunk that is itself a Swiss commune is area-of-application
+    prose (Genève, Sion, Cortaillod, …), not a grape, and is skipped."""
+    # The lexicon is robust at matching grape names, but a whole-document
+    # scan also feeds it thousands of prose words, so we guard against the
+    # two false-positive modes a règlement produces (see the module-level
+    # _CH_FUZZY_FLOOR / _CH_STOP_SURFACES notes). The whole-document scan
+    # is still the recall strategy — cantonal règlements frequently bury
+    # the variety list in an annex or refer to it by article.
     section = text
     candidates: set[str] = set()
+
+    def _add(chunk: str) -> None:
+        # Strip a leading FR/IT/DE determiner ("il Merlot", "la Bondola",
+        # "le Gamay", "der Riesling") and trailing footnote / cross-
+        # reference tails ("Cabernet Franc (2", "Sauvignon blanc *") so
+        # the bare name matches EXACT instead of being knocked below the
+        # fuzzy floor.
+        chunk = re.sub(r"^(?:il|lo|gli|la|le|i|l'|der|die|das|den|du|des|de|d')\s+",
+                       "", chunk, flags=re.IGNORECASE)
+        chunk = re.sub(r"\s*\(.*$", "", chunk)
+        chunk = re.sub(r"[*†‡]+\s*$", "", chunk)
+        chunk = chunk.strip(" .;:)(")
+        if 2 <= len(chunk) <= 60 and re.search(r"[A-Za-zÀ-ÿ]", chunk):
+            candidates.add(chunk)
+        # Must-weight lines name the variety before its threshold
+        # ("Blauburgunder 19,4 °Brix", "Pinot noir 17,2 °Oe") — add the
+        # name-before-first-number as a candidate too. The matcher + all
+        # guards still gate it, so this only recovers real varieties.
+        head = re.split(r"\s+\d", chunk, maxsplit=1)[0].strip(" .;:)(")
+        if head != chunk and 2 <= len(head) <= 60 and re.search(r"[A-Za-zÀ-ÿ]", head):
+            candidates.add(head)
+
     for raw_line in section.splitlines():
-        line = re.sub(r"^[\s\d.,()/\-•·*]+", "", raw_line).strip()
+        line = re.sub(r"^[\s\d.,()/\-•·*°ºª§]+", "", raw_line).strip()
+        # Drop a leading single-letter ordinal marker ("a)", "b)") that
+        # the numeric-marker strip above doesn't cover.
+        line = re.sub(r"^[a-zA-Z]\)\s*", "", line).strip()
         if not line:
             continue
-        # Split on slashes (synonyms) and other separators that
-        # commonly join multiple variety mentions on one line.
-        for chunk in re.split(r"\s*/\s*|,\s+", line):
-            chunk = chunk.strip(" .;:")
-            if 2 <= len(chunk) <= 60 and re.search(r"[A-Za-zÀ-ÿ]", chunk):
-                candidates.add(chunk)
+        # Split on slashes (synonyms), commas, and the FR/IT/DE list
+        # conjunctions ("il Merlot e il Petit Verdot", "X et Y") that
+        # join multiple variety mentions on one line.
+        for chunk in re.split(r"\s*/\s*|,\s+|\s+(?:e|et|und|oder|ou|y)\s+", line):
+            _add(chunk)
 
     resolved: list[dict] = []
     seen_slugs: set[str] = set()
     for cand in sorted(candidates):
+        # Place-name guard: a Swiss commune is not a grape.
+        if commune_index is not None and commune_index.lookup(cand):
+            continue
+        # Prose-word collisions that are exact grape aliases out of context.
+        if _surface_norm(cand) in _CH_STOP_SURFACES:
+            continue
         match = match_fn(cand)
         if match is None:
             continue
+        # Whole-document prose scan can't trust weak fuzzy hits.
+        if match.method.startswith("fuzzy:"):
+            try:
+                score = int(match.method.split(":", 1)[1])
+            except ValueError:
+                score = 0
+            if score < _CH_FUZZY_FLOOR:
+                continue
         if match.slug in seen_slugs:
             continue
         seen_slugs.add(match.slug)

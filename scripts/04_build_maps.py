@@ -21,12 +21,15 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
+import re
 import shutil
 import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
 
+from _lib import aging_taxonomy as _aging_tax
 from _lib.aires import load_aires
 from _lib.aires import lookup as lookup_aire
 from _lib.aoc_translations import (
@@ -72,6 +75,7 @@ from _lib.augment.it import (
 from _lib.augment.ro import augment_ro_records_with_national_specs
 from _lib.augment.si import augment_si_records_with_specifikacija
 from _lib.augment.sk import augment_sk_records_with_national_specs
+from _lib.batch import _load_dotenv
 from _lib.be.geometry import BEPolygonIndex
 from _lib.be.region import derive_region as derive_be_region
 from _lib.bg.geometry import BGPolygonIndex
@@ -108,7 +112,7 @@ from _lib.hr.geometry import HRPolygonIndex
 from _lib.hr.region import derive_region as derive_hr_region
 from _lib.hu.geometry import HUPolygonIndex
 from _lib.hu.region import derive_region as derive_hu_region
-from _lib.i18n import LOCALES, compile_catalogs
+from _lib.i18n import LOCALES, compile_catalogs, load_translations
 from _lib.it.comune import ITCommuneIndex
 from _lib.it.geometry import ITPolygonIndex
 from _lib.it.region import derive_regione as derive_it_regione
@@ -124,7 +128,7 @@ from _lib.lexicon_loading import (
 from _lib.lieu_dit import LieuDitIndex
 from _lib.lu.geometry import LUPolygonIndex
 from _lib.lu.region import derive_region as derive_lu_region
-from _lib.map_template import STARTUP_AOCS_FIELDS
+from _lib.map_template import STARTUP_AOCS_FIELDS, build_country_labels, build_labels
 from _lib.map_template import render as render_map_html
 from _lib.mt.geometry import MTPolygonIndex
 from _lib.nl.geometry import NLPolygonIndex
@@ -143,13 +147,16 @@ from _lib.style_taxonomy import (
     all_slugs as _taxonomy_all_slugs,
 )
 from _lib.style_taxonomy import (
+    canonical_style as _taxonomy_canonical_style,
+)
+from _lib.style_taxonomy import (
     descendants as _taxonomy_descendants,
 )
 from _lib.style_taxonomy import (
     descendants_map as _taxonomy_descendants_map,
 )
 from _lib.style_taxonomy import (
-    simple_bucket as _taxonomy_simple_bucket,
+    simple_buckets as _taxonomy_simple_buckets,
 )
 from _lib.style_taxonomy import (
     taxonomy_dfs_order as _taxonomy_dfs_order,
@@ -157,6 +164,7 @@ from _lib.style_taxonomy import (
 from _lib.summaries import derive_summary
 from shapely.geometry import mapping, shape
 from tqdm import tqdm
+from unidecode import unidecode as _unidecode
 
 ROOT = Path(__file__).resolve().parent.parent
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
@@ -197,6 +205,7 @@ NL_NUTS_GEOJSON = ROOT / "raw" / "nl" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_2.g
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"
 WIKI = ROOT / "wiki"
 SITE_BASE_URL = "https://www.openwinemap.com"
+GITHUB_URL = "https://github.com/devloed-com/open-wine-map"
 MAP_DATA = WIKI / "map-data"
 ASSETS_SRC = ROOT / "raw" / "assets"
 ASSETS_OUT = WIKI / "assets"
@@ -230,15 +239,6 @@ _CROSS_BORDER_COUNTRY_ALIASES: dict[str, list[str]] = {
 _IT_MENZIONI_BY_SLUG: dict[str, list] = {}
 
 
-
-
-# Simple-mode style buckets: collapses the fine-grained style tags into the
-# six top-level buckets the default view shows. Derived from the canonical
-# taxonomy in scripts/_lib/style_taxonomy so adding a new tag in one place
-# propagates here automatically.
-SIMPLE_STYLE_BUCKETS: dict[str, str] = {
-    s: _taxonomy_simple_bucket(s) for s in _taxonomy_all_slugs()
-}
 
 
 # Several non-FR stage-02 pipelines tag wine colour with the FR colour word
@@ -277,6 +277,192 @@ def _canonical_styles(values: list[str]) -> list[str]:
     return list(seen)
 
 
+# Style synonyms safe to detect from descriptive prose corpus-wide: each is
+# unambiguous (no tasting-note or grape-name collision). rancio / sweetness
+# levels are NOT here — they need per-language context (FR is handled in stage
+# 02; ES below). The matched surface folds to its canonical slug via the
+# taxonomy synonym index, so this is the rendering-layer half of the general
+# style-alias pattern. Word-boundary-guarded; diacritic + ASCII spellings both
+# listed because the source text isn't normalised before matching.
+_TEXT_SCAN_STYLE_TERMS: tuple[str, ...] = (
+    "eiswein", "ice wine", "vin de glace", "jégbor", "jegbor",
+    "ľadové víno", "ladové víno", "ledové víno", "ledeno vino",
+    "vino de hielo", "vino di ghiaccio",
+    "vinsanto", "vino santo", "vin santo",
+    "fondillón", "fondillon",
+    # sparkling production methods (named in vinification prose, unambiguous)
+    "méthode ancestrale", "methode ancestrale", "metodo ancestrale",
+    "metodo ancestral", "pétillant naturel", "petillant naturel", "pet-nat",
+    "méthode traditionnelle", "methode traditionnelle",
+    "méthode classique", "methode classique",
+    "metodo classico", "metodo tradizionale", "método tradicional",
+    "metodo tradicional", "traditional method", "flaschengärung", "flaschengarung",
+    "méthode charmat", "methode charmat", "metodo charmat", "metodo martinotti",
+    "charmat", "martinotti", "cuve close", "método granvás", "metodo granvas",
+    "tankgärung", "tankgarung",
+    "méthode dioise", "methode dioise",
+)
+_TEXT_SCAN_STYLE_RE = re.compile(
+    r"(?<!\w)(" + "|".join(re.escape(t) for t in _TEXT_SCAN_STYLE_TERMS) + r")(?!\w)",
+    re.IGNORECASE,
+)
+# ES rancio is a category ("Vino rancio", "Rancio:", "los rancios"), distinct
+# from "«Rancio»" listed among the Crianza/Reserva aging-tier mentions (which
+# the user scoped OUT) and from a bare tasting-note "rancio". Category-only.
+_ES_RANCIO_RE = re.compile(
+    r"vinos?\s+(?:de\s+licor\s+)?rancios?\b|\brancios?\s*:|\blos\s+rancios\b",
+    re.IGNORECASE,
+)
+# Sparkling production-method tags only make sense for a sparkling wine. The
+# method names are generic enough to leak ("méthode traditionnelle" = traditional
+# DISTILLATION in an Armagnac cahier; "traditional method" of vinification on a
+# still wine), so these tags are kept only when the record already carries a base
+# sparkling style.
+_SPARKLING_METHOD_SLUGS: frozenset[str] = frozenset({
+    "methode-ancestrale", "methode-traditionnelle", "methode-charmat", "methode-dioise",
+})
+_SPARKLING_BASE_STYLES: frozenset[str] = frozenset({
+    "sparkling", "sparkling-quality", "cremant", "semi-sparkling",
+})
+
+
+def _record_style_scan_text(record: dict) -> str:
+    """Concatenate a record's descriptive prose (summary, link-to-terroir, and
+    the section / section-role bodies — which may be nested dicts) for the
+    style-synonym text scan."""
+    parts: list[str] = []
+    for key in ("summary", "link_to_terroir"):
+        v = record.get(key)
+        if isinstance(v, str):
+            parts.append(v)
+
+    def walk(x: object) -> None:
+        if isinstance(x, str):
+            parts.append(x)
+        elif isinstance(x, dict):
+            for vv in x.values():
+                walk(vv)
+
+    walk(record.get("sections"))
+    walk(record.get("section_roles"))
+    return " ".join(parts)
+
+
+def _styles_from_source_text(record: dict) -> set[str]:
+    """Canonical style slugs implied by unambiguous mentions in a record's
+    prose — icewine / vin-santo / fondillón corpus-wide, plus ES category
+    rancio. Additive; the caller merges via `_canonical_styles`."""
+    blob = _record_style_scan_text(record)
+    if not blob:
+        return set()
+    out: set[str] = set()
+    for m in _TEXT_SCAN_STYLE_RE.finditer(blob):
+        slug = _taxonomy_canonical_style(m.group(1))
+        if slug:
+            out.add(slug)
+    if record.get("country") == "es" and _ES_RANCIO_RE.search(blob):
+        out.add("rancio")
+    return out
+
+
+# --- Classification (aging / ripeness / selection tier) detection -------------
+_aging_tier_synonyms: dict[str, str] = _aging_tax.tier_synonyms()
+# Most tiers are specific words → matched by one alias regex and resolved via the
+# aging taxonomy. Three tiers are generic words needing tight gating:
+#   roble    — "barrica de roble" = oak BARREL, not the "Roble" aging tier
+#   colheita — "colheita" = harvest/vintage in nearly every PT spec; the Colheita
+#              CLASSIFICATION is a dated tawny Port / Madeira
+#   superiore— "qualità superiore" etc. = generic "superior", not the Superiore tier
+_AGING_GATED_SLUGS: frozenset[str] = frozenset({"roble", "colheita", "superiore"})
+# Match against RAW text, so collect the accented surface forms (Spätlese, Výber
+# z hrozna) AND an ASCII variant of each — the source text keeps diacritics, so a
+# regex built from the ASCII-normalised synonym keys would miss them.
+_AGING_PLAIN_TERMS: tuple[str, ...] = tuple(
+    dict.fromkeys(
+        surface
+        for node in _aging_tax.NODES.values()
+        if node.parent is not None and node.slug not in _AGING_GATED_SLUGS
+        for raw in (node.slug, *node.synonyms)
+        for surface in (raw, _unidecode(raw))
+    )
+)
+_AGING_PLAIN_RE = re.compile(
+    r"(?<!\w)(" + "|".join(re.escape(t) for t in sorted(_AGING_PLAIN_TERMS, key=len, reverse=True))
+    + r")(?!\w)",
+    re.IGNORECASE,
+)
+# roble: positive — "vino/tinto … (de) roble" as a category, never "barrica de roble".
+_ROBLE_RE = re.compile(r"\b(?:vinos?|tintos?|blancos?)\s+(?:de\s+)?roble\b", re.IGNORECASE)
+# superiore: the tier is capitalised "Superiore"; gate OUT the generic adjective.
+_SUPERIORE_RE = re.compile(r"\bSuperiore\b")  # case-sensitive
+_SUPERIORE_GENERIC_RE = re.compile(
+    r"(qualit|grado|gradazione|titolo|tenore|limite|parte|fascia|zona|porzione|"
+    r"met[àa]|grad\w*)\s+superiore|superiore\s+(a|al|ai|del|della|di)\b",
+    re.IGNORECASE,
+)
+_COLHEITA_RE = re.compile(r"\bcolheita\b", re.IGNORECASE)
+_PORT_CTX_RE = re.compile(r"\b(porto|tawny|madeira|envelhec)", re.IGNORECASE)
+
+# CZ records are content-stubs whose stage-04 augmentation (CHZO region spec)
+# carries only regional terroir prose — the Czech předikát ladder (výběr z
+# hroznů / bobulí / cibéb) lives instead in the per-DOP eAmbrosia register fiche
+# (a public EU-register document). Fold that fiche's prose into the CZ
+# classification scan so those tiers tag (SK předikát already lands via its
+# national spec). slug -> fiche prose, loaded once.
+_CZ_REGISTER_FICHES_DIR = ROOT / "raw" / "cz" / "register-fiches-extracted"
+
+
+def _load_cz_register_fiche_text() -> dict[str, str]:
+    out: dict[str, str] = {}
+    if not _CZ_REGISTER_FICHES_DIR.is_dir():
+        return out
+    for fp in _CZ_REGISTER_FICHES_DIR.glob("*.json"):
+        if fp.name == "_index.json":
+            continue
+        try:
+            d = json.loads(fp.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        slug = d.get("slug")
+        if not slug:
+            continue
+        out[slug] = " ".join(
+            v for v in (d.get("summary"), d.get("link_to_terroir")) if isinstance(v, str)
+        )
+    return out
+
+
+_CZ_REGISTER_FICHE_TEXT: dict[str, str] = _load_cz_register_fiche_text()
+
+
+def _aging_tiers_from_text(record: dict) -> set[str]:
+    """Canonical classification-tier slugs found in a record's prose, with
+    per-term gating for the generic words (roble / colheita / superiore)."""
+    blob = _record_style_scan_text(record)
+    if record.get("country") == "cz":
+        fiche = _CZ_REGISTER_FICHE_TEXT.get(record.get("slug", ""))
+        if fiche:
+            blob = blob + " " + fiche
+    if not blob:
+        return set()
+    out: set[str] = set()
+    for m in _AGING_PLAIN_RE.finditer(blob):
+        slug = _aging_tier_synonyms.get(_unidecode(m.group(1)).lower())
+        if slug:
+            out.add(slug)
+    if _ROBLE_RE.search(blob):
+        out.add("roble")
+    if _SUPERIORE_RE.search(blob) and not _SUPERIORE_GENERIC_RE.search(blob):
+        out.add("superiore")
+    if (
+        record.get("country") == "pt"
+        and _COLHEITA_RE.search(blob)
+        and _PORT_CTX_RE.search(blob)
+    ):
+        out.add("colheita")
+    return out
+
+
 # Berry colour -> wine-style FLOOR. blanc / gris / rose-berried grapes (Pinot
 # Gris, Gewürztraminer, …) all make WHITE wine; noir makes RED. Rosé WINE is a
 # vinification choice, never inferred from grape colour. Applied at the single
@@ -287,6 +473,31 @@ _BERRY_COLOUR_TO_WINE_STYLE: dict[str, str] = {
 }
 _COLOUR_STYLES: frozenset[str] = frozenset({"white", "red", "rose"})
 _SPARKLING_FAMILY: frozenset[str] = frozenset({"sparkling", "semi-sparkling", "cremant"})
+
+
+def _grape_role_lists(grapes: dict) -> tuple[list[str], list[str], list[str]]:
+    """Return (principal, accessory, observation) slug lists from a record's
+    `grapes` dict. Most countries store these lists directly; CH stores grapes
+    as `details: [{slug, name, colour, role}]` (no principal/accessory split),
+    so derive the lists from `details` by role when the direct lists are absent.
+    Without this, CH grapes never reach the startup blob / map."""
+    principal = list(grapes.get("principal") or [])
+    accessory = list(grapes.get("accessory") or [])
+    observation = list(grapes.get("observation") or [])
+    details = grapes.get("details") or []
+    if details and not (principal or accessory or observation):
+        for d in details:
+            slug = d.get("slug")
+            if not slug:
+                continue
+            role = d.get("role") or "principal"
+            if role == "accessory":
+                accessory.append(slug)
+            elif role == "observation":
+                observation.append(slug)
+            else:
+                principal.append(slug)
+    return principal, accessory, observation
 
 
 def _base_colour_styles_from_grapes(grapes: dict, existing_styles: set[str]) -> set[str]:
@@ -302,9 +513,8 @@ def _base_colour_styles_from_grapes(grapes: dict, existing_styles: set[str]) -> 
         for d in (grapes.get("details") or [])
         if d.get("slug") and (d.get("colour") or "").strip()
     }
-    slugs = (set(grapes.get("principal") or [])
-             | set(grapes.get("accessory") or [])
-             | set(grapes.get("observation") or []))
+    _p, _a, _o = _grape_role_lists(grapes)
+    slugs = set(_p) | set(_a) | set(_o)
     add: set[str] = set()
     for s in slugs:
         berry = detail_colour.get(s) or DEFAULT_COLOUR.get(s) or vivc_colour.get(s)
@@ -1968,11 +2178,22 @@ def main() -> int:
         minx, miny, maxx, maxy = geom.bounds
         bbox = [float(minx), float(miny), float(maxx), float(maxy)]
         grapes = record.get("grapes") or {}
-        principal = grapes.get("principal") or []
-        accessory = grapes.get("accessory") or []
-        observation = grapes.get("observation") or []
+        principal, accessory, observation = _grape_role_lists(grapes)
         all_grapes = sorted(set(principal) | set(accessory) | set(observation))
         styles = _canonical_styles(record.get("styles") or [])
+        # Augment with unambiguous special-style mentions in the prose
+        # (icewine / vin-santo / fondillón corpus-wide; ES category rancio) —
+        # the rendering-layer half of the style-alias pattern.
+        text_styles = _styles_from_source_text(record)
+        # Sparkling-method tags require the wine to be sparkling (drops the
+        # Armagnac "méthode traditionnelle" = distillation false positive etc.).
+        if not (set(styles) & _SPARKLING_BASE_STYLES):
+            text_styles -= _SPARKLING_METHOD_SLUGS
+        if text_styles:
+            styles = _canonical_styles(list(styles) + sorted(text_styles))
+        # Classification tiers (aging / Prädikat / selection) — a facet parallel
+        # to styles, detected from prose with per-term gating.
+        classifications = sorted(_aging_tiers_from_text(record))
         categories = record.get("categories") or []
         categorie = record.get("categorie", "") or ""
         # Wine vs. non-wine split: every INAO `categorie` value beginning with
@@ -2267,6 +2488,7 @@ def main() -> int:
             "cadastre_score": cadastre_score,
             "categories": _join_set(categories),
             "styles": _join_set(styles),
+            "classifications": _join_set(classifications),
             "grapes_principal": _join_set(principal),
             "grapes_accessory": _join_set(accessory),
             "grapes_observation": _join_set(observation),
@@ -3095,12 +3317,15 @@ def emit_html(
         slug = p["slug"]
         # Recover slug arrays from the ;-padded MVT-friendly strings.
         styles = [s for s in p.get("styles", "").split(";") if s]
+        classifications = [s for s in p.get("classifications", "").split(";") if s]
         principal = [s for s in p.get("grapes_principal", "").split(";") if s]
         accessory = [s for s in p.get("grapes_accessory", "").split(";") if s]
         observation = [s for s in p.get("grapes_observation", "").split(";") if s]
         categories = [s for s in p.get("categories", "").split(";") if s]
         all_grapes = sorted(set(principal) | set(accessory) | set(observation))
-        simple_styles = sorted({SIMPLE_STYLE_BUCKETS.get(s, "other") for s in styles}) if styles else []
+        # Multi-membership styles (vin-santo) report several buckets, so a wine
+        # filtered under either parent bucket surfaces it (see simple_buckets).
+        simple_styles = sorted({b for s in styles for b in _taxonomy_simple_buckets(s)}) if styles else []
 
         # Extracted JSON has a richer summary + source URLs; pull them.
         # Try the FR path first, then the ES path, then the PT path. Slugs
@@ -3227,6 +3452,7 @@ def emit_html(
             "categories": categories,
             "styles": styles,
             "styles_simple": simple_styles,
+            "classifications": classifications,
             "grapes_principal": principal,
             "grapes_accessory": accessory,
             "grapes_observation": observation,
@@ -3279,7 +3505,7 @@ def emit_html(
     # Simple-mode style facet uses the 6-bucket order white/rose/red/
     # sparkling/sweet/other, regardless of frequency, so chips read like a
     # canonical wine-style legend.
-    simple_style_order = ["white", "rose", "red", "sparkling", "sweet", "other"]
+    simple_style_order = ["white", "rose", "red", "sparkling", "sweet", "oxidative", "other"]
     facet_styles_simple = [
         (s, simple_style_counts.get(s, 0)) for s in simple_style_order
         if simple_style_counts.get(s, 0) > 0
@@ -3311,6 +3537,27 @@ def emit_html(
     ]
     style_descendants = _taxonomy_descendants_map()
 
+    # Classification facet tree (aging / Prädikat / selection tiers) — same shape
+    # as the styles tree; a family group's count is the # of records carrying any
+    # tier under it.
+    class_order = _aging_tax.taxonomy_dfs_order()
+    class_descendant_sets = {slug: _aging_tax.descendants(slug) for slug, _, _ in class_order}
+    agg_class_counts: dict[str, int] = {slug: 0 for slug in class_descendant_sets}
+    for rec in aocs.values():
+        rec_class = set(rec.get("classifications") or [])
+        if not rec_class:
+            continue
+        for slug, dset in class_descendant_sets.items():
+            if rec_class & dset:
+                agg_class_counts[slug] += 1
+    facet_class_tree = [
+        {"slug": slug, "parent": parent, "depth": depth,
+         "count": agg_class_counts.get(slug, 0)}
+        for slug, parent, depth in class_order
+        if agg_class_counts.get(slug, 0) > 0
+    ]
+    class_descendants = _aging_tax.descendants_map()
+
     facets = dict(
         layer_url=layer_url,
         villages_layer_url=villages_layer_url,
@@ -3318,6 +3565,8 @@ def emit_html(
         aocs=aocs,
         facet_styles_tree=facet_styles_tree,
         style_descendants=style_descendants,
+        facet_class_tree=facet_class_tree,
+        class_descendants=class_descendants,
         facet_styles_simple=facet_styles_simple,
         facet_regions=sort_facet(region_counts),
         area_quartiles=(area_q1, area_q3),
@@ -3326,20 +3575,35 @@ def emit_html(
     fr_styles_lex = load_style_lexicon("fr")
 
     # --- Phase 3 pilot: gated per-appellation entity pages ----------------
+    # Cross-link nav data: parent slug -> sorted child slugs (any record whose
+    # parent_slug points at another record in the corpus — sub-denominations).
+    # Built BEFORE the gate so gate_classify can treat "is a parent of sub-
+    # denominations" as own content. Child display names resolve per-locale in
+    # render() from the per-locale aocs dict.
+    children_by_parent: dict[str, list[str]] = {}
+    for _slug, _rec in aocs.items():
+        _p = _rec.get("parent_slug")
+        if _p and _p in aocs:
+            children_by_parent.setdefault(_p, []).append(_slug)
+    for _kids in children_by_parent.values():
+        _kids.sort(key=lambda s: (aocs[s].get("name") or s).casefold())
+
     # gate_classify decides which records earn an indexable, crawlable page.
-    # v1 FOLDS every sub-denomination (its narrative/grapes are parent-
-    # inherited at render time — CLAUDE.md) and any stub / no-geometry record;
-    # an indexable record needs resolved geometry plus its own grapes / summary
-    # / terroir. The pilot emits only a small hand-picked allowlist (intersected
-    # with the gate) so indexation + demand can be validated before a corpus-
-    # wide rollout. Slugs absent from the corpus are silently dropped.
-    def gate_classify(rec: dict) -> tuple[str, str | None]:
+    # FOLDS every sub-denomination (its narrative/grapes are parent-inherited at
+    # render time — CLAUDE.md) and any stub / no-geometry record; an indexable
+    # record needs resolved geometry plus its own grapes / summary / terroir, OR
+    # being a parent of sub-denominations — the children list it enumerates is
+    # genuine, non-duplicate content (e.g. the thin CH cantonal AOCs bern-berne
+    # / schwyz, which carry no terroir of their own but parent real local AOCs).
+    # Slugs absent from the corpus are silently dropped.
+    def gate_classify(rec: dict, has_children: bool = False) -> tuple[str, str | None]:
         if rec.get("is_sub_denomination"):
             return ("fold", rec.get("parent_slug"))
         if rec.get("is_stub") or rec.get("geom_source") == "stub-no-geometry" or not rec.get("bbox"):
             return ("fold", None)
         has_own = bool(
-            rec.get("terroir_facts") or rec.get("summary") or (rec.get("grapes_principal") or [])
+            rec.get("terroir_facts") or rec.get("summary")
+            or (rec.get("grapes_principal") or []) or has_children
         )
         return ("index", None) if has_own else ("fold", None)
 
@@ -3351,12 +3615,21 @@ def emit_html(
     index_slugs: list[str] = []
     fold_slugs: list[str] = []
     for _slug, _rec in aocs.items():
-        (index_slugs if gate_classify(_rec)[0] == "index" else fold_slugs).append(_slug)
+        cls = gate_classify(_rec, _slug in children_by_parent)[0]
+        (index_slugs if cls == "index" else fold_slugs).append(_slug)
     print(
         f"[entity] gate: {len(index_slugs)} index + {len(fold_slugs)} fold "
         f"= {len(index_slugs) + len(fold_slugs)}/{len(aocs)} records",
         file=sys.stderr,
     )
+
+    # The browse-index page lives at /<locale>/appellations/, so no appellation
+    # slug may be "appellations" (it would collide with that directory on disk).
+    assert "appellations" not in aocs, (
+        "slug 'appellations' collides with the browse-index path"
+    )
+
+    build_date = dt.date.today().isoformat()
 
     for lang in LOCALES:
         lex = build_grapes_info(lang)
@@ -3449,6 +3722,7 @@ def emit_html(
         html_out, assets, n_index, n_fold = render_map_html(
             **per_locale_facets, locale=lang, grapes_info=lex, styles_info=styles_lex,
             index_slugs=index_slugs, fold_slugs=fold_slugs, entity_out_dir=entity_out_dir,
+            children_map=children_by_parent, build_date=build_date,
         )
         out.write_text(html_out, encoding="utf-8")
         # Three external, content-hashed bundles every page of this locale
@@ -3533,7 +3807,11 @@ def emit_html(
         file=sys.stderr,
     )
 
-    write_seo_files(index_slugs)
+    entity_entries = [
+        (slug, aocs[slug].get("name") or slug, aocs[slug].get("country") or "")
+        for slug in index_slugs
+    ]
+    write_seo_files(entity_entries)
 
 
 def _hreflang_alternates(paths_by_lang: dict[str, str]) -> str:
@@ -3560,6 +3838,26 @@ def _sitemap_url_block(loc: str, lastmod: str, alternates: str) -> str:
         f"{alternates}\n"
         f"  </url>"
     )
+
+
+def _entity_lastmod(slug: str, lang: str, fallback: str) -> str:
+    """Per-page `<lastmod>` for an entity URL: the mtime of its panel JSON.
+
+    The per-(slug, locale) panel payload `wiki/data/d/<lang>/<slug>.json` is
+    write-if-changed, so its mtime advances only when that appellation's
+    rendered content actually changes — a far more honest lastmod than the
+    build date, which would otherwise stamp every page as modified on every
+    rerun (and which Google discounts when every URL shares one always-today
+    date). The entity HTML itself is unusable here: it references the
+    content-hashed startup blob / app.js / css, so a single corpus edit bumps
+    every page's mtime. The panel JSON carries pure content. Falls back to
+    `fallback` (today) when the JSON is absent.
+    """
+    panel = WIKI / "data" / "d" / lang / f"{slug}.json"
+    try:
+        return dt.date.fromtimestamp(panel.stat().st_mtime).isoformat()
+    except OSError:
+        return fallback
 
 
 _WEBMANIFEST = {
@@ -3624,14 +3922,21 @@ def copy_brand_assets() -> None:
     print(f"[assets] mirrored {ASSETS_SRC.relative_to(ROOT)} → {ASSETS_OUT.relative_to(ROOT)} ({copied} updated)", file=sys.stderr)
 
 
-def write_seo_files(entity_slugs: list[str] | None = None) -> None:
-    """Emit wiki/robots.txt and wiki/sitemap.xml.
+def write_seo_files(entity_entries: list[tuple[str, str, str]] | None = None) -> None:
+    """Emit wiki/{robots.txt, sitemap.xml, llms.txt, 404.html}.
 
     The map IS the homepage: `/` (EN canonical), `/fr/`, `/es/`, `/nl/`. The
-    sitemap covers those four URLs, each carrying the full hreflang alternate
-    set so search engines can pair locale variants. Updated whenever stage 04
-    reruns; lastmod is today.
+    sitemap covers those four homepages, the four browse-index pages
+    (`/<locale>/appellations/`), and one URL per locale per indexable slug —
+    each carrying the full hreflang alternate set so search engines can pair
+    locale variants. `entity_entries` is `(slug, name, country)` per indexable
+    appellation; the names/countries drive the AI-crawler `llms.txt` index.
+    Homepages and browse pages take today's build date as `lastmod`; each
+    entity URL takes a per-page lastmod from its panel-JSON mtime (see
+    `_entity_lastmod`), so reruns only re-date the appellations that actually
+    changed. Folded (noindex) slugs are deliberately excluded.
     """
+    entity_entries = entity_entries or []
     today = dt.date.today().isoformat()
 
     home_paths = {lang: ("/" if lang == "en" else f"/{lang}/") for lang in LOCALES}
@@ -3642,16 +3947,26 @@ def write_seo_files(entity_slugs: list[str] | None = None) -> None:
         for lang in LOCALES
     ]
 
+    # Browse-index pages: one <url> per locale (/<locale>/appellations/), each
+    # carrying the browse hreflang cluster (x-default -> /en/appellations/).
+    browse_paths = {lang: f"/{lang}/appellations/" for lang in LOCALES}
+    browse_alternates = _hreflang_alternates(browse_paths)
+    for lang in LOCALES:
+        url_blocks.append(
+            _sitemap_url_block(f"{SITE_BASE_URL}{browse_paths[lang]}", today, browse_alternates)
+        )
+
     # Indexable per-appellation entity pages: one <url> per locale per slug
     # (en under /en/<slug>), each carrying the slug's hreflang cluster
-    # (x-default -> EN). Folded (noindex) slugs are deliberately excluded.
+    # (x-default -> EN).
     n_entity = 0
-    for slug in entity_slugs or []:
+    for slug, _name, _country in entity_entries:
         ent_paths = {lang: f"/{lang}/{slug}" for lang in LOCALES}
         ent_alts = _hreflang_alternates(ent_paths)
         for lang in LOCALES:
+            lastmod = _entity_lastmod(slug, lang, today)
             url_blocks.append(
-                _sitemap_url_block(f"{SITE_BASE_URL}{ent_paths[lang]}", today, ent_alts)
+                _sitemap_url_block(f"{SITE_BASE_URL}{ent_paths[lang]}", lastmod, ent_alts)
             )
             n_entity += 1
 
@@ -3670,11 +3985,119 @@ def write_seo_files(entity_slugs: list[str] | None = None) -> None:
         f"Sitemap: {SITE_BASE_URL}/sitemap.xml\n"
     )
     (WIKI / "robots.txt").write_text(robots, encoding="utf-8")
+
+    # IndexNow domain-ownership key file (optional). The key is read from the
+    # environment / repo-root .env — deliberately NOT committed — so a checkout
+    # without it simply skips the file while everything else in wiki/ still
+    # reproduces. File name == body, no trailing newline, served as text/plain.
+    _load_dotenv()
+    indexnow_key = os.environ.get("INDEXNOW_KEY", "").strip()
+    indexnow_note = ""
+    if indexnow_key:
+        (WIKI / f"{indexnow_key}.txt").write_text(indexnow_key, encoding="utf-8")
+        indexnow_note = f", {indexnow_key}.txt"
+
+    _write_llms_txt(entity_entries)
+    _write_404_page()
+
     print(
-        f"[seo] wrote {WIKI.relative_to(ROOT)}/robots.txt and sitemap.xml "
-        f"({len(url_blocks)} URLs: {len(LOCALES)} home + {n_entity} entity)",
+        f"[seo] wrote {WIKI.relative_to(ROOT)}/robots.txt, sitemap.xml, llms.txt, 404.html"
+        f"{indexnow_note} "
+        f"({len(url_blocks)} URLs: {len(LOCALES)} home + {len(LOCALES)} browse + "
+        f"{n_entity} entity)",
         file=sys.stderr,
     )
+
+
+def _write_llms_txt(entity_entries: list[tuple[str, str, str]]) -> None:
+    """Emit wiki/llms.txt — the AI-crawler index (llmstxt.org convention): a
+    markdown map of the site keyed by country, every indexable appellation a
+    real EN deep-link. No build date inside (byte-stable so the deploy SHA256
+    diff treats an unchanged corpus as a no-op)."""
+    en = load_translations("en").gettext
+    labels = build_labels(en)
+    country_labels = build_country_labels(en)
+
+    lines = [
+        "# Open Wine Map",
+        "",
+        f"> {labels['meta_description']}",
+        "",
+        "Open Wine Map is a reference map and wiki of European wine "
+        "appellations, generated mechanically from official public registry "
+        "data (INAO, EUR-Lex / eAmbrosia, national wine regulators) and open "
+        "geodata (IGN, Eurostat GISCO, Bétard 2022). Every fact traces to a "
+        "public, licence-clear source.",
+        "",
+        "## Site",
+        "",
+    ]
+    for lang in LOCALES:
+        home = "/" if lang == "en" else f"/{lang}/"
+        lines.append(f"- [Homepage ({lang})]({SITE_BASE_URL}{home})")
+    for lang in LOCALES:
+        lines.append(
+            f"- [All appellations ({lang})]({SITE_BASE_URL}/{lang}/appellations/)"
+        )
+    lines.append(f"- [Source code (GitHub)]({GITHUB_URL})")
+    lines.append(f"- [Sitemap]({SITE_BASE_URL}/sitemap.xml)")
+    lines.append("")
+
+    by_country: dict[str, list[tuple[str, str]]] = {}
+    for slug, name, country in entity_entries:
+        by_country.setdefault(country, []).append((name, slug))
+
+    def _country_name(cc: str) -> str:
+        return country_labels.get(cc, cc) or cc
+
+    for cc in sorted(by_country, key=lambda c: _country_name(c).casefold()):
+        lines.append(f"## {_country_name(cc)}")
+        lines.append("")
+        for name, slug in sorted(by_country[cc], key=lambda e: e[0].casefold()):
+            lines.append(f"- [{name}]({SITE_BASE_URL}/en/{slug})")
+        lines.append("")
+
+    (WIKI / "llms.txt").write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+
+
+def _write_404_page() -> None:
+    """Emit wiki/404.html — a self-contained, noindex branded error page. Bunny
+    serves it via Custom404FilePath (set by deploy.py). Byte-stable."""
+    browse = f"{SITE_BASE_URL}/en/appellations/"
+    html = (
+        "<!doctype html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '<meta charset="utf-8">\n'
+        "<title>Page not found — Open Wine Map</title>\n"
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        '<meta name="robots" content="noindex">\n'
+        '<meta name="theme-color" content="#7A1F2B">\n'
+        "<style>\n"
+        "  body { margin:0; min-height:100vh; display:flex; align-items:center; "
+        "justify-content:center; text-align:center; "
+        "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; "
+        "color:#222; background:#fafafa; }\n"
+        "  main { padding:32px 24px; max-width:540px; }\n"
+        "  h1 { font-size:64px; margin:0; color:#7A1F2B; }\n"
+        "  p { font-size:17px; color:#555; line-height:1.5; }\n"
+        "  a { color:#7A1F2B; font-weight:600; }\n"
+        "  @media (prefers-color-scheme: dark) { body { color:#ddd; background:#161616; } "
+        "p { color:#aaa; } a, h1 { color:#e6a3ad; } }\n"
+        "</style>\n"
+        "</head>\n"
+        "<body>\n"
+        "<main>\n"
+        "<h1>404</h1>\n"
+        "<p>Page not found. The appellation you were looking for may have moved "
+        "or never existed.</p>\n"
+        f'<p><a href="{SITE_BASE_URL}/">Open the map</a> · '
+        f'<a href="{browse}">Browse all appellations</a></p>\n'
+        "</main>\n"
+        "</body>\n"
+        "</html>\n"
+    )
+    (WIKI / "404.html").write_text(html, encoding="utf-8")
 
 
 if __name__ == "__main__":

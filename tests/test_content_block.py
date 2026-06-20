@@ -73,6 +73,7 @@ _LABELS = {
     "translation_source_label_es": "el pliego de condiciones",
     "translation_source_label_pt": "o caderno de especificações",
     "translation_attribution": "Machine-translated from {source}",
+    "entity_nav_children": "Sub-appellations",
 }
 
 _GRAPES_INFO = {
@@ -180,6 +181,55 @@ def test_summary_shown_when_no_facts() -> None:
 def test_name_with_latin() -> None:
     out = _render({"name": "Мавруд", "kind": "DOP", "country": "gr", "name_latin": "Mavrud"})
     assert '<h1>Мавруд <span class="latin">(Mavrud)</span></h1>' in out
+
+
+def test_subappellations_section_rendered_when_children_passed() -> None:
+    rec = {"name": "Muscadet Sèvre et Maine", "kind": "AOC", "country": "fr"}
+    kids = [
+        {"name": "Clisson", "path": "/en/clisson", "kind": "AOC"},
+        {"name": "Le Pallet", "path": "/en/le-pallet", "kind": "AOC"},
+    ]
+    out = render_content_block(rec, "muscadet", _ctx("en"), children=kids)
+    # FR heading is the regulator's own term, not the generic UI label.
+    assert "<h2>Dénominations géographiques complémentaires</h2>" in out
+    assert '<ul class="subappellations">' in out
+    assert '<li><a href="/en/clisson">Clisson</a> <span class="sub-kind">AOC</span></li>' in out
+    assert '<a href="/en/le-pallet">Le Pallet</a>' in out
+
+
+def test_subappellations_heading_per_country_native_term() -> None:
+    kids = [{"name": "X", "path": "/en/x", "kind": "DOP"}]
+    cases = {
+        "es": "Subzonas",
+        "it": "Sottozone",
+        "pt": "Sub-regiões",
+        "de": "Einzellagen",
+    }
+    for cc, heading in cases.items():
+        out = render_content_block({"name": "P", "kind": "DOP", "country": cc},
+                                   "p", _ctx("en"), children=kids)
+        assert f"<h2>{heading}</h2>" in out
+
+
+def test_subappellations_heading_falls_back_to_generic_label() -> None:
+    # A country with no clean regulator term (e.g. CH) uses the translated label.
+    out = render_content_block({"name": "Vaud", "kind": "AOC", "country": "ch"},
+                               "vaud", _ctx("en"),
+                               children=[{"name": "La Côte", "path": "/en/la-cote", "kind": "AOC"}])
+    assert "<h2>Sub-appellations</h2>" in out  # _LABELS['entity_nav_children']
+
+
+def test_subappellations_section_absent_without_children() -> None:
+    out = _render({"name": "Bordeaux", "kind": "AOC", "country": "fr"})
+    assert "subappellations" not in out
+
+
+def test_subappellations_escapes_name_and_path() -> None:
+    kids = [{"name": "<b>X</b>", "path": "/en/a&b", "kind": ""}]
+    out = render_content_block({"name": "P", "kind": "AOC", "country": "fr"},
+                               "p", _ctx("en"), children=kids)
+    assert "<b>X</b>" not in out and "&lt;b&gt;X&lt;/b&gt;" in out
+    assert 'href="/en/a&amp;b"' in out
 
 
 def test_dulok_and_menzioni_omitted() -> None:

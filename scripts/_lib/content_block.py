@@ -44,6 +44,21 @@ STUB_DOC_NAMES = {
 
 FACTS_SUB_ORDER = ("facteurs_naturels", "facteurs_humains", "produit", "interactions")
 
+# Per-country regulator term for a sub-denomination, in the regulator's own
+# language and pluralised (the section lists several) — the heading for the
+# sub-appellations block. Shown verbatim like region/bassin facet labels, NOT
+# gettext-translated, so the page carries the exact term the source document
+# (and an informed searcher) uses. Countries without a single clean term
+# (CH régionale/locale tiers, LU per-commune) fall back to the generic
+# translated `entity_nav_children` label.
+SUBDENOM_HEADINGS = {
+    "fr": "Dénominations géographiques complémentaires",
+    "es": "Subzonas",
+    "it": "Sottozone",
+    "pt": "Sub-regiões",
+    "de": "Einzellagen",
+}
+
 
 @dataclass(frozen=True)
 class RenderCtx:
@@ -494,18 +509,51 @@ def _section(heading: str, pills: str) -> str:
     return f'<h2>{heading}</h2><div class="pills">{pills}</div>' if pills else ""
 
 
+def render_subappellations(children, ctx: RenderCtx, country: str | None = None) -> str:
+    """Crawlable list of an appellation's sub-denominations (DGCs / subzonas /
+    Einzellagen / sottozone / …).
+
+    Sub-denominations are folded (``noindex``) as parent-inherited near-
+    duplicates, so they have no indexable page of their own. This section is how
+    their names enter the indexable surface — each child rendered as real text +
+    a link on the *parent's* own page (which earns ranking for the child name),
+    paired with the parent's JSON-LD ``containsPlace``. ``children`` items are
+    ``{name, path, kind}`` dicts, pre-resolved by the caller (URL logic lives in
+    ``map_template``, not here). The heading is the regulator's own term for the
+    parent's ``country`` (:data:`SUBDENOM_HEADINGS`), falling back to the generic
+    translated ``entity_nav_children`` label."""
+    children = children or []
+    if not children:
+        return ""
+    heading = SUBDENOM_HEADINGS.get(country or "") or ctx.labels["entity_nav_children"]
+    items = []
+    for c in children:
+        name = esc(c.get("name") or "")
+        path = c.get("path") or ""
+        link = f'<a href="{esc(path)}">{name}</a>' if path else name
+        kind = c.get("kind") or ""
+        kind_html = f' <span class="sub-kind">{esc(kind)}</span>' if kind else ""
+        items.append(f"<li>{link}{kind_html}</li>")
+    return (
+        f'<h2>{esc(heading)}</h2>'
+        f'<ul class="subappellations">{"".join(items)}</ul>'
+    )
+
+
 def _normalised_text(html: str) -> str:
     """Visible text only, whitespace-collapsed — the basis for data-ssr-sig."""
     text = re.sub(r"<[^>]+>", " ", html)
     return re.sub(r"\s+", " ", text).strip()
 
 
-def render_content_block(rec: dict, slug: str, ctx: RenderCtx) -> str:
+def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) -> str:
     """Server-rendered crawlable summary of one appellation record.
 
     Mirrors the JS ``renderAocCard`` minus the volatile HU/IT chip sections.
     Returns a self-contained ``<article id="ssr-content" …>``; the client panel
-    replaces it on hydration."""
+    replaces it on hydration. ``children`` (pre-resolved ``{name, path, kind}``
+    dicts) renders a sub-appellations section so the parent page carries its
+    folded sub-denominations' names — see :func:`render_subappellations`."""
     lab = ctx.labels
     country = rec.get("country") or "fr"
 
@@ -584,6 +632,7 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx) -> str:
         f"{_section(lab['panel_observation_h'], observation)}"
         f"{facts_block or summary}"
         f"{note_block}"
+        f"{render_subappellations(children, ctx, country)}"
         f"{render_sources(rec.get('sources'), ctx)}"
     )
     sig = hashlib.sha256(_normalised_text(inner).encode("utf-8")).hexdigest()[:16]

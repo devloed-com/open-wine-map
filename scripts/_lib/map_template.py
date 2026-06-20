@@ -39,21 +39,26 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "subtitle": _("carte des appellations viticoles"),
         "meta_description": _(
             "Carte interactive des appellations viticoles européennes "
-            "(AOC, AOP, IGP, DOP) — communes, cépages, styles et liens au "
-            "terroir, à partir des données publiques des registres "
-            "officiels (INAO, EUR-Lex, eAmbrosia) et de l'IGN."
+            "(AOC, AOP, IGP, DOP) : cépages, styles et terroir, d'après "
+            "les registres officiels (INAO, EUR-Lex)."
         ),
         "loading": _("Chargement…"),
         "search_h": _("Recherche"),
         "search_placeholder": _("nom d'appellation…"),
         "search_appellation_placeholder": _("Recherche d'appellation…"),
         "search_grape_placeholder": _("Recherche de cépage…"),
+        # Search-UX experiment (lab variants only — see _render_sidebar).
+        "omnisearch_placeholder": _("Rechercher une appellation, un cépage, une région…"),
+        "main_grape_only_label": _("Cépage principal uniquement"),
+        "omni_no_results": _("Aucun résultat pour « {q} »"),
+        "options_h": _("Options"),
         "active_filters_aria": _("Filtres actifs"),
         "select_all_aria": _("Tout sélectionner"),
         "open_appellation_aria": _("Ouvrir la fiche de {name}"),
         "open_appellation_title": _("Ouvrir la fiche"),
         "show_spirits_label": _("Inclure les spiritueux"),
         "facet_styles_h": _("Style de vin"),
+        "facet_classification_h": _("Classement"),
         "facet_principal_h": _("Cépages principaux"),
         "facet_accessory_h": _("Cépages accessoires"),
         "facet_grapes_h": _("Cépages"),
@@ -75,6 +80,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "style_simple_rose": _("rosé"),
         "style_simple_sparkling": _("mousseux"),
         "style_simple_sweet": _("moelleux / liquoreux"),
+        "style_simple_oxidative": _("oxydatif"),
         "style_simple_other": _("autre"),
         "reset": _("Réinitialiser"),
         "count_total": _("{n} appellations"),
@@ -144,6 +150,8 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_regional_register": _("Registre régional des cépages (PDF)"),
         "src_eambrosia": _("Registre eAmbrosia (UE)"),
         "src_eambrosia_id": _("Numéro de dossier"),
+        "src_cantonal_reglement": _("Règlement cantonal sur la vigne et le vin"),
+        "src_ofag_repertoire": _("Répertoire suisse des AOC (OFAG/BLW)"),
         "legend_h": _("Légende couleurs"),
         "legend_bassin_h": _("Bassin viticole"),
         "legend_area_hint": _("Plus l'aire est petite, plus la teinte est dense."),
@@ -222,6 +230,24 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "données. La couverture sera étendue au-delà de l'UE et de "
             "la Suisse, ainsi qu'aux classifications hors AOP."
         ),
+        "browse_all_label": _("Toutes les appellations"),
+        "browse_title": _("Toutes les appellations viticoles — Open Wine Map"),
+        "browse_meta_description": _(
+            "Liste des {n} appellations viticoles européennes cartographiées "
+            "sur Open Wine Map, classées par pays — AOC, AOP, IGP, DOP."
+        ),
+        "browse_intro_html": _(
+            "Les {n} appellations ci-dessous sont classées par pays. "
+            "Retour à la {map_link}."
+        ),
+        "browse_map_link_label": _("carte interactive"),
+        "browse_aria": _("Liste des appellations par pays"),
+        "entity_nav_parent": _("Appellation parente"),
+        "entity_nav_children": _("Dénominations rattachées"),
+        "about_browse_html": _(
+            "Parcourir la liste complète des appellations : {browse_link}."
+        ),
+        "about_updated_html": _("Données mises à jour le {date}."),
     }
 
 
@@ -419,7 +445,9 @@ def _build_sidebar_disclaimer(labels: dict[str, str]) -> str:
     )
 
 
-def _build_about_dialog(labels: dict[str, str]) -> str:
+def _build_about_dialog(
+    labels: dict[str, str], *, browse_path: str = "", data_updated_html: str = ""
+) -> str:
     devloed = _ext_link(_DEVLOED_URL, "devloed.com")
     github = _ext_link(_GITHUB_URL, "GitHub")
     inao = _ext_link(_INAO_URL, "INAO")
@@ -436,7 +464,12 @@ def _build_about_dialog(labels: dict[str, str]) -> str:
         labels["about_roadmap_html"],
         labels["about_contrib_html"].format(github=github),
     ]
+    if browse_path:
+        browse_link = f'<a href="{browse_path}">{esc(labels["browse_all_label"])}</a>'
+        paragraphs.append(labels["about_browse_html"].format(browse_link=browse_link))
     body = "\n      ".join(f"<p>{p}</p>" for p in paragraphs)
+    if data_updated_html:
+        body += f'\n      <p class="data-updated">{data_updated_html}</p>'
     return (
         f'<dialog id="about-dialog" aria-labelledby="about-dialog-h">\n'
         f'  <button class="close" type="button" aria-label="{labels["close_aria"]}">×</button>\n'
@@ -610,7 +643,10 @@ def _build_source_block(
         # add it once (to the villages source — visibility unaffected by
         # which appellation layer is active because bassin is a fill of
         # `region` polygons, not appellation outlines).
-        + _layer_block("-villages", "appellations-villages", layer_meta, with_bassin=True)
+        # Bassin underlay temporarily disabled: the regional colour fill made
+        # it hard to tell which appellations are actually visible. Flip back to
+        # with_bassin=True to restore it.
+        + _layer_block("-villages", "appellations-villages", layer_meta, with_bassin=False)
         + _layer_block("", "appellations", layer_meta, with_bassin=False)
     )
 
@@ -784,6 +820,36 @@ def _entity_hreflang_block(slug: str) -> str:
     return "\n".join(rows)
 
 
+def _browse_path(locale: str) -> str:
+    """Per-locale browse-index URL path. EN lives at /en/appellations/ (the CDN
+    serves the EN shell for /en/*; bare /appellations/ would 404), fr/es/nl at
+    /<locale>/appellations/."""
+    return f"/{locale}/appellations/"
+
+
+def _browse_hreflang_block() -> str:
+    rows = [
+        f'<link rel="alternate" hreflang="{lg}" href="{_SITE_BASE_URL}/{lg}/appellations/">'
+        for lg in ("en", "fr", "es", "nl")
+    ]
+    rows.append(
+        f'<link rel="alternate" hreflang="x-default" '
+        f'href="{_SITE_BASE_URL}/en/appellations/">'
+    )
+    return "\n".join(rows)
+
+
+def _browse_lang_switcher(active: str, aria_label: str) -> str:
+    parts = []
+    for code, label in _LOCALES_DISPLAY:
+        path = f"/{code}/appellations/"
+        is_active = code == active
+        cls = " active" if is_active else ""
+        current_attr = ' aria-current="page"' if is_active else ""
+        parts.append(f'<a href="{path}" class="lang{cls}"{current_attr}>{label}</a>')
+    return f'<nav class="browse-lang" aria-label="{esc(aria_label)}">' + "".join(parts) + "</nav>"
+
+
 def _clamp(text: str, n: int = 160) -> str:
     text = " ".join((text or "").split())
     if len(text) <= n:
@@ -892,7 +958,7 @@ def _entity_breadcrumb(slug, rec, canonical_url, locale, breadcrumb_id) -> dict:
 
 
 def _build_entity_jsonld(
-    slug, rec, canonical_url, locale, country_labels, region, desc=""
+    slug, rec, canonical_url, locale, country_labels, region, desc="", children=None
 ) -> str:
     """schema.org @graph (WebSite → WebPage → Place → BreadcrumbList) for one
     appellation, pre-serialised to an opaque string (its braces are JSON data,
@@ -948,6 +1014,15 @@ def _build_entity_jsonld(
         place["geo"] = {"@type": "GeoShape", "box": f"{bbox[1]} {bbox[0]} {bbox[3]} {bbox[2]}"}
     if contained:
         place["containedInPlace"] = contained if len(contained) > 1 else contained[0]
+    # Parent → folded sub-denominations: the entity-graph half of surfacing the
+    # children. They have no indexable page, so the parent declares them here as
+    # the places it contains (inverse of containedInPlace).
+    if children:
+        place["containsPlace"] = [
+            {"@type": "AdministrativeArea", "name": c["name"],
+             "url": f"{_SITE_BASE_URL}{c['path']}"}
+            for c in children
+        ]
     same_as = _entity_same_as(rec)
     if same_as:
         place["sameAs"] = same_as
@@ -963,7 +1038,8 @@ def _build_entity_jsonld(
 
 
 def _build_entity_meta(
-    slug, rec, locale, labels, region_labels, country_labels, grapes_info, folded=False
+    slug, rec, locale, labels, region_labels, country_labels, grapes_info,
+    folded=False, children=None,
 ) -> dict:
     """Per-appellation <head> values.
 
@@ -999,7 +1075,7 @@ def _build_entity_meta(
     else:
         canonical_url = self_url
         jsonld_html = _build_entity_jsonld(
-            slug, rec, self_url, locale, country_labels, region, desc=desc
+            slug, rec, self_url, locale, country_labels, region, desc=desc, children=children
         )
         robots_meta = ""
     return {
@@ -1014,6 +1090,183 @@ def _build_entity_meta(
     }
 
 
+def _entity_nav_html(slug, rec, *, locale, labels, aocs, children_map) -> str:
+    """Server-rendered cross-link nav for a per-appellation page (browse +
+    parent + children). Shown only to no-JS visitors and crawlers — hidden
+    under `html.js` alongside the SSR card — so it feeds internal links into
+    the link graph without touching the live map UI."""
+    parts = [f'<a href="{_browse_path(locale)}">{esc(labels["browse_all_label"])}</a>']
+    parent_slug = rec.get("parent_slug")
+    if parent_slug and parent_slug in aocs:
+        pname = aocs[parent_slug].get("name") or parent_slug
+        parts.append(
+            f'<span class="entity-nav-parent">{esc(labels["entity_nav_parent"])}: '
+            f'<a href="{_entity_path(locale, parent_slug)}">{esc(pname)}</a></span>'
+        )
+    kids = [k for k in (children_map or {}).get(slug, []) if k in aocs]
+    if kids:
+        links = " · ".join(
+            f'<a href="{_entity_path(locale, k)}">{esc(aocs[k].get("name") or k)}</a>'
+            for k in kids
+        )
+        parts.append(
+            f'<span class="entity-nav-children">'
+            f'{esc(labels["entity_nav_children"])}: {links}</span>'
+        )
+    return (
+        f'<nav class="entity-nav" aria-label="{esc(labels["browse_all_label"])}">'
+        + "".join(parts)
+        + "</nav>"
+    )
+
+
+# Self-contained CSS for the browse-index page (its own lightweight document,
+# not the map shell). Real braces — injected as a {browse_css} value, never
+# passed through str.format, so no brace doubling.
+_BROWSE_CSS = """
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#222; background:#fafafa; line-height:1.5; }
+a { color:#7A1F2B; }
+.browse-header { background:#7A1F2B; color:#fff; padding:14px 20px; overflow:hidden; }
+.browse-header a { color:#fff; text-decoration:none; }
+.browse-brand { font-size:18px; font-weight:600; display:inline-flex; align-items:center; gap:8px; }
+.browse-brand .brand-mark { filter:brightness(0) invert(1); }
+.browse-lang { float:right; }
+.browse-lang a { margin-left:10px; opacity:0.75; text-decoration:none; }
+.browse-lang a.active { opacity:1; font-weight:700; text-decoration:underline; }
+.browse-main { max-width:1100px; margin:0 auto; padding:24px 20px 64px; }
+.browse-main h1 { font-size:26px; margin:0 0 8px; }
+.browse-intro { color:#555; margin:0 0 8px; }
+.browse-intro a { color:#7A1F2B; }
+.browse-country { margin-top:28px; }
+.browse-country h2 { font-size:18px; margin:0 0 10px; border-bottom:2px solid #eadfe0; padding-bottom:4px; }
+.browse-list { list-style:none; padding:0; margin:0; column-width:250px; column-gap:28px; }
+.browse-list li { break-inside:avoid; padding:2px 0; }
+.browse-list li small { color:#999; }
+@media (prefers-color-scheme: dark) {
+  body { color:#ddd; background:#161616; }
+  a, .browse-intro a, .browse-country h2 { color:#e6a3ad; }
+  .browse-country h2 { border-bottom-color:#333; }
+  .browse-list li small { color:#777; }
+}
+"""
+
+
+_BROWSE_TEMPLATE = """<!doctype html>
+<html lang="{lang_attr}">
+<head>
+<meta charset="utf-8">
+<title>{page_title}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="{meta_description}">
+<meta name="theme-color" content="#7A1F2B">
+<link rel="canonical" href="{canonical_url}">
+{hreflang_block}
+<meta property="og:type" content="website">
+<meta property="og:title" content="{og_title}">
+<meta property="og:description" content="{meta_description}">
+<meta property="og:url" content="{canonical_url}">
+{jsonld_html}
+<style>{browse_css}</style>
+</head>
+<body>
+<header class="browse-header">
+{lang_switcher_html}
+<a class="browse-brand" href="{home_path}"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18"> Open Wine Map</a>
+</header>
+<main class="browse-main">
+<h1>{h1}</h1>
+<p class="browse-intro">{intro_html}</p>
+{body_html}
+</main>
+</body>
+</html>
+"""
+
+
+def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) -> str:
+    """One self-contained browse-index page per locale (`/<locale>/appellations/`)
+    listing every index-classified appellation as a real `<a>` link, grouped by
+    country. Fixes the link-graph orphan problem: the map homepage is a JS shell
+    with no crawlable links to entity pages, so this page is the static hub."""
+    n = len(index_slugs)
+    home_path = "/" if locale == "en" else f"/{locale}/"
+    canonical_url = f"{_SITE_BASE_URL}{_browse_path(locale)}"
+
+    by_country: dict[str, list[tuple[str, str, str]]] = {}
+    for slug in index_slugs:
+        rec = aocs.get(slug)
+        if not rec:
+            continue
+        cc = rec.get("country") or ""
+        by_country.setdefault(cc, []).append(
+            (rec.get("name") or slug, slug, rec.get("kind") or "")
+        )
+
+    def _country_name(cc: str) -> str:
+        return country_labels.get(cc, cc) or cc
+
+    sections = []
+    for cc in sorted(by_country, key=lambda c: _country_name(c).casefold()):
+        entries = sorted(by_country[cc], key=lambda e: e[0].casefold())
+        flag = _COUNTRY_FLAG_EMOJI.get(cc, "")
+        heading = f"{flag} {esc(_country_name(cc))} ({len(entries)})".strip()
+        items = "\n".join(
+            f'<li><a href="{_entity_path(locale, slug)}">{esc(name)}</a>'
+            + (f" <small>{esc(kind)}</small>" if kind else "")
+            + "</li>"
+            for name, slug, kind in entries
+        )
+        sections.append(
+            '<section class="browse-country">\n'
+            f"<h2>{heading}</h2>\n"
+            f'<ul class="browse-list">\n{items}\n</ul>\n'
+            "</section>"
+        )
+    body_html = "\n".join(sections)
+
+    map_link = f'<a href="{home_path}">{esc(labels["browse_map_link_label"])}</a>'
+    intro_html = labels["browse_intro_html"].format(n=n, map_link=map_link)
+    meta_description = esc(labels["browse_meta_description"].format(n=n))
+
+    jsonld_html = (
+        '<script type="application/ld+json">'
+        + json.dumps(
+            {
+                "@context": "https://schema.org",
+                "@type": "CollectionPage",
+                "name": labels["browse_all_label"],
+                "url": canonical_url,
+                "inLanguage": locale,
+                "isPartOf": {
+                    "@type": "WebSite",
+                    "name": "Open Wine Map",
+                    "url": f"{_SITE_BASE_URL}{home_path}",
+                },
+            },
+            ensure_ascii=False,
+        )
+        + "</script>"
+    )
+
+    return _BROWSE_TEMPLATE.format(
+        lang_attr=locale,
+        page_title=esc(labels["browse_title"]),
+        meta_description=meta_description,
+        canonical_url=canonical_url,
+        hreflang_block=_browse_hreflang_block(),
+        og_title=esc(labels["browse_title"]),
+        jsonld_html=jsonld_html,
+        browse_css=_BROWSE_CSS,
+        lang_switcher_html=_browse_lang_switcher(locale, labels["browse_aria"]),
+        home_path=home_path,
+        h1=esc(labels["browse_all_label"]),
+        intro_html=intro_html,
+        body_html=body_html,
+    )
+
+
 # Per-slug record fields the map needs at STARTUP — the sidebar appellation
 # list, search, facet filtering, fly-to, the active-filter chips, and the
 # map-click stack dedup. Everything else on a record is panel-open-only and
@@ -1026,7 +1279,7 @@ def _build_entity_meta(
 # maps.py imports this to emit the complement as the per-slug panel JSON.
 STARTUP_AOCS_FIELDS = frozenset({
     "name", "name_latin", "kind", "region", "country", "is_wine",
-    "styles", "styles_simple",
+    "styles", "styles_simple", "classifications",
     "grapes_principal", "grapes_accessory", "grapes_all",
     "bbox", "bbox_villages", "geom_source",
 })
@@ -1041,6 +1294,8 @@ def render(
     facet_styles_tree: list[dict],
     style_descendants: dict[str, list[str]],
     facet_styles_simple: list[tuple[str, int]],
+    facet_class_tree: list[dict],
+    class_descendants: dict[str, list[str]],
     facet_regions: list[tuple[str, int]],
     locale: str = "fr",
     grapes_info: dict | None = None,
@@ -1050,6 +1305,8 @@ def render(
     index_slugs: list[str] | None = None,
     fold_slugs: list[str] | None = None,
     entity_out_dir=None,
+    children_map: dict[str, list[str]] | None = None,
+    build_date: str = "",
 ) -> tuple[str, str, bytes, dict[str, str]]:
     """Render the full map page (index.html) for one locale.
 
@@ -1090,10 +1347,20 @@ def render(
         "red": labels["style_simple_red"],
         "sparkling": labels["style_simple_sparkling"],
         "sweet": labels["style_simple_sweet"],
+        "oxidative": labels["style_simple_oxidative"],
         "other": labels["style_simple_other"],
     }
-    from .style_taxonomy import bucket_descendants
+    from .style_taxonomy import bucket_descendants, style_search_terms
     simple_style_buckets = bucket_descendants()
+    # {canonical style slug -> [searchable synonym terms]} — the wine-style
+    # analogue of grape_synonyms; lets the omnisearch find a style by a local
+    # name (fondillón → rancio, eiswein → icewine, vinsanto → vin-santo).
+    style_search_index = style_search_terms()
+    # Classification facet (aging / Prädikat / selection tiers): group labels are
+    # gettext-translated; tier labels stay native (Crianza/Spätlese/Aszú).
+    from . import aging_taxonomy
+    class_labels = aging_taxonomy.build_tier_labels(_)
+    class_search_index = aging_taxonomy.tier_search_terms()
 
     vivc_groups: dict[int, list[str]] = {}
     for slug, info in (grapes_info or {}).items():
@@ -1190,6 +1457,9 @@ def render(
 
     canonical_path = "/" if locale == "en" else f"/{locale}/"
     canonical_url = f"{_SITE_BASE_URL}{canonical_path}"
+    home_robots_meta = ""
+    home_hreflang_block = _HOMEPAGE_HREFLANG
+    home_page_title = labels["page_title"]
     og_locale = _OG_LOCALES[locale]
     og_alt_locales_html = "\n".join(
         f'<meta property="og:locale:alternate" content="{_OG_LOCALES[other]}">'
@@ -1255,6 +1525,10 @@ def render(
         styles_tree_json=json.dumps(facet_styles_tree, ensure_ascii=False),
         style_descendants_json=json.dumps(style_descendants, ensure_ascii=False),
         styles_simple_json=json.dumps(facet_styles_simple, ensure_ascii=False),
+        class_tree_json=json.dumps(facet_class_tree, ensure_ascii=False),
+        class_descendants_json=json.dumps(class_descendants, ensure_ascii=False),
+        class_labels_json=json.dumps(class_labels, ensure_ascii=False),
+        class_search_terms_json=json.dumps(class_search_index, ensure_ascii=False, sort_keys=True),
         principal_json=json.dumps(facet_principal_merged, ensure_ascii=False),
         accessory_json=json.dumps(facet_accessory_merged, ensure_ascii=False),
         grapes_all_json=json.dumps(facet_grapes_all_merged, ensure_ascii=False),
@@ -1267,6 +1541,7 @@ def render(
         vivc_siblings_json=json.dumps(vivc_siblings, ensure_ascii=False, sort_keys=True),
         slug_to_canonical_json=json.dumps(slug_to_canonical, ensure_ascii=False, sort_keys=True),
         grape_synonyms_json=json.dumps(grape_synonyms, ensure_ascii=False, sort_keys=True),
+        style_search_terms_json=json.dumps(style_search_index, ensure_ascii=False, sort_keys=True),
         styles_info_json=json.dumps(styles_info or {}, ensure_ascii=False),
         region_labels_json=json.dumps(region_labels, ensure_ascii=False),
         country_labels_json=json.dumps(country_labels, ensure_ascii=False),
@@ -1283,32 +1558,49 @@ def render(
     app_filename = f"app.{locale}.{hashlib.sha256(app_bytes).hexdigest()[:10]}.js"
     app_src = f"/assets/{app_filename}"
 
+    browse_path = _browse_path(locale)
+    # `about_dialog_html` is per-fill (NOT in page_shell): the homepage variant
+    # carries the data-updated date, the entity variant doesn't — keeping the
+    # build date out of the ~11.6k entity pages so a rebuild only churns the 5
+    # homepages, not the whole corpus.
     page_shell = dict(
         lang_attr=locale,
         labels=labels,
         og_locale=og_locale,
         og_alt_locales_html=og_alt_locales_html,
         lang_switcher_html=_lang_switcher(locale, labels["lang_switcher_aria"]),
-        about_dialog_html=_build_about_dialog(labels),
         sidebar_disclaimer_html=_build_sidebar_disclaimer(labels),
+        browse_path=browse_path,
         aocs_data_src=aocs_data_src,
         style_href=style_href,
         app_src=app_src,
     )
 
-    def _fill(**per_page) -> str:
-        return _PAGE_TEMPLATE.format(**page_shell, **per_page)
+    _sidebar_html = _render_sidebar()
 
+    def _fill(**per_page) -> str:
+        return _PAGE_TEMPLATE.replace("%%SIDEBAR%%", _sidebar_html).format(
+            **page_shell, **per_page
+        )
+
+    home_about_html = _build_about_dialog(
+        labels,
+        browse_path=browse_path,
+        data_updated_html=(
+            labels["about_updated_html"].format(date=esc(build_date)) if build_date else ""
+        ),
+    )
     html = _fill(
         canonical_url=canonical_url,
         jsonld_html=jsonld_html,
-        page_title=labels["page_title"],
+        page_title=home_page_title,
         meta_description=labels["meta_description"],
-        og_title=labels["page_title"],
+        og_title=home_page_title,
         og_description=labels["meta_description"],
-        hreflang_block=_HOMEPAGE_HREFLANG,
-        robots_meta="",
+        hreflang_block=home_hreflang_block,
+        robots_meta=home_robots_meta,
         ssr_content="",
+        about_dialog_html=home_about_html,
         # Homepage has no appellation SSR card, so the brand wordmark is the
         # page's single <h1>.
         brand_tag="h1",
@@ -1317,7 +1609,8 @@ def render(
     # Per-appellation pages are streamed straight to disk (one per slug) rather
     # than accumulated in a dict — at full-corpus scale the in-memory set would
     # be gigabytes. index slugs get a full, indexable card; fold slugs get a
-    # noindex shell (self-canonical) that still boots the map.
+    # noindex shell (self-canonical) that still boots the map. Both carry a
+    # crawlable cross-link nav (browse + parent + children).
     n_index = n_fold = 0
     if entity_out_dir is not None and (index_slugs or fold_slugs):
         ctx = RenderCtx(
@@ -1326,8 +1619,9 @@ def render(
             grapes_info=grapes_info or {}, styles_info=styles_info or {},
             style_labels=style_labels, github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
         )
+        entity_about_html = _build_about_dialog(labels, browse_path=browse_path)
 
-        def _emit(slug: str, meta: dict, ssr: str) -> None:
+        def _emit(slug: str, meta: dict, ssr: str, has_card: bool) -> None:
             page = _fill(
                 canonical_url=meta["canonical_url"],
                 jsonld_html=meta["jsonld_html"],
@@ -1338,10 +1632,13 @@ def render(
                 hreflang_block=meta["hreflang_block"],
                 robots_meta=meta["robots_meta"],
                 ssr_content=ssr,
+                about_dialog_html=entity_about_html,
                 # Index pages carry the appellation <h1> in their SSR card, so
-                # the brand wordmark demotes to a <p>; fold pages (empty SSR)
-                # keep the brand as their single <h1>.
-                brand_tag="p" if ssr else "h1",
+                # the brand wordmark demotes to a <p>; fold pages have no card
+                # (only the cross-link nav) so the brand stays their single
+                # <h1>. The nav makes `ssr` non-empty for folds too, so the
+                # card presence is tracked explicitly rather than via truthiness.
+                brand_tag="p" if has_card else "h1",
             )
             d = entity_out_dir / slug
             d.mkdir(parents=True, exist_ok=True)
@@ -1351,11 +1648,21 @@ def render(
             rec = aocs.get(slug)
             if not rec:
                 continue
+            kids = [
+                {"name": aocs[k].get("name") or k, "path": _entity_path(locale, k),
+                 "kind": aocs[k].get("kind") or ""}
+                for k in (children_map or {}).get(slug, [])
+                if k in aocs
+            ]
             meta = _build_entity_meta(
                 slug, rec, locale, labels, region_labels, country_labels,
-                grapes_info or {}, folded=False,
+                grapes_info or {}, folded=False, children=kids,
             )
-            _emit(slug, meta, render_content_block(rec, slug, ctx))
+            nav = _entity_nav_html(
+                slug, rec, locale=locale, labels=labels, aocs=aocs,
+                children_map=children_map,
+            )
+            _emit(slug, meta, render_content_block(rec, slug, ctx, children=kids) + "\n" + nav, True)
             n_index += 1
 
         for slug in fold_slugs or []:
@@ -1366,8 +1673,21 @@ def render(
                 slug, rec, locale, labels, region_labels, country_labels,
                 grapes_info or {}, folded=True,
             )
-            _emit(slug, meta, "")
+            nav = _entity_nav_html(
+                slug, rec, locale=locale, labels=labels, aocs=aocs,
+                children_map=children_map,
+            )
+            _emit(slug, meta, nav, False)
             n_fold += 1
+
+        if index_slugs:
+            browse_html = _render_browse_page(
+                locale=locale, labels=labels, country_labels=country_labels,
+                aocs=aocs, index_slugs=index_slugs,
+            )
+            bd = entity_out_dir / "appellations"
+            bd.mkdir(parents=True, exist_ok=True)
+            (bd / "index.html").write_text(browse_html, encoding="utf-8")
 
     assets = {
         "data": (data_filename, data_bytes),
@@ -1473,7 +1793,12 @@ _TEMPLATE = """<!doctype html>
   /* Hide the server-rendered card once JS is available (class set pre-paint):
      the app swaps it for the live panel, so JS users skip the boot-time flash;
      non-JS visitors and non-rendering crawlers still receive it in the HTML. */
-  html.js #ssr-content {{ display:none }}
+  html.js #ssr-content, html.js .entity-nav {{ display:none }}
+  /* No-JS / crawler cross-link nav (browse + parent + children). Hidden once
+     the map boots; it exists to feed internal links into the link graph. */
+  .entity-nav {{ padding:12px 16px; font-size:13px; line-height:1.7; border-top:1px solid #eee; background:#fafafa; color:#333 }}
+  .entity-nav a {{ color:#7A1F2B }}
+  .entity-nav .entity-nav-parent, .entity-nav .entity-nav-children {{ display:block; margin-top:4px; color:#555 }}
   #app {{ display:flex; height:100vh }}
   #sidebar {{ width:300px; flex:0 0 300px; background:#1a1a1a; color:#eee; overflow-y:auto; border-right:1px solid #333 }}
   #sidebar .brand-title {{ font-size:15px; padding:14px 16px 4px; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px }}
@@ -1485,9 +1810,30 @@ _TEMPLATE = """<!doctype html>
      applies the 16/16 horizontal margin. Without the exclusion the
      catch-all rule stacks margin on top of the wrap's, leaving the
      grape input 32px narrower than the appellation search. */
-  #sidebar input[type=text]:not(.grape-search) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; border-radius:3px; font-size:13px }}
+  #sidebar input[type=text]:not(.grape-search):not(.omni-input) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; border-radius:3px; font-size:13px }}
   #sidebar input[type=text]:focus {{ outline:none; border-color:#934050 }}
   #sidebar input[type=text]:focus-visible {{ outline:2px solid #fff8e8; outline-offset:1px; border-color:#934050 }}
+  /* Search-UX lab variants (a/b/c): unified omnisearch box + grouped dropdown
+     + the "main grape only" sub-option. Inert on canonical pages (no markup). */
+  .visually-hidden {{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }}
+  #omnisearch {{ position:relative; padding:8px 16px; border-bottom:1px solid #333 }}
+  .omni-input {{ width:100%; box-sizing:border-box; padding:8px 10px; background:#222; color:#eee; border:1px solid #444; border-radius:4px; font-size:13.5px }}
+  .omni-suggestions {{ position:absolute; left:16px; right:16px; top:calc(100% - 2px); z-index:60; max-height:min(60vh, 360px); overflow-y:auto; background:#1a1a1a; border:1px solid #3a3a3a; border-radius:3px; box-shadow:0 6px 16px rgba(0,0,0,0.45) }}
+  .omni-suggestions[hidden] {{ display:none }}
+  .omni-group-header {{ position:sticky; top:0; padding:4px 8px; background:#202020; color:#a0a0a0; font-size:9.5px; text-transform:uppercase; letter-spacing:0.09em }}
+  .omni-suggestions .suggestion {{ display:flex; align-items:center; gap:6px; padding:6px 8px; cursor:pointer; font-size:12.5px; color:#ddd; border-bottom:1px solid #2a2a2a }}
+  .omni-suggestions .suggestion:last-child {{ border-bottom:none }}
+  .omni-suggestions .suggestion.active, .omni-suggestions .suggestion:hover {{ background:#2a1f25 }}
+  .omni-suggestions .suggestion .name {{ flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
+  .omni-suggestions .suggestion .sub {{ color:#999; font-style:italic; font-size:11px; flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
+  .omni-suggestions .suggestion .count {{ margin-left:auto; color:#9a9a9a; font-size:11px; font-variant-numeric:tabular-nums; flex:0 0 auto }}
+  /* No-match feedback row (variant fix: the dropdown used to silently hide). */
+  .omni-empty {{ padding:10px 12px; color:#9a9a9a; font-size:12.5px; font-style:italic }}
+  .omni-subopt {{ padding:2px 16px 8px; border-bottom:1px solid #333 }}
+  .omni-subopt label {{ display:flex; align-items:center; gap:6px; font-size:12px; color:#bbb; cursor:pointer }}
+  /* "Main grape only" relocated inside the Grapes facet (variant c). */
+  .grape-subopt {{ padding:6px 16px 4px; border-bottom:none }}
+  .omni-subopt input {{ accent-color:#934050; flex:0 0 auto }}
   #lang-switcher {{ display:flex; gap:2px; padding:6px 12px 8px; border-bottom:1px solid #333 }}
   #lang-switcher a {{ color:#888; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; text-decoration:none; padding:3px 8px; border-radius:3px }}
   #lang-switcher a:hover {{ color:#fff }}
@@ -1708,6 +2054,8 @@ _TEMPLATE = """<!doctype html>
     .facet input[type=checkbox] {{ width:18px; height:18px }}
     .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
     #actions button {{ min-height:36px }}
+    /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */
+    .omni-input {{ font-size:16px }}
   }}
   #sidebar-footer {{ padding:12px 16px 16px; margin-top:8px; border-top:1px solid #2a2a2a; font-size:11px; color:#888; text-align:center }}
   #sidebar-footer a {{ color:#888; text-decoration:none }}
@@ -1845,88 +2193,7 @@ _TEMPLATE = """<!doctype html>
 <body>
 <a class="skip-link" href="#map">{labels[skip_to_map]}</a>
 <div id="app">{ssr_content}
-  <aside id="sidebar" data-nosnippet aria-label="{labels[sidebar_aria]}">
-    <{brand_tag} class="brand-title"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</{brand_tag}>
-    <div class="subtitle">{labels[subtitle]}</div>
-    {lang_switcher_html}
-    <div id="theme-toggle" role="group" aria-label="{labels[theme_h]}">
-      <button type="button" data-theme-mode="light" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_light]}" title="{labels[theme_light]}">☀</button>
-      <button type="button" data-theme-mode="system" class="theme-btn active" aria-pressed="true" aria-label="{labels[theme_system]}" title="{labels[theme_system]}">◐</button>
-      <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_dark]}" title="{labels[theme_dark]}">☾</button>
-    </div>
-    <div id="status" role="status" aria-live="polite" aria-atomic="true">{labels[loading]}</div>
-
-    <div id="mode-toggle" role="group" aria-label="{labels[view_mode_h]}">
-      <button type="button" data-mode="simple" class="mode-btn active" aria-pressed="true">{labels[view_mode_simple]}</button>
-      <button type="button" data-mode="advanced" class="mode-btn" aria-pressed="false">{labels[view_mode_advanced]}</button>
-    </div>
-
-    <div id="active-filters" aria-label="{labels[active_filters_aria]}">
-      <div id="active-filters-chips"></div>
-      <button id="reset" type="button">{labels[reset]}</button>
-    </div>
-
-    <details open data-modes="simple" data-facet="styles">
-      <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
-      <div class="facet" id="facet-styles-simple"></div>
-    </details>
-
-    <details open data-modes="advanced" data-facet="styles">
-      <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
-      <div class="facet" id="facet-styles"></div>
-    </details>
-
-    <details open data-modes="simple" data-facet="grapes">
-      <summary><span class="facet-label">{labels[facet_grapes_h]}</span><span class="facet-badge"></span></summary>
-      <div class="grape-chip-filter" data-role="all"></div>
-    </details>
-
-    <details data-modes="advanced" data-facet="grapes">
-      <summary><span class="facet-label">{labels[facet_principal_h]}</span><span class="facet-badge"></span></summary>
-      <div class="grape-chip-filter" data-role="principal"></div>
-    </details>
-
-    <details data-modes="advanced" data-facet="accessory">
-      <summary><span class="facet-label">{labels[facet_accessory_h]}</span><span class="facet-badge"></span></summary>
-      <div class="grape-chip-filter" data-role="accessory"></div>
-    </details>
-
-    <details open data-facet="appellations">
-      <summary><span class="facet-label">{labels[facet_appellations_h]}</span><span class="facet-badge"></span></summary>
-      <input type="text" id="q" class="facet-search" placeholder="{labels[search_appellation_placeholder]}" autocomplete="off">
-      <div class="facet facet-appellations" id="facet-appellations"></div>
-    </details>
-
-    <div id="igp-toggle">
-      <label><input type="checkbox" id="show-igp"> <span class="name">{labels[show_igp_label]}</span></label>
-    </div>
-
-    <div id="spirits-toggle" data-modes="advanced">
-      <label><input type="checkbox" id="show-spirits"> <span class="name">{labels[show_spirits_label]}</span></label>
-    </div>
-
-    <details id="legend" open>
-      <summary>{labels[legend_h]}</summary>
-      <div class="legend-body">
-        <div class="legend-h">{labels[legend_bassin_h]}</div>
-        <div class="swatch-row"><span class="sw aoc"></span><span>{labels[kind_aoc]}</span></div>
-        <div class="swatch-row"><span class="sw igp"></span><span>{labels[kind_igp]}</span></div>
-        <div class="hint">{labels[legend_area_hint]}</div>
-        <div class="legend-h">{labels[legend_grapes_h]}</div>
-        <div class="swatch-row"><span class="sw principal"></span><span>{labels[legend_principal]}</span></div>
-        <div class="swatch-row"><span class="sw accessory"></span><span>{labels[legend_accessory]}</span></div>
-        <div class="swatch-row"><span class="sw observation"></span><span>{labels[legend_observation]}</span></div>
-      </div>
-    </details>
-
-    <div id="sidebar-footer">
-      {sidebar_disclaimer_html}
-      <div id="sidebar-footer-links">
-        <a href="#" id="about-link">{labels[about_link_label]}</a>
-      </div>
-    </div>
-
-  </aside>
+  %%SIDEBAR%%
 
   <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}">☰</button>
 
@@ -1976,6 +2243,123 @@ def _split_template(t: str) -> tuple[str, str]:
 
 
 _PAGE_TEMPLATE, _STYLE_CSS = _split_template(_TEMPLATE)
+
+
+# Production sidebar, split into composable pieces (the `_LAB_` prefix is
+# historical — these were the shared chrome of the lab search variants):
+#   _LAB_HEAD_TOP        brand → theme → status → omnisearch (+ a visually-hidden
+#                        aria-live region announcing result counts / no-match)
+#   _LAB_ACTIVE          the active-filters chip tray + reset
+#   _LAB_LEGEND_FOOTER   legend + footer (closes the <aside>)
+_LAB_HEAD_TOP = """<aside id="sidebar" data-nosnippet aria-label="{labels[sidebar_aria]}">
+    <{brand_tag} class="brand-title"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</{brand_tag}>
+    <div class="subtitle">{labels[subtitle]}</div>
+    {lang_switcher_html}
+    <div id="theme-toggle" role="group" aria-label="{labels[theme_h]}">
+      <button type="button" data-theme-mode="light" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_light]}" title="{labels[theme_light]}">☀</button>
+      <button type="button" data-theme-mode="system" class="theme-btn active" aria-pressed="true" aria-label="{labels[theme_system]}" title="{labels[theme_system]}">◐</button>
+      <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_dark]}" title="{labels[theme_dark]}">☾</button>
+    </div>
+    <div id="status" role="status" aria-live="polite" aria-atomic="true">{labels[loading]}</div>
+
+    <div id="omnisearch" role="search">
+      <input type="text" id="omni" class="omni-input" placeholder="{labels[omnisearch_placeholder]}" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="omni-suggestions" aria-label="{labels[search_h]}">
+      <div id="omni-suggestions" class="omni-suggestions" role="listbox" hidden></div>
+      <span id="omni-live" class="visually-hidden" role="status" aria-live="polite"></span>
+    </div>
+"""
+
+
+_LAB_ACTIVE = """
+    <div id="active-filters" aria-label="{labels[active_filters_aria]}">
+      <div id="active-filters-chips"></div>
+      <button id="reset" type="button">{labels[reset]}</button>
+    </div>
+"""
+
+
+_LAB_LEGEND_FOOTER = """
+    <details id="legend" open>
+      <summary>{labels[legend_h]}</summary>
+      <div class="legend-body">
+        <div class="legend-h">{labels[legend_bassin_h]}</div>
+        <div class="swatch-row"><span class="sw aoc"></span><span>{labels[kind_aoc]}</span></div>
+        <div class="swatch-row"><span class="sw igp"></span><span>{labels[kind_igp]}</span></div>
+        <div class="hint">{labels[legend_area_hint]}</div>
+        <div class="legend-h">{labels[legend_grapes_h]}</div>
+        <div class="swatch-row"><span class="sw principal"></span><span>{labels[legend_principal]}</span></div>
+        <div class="swatch-row"><span class="sw accessory"></span><span>{labels[legend_accessory]}</span></div>
+        <div class="swatch-row"><span class="sw observation"></span><span>{labels[legend_observation]}</span></div>
+      </div>
+    </details>
+
+    <div id="sidebar-footer">
+      {sidebar_disclaimer_html}
+      <div id="sidebar-footer-links">
+        <a href="{browse_path}" id="browse-link">{labels[browse_all_label]}</a>
+        <span class="sep">·</span>
+        <a href="#" id="about-link">{labels[about_link_label]}</a>
+      </div>
+    </div>
+
+  </aside>"""
+
+
+
+# The production sidebar — "Search + Browse rail" (promoted from lab variant D):
+# a unified omnisearch bar (appellations + grapes + regions + styles; the
+# appellation tree below live-filters as you type) over the mode-gated style
+# tree, a browsable grape chip list ("main grape only" toggle inside it), and the
+# region/appellation tree. Built from the shared head/active/legend-footer pieces.
+_SIDEBAR = _LAB_HEAD_TOP + _LAB_ACTIVE + """
+    <div id="mode-toggle" role="group" aria-label="{labels[view_mode_h]}">
+      <button type="button" data-mode="simple" class="mode-btn active" aria-pressed="true">{labels[view_mode_simple]}</button>
+      <button type="button" data-mode="advanced" class="mode-btn" aria-pressed="false">{labels[view_mode_advanced]}</button>
+    </div>
+
+    <details open data-modes="simple" data-facet="styles">
+      <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
+      <div class="facet" id="facet-styles-simple"></div>
+    </details>
+
+    <details open data-modes="advanced" data-facet="styles">
+      <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
+      <div class="facet" id="facet-styles"></div>
+    </details>
+
+    <details data-modes="advanced" data-facet="classification">
+      <summary><span class="facet-label">{labels[facet_classification_h]}</span><span class="facet-badge"></span></summary>
+      <div class="facet" id="facet-classification"></div>
+    </details>
+
+    <details open data-facet="grapes">
+      <summary><span class="facet-label">{labels[facet_grapes_h]}</span><span class="facet-badge"></span></summary>
+      <div class="omni-subopt grape-subopt">
+        <label><input type="checkbox" id="main-grape-only"> <span class="name">{labels[main_grape_only_label]}</span></label>
+      </div>
+      <div class="grape-chip-filter" data-role="all"></div>
+    </details>
+
+    <details open data-facet="appellations">
+      <summary><span class="facet-label">{labels[facet_appellations_h]}</span><span class="facet-badge"></span></summary>
+      <div class="facet facet-appellations" id="facet-appellations"></div>
+    </details>
+
+    <div id="igp-toggle">
+      <label><input type="checkbox" id="show-igp"> <span class="name">{labels[show_igp_label]}</span></label>
+    </div>
+
+    <div id="spirits-toggle" data-modes="advanced">
+      <label><input type="checkbox" id="show-spirits"> <span class="name">{labels[show_spirits_label]}</span></label>
+    </div>
+""" + _LAB_LEGEND_FOOTER
+
+
+def _render_sidebar() -> str:
+    """Inner markup for the (single) production sidebar — the lab A/B/C/D variants
+    were removed when D was promoted. Still carries format fields — it is
+    `.replace`-injected into _PAGE_TEMPLATE before `.format`."""
+    return _SIDEBAR
 
 # The map application JS lives in assets/app.js — a real .js file (lint-able,
 # eslint-able) rather than an escaped Python string. Build-time per-locale

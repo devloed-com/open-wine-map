@@ -136,7 +136,7 @@ def _build_canton_extracts(commune_idx: CHCommuneIndex,
         set_pliego_context(f"ch::{canton}::reglement")
         text = extract_plaintext(path)
         lang = entry.get("lang") or source_lang_for_canton(canton)
-        varieties = extract_varieties(text, lang, match_variety)
+        varieties = extract_varieties(text, lang, match_variety, commune_idx)
         communes = extract_communes(text, lang, commune_idx)
         # Restrict commune hits to the canton itself (the règlement's
         # area-of-application). A canton's règlement that name-drops

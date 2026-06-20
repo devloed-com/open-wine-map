@@ -154,6 +154,29 @@ def test_breadcrumb_subdenomination_inserts_parent() -> None:
     assert all("item" in i for i in items)  # all carry a URL
 
 
+def test_contains_place_lists_children_with_absolute_urls() -> None:
+    # A parent enumerates its folded sub-denominations as containsPlace — the
+    # entity-graph half of surfacing children that have no indexable page.
+    kids = [
+        {"name": "Clisson", "path": "/en/clisson", "kind": "AOC"},
+        {"name": "Gorges", "path": "/en/gorges", "kind": "AOC"},
+    ]
+    html = _build_entity_jsonld(
+        "muscadet", _RICH, f"{_BASE}/en/muscadet", "en", _COUNTRY_LABELS, "Loire",
+        desc="d", children=kids,
+    )
+    place = _node(_parse(html), "AdministrativeArea")
+    assert place["containsPlace"] == [
+        {"@type": "AdministrativeArea", "name": "Clisson", "url": f"{_BASE}/en/clisson"},
+        {"@type": "AdministrativeArea", "name": "Gorges", "url": f"{_BASE}/en/gorges"},
+    ]
+
+
+def test_contains_place_omitted_without_children() -> None:
+    place = _node(_graph(_RICH, slug="priorat", locale="es"), "AdministrativeArea")
+    assert "containsPlace" not in place
+
+
 def test_geo_box_axis_order() -> None:
     rec = dict(_RICH, bbox=[2.0, 43.0, 3.0, 44.0])
     place = _node(_graph(rec), "AdministrativeArea")

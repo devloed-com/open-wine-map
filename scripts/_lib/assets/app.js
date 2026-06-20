@@ -3,6 +3,13 @@
   if (!window.__OWM_DATA) {
     console.error('Open Wine Map: data bundle failed to load — appellation details unavailable. Try reloading.');
   }
+  // Snapshot the URL camera hash (#zoom/lat/lon) NOW, before the map is
+  // constructed: maplibre's `hash: true` writes the default camera into
+  // location.hash synchronously during `new Map()`, so a later
+  // `!window.location.hash` check can't tell a user-shared camera from the
+  // map's own auto-written default. Only a hash present at page entry is
+  // genuinely user-supplied.
+  const INITIAL_CAMERA_HASH = window.location.hash || '';
   const FACET_STYLES_TREE = __OWM_styles_tree_json__;
   const STYLE_DESCENDANTS = __OWM_style_descendants_json__;
   const FACET_STYLES_SIMPLE = __OWM_styles_simple_json__;
@@ -13,6 +20,16 @@
   const STYLE_LABELS = __OWM_style_labels_json__;
   const SIMPLE_STYLE_LABELS = __OWM_simple_style_labels_json__;
   const SIMPLE_STYLE_BUCKETS = __OWM_simple_style_buckets_json__;
+  // {canonical style slug -> [searchable synonym terms]} — wine-style analogue
+  // of GRAPE_SYNONYMS; makes a style findable by a local name in the omnisearch
+  // (typing "fondillon" surfaces the rancio style → its appellations).
+  const STYLE_SEARCH_TERMS = __OWM_style_search_terms_json__;
+  // Classification facet (aging / Prädikat / selection tiers) — a facet parallel
+  // to styles; same tree/descendants/labels/synonym shape.
+  const FACET_CLASS_TREE = __OWM_class_tree_json__;
+  const CLASS_DESCENDANTS = __OWM_class_descendants_json__;
+  const CLASS_LABELS = __OWM_class_labels_json__;
+  const CLASS_SEARCH_TERMS = __OWM_class_search_terms_json__;
   const LABELS = __OWM_labels_json__;
   // Default document title (the locale homepage title). The tab title tracks
   // the open appellation so it doesn't get stuck on whichever entity page the
@@ -88,7 +105,7 @@
       return _GRAPE_INDEX_NORM
         .filter(e => e.entry[countKey] > 0)
         .slice(0, limit)
-        .map(e => ({ entry: e.entry, matched: null }));
+        .map(e => ({ entry: e.entry, matched: null, score: 0 }));
     }
     const out = [];
     for (const e of _GRAPE_INDEX_NORM) {
@@ -119,7 +136,7 @@
       if (score >= 0) out.push({ entry: e.entry, matched, score });
     }
     out.sort((a, b) => b.score - a.score || b.entry[countKey] - a.entry[countKey]);
-    return out.slice(0, limit).map(o => ({ entry: o.entry, matched: o.matched }));
+    return out.slice(0, limit).map(o => ({ entry: o.entry, matched: o.matched, score: o.score }));
   }
 
   function _findGrapeEntry(slug) {
@@ -564,49 +581,16 @@
     q: '',
     styles: new Set(),
     stylesSimple: new Set(),
+    classifications: new Set(),
     principal: new Set(),
     accessory: new Set(),
     grapesAll: new Set(),
     appellations: new Set(),
+    // When true, the grape filter matches grapes_principal instead of grapes_all
+    // (the "main grape only" toggle inside the Grapes facet).
+    mainGrapeOnly: false,
   };
-
-  function buildFilterExpr() {
-    const parts = ['all'];
-    if (!showIgp) parts.push(['!=', ['get', 'kind'], 'IGP']);
-    if (!spiritsVisible()) parts.push(['==', ['get', 'is_wine'], '1']);
-    function inField(field, set) {
-      if (set.size === 0) return null;
-      const tests = [];
-      for (const v of set) tests.push(['in', ';' + v + ';', ['get', field]]);
-      return tests.length === 1 ? tests[0] : ['any', ...tests];
-    }
-    if (viewMode === 'simple') {
-      if (filters.stylesSimple.size) {
-        const fineSet = new Set();
-        for (const b of filters.stylesSimple) {
-          for (const s of (SIMPLE_STYLE_BUCKETS[b] || [])) fineSet.add(s);
-        }
-        const sExpr = inField('styles', fineSet);
-        if (sExpr) parts.push(sExpr);
-      }
-      const gExpr = inField('grapes_all', expandGrapeSet(filters.grapesAll));
-      if (gExpr) parts.push(gExpr);
-    } else {
-      const fineStyles = expandStyles(filters.styles);
-      const sExpr = fineStyles ? inField('styles', fineStyles) : null;
-      const pExpr = inField('grapes_principal', expandGrapeSet(filters.principal));
-      const aExpr = inField('grapes_accessory', expandGrapeSet(filters.accessory));
-      if (sExpr) parts.push(sExpr);
-      if (pExpr) parts.push(pExpr);
-      if (aExpr) parts.push(aExpr);
-    }
-    if (filters.appellations.size) {
-      const tests = [];
-      for (const s of filters.appellations) tests.push(['==', ['get', 'slug'], s]);
-      parts.push(tests.length === 1 ? tests[0] : ['any', ...tests]);
-    }
-    return parts.length === 1 ? null : parts;
-  }
+  try { filters.mainGrapeOnly = localStorage.getItem('main_grape_only') === '1'; } catch (e) {}
 
   function applyFilter(opts) {
     const expr = buildFilterExpr();
@@ -621,195 +605,6 @@
     if (opts && opts.fit) fitToFiltered();
   }
 
-  // Cross-narrow each facet: an option is shown only if at least one record
-  // matches every OTHER active filter while carrying that option's key. Counts
-  // are recomputed against the same per-facet "other filters" set. Already-
-  // checked options stay visible even when their count drops to 0, so the
-  // user can always unselect what they selected.
-  function refreshFacetAvailability() {
-    const flatFacets = [
-      { id: 'facet-styles-simple', except: 'stylesSimple', field: 'styles_simple', mode: 'simple' },
-      { id: 'facet-grapes-all',    except: 'grapesAll',    field: 'grapes_all',    mode: 'simple' },
-      { id: 'facet-principal',     except: 'principal',    field: 'grapes_principal', mode: 'advanced' },
-      { id: 'facet-accessory',     except: 'accessory',    field: 'grapes_accessory', mode: 'advanced' },
-    ];
-    for (const f of flatFacets) {
-      if (f.mode && f.mode !== viewMode) continue;
-      const el = document.getElementById(f.id);
-      if (!el) continue;
-      const except = new Set([f.except]);
-      const counts = new Map();
-      const isGrape = f.id !== 'facet-styles-simple';
-      for (const slug in AOCS) {
-        const rec = AOCS[slug];
-        if (!matchesExceptFacets(rec, slug, except)) continue;
-        const vals = rec[f.field] || [];
-        if (isGrape) {
-          // Roll up by canonical slug so a record using "malbec" increments
-          // the merged "cot" row exactly once even when it carries multiple
-          // synonyms of the same VIVC variety.
-          const canons = new Set();
-          for (const v of vals) canons.add(SLUG_TO_CANONICAL[v] || v);
-          for (const c of canons) counts.set(c, (counts.get(c) || 0) + 1);
-        } else {
-          for (const v of vals) counts.set(v, (counts.get(v) || 0) + 1);
-        }
-      }
-      el.querySelectorAll('label').forEach(lbl => {
-        const inp = lbl.querySelector('input[type=checkbox]');
-        if (!inp) return;
-        const key = inp.dataset.key;
-        const n = counts.get(key) || 0;
-        const countSpan = lbl.querySelector('.count');
-        if (countSpan) countSpan.textContent = String(n);
-        lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
-      });
-    }
-    // Style tree (advanced mode): each node's count is the number of records
-    // (in the cross-narrowed set) whose styles intersect that node's
-    // descendant slug set — same aggregation the build-time pre-count uses.
-    if (viewMode === 'advanced') {
-      const treeEl = document.getElementById('facet-styles');
-      if (treeEl) {
-        const except = new Set(['styles']);
-        const treeCounts = new Map();
-        for (const slug in AOCS) {
-          const rec = AOCS[slug];
-          if (!matchesExceptFacets(rec, slug, except)) continue;
-          const recStyles = rec.styles || [];
-          if (!recStyles.length) continue;
-          const recStyleSet = new Set(recStyles);
-          for (const node in STYLE_DESCENDANTS) {
-            const ds = STYLE_DESCENDANTS[node];
-            for (let i = 0; i < ds.length; i++) {
-              if (recStyleSet.has(ds[i])) {
-                treeCounts.set(node, (treeCounts.get(node) || 0) + 1);
-                break;
-              }
-            }
-          }
-        }
-        treeEl.querySelectorAll('label').forEach(lbl => {
-          const inp = lbl.querySelector('input[type=checkbox]');
-          if (!inp) return;
-          const key = inp.dataset.key;
-          const n = treeCounts.get(key) || 0;
-          const countSpan = lbl.querySelector('.count');
-          if (countSpan) countSpan.textContent = String(n);
-          lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
-        });
-      }
-    }
-    // Appellation facet: per-slug reachability + per-region rollup. The
-    // group-level count span shows the number of currently-reachable
-    // appellations in the region.
-    const appEl = document.getElementById('facet-appellations');
-    if (appEl) {
-      const except = new Set(['appellations']);
-      appEl.querySelectorAll('.region-group').forEach(group => {
-        let visible = 0;
-        group.querySelectorAll('label').forEach(lbl => {
-          const inp = lbl.querySelector('input[type=checkbox]');
-          if (!inp) return;
-          const slug = inp.dataset.key;
-          const rec = AOCS[slug];
-          const reachable = rec ? matchesExceptFacets(rec, slug, except) : false;
-          const hide = !reachable && !inp.checked;
-          lbl.classList.toggle('facet-unavailable', hide);
-          if (!hide) visible++;
-        });
-        // `.region-group` is now the inner `<details>`; hide the
-        // outer `.region-group-wrap` so the sibling checkbox vanishes
-        // alongside the disclosure when no AOCs remain visible.
-        (group.parentElement || group).classList.toggle('facet-unavailable', visible === 0);
-        const countSpan = group.querySelector(':scope > summary > .count');
-        if (countSpan) countSpan.textContent = String(visible);
-      });
-    }
-  }
-
-  function facetCounts() {
-    const grapes = (viewMode === 'simple')
-      ? filters.grapesAll.size
-      : (filters.principal.size + filters.accessory.size);
-    const styles = (viewMode === 'simple') ? filters.stylesSimple.size : filters.styles.size;
-    return {
-      styles,
-      grapes,
-      accessory: filters.accessory.size,
-      appellations: filters.appellations.size,
-    };
-  }
-
-  function refreshFacetBadges() {
-    const counts = facetCounts();
-    const map_ = {
-      styles: counts.styles,
-      grapes: viewMode === 'simple' ? counts.grapes : filters.principal.size,
-      accessory: filters.accessory.size,
-      appellations: counts.appellations,
-    };
-    document.querySelectorAll('#sidebar > details[data-facet]').forEach(det => {
-      const key = det.dataset.facet;
-      const badge = det.querySelector(':scope > summary .facet-badge');
-      if (!badge) return;
-      const n = map_[key] || 0;
-      badge.textContent = n > 0 ? String(n) : '';
-    });
-  }
-
-  function renderActiveFilters() {
-    const el = document.getElementById('active-filters-chips');
-    if (!el) return;
-    const chips = [];
-    // Style chips (mode-aware).
-    if (viewMode === 'simple') {
-      for (const k of filters.stylesSimple) {
-        chips.push({ kind: 'styleSimple', key: k, label: SIMPLE_STYLE_LABELS[k] || k });
-      }
-    } else {
-      for (const k of filters.styles) {
-        chips.push({ kind: 'style', key: k, label: STYLE_LABELS[k] || k });
-      }
-    }
-    // Grape chips.
-    if (viewMode === 'simple') {
-      for (const k of filters.grapesAll) {
-        chips.push({ kind: 'grapeAll', key: k, label: grapeName(k) });
-      }
-    } else {
-      for (const k of filters.principal) {
-        chips.push({ kind: 'principal', key: k, label: grapeName(k) });
-      }
-      for (const k of filters.accessory) {
-        chips.push({ kind: 'accessory', key: k, label: grapeName(k) + ' ·' });
-      }
-    }
-    // Region/appellation chips: collapse fully-selected regions into a
-    // single chip; render leftover slugs individually.
-    const collapsedSlugs = new Set();
-    for (const [region, allSlugs] of REGION_SLUGS) {
-      const slugs = visibleSlugsInRegion(region);
-      if (!slugs.length) continue;
-      const allIn = slugs.every(s => filters.appellations.has(s));
-      if (allIn) {
-        chips.push({ kind: 'region', key: region, label: region ? regionLabel(region) : LABELS.meta_no_region });
-        for (const s of slugs) collapsedSlugs.add(s);
-      }
-    }
-    for (const slug of filters.appellations) {
-      if (collapsedSlugs.has(slug)) continue;
-      const rec = AOCS[slug];
-      if (!rec) continue;
-      chips.push({ kind: 'appellation', key: slug, label: rec.name });
-    }
-    el.innerHTML = chips.map(c => {
-      const cls = c.kind === 'region' ? 'filter-chip region-chip' : 'filter-chip';
-      const removeAria = fmt(LABELS.remove_filter_aria, { label: c.label });
-      return `<span class="${cls}" data-kind="${escapeAttr(c.kind)}" data-key="${escapeAttr(c.key)}"><span>${escapeHtml(c.label)}</span><button type="button" aria-label="${escapeAttr(removeAria)}">×</button></span>`;
-    }).join('');
-  }
-
   document.getElementById('active-filters-chips').addEventListener('click', e => {
     const btn = e.target.closest('button');
     if (!btn) return;
@@ -819,11 +614,17 @@
     const key = chip.dataset.key;
     if (kind === 'styleSimple') filters.stylesSimple.delete(key);
     else if (kind === 'style') filters.styles.delete(key);
+    else if (kind === 'classification') filters.classifications.delete(key);
     else if (kind === 'grapeAll') filters.grapesAll.delete(key);
     else if (kind === 'principal') filters.principal.delete(key);
     else if (kind === 'accessory') filters.accessory.delete(key);
     else if (kind === 'appellation') filters.appellations.delete(key);
     else if (kind === 'region') setRegionSelection(key, false);
+    else if (kind === 'mainGrapeOnly') {
+      filters.mainGrapeOnly = false;
+      const m = document.getElementById('main-grape-only'); if (m) m.checked = false;
+      try { localStorage.setItem('main_grape_only', '0'); } catch (e) {}
+    }
     // Sync the underlying checkboxes for the cleared filter.
     document.querySelectorAll('#sidebar .facet input[type=checkbox]').forEach(inp => {
       const k = inp.dataset.key;
@@ -843,6 +644,7 @@
     const sets = {
       'facet-styles': filters.styles,
       'facet-styles-simple': filters.stylesSimple,
+      'facet-classification': filters.classifications,
     };
     for (const [id, set] of Object.entries(sets)) {
       const el = document.getElementById(id);
@@ -918,58 +720,6 @@
     el.textContent = fmt(LABELS.count_filtered, { n: n, total: total });
   }
 
-  function matchesClient(rec, slug, opts) {
-    if (!(opts && opts.ignoreIgpGate) && !showIgp && (rec.kind || 'AOC') === 'IGP') return false;
-    if (!spiritsVisible() && rec.is_wine === false) return false;
-    if (viewMode === 'simple') {
-      if (filters.stylesSimple.size && !setIntersects(filters.stylesSimple, rec.styles_simple || [])) return false;
-      if (filters.grapesAll.size && !setIntersects(expandGrapeSet(filters.grapesAll), rec.grapes_all || [])) return false;
-    } else {
-      if (filters.styles.size) {
-        const fineStyles = expandStyles(filters.styles);
-        if (!fineStyles || !setIntersects(fineStyles, rec.styles)) return false;
-      }
-      if (filters.principal.size && !setIntersects(expandGrapeSet(filters.principal), rec.grapes_principal)) return false;
-      if (filters.accessory.size && !setIntersects(expandGrapeSet(filters.accessory), rec.grapes_accessory)) return false;
-    }
-    if (filters.appellations.size && !filters.appellations.has(slug)) return false;
-    return true;
-  }
-
-  // Mirrors buildFilterExpr semantics (style/grape expansion via taxonomy +
-  // VIVC siblings), but skips facets named in `except` so each facet's own
-  // availability can be computed against ONLY the other active filters —
-  // the standard faceted-search expansion pattern.
-  function matchesExceptFacets(rec, slug, except) {
-    if (!showIgp && (rec.kind || 'AOC') === 'IGP') return false;
-    if (!spiritsVisible() && rec.is_wine === false) return false;
-    if (viewMode === 'simple') {
-      if (!except.has('stylesSimple') && filters.stylesSimple.size) {
-        const fineSet = new Set();
-        for (const b of filters.stylesSimple) {
-          for (const s of (SIMPLE_STYLE_BUCKETS[b] || [])) fineSet.add(s);
-        }
-        if (!setIntersects(fineSet, rec.styles || [])) return false;
-      }
-      if (!except.has('grapesAll') && filters.grapesAll.size) {
-        if (!setIntersects(expandGrapeSet(filters.grapesAll), rec.grapes_all || [])) return false;
-      }
-    } else {
-      if (!except.has('styles') && filters.styles.size) {
-        const fineStyles = expandStyles(filters.styles);
-        if (!fineStyles || !setIntersects(fineStyles, rec.styles || [])) return false;
-      }
-      if (!except.has('principal') && filters.principal.size) {
-        if (!setIntersects(expandGrapeSet(filters.principal), rec.grapes_principal || [])) return false;
-      }
-      if (!except.has('accessory') && filters.accessory.size) {
-        if (!setIntersects(expandGrapeSet(filters.accessory), rec.grapes_accessory || [])) return false;
-      }
-    }
-    if (!except.has('appellations') && filters.appellations.size && !filters.appellations.has(slug)) return false;
-    return true;
-  }
-
   function setIntersects(set, arr) {
     if (!arr) return false;
     for (const v of arr) if (set.has(v)) return true;
@@ -996,12 +746,13 @@
     });
   }
 
-  function buildStyleTreeFacet(containerId, tree, store) {
+  function buildTreeFacet(containerId, tree, store, labels, descendants, facetName) {
     const el = document.getElementById(containerId);
+    if (!el) return;  // defensive null-guard
     const html = tree.map(node => {
       const safeKey = String(node.slug).replace(/"/g, '&quot;');
-      const label = STYLE_LABELS[node.slug] || node.slug;
-      const hasChildren = (STYLE_DESCENDANTS[node.slug] || []).length > 1;
+      const label = labels[node.slug] || node.slug;
+      const hasChildren = (descendants[node.slug] || []).length > 1;
       const cls = `tree-row${ hasChildren ? ' tree-row-parent' : '' }`;
       return `<label class="${cls}" data-depth="${node.depth}"><input type="checkbox" data-key="${safeKey}"><span class="name">${label}</span><span class="count">${node.count}</span></label>`;
     }).join('');
@@ -1011,26 +762,29 @@
       const k = e.target.dataset.key;
       if (e.target.checked) store.add(k); else store.delete(k);
       if (e.target.checked) {
-        track('Filter Applied', { facet: 'styles', value: k, locale: LANG });
+        track('Filter Applied', { facet: facetName, value: k, locale: LANG });
       }
       applyFilter({ fit: true });
     });
   }
 
   // Expand a set of taxonomy slugs to the leaf slugs records actually carry,
-  // so a click on a parent (e.g. "sweet") catches every descendant record.
-  function expandStyles(set) {
+  // so a click on a parent (e.g. "sweet" / "aging") catches every descendant.
+  function expandTree(set, descendants) {
     if (!set.size) return null;
     const out = new Set();
     for (const s of set) {
-      const ds = STYLE_DESCENDANTS[s];
+      const ds = descendants[s];
       if (ds && ds.length) for (const d of ds) out.add(d);
       else out.add(s);
     }
     return out;
   }
+  const expandStyles = set => expandTree(set, STYLE_DESCENDANTS);
+  const expandClass = set => expandTree(set, CLASS_DESCENDANTS);
 
-  buildStyleTreeFacet('facet-styles', FACET_STYLES_TREE, filters.styles);
+  buildTreeFacet('facet-styles', FACET_STYLES_TREE, filters.styles, STYLE_LABELS, STYLE_DESCENDANTS, 'styles');
+  buildTreeFacet('facet-classification', FACET_CLASS_TREE, filters.classifications, CLASS_LABELS, CLASS_DESCENDANTS, 'classification');
   buildFacet('facet-styles-simple', FACET_STYLES_SIMPLE, filters.stylesSimple, k => SIMPLE_STYLE_LABELS[k] || k);
   document.querySelectorAll('.grape-chip-filter').forEach(container => {
     const role = container.dataset.role || 'all';
@@ -1085,6 +839,7 @@
 
   function buildAppellationFacet() {
     const el = document.getElementById('facet-appellations');
+    if (!el) return;  // defensive null-guard
     const html = [];
     for (const [region, allSlugs] of REGION_SLUGS) {
       const slugs = spiritsVisible() ? allSlugs : allSlugs.filter(s => AOCS[s].is_wine !== false);
@@ -1116,7 +871,7 @@
   // Single delegated listener — buildAppellationFacet may run multiple
   // times (mode swap, spirits toggle), so the handler stays on the
   // container instead of being re-attached each time.
-  document.getElementById('facet-appellations').addEventListener('change', e => {
+  document.getElementById('facet-appellations')?.addEventListener('change', e => {
     const el = document.getElementById('facet-appellations');
     if (e.target.tagName !== 'INPUT') return;
     if (e.target.classList.contains('region-select')) {
@@ -1145,7 +900,7 @@
   // aren't DOM-reachable, so the facet "open" button is the only non-mouse way
   // in. preventDefault/stopPropagation stop the click from toggling the
   // enclosing label's filter checkbox.
-  document.getElementById('facet-appellations').addEventListener('click', e => {
+  document.getElementById('facet-appellations')?.addEventListener('click', e => {
     const btn = e.target.closest('.open-aoc');
     if (!btn) return;
     e.preventDefault();
@@ -1198,7 +953,16 @@
         } else {
           group.style.display = visible ? '' : 'none';
         }
-        if (nq && visible) group.open = true;
+        // Auto-expand matching groups while searching, but re-collapse them
+        // when the query is cleared — tracking which groups WE opened so a
+        // group the user expanded by hand stays open. (Was: open-on-search
+        // with no matching collapse, leaving every group expanded after clear.)
+        if (nq) {
+          if (visible && !group.open) { group.open = true; group.dataset.autoOpened = '1'; }
+        } else if (group.dataset.autoOpened) {
+          group.open = false;
+          delete group.dataset.autoOpened;
+        }
       });
       return;
     }
@@ -1226,8 +990,9 @@
     });
     swapMapLayers();
     // The appellation tree's contents depend on spiritsVisible(), which
-    // depends on viewMode — rebuild on every mode switch.
-    if (document.getElementById('facet-appellations').children.length) {
+    // depends on viewMode — rebuild on every mode switch (optional-chain the
+    // children check defensively).
+    if (document.getElementById('facet-appellations')?.children.length) {
       buildAppellationFacet();
     }
   }
@@ -1252,7 +1017,10 @@
       try { localStorage.setItem('view_mode', viewMode); } catch (e) {}
       track('View Mode Switched', { mode: viewMode, locale: LANG });
       applyMode();
-      applyFilter({ fit: true });
+      // Don't re-fit on a mode switch — preserve the current camera. (Was
+      // `{fit:true}`: simple fits tight bbox_villages, advanced fits wider full
+      // bbox, so toggling with a filter active jarringly zoomed the map out.)
+      applyFilter();
     });
   });
 
@@ -1284,7 +1052,7 @@
   // We send result_count / had_match / query_len only — never the raw
   // string, since search boxes attract typos, names, and assorted junk.
   let searchTrackTimer = null;
-  qInput.addEventListener('input', e => {
+  if (qInput) qInput.addEventListener('input', e => {
     filters.q = e.target.value.trim();
     refreshFacetVisibility('facet-appellations', filters.q);
     const det = qInput.closest('details');
@@ -1319,8 +1087,20 @@
     track('Filters Reset', { locale: LANG });
     filters.q = '';
     filters.styles.clear(); filters.stylesSimple.clear();
+    filters.classifications.clear();
     filters.principal.clear(); filters.accessory.clear(); filters.grapesAll.clear();
     filters.appellations.clear();
+    filters.mainGrapeOnly = false;
+    try { localStorage.setItem('main_grape_only', '0'); } catch (e) {}
+    const _mgo = document.getElementById('main-grape-only'); if (_mgo) _mgo.checked = false;
+    const _omni = document.getElementById('omni');
+    if (_omni) {
+      _omni.value = '';
+      _omni.setAttribute('aria-expanded', 'false');
+      _omni.removeAttribute('aria-activedescendant');
+      const _od = document.getElementById('omni-suggestions'); if (_od) { _od.hidden = true; _od.innerHTML = ''; }
+      const _ol = document.getElementById('omni-live'); if (_ol) _ol.textContent = '';
+    }
     document.querySelectorAll('#sidebar .facet input[type=checkbox]').forEach(c => {
       c.checked = false;
       c.indeterminate = false;
@@ -1332,6 +1112,544 @@
     refreshFacetVisibility('facet-accessory', '');
     applyFilter();
   });
+
+  // ===================== search + browse rail (the sidebar) =====================
+  // The production search/filter behaviour. A single merged grape model
+  // (filters.grapesAll + filters.mainGrapeOnly), a unified omnisearch bar over
+  // appellations + grapes + regions + styles that also live-filters the
+  // appellation tree, and the filter functions below.
+
+  function activeGrapeField() {
+    return filters.mainGrapeOnly ? 'grapes_principal' : 'grapes_all';
+  }
+  // Union of the quick-chip buckets (stylesSimple, expanded to fine slugs) and
+  // any advanced-tree picks (filters.styles), so style filtering is identical
+  // regardless of view mode (simple chips + advanced-tree picks combined).
+  function activeStyleFineSet() {
+    const out = new Set();
+    for (const b of filters.stylesSimple) for (const s of (SIMPLE_STYLE_BUCKETS[b] || [])) out.add(s);
+    const fine = expandStyles(filters.styles);
+    if (fine) for (const s of fine) out.add(s);
+    return out;
+  }
+
+  function buildFilterExpr() {
+    const parts = ['all'];
+    if (!showIgp) parts.push(['!=', ['get', 'kind'], 'IGP']);
+    if (!spiritsVisible()) parts.push(['==', ['get', 'is_wine'], '1']);
+    function inField(field, set) {
+      if (!set || !set.size) return null;
+      const tests = [];
+      for (const v of set) tests.push(['in', ';' + v + ';', ['get', field]]);
+      return tests.length === 1 ? tests[0] : ['any', ...tests];
+    }
+    const sExpr = inField('styles', activeStyleFineSet());
+    if (sExpr) parts.push(sExpr);
+    const cExpr = inField('classifications', expandClass(filters.classifications));
+    if (cExpr) parts.push(cExpr);
+    const gExpr = inField(activeGrapeField(), expandGrapeSet(filters.grapesAll));
+    if (gExpr) parts.push(gExpr);
+    if (filters.appellations.size) {
+      const tests = [];
+      for (const s of filters.appellations) tests.push(['==', ['get', 'slug'], s]);
+      parts.push(tests.length === 1 ? tests[0] : ['any', ...tests]);
+    }
+    return parts.length === 1 ? null : parts;
+  }
+
+  function matchesClient(rec, slug, opts) {
+    if (!(opts && opts.ignoreIgpGate) && !showIgp && (rec.kind || 'AOC') === 'IGP') return false;
+    if (!spiritsVisible() && rec.is_wine === false) return false;
+    const styleSet = activeStyleFineSet();
+    if (styleSet.size && !setIntersects(styleSet, rec.styles || [])) return false;
+    const classSet = expandClass(filters.classifications);
+    if (classSet && classSet.size && !setIntersects(classSet, rec.classifications || [])) return false;
+    if (filters.grapesAll.size && !setIntersects(expandGrapeSet(filters.grapesAll), rec[activeGrapeField()] || [])) return false;
+    if (filters.appellations.size && !filters.appellations.has(slug)) return false;
+    return true;
+  }
+
+  function matchesExceptFacets(rec, slug, except) {
+    if (!showIgp && (rec.kind || 'AOC') === 'IGP') return false;
+    if (!spiritsVisible() && rec.is_wine === false) return false;
+    if (!except.has('styles') && !except.has('stylesSimple')) {
+      const styleSet = activeStyleFineSet();
+      if (styleSet.size && !setIntersects(styleSet, rec.styles || [])) return false;
+    }
+    if (!except.has('classifications')) {
+      const classSet = expandClass(filters.classifications);
+      if (classSet && classSet.size && !setIntersects(classSet, rec.classifications || [])) return false;
+    }
+    if (!except.has('grapesAll') && filters.grapesAll.size && !setIntersects(expandGrapeSet(filters.grapesAll), rec[activeGrapeField()] || [])) return false;
+    if (!except.has('appellations') && filters.appellations.size && !filters.appellations.has(slug)) return false;
+    return true;
+  }
+
+  function renderActiveFilters() {
+    const el = document.getElementById('active-filters-chips');
+    if (!el) return;
+    const chips = [];
+    for (const k of filters.stylesSimple) chips.push({ kind: 'styleSimple', key: k, label: SIMPLE_STYLE_LABELS[k] || k });
+    for (const k of filters.styles) chips.push({ kind: 'style', key: k, label: STYLE_LABELS[k] || k });
+    for (const k of filters.classifications) chips.push({ kind: 'classification', key: k, label: CLASS_LABELS[k] || k });
+    for (const k of filters.grapesAll) chips.push({ kind: 'grapeAll', key: k, label: grapeName(k) });
+    if (filters.mainGrapeOnly) chips.push({ kind: 'mainGrapeOnly', key: '1', label: LABELS.main_grape_only_label });
+    const collapsed = new Set();
+    for (const [region] of REGION_SLUGS) {
+      const slugs = visibleSlugsInRegion(region);
+      if (!slugs.length) continue;
+      if (slugs.every(s => filters.appellations.has(s))) {
+        chips.push({ kind: 'region', key: region, label: region ? regionLabel(region) : LABELS.meta_no_region });
+        for (const s of slugs) collapsed.add(s);
+      }
+    }
+    for (const slug of filters.appellations) {
+      if (collapsed.has(slug)) continue;
+      const rec = AOCS[slug];
+      if (rec) chips.push({ kind: 'appellation', key: slug, label: rec.name });
+    }
+    el.innerHTML = chips.map(c => {
+      const cls = c.kind === 'region' ? 'filter-chip region-chip' : 'filter-chip';
+      const removeAria = fmt(LABELS.remove_filter_aria, { label: c.label });
+      return `<span class="${cls}" data-kind="${escapeAttr(c.kind)}" data-key="${escapeAttr(c.key)}"><span>${escapeHtml(c.label)}</span><button type="button" aria-label="${escapeAttr(removeAria)}">×</button></span>`;
+    }).join('');
+  }
+
+  function regionsSelectedCount() {
+    let n = 0;
+    for (const [region] of REGION_SLUGS) {
+      const st = regionTriState(region);
+      if (st === 'checked' || st === 'indeterminate') n++;
+    }
+    return n;
+  }
+
+  function refreshFacetBadges() {
+    const map_ = {
+      styles: filters.stylesSimple.size + filters.styles.size,
+      classification: filters.classifications.size,
+      grapes: filters.grapesAll.size,
+      appellations: filters.appellations.size,
+      regions: regionsSelectedCount(),
+    };
+    document.querySelectorAll('#sidebar > details[data-facet]').forEach(det => {
+      const badge = det.querySelector(':scope > summary .facet-badge');
+      if (!badge) return;
+      const n = map_[det.dataset.facet] || 0;
+      badge.textContent = n > 0 ? String(n) : '';
+    });
+  }
+
+  function refreshFacetAvailability() {
+    const sEl = document.getElementById('facet-styles-simple');
+    if (sEl) {
+      const except = new Set(['stylesSimple']);
+      const counts = new Map();
+      for (const slug in AOCS) {
+        const rec = AOCS[slug];
+        if (!matchesExceptFacets(rec, slug, except)) continue;
+        for (const v of (rec.styles_simple || [])) counts.set(v, (counts.get(v) || 0) + 1);
+      }
+      sEl.querySelectorAll('label').forEach(lbl => {
+        const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
+        const n = counts.get(inp.dataset.key) || 0;
+        const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
+        lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
+      });
+    }
+    const treeEl = document.getElementById('facet-styles');
+    if (treeEl) {
+      const except = new Set(['styles']);
+      const treeCounts = new Map();
+      for (const slug in AOCS) {
+        const rec = AOCS[slug];
+        if (!matchesExceptFacets(rec, slug, except)) continue;
+        const recStyleSet = new Set(rec.styles || []);
+        if (!recStyleSet.size) continue;
+        for (const node in STYLE_DESCENDANTS) {
+          const ds = STYLE_DESCENDANTS[node];
+          for (let i = 0; i < ds.length; i++) { if (recStyleSet.has(ds[i])) { treeCounts.set(node, (treeCounts.get(node) || 0) + 1); break; } }
+        }
+      }
+      treeEl.querySelectorAll('label').forEach(lbl => {
+        const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
+        const n = treeCounts.get(inp.dataset.key) || 0;
+        const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
+        lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
+      });
+    }
+    const classEl = document.getElementById('facet-classification');
+    if (classEl) {
+      const except = new Set(['classifications']);
+      const classCounts = new Map();
+      for (const slug in AOCS) {
+        const rec = AOCS[slug];
+        if (!matchesExceptFacets(rec, slug, except)) continue;
+        const recClassSet = new Set(rec.classifications || []);
+        if (!recClassSet.size) continue;
+        for (const node in CLASS_DESCENDANTS) {
+          const ds = CLASS_DESCENDANTS[node];
+          for (let i = 0; i < ds.length; i++) { if (recClassSet.has(ds[i])) { classCounts.set(node, (classCounts.get(node) || 0) + 1); break; } }
+        }
+      }
+      classEl.querySelectorAll('label').forEach(lbl => {
+        const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
+        const n = classCounts.get(inp.dataset.key) || 0;
+        const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
+        lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
+      });
+    }
+    const appEl = document.getElementById('facet-appellations');
+    if (appEl) {
+      const except = new Set(['appellations']);
+      appEl.querySelectorAll('.region-group').forEach(group => {
+        let visible = 0;
+        group.querySelectorAll('label').forEach(lbl => {
+          const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
+          const slug = inp.dataset.key; const rec = AOCS[slug];
+          const reachable = rec ? matchesExceptFacets(rec, slug, except) : false;
+          const hide = !reachable && !inp.checked;
+          lbl.classList.toggle('facet-unavailable', hide);
+          if (!hide) visible++;
+        });
+        (group.parentElement || group).classList.toggle('facet-unavailable', visible === 0);
+        const cs = group.querySelector(':scope > summary > .count');
+        if (cs) cs.textContent = String(visible);
+      });
+    }
+  }
+
+  // ---- omnisearch ----
+  const _REGION_INDEX = FACET_REGIONS.map(([region, count]) => ({
+    region, count, label: regionLabel(region), labelN: searchNormalize(regionLabel(region)),
+  }));
+  // Index the FULL style taxonomy (the 6 buckets + interior groups + distinctive
+  // leaves like rancio / vin jaune / fino / oloroso), not just the 6 simple
+  // buckets, so detailed styles are findable in the omnisearch. Depth-0 tree
+  // nodes ARE the simple buckets (same slugs); deeper nodes are the details.
+  const _SIMPLE_STYLE_KEYS = new Set(FACET_STYLES_SIMPLE.map(([b]) => b));
+  const _STYLE_INDEX = FACET_STYLES_TREE.map(node => ({
+    key: node.slug, count: node.count,
+    label: STYLE_LABELS[node.slug] || node.slug,
+    labelN: searchNormalize(STYLE_LABELS[node.slug] || node.slug),
+    aliasesN: (STYLE_SEARCH_TERMS[node.slug] || []).map(searchNormalize),
+  }));
+  const _CLASS_INDEX = FACET_CLASS_TREE.map(node => ({
+    key: node.slug, count: node.count,
+    label: CLASS_LABELS[node.slug] || node.slug,
+    labelN: searchNormalize(CLASS_LABELS[node.slug] || node.slug),
+    aliasesN: (CLASS_SEARCH_TERMS[node.slug] || []).map(searchNormalize),
+  }));
+
+  function rankAllSuggestions(query, perGroup) {
+    const nq = searchNormalize(query || '');
+    if (!nq) return { appellations: [], grapes: [], regions: [], styles: [], classifications: [] };
+    // Search/count grapes against the active scope: when "main grape only" is
+    // on, the map filters grapes_principal, so the dropdown surfaces principal-
+    // relevant grapes and shows their principal count (was always total count).
+    const grapeRole = filters.mainGrapeOnly ? 'principal' : 'all';
+    const grapes = rankGrapeSuggestions(query, grapeRole, perGroup).map(s => ({
+      type: 'grape', key: s.entry.slug,
+      name: toTitleCase(s.matched || s.entry.label),
+      sub: (s.matched && s.matched.toLowerCase() !== s.entry.label.toLowerCase()) ? toTitleCase(s.entry.label) : '',
+      count: filters.mainGrapeOnly ? (s.entry.count_principal || 0) : s.entry.count,
+      score: s.score,
+    }));
+    const scoreLabel = labelN => labelN.startsWith(nq) ? 100 : (labelN.includes(nq) ? 80 : -1);
+    const regions = _REGION_INDEX
+      .map(r => ({ r, score: scoreLabel(r.labelN) })).filter(x => x.score >= 0)
+      .sort((a, b) => b.score - a.score || b.r.count - a.r.count).slice(0, perGroup)
+      .map(x => ({ type: 'region', key: x.r.region, name: x.r.label, sub: '', count: x.r.count, score: x.score }));
+    const styles = _STYLE_INDEX
+      .map(s => {
+        // Best score across the localized label and any synonym (fondillón,
+        // eiswein, vinsanto…); record which synonym matched for the sub-label.
+        let score = scoreLabel(s.labelN);
+        let matched = '';
+        for (const a of s.aliasesN) {
+          const sc = scoreLabel(a);
+          if (sc > score) { score = sc; matched = a; }
+        }
+        return { s, score, matched };
+      }).filter(x => x.score >= 0)
+      .sort((a, b) => b.score - a.score || b.s.count - a.s.count).slice(0, perGroup)
+      .map(x => ({
+        type: 'style', key: x.s.key,
+        name: x.matched ? toTitleCase(x.matched) : x.s.label,
+        sub: x.matched ? x.s.label : '',
+        count: x.s.count, score: x.score,
+      }));
+    const classifications = _CLASS_INDEX
+      .map(s => {
+        let score = scoreLabel(s.labelN);
+        let matched = '';
+        for (const a of s.aliasesN) {
+          const sc = scoreLabel(a);
+          if (sc > score) { score = sc; matched = a; }
+        }
+        return { s, score, matched };
+      }).filter(x => x.score >= 0)
+      .sort((a, b) => b.score - a.score || b.s.count - a.s.count).slice(0, perGroup)
+      .map(x => ({
+        type: 'classification', key: x.s.key,
+        name: x.matched ? toTitleCase(x.matched) : x.s.label,
+        sub: x.matched ? x.s.label : '',
+        count: x.s.count, score: x.score,
+      }));
+    const apps = [];
+    for (const slug in AOCS) {
+      const rec = AOCS[slug];
+      if (!showIgp && (rec.kind || 'AOC') === 'IGP') continue;
+      if (!spiritsVisible() && rec.is_wine === false) continue;
+      const t = searchableText(rec);
+      const score = t.startsWith(nq) ? 100 : (t.includes(nq) ? 80 : -1);
+      if (score >= 0) apps.push({ slug, rec, score });
+    }
+    apps.sort((a, b) => b.score - a.score || (a.rec.name || '').localeCompare(b.rec.name || '', 'fr'));
+    const appellations = apps.slice(0, perGroup).map(a => ({
+      type: 'appellation', key: a.slug, name: a.rec.name,
+      sub: a.rec.region ? regionLabel(a.rec.region) : '', count: null, score: a.score,
+    }));
+    return { appellations, grapes, regions, styles, classifications };
+  }
+
+  function pickOmni(type, key) {
+    if (type === 'grape') {
+      filters.grapesAll.add(key);
+      track('Omnisearch Result Picked', { type: 'grape', locale: LANG });
+      refreshAllGrapeChipFilters();
+      applyFilter({ fit: true });
+    } else if (type === 'region') {
+      setRegionSelection(key, true);
+      // Reflect the new selection in the appellation-tree checkboxes.
+      const appEl = document.getElementById('facet-appellations');
+      if (appEl) appEl.querySelectorAll('input[type=checkbox]').forEach(inp => {
+        if (inp.dataset.key) inp.checked = filters.appellations.has(inp.dataset.key);
+      });
+      refreshRegionTriStates();
+      track('Omnisearch Result Picked', { type: 'region', locale: LANG });
+      applyFilter({ fit: true });
+    } else if (type === 'style') {
+      // Route to the matching surface: the 6 coarse buckets drive the simple
+      // chips; detailed taxonomy nodes (rancio, vin jaune, …) drive the advanced
+      // style tree. Both render as removable active-filter chips either way.
+      if (_SIMPLE_STYLE_KEYS.has(key)) filters.stylesSimple.add(key);
+      else filters.styles.add(key);
+      refreshSidebarCheckedState();
+      track('Omnisearch Result Picked', { type: 'style', locale: LANG });
+      applyFilter({ fit: true });
+    } else if (type === 'classification') {
+      filters.classifications.add(key);
+      refreshSidebarCheckedState();
+      track('Omnisearch Result Picked', { type: 'classification', locale: LANG });
+      applyFilter({ fit: true });
+    } else if (type === 'appellation') {
+      if (!AOCS[key]) return;
+      lastPanelTrigger = document.getElementById('omni');
+      lastStackKey = key;
+      stackFocusIndex = 0;
+      renderPanelStack([key], 0);
+      track('Appellation Opened', { slug: key, via: 'omnisearch', locale: LANG });
+      const b = (viewMode === 'simple' && AOCS[key].bbox_villages) ? AOCS[key].bbox_villages : AOCS[key].bbox;
+      if (b && typeof map.fitBounds === 'function') map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: 11, duration: 500 });
+    }
+  }
+
+  function buildOmnisearch() {
+    const input = document.getElementById('omni');
+    const drop = document.getElementById('omni-suggestions');
+    if (!input || !drop) return;
+    const GROUP_LABELS = {
+      appellations: LABELS.facet_appellations_h, grapes: LABELS.facet_grapes_h,
+      regions: LABELS.facet_regions_h, styles: LABELS.facet_styles_h,
+      classifications: LABELS.facet_classification_h,
+    };
+    const live = document.getElementById('omni-live');
+    // The omnisearch ALSO live-filters the appellation tree below (in addition
+    // to the open-panel dropdown), reusing the tree filter + auto-collapse.
+    function syncTreeFilter(q) {
+      filters.q = q;  // persist across mode/spirits rebuilds (buildAppellationFacet reads it)
+      refreshFacetVisibility('facet-appellations', q);
+      if (q) {
+        const treeEl = document.getElementById('facet-appellations');
+        const par = treeEl && treeEl.closest('details');
+        if (par && !par.open) par.open = true;
+      }
+    }
+    let items = [];
+    let activeIdx = -1;
+    let trackTimer = null;
+
+    function setLive(msg) { if (live) live.textContent = msg || ''; }
+    function clearActiveDescendant() { input.removeAttribute('aria-activedescendant'); }
+
+    function suggestionHtml(it, idx) {
+      const sub = it.sub ? ` <span class="sub">${escapeHtml(it.sub)}</span>` : '';
+      const count = (it.count != null) ? `<span class="count">${it.count}</span>` : '';
+      return `<div class="suggestion" id="omni-opt-${idx}" role="option" aria-selected="false" data-idx="${idx}" data-type="${escapeAttr(it.type)}" data-key="${escapeAttr(it.key)}"><span class="name">${escapeHtml(it.name)}</span>${sub}${count}</div>`;
+    }
+    // Build the grouped markup for the given {group: items} map; group headers
+    // keep a fixed visual order. Resets `items` to the flattened, index-aligned
+    // list the keyboard/mouse handlers walk.
+    function paintGroups(groups, order) {
+      items = [];
+      let html = '';
+      for (const g of order) {
+        const list = groups[g];
+        if (!list || !list.length) continue;
+        html += `<div class="omni-group-header">${escapeHtml(GROUP_LABELS[g] || g)}</div>`;
+        for (const it of list) { const idx = items.length; items.push(it); html += suggestionHtml(it, idx); }
+      }
+      return html;
+    }
+    function showDrop(html) { drop.innerHTML = html; drop.hidden = false; input.setAttribute('aria-expanded', 'true'); }
+    function hideDrop() {
+      drop.hidden = true; drop.innerHTML = ''; items = []; activeIdx = -1;
+      input.setAttribute('aria-expanded', 'false'); clearActiveDescendant();
+    }
+
+    // Empty-query state: seed the dropdown with popular grapes / styles /
+    // regions so a user can discover the taxonomy without knowing a name
+    // (appellations are excluded — there is no meaningful "popular" few).
+    function renderSeeds() {
+      const role = filters.mainGrapeOnly ? 'principal' : 'all';
+      const ck = filters.mainGrapeOnly ? 'count_principal' : 'count';
+      // Over-fetch then sort by the active scope's count so "popular grapes"
+      // reflects principal usage when "main grape only" is on (the shared index
+      // is ordered by total count; re-sorting here keeps the canonical facet,
+      // which also uses the empty-query branch, untouched).
+      const grapes = rankGrapeSuggestions('', role, 30)
+        .sort((a, b) => (b.entry[ck] || 0) - (a.entry[ck] || 0))
+        .slice(0, 5)
+        .map(s => ({
+          type: 'grape', key: s.entry.slug, name: toTitleCase(s.entry.label), sub: '',
+          count: s.entry[ck] || 0,
+        }));
+      const styles = _STYLE_INDEX.slice().sort((a, b) => b.count - a.count).slice(0, 5)
+        .map(s => ({ type: 'style', key: s.key, name: s.label, sub: '', count: s.count }));
+      const regions = _REGION_INDEX.slice().sort((a, b) => b.count - a.count).slice(0, 5)
+        .map(r => ({ type: 'region', key: r.region, name: r.label, sub: '', count: r.count }));
+      const html = paintGroups({ grapes, styles, regions }, ['grapes', 'styles', 'regions']);
+      if (!items.length) { hideDrop(); return; }
+      showDrop(html);
+      activeIdx = -1;  // passive: Enter on an empty box does nothing
+      clearActiveDescendant();
+      setLive('');
+    }
+    function renderNoResults(q) {
+      items = []; activeIdx = -1;
+      const msg = fmt(LABELS.omni_no_results, { q });
+      showDrop(`<div class="omni-empty">${escapeHtml(msg)}</div>`);
+      clearActiveDescendant();
+      setLive(msg);
+    }
+    function renderDrop(q) {
+      if (!q) { renderSeeds(); return; }
+      const res = rankAllSuggestions(q, 5);
+      const html = paintGroups(res, ['appellations', 'grapes', 'regions', 'styles', 'classifications']);
+      if (!items.length) { renderNoResults(q); return; }
+      showDrop(html);
+      // Pre-arm the single highest-scoring row across ALL groups (not always the
+      // first appellation), so a stray Enter lands on the best match. Ties keep
+      // the earliest, preserving the fixed group order.
+      let best = 0;
+      for (let i = 1; i < items.length; i++) {
+        if ((items[i].score || 0) > (items[best].score || 0)) best = i;
+      }
+      highlight(best);
+      setLive('');
+    }
+    function highlight(i) {
+      const els = drop.querySelectorAll('.suggestion');
+      els.forEach((el, k) => {
+        const on = k === i;
+        el.classList.toggle('active', on);
+        el.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      activeIdx = i;
+      if (els[i]) { els[i].scrollIntoView({ block: 'nearest' }); input.setAttribute('aria-activedescendant', els[i].id); }
+      else clearActiveDescendant();
+    }
+    function choose(i) {
+      const it = items[i];
+      if (!it) return;
+      const wasAppellation = it.type === 'appellation';
+      pickOmni(it.type, it.key);
+      input.value = '';
+      syncTreeFilter('');  // emptying the box clears the tree filter
+      // On mobile, an appellation pick flies the map but the drawer would stay
+      // open covering it — close it so the result is visible.
+      if (wasAppellation && window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+        const sb = document.getElementById('sidebar'); if (sb) sb.classList.remove('open');
+      }
+      hideDrop();
+      if (!wasAppellation) input.focus();
+    }
+    drop.addEventListener('mousedown', e => {
+      const s = e.target.closest('.suggestion');
+      if (!s) return;
+      e.preventDefault();
+      choose(parseInt(s.dataset.idx, 10));
+    });
+    drop.addEventListener('mousemove', e => {
+      const s = e.target.closest('.suggestion');
+      if (s) highlight(parseInt(s.dataset.idx, 10));
+    });
+    input.addEventListener('input', () => {
+      const q = input.value.trim();
+      renderDrop(q);
+      syncTreeFilter(q);
+      if (trackTimer) clearTimeout(trackTimer);
+      if (q) trackTimer = setTimeout(() => {
+        const r = rankAllSuggestions(q, 5);
+        const total = r.appellations.length + r.grapes.length + r.regions.length + r.styles.length;
+        track('Omnisearch Used', {
+          result_count: String(total),
+          had_match: total > 0 ? 'true' : 'false',
+          groups: [r.appellations.length && 'a', r.grapes.length && 'g', r.regions.length && 'r', r.styles.length && 's'].filter(Boolean).join(''),
+          query_len: String(q.length),
+          locale: LANG,
+        });
+      }, 1000);
+    });
+    input.addEventListener('focus', () => renderDrop(input.value.trim()));
+    input.addEventListener('blur', () => setTimeout(hideDrop, 120));
+    input.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (drop.hidden) renderDrop(input.value.trim());
+        else if (items.length) highlight((activeIdx + 1) % items.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!drop.hidden && items.length) highlight((activeIdx - 1 + items.length) % items.length);
+      } else if (e.key === 'Enter') {
+        if (!drop.hidden && activeIdx >= 0) { e.preventDefault(); choose(activeIdx); }
+      } else if (e.key === 'Escape') {
+        hideDrop();
+      }
+    });
+  }
+
+  buildOmnisearch();
+  // Rescope the Grapes facet typeahead/counts to the active grape field so
+  // "main grape only" surfaces principal-relevant grapes with principal counts
+  // (picks still land in filters.grapesAll).
+  function rescopeGrapeFacet() {
+    const gc = document.querySelector('.grape-chip-filter[data-role="all"]');
+    if (gc) buildGrapeChipFilter(gc, filters.mainGrapeOnly ? 'principal' : 'all', filters.grapesAll);
+  }
+  const mgoEl = document.getElementById('main-grape-only');
+  if (mgoEl) {
+    mgoEl.checked = filters.mainGrapeOnly;
+    if (filters.mainGrapeOnly) rescopeGrapeFacet();  // reflect a restored toggle on first paint
+    mgoEl.addEventListener('change', e => {
+      filters.mainGrapeOnly = e.target.checked;
+      try { localStorage.setItem('main_grape_only', filters.mainGrapeOnly ? '1' : '0'); } catch (err) {}
+      track('Grape Scope Toggled', { scope: filters.mainGrapeOnly ? 'main' : 'all', locale: LANG });
+      rescopeGrapeFacet();
+      applyFilter({ fit: true });
+    });
+  }
 
   // ----- detail panel -----
   const panel = document.getElementById('panel');
@@ -1376,6 +1694,13 @@
       const eambrosiaUrl = `https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/details/${encodeURIComponent(sources.id_eambrosia)}`;
       const fileNum = sources.file_number ? ' — ' + LABELS.src_eambrosia_id + ' ' + escapeHtml(sources.file_number) : '';
       links.push(`<li><a href="${escapeAttr(eambrosiaUrl)}" target="_blank" rel="noopener">${LABELS.src_eambrosia}</a>${fileNum}</li>`);
+    }
+    if (sources.cantonal_reglement_url) {
+      const lab = sources.cantonal_reglement_label ? ' — ' + escapeHtml(sources.cantonal_reglement_label) : '';
+      links.push(`<li><a href="${escapeAttr(sources.cantonal_reglement_url)}" target="_blank" rel="noopener">${LABELS.src_cantonal_reglement}</a>${lab}</li>`);
+    }
+    if (sources.ofag_repertoire_url) {
+      links.push(`<li><a href="${escapeAttr(sources.ofag_repertoire_url)}" target="_blank" rel="noopener">${LABELS.src_ofag_repertoire}</a></li>`);
     }
     if (sources.syndicate && sources.syndicate.url) {
       const syLabel = sources.syndicate.label ? ' — ' + escapeHtml(sources.syndicate.label) : '';
@@ -1891,8 +2216,10 @@
       stackFocusIndex = 0;
       renderPanelStack([urlSlug], 0);
       // Frame the shared appellation, but only when the link carries no
-      // explicit camera hash (respect a co-shared #zoom/lat/lon).
-      if (!window.location.hash) {
+      // explicit camera hash (respect a co-shared #zoom/lat/lon). Use the
+      // page-entry snapshot, not the live hash — maplibre has already written
+      // the default camera into location.hash by now.
+      if (!INITIAL_CAMERA_HASH) {
         // Mode-aware like fitToFiltered / the facet-open handler: simple mode
         // renders the villages geometry, so frame that extent, not parcellaire.
         const b = (viewMode === 'simple' && AOCS[urlSlug].bbox_villages) ? AOCS[urlSlug].bbox_villages : AOCS[urlSlug].bbox;

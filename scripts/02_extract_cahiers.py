@@ -1503,7 +1503,10 @@ def main() -> int:
                 "observation": [t["slug"] for t in grapes["observation"]],
                 "details": grapes["all"],
             }
-            record["styles"] = parse_styles(iii_text, record["categories"])
+            mention_text = " ".join(
+                v for v in (record.get("sections") or {}).values() if isinstance(v, str)
+            )
+            record["styles"] = parse_styles(iii_text, record["categories"], mention_text)
 
         # The parent record is everything we just built. Find its SIQO row to
         # carry id_denomination_geo through, then emit one JSON per

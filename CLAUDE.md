@@ -406,7 +406,7 @@ twice with no changes upstream must be a no-op (cache hits).
 | 02g_fetch_vivc.py | raw/inao/cahier-extracted/*.json + raw/es/pliegos-extracted/ + raw/pt/cadernos-extracted/ + raw/vivc/slug_overrides.json | raw/vivc/{search,passport,by-slug}/*.html\|json + manifest.json + slug_overrides.example.json |
 | 02i_fetch_wikidata_qids.py | raw/*/*-extracted/*.json (slug + id_eambrosia) + raw/wikipedia/aocs/<lang>/ + raw/wikidata/slug_overrides.json | raw/wikidata/qids-by-slug.json + p9854.json + manifest.json + slug_overrides.example.json |
 | 03_generate_wiki.py | raw/inao/cahier-extracted/*.json + raw/terroir-facts/ | wiki/*.md, wiki/_index.json |
-| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (homepage × 4 locales) |
+| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/{en,fr,es,nl}/<slug>/index.html (per-appellation entity pages), wiki/{en,fr,es,nl}/appellations/index.html (browse-index hub linking every indexable slug, grouped by country — fixes the entity-page link-graph orphan problem), wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (4 home + 4 browse + 1,638 index slugs × 4 locales), wiki/llms.txt (AI-crawler index), wiki/404.html |
 
 ## Spain pipeline (`scripts/es/`)
 
@@ -2738,20 +2738,44 @@ CH-specific notes:
 - The per-canton règlement parser at
   [scripts/_lib/ch/reglement.py](scripts/_lib/ch/reglement.py) uses
   a **whole-document grape-lexicon scan** rather than section-scoped
-  extraction. The shared `_lib.grape_entity.match_variety` is robust
-  enough (lexicon-based + per-token rejection) to scan ~50 KB of
-  règlement text without false positives, and cantonal règlements
-  frequently bury the variety list in an annex or refer to an
-  external annex by article — section-scoped extraction missed most
-  of the recall. Commune extraction stays section-scoped because
+  extraction, because cantonal règlements frequently bury the variety
+  list in an annex or refer to an external annex by article —
+  section-scoped extraction missed most of the recall. Scanning ~50 KB
+  of regulatory prose is noise-prone, though, so `extract_varieties`
+  guards the shared `match_variety` three ways (2026-06): a
+  **commune-name guard** (a chunk that is a Swiss commune — Genève,
+  Sion, Cortaillod — is area prose, not a grape), a **fuzzy floor**
+  (`_CH_FUZZY_FLOOR`=95: weak fuzzy hits matched common words / place
+  fragments to obscure non-Swiss grapes — `vigne`→viognier,
+  `Nein`→durif), and a small **`_CH_STOP_SURFACES`** set for prose
+  words that are exact grape aliases out of context (`canton`→chenin,
+  `Säure`→calitor, `weisse`→valente). Candidate cleaning strips
+  leading FR/IT/DE determiners (`il Merlot`, `la Bondola`), `a)`/`°`
+  ordinal markers, and footnote tails, and adds a name-before-number
+  variant to recover must-weight (Mostgewicht) lines
+  (`a) Blauburgunder 19,4 °Brix`). The Swiss Agroscope crossings +
+  natives the scan surfaces (Garanoir, Mara, Galotta, Doral, Divico,
+  Carminoir, Diolinoir, Bondola, Completer, Gouais→heunisch) live in
+  the shared `grape_lexicon.py`; Cornalin / Humagne are deliberately
+  NOT folded yet (Valais Cornalin = Rouge du Pays vs Humagne Rouge =
+  Cornalin d'Aoste is an identity tangle that needs a VIVC pass).
+  Commune extraction stays section-scoped because
   whole-document commune scans generate huge false-positive lists.
-  Variety extraction recall: 20 of 26 cantons return non-zero
-  varieties; AG (29), GE (47), VD (16), VS (25), FR (66), NE (18),
-  TI (14), JU (4), LU (7), BL (8), GR (5), SG (5), OW (4), TG (4),
-  ZH (3), SH (2), SO (1), BE (1), GL (1), ZG (1). Cantons with 0
-  varieties (AI, AR, BS, NW, SZ, UR) defer to federal OVin without
-  cataloguing varieties locally (BS defers to BL via inter-cantonal
-  Vereinbarung; the others are tiny corpora ~5 ha each).
+  Variety extraction recall (post-2026-06 FP cleanup — counts dropped
+  because the prior figures double-counted prose/place false positives
+  that the new guards remove, and rose where Mostgewicht recall recovers
+  real lists): 11 cantons return non-zero cantonale-tier varieties;
+  AG (65), GE (51), VS (44), VD (38), LU (25), TI (22), NE (15), BL (7),
+  SG (4), OW (4), GR (2). The other cantons (AI, AR, BE, BS, GL, JU, NW,
+  SH, SO, SZ, TG, UR, ZG, ZH) now return 0 at the cantonale tier:
+  some defer to federal OVin without cataloguing varieties locally
+  (AI/AR/BS/NW/SZ/UR; BS defers to BL via inter-cantonal Vereinbarung;
+  tiny corpora ~5 ha each), and the rest (BE, GL, JU, SH, SO, TG, ZG,
+  ZH) DO grow wine but either publish a règlement too sparse to parse
+  (ZH/SO are ~3 KB with no variety list) or enumerate varieties in a
+  Mostgewicht / annex form the scan doesn't yet recover — a known
+  recall gap, not a regression (their prior non-zero counts were
+  entirely prose/place false positives now removed).
 - For the 5 multi-AOC cantons (VD has 10 AOCs, GE has 23, TI has 4,
   BE has 3, FR has 2), the canton-wide règlement body is the v1
   default for variety lists. Per-AOC commune-list carving (Phase 2.5)
@@ -4241,6 +4265,47 @@ author / editorial dates for a generated page).
 - Contract: the builder returns a pre-serialised opaque string filling the
   `{jsonld_html}` `str.format` slot — its JSON braces are data, not format
   fields, so it must not be double-braced or `esc()`-ed.
+
+## Internal linking & crawlability (browse index, cross-links, llms.txt, 404)
+
+The map homepage is a JS app shell with no crawlable `<a>` links to entity
+pages (the sidebar list is client-rendered), so the per-appellation pages were
+link-graph orphans discoverable only via the sitemap. Stage 04 now emits a
+static link layer (all in [scripts/_lib/map_template.py](scripts/_lib/map_template.py)
++ [scripts/04_build_maps.py](scripts/04_build_maps.py)):
+
+- **Browse-index pages** — `wiki/<locale>/appellations/index.html` per locale,
+  a self-contained page (`_render_browse_page` + `_BROWSE_TEMPLATE`, NOT the
+  map shell) listing every **index**-classified appellation as a real `<a>`,
+  grouped by country and sorted by localized name. The static crawl hub.
+  A namespace `assert "appellations" not in aocs` guards the path collision.
+- **Inbound links** to the browse hub: the sidebar footer (`{browse_path}`
+  slot, on the homepage AND every entity page) + a paragraph in the About
+  dialog (`about_browse_html`).
+- **Entity cross-link nav** (`_entity_nav_html` → `<nav class="entity-nav">`):
+  browse link + parent (when `parent_slug` resolves) + children (from
+  `children_by_parent`, built once in `emit_html`, passed as `children_map`).
+  Emitted into `ssr_content` for index AND fold pages, hidden under `html.js`
+  alongside `#ssr-content` (no-JS / crawler only). Because folds now carry a
+  non-empty `ssr`, the brand-`<h1>` invariant is tracked by an explicit
+  `has_card` flag, not `ssr` truthiness.
+- **`wiki/llms.txt`** (`_write_llms_txt`) — llmstxt.org markdown index: the EN
+  meta description as the blockquote, the site links, then every index slug as
+  an EN deep-link grouped by country. No build date inside (byte-stable for the
+  deploy SHA256 diff).
+- **`wiki/404.html`** (`_write_404_page`) — self-contained noindex branded
+  error page; Bunny serves it via `Custom404FilePath`.
+- **Data-updated date** — only the 5 homepages carry it (`about_updated_html`
+  in the About dialog). `about_dialog_html` is built per-`_fill` (date for the
+  homepage, dateless for entities) instead of living in `page_shell`, so a
+  rebuild churns 5 files, not all ~11.6k entity pages.
+- **Sitemap** grows to 4 home + 4 browse + (index slugs × 4 locales).
+- **Deploy** ([scripts/deploy.py](scripts/deploy.py)) gained two idempotent,
+  warn-don't-fail Bunny config steps called from `main()`: `ensure_force_ssl`
+  (POST `/pullzone/<id>/setForceSSL` per hostname whose `ForceSSL` is off — was
+  serving `http://www.openwinemap.com/` as 200) and `ensure_custom_404`
+  (resolve storage zone by name, set `Custom404FilePath=/404.html`). Apex→www
+  301 stays a manual dashboard rule (smoke-checked by `check_apex_redirect`).
 
 ## Code style
 

@@ -1210,6 +1210,18 @@ GRAPE_ALIAS = {
     "rheinfelder": "rheinfelder",                  # interspecific white
     "comtessa": "comtessa",                        # Geilweilerhof
     "divona": "divona",                            # Agroscope CH white
+    "garanoir": "garanoir",                        # Agroscope CH red (Gamay × Reichensteiner, 1970)
+    "mara": "mara",                                # Agroscope CH red (Gamay × Reichensteiner)
+    "galotta": "galotta",                          # Agroscope CH red (Ancellotta × Gamay)
+    "doral": "doral",                              # Agroscope CH white (Chasselas × Chardonnay)
+    "gouais": "heunisch",                          # Gouais Blanc = Heunisch Weiss (VIVC) — Swiss "Gwäss"
+    "gouais-blanc": "heunisch",
+    "gwass": "heunisch",
+    "diolinoir": "diolinoir",                      # Agroscope CH red (Rouge de Diolly × Pinot noir)
+    "carminoir": "carminoir",                      # Agroscope CH red (Pinot noir × Cabernet Sauvignon)
+    "divico": "divico",                            # Agroscope CH red (Gamaret × Bronner, fungus-resistant)
+    "bondola": "bondola",                          # Ticino native red
+    "completer": "completer",                      # Graubünden native white (Malans)
     "aromera": "aromera",                          # Geilweilerhof crossing
     "merlot-khorus": "merlot-khorus",              # IT/DE interspecific red
     "merlot-kanthus": "merlot-kanthus",            # IT/DE interspecific red
@@ -2062,6 +2074,15 @@ DEFAULT_COLOUR: dict[str, str] = {
     "rheinfelder": "blanc",
     "comtessa": "blanc",
     "divona": "blanc",
+    "garanoir": "noir",
+    "mara": "noir",
+    "galotta": "noir",
+    "doral": "blanc",
+    "diolinoir": "noir",
+    "carminoir": "noir",
+    "divico": "noir",
+    "bondola": "noir",
+    "completer": "blanc",
     "aromera": "blanc",
     "merlot-khorus": "noir",
     "merlot-kanthus": "noir",
@@ -2627,6 +2648,26 @@ STYLE_PATTERNS: list[tuple[str, list[re.Pattern]]] = [
 ]
 
 
+# Mentions complémentaires — optional label mentions the cahier declares with
+# "le nom ... peut être complété par la mention « X »". They live in the
+# dénomination / labelling sections, not the section III colour prose, so they
+# are matched against the whole cahier text (see parse_styles' mention_text
+# argument). Each pattern requires the word "mention(s)" earlier in the same
+# sentence (≤ 80 non-period chars before the guillemet) AND the term in
+# guillemets — together these reject the false positives: the bare term occurs
+# as a tasting note ("un léger rancio") or a vinification practice ("conservation
+# en bouteilles sur lie"), and a quoted-but-unmentioned term occurs as a quoted
+# practice ("une durée d'élevage « sur lies »"). The "mention(s) … et « X »"
+# window also catches list-form declarations ("les mentions « hors d'âge » et
+# « rancio »" — Banyuls Grand Cru).
+MENTION_PATTERNS: list[tuple[str, list[re.Pattern]]] = [
+    ("rancio", [re.compile(r"mentions?\b[^.]{0,80}?[«\"]\s*rancio", re.IGNORECASE)]),
+    ("sur-lie", [re.compile(r"mentions?\b[^.]{0,80}?[«\"]\s*sur\s+lie", re.IGNORECASE)]),
+    ("methode-ancestrale",
+     [re.compile(r"mentions?\b[^.]{0,80}?[«\"]\s*m[ée]thode\s+ancestrale", re.IGNORECASE)]),
+]
+
+
 # Mapping from SIQO `categorie` strings to canonical style tags. The SIQO
 # referentiel has multiple rows per appellation, one per category, so this
 # is the more reliable signal — section III prose is a sanity check.
@@ -2646,12 +2687,20 @@ CATEGORIE_TO_STYLES: dict[str, list[str]] = {
 }
 
 
-def parse_styles(section_iii: str, categories: Iterable[str] = ()) -> list[str]:
+def parse_styles(
+    section_iii: str,
+    categories: Iterable[str] = (),
+    mention_text: str = "",
+) -> list[str]:
     """Return a sorted, deduped list of canonical style tags for an AOC.
 
-    Combines two signals:
+    Combines three signals:
       - section III prose (colour adjectives + special mentions);
-      - SIQO `categorie` field(s), via CATEGORIE_TO_STYLES.
+      - SIQO `categorie` field(s), via CATEGORIE_TO_STYLES;
+      - mentions complémentaires (rancio / sur lie / méthode ancestrale)
+        declared anywhere in the cahier, matched against `mention_text`
+        (usually the full section text) with the « mention » context — see
+        MENTION_PATTERNS.
     """
     found: set[str] = set()
     text = section_iii or ""
@@ -2660,6 +2709,10 @@ def parse_styles(section_iii: str, categories: Iterable[str] = ()) -> list[str]:
             found.add(tag)
     for cat in categories:
         for tag in CATEGORIE_TO_STYLES.get(cat.strip(), []):
+            found.add(tag)
+    mtext = re.sub(r"\s+", " ", mention_text or "")
+    for tag, pats in MENTION_PATTERNS:
+        if any(p.search(mtext) for p in pats):
             found.add(tag)
     # If we have a special mention, the underlying wine is implicitly white
     # in the case of vendanges tardives / grains nobles (always) — but we
