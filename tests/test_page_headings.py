@@ -16,15 +16,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from _lib.map_template import _PAGE_TEMPLATE, _build_about_dialog  # noqa: E402
+from _lib.map_template import _PAGE_TEMPLATE, _SIDEBAR, _build_about_dialog  # noqa: E402
 
 
 def test_brand_heading_tag_is_parameterized() -> None:
     # Brand wordmark wraps in a {brand_tag} slot (h1 on homepage / fold, p on
-    # index pages) and carries the stable .brand-title class for styling.
-    assert '<{brand_tag} class="brand-title">' in _PAGE_TEMPLATE
-    assert "</{brand_tag}>" in _PAGE_TEMPLATE
+    # index pages) and carries the stable .brand-title class for styling. It
+    # lives in the sidebar chrome (`_SIDEBAR`), which `_PAGE_TEMPLATE` composes
+    # via the `%%SIDEBAR%%` placeholder at render time.
+    assert "%%SIDEBAR%%" in _PAGE_TEMPLATE
+    assert '<{brand_tag} class="brand-title">' in _SIDEBAR
+    assert "</{brand_tag}>" in _SIDEBAR
     # The brand is no longer a hard-coded <h1>.
+    assert "<h1><img class=\"brand-mark\"" not in _SIDEBAR
     assert "<h1><img class=\"brand-mark\"" not in _PAGE_TEMPLATE
 
 
