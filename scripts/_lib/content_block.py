@@ -18,8 +18,12 @@ value.
 Each helper mirrors its JS counterpart one-for-one (same HTML templates + the
 same escaping) so the two renderers stay aligned; ``tests/test_content_block.py``
 snapshots the output as a drift guard, and every ``<article>`` carries a
-``data-ssr-sig`` (a hash of its normalised text) for a runtime JS cross-check in
-a later phase.
+``data-ssr-sig`` (a hash of its normalised text) used only as a test-only
+determinism guard — the client panel removes ``#ssr-content`` at boot and
+re-renders from the record, so there is NO runtime signature cross-check. A
+change to one renderer that isn't mirrored in the other therefore fails
+silently as crawler-vs-user divergence, not a crash; the parity tests are the
+only guard.
 """
 
 from __future__ import annotations
@@ -40,6 +44,18 @@ STUB_DOC_NAMES = {
     "si": "specifikacija proizvoda",
     "hr": "specifikacija proizvoda",
     "ro": "caiet de sarcini",
+    "de": "Produktspezifikation",
+    "hu": "termékleírás",
+    "bg": "продуктова спецификация",
+    "gr": "προδιαγραφή προϊόντος",
+    "cy": "τεχνικός φάκελος",
+    "sk": "špecifikácia výrobku",
+    "cz": "specifikace výrobku",
+    "lu": "cahier des charges",
+    "be": "enig document / document unique",
+    "nl": "enig document",
+    "mt": "single document",
+    "ch": "règlement cantonal",
 }
 
 FACTS_SUB_ORDER = ("facteurs_naturels", "facteurs_humains", "produit", "interactions")
@@ -422,6 +438,189 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
     return f'<h2>{lab["panel_sources_h"]}</h2><ul class="sources">{"".join(links)}</ul>'
 
 
+# ------------------------------------------------------------ provenance line
+
+# Native source-document term for the EU single document, per country — the
+# FALLBACK when no more-specific national-spec key is present on the record.
+# Regulator is then "the EU eAmbrosia register" (gated on id_eambrosia).
+_EU_DOC_TERM = {
+    "es": "documento único", "it": "documento unico", "at": "Einziges Dokument",
+    "de": "Einziges Dokument", "si": "enotni dokument", "hr": "jedinstveni dokument",
+    "hu": "egységes dokumentum", "ro": "document unic", "bg": "единен документ",
+    "gr": "ενιαίο έγγραφο", "cy": "ενιαίο έγγραφο", "sk": "jednotný dokument",
+    "cz": "jednotný dokument", "nl": "enig document", "mt": "single document",
+}
+
+# national-spec source-org token → human regulator name (the literal token
+# `_sources_for` surfaces as *_source_org). Falls back to the per-country
+# default in `_provenance_source` when the token is absent/unknown.
+_PROV_ORG_LABEL = {
+    "onvpv": "ONVPV", "iavv": "ИАЛВ/IAVV", "ypaat": "ΥΠΑΑΤ",
+    "upv-sr": "ÚPV SR", "mprv-sr": "MPRV SR", "szpi": "SZPI",
+    "agrarminiszterium": "Agrárminisztérium", "mkgp": "MKGP",
+    "moa-cy": "the Cyprus Department of Agriculture",
+}
+
+# per-country national-spec defaults (regulator, native doc term) for the
+# countries whose provenance resolves from `national_spec_url`.
+_PROV_NATIONAL = {
+    "hu": ("Agrárminisztérium", "termékleírás"),
+    "ro": ("ONVPV", "caiet de sarcini"),
+    "bg": ("ИАЛВ/IAVV", "продуктова спецификация"),
+    "gr": ("ΥΠΑΑΤ", "προδιαγραφή προϊόντος"),
+    "sk": ("ÚPV SR", "špecifikácia výrobku"),
+    "cy": ("the Cyprus Department of Agriculture", "τεχνικός φάκελος"),
+}
+
+
+def _provenance_source(rec: dict, ctx: RenderCtx) -> tuple[str, str, bool, str] | None:
+    """Resolve ``(regulator_html, doc_term, is_roster, extra_html)`` for the
+    provenance line, mirroring ``_sources_for``'s most-specific-first cascade.
+
+    Returns ``None`` when no public regulator source resolves (no line shown).
+    ``is_roster`` True means the authorised-variety list is a national/regional
+    roster, NOT an appellation-specific authorisation (CZ national list, IT
+    regional register, CH cantonal règlement) — the grapes clause is then
+    suppressed so we never misattribute a country-wide roster as this
+    designation's own. ``extra_html`` is a short per-record differentiator
+    (registration ref / homologation date) appended only to the grapeless
+    skeleton, so the degenerate strings are not byte-identical across records.
+
+    ``regulator_html`` is render-ready (proper-noun acronyms are esc'd; the
+    descriptive fallbacks come from the gettext catalog so they localise).
+    """
+    s = rec.get("sources") or {}
+    country = rec.get("country") or "fr"
+    lab = ctx.labels
+    file_number = s.get("file_number") or ""
+    has_eambrosia = bool(s.get("id_eambrosia"))
+    extra = f" ({esc(file_number)})" if file_number else ""
+    eambrosia_reg = lab["provenance_reg_eambrosia"]
+
+    def eu_fallback() -> tuple[str, str, bool, str] | None:
+        if s.get("eur_lex_url") and has_eambrosia:
+            return (eambrosia_reg, _EU_DOC_TERM.get(country, "single document"), False, extra)
+        return None
+
+    if country == "fr":
+        if s.get("boagri"):
+            d = s.get("homologation_date") or s.get("jorf_date") or ""
+            return ("INAO", "cahier des charges", False, f" ({esc(d)})" if d else "")
+        return None
+    if country == "es":
+        if s.get("national_pliego_url"):
+            return ("MAPA", "pliego de condiciones", False, extra)
+        return eu_fallback()
+    if country == "pt":
+        return ("IVV", "caderno de especificações", False, extra) if s.get("ivv_caderno_url") else None
+    if country == "it":
+        if s.get("masaf_pdf_filename") or s.get("masaf_filename"):
+            return ("MASAF", "disciplinare di produzione", False, extra)
+        if s.get("regional_register_url"):
+            # varieties come from a region-wide register, not this IGT's spec
+            return ("MASAF", "disciplinare di produzione", True, extra)
+        return eu_fallback()
+    if country == "de":
+        if s.get("ble_produktspezifikation_url"):
+            return ("BLE", "Produktspezifikation", False, extra)
+        return eu_fallback()
+    if country == "si":
+        if s.get("specifikacija_url"):
+            reg = _PROV_ORG_LABEL.get(s.get("specifikacija_source_org"), "MKGP")
+            return (esc(reg), "specifikacija proizvoda", False, extra)
+        return eu_fallback()
+    if country == "hr":
+        if s.get("specifikacija_url"):
+            return ("Ministarstvo poljoprivrede", "specifikacija proizvoda", False, extra)
+        return eu_fallback()
+    if country in _PROV_NATIONAL:
+        if s.get("national_spec_url"):
+            default_reg, doc = _PROV_NATIONAL[country]
+            reg = _PROV_ORG_LABEL.get(s.get("national_spec_source_org"), default_reg)
+            return (esc(reg), doc, False, extra)
+        return eu_fallback()
+    if country == "cz":
+        # CZ authorises one national 67-variety list across every wine —
+        # always a roster, never an appellation-specific authorisation.
+        if s.get("national_spec_url") or s.get("chzo_spec_url"):
+            return ("SZPI", "specifikace výrobku", True, extra)
+        return None
+    if country == "lu":
+        return ("IVV", "cahier des charges", False, extra) if s.get("cahier_url") else None
+    if country == "ch":
+        # NON-EU — never the eAmbrosia register. Canton-level variety lists →
+        # roster (drop the grapes clause); the canton name differentiates.
+        if s.get("cantonal_reglement_url") and s.get("canton"):
+            canton = s.get("canton_name") or str(s["canton"]).upper()
+            reg = fmt(lab["provenance_reg_canton"], {"canton": esc(canton)})
+            doc = {"de": "kantonales Reglement", "it": "regolamento cantonale"}.get(
+                s.get("source_lang") or "fr", "règlement cantonal"
+            )
+            return (reg, doc, True, "")
+        return None
+    if country == "be":
+        if s.get("eur_lex_url") and has_eambrosia:
+            doc = "enig document" if s.get("source_lang") == "nl" else "document unique"
+            return (eambrosia_reg, doc, False, extra)
+        return None
+    if country in ("at", "nl", "mt"):
+        return eu_fallback()
+    return None
+
+
+# A grape display name in prose drops the verbatim-cahier cruft the pills keep:
+# the ``— synonym`` / ``- synonym`` tail and the trailing OIV colour letter
+# (``B.`` / ``N.`` / ``Rs.`` …) — e.g. "Durella B. - Durello" → "Durella",
+# "Negro Amaro N. — Negroamaro" → "Negro Amaro".
+_GRAPE_SYNONYM_SEP_RE = re.compile(r"\s+[-—]\s+")
+_GRAPE_COLOUR_TAIL_RE = re.compile(r"\s+(?:B|N|G|RS|RG)\.\s*$", re.IGNORECASE)
+
+
+def _provenance_grape_name(g: str, ctx: RenderCtx) -> str:
+    name = _GRAPE_SYNONYM_SEP_RE.split(grape_name(g, ctx), 1)[0]
+    return _GRAPE_COLOUR_TAIL_RE.sub("", name).strip()
+
+
+def _provenance_grape_clause(rec: dict, ctx: RenderCtx) -> str:
+    """Clean principal-grape display names for the prose line (not the verbatim
+    cahier spelling, which carries OIV colour letters and ``— synonym`` tails
+    that read as cruft in a sentence). Lists all when ≤ 4; otherwise 3 names +
+    a localised ``and N other grape varieties`` tail (N ≥ 2, so the singular
+    ``1 other`` is never produced). Empty when the record has no principal
+    grapes."""
+    slugs = rec.get("grapes_principal") or []
+    if not slugs:
+        return ""
+    if len(slugs) <= 4:
+        return ", ".join(esc(_provenance_grape_name(g, ctx)) for g in slugs)
+    names = ", ".join(esc(_provenance_grape_name(g, ctx)) for g in slugs[:3])
+    return fmt(ctx.labels["provenance_grapes_more"], {"names": names, "n": len(slugs) - 3})
+
+
+def _provenance_line(rec: dict, ctx: RenderCtx) -> str:
+    """A single honest provenance sentence for the crawler-visible card: names
+    the regulator + native source document, and (for appellation-specific
+    sources only) the authorised principal grapes. Returns '' when no public
+    source resolves. Gated by the caller to the factless gap records."""
+    resolved = _provenance_source(rec, ctx)
+    if not resolved:
+        return ""
+    regulator, doc, is_roster, extra = resolved
+    doc_em = f"<em>{esc(doc)}</em>"
+    grapes = "" if is_roster else _provenance_grape_clause(rec, ctx)
+    if grapes:
+        sentence = fmt(
+            ctx.labels["provenance_with_grapes"],
+            {"regulator": regulator, "doc": doc_em, "grapes": grapes},
+        )
+    else:
+        sentence = fmt(
+            ctx.labels["provenance_bare"],
+            {"regulator": regulator, "doc": doc_em, "extra": extra},
+        )
+    return f'<p class="provenance-line">{sentence}</p>'
+
+
 # ---------------------------------------------------------------- pills
 
 def _grape_pill(g: str, cls: str, rec: dict, ctx: RenderCtx) -> str:
@@ -621,6 +820,12 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
     else:
         note_block = ""
 
+    # Honest provenance sentence — only where the card would otherwise emit
+    # nothing between the pills and the Sources heading (no terroir facts and
+    # no summary). Fills the factless long-tail records with a sourced,
+    # answer-engine-liftable line naming the regulator + source document.
+    provenance = _provenance_line(rec, ctx) if not facts_block and not summary else ""
+
     inner = (
         f"<h1>{name_with_latin(rec)}</h1>"
         f'<div class="meta">{country_seg}{esc(rec.get("kind") or "")}{region_seg}{meta_tail}</div>'
@@ -633,6 +838,7 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
         f"{facts_block or summary}"
         f"{note_block}"
         f"{render_subappellations(children, ctx, country)}"
+        f"{provenance}"
         f"{render_sources(rec.get('sources'), ctx)}"
     )
     sig = hashlib.sha256(_normalised_text(inner).encode("utf-8")).hexdigest()[:16]
