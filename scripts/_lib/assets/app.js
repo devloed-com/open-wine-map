@@ -432,7 +432,11 @@
         { id: 'basemap-dark', type: 'raster', source: 'basemap-dark', layout: { visibility: initialDark ? 'visible' : 'none' } }
       ]
     },
-    center: [2.6, 46.5], zoom: 5.4, hash: true
+    // minZoom 3 keeps the camera inside the tileset's lowest level (tiles
+    // start at z3) so zooming out to a continental overview never drops into
+    // an empty, polygon-less void. maxZoom 14 is defensive (tiles max at z12;
+    // MapLibre overzooms cleanly above that).
+    center: [2.6, 46.5], zoom: 5.4, minZoom: 3, maxZoom: 14, hash: true
   });
 
   // ----- theme switch (light / dark / system) -----
@@ -592,6 +596,19 @@
   };
   try { filters.mainGrapeOnly = localStorage.getItem('main_grape_only') === '1'; } catch (e) {}
 
+  function debounce(fn, ms) {
+    let t = null;
+    return function () {
+      const args = arguments;
+      if (t) clearTimeout(t);
+      t = setTimeout(() => { t = null; fn.apply(null, args); }, ms);
+    };
+  }
+  // The map filter + status update stay synchronous so the map reacts instantly;
+  // only the heavy facet-availability recompute (iterates the whole ~3.3k-record
+  // corpus and rebuilds facet DOM) is coalesced across rapid filter toggles.
+  const refreshFacetAvailabilityDebounced = debounce(() => refreshFacetAvailability(), 140);
+
   function applyFilter(opts) {
     const expr = buildFilterExpr();
     for (const id of ['appellations-fill', 'appellations-outline',
@@ -600,7 +617,7 @@
     }
     updateStatus();
     refreshFacetBadges();
-    refreshFacetAvailability();
+    refreshFacetAvailabilityDebounced();
     renderActiveFilters();
     if (opts && opts.fit) fitToFiltered();
   }

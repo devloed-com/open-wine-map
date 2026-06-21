@@ -558,12 +558,22 @@ def _build_source_block(
             + "          ['==', ['get', 'kind'], 'IGP'], '#6e7546',\n"
             + "          '#934050'\n"
             + "        ],\n"
+            # Zoom-aware so small appellations stay legible at the continental
+            # overview (z3) — their opacity floor is lifted there, reverting to
+            # the detail-zoom value by z8. The large-area end is unchanged so the
+            # overview isn't flooded with heavy regional fills.
+            # NOTE: a ['zoom'] expression must be the *top-level* input — it
+            # cannot be nested under the feature-state ['case']. So zoom is the
+            # outer interpolate and the selected-override + area ramp live inside
+            # each zoom stop (the selected value is constant across stops).
             + "        'fill-opacity': [\n"
-            + "          'case',\n"
-            + "          ['boolean', ['feature-state', 'selected'], false], 0.60,\n"
-            + "          ['interpolate', ['linear'], ['get', 'area'],\n"
-            + f"            {area_q1}, 0.50,\n"
-            + f"            {area_q3}, 0.20]\n"
+            + "          'interpolate', ['linear'], ['zoom'],\n"
+            + "          3, ['case',\n"
+            + "            ['boolean', ['feature-state', 'selected'], false], 0.60,\n"
+            + f"            ['interpolate', ['linear'], ['get', 'area'], {area_q1}, 0.60, {area_q3}, 0.20]],\n"
+            + "          8, ['case',\n"
+            + "            ['boolean', ['feature-state', 'selected'], false], 0.60,\n"
+            + f"            ['interpolate', ['linear'], ['get', 'area'], {area_q1}, 0.50, {area_q3}, 0.20]]\n"
             + "        ]\n"
             + "      }\n"
             + "    });\n"
@@ -591,12 +601,19 @@ def _build_source_block(
             + "      },\n"
             + "      paint: {\n"
             + "        'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#fff8e8', '#2a1014'],\n"
+            # Zoom-aware (see fill-opacity above): a slightly heavier outline on
+            # small appellations at the overview keeps them as crisp marks when
+            # the fill is sub-pixel; large-area outlines stay thin to avoid a
+            # cluttered web of borders at z3. ['zoom'] is top-level (see note
+            # above) — the selected-override + area ramp live inside each stop.
             + "        'line-width': [\n"
-            + "          'case',\n"
-            + "          ['boolean', ['feature-state', 'selected'], false], 2.5,\n"
-            + "          ['interpolate', ['linear'], ['get', 'area'],\n"
-            + f"            {area_q1}, 1.2,\n"
-            + f"            {area_q3}, 0.3]\n"
+            + "          'interpolate', ['linear'], ['zoom'],\n"
+            + "          3, ['case',\n"
+            + "            ['boolean', ['feature-state', 'selected'], false], 2.5,\n"
+            + f"            ['interpolate', ['linear'], ['get', 'area'], {area_q1}, 1.4, {area_q3}, 0.3]],\n"
+            + "          8, ['case',\n"
+            + "            ['boolean', ['feature-state', 'selected'], false], 2.5,\n"
+            + f"            ['interpolate', ['linear'], ['get', 'area'], {area_q1}, 1.2, {area_q3}, 0.3]]\n"
             + "        ]\n"
             + "      }\n"
             + "    });\n"

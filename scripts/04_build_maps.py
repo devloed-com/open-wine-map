@@ -216,6 +216,24 @@ GEOJSON_VILLAGES_OUT = MAP_DATA / "appellations-villages.geojson"
 PMTILES_VILLAGES_OUT = MAP_DATA / "appellations-villages.pmtiles"
 WIKIDATA_QIDS = ROOT / "raw" / "wikidata" / "qids-by-slug.json"
 
+# Geometry fed to tippecanoe is Douglas-Peucker simplified to cap the absurd
+# vertex density of commune/parcel-union polygons (the source GeoJSON is ~2 GB).
+# ~0.0002° ≈ 22 m at 46°N — invisible for whole appellations, safe for the
+# smallest grand-cru climats. The on-disk record's `area`/`bbox` props are
+# computed from the FULL-resolution geometry (this only thins the tile shape).
+TILE_SIMPLIFY_TOLERANCE = 0.0002
+
+
+def _simplify_for_tiles(geom):
+    """Simplify a polygon for vector-tile output only. `preserve_topology=True`
+    keeps the polygon valid and non-empty, so no appellation is ever dropped;
+    fall back to the original on the (theoretical) empty/error case."""
+    try:
+        simp = geom.simplify(TILE_SIMPLIFY_TOLERANCE, preserve_topology=True)
+    except Exception:
+        return geom
+    return geom if simp.is_empty else simp
+
 
 
 
@@ -2502,7 +2520,7 @@ def main() -> int:
         features.append(
             {
                 "type": "Feature",
-                "geometry": mapping(geom),
+                "geometry": mapping(_simplify_for_tiles(geom)),
                 "properties": common_props,
             }
         )
@@ -2516,7 +2534,7 @@ def main() -> int:
             village_features.append(
                 {
                     "type": "Feature",
-                    "geometry": mapping(v_geom),
+                    "geometry": mapping(_simplify_for_tiles(v_geom)),
                     "properties": village_props,
                 }
             )
@@ -2531,6 +2549,21 @@ def main() -> int:
     GEOJSON_OUT.write_text(json.dumps(fc, ensure_ascii=False), encoding="utf-8")
     village_fc = {"type": "FeatureCollection", "features": village_features}
     GEOJSON_VILLAGES_OUT.write_text(json.dumps(village_fc, ensure_ascii=False), encoding="utf-8")
+
+    # QA: tile-geometry simplification must never drop an appellation. Every
+    # emitted feature must keep a non-empty geometry (a collapse would silently
+    # hide that appellation from the map). Fatal so a regression can't ship.
+    for label, feats in (("appellations", features), ("villages", village_features)):
+        empties = [
+            f["properties"].get("slug")
+            for f in feats
+            if not (f.get("geometry") or {}).get("coordinates")
+        ]
+        if empties:
+            raise SystemExit(
+                f"[geo] FATAL: {len(empties)} {label} feature(s) collapsed to "
+                f"empty geometry (e.g. {empties[:5]}) — check TILE_SIMPLIFY_TOLERANCE"
+            )
     print(
         f"[geo] villages: {len(village_features)} polygons → {GEOJSON_VILLAGES_OUT.relative_to(ROOT)} "
         f"({GEOJSON_VILLAGES_OUT.stat().st_size // (1<<20)} MB), "
@@ -2626,12 +2659,22 @@ def main() -> int:
             "tippecanoe",
             "-o", str(dst_pmtiles),
             "-l", layer_id,
-            "--minimum-zoom=4",
+            # z3 (was z4): the default "simple" view renders the villages
+            # source at all zooms, so both sources must reach the continental
+            # overview level or polygons vanish on zoom-out (paired with the
+            # client's minZoom: 3).
+            "--minimum-zoom=3",
             "--maximum-zoom=12",
             "--coalesce-densest-as-needed",
             "--extend-zooms-if-still-dropping",
             "--no-feature-limit",
+            # Keep --no-tile-size-limit so tippecanoe never DROPS a feature to
+            # fit a byte budget (small appellations / grand-cru climats must
+            # survive). Tile size is instead bounded by (a) write-time geometry
+            # simplification (see _simplify_for_tiles) and (b) aggressive
+            # low/mid-zoom simplification below — z12 keeps full detail.
             "--no-tile-size-limit",
+            "--simplification=10",
             str(src_geojson),
         ]
         print(f"[tippe] {' '.join(cmd)}", file=sys.stderr)
