@@ -74,6 +74,11 @@ _LABELS = {
     "translation_source_label_pt": "o caderno de especificações",
     "translation_attribution": "Machine-translated from {source}",
     "entity_nav_children": "Sub-appellations",
+    "provenance_with_grapes": "Delimited by {regulator} in its {doc}, which authorises {grapes}.",
+    "provenance_bare": "Delimited by {regulator} in its {doc}{extra}.",
+    "provenance_grapes_more": "{names} and {n} other grape varieties",
+    "provenance_reg_eambrosia": "the EU eAmbrosia register",
+    "provenance_reg_canton": "the canton of {canton}",
 }
 
 _GRAPES_INFO = {
@@ -83,6 +88,9 @@ _GRAPES_INFO = {
                  "page_url": "https://pt.wikipedia.org/wiki/Tempranillo"},
     "touriga-nacional": {"name": "Touriga Nacional", "canonical_name": "Touriga Nacional"},
     "carignan": {"name": "Carignan"},
+    # IT cahier-style spelling: OIV colour letter + "— synonym" tail.
+    "durella": {"name": "Durella B. - Durello"},
+    "negro-amaro": {"name": "Negro Amaro N. — Negroamaro"},
 }
 _STYLES_INFO = {"red": {"extract": "Red wine.", "page_url": "https://en.wikipedia.org/wiki/Red_wine"}}
 _STYLE_LABELS = {"red": "red", "white": "white"}
@@ -255,6 +263,85 @@ def test_sources_block_branches() -> None:
     assert "<h2>Sources</h2>" in out
     assert "Cahier des charges" in out and "homologated 2024-01-01" in out
     assert "eAmbrosia" in out and "PDO-FR-0001" in out
+
+
+def test_provenance_line_fr_with_grapes() -> None:
+    # FR cahier, no facts/no summary, grapes present -> named regulator + grape clause.
+    out = _render({"name": "Z", "kind": "AOC", "country": "fr",
+                   "grapes_principal": ["merlot", "carignan"],
+                   "sources": {"boagri": "http://b/p.pdf", "homologation_date": "2024-01-01"}})
+    assert 'class="provenance-line"' in out
+    assert "Delimited by INAO in its <em>cahier des charges</em>, which authorises" in out
+    assert "Merlot, Carignan." in out
+    assert "the EU eAmbrosia register" not in out  # FR never resolves to eAmbrosia
+
+
+def test_provenance_line_grapes_listed_all_when_four() -> None:
+    out = _render({"name": "Z", "kind": "AOC", "country": "fr",
+                   "grapes_principal": ["merlot", "carignan", "aragonez", "touriga-nacional"],
+                   "sources": {"boagri": "http://b/p.pdf"}})
+    assert "which authorises Merlot, Carignan, Aragonez, Touriga Nacional." in out  # <=4 -> all listed
+    assert "other grape varieties" not in out
+
+
+def test_provenance_line_grapes_more_tail() -> None:
+    out = _render({"name": "Z", "kind": "AOC", "country": "fr",
+                   "grapes_principal": ["merlot", "carignan", "aragonez", "touriga-nacional", "syrah"],
+                   "sources": {"boagri": "http://b/p.pdf"}})
+    assert "and 2 other grape varieties" in out  # 5 grapes -> 3 named + "2 other"
+
+
+def test_provenance_line_grape_names_cleaned_for_prose() -> None:
+    # OIV colour letter + "— synonym" tail stripped in the PROSE line (the grape
+    # pills keep the verbatim cahier spelling — only the sentence is cleaned).
+    import re
+    out = _render({"name": "Z", "kind": "DOP", "country": "it",
+                   "grapes_principal": ["durella", "negro-amaro"],
+                   "sources": {"eur_lex_url": "http://e/x", "id_eambrosia": "EUGI9",
+                               "masaf_pdf_filename": "z.pdf"}})
+    line = re.search(r'<p class="provenance-line">.*?</p>', out).group(0)
+    assert "which authorises Durella, Negro Amaro." in line
+    assert "Durello" not in line and "B." not in line and "N." not in line
+    assert "Durello" in out  # pill still carries the verbatim spelling
+
+
+def test_provenance_line_national_roster_suppresses_grapes() -> None:
+    # CZ authorises a single national variety list -> roster; grapes clause dropped,
+    # file_number differentiator appended to the bare skeleton.
+    out = _render({"name": "Litoměřická", "kind": "DOP", "country": "cz",
+                   "grapes_principal": ["merlot", "carignan"],
+                   "sources": {"national_spec_url": "http://s/v.pdf", "file_number": "PDO-CZ-A0888"}})
+    assert "Delimited by SZPI in its <em>specifikace výrobku</em> (PDO-CZ-A0888)." in out
+    assert "which authorises" not in out  # roster -> no per-appellation grape claim
+
+
+def test_provenance_line_eambrosia_fallback_and_ch_canton() -> None:
+    # eAmbrosia fallback only when id_eambrosia present (BG with no national spec).
+    bg = _render({"name": "X", "kind": "DOP", "country": "bg",
+                  "sources": {"eur_lex_url": "http://eurlex/x", "id_eambrosia": "EUGI1",
+                              "file_number": "PDO-BG-A1"}})
+    assert "Delimited by the EU eAmbrosia register in its <em>единен документ</em> (PDO-BG-A1)." in bg
+    # CH is non-EU: regulator is the named canton, never eAmbrosia.
+    ch = _render({"name": "Genève", "kind": "AOC", "country": "ch",
+                  "sources": {"cantonal_reglement_url": "http://ge/r.pdf", "canton": "ge",
+                              "canton_name": "Genève", "source_lang": "fr"}})
+    assert "Delimited by the canton of Genève in its <em>règlement cantonal</em>." in ch
+    assert "eAmbrosia" not in ch
+
+
+def test_provenance_line_absent_without_resolvable_source() -> None:
+    # No sources -> no provenance line at all.
+    out = _render({"name": "N", "kind": "AOC", "country": "fr", "grapes_principal": ["merlot"]})
+    assert "provenance-line" not in out
+
+
+def test_provenance_line_suppressed_when_facts_present() -> None:
+    rec = {"name": "B", "kind": "AOC", "country": "fr", "grapes_principal": ["merlot"],
+           "sources": {"boagri": "http://b/p.pdf"},
+           "terroir_facts": {"facts": [
+               {"bullet": "Granite soils.", "subsection": "facteurs_naturels", "provenance": "cahier"}],
+               "cahier_source_pdf_url": "http://c/p.pdf"}}
+    assert "provenance-line" not in _render(rec)  # facts present -> no provenance line
 
 
 def test_deterministic_output_and_sig() -> None:

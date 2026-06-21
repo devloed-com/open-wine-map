@@ -142,7 +142,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_show_texte": _("Texte officiel INAO (show_texte)"),
         "src_product": _("Fiche produit INAO"),
         "src_syndicate": _("Site officiel de l'interprofession"),
-        "src_eur_lex": _("Pliego de condiciones (EUR-Lex, documento único)"),
+        "src_eur_lex": _("Cahier des charges (EUR-Lex, document unique)"),
         "src_national_pliego": _("Pliego de condiciones (national, PDF)"),
         "src_national_pliego_added": _("variétés ajoutées"),
         "src_national_spec": _("Cahier des charges national (PDF)"),
@@ -172,6 +172,17 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Open Wine Map n'a pas encore trouvé de {doc} pour cette appellation."
         ),
         "stub_help_label": _("aidez-nous à le trouver"),
+        # Provenance line — an honest one-sentence sourcing statement shown on
+        # factless records. {regulator}/{doc}/{grapes}/{extra} are substituted
+        # verbatim (regulator names + native source-doc terms stay in their own
+        # language, like region labels); only this scaffold is translated.
+        "provenance_with_grapes": _(
+            "Délimitée par {regulator} dans son {doc}, qui autorise {grapes}."
+        ),
+        "provenance_bare": _("Délimitée par {regulator} dans son {doc}{extra}."),
+        "provenance_grapes_more": _("{names} et {n} autres cépages"),
+        "provenance_reg_eambrosia": _("le registre eAmbrosia de l'UE"),
+        "provenance_reg_canton": _("le canton de {canton}"),
         "fr_marker": _("(français)"),
         "fr_marker_aria": _("Texte source en français"),
         "es_marker": _("(español)"),
@@ -1938,6 +1949,9 @@ _TEMPLATE = """<!doctype html>
   .facet label:hover {{ color:#fff }}
   .facet input[type=checkbox] {{ accent-color:#c0392b; flex:0 0 auto }}
   .facet .name {{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
+  /* The appellation name opens its detail panel (the checkbox is the filter) —
+     underline on name-hover signals the "go to this one" link affordance. */
+  .facet label[data-slug] > .name:hover {{ text-decoration:underline; text-decoration-color:#a8c08a; text-underline-offset:2px }}
   .facet .count {{ color:#666; font-size:11px; margin-left:4px }}
   .facet .syns {{ color:#888; font-size:11px; font-weight:normal }}
   /* Keyboard/SR path to open an appellation panel (the WebGL polygons aren't

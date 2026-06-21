@@ -48,6 +48,18 @@
     si: 'specifikacija proizvoda',
     hr: 'specifikacija proizvoda',
     ro: 'caiet de sarcini',
+    de: 'Produktspezifikation',
+    hu: 'termékleírás',
+    bg: 'продуктова спецификация',
+    gr: 'προδιαγραφή προϊόντος',
+    cy: 'τεχνικός φάκελος',
+    sk: 'špecifikácia výrobku',
+    cz: 'specifikace výrobku',
+    lu: 'cahier des charges',
+    be: 'enig document / document unique',
+    nl: 'enig document',
+    mt: 'single document',
+    ch: 'règlement cantonal',
   };
   const GRAPES_INFO = (window.__OWM_DATA && window.__OWM_DATA.grapes_info) || {};
   // Slug -> siblings sharing the same VIVC variety id. Used to make the
@@ -913,18 +925,29 @@
     applyFilter({ fit: true });
   });
 
-  // Keyboard/SR path to open an appellation's detail panel — the WebGL polygons
-  // aren't DOM-reachable, so the facet "open" button is the only non-mouse way
-  // in. preventDefault/stopPropagation stop the click from toggling the
-  // enclosing label's filter checkbox.
+  // Opening an appellation's detail panel from the filter tree, two ways:
+  //   • the `→` open button — the keyboard/SR path (the WebGL polygons aren't
+  //     DOM-reachable, so this is the only non-mouse way in), AND
+  //   • clicking the appellation NAME — the expected "show me this one" gesture,
+  //     matching a map click and the search dropdown.
+  // The leading checkbox stays a multi-select FILTER: a click landing on the
+  // input itself toggles it and is handled by the `change` listener, so we bail
+  // here. preventDefault stops the wrapping <label> from toggling that checkbox
+  // on a name/button click; stopPropagation keeps it off document-level handlers.
   document.getElementById('facet-appellations')?.addEventListener('click', e => {
     const btn = e.target.closest('.open-aoc');
-    if (!btn) return;
+    const label = e.target.closest('label[data-slug]');
+    // Open on the → button, or on the name text — but never on the checkbox
+    // (or blank row padding), which stays a pure filter toggle.
+    const onName = !btn && label && e.target.closest('.name');
+    if (!btn && !onName) return;
     e.preventDefault();
     e.stopPropagation();
-    const slug = btn.dataset.slug;
+    const slug = (btn || label).dataset.slug;
     if (!AOCS[slug]) return;
-    lastPanelTrigger = btn;
+    // Return focus on close to the row's → button (the only focusable element
+    // in the row) whether the open came from the button or the name (WCAG 2.4.3).
+    lastPanelTrigger = btn || (label && label.querySelector('.open-aoc')) || null;
     lastStackKey = slug;
     stackFocusIndex = 0;
     renderPanelStack([slug], 0);
@@ -1015,8 +1038,13 @@
   }
 
   function swapMapLayers() {
-    const advLayers = ['appellations-fill', 'appellations-outline'];
-    const vilLayers = ['appellations-fill-villages', 'appellations-outline-villages'];
+    // Halo layers must flip with their fill/outline siblings: the selection
+    // halo is a dark, wide stroke drawn UNDER the cream outline. If the
+    // inactive mode's halo stays visible it sits above the active mode's cream
+    // outline (later in draw order) and dims the selection — so simple mode
+    // looked far less clearly selected than advanced. Toggle all three.
+    const advLayers = ['appellations-fill', 'appellations-halo', 'appellations-outline'];
+    const vilLayers = ['appellations-fill-villages', 'appellations-halo-villages', 'appellations-outline-villages'];
     const showAdv = viewMode === 'advanced';
     for (const id of advLayers) {
       if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showAdv ? 'visible' : 'none');
@@ -1873,6 +1901,120 @@
       `<div class="menzioni-chips">${chips}</div></details>`;
   }
 
+  // Native EU single-document term per country — the fallback regulator-doc
+  // when no national-spec key is present (regulator is then the eAmbrosia
+  // register, gated on id_eambrosia). Mirrors _EU_DOC_TERM in content_block.py.
+  const PROV_EU_DOC_TERM = {
+    es: 'documento único', it: 'documento unico', at: 'Einziges Dokument',
+    de: 'Einziges Dokument', si: 'enotni dokument', hr: 'jedinstveni dokument',
+    hu: 'egységes dokumentum', ro: 'document unic', bg: 'единен документ',
+    gr: 'ενιαίο έγγραφο', cy: 'ενιαίο έγγραφο', sk: 'jednotný dokument',
+    cz: 'jednotný dokument', nl: 'enig document', mt: 'single document',
+  };
+  const PROV_ORG_LABEL = {
+    'onvpv': 'ONVPV', 'iavv': 'ИАЛВ/IAVV', 'ypaat': 'ΥΠΑΑΤ',
+    'upv-sr': 'ÚPV SR', 'mprv-sr': 'MPRV SR', 'szpi': 'SZPI',
+    'agrarminiszterium': 'Agrárminisztérium', 'mkgp': 'MKGP',
+    'moa-cy': 'the Cyprus Department of Agriculture',
+  };
+  const PROV_NATIONAL = {
+    hu: ['Agrárminisztérium', 'termékleírás'],
+    ro: ['ONVPV', 'caiet de sarcini'],
+    bg: ['ИАЛВ/IAVV', 'продуктова спецификация'],
+    gr: ['ΥΠΑΑΤ', 'προδιαγραφή προϊόντος'],
+    sk: ['ÚPV SR', 'špecifikácia výrobku'],
+    cy: ['the Cyprus Department of Agriculture', 'τεχνικός φάκελος'],
+  };
+
+  // Mirror of content_block.py:_provenance_source — returns
+  // [regulatorHtml, docTerm, isRoster, extraHtml] or null.
+  function provenanceSource(r) {
+    const s = r.sources || {};
+    const country = r.country || 'fr';
+    const fileNumber = s.file_number || '';
+    const hasEambrosia = !!s.id_eambrosia;
+    const extra = fileNumber ? ` (${escapeHtml(fileNumber)})` : '';
+    const eambrosiaReg = LABELS.provenance_reg_eambrosia;
+    const euFallback = () => (s.eur_lex_url && hasEambrosia)
+      ? [eambrosiaReg, PROV_EU_DOC_TERM[country] || 'single document', false, extra] : null;
+
+    if (country === 'fr') {
+      if (s.boagri) {
+        const d = s.homologation_date || s.jorf_date || '';
+        return ['INAO', 'cahier des charges', false, d ? ` (${escapeHtml(d)})` : ''];
+      }
+      return null;
+    }
+    if (country === 'es') return s.national_pliego_url ? ['MAPA', 'pliego de condiciones', false, extra] : euFallback();
+    if (country === 'pt') return s.ivv_caderno_url ? ['IVV', 'caderno de especificações', false, extra] : null;
+    if (country === 'it') {
+      if (s.masaf_pdf_filename || s.masaf_filename) return ['MASAF', 'disciplinare di produzione', false, extra];
+      if (s.regional_register_url) return ['MASAF', 'disciplinare di produzione', true, extra];
+      return euFallback();
+    }
+    if (country === 'de') return s.ble_produktspezifikation_url ? ['BLE', 'Produktspezifikation', false, extra] : euFallback();
+    if (country === 'si') {
+      if (s.specifikacija_url) return [escapeHtml(PROV_ORG_LABEL[s.specifikacija_source_org] || 'MKGP'), 'specifikacija proizvoda', false, extra];
+      return euFallback();
+    }
+    if (country === 'hr') return s.specifikacija_url ? ['Ministarstvo poljoprivrede', 'specifikacija proizvoda', false, extra] : euFallback();
+    if (PROV_NATIONAL[country]) {
+      if (s.national_spec_url) {
+        const [defaultReg, doc] = PROV_NATIONAL[country];
+        return [escapeHtml(PROV_ORG_LABEL[s.national_spec_source_org] || defaultReg), doc, false, extra];
+      }
+      return euFallback();
+    }
+    if (country === 'cz') return (s.national_spec_url || s.chzo_spec_url) ? ['SZPI', 'specifikace výrobku', true, extra] : null;
+    if (country === 'lu') return s.cahier_url ? ['IVV', 'cahier des charges', false, extra] : null;
+    if (country === 'ch') {
+      if (s.cantonal_reglement_url && s.canton) {
+        const canton = s.canton_name || String(s.canton).toUpperCase();
+        const reg = fmt(LABELS.provenance_reg_canton, { canton: escapeHtml(canton) });
+        const doc = ({ de: 'kantonales Reglement', it: 'regolamento cantonale' })[s.source_lang || 'fr'] || 'règlement cantonal';
+        return [reg, doc, true, ''];
+      }
+      return null;
+    }
+    if (country === 'be') {
+      if (s.eur_lex_url && hasEambrosia) return [eambrosiaReg, s.source_lang === 'nl' ? 'enig document' : 'document unique', false, extra];
+      return null;
+    }
+    if (country === 'at' || country === 'nl' || country === 'mt') return euFallback();
+    return null;
+  }
+
+  // Drop the verbatim-cahier cruft the pills keep — the "— synonym" tail and
+  // the trailing OIV colour letter ("Durella B. - Durello" -> "Durella").
+  const PROV_SYN_SEP = /\s+[-—]\s+/;
+  const PROV_COLOUR_TAIL = /\s+(?:B|N|G|RS|RG)\.\s*$/i;
+  function provGrapeName(g) {
+    return grapeName(g).split(PROV_SYN_SEP)[0].replace(PROV_COLOUR_TAIL, '').trim();
+  }
+
+  function provenanceGrapeClause(r) {
+    const slugs = r.grapes_principal || [];
+    if (!slugs.length) return '';
+    // Clean lexicon names (not the verbatim cahier spelling) for prose; list
+    // all when <=4, else 3 + "and N other grape varieties" (N>=2).
+    const clean = g => escapeHtml(provGrapeName(g));
+    if (slugs.length <= 4) return slugs.map(clean).join(', ');
+    return fmt(LABELS.provenance_grapes_more, { names: slugs.slice(0, 3).map(clean).join(', '), n: slugs.length - 3 });
+  }
+
+  // Mirror of content_block.py:_provenance_line.
+  function provenanceLine(r) {
+    const resolved = provenanceSource(r);
+    if (!resolved) return '';
+    const [regulator, doc, isRoster, extra] = resolved;
+    const docEm = `<em>${escapeHtml(doc)}</em>`;
+    const grapes = isRoster ? '' : provenanceGrapeClause(r);
+    const sentence = grapes
+      ? fmt(LABELS.provenance_with_grapes, { regulator, doc: docEm, grapes })
+      : fmt(LABELS.provenance_bare, { regulator, doc: docEm, extra });
+    return `<p class="provenance-line">${sentence}</p>`;
+  }
+
   function renderAocCard(slug, isPrimary) {
     const r = AOCS[slug];
     if (!r) return '';
@@ -1992,6 +2134,7 @@
         ${dulokBlock}
         ${menzioniBlock}
         ${noteBlock}
+        ${(!factsBlock && !r.summary) ? provenanceLine(r) : ''}
         ${renderSources(slug, r.sources)}
       </div>
     `;
