@@ -189,14 +189,16 @@ _APEX_HOST = "openwinemap.com"
 # stage 04 emits into wiki/ (sourced from .env at build time), so it stays out
 # of version control.
 #
-# Submission is per-URL via the single-URL GET endpoint, NOT one bulk POST with
-# a urlList: Bing's IndexNow Insights flags a single large batch as "batch mode"
-# and recommends streaming (one URL at a time, as changes occur), which also
-# yields per-URL accept/reject feedback and spreads load. The changed set is
-# streamed through a small thread pool so the common small-diff deploy still
-# finishes near-instantly.
+# Submission is the bulk POST `urlList` form (≤ 10,000 URLs/request), NOT
+# per-URL GET streaming. A static-site deploy changes pages in bulk at one
+# instant — a routine data-bundle-hash rebuild churns thousands of files — and
+# streaming that one GET at a time (even pooled) makes the step take tens of
+# minutes and blocks the whole deploy on a best-effort SEO ping. Bulk POST
+# represents what actually happened (a batch), notifies the entire changed set
+# in ~1-2 requests, and stays warm-don't-fail so a ping blip never aborts a
+# deploy whose real work (upload + purge) is already done.
 _INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow"
-_INDEXNOW_WORKERS = 6
+_INDEXNOW_CHUNK = 10_000  # IndexNow urlList hard cap per request
 _INDEXNOW_KEY_RE = re.compile(r"^[0-9a-f]{32}$")
 
 
@@ -226,54 +228,65 @@ def public_url(rel: str) -> str | None:
     return f"{base}/{rel}"
 
 
-def _indexnow_ping(url: str, key: str, key_location: str) -> tuple[str, object]:
-    """Submit one URL to the IndexNow single-URL GET endpoint, retrying once on
-    a 429 rate-limit. Returns (url, status) where status is the HTTP code or an
-    `error: …` string; never raises (warn-don't-fail is the caller's policy)."""
+def _indexnow_post_chunk(
+    chunk: list[str], key: str, key_location: str
+) -> object:
+    """POST one ≤10,000-URL `urlList` batch to IndexNow, retrying once on a 429
+    rate-limit. Returns the HTTP status code or an `error: …` string; never
+    raises (warn-don't-fail is the caller's policy)."""
+    body = {
+        "host": _CANONICAL_HOST,
+        "key": key,
+        "keyLocation": key_location,
+        "urlList": chunk,
+    }
     for attempt in (0, 1):
         try:
-            r = requests.get(
+            r = requests.post(
                 _INDEXNOW_ENDPOINT,
-                params={"url": url, "key": key, "keyLocation": key_location},
-                timeout=30,
+                json=body,
+                headers={"Content-Type": "application/json; charset=utf-8"},
+                timeout=60,
             )
         except requests.RequestException as e:
-            return url, f"error: {e}"
+            return f"error: {e}"
         if r.status_code == 429 and attempt == 0:
             time.sleep(2)
             continue
-        return url, r.status_code
-    return url, 429
+        return r.status_code
+    return 429
 
 
 def submit_indexnow(key: str, key_location: str, urls: list[str]) -> None:
-    """Stream changed URLs to IndexNow one at a time via the single-URL GET
-    endpoint (see the note above on streaming vs. batch). Warn-don't-fail — a
-    deploy must not abort on an SEO-ping blip. Uses fresh requests (NOT the
-    Bunny storage session) so the Bunny AccessKey is never sent to a 3rd party."""
+    """Notify IndexNow of the changed URLs via the bulk POST `urlList` form,
+    chunked at the 10,000-URL cap (see the note above on bulk vs. streaming).
+    Warm-don't-fail — a deploy must not abort on an SEO-ping blip. Uses fresh
+    requests (NOT the Bunny storage session) so the Bunny AccessKey is never
+    sent to a 3rd party."""
     if not urls:
         print("  indexnow: no changed pages to submit", file=sys.stderr)
         return
 
     accepted = 0
-    failures: list[tuple[str, object]] = []
-    with cf.ThreadPoolExecutor(max_workers=min(_INDEXNOW_WORKERS, len(urls))) as ex:
-        for url, status in ex.map(lambda u: _indexnow_ping(u, key, key_location), urls):
-            # 200 = accepted, 202 = accepted/validation pending — both success.
-            if status in (200, 202):
-                accepted += 1
-            else:
-                failures.append((url, status))
+    failed = 0
+    failures: list[tuple[int, object]] = []
+    chunks = [urls[i : i + _INDEXNOW_CHUNK] for i in range(0, len(urls), _INDEXNOW_CHUNK)]
+    for n, chunk in enumerate(chunks, 1):
+        status = _indexnow_post_chunk(chunk, key, key_location)
+        # 200 = accepted, 202 = accepted/validation pending — both success.
+        if status in (200, 202):
+            accepted += len(chunk)
+        else:
+            failed += len(chunk)
+            failures.append((n, status))
 
     print(
-        f"  indexnow: streamed {len(urls)} URLs ({accepted} accepted, "
-        f"{len(failures)} failed)",
+        f"  indexnow: submitted {len(urls)} URLs in {len(chunks)} batch(es) "
+        f"({accepted} accepted, {failed} failed)",
         file=sys.stderr,
     )
-    for url, status in failures[:5]:
-        print(f"  warn: indexnow {url} → {status}", file=sys.stderr)
-    if len(failures) > 5:
-        print(f"  warn: indexnow … and {len(failures) - 5} more failures", file=sys.stderr)
+    for n, status in failures:
+        print(f"  warn: indexnow batch {n}/{len(chunks)} → {status}", file=sys.stderr)
 
 
 # Security response headers to enforce on every response.
