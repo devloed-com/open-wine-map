@@ -80,9 +80,9 @@ from _lib.be.geometry import BEPolygonIndex
 from _lib.be.region import derive_region as derive_be_region
 from _lib.bg.geometry import BGPolygonIndex
 from _lib.bg.region import derive_region as derive_bg_region
+from _lib.ch.canton import canton_name as ch_canton_name
 from _lib.ch.geometry import CHCommuneIndex, GESitgIndex
 from _lib.ch.geometry import resolve as ch_resolve_geometry
-from _lib.ch.canton import canton_name as ch_canton_name
 from _lib.ch.region import derive_region as derive_ch_region
 from _lib.cy.geometry import CYPolygonIndex
 from _lib.cy.region import derive_region as derive_cy_region
