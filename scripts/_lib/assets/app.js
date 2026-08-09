@@ -866,6 +866,24 @@
     return 'indeterminate';
   }
 
+  // A region's slug list mixes two legal tiers: appellations proper and their
+  // complementary geographic designations (FR DGC / premier-cru climat, ES
+  // subzona, IT sottozona, DE Einzellage). One combined number implies a legal
+  // precision it doesn't have — Burgundy reads 869 where the regulator
+  // recognises 84 appellations carrying 785 complementary designations.
+  // Written by both the initial paint and the filter-driven refresh, so it
+  // lives here rather than being duplicated at either call site.
+  function renderRegionCount(el, parents, subs) {
+    if (!el) return;
+    el.innerHTML = subs
+      ? `${parents}<span class="sub-count">+${subs}</span>`
+      : `${parents}`;
+    el.setAttribute('title', fmt(
+      subs ? LABELS.region_count_title : LABELS.region_count_title_flat,
+      { p: parents, s: subs },
+    ));
+  }
+
   function buildAppellationFacet() {
     const el = document.getElementById('facet-appellations');
     if (!el) return;  // defensive null-guard
@@ -882,15 +900,21 @@
         const openLbl = escapeAttr(fmt(LABELS.open_appellation_aria, { name: rec.name || slug }));
         return `<label data-slug="${safeSlug}" data-name="${escapeAttr(searchableText(rec))}"><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span><button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></label>`;
       }).join('');
+      let parentCount = 0;
+      for (const s of slugs) if (!AOCS[s].is_sub_denomination) parentCount++;
+      const subCount = slugs.length - parentCount;
       const safeRegion = escapeAttr(region);
       // Checkbox lives outside `<summary>` (sibling of `<details>`,
       // not a descendant) so the nested-interactive-in-summary
       // accessibility warning doesn't fire. Visual layout is restored
       // via `.region-group-wrap`'s flex rule — checkbox + disclosure
       // sit in the same row.
-      html.push(`<div class="region-group-wrap" data-region="${safeRegion}"><input type="checkbox" class="region-select" data-region="${safeRegion}" aria-label="${escapeAttr(LABELS.select_all_aria)}"><details class="region-group" data-region="${safeRegion}"><summary><span class="name">${escapeHtml(label)}</span><span class="count">${slugs.length}</span></summary><div class="region-items">${items}</div></details></div>`);
+      html.push(`<div class="region-group-wrap" data-region="${safeRegion}"><input type="checkbox" class="region-select" data-region="${safeRegion}" aria-label="${escapeAttr(LABELS.select_all_aria)}"><details class="region-group" data-region="${safeRegion}"><summary><span class="name">${escapeHtml(label)}</span><span class="count" data-parents="${parentCount}" data-subs="${subCount}"></span></summary><div class="region-items">${items}</div></details></div>`);
     }
     el.innerHTML = html.join('');
+    el.querySelectorAll('.region-group > summary > .count').forEach(c => {
+      renderRegionCount(c, +c.dataset.parents, +c.dataset.subs);
+    });
     // Reapply current search visibility (so a tree rebuild during a typed
     // query keeps the filtered view).
     refreshFacetVisibility('facet-appellations', filters.q);
@@ -1349,17 +1373,23 @@
       const except = new Set(['appellations']);
       appEl.querySelectorAll('.region-group').forEach(group => {
         let visible = 0;
+        let visibleParents = 0;
         group.querySelectorAll('label').forEach(lbl => {
           const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
           const slug = inp.dataset.key; const rec = AOCS[slug];
           const reachable = rec ? matchesExceptFacets(rec, slug, except) : false;
           const hide = !reachable && !inp.checked;
           lbl.classList.toggle('facet-unavailable', hide);
-          if (!hide) visible++;
+          if (!hide) {
+            visible++;
+            if (!(rec && rec.is_sub_denomination)) visibleParents++;
+          }
         });
         (group.parentElement || group).classList.toggle('facet-unavailable', visible === 0);
-        const cs = group.querySelector(':scope > summary > .count');
-        if (cs) cs.textContent = String(visible);
+        renderRegionCount(
+          group.querySelector(':scope > summary > .count'),
+          visibleParents, visible - visibleParents,
+        );
       });
     }
   }

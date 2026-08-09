@@ -54,6 +54,10 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "options_h": _("Options"),
         "active_filters_aria": _("Filtres actifs"),
         "select_all_aria": _("Tout sélectionner"),
+        "region_count_title": _(
+            "{p} appellations · {s} dénominations géographiques complémentaires"
+        ),
+        "region_count_title_flat": _("{p} appellations"),
         "open_appellation_aria": _("Ouvrir la fiche de {name}"),
         "open_appellation_title": _("Ouvrir la fiche"),
         "show_spirits_label": _("Inclure les spiritueux"),
@@ -1310,6 +1314,9 @@ STARTUP_AOCS_FIELDS = frozenset({
     "styles", "styles_simple", "classifications",
     "grapes_principal", "grapes_accessory", "grapes_all",
     "bbox", "bbox_villages", "geom_source",
+    # buildAppellationFacet splits each region's count into appellations
+    # vs complementary geographic designations.
+    "is_sub_denomination",
 })
 
 
@@ -1953,6 +1960,7 @@ _TEMPLATE = """<!doctype html>
      underline on name-hover signals the "go to this one" link affordance. */
   .facet label[data-slug] > .name:hover {{ text-decoration:underline; text-decoration-color:#a8c08a; text-underline-offset:2px }}
   .facet .count {{ color:#666; font-size:11px; margin-left:4px }}
+  .facet .count .sub-count {{ opacity:0.65; margin-left:3px }}
   .facet .syns {{ color:#888; font-size:11px; font-weight:normal }}
   /* Keyboard/SR path to open an appellation panel (the WebGL polygons aren't
      DOM-reachable). Subtle until the row is hovered or the button is focused. */

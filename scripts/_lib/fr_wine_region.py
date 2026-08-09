@@ -56,6 +56,19 @@ _BUGEY_PREFIXES: tuple[str, ...] = (
     "roussette-du-bugey",
 )
 
+# Two BOURGOGNE-bassin appellations lie outside Burgundy proper. INAO's
+# comité régional is an administrative grouping, not a wine region:
+# Côtes du Forez sits in the upper Loire beside Côte roannaise and Côtes
+# d'Auvergne (which INAO itself files under VAL DE LOIRE), and Coteaux du
+# Lyonnais continues the Beaujolais granite south of Lyon.
+_LOIRE_SLUGS: frozenset[str] = frozenset({
+    "cotes-du-forez",
+})
+
+_LYONNAIS_SLUGS: frozenset[str] = frozenset({
+    "coteaux-du-lyonnais",
+})
+
 
 def derive_wine_region(record: dict[str, Any]) -> str:
     """Return the wine-region bucket for an FR record.
@@ -69,6 +82,10 @@ def derive_wine_region(record: dict[str, Any]) -> str:
         return bassin
     slug = record.get("slug") or ""
     target = record.get("parent_slug") or slug
+    if target in _LOIRE_SLUGS:
+        return "VAL DE LOIRE"
+    if target in _LYONNAIS_SLUGS:
+        return "BEAUJOLAIS"
     if target in _JURA_SLUGS:
         return "JURA"
     if target.startswith(_BUGEY_PREFIXES):
