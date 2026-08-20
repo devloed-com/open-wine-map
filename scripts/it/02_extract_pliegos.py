@@ -286,9 +286,16 @@ def parse_grapes(section_text: str) -> dict:
             continue
         seen_slugs.add(slug)
         out[current_role].append(slug)
+        # Section 7 often gives "Canonical N. — Synonym" on one line. The
+        # match is right either way, but storing the whole line puts both
+        # names on the pill ("Malvasia Nera di Brindisi N. — Malvasia").
+        # Keep the head, which is the name the regulator lists first.
+        # Spaced dash only — an unspaced one belongs to the name
+        # (Müller-Thurgau, Cabernet-Sauvignon).
+        display = re.split(r"\s+[—–-]\s+", head, maxsplit=1)[0].strip()
         out["details"].append({
             "slug": slug,
-            "name": head,
+            "name": display or head,
             "role": current_role,
             "colour": match.colour,
         })

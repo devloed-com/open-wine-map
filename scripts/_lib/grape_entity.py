@@ -15,11 +15,16 @@ Vocabulary precedence (first-write-wins via `setdefault`):
   1. Cross-corpus canonical slugs (excluding phantom concatenations).
      Stable corpus mappings win. `loureiro-tinto` stays separate from
      `mencia` even though VIVC merges them via DNA.
-  2. VIVC surfaces (prime + synonyms), deduped by `vivc_id`. When
-     several by-slug files share a vivc_id, prefer the slug that's
-     already in the corpus, then the slug whose normalised form matches
-     the prime name, then the shortest.
-  3. GRAPE_ALIAS keys as space-separated surfaces.
+  2. GRAPE_ALIAS keys as space-separated surfaces — curator-verified
+     disambiguations, so they outrank anything VIVC infers.
+  3. VIVC surfaces, deduped by `vivc_id` and ranked by how strongly the
+     record claims the name: prime names first, then synonyms flagged
+     "official name in <country>", then plain legacy synonyms. Without
+     that ranking a legacy synonym could outrank another record's prime
+     name purely on file order. When several by-slug files share a
+     vivc_id, prefer the slug that's already in the corpus, then the
+     slug whose normalised form matches the prime name, then the
+     shortest.
 
 A small set of bare colour adjectives ("TINTA", "BLANCA", "GRIS", …)
 that appear as VIVC synonyms is excluded — they're prose, not
@@ -306,25 +311,44 @@ def _load_vocabulary() -> Vocabulary:
             continue
         exact.setdefault(key, GRAPE_ALIAS.get(canonical, canonical))
 
+    # VIVC keeps every name a variety has ever borne, so one surface is
+    # routinely claimed by several records — "Freisa" is the prime name of
+    # VIVC #4256 and also a legacy synonym on Croatina, "Grenache noir" is
+    # France's official name for Garnacha Tinta and a plain synonym on
+    # Alicante Henri Bouschet. Walking records in one pass let file order
+    # decide those, which silently bound both surfaces to the wrong variety.
+    #
+    # Rank the claims instead, strongest evidence first: a prime name beats
+    # another record's synonym, and a synonym VIVC flags as the official name
+    # in some country beats an unflagged legacy one. Ties inside a tier are
+    # still order-dependent — those are the genuinely ambiguous names, and
+    # scripts/audit_ambiguous_synonyms.py lists them for curator pinning.
     canonical_by_id = _vivc_canonical_by_id()
+    records = []
     for file_slug, data in _load_vivc_records():
         vid = data.get("vivc_id")
         canonical = canonical_by_id.get(vid) if isinstance(vid, int) else None
         if canonical is None:
             canonical = GRAPE_ALIAS.get(file_slug, file_slug)
-        prime = data.get("prime_name")
-        if isinstance(prime, str) and prime:
-            key = _normalise(prime)
-            if len(key) >= 3 and key not in _BANNED_SURFACES:
-                exact.setdefault(key, canonical)
-        for syn in data.get("synonyms") or []:
-            sname = syn.get("name") if isinstance(syn, dict) else None
-            if not isinstance(sname, str) or not sname:
-                continue
-            key = _normalise(sname)
-            if len(key) < 3 or key in _BANNED_SURFACES:
-                continue
-            exact.setdefault(key, canonical)
+        records.append((canonical, data))
+
+    def _claim(name: object, canonical: str) -> None:
+        if not isinstance(name, str) or not name:
+            return
+        key = _normalise(name)
+        if len(key) < 3 or key in _BANNED_SURFACES:
+            return
+        exact.setdefault(key, canonical)
+
+    for canonical, data in records:
+        _claim(data.get("prime_name"), canonical)
+    for tier_official in (True, False):
+        for canonical, data in records:
+            for syn in data.get("synonyms") or []:
+                if not isinstance(syn, dict):
+                    continue
+                if bool(syn.get("official_in")) is tier_official:
+                    _claim(syn.get("name"), canonical)
 
     return Vocabulary(exact_index=exact, names=tuple(exact.keys()))
 

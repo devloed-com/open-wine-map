@@ -28,6 +28,7 @@ from __future__ import annotations
 import html as html_lib
 import re
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 # Scanning a whole règlement (≈50 KB of regulatory prose) with the
@@ -48,6 +49,8 @@ _CH_STOP_SURFACES = frozenset({
     "saure",          # German "Säure" (acid) → calitor
     "ferneyvoltaire",  # French town near Geneva → sacy (hyphen-split)
     "weisse", "weiss", "rote", "roten",  # German colour headers → obscure grapes
+    "oeildeperdrix",  # Swiss rosé STYLE made from Pinot noir, not a variety → cot
+    "dole",           # Valais red WINE (Pinot noir + Gamay blend), not a variety
 })
 
 # Section-keyword tables — earliest match wins; ordering is most-
@@ -209,9 +212,15 @@ def extract_section_body(text: str, lang: str, kind: str) -> str:
 
 def _surface_norm(s: str) -> str:
     """Lowercase + diacritic-strip + keep letters only — for matching a
-    candidate chunk against `_CH_STOP_SURFACES`."""
+    candidate chunk against `_CH_STOP_SURFACES`.
+
+    unidecode first: NFKD leaves ligatures intact, so "Œil-de-Perdrix"
+    normalised to "œildeperdrix" and slipped past the ASCII stop entry.
+    """
     import unicodedata
-    decomposed = unicodedata.normalize("NFKD", s.casefold())
+
+    from unidecode import unidecode
+    decomposed = unicodedata.normalize("NFKD", unidecode(s).casefold())
     return "".join(c for c in decomposed if c.isalpha() and not unicodedata.combining(c))
 
 
@@ -239,14 +248,38 @@ def extract_varieties(text: str, lang: str, match_fn, commune_index=None) -> lis
     section = text
     candidates: set[str] = set()
 
+    # Regulatory prose that the whole-document scan would otherwise hand to
+    # the matcher as a variety name. Both signatures are things a cultivar
+    # name never has: a leading article/section marker, and the quote or
+    # colon punctuation of a citation. Without these, Valais shipped a pill
+    # reading "Art. 28 5 Compensation Pinot noir - Gamay" and nine Vaud
+    # AOCs showed Vermentino, harvested from the sentence
+    # 'Mention "Mont-sur-Rolle" : communes de Mont-sur-Rolle'.
+    _PROSE_PREFIX = re.compile(
+        r"^(?:art|article|artikel|al|alinéa|abs|absatz|ziff|ziffer|lit|lettre|"
+        r"mention|menzione|bezeichnung|cf|voir|siehe|"
+        r"communes?|gemeinden?|comuni?|territoire|gebiet)\b\.?",
+        re.IGNORECASE,
+    )
+    _PROSE_QUOTE = re.compile(r"[\"«»]")
+
     def _add(chunk: str) -> None:
+        if _PROSE_PREFIX.match(chunk.strip()) or _PROSE_QUOTE.search(chunk):
+            return
         # Strip a leading FR/IT/DE determiner ("il Merlot", "la Bondola",
         # "le Gamay", "der Riesling") and trailing footnote / cross-
         # reference tails ("Cabernet Franc (2", "Sauvignon blanc *") so
         # the bare name matches EXACT instead of being knocked below the
         # fuzzy floor.
-        chunk = re.sub(r"^(?:il|lo|gli|la|le|i|l'|der|die|das|den|du|des|de|d')\s+",
+        chunk = re.sub(r"^(?:il|lo|gli|la|le|i|der|die|das|den|du|des|de)\s+",
                        "", chunk, flags=re.IGNORECASE)
+        # Elided articles carry no space, so the rule above never fired on
+        # them: "d'Essertines-sur-Rolle" stayed whole, the commune guard
+        # (which knows "Essertines-sur-Rolle") missed it, and the matcher
+        # hyphen-split its way to Rolle — putting Vermentino on nine Vaud
+        # AOCs. Strip the elision so the bare place name reaches the guard.
+        chunk = re.sub(r"^(?:l|d|dell|nell|all|sull)['’]\s*", "", chunk,
+                       flags=re.IGNORECASE)
         chunk = re.sub(r"\s*\(.*$", "", chunk)
         chunk = re.sub(r"[*†‡]+\s*$", "", chunk)
         chunk = chunk.strip(" .;:)(")
@@ -260,6 +293,28 @@ def extract_varieties(text: str, lang: str, match_fn, commune_index=None) -> lis
         if head != chunk and 2 <= len(head) <= 60 and re.search(r"[A-Za-zÀ-ÿ]", head):
             candidates.add(head)
 
+    # Cantonal lists give the traditional name in brackets after the
+    # variety: "Pinot gris (Malvoisie)", "Savagnin blanc (Païen ou Heida)",
+    # "Sylvaner (Gros Rhin)". Those bracket names also appear loose in the
+    # prose, where the scan picked them up and matched them to whatever
+    # else bears the name (Malvoisie went to Malvasia di Candia, Heida to
+    # Gewürztraminer) even though the real variety was already on the list.
+    # Let the document define its own synonyms: bind each bracket name to
+    # the variety it sits behind.
+    local_synonyms: dict[str, str] = {}
+    for lead, inner in re.findall(
+        r"([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{2,40}?)\s*\(([^)]{2,40})\)", section
+    ):
+        lead_match = match_fn(lead.strip())
+        if lead_match is None:
+            continue
+        for alt in re.split(r"\s+(?:ou|oder|o|or)\s+|\s*,\s*", inner):
+            alt = alt.strip()
+            # Footnote markers, yields and parentages are not synonyms.
+            if not alt or len(alt.split()) > 3 or re.search(r"\d|\bx\b", alt):
+                continue
+            local_synonyms.setdefault(_surface_norm(alt), lead_match.slug)
+
     for raw_line in section.splitlines():
         line = re.sub(r"^[\s\d.,()/\-•·*°ºª§]+", "", raw_line).strip()
         # Drop a leading single-letter ordinal marker ("a)", "b)") that
@@ -271,11 +326,27 @@ def extract_varieties(text: str, lang: str, match_fn, commune_index=None) -> lis
         # conjunctions ("il Merlot e il Petit Verdot", "X et Y") that
         # join multiple variety mentions on one line.
         for chunk in re.split(r"\s*/\s*|,\s+|\s+(?:e|et|und|oder|ou|y)\s+", line):
-            _add(chunk)
+            # A run of 2+ spaces is a pdftotext column gutter, so the chunk
+            # is two table cells glued together ("Cabernet-Sauvignon    16.
+            # Cabertin", "Charmont      Riesling-Silvaner"). Feed both cells
+            # instead of the concatenation — it drops the artifact AND
+            # recovers the second variety, which the glued form lost.
+            for cell in re.split(r"\s{2,}", chunk):
+                # A SPACED hyphen separates a name from a gloss or a pair
+                # ("Compensation Pinot noir - Gamay"); an unspaced one is
+                # part of the name (Riesling-Silvaner, Cabernet-Sauvignon),
+                # so only the spaced form splits.
+                for part in re.split(r"\s+-\s+|\s*[;:]\s*", cell):
+                    _add(part)
 
     resolved: list[dict] = []
     seen_slugs: set[str] = set()
-    for cand in sorted(candidates):
+    # Longest surface first: several candidates can resolve to the same
+    # variety (a column gutter splits "Pinot  noir" into "Pinot" and
+    # "noir", leaving both the fragment and the full name in the set) and
+    # the first one seen supplies the label. Alphabetical order handed the
+    # pill to "Pinot"; the fuller name is the better label.
+    for cand in sorted(candidates, key=lambda c: (-len(c), c)):
         # Place-name guard: a Swiss commune is not a grape.
         if commune_index is not None and commune_index.lookup(cand):
             continue
@@ -283,6 +354,11 @@ def extract_varieties(text: str, lang: str, match_fn, commune_index=None) -> lis
         if _surface_norm(cand) in _CH_STOP_SURFACES:
             continue
         match = match_fn(cand)
+        pinned = local_synonyms.get(_surface_norm(cand))
+        if pinned is not None and (match is None or match.slug != pinned):
+            # The document itself says this name belongs to another
+            # variety, which beats whatever the global synonym index says.
+            match = replace(match, slug=pinned) if match is not None else None
         if match is None:
             continue
         # Whole-document prose scan can't trust weak fuzzy hits.

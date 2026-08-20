@@ -466,6 +466,62 @@ GRAPE_ALIAS = {
     "picolit": "picolit",
     "incrocio-manzoni": "incrocio-manzoni",
     "biancolella": "biancolella",
+    # Bare "Moscato" in an Italian disciplinare is Moscato bianco (Muscat
+    # Blanc à Petits Grains, VIVC #8193), not Muscat of Alexandria. The
+    # Registro Nazionale registers Alexandria under ZIBIBBO (code 533) and
+    # Moscato bianco under 153, and every Italian synonym on VIVC #8241
+    # carries a qualifier ("Moscato d'Alessandria"), so the bare form is
+    # never Alexandria's register name — Asti and Moscato d'Asti DOCG are
+    # 100 % Moscato bianco, and even the Sicilian Moscato DOCs (Noto,
+    # Siracusa) are. Pantelleria is the exception and names its variety
+    # "Zibibbo" explicitly, which keeps folding to muscat-d-alexandrie.
+    # The tie-break here is regulatory, not ampelographic, so it needs a
+    # pin rather than the VIVC claim-ranking in grape_entity.
+    "moscato": "muscat-a-petits-grains",
+    # Freisa is the PRIME name of VIVC #4256 (Piedmontese red, Nebbiolo ×
+    # unknown), but Croatina (#3251) also lists FREISA among its legacy
+    # synonyms and no by-slug record was ever fetched for #4256 — so every
+    # Freisa d'Asti / di Chieri / Langhe Freisa roster collapsed into
+    # croatina, and the name never surfaced as an extraction-unknown to
+    # flag it. Ticino lists it too (Regolamento sulla viticoltura, IIa
+    # categoria), the same cultivar. Mint it as its own slug.
+    "freisa": "freisa",
+    # Croatina's VIVC synonym list also carries SPANNA and NEBBIOLO. Bare
+    # "Nebbiolo" is safe (it is a corpus slug, which outranks VIVC), but
+    # "Spanna" — the Novara/Vercelli name for Nebbiolo, used by Gattinara,
+    # Ghemme, Bramaterra and Coste della Sesia — had no slug of its own and
+    # fell into croatina with it.
+    "spanna": "nebbiolo",
+    # VIVC flags ZELENI SAUVIGNON as Slovenia's official name for Sauvignon
+    # Blanc (#10790) — but that record ALSO carries plain SAUVIGNON with the
+    # same Slovenian flag, which cannot both be true, and the Pravilnik this
+    # pipeline parses (Ur. l. RS 49/2007, Priloga 2) lists "Sauvignon" and
+    # "Zeleni sauvignon" as separate varieties on one okoliš line. The
+    # Slovenian sortna lista registers Zeleni sauvignon (VIN068) with the
+    # synonyms furlanski tokaj / Tocai friulano / Sauvignonasse — it is
+    # Friulano, renamed when the EU reserved "tokaj" to Hungary. Pinned so
+    # the official-name ranking cannot flip it back on a bad upstream flag.
+    "zeleni sauvignon": "friulano",
+    # Bare "Sárfehér" is VIVC-flagged official-in-Hungary on Honigler /
+    # Précoce de Bousquet (#5417), and Sárfehér and Arany sárfehér really
+    # are distinct cultivars (#5417 vs #5600). But plantgrape gives Précoce
+    # Bousquet's Hungarian official name as "Honigler", not Sárfehér, and
+    # in this corpus the bare form reads as shorthand for Arany sárfehér:
+    # the source text says "izsáki sárfehér - 1873" (the Izsák selection =
+    # Arany sárfehér) and there is a PDO named Izsáki Arany Sárfehér, while
+    # true Sárfehér is a ~2 ha relic. Hold the status quo pending a curator
+    # check of the three bare-surface records (see CURATOR_TODO).
+    "sarfeher": "arany-sarfeher",
+    # VIVC's Biancolella record (the Ischia/Campania native) lists "BIANCA"
+    # among its synonyms, so every bare "Bianca" in a spec folded into it —
+    # wrongly, in NL, HU, BE and CH, where the name means the Hungarian
+    # interspecific white bred at Eger in 1963 (Bouvier × Eger 2, VIVC #1321,
+    # registered 1982; originally "Egri Csillagok 40"). It is planted widely
+    # for its fungus resistance, which is exactly why it shows up in the
+    # northern corpora. Pin it to its own slug so the two stay apart.
+    # Reported by José Vouillamoz (co-author of Wine Grapes, Valais).
+    "bianca": "bianca",
+    "egri-csillagok-40": "bianca",
     "nascetta": "nascetta",
     "vespaiolo": "vespaiolo",
     "ribolla-gialla": "ribolla-gialla",
@@ -1222,6 +1278,16 @@ GRAPE_ALIAS = {
     "divico": "divico",                            # Agroscope CH red (Gamaret × Bronner, fungus-resistant)
     "bondola": "bondola",                          # Ticino native red
     "completer": "completer",                      # Graubünden native white (Malans)
+    # "Hermitage" is claimed as a synonym by FIVE VIVC records — Cinsaut,
+    # Marsanne, S-Saul, Sirah and Syrah/Shiraz — so the vocabulary-builder's
+    # iteration order arbitrarily bound it to `cinsault` (the South African
+    # reading, where Hermitage = Cinsaut, hence Pinotage). In Valais and Vaud
+    # the name is Marsanne, and the cantonal règlements spell it both ways:
+    # "Ermitage" already resolved correctly while "Hermitage" landed on
+    # Cinsaut, putting the same variety twice on one panel under two slugs.
+    # Reported by José Vouillamoz (co-author of Wine Grapes, Valais).
+    "hermitage": "marsanne",
+    "ermitage": "marsanne",  # also claimed by Syrah; VS/VD mean Marsanne
     "aromera": "aromera",                          # Geilweilerhof crossing
     "merlot-khorus": "merlot-khorus",              # IT/DE interspecific red
     "merlot-kanthus": "merlot-kanthus",            # IT/DE interspecific red
@@ -1741,6 +1807,8 @@ DEFAULT_COLOUR: dict[str, str] = {
     "picolit": "blanc",
     "incrocio-manzoni": "blanc",
     "biancolella": "blanc",
+    "bianca": "blanc",
+    "freisa": "noir",
     "nascetta": "blanc",
     "vespaiolo": "blanc",
     "ribolla-gialla": "blanc",

@@ -2163,3 +2163,107 @@ Levers, by effort/payoff:
    detail on panel open. Stage-04 data-emit + `_APP_JS` refactor; QA the
    search/filter parity.
 
+
+## Cross-country — VIVC synonym collisions (ranking rule shipped; 2 open questions)
+
+VIVC keeps every name a variety has ever borne, so one surface is routinely
+claimed by several records. `_load_vocabulary` used to walk those in file
+order, so a legacy synonym could outrank another record's prime name. It now
+ranks claims — prime name > synonym flagged "official name in <country>" >
+plain synonym — which re-bound 8 surfaces the corpora actually use.
+[scripts/audit_ambiguous_synonyms.py](scripts/audit_ambiguous_synonyms.py)
+lists what the ranking cannot decide (51 RISKY at time of writing).
+
+Reported by José Vouillamoz (co-author of *Wine Grapes*, Valais) via Reinier
+Broeks: `Bianca` was folded into Biancolella and `Hermitage` into Cinsaut.
+
+### Open question 1 — bare `Sárfehér` (HU, 3 records)
+
+Pinned to `arany-sarfeher` (status quo) pending a curator ruling.
+
+- Sárfehér (VIVC #5417, = Honigler / Mézes fehér / Précoce de Bousquet) and
+  Arany sárfehér (VIVC #5600, the 1873 Izsák selection) are **distinct**
+  cultivars — Fazekas et al., *Kertgazdaság* 54 (2022) 1-2, Table 1 lists both
+  as separate register rows (2 ha vs 288 ha).
+- VIVC flags `SARFEHER` official-in-Hungary on #5417, which argues for the
+  flip. But plantgrape gives #5417's Hungarian official name as *Honigler*,
+  not Sárfehér, and a ~2 ha relic appearing in regional PGI rosters is
+  implausible. The source text says "izsáki sárfehér - 1873" and a PDO named
+  *Izsáki Arany Sárfehér* exists, so the bare form reads as shorthand.
+- To settle: check the Nemzeti Fajtajegyzék entry each of the 3 records
+  (etyek-buda, dunantuli, balaton) intends. If they mean the relic, re-pin to
+  the #5417 slug; if shorthand, keep as is and the pin is correct.
+
+### Open question 2 — `Moschato Samou` is country-dependent
+
+Bound to `muscat-ottonel`, correct for the 3 **Cypriot** records: the Cyprus
+Dept. of Agriculture annex prints "MUSCAT OTTONEL (ΜΟΣΧΑΤΟ ΣΑΜΟΥ)", and
+Cyprus uses Μοσχάτο άσπρο for Muscat blanc. A **Greek** Μοσχάτο Σάμου would
+be Muscat Blanc à Petits Grains (Samos) — the opposite. No Greek record uses
+the surface today; if one appears, the matcher needs a country-aware pin
+rather than the current global binding.
+
+### Upstream-flag caveat
+
+VIVC's official-name flag is a claim, not a fact, and is not unique per
+country: Sauvignon Blanc (#10790) carries **both** `SAUVIGNON` and
+`ZELENI SAUVIGNON` as Slovenian official names, which cannot both hold. That
+bad flag re-bound Slovenian Zeleni sauvignon (= Sauvignonasse / Friulano) to
+Sauvignon Blanc until a hard pin reverted it. When an official-name flag
+would flip an existing binding, corroborate against a second register
+(plantgrape.fr is a fetchable proxy) before trusting it.
+
+### Open question 3 — `malbec` and `cot` are one variety under two slugs
+
+Both by-slug files carry **VIVC 2889, prime name COT**, so they are the same
+cultivar, but the corpus keeps them apart: fr 198 `cot` / 3 `malbec`, ch 37
+`malbec`, es 15, it 20 `cot`, de 7, bg 7, hr 4, ro 3+3, pt 2, hu 1+1, mt 2.
+No single record carries both, so no panel shows a duplicate pill — but the
+grape facet splits the variety in two, and filtering on Côt misses the Swiss
+and Spanish Malbec wines.
+
+Not fixable with a GRAPE_ALIAS pin alone: `_load_vocabulary` writes corpus
+slugs in tier 1, *before* GRAPE_ALIAS, so both surfaces are already bound by
+the time the alias is read. Options: (a) apply GRAPE_ALIAS when building the
+corpus-slug tier, then re-extract every country; (b) treat it as deliberate
+and let each regulator's spelling stand, accepting the split facet. Same
+question applies to any other pair of corpus slugs sharing a vivc_id —
+enumerate them before deciding.
+
+### Open question 4 — bare names guessed to a specific cultivar
+
+[scripts/audit_grape_surfaces.py](scripts/audit_grape_surfaces.py) flags 167
+grape surfaces whose label has fewer words than the slug they resolved to.
+Most are harmless shorthand ("Muscat Blanc" for muscat-a-petits-grains), but
+some are a generic name bound to one specific cultivar on no evidence:
+
+| surface | bound to | also possible |
+|---|---|---|
+| `Cabernet` (31, hu/it/pt) | cabernet-franc | Cabernet Sauvignon |
+| `Verduzzo` (19, hr/it) | verduzzo-friulano | Verduzzo Trevigiano |
+| `Budai` (13, hu) | budai-zold | — |
+| `Bombino` (10, it) | bombino-bianco | Bombino nero |
+| `Pinot` (10, hu/it) | pinot-noir | Pinot blanc / gris |
+| `Malvasia nera` (14, it) | malvasia-nera-di-basilicata | di Brindisi, Lunga |
+| `Alicante` (8, it) | alicante-bouschet | Alicante is also a Grenache synonym |
+| `Canaiolo` (7, it) | canaiolo-nero | Canaiolo bianco |
+
+Pre-existing, and the same family as the VIVC collisions above: nothing
+crashes, the panel just names the wrong cultivar. Deciding each one needs
+the source document (does the disciplinare say plain "Cabernet" because the
+annex lists both?), so this is curator work, not a rule. Run the audit after
+any stage-02 change; `--strict` fails on anything flagged.
+
+### Note — the two new VIVC pins live only in gitignored `raw/`
+
+`raw/vivc/slug_overrides.json` is covered by the blanket `raw/*` ignore, so
+these are not in version control. Recorded here so a fresh checkout can
+restore them (stage 02g reports both as `ambiguous-cultivar` without a pin):
+
+```json
+"bianca": {"vivc_id": 1321, "_prime": "BIANCA"},
+"freisa": {"vivc_id": 4256, "_prime": "FREISA"}
+```
+
+Same applies to the other 439 pins already in that file; the deployed site is
+built from the curator's machine, so production is unaffected.
