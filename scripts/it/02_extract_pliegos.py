@@ -269,6 +269,11 @@ def parse_grapes(section_text: str) -> dict:
         # Strip trailing parenthetical annotation (varietal synonyms,
         # colour codes) — but keep the head for grape_entity matching.
         head = re.sub(r"\s*\(.*?\)\s*$", "", line).strip()
+        # Some documenti render section 7 as the EUR-Lex table with its
+        # country column inline: "Italia - Gaglioppo N." (Cirò, Rossese
+        # di Dolceacqua, Nebbiolo d'Alba, Spoleto). Without this strip
+        # the display name below keeps "Italia" instead of the variety.
+        head = re.sub(r"^Italia\s+[—–-]\s+", "", head).strip()
         if not head:
             continue
 
@@ -286,9 +291,16 @@ def parse_grapes(section_text: str) -> dict:
             continue
         seen_slugs.add(slug)
         out[current_role].append(slug)
+        # Section 7 often gives "Canonical N. — Synonym" on one line. The
+        # match is right either way, but storing the whole line puts both
+        # names on the pill ("Malvasia Nera di Brindisi N. — Malvasia").
+        # Keep the head, which is the name the regulator lists first.
+        # Spaced dash only — an unspaced one belongs to the name
+        # (Müller-Thurgau, Cabernet-Sauvignon).
+        display = re.split(r"\s+[—–-]\s+", head, maxsplit=1)[0].strip()
         out["details"].append({
             "slug": slug,
-            "name": head,
+            "name": display or head,
             "role": current_role,
             "colour": match.colour,
         })

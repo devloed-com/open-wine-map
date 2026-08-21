@@ -320,6 +320,56 @@ _VITIGNO_RE = re.compile(
 # the code in either case ("Barbera N.", "Syrah n.") — match both.
 _COLOUR_SUFFIX_RE = re.compile(r"\s+(?:[NBGRS]+\.?)+\s*$", re.I)
 
+# pdftotext wraps a two-word variety name across a line break, leaving a
+# bare group head at end-of-line and its qualifier opening the next
+# ("Pinot\nbianco" in Ravenna, "Cabernet\nsauvignon" in Riesi,
+# "Bombino\nnero" in Lizzano, "Verduzzo\nfriulano" in Friuli Aquileia,
+# "Canaiolo\nnero" in Vino Nobile). Newlines are enumeration separators
+# in these lists, so a blind join would glue real neighbouring items —
+# join only when a known ambiguous head ends the line bare (no trailing
+# punctuation) and a known qualifier word opens the next.
+_WRAP_JOIN_RE = re.compile(
+    r"\b(Cabernet|Pinot|Bombino|Verduzzo|Canaiolo|Malvasia nera|Alicante)"
+    r"[ \t]*\n[ \t]*"
+    r"(franc|sauvignon|bianco|bianca|nero|nera|grigio|friulano|trevigiano|"
+    r"bouschet|bouchet)\b",
+    re.I,
+)
+
+# A disciplinare defines a group designation with a composition
+# parenthetical: "Cabernet (da Cabernet franc e/o Cabernet Sauvignon e/o
+# Carmenère)", "Verduzzo (da Verduzzo trevigiano e/o Verduzzo
+# friulano)", "Tai (da Tocai friulano)", "Raboso (da Raboso Piave e/o
+# Raboso veronese)". The members are the real cultivars and the head is
+# a labelling term, so the whole construct is replaced by its members —
+# they reach the matcher, the bare head does not. A second form repeats
+# the head inside the parenthetical instead of using "da": "Cabernet
+# (Cabernet franc e/o Cabernet sauvignon e/o Carmenère)" (Garda,
+# Valdichiana Toscana), "Canaiolo (Canaiolo nero)" (Maremma).
+_DA_GROUP_RE = re.compile(
+    r"(?:[A-ZÀÈÉÌÒÙ][\w'’ ]*?)?\s*\(\s*da\s+([^)]+)\)",
+)
+_HEAD_GROUP_RE = re.compile(
+    r"\b(Cabernet|Pinot|Verduzzo|Canaiolo|Malvasia nera|Bombino)"
+    r"\s*\(\s*(\1[^)]+)\)",
+    re.I,
+)
+
+# A bare group head that still reaches the candidate stage (a list item
+# with no composition parenthetical — Alghero "Cabernet;", Alto Adige,
+# Montenetto di Brescia; Friuli Isonzo "Pinot spumante"; Colli di
+# Scandiano "Pinot") is a designation covering the family, never one
+# determinate cultivar — Italian labelling defines "Cabernet" as
+# Cabernet franc and/or Cabernet Sauvignon, and "Pinot" as Pinot bianco
+# / grigio / nero (Colli di Scandiano spells that trio out). Expand to
+# the members; slug-level dedup absorbs any that the roster also lists
+# explicitly.
+_BARE_HEAD_EXPANSION = {
+    "cabernet": ("Cabernet franc", "Cabernet sauvignon"),
+    "pinot": ("Pinot bianco", "Pinot grigio", "Pinot nero"),
+    "verduzzo": ("Verduzzo friulano", "Verduzzo trevigiano"),
+}
+
 
 def _scan_vitigno_phrases(text: str) -> list[str]:
     """Extract everything that follows "vitigno"/"vitigni" up to a
@@ -361,9 +411,9 @@ def _strip_percent_tail(s: str) -> str:
 # Strip from the first variety-impossible word — optionally preceded by
 # a run of weak articles/prepositions — through end-of-string.
 _TRAILING_NOISE_RE = re.compile(
-    r"\s+(?:(?:in|per|non|ad?|e|che|nella?|del|dello|della)\s+)*"
+    r"\s+(?:(?:in|per|non|ad?|da[li]?|e|che|nella?|del|dello|della)\s+)*"
     r"(?:fino|sino|loc|min|max|circa|inoltre|almeno|massimo|minimo|misura|"
-    r"inferiore|superiore|ambito|aziendale|vigneti|presenti|present\w*|"
+    r"sol[iae]|inferiore|superiore|ambito|aziendale|vigneti|presenti|present\w*|"
     r"coltivazione|congiuntamente|disgiuntamente|concorr\w*|costituit\w*|"
     r"riservat\w*|seguent\w*)\b.*$",
     re.I,
@@ -406,13 +456,24 @@ _WINETYPE_WORDS = frozenset({
 _BARE_TYPE_WORDS = _WINETYPE_WORDS | {"bianco", "bianca", "bianchi", "nero", "nera"}
 
 
+# A dangling connective left on a candidate when pdftotext broke the
+# sentence mid-phrase ("Greco bianco da ⏎ soli o congiuntamente" →
+# "Greco bianco da") pushes an exact-matchable name into fuzzy range,
+# where it can land on an unrelated variety (fuzzy:93 →
+# malvasia-aromatica). No Italian variety name ends in one of these.
+_TRAILING_CONNECTIVE_RE = re.compile(
+    r"(?:\s+(?:da|dal|dai|dalle|dell[ao]|del|di|con|in|per|o|od|ed|e))+\s*$",
+    re.I,
+)
+
+
 def _strip_winetype(s: str) -> str:
     parts = s.split()
     while parts and parts[0].lower() in _WINETYPE_WORDS:
         parts.pop(0)
     while parts and parts[-1].lower() in _WINETYPE_WORDS:
         parts.pop()
-    return " ".join(parts)
+    return _TRAILING_CONNECTIVE_RE.sub("", " ".join(parts))
 
 
 def article2_candidate_phrases(text: str) -> list[str]:
@@ -434,15 +495,23 @@ def article2_candidate_phrases(text: str) -> list[str]:
     # aluce" → "Erbaluce"); only when the hyphen sits tight against the
     # preceding letter, so a spaced "rosso - rosato" dash is left alone.
     single = re.sub(r"(?<=\w)-\n[^\S\n]*", "", text)
+    # Rejoin a two-word variety name pdftotext wrapped across a line
+    # break — must run while newlines are still present, before the
+    # composition-parenthetical rewrite reads across them.
+    single = _WRAP_JOIN_RE.sub(r"\1 \2", single)
     # Collapse spaces/tabs but KEEP newlines: disciplinari that list one
     # variety per line ("Merlot\nCabernet franc\nRefosco …") rely on the
     # newline as the enumeration separator (_LINE_SPLIT_RE splits on it).
     single = re.sub(r"[^\S\n]+", " ", single)
-    # A parenthetical after a variety name is a synonym gloss ("Corvina
-    # Veronese (Cruina o Corvina)", "Nebbiolo (Spanna)") — drop it so the
-    # head name detaches cleanly. Surfacing the gloss as its own
-    # candidate is unsafe: a regional synonym ("Spanna") fuzzy-matches
-    # the wrong canonical variety.
+    # Replace group-designation constructs with their member cultivars
+    # BEFORE the generic parenthetical drop below erases the members.
+    single = _DA_GROUP_RE.sub(lambda m: ", " + m.group(1) + ",", single)
+    single = _HEAD_GROUP_RE.sub(lambda m: ", " + m.group(2) + ",", single)
+    # A remaining parenthetical after a variety name is a synonym gloss
+    # ("Corvina Veronese (Cruina o Corvina)", "Nebbiolo (Spanna)") —
+    # drop it so the head name detaches cleanly. Surfacing the gloss as
+    # its own candidate is unsafe: a regional synonym ("Spanna")
+    # fuzzy-matches the wrong canonical variety.
     single = re.sub(r"\([^)]*\)", " ", single)
     # Treat "e/o", " ed ", " e " and " o " as enumeration separators
     # (Italian "and/or" / "and" / "or") so multi-variety phrases — and
@@ -481,10 +550,10 @@ def article2_candidate_phrases(text: str) -> list[str]:
             ):
                 continue
             if len(piece) < 80:
-                out.append(piece)
+                out.extend(_BARE_HEAD_EXPANSION.get(piece.lower(), (piece,)))
     # (c) vitigno-prose scan — independent of the chunk pipeline.
     for c in _scan_vitigno_phrases(text):
-        out.append(c)
+        out.extend(_BARE_HEAD_EXPANSION.get(c.lower(), (c,)))
     return out
 
 

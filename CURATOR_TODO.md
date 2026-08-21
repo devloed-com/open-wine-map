@@ -2163,3 +2163,285 @@ Levers, by effort/payoff:
    detail on panel open. Stage-04 data-emit + `_APP_JS` refactor; QA the
    search/filter parity.
 
+
+## Cross-country — VIVC synonym collisions (ranking rule shipped; 2 open questions)
+
+VIVC keeps every name a variety has ever borne, so one surface is routinely
+claimed by several records. `_load_vocabulary` used to walk those in file
+order, so a legacy synonym could outrank another record's prime name. It now
+ranks claims — prime name > synonym flagged "official name in <country>" >
+plain synonym — which re-bound 8 surfaces the corpora actually use.
+[scripts/audit_ambiguous_synonyms.py](scripts/audit_ambiguous_synonyms.py)
+lists what the ranking cannot decide (51 RISKY at time of writing).
+
+Reported by José Vouillamoz (co-author of *Wine Grapes*, Valais) via Reinier
+Broeks: `Bianca` was folded into Biancolella and `Hermitage` into Cinsaut.
+
+### Open question 1 — bare `Sárfehér` (HU, 3 records)
+
+Pinned to `arany-sarfeher` (status quo) pending a curator ruling.
+
+- Sárfehér (VIVC #5417, = Honigler / Mézes fehér / Précoce de Bousquet) and
+  Arany sárfehér (VIVC #5600, the 1873 Izsák selection) are **distinct**
+  cultivars — Fazekas et al., *Kertgazdaság* 54 (2022) 1-2, Table 1 lists both
+  as separate register rows (2 ha vs 288 ha).
+- VIVC flags `SARFEHER` official-in-Hungary on #5417, which argues for the
+  flip. But plantgrape gives #5417's Hungarian official name as *Honigler*,
+  not Sárfehér, and a ~2 ha relic appearing in regional PGI rosters is
+  implausible. The source text says "izsáki sárfehér - 1873" and a PDO named
+  *Izsáki Arany Sárfehér* exists, so the bare form reads as shorthand.
+- To settle: check the Nemzeti Fajtajegyzék entry each of the 3 records
+  (etyek-buda, dunantuli, balaton) intends. If they mean the relic, re-pin to
+  the #5417 slug; if shorthand, keep as is and the pin is correct.
+
+### Open question 2 — `Moschato Samou` is country-dependent
+
+Bound to `muscat-ottonel`, correct for the 3 **Cypriot** records: the Cyprus
+Dept. of Agriculture annex prints "MUSCAT OTTONEL (ΜΟΣΧΑΤΟ ΣΑΜΟΥ)", and
+Cyprus uses Μοσχάτο άσπρο for Muscat blanc. A **Greek** Μοσχάτο Σάμου would
+be Muscat Blanc à Petits Grains (Samos) — the opposite. No Greek record uses
+the surface today; if one appears, the matcher needs a country-aware pin
+rather than the current global binding.
+
+### Upstream-flag caveat
+
+VIVC's official-name flag is a claim, not a fact, and is not unique per
+country: Sauvignon Blanc (#10790) carries **both** `SAUVIGNON` and
+`ZELENI SAUVIGNON` as Slovenian official names, which cannot both hold. That
+bad flag re-bound Slovenian Zeleni sauvignon (= Sauvignonasse / Friulano) to
+Sauvignon Blanc until a hard pin reverted it. When an official-name flag
+would flip an existing binding, corroborate against a second register
+(plantgrape.fr is a fetchable proxy) before trusting it.
+
+### Open question 3 — slug groups sharing one vivc_id — ENUMERATED + TRIAGED 2026-08-21
+
+The full enumeration the 2026-08-20 note called for ran on 2026-08-21: 117
+live slug groups shared a single VIVC id (116 on the audit's corpus view,
+which misses HU — see the loose end below). Three classes fell out, two of
+them now closed:
+
+**Class 1 — spelling / bare-vs-qualified dupes: FOLDED (22 groups
+dissolved).** The corpus-slug tier already applies GRAPE_ALIAS
+(`_corpus_slug_frequency` folds on read — the pagadebiti/bombino
+precedent), so the 2026-08-20 "not fixable with an alias alone" note was
+stale: a slug→slug alias + re-extraction retires the minority slug. Folds
+applied (see the "VIVC-collision folds" block in `grape_lexicon.py`):
+sauvignon-blanc + sauvignon-blanco → sauvignon, gewurz-traminer,
+nero-d-avola → nero-davola, maccabeu, lledonner-pelut, castet → castets,
+godelho → godello, ottonel → muscat-ottonel, monastrel → mourvedre,
+moscatel-negra, muscat-a-petit-grains-blancs, mauzac-blanc → mauzac,
+fer-servadou → fer, henri-bouschet → alicante-bouschet, braquet → brachet,
+tinta-lisboa → tinta-de-lisboa, ramisco-tinto → ramisco, soleri →
+soreli-blanc, pinot-d-aunis → pineau-d-aunis, vijiriego →
+vijariego-blanco, cao → tinto-cao, fernao → fernao-pires, muscat-hambourg
+→ muscat-de-hambourg (HU aliases re-pointed), mario-feld → pinot-noir
+(Mariafeld is a Pinot noir clone). Per-record display names keep the
+source spelling — only the facet key unifies.
+
+**Class 3 — mis-resolved VIVC ids: FIXED (research-verified against live
+vivc.de, 2026-08-21).** Beyond the suspected list, a colour-mismatch sweep
+(corpus colour letter vs VIVC berry colour) surfaced several more:
+
+| slug / surface | was | now | evidence |
+|---|---|---|---|
+| `bia` (fr 22, Savoie/Isère, blanc) | 8768 ONDARRABI BELTZA (pin note claimed Basque Txakoli — false premise) | **1319 BIA BLANC** | VIVC passport; en.wiki |
+| `mollard` (fr 34, Hautes-Alpes) | 7900 = MOLINERA (id typo in the pin) | **7903 MOLLARD** | VIVC; Wikidata P3904; pl@ntgrape |
+| `picardan` (fr 54, Languedoc IGPs) | 1612 BOURBOULENC | **527 ARAIGNAN** — the FR Catalogue officiel's Picardan B ("can officially be called Araignan", pl@ntgrape); pill bracket now "Picardan (Araignan)" | VIVC; pl@ntgrape |
+| bare `jurançon N` (Côtes du Tarn, noir) | slug `jurancon` pinned 5861 JURANCON *BLANC* ("Jurançon AOC is white" — the pin conflated appellation with grape) | alias → **`jurancon-noir`**, pinned **5862** | VIVC; pl@ntgrape |
+| bare `manseng N` (Béarn/Saint-Mont, noir) | slug `manseng` → MANSENG GROS BLANC | alias → **`manseng-noir`** (#7340) | colour letters in both cahiers |
+| bare `couderc N` (Landes, noir) | slug `couderc` (own pill) | alias → **`couderc-noir`** (#3206) | Landes hybrid context |
+| surface "Nasco" (it 16, Sardinia) | bound to `valenci-blanco` = BEBA #22710 (ES table grape) via BEBA's legacy "NASCO" synonym | self-minted **`nasco`**, pinned **8354 NASCO** | VIVC passport |
+| surface "Brachetto" (Brachetto d'Acqui, Ruchè, Piemonte) | bound to `brachet` = BRAQUET NOIR #1657 (Nice) via its legacy "BRACHETTO" synonym | self-minted **`brachetto`**, pinned **15630 BRACHETTO** | VIVC candidate list |
+| `terrantez` (pt 3, Dão/Duriense/Tejo/Algarve — mainland) | 26140 TERRANTEZ DO PICO (Azores) | **24589 TERRANTEZ** (VIVC's standalone mainland prime) | VIVC search (6-way homonym) |
+| `rufete-serrano-blanco` (es 1, white) | 10331 RUFETE (the red) | **`vivc_id: false`** — VIVC has no entry; distinct white per the CyL regulator | VIVC search empty |
+| `pugnitello` (it, Tuscan) | 7949 MONTEPULCIANO (VIVC folds it; identity contested) | **`vivc_id: false`** — Registro Nazionale codice 371 keeps it distinct; no Montepulciano bracket | VIVC + Registro + wein.plus disagree |
+| surface "Italia" (Cirò, Rossese di Dolceacqua, Nebbiolo d'Alba, Spoleto) | EUR-Lex table country column matched as a grape (stale bind, then fuzzy→rossese@92) | banned in `_BANNED_SURFACES`; IT stage 02 strips the `Italia -` column prefix so display names show the variety again | source table text |
+
+Confirmed *correct* after the same research (VIVC-faithful, no change):
+`hibou-noir` = Avanà #793 (2011 DNA; FR catalogue keeps the name, VIVC
+keeps only an accession), `s-saul` = Cinsaut (VIVC carries S. SAUL / SAO
+SAUL), `valente` = Heunisch weiss, and the Douro PRT-passport folds
+santareno = Etraire de l'Aduï and moscadet = Meslier Saint-François
+(verified live); mondet = Durif and rodo = Mondeuse noire are the same
+PRT-passport family, accepted on VIVC's authority. `gajo-arroba` keeps
+its CASTELOA pin: the Arribes pliego lists it in the *tinto* roster (the
+CyL "blanc" colour tag was a parser artifact), though VIVC lets
+CORNIFESTO #2846 claim the same name — noted in the pin.
+
+**Class 2 — per-country / per-regulator names for one variety: RESOLVED
+2026-08-21 (facet-tier unification, user-approved).** ~70 groups remain
+after the folds and fixes, all deliberate or VIVC-faithful: cot/malbec,
+rolle/vermentino, nielluccio/sangiovese, jaen/mencia,
+bastardo/trousseau(+verdejo-negro), lemberger/franconia/blaufrankisch,
+muscat/muscat-a-petits-grains,
+morrastel/graciano/tinta-miuda/tintilla-de-rota,
+listan/palomino/palomino-fino/listan-blanco-de-canarias/malvasia-rei,
+muscat-d-alexandrie/moscatel-graudo/…, portugais-bleu/blauer-portugieser/
+portugues-azul, sousao/souson/vinhao, alvarelhao/brancellao,
+verdelho/verdello, avana/hibou-noir, cinsault/s-saul, heunisch/valente,
+durif/mondet, araignan/picardan, and the long tail of pinned PT/ES
+synonym pairs. Decision: keep the slugs (regulator-spelling fidelity,
+matching the malbec/bastardo pin notes); the facet tier unifies them —
+already live in `map_template.py` + `app.js` via `VIVC_SIBLINGS`
+(filter-predicate expansion: toggling Côt matches Malbec records),
+`SLUG_TO_CANONICAL` (facet rows + counts roll up to the highest-usage
+member, locale-home-country preferred) and `GRAPE_SYNONYMS`
+(parenthesised synonym labels on the canonical row, searchable).
+Verified against the 2026-08-21 rebuild: cot↔malbec, picardan↔araignan,
+s-saul↔cinsault, valente↔heunisch all roll up; the re-pinned
+bia / brachetto / nasco / terrantez and the unpinned pugnitello are
+correctly siblingless. No per-slug folding needed for this class —
+future same-id pairs inherit the behaviour automatically once both
+members carry a by-slug VIVC record.
+
+Deferred (per-record or parser-level, not slug-level):
+- Calabrian "Greco bianco" (Cirò, Melissa) is **Guardavalle #5096** per
+  VIVC/wein.plus — a different variety from Campania/Puglia/Basilicata's
+  Greco (di Tufo) #4970 that the shared `greco-bianco` slug is pinned to.
+  Same per-record-context problem as Scavigna's Magliocco. (The *other*
+  Calabrian Greco bianco — Greco di Bianco DOC passito, Gerace — is
+  Malvasia Dubrovačka #7266 per Crespan et al. 2006; not in the corpus.)
+- Bare "Cesanese" (Cesanese del Piglio, Castelli Romani) is an Affile
+  e/o comune group designation — needs the MASAF-parser group expansion
+  the bare-Cabernet fix used, not a fold.
+- Bare "Raboso" (Veneto IGTs) is a Piave/Veronese group; VIVC hands it
+  to Piave. Left as-is.
+- Bare "piquepoul" is colour-mixed (Saint-Chinian N vs La Clape B) —
+  a plain alias can't split it; needs colour-aware alias support.
+
+Loose ends:
+- `grape_corpus._SOURCES` misses `hu/dokumentumok-extracted` plus the
+  BG/GR/SK/RO national-spec + register-fiche sidecar dirs — HU-only slugs
+  (e.g. muscat-hambourg before its fold) are invisible to 02g/02b and to
+  the collision audit. Adding them will surface a batch of unresolved
+  slugs for 02g.
+- **Stage-02 runs across countries must not run concurrently.** The
+  vocabulary scans the FR/ES/PT extracted dirs and silently skips
+  mid-write files (`json.JSONDecodeError → continue`), so a parallel
+  re-extraction can drop a corpus slug from tier 1 and let a VIVC synonym
+  claim steal its surface (observed: CH bare "muscat" →
+  muscat-d-alexandrie while FR was mid-rewrite; fixed by a sequential
+  re-run). A snapshot/lock in `_corpus_slug_frequency` would remove the
+  trap.
+- The suspiciously-named `suivie-de-la-manseng` (fr 1) and
+  `listan-prieto-moscatel-negro` (es 1) are prose-artifact slugs kept
+  alive by deliberate pins; they belong to the ARTIFACT cleanup, not the
+  collision family.
+
+One member of this family was folded on 2026-08-20: `bombino-bianco` vs
+`pagadebiti` (both = VIVC #1483 BOMBINO BIANCO). The `bombino-bianco` slug
+only ever existed via the bare-"Bombino" alias (10 IT records), while
+`pagadebiti` was the incumbent for the spelled-out surfaces (21 IT + 25 FR),
+so the alias now points at `pagadebiti` and the parallel slug is gone after
+re-extraction — no facet split remains for this pair.
+
+### Open question 4 — bare names guessed to a specific cultivar — RESOLVED 2026-08-20
+
+Researched per-record against the source documents plus the Italian Registro
+Nazionale, VIVC, regional authorized-variety lists, the Croatian national
+cultivar list and DNA literature; full per-record evidence in
+[tmp/bare-grape-surfaces-research-2026-08-20.md](tmp/bare-grape-surfaces-research-2026-08-20.md).
+Audit flags dropped 168 → 98; every remaining bare-name flag is a
+verified-correct binding. Verdicts and what was applied:
+
+| surface | verdict | applied |
+|---|---|---|
+| `Cabernet` | group designation ("da Cabernet franc e/o Cabernet Sauvignon e/o Carmenère") or a line-wrap of one of the two; never reliably franc | surface banned in grape_entity; MASAF parser wrap-joins, expands the `(da …)` parenthetical, and defaults bare heads to franc+sauvignon; HU Balatonmelléki + PT Açores re-extracted |
+| `Verduzzo` | HR correct (NN 25/2020 entry 233 = "Verduzzo Friulano"); IT is a friulano/trevigiano group per each disciplinare's parenthetical | `verduzzo-trevigiano` slug minted (Registro 257, VIVC 12977, SSR-distinct); parenthetical expansion emits both members |
+| `Budai` | CORRECT — bare "Budai" IS the official HU register name (Balaton PDO synonym table; VIVC #881) | VIVC pin budai-zold → 881 |
+| `Bombino` | bianco everywhere except Lizzano (line-wrapped "Bombino ⏎ nero"); Frusinate = the local Ottonese = bianco | wrap-join repairs Lizzano; bare alias re-pointed to the incumbent `pagadebiti` slug (see OQ3 note) |
+| `Pinot` | mostly line-wraps of Pinot bianco/grigio; two genuine group designations (Colli di Scandiano, Friuli Isonzo spumante); HU Duna = wrapped Pinot noir (correct) | wrap-join + 3-way bare-head expansion in the MASAF parser |
+| `Malvasia nera` | di **Brindisi** in Puglia (Lizzano's own gloss), Toscana (1960s Puglia imports; Sant'Antimo/Montecarlo annexes) AND Calabria (only Brindisi authorized, DGR 557/2019); Brindisi ≡ Lecce (SSR; DM 30/05/2018 synonyms); di Basilicata is a distinct half-sibling kept only where literally named (Terra d'Otranto) | GRAPE_ALIAS pins malvasia-nera + di-lecce → di-brindisi |
+| `Alicante` | Grenache — Registro code 010 (syn. CANNONAU/GRENACHE); Bouschet is a separate entry 011; Emilia-Romagna IGTs admit only 010; Menfi lists both | alias → `grenache`; Menfi's real Alicante Bouschet recovered (wrap-join + "da soli" noise fix); FR unaffected (cahiers spell "Alicante Henri Bouschet") |
+| `Canaiolo` | CORRECT — nero in all 7 (red-blend contexts; Maremma's own gloss) | none needed |
+
+Loose ends:
+- HU Duna's pill label still reads bare "Pinot" (column-mangled "Pinot ⏎
+  küvéborok ⏎ noir"); binding correct, label cosmetic.
+- audit_grape_surfaces' TRUNCATED heuristic (label words < slug words) is
+  blind to colour-suffixed surfaces: "Alicante N." counts as two words, so
+  the stale alicante-bouschet bindings in the Rimini/Rubicone EUR-Lex
+  records were invisible to it (found by hand; fixed by re-running
+  it/02_extract_pliegos.py after the alias change). A surface-word count
+  that drops the trailing colour code would close the gap.
+- Bare "Pinot"/"Verduzzo" remain globally bound (pinot-noir /
+  verduzzo-friulano) via VIVC for the sake of HU Duna / the HR register
+  name; a future country writing bare "Pinot" meaning something else will
+  re-surface in this audit.
+- Verify the two new VIVC pins against live vivc.de (it returned 500s on
+  2026-08-20): budai-zold → 881, verduzzo-trevigiano → 12977 (corroborated
+  via Wikidata Q371448).
+
+Run the audit after any stage-02 change; `--strict` fails on anything
+flagged.
+
+### Second-tier ambiguous-synonym pass — RESOLVED 2026-08-21
+
+Follow-up sweep over `audit_ambiguous_synonyms.py`'s RISKY list (44 → 35)
+plus corpus cross-checks; six research agents, all verdicts implemented.
+Full evidence table in
+[tmp/bare-grape-surfaces-research-2026-08-20.md](tmp/bare-grape-surfaces-research-2026-08-20.md)
+(second-tier section). Re-bound: GR "Grenache Rouge N" → grenache (45
+entries were painted gris), RO "Saint Emilion" → ugni-blanc, IT Colli
+Martani "Vernaccia (Nera)" → vernaccia-nera (bare "vernaccia" banned), San
+Severo "Trebbiano bianco" → ugni-blanc, HR "Ružica crvena" → kovidinka (NN
+25/2020), CH "Vernatsch" → schiava-grossa, BG "Немски ризлинг" → riesling
+(un-shadowing the real Силванер row), HU bare "muskotály" banned
+(wine-type term; Pécs + Hajós-Baja lose a false Muscat), HU "Mátrai
+muskotály" → own slug. New slugs minted: forastera (VIVC 4189),
+refosco-di-faedis (9989), magliocco-dolce (8478), magliocco-canino (7092),
+biancone (1335), matrai-muskotaly; forastera-blanca's VIVC pin corrected
+4189 → 24859. Confirmed correct as-is: GR Refosco (VIVC #9987 carries
+"REFOSKO (PELEPONNES/ARKADIEN)"), HR Verdić → glera, DE Petite Syrah →
+durif, BG bare Ризлинг → riesling, and the Weißer-Riesling / Grenache-Noir
+/ Burgund-mare / Oporto / red-Traminer / Roter-Gutedel / Petite-Arvine /
+Malvazija / Bianchetta-Genovese families.
+
+Remaining loose ends:
+- Scavigna's "Magliocco" renders as magliocco-dolce; its annex table (per
+  disciplinare.it, not in the MASAF consolidated text) says Magliocco
+  Canino — needs a per-record mechanism or an upstream text source to fix.
+- ~~The 6 new VIVC pins need verification against live vivc.de~~ — DONE
+  2026-08-21: all six (plus budai-zold 881, verduzzo-trevigiano 12977 and
+  the corrected forastera-blanca 24859) re-fetched against live vivc.de
+  via `02g --refresh --only`; every prime/colour matches the pin.
+- 36 RISKY ambiguous synonyms after the 2026-08-21 re-extractions — none
+  known to bind a wrong cultivar (Brachetto, the worst offender found
+  since, now has its own slug), but re-run the audit after any vocab
+  change.
+
+### Note — recently added VIVC pins live only in gitignored `raw/`
+
+`raw/vivc/slug_overrides.json` is covered by the blanket `raw/*` ignore, so
+these are not in version control. Recorded here so a fresh checkout can
+restore them (stage 02g reports them as `ambiguous-cultivar` — or resolves
+them to the wrong homonym — without a pin):
+
+```json
+"bianca": {"vivc_id": 1321, "_prime": "BIANCA"},
+"freisa": {"vivc_id": 4256, "_prime": "FREISA"},
+"budai-zold": {"vivc_id": 881, "_prime": "BUDAI ZOELD"},
+"verduzzo-trevigiano": {"vivc_id": 12977, "_prime": "VERDUZZO TREVIGIANO"}
+```
+
+Added in the 2026-08-21 collision pass (see OQ3 above for the evidence):
+
+```json
+"bia": {"vivc_id": 1319, "_prime": "BIA BLANC"},
+"mollard": {"vivc_id": 7903, "_prime": "MOLLARD"},
+"picardan": {"vivc_id": 527, "_prime": "ARAIGNAN"},
+"jurancon-noir": {"vivc_id": 5862, "_prime": "JURANCON NOIR"},
+"nasco": {"vivc_id": 8354, "_prime": "NASCO"},
+"brachetto": {"vivc_id": 15630, "_prime": "BRACHETTO"},
+"terrantez": {"vivc_id": 24589, "_prime": "TERRANTEZ"},
+"gajo-arroba": {"vivc_id": 23126, "_prime": "CASTELOA"},
+"rufete-serrano-blanco": {"vivc_id": false},
+"pugnitello": {"vivc_id": false}
+```
+
+(the `jurancon` pin was *removed* — the bare surface now folds to
+`jurancon-noir` via GRAPE_ALIAS; `vivc_id: false` = deliberately absent
+from VIVC, the bianchello mechanism.)
+
+Same applies to the other ~450 pins already in that file; the deployed site
+is built from the curator's machine, so production is unaffected.
