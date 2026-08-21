@@ -51,6 +51,14 @@ _CH_STOP_SURFACES = frozenset({
     "weisse", "weiss", "rote", "roten",  # German colour headers → obscure grapes
     "oeildeperdrix",  # Swiss rosé STYLE made from Pinot noir, not a variety → cot
     "dole",           # Valais red WINE (Pinot noir + Gamay blend), not a variety
+    # NE Art. 4 "appellations communales" villages that merged away and
+    # so evade the swissBOUNDARIES3D commune guard: Colombier (→
+    # Milvignes 2013; the surface fuzzy-bound to colombard — and if a
+    # real Swiss variety context ever uses "Colombier" it means Sémillon
+    # anyway) and Saint-Aubin-Sauges (→ La Grande Béroche 2018; bound to
+    # the Lorraine grape aubin).
+    "colombier",
+    "saintaubinsauges",
 })
 
 # Section-keyword tables — earliest match wins; ordering is most-

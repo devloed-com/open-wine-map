@@ -199,6 +199,10 @@ def _prt_canonical_name(rest: str) -> str:
     """From a PRT-row tail (after stripping `PRT<code>` and colour),
     extract the canonical variety name.
 
+    - `Cabernet Franc` → `Cabernet Franc` (whole tail IS the name —
+      resolves exact in the vocab, so the synonym-column heuristic below
+      must not shear it to `Cabernet`; same for `Alicante Bouschet`,
+      `Cabernet Sauvignon`, `Touriga Nacional` …)
     - `Arinto Pedernã` → `Arinto` (synonym in second slot)
     - `Cabernet-Sauvignon` → `Cabernet-Sauvignon` (no synonym)
     - `Arinto dos Açores Terrantez da Terceira` → `Arinto dos Açores`
@@ -207,6 +211,9 @@ def _prt_canonical_name(rest: str) -> str:
     """
     rest = rest.split(",", 1)[0].strip()
     rest = re.sub(r"\s*-\s*", "-", rest)
+    whole = match_variety(rest)
+    if whole is not None and whole.method == "exact":
+        return rest
     m = _PT_TABULAR_NAME_RE.match(rest)
     if m:
         return m.group(1).strip()

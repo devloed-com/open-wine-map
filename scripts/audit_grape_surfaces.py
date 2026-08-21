@@ -56,6 +56,12 @@ def _norm(s: str) -> str:
     return "".join(c for c in unidecode(s).casefold() if c.isalpha())
 
 
+# A trailing registry colour code ("Alicante N.", "Refosco N") is not a
+# name word — counting it hid stale two-word-slug bindings ("Alicante N."
+# → alicante-bouschet read as 2 words vs 2, so never TRUNCATED).
+_COLOUR_CODE_TAIL = re.compile(r"\s+(?:[NBG]|RS|RG|RB)\.?\s*$")
+
+
 def classify(name: str, slug: str) -> str | None:
     if _norm(name) in _STYLE_TERMS:
         return "STYLE"
@@ -63,7 +69,8 @@ def classify(name: str, slug: str) -> str | None:
             or _PROSE_PREFIX.match(name.strip()) or _UNIT.search(name)
             or len(name) > 40 or len(name.split()) > 5):
         return "ARTIFACT"
-    words = [w for w in re.split(r"[\s-]+", name.strip()) if w]
+    bare = _COLOUR_CODE_TAIL.sub("", name.strip())
+    words = [w for w in re.split(r"[\s-]+", bare) if w]
     if words and len(words) < len(slug.split("-")) and slug.startswith(words[0].lower()):
         return "TRUNCATED"
     return None

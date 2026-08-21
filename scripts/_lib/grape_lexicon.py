@@ -253,8 +253,16 @@ GRAPE_ALIAS = {
     "pignola": "pignola-valtellinese",
     "pignola-valtellinese": "pignola-valtellinese",
     "pignolo": "pignolo",                        # distinct Friulian red
-    # Cabernet — `cabernet` bare slug is a parser artefact; pin to franc.
-    "cabernet": "cabernet-franc",
+    # Bare "Cabernet" is deliberately NOT pinned: in Italian disciplinari
+    # it is a group designation the document itself defines — "Cabernet
+    # (da Cabernet franc e/o Cabernet Sauvignon e/o Carmenère)" (Piave,
+    # Castel del Monte, Garda, Piemonte, …) — and elsewhere it is a
+    # line-wrap truncation of either specific cultivar (HU Balatonmelléki
+    # wraps "Cabernet ⏎ sauvignon"; PT Açores rows carry Franc and
+    # Sauvignon as separate register entries). No single binding is ever
+    # right, so the bare surface is banned in grape_entity and the IT
+    # MASAF parser expands it to franc + sauvignon (or the disciplinare's
+    # own parenthetical members) before matching.
     # Riesling — Italico is Welschriesling, ampelographically unrelated
     # to true Riesling (Renano).
     "riesling-italico": "welschriesling",
@@ -289,7 +297,18 @@ GRAPE_ALIAS = {
     # Refosco family
     "refosco": "refosco-dal-peduncolo-rosso",
     "refosco-dal-peduncolo-rosso": "refosco-dal-peduncolo-rosso",
-    "refosco-nostrano": "refosco-dal-peduncolo-rosso",
+    # "Refosco nostrano" is Refosco di Faedis — a registered variety of
+    # its own (Registro 206, sinonimie "Refoscone, Refosco grosso,
+    # Refosco di Faedis"; VIVC #9989), DNA-distinct from Refosco dal
+    # peduncolo rosso (Registro 205, VIVC #9987). Friuli Aquileia's own
+    # art. 2 names both vitigni in one sentence. VIVC also lists the
+    # nostrano name among #9987's synonyms — the RANINA pattern — which
+    # is how the old fold happened. Slug uses the wine-world common name
+    # (matches the Friuli Colli Orientali "Refosco di Faedis" usage).
+    "refosco-nostrano": "refosco-di-faedis",
+    "refosco-di-faedis": "refosco-di-faedis",
+    "refoscone": "refosco-di-faedis",
+    "refosco-grosso": "refosco-di-faedis",
     "terrano": "refosco-dal-peduncolo-rosso",     # Refosco d'Istria (DNA)
     "refosk": "refosco-dal-peduncolo-rosso",      # SI "Refošk" — Kras Refosco
     "teran": "refosco-dal-peduncolo-rosso",       # SI "Teran" grape sense (VIVC #9987 syn.
@@ -522,6 +541,98 @@ GRAPE_ALIAS = {
     # Reported by José Vouillamoz (co-author of Wine Grapes, Valais).
     "bianca": "bianca",
     "egri-csillagok-40": "bianca",
+    # Bare "Malvasia nera" in an Italian disciplinare is Malvasia nera di
+    # Brindisi — NOT di Basilicata, which VIVC also lets claim the bare
+    # name (#7272 and #7273 both list MALVASIA NERA as a synonym).
+    # Brindisi and Lecce are ONE variety (SSR-confirmed; Negroamaro ×
+    # Malvasia bianca lunga; official register synonyms per DM
+    # 30/05/2018), while di Basilicata has a different father (Somarello
+    # nero). The regional lists agree everywhere the bare surface occurs:
+    # Puglia authorizes Brindisi + Lecce (Lizzano's own gloss reads "di
+    # Brindisi e/o di Lecce"), Tuscany's plantings came from Puglia in
+    # the 1960s (Consorzio Chianti Classico; Sant'Antimo and Montecarlo
+    # name Brindisi/Lecce in their annexes), and Calabria authorizes ONLY
+    # di Brindisi (DGR 557/2019 — S. Anna di Isola Capo Rizzuto). Terra
+    # d'Otranto names di Basilicata explicitly, which still resolves via
+    # its own full surface.
+    "malvasia-nera": "malvasia-nera-di-brindisi",
+    "malvasia-nera-di-lecce": "malvasia-nera-di-brindisi",
+    # Verduzzo trevigiano is a distinct cultivar, not a friulano biotype:
+    # separate Registro Nazionale entries (256 vs 257, "tra loro
+    # nettamente diversi"), separate VIVC primes (12976 / 12977),
+    # SSR-distinct (Wine Grapes 2012 — the true friulano synonym is
+    # Verduzzo Ramandolo), and the dominant Verduzzo of the Treviso
+    # plain. Veneto disciplinari define bare "Verduzzo" per-appellation
+    # ("da Verduzzo friulano e/o Verduzzo trevigiano" — Piave, Veneto,
+    # Venezia, Delle Venezie; Trevenezie names one or the other per
+    # sub-area) — the MASAF parser expands those parentheticals into
+    # member cultivars, so both slugs are needed.
+    "verduzzo-trevigiano": "verduzzo-trevigiano",
+    # Bare "Verduzzo" = friulano: the Croatian national list (NN 25/2020
+    # entry 233) equates its bare-name entry with Verduzzo Friulano, the
+    # only bare-surface user in the corpus (IT bare heads are expanded
+    # to both members by the MASAF parser before matching). Pinned so
+    # the trevigiano record's bare-VERDUZZO synonym claim can't flip it.
+    "verduzzo": "verduzzo-friulano",
+    # "Grenache Rouge" is Grenache noir — French usage distinguishes
+    # rouge / gris / blanc, and the Greek specs that use the name attach
+    # the colour code N (noir) to it ("Grenache Rouge N", with Grenache
+    # Blanc B listed separately — Evia). VIVC lets grenache-gris claim
+    # the surface, which mis-painted 13 GR records as gris.
+    "grenache-rouge": "grenache",
+    # Romanian "Saint Emilion" is the Cognac/ex-Soviet-sphere name for
+    # Ugni blanc / Trebbiano toscano (VIVC #12628 lists SAINT EMILION as
+    # a synonym). The Colinele Dobrogei caiet classes it under "Soiuri
+    # albe" — with Sémillon as a SEPARATE entry — and describes the wine
+    # as "galben-verzui, neutral, subțire", the textbook Ugni blanc
+    # profile. Four VIVC primes claim the bare synonym (cot,
+    # folle-blanche, semillon, ugni-blanc); the matcher had picked Côt —
+    # a red — on file order.
+    "saint-emilion": "ugni-blanc",
+    # Croatian "Ružica crvena": NN 25/2020 row 186 maps it to Dinka
+    # crvena / Kevidinka (= Hungarian Kövidinka, a pink-skinned
+    # white-wine grape, colour code Rs) — grown exactly where our
+    # records carry it (Slavonija / Hrvatsko Podunavlje). Earlier layers
+    # bound it to glavinusa (a Dalmatian red — geographically absurd)
+    # and gewurztraminer (no support in the national list).
+    "ruzica-crvena": "kovidinka",
+    # Bare "Vernatsch" is Trollinger = Schiava GROSSA (the BL règlement
+    # glosses its own entry "Vernatsch (Blauer Trollinger)"); only
+    # Klein-/Edel-/Mittelvernatsch means gentile. VIVC puts bare
+    # VERNATSCH on all three Schiave, so the pick was file-order.
+    "vernatsch": "schiava-grossa",
+    # Ischia's Forastera is the Campanian native (Registro 083 "Forastera
+    # B."; VIVC #4189 FORASTERA, a Biancolella descendant) — DNA-distinct
+    # from the Canary Islands' Forastera blanca (VIVC #24859 ALBILLO
+    # FORASTERO), despite VIVC #4189's stale synonym list still carrying
+    # the Canarian names. Bare "Forastera" in an Italian record is the
+    # Ischia grape.
+    "forastera": "forastera",
+    # Calabria's Magliocco family: Magliocco dolce (Registro 888, DM
+    # 23-05-2019; VIVC #8478 — syn. Arvino, the Terre di Cosenza
+    # flagship whose disciplinare glosses bare "Magliocco (localmente
+    # detto anche Magliocco Dolce o Arvino…)" and lists Gaglioppo
+    # SEPARATELY) and Magliocco canino (Registro 125; VIVC #7092 — the
+    # Scavigna table's "Magliocco Canino N"). Both DNA-unrelated to
+    # Gaglioppo (a Sangiovese × Mantonico cross), whose VIVC synonym
+    # list nonetheless claims bare MAGLIOCCO — the source of the old
+    # mis-bind. Bare "Magliocco" takes the Cosenza flagship sense.
+    "magliocco": "magliocco-dolce",
+    "magliocco-dolce": "magliocco-dolce",
+    "arvino": "magliocco-dolce",
+    "magliocco-canino": "magliocco-canino",
+    # Tuscan "Biancone" is Biancone di Portoferraio (Registro 030, whose
+    # scheda explicitly refutes the Trebbiano confusion; VIVC #1335,
+    # kin to Mammolo and Corsica's Biancu Gentile) — the Toscano IGT
+    # allegato lists "Biancone B." and "Trebbiano Toscano B." as
+    # separate rows, so the old ugni-blanc binding was
+    # register-impossible.
+    "biancone": "biancone",
+    # Puglia's "Trebbiano bianco" (San Severo DOC) is Trebbiano toscano
+    # — the Puglia authorized list has only Trebbiano toscano + giallo
+    # (no di Soave, a Veneto/Marche variety), and the 1968 DOC blend is
+    # Bombino bianco + Trebbiano toscano. Folds to the toscano canonical.
+    "trebbiano-bianco": "ugni-blanc",
     "nascetta": "nascetta",
     "vespaiolo": "vespaiolo",
     "ribolla-gialla": "ribolla-gialla",
@@ -535,7 +646,19 @@ GRAPE_ALIAS = {
     "guardavalle": "guardavalle",
     "bianchello": "bianchello",
     "uva-di-troia": "nero-di-troia",            # = Nero di Troia (modern name)
-    "bombino": "bombino-bianco",                # bare "Bombino" in Lazio = Bombino bianco
+    # Bombino bianco's corpus slug is `pagadebiti` (the Romagna synonym
+    # arrived first; Pampanuto / Pampanino above already fold into it).
+    # The bare "Bombino" of the Lazio white DOCs (Marino, Roma, Zagarolo,
+    # Montecompatri-Colonna, Bianco Capena "uva di Spagna", Frusinate =
+    # the local Ottonese) and of Puglia's white blends is the same
+    # variety — VIVC #1483 BOMBINO BIANCO — so both surfaces join the
+    # incumbent slug instead of minting a parallel `bombino-bianco` one.
+    # Bombino NERO is a distinct cultivar (Bombino bianco × Uva rosa
+    # antica offspring, Bergamini et al. 2016), kept apart via its own
+    # entry above; Lizzano's line-wrapped "Bombino ⏎ nero" is repaired by
+    # the MASAF wrap-join before matching.
+    "bombino": "pagadebiti",
+    "bombino-bianco": "pagadebiti",
     "canaiolo": "canaiolo-nero",
     "pignatello": "perricone",                  # disciplinari: "Pignatello o Perricone"
     "insolia": "inzolia",
@@ -682,11 +805,15 @@ GRAPE_ALIAS = {
     "kek-rulandi": "pinot-noir",                # Hungarian name for Pinot Noir
     "ottonel-muskotaly": "muscat-ottonel",      # Muscat Ottonel
     "muscat-ottonel": "muscat-ottonel",  # VIVC #8246
-    "hamburgi-muskotaly": "muscat-hambourg",    # Hungarian for Muscat de Hambourg
-    "muscat-de-hamburg": "muscat-hambourg",
+    "hamburgi-muskotaly": "muscat-de-hambourg",  # Hungarian for Muscat de Hambourg
+    "muscat-de-hamburg": "muscat-de-hambourg",
     "sarga-muskotaly": "muscat-a-petits-grains",   # Hungarian "Yellow Muscat" = Muscat Lunel / Muscat à petits grains blancs (VIVC #8193)
     "sargamuskotaly": "muscat-a-petits-grains",    # one-word spelling in the termékleírás PDFs (Tokaj, Balatonboglár, …)
-    "mátrai-muskotaly": "muscat-a-petits-grains",
+    # Mátrai muskotály is a distinct 1952 Hungarian crossing (Izsáki
+    # sárfehér × Muscat Ottonel, Kozma Pál), not Muscat blanc à petits
+    # grains (that one is Sárga muskotály). The old key also carried a
+    # diacritic ("mátrai-…"), so it never matched an unidecoded lookup.
+    "matrai-muskotaly": "matrai-muskotaly",
     "korai-piros-veltelini": "fruhroter-veltliner",      # Korai piros veltelíni = Frühroter Veltliner
     "kovidinka": "kovidinka",                   # Hungarian — Vojvodina cluster
     "dinka-crvena": "kovidinka",
@@ -904,7 +1031,7 @@ GRAPE_ALIAS = {
     "merlo": "merlot",                            # Мерло
     "sira": "syrah",                              # Сира
     "shiraz": "syrah",
-    "sovinion-blan": "sauvignon-blanc",           # Совиньон блан
+    "sovinion-blan": "sauvignon",                 # Совиньон блан (folded with sauvignon-blanc)
     "shardone": "chardonnay",                     # Шардоне
     "shardonne": "chardonnay",
     "pino-nuar": "pinot-noir",                    # Пино ноар
@@ -937,7 +1064,18 @@ GRAPE_ALIAS = {
     "kharsh-laveliu": "harslevelu",               # Харш Лавелю (Hárslevelű)
     "m'onie": "meunier",                          # Мьоние (Meunier / Pinot Meunier)
     "senzo": "cinsault",                          # Сензо (BG name for Cinsault)
-    "rizling-nemski": "sylvaner",                 # Ризлинг немски (= Немски ризлинг → Sylvaner)
+    # Bulgarian "Немски ризлинг" / "Ризлинг немски" (German Riesling) is
+    # Rhine Riesling — bg.wikipedia and Bulgarian wine references treat
+    # Рейнски/Немски ризлинг as one variety, and the IAVV spec template
+    # families use the two forms in complementary distribution (specs
+    # writing «Немски» never also write «рейнски»). VIVC's Silvaner
+    # (#11805) claims "NEMETSKII RIZLING" — a Russian-catalogue
+    # cross-claim: the Черноморски район spec lists «Немски ризлинг»
+    # (златист, passionfruit) AND «Силванер» (жълтозелен, pear/almond)
+    # as two separate roster rows, which the old sylvaner fold collapsed
+    # into one, shadowing the real Silvaner.
+    "rizling-nemski": "riesling",
+    "nemski-rizling": "riesling",
     # BG breeding-station crossings + old natives self-canonicalise (colours
     # in DEFAULT_COLOUR). `ъ`/`ь` render as an apostrophe under unidecode, so
     # `balgarski-rizling` is reached via the apostrophe key "rizling-b'lgarski".
@@ -1126,7 +1264,7 @@ GRAPE_ALIAS = {
     "roter-muller-thurgau": "muller-thurgau",     # colour mutation, same cultivar (VIVC #8141)
     "blauer-limberger": "lemberger",              # VIVC #1459 BLAUFRÄNKISCH — German Lemberger / Limberger
     "limberger": "lemberger",
-    "blauer-trollinger": "schiava-grossa",         # VIVC #11237 SCHIAVA GROSSA = Vernatsch = Trollinger
+    "blauer-trollinger": "schiava-grossa",         # VIVC #10823 SCHIAVA GROSSA = Vernatsch = Trollinger
     "trollinger": "schiava-grossa",
     "gutedel": "chasselas",                       # German Chasselas
     "weisser-gutedel": "chasselas",
@@ -1322,7 +1460,21 @@ GRAPE_ALIAS = {
     "carmenere": "carmenere",                      # already mapped; reaffirmed
     "tannat": "tannat",                            # already mapped; reaffirmed
     "alicante-bouschet": "alicante-bouschet",      # VIVC #234 ALICANTE BOUSCHET
-    "alicante": "alicante-bouschet",
+    # Italy's Registro Nazionale registers "Alicante N." (code 010) as
+    # Grenache noir — official synonyms CANNONAU N., TOCAI ROSSO N.,
+    # GARNACHA TINTA, GRENACHE, GRANACCIA — with Alicante Bouschet a
+    # SEPARATE entry (code 011); the register's own 1962 monograph calls
+    # the bare-name-for-Bouschet usage "non esatto". Menfi DOC lists both
+    # as distinct varieties, Maremma writes "Alicante o Grenache",
+    # Colline Savonesi "Alicante (localmente denominato Granaccia)", and
+    # the Emilia-Romagna IGTs (Ravenna, Rimini, Rubicone) admit only code
+    # 010. Every bare-"Alicante" surface in the corpus is Italian — FR
+    # cahiers write "Alicante Henri Bouschet" in full (the Languedoc
+    # shorthand never reaches the matcher) and ES uses "Garnacha
+    # Tintorera". VIVC claims the bare name on both Garnacha Tinta and
+    # Alicante Henri Bouschet, so this pin takes the Italian register's
+    # reading.
+    "alicante": "grenache",
     "alvarinho": "albarino",                       # PT name for ES Albariño
     "artaban": "artaban",                          # VIVC #21138 ARTABAN — INRA interspecific red
     "voltis": "voltis",                            # VIVC #21163 VOLTIS — INRA interspecific white
@@ -1548,6 +1700,60 @@ GRAPE_ALIAS = {
     "vossos": "vossos",
     "zakynthino": "skiadopoulo",
     "zoumiatiko": "dimyat",
+    # ----- VIVC-collision folds (CURATOR_TODO open question 3, 2026-08-21).
+    # Each pair of live corpus slugs below shared one vivc_id — the same
+    # variety split across two facet pills by a spelling variant or a
+    # bare-vs-qualified surface. The minority slug folds into the
+    # incumbent (per-record display names keep the source spelling).
+    # Corpus-slug tier folding happens in grape_entity's
+    # _corpus_slug_frequency, so a slug→slug alias + re-extraction
+    # retires the minority slug (the pagadebiti/bombino precedent).
+    "sauvignon-blanc": "sauvignon",             # VIVC #10790; bare `sauvignon` is the 500-use incumbent
+    "sauvignon-blanco": "sauvignon",            # ES one-off spelling
+    "gewurz-traminer": "gewurztraminer",        # ES hyphenated one-off
+    "nero-d-avola": "nero-davola",              # apostrophe-split variant of the incumbent slug
+    "maccabeu": "macabeu",                      # FR double-c one-off
+    "muscat-a-petit-grains-blancs": "muscat-a-petits-grains",  # petit/petits typo
+    "lledonner-pelut": "lledoner-pelut",        # FR double-n variant
+    "castet": "castets",                        # singular one-off
+    "godelho": "godello",                       # PT spelling of the incumbent (VIVC #12953 GOUVEIO)
+    "ottonel": "muscat-ottonel",                # bare FR "Ottonel"
+    "monastrel": "mourvedre",                   # single-l typo of monastrell (already aliased)
+    "moscatel-negra": "moscatel-negro",         # ES gender variant
+    "mauzac-blanc": "mauzac",                   # bare-vs-qualified, same VIVC #7522
+    "fer-servadou": "fer",                      # bare-vs-qualified, same VIVC #4085
+    "henri-bouschet": "alicante-bouschet",      # truncated "Alicante Henri Bouschet", same VIVC #304
+    "braquet": "brachet",                       # spelling variant, same VIVC #1657
+    "tinta-lisboa": "tinta-de-lisboa",          # dropped-particle variant, same VIVC #17723
+    "ramisco-tinto": "ramisco",                 # colour-suffixed variant, same VIVC #9899
+    "soleri": "soreli-blanc",                   # spelling variant of Soreli, same VIVC #22841
+    "pinot-d-aunis": "pineau-d-aunis",          # spelling variant, same VIVC #9264
+    "vijiriego": "vijariego-blanco",            # spelling variant, same VIVC #13075
+    "cao": "tinto-cao",                         # bare "Cão" in Douro lists, same VIVC #12500
+    "fernao": "fernao-pires",                   # truncated "Fernão", same VIVC #4100
+    "muscat-hambourg": "muscat-de-hambourg",    # HU-minted twin of the FR incumbent, same VIVC #8226
+    # ----- colour-evidence re-binds (same pass). The bare surface was
+    # pinned to the wrong colour-sibling; every corpus use carries the
+    # opposite INAO colour letter.
+    "jurancon": "jurancon-noir",     # Côtes du Tarn "jurançon N" — the SW red, not Jurançon blanc
+    "jurancon-noir": "jurancon-noir",  # self-anchor: slug is minted by the alias above
+    "manseng": "manseng-noir",       # Béarn/Saint-Mont "manseng N" — not Gros Manseng
+    "couderc": "couderc-noir",       # Landes "couderc N" — Couderc noir, same VIVC #3206
+    # Sardinian Nasco: VIVC BEBA (#22710, ES table grape) carries a legacy
+    # "NASCO" synonym that shadowed the real variety — self-mint so the
+    # surface stops binding to valenci-blanco. VIVC pin lives in
+    # raw/vivc/slug_overrides.json.
+    "nasco": "nasco",
+    # Piedmont Brachetto (Brachetto d'Acqui / Ruchè / Piemonte DOC): VIVC
+    # BRAQUET NOIR (#1657, the Bellet/Nice grape) carries a legacy
+    # "BRACHETTO" synonym from the old ampelographic conflation, which
+    # bound the Italian surface to the FR `brachet` slug. Distinct
+    # varieties — self-mint the Italian one.
+    "brachetto": "brachetto",
+    # PT cadernos (Duriense, Madeirense) list "Mario Feld" — the Swiss
+    # Mariafeld clone of Pinot noir (VIVC #9279 carries the synonym).
+    # A clone, not a variety — fold; the record keeps its spelling.
+    "mario-feld": "pinot-noir",
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -1801,6 +2007,14 @@ DEFAULT_COLOUR: dict[str, str] = {
     "bianco-di-alessano": "blanc",
     "moscatello-selvatico": "blanc",
     "verduzzo-friulano": "blanc",
+    "verduzzo-trevigiano": "blanc",
+    "pagadebiti": "blanc",           # = Bombino bianco (VIVC #1483)
+    "forastera": "blanc",            # Ischia native, VIVC #4189
+    "refosco-di-faedis": "noir",     # VIVC #9989 REFOSCO NOSTRANO
+    "magliocco-dolce": "noir",       # VIVC #8478
+    "magliocco-canino": "noir",      # VIVC #7092
+    "biancone": "blanc",             # VIVC #1335 Biancone di Portoferraio
+    "matrai-muskotaly": "blanc",     # HU crossing, Izsáki sárfehér × Muscat Ottonel
     "pecorino": "blanc",
     "francavilla": "blanc",
     "catarratto": "blanc",
@@ -1884,7 +2098,10 @@ DEFAULT_COLOUR: dict[str, str] = {
     "turan": "noir",
     "csokaszolo": "noir",
     "muscat-ottonel": "blanc",
-    "muscat-hambourg": "noir",
+    "muscat-de-hambourg": "noir",   # canonical slug after the muscat-hambourg fold
+    "jurancon-noir": "noir",        # SW-France red (Côtes du Tarn bare "jurançon N")
+    "nasco": "blanc",               # Sardinian native (Nasco di Cagliari)
+    "brachetto": "noir",            # Piedmont aromatic red (Brachetto d'Acqui)
     "cabernet-dorsa": "noir",
     "blauburger": "noir",
     "zefir": "blanc",

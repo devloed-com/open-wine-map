@@ -269,6 +269,11 @@ def parse_grapes(section_text: str) -> dict:
         # Strip trailing parenthetical annotation (varietal synonyms,
         # colour codes) — but keep the head for grape_entity matching.
         head = re.sub(r"\s*\(.*?\)\s*$", "", line).strip()
+        # Some documenti render section 7 as the EUR-Lex table with its
+        # country column inline: "Italia - Gaglioppo N." (Cirò, Rossese
+        # di Dolceacqua, Nebbiolo d'Alba, Spoleto). Without this strip
+        # the display name below keeps "Italia" instead of the variety.
+        head = re.sub(r"^Italia\s+[—–-]\s+", "", head).strip()
         if not head:
             continue
 

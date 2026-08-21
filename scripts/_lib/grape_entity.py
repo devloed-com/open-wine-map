@@ -112,6 +112,38 @@ _BANNED_SURFACES = frozenset({
     "rojo", "rojos", "roja", "rojas",
     "rosada", "rosadas", "rosado", "rosados",
     "seibel",
+    # Bare "Bouschet" is the teinturier-breeding family (Petit / Gros /
+    # Alicante Bouschet), never one cultivar — it reaches the matcher
+    # only as the wrapped half of "Alicante ⏎ Bouschet" (Menfi), where
+    # it bound to Petit Bouschet.
+    "bouschet",
+    # Hungarian bare "muskotály" is a wine-type / labelling term (Egri
+    # Classicus muskotály, Mátra's Muskotály bortípus — defined in the
+    # termékleírás as a blend from an enumerated Muscat list) or a
+    # line-wrap fragment of a qualified Muscat ("Sárga ⏎ muskotály",
+    # "Ottonel ⏎ muskotály") — never a variety row of its own. The word
+    # is Hungarian-only, so a global ban is safe.
+    "muskotaly",
+    # Bare "Vernaccia" names a different variety per region (S.
+    # Gimignano's white, Oristano's flor white, the Marche/Umbria black
+    # Vernaccia nera) and VIVC hands it to Vermentino. The one corpus
+    # record using the bare form (Colli Martani: "Vernaccia Nera o
+    # Vernaccia, di seguito indicata solo come Vernaccia") already binds
+    # correctly through its "Vernaccia nera" composition line, so the
+    # bare surface only ever adds a wrong slug.
+    "vernaccia",
+    # Bare "Cabernet" is a group designation, never a determinate
+    # cultivar: Italian disciplinari define it in-document as Cabernet
+    # franc e/o Cabernet Sauvignon (e/o Carmenère) and the IT MASAF
+    # parser expands it before matching; elsewhere it only occurs as a
+    # line-wrap truncation of one of the two. Unmatched bare occurrences
+    # land in the unknowns queue, where they stay visible.
+    "cabernet",
+    # "Italia" reaches the matcher as the country column of EUR-Lex
+    # variety tables ("Italia - Greco bianco B.", Cirò) — it once bound a
+    # stale vocab slug and today fuzzy-matches rossese at 92. The table
+    # grape Italia never appears in a wine variety roster.
+    "italia",
 })
 
 
