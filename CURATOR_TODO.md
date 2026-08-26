@@ -4,7 +4,7 @@ Actionable manual lookups across the corpus. One section per country. Reconcile 
 
 Legend: ✅ done · 🟡 URL queued, awaiting pipeline rerun · 🟢 in progress · ⏳ blocked on code · ❌ open
 
-Last reconciled: 2026-05-14 — full pass history in [docs/reconciliation-log.md](docs/reconciliation-log.md).
+Last reconciled: 2026-08-26 — full pass history in [docs/reconciliation-log.md](docs/reconciliation-log.md).
 
 ---
 
@@ -90,9 +90,9 @@ DGC cascading unlock realised in this round: **+106 DGCs** (Beaune climats, Chas
 | PDO-FR-A0257 | Cabernet de Saumur | Confirm via INAO product page <https://www.inao.gouv.fr/produit/8125> or Légifrance whether still in force; if active, pin via `manual_overrides.json` |
 | PDO-FR-A0271 | Côtes de Blaye | Often considered merged into the Blaye / Premières Côtes de Blaye family. Verify status. |
 
-### Geometry — Comté Tolosan cluster
+### Geometry — Comté Tolosan cluster — ✅ resolved
 
-❌ id=861 + 6 DGCs (Bigorre, Cantal, Coteaux et Terrasses de Montauban, Haute-Garonne, Pyrénées-Atlantiques, Tarn-et-Garonne) silently dropped from `wiki/map-data/appellations.geojson` despite having clean cahier extraction. Not a curator data task — investigate stage 04 in [scripts/04_build_maps.py](scripts/04_build_maps.py) (likely an aires-CSV match miss; potential `dgc_village_overrides.json` add).
+✅ (verified 2026-08-26) id=861 + 6 DGCs are back on the map: the parent resolves `geom_source=aires-csv`, the 6 DGCs (Bigorre, Cantal, Coteaux et Terrasses de Montauban, Haute-Garonne, Pyrénées-Atlantiques, Tarn-et-Garonne) resolve `parent-appellation`. All 7 present in the startup data bundle.
 
 ### Wikipedia AOC pages — 99 missing/error parents
 
@@ -106,11 +106,15 @@ Curator research baked in (data file: [raw/wikipedia/aoc_overrides.json](raw/wik
 
 Run `.venv/bin/python scripts/02b_fetch_aoc_lexicon.py --lang fr --refresh` (then `--lang es --refresh`) to apply the curator pins; positive pins emit `lead_extract` + `sections` + `full_text` records (`looks_like_aoc` keyword filter is bypassed since the curator already validated via `verification_quote`); negative findings emit `missing: True` or `error: "not_aoc_topic"` with `override_source: "curator"`. After refresh, re-run 02d / 02e / 04 to surface the Wikipedia hints downstream.
 
-### Terroir-fact extraction — 8 parents producing zero bullets
+### Terroir-fact extraction — 8 parents producing zero bullets — 7 resolved, 1 open
 
-⏳ Stage 02d ran but the fuzzy-coverage filter (≥0.6) dropped every candidate. Re-run [scripts/02d_extract_terroir_facts.py](scripts/02d_extract_terroir_facts.py) on these slugs with `--verbose` to diagnose:
+Reconciled 2026-08-26 against `raw/terroir-facts/`: 7 of the 8 now carry bullets
+(cotes-de-thau 4 · calvados-vin 2 · cotes-catalanes 5 · thezac-perricard 5 ·
+vicomte-d-aumelas 4 · vallee-du-torgan 3 · pays-d-herault 2).
 
-cotes-de-thau · calvados-vin · cotes-catalanes · thezac-perricard · vicomte-d-aumelas · vallee-du-torgan · pays-d-herault · cote-vermeille
+⏳ **`cote-vermeille` still at 0 facts** (record is otherwise healthy — 85 grape
+slugs, `aires-csv` geometry). Re-run [scripts/02d_extract_terroir_facts.py](scripts/02d_extract_terroir_facts.py)
+on it with `--verbose` to diagnose the fuzzy-coverage drop.
 
 ### PNOCDC draft PDFs — section X missing or template-only — ✅ complete
 
@@ -193,14 +197,66 @@ For the high-impact parents (Chassagne, Beaune, Monthélie, Santenay, Auxey-Dure
 
 4. **`lien au territoire` keyword variant** (2026-05-12): the regulator writes "Lien au territoire" (with 'i') for Pays d'Oc IGP. Added to both `SECTION_ROLE_KEYWORDS["lien"]` and `_IGP_LIEN_KEYWORDS`. Unblocked `pays-d-oc` (602 → 11546 chars).
 
-### Terroir-fact extraction — 2 residual broken IGPs (post-fix)
+### Terroir-fact extraction — 2 residual broken IGPs (post-fix) — ✅ both resolved
 
-| Slug | lien (chars) | Cause |
+Reconciled 2026-08-26 against `raw/terroir-facts/`:
+
+| Slug | Facts | Note |
 |---|---:|---|
-| `euskal-sagardoa-ou-sidra-del-pais-vasco-…` | 0 | Section parser mis-matches numeric table columns as section headers (`sections` dict has keys like "11010", "64220", "29", "30"…). Edge case — Basque cider IGP with multi-page analytical tables. |
-| `yonne` | 759 | PNOCDC draft — resolved 2026-05-14 in earlier curator pass; re-run 02d. |
+| `euskal-sagardoa-ou-sidra-del-pais-vasco-…` | 5 | ✅ extracts (the numeric-table-column section-parser edge case no longer blocks it) |
+| `yonne` | 3 | ✅ 02d re-ran on the post-PNOCDC cahier |
 
 ---
+
+### Interprofession / syndicat URLs — 🟡 1537 / 1540 (2026-08-26)
+
+Was 1244/1540. The 296 gaps were two distinct populations:
+
+**110 AOC records in 7 bassins that had no `by_bassin` fallback.** 96 are
+covered by 5 new `by_bassin` keys, all probed: BEAUJOLAIS → Inter Beaujolais (`beaujolais.com`),
+SAVOIE → CIVS (`vindesavoie.fr` — note `vindesavoie.net`, which search
+engines still cite, serves a broken TLS chain), JURA → CIVJ
+(`jura-vins.com`), BUGEY → Syndicat des Vins du Bugey
+(`vinsdubugey.net`), EAUX-DE-VIE DE CIDRE → IDAC (`idac-aoc.fr`).
+The `VIN DOUX NATURELS` bassin spans three interprofessions, so its 13
+AOCs got `by_slug` entries instead of one wrong fallback — CIVR for the
+6 Roussillon VDNs, CIVL for the 4 Languedoc muscats, Inter Rhône for
+Rasteau + Muscat de Beaumes-de-Venise. `rhum-de-la-martinique` → the
+Syndicat de défense de l'AOC Rhum agricole Martinique (http-only; the
+HTTPS cert is broken).
+
+**186 IGP records with an empty `region`** — not a bug: INAO's SIQO
+referentiel carries `comite_regional` for AOCs only (1245 of 1247 IGP
+rows are blank), because IGPs are governed by the national committee
+CNIGPVC, not a regional one. Those 186 collapse to **81 parent roots**
+(the rest are sub-denominations that inherit via `parent_slug`). 73 roots
+are now bound to their own page on the **Confédération des Vins IGP de
+France** (`vinigp.fr`), the federation of ~30 IGP producer syndicates —
+all 73 per-IGP URLs probed 200, no redirects. 8 got a more specific
+body: `pays-d-oc` + `cite-de-carcassonne` + `coteaux-de-narbonne` →
+Interprofession des Vins Pays d'Oc IGP (`paysdoc-vin.com`; the latter
+two were formally integrated into IGP Pays d'Oc / Inter Oc by JORF
+arrêté), `val-de-loire` → Syndicat des Vins IGP Val de Loire,
+`muscat-du-cap-corse` + `ile-de-beaute` → CIV Corse,
+`marc-d-alsace-gewurztraminer` → CIVA, the 2 IGP ciders → UNICID
+(`cidresdefrance.fr`).
+
+Open (3 records, 2 roots):
+
+| slug | note |
+|---|---|
+| `correze` (+ `correze-coteaux-de-la-vezere`) | AOC since 2017. No syndicat/ODG website found — only single producers (`coteauxdusaillant.fr`) and the departmental brand `origine.correze.fr`. Neither passes the "official site of the interprofession" test. |
+| `cote-roannaise` | `coteroannaise.fr` is live and speaks for "une trentaine de vignerons indépendants", but names no operating entity in its footer or legal notices — cannot confirm it is the ODG. Re-check from a browser. |
+
+⚠️ `idac-aoc.fr` returns HTTP 403 to every non-browser client (curl and
+WebFetch alike, with full browser headers) while being live and indexed.
+Treated as WAF/VPN behaviour, not link rot — confirm once from a real
+browser.
+
+Side-findings for later (not URL work): `cote-roannaise` and
+`muscat-du-cap-corse` carry an empty `categorie` in their cahier extract
+and therefore land as `is_wine=false` on the map, despite both being
+wine AOCs.
 
 ## Spain
 
@@ -307,11 +363,19 @@ Smoke-test against Montsant + Priorat after each major batch lands.
 
 ✅ [scripts/02b_fetch_grape_lexicon.py:76-95](scripts/02b_fetch_grape_lexicon.py#L76-L95) (`collect_grape_slugs`) already iterates both `raw/inao/cahier-extracted/` and `raw/es/pliegos-extracted/`. ES-only Iberian varieties (Canary, Galicia, Catalan) flow into the cache automatically on next 02b run. The remaining work is curator-side: per-locale title overrides for varieties whose `es.wikipedia.org` page lives at a non-canonical title (e.g. `(uva)` disambiguator) — surface candidates via [scripts/audit_es_grape_aliases.py](scripts/audit_es_grape_aliases.py).
 
-🟢 Browser-extension research prompt at [tmp/es-grape-wikipedia-research-prompt.md](tmp/es-grape-wikipedia-research-prompt.md): 39 ES-corpus grape slugs with no `es.wikipedia.org` card (25 `missing` + 14 `not_grape_topic`). Regenerate the list against the post-fetch state before use — the synonym-aware 02b re-fetch may recover some.
+🟡 The browser-extension research prompt formerly at `tmp/es-grape-wikipedia-research-prompt.md`
+(39 ES-corpus grape slugs with no `es.wikipedia.org` card) **no longer exists on disk**
+(tmp/ cleaned; noted at reconciliation 2026-08-26). If the gap still matters, regenerate
+the list against the current post-fetch state first — the synonym-aware 02b re-fetch and
+the VIVC passes since then may have recovered several.
 
-### Wikipedia ES pages — 29 missing/error parents
+### Wikipedia ES pages — 29 missing/error parents — ✅ resolved
 
-⏳ Same situation as FR — no override mechanism. 5 IGP + 24 DOP. 9 are `not_aoc_topic` (urueña, ayles, campo-de-calatrava, bolandin, dehesa-penalba, abadia-retuerta, rio-negro, rosalejo, islas-canarias).
+✅ (verified 2026-08-26) Superseded by the override mechanism shipped 2026-05-14
+(see "Wikipedia AOC pages" in the France section): `raw/wikipedia/aoc_overrides.json`
+carries 29 `es` entries — 8 pinned, 11 `missing`, 10 `not_aoc_topic` — covering
+exactly this batch (urueña, ayles, campo-de-calatrava, bolandin, dehesa-penalba,
+abadia-retuerta, rio-negro, rosalejo, islas-canarias among the negatives).
 
 ### National-pliego variety augmentation — 12 records (data ready, code wiring pending)
 
@@ -429,13 +493,22 @@ All 44 PT wine GIs (30 DOP + 14 IGP) auto-matched against the IVV master indexes
 
 53 PT grapes now have an EN Wikipedia card (Touriga, Encruzado, Bical, Baga, Arinto, Alfrocheiro, Trincadeira, Avesso, Castelão, Sercial, Viosinho, Ramisco, plus international varieties Aglianico/Dolcetto/Sangiovese/Zinfandel/Bacchus/Dornfelder/Lemberger/Rotgipfler/Acolon). ~290 obscure-PT-only varieties (Antão Vaz, Folha de Figueira, Donzelinho Tinto, Verdelho do Pico, Terrantez do Pico, Castelão Branco, etc.) have **no** card in en/fr/es/nl because they only exist on pt.wikipedia.org. Two follow-ups in the Code section: (a) pt.wikipedia.org-source + translate sidecar pattern (mirroring stage 02b/styles-translate), (b) extraction-noise blocklist additions.
 
-### Geometry — ✅ DOPs / ⏳ IGPs
+### Geometry — ✅ DOPs / ✅ IGPs (reconciled 2026-08-26)
 
-- **30 DOPs** resolved via `figshare-pdo` (Bétard 2022 EU_PDO.gpkg).
+- **30 DOPs**: 23 via `caop-concelho-union` (commune-precise), 7 via `figshare-pdo`
+  (Bétard 2022 EU_PDO.gpkg).
 - **32 sub-regiões** inherit parent's polygon (`parent-appellation`).
-- **14 IGPs** have no Figshare row by design (Bétard is PDO-only). For v1 they appear in the sidebar with no polygon. Follow-up: parse the IGP cadernos' commune lists and union via `PTPolygonIndex.union_concelhos` against the CAOP 2025 GPKGs already on disk at `raw/pt/caop/`. The CAOP layer is loaded (305 concelhos in v1; full CAOP has ~308) — only the IGP commune-list parser needs writing. See [scripts/_lib/pt/geometry.py](scripts/_lib/pt/geometry.py).
+- **14 IGPs**: ✅ all resolve `caop-concelho-union` — the CAOP commune-list parser
+  ([scripts/_lib/pt/commune_list.py](scripts/_lib/pt/commune_list.py) +
+  `PTPolygonIndex.union_from_parsed`) shipped; verified in the current build
+  (e.g. `alentejano`, `tejo` → `geom_source=caop-concelho-union`). See the PT
+  geometry chain in [CLAUDE.md](CLAUDE.md).
 
-### Translation cache — ⏳ awaiting manual round-trip
+### Translation cache — ✅ moot for facts-covered records (reconciled 2026-08-26)
+
+All 44 PT parents now carry 02d terroir facts (see below), and the 02c summary is
+a fallback rendered **only** for records with no facts (facts-XOR-summary rule), so
+the 02c round-trip below is only needed if a PT record ever loses its facts.
 
 - PT records emit 76 translation jobs per locale via `02c_translate_summaries.py --source-lang pt --emit-todo`. Pipeline target locales for PT: en/fr/es/nl.
 - Round-trip flow (matches user's existing FR/ES workflow):
@@ -445,7 +518,7 @@ All 44 PT wine GIs (30 DOP + 14 IGP) auto-matched against the IVV master indexes
   .venv/bin/python scripts/02c_translate_summaries.py --source-lang pt --import /tmp/pt-todo-en.json --translator-id <id> --translator-kind manual
   ```
 
-### Terroir-fact extraction — ✅ siblings shipped (2026-05-16), ⏳ awaiting first run
+### Terroir-fact extraction — ✅ siblings shipped (2026-05-16), ✅ run complete (44/44 PT fact files in `raw/terroir-facts/`, verified 2026-08-26)
 
 PT now flows through 02d/02e via [scripts/pt/02d_extract_terroir_facts.py](scripts/pt/02d_extract_terroir_facts.py) + [scripts/pt/02e_translate_terroir_facts.py](scripts/pt/02e_translate_terroir_facts.py). Same dual-source grounding (caderno section 7 + pt.wikipedia.org/wiki/<DOP>), same manual round-trip support, same shared `raw/terroir-facts/` cache directory disambiguated by `country: "pt"` field, same fuzzy-coverage filter (≥0.6) and per-bullet provenance (`cahier` / `wiki` / `both`). Targets en/fr/es/nl (FR/ES are translation targets, not sources). Skips sub-regiões — they inherit the parent's bullets at the rendering layer (stage 02 already copies the parent's caderno text into each sub-região's `link_to_terroir`).
 
@@ -471,9 +544,11 @@ Or via the manual round-trip flow (PT facts → external human translator → im
 
 Caveat: stage 04 currently merges FR + ES terroir-fact caches; the PT branch in [scripts/04_build_maps.py](scripts/04_build_maps.py) reads the same shared dir (cache files are country-keyed via the `country` field), but verify the rendering surface honours PT records on first full pipeline rerun — track under "COUNTRY_CONFIG refactor" in the Code follow-ups section.
 
-### Wikipedia PT lexicon — ⏳ not yet run
+### Wikipedia PT lexicon — ✅ run (44 cached pages at `raw/wikipedia/aocs/pt/`, verified 2026-08-26)
 
-`scripts/02b_fetch_aoc_lexicon.py --lang pt --source raw/pt/cadernos-extracted/` is wired through `LANG_CONFIG` but hasn't been run. Will fetch pt.wikipedia.org pages for 44 PT entries with disambiguator cascade `(vinho)` → `(DOP)` → `(denominação de origem protegida)`. Per-DOP override file analogous to `raw/wikipedia/aocs/manual_overrides.json` can land alongside if any pages need pinning.
+`scripts/02b_fetch_aoc_lexicon.py --lang pt --source raw/pt/cadernos-extracted/` has run;
+the per-DOP pt.wikipedia cache is populated (44 files) and 27 curator override entries
+exist under `raw/wikipedia/aoc_overrides.json["pt"]`.
 
 ### Code follow-ups
 
@@ -549,13 +624,27 @@ PDFs had line-start `Art. N`, and that one was previously failing
 too). Combined with the 02f oj-pages-cache fallback, all 6 now
 extract via curator-pinned PDFs.
 
-🟡 **Disciplinare URL hunt — 9 wines remaining.** The 2026-05-27 drop
-added 15 override URLs, of which 6 promoted out of stub state with
-clean disciplinare extraction (colli-trevigiani, conselvano,
-marca-trevigiana, veneto, veneto-orientale, valtenesi — the last one
-ships as a 2-article correction-decree fragment, not a full
-disciplinare, but is correctly attributed). The remaining 9 had bad
-URLs that were **removed** from the override files:
+🟡 **Disciplinare URL hunt — reconciled 2026-08-26: 9 → 1 remaining
+(`salemi`).** The 2026-05-27 drop added 15 override URLs, of which 6
+promoted out of stub state with clean disciplinare extraction
+(colli-trevigiani, conselvano, marca-trevigiana, veneto,
+veneto-orientale, valtenesi — the last one ships as a 2-article
+correction-decree fragment, not a full disciplinare, but is correctly
+attributed). Of the 9 bad-URL wines listed below, events since closed 8:
+
+- **7 Abruzzo IGTs cancelled** (colli-aprutini, colli-del-sangro,
+  colline-frentane, colline-pescaresi, colline-teatine, del-vastese,
+  terre-di-chieti) — Commission Implementing Regulations (EU) 2026/558–708
+  consolidated them into Terre Abruzzesi; filtered out of the corpus by
+  the `CANCELLED_GIS` registry in
+  [scripts/it/00_fetch_data.py](scripts/it/00_fetch_data.py) (531 → 524).
+- **`gambellara`** — the MASAF bundle match later succeeded (sidecar
+  fetched 2026-08-21 from `Disciplinari DOP (E-N)/Gambellara.pdf`,
+  5 principal varieties); no override URL needed.
+- **`salemi`** — still open: no parseable public source, itself pending
+  cancellation; currently the only IT wine absent from the map.
+
+Historical bad-URL table (kept for the patterns encountered):
 
 | Slug | Bad URL pinned | Problem |
 |---|---|---|
@@ -569,14 +658,16 @@ URLs that were **removed** from the override files:
 | `salemi` | GU `caricaArticolo?...flagTipoArticolo=0` | returns HTML, not PDF. Try `flagTipoArticolo=1` (the same fix that worked for marca-trevigiana) |
 | `colli-del-sangro` | MASAF detail HTML page | index page, not a disciplinare PDF. The Sept-2025 GU decree (25A04880) explicitly notes that the Consorzio tutela vini d'Abruzzo *failed* representativeness for this IGT — may be deregistered / dormant |
 
-Re-run the existing research prompt at
-[tmp/it-masaf-disciplinare-research-prompt.md](tmp/it-masaf-disciplinare-research-prompt.md)
-scoped to these 9 slugs and merge accepted URLs into both
+For `salemi` (the sole survivor): find a public, licence-clear
+disciplinare URL and merge it into both
 `raw/it/oj-pages/manual_overrides.json` and (if the URL is a PDF)
 `raw/it/masaf-disciplinari/manual_overrides.json`. **Verify before
 pinning** that the URL's content is the actual disciplinare di
 produzione of the named wine (not a recognition / amendment /
-consortium-management decree, and not a different product entirely).
+consortium-management decree, and not a different product entirely) —
+or wait out its expected cancellation. (The research prompt formerly at
+`tmp/it-masaf-disciplinare-research-prompt.md` was cleaned from tmp/;
+resurface from git history if needed.)
 
 ### MASAF grape-extraction fix — ✅ landed 2026-05-20
 
@@ -617,15 +708,17 @@ The unknowns queue at
 [raw/it/extraction-unknowns-masaf.json](raw/it/extraction-unknowns-masaf.json)
 still lists the residual unmatched candidates.
 
-### IT new-grape VIVC pins — ⏳ ready to apply
+### IT new-grape VIVC pins — ✅ applied (verified 2026-08-26)
+
+All 17 slugs below resolve in `raw/vivc/by-slug/` with exactly the listed
+VIVC ids (spot-checked monica #7928, nuragus #8623, nero-di-troia #12819,
+schiava-grossa #10823, oseleta #16537, francavilla #4217, invernenga #5536,
+semidano #11479). See also the "VIVC grape resolution — ✅ closed
+2026-06-03" section further down. Original research notes kept below.
 
 Browser-research (2026-05-21) resolved VIVC variety numbers for the
 new IT varieties whose slug-derived Wikipedia search missed (article
-filed under a synonym, or no article). Apply via
-`raw/vivc/slug_overrides.json` after extending stage 02g to walk
-`raw/it/masaf-disciplinari-extracted/` (mirror the `grape_corpus.py`
-`_SOURCES` change — 02g uses its own walk, `IT_EXTRACTED` at
-[scripts/02g_fetch_vivc.py](scripts/02g_fetch_vivc.py)).
+filed under a synonym, or no article).
 
 | slug | VIVC # | note |
 |---|---|---|
@@ -673,10 +766,13 @@ template. Investigate the raw HTML at
 `raw/it/oj-pages/ortrugo-dei-colli-piacentini.html` and either extend
 the anchor regex or pin a working override URL.
 
-### Complete-coverage pass residuals — ⏳ (2026-05-30)
+### Complete-coverage pass residuals — ⏳ (2026-05-30; re-verified still open 2026-08-26)
 
 The 2026-05-30 pass closed source-docs / map / grapes / terroir /
-sub-denominations for IT. Residual curator items:
+sub-denominations for IT. Residual curator items (all re-checked
+2026-08-26: `catalanesca-del-monte-somma`, `grottino-di-roccanova`,
+`valtenesi`, `osco`, `rotae`, `quistello` still carry 0 grapes in the
+current build):
 
 - **Regional registers — Molise + Lombardia not yet pinned.** 3 annex-
   reference IGTs draw from registers not yet sourced: `osco` + `rotae`
@@ -773,19 +869,16 @@ IT corpus distinct slugs: 160 (was ~80). Stage 02 still surfaces
 `raw/it/extraction-unknowns.json` — those are mostly text fragments
 and unmatched obscure varieties, separate follow-up.
 
-### IT regione fallback — ⏳ low priority
+### IT regione fallback — ✅ resolved (verified 2026-08-26)
 
-353 of 408 IT polygons render with `region="Italia"` because their
-records are stubs (no documento unico → no section-6 text to scan
-for regione name). Stage 02d-MASAF would populate this, or a curated
-`scripts/_lib/it/regione_by_file_number.json` keyed on `PDO-IT-A*`
-could fill in the well-known DOPs (Barolo→Piemonte, Brunello→Toscana,
-Lambrusco→Emilia-Romagna, …) immediately.
-
-🟢 Browser-extension research prompt at [tmp/it-regione-research-prompt.md](tmp/it-regione-research-prompt.md):
-159 DOPs with an empty `regione` field listed by file number — research
-each to its administrative regione and emit
-`scripts/_lib/it/regione_by_file_number.json`.
+The curated fallback shipped: `scripts/_lib/it/regione_by_file_number.json`
+carries 165 entries and `derive_regione`
+([scripts/_lib/it/region.py](scripts/_lib/it/region.py)) resolves the rest
+from province/commune signals. Only **3** IT records in the current build
+still render `region="Italia"` (was 353 of 408).
+[scripts/audit_it_regions.py](scripts/audit_it_regions.py) cross-checks every
+regione against the polygon. (The research prompt formerly at
+`tmp/it-regione-research-prompt.md` is gone with the tmp/ cleanup.)
 
 ### IT geometry — regional-geoportal zone harvest 🟢 in progress
 
@@ -807,37 +900,41 @@ Region tracker:
 | Lombardia | ✅ active | CC-BY 4.0 | ArcGIS MapServer, DOC+DOCG+IGT; 34 wines |
 | Umbria | ✅ active | CC-BY 4.0 | CKAN `package_search` → 19 per-appellation `.zip`/`.7z` shapefiles (`fetch_type: ckan_shapefiles`); 20 wines matched (all but Narni, which publishes no shapefile) |
 | Puglia | ⏳ todo | IODL 2.0 | endpoint not reachable (SIT Puglia WFS/ArcGIS hosts 404 / login-gated) — needs the live WFS layer name |
-
-**6 of 7 regions harvested → ~237 IT wines on official zone polygons**
-(`geoportal-zone`); the rest fall back to Bétard. Puglia is the one
-remaining to-do, not a skip — see the per-region notes and
-[scripts/_lib/it/zone_sources.py](scripts/_lib/it/zone_sources.py).
 | Abruzzo | ❌ fallback | custom, unconfirmed | portal SSL cert expired; stays on Bétard |
 | Campania | ❌ fallback | unconfirmed | dataset page 404s; stays on Bétard |
 | FVG, Sicilia, Sardegna, Emilia-R., Marche, Liguria, Basilicata, Calabria, Molise, Valle d'Aosta, Trento | ❌ fallback | — | no open zone layer found in the 2026-05-22 audit; stay on Bétard |
 
+**6 of 7 tracked regions harvested → ~237 IT wines on official zone
+polygons** (`geoportal-zone`); the rest fall back to Bétard. Puglia is
+the one remaining to-do, not a skip — see the per-region notes and
+[scripts/_lib/it/zone_sources.py](scripts/_lib/it/zone_sources.py).
+
 Wines in fallback regions keep Bétard's whole-municipality polygon
-(approximate, may overlap). 119 IGPs not in Bétard remain
-polygon-less in those regions.
+(approximate, may overlap). The IGT polygon gap this section used to
+note is closed: IGTs now resolve via the `gisco-comune/provincia/
+regione-union` chain (2026-05-30 pass; 523 / 524 IT wines carry a
+polygon — only `salemi` remains off-map).
 
-### Sottozone detection — ⏳ low coverage
+### Sottozone detection — ✅ resolved via MASAF Article 1 (verified 2026-08-26)
 
-0 sottozone detected so far. The explicit `Sottozona NAME:` pattern
-and the preamble-list pattern in
-[scripts/_lib/it/sottozona.py](scripts/_lib/it/sottozona.py) match
-nothing across the 129 extracted records, because Italian
-documenti unici typically embed sottozone as section-1 wine type
-qualifiers rather than as explicit enumerations. Audit the
-section-1 text of known sottozona-bearing wines (Chianti parent,
-Valpolicella, Soave, Bardolino) to derive a new pattern.
+The documento-unico scan indeed yields ~0 (sottozone live in the MASAF
+disciplinare, not the EU doc). `synthesize_it_sottozone_records()` in
+stage 04 now runs the [scripts/_lib/it/sottozona.py](scripts/_lib/it/sottozona.py)
+detector over the MASAF sidecar `article_bodies` instead — **38 sottozone
+across 10 DOPs** in the current build (Chianti 7, Vin Santo del Chianti 7,
+Valtellina Superiore 5, Bardolino 3, Costa d'Amalfi 3, Cannonau di
+Sardegna 3, Penisola Sorrentina 3, Cinque Terre, Lambrusco Mantovano,
+Lago di Caldaro), each a first-class sub-denomination record.
 
-### Consorzio / DO-organisation URLs — 🟡 344/531 merged (2026-05-21)
+### Consorzio / DO-organisation URLs — 🟡 417/523 merged (recounted 2026-08-26)
 
 Research run (`research-gaps` skill, 17 web-research agents) resolved the
 official consorzio di tutela / DO-organisation website per IT appellation,
-giving the map cards FR/ES parity. 344 of 531 merged into
-[scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json)
-`by_slug` (117 of 131 eAmbrosia-named consorzi + 60 of 224 wines eAmbrosia
+giving the map cards FR/ES parity. Current `by_slug` coverage: **417 of
+523** IT parents (initial 2026-05-21 drop was 344/531 pre-cancellations;
+later merges + the Abruzzo-IGT cancellations moved both numbers). Merged
+into [scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json)
+`by_slug` (117 of 131 eAmbrosia-named consorzi + wines eAmbrosia
 left consorzio-less). Findings:
 [tmp/it-consorzio-urls-research-results.md](tmp/it-consorzio-urls-research-results.md);
 no-link list: [tmp/it-consorzio-no-link.json](tmp/it-consorzio-no-link.json).
@@ -854,14 +951,49 @@ Colli Lanuvini, Contea di Sclafani, Ortona, Penisola Sorrentina, Terratico
 di Bibbona, Terre Siciliane, Matera, Leverano, Lizzano, San Severo,
 Moscato di Trani, Cannonau di Sardegna, Vermentino di Sardegna, Mandrolisai.
 
-🟡 `montecarlo` — Consorzio Vini DOC Montecarlo (Lucca) page at
-http://www.promontecarlo.it/consorzio_vini_doc.html returned HTTP 403 to
-the research agent; re-fetch from a browser to confirm and add.
+🟡 `montecarlo` — the promontecarlo.it 403 was re-checked on 2026-08-26
+and **resolved as do-not-add** (domain repurposed); see the re-check
+outcomes below.
 
 ❌ ~150 IT appellations have genuinely no consorzio di tutela (small IGTs,
 older southern / island DOCs, region-wide umbrella IGTs) — permanent NONE,
-not actionable. Full enumerated list in `tmp/it-consorzio-no-link.json` so
-the lookup is not retried blindly.
+not actionable. ⚠️ The enumerated list previously kept at
+`tmp/it-consorzio-no-link.json` was **lost to a tmp clean** and none of it
+was ever merged into `appellation_urls.json` as explicit nulls — so all 109
+current gaps read as "unchecked" rather than "checked, none exists".
+Re-deriving it (or recording the verified subset as `null`) is the
+remaining IT task.
+
+
+#### 🟡 re-check outcomes (2026-08-26)
+
+- `montecarlo` — **resolved, do not add.** `promontecarlo.it` now
+  answers 200 (the earlier 403 was UA-related), but the domain has been
+  repurposed into a generic wine-content blog; the Consorzio Vini DOC
+  Montecarlo page is gone. The existing `viavinariamontecarlo.it` entry
+  stands.
+- Molise cluster (`biferno`, `molise`, `pentro-di-isernia`, `osco`,
+  `rotae`) — recorded as explicit `null`: recognition of the Consorzio
+  di tutela e valorizzazione dei vini DOP/IGP del Molise was **revoked**
+  (GURI n. 93, Apr 2022), so no consorzio exists. `tintilia-del-molise`
+  keeps its own separate consorzio (`tintilia.it`).
+- Umbria gaps (Assisi, Todi, Colli Perugini, Colli Altotiberini, Amelia,
+  Lago di Corbara, Spello, Bettona, Cannara, Narni, Allerona) — the
+  regional producers' body `umbriatopwines.it` names consorzi only for
+  Montefalco, Orvieto, Torgiano and Todi (the last as "c/o Cantina
+  Tudernum", no site). Confirms NONE; left unrecorded rather than nulled.
+- `barbera-del-monferrato`, `calosso`, `cisterna-d-asti` — **not**
+  covered by the Consorzio Barbera d'Asti e Vini del Monferrato: its own
+  site lists 12 denominazioni and none of these three. Search snippets
+  claiming otherwise are wrong.
+- `penisola-sorrentina` (+ Gragnano / Lettere / Sorrento) — the
+  Consorzio Produttori Penisola Sorrentina DOP was founded Nov 2023 (HQ
+  Palazzo de Marini, Gragnano) but publishes no website. Stays 🟡.
+- Federdoc (`federdoc.com/consorzi-aderenti/`, the national confederation
+  of consorzi) was checked as a bulk source: its membership list is only
+  ~90 consorzi, all of them already-covered flagships, and it publishes
+  addresses + emails but no websites. **Not a useful bulk source for the
+  remaining gaps.**
 
 ## Austria
 
@@ -902,17 +1034,18 @@ curator pins a pliego URL (see above).
   skips silently — extend `_GEMEINDE_ALIAS` when an appellation's
   commune count looks short.
 
-### AOC Wikipedia hints — ⏳ 5 / 32 resolved
+### AOC Wikipedia hints — ✅ closed: researched, rest pinned `missing` (verified 2026-08-26)
 
 `scripts/02b_fetch_aoc_lexicon.py --lang de --source raw/at/dokumente-extracted`
 resolves only 5 of 32 — de.wikipedia's Austrian wine-region articles
-are general region pages (valley / Bundesland) whose REST summary
-doesn't trip the wine-keyword `looks_like_aoc` filter (`not_aoc_topic`).
-This is a salience hint for stage 02d only — terroir facts still
-extract from the Einziges Dokument regardless. Curator pass: pin the
-correct de.wikipedia titles via the AOC-override mechanism (e.g.
-`Weinbau in der Wachau`, `Weinbaugebiet Kamptal`) so the dual-source
-grounding gets a `wiki` arm. Low priority.
+are general region pages (valley / Bundesland). The curator pass ran
+(2026-05): the remaining AT slugs are pinned `missing` in
+`raw/wikipedia/aoc_overrides.json["de"]` with per-slug research notes
+(e.g. Wachau → the UNESCO-landscape article, Kamptal → the river
+article, Leithaberg → the mountain-range article — none are DAC/wine
+pages, so there is genuinely no `wiki` arm to pin). Same outcome as
+CH/LU: terroir facts extract from the Einziges Dokument alone. Re-open
+only if de.wikipedia gains dedicated DAC articles.
 
 ### Summary translation (02c) — ⏳ 1 residual record
 
@@ -961,15 +1094,24 @@ slugs with no Regionales Weinkomitee — `bergland`, `weinland`,
 Country #6 (added 2026-05-22). 17 wine GIs (14 DOP + 3 IGP). Structurally
 an Austria clone, but only 1 wine has a fetchable EU single document.
 
-### ENOTNI DOKUMENT — ⏳ 1 / 17 extracted
+### ENOTNI DOKUMENT — ✅ 1 EU-OJ + 16 national-spec augmented (header reconciled 2026-08-26)
 
 ✅ `cvicek` (PDO-SI-A1561) — full extract from its EUR-Lex ENOTNI
 DOKUMENT (OJ C/2026/256), 17 grape varieties.
 
-❌ 16 content-stubs (`no-publication`). 13 grandfathered DOPs + the 3
-region IGPs have no public single-document URL in eAmbrosia — only a
-non-fetchable `Ares(...)` summary-sheet. The canonical source is the
-Slovenian national specification (*specifikacija proizvoda*, MKGP).
+✅ The 16 former content-stubs are all augmented by the MKGP/Uradni-list
+national-spec layer (stage 01c/02f, shipped 2026-05-29 — see below), and
+`bela-krajina` + `belokranjec` additionally carry per-DOP terroir from
+the eAmbrosia register fiche (2026-06-02 pass). 🟡 The "re-check in 3–6
+months" window for an OJ-C ENOTNI DOKUMENT landing for `belokranjec`
+(PDO-SI-A1576) + `metliska-crnina` (PDO-SI-A1579) — set 2026-05-23 — **is
+now due**; an EU-OJ publication would still upgrade them from
+national-spec to full EU-OJ extraction.
+
+Historical detail (13 grandfathered DOPs + the 3 region IGPs had no
+public single-document URL in eAmbrosia — only a non-fetchable
+`Ares(...)` summary-sheet; the canonical source is the Slovenian
+national specification, *specifikacija proizvoda*, MKGP).
 **Phase 2**: research a public, licence-clear URL pattern for the MKGP
 specifications (fits `/research-gaps`), fill
 `raw/si/oj-pages/manual_overrides.json` via
@@ -1502,45 +1644,62 @@ recovers both (chardonnay + dimyat), so this is logged-but-handled; no
 alias needed. All other BG spec varieties resolve (18 natives + 9
 international folds added to `grape_lexicon.py` on 2026-05-30).
 
-### Per-PDO appellation_urls.json entries — ongoing
+### Per-PDO appellation_urls.json entries — ✅ closed + correctness fix (2026-08-26)
 
-[scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json)
-now carries the 5 BG `by_bassin` regional fallbacks (one per
-винарски район, all pointing to IAVV / https://eavw.com — Bulgaria's
-central regulator, no per-PDO landing pages). Per-PDO `by_slug`
-entries are deferred: IAVV doesn't publish them, and BG regional
-consortia are rare. Wikipedia stand-ins (`bg.wikipedia.org/wiki/<name>_(вино)`)
-are the realistic fallback once curated per slug. A background
-research sweep produced `/tmp/bg-appellation-urls.json` — merge after
-review.
+**54 / 54 resolve.** The earlier background sweep (`/tmp/bg-appellation-urls.json`,
+since lost to a tmp clean) had merged 31 `by_slug` entries pointing at
+**bg.wikipedia.org articles about the town** the PDO is named after
+(Асеновград, Видин, Плевен, Ямбол, …) plus one winery article. The
+sidepanel row those feed is literally *"Site officiel de
+l'interprofession"* — a town encyclopedia article is the wrong kind of
+thing there, so all 31 were **removed**, along with 4 entries pointing
+at the state regulator ИАЛВ (already surfaced separately as the
+national-spec source) and 2 pointing at `rlvk-burgas.com`, whose domain
+**no longer resolves in DNS** (genuine link rot).
 
----
+They are replaced at region level: the 5 `by_bassin` винарски район
+entries now point at **НЛВК — Национална лозаро-винарска камара**
+(`bulgarianwines.org`), Bulgaria's actual interprofessional body
+(founded 2000, 5 regional chambers). `karlovo` keeps its РЛВК Тракия
+(`rlvktrakia.com`) entry — a real regional chamber.
 
-### Cross-cutting: align IGP geometry patterns across countries — ❌ open
+Not actionable: РЛВК Мизия (Pleven), РЛВК Черно море (Varna) and РЛВК
+Пирин (Sandanski) have no discoverable websites; РЛВК Югоизточна
+Тракийска (`rlvk-sliven.com`) is live but its per-PDO membership is not
+published, so no per-slug binding is defensible.
 
-The per-country IGP geometry chains are inconsistent today:
+### Cross-cutting: align IGP geometry patterns across countries — ✅ substantially closed (reconciled 2026-08-26)
 
-| Country | IGPs | v1 IGP strategy              |
+Both formerly-unaligned buckets landed:
+
+- **PT** — the 14 IGPs resolve `caop-concelho-union` (CAOP commune-list
+  parser, [scripts/_lib/pt/commune_list.py](scripts/_lib/pt/commune_list.py)).
+- **IT** — IGTs resolve via `gisco-comune-union` / `gisco-provincia-union`
+  / `gisco-regione-union` (~81 IGTs; 523/524 IT wines carry a polygon,
+  2026-05-30 pass).
+
+Current per-country IGP strategies (all countries now reach a polygon;
+no `none`/stub bucket remains):
+
+| Country | IGPs | IGP strategy                 |
 | ------- | ---: | ---------------------------- |
 | FR      | many | INAO aires CSV (parcel)      |
 | ES      |   43 | `gisco-commune-list` / ccaa  |
-| PT      |   14 | `none` (shelved)             |
-| IT      |  119 | `figshare` (PDO-only) + stub |
+| PT      |   14 | `caop-concelho-union`        |
+| IT      |  119 | `gisco-comune/provincia/regione-union` |
 | AT      |    3 | `gisco-bundesland-union`     |
 | SI      |    3 | `region-pdo-union`           |
-| HR      |    0 | n/a                          |
-| HU      |    5 | `region-pdo-union`           |
-| RO      |   13 | `gisco-commune-list` (new)   |
-| BG      |    2 | `region-pdo-union` (SI pattern) |
+| HU      |    5 | `region-pdo-union` (+1 Bétard-bridged) |
+| RO      |   12 | `gisco-commune-list`         |
+| BG      |    2 | `region-pdo-union`           |
+| GR      |  114 | `gisco-nuts-region` (112) + commune-list (2) |
+| DE      |   27 | `region-pdo-union` + `gisco-commune-union` |
+| NL      |   12 | `nuts2-province`             |
 
-The PT IGPs (shelved with `none`) and IT IGTs (Bétard-only — they
-don't appear in the PDO-only gpkg) are the biggest unaligned bucket.
-A future pass should retrofit `gisco-commune-list` to PT + IT IGPs
-using the same resolver shape as RO + ES, so every country reaches
-the same geometry-chain template. The RO commune-list parser
-[scripts/_lib/ro/commune.py](scripts/_lib/ro/commune.py) is the
-shape-template; adapt for Portuguese (concelho / freguesia) +
-Italian (comune) names, then plug into stage 04's PT + IT branches.
+Residual: this is now a naming/consistency nicety, not a coverage gap —
+strategies differ by what each regulator's text legally delimits
+(commune list vs region vs NUTS unit), which is intentional honest
+precision, not drift.
 
 ## Greece
 
@@ -1568,15 +1727,20 @@ these (a handful of well-known PGIs like Πελοπόννησος / Μακεδο
 Θεσσαλία / Κρήτη umbrellas could have el.wiki articles even when the
 individual sub-area IGPs don't).
 
-### Interprofession / consortium URLs — ❌ 0 / 147
+### Interprofession / consortium URLs — ✅ closed (2026-08-26)
 
-No entries in [scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json)
-— neither `by_slug` nor `by_bassin` covers any Greek PDO/PGI. EDOAO
-(Εθνική Διεπαγγελματική Οργάνωση Αμπέλου & Οίνου / ΚΕΟΣΟΕ) is the
-national interprofessional body; per-PDO consortium sites exist for
-flagships (Santorini, Νεμέα, Νάουσα, Σάμος). Curator pass: sweep
-PDOs first (33), then macro-region fallbacks under `by_bassin` for
-the 9 αμπελουργικές ζώνες to catch the 114 PGIs in bulk.
+**147 / 147 resolved.** 129 were already merged by the 2026-06 sweep
+(114 → ΕΔΟΑΟ's `winesofgreece.org`, 15 per-PDO producer/consortium sites
+such as `limnoswines.gr`, `kefaloniawinemakers.gr`, `cair.gr`,
+`easamyntaiou.gr`, `monemvasiawinery.gr`). The residual 18 PDOs
+(Μαντινεία, Ραψάνη, Σητεία, Πάτρα, Ζίτσα, Γουμένισσα, Αρχάνες, Δαφνές,
+Πάρος, Αγχίαλος, Μεσενικόλα, Μαυροδάφνη Πατρών, Μοσχάτο Πατρών,
+Μοσχάτος Ρίου Πάτρας, Χάνδακας-Candia, the 3 Malvasia PDOs) are closed
+by adding **`by_bassin` entries for all 10 GR αμπελουργικές ζώνες** →
+ΕΔΟΑΟ (Εθνική Διεπαγγελματική Οργάνωση Αμπέλου & Οίνου,
+`winesofgreece.org` — confirmed operator). Region-level fallback also
+covers any future GR wine; the 15 per-PDO `by_slug` entries keep
+priority.
 
 ### National product specification (ΥΠΑΑΤ) — ✅ complete (2026-05-30)
 
@@ -1696,14 +1860,14 @@ Torysa (#22419, noir). The parser takes only the left **Odroda**
 column, never the synonym column, so the Pesecká leánka ↔ Feteasca
 regala confusion never reaches the matcher.
 
-### Interprofession / consortium URLs — ❌ 0 / 10
+### Interprofession / consortium URLs — ✅ closed (2026-08-26)
 
-No entries in [scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json).
-National bodies to research: ZVHV (Zväz vinohradníkov a vinárov
-Slovenska) for an interprofession-level fallback under `by_bassin`
-(7 vinohradnícke oblasti incl. Tokaj). Per-oblast consortium sites
-likely exist for Tokaj (Tokajská vínna spoločnosť?) and the
-Malokarpatská corridor.
+**10 / 10 resolved.** 9 were already merged (ZVHV `zvvs.sk` per
+vinohradnícka oblasť, `vcz.sk` for Skalický rubín, `tokajregion.sk` for
+the Tokaj oblasť). The last gap, `tokajske-vino-zo-slovenskej-oblasti`,
+now points at the same **Tokaj Wine Road Association** entry as
+`vinohradnicka-oblast-tokaj` — the two PDOs are the same physical Tokaj
+oblasť under different brand registrations.
 
 ## Czech Republic
 
@@ -1819,33 +1983,28 @@ mechanism is open but not blocking).
 Provenance: [tmp/cz-specification-research-prompt.md](tmp/cz-specification-research-prompt.md)
 + [tmp/cz-specification-research-results.md](tmp/cz-specification-research-results.md).
 
-### Interprofession / consortium URLs — ❌ 0 / 13
+### Interprofession / consortium URLs — ✅ closed
 
-No entries in [scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json).
-National bodies to research: Národní vinařský fond (Wine Fund of the
-Czech Republic, `vinarskyfond.cz`) and Svaz vinařů ČR (Czech Wine
-Association) as interprofession-level fallbacks under `by_bassin`
-for the 2 oblasti (Čechy / Morava). Per-podoblast consortium sites
-likely exist for Mikulovská / Velkopavlovická / Slovácká / Znojemská.
+**13 / 13 resolved** (merged in the 2026-06 sweep, verified 2026-08-26).
+Národní vinařský fond's `vinazmoravyvinazcech.cz` per-region /
+per-podoblast encyclopedia pages cover the macro names and the six
+podoblasti; VOC bodies (`vocznojmo.cz`, `vocmikulovsko.cz`) cover the
+Znojmo / Mikulovsko denominations.
 
 ## Switzerland
 
 Country added 2026-05. 63 AOC entries across 26 cantons.
 
-### Interprofession / cantonal-association URLs — ❌ 0 / 75
+### Interprofession / cantonal-association URLs — ✅ closed
 
-No entries in [scripts/_lib/appellation_urls.json](scripts/_lib/appellation_urls.json)
-— neither `by_slug` nor `by_bassin` covers any Swiss AOC. The
-6 Swiss wine regions (Valais, Vaud, Genève, Trois-Lacs, Ticino,
-Deutschschweiz) have well-known interprofessions / promotion
-bodies: Interprofession de la Vigne et du Vin du Valais (IVV),
-Office des Vins Vaudois (OVV), Office de Promotion des Produits
-Agricoles de Genève (OPAGE), Ticinowine, plus Swiss Wine Promotion
-(`swisswine.ch`) as a national fallback. Per-AOC sites exist for
-the 22 GE premier crus and for Lavaux / Dézaley / Calamin in Vaud.
-Curator pass: start with the 6 regional fallbacks under
-`by_bassin`, then sweep the major cantonale AOCs (Valais, Vaud,
-Genève, Ticino, Neuchâtel) under `by_slug`.
+**75 / 75 resolved** (merged in the 2026-06 sweep, verified 2026-08-26)
+via `by_bassin` entries for all 6 Swiss wine regions: Valais → IVV
+(`lesvinsduvalais.ch`), Vaud → OVV (`ovv.ch`), Genève → OPAGE
+(`geneveterroir.ch`), Ticino → Ticinowine, Trois-Lacs → Neuchâtel Vins
+et Terroir, Deutschschweiz → BDW. Every Swiss AOC — including the 22
+Geneva premier crus and the VS Grand Cru commune sub-records — resolves
+through its region. Per-AOC `by_slug` overrides remain possible if a
+premier-cru or Lavaux/Dézaley/Calamin body publishes its own site.
 
 ## Germany
 
@@ -1995,6 +2154,26 @@ conf); VIVC IDs not yet pinned for giannoudi/ofthalmo/promara/kanella/
 vasilissa (not catalogued under searchable Latin names) — optional 02g
 enrichment, pills render with colour but no VIVC bracket.
 
+### Interprofession / consortium URLs — ❌ none exists (recorded 2026-08-26)
+
+All 11 CY wines are now **explicit `null`** in `by_slug` (the ES
+`campo-de-cartagena` / `murcia` precedent) so the lookup is not retried
+blindly. Cyprus abolished the Συμβούλιο Αμπελοοινικών Προϊόντων (Vine
+Products Council) and has no interprofessional body — per-PDO or
+national. The competent authority is the Department of Agriculture's
+Αμπελουργία/Οινολογία branch, which the panel already links as the
+national-spec source, so pointing the "interprofession" row at it would
+be duplicative and mislabelled. `cypruswines.com` is a private
+commercial guide; WINECORE is a 17-winery project consortium; the Cyprus
+Oenophile Association is a consumer club. Re-open if a producers'
+interprofession is constituted.
+
+⚠️ Related link rot: `moa.gov.cy` now 301-redirects to `gov.cy/moa/`
+(and `gov.cy` 403s to bots). 8 of the 11 CY national-spec source URLs
+still point at `moa.gov.cy`; the PDFs are cached, so nothing is broken
+today, but a `--refresh` would fail. The other 3 already moved to
+eAmbrosia attachments.
+
 ## Cross-country — eAmbrosia register attachment endpoint (spike ✅; CZ + SI live; Phase-2 retrofit planned)
 
 The EU GI register public API
@@ -2138,7 +2317,16 @@ sitelink can resolve); (b) curator pins in `raw/wikidata/slug_overrides.json`
 (`{slug: {qid}}`) for notable misses — e.g. `crozes-hermitage` resolved to no
 QID despite having a fr.wikipedia article + Wikidata item.
 
-### Page weight — 13 MB `aocs.<lang>.*.js` data blob loaded on every page ⏳ (perf, not SEO-blocking)
+### Page weight — 13 MB `aocs.<lang>.*.js` data blob — ✅ resolved via the two-tier split (verified 2026-08-26)
+
+Lever 3 below shipped: the startup bundle now carries only
+`STARTUP_AOCS_FIELDS` (**3.3 MB** on disk, was ~13.25 MB) and the panel
+payload lazy-loads per slug from `wiki/data/d/<locale>/<slug>.json`
+(2,908 files per locale) on first panel open. See "Data bundle: startup
+blob + lazy panel detail" in [CLAUDE.md](CLAUDE.md). Original analysis
+kept below for context.
+
+#### Original finding (historical)
 
 Bing URL-inspection flags a low-severity Notice "Html size is too long" on
 entity pages. The HTML itself is tiny (~20 KB / ~180 lines) — the trigger is
