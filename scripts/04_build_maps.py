@@ -26,6 +26,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -3195,10 +3196,13 @@ def load_terroir_facts(slug: str, parent_slug: str = "") -> dict | None:
     discloses the inheritance to the user)."""
     cache_dir = ROOT / "raw" / "terroir-facts"
     p = cache_dir / f"{slug}.json"
+    inherited_from = ""
     if not p.exists() and parent_slug:
         p = cache_dir / f"{parent_slug}.json"
+        inherited_from = parent_slug
     if not p.exists() and slug in _TERROIR_INHERIT_OVERRIDES:
-        p = cache_dir / f"{_TERROIR_INHERIT_OVERRIDES[slug]}.json"
+        inherited_from = _TERROIR_INHERIT_OVERRIDES[slug]
+        p = cache_dir / f"{inherited_from}.json"
     if not p.exists():
         return None
     try:
@@ -3215,6 +3219,7 @@ def load_terroir_facts(slug: str, parent_slug: str = "") -> dict | None:
             "source_lang": d.get("source_lang") or "",
             "wiki_source_url": d.get("wiki_source_url") or "",
             "cahier_source_pdf_url": d.get("cahier_source_pdf_url") or "",
+            "inherited_from": inherited_from,
         }
     facts = d.get("facts") or []
     if not facts:
@@ -3230,6 +3235,7 @@ def load_terroir_facts(slug: str, parent_slug: str = "") -> dict | None:
         ],
         "wiki_source_url": d.get("wiki_source_url") or "",
         "cahier_source_pdf_url": d.get("cahier_source_pdf_url") or "",
+        "inherited_from": inherited_from,
     }
 
 
@@ -3288,6 +3294,104 @@ def overlay_translated_facts(
                 "facts": new_facts,
             },
         }
+    return out
+
+
+def _norm_name(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return " ".join(s.casefold().split())
+
+
+def _leads_with_name(bullet: str, name: str) -> bool:
+    nb, nn = _norm_name(bullet), _norm_name(name)
+    if not nn or not nb.startswith(nn):
+        return False
+    return len(nb) == len(nn) or not nb[len(nn)].isalnum()
+
+
+def annotate_inherited_facts(
+    aocs: dict[str, dict], children_by_parent: dict[str, list[str]]
+) -> dict[str, set[int]]:
+    """Transparency pass over parent-inherited terroir facts.
+
+    (1) Resolves `terroir_facts.inherited_from` (set by `load_terroir_facts`
+    when a record's facts were loaded from another record's cache) to a
+    display name (`inherited_from_name`) so both renderers can disclose the
+    inheritance inline at the facts block.
+
+    (2) Returns per-slug indices of inherited bullets that LEAD with a
+    *different* sibling sub-denomination's name — a parent's extraction may
+    contrast its own sub-zones (DOCa Rioja's bullets lead "Rioja Oriental:
+    …" / "Rioja Alta: …"), and on the other siblings' panels those bullets
+    are affirmatively about somewhere else. The drop set is computed once
+    here on the source-language bullets; `apply_inherited_facts_filter`
+    applies it per locale AFTER `overlay_translated_facts`, which matches
+    translated bullets to these facts by index."""
+    drop_idx: dict[str, set[int]] = {}
+    for slug, rec in aocs.items():
+        tf = rec.get("terroir_facts")
+        if not tf:
+            continue
+        src = tf.get("inherited_from") or ""
+        if not src:
+            continue
+        tf["inherited_from_name"] = (aocs.get(src) or {}).get("name") or src
+        if src != (rec.get("parent_slug") or ""):
+            # Curated regional inheritance (_TERROIR_INHERIT_OVERRIDES) —
+            # no sibling roster to filter on; disclosure only.
+            continue
+        own_name = rec.get("name") or ""
+        sibling_names = [
+            aocs[s].get("name") or ""
+            for s in children_by_parent.get(src, [])
+            if s != slug and s in aocs
+        ]
+        facts = tf.get("facts") or []
+        if not sibling_names or not facts:
+            continue
+        drops = {
+            i
+            for i, f in enumerate(facts)
+            if not _leads_with_name(f.get("bullet") or "", own_name)
+            and any(_leads_with_name(f.get("bullet") or "", n) for n in sibling_names)
+        }
+        if not drops:
+            continue
+        if len(drops) == len(facts):
+            print(
+                f"[facts] {slug}: sibling filter would drop all {len(facts)} "
+                "inherited bullets — keeping them unfiltered",
+                file=sys.stderr,
+            )
+            continue
+        drop_idx[slug] = drops
+        print(
+            f"[facts] {slug}: dropping {len(drops)}/{len(facts)} inherited "
+            "bullet(s) naming a sibling sub-denomination",
+            file=sys.stderr,
+        )
+    return drop_idx
+
+
+def apply_inherited_facts_filter(
+    aocs: dict[str, dict], drop_idx: dict[str, set[int]]
+) -> dict[str, dict]:
+    """Drop the sibling-naming inherited bullets computed by
+    `annotate_inherited_facts`. Must run AFTER `overlay_translated_facts` —
+    the overlay matches translated bullets to the source facts by index, so
+    filtering earlier would break the alignment."""
+    out = dict(aocs)
+    for slug, drops in drop_idx.items():
+        rec = out.get(slug)
+        if not rec:
+            continue
+        tf = rec.get("terroir_facts") or {}
+        facts = tf.get("facts") or []
+        if not facts:
+            continue
+        kept = [f for i, f in enumerate(facts) if i not in drops]
+        out[slug] = {**rec, "terroir_facts": {**tf, "facts": kept}}
     return out
 
 
@@ -3633,6 +3737,12 @@ def emit_html(
     for _kids in children_by_parent.values():
         _kids.sort(key=lambda s: (aocs[s].get("name") or s).casefold())
 
+    # Inherited-terroir transparency: annotate the payload with the record
+    # the facts were loaded from (disclosure line in both renderers) and
+    # compute which inherited bullets name a *different* sibling sub-zone
+    # (dropped per locale after the translation overlay — see the docstring).
+    facts_drop_idx = annotate_inherited_facts(aocs, children_by_parent)
+
     # gate_classify decides which records earn an indexable, crawlable page.
     # FOLDS every sub-denomination (its narrative/grapes are parent-inherited at
     # render time — CLAUDE.md) and any stub / no-geometry record; an indexable
@@ -3758,6 +3868,8 @@ def emit_html(
             }
             if facts_translations:
                 aocs_for_lang = overlay_translated_facts(aocs_for_lang, facts_translations)
+        if facts_drop_idx:
+            aocs_for_lang = apply_inherited_facts_filter(aocs_for_lang, facts_drop_idx)
         out = (WIKI / "index.html") if lang == "en" else (WIKI / lang / "index.html")
         out.parent.mkdir(parents=True, exist_ok=True)
         # Pass a swapped facets dict so the per-locale `aocs` is the data bundle.

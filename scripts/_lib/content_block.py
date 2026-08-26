@@ -270,6 +270,24 @@ def _build_facts_attribution(tpl_key: str, country: str, cahier_url: str, ctx: R
 
 # ---------------------------------------------------------------- terroir
 
+def _facts_inherited_line(tf: dict, ctx: RenderCtx) -> str:
+    """Port of factsInheritedLine — disclosure for facts loaded from another
+    record's cache (parent-inherited DGC bullets or curated regional
+    inheritance): the bullets describe the containing appellation, not this
+    record specifically."""
+    src = tf.get("inherited_from") or ""
+    if not src:
+        return ""
+    link = (
+        f'<a class="parent-link" data-slug="{esc(src)}" href="#">'
+        f'{esc(tf.get("inherited_from_name") or src)}</a>'
+    )
+    return (
+        f'<div class="facts-inherited">'
+        f'{fmt(ctx.labels["facts_inherited_note"], {"parent": link})}</div>'
+    )
+
+
 def _render_verbatim_facts(rec: dict, tf: dict, ctx: RenderCtx) -> str:
     text = tf.get("verbatim_text") or ""
     if not text:
@@ -287,7 +305,7 @@ def _render_verbatim_facts(rec: dict, tf: dict, ctx: RenderCtx) -> str:
         "facts_verbatim_attribution", rec.get("country") or "fr", cahier_url, ctx
     )
     head = f'<h2>{ctx.labels["panel_facts_h"]}{" " + badge if badge else ""}</h2>'
-    return f"{head}{body}{attribution}"
+    return f"{head}{_facts_inherited_line(tf, ctx)}{body}{attribution}"
 
 
 def render_terroir_facts(rec: dict, ctx: RenderCtx) -> str:
@@ -339,7 +357,10 @@ def render_terroir_facts(rec: dict, ctx: RenderCtx) -> str:
     attribution = _build_facts_attribution(
         "facts_attribution", rec.get("country") or "fr", tf.get("cahier_source_pdf_url") or "", ctx
     )
-    return f'<h2>{lab["panel_facts_h"]}</h2>{"".join(blocks)}{attribution}'
+    return (
+        f'<h2>{lab["panel_facts_h"]}</h2>{_facts_inherited_line(tf, ctx)}'
+        f'{"".join(blocks)}{attribution}'
+    )
 
 
 # ---------------------------------------------------------------- sources

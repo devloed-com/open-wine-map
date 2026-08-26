@@ -1852,6 +1852,16 @@
     return `<p class="translation-attr">${escapeHtml(pre)}${sourceHtml}${escapeHtml(post)}</p>`;
   }
 
+  // Disclosure line for facts loaded from another record's cache (a DGC /
+  // subzona inheriting the parent appellation's bullets, or a curated
+  // regional inheritance) — the bullets describe the containing appellation,
+  // not this record specifically, and the panel must say so.
+  function factsInheritedLine(tf) {
+    if (!tf.inherited_from) return '';
+    const link = `<a class="parent-link" data-slug="${escapeAttr(tf.inherited_from)}" href="#">${escapeHtml(tf.inherited_from_name || tf.inherited_from)}</a>`;
+    return `<div class="facts-inherited">${fmt(LABELS.facts_inherited_note, { parent: link })}</div>`;
+  }
+
   function renderVerbatimFacts(r, tf) {
     const text = tf.verbatim_text || '';
     if (!text) return '';
@@ -1862,7 +1872,7 @@
       : '';
     const body = `<blockquote class="facts-verbatim">${escapeHtml(text)}</blockquote>`;
     const attribution = buildFactsAttribution('facts_verbatim_attribution', r.country, cahierUrl);
-    return `<h2>${LABELS.panel_facts_h}${badge ? ' ' + badge : ''}</h2>${body}${attribution}`;
+    return `<h2>${LABELS.panel_facts_h}${badge ? ' ' + badge : ''}</h2>${factsInheritedLine(tf)}${body}${attribution}`;
   }
 
   function renderTerroirFacts(r) {
@@ -1892,7 +1902,7 @@
     const attribution = buildFactsAttribution(
       'facts_attribution', r.country, tf.cahier_source_pdf_url || ''
     );
-    return `<h2>${LABELS.panel_facts_h}</h2>${blocks.join('')}${attribution}`;
+    return `<h2>${LABELS.panel_facts_h}</h2>${factsInheritedLine(tf)}${blocks.join('')}${attribution}`;
   }
 
   function renderDulok(r) {

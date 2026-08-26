@@ -45,6 +45,7 @@ _LABELS = {
     "facts_sub_interactions": "Interactions",
     "facts_attribution": "Source: {source}",
     "facts_verbatim_attribution": "Quoted from {source}",
+    "facts_inherited_note": "Describes the wider {parent} appellation.",
     "facts_attribution_source_label": "the cahier des charges",
     "facts_attribution_source_label_es": "el pliego de condiciones",
     "facts_attribution_source_label_pt": "o caderno de especificações",
@@ -179,6 +180,28 @@ def test_bullet_facts_group_and_wiki_marker_and_suppress_summary() -> None:
     assert "Granite soils." in out and "Long tradition." in out
     assert 'class="wiki-attr"' in out  # wiki-provenance marker on the wiki bullet
     assert "Should be hidden." not in out  # facts present -> summary suppressed
+
+
+def test_inherited_facts_disclosure_line() -> None:
+    rec = {"name": "RIOJA ALAVESA", "kind": "DOP", "country": "es",
+           "is_sub_denomination": True, "parent_slug": "rioja", "parent_name": "Rioja",
+           "terroir_facts": {"facts": [
+               {"bullet": "Old vines.", "subsection": "facteurs_naturels", "provenance": "cahier"}],
+               "inherited_from": "rioja", "inherited_from_name": "Rioja",
+               "wiki_source_url": "", "cahier_source_pdf_url": ""}}
+    out = _render(rec)
+    assert ('<div class="facts-inherited">Describes the wider '
+            '<a class="parent-link" data-slug="rioja" href="#">Rioja</a> '
+            "appellation.</div>") in out
+
+
+def test_no_disclosure_when_facts_are_own() -> None:
+    rec = {"name": "B", "kind": "AOC", "country": "fr",
+           "terroir_facts": {"facts": [
+               {"bullet": "Granite soils.", "subsection": "facteurs_naturels",
+                "provenance": "cahier"}],
+               "inherited_from": "", "wiki_source_url": "", "cahier_source_pdf_url": ""}}
+    assert "facts-inherited" not in _render(rec)
 
 
 def test_summary_shown_when_no_facts() -> None:

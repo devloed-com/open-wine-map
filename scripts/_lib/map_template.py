@@ -116,6 +116,10 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Citation textuelle du Lien au terroir — voir la {source}."
         ),
         "facts_verbatim_to_verify": _("à vérifier — texte source court"),
+        "facts_inherited_note": _(
+            "Ces repères décrivent l'appellation englobante {parent} — "
+            "pas spécifiquement cette dénomination."
+        ),
         "meta_no_region": _("sans région"),
         "meta_communes_inao": _("{n} commune(s) INAO"),
         "meta_communes": _("{n} commune(s)"),
@@ -2002,8 +2006,8 @@ _TEMPLATE = """<!doctype html>
   #panel .translation-attr a {{ color:#888 }}
   #panel .stack-header {{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#888; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:6px }}
   #panel .stack-pos {{ font-size:10.5px; padding:1px 7px; background:#efe7d8; color:#5a4a2a; border-radius:9px; font-variant-numeric:tabular-nums; letter-spacing:0; text-transform:none; cursor:default }}
-  #panel .approx-line {{ font-size:11.5px; color:#7a5a1a; background:#fbf3df; border-left:2px solid #d6b35a; padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
-  #panel .approx-line a.parent-link {{ color:#7a5a1a; text-decoration:underline }}
+  #panel .approx-line, #panel .facts-inherited {{ font-size:11.5px; color:#7a5a1a; background:#fbf3df; border-left:2px solid #d6b35a; padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
+  #panel .approx-line a.parent-link, #panel .facts-inherited a.parent-link {{ color:#7a5a1a; text-decoration:underline }}
   #panel .role-disclaimer {{ font-size:11px; color:#888; font-style:italic; margin:2px 0 8px; line-height:1.35 }}
   #panel .appellation-note {{ font-size:11.5px; color:#33506b; background:#eef3f8; border-left:2px solid #6f93b5; padding:6px 9px; margin:8px 0; border-radius:2px; line-height:1.45 }}
   #panel .appellation-note .note-srcs {{ margin-top:4px }}
@@ -2176,8 +2180,8 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel ul.facts {{ color:#e0e0e0 }}
   html.theme-dark #panel .translation-attr, html.theme-dark #panel ul.facts .wiki-attr {{ color:#a3a3a3 }}
   html.theme-dark #panel blockquote.facts-verbatim {{ background:#262320; color:#dcdcdc; border-left-color:#555 }}
-  html.theme-dark #panel .approx-line {{ background:#322b18; color:#e6cf86; border-left-color:#6a5a2a }}
-  html.theme-dark #panel .approx-line a.parent-link {{ color:#e6cf86 }}
+  html.theme-dark #panel .approx-line, html.theme-dark #panel .facts-inherited {{ background:#322b18; color:#e6cf86; border-left-color:#6a5a2a }}
+  html.theme-dark #panel .approx-line a.parent-link, html.theme-dark #panel .facts-inherited a.parent-link {{ color:#e6cf86 }}
   html.theme-dark #panel .appellation-note {{ background:#1e2a36; color:#aecbe6; border-left-color:#3f6182 }}
   html.theme-dark #panel .appellation-note a {{ color:#aecbe6 }}
   html.theme-dark #panel details.dulok {{ color:#ccc }}
