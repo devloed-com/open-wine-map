@@ -975,17 +975,29 @@ def _is_amendment_title(title: str) -> bool:
 
 _GRAPE_COLOUR_FALLBACK_KEYWORDS = ("variedades blancas", "variedades tintas")
 
+# Newer Reg. 2024/1143 template: section 3 "País al que pertenece la zona
+# geográfica (definida)" answers just "España" — a decoy for the bare
+# "zona geográfica" keyword that would rob the routing of the real area in
+# section 9 "Definición breve de la zona geográfica delimitada" (Rioja AM13
+# was the first hit; same lesson as the RO "Țara căreia îi aparține"
+# blocklist in scripts/_lib/ro/document_unic.py).
+_GEO_AREA_TITLE_BLOCKLIST = ("país al que pertenece", "pais al que pertenece")
+
 
 def _match_section_body(
     sections: dict[str, str],
     titles: dict[str, str],
     keywords: tuple[str, ...],
     exclude_amendments: bool,
+    title_blocklist: tuple[str, ...] = (),
 ) -> str | None:
     for num, title in titles.items():
         if exclude_amendments and _is_amendment_title(title):
             continue
-        if not any(kw in title.lower() for kw in keywords):
+        tlow = title.lower()
+        if any(b in tlow for b in title_blocklist):
+            continue
+        if not any(kw in tlow for kw in keywords):
             continue
         body = sections.get(num, "")
         if not body.strip():
@@ -1020,6 +1032,7 @@ def route_sections(sections: dict[str, str], titles: dict[str, str]) -> dict[str
         body = _match_section_body(
             sections, titles, keywords,
             exclude_amendments=(role == "grape_varieties"),
+            title_blocklist=_GEO_AREA_TITLE_BLOCKLIST if role == "geo_area" else (),
         )
         if body is not None:
             routed[role] = body

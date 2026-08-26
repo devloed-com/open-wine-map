@@ -228,10 +228,33 @@ def _split_dash_block(s: str) -> list[str]:
     return out
 
 
+# Spanish particles kept lowercase when recasing an ALL-CAPS subzona header
+# ("MOSCATEL DE VALENCIA" → "Moscatel de Valencia").
+_LOWER_PARTICLES = {"de", "del", "la", "las", "los", "el", "y", "e", "i", "en"}
+
+
+def _titlecase_if_shouting(name: str) -> str:
+    """The doc único prints some subzona headers in ALL CAPS (RIOJA ALAVESA,
+    MOSCATEL DE VALENCIA — the Rioja/Valencia header style). Normalise those
+    to title case; mixed-case names pass through verbatim."""
+    if not name.isupper():
+        return name
+    words = name.lower().split()
+    return " ".join(
+        w if i and w in _LOWER_PARTICLES else w[:1].upper() + w[1:]
+        for i, w in enumerate(words)
+    )
+
+
 def _emit_subzona(name: str, communes: list[str], source_pattern: str) -> dict:
+    cleaned = name.strip().strip("«»\"'")
+    display = _titlecase_if_shouting(cleaned)
+    # Prose-embedded names may start lowercase ("Subzona ladera de
+    # Monterrei"); the record name is a proper noun.
+    display = display[:1].upper() + display[1:]
     return {
-        "name": name.strip().strip("«»\"'"),
-        "slug": slugify(name),
+        "name": display,
+        "slug": slugify(cleaned),
         "communes": communes,
         "source_pattern": source_pattern,
     }
