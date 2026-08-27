@@ -2216,6 +2216,12 @@ def main() -> int:
         classifications = sorted(_aging_tiers_from_text(record))
         categories = record.get("categories") or []
         categorie = record.get("categorie", "") or ""
+        # Records extracted via the manual-override / mirror path carry an
+        # empty manifest `categorie` while the SIQO-derived `categories`
+        # list is populated (Côte roannaise, Muscat du Cap Corse) — fall
+        # back so the wine/non-wine split doesn't mis-flag them.
+        if not categorie and categories:
+            categorie = categories[0]
         # Wine vs. non-wine split: every INAO `categorie` value beginning with
         # "Vin" (Vin tranquille, Vin mousseux, Vin de liqueur, Vin doux
         # naturel) is a wine. Spirits (Eaux-de-vie, Rhum, Calvados,

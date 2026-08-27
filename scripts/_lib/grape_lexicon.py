@@ -1575,6 +1575,10 @@ GRAPE_ALIAS = {
     "ranuse-muskatova": "ranuse-muskatova",        # CZ aromatic
     "sedy-portugal": "sedy-portugal",              # CZ "grey Portugal"
     "tramin-zluty": "tramin-zluty",                # CZ "yellow Traminer" — kept distinct from gewurztraminer
+    # CZ legacy white, in the fiche §6 "**/OTHER" block (old Vyhláška 323/2004
+    # list, dropped by 88/2017; not in the Státní odrůdová kniha). Identity
+    # contested (Goldriesling #4884 vs Bukettraube #1611) — own slug, no fold.
+    "ryzlink-buketovy": "ryzlink-buketovy",
 
     # Croatia autochthonous varieties (MPS specifikacija proizvoda, 2026-05-29).
     # Self-maps register a distinct native variety; folds collapse a
@@ -2447,6 +2451,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "bily-portugal": "blanc",
     "modry-janek": "noir",
     "ranuse-muskatova": "blanc",
+    "ryzlink-buketovy": "blanc",
     "sedy-portugal": "gris",
     "tramin-zluty": "blanc",
 

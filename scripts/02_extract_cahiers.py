@@ -343,8 +343,12 @@ IGP_SECTION_HDR_RE = re.compile(
     # postal codes ("11010 Vitoria-Gasteiz") as phantom section markers
     # whenever a misrouted cahier (e.g. an EU letter-section AOP) flowed
     # through this parser. Subsection depth stays unbounded (`4.1.2.3`).
+    # Title must start uppercase (a lowercase start would re-admit the
+    # analytic-norm lines like "125 mg/l …" as phantom titles) — with one
+    # carve-out: a literal lowercase "lien" start, seen in the Côte
+    # Vermeille cahier ("10- lien avec la zone géographique").
     rf"^[ \t]*(\d{{1,2}}(?:[.\-]\d+)*)[\.\-:\)]*[ \t]*(?:{DASH}[ \t]*)?"
-    rf"([A-ZÉÈÀÂÔÎÏÛŸ][\wÀ-ÿ '’\-]{{3,80}})[ \t]*[:.]?[ \t]*$",
+    rf"((?:[A-ZÉÈÀÂÔÎÏÛŸ]|lien\b)[\wÀ-ÿ '’\-]{{3,80}})[ \t]*[:.]?[ \t]*$",
     re.MULTILINE,
 )
 # Match `Chapitre 1 :` (legacy) and `CHAPITRE 1 – DENOMINATION` (post-2020
