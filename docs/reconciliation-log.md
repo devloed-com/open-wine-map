@@ -8,6 +8,101 @@ Newest first.
 
 ---
 
+## 2026-08-26 — /research-gaps vivc-ambiguous: 42-slug pin pass
+
+The queue surfaced by the corpus-walk widening (same-day action pass below),
+researched by 5 parallel agents against live VIVC passports + national
+registers (HR NN 25/2020 + NN 81/2022, HU NFJ 2024, Genes 2020 DNA anchors,
+wein.plus, Wine-Grapes-adjacent literature). User-confirmed and applied:
+
+- **40 PINNED** into `raw/vivc/slug_overrides.json` (now 499 entries) —
+  full per-slug evidence in `tmp/vivc-ambiguous-research-results.md` and
+  the pin table in CURATOR_TODO's restore-note block. Highlights:
+  harslevelu→5314, zierfandler→13443 (Spätrot), tribidrag→9703 (joins the
+  primitivo+zinfandel same-id group), negroamaro→8456, zametovka→6047
+  (Kavčina črna / Stara trta), grk→5066, debit→10423 (RUZEVINA),
+  trbljan→8075 (MOSTOSA, with a caveat on VIVC's new 0-holding #27344),
+  andre→456 (the Czech crossing), goher→767 (white conculta member),
+  busuioaca-de-bohotin→8248 (Muscat rouge à petits grains).
+- **`cristina` (RO) brand suspicion REFUTED** — VIVC #21045, a real SCDVV
+  Murfatlar crossing (Chardonnay × Băbească Neagră); closes the
+  2026-05-23 Colinele-Dobrogei 🟡.
+- **2 × `vivc_id: false`**: `korithi` (two distinct varieties — B=#6414 /
+  N=#6415; queued next to bare-piquepoul for colour-aware alias support)
+  and `schiava` (standing bare-family-name ruling).
+- Three new legitimate same-id groups, auto-unified by the facet tier:
+  tribidrag/primitivo/zinfandel #9703, muskat-zuti/moscato-giallo #8056,
+  bratkovina/maresco #1660.
+- Applied via `02g --refresh --only <40 slugs>` (all resolve `override`);
+  a scoped 02b sweep over the 33 card-less pins recovered **12 en
+  Wikipedia cards** via the VIVC-synonym chain (Grk, Kotsifali, Debit,
+  Vugava, Žlahtina, Mavrotragano, Thrapsathiri, Trbljan, Muškat žuti,
+  Vitovska, Busuioacă de Bohotin, Tauberschwarz) + 29 fr/es/nl
+  translations; the other 21 are genuinely article-less natives.
+- Provenance: `tmp/vivc-ambiguous-research-prompt.md` +
+  `tmp/vivc-ambiguous-research-results.md`.
+
+---
+
+## 2026-08-26 — open-todo action pass (post-reconciliation)
+
+Worked the reconciled queue top-down; full pipeline runs, every result
+verified in the rebuilt `wiki/` (stage 04 clean, 2,908 records, 0 stale
+overrides). Landed:
+
+- **FR `cote-vermeille` terroir gap closed (8/8 zero-bullet parents done).**
+  Root cause was a stage-02 slicing miss, not 02d: the cahier's heading
+  `10- lien avec la zone géographique` starts lowercase, which
+  `IGP_SECTION_HDR_RE`'s uppercase-title requirement rejected. Added a
+  `lien\b` lowercase carve-out; full FR re-extraction (466 + 1,074 DGCs, 0
+  errors) verified byte-identical lien lengths corpus-wide (agenais 9190 /
+  maures 8523 / pays-d-oc 11546); cote-vermeille 0 → 7,110 chars → 5 facts
+  (02d anthropic) → en/es/nl (02e; exactly 3 jobs = proof nothing else
+  drifted).
+- **SI: belokranjec + metliska-crnina promoted to full EU-OJ extractions.**
+  The due OJ-C re-check found both: C/2026/3572 (6.7.2026) + C/2026/3598
+  (13.7.2026), consolidated ENOTNI DOKUMENT each (WAF-free mirror: Cellar
+  XHTML). Pinned in the SI overrides (old spec URL kept as
+  `specifikacija_url`; si/01c --refresh for these slugs is now forbidden),
+  fetched via si/01 + 01b Chromium, extracted (18 + 10 grapes, 2.7/2.4 KB
+  lien), terroir re-grounded on the EU-OJ text (10 + 8 facts, 02e ×4
+  locales). SI = 3 EU-OJ + 14 national-spec.
+- **FR SIQO 2 missing wines: both RETIRED (research-verified).** Cabernet
+  de Saumur folded into AOC Saumur rosé (Arrêté 19.7.2016 art. 2 abrogates
+  Décret 2011-1360); Côtes de Blaye unclaimed since 2015 + EU cancellation
+  PDO-FR-A0271-CANCEL filed 13.1.2026. Recorded in VERIFICATION.md; no
+  pinning — eAmbrosia rows are stale-register artifacts.
+- **`is_wine` mis-flag fixed** for Côte roannaise + Muscat du Cap Corse:
+  stage 04 now falls back to the SIQO `categories` list when the manifest
+  `categorie` is empty (both records came via the mirror/override path).
+  Verified True in the rebuilt blob.
+- **CZ `Ryzlink buketový` resolved**: absent from Vyhláška 88/2017 Příloha
+  2 (local check) AND the ÚKZÚZ Státní odrůdová kniha (web research); a
+  real legacy variety from the repealed 323/2004 list with contested
+  identity (Goldriesling #4884 vs Bukettraube #1611, neither VIVC-grounded)
+  → own slug `ryzlink-buketovy` (blanc), `vivc_id: false` pin, CZ fiche
+  re-extraction cleared the unknowns queue.
+- **MT grape enrichment complete**: Ġellewża VIVC #14174 + Girgentina
+  #17787 (exact-cultivar), en.wikipedia cards fetched, fr/es/nl translated
+  (a 19-job corpus-wide 02b-translate pass also drained the HU/ES tail).
+- **Corpus-walk gap closed (OQ3 loose end)**: 02g +
+  `grape_corpus._SOURCES` now walk mt/cy/nl/be/lu/ch/hu + the BG/GR/SK/RO
+  national-specs-extracted sidecars (register-fiche dirs deliberately
+  excluded — terroir-only). Full incremental 02g sweep over the 141
+  newly-visible slugs: 852 exact + 5 prime + 387 override / 120 miss / 42
+  ambiguous → queued in `slug_overrides.example.json` for a
+  `/research-gaps` pin pass (search caches already on disk).
+  `audit_ambiguous_synonyms`: 36 → 38 RISKY (+2, none known-wrong).
+- **ortrugo-dei-colli-piacentini investigated**: pre-2016 table-based OJ
+  template (a different parser family, not an anchor tweak); wine is
+  content-complete via MASAF — downgraded to low-priority with two Phase-2
+  options.
+- Wiki regenerated (1,540 FR + 17 SI pages); stage-04 rebuild + facet
+  canonical roll-ups verified intact (malbec→cot, araignan→picardan,
+  s-saul→cinsault).
+
+---
+
 ## 2026-08-26 — interprofession / organisation URL sweep
 
 The parallel curation the stale-audit entry below defers to. Scope: the
