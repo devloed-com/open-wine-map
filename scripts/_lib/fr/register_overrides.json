@@ -1,0 +1,15 @@
+{
+  "_README": "Curator pins for the FR SIQO appellation -> eAmbrosia register file-number resolver (scripts/01d_resolve_register.py). Keyed by INAO id_appellation. `file_number` is the register `fileName` (PDO-FR-…/PGI-FR-…); set it to \"\" to record a verified absence, which drops the appellation from the unresolved queue instead of leaving it as noise. Look a name up at https://ec.europa.eu/geographical-indications-register/ — the resolver deliberately refuses to fuzzy-match, so every residue lands here.",
+  "335": {
+    "name": "Calvados Domfontais",
+    "file_number": "PGI-FR-01837",
+    "register_name": "Calvados Domfrontais",
+    "note": "SIQO spells the denomination 'Domfontais'; the register (and the cahier itself) spell it 'Domfrontais'. Same GI — Calvados Domfrontais AOC, Orne."
+  },
+  "1091": {
+    "name": "Marc d'Alsace Gewurztraminer",
+    "file_number": "PGI-FR-01836",
+    "register_name": "Marc d'Alsace Gewurztraminer",
+    "note": "Resolves on the all-partition fallback too (SIQO carries no categorie on the manifest row); pinned so the binding is explicit rather than inferred."
+  }
+}

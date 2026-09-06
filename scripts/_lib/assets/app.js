@@ -418,9 +418,23 @@
   // front and switched by layer visibility, so the theme toggle is live — no
   // source remove/re-add (which would reorder layers above the appellation
   // polygons and drop their selection feature-state). Same CARTO / OSM credit.
+  //
+  // CARTO retired key-less raster access (2026-08): an unkeyed tile comes back
+  // with "API KEY REQUIRED" stamped into the PNG itself. The key is client-side
+  // by necessity — the browser issues the tile request — but it is injected at
+  // build time from CARTO_BASEMAP_KEY (repo-root .env, the same file
+  // scripts/deploy.sh sources) rather than committed, so it stays rotatable and
+  // out of git history. Unset -> no ?key= and a watermarked basemap; stage 04
+  // warns. Free tier: 5M tile requests/month across raster + vector, and the
+  // CARTO + OpenStreetMap attribution below is the condition of it — keep it.
+  // CARTO is retiring raster altogether; the successor is vendored next to the
+  // runtime libs (scripts/_lib/vendor/openfreemap-*.json — key-free OSM vector
+  // tiles, a positron/dark pair that maps onto this same visibility toggle).
+  const CARTO_KEY = __OWM_carto_key_json__;
   function cartoTiles(style) {
+    const auth = CARTO_KEY ? '?key=' + CARTO_KEY : '';
     return ['a', 'b', 'c'].map(function (s) {
-      return 'https://' + s + '.basemaps.cartocdn.com/' + style + '/{z}/{x}/{y}.png';
+      return 'https://' + s + '.basemaps.cartocdn.com/' + style + '/{z}/{x}/{y}.png' + auth;
     });
   }
   function effectiveTheme() {
@@ -1733,10 +1747,12 @@
   function renderSources(slug, sources) {
     if (!sources) sources = {};
     const links = [];
-    if (sources.boagri) {
+    const cahierHref = sources.boagri || sources.eu_register_cahier;
+    if (cahierHref) {
       const homo = sources.homologation_date ? ' — ' + LABELS.src_homologated + ' ' + escapeHtml(sources.homologation_date) : '';
       const jorf = sources.jorf_date ? ', ' + LABELS.src_jorf + ' ' + escapeHtml(sources.jorf_date) : '';
-      links.push(`<li><a href="${escapeAttr(sources.boagri)}" target="_blank" rel="noopener">${LABELS.src_cahier}</a>${homo}${jorf}</li>`);
+      const cahierLabel = sources.boagri ? LABELS.src_cahier : LABELS.src_cahier_eu_register;
+      links.push(`<li><a href="${escapeAttr(cahierHref)}" target="_blank" rel="noopener">${cahierLabel}</a>${homo}${jorf}</li>`);
     }
     if (sources.show_texte) {
       links.push(`<li><a href="${escapeAttr(sources.show_texte)}" target="_blank" rel="noopener">${LABELS.src_show_texte}</a></li>`);
@@ -1987,7 +2003,9 @@
       ? [eambrosiaReg, PROV_EU_DOC_TERM[country] || 'single document', false, extra] : null;
 
     if (country === 'fr') {
-      if (s.boagri) {
+      // The register serves the INAO cahier itself, so the authoring body is
+      // INAO either way; only the link label differs (see renderSources).
+      if (s.boagri || s.eu_register_cahier) {
         const d = s.homologation_date || s.jorf_date || '';
         return ['INAO', 'cahier des charges', false, d ? ` (${escapeHtml(d)})` : ''];
       }

@@ -41,10 +41,47 @@ sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V  maplibr
 sha384-QfbOCebHNw8pQiPAOd2IFee2v2A5VYZxBk0+JGZ5H+3mfzVIp6zsQNkTsfGJot93  pmtiles-3.2.0.js
 ```
 
+## Staged (not yet wired): OpenFreeMap basemap styles
+
+`openfreemap-positron.json` / `openfreemap-dark.json` are **not shipped** — the
+mirror step only copies `.js`/`.css`, so these sit here as build inputs for a
+basemap swap that has not happened yet.
+
+Why they exist: in 2026-08 CARTO retired key-less access to its raster
+basemaps (an unkeyed tile comes back with "API KEY REQUIRED" stamped into the
+PNG), and told us raster is being retired outright in favour of vector. The map
+runs on a free CARTO key today (`CARTO_BASEMAP_KEY`, see
+[`app.js`](../assets/app.js)); these two styles are the key-free successor —
+[OpenFreeMap](https://openfreemap.org/), OpenStreetMap data on the OpenMapTiles
+schema, no account, no quota, and self-hostable if the public instance ever
+goes away.
+
+They were chosen because they drop into the existing architecture rather than
+replacing it: both carry the same `sources` / `glyphs` / `sprite`, so the two
+layer sets merge into ONE style and the light/dark toggle stays a
+`setLayoutProperty` visibility flip — no `setStyle`, which would reorder layers
+above the appellation polygons and drop their selection feature-state.
+
+| File | Source URL | fetched | bytes |
+|---|---|---|---|
+| `openfreemap-positron.json` | https://tiles.openfreemap.org/styles/positron | 2026-08-30 | 60214 |
+| `openfreemap-dark.json` | https://tiles.openfreemap.org/styles/dark | 2026-08-30 | 48790 |
+
+```
+221ade85123e80467a2500977ba88cf17877291ee049f4d0103cc2da5a7562f4  openfreemap-positron.json
+72e31c2853a05a994c575328879fd558788a229278bd04e0faa4ac52bd659410  openfreemap-dark.json
+```
+
+(Re-serialised with `json.dumps(indent=2)` so the diff of a future refetch is
+readable; the tile/glyph/sprite URLs are untouched.)
+
 ## Licences
 
 - **maplibre-gl** 4.7.1 — BSD-3-Clause (© MapLibre contributors).
 - **pmtiles** 3.2.0 — BSD-3-Clause (© Protomaps).
+- **OpenFreeMap styles** — style JSON derived from OpenMapTiles/positron
+  (BSD-3-Clause); the tiles they reference are © OpenStreetMap contributors
+  (ODbL) served by OpenFreeMap. Attribution is required wherever they render.
 
 Both permit redistribution with attribution; their licence text ships inside
 the distributed `.js` headers.

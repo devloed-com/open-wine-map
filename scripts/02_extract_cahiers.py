@@ -38,6 +38,7 @@ import unicodedata
 from collections import defaultdict
 from pathlib import Path
 
+from _lib.fr.naming import candidate_keys, normalize_name
 from _lib.grape_entity import (
     flush_unknowns_queue,
     preheat_vocabulary,
@@ -126,41 +127,6 @@ def slug(s: str) -> str:
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     s = re.sub(r"[^A-Za-z0-9]+", "-", s).strip("-").lower()
     return s
-
-
-def normalize_name(s: str) -> str:
-    """Loose match key — strips diacritics, casing, spacing/hyphens."""
-    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
-    return re.sub(r"[\W_]+", "", s).lower()
-
-
-# AOC names regularly carry one or more aliases concatenated with " ou ", " et ",
-# or comma-separated lists — e.g. "Cidre de Normandie ou Cidre normand",
-# "Cognac ou Eau-de-vie de Cognac ou Eau-de-vie des Charentes",
-# "Côtes de Bourg, Bourg et Bourgeais". The cahier itself usually carries only
-# one of those variants as its segment header, so a strict normalize-and-equal
-# match between parent name and segment header misses them. Splitting both sides
-# into alias parts and matching on any shared component closes the gap without
-# the false-positive risk of pure substring matching ("Bourgogne" would
-# otherwise match a "Bourgogne Passe-tout-grains" segment).
-_ALIAS_SPLIT_RE = re.compile(r"\s+ou\s+|\s+et\s+|,\s*", flags=re.IGNORECASE)
-
-
-def candidate_keys(name: str) -> list[str]:
-    """Return a list of normalised match keys for `name` — the full normalised
-    form first, followed by aliases split on " ou ", " et ", and commas."""
-    keys: list[str] = []
-    full = normalize_name(name)
-    if full:
-        keys.append(full)
-    for part in _ALIAS_SPLIT_RE.split(name):
-        part = part.strip()
-        if not part:
-            continue
-        k = normalize_name(part)
-        if k and k not in keys:
-            keys.append(k)
-    return keys
 
 
 def _is_parent_denom(d: dict) -> bool:
@@ -1481,6 +1447,18 @@ def main() -> int:
             "latest_known_pdf": latest_pdf,
             "latest_known_homologated_at": latest_date,
         }
+        # Only present when stage 01's register tier won the resolution, so a
+        # BO Agri-sourced record keeps a byte-identical `source` block.
+        if meta.get("source_kind"):
+            record["source"]["source_kind"] = meta["source_kind"]
+            for key in (
+                "register_file_number",
+                "register_attachment_uri",
+                "register_attachment_url",
+                "register_attachment_name",
+                "register_protected_name",
+            ):
+                record["source"][key] = meta.get(key, "")
         record["signe_fr"] = meta.get("signe_fr", "")
         record["signe_ue"] = meta.get("signe_ue", "")
         record["categorie"] = meta.get("categorie", "")

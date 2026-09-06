@@ -351,6 +351,8 @@ def render_page(record: dict) -> str:
         f"  cahier: {cahier_relpath}",
         f"  show_texte: {src['show_texte_url']}",
         f"  boagri: {src['boagri_url']}",
+        *([f"  eu_register: {src['register_attachment_url']}"]
+          if src.get("register_attachment_url") else []),
         f"  product: {src['product_url']}",
         f"  pdf_sha256: {src['pdf_sha256']}",
         f"  homologated_at: {homologated_at}",
@@ -444,7 +446,11 @@ def render_page(record: dict) -> str:
         f"- Cahier des charges (PDF): [`{cahier_relpath}`]({cahier_relpath}) — sha256 `{src['pdf_sha256'][:16]}…`",
         (f"- Cahier homologué le **{homologated_at}**" if homologated_at else "- _(date d'homologation non extraite)_"),
         f"- INAO show_texte: <{src['show_texte_url']}>",
-        f"- BO Agri (PDF source): <{src['boagri_url']}>",
+        # Register-sourced cahiers did not come from BO Agri; every other
+        # record keeps the line it has always had, empty URL included.
+        (f"- Registre GI de l'UE (PDF source): <{src['register_attachment_url']}>"
+         if src.get("register_attachment_url")
+         else f"- BO Agri (PDF source): <{src['boagri_url']}>"),
         f"- INAO produit (catalogue): <{src['product_url']}>",
         "",
     ]

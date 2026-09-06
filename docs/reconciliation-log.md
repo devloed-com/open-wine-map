@@ -8,6 +8,67 @@ Newest first.
 
 ---
 
+## 2026-08-29 — FR cahiers from the eAmbrosia register (plumbing + shadow report)
+
+Gave the French pipeline a second, self-service source for the cahier des
+charges: the eAmbrosia EU GI register's `productSpecifications[0]` attachment,
+which is the INAO cahier itself (`CDC_Batard-Montrachet.pdf`) and parses with
+the unchanged stage-02 extractor. Additive only — the tier runs behind BO Agri
+and the curator overrides, and it wins nothing on the current corpus.
+
+**Shipped**
+
+- `scripts/01d_resolve_register.py` + `scripts/_lib/fr/register_match.py` —
+  the name → `fileNumber` resolver FR needs because it is the one
+  INAO-sourced country with no `id_eambrosia`. **466 / 466 parents resolved**
+  (444 full-name, 20 alias, 2 pinned), 2 in the queue by design. Four guards:
+  product-type partition (Calvados the wine vs Calvados the eau-de-vie), no
+  fuzzy matching, one-to-one, and live-registrations-only.
+- `scripts/_lib/fr/register_cahier.py` — sha256-addressed attachment cache
+  under `raw/inao/register/`, deliberately outside `raw/inao/cahiers/` (stage
+  02 indexes every PDF there). Persists per fetch; remembers data-fact misses.
+- `RegisterTier` in `scripts/01_scrape_cahiers.py` — last tier, additionally
+  gated on the appellation having no cahier PDF on disk so an INAO outage
+  cannot re-source a working record.
+- `scripts/audit_fr_register_shadow.py` — read-only three-way comparison
+  (build / self / register) with a determinism control.
+- Honest attribution end-to-end: `boagri_url` stays empty for a
+  register-sourced cahier, the attachment URL rides `register_attachment_url`,
+  and stage 03 + the map panel label it "registre GI de l'UE" (new gettext
+  msgid, en/es/nl filled).
+- `scripts/_lib/fr/naming.py` — move-only extraction of `normalize_name` /
+  `candidate_keys` out of stage 02 (verified identical over 6,143 SIQO names).
+- 33 unit tests across `tests/test_fr_register_match.py` +
+  `tests/test_fr_register_tier.py`.
+
+**Shadow-report verdict (all 466 parents)**
+
+464 resolve · 361 (77.5 %) get a cahier attachment · 352 extract · **92
+byte-identical** · 45 cosmetically different · 215 substantively different.
+Determinism control 356/356. **In 199 of the 215 substantive differences the
+newer text is BO Agri's** — the register is systematically an older vintage
+(Anjou Villages: BO Agri "43 communes … 3 communes" vs register "24 … 2";
+Anjou and Arbois carry 2022–2023 republications). Conclusion: keep the
+register a last tier; do not promote it. Full table at
+`raw/inao/register/shadow-report.md`.
+
+**Opened**
+
+- ❌ `extract_aire`'s `_DEPT_HEADER_PATTERN` backtracks pathologically on
+  JORF-issue layouts (6 register documents time out). Pre-existing, latent,
+  not triggered by anything in the current build; fixing it needs its own
+  corpus-wide diff.
+- ❌ Cité de Carcassonne + Coteaux de Narbonne are `Cancelled` in the register
+  but still Publié in SIQO — the mirror of the 2026-08-26 SIQO-ghost
+  retirement.
+- 🟡 Collioure, Pouilly-Loché, Franche-Comté would gain a materially richer
+  `lien` from the register; needs a stub-driven re-source path.
+
+**Verification**: `owm-fr-baseline-2026-08-29/compare.sh` exit 0 — all 10
+surfaces byte-identical. `ruff` clean, 352 tests pass.
+
+---
+
 ## 2026-08-26 — /research-gaps vivc-ambiguous: 42-slug pin pass
 
 The queue surfaced by the corpus-walk widening (same-day action pass below),
