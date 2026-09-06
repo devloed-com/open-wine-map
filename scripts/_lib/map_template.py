@@ -1332,6 +1332,9 @@ STARTUP_AOCS_FIELDS = frozenset({
     # buildAppellationFacet splits each region's count into appellations
     # vs complementary geographic designations.
     "is_sub_denomination",
+    # The appellation tree nests region groups under a country group, and
+    # lists a cross-border appellation under every country it spans.
+    "country_aliases",
 })
 
 
@@ -1954,11 +1957,12 @@ _TEMPLATE = """<!doctype html>
   #sidebar > details > summary .facet-badge:empty {{ display:none }}
   #sidebar > details > summary {{ display:flex; align-items:center }}
   #sidebar > details > summary .facet-label {{ flex:1 }}
-  .facet .region-group-wrap {{ display:flex; align-items:flex-start; gap:6px; margin:2px 0 }}
-  .facet .region-group-wrap > .region-select {{ accent-color:#934050; cursor:pointer; flex:0 0 auto; margin-top:6px }}
-  .facet .region-group-wrap > .region-select:checked, .facet .region-group-wrap > .region-select:indeterminate {{ accent-color:#934050 }}
-  .facet .region-group-wrap > .region-group {{ flex:1 1 auto; min-width:0 }}
-  .facet .region-group > summary {{ display:flex; align-items:center; gap:6px }}
+  .facet .region-group-wrap, .facet .country-group-wrap {{ display:flex; align-items:flex-start; gap:6px; margin:2px 0 }}
+  .facet .region-group-wrap > .region-select, .facet .country-group-wrap > .country-select {{ accent-color:#934050; cursor:pointer; flex:0 0 auto; margin-top:6px }}
+  .facet .region-group-wrap > .region-select:checked, .facet .region-group-wrap > .region-select:indeterminate,
+  .facet .country-group-wrap > .country-select:checked, .facet .country-group-wrap > .country-select:indeterminate {{ accent-color:#934050 }}
+  .facet .region-group-wrap > .region-group, .facet .country-group-wrap > .country-group {{ flex:1 1 auto; min-width:0 }}
+  .facet .region-group > summary, .facet .country-group > summary {{ display:flex; align-items:center; gap:6px }}
   #status {{ padding:8px 16px; font-size:11px; color:#aaa; background:#222; border-bottom:1px solid #333 }}
   #status .hint-action {{ background:none; border:0; padding:0; margin-left:6px; color:#9ac4ff; font:inherit; cursor:pointer; text-decoration:underline }}
   #status .hint-action:hover {{ color:#cfe0ff }}
@@ -1985,18 +1989,38 @@ _TEMPLATE = """<!doctype html>
   .facet .open-aoc:hover {{ color:#fff; background:#333 }}
   .facet .open-aoc:focus-visible {{ opacity:1 }}
   .facet label.facet-unavailable {{ display:none }}
-  .facet .region-group-wrap.facet-unavailable {{ display:none }}
+  .facet .region-group-wrap.facet-unavailable, .facet .country-group-wrap.facet-unavailable {{ display:none }}
   .facet .tree-row[data-depth="0"] {{ padding-left:0 }}
   .facet .tree-row[data-depth="1"] {{ padding-left:14px }}
   .facet .tree-row[data-depth="2"] {{ padding-left:28px }}
   .facet .tree-row-parent {{ font-weight:600; color:#eee }}
   .facet .tree-row[data-depth="0"]:not(:first-child) {{ margin-top:4px }}
   .facet .tree-row[data-depth="2"] .name {{ color:#bbb }}
-  .facet .region-group > summary {{ padding:4px 0; border-top:none; font-size:10.5px; color:#888; letter-spacing:0.06em; display:flex; align-items:center; gap:6px }}
+  /* Mixed case here too. The FR bassin labels are the join key's own
+     ALL-CAPS form only until the catalog translates them — every locale
+     including fr now carries the proper name, so the transform that used
+     to hide that inconsistency is gone. */
+  .facet .region-group > summary {{ padding:4px 0; border-top:none; font-size:11px; color:#9a9a9a; text-transform:none; letter-spacing:0.01em; display:flex; align-items:center; gap:6px }}
   .facet .region-group > summary:hover {{ color:#ddd }}
   .facet .region-group > summary .name {{ flex:1 }}
   .facet .region-group > summary .count {{ color:#555 }}
-  .facet .region-group .region-items {{ padding-left:10px }}
+  .facet .region-group .region-items {{ padding-left:8px }}
+  /* Country level sits above the regions: brighter and heavier, with the
+     flag as the scanning anchor. Regions keep their dimmer, smaller row. */
+  /* Mixed case, against the sidebar's global uppercase `summary` rule: a
+     country name reads better next to its flag, and it separates the two
+     tree levels more clearly than size alone. The region rows keep the
+     uppercase — it normalises INAO's ALL-CAPS bassin names against the
+     mixed-case regions every other country stores. */
+  .facet .country-group > summary {{ padding:5px 0; border-top:none; font-size:12px; font-weight:600; color:#c9c9c9; text-transform:none; letter-spacing:0.01em }}
+  .facet .country-group > summary:hover {{ color:#fff }}
+  .facet .country-group > summary .name {{ flex:1 }}
+  .facet .country-group > summary .country-flag {{ flex:0 0 auto; font-size:12px; line-height:1; letter-spacing:normal }}
+  .facet .country-group > summary .count {{ color:#666; font-weight:400 }}
+  /* Two levels of indent cost the appellation name ~10px of the ellipsis
+     budget, so each step is 8px rather than 10 — the disclosure marker and
+     the summary's weight carry most of the hierarchy anyway. */
+  .facet .country-group .country-items {{ padding-left:8px }}
   .facet .empty {{ color:#666; font-size:11px; font-style:italic; padding:4px 0 }}
   #actions {{ position:sticky; bottom:0; background:#1a1a1a; padding:10px 16px; border-top:1px solid #333; display:flex; gap:8px }}
   #actions button {{ flex:1; padding:6px; background:#333; color:#eee; border:1px solid #555; border-radius:3px; cursor:pointer; font-size:12px }}
