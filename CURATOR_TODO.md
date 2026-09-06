@@ -2217,6 +2217,294 @@ still point at `moa.gov.cy`; the PDFs are cached, so nothing is broken
 today, but a `--refresh` would fail. The other 3 already moved to
 eAmbrosia attachments.
 
+## United Kingdom
+
+Added 2026-09-06 (country #19). The UK is the corpus's cleanest register:
+**6 / 6 registered wine GIs extract**, all with a public product
+specification, all on the map. There is no missing-document queue.
+
+### Open — pending application
+
+| name | kind | applied | status |
+|---|---|---|---|
+| The Crouch Valley | PDO | 2023-03-06 | ❌ still in assessment on the GOV.UK register |
+
+When it is granted: re-run `scripts/gb/00_fetch_data.py` (it picks the
+name up automatically), then add its file number to
+`_FILE_NUMBER_BY_SLUG` in [scripts/gb/00_fetch_data.py](scripts/gb/00_fetch_data.py)
+and a geometry entry to `GB_COUNTY_TERRITORY` in
+[scripts/_lib/gb/geometry.py](scripts/_lib/gb/geometry.py) (the Crouch
+Valley is in Essex). Stage 00 warns when a registered wine has no file
+number, because region + geometry both key on it.
+
+### Open — Darnibole boundary (approximate by construction)
+
+`PDO-GB-N1636` renders as the convex hull of the seven parcel centroids
+decoded from its specification's own plan — 6.1 ha against a declared
+5 ha, correctly sited on the verified south-facing slope, and disclosed
+in the panel as approximate. It interpolates between centroids rather
+than tracing the red boundary line, so its edges sit inside the true
+boundary by up to ~half a field. To improve it, a curator would need
+either (a) the RPA/OS parcel polygons for those seven ids, or (b) a
+georeferenced trace of the plan's red line. Neither is currently
+available under a public licence. Full derivation + the three-way anchor
+check: [scripts/_lib/gb/darnibole.py](scripts/_lib/gb/darnibole.py).
+
+### Curator inputs recorded 2026-09-06 (files under `raw/` are gitignored)
+
+VIVC pins added to `raw/vivc/slug_overrides.json` for the seven varieties the
+UK rosters introduced (3 resolved automatically — cascade #2139,
+roter-veltliner #12931, fruehgipfler #4269):
+
+```
+madeleine-angevine -> 7062     madeleine-sylvaner -> 7070
+triomphe-dalsace  -> 12650     gagarin-blue -> false
+```
+
+`madeleine-angevine` and `madeleine-sylvaner` are ambiguous in VIVC's
+cultivarname search (Oberlin / 4N forms, and GEILWEILERHOF 3-28-51
+respectively); `triomphe-dalsace` never auto-matches because the slug strips
+the apostrophe from TRIOMPHE D'ALSACE, and VIVC also binds the bare surface
+"Triomphe" to DODRELYABI #3616; `gagarin-blue` is a verified absence (no VIVC
+accession — a black Russian/Caucasus cultivar documented by the RHS plant
+register).
+
+Wikipedia grape-tooltip pin in `raw/wikipedia/grape_overrides.json`:
+`triomphe-dalsace` -> "Triomphe d'Alsace" (en + fr), same apostrophe cause.
+5 of the 7 now have tooltips; `madeleine-sylvaner` and `gagarin-blue` have no
+article in any locale (verified) and are deliberately left as misses.
+
+Wikidata suppressions in `raw/wikidata/slug_overrides.json`: `english-wine`
+and `welsh-wine`. en.wikipedia redirects both "English wine" and "Welsh wine"
+to the umbrella article *Wine from the United Kingdom* (Q1467810), so the
+sitelink path resolved BOTH PDOs to that one QID. Q1467810 is the topic, not
+either PDO, and `sameAs` asserts identity — so it is suppressed until Wikidata
+has per-PDO items. Sussex keeps its own Q39056976 ("Sussex wine").
+
+Geometry-outlier whitelist (checked in, `scripts/_lib/geometry_outlier_overrides.json`):
+all four national GB records, whose detached parts are the Isles of Scilly
+(England) and the Anglesey islands (Wales) in the ONS country polygons.
+
+### Open — "Findling" binds to Bouvier via VIVC
+
+The English + Welsh rosters list *Findling*, which `match_variety`
+resolves to `bouvier` on an **exact** VIVC synonym (VIVC #1625 BOUVIER
+carries FINDLING). In a UK context Findling is far more likely the
+Müller-Thurgau seedling grown in England. VIVC is the project's taxonomy
+authority so the current binding stands, but it wants a curator ruling —
+and, if VIVC is wrong for the UK reading, a `GRAPE_ALIAS` pin.
+
+---
+
+## Italy — two Wikipedia articles were bound to the wrong appellation ✅ fixed
+
+Found 2026-09-06 by grouping the emitted JSON-LD `sameAs` links (see the
+cross-country section below). The `02b_fetch_aoc_lexicon` title cascade bound
+two IT records to a *different* appellation's article on name similarity:
+
+| slug | appellation | was bound to | distance |
+|---|---|---|---|
+| `tarantino` | IGP Tarantino (Puglia) | `Trentino (vino)` — the Trentino DOC | ~900 km north |
+| `rotae` | IGT Rotae (Molise) | `Roma (vino)` — the Roma DOC | different region (Lazio) |
+
+This was not only an SEO/identity problem. `rotae` had shipped a
+**wiki-provenance terroir bullet about the wrong appellation** — "La DOC Roma
+è stata approvata con DM 02.08.2011; la versione vigente del disciplinare
+risale al DM 07.03.2014." — translated into all four locales. It passed the
+≥ 0.6 fuzzy-coverage filter precisely *because* it is a faithful verbatim
+quote; the filter checks that a bullet is grounded in its source, not that the
+source is the right document. `tarantino` escaped content contamination (all 5
+of its bullets were `cahier`-provenance) but carried the wrong `sameAs`.
+
+Fixed: both pinned `{"missing": true}` in `raw/wikipedia/aoc_overrides.json`
+under `it` with the reason, their cached article files replaced with a
+`missing` marker recording the suppressed title, then IT 02d + 02e re-run for
+the two slugs. Both are now 100 % `cahier`-grounded with `wiki_source_url:
+null` (tarantino 6 facts, rotae 7).
+
+**The general lesson**: a `wiki`-provenance bullet is only as trustworthy as
+the article-title match, and nothing downstream re-checks that match. A cheap
+standing guard is to group the corpus by bound article title and look at any
+title claimed by more than one appellation — which is exactly how these two
+surfaced. Worth running after each `02b_fetch_aoc_lexicon` sweep.
+
+---
+
+## Cross-country — grape pills show another country's spelling ✅ fixed 2026-09-06
+
+Found 2026-09-06 from a GB spot-check: the English PDO's pill reads **"Optima
+113"**, but the UK product specification says plain "Optima" (and the GB
+record stores it correctly). "Optima 113" is Germany's official
+Bundessortenamt name, from the Geilweilerhof breeding selection 33-13-113 —
+a real name for the variety, just not the British one.
+
+Root cause is one guard in `emit_html` (`scripts/04_build_maps.py`, the
+`grape_names` loop):
+
+```python
+if s_slug and s_name and s_name.lower() != s_slug:
+    grape_names[s_slug] = s_name
+```
+
+The comment directly above it states the intent — *"drives the pill label so
+the rendered name matches what the regulator actually published"* — but
+`s_name.lower() != s_slug` drops the record's own spelling precisely when it
+is already clean ("Optima".lower() == "optima"), presumably as a payload-size
+saving on the assumption the client can re-derive it. The client does not
+re-derive it from the slug: it falls back to the corpus-wide `GRAPES_INFO`
+display name, which is the **most frequent spelling across all countries** —
+frequently another language's.
+
+Blast radius (whole corpus, 50,757 (record, grape) pairs): **6,792 displaced
+labels, of which 1,047 are substantive** — a different word or number, not
+just casing. Worst offenders:
+
+| records | record's own name | label actually shown |
+|---:|---|---|
+| 97 | Müller Thurgau / müller-thurgau | **Rizlingszilváni** (Hungarian) |
+| 76 | muscat à petits grains | muscat à petits grains blancs |
+| 71 | Alicante Bouschet | alicante henri bouschet |
+| 35 | albariño (ES) | **alvarinho** (Portuguese) |
+| 30 | godello (ES) | **Gouveio** (Portuguese) |
+| 18 | Blauer Portugieser (DE/AT) | **Kékoportó** (Hungarian) |
+| 17 | plantet (FR) | seibel 5455 |
+| 4 | Optima (GB) | Optima 113 (German) |
+
+By country: it=228, fr=220, de=149, es=94, ro=67, pt=67, hr=48, hu=31, ch=26,
+sk=23. So German and Austrian pages label Müller-Thurgau with its Hungarian
+name, and Spanish pages label Albariño and Godello with their Portuguese ones
+— directly contradicting the stated rule in CLAUDE.md that the pill shows
+"the cahier's spelling ... verbatim with the VIVC prime name in brackets when
+distinct".
+
+**Fixed 2026-09-06**: the guard was removed so `emit_html` carries the
+record's own spelling unconditionally, with a comment recording why it must
+not be re-added as an optimisation. Verified in the rendered panel — the
+English PDO's pills now read *Optima*, *Regent*, *Kerner*, *Albarino
+(Alvarinho)* instead of *Optima 113*, *Regent N.*, *Kerner B.*, *Alvarinho*;
+Mosel keeps its own *Optima 113* and *Müller Thurgau*, Valdeorras its
+*godello*. Each country now shows its regulator's spelling with the VIVC
+canonical in brackets when distinct, which is what CLAUDE.md specifies.
+
+Cost: `grape_names` rides the lazily-fetched panel payload, not the startup
+bundle. Panel payloads total 42.4 MB over 11,656 files (mean 3.6 KB); the
+startup bundle is unchanged at 3.51 MB. Per-record name counts rose as
+expected (english-wine 30→81, mosel 64→126, sussex 10→28).
+
+---
+
+## Cross-country — one Wikidata QID claimed by several appellations (pre-existing)
+
+Found 2026-09-06 while wiring GB's `sameAs`. **18 QIDs are currently claimed
+by 50 appellation records**, and — counting only the 1,659 pages that actually
+emit JSON-LD — **15 Wikipedia articles are claimed as `sameAs` by 44 of
+them**. Either way it is an identity error in the JSON-LD:
+schema.org `sameAs` asserts *this page is about that entity*, so two
+appellations cannot legitimately share one QID. Group
+`raw/wikidata/qids-by-slug.json` by `qid` to reproduce.
+
+Two distinct causes, needing different fixes:
+
+- **Umbrella article shared by a whole country's corpus** — clearly wrong.
+  `Q582745` "Maltese wine" is claimed by all three MT records (malta, gozo,
+  maltese-islands); `Q9198993` "Vinarska oblast Cechy" by cz cechy + ceske.
+  GB hit exactly this and is already suppressed (see the United Kingdom
+  section).
+- **Parent article inherited by sub-denominations / sibling names** —
+  `Q1067753` Vinho Verde across 10 records and `Q191034` Porto across 4 (both
+  via the P9854 eAmbrosia join, which returns the parent's GI), plus
+  `Q1058259` chablis + petit-chablis, `Q21427011` the three Calvados records,
+  `Q551484` the three Anjou records, `Q3288502` the two Marc d'Alsace.
+
+The suppression mechanism already exists (`raw/wikidata/slug_overrides.json`,
+`{suppress: true}`), so the QID half of the fix is curation, not code — but it
+touches 6 countries, so it wants its own pass rather than riding a country
+addition.
+
+**The Wikipedia half is not yet fixable by curation.** `_entity_same_as` in
+`scripts/_lib/map_template.py` takes its Wikipedia URL from
+`terroir_facts.wiki_source_url`, which no override reaches, so suppressing a
+QID leaves the shared article link in place — GB's two PDOs still both point
+at *Wine from the United Kingdom*. The worst instance is HR: 14 records all
+claim `Vinogradarska područja Republike Hrvatske`.
+
+Suggested fix, self-maintaining and covering all 44 at once: drop a Wikipedia
+`sameAs` whenever the same article URL is claimed by more than one *indexable*
+record. An article claimed by two appellations cannot identify either, so the
+invariant is sound without per-record curation. It changes output for ~44
+records across several countries, so it belongs in its own change with a
+before/after diff.
+
+---
+
+## Cross-country — audit_terroir_facts covers only FR / ES / GB (pre-existing)
+
+`scripts/audit_terroir_facts.py` re-derives fuzzy coverage from each
+country's own source documents, so it needs a per-country dispatch entry
+(extracted dir, wiki cache dir, lien field, Wikipedia heading map, hint
+char-cap, and the right hint *builder* — FR-style vs ES-style). Only `fr` and
+`es` were ever wired; every country added since (PT, IT, AT, SI, HR, HU, RO,
+BG, GR, DE, SK, CH, CZ, LU, BE, NL, MT, CY) was silently skipped — a
+`KeyError` swallowed by the loop's broad `except` and printed as
+`err <slug>: '<cc>'`, indistinguishable from a corrupt cache.
+
+The 2026-09-06 GB pass wired `gb` in and made the skip explicit: unsupported
+countries are now counted and reported instead of masquerading as errors. The
+full-corpus run quantifies the gap — **1,030 fact-carrying records across 18
+countries are unaudited**:
+
+```
+[skipped] countries with no source dispatch entry: at=30, be=10, bg=54,
+ch=3, cy=11, cz=13, de=39, gr=147, hr=18, hu=41, it=522, lu=1, mt=3,
+nl=21, pt=44, ro=46, si=17, sk=10
+```
+
+against 4,470 bullets actually audited (FR + ES + GB). Italy alone is 522
+records, so it is the highest-value single entry to wire. Wiring the remaining 18 is a bounded, mechanical
+job — each needs the 5 dispatch entries above, and getting the hint builder
+or char-cap wrong produces *false* drift / erosion flags (both were hit while
+wiring GB, and both are documented inline there), so each country's entry
+should be validated against a record with a known-good `wiki`-provenance
+bullet.
+
+---
+
+## Cross-country — two slugs for one VIVC variety (pre-existing; surfaced by GB)
+
+Not introduced by the UK pipeline — GB is simply the first country whose
+*single* variety roster names both spellings, which puts the same grape on
+one panel twice.
+
+**`blaufrankisch` and `lemberger` are both VIVC #1459 BLAUFRAENKISCH.**
+The project's own cache agrees: `raw/vivc/by-slug/blaufrankisch.json` and
+`raw/vivc/by-slug/lemberger.json` both read `vivc_id: 1459`, and each
+lists the other as a synonym. The split is an alias-chain artefact —
+`kekfrankos → blaufrankisch` and `limberger → lemberger` are both
+one-hop, and nothing folds the two heads together.
+
+Usage across the corpus (229 records, 11 countries):
+
+| slug | records | countries |
+|---|---:|---|
+| `blaufrankisch` | 124 | hu 72, hr 24, sk 14, cz 10, gb 4 |
+| `lemberger` | 105 | ro 43, si 21, de 15, at 9, hu 8, gb 4, be 2, pt 2, es 1 |
+
+Folding them is the established policy (commit `a7570f2` "fold
+VIVC-collision slug dupes … unify facet by variety"), but it moves the
+grape facet for 11 countries, so it belongs in its own change with its
+own before/after diff — not in a country addition.
+
+**`csabagyongye` / `zalagyongye` are mis-named.** The slug
+`csabagyongye` is bound to VIVC #13374, whose prime name is **ZALA
+GYOENGYE** — so the *binding* is right for the surface "Zala gyöngye"
+but the slug name says Csaba. Meanwhile `zalagyongye` exists as a
+separate slug with no VIVC binding at all (7 HU records), and
+`perle-von-zala → csabagyongye` is commented "alternate German name for
+Csabagyöngye" when Perle von Zala is the German name of *Zala*gyöngye.
+Needs a curator pass over the pair; renaming a slug ripples into the
+VIVC cache, the wiki pages and the translations, so likewise its own
+change.
+
 ## Cross-country — eAmbrosia register attachment endpoint (spike ✅; CZ + SI live; Phase-2 retrofit planned)
 
 The EU GI register public API

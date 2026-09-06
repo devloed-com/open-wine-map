@@ -50,6 +50,7 @@ _SOURCES: tuple[tuple[str, Path], ...] = (
     ("ch", ROOT / "raw" / "ch" / "dokumente-extracted"),
     # Malta — source language is English (EU single documents are EN).
     ("en", ROOT / "raw" / "mt" / "dokumente-extracted"),
+    ("en", ROOT / "raw" / "gb" / "specs-extracted"),
     ("hu", ROOT / "raw" / "hu" / "dokumentumok-extracted"),
     ("nl", ROOT / "raw" / "nl" / "dokumenten-extracted"),
     # Belgium — per-record source_lang (nl Flemish / fr Walloon); nl covers

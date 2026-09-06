@@ -1758,6 +1758,34 @@ GRAPE_ALIAS = {
     # Mariafeld clone of Pinot noir (VIVC #9279 carries the synonym).
     # A clone, not a variety — fold; the record keeps its spelling.
     "mario-feld": "pinot-noir",
+    # --- GB (DEFRA / GOV.UK product specifications) --------------------
+    # The English + Welsh rosters are the corpus's longest single lists
+    # (~85 names) and spell several varieties in forms no other country
+    # uses. VIVC ids verified against the catalogue 2026-09.
+    "blau-portugueser": "blauer-portugieser",     # VIVC #9620 PORTUGIESER BLAU — DEFRA drops the -er
+    "elbling-white": "elbling",                   # VIVC #3865 ELBLING WEISS — English gloss of Weißer Elbling
+    "cascade": "cascade",                         # VIVC #2139 CASCADE (Seibel 13053) — French-American hybrid
+    "madeleine-angevine": "madeleine-angevine",   # VIVC #7062 MADELEINE ANGEVINE
+    "madeleine-sylvaner": "madeleine-sylvaner",   # VIVC #7070 MADELEINE SYLVANER
+    # VIVC #12931 VELTLINER ROT — a distinct cultivar from Frühroter
+    # Veltliner (`velteliner-rouge-precoce`), which the fuzzy matcher
+    # scores at 88; keep them apart.
+    "roter-veltliner": "roter-veltliner",
+    "veltliner-rot": "roter-veltliner",
+    "senator": "fruehgipfler",                    # VIVC #4269 FRUEHGIPFLER — SENATOR is its synonym
+    "fruehgipfler": "fruehgipfler",
+    "fruhgipfler": "fruehgipfler",
+    # VIVC lists TRIOMPHE against both DODRELYABI (#3616) and TRIOMPHE
+    # D'ALSACE (#12650); in a UK roster it is the Alsace hybrid, which is
+    # widely planted in England and Wales.
+    "triomphe": "triomphe-dalsace",
+    "triomphe-dalsace": "triomphe-dalsace",
+    "triomphe-d-alsace": "triomphe-dalsace",
+    # No VIVC accession. A black Russian/Caucasus cultivar grown outdoors
+    # in the UK, named after the cosmonaut; described as a black grape by
+    # the RHS plant register (rhs.org.uk/plants/184101) and by English
+    # vineyard sources.
+    "gagarin-blue": "gagarin-blue",
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -1772,6 +1800,14 @@ GRAPE_ALIAS = {
 # canonical, and the distinct mutations (`-blanc`, `-gris`) stay separate
 # because their suffix ≠ the default.
 DEFAULT_COLOUR: dict[str, str] = {
+    # --- GB (DEFRA / GOV.UK product specifications) --------------------
+    "cascade": "noir",              # VIVC #2139
+    "madeleine-angevine": "blanc",  # VIVC #7062
+    "madeleine-sylvaner": "blanc",  # VIVC #7070
+    "roter-veltliner": "rose",      # VIVC #12931 VELTLINER ROT
+    "fruehgipfler": "blanc",        # VIVC #4269
+    "triomphe-dalsace": "noir",     # VIVC #12650
+    "gagarin-blue": "noir",         # no VIVC accession; RHS plant register
     "chardonnay": "blanc",
     "chenin": "blanc",
     "muscadelle": "blanc",

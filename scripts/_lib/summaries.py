@@ -32,10 +32,13 @@ def derive_summary(record: dict) -> str:
     keep the same SHA — the cache only re-translates AOCs whose summary
     was previously clipped mid-clause.
     """
-    if record.get("country") in ("es", "pt", "lu"):
+    if record.get("country") in ("es", "pt", "lu", "gb"):
         # ES/PT records carry a pre-computed summary; LU records
         # likewise come pre-summarised from stage 02 (the cahier's
-        # white-wine description paragraph from section b).
+        # white-wine description paragraph from section b). GB the same:
+        # the DEFRA product specifications are not a numbered template at
+        # all, so there is no section "1"/"I" to fall back on — stage 02
+        # derives the blurb from the routed description / link role.
         return record.get("summary", "") or ""
     sections = record.get("sections", {})
     roles = record.get("section_roles") or {}

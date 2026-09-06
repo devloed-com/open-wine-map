@@ -98,6 +98,8 @@ from _lib.es.region import (
 from _lib.es.sigpac import SigpacIndex
 from _lib.es.zones import MAPA_ZONES_FILE, ESZoneIndex
 from _lib.fr_wine_region import derive_wine_region as derive_fr_wine_region
+from _lib.gb.geometry import GBPolygonIndex
+from _lib.gb.region import derive_region as derive_gb_region
 from _lib.geom_chain import (
     _resolve_es_igp_fallback,
     _resolve_es_sigpac,
@@ -203,6 +205,7 @@ LU_IVV_VINEYARDS_SHP = (
 EXTRACTED_BE = ROOT / "raw" / "be" / "dokumenten-extracted"
 EXTRACTED_NL = ROOT / "raw" / "nl" / "dokumenten-extracted"
 EXTRACTED_MT = ROOT / "raw" / "mt" / "dokumente-extracted"
+EXTRACTED_GB = ROOT / "raw" / "gb" / "specs-extracted"
 NL_NUTS_GEOJSON = ROOT / "raw" / "nl" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_2.geojson"
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"
 WIKI = ROOT / "wiki"
@@ -848,6 +851,16 @@ def main() -> int:
             if json_path.name == "_index.json":
                 continue
             extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # Multi-country: also iterate GB extracted records
+    # (raw/gb/specs-extracted/). 6 registered wine GIs (4 PDO + 2 PGI),
+    # every one of them fully extracted — the UK register publishes a
+    # product specification for all six, so there is no stub tier.
+    # Source language is en.
+    if EXTRACTED_GB.exists():
+        for json_path in sorted(EXTRACTED_GB.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
     # Augment ES records with national-pliego sidecar data — adds the
     # accessory varieties that the EU-OJ documento único omits. The
     # sidecar carries provenance (URL + sha256 + fetched_at) which
@@ -1326,6 +1339,13 @@ def main() -> int:
         file=sys.stderr,
     )
     mt_hits: Counter[str] = Counter()
+    gb_polygons = GBPolygonIndex()
+    print(
+        f"[load] GB polygons: {gb_polygons.n_countries} ONS countries, "
+        f"{gb_polygons.n_counties} ONS counties/UAs",
+        file=sys.stderr,
+    )
+    gb_hits: Counter[str] = Counter()
 
     # Curator-reviewed geometry-outlier overrides — clips confirmed-spurious
     # parts (upstream-data errors) out of resolved polygons. See
@@ -1358,6 +1378,7 @@ def main() -> int:
         _emit_be_features = False
         _emit_nl_features = False
         _emit_mt_features = False
+        _emit_gb_features = False
 
         # ES branch — Figshare PDO polygon → GISCO commune-union → parent
         # fallback. Stubs (`stub: True`) skip geometry; they appear in the
@@ -2017,6 +2038,26 @@ def main() -> int:
                 parent_geom_by_slug[record["slug"]] = geom
                 parent_village_geom_by_slug[record["slug"]] = geom
             _emit_mt_features = True
+        elif country == "gb":
+            # GB branch — ONS administrative boundaries (Bétard is an EU
+            # PDO layer and carries no PDO-GB-* rows). England / Wales
+            # whole-country polygons for the four national GIs, the union
+            # of the three Sussex counties/UAs for Sussex, and for
+            # Darnibole an approximate boundary reconstructed from the
+            # parcel references on its own specification plan.
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            geom, geom_source, stats = gb_polygons.resolve(
+                record.get("file_number") or ""
+            )
+            gb_hits[geom_source] += 1
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_gb_features = True
         else:
             _emit_es_features = False
             _emit_pt_features = False
@@ -2032,7 +2073,7 @@ def main() -> int:
                 or _emit_sk_features or _emit_cz_features
                 or _emit_ch_features or _emit_lu_features
                 or _emit_be_features or _emit_nl_features
-                or _emit_mt_features):
+                or _emit_mt_features or _emit_gb_features):
             # Geometry already resolved above; skip the FR-specific chain.
             pass
         elif is_sub_denomination:
@@ -2094,7 +2135,7 @@ def main() -> int:
                 or _emit_sk_features or _emit_cz_features
                 or _emit_ch_features or _emit_lu_features
                 or _emit_be_features or _emit_nl_features
-                or _emit_mt_features):
+                or _emit_mt_features or _emit_gb_features):
             pass
         elif is_sub_denomination:
             # Prefer DGC's own parcellaire polygon as the village geometry —
@@ -2231,7 +2272,7 @@ def main() -> int:
         # ES + PT + IT + AT + SI records have no `categorie` — every entry
         # is filtered to productType=WINE upstream in stage 00, so they're
         # all wines.
-        if record.get("country") in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "cy", "sk", "cz", "ch", "lu", "be", "nl", "mt"):
+        if record.get("country") in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "cy", "sk", "cz", "ch", "lu", "be", "nl", "mt", "gb"):
             is_wine = "1"
         else:
             is_wine = "1" if categorie.startswith("Vin") else "0"
@@ -2485,6 +2526,10 @@ def main() -> int:
             # Islands" for the archipelago-wide PGI. Carried on the
             # record from stage 02.
             region_value = record.get("region") or "Maltese Islands"
+        elif record.get("country") == "gb":
+            # GB region = the home nation the specification demarcates the
+            # GI to (England / Wales). Carried on the record from stage 02.
+            region_value = derive_gb_region(record) or "United Kingdom"
         else:
             region_value = derive_fr_wine_region(record)
         common_props = {
@@ -3131,6 +3176,23 @@ def _sources_for(record: dict) -> dict:
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
         }
+    if record.get("country") == "gb":
+        # United Kingdom: the DEFRA / GOV.UK product specification (PDF or
+        # .docx) served from the UK GI register. `boagri_url` and the
+        # EUR-Lex fields stay empty — nothing here is an EU-OJ document.
+        return {
+            "country": "gb",
+            "source_lang": "en",
+            "gov_uk_register_url": src.get("register_url") or "",
+            "gov_uk_spec_url": src.get("source_url") or "",
+            "spec_format": src.get("format") or "",
+            "spec_sha256": src.get("sha256") or "",
+            "filename": src.get("filename") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            "file_number": record.get("file_number") or "",
+            "parser_template": record.get("parser_template") or "",
+            "geom_approximate": bool(record.get("geom_approximate")),
+        }
     if record.get("country") == "es":
         # The AOC-blob phase re-reads the on-disk extracted JSON (which
         # doesn't carry the augmentation), so fall back to the slug-keyed
@@ -3507,6 +3569,7 @@ def emit_html(
             "be": EXTRACTED_BE,
             "nl": EXTRACTED_NL,
             "mt": EXTRACTED_MT,
+            "gb": EXTRACTED_GB,
         }.get(country, EXTRACTED)
         ext_path = ext_dir / f"{slug}.json"
         summary = ""
@@ -3564,10 +3627,22 @@ def emit_html(
             # actually published (PT Douro shows "Aragonez", ES Rioja
             # shows "Tempranillo", FR Bandol shows "mourvèdre"), with
             # the VIVC canonical name added in brackets when distinct.
+            # Carry the record's spelling UNCONDITIONALLY. A previous
+            # `s_name.lower() != s_slug` guard dropped it whenever the name
+            # already matched its slug ("Optima" -> optima), on the
+            # assumption the client could re-derive it. It cannot: the
+            # client falls back to GRAPES_INFO[slug].name, which is the
+            # most frequent spelling ACROSS THE WHOLE CORPUS and is often
+            # another language's — so English "Optima" rendered as Germany's
+            # "Optima 113", German "Müller Thurgau" as Hungarian
+            # "Rizlingszilváni", Spanish "godello" as Portuguese "Gouveio"
+            # (1,047 substantive cases across 10 countries). `grape_names`
+            # rides the lazily-fetched panel payload, not the startup
+            # bundle, so carrying every name costs ~70 bytes per panel file.
             for d in (rec.get("grapes") or {}).get("details") or []:
                 s_slug = d.get("slug")
                 s_name = (d.get("name") or "").strip()
-                if s_slug and s_name and s_name.lower() != s_slug:
+                if s_slug and s_name:
                     grape_names[s_slug] = s_name
                     latin = _latin_form_or_empty(s_name)
                     if latin:
@@ -3817,9 +3892,10 @@ def emit_html(
                 src_lang = rec.get("source_lang") or "fr"
             elif rec_country == "nl":
                 src_lang = "nl"
-            elif rec_country == "mt":
-                # MT's country code is "mt" but its source language is "en"
-                # (Malta's EU single documents are published in English).
+            elif rec_country in ("mt", "gb"):
+                # MT's country code is "mt" and GB's is "gb", but both are
+                # English-source: Malta's EU single documents and the UK's
+                # DEFRA product specifications are written in English.
                 src_lang = "en"
             else:
                 # LU's country code is "lu" but its source language is "fr" — fall through to the "fr" default.
@@ -3864,7 +3940,7 @@ def emit_html(
                     return rec.get("source_lang") or "fr"
                 if c == "nl":
                     return "nl"
-                if c == "mt":
+                if c in ("mt", "gb"):
                     return "en"
                 # LU (country "lu") uses source_lang "fr" — falls through to the "fr" default.
                 return c if c in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "cy", "sk", "cz") else "fr"
