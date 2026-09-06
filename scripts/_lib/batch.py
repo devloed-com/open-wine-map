@@ -37,24 +37,14 @@ from pathlib import Path
 
 import requests
 
-ROOT = Path(__file__).resolve().parents[2]
+from _lib.env import load_dotenv
 
 
 def _load_dotenv() -> None:
     """Populate os.environ from a repo-root .env (KEY=VALUE lines); existing
     environment variables win. Lets `--batch` pick up API keys without a
     manual export."""
-    env = ROOT / ".env"
-    if not env.exists():
-        return
-    for line in env.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        if line.startswith("export "):
-            line = line[7:]
-        key, val = line.split("=", 1)
-        os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
+    load_dotenv()
 
 
 POLL_INTERVAL_S = 20

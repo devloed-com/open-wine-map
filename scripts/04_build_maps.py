@@ -76,7 +76,6 @@ from _lib.augment.it import (
 from _lib.augment.ro import augment_ro_records_with_national_specs
 from _lib.augment.si import augment_si_records_with_specifikacija
 from _lib.augment.sk import augment_sk_records_with_national_specs
-from _lib.batch import _load_dotenv
 from _lib.be.geometry import BEPolygonIndex
 from _lib.be.region import derive_region as derive_be_region
 from _lib.bg.geometry import BGPolygonIndex
@@ -91,6 +90,7 @@ from _lib.cz.geometry import CZPolygonIndex
 from _lib.cz.region import derive_region as derive_cz_region
 from _lib.de.geometry import DEPolygonIndex
 from _lib.de.region import derive_region as derive_de_region
+from _lib.env import load_dotenv
 from _lib.es.geometry import ESPolygonIndex
 from _lib.es.region import (
     derive_ccaa as derive_es_ccaa,
@@ -3213,7 +3213,7 @@ def _sources_for(record: dict) -> dict:
             "national_pliego_fetched_at": nat.get("fetched_at", ""),
             "national_pliego_added_slugs": nat.get("added_slugs") or [],
         }
-    return {
+    fr = {
         "country": "fr",
         "boagri": src.get("boagri_url") or "",
         "show_texte": src.get("show_texte_url") or "",
@@ -3224,6 +3224,12 @@ def _sources_for(record: dict) -> dict:
         "homologation_date": (record.get("header") or {}).get("homologation_date") or "",
         "jorf_date": (record.get("header") or {}).get("jorf_date") or "",
     }
+    # Added only for a cahier the register tier won, so the panel never labels
+    # an EU-register attachment as a BO Agri document — and so every record
+    # still sourced from BO Agri keeps a byte-identical panel payload.
+    if src.get("register_attachment_url"):
+        fr["eu_register_cahier"] = src["register_attachment_url"]
+    return fr
 
 
 # Curator-pinned terroir-facts inheritance for wines whose canonical
@@ -4229,7 +4235,7 @@ def write_seo_files(entity_entries: list[tuple[str, str, str]] | None = None) ->
     # environment / repo-root .env — deliberately NOT committed — so a checkout
     # without it simply skips the file while everything else in wiki/ still
     # reproduces. File name == body, no trailing newline, served as text/plain.
-    _load_dotenv()
+    load_dotenv()
     indexnow_key = os.environ.get("INDEXNOW_KEY", "").strip()
     indexnow_note = ""
     if indexnow_key:

@@ -50,6 +50,25 @@ _JSON_HEADERS = {"User-Agent": BROWSER_HEADERS["User-Agent"], "Accept": "applica
 
 ROOT = Path(__file__).resolve().parents[2]
 ID_MAP_CACHE = ROOT / "raw" / "eambrosia-register" / "filenumber-id-map.json"
+GI_INDEX_CACHE = ROOT / "raw" / "eambrosia-register" / "gi-index.json"
+
+# The bulk filter row carries far more than the id map needs — the fields
+# below are what a name-based resolver has to see: the protected name to
+# match on, and the country / product-type / status axes that partition the
+# candidate pool so a name shared by a wine and a spirit cannot cross-bind.
+_GI_ROW_FIELDS = (
+    "id",
+    "fileName",
+    "protectedName",
+    "countryId",
+    "countries",
+    "qualityProductType",
+    "geographicalIndicatorTypeCode",
+    "productCategory",
+    "status",
+    "showInRegister",
+    "registrationDate",
+)
 
 
 def load_id_map(refresh: bool = False, session: requests.Session | None = None) -> dict[str, int]:
@@ -79,6 +98,56 @@ def load_id_map(refresh: bool = False, session: requests.Session | None = None) 
     ID_MAP_CACHE.parent.mkdir(parents=True, exist_ok=True)
     ID_MAP_CACHE.write_text(json.dumps(id_map, ensure_ascii=False, sort_keys=True), encoding="utf-8")
     return id_map
+
+
+def load_gi_rows(refresh: bool = False, session: requests.Session | None = None) -> list[dict]:
+    """Return the trimmed register listing (one row per GI), cached on disk.
+
+    Same single ~4 MB POST that backs `load_id_map`, but keeping the
+    `protectedName` / country / product-type columns a name-based resolver
+    needs. Seeds the id-map cache from the same response when it is cold, so
+    a cold start costs one request, not two."""
+    if GI_INDEX_CACHE.exists() and not refresh:
+        try:
+            return json.loads(GI_INDEX_CACHE.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            pass
+    s = session or requests.Session()
+    r = s.post(
+        _FILTER_URL,
+        headers={**_JSON_HEADERS, "Content-Type": "application/json"},
+        json={"first": 0, "rows": 100000, "showTSGs": "false", "filters": []},
+        timeout=300,
+    )
+    r.raise_for_status()
+    rows = [
+        {k: row.get(k) for k in _GI_ROW_FIELDS}
+        for row in r.json().get("results", [])
+        if row.get("fileName") and row.get("id") is not None
+    ]
+    GI_INDEX_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    GI_INDEX_CACHE.write_text(
+        json.dumps(rows, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    # Keep the two caches on one vintage: a `--refresh` that renewed only the
+    # listing would leave a newly-registered GI resolvable by name but not by
+    # id for every other consumer of `load_id_map`.
+    ID_MAP_CACHE.write_text(
+        json.dumps(id_map_from_rows(rows), ensure_ascii=False, sort_keys=True),
+        encoding="utf-8",
+    )
+    return rows
+
+
+def id_map_from_rows(rows: list[dict]) -> dict[str, int]:
+    """{file_number: internal_id} derived from a `load_gi_rows` listing.
+
+    Prefer this over `load_id_map` when the caller already holds (or resolved
+    names against) a `gi-index.json` vintage: the two caches are written
+    independently, so a file number added to the register after the id-map
+    cache was last written would otherwise resolve to a name but not to an
+    id."""
+    return {row["fileName"]: row["id"] for row in rows if row.get("id") is not None}
 
 
 def gi_detail(

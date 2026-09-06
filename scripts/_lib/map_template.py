@@ -20,6 +20,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from _lib.content_block import RenderCtx, esc, render_content_block
+from _lib.env import carto_basemap_key
 from _lib.i18n import load_translations
 from _lib.wikidata import wikidata_url
 
@@ -150,6 +151,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "stack_header": _("{n} appellations à ce point"),
         "stack_cycle_hint": _("Cliquer à nouveau pour parcourir les autres"),
         "src_cahier": _("Cahier des charges (BO Agri, PDF)"),
+        "src_cahier_eu_register": _("Cahier des charges (registre GI de l'UE, PDF)"),
         "src_homologated": _("homologué"),
         "src_jorf": _("JORF"),
         "src_show_texte": _("Texte officiel INAO (show_texte)"),
@@ -1594,6 +1596,7 @@ def render(
         region_labels_json=json.dumps(region_labels, ensure_ascii=False),
         country_labels_json=json.dumps(country_labels, ensure_ascii=False),
         country_flag_emoji_json=json.dumps(_COUNTRY_FLAG_EMOJI, ensure_ascii=False),
+        carto_key_json=json.dumps(carto_basemap_key()),
     )
 
     style_body = _STYLE_CSS.replace("{{", "{").replace("}}", "}")

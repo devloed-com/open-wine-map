@@ -220,6 +220,171 @@ override URL. Stage 02's cross-bundle rescue then matches the cahier
 header by name across the corpus, so overrides automatically promote
 matching stubs to full extracts. Re-run stages 01 → 04 after edits.
 
+## eAmbrosia register — second source for the FR cahier
+
+BO Agri is the FR pipeline's primary cahier source, and its long tail is
+expensive: hand-curated URLs in `manual_overrides.json`, a Légifrance
+cookie-injection fetcher ([scripts/01b_solve_legifrance.py](scripts/01b_solve_legifrance.py)),
+and OCR over professional-org mirrors for the 2011 Burgundy cohort. The
+**eAmbrosia EU GI register** serves the *same INAO cahier PDF* per GI as an
+attachment — `productSpecifications[0]`, whose filenames are literally
+`CDC_Batard-Montrachet.pdf` / `CDC IGP Haute-Marne.pdf` — with none of that.
+It is wired as a **self-service fallback tier**, not a replacement: BO Agri and
+the curator overrides still resolve first, so every currently-canonical
+resolution stays canonical.
+
+The register attachment is the same document already in the build, not a
+different vintage: for Bâtard-Montrachet (`PDO-FR-A0571`) and IGP Puy-de-Dôme
+(`PGI-FR-A1211`) the extracted `lien_au_terroir` is byte-identical to the
+in-build record. See the shadow report below for the corpus-wide picture.
+
+### The join key — stage 01d
+
+France is the one country sourced from INAO rather than eAmbrosia, so its
+records carry **no `id_eambrosia`**. [scripts/01d_resolve_register.py](scripts/01d_resolve_register.py)
+supplies the missing link by matching the SIQO appellation name against the
+register's `protectedName`, and writes `raw/inao/register/resolved.json`
+(id_appellation → GI binding) plus `raw/inao/register/unresolved.json` (the
+curator queue, one `reason` per entry).
+
+A wrong bind attaches another appellation's cahier, which is worse than a gap,
+so [scripts/_lib/fr/register_match.py](scripts/_lib/fr/register_match.py)
+refuses rather than guesses. Three guards:
+
+- **Product-type partition.** The candidate pool is split by the register's
+  `qualityProductType` (Wine / Spirit drink / Food), keyed off the SIQO
+  `categorie` via `CATEGORIE_PRODUCT_TYPE`. *Calvados* is both a Wine PGI (the
+  Normandy IGP wine) and a Spirit-drink PGI (the eau-de-vie); without the
+  partition either could claim the other's cahier. A SIQO row carrying no
+  `categorie` searches every partition instead and must come back with a
+  single GI.
+- **No fuzzy matching.** Keys are the exact normalised alias parts of both
+  names — the shared `candidate_keys()` in
+  [scripts/_lib/fr/naming.py](scripts/_lib/fr/naming.py) (splitting SIQO's
+  `" ou "` / `" et "` / commas) plus a `/` split on the register side, which
+  is how the register writes synonym lists (`Bourg / Côtes de Bourg /
+  Bourgeais`). Exact matching alone would miss ~20 appellations; fuzzy
+  matching would risk a wrong bind, so the alias fold does the work. A key
+  hitting more than one GI resolves to nothing.
+- **One-to-one.** Two appellations claiming the same file number means at
+  least one bind is wrong, so both go back to the queue.
+
+The residue is pinned in
+[scripts/_lib/fr/register_overrides.json](scripts/_lib/fr/register_overrides.json)
+(checked in — curator input a fresh checkout needs), keyed by
+`id_appellation` → `{file_number, register_name, note}`. An empty
+`file_number` records a verified absence and drops the appellation from the
+queue. v1 needs two pins: *Calvados Domfontais* (SIQO spelling; the register
+and the cahier both say *Domfrontais*) and *Marc d'Alsace Gewurztraminer*
+(SIQO leaves `categorie` empty on the manifest row).
+
+Result: **466 / 466 parents resolved, 0 unresolved** — 444 on the full name,
+20 on an alias, 2 pinned. Sub-denominations are not resolved: they have no
+register entry of their own and inherit the parent cahier exactly as they do
+today.
+
+### The fallback tier — stage 01
+
+`RegisterTier` in [scripts/01_scrape_cahiers.py](scripts/01_scrape_cahiers.py)
+runs only after BO Agri **and** the curator overrides have failed to produce a
+PDF — all three miss paths in `_process_app` funnel through `_register_tier`.
+Today that is 0 of 466 appellations, so a re-run is a no-op. Disable with
+`--no-register`; `--register-delay` sets the inter-request pause.
+
+Register attachments are cached by sha256 under `raw/inao/register/cahiers/`,
+**deliberately outside `raw/inao/cahiers/`**: stage 02's
+`build_global_segment_index` indexes every PDF in that directory and feeds each
+record's `source.latest_known_pdf`, so dumping a few hundred register cahiers
+there would silently rewrite unrelated records. Only a cahier that actually
+wins a resolution is promoted into the cahiers directory.
+
+Provenance is written **only for entries the register won**, so an appellation
+still served by BO Agri keeps a byte-identical manifest entry: `source_kind:
+"eambrosia-register"`, `register_file_number`, `register_attachment_uri`,
+`register_attachment_name`, `register_protected_name`, `register_matched_via`.
+Stage 02 passes the same keys into `record["source"]` under the same guard.
+`fetched_at` comes from the register cache manifest, not from the clock, so a
+cache hit does not churn the manifest.
+
+Endpoint mechanics live in
+[scripts/_lib/eambrosia_register.py](scripts/_lib/eambrosia_register.py) (see
+the cross-country endpoint section for the gotchas: the internal `id` is not
+derivable from `giIdentifier`, the detail path has no `/v1/`, the attachment
+path does, and an explicit `Accept: application/pdf` trips the anti-bot gate).
+`load_gi_rows()` caches the register's GI listing — `protectedName`, country,
+product type, status — to `raw/eambrosia-register/gi-index.json` from the same
+single ~4 MB POST that backs the id map.
+
+### Shadow report
+
+[scripts/audit_fr_register_shadow.py](scripts/audit_fr_register_shadow.py)
+compares the register cahier against the in-build record **without writing
+into the build**: it extracts both with the unchanged stage-02 parser in
+memory and reports three columns per appellation — `build` (the record on
+disk), `self` (re-extracting the build's own PDF now, as a determinism
+control) and `register`. `lien_au_terroir` is the headline comparison, with
+section / commune counts and the homologation date alongside so a *vintage*
+difference is distinguishable from a *parse* difference. Output:
+`raw/inao/register/shadow-report.{json,md}`.
+
+    .venv/bin/python scripts/01d_resolve_register.py
+    .venv/bin/python scripts/audit_fr_register_shadow.py
+
+v1 sweep (2026-08-29, all 466 parents):
+
+| step | count | share |
+|---|---:|---:|
+| resolved to a register file number | 464 | 99.6 % |
+| register serves a cahier attachment | 361 | 77.5 % |
+| register cahier extracts | 352 | 75.5 % |
+| `lien_au_terroir` byte-identical to the build | 92 | 26 % of extracted |
+| differs cosmetically (word-overlap ≥ 0.99) | 45 | |
+| differs substantively (< 0.99) | 215 | |
+
+The determinism control came back **356 / 356 byte-identical**, so every
+difference below is a real difference between the two documents, not
+extractor noise.
+
+**The register is systematically the older vintage.** Of the 215
+substantively-different records, the newer text is on the **BO Agri** side in
+**199**, the register side in 4, the same year in 7, undated in 5 (max year
+mentioned in each `lien`). The differences are real regulatory ones, not
+typography: BO Agri's Anjou Villages cahier reads "43 communes du
+Maine-et-Loire et 3 communes des Deux-Sèvres" where the register's reads "24"
+and "2"; Anjou and Arbois carry 2022–2023 republications the register has not
+picked up. That settles the open question in the brief — **the register must
+stay a last tier and must not be promoted to a primary source.**
+
+Three records where the register is nonetheless materially *richer* than the
+build are queued in [CURATOR_TODO.md](CURATOR_TODO.md) as targeted re-source
+candidates: Collioure (315 → 14,412 chars), Pouilly-Loché (255 → 8,261),
+Franche-Comté (4,062 → 7,583). The first two are among the only six parents
+whose build `lien` is under 1,000 chars — the register closes the tail of the
+PNOCDC short-lien backlog.
+
+Two things the shadow report exists to surface, both live findings:
+
+- **Vintage.** The register attachment is not always the newest publication.
+  Bâtard-Montrachet and IGP Puy-de-Dôme are byte-identical to the build, but
+  Chablis's BO Agri PDF is a 2025 republication (with typo corrections —
+  *au-dessus*, *Ces vallons*) that the register has not picked up. That is the
+  argument for keeping the register a *last* tier rather than promoting it.
+- **A pre-existing extractor defect.** For some GIs the register serves the
+  whole *Journal officiel* issue (`joe_20110630_0060.pdf` for Pouilly-Fumé)
+  instead of a standalone `CDC_*.pdf`. `extract_aire`'s department-header
+  regex backtracks pathologically on that layout — minutes on a 2 KB section.
+  The audit bounds it (`--extract-timeout`, default 20 s → verdict
+  `register-extract-timeout`); the regex itself is tracked in
+  [CURATOR_TODO.md](CURATOR_TODO.md) and must be fixed, with its own
+  corpus-wide diff, before the register can be promoted.
+
+Licence / attribution: the register is the European Commission's own
+publication of the member state's product specification; the served PDF is the
+INAO cahier des charges. Public-source rule satisfied. The map panel and the
+wiki label a register-sourced cahier as such — `boagri_url` stays empty and
+the attachment URL rides its own `register_attachment_url` field, so nothing
+attributes an EU-register document to BO Agri.
+
 ## Cadastre lieux-dits (sub-commune climat geometry)
 
 Cadastre Etalab (`cadastre.data.gouv.fr`, Licence Ouverte 2.0) publishes
@@ -393,8 +558,10 @@ twice with no changes upstream must be a no-op (cache hits).
 | Script | Reads | Writes |
 |---|---|---|
 | 00_fetch_data.py | (network) | raw/inao/siqo-referentiel.csv, raw/ign/communes.geojson, raw/inao/parcellaire/*.shp, raw/cadastre/lieux-dits/*.json.gz |
-| 01_scrape_cahiers.py | raw/inao/siqo-referentiel.csv | raw/inao/cahiers/*.pdf, raw/inao/cahiers/manifest.json |
+| 01_scrape_cahiers.py | raw/inao/siqo-referentiel.csv + raw/inao/cahiers/manual_overrides.json + raw/inao/register/resolved.json | raw/inao/cahiers/*.pdf, raw/inao/cahiers/manifest.json, raw/inao/register/{cahiers/*.pdf,manifest.json} |
+| 01d_resolve_register.py | raw/inao/cahiers/manifest.json (or raw/inao/siqo-referentiel.csv) + raw/eambrosia-register/gi-index.json + scripts/_lib/fr/register_overrides.json | raw/inao/register/{resolved,unresolved}.json |
 | 02_extract_cahiers.py | raw/inao/cahiers/*.pdf | raw/inao/cahier-extracted/*.json + _index.json |
+| audit_fr_register_shadow.py | raw/inao/cahiers/manifest.json + raw/inao/cahier-extracted/ + raw/inao/register/resolved.json | raw/inao/register/{shadow-report.json,shadow-report.md,cahiers/*.pdf,manifest.json} |
 | 02b_fetch_grape_lexicon.py | raw/inao/cahier-extracted/*.json + raw/vivc/by-slug/ | raw/wikipedia/grapes/<lang>/*.json + manifest.json |
 | 02b_fetch_aoc_lexicon.py | raw/inao/cahier-extracted/*.json | raw/wikipedia/aocs/fr/*.json + manifest.json |
 | 02b_fetch_style_lexicon.py | raw/wikipedia/style_overrides.json | raw/wikipedia/styles/<lang>/*.json + manifest.json |
@@ -4471,6 +4638,32 @@ identifiers are declared as globals there, and a non-blocking `eslint` CI job
 runs it. Edit app.js directly; do not move the JS back into the template. The
 CSS still ships inline in `_TEMPLATE` and is lifted to the shared
 `style.<hash>.css` by `_split_template`.
+
+### Basemap (CARTO raster, keyed) and its successor
+
+The basemap under the polygons is CARTO raster — Voyager (light) + dark_all
+(dark), both added up front and switched by layer *visibility*, never by
+`setStyle` (which would reorder layers above the appellation polygons and drop
+their selection feature-state).
+
+In **2026-08 CARTO retired key-less access**: an unkeyed tile still returns
+HTTP 200, but with "API KEY REQUIRED" stamped into the PNG — a failure that is
+invisible to any status-code check and only shows up by looking at the image.
+The tile URLs now carry `?key=`, injected at build time from
+**`CARTO_BASEMAP_KEY`** in the repo-root `.env` (the same file
+[scripts/deploy.sh](scripts/deploy.sh) sources) via
+[scripts/_lib/env.py](scripts/_lib/env.py) → the `__OWM_carto_key_json__`
+token. The key is public once the map ships (the browser makes the tile
+request); `.env` keeps it rotatable and out of git history. Unset ⇒ no `?key=`
+and a watermarked basemap, so stage 04 warns loudly on stderr. Free tier is 5M
+tile requests/month, **conditional on keeping the CARTO + OpenStreetMap
+attribution visible** — it is set on both raster sources in `app.js`; do not
+drop it.
+
+CARTO is retiring raster altogether in favour of vector. The staged successor
+is vendored at `scripts/_lib/vendor/openfreemap-{positron,dark}.json` — key-free
+OpenStreetMap vector tiles that merge into one style and keep the same
+visibility toggle. See [scripts/_lib/vendor/README.md](scripts/_lib/vendor/README.md).
 
 ## Structured data (JSON-LD) on entity pages
 

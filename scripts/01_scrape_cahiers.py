@@ -15,9 +15,18 @@ appellations (Drupal cache misbehaviour); the legacy site renders reliably.
 The cahier text is published to the JORF and mirrored on BO Agri, which is
 where we ultimately download from.
 
+A final fallback tier reads the **eAmbrosia EU GI register**, which serves
+the same INAO cahier PDF as an attachment (`RegisterTier`, bound to an
+appellation by the name→file-number map stage 01d writes). It runs only after
+BO Agri and the curator overrides have both failed, so appellations that
+already resolve keep their canonical source; disable it with `--no-register`.
+
 Re-runnable: a manifest at `raw/inao/cahiers/manifest.json` records the
 resolved show_texte id, BO Agri URL, and sha256 per appellation. Re-running
 diffs against the manifest and only re-downloads what changed upstream.
+Register-sourced entries additionally carry `source_kind` +
+`register_file_number` + the attachment uri, and their PDF is cached by
+sha256 under `raw/inao/register/`.
 """
 
 from __future__ import annotations
@@ -38,6 +47,11 @@ import requests
 from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from _lib import eambrosia_register as er  # noqa: E402
+from _lib.fr import register_cahier as rc  # noqa: E402
+
 RAW = ROOT / "raw"
 SIQO_CSV = RAW / "inao" / "siqo-referentiel.csv"
 OUT_DIR = RAW / "inao" / "cahiers"
@@ -306,14 +320,129 @@ def _download_alt_candidates(
     return n
 
 
-def _process_override_only(
-    session: requests.Session, app: Appellation, manifest: dict,
-    override: dict, delay: float,
-) -> tuple[str, int]:
-    """INAO didn't surface any candidates but a manual override is set.
-    Download the override URLs and seed a manifest entry from them so
-    stage 02's cross-bundle rescue can pick this AOC up."""
-    sample = app.products[0] if app.products else {}
+class RegisterTier:
+    """Last-resort cahier source: the eAmbrosia EU GI register.
+
+    The register serves the same INAO cahier PDF that BO Agri publishes, so an
+    appellation BO Agri surfaces nothing for no longer needs a curator URL, a
+    Légifrance cookie, or OCR over a professional-org mirror. It runs strictly
+    *after* BO Agri and the curator overrides, and only for an appellation
+    with no cahier PDF on disk — a run that fails to *reach* INAO must not
+    re-source an appellation that already has one (an INAO outage is not an
+    upstream change). Recovering an appellation whose product page links the
+    *wrong* arrêté — a PDF that downloads fine but carries someone else's
+    cahier — is a stage-02 question, not a stage-01 one, and is out of scope
+    here.
+
+    Requires the name → file-number map from stage 01d; without it the tier is
+    inert. `raw/inao/register/` holds the attachment cache, deliberately
+    outside `raw/inao/cahiers/` — only a PDF that actually wins a resolution
+    is promoted there, because stage 02 indexes every PDF in that directory.
+    """
+
+    def __init__(self, session: requests.Session, delay: float, enabled: bool = True):
+        self.session = session
+        self.delay = delay
+        self.resolved = rc.load_resolved() if enabled else {}
+        self.manifest = rc.load_manifest() if enabled else {}
+        self._id_map: dict[str, int] | None = None
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.resolved)
+
+    @property
+    def id_map(self) -> dict[str, int]:
+        """Derived from the same cached GI listing stage 01d resolved names
+        against, so a binding can never name a file number the id map lacks."""
+        if self._id_map is None:
+            try:
+                self._id_map = er.id_map_from_rows(er.load_gi_rows(session=self.session))
+            except (requests.RequestException, ValueError, OSError) as exc:
+                print(f"[register] GI listing unavailable ({exc}); tier inert "
+                      f"for the rest of this run", file=sys.stderr)
+                self._id_map = {}
+        return self._id_map
+
+    def cahier_for(self, id_appellation: str) -> rc.RegisterCahier | None:
+        """Fetch (or reuse) the register cahier bound to `id_appellation`."""
+        binding = self.resolved.get(id_appellation)
+        if not binding or not binding.get("file_number"):
+            return None
+        cahier, status = rc.fetch(
+            binding["file_number"], self.id_map, self.manifest,
+            session=self.session, delay=self.delay,
+        )
+        if cahier is None:
+            print(f"[register] {binding.get('name', id_appellation)}: {status}",
+                  file=sys.stderr)
+            return None
+        return cahier
+
+    def save(self) -> None:
+        if self.enabled:
+            rc.save_manifest(self.manifest)
+
+
+def _promote_register_pdf(cahier: rc.RegisterCahier) -> Path:
+    """Copy a register attachment into the content-addressed cahiers dir so
+    stage 02 finds it on its normal path.
+
+    Written through a temp file then renamed, like `download_pdf`: stage 02
+    indexes every PDF in this directory, and a half-written file under a name
+    that asserts a sha256 it does not have would be picked up as a cahier and
+    never repaired (the existence check would skip it on every later run).
+    A size mismatch is therefore treated as absent."""
+    dest = OUT_DIR / f"{cahier.sha256}.pdf"
+    if dest.exists() and dest.stat().st_size == cahier.bytes:
+        return dest
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = OUT_DIR / f".part-register-{cahier.sha256}.pdf"
+    tmp.write_bytes(cahier.path.read_bytes())
+    tmp.replace(dest)
+    return dest
+
+
+def _apply_register(meta: dict, app: Appellation, cahier: rc.RegisterCahier,
+                    binding: dict) -> dict:
+    """Fill a manifest entry from a register-sourced cahier. The provenance
+    keys are only ever written for entries the register actually won, so an
+    appellation still served by BO Agri keeps a byte-identical entry."""
+    dest = _promote_register_pdf(cahier)
+    # `boagri_url` means "the BO Agri URL this PDF came from" all the way down
+    # to the wiki's "BO Agri (PDF source)" line and the map panel's cahier
+    # link. A register attachment did not come from BO Agri, so it gets its
+    # own field rather than borrowing that one.
+    meta["boagri_url"] = ""
+    meta["register_attachment_url"] = cahier.attachment_url
+    meta["filename"] = dest.name
+    meta["sha256"] = cahier.sha256
+    meta["fetched_at"] = cahier.fetched_at
+    meta["source_kind"] = "eambrosia-register"
+    meta["register_file_number"] = cahier.file_number
+    meta["register_attachment_uri"] = cahier.attachment_uri
+    meta["register_attachment_name"] = cahier.attachment_name
+    meta["register_protected_name"] = binding.get("register_name", "")
+    meta["register_matched_via"] = binding.get("matched_via", "")
+    print(f"[register] {app.name} ({app.id_appellation}) -> "
+          f"{cahier.file_number} {cahier.attachment_name}", file=sys.stderr)
+    return meta
+
+
+_INAO_META_KEYS = (
+    "canonical_idproduit", "canonical_produit", "product_url", "show_texte_url",
+    "show_texte_paths", "boagri_url_candidates", "legifrance_jorftext_ids",
+)
+
+
+def _stub_meta(app: Appellation, prior: dict | None = None) -> dict:
+    """A manifest entry for an appellation INAO surfaced nothing for.
+
+    Whatever INAO catalogue metadata an earlier run did record is carried
+    over: this run failing to reach www2.inao.gouv.fr is not evidence that the
+    product page, show_texte trail or Légifrance ids ceased to exist."""
+    sample = app.canonical_product() if app.products else {}
+    prior = prior or {}
     meta = {
         "name": app.name,
         "canonical_idproduit": "",
@@ -328,8 +457,22 @@ def _process_override_only(
         "boagri_url": "",
         "boagri_url_candidates": [],
         "legifrance_jorftext_ids": [],
-        "manual_override_note": override.get("note", ""),
     }
+    for key in _INAO_META_KEYS:
+        if prior.get(key):
+            meta[key] = prior[key]
+    return meta
+
+
+def _process_override_only(
+    session: requests.Session, app: Appellation, manifest: dict,
+    override: dict, delay: float,
+) -> tuple[str, int]:
+    """INAO didn't surface any candidates but a manual override is set.
+    Download the override URLs and seed a manifest entry from them so
+    stage 02's cross-bundle rescue can pick this AOC up."""
+    meta = _stub_meta(app)
+    meta["manual_override_note"] = override.get("note", "")
     n = _download_alt_candidates(session, app.name, override["boagri_urls"], delay)
     try:
         digest, dest = download_pdf(session, override["boagri_urls"][0], OUT_DIR)
@@ -344,13 +487,50 @@ def _process_override_only(
     return "override-only", n
 
 
+def _has_usable_cahier(prior: dict) -> bool:
+    """True when the manifest already points this appellation at a PDF that is
+    still on disk."""
+    sha = prior.get("sha256") or ""
+    return bool(sha) and (OUT_DIR / f"{sha}.pdf").exists()
+
+
+def _register_tier(
+    app: Appellation, manifest: dict, meta: dict, register: RegisterTier | None,
+    prior: dict, fallback: tuple[str, int] | None,
+):
+    """Final tier. Runs only once BO Agri and the curator overrides have both
+    failed to yield a PDF *and* the appellation has none from an earlier run.
+
+    That second condition is what keeps a transient INAO outage from
+    re-sourcing a working appellation: `resolve_cahier` returns None for a
+    5xx, a timeout, or an empty Drupal body just as it does for a genuinely
+    absent cahier, and `_download_first_pdf` returns None for a BO Agri blip
+    just as it does for a dead URL. Without the guard, one bad afternoon would
+    flip canonical resolutions to the register and churn every downstream
+    surface with no upstream change behind it.
+
+    Returns `fallback` (or `(None, 0)` when fallback is None) if the register
+    has nothing for this appellation."""
+    miss = fallback if fallback is not None else (None, 0)
+    if register is None or not register.enabled:
+        return miss
+    if _has_usable_cahier(prior):
+        return miss
+    cahier = register.cahier_for(app.id_appellation)
+    if cahier is None:
+        return miss
+    manifest[app.id_appellation] = _apply_register(
+        meta, app, cahier, register.resolved.get(app.id_appellation, {}))
+    return "register", 0
+
+
 def _process_app(
     session: requests.Session, app: Appellation, manifest: dict,
-    overrides: dict, delay: float,
+    overrides: dict, delay: float, register: RegisterTier | None = None,
 ) -> tuple[str, int]:
     """Resolve and download `app`'s cahier(s). Returns (status, alt_count)
     where status is one of: missed, cached, fetched, legifrance-only,
-    override-only.
+    override-only, register.
     """
     prior = manifest.get(app.id_appellation, {})
     override = overrides.get(app.id_appellation)
@@ -360,8 +540,15 @@ def _process_app(
     time.sleep(delay)
     if result is None:
         if has_override_urls:
-            return _process_override_only(session, app, manifest, override, delay)
-        return "missed", 0
+            status, n = _process_override_only(session, app, manifest, override, delay)
+            if status != "missed":
+                return status, n
+            stub = _stub_meta(app, prior)
+            stub["manual_override_note"] = override.get("note", "")
+            return _register_tier(app, manifest, stub, register, prior,
+                                  fallback=("missed", n))
+        return _register_tier(app, manifest, _stub_meta(app, prior), register, prior,
+                              fallback=("missed", 0))
     meta, pdf_urls = result
     if has_override_urls:
         pdf_urls = _prepend_override_urls(override["boagri_urls"], pdf_urls)
@@ -369,6 +556,9 @@ def _process_app(
         meta["manual_override_note"] = override.get("note", "")
 
     if not pdf_urls:
+        status, n = _register_tier(app, manifest, meta, register, prior, fallback=None)
+        if status is not None:
+            return status, n
         meta["filename"] = ""
         meta["sha256"] = ""
         meta["fetched_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -391,7 +581,7 @@ def _process_app(
         return "cached", n
     download = _download_first_pdf(session, app.name, pdf_urls, delay)
     if download is None:
-        return "missed", 0
+        return _register_tier(app, manifest, meta, register, prior, fallback=("missed", 0))
     canonical_url, digest, dest = download
     rest = [u for u in pdf_urls if u != canonical_url]
     n = _download_alt_candidates(session, app.name, rest, delay)
@@ -450,6 +640,17 @@ def main() -> int:
         action="store_true",
         help="only re-attempt appellations not yet in the manifest",
     )
+    ap.add_argument(
+        "--no-register",
+        action="store_true",
+        help="skip the eAmbrosia register fallback tier",
+    )
+    ap.add_argument(
+        "--register-delay",
+        type=float,
+        default=rc.DEFAULT_DELAY,
+        help="seconds between eAmbrosia register requests",
+    )
     args = ap.parse_args()
 
     appellations = load_appellations(SIQO_CSV)
@@ -477,29 +678,44 @@ def main() -> int:
     session = requests.Session()
     session.headers["User-Agent"] = UA
 
+    register = RegisterTier(requests.Session(), args.register_delay,
+                            enabled=not args.no_register)
+    if register.enabled:
+        print(f"[register] {len(register.resolved)} name→file-number binding(s) "
+              f"available as the final tier", file=sys.stderr)
+    elif not args.no_register:
+        print(f"[register] no {rc.RESOLVED_PATH.relative_to(ROOT)} — "
+              f"run scripts/01d_resolve_register.py to enable the register tier",
+              file=sys.stderr)
+
     fetched = cached = missed = extra = 0
     counters = {
         "fetched": 0, "cached": 0, "missed": 0,
-        "legifrance-only": 0, "override-only": 0,
+        "legifrance-only": 0, "override-only": 0, "register": 0,
     }
 
-    for app in tqdm(appellations, desc="cahiers", leave=False):
-        status, alt_count = _process_app(
-            session, app, manifest, overrides, args.delay
+    try:
+        for app in tqdm(appellations, desc="cahiers", leave=False):
+            status, alt_count = _process_app(
+                session, app, manifest, overrides, args.delay, register
+            )
+            counters[status] += 1
+            extra += alt_count
+            time.sleep(args.delay)
+    finally:
+        register.save()
+        MANIFEST_PATH.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False),
+            encoding="utf-8",
         )
-        counters[status] += 1
-        extra += alt_count
-        time.sleep(args.delay)
 
     fetched = counters["fetched"] + counters["override-only"]
     cached = counters["cached"]
     missed = counters["missed"] + counters["legifrance-only"]
 
-    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
-
     print(
-        f"[done] fetched={fetched} cached={cached} extra={extra} missed={missed} "
-        f"manifest={MANIFEST_PATH.relative_to(ROOT)}",
+        f"[done] fetched={fetched} cached={cached} register={counters['register']} "
+        f"extra={extra} missed={missed} manifest={MANIFEST_PATH.relative_to(ROOT)}",
         file=sys.stderr,
     )
     return 0 if missed == 0 else 2

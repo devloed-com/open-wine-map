@@ -4,7 +4,7 @@ Actionable manual lookups across the corpus. One section per country. Reconcile 
 
 Legend: ✅ done · 🟡 URL queued, awaiting pipeline rerun · 🟢 in progress · ⏳ blocked on code · ❌ open
 
-Last reconciled: 2026-08-26 — full pass history in [docs/reconciliation-log.md](docs/reconciliation-log.md).
+Last reconciled: 2026-08-29 — full pass history in [docs/reconciliation-log.md](docs/reconciliation-log.md).
 
 ---
 
@@ -221,6 +221,41 @@ Reconciled 2026-08-26 against `raw/terroir-facts/`:
 
 ---
 
+### `extract_aire` regex backtracks pathologically on JORF-issue layouts — ❌ open
+
+Found while running the register shadow sweep (2026-08-29). Not a register
+bug and not new — a **pre-existing latent defect in the FR extractor** that no
+document in the current build happens to trigger.
+
+`_DEPT_HEADER_PATTERN` in [scripts/02_extract_cahiers.py](scripts/02_extract_cahiers.py)
+contains `(?P<after>(?:[^:\n]*\n?){0,4}?):` — a nested quantifier whose inner
+branch can match the empty string. On an area section that carries a
+`Département du Cher` heading followed by commune lines with **no colon**, the
+engine explores exponentially many ways to split those lines before failing.
+
+Reproducer (register attachment `joe_20110630_0060.pdf` for `PDO-FR-A0824`
+Pouilly-Fumé — the register serves the whole *Journal officiel* issue for this
+GI rather than a standalone `CDC_*.pdf`):
+
+```
+.venv/bin/python scripts/audit_fr_register_shadow.py --only "Pouilly-Fumé" --extract-timeout 0
+# hangs; `extract_aire` on a 2,044-char section runs for minutes
+```
+
+Impact today: none — the affected document only reaches the extractor through
+the shadow audit, which now bounds it (`--extract-timeout`, default 20 s,
+verdict `register-extract-timeout`). Impact if the register tier ever wins for
+such an appellation: **stage 02 hangs the whole build**, and the same shape
+could arrive from BO Agri.
+
+Fix deliberately NOT bundled with the register change: `extract_aire` feeds
+the commune list of all 1,540 FR records, so rewriting the pattern needs its
+own verification pass (full stage-02 re-run + `fr-cahier-extracted` diff
+against the baseline), not a drive-by edit. Candidate rewrite:
+`(?P<after>[^:\n]*(?:\n[^:\n]*){0,4}?)` — same language, but every
+repetition consumes at least the newline, so the empty-loop ambiguity goes
+away. Confirm match-by-match equivalence over the corpus before shipping.
+
 ### Interprofession / syndicat URLs — 🟡 1537 / 1540 (2026-08-26)
 
 Was 1244/1540. The 296 gaps were two distinct populations:
@@ -270,6 +305,103 @@ Side-findings for later (not URL work): `cote-roannaise` and
 `muscat-du-cap-corse` carry an empty `categorie` in their cahier extract
 and therefore land as `is_wine=false` on the map, despite both being
 wine AOCs.
+
+### eAmbrosia register as a second cahier source — ✅ shipped (2026-08-29)
+
+The FR pipeline now has a self-service fallback behind BO Agri: the eAmbrosia
+EU GI register serves the same INAO cahier PDF per GI
+(`productSpecifications[0]`). When BO Agri surfaces **no PDF at all** for an
+appellation, that gap can now be closed without a hand-curated BO Agri URL, a
+Légifrance cookie, or OCR over a professional-org mirror. (An appellation
+whose INAO product page links the *wrong* arrêté still needs curation — that
+PDF downloads fine, so stage 01 never reaches the register tier. Re-sourcing
+on a stage-02 stub is a separate change.) This is the **first landing of the
+cross-country Phase-2 register retrofit** (see that section below) —
+plumbing, not a data fix: FR was already at 1,540 records / 0 stubs, and the
+tier runs strictly *after* BO Agri, so it wins nothing today.
+
+The tier is additionally gated on the appellation having **no cahier PDF on
+disk**: `resolve_cahier` and `_download_first_pdf` both return None for a 5xx,
+a timeout or an empty Drupal body exactly as they do for a genuinely absent
+cahier, so without that gate one INAO outage would re-source working
+appellations and churn every downstream surface with no upstream change behind
+it.
+
+- `scripts/01d_resolve_register.py` writes the name → `fileNumber` map
+  (`raw/inao/register/resolved.json`) + curator queue
+  (`raw/inao/register/unresolved.json`). **466 / 466 parents resolved, queue
+  empty** (444 full-name, 20 alias, 2 pinned).
+- `scripts/audit_fr_register_shadow.py` is the read-only comparison against the
+  in-build record (`raw/inao/register/shadow-report.md`).
+- Pins live in `scripts/_lib/fr/register_overrides.json` (checked in).
+
+Curator actions when the queue is non-empty: look the name up at
+`https://ec.europa.eu/geographical-indications-register/`, add
+`{"<id_appellation>": {"file_number": "PDO-FR-…", "register_name": "…",
+"note": "…"}}`, re-run `01d`. An empty `file_number` records a verified
+absence. The resolver deliberately refuses to fuzzy-match, so every residue is
+a curator decision.
+
+Shadow-report findings (`raw/inao/register/shadow-report.md`, 466 parents):
+
+- **464 / 466 resolve**, 361 (77.5 %) get a cahier attachment, 352 extract.
+- **92 byte-identical** to the build, 45 cosmetically different, 215
+  substantively different — and in **199 of those 215 the newer text is BO
+  Agri's**. The register is systematically behind (Anjou Villages: BO Agri
+  "43 communes … 3 communes" vs register "24 … 2"; Anjou and Arbois carry
+  2022–2023 republications). **Do not promote the register to a primary
+  source.** Determinism control: 356/356 re-extractions byte-identical, so
+  these are real document differences.
+- 🟡 **3 records where the register is materially richer than the build** — a
+  targeted re-source is a genuine quality win. Collioure and Pouilly-Loché are
+  two of only six parents whose build `lien` is under 1 000 chars (the other
+  four are eaux-de-vie, which carry no lien section by design), so this closes
+  the tail of the PNOCDC short-lien backlog above. Needs a stub-driven
+  re-source path — stage 01 only reaches the register when there is *no* PDF,
+  and these have one:
+
+  | id | appellation | build lien | register lien |
+  |---:|---|---:|---:|
+  | 254 | Collioure | 315 | 14 412 |
+  | 217 | Pouilly-Loché | 255 | 8 261 |
+  | 959 | Franche-Comté | 4 062 | 7 583 |
+
+- ❌ **103 appellations (22 %) have no register cahier attachment** — a bare
+  `Ares(…)` reference in `productSpecifications`. The brief's 15 % estimate
+  came from an n=80 sample; the true figure is higher. Not actionable (BO
+  Agri covers them all today).
+- ❌ **6 register documents time out in `extract_aire`** and 3 fail to
+  extract — see the regex defect logged above.
+
+Open queue — ❌ **2 appellations INAO still publishes but the EU register has
+struck off.** The resolver refuses to bind a `Cancelled` GI on its own (a
+withdrawn registration cannot be an appellation's current specification), so
+both sit in `raw/inao/register/unresolved.json` awaiting a curator call. Both
+already have a working BO Agri cahier, so nothing is missing from the corpus —
+what needs deciding is whether SIQO is stale (the mirror image of the
+2026-08-26 "eAmbrosia has them, INAO doesn't" retirement above):
+
+| id | appellation | file number | register state |
+|---:|---|---|---|
+| 877 | Cité de Carcassonne (IGP) | `PGI-FR-A1203` | `Cancelled`; registered 17/03/1978; no successor row in the register |
+| 881 | Coteaux de Narbonne (IGP) | `PGI-FR-A1202` | `Cancelled`; registered 09/12/1983; no successor row in the register |
+
+Verify against the OJ-L cancellation regulation, then either pin the file
+number in `register_overrides.json` (if the attachment is still the right
+cahier) or retire the appellation the way the two SIQO ghosts were.
+
+Known register-side negatives (not actionable — BO Agri already covers them):
+
+| appellation | file number | gap |
+|---|---|---|
+| Musigny | `PDO-FR-A0582` | single-document only; `productSpecifications` is a bare `Ares(2013)3755890` reference |
+
+Two pins were needed:
+
+| id | appellation | file number | why |
+|---:|---|---|---|
+| 335 | Calvados Domfontais | `PGI-FR-01837` | SIQO spelling; register + cahier both say *Domfrontais* |
+| 1091 | Marc d'Alsace Gewurztraminer | `PGI-FR-01836` | SIQO carries no `categorie`, so the product-type partition cannot be picked (same root cause as the `cote-roannaise` / `muscat-du-cap-corse` `is_wine` side-finding above; those two resolve on the all-partition fallback) |
 
 ## Spain
 
@@ -2555,6 +2687,16 @@ Applied **where there was an actual terroir gap** — not as a rip-and-replace:
   fiche would be churn + regression risk for no gain.
 
 ### Phase 2 — unify source-fetch on the register API (elegance retrofit, NON-URGENT)
+
+🟢 **First landing: France (2026-08-29).** FR now carries the register as a
+last-resort cahier tier behind BO Agri, with a name → `fileNumber` resolver
+(FR is the one INAO-sourced country, so it has no `id_eambrosia` join key) and
+a read-only shadow report. See the France section above. What it proves for
+the rest of the retrofit: the register's `productSpecifications` attachment is
+the **full national spec**, not the thinner single document, and it parses with
+the country's existing extractor unchanged. What it does NOT yet do: retire BO
+Agri, `01b_solve_legifrance.py` or the OCR mirror path — those come out only
+once the shadow report proves the register covers them, as a separate change.
 
 Forward-looking cleanup, not user-visible: make the register API the
 **canonical first-fetch** for the source document, so the codebase is more
