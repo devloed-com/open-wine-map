@@ -350,6 +350,10 @@
     return REGION_LABELS[region] || region;
   }
 
+  function countryLabel(cc) {
+    return COUNTRY_LABELS[cc] || cc || '';
+  }
+
   function oneCountryChip(countryCode) {
     const flag = COUNTRY_FLAG_EMOJI[countryCode] || '';
     const name = COUNTRY_LABELS[countryCode] || '';
@@ -662,7 +666,10 @@
     else if (kind === 'principal') filters.principal.delete(key);
     else if (kind === 'accessory') filters.accessory.delete(key);
     else if (kind === 'appellation') filters.appellations.delete(key);
-    else if (kind === 'region') setRegionSelection(key, false);
+    // Region chips are country-scoped (the name alone is ambiguous — Tokaj is
+    // both Hungarian and Slovak), so the country rides along on the chip.
+    else if (kind === 'region') setSlugSelection(visibleSlugsInRegion(chip.dataset.country || '', key), false);
+    else if (kind === 'country') setSlugSelection(visibleSlugsInCountry(key), false);
     else if (kind === 'mainGrapeOnly') {
       filters.mainGrapeOnly = false;
       const m = document.getElementById('main-grape-only'); if (m) m.checked = false;
@@ -677,7 +684,7 @@
       }
     });
     refreshSidebarCheckedState();
-    refreshRegionTriStates();
+    refreshTreeTriStates();
     applyFilter();
   });
 
@@ -837,41 +844,93 @@
     buildGrapeChipFilter(container, role, set);
   });
 
-  // Map of region → list of slugs, computed once. The appellation tree
-  // re-renders on spirits-toggle (entries appear/disappear), but the
-  // per-region grouping itself is stable across rebuilds.
-  const REGION_SLUGS = (() => {
-    const m = new Map();
-    const order = FACET_REGIONS.map(([r]) => r);
-    for (const r of order) m.set(r, []);
-    m.set('', []);
+  // Country → region → list of slugs, computed once. The tree re-renders on
+  // spirits-toggle (entries appear/disappear), but the grouping itself is
+  // stable across rebuilds.
+  //
+  // Two levels, not one: 21 countries contribute 177 regions, and a single
+  // flat list ordered by size interleaves them (FR Bourgogne, IT Toscana,
+  // GR Ελλάδα, FR Val de Loire, …) with no way to scan by country. Nesting
+  // also disambiguates the region names that repeat across a border — Tokaj
+  // is both a Hungarian borrégió and a Slovak vinohradnícka oblasť, so a
+  // region name alone is not a key.
+  //
+  // A cross-border appellation (a record carrying `country_aliases`, e.g.
+  // Maasvallei Limburg on the BE/NL border) is listed under EVERY country it
+  // spans. It stays one record with one polygon and one slug, so ticking it
+  // on either side toggles the same entry in `filters.appellations`.
+  const COUNTRY_TREE = (() => {
+    const byCountry = new Map();
+    function push(cc, region, slug) {
+      let regions = byCountry.get(cc);
+      if (!regions) { regions = new Map(); byCountry.set(cc, regions); }
+      const arr = regions.get(region);
+      if (arr) arr.push(slug); else regions.set(region, [slug]);
+    }
     for (const slug in AOCS) {
-      const r = AOCS[slug].region || '';
-      if (!m.has(r)) m.set(r, []);
-      m.get(r).push(slug);
+      const rec = AOCS[slug];
+      const region = rec.region || '';
+      push(rec.country || '', region, slug);
+      for (const alias of rec.country_aliases || []) push(alias, region, slug);
     }
-    for (const arr of m.values()) {
-      arr.sort((a, b) => AOCS[a].name.localeCompare(AOCS[b].name, 'fr'));
+    function total(regions) {
+      let n = 0;
+      for (const arr of regions.values()) n += arr.length;
+      return n;
     }
-    return m;
+    // Countries by corpus weight (the ordering every other facet uses), then
+    // by localized name. Regions the same within their country, except the
+    // "no region" residue bucket, pinned last however big it is.
+    const ordered = new Map();
+    const countries = [...byCountry.entries()].sort((a, b) =>
+      total(b[1]) - total(a[1]) || countryLabel(a[0]).localeCompare(countryLabel(b[0]), 'fr'));
+    for (const [cc, regions] of countries) {
+      const sorted = new Map([...regions.entries()].sort((a, b) =>
+        (a[0] === '' ? 1 : 0) - (b[0] === '' ? 1 : 0) ||
+        b[1].length - a[1].length ||
+        regionLabel(a[0]).localeCompare(regionLabel(b[0]), 'fr')));
+      for (const arr of sorted.values()) {
+        arr.sort((a, b) => AOCS[a].name.localeCompare(AOCS[b].name, 'fr'));
+      }
+      ordered.set(cc, sorted);
+    }
+    return ordered;
   })();
 
-  function visibleSlugsInRegion(region) {
-    const all = REGION_SLUGS.get(region) || [];
+  function visibleSlugsInRegion(country, region) {
+    const regions = COUNTRY_TREE.get(country);
+    const all = (regions && regions.get(region)) || [];
     if (spiritsVisible()) return all;
     return all.filter(s => AOCS[s].is_wine !== false);
   }
 
-  function setRegionSelection(region, on) {
-    const slugs = visibleSlugsInRegion(region);
+  function visibleSlugsInCountry(country) {
+    const regions = COUNTRY_TREE.get(country);
+    if (!regions) return [];
+    const out = [];
+    for (const region of regions.keys()) {
+      for (const s of visibleSlugsInRegion(country, region)) out.push(s);
+    }
+    return out;
+  }
+
+  function setSlugSelection(slugs, on) {
     for (const s of slugs) {
       if (on) filters.appellations.add(s);
       else filters.appellations.delete(s);
     }
   }
 
-  function regionTriState(region) {
-    const slugs = visibleSlugsInRegion(region);
+  // The omnisearch indexes regions by NAME (its source is the global region
+  // facet), so picking one there selects that region in every country using
+  // the name — the one place Tokaj is treated as a single entry.
+  function setRegionNameSelection(region, on) {
+    for (const [cc, regions] of COUNTRY_TREE) {
+      if (regions.has(region)) setSlugSelection(visibleSlugsInRegion(cc, region), on);
+    }
+  }
+
+  function triState(slugs) {
     if (!slugs.length) return 'empty';
     let n = 0;
     for (const s of slugs) if (filters.appellations.has(s)) n++;
@@ -885,8 +944,9 @@
   // subzona, IT sottozona, DE Einzellage). One combined number implies a legal
   // precision it doesn't have — Burgundy reads 869 where the regulator
   // recognises 84 appellations carrying 785 complementary designations.
-  // Written by both the initial paint and the filter-driven refresh, so it
-  // lives here rather than being duplicated at either call site.
+  // Written by the initial paint and the filter-driven refresh, at both the
+  // country and the region row, so it lives here rather than being duplicated
+  // at each call site.
   function renderRegionCount(el, parents, subs) {
     if (!el) return;
     el.innerHTML = subs
@@ -902,37 +962,49 @@
     const el = document.getElementById('facet-appellations');
     if (!el) return;  // defensive null-guard
     const html = [];
-    for (const [region, allSlugs] of REGION_SLUGS) {
-      const slugs = spiritsVisible() ? allSlugs : allSlugs.filter(s => AOCS[s].is_wine !== false);
-      if (!slugs.length) continue;
-      const label = region ? regionLabel(region) : LABELS.meta_no_region;
-      const items = slugs.map(slug => {
-        const safeSlug = escapeAttr(slug);
-        const rec = AOCS[slug];
-        const nameHtml = nameWithLatin(rec);
-        const checked = filters.appellations.has(slug) ? ' checked' : '';
-        const openLbl = escapeAttr(fmt(LABELS.open_appellation_aria, { name: rec.name || slug }));
-        return `<label data-slug="${safeSlug}" data-name="${escapeAttr(searchableText(rec))}"><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span><button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></label>`;
-      }).join('');
-      let parentCount = 0;
-      for (const s of slugs) if (!AOCS[s].is_sub_denomination) parentCount++;
-      const subCount = slugs.length - parentCount;
-      const safeRegion = escapeAttr(region);
-      // Checkbox lives outside `<summary>` (sibling of `<details>`,
-      // not a descendant) so the nested-interactive-in-summary
-      // accessibility warning doesn't fire. Visual layout is restored
-      // via `.region-group-wrap`'s flex rule — checkbox + disclosure
-      // sit in the same row.
-      html.push(`<div class="region-group-wrap" data-region="${safeRegion}"><input type="checkbox" class="region-select" data-region="${safeRegion}" aria-label="${escapeAttr(LABELS.select_all_aria)}"><details class="region-group" data-region="${safeRegion}"><summary><span class="name">${escapeHtml(label)}</span><span class="count" data-parents="${parentCount}" data-subs="${subCount}"></span></summary><div class="region-items">${items}</div></details></div>`);
+    const selectAllAria = name => escapeAttr(`${LABELS.select_all_aria} — ${name}`);
+    for (const [cc, regions] of COUNTRY_TREE) {
+      const safeCountry = escapeAttr(cc);
+      const regionHtml = [];
+      let countryParents = 0;
+      let countryTotal = 0;
+      for (const region of regions.keys()) {
+        const slugs = visibleSlugsInRegion(cc, region);
+        if (!slugs.length) continue;
+        const items = slugs.map(slug => {
+          const safeSlug = escapeAttr(slug);
+          const rec = AOCS[slug];
+          const nameHtml = nameWithLatin(rec);
+          const checked = filters.appellations.has(slug) ? ' checked' : '';
+          const openLbl = escapeAttr(fmt(LABELS.open_appellation_aria, { name: rec.name || slug }));
+          return `<label data-slug="${safeSlug}" data-name="${escapeAttr(searchableText(rec))}"><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span><button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></label>`;
+        }).join('');
+        let parentCount = 0;
+        for (const s of slugs) if (!AOCS[s].is_sub_denomination) parentCount++;
+        countryParents += parentCount;
+        countryTotal += slugs.length;
+        const safeRegion = escapeAttr(region);
+        // Checkbox lives outside `<summary>` (sibling of `<details>`,
+        // not a descendant) so the nested-interactive-in-summary
+        // accessibility warning doesn't fire. Visual layout is restored
+        // via `.region-group-wrap`'s flex rule — checkbox + disclosure
+        // sit in the same row. Both levels carry `data-country`: a region
+        // name is only unique within its country.
+        regionHtml.push(`<div class="region-group-wrap" data-country="${safeCountry}" data-region="${safeRegion}"><input type="checkbox" class="region-select" data-country="${safeCountry}" data-region="${safeRegion}" aria-label="${selectAllAria(regionLabel(region))}"><details class="region-group" data-country="${safeCountry}" data-region="${safeRegion}"><summary><span class="name">${escapeHtml(regionLabel(region))}</span><span class="count" data-parents="${parentCount}" data-subs="${slugs.length - parentCount}"></span></summary><div class="region-items">${items}</div></details></div>`);
+      }
+      if (!regionHtml.length) continue;
+      const flag = COUNTRY_FLAG_EMOJI[cc] || '';
+      const flagHtml = flag ? `<span class="country-flag" aria-hidden="true">${flag}</span>` : '';
+      html.push(`<div class="country-group-wrap" data-country="${safeCountry}"><input type="checkbox" class="country-select" data-country="${safeCountry}" aria-label="${selectAllAria(countryLabel(cc))}"><details class="country-group" data-country="${safeCountry}"><summary>${flagHtml}<span class="name">${escapeHtml(countryLabel(cc))}</span><span class="count" data-parents="${countryParents}" data-subs="${countryTotal - countryParents}"></span></summary><div class="country-items">${regionHtml.join('')}</div></details></div>`);
     }
     el.innerHTML = html.join('');
-    el.querySelectorAll('.region-group > summary > .count').forEach(c => {
+    el.querySelectorAll('.region-group > summary > .count, .country-group > summary > .count').forEach(c => {
       renderRegionCount(c, +c.dataset.parents, +c.dataset.subs);
     });
     // Reapply current search visibility (so a tree rebuild during a typed
     // query keeps the filtered view).
     refreshFacetVisibility('facet-appellations', filters.q);
-    refreshRegionTriStates();
+    refreshTreeTriStates();
   }
 
   // Single delegated listener — buildAppellationFacet may run multiple
@@ -941,25 +1013,40 @@
   document.getElementById('facet-appellations')?.addEventListener('change', e => {
     const el = document.getElementById('facet-appellations');
     if (e.target.tagName !== 'INPUT') return;
-    if (e.target.classList.contains('region-select')) {
-      const region = e.target.dataset.region;
-      setRegionSelection(region, e.target.checked);
-      for (const inp of el.querySelectorAll(
-        `.region-group[data-region="${CSS.escape(region)}"] .region-items input[type=checkbox]`
-      )) {
+    // A bulk row (country or region) may share slugs with another country's
+    // subtree — a cross-border appellation is listed on both sides — so the
+    // checkbox re-sync sweeps the whole tree rather than the toggled subtree.
+    const syncItemCheckboxes = () => {
+      for (const inp of el.querySelectorAll('.region-items input[type=checkbox]')) {
         inp.checked = filters.appellations.has(inp.dataset.key);
       }
+    };
+    if (e.target.classList.contains('country-select')) {
+      const cc = e.target.dataset.country;
+      setSlugSelection(visibleSlugsInCountry(cc), e.target.checked);
+      syncItemCheckboxes();
+      if (e.target.checked) {
+        track('Filter Applied', { facet: 'country', value: cc || '(none)', locale: LANG });
+      }
+    } else if (e.target.classList.contains('region-select')) {
+      const region = e.target.dataset.region;
+      setSlugSelection(visibleSlugsInRegion(e.target.dataset.country, region), e.target.checked);
+      syncItemCheckboxes();
       if (e.target.checked) {
         track('Filter Applied', { facet: 'region', value: region || '(none)', locale: LANG });
       }
     } else {
       const k = e.target.dataset.key;
       if (e.target.checked) filters.appellations.add(k); else filters.appellations.delete(k);
+      // Mirror onto the twin row when the slug is listed under two countries.
+      for (const inp of el.querySelectorAll(`input[data-key="${CSS.escape(k)}"]`)) {
+        inp.checked = e.target.checked;
+      }
       if (e.target.checked) {
         track('Filter Applied', { facet: 'appellation', value: k, locale: LANG });
       }
     }
-    refreshRegionTriStates();
+    refreshTreeTriStates();
     applyFilter({ fit: true });
   });
 
@@ -996,51 +1083,66 @@
     }
   });
 
-  function refreshRegionTriStates() {
+  function refreshTreeTriStates() {
     const el = document.getElementById('facet-appellations');
     if (!el) return;
-    el.querySelectorAll('.region-group').forEach(group => {
-      const region = group.dataset.region;
-      // `.region-select` is a sibling of `.region-group` inside the
-      // `.region-group-wrap`, not a descendant. Reach via the parent.
-      const cb = (group.parentElement || group).querySelector('.region-select');
-      if (!cb) return;
-      const state = regionTriState(region);
-      cb.checked = state === 'checked';
-      cb.indeterminate = state === 'indeterminate';
-    });
+    // The bulk checkbox is a sibling of its `<details>` inside the wrap, not
+    // a descendant (see buildAppellationFacet) — reach it via the parent.
+    const paint = (selector, cls, slugsFor) => {
+      el.querySelectorAll(selector).forEach(group => {
+        const cb = (group.parentElement || group).querySelector(cls);
+        if (!cb) return;
+        const state = triState(slugsFor(group));
+        cb.checked = state === 'checked';
+        cb.indeterminate = state === 'indeterminate';
+      });
+    };
+    paint('.region-group', '.region-select',
+      g => visibleSlugsInRegion(g.dataset.country, g.dataset.region));
+    paint('.country-group', '.country-select',
+      g => visibleSlugsInCountry(g.dataset.country));
   }
 
   function refreshFacetVisibility(containerId, q) {
     const el = document.getElementById(containerId);
     if (!el) return;
     const nq = searchNormalize(q);
-    // Appellation tree: groups + labels with data-name dataset.
-    const groups = el.querySelectorAll('.region-group');
-    if (groups.length) {
-      groups.forEach(group => {
-        let visible = 0;
-        group.querySelectorAll('label').forEach(lbl => {
-          const match = !nq || lbl.dataset.name.includes(nq);
-          lbl.style.display = match ? '' : 'none';
-          if (match) visible++;
+    // Appellation tree: country groups > region groups > labels with a
+    // data-name dataset. Auto-expand groups that hold a match while
+    // searching, but re-collapse them when the query is cleared — tracking
+    // which groups WE opened so one the user expanded by hand stays open.
+    // (Was: open-on-search with no matching collapse, leaving every group
+    // expanded after clear.)
+    const setOpenState = (group, hasMatch) => {
+      if (nq) {
+        if (hasMatch && !group.open) { group.open = true; group.dataset.autoOpened = '1'; }
+      } else if (group.dataset.autoOpened) {
+        group.open = false;
+        delete group.dataset.autoOpened;
+      }
+    };
+    const showWrap = (group, wrapClass, visible) => {
+      const wrap = group.parentElement;
+      if (wrap && wrap.classList.contains(wrapClass)) wrap.style.display = visible ? '' : 'none';
+      else group.style.display = visible ? '' : 'none';
+    };
+    const countryGroups = el.querySelectorAll('.country-group');
+    if (countryGroups.length) {
+      countryGroups.forEach(countryGroup => {
+        let countryVisible = 0;
+        countryGroup.querySelectorAll('.region-group').forEach(group => {
+          let visible = 0;
+          group.querySelectorAll('label').forEach(lbl => {
+            const match = !nq || lbl.dataset.name.includes(nq);
+            lbl.style.display = match ? '' : 'none';
+            if (match) visible++;
+          });
+          showWrap(group, 'region-group-wrap', visible);
+          setOpenState(group, visible);
+          countryVisible += visible;
         });
-        const wrap = group.parentElement;
-        if (wrap && wrap.classList.contains('region-group-wrap')) {
-          wrap.style.display = visible ? '' : 'none';
-        } else {
-          group.style.display = visible ? '' : 'none';
-        }
-        // Auto-expand matching groups while searching, but re-collapse them
-        // when the query is cleared — tracking which groups WE opened so a
-        // group the user expanded by hand stays open. (Was: open-on-search
-        // with no matching collapse, leaving every group expanded after clear.)
-        if (nq) {
-          if (visible && !group.open) { group.open = true; group.dataset.autoOpened = '1'; }
-        } else if (group.dataset.autoOpened) {
-          group.open = false;
-          delete group.dataset.autoOpened;
-        }
+        showWrap(countryGroup, 'country-group-wrap', countryVisible);
+        setOpenState(countryGroup, countryVisible);
       });
       return;
     }
@@ -1277,13 +1379,31 @@
     for (const k of filters.classifications) chips.push({ kind: 'classification', key: k, label: CLASS_LABELS[k] || k });
     for (const k of filters.grapesAll) chips.push({ kind: 'grapeAll', key: k, label: grapeName(k) });
     if (filters.mainGrapeOnly) chips.push({ kind: 'mainGrapeOnly', key: '1', label: LABELS.main_grape_only_label });
+    // Collapse a fully-selected subtree into one chip — a whole country first,
+    // else each of its whole regions. The flag prefix disambiguates region
+    // names shared across a border, which the tree does by nesting.
     const collapsed = new Set();
-    for (const [region] of REGION_SLUGS) {
-      const slugs = visibleSlugsInRegion(region);
-      if (!slugs.length) continue;
-      if (slugs.every(s => filters.appellations.has(s))) {
-        chips.push({ kind: 'region', key: region, label: region ? regionLabel(region) : LABELS.meta_no_region });
-        for (const s of slugs) collapsed.add(s);
+    for (const [cc, regions] of COUNTRY_TREE) {
+      const flag = COUNTRY_FLAG_EMOJI[cc] || '';
+      const inCountry = visibleSlugsInCountry(cc);
+      if (inCountry.length > 1 && inCountry.every(s => filters.appellations.has(s))) {
+        chips.push({
+          kind: 'country', key: cc, country: cc,
+          label: `${flag} ${countryLabel(cc)}`.trim(),
+        });
+        for (const s of inCountry) collapsed.add(s);
+        continue;
+      }
+      for (const region of regions.keys()) {
+        const slugs = visibleSlugsInRegion(cc, region);
+        if (slugs.length < 2) continue;
+        if (slugs.every(s => filters.appellations.has(s))) {
+          chips.push({
+            kind: 'region', key: region, country: cc,
+            label: `${flag} ${regionLabel(region)}`.trim(),
+          });
+          for (const s of slugs) collapsed.add(s);
+        }
       }
     }
     for (const slug of filters.appellations) {
@@ -1292,17 +1412,20 @@
       if (rec) chips.push({ kind: 'appellation', key: slug, label: rec.name });
     }
     el.innerHTML = chips.map(c => {
-      const cls = c.kind === 'region' ? 'filter-chip region-chip' : 'filter-chip';
+      const bulk = c.kind === 'region' || c.kind === 'country';
+      const cls = bulk ? 'filter-chip region-chip' : 'filter-chip';
       const removeAria = fmt(LABELS.remove_filter_aria, { label: c.label });
-      return `<span class="${cls}" data-kind="${escapeAttr(c.kind)}" data-key="${escapeAttr(c.key)}"><span>${escapeHtml(c.label)}</span><button type="button" aria-label="${escapeAttr(removeAria)}">×</button></span>`;
+      return `<span class="${cls}" data-kind="${escapeAttr(c.kind)}" data-key="${escapeAttr(c.key)}" data-country="${escapeAttr(c.country || '')}"><span>${escapeHtml(c.label)}</span><button type="button" aria-label="${escapeAttr(removeAria)}">×</button></span>`;
     }).join('');
   }
 
   function regionsSelectedCount() {
     let n = 0;
-    for (const [region] of REGION_SLUGS) {
-      const st = regionTriState(region);
-      if (st === 'checked' || st === 'indeterminate') n++;
+    for (const [cc, regions] of COUNTRY_TREE) {
+      for (const region of regions.keys()) {
+        const st = triState(visibleSlugsInRegion(cc, region));
+        if (st === 'checked' || st === 'indeterminate') n++;
+      }
     }
     return n;
   }
@@ -1385,24 +1508,36 @@
     const appEl = document.getElementById('facet-appellations');
     if (appEl) {
       const except = new Set(['appellations']);
-      appEl.querySelectorAll('.region-group').forEach(group => {
-        let visible = 0;
-        let visibleParents = 0;
-        group.querySelectorAll('label').forEach(lbl => {
-          const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
-          const slug = inp.dataset.key; const rec = AOCS[slug];
-          const reachable = rec ? matchesExceptFacets(rec, slug, except) : false;
-          const hide = !reachable && !inp.checked;
-          lbl.classList.toggle('facet-unavailable', hide);
-          if (!hide) {
-            visible++;
-            if (!(rec && rec.is_sub_denomination)) visibleParents++;
-          }
+      appEl.querySelectorAll('.country-group').forEach(countryGroup => {
+        let countryVisible = 0;
+        let countryParents = 0;
+        countryGroup.querySelectorAll('.region-group').forEach(group => {
+          let visible = 0;
+          let visibleParents = 0;
+          group.querySelectorAll('label').forEach(lbl => {
+            const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
+            const slug = inp.dataset.key; const rec = AOCS[slug];
+            const reachable = rec ? matchesExceptFacets(rec, slug, except) : false;
+            const hide = !reachable && !inp.checked;
+            lbl.classList.toggle('facet-unavailable', hide);
+            if (!hide) {
+              visible++;
+              if (!(rec && rec.is_sub_denomination)) visibleParents++;
+            }
+          });
+          (group.parentElement || group).classList.toggle('facet-unavailable', visible === 0);
+          renderRegionCount(
+            group.querySelector(':scope > summary > .count'),
+            visibleParents, visible - visibleParents,
+          );
+          countryVisible += visible;
+          countryParents += visibleParents;
         });
-        (group.parentElement || group).classList.toggle('facet-unavailable', visible === 0);
+        (countryGroup.parentElement || countryGroup)
+          .classList.toggle('facet-unavailable', countryVisible === 0);
         renderRegionCount(
-          group.querySelector(':scope > summary > .count'),
-          visibleParents, visible - visibleParents,
+          countryGroup.querySelector(':scope > summary > .count'),
+          countryParents, countryVisible - countryParents,
         );
       });
     }
@@ -1509,13 +1644,13 @@
       refreshAllGrapeChipFilters();
       applyFilter({ fit: true });
     } else if (type === 'region') {
-      setRegionSelection(key, true);
+      setRegionNameSelection(key, true);
       // Reflect the new selection in the appellation-tree checkboxes.
       const appEl = document.getElementById('facet-appellations');
       if (appEl) appEl.querySelectorAll('input[type=checkbox]').forEach(inp => {
         if (inp.dataset.key) inp.checked = filters.appellations.has(inp.dataset.key);
       });
-      refreshRegionTriStates();
+      refreshTreeTriStates();
       track('Omnisearch Result Picked', { type: 'region', locale: LANG });
       applyFilter({ fit: true });
     } else if (type === 'style') {
