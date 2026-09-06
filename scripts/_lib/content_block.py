@@ -55,6 +55,7 @@ STUB_DOC_NAMES = {
     "be": "enig document / document unique",
     "nl": "enig document",
     "mt": "single document",
+    "gb": "product specification",
     "ch": "règlement cantonal",
 }
 
@@ -470,6 +471,7 @@ _EU_DOC_TERM = {
     "hu": "egységes dokumentum", "ro": "document unic", "bg": "единен документ",
     "gr": "ενιαίο έγγραφο", "cy": "ενιαίο έγγραφο", "sk": "jednotný dokument",
     "cz": "jednotný dokument", "nl": "enig document", "mt": "single document",
+    "gb": "product specification",
 }
 
 # national-spec source-org token → human regulator name (the literal token
@@ -583,6 +585,10 @@ def _provenance_source(rec: dict, ctx: RenderCtx) -> tuple[str, str, bool, str] 
         if s.get("eur_lex_url") and has_eambrosia:
             doc = "enig document" if s.get("source_lang") == "nl" else "document unique"
             return (eambrosia_reg, doc, False, extra)
+        return None
+    if country == "gb":
+        if s.get("gov_uk_spec_url"):
+            return ("DEFRA", "product specification", False, extra)
         return None
     if country in ("at", "nl", "mt"):
         return eu_fallback()

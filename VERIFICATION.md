@@ -87,7 +87,7 @@ upstream gap. Findings:
 | 1 | **Synonym / composite-name fold** | Bourg ↔ "Côtes de Bourg, Bourg et Bourgeais"; Corse ↔ "Vin de Corse ou Corse" | None — same wines, INAO uses long composite, eAmbrosia uses short form. Improve matcher to compare across all `protectedNames` not just `protectedNames[0]`. |
 | 2 | **Bordeaux umbrella rollup** | Blaye, Sainte-Foy-Bordeaux | None — eAmbrosia tracks Blaye / Sainte-Foy-Bordeaux as separate PDOs (PDO-FR-A0712, A0407); INAO rolls them under id_appellation=685 "Côtes de Bordeaux" as DGCs. Same wines, modeling difference. |
 | 3 | ~~**Parent-detection bug (4 AOCs)** ⚠️ Alsace (id=1), Blagny (id=136), Comté Tolosan (id=861), Fiefs Vendéens (id=1028)~~ | **Resolved 2026-05-17** | Stage 02's parent-detection used strict `denomination == appellation` equality and fell back to `denoms[0]` when it failed — the fallback row was then re-emitted as a DGC, clobbering the parent's index entry. Replaced with a `_is_parent_denom` helper that folds synonym order ("Alsace" vs "Alsace ou Vin d'Alsace"), case ("Comté Tolosan" vs "Comté tolosan"), and composite forms ("Blagny" vs "Blagny ou Blagny Côte de Beaune") via the existing `candidate_keys()` normaliser. When no SIQO row matches at all (Fiefs Vendéens — all 5 rows are DGCs), a parent is synthesized from the cahier header. DGC loop now skips by chosen parent's `id_denomination_geo`, not by strict equality. The bug also hit 3 cider/spirit AOCs (id=335 Calvados Domfontais, id=553 Cidre de Bretagne, id=1268 Euskal Sagardoa) — 7 orphans total, now 0. Also fixed a latent key-collision bug where `index[id_app]` fallback could clash with a same-numeric `id_denomination_geo` from another appellation (Fiefs Vendéens id_app=1028 vs Pommard DGC "Clos de la Commaraine" id_denom=1028) — synthetic-parent index entries now use `f"app:{id_app}"` keys. See `scripts/02_extract_cahiers.py:_is_parent_denom`. |
-| 4 | **Missing from INAO SIQO entirely** | Cabernet de Saumur (PDO-FR-A0257), Côtes de Blaye (PDO-FR-A0271) | Upstream gap. Both exist in eAmbrosia but not in `raw/inao/siqo-referentiel.csv` (likely retired/merged on the INAO side without flowing through to the EU register). Curator follow-up: confirm via INAO product pages whether these are still in force, then either pin via `manual_overrides.json` or annotate. |
+| 4 | **Missing from INAO SIQO entirely** | Cabernet de Saumur (PDO-FR-A0257), Côtes de Blaye (PDO-FR-A0271) | ✅ **Resolved 2026-08-26 (web-research pass): both RETIRED — intentionally absent, no pinning.** *Cabernet de Saumur*: suppressed July 2016, folded into AOC Saumur as Saumur rosé — Arrêté du 19 juillet 2016 (JORF 29/07/2016), art. 2 abrogates Décret n° 2011-1360 (abrogation banner at legifrance.gouv.fr/loda/id/JORFTEXT000024717966); INAO product page 8125 is 404. *Côtes de Blaye*: not claimed since 2015, removed from INAO's AOC list (national retirement by cessation, no abrogation décret found); EU cancellation application **PDO-FR-A0271-CANCEL** filed 13/01/2026, status "Applied" in eAmbrosia as of 2026-08-26 (likely OJ notice C/2026/2994 — EUR-Lex WAF-blocked, confirm in a browser). Both eAmbrosia `registered` rows are stale-register artifacts (the Austrian-PDO precedent). |
 
 Two wines exist in our pipeline as `status=registered` parents but in
 eAmbrosia as `status=applied` (not yet registered):
@@ -815,4 +815,72 @@ grapes; 8 with terroir facts.
 .venv/bin/python scripts/04_build_maps.py
 .venv/bin/python scripts/audit_cy_coverage.py       # 11 wines, 7 figshare + 4 district-union, 11/11 grapes
 # Independent check: eAmbrosia register UI, filter country=Cyprus + Wine.
+```
+
+## United Kingdom (GB) — 2026-09-06
+
+**Independent cross-check** of the corpus count against the regulator's own
+register, which for the UK is *not* eAmbrosia: since Brexit the authority is
+the **GOV.UK "protected food and drink names" register** run by DEFRA.
+
+- Source of truth queried directly (not via the cached index):
+  `https://www.gov.uk/api/search.json?filter_format=protected_food_drink_name&filter_register=wines&filter_country_of_origin=united-kingdom`
+  → **7 UK wine entries**, of which **6 `status=registered`** and 1
+  `status=applied-for` (*The Crouch Valley*, PDO, applied 2023-03-06 — still
+  in assessment, correctly excluded from the corpus).
+- Corpus: **6 wines — 4 PDO** (`PDO-GB-A1585` English, `PDO-GB-A1587` Welsh,
+  `PDO-GB-02365` Sussex, `PDO-GB-N1636` Darnibole) **+ 2 PGI**
+  (`PGI-GB-A1589` English Regional, `PGI-GB-A1590` Welsh Regional).
+  Matches WineGB's public PDO/PGI page.
+- File numbers cross-checked against `raw/eambrosia-register/gi-index.json`
+  (countryId=gb, qualityProductType=Wine): all 6 present there too — the
+  five pre-Brexit names retained under the Withdrawal Agreement, Sussex
+  added 2025-01-31 under the UK-EU agreement. The GOV.UK register itself
+  publishes no file number, hence the bridge in stage 00.
+- **Specification coverage: 6/6.** Every registered wine ships a public
+  product specification from `assets.publishing.service.gov.uk` (5 PDF +
+  Sussex's .docx). No stub tier, no national-spec fallback layer, no WAF.
+- Grapes: **6/6 with a resolved roster** — English/Welsh PDO 81 each,
+  the two Regional PGIs 85 each, Sussex 28, Darnibole 1 (100% Bacchus,
+  as its specification states). Spot-check: the Sussex sparkling roster
+  (Chardonnay, Pinot Noir, Pinot Meunier, Arbanne, Pinot Gris, Pinot
+  Blanc, Petit Meslier, Pinot Noir Précoce) matches the specification's
+  §7.2 verbatim.
+- Geometry: **6/6 on the map**, all from ONS Open Geography (OGL v3.0) —
+  Bétard 2022 is an EU PDO layer and has no `PDO-GB-*` rows.
+  Areas cross-checked against published administrative figures:
+
+  | record | resolved km² | published km² |
+  |---|---:|---:|
+  | English / English Regional | 130 522 | 130 279 (England) |
+  | Welsh / Welsh Regional | 20 790 | 20 779 (Wales) |
+  | Sussex | 3 788 | 3 782 (E. Sussex 1 709 + W. Sussex 1 991 + Brighton & Hove 82) |
+  | Darnibole | 0.061 | "whole 5 hectare area" (its specification) |
+
+- **Darnibole placement check** (its boundary is reconstructed — see
+  CLAUDE.md): the resolved centroid sits 502 m from the ONS centroid of
+  Camel Valley's postcode PL30 5LG and 918 m from Nanstallon village, and
+  falls inside the English PDO polygon. An EU-DEM 25 m transect confirms
+  the parcels sit at 47–80 m on a ~13 % south-facing slope with the valley
+  floor at 11–14 m immediately south — matching the specification's "steep
+  south facing slope" bounded by the River Camel's old bed.
+- Terroir-fact bullets (02d, country=gb, English source → fr/es/nl):
+  **51 bullets across 6/6 wines** (5–10 each), Anthropic batch;
+  49 of 51 grounded in the specification itself (`provenance=cahier`),
+  which is the expected shape for a cahier-primary country.
+
+**Re-run recipe**:
+
+```
+.venv/bin/python scripts/gb/00_fetch_data.py        # 6 registered (+1 pending), ONS boundaries
+.venv/bin/python scripts/gb/01_fetch_specs.py       # 6 specs (5 pdf + 1 docx)
+.venv/bin/python scripts/gb/02_extract_specs.py     # 6/6 extracted, 0 stubs
+.venv/bin/python scripts/02b_fetch_aoc_lexicon.py --lang en --source raw/gb/specs-extracted
+.venv/bin/python scripts/gb/02d_extract_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/gb/02e_translate_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/gb/03_generate_wiki.py
+.venv/bin/python scripts/04_build_maps.py
+.venv/bin/python scripts/audit_gb_coverage.py       # 6 wines, 0 problems
+# Independent check: https://www.gov.uk/protected-food-drink-names
+#   → filter Register = "Wines", Country of origin = "United Kingdom".
 ```

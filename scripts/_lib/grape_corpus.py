@@ -50,6 +50,26 @@ _SOURCES: tuple[tuple[str, Path], ...] = (
     ("ch", ROOT / "raw" / "ch" / "dokumente-extracted"),
     # Malta — source language is English (EU single documents are EN).
     ("en", ROOT / "raw" / "mt" / "dokumente-extracted"),
+    ("en", ROOT / "raw" / "gb" / "specs-extracted"),
+    ("hu", ROOT / "raw" / "hu" / "dokumentumok-extracted"),
+    ("nl", ROOT / "raw" / "nl" / "dokumenten-extracted"),
+    # Belgium — per-record source_lang (nl Flemish / fr Walloon); nl covers
+    # the majority incl. the cross-border Maasvallei.
+    ("nl", ROOT / "raw" / "be" / "dokumenten-extracted"),
+    ("fr", ROOT / "raw" / "lu" / "cahier-extracted"),
+    ("el", ROOT / "raw" / "cy" / "dokumenti-extracted"),
+    # National-spec sidecars whose rosters stage 04 merges into the map
+    # (the SI/HR precedent above). The cz/sk/gr/ro register-fiches-extracted
+    # dirs stay out: stage 04 reads only their terroir text.
+    ("el", ROOT / "raw" / "cy" / "national-specs-extracted"),
+    ("bg", ROOT / "raw" / "bg" / "national-specs-extracted"),
+    # "gr" matches the primary gr row above so the per-slug dominant-lang
+    # vote doesn't split (the whole column mixes country codes and locales
+    # — el/de/sl/cs would be the locale-correct values; unknown codes fall
+    # through the 02b-translate source chain harmlessly).
+    ("gr", ROOT / "raw" / "gr" / "national-specs-extracted"),
+    ("sk", ROOT / "raw" / "sk" / "national-specs-extracted"),
+    ("ro", ROOT / "raw" / "ro" / "national-specs-extracted"),
 )
 
 

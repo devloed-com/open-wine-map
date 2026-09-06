@@ -4102,6 +4102,250 @@ template.py` writes a 1-entry queue for it — the curator's only job is
 to pin a public, licence-clear EU-OJ English SINGLE-DOCUMENT page if
 the Commission ever publishes one, then re-run mt/01 → mt/02 → stage 04.
 
+## United Kingdom pipeline (`scripts/gb/`)
+
+Country #19, and the first **post-Brexit** register in the corpus: the
+UK is no longer part of the EU GI scheme, so *both* of the spines every
+other country leans on are unavailable. eAmbrosia still lists the UK's
+pre-2021 names as legacy rows, but Sussex — registered in 2022 under the
+UK scheme — is not an EU registration at all; and Bétard 2022 is an **EU**
+PDO layer that carries no `PDO-GB-*` geometry. Both are replaced by
+UK-domestic sources.
+
+Corpus: **6 registered wine GIs** — 4 PDO (English, Welsh, Sussex,
+Darnibole) + 2 PGI (English Regional, Welsh Regional). The country code
+is `gb` (ISO 3166-1 alpha-2, matching the register's own `PDO-GB-*`
+identifiers); `source_lang` is `"en"`, so GB joins Malta as an
+English-source corpus needing no translation for the canonical `/`
+surface.
+
+**The UK has no stub tier.** Every registered wine ships a public
+product specification, which makes it the only country in the corpus at
+6/6 extraction with no national-spec fallback layer, no curator queue
+for missing documents, and no `01b_solve_waf.py` — GOV.UK serves the
+register and its attachments without a WAF, a cookie gate or a
+JavaScript challenge.
+
+Spine: the **GOV.UK "protected food and drink names" register**. DEFRA
+publishes the UK GI schemes as a structured GOV.UK *finder*, queryable
+through the site's own search API:
+
+    https://www.gov.uk/api/search.json
+       ?filter_format=protected_food_drink_name
+       &filter_register=wines
+       &filter_country_of_origin=united-kingdom
+
+Each hit resolves to a per-GI content-API document
+(`/api/content/protected-food-drink-names/<slug>`) carrying typed
+metadata — protection type, status, application and UK/EU registration
+dates, reason for protection — plus the **product specification** as an
+attachment. A 7th name, *The Crouch Valley* (PDO, applied 2023-03-06),
+is still in assessment and is filtered out by `status=registered` the
+way the eAmbrosia countries filter theirs; `audit_gb_coverage.py`
+reports it so the queue stays visible.
+
+The register publishes **no GI file number** (only Sussex's
+specification states one, in its own text: "PDO GB number: W0006").
+Since the rest of the corpus keys on `PDO-xx-*` / `PGI-xx-*`, stage 00
+bridges slug → file number via `_FILE_NUMBER_BY_SLUG`, verified against
+`raw/eambrosia-register/gi-index.json` (all six UK wines are also listed
+in the EU register — the five pre-Brexit names under the Withdrawal
+Agreement, Sussex added 2025-01-31 under the UK-EU agreement).
+
+| Script | Reads | Writes |
+|---|---|---|
+| gb/00_fetch_data.py | (network: GOV.UK search + content API, ONS Open Geography) | raw/gb/gov-uk/{index,manifest}.json, raw/gb/ons/{countries,counties}.geojson + manifest.json |
+| gb/01_fetch_specs.py | raw/gb/gov-uk/index.json | raw/gb/specs/*.{pdf,docx} + manifest.json |
+| gb/02_extract_specs.py | raw/gb/specs/*.{pdf,docx} | raw/gb/specs-extracted/*.json + _index.json + raw/gb/extraction-unknowns.json |
+| gb/02d_extract_terroir_facts.py | raw/gb/specs-extracted/*.json + raw/wikipedia/aocs/en/ | raw/terroir-facts/*.json (country="gb") + manifest-gb.json |
+| gb/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="gb") | raw/translations/terroir-facts/<fr\|es\|nl>/*.json |
+| gb/03_generate_wiki.py | raw/gb/specs-extracted/*.json | wiki/<slug>.md (per GB record) + merges GB entries into wiki/_index.json |
+| audit_gb_coverage.py | raw/gb/{gov-uk,specs,specs-extracted}/ + raw/terroir-facts/ | (stdout — coverage table + curator queue) |
+
+GB-specific notes:
+
+- `kind` is `"DOP"` / `"IGP"`. The UK register spells these out in
+  English ("Protected Designation of Origin (PDO)"), but the corpus
+  convention is the DOP/IGP pair — and concretely, the map's
+  polygon-colour expression keys on `kind == 'IGP'`, so a literal
+  "PGI" would silently mis-colour both UK PGIs as PDOs.
+- **Three parser templates**, because the six specifications were
+  written under three regimes
+  ([scripts/_lib/gb/spec.py](scripts/_lib/gb/spec.py)):
+  - **`defra-pfn-2011`** (4 records) — the December-2011 DEFRA
+    specifications. A `PROTECTED NAME:` / `DEMARCATION:` header block,
+    then one `PART n: <WINE CATEGORY>` block per grapevine category
+    (`STILL WINE`, `QUALITY SPARKLING WINE`, plus a closing `GENERAL
+    PROVISIONS` part that carries no wine). Each wine part opens with
+    the link narrative, then `SPECIFICATION` and a run of upper-case
+    subsections, of which `VINE VARIETIES` and `MAXIMUM YIELDS` are
+    read. These carry the corpus's longest single variety rosters —
+    81-85 resolved slugs each.
+  - **`defra-pfn-application`** (Darnibole) — the 2017 EU application
+    form: a numbered outline (`1. Details of protection` … `7.
+    Demarcated area`) with lettered sub-items. It has **no link
+    section** — the document stops after the demarcated area and its
+    plan — so the terroir narrative is taken from `7 b) Definition of
+    the demarcated area`, which is where the slate subsoil, the slope
+    and the aspect are actually described.
+  - **`uk-gi-single-document`** (Sussex) — the only post-Brexit
+    UK-scheme registration, and the only `.docx`. A numbered EU-style
+    single document with a proper `9. Link` section (9.1 natural + human
+    factors, 9.2 characteristics, 9.3 causal link); varieties live in
+    `7.2 Viticulture practices`, listed separately for sparkling and
+    still. Parsed via the stdlib zip → `word/document.xml` route the HR
+    pipeline already uses.
+- **Roster parsing.** The still-wine rosters are semicolon-separated and
+  wrap across PDF lines; the sparkling ones are bulleted one-per-line
+  (`pdftotext` renders the Wingdings bullet as U+F0B7); Sussex's are
+  comma-separated with a trailing "X and Y". `grape_candidates` groups
+  contiguous roster lines into *runs* and picks the join per run — a
+  space where the lines already carry separators (so "Black Hamburg;
+  Blau\nPortugueser" is not split into "Blau" + "Portugueser"), a
+  separator where they do not. Prose lines are classified out by the
+  shape of their split items, so Sussex's record-keeping and
+  yield-dispensation paragraphs never reach the matcher.
+- **Two source typos are repaired structurally**, not via `GRAPE_ALIAS`,
+  because a stray comma and a line break split one variety name into two
+  before any alias could apply: Sussex's roster reads "… Pinot Noir,
+  Pinot Noir, Précoce, Regent …" for *Pinot Noir Précoce*, and the DEFRA
+  rosters drop the semicolon between *Gamay* and *Garanoir* (their own
+  alphabetical order — Gamaret, Gamay, Garanoir, Gewurztraminer — proves
+  these are two entries).
+- **New lexicon entries.** The UK rosters spell several varieties in
+  forms no other country uses; VIVC ids verified 2026-09: Cascade
+  (#2139, noir), Madeleine Angevine (#7062, blanc), Madeleine Sylvaner
+  (#7070, blanc), Roter Veltliner (#12931 VELTLINER ROT, rose — a
+  *distinct* cultivar from Frühroter Veltliner, which the fuzzy matcher
+  scores at 88), Frühgipfler (#4269, blanc — the UK lists it under its
+  synonym *Senator*), Triomphe d'Alsace (#12650, noir), plus aliases for
+  "Blau Portugueser" (#9620) and "Elbling White" (#3865). *Gagarin Blue*
+  has no VIVC accession — a black Russian/Caucasus cultivar grown
+  outdoors in the UK, colour from the RHS plant register.
+- Grape roles: no UK specification splits principal from accessory, so
+  every match resolves as `principal` (the PT/IT/HR/BG/SK convention).
+- v1 models the 6 wine GIs as a **flat corpus**. Sussex and Darnibole
+  sit geographically inside the English PDO's territory but are
+  first-class PDOs on the register rather than sub-denominations of it —
+  Darnibole's own specification makes the point explicitly ("It
+  qualified under the 'English' PDO last year, but is considered unique
+  and sufficiently different so as to merit its own PDO") — so they are
+  siblings, the way the CZ podoblasti are siblings of Čechy / Morava.
+- Region facet = the **home nation** the specification demarcates the GI
+  to (England / Wales), which is the register's own `DEMARCATION` tier
+  ([scripts/_lib/gb/region.py](scripts/_lib/gb/region.py)). Native form,
+  not gettext-translated.
+- Stage 02d/02e wire terroir-fact extraction + translation for GB. Unlike
+  Malta — the other English-source corpus, whose amendment
+  communications carry no link section — every UK specification carries a
+  real terroir narrative, so GB uses the **standard cahier-primary**
+  dual-source model rather than the Wikipedia-primary CH/MT one. A
+  missing Wikipedia article is not disqualifying: the specification's own
+  link text grounds the record. 02e targets fr/es/nl.
+
+### GB geometry resolution chain (stage 04)
+
+Bétard 2022 carries no `PDO-GB-*` rows, so GB resolves entirely against
+**ONS Open Geography** boundaries (Open Government Licence v3.0; "Source:
+Office for National Statistics"; "Contains OS data © Crown copyright and
+database right"). That is a better fit than Bétard would have been
+anyway: every UK wine GI is demarcated to whole administrative units
+named in its own specification. BGC ("generalised, clipped to the
+coastline") is the generalisation fetched — full-resolution BFC is
+several times larger with no visible gain at the zooms this corpus
+renders.
+
+Per GB record, in priority order
+([scripts/_lib/gb/geometry.py](scripts/_lib/gb/geometry.py); `geom_source`
+records the choice):
+
+1. **`ons-country`** — the England / Wales whole-country polygon, for the
+   four national GIs (English + Welsh PDO, English + Welsh Regional PGI),
+   whose `DEMARCATION` field is literally `ENGLAND` / `WALES`.
+2. **`ons-county-union`** — Sussex, whose specification demarcates "the
+   administrative boundaries of the counties of East and West Sussex".
+   Brighton and Hove is a unitary authority carved out of East Sussex in
+   1997 and sits between the two, so the union of the three CTYUAs
+   reconstructs the ceremonial Sussex the specification's own map shows.
+3. **`pdo-plan-parcel-hull-approx`** — Darnibole (see below).
+4. **`stub-no-geometry`** — last resort; not hit in v1, all 6 resolve.
+
+### Darnibole — a boundary reconstructed from the specification's plan
+
+`PDO-GB-N1636` Darnibole is a single-vineyard PDO at Camel Valley,
+Nanstallon (Cornwall). Its specification defines the area **narratively**
+— "bordered to the West by a marked soil change to alluvial sand (the old
+River Camel river bed) … The disused railway (now the Camel Trail)
+demarcates the Southern boundary" — with no coordinates, and no public
+polygon of it exists anywhere.
+
+What the specification *does* carry is a **"Plan of demarcated area"**
+(page 5): an OS-based Rural Payments Agency land-parcel map with the PDO
+boundary drawn in red over numbered field parcels, each labelled "Vines
+planted" / "Not yet planted". Those parcel numbers are not arbitrary ids
+— under the OS/RPA convention a field parcel is identified by the
+**four-figure National Grid reference of its centroid within its 1 km
+grid square** (two digits of easting then two of northing, each in units
+of 10 m), so parcel `7985` sits at 790 m E, 850 m N inside its square.
+
+[scripts/_lib/gb/darnibole.py](scripts/_lib/gb/darnibole.py) reconstructs
+an approximate boundary from that: the convex hull of the centroids of
+the seven parcels the red line encloses. Anchoring the square (SX 03 67 →
+BNG base E 203000 / N 67000) was verified three ways:
+
+1. **Internal consistency.** The decoded north→south and west→east order
+   reproduces the plan's layout exactly, including the 1 km grid line
+   visible on the plan between parcels 5107/8101 (N 68xxx) and 5095
+   (N 67950).
+2. **Terrain.** An elevation transect north from the block (EU-DEM 25 m)
+   puts the valley floor at 11–14 m over N 67300–67400 and climbs
+   steadily to 96 m by N 68100. The seven parcels sit at 47–80 m on a
+   ~13 % south-facing slope immediately above the old river bed —
+   precisely the specification's "steep south facing slope", bounded
+   south by the River Camel's old bed and north by land "above the
+   optimum thermal band".
+3. **Address.** The ONS centroid of Camel Valley's postcode (PL30 5LG) is
+   E 203164 N 67751 — on the same slope, ~330 m west of the block.
+
+The hull spans E 203490–203890 / N 67680–67950 and measures **6.1 ha**
+against the specification's declared "whole 5 hectare area" — the right
+size in the right place, with no arbitrary buffer parameter. It remains a
+reconstruction: it interpolates between parcel centroids rather than
+tracing the red line, so its edges fall inside the true boundary by up to
+roughly half a field. The record carries `geom_approximate: True`, and
+the map panel discloses it ("Aire approchée — reconstituée à partir des
+références parcellaires du plan de l'aire délimitée annexé au cahier des
+charges ; ce n'est pas une limite officielle.") through the same
+`approx-line` mechanism the FR cadastre-lieu-dit DGCs use.
+
+### Curator workflow for the UK
+
+There is no missing-document queue. The two things that can need
+attention:
+
+1. **A new registration.** When a pending application is granted (The
+   Crouch Valley is the one in flight), re-running stage 00 picks it up
+   automatically — except for its file number, which must be added to
+   `_FILE_NUMBER_BY_SLUG` in
+   [scripts/gb/00_fetch_data.py](scripts/gb/00_fetch_data.py); stage 00
+   warns loudly when a registered wine has none, because region and
+   geometry both key on it. A new PDO will also need a geometry entry in
+   `GB_COUNTRY_TERRITORY` / `GB_COUNTY_TERRITORY`.
+2. **A rotated attachment URL.** GOV.UK asset URLs carry an opaque media
+   id; stage 00 re-reads them from the register on every run, so a
+   rotation is picked up by re-running 00 → 01 → 02.
+
+```
+.venv/bin/python scripts/gb/00_fetch_data.py
+.venv/bin/python scripts/gb/01_fetch_specs.py
+.venv/bin/python scripts/gb/02_extract_specs.py
+.venv/bin/python scripts/02b_fetch_aoc_lexicon.py --lang en --source raw/gb/specs-extracted
+.venv/bin/python scripts/gb/02d_extract_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/gb/02e_translate_terroir_facts.py --batch --provider anthropic
+.venv/bin/python scripts/gb/03_generate_wiki.py
+.venv/bin/python scripts/04_build_maps.py
+```
+
 ## Batch API (02b-grapes / 02c / 02d / 02e)
 
 The LLM stages — `02b_translate_grapes` (grape-tooltip translation),

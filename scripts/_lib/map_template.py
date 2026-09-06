@@ -142,6 +142,11 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "(commune de {commune}, {source})."
         ),
         "geom_approx_cadastre_source_label": _("cadastre.data.gouv.fr"),
+        "geom_approx_pdo_plan": _(
+            "Aire approchée — reconstituée à partir des références "
+            "parcellaires du plan de l'aire délimitée annexé au cahier des "
+            "charges ; ce n'est pas une limite officielle."
+        ),
         "stack_header": _("{n} appellations à ce point"),
         "stack_cycle_hint": _("Cliquer à nouveau pour parcourir les autres"),
         "src_cahier": _("Cahier des charges (BO Agri, PDF)"),
@@ -160,6 +165,8 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_eambrosia_id": _("Numéro de dossier"),
         "src_cantonal_reglement": _("Règlement cantonal sur la vigne et le vin"),
         "src_ofag_repertoire": _("Répertoire suisse des AOC (OFAG/BLW)"),
+        "src_gov_uk_spec": _("Cahier des charges (GOV.UK, PDF)"),
+        "src_gov_uk_register": _("Registre des IG du Royaume-Uni"),
         "legend_h": _("Légende couleurs"),
         "legend_bassin_h": _("Bassin viticole"),
         "legend_area_hint": _("Plus l'aire est petite, plus la teinte est dense."),
@@ -327,6 +334,7 @@ _COUNTRY_FLAG_EMOJI: dict[str, str] = {
     "nl": "\U0001F1F3\U0001F1F1",  # 🇳🇱
     "mt": "\U0001F1F2\U0001F1F9",  # 🇲🇹
     "cy": "\U0001F1E8\U0001F1FE",  # 🇨🇾
+    "gb": "\U0001F1EC\U0001F1E7",  # 🇬🇧
 }
 
 
@@ -357,6 +365,7 @@ def build_country_labels(_: Callable[[str], str]) -> dict[str, str]:
         "nl": _("Pays-Bas"),
         "mt": _("Malte"),
         "cy": _("Chypre"),
+        "gb": _("Royaume-Uni"),
     }
 
 

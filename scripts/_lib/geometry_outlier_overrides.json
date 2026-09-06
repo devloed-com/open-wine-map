@@ -28,14 +28,16 @@
   ],
   "_match_tol_km": 1.5,
   "_area_tol_pct": 20.0,
-
   "clip": {
     "garda": {
       "file_number": "PDO-IT-A1320",
       "geom_source": "figshare-pdo",
       "drop": [
         {
-          "centroid_latlon": [45.0667, 7.5236],
+          "centroid_latlon": [
+            45.0667,
+            7.5236
+          ],
           "area_km2": 29.517,
           "reason": "Fragment 225 km W of Lake Garda, near Avigliana (Piedmont). Lies 100% inside the Piemonte regional DOC (PDO-IT-A1224). The Garda disciplinare restricts the DOC to the provinces of Brescia, Mantova and Verona — no Piedmont component exists. Bétard 2022 EU_PDO.gpkg cross-attribution error.",
           "verified": "2026-05-22"
@@ -47,7 +49,10 @@
       "geom_source": "figshare-pdo",
       "drop": [
         {
-          "centroid_latlon": [45.0029, 8.2519],
+          "centroid_latlon": [
+            45.0029,
+            8.2519
+          ],
           "area_km2": 17.305,
           "reason": "Fragment 205 km SW of the Adige valley, in the Monferrato (Piedmont). Lies 100% inside Grignolino d'Asti / Barbera del Monferrato / Monferrato DOCs. Valdadige DOC is the Adige valley (Trento / Bolzano / Verona). Bétard 2022 cross-attribution error — mirror of the Garda case.",
           "verified": "2026-05-22"
@@ -59,13 +64,19 @@
       "geom_source": "figshare-pdo",
       "drop": [
         {
-          "centroid_latlon": [45.9239, 11.1067],
+          "centroid_latlon": [
+            45.9239,
+            11.1067
+          ],
           "area_km2": 5.286,
           "reason": "Fragment ~215 km NE of the Asti / Monferrato main body, near Trento. Lies 100% inside delle Venezie / Valdadige / Casteller (Trentino). Bétard 2022 cross-attribution error.",
           "verified": "2026-05-22"
         },
         {
-          "centroid_latlon": [45.9642, 11.1270],
+          "centroid_latlon": [
+            45.9642,
+            11.127
+          ],
           "area_km2": 4.914,
           "reason": "Second Trentino fragment, ~218 km NE near Trento, shared verbatim with the other three Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
           "verified": "2026-05-22"
@@ -77,13 +88,19 @@
       "geom_source": "figshare-pdo",
       "drop": [
         {
-          "centroid_latlon": [45.9239, 11.1067],
+          "centroid_latlon": [
+            45.9239,
+            11.1067
+          ],
           "area_km2": 5.286,
           "reason": "Trentino fragment near Trento (~204 km from the Monferrato main body), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
           "verified": "2026-05-22"
         },
         {
-          "centroid_latlon": [45.9642, 11.1270],
+          "centroid_latlon": [
+            45.9642,
+            11.127
+          ],
           "area_km2": 4.914,
           "reason": "Second Trentino fragment near Trento (~207 km away), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
           "verified": "2026-05-22"
@@ -95,13 +112,19 @@
       "geom_source": "figshare-pdo",
       "drop": [
         {
-          "centroid_latlon": [45.9239, 11.1067],
+          "centroid_latlon": [
+            45.9239,
+            11.1067
+          ],
           "area_km2": 5.286,
           "reason": "Trentino fragment near Trento (~204 km from the Monferrato main body), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
           "verified": "2026-05-22"
         },
         {
-          "centroid_latlon": [45.9642, 11.1270],
+          "centroid_latlon": [
+            45.9642,
+            11.127
+          ],
           "area_km2": 4.914,
           "reason": "Second Trentino fragment near Trento (~207 km away), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
           "verified": "2026-05-22"
@@ -113,13 +136,19 @@
       "geom_source": "figshare-pdo",
       "drop": [
         {
-          "centroid_latlon": [45.9239, 11.1067],
+          "centroid_latlon": [
+            45.9239,
+            11.1067
+          ],
           "area_km2": 5.286,
           "reason": "Trentino fragment near Trento (~204 km from the Monferrato main body), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
           "verified": "2026-05-22"
         },
         {
-          "centroid_latlon": [45.9642, 11.1270],
+          "centroid_latlon": [
+            45.9642,
+            11.127
+          ],
           "area_km2": 4.914,
           "reason": "Second Trentino fragment near Trento (~207 km away), shared verbatim across the Monferrato-family DOCs. Bétard 2022 cross-attribution error.",
           "verified": "2026-05-22"
@@ -127,13 +156,16 @@
       ]
     }
   },
-
   "whitelist": {
     "madeira": "Atlantic archipelago — the DOP spans Madeira, Porto Santo and the Desertas; disjoint island parts are expected.",
     "madeirense": "Atlantic archipelago — same island footprint as Madeira DOP.",
     "islas-canarias": "Atlantic archipelago — the DO covers all seven Canary Islands; disjoint island parts are expected.",
     "sicilia": "Sicily plus its minor-island groups (Pantelleria, Aeolian, Egadi, Ustica) — disjoint island parts are expected.",
     "cava": "Spanish sparkling-wine DO produced in legally listed municipalities across Catalonia, La Rioja, Aragon, Navarra, the Basque Country, Extremadura and Valencia — genuinely multi-region and disjoint.",
-    "saale-unstrut": "German Anbaugebiet legally extended to Werder (Havel) in Brandenburg — the Werderaner Wachtelberg, Germany's northernmost vineyard. BLE Produktspezifikation §11.3 names the Brandenburg-side Gemarkungen Werder (Havel), Phöben, Plessow and Neu Töplitz; the ~117 km² polygon ~150 km NE of the main Sachsen-Anhalt body (~52.38°N, 12.88°E) is therefore legitimate, not a Bétard cross-attribution."
+    "saale-unstrut": "German Anbaugebiet legally extended to Werder (Havel) in Brandenburg — the Werderaner Wachtelberg, Germany's northernmost vineyard. BLE Produktspezifikation §11.3 names the Brandenburg-side Gemarkungen Werder (Havel), Phöben, Plessow and Neu Töplitz; the ~117 km² polygon ~150 km NE of the main Sachsen-Anhalt body (~52.38°N, 12.88°E) is therefore legitimate, not a Bétard cross-attribution.",
+    "english-wine": "Offshore England — the detached parts are the Isles of Scilly (~40-54 km off Land's End) plus other coastal islands of the ONS England country polygon. The PDO is demarcated to ENGLAND, so they are legitimately in the area; Scilly has commercial vineyard plantings.",
+    "english-regional-wine": "Offshore England — same ONS England footprint as the English PDO.",
+    "welsh-wine": "Offshore Wales — the detached part is off Anglesey (Holy Island area) in the ONS Wales country polygon. The PDO is demarcated to WALES, so the island parts are legitimately in the area.",
+    "welsh-regional-wine": "Offshore Wales — same ONS Wales footprint as the Welsh PDO."
   }
 }

@@ -1774,6 +1774,14 @@
       const lab = sources.cantonal_reglement_label ? ' — ' + escapeHtml(sources.cantonal_reglement_label) : '';
       links.push(`<li><a href="${escapeAttr(sources.cantonal_reglement_url)}" target="_blank" rel="noopener">${LABELS.src_cantonal_reglement}</a>${lab}</li>`);
     }
+    if (sources.gov_uk_spec_url) {
+      const fmtTail = sources.spec_format ? ' — ' + escapeHtml(String(sources.spec_format).toUpperCase()) : '';
+      links.push(`<li><a href="${escapeAttr(sources.gov_uk_spec_url)}" target="_blank" rel="noopener">${LABELS.src_gov_uk_spec}</a>${fmtTail}</li>`);
+    }
+    if (sources.gov_uk_register_url) {
+      const fileNum = sources.file_number ? ' — ' + escapeHtml(sources.file_number) : '';
+      links.push(`<li><a href="${escapeAttr(sources.gov_uk_register_url)}" target="_blank" rel="noopener">${LABELS.src_gov_uk_register}</a>${fileNum}</li>`);
+    }
     if (sources.ofag_repertoire_url) {
       links.push(`<li><a href="${escapeAttr(sources.ofag_repertoire_url)}" target="_blank" rel="noopener">${LABELS.src_ofag_repertoire}</a></li>`);
     }
@@ -2020,6 +2028,7 @@
       if (s.eur_lex_url && hasEambrosia) return [eambrosiaReg, s.source_lang === 'nl' ? 'enig document' : 'document unique', false, extra];
       return null;
     }
+    if (country === 'gb') return s.gov_uk_spec_url ? ['DEFRA', 'product specification', false, extra] : null;
     if (country === 'at' || country === 'nl' || country === 'mt') return euFallback();
     return null;
   }
@@ -2133,6 +2142,8 @@
       approxLine = `<div class="approx-line">${escapeHtml(LABELS.geom_approx_parent)}</div>`;
     } else if (r.geom_source === 'aires-csv-dgc') {
       approxLine = `<div class="approx-line">${escapeHtml(LABELS.geom_approx_aires)}</div>`;
+    } else if (r.geom_source === 'pdo-plan-parcel-hull-approx') {
+      approxLine = `<div class="approx-line">${escapeHtml(LABELS.geom_approx_pdo_plan)}</div>`;
     } else if (r.geom_source === 'cadastre-lieu-dit-dgc' && r.cadastre_lieu_dit) {
       const src = `<a href="https://cadastre.data.gouv.fr/" target="_blank" rel="noopener">${escapeHtml(LABELS.geom_approx_cadastre_source_label)}</a>`;
       approxLine = `<div class="approx-line">${fmt(LABELS.geom_approx_cadastre, { lieu_dit: escapeHtml(r.cadastre_lieu_dit), commune: escapeHtml(r.cadastre_commune || ''), source: src })}</div>`;

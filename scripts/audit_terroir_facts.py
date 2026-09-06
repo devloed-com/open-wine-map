@@ -45,19 +45,33 @@ TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 EXTRACTED_BY_COUNTRY = {
     "fr": ROOT / "raw" / "inao" / "cahier-extracted",
     "es": ROOT / "raw" / "es" / "pliegos-extracted",
+    "gb": ROOT / "raw" / "gb" / "specs-extracted",
 }
 WIKI_BY_COUNTRY = {
     "fr": ROOT / "raw" / "wikipedia" / "aocs" / "fr",
     "es": ROOT / "raw" / "wikipedia" / "aocs" / "es",
+    # GB's source language is English (the DEFRA product specifications).
+    "gb": ROOT / "raw" / "wikipedia" / "aocs" / "en",
 }
 LIEN_FIELD_BY_COUNTRY = {
     "fr": "lien_au_terroir",
     "es": "link_to_terroir",
+    "gb": "link_to_terroir",
 }
 
 FUZZY_THRESHOLD = 0.6
 BULLET_SOFT_CAP = 140
 WIKI_HINT_CHAR_CAP = 1500
+# Each country's stage 02d caps the Wikipedia hint at its own length; the
+# audit must reproduce that cap or a perfectly-grounded `wiki` bullet whose
+# quote sits past the audit's shorter cap reports as spuriously "eroded".
+WIKI_HINT_CAP_BY_COUNTRY = {
+    "gb": 2800,  # scripts/gb/02d_extract_terroir_facts.py
+}
+
+
+def wiki_hint_cap(country: str) -> int:
+    return WIKI_HINT_CAP_BY_COUNTRY.get(country, WIKI_HINT_CHAR_CAP)
 
 TOP_RE = re.compile(r"\b([1-9])°\s*[-–]\s*([A-ZÀ-Ý][^\n]{5,80})")
 SUB_RE = re.compile(r"\b([a-c])\)\s*[-–]?\s*([A-ZÀ-Ý][^\n]{5,80})")
@@ -98,9 +112,25 @@ WIKI_TO_SUBSECTION_ES: dict[str, list[str]] = {
 }
 WIKI_TO_SUBSECTION_ES["interactions"] = WIKI_TO_SUBSECTION_ES["facteurs_naturels"]
 
+# English Wikipedia headings — mirror scripts/gb/02d_extract_terroir_facts.py.
+WIKI_TO_SUBSECTION_EN: dict[str, list[str]] = {
+    "facteurs_naturels": [
+        "Geography", "Geology", "Climate", "Soil", "Soils", "Terroir",
+        "Wine regions", "Regions", "Viticulture", "Vineyards",
+    ],
+    "facteurs_humains": [
+        "History", "Grapes", "Grape varieties", "Varieties", "Production",
+        "Winemaking", "Wineries",
+    ],
+    "produit": ["Wines", "Styles", "Wine styles", "Types of wine", "Production"],
+    "interactions": [],
+}
+WIKI_TO_SUBSECTION_EN["interactions"] = WIKI_TO_SUBSECTION_EN["facteurs_naturels"]
+
 WIKI_TO_SUBSECTION_BY_COUNTRY = {
     "fr": WIKI_TO_SUBSECTION_FR,
     "es": WIKI_TO_SUBSECTION_ES,
+    "gb": WIKI_TO_SUBSECTION_EN,
 }
 
 
@@ -149,7 +179,8 @@ def _index_wiki_sections(full: str, headings: list[str]) -> dict[str, str]:
 
 
 def _build_subsection_hint_fr(
-    sub_key: str, wanted: list[str], section_text: dict[str, str]
+    sub_key: str, wanted: list[str], section_text: dict[str, str],
+    char_cap: int = WIKI_HINT_CHAR_CAP,
 ) -> str:
     """FR wiki-hint format used by `scripts/02d_extract_terroir_facts.py`."""
     chunks: list[str] = []
@@ -160,13 +191,13 @@ def _build_subsection_hint_fr(
         if body:
             chunks.append(f"« {h} » : {body}")
     joined = "\n\n".join(chunks)
-    if len(joined) > WIKI_HINT_CHAR_CAP:
-        joined = joined[:WIKI_HINT_CHAR_CAP].rsplit(" ", 1)[0] + " […]"
+    if len(joined) > char_cap:
+        joined = joined[:char_cap].rsplit(" ", 1)[0] + " […]"
     return joined
 
 
 def _build_subsection_hint_es(
-    wiki_record: dict, headings: list[str]
+    wiki_record: dict, headings: list[str], char_cap: int = WIKI_HINT_CHAR_CAP,
 ) -> str:
     """ES wiki-hint format — mirrors `_wiki_hint_for_subsection` in
     `scripts/es/02d_extract_terroir_facts.py`. Different from the FR
@@ -176,7 +207,7 @@ def _build_subsection_hint_es(
     `wiki`-only bullets."""
     full = wiki_record.get("full_text") or ""
     if not full:
-        return (wiki_record.get("lead_extract") or "")[:WIKI_HINT_CHAR_CAP]
+        return (wiki_record.get("lead_extract") or "")[:char_cap]
     section_text = _index_wiki_sections(full, headings)
     pieces = [section_text["__intro__"]] if section_text.get("__intro__") else []
     for h in headings:
@@ -184,8 +215,8 @@ def _build_subsection_hint_es(
             pieces.append(f"# {h}\n{section_text[h]}")
     blob = "\n\n".join(pieces).strip()
     if blob:
-        return blob[:WIKI_HINT_CHAR_CAP]
-    return (wiki_record.get("lead_extract") or "")[:WIKI_HINT_CHAR_CAP]
+        return blob[:char_cap]
+    return (wiki_record.get("lead_extract") or "")[:char_cap]
 
 
 def load_wiki_hints(slug: str, country: str) -> tuple[dict[str, str], dict | None]:
@@ -198,15 +229,21 @@ def load_wiki_hints(slug: str, country: str) -> tuple[dict[str, str], dict | Non
     data = json.loads(cache.read_text(encoding="utf-8"))
     if data.get("missing") or data.get("error"):
         return empty, data
-    if country == "es":
+    # GB's stage 02d builds its hint the ES way — full intro, then
+    # "# {heading}" blocks, raw char cap — not the FR way. Routing it
+    # through the FR builder matches no heading at all and leaves only a
+    # 400-char intro, which reports well-grounded `wiki` bullets as eroded.
+    if country in ("es", "gb"):
+        cap = wiki_hint_cap(country)
         out = {
-            sub_key: _build_subsection_hint_es(data, headings)
+            sub_key: _build_subsection_hint_es(data, headings, cap)
             for sub_key, headings in headings_map.items()
         }
         return out, data
     section_text = _index_wiki_sections(data.get("full_text", ""), data.get("sections", []))
+    cap = wiki_hint_cap(country)
     out = {
-        sub_key: _build_subsection_hint_fr(sub_key, wanted, section_text)
+        sub_key: _build_subsection_hint_fr(sub_key, wanted, section_text, cap)
         for sub_key, wanted in headings_map.items()
     }
     return out, data
@@ -226,8 +263,36 @@ def load_current_cahier(slug: str, country: str) -> tuple[str, str] | None:
         rec = json.loads(p.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         return None
-    lien = (rec.get(field) or "").strip()
+    if country == "gb":
+        # GB's stage 02d grounds on a composite context, not the bare lien
+        # field — region + demarcated area + variety roster + the link
+        # section — and hashes that. Rebuild it identically here or every
+        # GB record reports a spurious `cahier-drift`.
+        # Mirrors `_cahier_context` in scripts/gb/02d_extract_terroir_facts.py.
+        lien = _cahier_context_gb(rec)
+    else:
+        lien = (rec.get(field) or "").strip()
     return lien, cahier_sha(lien)
+
+
+def _cahier_context_gb(record: dict) -> str:
+    pieces = [f"Region: {record.get('region') or ''} ({record.get('kind') or ''})"]
+    geo = record.get("geo_area_brief") or ""
+    if geo:
+        pieces.append(f"Demarcated area: {geo}")
+    grapes = (record.get("grapes") or {}).get("details") or []
+    if grapes:
+        names = ", ".join(g.get("name") or g.get("slug") for g in grapes[:40])
+        pieces.append(f"Authorised varieties: {names}")
+    link = record.get("link_to_terroir") or ""
+    if link:
+        pieces.append(f"Link with the geographical area:\n{link}")
+    return "\n".join(pieces)
+
+
+class UnsupportedCountry(Exception):
+    """Raised for a terroir-facts cache whose country has no source
+    dispatch entry — see EXTRACTED_BY_COUNTRY."""
 
 
 def audit_one(cache_path: Path) -> dict:
@@ -237,6 +302,12 @@ def audit_one(cache_path: Path) -> dict:
     slug = data.get("slug") or cache_path.stem
     country = data.get("country") or "fr"
     facts = data.get("facts") or []
+    if country not in EXTRACTED_BY_COUNTRY:
+        # This audit re-derives coverage from the country's own source
+        # documents, so it only covers countries wired into the dispatch
+        # tables above. Everything else is skipped explicitly rather than
+        # dying on a KeyError that the caller reports as a corrupt cache.
+        raise UnsupportedCountry(country)
 
     cur_cahier = load_current_cahier(slug, country)
     cur_lien = cur_cahier[0] if cur_cahier else ""
@@ -382,9 +453,13 @@ def main() -> int:
 
     print(f"[audit] {len(files)} AOC caches", file=sys.stderr)
     audits: list[dict] = []
+    unsupported: dict[str, int] = {}
     for p in files:
         try:
             a = audit_one(p)
+        except UnsupportedCountry as e:
+            unsupported[str(e)] = unsupported.get(str(e), 0) + 1
+            continue
         except Exception as e:  # noqa: BLE001
             print(f"  err {p.stem}: {e}", file=sys.stderr)
             continue
@@ -392,6 +467,10 @@ def main() -> int:
         if not args.quiet:
             print_per_aoc(a, verbose=args.verbose)
 
+    if unsupported:
+        listed = ", ".join(f"{c}={n}" for c, n in sorted(unsupported.items()))
+        print(f"  [skipped] countries with no source dispatch entry: {listed}",
+              file=sys.stderr)
     summary = summarize(audits)
     print("\n[audit] summary:", file=sys.stderr)
     print(json.dumps(summary, ensure_ascii=False, indent=2, default=str), file=sys.stderr)

@@ -76,6 +76,22 @@ BG_EXTRACTED = ROOT / "raw" / "bg" / "dokumenti-extracted"
 GR_EXTRACTED = ROOT / "raw" / "gr" / "dokumenti-extracted"
 SK_EXTRACTED = ROOT / "raw" / "sk" / "dokumenty-extracted"
 CZ_EXTRACTED = ROOT / "raw" / "cz" / "dokumenty-extracted"
+CH_EXTRACTED = ROOT / "raw" / "ch" / "dokumente-extracted"
+MT_EXTRACTED = ROOT / "raw" / "mt" / "dokumente-extracted"
+CY_EXTRACTED = ROOT / "raw" / "cy" / "dokumenti-extracted"
+NL_EXTRACTED = ROOT / "raw" / "nl" / "dokumenten-extracted"
+BE_EXTRACTED = ROOT / "raw" / "be" / "dokumenten-extracted"
+LU_EXTRACTED = ROOT / "raw" / "lu" / "cahier-extracted"
+# National-spec sidecars whose grape rosters stage 04 merges into the map
+# (grandfathered wines with no EU-OJ document). The cz/sk/gr/ro
+# register-fiches-extracted dirs are deliberately absent: stage 04 reads
+# only their terroir text, so their rosters must not weigh the
+# corpus-slug frequency tiers.
+CY_SPEC_EXTRACTED = ROOT / "raw" / "cy" / "national-specs-extracted"
+BG_SPEC_EXTRACTED = ROOT / "raw" / "bg" / "national-specs-extracted"
+GR_SPEC_EXTRACTED = ROOT / "raw" / "gr" / "national-specs-extracted"
+SK_SPEC_EXTRACTED = ROOT / "raw" / "sk" / "national-specs-extracted"
+RO_SPEC_EXTRACTED = ROOT / "raw" / "ro" / "national-specs-extracted"
 
 OUT_DIR = ROOT / "raw" / "vivc"
 SEARCH_DIR = OUT_DIR / "search"
@@ -96,7 +112,10 @@ def _record_files() -> list[Path]:
     for d in (EXTRACTED, ES_EXTRACTED, PT_EXTRACTED, IT_EXTRACTED, IT_MASAF_EXTRACTED,
               AT_EXTRACTED, DE_EXTRACTED, SI_EXTRACTED, SI_SPEC_EXTRACTED,
               HR_EXTRACTED, HR_SPEC_EXTRACTED, RO_EXTRACTED,
-              HU_EXTRACTED, BG_EXTRACTED, GR_EXTRACTED, SK_EXTRACTED, CZ_EXTRACTED):
+              HU_EXTRACTED, BG_EXTRACTED, GR_EXTRACTED, SK_EXTRACTED, CZ_EXTRACTED,
+              CH_EXTRACTED, MT_EXTRACTED, CY_EXTRACTED, NL_EXTRACTED, BE_EXTRACTED,
+              LU_EXTRACTED, CY_SPEC_EXTRACTED, BG_SPEC_EXTRACTED, GR_SPEC_EXTRACTED,
+              SK_SPEC_EXTRACTED, RO_SPEC_EXTRACTED):
         if not d.exists():
             continue
         out.extend(jp for jp in d.glob("*.json") if not jp.name.startswith("_"))

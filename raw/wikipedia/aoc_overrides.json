@@ -219,35 +219,35 @@
   },
   "cs": {
     "cechy": {
-      "wiki_title": "Vinařská oblast Čechy",
-      "page_url": "https://cs.wikipedia.org/wiki/Vina%C5%99sk%C3%A1_oblast_%C4%8Cechy",
-      "verification_quote": "Vinařská oblast Čechy je vinařská oblast, která obsahuje schválená území pro pěstování révy vinné."
-    },
-    "ceske": {
-      "wiki_title": "Vinařská oblast Čechy",
       "page_url": "https://cs.wikipedia.org/wiki/Vina%C5%99sk%C3%A1_oblast_%C4%8Cechy",
       "verification_quote": "Vinařská oblast Čechy je vinařská oblast, která obsahuje schválená území pro pěstování révy vinné.",
-      "note": "pinned 2026-05-31; české zemské víno (PGI) is coextensive with the Čechy wine region — reuse the region article for salience."
+      "wiki_title": "Vinařská oblast Čechy"
+    },
+    "ceske": {
+      "note": "pinned 2026-05-31; české zemské víno (PGI) is coextensive with the Čechy wine region — reuse the region article for salience.",
+      "page_url": "https://cs.wikipedia.org/wiki/Vina%C5%99sk%C3%A1_oblast_%C4%8Cechy",
+      "verification_quote": "Vinařská oblast Čechy je vinařská oblast, která obsahuje schválená území pro pěstování révy vinné.",
+      "wiki_title": "Vinařská oblast Čechy"
     },
     "morava": {
-      "wiki_title": "Vinařská oblast Morava",
       "page_url": "https://cs.wikipedia.org/wiki/Vina%C5%99sk%C3%A1_oblast_Morava",
-      "verification_quote": "Vinařská oblast Morava je vinařská oblast, která zahrnuje schválená území pro pěstování révy vinné na území Moravy."
+      "verification_quote": "Vinařská oblast Morava je vinařská oblast, která zahrnuje schválená území pro pěstování révy vinné na území Moravy.",
+      "wiki_title": "Vinařská oblast Morava"
     },
     "novosedelske-slamove-vino": {
       "missing": true,
       "note": "researched 2026-05; no dedicated article; cs.wiki has pages for various Novosedly settlements but none about this single-vineyard straw-wine PDO"
     },
-    "znojmo": {
-      "wiki_title": "Znojemská vinařská podoblast",
-      "page_url": "https://cs.wikipedia.org/wiki/Znojemsk%C3%A1_vina%C5%99sk%C3%A1_podoblast",
-      "verification_quote": "Znojemská vinařská podoblast leží ve vinařské oblasti Morava. Pokrývá vinařské obce okresů Znojmo a Třebíč."
-    },
     "znojemska": {
-      "wiki_title": "Znojemská vinařská podoblast",
+      "note": "pinned 2026-05-31; the bare-name cascade hit the festival article 'Znojemské vinobraní' — wrong topic.",
       "page_url": "https://cs.wikipedia.org/wiki/Znojemsk%C3%A1_vina%C5%99sk%C3%A1_podoblast",
       "verification_quote": "Znojemská vinařská podoblast leží ve vinařské oblasti Morava. Pokrývá vinařské obce okresů Znojmo a Třebíč.",
-      "note": "pinned 2026-05-31; the bare-name cascade hit the festival article 'Znojemské vinobraní' — wrong topic."
+      "wiki_title": "Znojemská vinařská podoblast"
+    },
+    "znojmo": {
+      "page_url": "https://cs.wikipedia.org/wiki/Znojemsk%C3%A1_vina%C5%99sk%C3%A1_podoblast",
+      "verification_quote": "Znojemská vinařská podoblast leží ve vinařské oblasti Morava. Pokrývá vinařské obce okresů Znojmo a Třebíč.",
+      "wiki_title": "Znojemská vinařská podoblast"
     }
   },
   "de": {
@@ -440,14 +440,14 @@
       "note": "researched 2026-05; no dedicated Rosalia DAC article"
     },
     "saarlandischer-landwein": {
-      "wiki_title": "Saarländischer Landwein",
       "page_url": "https://de.wikipedia.org/wiki/Saarl%C3%A4ndischer_Landwein",
-      "verification_quote": "Saarländischer Landwein wird einerseits auf 124 ha an der saarländischen Obermosel, die zum Bereich Moseltor im bestimmten Anbaugebiet Mosel gehören, andererseits auf knapp 17 ha Anbaufläche für Landwein an Südhängen an der Saar, der Nied, der Blies und anderen Orten angebaut."
+      "verification_quote": "Saarländischer Landwein wird einerseits auf 124 ha an der saarländischen Obermosel, die zum Bereich Moseltor im bestimmten Anbaugebiet Mosel gehören, andererseits auf knapp 17 ha Anbaufläche für Landwein an Südhängen an der Saar, der Nied, der Blies und anderen Orten angebaut.",
+      "wiki_title": "Saarländischer Landwein"
     },
     "sachsischer-landwein": {
-      "wiki_title": "Sächsischer Landwein",
       "page_url": "https://de.wikipedia.org/wiki/S%C3%A4chsischer_Landwein",
-      "verification_quote": "Sächsischer Landwein gehört zu den deutschen Landweinen, die eine gehobene Stufe des „Deutschen Weins\" ohne Herkunftsbezeichnung darstellen und sich durch „gebietstypischen Charakter und ländliche Namensgebung\" auszeichnen."
+      "verification_quote": "Sächsischer Landwein gehört zu den deutschen Landweinen, die eine gehobene Stufe des „Deutschen Weins\" ohne Herkunftsbezeichnung darstellen und sich durch „gebietstypischen Charakter und ländliche Namensgebung\" auszeichnen.",
+      "wiki_title": "Sächsischer Landwein"
     },
     "salzburg": {
       "missing": true,
@@ -458,9 +458,9 @@
       "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
     },
     "schwabischer-landwein": {
-      "wiki_title": "Schwäbischer Landwein",
       "page_url": "https://de.wikipedia.org/wiki/Schw%C3%A4bischer_Landwein",
-      "verification_quote": "Schwäbischer Landwein gehört zu den Deutschen Landweinen, die eine gehobene Stufe des Weins (früher: „Tafelwein\") darstellen und sich durch „gebietstypischen Charakter und ländliche Namensgebung\" auszeichnen."
+      "verification_quote": "Schwäbischer Landwein gehört zu den Deutschen Landweinen, die eine gehobene Stufe des Weins (früher: „Tafelwein\") darstellen und sich durch „gebietstypischen Charakter und ländliche Namensgebung\" auszeichnen.",
+      "wiki_title": "Schwäbischer Landwein"
     },
     "schwyz": {
       "missing": true,
@@ -555,14 +555,14 @@
       "note": "researched 2026-05; Weststeiermark article is the geographic region west of the Mur, wine is one aspect among many"
     },
     "wien": {
-      "wiki_title": "Weinbau in Wien",
       "page_url": "https://de.wikipedia.org/wiki/Weinbau_in_Wien",
-      "verification_quote": "Der Weinbau in Wien wird auf einer Fläche von 588 Hektar des Wiener Stadtgebietes betrieben."
+      "verification_quote": "Der Weinbau in Wien wird auf einer Fläche von 588 Hektar des Wiener Stadtgebietes betrieben.",
+      "wiki_title": "Weinbau in Wien"
     },
     "wiener-gemischter-satz": {
-      "wiki_title": "Gemischter Satz",
       "page_url": "https://de.wikipedia.org/wiki/Gemischter_Satz",
-      "verification_quote": "Der Gemischte Satz ist die Bezeichnung für den Anbau von Wein, der aus unterschiedlichen Rebsorten in einem Weingarten besteht, sowie dann des daraus hergestellten Weins."
+      "verification_quote": "Der Gemischte Satz ist die Bezeichnung für den Anbau von Wein, der aus unterschiedlichen Rebsorten in einem Weingarten besteht, sowie dann des daraus hergestellten Weins.",
+      "wiki_title": "Gemischter Satz"
     },
     "zug": {
       "missing": true,
@@ -872,9 +872,9 @@
       "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
     },
     "monemvasia-malvasia": {
-      "wiki_title": "Μαλβαζία",
       "page_url": "https://el.wikipedia.org/wiki/%CE%9C%CE%B1%CE%BB%CE%B2%CE%B1%CE%B6%CE%AF%CE%B1",
-      "verification_quote": "Μαλβαζία (ή Μαλβασία) είναι ένα γλυκό, λιαστό κρασί που παράγεται στην περιοχή της Μονεμβασιάς, προστατευόμενης ονομασίας προέλευσης (Π.Ο.Π.)."
+      "verification_quote": "Μαλβαζία (ή Μαλβασία) είναι ένα γλυκό, λιαστό κρασί που παράγεται στην περιοχή της Μονεμβασιάς, προστατευόμενης ονομασίας προέλευσης (Π.Ο.Π.).",
+      "wiki_title": "Μαλβαζία"
     },
     "moschato-kefallinias": {
       "missing": true,
@@ -905,9 +905,9 @@
       "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
     },
     "nemea": {
-      "wiki_title": "Κρασί Νεμέας",
       "page_url": "https://el.wikipedia.org/wiki/%CE%9A%CF%81%CE%B1%CF%83%CE%AF_%CE%9D%CE%B5%CE%BC%CE%AD%CE%B1%CF%82",
-      "verification_quote": "Το κρασί Νεμέας (Ονομασίας Προέλευσης Ανωτέρας Ποιότητας) παράγεται στην ευρύτερη περιοχή της Νεμέας, η οποία αποτελεί την μεγαλύτερη αμπελουργική ζώνη της Ελλάδας."
+      "verification_quote": "Το κρασί Νεμέας (Ονομασίας Προέλευσης Ανωτέρας Ποιότητας) παράγεται στην ευρύτερη περιοχή της Νεμέας, η οποία αποτελεί την μεγαλύτερη αμπελουργική ζώνη της Ελλάδας.",
+      "wiki_title": "Κρασί Νεμέας"
     },
     "opountia-lokridas": {
       "missing": true,
@@ -1070,18 +1070,18 @@
       "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
     },
     "robola-kefallinias": {
-      "wiki_title": "Ρομπόλα Κεφαλονιάς",
       "page_url": "https://el.wikipedia.org/wiki/%CE%A1%CE%BF%CE%BC%CF%80%CF%8C%CE%BB%CE%B1_%CE%9A%CE%B5%CF%86%CE%B1%CE%BB%CE%BF%CE%BD%CE%B9%CE%AC%CF%82",
-      "verification_quote": "Η Ρομπόλα Κεφαλονιάς είναι λευκό κρασί Προστατευόμενης Ονομασίας Προέλευσης (ΠΟΠ) που παράγεται αποκλειστικά στο νησί της Κεφαλονιάς."
+      "verification_quote": "Η Ρομπόλα Κεφαλονιάς είναι λευκό κρασί Προστατευόμενης Ονομασίας Προέλευσης (ΠΟΠ) που παράγεται αποκλειστικά στο νησί της Κεφαλονιάς.",
+      "wiki_title": "Ρομπόλα Κεφαλονιάς"
     },
     "rodos": {
       "missing": true,
       "note": "researched 2026-05; Ρόδος is the island article; no dedicated Rhodes wine PDO article"
     },
     "santorini": {
-      "wiki_title": "Βινσάντο Σαντορίνης",
       "page_url": "https://el.wikipedia.org/wiki/%CE%92%CE%B9%CE%BD%CF%83%CE%AC%CE%BD%CF%84%CE%BF_%CE%A3%CE%B1%CE%BD%CF%84%CE%BF%CF%81%CE%AF%CE%BD%CE%B7%CF%82",
-      "verification_quote": "Το βινσάντο της Σαντορίνης είναι παραδοσιακό γλυκό κρασί με σκούρο μπρούτζινο χρώμα, το οποίο ανήκει στην κατηγορία των κρασιών Π.Ο.Π Σαντορίνης. [Note: el.wiki has only the Vinsanto sub-style article; the broader Santorini PDO covers Assyrtiko whites too]"
+      "verification_quote": "Το βινσάντο της Σαντορίνης είναι παραδοσιακό γλυκό κρασί με σκούρο μπρούτζινο χρώμα, το οποίο ανήκει στην κατηγορία των κρασιών Π.Ο.Π Σαντορίνης. [Note: el.wiki has only the Vinsanto sub-style article; the broader Santorini PDO covers Assyrtiko whites too]",
+      "wiki_title": "Βινσάντο Σαντορίνης"
     },
     "serres": {
       "missing": true,
@@ -1154,6 +1154,26 @@
     "zakynthos": {
       "missing": true,
       "note": "researched 2026-05 (bulk); GR IGP grandfathered VdP names typically lack dedicated el.wiki articles — pattern confirmed by BG 52/52 NONE result + GR PDO 27/31 NONE rate. Curator todo: per-slug verification on a future pass."
+    }
+  },
+  "en": {
+    "gozo": {
+      "note": "Malta has no per-PDO/PGI en.wikipedia article; the umbrella Maltese-wine article grounds terroir facts (the CH/LU pattern).",
+      "page_url": "https://en.wikipedia.org/wiki/Maltese_wine",
+      "verification_quote": "Maltese wine dates back over two thousand years to the time of the Phoenicians.",
+      "wiki_title": "Maltese wine"
+    },
+    "malta": {
+      "note": "Malta has no per-PDO/PGI en.wikipedia article; the umbrella Maltese-wine article grounds terroir facts (the CH/LU pattern).",
+      "page_url": "https://en.wikipedia.org/wiki/Maltese_wine",
+      "verification_quote": "Maltese wine dates back over two thousand years to the time of the Phoenicians.",
+      "wiki_title": "Maltese wine"
+    },
+    "maltese-islands": {
+      "note": "Malta has no per-PDO/PGI en.wikipedia article; the umbrella Maltese-wine article grounds terroir facts (the CH/LU pattern).",
+      "page_url": "https://en.wikipedia.org/wiki/Maltese_wine",
+      "verification_quote": "Maltese wine dates back over two thousand years to the time of the Phoenicians.",
+      "wiki_title": "Maltese wine"
     }
   },
   "es": {
@@ -1286,11 +1306,6 @@
     "aargau": {
       "missing": true,
       "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
-    },
-    "moselle-luxembourgeoise": {
-      "wiki_title": "Viticulture au Luxembourg",
-      "page_url": "https://fr.wikipedia.org/wiki/Viticulture_au_Luxembourg",
-      "verification_quote": "Sa production se concentre principalement sur la Moselle luxembourgeoise"
     },
     "alsace-grand-cru-altenberg-de-bergheim": {
       "page_url": "https://fr.wikipedia.org/wiki/Altenberg-de-bergheim",
@@ -1590,9 +1605,9 @@
       "note": "Searched Cidre_du_Perche and 'cidre du perche' via Google site: — no dedicated fr.wikipedia.org page; only general Cidre and Perche (région naturelle) articles."
     },
     "cite-de-carcassonne": {
-      "wiki_title": "Cité-de-carcassonne",
       "page_url": "https://fr.wikipedia.org/wiki/Cit%C3%A9-de-carcassonne",
-      "verification_quote": "Un cité-de-carcassonne, anciennement dénommé vin de pays des coteaux de la cité de Carcassonne de 1974 jusqu'en 2009, est un vin français qui fait partie depuis 2025 de l'indication géographique protégée."
+      "verification_quote": "Un cité-de-carcassonne, anciennement dénommé vin de pays des coteaux de la cité de Carcassonne de 1974 jusqu'en 2009, est un vin français qui fait partie depuis 2025 de l'indication géographique protégée.",
+      "wiki_title": "Cité-de-carcassonne"
     },
     "clos-de-vougeot-ou-clos-vougeot": {
       "page_url": "https://fr.wikipedia.org/wiki/Clos-de-vougeot",
@@ -1605,14 +1620,14 @@
       "wiki_title": "Cognac (eau-de-vie)"
     },
     "collines-rhodaniennes": {
-      "wiki_title": "Collines-rhodaniennes",
       "page_url": "https://fr.wikipedia.org/wiki/Collines-rhodaniennes",
-      "verification_quote": "Un collines-rhodaniennes, appelé vin de pays des collines rhodaniennes jusqu'en 2009, est un vin français d'indication géographique protégée."
+      "verification_quote": "Un collines-rhodaniennes, appelé vin de pays des collines rhodaniennes jusqu'en 2009, est un vin français d'indication géographique protégée.",
+      "wiki_title": "Collines-rhodaniennes"
     },
     "comte-tolosan": {
-      "wiki_title": "Comté-tolosan",
       "page_url": "https://fr.wikipedia.org/wiki/Comt%C3%A9-tolosan",
-      "verification_quote": "Un comté-tolosan, anciennement appelé vin de pays du comté tolosan de 1982 à 2009, est un vin français d'indication géographique protégée."
+      "verification_quote": "Un comté-tolosan, anciennement appelé vin de pays du comté tolosan de 1982 à 2009, est un vin français d'indication géographique protégée.",
+      "wiki_title": "Comté-tolosan"
     },
     "cote-de-nuits-villages-ou-vins-fins-de-la-cote-de-nuits": {
       "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4te-de-nuits-villages",
@@ -1620,9 +1635,9 @@
       "wiki_title": "Côte-de-nuits-villages"
     },
     "cote-vermeille": {
-      "wiki_title": "Côte-vermeille (IGP)",
       "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4te-vermeille_(IGP)",
-      "verification_quote": "Le côte-vermeille est un vin français d'indication géographique protégée destiné à labelliser des vins ne pouvant prétendre à une appellation d'origine."
+      "verification_quote": "Le côte-vermeille est un vin français d'indication géographique protégée destiné à labelliser des vins ne pouvant prétendre à une appellation d'origine.",
+      "wiki_title": "Côte-vermeille (IGP)"
     },
     "coteaux-bourguignons-ou-bourgogne-grand-ordinaire-ou-bourgogne-ordinaire": {
       "page_url": "https://fr.wikipedia.org/wiki/Coteaux-bourguignons",
@@ -1695,14 +1710,14 @@
       "wiki_title": "Côtes-de-bourg"
     },
     "cotes-de-la-charite": {
-      "wiki_title": "Côtes-de-la-charité",
       "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4tes-de-la-charit%C3%A9",
-      "verification_quote": "Un côtes-de-la-charité, anciennement vin de pays des coteaux charitois, est un vignoble français d'indication géographique protégée de zone, produit dans le département de la Nièvre autour de La Charité-sur-Loire."
+      "verification_quote": "Un côtes-de-la-charité, anciennement vin de pays des coteaux charitois, est un vignoble français d'indication géographique protégée de zone, produit dans le département de la Nièvre autour de La Charité-sur-Loire.",
+      "wiki_title": "Côtes-de-la-charité"
     },
     "cotes-de-meuse": {
-      "wiki_title": "Côtes-de-meuse (IGP)",
       "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4tes-de-meuse_(IGP)",
-      "verification_quote": "Un côtes-de-meuse, appelé vin de pays des côtes de Meuse jusqu'en 2009 lorsqu'il fut reconnu comme IGP, est un vin français d'indication géographique protégée."
+      "verification_quote": "Un côtes-de-meuse, appelé vin de pays des côtes de Meuse jusqu'en 2009 lorsqu'il fut reconnu comme IGP, est un vin français d'indication géographique protégée.",
+      "wiki_title": "Côtes-de-meuse (IGP)"
     },
     "cotes-de-thau": {
       "page_url": "https://fr.wikipedia.org/wiki/C%C3%B4tes-de-thau",
@@ -1779,9 +1794,9 @@
       "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
     },
     "haute-vallee-de-l-aude": {
-      "wiki_title": "Haute-vallée-de-l'aude (IGP)",
       "page_url": "https://fr.wikipedia.org/wiki/Haute-vall%C3%A9e-de-l%27aude_(IGP)",
-      "verification_quote": "Le haute-vallée-de-l'aude est un vin français d'indication géographique protégée de zone qui a vocation à labelliser les vins ne pouvant postuler une appellation d'origine."
+      "verification_quote": "Le haute-vallée-de-l'aude est un vin français d'indication géographique protégée de zone qui a vocation à labelliser les vins ne pouvant postuler une appellation d'origine.",
+      "wiki_title": "Haute-vallée-de-l'aude (IGP)"
     },
     "haute-vallee-de-l-orb": {
       "page_url": "https://fr.wikipedia.org/wiki/Haute-vall%C3%A9e-de-l%27orb",
@@ -1794,18 +1809,18 @@
       "wiki_title": "Hermitage (AOC)"
     },
     "ile-de-beaute": {
-      "wiki_title": "Île-de-beauté",
       "page_url": "https://fr.wikipedia.org/wiki/%C3%8Ele-de-beaut%C3%A9",
-      "verification_quote": "Un île-de-beauté est un vin français d'indication géographique protégée (le nouveau nom depuis 2009 des vins de pays) de zone du vignoble de Corse."
+      "verification_quote": "Un île-de-beauté est un vin français d'indication géographique protégée (le nouveau nom depuis 2009 des vins de pays) de zone du vignoble de Corse.",
+      "wiki_title": "Île-de-beauté"
     },
     "jura": {
       "missing": true,
       "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
     },
     "le-pays-cathare": {
-      "wiki_title": "Le-pays-cathare (IGP)",
       "page_url": "https://fr.wikipedia.org/wiki/Le-pays-cathare_(IGP)",
-      "verification_quote": "Le le-pays-cathare, anciennement vin de pays cathare, est un vin français d'indication géographique protégée."
+      "verification_quote": "Le le-pays-cathare, anciennement vin de pays cathare, est un vin français d'indication géographique protégée.",
+      "wiki_title": "Le-pays-cathare (IGP)"
     },
     "luzern": {
       "missing": true,
@@ -1815,6 +1830,11 @@
       "page_url": "https://fr.wikipedia.org/wiki/Marc_d%27Alsace",
       "verification_quote": "Un marc d'Alsace, marc de gewurztraminer, marc de gewurz ou marc d'Alsace gewurztraminer de par sa dénomination légale, est une eau-de-vie fabriquée à partir du marc de gewurztraminer.",
       "wiki_title": "Marc d'Alsace"
+    },
+    "moselle-luxembourgeoise": {
+      "page_url": "https://fr.wikipedia.org/wiki/Viticulture_au_Luxembourg",
+      "verification_quote": "Sa production se concentre principalement sur la Moselle luxembourgeoise",
+      "wiki_title": "Viticulture au Luxembourg"
     },
     "moulis-ou-moulis-en-medoc": {
       "page_url": "https://fr.wikipedia.org/wiki/Moulis_(AOC)",
@@ -1844,18 +1864,18 @@
       "wiki_title": "Pays-d'hérault"
     },
     "pays-d-oc": {
-      "wiki_title": "Pays-d'oc (IGP)",
       "page_url": "https://fr.wikipedia.org/wiki/Pays-d%27oc_(IGP)",
-      "verification_quote": "Un pays-d'oc, anciennement appelé vin de pays d'Oc jusqu'en 2009, est un vin français d'indication géographique protégée (IGP)."
+      "verification_quote": "Un pays-d'oc, anciennement appelé vin de pays d'Oc jusqu'en 2009, est un vin français d'indication géographique protégée (IGP).",
+      "wiki_title": "Pays-d'oc (IGP)"
     },
     "pays-de-brive": {
       "not_aoc_topic": true,
       "note": "Inventoried as not_aoc_topic per CURATOR_TODO.md. fr.wikipedia.org has Brive-la-Gaillarde and the bassin de Brive but no dedicated article for the Pays de Brive IGP wine."
     },
     "pays-des-bouches-du-rhone": {
-      "wiki_title": "Pays-des-bouches-du-rhône",
       "page_url": "https://fr.wikipedia.org/wiki/Pays-des-bouches-du-rh%C3%B4ne",
-      "verification_quote": "Un pays-des-bouches-du-rhône, appelé vin de pays des Bouches-du-Rhône jusqu'en 2009, est un vin français d'indication géographique protégée."
+      "verification_quote": "Un pays-des-bouches-du-rhône, appelé vin de pays des Bouches-du-Rhône jusqu'en 2009, est un vin français d'indication géographique protégée.",
+      "wiki_title": "Pays-des-bouches-du-rhône"
     },
     "pommeau-de-normandie": {
       "not_aoc_topic": true,
@@ -1893,9 +1913,9 @@
       "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
     },
     "terres-du-midi": {
-      "wiki_title": "Terres-du-midi",
       "page_url": "https://fr.wikipedia.org/wiki/Terres-du-midi",
-      "verification_quote": "Un terres-du-midi est un vin qui peut être produit dans tout le vignoble du Languedoc-Roussillon, bénéficiant d'une indication géographique protégée (IGP) régionale."
+      "verification_quote": "Un terres-du-midi est un vin qui peut être produit dans tout le vignoble du Languedoc-Roussillon, bénéficiant d'une indication géographique protégée (IGP) régionale.",
+      "wiki_title": "Terres-du-midi"
     },
     "thunersee": {
       "missing": true,
@@ -1914,9 +1934,9 @@
       "note": "researched 2026-05; no dedicated wine article on fr.wikipedia.org"
     },
     "val-de-loire": {
-      "wiki_title": "Val-de-loire (IGP)",
       "page_url": "https://fr.wikipedia.org/wiki/Val-de-loire_(IGP)",
-      "verification_quote": "Un val-de-loire, anciennement appelé vin de pays du jardin de la France de 1981 à 2007, puis renommé vin de pays du Val de Loire jusqu'en 2009, est un vin français d'indication géographique protégée régionale."
+      "verification_quote": "Un val-de-loire, anciennement appelé vin de pays du jardin de la France de 1981 à 2007, puis renommé vin de pays du Val de Loire jusqu'en 2009, est un vin français d'indication géographique protégée régionale.",
+      "wiki_title": "Val-de-loire (IGP)"
     },
     "valais-wallis": {
       "page_url": "https://fr.wikipedia.org/wiki/Vignoble_du_Valais",
@@ -1970,34 +1990,34 @@
   },
   "hr": {
     "ponikve": {
-      "wiki_title": "Vinogorje Ponikve",
       "page_url": "https://hr.wikipedia.org/wiki/Vinogorje_Ponikve",
-      "verification_quote": "Vinogorje Ponikve su vinogradarski položaj koji se nalazi u blizini naselja Boljenovići na poluotoku Pelješcu u sastavu općine Ston u vinogradarskoj podregiji Srednja i Južna Dalmacija."
+      "verification_quote": "Vinogorje Ponikve su vinogradarski položaj koji se nalazi u blizini naselja Boljenovići na poluotoku Pelješcu u sastavu općine Ston u vinogradarskoj podregiji Srednja i Južna Dalmacija.",
+      "wiki_title": "Vinogorje Ponikve"
     }
   },
   "hu": {
     "balaton": {
-      "wiki_title": "Balaton borrégió",
       "page_url": "https://hu.wikipedia.org/wiki/Balaton_borr%C3%A9gi%C3%B3",
-      "verification_quote": "A Balaton borrégió Magyarország hat borrégiójának egyike; négy megyén át a Balaton körül helyezkedik el, mintegy 10 718 hektár szőlőterülettel."
+      "verification_quote": "A Balaton borrégió Magyarország hat borrégiójának egyike; négy megyén át a Balaton körül helyezkedik el, mintegy 10 718 hektár szőlőterülettel.",
+      "wiki_title": "Balaton borrégió"
     },
     "balatonmelleki": {
       "missing": true,
       "note": "researched 2026-05; 404 at /Balatonmelléki_borvidék; the PGI Landwein term has no dedicated article (Balaton borrégió is the macro-PDO, already pinned)"
     },
     "csopak": {
-      "wiki_title": "Balatonfüred–Csopaki borvidék",
       "page_url": "https://hu.wikipedia.org/wiki/Balatonf%C3%BCred%E2%80%93Csopaki_borvid%C3%A9k",
-      "verification_quote": "A Balatonfüred-Csopaki borvidék Magyarország Dunántúli részén található, a Balaton tó északi partjának keleti medencéjében, kb. 2150 hektáron. [parent borvidék — Csopak village within it]"
+      "verification_quote": "A Balatonfüred-Csopaki borvidék Magyarország Dunántúli részén található, a Balaton tó északi partjának keleti medencéjében, kb. 2150 hektáron. [parent borvidék — Csopak village within it]",
+      "wiki_title": "Balatonfüred–Csopaki borvidék"
     },
     "debroi-harslevelu": {
       "missing": true,
       "note": "researched 2026-05; only mentioned within Egri borvidék article; no standalone Debrői Hárslevelű article"
     },
     "duna": {
-      "wiki_title": "Duna borrégió",
       "page_url": "https://hu.wikipedia.org/wiki/Duna_borr%C3%A9gi%C3%B3",
-      "verification_quote": "A Duna borrégió (más néven Alföldi borrégió) Magyarország legnagyobb borrégiója a Duna és a Tisza közötti területen."
+      "verification_quote": "A Duna borrégió (más néven Alföldi borrégió) Magyarország legnagyobb borrégiója a Duna és a Tisza közötti területen.",
+      "wiki_title": "Duna borrégió"
     },
     "duna-tisza-kozi": {
       "missing": true,
@@ -2008,18 +2028,18 @@
       "note": "researched 2026-05; \"Dunántúl\" is a general Transdanubia geography article; no dedicated Dunántúli borrégió article"
     },
     "etyeki-pezsgo": {
-      "wiki_title": "Etyek–Budai borvidék",
       "page_url": "https://hu.wikipedia.org/wiki/Etyek%E2%80%93Budai_borvid%C3%A9k",
-      "verification_quote": "Az Etyek–Budai borvidék a Felső-Pannon borrégió legkeletibb, a Buda, Etyek és a Velencei-tó környéki szőlőket felölelő része. [parent borvidék — no Etyeki Pezsgő-specific article]"
+      "verification_quote": "Az Etyek–Budai borvidék a Felső-Pannon borrégió legkeletibb, a Buda, Etyek és a Velencei-tó környéki szőlőket felölelő része. [parent borvidék — no Etyeki Pezsgő-specific article]",
+      "wiki_title": "Etyek–Budai borvidék"
     },
     "felso-magyarorszag": {
       "missing": true,
       "note": "researched 2026-05; misidentification of Felső-Pannon borrégió (different region — west Hungary not north Hungary); no dedicated article for the Felső-Magyarországi PGI"
     },
     "fured": {
-      "wiki_title": "Balatonfüred–Csopaki borvidék",
       "page_url": "https://hu.wikipedia.org/wiki/Balatonf%C3%BCred%E2%80%93Csopaki_borvid%C3%A9k",
-      "verification_quote": "A Balatonfüred-Csopaki borvidék Magyarország Dunántúli részén található, a Balaton tó északi partjának keleti medencéjében, kb. 2150 hektáron."
+      "verification_quote": "A Balatonfüred-Csopaki borvidék Magyarország Dunántúli részén található, a Balaton tó északi partjának keleti medencéjében, kb. 2150 hektáron.",
+      "wiki_title": "Balatonfüred–Csopaki borvidék"
     },
     "izsaki-arany-sarfeher": {
       "missing": true,
@@ -2030,18 +2050,18 @@
       "note": "researched 2026-05; \"Káli-medence\" is a geological/national-park article with no wine content"
     },
     "koszeg": {
-      "wiki_title": "Soproni borvidék",
       "page_url": "https://hu.wikipedia.org/wiki/Soproni_borvid%C3%A9k",
-      "verification_quote": "A Soproni borvidék Magyarország egyik legrégibb borvidéke. [parent borvidék — Kőszegi körzet sub-district within it]"
+      "verification_quote": "A Soproni borvidék Magyarország egyik legrégibb borvidéke. [parent borvidék — Kőszegi körzet sub-district within it]",
+      "wiki_title": "Soproni borvidék"
     },
     "monor": {
       "missing": true,
       "note": "researched 2026-05; \"Monor\" is a town article; Monori sub-region noted on Kunsági borvidék but no dedicated wine article"
     },
     "pannon": {
-      "wiki_title": "Pannon borrégió",
       "page_url": "https://hu.wikipedia.org/wiki/Pannon_borr%C3%A9gi%C3%B3",
-      "verification_quote": "A Pannon borrégió Magyarország hét borrégiójának egyike."
+      "verification_quote": "A Pannon borrégió Magyarország hét borrégiójának egyike.",
+      "wiki_title": "Pannon borrégió"
     },
     "soltvadkerti": {
       "missing": true,
@@ -2090,9 +2110,9 @@
       "note": "researched 2026-05; demoted from FOUND — agent pinned to \"Montello rosso\" but that article is for the Montello Rosso DOCG (slug montello-rosso); Asolo Montello DOCG (red wine in the Asolo-Montello area) has no separate it.wiki article"
     },
     "asolo-prosecco": {
-      "wiki_title": "Colli Asolani - Prosecco",
       "page_url": "https://it.wikipedia.org/wiki/Colli_Asolani_-_Prosecco_(vino)",
-      "verification_quote": "Colli Asolani - Prosecco (o Asolo - Prosecco) è una DOCG riservata ad alcuni vini la cui produzione è consentita nella provincia di Treviso."
+      "verification_quote": "Colli Asolani - Prosecco (o Asolo - Prosecco) è una DOCG riservata ad alcuni vini la cui produzione è consentita nella provincia di Treviso.",
+      "wiki_title": "Colli Asolani - Prosecco"
     },
     "avola": {
       "missing": true,
@@ -2131,9 +2151,9 @@
       "note": "researched 2026-05; Casauria base name is a disambig page (commune/abbey); DOC described only as sub-zone within Montepulciano d'Abruzzo rosso article"
     },
     "castel-del-monte-nero-di-troia-riserva": {
-      "wiki_title": "Castel del Monte Nero di Troia riserva",
       "page_url": "https://it.wikipedia.org/wiki/Castel_del_Monte_Nero_di_Troia_riserva",
-      "verification_quote": "Castel del Monte Nero di Troia è la denominazione di origine controllata e garantita di un vino prodotto in provincia di Barletta-Andria-Trani e nella città metropolitana di Bari."
+      "verification_quote": "Castel del Monte Nero di Troia è la denominazione di origine controllata e garantita di un vino prodotto in provincia di Barletta-Andria-Trani e nella città metropolitana di Bari.",
+      "wiki_title": "Castel del Monte Nero di Troia riserva"
     },
     "catalanesca-del-monte-somma": {
       "missing": true,
@@ -2176,18 +2196,18 @@
       "note": "researched 2026-05; no it.wiki article"
     },
     "colline-teramane-montepulciano-dabruzzo": {
-      "wiki_title": "Montepulciano d'Abruzzo Colline Teramane",
       "page_url": "https://it.wikipedia.org/wiki/Montepulciano_d%27Abruzzo_Colline_Teramane",
-      "verification_quote": "Montepulciano d'Abruzzo Colline Teramane è la denominazione relativa al disciplinare di alcuni vini a DOCG prodotti nei comuni di…"
+      "verification_quote": "Montepulciano d'Abruzzo Colline Teramane è la denominazione relativa al disciplinare di alcuni vini a DOCG prodotti nei comuni di…",
+      "wiki_title": "Montepulciano d'Abruzzo Colline Teramane"
     },
     "conselvano": {
       "missing": true,
       "note": "researched 2026-05; no dedicated article; only listed in Vini IGT directory + Vini del Veneto"
     },
     "corti-benedettine-del-padovano": {
-      "wiki_title": "Corti benedettine del Padovano",
       "page_url": "https://it.wikipedia.org/wiki/Corti_benedettine_del_Padovano",
-      "verification_quote": "Il Corti benedettine del padovano è un vino a DOC prodotto nelle province di Padova e Venezia. [Note: it.wiki article is about the DOC; slug refers to the IGT of the same name + area — wine info is region-relevant]"
+      "verification_quote": "Il Corti benedettine del padovano è un vino a DOC prodotto nelle province di Padova e Venezia. [Note: it.wiki article is about the DOC; slug refers to the IGT of the same name + area — wine info is region-relevant]",
+      "wiki_title": "Corti benedettine del Padovano"
     },
     "costa-etrusco-romana": {
       "missing": true,
@@ -2210,9 +2230,9 @@
       "note": "researched 2026-05; no standalone it.wiki article for the dell'Emilia / Emilia IGT; appears only inside category and list pages"
     },
     "dolcetto-di-ovada-superiore": {
-      "wiki_title": "Dolcetto di Ovada superiore",
       "page_url": "https://it.wikipedia.org/wiki/Dolcetto_di_Ovada_superiore",
-      "verification_quote": "Dolcetto di Ovada superiore o Ovada è la denominazione di origine controllata e garantita di un vino prodotto in provincia di Alessandria."
+      "verification_quote": "Dolcetto di Ovada superiore o Ovada è la denominazione di origine controllata e garantita di un vino prodotto in provincia di Alessandria.",
+      "wiki_title": "Dolcetto di Ovada superiore"
     },
     "epomeo": {
       "missing": true,
@@ -2259,27 +2279,27 @@
       "note": "researched 2026-05; \"Marca Trevigiana\" article is about the medieval territorial designation around Treviso; IGT not primary subject"
     },
     "martina": {
-      "wiki_title": "Martina Franca (vino)",
       "page_url": "https://it.wikipedia.org/wiki/Martina_Franca_(vino)",
-      "verification_quote": "Martina Franca o Martina è la denominazione di origine controllata di un vino prodotto nelle province di Taranto, Bari e Brindisi, in Puglia."
+      "verification_quote": "Martina Franca o Martina è la denominazione di origine controllata di un vino prodotto nelle province di Taranto, Bari e Brindisi, in Puglia.",
+      "wiki_title": "Martina Franca (vino)"
     },
     "mitterberg": {
       "missing": true,
       "note": "researched 2026-05; only listed inside Vini a indicazione geografica tipica (Bolzano province IGT entry); no standalone article"
     },
     "montello-rosso": {
-      "wiki_title": "Montello rosso",
       "page_url": "https://it.wikipedia.org/wiki/Montello_rosso",
-      "verification_quote": "Il Montello rosso o Montello è una DOCG riservata a un vino la cui produzione è consentita nella provincia di Treviso, in due comprensori collinari limitrofi posti ai piedi delle Dolomiti."
+      "verification_quote": "Il Montello rosso o Montello è una DOCG riservata a un vino la cui produzione è consentita nella provincia di Treviso, in due comprensori collinari limitrofi posti ai piedi delle Dolomiti.",
+      "wiki_title": "Montello rosso"
     },
     "montenetto-di-brescia": {
       "missing": true,
       "note": "researched 2026-05; no it.wiki standalone article; en.wiki has Monte Netto (geological hill), it.wiki has only IGT list entry"
     },
     "moscato-di-sorso": {
-      "wiki_title": "Moscato di Sorso-Sennori",
       "page_url": "https://it.wikipedia.org/wiki/Moscato_di_Sorso-Sennori",
-      "verification_quote": "Il Moscato di Sorso-Sennori è un vino DOC la cui produzione è consentita nella città metropolitana di Sassari."
+      "verification_quote": "Il Moscato di Sorso-Sennori è un vino DOC la cui produzione è consentita nella città metropolitana di Sassari.",
+      "wiki_title": "Moscato di Sorso-Sennori"
     },
     "murgia": {
       "missing": true,
@@ -2306,18 +2326,18 @@
       "note": "researched 2026-05; \"Paestum_(vino)\" 404s; Paestum disambig page does not include a wine entry; IGT only in IGT list-page"
     },
     "pinot-nero-dell-oltrepo-pavese": {
-      "wiki_title": "Pinot Nero dell'Oltrepò Pavese",
       "page_url": "https://it.wikipedia.org/wiki/Pinot_Nero_dell%27Oltrep%C3%B2_Pavese",
-      "verification_quote": "Il Pinot Nero dell'Oltrepò Pavese è un vino DOC rosso fermo, la cui produzione è consentita nella provincia di Pavia."
+      "verification_quote": "Il Pinot Nero dell'Oltrepò Pavese è un vino DOC rosso fermo, la cui produzione è consentita nella provincia di Pavia.",
+      "wiki_title": "Pinot Nero dell'Oltrepò Pavese"
     },
     "pompeiano": {
       "missing": true,
       "note": "researched 2026-05; \"Rosso pompeiano\" is the iron-oxide pigment, not the wine; Pompeiano IGT only in IGT list-page"
     },
     "portofino": {
-      "wiki_title": "Golfo del Tigullio-Portofino",
       "page_url": "https://it.wikipedia.org/wiki/Golfo_del_Tigullio-Portofino",
-      "verification_quote": "Golfo del Tigullio-Portofino o Portofino è una DOC riservata ad alcuni vini la cui produzione è consentita nella città metropolitana di Genova."
+      "verification_quote": "Golfo del Tigullio-Portofino o Portofino è una DOC riservata ad alcuni vini la cui produzione è consentita nella città metropolitana di Genova.",
+      "wiki_title": "Golfo del Tigullio-Portofino"
     },
     "roccamonfina": {
       "missing": true,
@@ -2332,23 +2352,27 @@
       "note": "researched 2026-05; no it.wiki standalone article; only third-party wine sources"
     },
     "rosso-conero": {
-      "wiki_title": "Rosso Conero",
       "page_url": "https://it.wikipedia.org/wiki/Rosso_Conero",
-      "verification_quote": "Il Rosso Conero è un vino DOC la cui produzione è consentita nella zona di Monte Cònero."
+      "verification_quote": "Il Rosso Conero è un vino DOC la cui produzione è consentita nella zona di Monte Cònero.",
+      "wiki_title": "Rosso Conero"
+    },
+    "rotae": {
+      "missing": true,
+      "note": "2026-09-06: the title cascade bound IGT Rotae (Molise) to 'Roma (vino)' — the Roma DOC in Lazio — on name similarity. It produced a wiki-provenance terroir bullet about the Roma DOC's decree dates on the Rotae page. No dedicated it.wikipedia article for the Rotae IGT."
     },
     "s-anna-di-isola-capo-rizzuto": {
-      "wiki_title": "Sant'Anna di Isola Capo Rizzuto",
       "page_url": "https://it.wikipedia.org/wiki/Sant%27Anna_di_Isola_Capo_Rizzuto",
-      "verification_quote": "Il Sant'Anna di Isola Capo Rizzuto è una DOC riservata ad alcuni vini."
+      "verification_quote": "Il Sant'Anna di Isola Capo Rizzuto è una DOC riservata ad alcuni vini.",
+      "wiki_title": "Sant'Anna di Isola Capo Rizzuto"
     },
     "salina": {
       "missing": true,
       "note": "researched 2026-05; Salina is a disambig; Isola di Salina is the island; no dedicated IGT wine article"
     },
     "scanzo": {
-      "wiki_title": "Moscato di Scanzo",
       "page_url": "https://it.wikipedia.org/wiki/Moscato_di_Scanzo",
-      "verification_quote": "Scanzo o Moscato di Scanzo è la denominazione di origine controllata e garantita di un vino prodotto in provincia di Bergamo."
+      "verification_quote": "Scanzo o Moscato di Scanzo è la denominazione di origine controllata e garantita di un vino prodotto in provincia di Bergamo.",
+      "wiki_title": "Moscato di Scanzo"
     },
     "schaffhausen": {
       "missing": true,
@@ -2373,6 +2397,10 @@
     "st-gallen": {
       "missing": true,
       "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
+    },
+    "tarantino": {
+      "missing": true,
+      "note": "2026-09-06: the title cascade bound IGP Tarantino (Puglia) to 'Trentino (vino)' — the Trentino DOC ~900 km north — on name similarity. No dedicated it.wikipedia article for the Tarantino IGP."
     },
     "terrazze-dell-imperiese": {
       "missing": true,
@@ -2460,18 +2488,18 @@
       "note": "researched 2026-05; no it.wiki article exists at the direct URL"
     },
     "valtellina-rosso": {
-      "wiki_title": "Valtellina Rosso",
       "page_url": "https://it.wikipedia.org/wiki/Valtellina_Rosso",
-      "verification_quote": "Il Valtellina è un vino a DOC prodotto in provincia di Sondrio."
+      "verification_quote": "Il Valtellina è un vino a DOC prodotto in provincia di Sondrio.",
+      "wiki_title": "Valtellina Rosso"
     },
     "vaud": {
       "missing": true,
       "note": "researched 2026-05; no dedicated wine article on it.wikipedia.org"
     },
     "verdicchio-di-matelica-riserva": {
-      "wiki_title": "Verdicchio di Matelica riserva",
       "page_url": "https://it.wikipedia.org/wiki/Verdicchio_di_Matelica_riserva",
-      "verification_quote": "Verdicchio di Matelica riserva è la denominazione di origine controllata e garantita di un vino bianco prodotto nelle province di Macerata e Ancona."
+      "verification_quote": "Verdicchio di Matelica riserva è la denominazione di origine controllata e garantita di un vino bianco prodotto nelle province di Macerata e Ancona.",
+      "wiki_title": "Verdicchio di Matelica riserva"
     },
     "vigneti-delle-dolomiti": {
       "missing": true,
@@ -2500,33 +2528,33 @@
       "note": "researched 2026-05; redlink on Denominações de origem portuguesas; Alenquer pages are about the município"
     },
     "alentejano": {
-      "wiki_title": "Vinho do Alentejo",
       "page_url": "https://pt.wikipedia.org/wiki/Vinho_do_Alentejo",
-      "verification_quote": "Todos os produtores de vinho da região que pretendem usar a Denominação de Origem Controlada (DOC Alentejo) ou a Indicação Geográfica (Regional Alentejano)…"
+      "verification_quote": "Todos os produtores de vinho da região que pretendem usar a Denominação de Origem Controlada (DOC Alentejo) ou a Indicação Geográfica (Regional Alentejano)…",
+      "wiki_title": "Vinho do Alentejo"
     },
     "beira-interior": {
-      "wiki_title": "Vinho da Beira Interior",
       "page_url": "https://pt.wikipedia.org/wiki/Vinho_da_Beira_Interior",
-      "verification_quote": "O Vinho da Beira Interior é um vinho português produzido nas regiões de Castelo Rodrigo, Cova da Beira e Pinhel, constituindo uma Denominação de Origem Controlada cuja demarcação remonta a 2 de Novembro de 1999."
+      "verification_quote": "O Vinho da Beira Interior é um vinho português produzido nas regiões de Castelo Rodrigo, Cova da Beira e Pinhel, constituindo uma Denominação de Origem Controlada cuja demarcação remonta a 2 de Novembro de 1999.",
+      "wiki_title": "Vinho da Beira Interior"
     },
     "bucelas": {
       "missing": true,
       "note": "researched 2026-05; Bucelas page is about the parish/town in Loures; brief wine note only"
     },
     "carcavelos": {
-      "wiki_title": "Vinho de Carcavelos",
       "page_url": "https://pt.wikipedia.org/wiki/Vinho_de_Carcavelos",
-      "verification_quote": "Carcavelos DOC é a mais pequena região demarcada vinícola portuguesa e situa-se em torno da freguesia de Carcavelos, nos Municípios de Cascais e de Oeiras."
+      "verification_quote": "Carcavelos DOC é a mais pequena região demarcada vinícola portuguesa e situa-se em torno da freguesia de Carcavelos, nos Municípios de Cascais e de Oeiras.",
+      "wiki_title": "Vinho de Carcavelos"
     },
     "colares": {
-      "wiki_title": "Colares DOC",
       "page_url": "https://pt.wikipedia.org/wiki/Colares_DOC",
-      "verification_quote": "Colares é uma pequena região vinícola portuguesa no concelho de Sintra, em redor da vila de Colares, entre a serra e o Atlântico."
+      "verification_quote": "Colares é uma pequena região vinícola portuguesa no concelho de Sintra, em redor da vila de Colares, entre a serra e o Atlântico.",
+      "wiki_title": "Colares DOC"
     },
     "dao": {
-      "wiki_title": "Região Demarcada do Dão",
       "page_url": "https://pt.wikipedia.org/wiki/Regi%C3%A3o_Demarcada_do_D%C3%A3o",
-      "verification_quote": "A Região Demarcada do Dão foi instituída em data desconhecida de 1908, situada no centro de Portugal, na província da Beira Alta."
+      "verification_quote": "A Região Demarcada do Dão foi instituída em data desconhecida de 1908, situada no centro de Portugal, na província da Beira Alta.",
+      "wiki_title": "Região Demarcada do Dão"
     },
     "do-tejo": {
       "missing": true,
@@ -2553,9 +2581,9 @@
       "note": "researched 2026-05; Lagos (Portugal) is the município, not the DOC"
     },
     "madeira": {
-      "wiki_title": "Vinho da Madeira",
       "page_url": "https://pt.wikipedia.org/wiki/Vinho_da_Madeira",
-      "verification_quote": "O vinho da Madeira, ou simplesmente vinho Madeira, é um vinho fortificado, com elevado teor alcoólico, produzido nas encostas e adegas da Região Demarcada da Ilha da Madeira."
+      "verification_quote": "O vinho da Madeira, ou simplesmente vinho Madeira, é um vinho fortificado, com elevado teor alcoólico, produzido nas encostas e adegas da Região Demarcada da Ilha da Madeira.",
+      "wiki_title": "Vinho da Madeira"
     },
     "madeirense": {
       "missing": true,
@@ -2566,14 +2594,14 @@
       "note": "researched 2026-05; no PT article for the IGP (Vinho Verde DOC article unrelated)"
     },
     "pico": {
-      "wiki_title": "Vinho do Pico",
       "page_url": "https://pt.wikipedia.org/wiki/Vinho_do_Pico",
-      "verification_quote": "Vinho do Pico é a designação genérica dada aos vinhos produzidos na ilha do Pico, Açores."
+      "verification_quote": "Vinho do Pico é a designação genérica dada aos vinhos produzidos na ilha do Pico, Açores.",
+      "wiki_title": "Vinho do Pico"
     },
     "setubal": {
-      "wiki_title": "Moscatel de Setúbal",
       "page_url": "https://pt.wikipedia.org/wiki/Moscatel_de_Set%C3%BAbal",
-      "verification_quote": "Moscatel de Setúbal é uma Denominação de Origem Controlada (DOC) portuguesa conhecida pelos vinhos generosos produzidos de castas moscatel."
+      "verification_quote": "Moscatel de Setúbal é uma Denominação de Origem Controlada (DOC) portuguesa conhecida pelos vinhos generosos produzidos de castas moscatel.",
+      "wiki_title": "Moscatel de Setúbal"
     },
     "tavora-varosa": {
       "missing": true,
@@ -2650,9 +2678,9 @@
       "note": "researched 2026-05; only the Bujoru research station exists, not the wine region"
     },
     "dealu-mare": {
-      "wiki_title": "Podgoria Dealu Mare",
       "page_url": "https://ro.wikipedia.org/wiki/Podgoria_Dealu_Mare",
-      "verification_quote": "Dealu Mare este o regiune viticolă cu mai multe podgorii, situată în județele Buzău și Prahova pe versantul sudic al dealurilor Istriței."
+      "verification_quote": "Dealu Mare este o regiune viticolă cu mai multe podgorii, situată în județele Buzău și Prahova pe versantul sudic al dealurilor Istriței.",
+      "wiki_title": "Podgoria Dealu Mare"
     },
     "dealurile-crisanei": {
       "missing": true,
@@ -2771,9 +2799,9 @@
       "note": "researched 2026-05; Valea Mare-Podgoria, Argeș is a village; no dedicated Podgoria Ștefănești article"
     },
     "tarnave": {
-      "wiki_title": "Podgoria Târnavelor",
       "page_url": "https://ro.wikipedia.org/wiki/Podgoria_T%C3%A2rnavelor",
-      "verification_quote": "Podgoria Tarnavelor este cea mai mare din Transilvania, concentrînd vigoarea plantațiilor cultivate între râurile Târnava Mare și Târnava Mică."
+      "verification_quote": "Podgoria Tarnavelor este cea mai mare din Transilvania, concentrînd vigoarea plantațiilor cultivate între râurile Târnava Mare și Târnava Mică.",
+      "wiki_title": "Podgoria Târnavelor"
     },
     "terasele-dunarii": {
       "missing": true,
@@ -2802,84 +2830,64 @@
       "note": "researched 2026-05; sk.wiki has no all-Slovakia wine-PGI article (Slovenské_víno is 404)"
     },
     "tokajske-vino-zo-slovenskej-oblasti": {
-      "wiki_title": "Tokajské víno",
       "page_url": "https://sk.wikipedia.org/wiki/Tokajsk%C3%A9_v%C3%ADno",
-      "verification_quote": "Tokajské víno je označenie vína z vinohradníckej oblasti Tokaj (scoped to Slovak Tokaj per zákon č. 313/2009 Z. z. o vinohradníctve a vinárstve)."
+      "verification_quote": "Tokajské víno je označenie vína z vinohradníckej oblasti Tokaj (scoped to Slovak Tokaj per zákon č. 313/2009 Z. z. o vinohradníctve a vinárstve).",
+      "wiki_title": "Tokajské víno"
     }
   },
   "sl": {
     "bela-krajina": {
-      "wiki_title": "Vinorodni okoliš Bela krajina",
       "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Bela_krajina",
-      "verification_quote": "Vinorodni okoliš Bela krajina (1130 ha) je eden od treh vinorodnih okolišev 7700 hektarov obsegajoče slovenske vinorodne dežele Posavje."
+      "verification_quote": "Vinorodni okoliš Bela krajina (1130 ha) je eden od treh vinorodnih okolišev 7700 hektarov obsegajoče slovenske vinorodne dežele Posavje.",
+      "wiki_title": "Vinorodni okoliš Bela krajina"
     },
     "bizeljcan": {
       "missing": true,
       "note": "researched 2026-05; sl.wiki has split articles \"Rdeči bizeljčan\" and \"Beli bizeljčan\" (red/white versions); no combined Bizeljčan appellation article"
     },
     "bizeljsko-sremic": {
-      "wiki_title": "Vinorodni okoliš Bizeljsko - Sremič",
       "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Bizeljsko_-_Sremi%C4%8D",
-      "verification_quote": "Vinorodni okoliš Bizeljsko - Sremič (1700 ha) je eden od treh vinorodnih okolišev 7700 hektarov obsegajoče slovenske vinorodne dežele Posavje."
+      "verification_quote": "Vinorodni okoliš Bizeljsko - Sremič (1700 ha) je eden od treh vinorodnih okolišev 7700 hektarov obsegajoče slovenske vinorodne dežele Posavje.",
+      "wiki_title": "Vinorodni okoliš Bizeljsko - Sremič"
     },
     "goriska-brda": {
-      "wiki_title": "Vinorodni okoliš Goriška brda",
       "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Gori%C5%A1ka_brda",
-      "verification_quote": "Vinorodni okoliš Goriška brda obsega 1800 ha površine in je del v 7055 ha obsegajoče slovenske vinorodne dežele Primorske."
+      "verification_quote": "Vinorodni okoliš Goriška brda obsega 1800 ha površine in je del v 7055 ha obsegajoče slovenske vinorodne dežele Primorske.",
+      "wiki_title": "Vinorodni okoliš Goriška brda"
     },
     "kras": {
-      "wiki_title": "Vinorodni okoliš Kras",
       "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Kras",
-      "verification_quote": "Vinorodni okoliš Kras je s površino 575 hektarov najmanjši vinorodni okoliš v Sloveniji."
+      "verification_quote": "Vinorodni okoliš Kras je s površino 575 hektarov najmanjši vinorodni okoliš v Sloveniji.",
+      "wiki_title": "Vinorodni okoliš Kras"
     },
     "podravje": {
-      "wiki_title": "Vinorodna dežela Podravje",
       "page_url": "https://sl.wikipedia.org/wiki/Vinorodna_de%C5%BEela_Podravje",
-      "verification_quote": "Vinorodna dežela Podravje je z okrog 6641 hektarji druga po velikosti izmed treh slovenskih vinorodnih dežel."
+      "verification_quote": "Vinorodna dežela Podravje je z okrog 6641 hektarji druga po velikosti izmed treh slovenskih vinorodnih dežel.",
+      "wiki_title": "Vinorodna dežela Podravje"
     },
     "posavje": {
-      "wiki_title": "Vinorodna dežela Posavje",
       "page_url": "https://sl.wikipedia.org/wiki/Vinorodna_de%C5%BEela_Posavje",
-      "verification_quote": "Vinorodna dežela Posavje je ena izmed treh slovenskih vinorodnih dežel."
+      "verification_quote": "Vinorodna dežela Posavje je ena izmed treh slovenskih vinorodnih dežel.",
+      "wiki_title": "Vinorodna dežela Posavje"
     },
     "prekmurje": {
-      "wiki_title": "Vinorodni okoliš Prekmurje",
       "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Prekmurje",
-      "verification_quote": "Vinorodni okoliš Prekmurje, tudi Prekmurske gorice (528 ha) je po površini manjši od dveh vinorodnih okolišev."
+      "verification_quote": "Vinorodni okoliš Prekmurje, tudi Prekmurske gorice (528 ha) je po površini manjši od dveh vinorodnih okolišev.",
+      "wiki_title": "Vinorodni okoliš Prekmurje"
     },
     "primorska": {
-      "wiki_title": "Vinorodna dežela Primorska",
       "page_url": "https://sl.wikipedia.org/wiki/Vinorodna_de%C5%BEela_Primorska",
-      "verification_quote": "Vinorodna dežela Primorska je ena izmed treh vinorodnih dežel v Sloveniji."
+      "verification_quote": "Vinorodna dežela Primorska je ena izmed treh vinorodnih dežel v Sloveniji.",
+      "wiki_title": "Vinorodna dežela Primorska"
     },
     "slovenska-istra": {
-      "wiki_title": "Vinorodni okoliš Koper",
       "page_url": "https://sl.wikipedia.org/wiki/Vinorodni_okoli%C5%A1_Koper",
-      "verification_quote": "Koprski vinorodni okoliš (2400 ha) spada v 7055 hektarov obsegajočo slovensko vinorodno deželo Primorsko. [Koprski okoliš = sl-language name for Slovenska Istra]"
+      "verification_quote": "Koprski vinorodni okoliš (2400 ha) spada v 7055 hektarov obsegajočo slovensko vinorodno deželo Primorsko. [Koprski okoliš = sl-language name for Slovenska Istra]",
+      "wiki_title": "Vinorodni okoliš Koper"
     },
     "stajerska-slovenija": {
       "missing": true,
       "note": "researched 2026-05; no dedicated \"Vinorodni okoliš Štajerska Slovenija\" article; only mentioned as parent in sub-okoliš articles"
-    }
-  },
-  "en": {
-    "malta": {
-      "wiki_title": "Maltese wine",
-      "page_url": "https://en.wikipedia.org/wiki/Maltese_wine",
-      "verification_quote": "Maltese wine dates back over two thousand years to the time of the Phoenicians.",
-      "note": "Malta has no per-PDO/PGI en.wikipedia article; the umbrella Maltese-wine article grounds terroir facts (the CH/LU pattern)."
-    },
-    "gozo": {
-      "wiki_title": "Maltese wine",
-      "page_url": "https://en.wikipedia.org/wiki/Maltese_wine",
-      "verification_quote": "Maltese wine dates back over two thousand years to the time of the Phoenicians.",
-      "note": "Malta has no per-PDO/PGI en.wikipedia article; the umbrella Maltese-wine article grounds terroir facts (the CH/LU pattern)."
-    },
-    "maltese-islands": {
-      "wiki_title": "Maltese wine",
-      "page_url": "https://en.wikipedia.org/wiki/Maltese_wine",
-      "verification_quote": "Maltese wine dates back over two thousand years to the time of the Phoenicians.",
-      "note": "Malta has no per-PDO/PGI en.wikipedia article; the umbrella Maltese-wine article grounds terroir facts (the CH/LU pattern)."
     }
   }
 }
