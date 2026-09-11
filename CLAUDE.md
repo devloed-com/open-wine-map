@@ -553,7 +553,11 @@ generator against `wiki/_index.json`.
 ## Scripts contract
 
 Each script is independently re-runnable and writes a manifest. Running stage N
-twice with no changes upstream must be a no-op (cache hits).
+twice with no changes upstream must be a no-op (cache hits). Stage 02's
+`--only NAME` (repeatable substring) re-extracts just the matching records and
+merges their entries into `_index.json`; it never rewrites the unselected
+records (a partial run used to stub the whole corpus). A parser change that
+touches many records still wants a full run.
 
 | Script | Reads | Writes |
 |---|---|---|
@@ -4772,3 +4776,15 @@ static link layer (all in [scripts/_lib/map_template.py](scripts/_lib/map_templa
   benign same-value dups without failing); `tests/test_no_duplicate_keys.py`
   runs it under `pytest`. Run `.venv/bin/python scripts/audit_dup_keys.py` (or
   `pytest`) after editing `grape_lexicon.py` or any other large lookup table.
+## Analytics
+
+Self-hosted Plausible (site id `openwinemap.com`); the snippet is in
+`_TEMPLATE`, custom events go through `track()` in
+[scripts/_lib/assets/app.js](scripts/_lib/assets/app.js). The event/prop
+reference, the goal-configuration recipe (events are stored but invisible
+until configured as goals — retroactively), and the known reading artefacts
+(replaceState opens are not pageviews; page-load opens are not tracked;
+`Appellation Viewed.slug` is the stack focus, split by `via`) live in
+[docs/analytics.md](docs/analytics.md). Keep that table in sync when adding
+or renaming a `track()` call, and never commit an API key.
+

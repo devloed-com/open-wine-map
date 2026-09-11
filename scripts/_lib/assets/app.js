@@ -578,6 +578,12 @@
       }
     };
     a.addEventListener('mousedown', arm);
+  // Which feedback channel gets used. The GitHub link is an outbound click
+  // Plausible already counts, but clicks there produced no issues, so the
+  // channel split (github vs e-mail) is the number that matters.
+  document.querySelectorAll('a[data-feedback]').forEach(a => {
+    a.addEventListener('click', () => track('Feedback Clicked', { channel: a.dataset.feedback, locale: LANG }));
+  });
     a.addEventListener('focus', arm);
     a.addEventListener('touchstart', arm, { passive: true });
     a.addEventListener('click', () => {
@@ -1075,7 +1081,7 @@
     lastPanelTrigger = btn || (label && label.querySelector('.open-aoc')) || null;
     lastStackKey = slug;
     stackFocusIndex = 0;
-    renderPanelStack([slug], 0);
+    renderPanelStack([slug], 0, undefined, 'facet');
     track('Appellation Opened', { slug: slug, via: 'facet', locale: LANG });
     const b = (viewMode === 'simple' && AOCS[slug].bbox_villages) ? AOCS[slug].bbox_villages : AOCS[slug].bbox;
     if (b && typeof map.fitBounds === 'function') {
@@ -1672,7 +1678,7 @@
       lastPanelTrigger = document.getElementById('omni');
       lastStackKey = key;
       stackFocusIndex = 0;
-      renderPanelStack([key], 0);
+      renderPanelStack([key], 0, undefined, 'omnisearch');
       track('Appellation Opened', { slug: key, via: 'omnisearch', locale: LANG });
       const b = (viewMode === 'simple' && AOCS[key].bbox_villages) ? AOCS[key].bbox_villages : AOCS[key].bbox;
       if (b && typeof map.fitBounds === 'function') map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: 11, duration: 500 });
@@ -2416,7 +2422,7 @@
       + `</div>`;
   }
 
-  function renderPanelStack(slugs, focusIndex, doTrack) {
+  function renderPanelStack(slugs, focusIndex, doTrack, via) {
     if (!slugs.length) return;
     const sorted = slugs
       .filter(s => AOCS[s])
@@ -2450,8 +2456,15 @@
     }
     // Popularity signal: the appellation brought to the front of the stack.
     // doTrack is suppressed for the localStorage restore (fires on every
-    // reload / language switch — not a fresh view).
-    if (doTrack !== false) {
+    // reload / language switch — not a fresh view). The page-load open of a
+    // /<lang>/<slug> landing is not tracked either: the pageview already
+    // records that slug, and a custom event fired on load made every entity
+    // landing a non-bounce by construction and let a session start with a
+    // custom event (empty entry page) whenever the pageview was deferred.
+    // `via` separates a map click from stack cycling and from the explicit
+    // facet / omnisearch / in-panel opens, so the slug breakdown reads per
+    // intent instead of as one popularity list.
+    if (doTrack !== false && via !== 'landing') {
       const focusSlug = ordered[0];
       const fr = AOCS[focusSlug];
       if (fr) {
@@ -2531,6 +2544,8 @@
     p = (p.indexOf(SLUG_BASE) === 0) ? p.slice(SLUG_BASE.length) : p.replace(/^\//, '');
     p = p.replace(/\/+$/, '').split('/')[0];
     try { p = decodeURIComponent(p); } catch (e) {}
+          stack_size: String(sorted.length),
+          via: via || 'map',
     return p || null;
   }
   function setAocPath(slug) {
@@ -2578,7 +2593,7 @@
     if (urlSlug && AOCS[urlSlug]) {
       lastStackKey = urlSlug;
       stackFocusIndex = 0;
-      renderPanelStack([urlSlug], 0);
+      renderPanelStack([urlSlug], 0, undefined, 'landing');
       // Frame the shared appellation, but only when the link carries no
       // explicit camera hash (respect a co-shared #zoom/lat/lon). Use the
       // page-entry snapshot, not the live hash — maplibre has already written
@@ -2736,7 +2751,7 @@
       lastPanelTrigger = null;
       lastStackKey = '';
       stackFocusIndex = 0;
-      renderPanelStack([slug]);
+      renderPanelStack([slug], 0, undefined, 'panel-link');
     }
   });
 
@@ -2800,7 +2815,7 @@ __OWM_source_block__
         stackFocusIndex = 0;
       }
       lastPanelTrigger = null;
-      renderPanelStack(slugs, stackFocusIndex);
+      renderPanelStack(slugs, stackFocusIndex, undefined, via);
     });
 
     // Re-apply feature-state for any selection restored from localStorage
@@ -2811,3 +2826,5 @@ __OWM_source_block__
     applyFilter();
     updateStatus();
   });
+      let via = 'map';
+        via = 'cycle';

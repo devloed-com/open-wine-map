@@ -376,6 +376,18 @@ Shadow-report findings (`raw/inao/register/shadow-report.md`, 466 parents):
 Open queue — ❌ **2 appellations INAO still publishes but the EU register has
 struck off.** The resolver refuses to bind a `Cancelled` GI on its own (a
 withdrawn registration cannot be an appellation's current specification), so
+
+  **2026-09-11 (Pouilly-Loché aire)** — the analytics surfaced a 0.4 km²
+  AOC drawn across all of Burgundy in simple mode: the 2024 PNOCDC writes
+  `1 - Aire géographique` (no degree sign) and defines the aire as a
+  sentence ("territoire de la commune de Mâcon"), so stage 02 scanned the
+  whole section and recorded the *aire de proximité* (366 communes) as the
+  aire. Fixed in `extract_aire` (degree-less block headers + sentence-form
+  aires; corpus-wide, 58 single-commune AOCs — Meursault, Pommard, the
+  Vosne-Romanée and Gevrey grands crus, Barsac, Cornas, Gigondas … — gained
+  a previously empty aire) and guarded
+  in stage 04 (`[villages-guard]`). The short `lien` (255 chars) is still
+  the register re-source candidate above.
 both sit in `raw/inao/register/unresolved.json` awaiting a curator call. Both
 already have a working BO Agri cahier, so nothing is missing from the corpus —
 what needs deciding is whether SIQO is stale (the mirror image of the
@@ -3152,6 +3164,22 @@ full evidence in [tmp/vivc-ambiguous-research-results.md](tmp/vivc-ambiguous-res
 ```
 avgoustiatis→801 kanella→16124 kontokladi→6395 kotsifali→6446
 koutsoubeli→6463 mavrotragano→40210 skiadopoulo→11849 thrapsathiri→12428
+## Pipeline — grape canonical ranking depends on the corpus on disk
+
+**2026-09-11** — `_vivc_canonical_by_id` (scripts/_lib/grape_entity.py)
+picks, among VIVC by-slug files sharing a vivc_id, the slug present in the
+extracted corpora on disk (then the most frequent). That makes
+`raw/inao/cahier-extracted/` an implicit input of every stage-02 / stage-04
+run and the ranking self-reinforcing: a stage-02 run started on a damaged
+FR corpus wrote `corvo` for aubun, `rodo` for mondeuse, `araignan` for
+picardan, `livornese-bianca` for rolle, `graciano` for morrastel … across
+190 FR records, and later runs kept them. Recovered by seeding the FR
+records' grape lists from the last good build and re-running (see the
+session memory). To do: pin the FR-canonical slugs explicitly (a checked-in
+vivc_id → canonical table, or make `GRAPE_ALIAS` the first tiebreaker) so
+the choice no longer depends on what happens to be on disk, and add a
+stage-04 assertion comparing the principal-slug set against the previous
+build's blob.
 vertzami-lefko→13013 bratkovina→1660 debit→10423 draganela→21070
 grk→5066 vugava→13184 zadarka→13365 zlahtina→22843 modra-kosovina→24493
 muskat-zuti→8056 svrdlovina-crna→15638 trbljan→8075 zumic→24915

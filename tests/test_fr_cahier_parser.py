@@ -148,3 +148,104 @@ def test_extract_sections_lowercase_chapitre_in_body_does_not_truncate():
     bodies, _titles = extract.extract_sections(seg)
     assert "X" in bodies, "lowercase body 'chapitre' truncated the segment early"
     assert "coteaux exposés au sud" in bodies["X"]
+
+
+# ----- extract_aire: section IV sub-block headers + sentence-form aires -----
+#
+# Pouilly-Loché's 2024 PNOCDC writes "1 - Aire géographique" (no degree
+# sign) and defines the aire as a sentence ("… sur le territoire de la
+# commune de Mâcon du département de Saône-et-Loire") instead of a
+# "Département de X :" list. Before the fix the block split missed, the
+# whole section was scanned, and the aire de proximité immédiate list
+# (366 Burgundy communes) was recorded as the aire géographique — which
+# drew the AOC across all of Burgundy in the simple-mode map.
+
+
+def test_extract_aire_degree_less_header_keeps_proximity_out_of_aire():
+    iv = (
+        "1 - Aire géographique\n\n"
+        "La récolte des raisins, la vinification, l’élaboration et l’élevage des vins "
+        "d’appellation d’origine\ncontrôlée « Pouilly-Loché » sont assurés sur le territoire "
+        "de la commune de Mâcon du département de\nSaône-et-Loire.\n\n"
+        "2 - Aire parcellaire délimitée\n\n"
+        "Les vins sont issus exclusivement de vignes situées dans l’aire parcellaire.\n\n"
+        "3 - Aire de proximité immédiate\n\n"
+        "L’aire de proximité immédiate est constituée par le territoire des communes suivantes :\n"
+        "- Département de la Côte-d’Or : Agencourt, Aloxe-Corton\n"
+        "- Département du Rhône : Anse, Belleville\n"
+    )
+    aire = extract.extract_aire(iv)
+    assert aire["aire_geographique"] == {"Saône-et-Loire": ["Mâcon"]}
+    assert aire["aire_proximite_immediate"] == {
+        "Côte-d’Or": ["Agencourt", "Aloxe-Corton"],
+        "Rhône": ["Anse", "Belleville"],
+    }
+
+
+def test_extract_aire_sentence_form_multi_commune_two_departements():
+    iv = (
+        "1° - Aire géographique\n\n"
+        "La récolte est assurée sur le territoire des communes de Chablis,\nPoinchy et Fyé "
+        "du département de l’Yonne et des communes de Dijon du département de la Côte-d’Or.\n\n"
+        "2° - Aire parcellaire délimitée\n\nx\n"
+    )
+    aire = extract.extract_aire(iv)
+    assert aire["aire_geographique"] == {
+        "Yonne": ["Chablis", "Poinchy", "Fyé"],
+        "Côte-d’Or": ["Dijon"],
+    }
+    assert aire["aire_proximite_immediate"] == {}
+
+
+def test_extract_aire_classic_degree_header_unchanged():
+    iv = (
+        "1° - Aire géographique\n\n- Département de la Marne : Reims, Épernay\n\n"
+        "2° - Aire parcellaire délimitée\n\nx\n\n"
+        "3° - Aire de proximité immédiate\n\n- Département de l’Aube : Troyes\n"
+    )
+    aire = extract.extract_aire(iv)
+    assert aire["aire_geographique"] == {"Marne": ["Reims", "Épernay"]}
+    assert aire["aire_proximite_immediate"] == {"Aube": ["Troyes"]}
+
+
+def test_extract_aire_list_form_wins_over_sentence_form_in_same_block():
+    # A block that carries a "Département de X :" list must not ALSO pick up
+    # a stray sentence mention — the sentence fallback only runs when the
+    # list form found nothing.
+    iv = (
+        "1° - Aire géographique\n\n"
+        "Les vins proviennent des communes de Nuits du département de la Côte-d’Or.\n"
+        "- Département de la Côte-d’Or : Nuits-Saint-Georges, Premeaux-Prissey\n\n"
+        "2° - Aire parcellaire délimitée\n\nx\n"
+    )
+    aire = extract.extract_aire(iv)
+    assert aire["aire_geographique"] == {"Côte-d’Or": ["Nuits-Saint-Georges", "Premeaux-Prissey"]}
+
+
+def test_aire_block_header_requires_a_marker():
+    # "3 communes …" starts with a digit but carries no ° / dash / paren, so
+    # it must not open a sub-block and split a commune list in two.
+    import re
+
+    pat = re.compile(extract._AIRE_BLOCK_HEADER_PATTERN, re.MULTILINE)
+    assert pat.search("1° - Aire géographique")
+    assert pat.search("1°- Aire parcellaire délimitée")
+    assert pat.search("1 - Aire géographique")
+    assert pat.search("2 – Aire parcellaire délimitée")
+    assert pat.search("1) Aire géographique")
+    assert not pat.search("3 communes du département")
+    assert not pat.search("12 - Aire géographique")
+
+
+def test_extract_aire_sentence_form_drops_lowercase_asides():
+    iv = (
+        "1° Aire géographique :\n\nLa récolte des raisins est assurée sur le territoire de\n"
+        "la commune de Barsac, sur la base du code officiel géographique en date du 1er janvier 2025, "
+        "dans le\ndépartement de la Gironde.\n\n2° Aire parcellaire délimitée :\n\nx\n"
+    )
+    assert extract.extract_aire(iv)["aire_geographique"] == {"Gironde": ["Barsac"]}
+    iv2 = (
+        "1°- Aire géographique\n\nLes vins sont assurés sur le territoire de\nla commune de Loupiac, "
+        "située dans le département de la Gironde.\n\n2°- Aire parcellaire délimitée\n\nx\n"
+    )
+    assert extract.extract_aire(iv2)["aire_geographique"] == {"Gironde": ["Loupiac"]}

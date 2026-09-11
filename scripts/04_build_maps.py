@@ -597,6 +597,19 @@ def communes_containing(needle, insee_idx: dict[str, dict]) -> set[str]:
     """
     px0, py0, px1, py1 = needle.bounds
     out: set[str] = set()
+# Villages (simple-mode) polygon vs parcellaire bbox ratio above which a
+# cahier-text commune union is treated as an extraction artefact and
+# narrowed to parcel-bearing communes. Corpus median is ~2x; legitimate
+# single-commune aires around tiny crus reach ~1000x but never pass the
+# commune-count gate. Pouilly-Loché's bad aire was ~44,000x.
+VILLAGES_BBOX_GUARD_RATIO = 20.0
+
+
+def _bbox_area(g) -> float:
+    minx, miny, maxx, maxy = g.bounds
+    return float((maxx - minx) * (maxy - miny))
+
+
     for code, gd in insee_idx.items():
         cx0, cy0, cx1, cy1 = _geojson_bounds(gd)
         if cx1 < px0 or cx0 > px1 or cy1 < py0 or cy0 > py1:
@@ -2213,6 +2226,42 @@ def main() -> int:
             v_geom = clip_res.geom
         elif v_geom is not None and not v_geom.is_empty:
             v_geom = geom_overrides.clip(record["slug"], v_geom, geom_source).geom
+            # Guard: a cahier-text aire that dwarfs the parcellaire polygon is
+            # an extraction artefact (an aire de proximité list read as the
+            # aire — Pouilly-Loché's 2024 cahier drew the AOC across all of
+            # Burgundy in simple mode), not a production area. Narrow the
+            # text-derived communes to those holding parcels, exactly as the
+            # aires-CSV path does, and say so loudly. Dormant for correct
+            # records: a single-commune aire around a tiny cru never trips
+            # the count gate, and a multi-commune aire whose communes all
+            # hold parcels keeps every commune.
+            if (
+                v_source == "communes"
+                and geom_source == "parcellaire"
+                and v_geom is not None
+                and not v_geom.is_empty
+                and geom is not None
+                and not geom.is_empty
+                and v_stats.get("matched", 0) > 3
+                and _bbox_area(v_geom) > VILLAGES_BBOX_GUARD_RATIO * _bbox_area(geom)
+            ):
+                text_codes = cahier_insee(record, commune_idx)
+                narrowed = {
+                    c for c in text_codes
+                    if c in insee_idx and shape(insee_idx[c]).intersects(geom)
+                }
+                if narrowed and len(narrowed) < len(text_codes):
+                    n_geom, n_stats = union_from_insee(narrowed, insee_idx)
+                    if n_geom is not None and not n_geom.is_empty:
+                        ratio = _bbox_area(v_geom) / max(_bbox_area(geom), 1e-12)
+                        print(
+                            f"[villages-guard] {record['slug']}: cahier-text aire "
+                            f"({len(text_codes)} communes) spans {ratio:.0f}x the "
+                            f"parcellaire bbox — narrowed to {len(narrowed)} "
+                            f"parcel-bearing commune(s); check the stage-02 aire",
+                            file=sys.stderr,
+                        )
+                        v_geom, v_stats = n_geom, n_stats
         if clip_res.dropped or clip_res.stale:
             geom_clip_results.append(clip_res)
 

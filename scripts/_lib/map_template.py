@@ -460,13 +460,16 @@ def _ext_link(url: str, label: str) -> str:
 
 def _feedback_email_anchor(label: str) -> str:
     return (
-        f'<a href="#" class="feedback-mail" '
+        f'<a href="#" class="feedback-mail" data-feedback="email" '
         f'data-u="{_FEEDBACK_USER}" data-d="{_FEEDBACK_DOMAIN}">{label}</a>'
     )
 
 
 def _build_sidebar_disclaimer(labels: dict[str, str]) -> str:
-    issue = _ext_link(_GITHUB_NEW_ISSUE_URL, labels["feedback_issue_label"])
+    issue = (
+        f'<a href="{_GITHUB_NEW_ISSUE_URL}" target="_blank" rel="noopener" '
+        f'data-feedback="github">{labels["feedback_issue_label"]}</a>'
+    )
     email = _feedback_email_anchor(labels["feedback_email_label"])
     return (
         f'<div id="sidebar-disclaimer">'
