@@ -884,3 +884,32 @@ the **GOV.UK "protected food and drink names" register** run by DEFRA.
 # Independent check: https://www.gov.uk/protected-food-drink-names
 #   → filter Register = "Wines", Country of origin = "United Kingdom".
 ```
+
+## 2026-09-07 — traditional terms vs the national rosters (IT MASAF elenco, ES MAPA listado)
+
+Independent cross-check of the `national_term` axis introduced with the two-axis naming
+layer (`scripts/_lib/gi_terms.py`, `scripts/_lib/traditional_terms.json`).
+
+| check | corpus (parents, wines) | reference | result |
+|---|---:|---|---|
+| IT DOCG | 79 | MASAF *Elenco alfabetico dei vini DOP* agg. 18.03.2026: 79 DOCG rows | ✅ equal |
+| IT DOC | 333 | elenco 332 + Valtènesi (registered 2026-03-18, Reg. (EU) 2026/572, pinned) | ✅ equal |
+| IT IGT | 111 | eAmbrosia IT PGI records (112 incl. the Salemi stub not on the map) | ✅ |
+| ES DOCa/DOQ | 1 + 1 | MAPA listado 2 July 2026: DOCa 2 (Rioja, Priorat; Priorat shown as DOQ) | ✅ |
+| ES Vino de Pago | 28 | listado VP 27 + Urbezo (VP per MAPA 2024-10-25, listado still DO; pinned) | ✅ |
+| ES Vino de Calidad | 7 | listado VC 7 | ✅ |
+| ES DO | 69 | listado DO 70 − Urbezo | ✅ |
+| ES Vino de la Tierra | 43 | listado VT 43 (all 43 ES PGIs) | ✅ |
+| AT DAC | 18 | BML DAC-Verordnungen page 17 + Wagram (RIS) | ✅ |
+| sub == parent | 1,242 subs | every sub-denomination's (eu_scheme, national_term) equals its parent's | ✅ 0 mismatches |
+| kind invariant | AOC 1404 / AOP 1 / DOP 944 / EDV 28 / IGP 537 | same counts in `appellations{,-villages}.geojson` before and after | ✅ unchanged |
+
+Recipe:
+
+```
+.venv/bin/python scripts/it/00_fetch_data.py        # refreshes raw/it/masaf-elenchi/ (dated ServeAttachment link)
+.venv/bin/python scripts/es/00_fetch_data.py        # refreshes raw/es/mapa/listado-dop-igp-vinos.pdf
+.venv/bin/python scripts/04_build_maps.py
+.venv/bin/python scripts/audit_gi_terms.py --strict
+grep -o '"kind": *"[A-Z]*"' wiki/map-data/appellations.geojson | sort | uniq -c
+```

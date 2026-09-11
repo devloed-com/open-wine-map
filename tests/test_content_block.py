@@ -215,10 +215,10 @@ def test_name_with_latin() -> None:
 
 
 def test_subappellations_section_rendered_when_children_passed() -> None:
-    rec = {"name": "Muscadet Sèvre et Maine", "kind": "AOC", "country": "fr"}
+    rec = {"name": "Muscadet Sèvre et Maine", "classification": "AOC", "country": "fr"}
     kids = [
-        {"name": "Clisson", "path": "/en/clisson", "kind": "AOC"},
-        {"name": "Le Pallet", "path": "/en/le-pallet", "kind": "AOC"},
+        {"name": "Clisson", "path": "/en/clisson", "classification": "AOC"},
+        {"name": "Le Pallet", "path": "/en/le-pallet", "classification": "AOC"},
     ]
     out = render_content_block(rec, "muscadet", _ctx("en"), children=kids)
     # FR heading is the regulator's own term, not the generic UI label.
@@ -246,7 +246,7 @@ def test_subappellations_heading_falls_back_to_generic_label() -> None:
     # A country with no clean regulator term (e.g. CH) uses the translated label.
     out = render_content_block({"name": "Vaud", "kind": "AOC", "country": "ch"},
                                "vaud", _ctx("en"),
-                               children=[{"name": "La Côte", "path": "/en/la-cote", "kind": "AOC"}])
+                               children=[{"name": "La Côte", "path": "/en/la-cote", "classification": "AOC"}])
     assert "<h2>Sub-appellations</h2>" in out  # _LABELS['entity_nav_children']
 
 

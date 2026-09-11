@@ -2,24 +2,25 @@
 
 A reference wiki + map of European wine appellations, generated mechanically
 from public regulator data. France (INAO + JORF) is the canonical pipeline;
-Spain (eAmbrosia + EUR-Lex) lives under `scripts/es/`; Portugal (eAmbrosia +
-IVV) under `scripts/pt/`; Italy under `scripts/it/`; Austria under
-`scripts/at/`; Slovenia under `scripts/si/`. Every per-record fact traces
-back to a public-source document — nothing here is hand-written narrative.
+the other 20 countries, the United Kingdom included, each have a sibling
+pipeline under `scripts/<cc>/` sourced from the eAmbrosia EU register, the
+national regulator, the Swiss federal repertoire or the UK GI register. The
+per-country list, coverage and mechanics live in `CLAUDE.md`. Every
+per-record fact traces back to a public-source document — nothing here is
+hand-written narrative.
 
 ## Status
 
 The FR pipeline runs end-to-end across the full AOC/AOP/IGP corpus, emitting
 per-denomination markdown pages (one per appellation plus one per DGC —
 Muscadet sub-crus, Côtes du Rhône Villages, Alsace grands crus, Chablis
-premier-cru climats, etc.). The ES pipeline covers the ~149 wine GIs in
-eAmbrosia (106 DOP + 43 IGP); coverage is a function of which wines have an
-EU-OJ "documento único" — see `CLAUDE.md` for the curator workflow. The PT
-pipeline covers the 44 wine GIs (30 DOP + 14 IGP) sourced from eAmbrosia +
-the IVV cadernos master indexes. Italy (531 wine GIs), Austria (32) and
-Slovenia (17 — 14 DOP + 3 IGP) follow the same eAmbrosia + EU-OJ
-single-document pattern. Stage 04 merges all six streams into a single
-four-locale interactive map (FR / EN / ES / NL). The site is deployed at
+premier-cru climats, etc.). The other 20 country pipelines follow the same
+stage layout (00 fetch → 01 fetch documents → 02 extract → 02d/02e terroir
+facts → 03 wiki), each with its own document source and geometry chain;
+coverage per country is a function of which wines have a fetchable
+specification, and `CLAUDE.md` documents every country's sources, coverage
+and curator workflow. Stage 04 merges all 21 streams into a single
+four-locale interactive map (EN / FR / ES / NL). The site is deployed at
 <https://www.openwinemap.com>.
 
 ## Setup
@@ -160,19 +161,22 @@ Same `--emit-todo` / `--import` flags apply to 02d and 02e.
 ### Internationalisation (map UI chrome)
 
 Sidebar labels, panel headings, and style chip names are translated via
-gettext. Catalogs live under `locale/<lang>/LC_MESSAGES/messages.po` and are
-hand-editable. Stage 04 recompiles `messages.mo` automatically when the `.po`
-is newer.
+gettext. Catalogs live under `locale/<lang>/LC_MESSAGES/messages.po`, are
+committed to the repo, and are hand-editable. Stage 04 recompiles
+`messages.mo` automatically when the `.po` is newer.
 
 ```
-uv run pybabel extract -F locale/babel.cfg -o locale/messages.pot scripts/_lib/
-uv run pybabel update  -i locale/messages.pot -d locale
-uv run pybabel init    -i locale/messages.pot -d locale -l <lang>   # new locale
+.venv/bin/python -m babel.messages.frontend extract -F locale/babel.cfg -o locale/messages.pot scripts/_lib/
+.venv/bin/python -m babel.messages.frontend update  -i locale/messages.pot -d locale --no-fuzzy-matching
+.venv/bin/python -m babel.messages.frontend init    -i locale/messages.pot -d locale -l <lang>   # new locale
 ```
 
 Always extract from the directory, not a single file — `style_taxonomy.py`
 carries msgid anchors that are silently dropped otherwise (and pybabel
-update will mark them obsolete).
+update will mark them obsolete). Always pass `--no-fuzzy-matching` to
+`update`: without it pybabel fills every new msgid with a guess borrowed from
+an unrelated existing entry and marks it fuzzy, which is harder to spot than
+an empty msgstr. Then set the new msgstrs by hand in each locale.
 
 ## Public data sources
 
@@ -195,13 +199,16 @@ for the full rules.
 | **EUR-Lex — OJ single documents** — `eur-lex.europa.eu` (HTML) | Canonical pliego de condiciones (documento único) for ES wines: zona geográfica, variedades, vínculo, rendimientos. Stage 01 fetches each wine's `publications[0].uri`; stage 01b uses headless Chromium to solve the CloudFront WAF challenge on the blocked subset | EU public sector information |
 | **MAPA + CCAA national pliegos** — `mapa.gob.es`, JCCM, INCAVI, AGACAL, ITACyL, Aragón, Navarra, GVA, Canarias, Andalucía, Euskadi, Madrid, Extremadura (per-region PDFs) | Secondary/accessory grape varieties not published in the EU-OJ documento único (stage 02f) | Public domain (national/regional gazettes) |
 | **SIGPAC vineyard parcels** — `fega.es` (per-comarca shapefiles) | Pliego-cited polygon inclusions for fine-grained ES geometry (e.g. Priorat vs Montsant overlap resolution) | Licence-clear under MAPA terms |
-| **GISCO LAU 2021** — Eurostat | EU-wide municipio polygons for ES IGP commune-list / province-wide / CCAA-wide geometry fallback | © EuroGeographics for the administrative boundaries (free reuse) |
+| **GISCO LAU 2024** — Eurostat | EU-wide municipality polygons for the commune-list / province-wide / region-wide geometry fallbacks (ES IGPs and the other eAmbrosia countries) | © EuroGeographics for the administrative boundaries (free reuse) |
 | **Bétard 2022 EU PDO geometry** — [Figshare](https://figshare.com/) (`EU_PDO.gpkg`) | Pre-Nov-2021 EU PDO polygons; covers ~99 of 106 ES DOPs and all 30 PT DOPs | CC0 |
 | **IVV cadernos de especificações** — `ivv.gov.pt` (per-DOP/IGP PDFs) | Canonical legal definition of every Portuguese wine GI — área delimitada, castas, rendimentos, relação com a área geográfica | Public domain (Portuguese state) |
 | **DGT CAOP 2025** — `geo2.dgterritorio.gov.pt` (Continente + RAA + RAM GPKGs) | Portuguese commune-precision boundaries for future PT IGP commune-list geometry | CC BY 4.0 |
 | **Wikipedia** — `<lang>.wikipedia.org` REST API | Sidepanel tooltips for grape varieties and distinctive styles (stages 02b/grapes, 02b/styles); per-AOC pages used as a sommelier-vocabulary salience hint for terroir-fact extraction (stage 02b/aocs → 02d) | CC BY-SA 4.0 |
 | **VIVC** — [Vitis International Variety Catalogue](https://www.vivc.de/), Julius Kühn-Institut Geilweilerhof | Canonical grape-variety names + VIVC variety numbers driving the per-AOC pill's "canonical bracket" (e.g. *Aragonez (Tempranillo Tinto)*), and synonym-aware Wikipedia search (stage 02g + 02b/grapes). Cite: Röckel et al., Vitis International Variety Catalogue — www.vivc.de | Factual citation only — JKI publishes no explicit data licence. We ship VIVC IDs + prime names; verbatim synonym strings are *not* republished pending JKI confirmation. |
-| **Anthropic Messages API** — `claude-haiku-4-5` | Cahier-summary translation (02c), terroir-fact extraction from cahier section X + Wikipedia (02d), terroir-fact translation (02e), grape-tooltip translation (02b/grapes-translate); each stage can be swapped to Ollama or to manual round-trip | n/a — outputs are derivatives of the cahier (public domain) and Wikipedia (CC BY-SA 4.0) |
+| **MASAF *Elenco alfabetico dei vini DOP*** — `masaf.gov.it` | Source of the Italian traditional term attached to each DOP as a whole (DOCG vs DOC) | Italian public-sector information (MASAF) |
+| **MAPA *Listado de DOP e IGP de vinos*** — `mapa.gob.es` | Source of the Spanish traditional term attached to each GI as a whole (DOCa / DOQ, DO, Vino de Pago, Vino de Calidad, Vino de la Tierra) | Spanish public-sector information (MAPA) |
+| **Reg. (EC) 607/2009 Annex XII** — [legislation.gov.uk copy](https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht) | Reference list of the traditional terms registered per member state (Reg. 1308/2013 Art. 112(a)); backs the definition and source shown when hovering a term | EU public sector information |
+| **Anthropic Messages API** — `claude-sonnet-4-6` (default model) | Terroir-fact extraction from the regulator's terroir text + Wikipedia (02d) and terroir-fact translation (02e); cahier-summary translation (02c) and grape/style-tooltip translation (02b/grapes-translate, 02b/styles-translate) can run here too, but in practice 02c goes through the manual round-trip (a human translator) and the tooltips run mostly on Ollama with Mistral Small 3.2, with a Claude residual; each stage can be swapped to Ollama, Mistral or manual round-trip | n/a — outputs are derivatives of the regulator text (public sector) and Wikipedia (CC BY-SA 4.0) |
 
 The map UI displays attribution alongside any Wikipedia extract ("via
 Wikipedia · CC BY-SA 4.0"), any translated summary ("Machine translated
@@ -211,6 +218,25 @@ cadastral … (commune de …, cadastre.data.gouv.fr)"). Terroir-fact bullets
 carry per-bullet provenance (`cahier` / `wiki` / `both`); bullets grounded
 in Wikipedia render the CC BY-SA 4.0 attribution inline, the rest default
 to the cahier-PDF footer link.
+
+### Appellation names: traditional term and legal scheme
+
+Every appellation carries two names, and they mean two different things:
+the **traditional term** the country's regulator attaches to the GI as a
+whole (DOCG, DOQ, AOC, Vinho Regional, …; Reg. 1308/2013 Art. 112(a),
+registered in Reg. (EC) 607/2009 Annex XII) and the **scheme** it is
+registered under (the EU's PDO / PGI). The map shows them as
+`TERM (SCHEME)`, for example "DOCG (PDO)" or "DOQ (PDO)", with the scheme
+word localised per UI language ("DOCG (AOP)" in French, "DOCG (BOB)" in
+Dutch). Where a country has no term of its own (Germany's Mosel, the UK),
+only the scheme is shown. Swiss AOCs sit outside the EU scheme and carry no
+bracket; the United Kingdom registers under its own GI scheme, which keeps
+the words PDO and PGI; French eaux-de-vie are spirit-drink GIs, not wine
+PDOs. Lot-level quality grades (Qualitätswein, Prädikatswein, kakovostno
+vino) are not terms in this sense and are not shown, and neither are scheme
+abbreviations (ΠΟΠ, CHOP, ЗНП, BOB). Hovering a term in the panel shows its
+definition and source. The stored `kind` token (AOC / DOP / IGP / EDV) is
+unchanged; both axes (`eu_scheme`, `national_term`) are derived at stage 04.
 
 ## Licence
 

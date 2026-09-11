@@ -18,6 +18,12 @@ Sources:
    the spine for stage 02f-MASAF: ~98 % of eAmbrosia IT wines (521 of
    531) match a PDF inside one of these archives.
 
+2b. **MASAF "Elenco alfabetico dei vini DOP / IGP italiani"** — two
+   small PDFs on the same IDPagina/4625 listing every Italian wine GI
+   with its traditional term (DOC / DOCG / IGT), eAmbrosia file number
+   and region. The DOP roster is the source of each DOP's DOC-vs-DOCG
+   term (scripts/_lib/it/national_term.py).
+
 3. **Figshare EU_PDO.gpkg** (Bétard et al. 2022, CC0, ~42 MB) — *already
    cached* by the ES pipeline at `raw/es/figshare/EU_PDO.gpkg`. Covers
    all EU PDOs including ~420 Italian DOPs (`PDO-IT-A*` file numbers).
@@ -34,6 +40,7 @@ Outputs:
 - raw/it/eambrosia/manifest.json — fetch metadata for the eAmbrosia call
 - raw/it/masaf-disciplinari/bundles/*.7z — 4 disciplinari archives
 - raw/it/masaf-disciplinari/bundles/manifest.json — per-bundle sha256 + URL
+- raw/it/masaf-elenchi/elenco-{dop,igp}.pdf + manifest.json — DOC/DOCG/IGT rosters
 
 Each IT wine GI record carries:
 - giIdentifier (e.g. EUGI00000003500) — internal EU id, unstable
@@ -180,6 +187,41 @@ MASAF_BUNDLES = (
 MASAF_LICENSE = (
     "© Ministero dell'agricoltura, della sovranità alimentare e delle "
     "foreste (MASAF). Re-distribution permitted with attribution."
+)
+
+# "Elenco alfabetico dei vini DOP / IGP italiani" — the ministry's roster
+# of every Italian wine GI with its traditional term (DOC / DOCG / IGT)
+# and eAmbrosia file number. Linked from the same IDPagina/4625 as the
+# bundles; the page is scraped for the current attachment URL (the BLOB
+# hash rotates on every republication) with the last-known direct file
+# URL as fallback. Consumed by scripts/_lib/it/national_term.py.
+MASAF_ELENCHI_DIR = ROOT / "raw" / "it" / "masaf-elenchi"
+MASAF_ELENCHI_MANIFEST = MASAF_ELENCHI_DIR / "manifest.json"
+MASAF_ELENCHI_PAGE = "https://www.masaf.gov.it/flex/cm/pages/ServeBLOB.php/L/IT/IDPagina/4625"
+MASAF_ELENCHI_LICENSE = "MASAF official act, public"
+MASAF_ELENCHI = (
+    {
+        "key": "dop",
+        "label": "Elenco alfabetico Vini DOP",
+        "filename": "elenco-dop.pdf",
+        "fallback_url": (
+            "https://www.masaf.gov.it/flex/files/e/a/c/D.3b34b403c9bb8667ee4b/"
+            "Elenco_alfabetico_Vini_DOP_italiani.pdf"
+        ),
+    },
+    {
+        "key": "igp",
+        "label": "Elenco alfabetico Vini IGP",
+        "filename": "elenco-igp.pdf",
+        "fallback_url": (
+            "https://www.masaf.gov.it/flex/files/7/e/3/D.6effd5b02f25c6179834/"
+            "Elenco_alfabetico_Vini_IGP_italiani.pdf"
+        ),
+    },
+)
+_ELENCO_LINK_RE = re.compile(
+    r"<a\s+title=['\"]Elenco alfabetico Vini (DOP|IGP)[^'\"]*['\"]\s+href=['\"]([^'\"]+)['\"]",
+    re.I,
 )
 
 # Shared upstream artifacts already fetched by the ES pipeline. Asserted
@@ -332,6 +374,99 @@ def fetch_masaf_bundles() -> dict:
         "bundles": by_key,
     }
     MASAF_BUNDLES_MANIFEST.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return manifest
+
+
+def scrape_masaf_elenco_links() -> dict[str, str]:
+    """{key: attachment URL} for the elenco links on IDPagina/4625; {} when
+    the page is unreachable or has no such link (caller falls back)."""
+    try:
+        r = requests.get(MASAF_ELENCHI_PAGE, headers={"User-Agent": UA}, timeout=60)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        print(f"[elenchi] WARNING page scrape failed: {e}", file=sys.stderr)
+        return {}
+    # FlexCMP serves ISO-8859-1; latin-1 decodes any byte, and the anchors are ASCII.
+    return {
+        kind.lower(): url.replace("&amp;", "&")
+        for kind, url in _ELENCO_LINK_RE.findall(r.content.decode("latin-1"))
+    }
+
+
+def fetch_masaf_elenchi() -> dict:
+    """Download the MASAF DOP + IGP elenchi (~750 KB total). Always
+    re-fetched — the URL is stable across republications only via the
+    page scrape — but a byte-identical PDF keeps its cached `fetched_at`
+    so a no-change re-run does not churn the manifest."""
+    MASAF_ELENCHI_DIR.mkdir(parents=True, exist_ok=True)
+    existing: dict[str, dict] = {}
+    if MASAF_ELENCHI_MANIFEST.exists():
+        try:
+            existing = json.loads(
+                MASAF_ELENCHI_MANIFEST.read_text(encoding="utf-8")
+            ).get("elenchi", {})
+        except (ValueError, OSError):
+            existing = {}
+
+    links = scrape_masaf_elenco_links()
+    by_key: dict[str, dict] = {}
+    for spec in MASAF_ELENCHI:
+        key = spec["key"]
+        url = links.get(key)
+        link_source = "page-scrape"
+        if not url:
+            url = spec["fallback_url"]
+            link_source = "known-url-fallback"
+            print(f"[elenchi] WARNING no {key.upper()} link on IDPagina/4625; "
+                  f"falling back to {url}", file=sys.stderr)
+        print(f"[elenchi] fetch     {url}", file=sys.stderr)
+        resp = requests.get(url, headers={"User-Agent": UA}, timeout=120, allow_redirects=True)
+        resp.raise_for_status()
+        body = resp.content
+        if not body.startswith(b"%PDF"):
+            raise RuntimeError(
+                f"MASAF returned non-PDF content for elenco {key} "
+                f"({len(body)} bytes, ct={resp.headers.get('content-type')}). "
+                "URL may have rotated; re-scrape IDPagina/4625."
+            )
+        sha = hashlib.sha256(body).hexdigest()
+        served = re.search(r'filename="?([^";]+)', resp.headers.get("content-disposition") or "")
+        dest = MASAF_ELENCHI_DIR / spec["filename"]
+        cached = existing.get(key) or {}
+        from_cache = dest.exists() and cached.get("sha256") == sha
+        if not from_cache:
+            dest.write_bytes(body)
+        by_key[key] = {
+            "label": spec["label"],
+            "filename": spec["filename"],
+            "served_filename": served.group(1).strip() if served else "",
+            "url": url,
+            "link_source": link_source,
+            "sha256": sha,
+            "bytes": len(body),
+            "fetched_at": (
+                cached["fetched_at"] if from_cache and cached.get("fetched_at")
+                else datetime.now(timezone.utc).isoformat(timespec="seconds")
+            ),
+            "from_cache": from_cache,
+        }
+        print(
+            f"[elenchi] {'cache hit ' if from_cache else 'saved     '}"
+            f"{spec['filename']:16s} ({len(body):>8,} bytes, sha256={sha[:12]}…, "
+            f"{by_key[key]['served_filename'] or '-'})",
+            file=sys.stderr,
+        )
+
+    manifest = {
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "source_page": MASAF_ELENCHI_PAGE,
+        "licence": MASAF_ELENCHI_LICENSE,
+        "elenchi": by_key,
+    }
+    MASAF_ELENCHI_MANIFEST.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True),
         encoding="utf-8",
     )
@@ -578,6 +713,13 @@ def main() -> int:
     print(
         f"[done] MASAF: {len(masaf['bundles'])} bundles ({total_bytes:,} bytes) "
         f"→ {MASAF_BUNDLES_DIR.relative_to(ROOT)}",
+        file=sys.stderr,
+    )
+
+    elenchi = fetch_masaf_elenchi()
+    print(
+        f"[done] MASAF elenchi: {len(elenchi['elenchi'])} rosters "
+        f"→ {MASAF_ELENCHI_DIR.relative_to(ROOT)}",
         file=sys.stderr,
     )
 

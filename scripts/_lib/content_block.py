@@ -31,7 +31,7 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Per-jurisdiction regulator-published specification document name, in the
 # regulator's own language — mirrors STUB_DOC_NAMES in map_template.py's JS.
@@ -94,6 +94,9 @@ class RenderCtx:
     styles_info: dict
     style_labels: dict
     github_new_issue_url: str
+    # Tooltip payload for the two naming tokens (scheme id / '<cc>:<term>'),
+    # see _lib/gi_terms.build_terms_info. Empty = plain text, no <abbr>.
+    terms_info: dict = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------- primitives
@@ -705,6 +708,43 @@ def _meta_tail(rec: dict, ctx: RenderCtx) -> str:
     return ""
 
 
+def classification_html(rec: dict, ctx: RenderCtx) -> str:
+    """The two naming tokens of the meta line — traditional term first, legal
+    scheme in brackets — as spans the client tooltip can target, each carrying
+    its definition as an <abbr title> for no-JS readers. Mirrors
+    renderClassification in app.js; the label itself is the precomputed
+    `class_label` (one composer, _lib/gi_terms.classification_label)."""
+    label = rec.get("class_label") or ""
+    if not label:
+        return ""
+    term = rec.get("national_term") or ""
+    scheme = rec.get("eu_scheme") or ""
+    country = rec.get("country") or ""
+    info = ctx.terms_info or {}
+
+    def _span(text: str, key: str, cls: str) -> str:
+        entry = info.get(key) or {}
+        tip = " — ".join(x for x in (entry.get("full"), entry.get("note")) if x)
+        has = ' has-info" tabindex="0' if tip else ""
+        inner = f'<abbr title="{esc(tip)}">{esc(text)}</abbr>' if tip else esc(text)
+        return f'<span class="{cls}{has}" data-key="{esc(key)}">{inner}</span>'
+
+    if term and label.startswith(term) and label != term:
+        from _lib.gi_terms import term_key
+
+        bracket = label[len(term):].strip()
+        return (
+            _span(term, term_key(country, term), "gi-term")
+            + " "
+            + _span(bracket, scheme, "gi-scheme")
+        )
+    if term and label == term:
+        from _lib.gi_terms import term_key
+
+        return _span(term, term_key(country, term), "gi-term")
+    return _span(label, scheme, "gi-scheme")
+
+
 def _approx_line(rec: dict, ctx: RenderCtx) -> str:
     lab = ctx.labels
     gs = rec.get("geom_source")
@@ -744,7 +784,7 @@ def render_subappellations(children, ctx: RenderCtx, country: str | None = None)
     their names enter the indexable surface — each child rendered as real text +
     a link on the *parent's* own page (which earns ranking for the child name),
     paired with the parent's JSON-LD ``containsPlace``. ``children`` items are
-    ``{name, path, kind}`` dicts, pre-resolved by the caller (URL logic lives in
+    ``{name, path, classification}`` dicts, pre-resolved by the caller (URL logic lives in
     ``map_template``, not here). The heading is the regulator's own term for the
     parent's ``country`` (:data:`SUBDENOM_HEADINGS`), falling back to the generic
     translated ``entity_nav_children`` label."""
@@ -757,7 +797,7 @@ def render_subappellations(children, ctx: RenderCtx, country: str | None = None)
         name = esc(c.get("name") or "")
         path = c.get("path") or ""
         link = f'<a href="{esc(path)}">{name}</a>' if path else name
-        kind = c.get("kind") or ""
+        kind = c.get("classification") or ""
         kind_html = f' <span class="sub-kind">{esc(kind)}</span>' if kind else ""
         items.append(f"<li>{link}{kind_html}</li>")
     return (
@@ -855,7 +895,7 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
 
     inner = (
         f"<h1>{name_with_latin(rec)}</h1>"
-        f'<div class="meta">{country_seg}{esc(rec.get("kind") or "")}{region_seg}{meta_tail}</div>'
+        f'<div class="meta">{country_seg}{classification_html(rec, ctx) or esc(rec.get("kind") or "")}{region_seg}{meta_tail}</div>'
         f"{dgc_line}{approx_line}{stub_line}"
         f"{_section(lab['panel_styles_h'], style_chips)}"
         f"{_section(lab['facet_principal_h'], principal)}"

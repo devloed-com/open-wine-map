@@ -376,18 +376,6 @@ Shadow-report findings (`raw/inao/register/shadow-report.md`, 466 parents):
   |---:|---|---:|---:|
   | 254 | Collioure | 315 | 14 412 |
   | 217 | Pouilly-Loché | 255 | 8 261 |
-  | 959 | Franche-Comté | 4 062 | 7 583 |
-
-- ❌ **103 appellations (22 %) have no register cahier attachment** — a bare
-  `Ares(…)` reference in `productSpecifications`. The brief's 15 % estimate
-  came from an n=80 sample; the true figure is higher. Not actionable (BO
-  Agri covers them all today).
-- ❌ **6 register documents time out in `extract_aire`** and 3 fail to
-  extract — see the regex defect logged above.
-
-Open queue — ❌ **2 appellations INAO still publishes but the EU register has
-struck off.** The resolver refuses to bind a `Cancelled` GI on its own (a
-withdrawn registration cannot be an appellation's current specification), so
 
   **2026-09-11 (Pouilly-Loché aire)** — the analytics surfaced a 0.4 km²
   AOC drawn across all of Burgundy in simple mode: the 2024 PNOCDC writes
@@ -400,6 +388,18 @@ withdrawn registration cannot be an appellation's current specification), so
   a previously empty aire) and guarded
   in stage 04 (`[villages-guard]`). The short `lien` (255 chars) is still
   the register re-source candidate above.
+  | 959 | Franche-Comté | 4 062 | 7 583 |
+
+- ❌ **103 appellations (22 %) have no register cahier attachment** — a bare
+  `Ares(…)` reference in `productSpecifications`. The brief's 15 % estimate
+  came from an n=80 sample; the true figure is higher. Not actionable (BO
+  Agri covers them all today).
+- ❌ **6 register documents time out in `extract_aire`** and 3 fail to
+  extract — see the regex defect logged above.
+
+Open queue — ❌ **2 appellations INAO still publishes but the EU register has
+struck off.** The resolver refuses to bind a `Cancelled` GI on its own (a
+withdrawn registration cannot be an appellation's current specification), so
 both sit in `raw/inao/register/unresolved.json` awaiting a curator call. Both
 already have a working BO Agri cahier, so nothing is missing from the corpus —
 what needs deciding is whether SIQO is stale (the mirror image of the
@@ -3178,6 +3178,31 @@ full evidence in [tmp/vivc-ambiguous-research-results.md](tmp/vivc-ambiguous-res
 ```
 avgoustiatis→801 kanella→16124 kontokladi→6395 kotsifali→6446
 koutsoubeli→6463 mavrotragano→40210 skiadopoulo→11849 thrapsathiri→12428
+vertzami-lefko→13013 bratkovina→1660 debit→10423 draganela→21070
+grk→5066 vugava→13184 zadarka→13365 zlahtina→22843 modra-kosovina→24493
+muskat-zuti→8056 svrdlovina-crna→15638 trbljan→8075 zumic→24915
+zametovka→6047 vitovska-grganja→16017 harslevelu→5314 goher→767
+csomor→3281 nektar→16179 rozalia→23930 zierfandler→13443 tribidrag→9703
+negroamaro→8456 andre→456 helios→17133 juwel→13212 orion→8802
+orangentraube→16645 tauberschwarz→16156 weisser-lagler→24537
+busuioaca-de-bohotin→8248 cristina→21045 korithi→false schiava→false
+```
+
+Same applies to the other ~450 pins already in that file; the deployed site
+is built from the curator's machine, so production is unaffected.
+
+## Traditional terms — curator pin passes (scripts/_lib/traditional_terms.json)
+
+Empty renders scheme-only (never wrong); each pin needs the founding act cited.
+
+- GR — ΟΠΑΠ / ΟΠΕ per PDO (33): pin from the founding ministerial decisions (ΦΕΚ), not the ΥΠΑΑΤ specs (only 1 of 132 cached specs names ΟΠΕ). ΟΠΕ = Samos, Mavrodaphne Patras / Kefallinias, Moschatos Patron / Riou Patron / Kefallinias / Limnou / Rodou; the rest ΟΠΑΠ.
+- CZ — VOC (Víno originální certifikace) for `znojmo` only (zákon 321/2004 §23); the other 12 stay empty.
+- CH — Grand Cru (12 Valais communal records, roster from Vinum Montis, 2 `to-verify`) and Premier Cru (22 Geneva records, GE règlement) as sub-tier terms; needs the communal / cantonal règlement cited per record before it can enter the table.
+- NL — Landwijn (Annex XII PGI term) vs the BGA-labelled provincie PGIs: decide whether the 12 PGIs carry it.
+- SI — vino PTP (GI-wide, Uradni list 49/2007); HU — Tájbor; BG — Регионално вино; CY — ΟΕΟΠ / Τοπικός Οίνος: confirm GI-wide use in the regulator specs, then pin.
+- IT — re-scrape MASAF IDPagina/4625 when a new DOCG is recognised (the dated `ServeAttachment` elenco; the static URL is the 2014 build). ES — refresh the MAPA listado (dated header) when a new VP is registered; Urbezo is pinned until the listado catches up.
+- Tooltip Wikipedia extracts for the terms (02b style-lexicon pattern): en has articles for DOCG, AOC, DOCa, DAC, IGT, Vinho regional, Landwein, PDO; fr/es/nl gaps via 02b-translate.
+
 ## Pipeline — grape canonical ranking depends on the corpus on disk
 
 **2026-09-11** — `_vivc_canonical_by_id` (scripts/_lib/grape_entity.py)
@@ -3194,15 +3219,3 @@ vivc_id → canonical table, or make `GRAPE_ALIAS` the first tiebreaker) so
 the choice no longer depends on what happens to be on disk, and add a
 stage-04 assertion comparing the principal-slug set against the previous
 build's blob.
-vertzami-lefko→13013 bratkovina→1660 debit→10423 draganela→21070
-grk→5066 vugava→13184 zadarka→13365 zlahtina→22843 modra-kosovina→24493
-muskat-zuti→8056 svrdlovina-crna→15638 trbljan→8075 zumic→24915
-zametovka→6047 vitovska-grganja→16017 harslevelu→5314 goher→767
-csomor→3281 nektar→16179 rozalia→23930 zierfandler→13443 tribidrag→9703
-negroamaro→8456 andre→456 helios→17133 juwel→13212 orion→8802
-orangentraube→16645 tauberschwarz→16156 weisser-lagler→24537
-busuioaca-de-bohotin→8248 cristina→21045 korithi→false schiava→false
-```
-
-Same applies to the other ~450 pins already in that file; the deployed site
-is built from the curator's machine, so production is unaffected.

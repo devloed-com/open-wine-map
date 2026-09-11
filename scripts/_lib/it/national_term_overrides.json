@@ -1,0 +1,51 @@
+{
+  "casauria": {
+    "term": "DOCG",
+    "file_number": "PDO-IT-02972",
+    "sources": [
+      {
+        "label": "Commission Implementing Regulation (EU) 2025/2261 of 4 November 2025 on the registration of the geographical indication Casauria (PDO)",
+        "url": "https://eur-lex.europa.eu/eli/reg_impl/2025/2261/oj"
+      },
+      {
+        "label": "MASAF — Domande di riconoscimento vini DOP e IGP e modifica disciplinari 2025 (Casauria DOP (DOCG))",
+        "url": "https://www.masaf.gov.it/flex/cm/pages/ServeBLOB.php/L/IT/IDPagina/22762"
+      }
+    ],
+    "note": "Row 73 of the MASAF elenco agg. 18.03.2026 already says DOCG; pinned so the term survives a roster rotation that predates the 2025 registration."
+  },
+  "ciro-classico": {
+    "term": "DOCG",
+    "file_number": "PDO-IT-03209",
+    "sources": [
+      {
+        "label": "Commission Implementing Regulation (EU) 2025/1518 of 18 July 2025 on the registration of the geographical indication Cirò Classico (PDO)",
+        "url": "https://eur-lex.europa.eu/eli/reg_impl/2025/1518/oj"
+      },
+      {
+        "label": "MASAF — Domande di riconoscimento vini DOP e IGP e modifica disciplinari 2025 (Cirò Classico DOP (DOCG))",
+        "url": "https://www.masaf.gov.it/flex/cm/pages/ServeBLOB.php/L/IT/IDPagina/22762"
+      }
+    ],
+    "note": "Row 97 of the MASAF elenco agg. 18.03.2026 already says DOCG; pinned so the term survives a roster rotation that predates the 2025 registration."
+  },
+  "valtenesi": {
+    "term": "DOC",
+    "file_number": "PDO-IT-A1188",
+    "sources": [
+      {
+        "label": "Commission Implementing Regulation (EU) 2026/572 (OJ L, 2026/572, 18.3.2026) — registration of Valtènesi (PDO); eAmbrosia euProtectionDate 2026-03-18",
+        "url": "http://data.europa.eu/eli/reg_impl/2026/572/oj"
+      },
+      {
+        "label": "Single document Valtènesi (PDO-IT-A1188), OJ C/2025/5016, 16.9.2025",
+        "url": "http://data.europa.eu/eli/C/2025/5016/oj"
+      },
+      {
+        "label": "MASAF — Elenco alfabetico dei vini DOP italiani (2014 build), row 387: Valtènesi DOP DOC PDO-IT-A1188",
+        "url": "https://www.masaf.gov.it/flex/files/e/a/c/D.3b34b403c9bb8667ee4b/Elenco_alfabetico_Vini_DOP_italiani.pdf"
+      }
+    ],
+    "note": "Registered 2026-03-18 — the same day the current MASAF elenco (agg. 18.03.2026) was compiled, which omits it. The disciplinare consolidated by DM 30.11.2011 (MASAF bundle) is the DOC 'Valtènesi'."
+  }
+}

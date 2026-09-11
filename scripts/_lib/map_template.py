@@ -19,6 +19,8 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
+from babel.numbers import format_decimal
+
 from _lib.content_block import RenderCtx, esc, render_content_block
 from _lib.env import carto_basemap_key
 from _lib.i18n import load_translations
@@ -36,12 +38,16 @@ def build_style_labels(_: Callable[[str], str]) -> dict[str, str]:
 def build_labels(_: Callable[[str], str]) -> dict[str, str]:
     """All translatable UI strings for the map. msgid is the French source."""
     return {
-        "page_title": _("Open Wine Map — carte des appellations"),
+        # Title and description are the share-card and SERP surface: a reader
+        # meeting the site for the first time. The scheme/term acronyms belong
+        # on the browse page, which actually lists them; here they read as a
+        # spec sheet. "Appellation", not "region" — region is the facet one
+        # level up (bassin / regione / Bundesland).
+        "page_title": _("Open Wine Map — appellations viticoles d'Europe"),
         "subtitle": _("carte des appellations viticoles"),
         "meta_description": _(
-            "Carte interactive des appellations viticoles européennes "
-            "(AOC, AOP, IGP, DOP) : cépages, styles et terroir, d'après "
-            "les registres officiels (INAO, EUR-Lex)."
+            "Carte interactive des appellations viticoles d'Europe : cépages, "
+            "styles et terroir, d'après les registres officiels."
         ),
         "loading": _("Chargement…"),
         "search_h": _("Recherche"),
@@ -70,8 +76,16 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "facet_regions_h": _("Région"),
         "facet_appellations_h": _("Appellation"),
         "facet_kind_h": _("Type"),
-        "kind_aoc": _("AOC / AOP"),
-        "kind_igp": _("IGP"),
+        "legend_origin": _("Origine protégée (AOP, AOC, DOC, DO…)"),
+        "legend_gi": _("Indication géographique (IGP, IGT, Landwein…)"),
+        "scheme_pdo": _("AOP"),
+        "scheme_pgi": _("IGP"),
+        "scheme_spirit_gi": _("IG spiritueux"),
+        "facet_appellation_type_h": _("Type d'appellation"),
+        "facet_scheme_uk_pdo": _("AOP (régime britannique)"),
+        "facet_scheme_uk_pgi": _("IGP (régime britannique)"),
+        "facet_scheme_none": _("AOC (Suisse)"),
+        "gi_term_source_label": _("Source"),
         "view_mode_h": _("Vue"),
         "view_mode_simple": _("Simple"),
         "view_mode_advanced": _("Avancée"),
@@ -90,7 +104,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "reset": _("Réinitialiser"),
         "count_total": _("{n} appellations"),
         "count_filtered": _("{n} / {total} appellations"),
-        "count_hidden_igp_hint": _("{n} dans IGP masquées — afficher"),
+        "count_hidden_igp_hint": _("{n} masquées dans les IGP · afficher"),
         "close_aria": _("Fermer"),
         "panel_aria": _("Détails de l'appellation"),
         "remove_filter_aria": _("Retirer le filtre {label}"),
@@ -226,20 +240,32 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "about_link_label": _("À propos"),
         "about_h": _("À propos d'Open Wine Map"),
         "about_lead_html": _(
-            "Carte de référence des appellations viticoles "
-            "(AOC, AOP, IGP, DOP), générée automatiquement à partir des "
-            "données publiques."
+            "Carte de référence des appellations viticoles, générée automatiquement à "
+            "partir des registres publics : le registre de l'Union européenne des AOP et "
+            "IGP, les régulateurs nationaux, le répertoire fédéral suisse des AOC "
+            "cantonales et le registre britannique des indications géographiques."
+        ),
+        "about_llm_html": _(
+            "Une partie du texte est produite par des modèles de langage : les repères de "
+            "terroir sont dégagés du texte du régulateur et traduits par Claude (Sonnet "
+            "4.6) ; les extraits Wikipedia des infobulles de cépages et de styles sont "
+            "traduits pour l'essentiel par Mistral Small 3.2, exécuté localement, et pour "
+            "quelques-uns par Claude ; les résumés des cahiers des charges ont été "
+            "traduits par un traducteur humain, à l'exception d'un petit reliquat traduit "
+            "automatiquement. Chaque élément porte sa propre ligne d'attribution dans le "
+            "panneau."
         ),
         "about_made_by_html": _("Réalisé avec ♡ par {devloed}."),
         "about_data_html": _(
-            "Sources : INAO ({inao}) pour les cahiers des charges et les "
-            "aires parcellaires, IGN ({ign}) pour le fond cartographique, "
-            "Wikipedia ({wikipedia}) pour quelques compléments narratifs "
-            "(CC BY-SA 4.0), VIVC ({vivc}) — Vitis International Variety "
-            "Catalogue, Julius Kühn-Institut — pour les noms canoniques "
-            "et numéros de cépage (citation Röckel et al.). Tout extrait "
-            "Wikipedia est signalé sur place. Détails et licences dans le "
-            "{readme}."
+            "Sources : INAO ({inao}) pour les cahiers des charges et les aires "
+            "parcellaires françaises, IGN ({ign}) pour les contours des communes "
+            "françaises, le registre des indications géographiques de l'UE, les "
+            "régulateurs nationaux, Eurostat GISCO et Bétard 2022 pour les autres pays, "
+            "OpenStreetMap et CARTO pour le fond de carte, Wikipedia ({wikipedia}) pour "
+            "quelques compléments narratifs (CC BY-SA 4.0), et VIVC ({vivc}), le Vitis "
+            "International Variety Catalogue du Julius Kühn-Institut, pour les noms "
+            "canoniques et numéros de cépage (citation Röckel et al.). Tout extrait "
+            "Wikipedia est signalé sur place. Détails et licences dans le {readme}."
         ),
         "about_contrib_html": _("Suggestions et pull requests bienvenues sur {github}."),
         "feedback_issue_label": _("ticket GitHub"),
@@ -250,19 +276,17 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Signalez-les via {issue} ou {email}."
         ),
         "about_roadmap_html": _(
-            "20 pays européens cartographiés : France, Espagne, Portugal, "
-            "Italie, Autriche, Allemagne, Suisse, Slovénie, Croatie, "
-            "Hongrie, Roumanie, Bulgarie, Grèce, Slovaquie, Tchéquie, "
-            "Luxembourg, Belgique, Pays-Bas, Malte et Chypre. Des "
-            "itérations supplémentaires viendront affiner la qualité des "
-            "données. La couverture sera étendue au-delà de l'UE et de "
-            "la Suisse, ainsi qu'aux classifications hors AOP."
+            "{c} pays européens cartographiés ({n} appellations : {parents} appellations "
+            "et {subs} dénominations rattachées). Des itérations supplémentaires "
+            "affineront la qualité des données et étendront la couverture au-delà de "
+            "l'UE, de la Suisse et du Royaume-Uni."
         ),
         "browse_all_label": _("Toutes les appellations"),
         "browse_title": _("Toutes les appellations viticoles — Open Wine Map"),
         "browse_meta_description": _(
-            "Liste des {n} appellations viticoles européennes cartographiées "
-            "sur Open Wine Map, classées par pays — AOC, AOP, IGP, DOP."
+            "Liste des {n} appellations viticoles cartographiées sur Open Wine Map, "
+            "classées par pays : AOP et IGP de l'UE avec leurs termes traditionnels (AOC, "
+            "DOCG, DOQ…), AOC suisses et IG britanniques."
         ),
         "browse_intro_html": _(
             "Les {n} appellations ci-dessous sont classées par pays. "
@@ -479,7 +503,12 @@ def _build_sidebar_disclaimer(labels: dict[str, str]) -> str:
 
 
 def _build_about_dialog(
-    labels: dict[str, str], *, browse_path: str = "", data_updated_html: str = ""
+    labels: dict[str, str],
+    *,
+    browse_path: str = "",
+    data_updated_html: str = "",
+    corpus_counts: dict | None = None,
+    locale: str = "en",
 ) -> str:
     devloed = _ext_link(_DEVLOED_URL, "devloed.com")
     github = _ext_link(_GITHUB_URL, "GitHub")
@@ -488,18 +517,25 @@ def _build_about_dialog(
     wikipedia = _ext_link(_WIKIPEDIA_URL, "fr.wikipedia.org")
     vivc = _ext_link(_VIVC_URL, "vivc.de")
     readme = _ext_link(_GITHUB_URL + "#public-data-sources", "README")
+    counts = {
+        k: format_decimal(v, locale=locale) for k, v in (corpus_counts or {}).items()
+    }
+    roadmap = labels["about_roadmap_html"]
+    if counts:
+        roadmap = roadmap.format(**counts)
     paragraphs = [
         labels["about_lead_html"],
-        labels["about_made_by_html"].format(devloed=devloed),
         labels["about_data_html"].format(
             inao=inao, ign=ign, wikipedia=wikipedia, vivc=vivc, readme=readme
         ),
-        labels["about_roadmap_html"],
+        labels["about_llm_html"],
+        roadmap,
         labels["about_contrib_html"].format(github=github),
     ]
     if browse_path:
         browse_link = f'<a href="{browse_path}">{esc(labels["browse_all_label"])}</a>'
         paragraphs.append(labels["about_browse_html"].format(browse_link=browse_link))
+    paragraphs.append(labels["about_made_by_html"].format(devloed=devloed))
     body = "\n      ".join(f"<p>{p}</p>" for p in paragraphs)
     if data_updated_html:
         body += f'\n      <p class="data-updated">{data_updated_html}</p>'
@@ -1104,7 +1140,7 @@ def _build_entity_meta(
     near-duplicate-of-parent body is ever server-exposed, so the page simply
     drops out of the index cleanly.)"""
     name = rec.get("name") or slug
-    kind = rec.get("kind") or ""
+    kind = rec.get("class_label") or rec.get("kind") or ""
     region = region_labels.get(rec.get("region") or "", rec.get("region") or "")
     country = country_labels.get(rec.get("country") or "", "")
     self_url = f"{_SITE_BASE_URL}{_entity_path(locale, slug)}"
@@ -1251,7 +1287,7 @@ def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) ->
             continue
         cc = rec.get("country") or ""
         by_country.setdefault(cc, []).append(
-            (rec.get("name") or slug, slug, rec.get("kind") or "")
+            (rec.get("name") or slug, slug, rec.get("class_label") or "")
         )
 
     def _country_name(cc: str) -> str:
@@ -1329,6 +1365,9 @@ def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) ->
 # maps.py imports this to emit the complement as the per-slug panel JSON.
 STARTUP_AOCS_FIELDS = frozenset({
     "name", "name_latin", "kind", "region", "country", "is_wine",
+    # Two naming axes (see _lib/gi_terms.py): read by the panel meta line,
+    # docTitleFor (pre-hydration) and the appellation-type facet.
+    "eu_scheme", "national_term", "class_key", "class_label",
     "styles", "styles_simple", "classifications",
     "grapes_principal", "grapes_accessory", "grapes_all",
     "bbox", "bbox_villages", "geom_source",
@@ -1353,6 +1392,11 @@ def render(
     facet_class_tree: list[dict],
     class_descendants: dict[str, list[str]],
     facet_regions: list[tuple[str, int]],
+    facet_term_tree: list[dict] | None = None,
+    term_descendants: dict[str, list[str]] | None = None,
+    term_display: dict[str, tuple[str, str]] | None = None,
+    terms_info: dict | None = None,
+    corpus_counts: dict | None = None,
     locale: str = "fr",
     grapes_info: dict | None = None,
     styles_info: dict | None = None,
@@ -1573,6 +1617,16 @@ def render(
     # one shared, content-hashed stylesheet for the whole corpus. So each of the
     # ~11.6k pages is a small shell referencing three cached bundles
     # (data + app + style) instead of inlining ~450 KB.
+    term_labels = {
+        "pdo": labels["scheme_pdo"],
+        "pgi": labels["scheme_pgi"],
+        "spirit-gi": labels["scheme_spirit_gi"],
+        "uk-pdo": labels["facet_scheme_uk_pdo"],
+        "uk-pgi": labels["facet_scheme_uk_pgi"],
+        "none": labels["facet_scheme_none"],
+    }
+    for tk, (cc, term) in (term_display or {}).items():
+        term_labels[tk] = f"{_COUNTRY_FLAG_EMOJI.get(cc, '')} {term}".strip()
     script_kwargs = dict(
         lang_attr=locale,
         github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
@@ -1589,6 +1643,10 @@ def render(
         accessory_json=json.dumps(facet_accessory_merged, ensure_ascii=False),
         grapes_all_json=json.dumps(facet_grapes_all_merged, ensure_ascii=False),
         regions_json=json.dumps(facet_regions, ensure_ascii=False),
+        term_tree_json=json.dumps(facet_term_tree or [], ensure_ascii=False),
+        term_descendants_json=json.dumps(term_descendants or {}, ensure_ascii=False),
+        term_labels_json=json.dumps(term_labels, ensure_ascii=False),
+        terms_info_json=json.dumps(terms_info or {}, ensure_ascii=False),
         style_labels_json=json.dumps(style_labels, ensure_ascii=False),
         simple_style_labels_json=json.dumps(simple_style_labels, ensure_ascii=False),
         simple_style_buckets_json=json.dumps(simple_style_buckets, ensure_ascii=False),
@@ -1643,6 +1701,8 @@ def render(
     home_about_html = _build_about_dialog(
         labels,
         browse_path=browse_path,
+        corpus_counts=corpus_counts,
+        locale=locale,
         data_updated_html=(
             labels["about_updated_html"].format(date=esc(build_date)) if build_date else ""
         ),
@@ -1675,8 +1735,11 @@ def render(
             country_labels=country_labels, country_flag_emoji=_COUNTRY_FLAG_EMOJI,
             grapes_info=grapes_info or {}, styles_info=styles_info or {},
             style_labels=style_labels, github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
+            terms_info=terms_info or {},
         )
-        entity_about_html = _build_about_dialog(labels, browse_path=browse_path)
+        entity_about_html = _build_about_dialog(
+            labels, browse_path=browse_path, corpus_counts=corpus_counts, locale=locale
+        )
 
         def _emit(slug: str, meta: dict, ssr: str, has_card: bool) -> None:
             page = _fill(
@@ -1707,7 +1770,7 @@ def render(
                 continue
             kids = [
                 {"name": aocs[k].get("name") or k, "path": _entity_path(locale, k),
-                 "kind": aocs[k].get("kind") or ""}
+                 "classification": aocs[k].get("class_label") or ""}
                 for k in (children_map or {}).get(slug, [])
                 if k in aocs
             ]
@@ -2038,6 +2101,9 @@ _TEMPLATE = """<!doctype html>
   #panel .body h2 {{ font-size:13px; text-transform:uppercase; letter-spacing:0.04em; color:#934050; margin:18px 0 6px }}
   #panel .body p {{ margin:0 0 8px }}
   #panel .meta {{ color:#666; font-size:12px; margin-bottom:8px }}
+  #panel .meta .gi-scheme {{ opacity:.78; white-space:nowrap }}
+  .gi-term.has-info, .gi-scheme.has-info {{ cursor:help; text-decoration:underline dotted; text-underline-offset:2px }}
+  .gi-term abbr, .gi-scheme abbr {{ text-decoration:inherit }}
   #panel .meta .meta-country {{ display:inline-flex; align-items:center; gap:5px; color:#444 }}
   #panel .meta .country-flag {{ font-size:13px; line-height:1 }}
   #panel .meta .country-name {{ font-weight:600 }}
@@ -2365,8 +2431,8 @@ _LAB_LEGEND_FOOTER = """
       <summary>{labels[legend_h]}</summary>
       <div class="legend-body">
         <div class="legend-h">{labels[legend_bassin_h]}</div>
-        <div class="swatch-row"><span class="sw aoc"></span><span>{labels[kind_aoc]}</span></div>
-        <div class="swatch-row"><span class="sw igp"></span><span>{labels[kind_igp]}</span></div>
+        <div class="swatch-row"><span class="sw aoc"></span><span>{labels[legend_origin]}</span></div>
+        <div class="swatch-row"><span class="sw igp"></span><span>{labels[legend_gi]}</span></div>
         <div class="hint">{labels[legend_area_hint]}</div>
         <div class="legend-h">{labels[legend_grapes_h]}</div>
         <div class="swatch-row"><span class="sw principal"></span><span>{labels[legend_principal]}</span></div>
@@ -2412,6 +2478,11 @@ _SIDEBAR = _LAB_HEAD_TOP + _LAB_ACTIVE + """
     <details data-modes="advanced" data-facet="classification">
       <summary><span class="facet-label">{labels[facet_classification_h]}</span><span class="facet-badge"></span></summary>
       <div class="facet" id="facet-classification"></div>
+    </details>
+
+    <details data-modes="advanced" data-facet="appellation-type">
+      <summary><span class="facet-label">{labels[facet_appellation_type_h]}</span><span class="facet-badge"></span></summary>
+      <div class="facet" id="facet-appellation-type"></div>
     </details>
 
     <details open data-facet="grapes">

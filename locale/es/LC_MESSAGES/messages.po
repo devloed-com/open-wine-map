@@ -1,0 +1,1355 @@
+# Spanish translations for Open Wine Map. Hand-seeded; review and amend in
+# place.
+msgid ""
+msgstr ""
+"Project-Id-Version:  open-wine-map\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-09-08 21:10+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: es\n"
+"Language-Team: es <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: scripts/_lib/aging_taxonomy.py:184
+msgid "Vieillissement"
+msgstr "Envejecimiento"
+
+#: scripts/_lib/aging_taxonomy.py:185
+msgid "Prädikat"
+msgstr "Prädikat"
+
+#: scripts/_lib/aging_taxonomy.py:186
+msgid "Sélection"
+msgstr "Selección"
+
+#: scripts/_lib/map_template.py:46
+msgid "Open Wine Map — appellations viticoles d'Europe"
+msgstr "Open Wine Map — denominaciones vitivinícolas de Europa"
+#: scripts/_lib/map_template.py:47
+msgid "carte des appellations viticoles"
+msgstr "Mapa de denominaciones vitivinícolas"
+
+#: scripts/_lib/map_template.py:49
+msgid ""
+"Carte interactive des appellations viticoles d'Europe : cépages, styles "
+"et terroir, d'après les registres officiels."
+msgstr "Mapa interactivo de las denominaciones vitivinícolas de Europa: variedades, estilos y terruño, según los registros oficiales."
+#: scripts/_lib/map_template.py:52
+msgid "Chargement…"
+msgstr "Cargando…"
+
+#: scripts/_lib/map_template.py:53
+msgid "Recherche"
+msgstr "Búsqueda"
+
+#: scripts/_lib/map_template.py:54
+msgid "nom d'appellation…"
+msgstr "nombre de denominación…"
+
+#: scripts/_lib/map_template.py:55
+msgid "Recherche d'appellation…"
+msgstr "Buscar denominación…"
+
+#: scripts/_lib/map_template.py:56
+msgid "Recherche de cépage…"
+msgstr "Buscar variedad…"
+
+#: scripts/_lib/map_template.py:58
+msgid "Rechercher une appellation, un cépage, une région…"
+msgstr "Buscar una denominación, una uva o una región…"
+
+#: scripts/_lib/map_template.py:59
+msgid "Cépage principal uniquement"
+msgstr "Solo uva principal"
+
+#: scripts/_lib/map_template.py:60
+#, python-brace-format
+msgid "Aucun résultat pour « {q} »"
+msgstr "Sin resultados para «{q}»"
+
+#: scripts/_lib/map_template.py:61
+msgid "Options"
+msgstr "Opciones"
+
+#: scripts/_lib/map_template.py:62
+msgid "Filtres actifs"
+msgstr "Filtros activos"
+
+#: scripts/_lib/map_template.py:63
+msgid "Tout sélectionner"
+msgstr "Seleccionar todo"
+
+#: scripts/_lib/map_template.py:65
+#, python-brace-format
+msgid "{p} appellations · {s} dénominations géographiques complémentaires"
+msgstr "{p} denominaciones · {s} denominaciones geográficas complementarias"
+
+#: scripts/_lib/map_template.py:67
+#, python-brace-format
+msgid "{p} appellations"
+msgstr "{p} denominaciones"
+
+#: scripts/_lib/map_template.py:68
+#, python-brace-format
+msgid "Ouvrir la fiche de {name}"
+msgstr "Abrir la ficha de {name}"
+
+#: scripts/_lib/map_template.py:69
+msgid "Ouvrir la fiche"
+msgstr "Abrir la ficha"
+
+#: scripts/_lib/map_template.py:70
+msgid "Inclure les spiritueux"
+msgstr "Incluir destilados"
+
+#: scripts/_lib/map_template.py:71
+msgid "Style de vin"
+msgstr "Estilo de vino"
+
+#: scripts/_lib/map_template.py:72
+msgid "Classement"
+msgstr "Clasificación"
+
+#: scripts/_lib/map_template.py:73
+msgid "Cépages principaux"
+msgstr "Variedades principales"
+
+#: scripts/_lib/map_template.py:74
+msgid "Cépages accessoires"
+msgstr "Variedades complementarias"
+
+#: scripts/_lib/map_template.py:75 scripts/_lib/map_template.py:189
+msgid "Cépages"
+msgstr "Variedades de uva"
+
+#: scripts/_lib/map_template.py:76
+msgid "Région"
+msgstr "Región"
+
+#: scripts/_lib/map_template.py:77
+msgid "Appellation"
+msgstr "Denominación"
+
+#: scripts/_lib/map_template.py:78
+msgid "Type"
+msgstr "Tipo"
+
+#: scripts/_lib/map_template.py:79
+msgid "Origine protégée (AOP, AOC, DOC, DO…)"
+msgstr "Origen protegido (DOP, AOC, DOC, DO…)"
+
+#: scripts/_lib/map_template.py:80
+msgid "Indication géographique (IGP, IGT, Landwein…)"
+msgstr "Indicación geográfica (IGP, IGT, Landwein…)"
+
+#: scripts/_lib/map_template.py:81
+msgid "AOP"
+msgstr "DOP"
+
+#: scripts/_lib/map_template.py:82
+msgid "IGP"
+msgstr "IGP"
+
+#: scripts/_lib/map_template.py:83
+msgid "IG spiritueux"
+msgstr "IG de bebida espirituosa"
+
+#: scripts/_lib/map_template.py:84
+msgid "Type d'appellation"
+msgstr "Tipo de denominación"
+
+#: scripts/_lib/map_template.py:85
+msgid "AOP (régime britannique)"
+msgstr "DOP (régimen británico)"
+
+#: scripts/_lib/map_template.py:86
+msgid "IGP (régime britannique)"
+msgstr "IGP (régimen británico)"
+
+#: scripts/_lib/map_template.py:87
+msgid "AOC (Suisse)"
+msgstr "AOC (Suiza)"
+
+#: scripts/_lib/map_template.py:88
+msgid "Source"
+msgstr "Fuente"
+
+#: scripts/_lib/map_template.py:89
+msgid "Vue"
+msgstr "Vista"
+
+#: scripts/_lib/map_template.py:90
+msgid "Simple"
+msgstr "Simple"
+
+#: scripts/_lib/map_template.py:91
+msgid "Avancée"
+msgstr "Avanzada"
+
+#: scripts/_lib/map_template.py:92
+msgid "Thème"
+msgstr "Tema"
+
+#: scripts/_lib/map_template.py:93
+msgid "Clair"
+msgstr "Claro"
+
+#: scripts/_lib/map_template.py:94
+msgid "Sombre"
+msgstr "Oscuro"
+
+#: scripts/_lib/map_template.py:95
+msgid "Système"
+msgstr "Sistema"
+
+#: scripts/_lib/map_template.py:96
+msgid "Afficher les IGP"
+msgstr "Mostrar las IGP"
+
+#: scripts/_lib/map_template.py:97 scripts/_lib/style_taxonomy.py:332
+#: scripts/_lib/style_taxonomy.py:361
+msgid "rouge"
+msgstr "tinto"
+
+#: scripts/_lib/map_template.py:98 scripts/_lib/style_taxonomy.py:332
+#: scripts/_lib/style_taxonomy.py:362
+msgid "blanc"
+msgstr "blanco"
+
+#: scripts/_lib/map_template.py:99 scripts/_lib/style_taxonomy.py:332
+#: scripts/_lib/style_taxonomy.py:363
+msgid "rosé"
+msgstr "rosado"
+
+#: scripts/_lib/map_template.py:100 scripts/_lib/style_taxonomy.py:332
+#: scripts/_lib/style_taxonomy.py:364
+msgid "mousseux"
+msgstr "espumoso"
+
+#: scripts/_lib/map_template.py:101
+msgid "moelleux / liquoreux"
+msgstr "dulce / licoroso"
+
+#: scripts/_lib/map_template.py:102 scripts/_lib/style_taxonomy.py:345
+msgid "oxydatif"
+msgstr "oxidativo"
+
+#: scripts/_lib/map_template.py:103
+msgid "autre"
+msgstr "otro"
+
+#: scripts/_lib/map_template.py:104
+msgid "Réinitialiser"
+msgstr "Reiniciar"
+
+#: scripts/_lib/map_template.py:105
+#, python-brace-format
+msgid "{n} appellations"
+msgstr "{n} denominaciones"
+
+#: scripts/_lib/map_template.py:106
+#, python-brace-format
+msgid "{n} / {total} appellations"
+msgstr "{n} / {total} denominaciones"
+
+#: scripts/_lib/map_template.py:107
+#, python-brace-format
+msgid "{n} masquées dans les IGP · afficher"
+msgstr "{n} ocultas en las IGP · mostrar"
+
+#: scripts/_lib/map_template.py:108
+msgid "Fermer"
+msgstr "Cerrar"
+
+#: scripts/_lib/map_template.py:109
+msgid "Détails de l'appellation"
+msgstr "Detalles de la denominación"
+
+#: scripts/_lib/map_template.py:110
+#, python-brace-format
+msgid "Retirer le filtre {label}"
+msgstr "Quitar filtro {label}"
+
+#: scripts/_lib/map_template.py:111
+msgid "Filtres et options de la carte"
+msgstr "Filtros y opciones del mapa"
+
+#: scripts/_lib/map_template.py:112
+msgid "Langue"
+msgstr "Idioma"
+
+#: scripts/_lib/map_template.py:113
+msgid "Carte des appellations viticoles"
+msgstr "Mapa de denominaciones vitivinícolas"
+
+#: scripts/_lib/map_template.py:114
+msgid "Aller à la carte"
+msgstr "Ir al mapa"
+
+#: scripts/_lib/map_template.py:115
+msgid "Styles"
+msgstr "Estilos"
+
+#: scripts/_lib/map_template.py:116
+msgid "Variétés d'intérêt"
+msgstr "Variedades de interés"
+
+#: scripts/_lib/map_template.py:117
+msgid "Sources"
+msgstr "Fuentes"
+
+#: scripts/_lib/map_template.py:118
+msgid "Terroir"
+msgstr "Terroir"
+
+#: scripts/_lib/map_template.py:119
+#, python-brace-format
+msgid "Dűlők (lieux-dits) : {n}"
+msgstr "Dűlők (pagos): {n}"
+
+#: scripts/_lib/map_template.py:120
+#, python-brace-format
+msgid "Menzioni geografiche aggiuntive (crus) : {n}"
+msgstr "Menciones geográficas adicionales (crus): {n}"
+
+#: scripts/_lib/map_template.py:121
+msgid "Facteurs naturels"
+msgstr "Factores naturales"
+
+#: scripts/_lib/map_template.py:122
+msgid "Facteurs humains"
+msgstr "Factores humanos"
+
+#: scripts/_lib/map_template.py:123
+msgid "Caractéristiques du produit"
+msgstr "Características del producto"
+
+#: scripts/_lib/map_template.py:124
+msgid "Lien terroir / vin"
+msgstr "Vínculo terroir / vino"
+
+#: scripts/_lib/map_template.py:126
+#, python-brace-format
+msgid ""
+"Faits dégagés du Lien au terroir par interprétation automatique — voir la"
+" {source}."
+msgstr ""
+"Hechos extraídos de la sección de vínculo con el terruño (Lien au "
+"terroir) por interpretación automática — véase el {source}."
+
+#: scripts/_lib/map_template.py:128
+msgid "source"
+msgstr "fuente"
+
+#: scripts/_lib/map_template.py:129
+msgid "via Wikipedia · CC BY-SA 4.0"
+msgstr "vía Wikipedia · CC BY-SA 4.0"
+
+#: scripts/_lib/map_template.py:131
+#, python-brace-format
+msgid "Citation textuelle du Lien au terroir — voir la {source}."
+msgstr ""
+"Cita textual de la sección de vínculo con el terruño (Lien au terroir) — "
+"véase el {source}."
+
+#: scripts/_lib/map_template.py:133
+msgid "à vérifier — texte source court"
+msgstr "por verificar — texto fuente breve"
+
+#: scripts/_lib/map_template.py:135
+#, python-brace-format
+msgid ""
+"Ces repères décrivent l'appellation englobante {parent} — pas "
+"spécifiquement cette dénomination."
+msgstr ""
+"Estas notas describen la denominación matriz {parent} — no "
+"específicamente esta denominación."
+
+#: scripts/_lib/map_template.py:138
+msgid "sans région"
+msgstr "sin región"
+
+#: scripts/_lib/map_template.py:139
+#, python-brace-format
+msgid "{n} commune(s) INAO"
+msgstr "{n} comuna(s) INAO"
+
+#: scripts/_lib/map_template.py:140
+#, python-brace-format
+msgid "{n} commune(s)"
+msgstr "{n} comuna(s)"
+
+#: scripts/_lib/map_template.py:141
+msgid "aire approchée"
+msgstr "área aproximada"
+
+#: scripts/_lib/map_template.py:142
+msgid "aire approchée (à l'échelle communale)"
+msgstr "área aproximada (nivel municipal)"
+
+#: scripts/_lib/map_template.py:144
+#, python-brace-format
+msgid ""
+"Aire approchée — pas de données parcellaires précises pour cette "
+"dénomination ; polygone hérité de {umbrella}."
+msgstr ""
+"Área aproximada — no hay datos parcelarios precisos para esta "
+"denominación; polígono heredado de {umbrella}."
+
+#: scripts/_lib/map_template.py:148
+msgid ""
+"Aire approchée — pas de données parcellaires précises pour cette "
+"dénomination ; polygone hérité de l'appellation parente."
+msgstr ""
+"Área aproximada — no hay datos parcelarios precisos para esta "
+"denominación; polígono heredado de la denominación de origen principal."
+
+#: scripts/_lib/map_template.py:152
+msgid ""
+"Aire approchée — pas de données parcellaires disponibles ; affichée comme"
+" l'emprise de la commune où se situe la dénomination."
+msgstr ""
+"Área aproximada — sin datos parcelarios disponibles; se muestra como el "
+"contorno del municipio que contiene la denominación."
+
+#: scripts/_lib/map_template.py:156
+#, python-brace-format
+msgid ""
+"Aire issue du lieu-dit cadastral « {lieu_dit} » (commune de {commune}, "
+"{source})."
+msgstr ""
+"Superficie derivada del paraje catastral «{lieu_dit}» (municipio de "
+"{commune}, {source})."
+
+#: scripts/_lib/map_template.py:159
+msgid "cadastre.data.gouv.fr"
+msgstr "cadastre.data.gouv.fr"
+
+#: scripts/_lib/map_template.py:161
+msgid ""
+"Aire approchée — reconstituée à partir des références parcellaires du "
+"plan de l'aire délimitée annexé au cahier des charges ; ce n'est pas une "
+"limite officielle."
+msgstr ""
+"Área aproximada — reconstruida a partir de las referencias de parcelas "
+"del plano de la zona delimitada anexo al pliego de condiciones; no es un "
+"límite oficial."
+
+#: scripts/_lib/map_template.py:165
+#, python-brace-format
+msgid "{n} appellations à ce point"
+msgstr "{n} denominaciones en este punto"
+
+#: scripts/_lib/map_template.py:166
+msgid "Cliquer à nouveau pour parcourir les autres"
+msgstr "Vuelve a hacer clic para recorrer las demás"
+
+#: scripts/_lib/map_template.py:167
+msgid "Cahier des charges (BO Agri, PDF)"
+msgstr "Pliego de condiciones (BO Agri, PDF)"
+
+#: scripts/_lib/map_template.py:168
+msgid "Cahier des charges (registre GI de l'UE, PDF)"
+msgstr "Pliego de condiciones (registro de IG de la UE, PDF)"
+
+#: scripts/_lib/map_template.py:169
+msgid "homologué"
+msgstr "homologado"
+
+#: scripts/_lib/map_template.py:170
+msgid "JORF"
+msgstr "JORF"
+
+#: scripts/_lib/map_template.py:171
+msgid "Texte officiel INAO (show_texte)"
+msgstr "Texto oficial INAO (show_texte)"
+
+#: scripts/_lib/map_template.py:172
+msgid "Fiche produit INAO"
+msgstr "Ficha de producto INAO"
+
+#: scripts/_lib/map_template.py:173
+msgid "Site officiel de l'interprofession"
+msgstr "Sitio oficial de la interprofesión"
+
+#: scripts/_lib/map_template.py:174
+msgid "Cahier des charges (EUR-Lex, document unique)"
+msgstr "Pliego de condiciones (EUR-Lex, documento único)"
+
+#: scripts/_lib/map_template.py:175
+msgid "Pliego de condiciones (national, PDF)"
+msgstr "Pliego de condiciones nacional (PDF)"
+
+#: scripts/_lib/map_template.py:176
+msgid "variétés ajoutées"
+msgstr "variedades añadidas"
+
+#: scripts/_lib/map_template.py:177
+msgid "Cahier des charges national (PDF)"
+msgstr "Pliego de condiciones nacional (PDF)"
+
+#: scripts/_lib/map_template.py:178
+msgid "Spécification du produit (IGP, PDF)"
+msgstr "Pliego de condiciones (IGP, PDF)"
+
+#: scripts/_lib/map_template.py:179
+msgid "Registre régional des cépages (PDF)"
+msgstr "Registro regional de variedades (PDF)"
+
+#: scripts/_lib/map_template.py:180
+msgid "Registre eAmbrosia (UE)"
+msgstr "Registro eAmbrosia (UE)"
+
+#: scripts/_lib/map_template.py:181
+msgid "Numéro de dossier"
+msgstr "Número de expediente"
+
+#: scripts/_lib/map_template.py:182
+msgid "Règlement cantonal sur la vigne et le vin"
+msgstr "Reglamento cantonal de la viña y el vino"
+
+#: scripts/_lib/map_template.py:183
+msgid "Répertoire suisse des AOC (OFAG/BLW)"
+msgstr "Registro suizo de AOC (OFAG/BLW)"
+
+#: scripts/_lib/map_template.py:184
+msgid "Cahier des charges (GOV.UK, PDF)"
+msgstr "Pliego de condiciones (GOV.UK, PDF)"
+
+#: scripts/_lib/map_template.py:185
+msgid "Registre des IG du Royaume-Uni"
+msgstr "Registro de IG del Reino Unido"
+
+#: scripts/_lib/map_template.py:186
+msgid "Légende couleurs"
+msgstr "Leyenda de colores"
+
+#: scripts/_lib/map_template.py:187
+msgid "Bassin viticole"
+msgstr "Cuenca vitícola"
+
+#: scripts/_lib/map_template.py:188
+msgid "Plus l'aire est petite, plus la teinte est dense."
+msgstr "Cuanto menor es el área, más densa es la tonalidad."
+
+#: scripts/_lib/map_template.py:190
+msgid "principal — variété de la cuvée"
+msgstr "principal — variedad de la mezcla"
+
+#: scripts/_lib/map_template.py:191
+msgid "accessoire — assemblage limité"
+msgstr "accesoria — mezcla limitada"
+
+#: scripts/_lib/map_template.py:192
+msgid "intérêt — observation/conservation"
+msgstr "de interés — observación/conservación"
+
+#: scripts/_lib/map_template.py:194
+msgid ""
+"Le régulateur portugais (IVV) n'établit pas de distinction "
+"principal/accessoire — toutes les castas autorisées sont listées ensemble"
+" dans le caderno de especificações."
+msgstr ""
+"El regulador portugués (IVV) no distingue entre castas principales y "
+"accesorias — todas las castas autorizadas se enumeran juntas en el "
+"caderno de especificações."
+
+#: scripts/_lib/map_template.py:198
+msgid ""
+"Bianchello (ou Biancame) est traité ici comme un cépage distinct, "
+"conformément au disciplinare de la DOP Bianchello del Metauro ; le "
+"catalogue VIVC le recense comme synonyme du Trebbiano Toscano."
+msgstr ""
+"Bianchello (o Biancame) se trata aquí como una variedad distinta, "
+"conforme al disciplinare de la DOP Bianchello del Metauro; el catálogo "
+"VIVC lo registra como sinónimo de Trebbiano Toscano."
+
+#: scripts/_lib/map_template.py:203
+#, python-brace-format
+msgid "Open Wine Map n'a pas encore trouvé de {doc} pour cette appellation."
+msgstr "Open Wine Map todavía no ha localizado un {doc} para esta denominación."
+
+#: scripts/_lib/map_template.py:205
+msgid "aidez-nous à le trouver"
+msgstr "ayúdanos a encontrarlo"
+
+#: scripts/_lib/map_template.py:211
+#, python-brace-format
+msgid "Délimitée par {regulator} dans son {doc}, qui autorise {grapes}."
+msgstr "Delimitada por {regulator} en su {doc}, que autoriza {grapes}."
+
+#: scripts/_lib/map_template.py:213
+#, python-brace-format
+msgid "Délimitée par {regulator} dans son {doc}{extra}."
+msgstr "Delimitada por {regulator} en su {doc}{extra}."
+
+#: scripts/_lib/map_template.py:214
+#, python-brace-format
+msgid "{names} et {n} autres cépages"
+msgstr "{names} y otras {n} variedades de uva"
+
+#: scripts/_lib/map_template.py:215
+msgid "le registre eAmbrosia de l'UE"
+msgstr "el registro eAmbrosia de la UE"
+
+#: scripts/_lib/map_template.py:216
+#, python-brace-format
+msgid "le canton de {canton}"
+msgstr "el cantón de {canton}"
+
+#: scripts/_lib/map_template.py:217
+msgid "(français)"
+msgstr "(fuente: francés)"
+
+#: scripts/_lib/map_template.py:218
+msgid "Texte source en français"
+msgstr "Texto fuente en francés"
+
+#: scripts/_lib/map_template.py:219
+msgid "(español)"
+msgstr "(fuente: español)"
+
+#: scripts/_lib/map_template.py:220
+msgid "Texte source en espagnol"
+msgstr "Texto fuente en español"
+
+#: scripts/_lib/map_template.py:221
+msgid "(português)"
+msgstr "(fuente: portugués)"
+
+#: scripts/_lib/map_template.py:222
+msgid "Texte source en portugais"
+msgstr "Texto fuente en portugués"
+
+#: scripts/_lib/map_template.py:223
+msgid "Filtres"
+msgstr "Filtros"
+
+#: scripts/_lib/map_template.py:224
+#, python-brace-format
+msgid "Traduit de {wiki} · CC BY-SA 4.0"
+msgstr "Traducido de {wiki} · CC BY-SA 4.0"
+
+#: scripts/_lib/map_template.py:225
+msgid "Wikipédia en anglais"
+msgstr "Wikipedia en inglés"
+
+#: scripts/_lib/map_template.py:226
+msgid "Wikipédia en français"
+msgstr "Wikipedia en francés"
+
+#: scripts/_lib/map_template.py:227
+msgid "Wikipédia en espagnol"
+msgstr "Wikipedia en español"
+
+#: scripts/_lib/map_template.py:228
+msgid "Wikipédia en néerlandais"
+msgstr "Wikipedia en neerlandés"
+
+#: scripts/_lib/map_template.py:229
+msgid "Wikipédia en portugais"
+msgstr "Wikipedia en portugués"
+
+#: scripts/_lib/map_template.py:230
+msgid "Wikipédia en croate"
+msgstr "Wikipedia en croata"
+
+#: scripts/_lib/map_template.py:231
+msgid "Vitis International Variety Catalogue (Julius Kühn-Institut)"
+msgstr "Vitis International Variety Catalogue (Julius Kühn-Institut)"
+
+#: scripts/_lib/map_template.py:232
+#, python-brace-format
+msgid "VIVC #{id}"
+msgstr "VIVC #{id}"
+
+#: scripts/_lib/map_template.py:233
+#, python-brace-format
+msgid "Traduction automatique depuis {source}"
+msgstr "Traducción automática desde {source}"
+
+#: scripts/_lib/map_template.py:234
+msgid "le cahier des charges"
+msgstr "el pliego de condiciones"
+
+#: scripts/_lib/map_template.py:235 scripts/_lib/map_template.py:237
+msgid "le pliego de condiciones"
+msgstr "el pliego de condiciones"
+
+#: scripts/_lib/map_template.py:236 scripts/_lib/map_template.py:238
+msgid "le caderno de especificações"
+msgstr "el caderno de especificações"
+
+#: scripts/_lib/map_template.py:239
+msgid "Dénomination géographique complémentaire de"
+msgstr "Subzona de"
+
+#: scripts/_lib/map_template.py:240
+msgid "À propos"
+msgstr "Acerca de"
+
+#: scripts/_lib/map_template.py:241
+msgid "À propos d'Open Wine Map"
+msgstr "Acerca de Open Wine Map"
+
+#: scripts/_lib/map_template.py:243
+msgid ""
+"Carte de référence des appellations viticoles, générée automatiquement à "
+"partir des registres publics : le registre de l'Union européenne des AOP "
+"et IGP, les régulateurs nationaux, le répertoire fédéral suisse des AOC "
+"cantonales et le registre britannique des indications géographiques."
+msgstr ""
+"Mapa de referencia de las denominaciones vitivinícolas, generado "
+"automáticamente a partir de registros públicos: el registro de DOP e IGP "
+"de la Unión Europea, los reguladores nacionales, el repertorio federal "
+"suizo de AOC cantonales y el registro británico de indicaciones "
+"geográficas."
+
+#: scripts/_lib/map_template.py:249
+msgid ""
+"Une partie du texte est produite par des modèles de langage : les repères"
+" de terroir sont dégagés du texte du régulateur et traduits par Claude "
+"(Sonnet 4.6) ; les extraits Wikipedia des infobulles de cépages et de "
+"styles sont traduits pour l'essentiel par Mistral Small 3.2, exécuté "
+"localement, et pour quelques-uns par Claude ; les résumés des cahiers des"
+" charges ont été traduits par un traducteur humain, à l'exception d'un "
+"petit reliquat traduit automatiquement. Chaque élément porte sa propre "
+"ligne d'attribution dans le panneau."
+msgstr ""
+"Parte del texto lo generan modelos de lenguaje: las notas de terruño se "
+"extraen del texto del regulador y las traduce Claude (Sonnet 4.6); los "
+"extractos de Wikipedia de las etiquetas emergentes de variedades y "
+"estilos los traduce en su mayoría Mistral Small 3.2, ejecutado en local, "
+"y algunos Claude; los resúmenes de los pliegos de condiciones los tradujo"
+" un traductor humano, salvo un pequeño resto traducido automáticamente. "
+"Cada elemento lleva su propia línea de atribución en el panel."
+
+#: scripts/_lib/map_template.py:258
+#, python-brace-format
+msgid "Réalisé avec ♡ par {devloed}."
+msgstr "Hecho con ♡ por {devloed}."
+
+#: scripts/_lib/map_template.py:260
+#, python-brace-format
+msgid ""
+"Sources : INAO ({inao}) pour les cahiers des charges et les aires "
+"parcellaires françaises, IGN ({ign}) pour les contours des communes "
+"françaises, le registre des indications géographiques de l'UE, les "
+"régulateurs nationaux, Eurostat GISCO et Bétard 2022 pour les autres "
+"pays, OpenStreetMap et CARTO pour le fond de carte, Wikipedia "
+"({wikipedia}) pour quelques compléments narratifs (CC BY-SA 4.0), et VIVC"
+" ({vivc}), le Vitis International Variety Catalogue du Julius Kühn-"
+"Institut, pour les noms canoniques et numéros de cépage (citation Röckel "
+"et al.). Tout extrait Wikipedia est signalé sur place. Détails et "
+"licences dans le {readme}."
+msgstr ""
+"Fuentes: INAO ({inao}) para los pliegos de condiciones y los límites "
+"parcelarios franceses, IGN ({ign}) para los contornos de los municipios "
+"franceses, el registro de indicaciones geográficas de la UE, los "
+"reguladores nacionales, Eurostat GISCO y Bétard 2022 para los demás "
+"países, OpenStreetMap y CARTO para el mapa base, Wikipedia ({wikipedia}) "
+"para algunos complementos narrativos (CC BY-SA 4.0) y VIVC ({vivc}), el "
+"Vitis International Variety Catalogue del Julius Kühn-Institut, para los "
+"nombres canónicos y los números de variedad (cita: Röckel et al.). Cada "
+"extracto de Wikipedia se indica allí donde aparece. Detalles y licencias "
+"en el {readme}."
+
+#: scripts/_lib/map_template.py:270
+#, python-brace-format
+msgid "Suggestions et pull requests bienvenues sur {github}."
+msgstr "Sugerencias y pull requests bienvenidos en {github}."
+
+#: scripts/_lib/map_template.py:271
+msgid "ticket GitHub"
+msgstr "ticket en GitHub"
+
+#: scripts/_lib/map_template.py:272
+msgid "e-mail"
+msgstr "correo"
+
+#: scripts/_lib/map_template.py:273
+msgid "E-mail copié dans le presse-papiers"
+msgstr "Correo copiado al portapapeles"
+
+#: scripts/_lib/map_template.py:275
+#, python-brace-format
+msgid ""
+"Carte générée automatiquement — des erreurs sont possibles. Signalez-les "
+"via {issue} ou {email}."
+msgstr ""
+"Mapa generado automáticamente — puede contener errores. Comunícalos por "
+"{issue} o {email}."
+
+#: scripts/_lib/map_template.py:279
+#, python-brace-format
+msgid ""
+"{c} pays européens cartographiés ({n} appellations : {parents} "
+"appellations et {subs} dénominations rattachées). Des itérations "
+"supplémentaires affineront la qualité des données et étendront la "
+"couverture au-delà de l'UE, de la Suisse et du Royaume-Uni."
+msgstr ""
+"{c} países europeos cartografiados ({n} entradas: {parents} "
+"denominaciones y {subs} denominaciones vinculadas). Las próximas "
+"iteraciones afinarán la calidad de los datos y ampliarán la cobertura más"
+" allá de la UE, Suiza y el Reino Unido."
+
+#: scripts/_lib/map_template.py:284
+msgid "Toutes les appellations"
+msgstr "Todas las denominaciones"
+
+#: scripts/_lib/map_template.py:285
+msgid "Toutes les appellations viticoles — Open Wine Map"
+msgstr "Todas las denominaciones vitivinícolas — Open Wine Map"
+
+#: scripts/_lib/map_template.py:287
+#, python-brace-format
+msgid ""
+"Liste des {n} appellations viticoles cartographiées sur Open Wine Map, "
+"classées par pays : AOP et IGP de l'UE avec leurs termes traditionnels "
+"(AOC, DOCG, DOQ…), AOC suisses et IG britanniques."
+msgstr ""
+"Lista de las {n} denominaciones vitivinícolas cartografiadas en Open Wine"
+" Map, por país: DOP e IGP de la UE con sus términos tradicionales (DOCa, "
+"DOQ, DOCG…), AOC suizas e IG británicas."
+
+#: scripts/_lib/map_template.py:292
+#, python-brace-format
+msgid ""
+"Les {n} appellations ci-dessous sont classées par pays. Retour à la "
+"{map_link}."
+msgstr ""
+"Las {n} denominaciones siguientes están agrupadas por país. Volver al "
+"{map_link}."
+
+#: scripts/_lib/map_template.py:295
+msgid "carte interactive"
+msgstr "mapa interactivo"
+
+#: scripts/_lib/map_template.py:296
+msgid "Liste des appellations par pays"
+msgstr "Lista de denominaciones por país"
+
+#: scripts/_lib/map_template.py:297
+msgid "Appellation parente"
+msgstr "Denominación matriz"
+
+#: scripts/_lib/map_template.py:298
+msgid "Dénominations rattachées"
+msgstr "Denominaciones vinculadas"
+
+#: scripts/_lib/map_template.py:300
+#, python-brace-format
+msgid "Parcourir la liste complète des appellations : {browse_link}."
+msgstr "Explore la lista completa de denominaciones: {browse_link}."
+
+#: scripts/_lib/map_template.py:302
+#, python-brace-format
+msgid "Données mises à jour le {date}."
+msgstr "Datos actualizados el {date}."
+
+#: scripts/_lib/map_template.py:317
+msgid "BOURGOGNE"
+msgstr "Borgoña"
+
+#: scripts/_lib/map_template.py:318
+msgid "BEAUJOLAIS"
+msgstr "Beaujolais"
+
+#: scripts/_lib/map_template.py:319
+msgid "JURA"
+msgstr "Jura"
+
+#: scripts/_lib/map_template.py:320
+msgid "SAVOIE"
+msgstr "Saboya"
+
+#: scripts/_lib/map_template.py:321
+msgid "BUGEY"
+msgstr "Bugey"
+
+#: scripts/_lib/map_template.py:322
+msgid "ALSACE ET EST"
+msgstr "Alsacia y Este"
+
+#: scripts/_lib/map_template.py:323
+msgid "VAL DE LOIRE"
+msgstr "Valle del Loira"
+
+#: scripts/_lib/map_template.py:324
+msgid "SUD-OUEST"
+msgstr "Suroeste"
+
+#: scripts/_lib/map_template.py:325
+msgid "VALLEE DU RHÔNE"
+msgstr "Valle del Ródano"
+
+#: scripts/_lib/map_template.py:326
+msgid "LANGUEDOC-ROUSSILLON"
+msgstr "Languedoc-Rosellón"
+
+#: scripts/_lib/map_template.py:327
+msgid "TOULOUSE-PYRENEES"
+msgstr "Tolosa-Pirineos"
+
+#: scripts/_lib/map_template.py:328
+msgid "PROVENCE-CORSE"
+msgstr "Provenza-Córcega"
+
+#: scripts/_lib/map_template.py:329
+msgid "CHAMPAGNE"
+msgstr "Champaña"
+
+#: scripts/_lib/map_template.py:330
+msgid "EAUX-DE-VIE DE CIDRE"
+msgstr "Aguardientes de sidra"
+
+#: scripts/_lib/map_template.py:331
+msgid "VIN DOUX NATURELS"
+msgstr "Vinos dulces naturales"
+
+#: scripts/_lib/map_template.py:332
+msgid "COGNAC"
+msgstr "Coñac"
+
+#: scripts/_lib/map_template.py:333
+msgid "ARMAGNAC"
+msgstr "Armañac"
+
+#: scripts/_lib/map_template.py:334
+msgid "RHUM"
+msgstr "Ron"
+
+#: scripts/_lib/map_template.py:374
+msgid "France"
+msgstr "Francia"
+
+#: scripts/_lib/map_template.py:375
+msgid "Espagne"
+msgstr "España"
+
+#: scripts/_lib/map_template.py:376
+msgid "Portugal"
+msgstr "Portugal"
+
+#: scripts/_lib/map_template.py:377
+msgid "Italie"
+msgstr "Italia"
+
+#: scripts/_lib/map_template.py:378
+msgid "Autriche"
+msgstr "Austria"
+
+#: scripts/_lib/map_template.py:379
+msgid "Slovénie"
+msgstr "Eslovenia"
+
+#: scripts/_lib/map_template.py:380
+msgid "Croatie"
+msgstr "Croacia"
+
+#: scripts/_lib/map_template.py:381
+msgid "Hongrie"
+msgstr "Hungría"
+
+#: scripts/_lib/map_template.py:382
+msgid "Roumanie"
+msgstr "Rumanía"
+
+#: scripts/_lib/map_template.py:383
+msgid "Bulgarie"
+msgstr "Bulgaria"
+
+#: scripts/_lib/map_template.py:384
+msgid "Grèce"
+msgstr "Grecia"
+
+#: scripts/_lib/map_template.py:385
+msgid "Allemagne"
+msgstr "Alemania"
+
+#: scripts/_lib/map_template.py:386
+msgid "Slovaquie"
+msgstr "Eslovaquia"
+
+#: scripts/_lib/map_template.py:387
+msgid "Suisse"
+msgstr "Suiza"
+
+#: scripts/_lib/map_template.py:388
+msgid "Tchéquie"
+msgstr "Chequia"
+
+#: scripts/_lib/map_template.py:389
+msgid "Luxembourg"
+msgstr "Luxemburgo"
+
+#: scripts/_lib/map_template.py:390
+msgid "Belgique"
+msgstr "Bélgica"
+
+#: scripts/_lib/map_template.py:391
+msgid "Pays-Bas"
+msgstr "Países Bajos"
+
+#: scripts/_lib/map_template.py:392
+msgid "Malte"
+msgstr "Malta"
+
+#: scripts/_lib/map_template.py:393
+msgid "Chypre"
+msgstr "Chipre"
+
+#: scripts/_lib/map_template.py:394
+msgid "Royaume-Uni"
+msgstr "Reino Unido"
+
+#: scripts/_lib/style_taxonomy.py:332 scripts/_lib/style_taxonomy.py:365
+msgid "doux"
+msgstr "dulce"
+
+#: scripts/_lib/style_taxonomy.py:333 scripts/_lib/style_taxonomy.py:366
+msgid "autres"
+msgstr "otros"
+
+#: scripts/_lib/style_taxonomy.py:334
+msgid "clairet"
+msgstr "clarete"
+
+#: scripts/_lib/style_taxonomy.py:334
+msgid "primeur"
+msgstr "primeur"
+
+#: scripts/_lib/style_taxonomy.py:335
+msgid "mousseux de qualité"
+msgstr "espumoso de calidad"
+
+#: scripts/_lib/style_taxonomy.py:335
+msgid "crémant"
+msgstr "crémant"
+
+#: scripts/_lib/style_taxonomy.py:335
+msgid "méthode ancestrale"
+msgstr "método ancestral"
+
+#: scripts/_lib/style_taxonomy.py:336
+msgid "méthode traditionnelle"
+msgstr "método tradicional"
+
+#: scripts/_lib/style_taxonomy.py:336
+msgid "méthode Charmat"
+msgstr "método Charmat"
+
+#: scripts/_lib/style_taxonomy.py:336
+msgid "méthode dioise"
+msgstr "méthode dioise"
+
+#: scripts/_lib/style_taxonomy.py:337
+msgid "pétillant"
+msgstr "de aguja"
+
+#: scripts/_lib/style_taxonomy.py:338
+msgid "vin muté"
+msgstr "vino encabezado"
+
+#: scripts/_lib/style_taxonomy.py:338
+msgid "vendanges tardives (catégorie)"
+msgstr "vendimia tardía (categoría)"
+
+#: scripts/_lib/style_taxonomy.py:339
+msgid "vin de raisins passerillés"
+msgstr "vino de uvas pasificadas"
+
+#: scripts/_lib/style_taxonomy.py:340
+msgid "demi-doux"
+msgstr "semidulce"
+
+#: scripts/_lib/style_taxonomy.py:340
+msgid "vin de glace"
+msgstr "vino de hielo"
+
+#: scripts/_lib/style_taxonomy.py:341
+msgid "vin doux naturel"
+msgstr "vino dulce natural"
+
+#: scripts/_lib/style_taxonomy.py:341
+msgid "vin de liqueur"
+msgstr "vino de licor"
+
+#: scripts/_lib/style_taxonomy.py:341
+msgid "mistelle"
+msgstr "mistela"
+
+#: scripts/_lib/style_taxonomy.py:342
+msgid "vendanges tardives"
+msgstr "vendimia tardía"
+
+#: scripts/_lib/style_taxonomy.py:342
+msgid "uvas sobremaduradas"
+msgstr "uvas sobremaduradas"
+
+#: scripts/_lib/style_taxonomy.py:343
+msgid "vin naturellement doux"
+msgstr "naturalmente dulce"
+
+#: scripts/_lib/style_taxonomy.py:343
+msgid "grains nobles"
+msgstr "granos nobles"
+
+#: scripts/_lib/style_taxonomy.py:344
+msgid "vin de paille"
+msgstr "vino de paja"
+
+#: scripts/_lib/style_taxonomy.py:344
+msgid "uvas pasificadas"
+msgstr "uvas pasificadas"
+
+#: scripts/_lib/style_taxonomy.py:344
+msgid "vin santo"
+msgstr "vin santo"
+
+#: scripts/_lib/style_taxonomy.py:345
+msgid "tranquille"
+msgstr "tranquilo"
+
+#: scripts/_lib/style_taxonomy.py:345
+msgid "sur lie"
+msgstr "sur lie"
+
+#: scripts/_lib/style_taxonomy.py:345
+msgid "sec"
+msgstr "seco"
+
+#: scripts/_lib/style_taxonomy.py:345
+msgid "demi-sec"
+msgstr "semiseco"
+
+#: scripts/_lib/style_taxonomy.py:346
+msgid "rancio"
+msgstr "rancio"
+
+#: scripts/_lib/style_taxonomy.py:346
+msgid "vin jaune"
+msgstr "vino amarillo"
+
+#: scripts/_lib/style_taxonomy.py:346
+msgid "generoso"
+msgstr "generoso"
+
+#: scripts/_lib/style_taxonomy.py:347
+msgid "fino"
+msgstr "fino"
+
+#: scripts/_lib/style_taxonomy.py:347
+msgid "manzanilla"
+msgstr "manzanilla"
+
+#: scripts/_lib/style_taxonomy.py:347
+msgid "amontillado"
+msgstr "amontillado"
+
+#: scripts/_lib/style_taxonomy.py:348
+msgid "oloroso"
+msgstr "oloroso"
+
+#: scripts/_lib/style_taxonomy.py:348
+msgid "palo cortado"
+msgstr "palo cortado"
+
+#~ msgid "carte des appellations françaises"
+#~ msgstr "mapa de denominaciones francesas"
+
+#~ msgid ""
+#~ "Priorité actuelle : affiner la "
+#~ "couverture française — précision des "
+#~ "aires, qualité des extraits, climats et"
+#~ " lieux-dits. L'extension à d'autres "
+#~ "pays viticoles viendra ensuite."
+#~ msgstr ""
+#~ "Prioridad actual: afinar la cobertura "
+#~ "francesa — precisión de las áreas, "
+#~ "calidad de los extractos, climats y "
+#~ "lieux-dits. La extensión a otros "
+#~ "países vitivinícolas vendrá después."
+
+#~ msgid "anglais"
+#~ msgstr ""
+
+#~ msgid "français"
+#~ msgstr "(francés)"
+
+#~ msgid "espagnol"
+#~ msgstr "(español)"
+
+#~ msgid "néerlandais"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Couverture actuelle : France et une "
+#~ "première version de l'Espagne. Prochaines "
+#~ "étapes : amélioration continue de la "
+#~ "qualité des données, puis ajout du "
+#~ "Portugal."
+#~ msgstr ""
+#~ "Cobertura actual: Francia y una primera"
+#~ " versión de España. Próximos pasos: "
+#~ "mejora continua de la calidad de "
+#~ "los datos y, después, Portugal."
+
+#~ msgid "moelleux"
+#~ msgstr "semidulce"
+
+#~ msgid ""
+#~ "Carte interactive des appellations viticoles"
+#~ " européennes (AOC, AOP, IGP, DOP) :"
+#~ " cépages, styles et terroir, d'après "
+#~ "les registres officiels (INAO, EUR-Lex)."
+#~ msgstr ""
+#~ "Mapa interactivo de las denominaciones "
+#~ "vitivinícolas europeas (DOP, IGP): variedades,"
+#~ " estilos y terruño, según los "
+#~ "registros oficiales (INAO, EUR-Lex)."
+
+#~ msgid "AOC / AOP"
+#~ msgstr "AOC / AOP"
+
+#~ msgid "{n} dans IGP masquées — afficher"
+#~ msgstr "{n} ocultos en IGP — mostrar"
+
+#~ msgid ""
+#~ "Carte de référence des appellations "
+#~ "viticoles (AOC, AOP, IGP, DOP), générée"
+#~ " automatiquement à partir des données "
+#~ "publiques."
+#~ msgstr ""
+#~ "Mapa de referencia abierto de las "
+#~ "denominaciones vitivinícolas (AOC, AOP, IGP,"
+#~ " DOP), generado automáticamente a partir"
+#~ " de datos públicos."
+
+#~ msgid ""
+#~ "Sources : INAO ({inao}) pour les "
+#~ "cahiers des charges et les aires "
+#~ "parcellaires, IGN ({ign}) pour le fond"
+#~ " cartographique, Wikipedia ({wikipedia}) pour "
+#~ "quelques compléments narratifs (CC BY-SA"
+#~ " 4.0), VIVC ({vivc}) — Vitis "
+#~ "International Variety Catalogue, Julius "
+#~ "Kühn-Institut — pour les noms "
+#~ "canoniques et numéros de cépage "
+#~ "(citation Röckel et al.). Tout extrait"
+#~ " Wikipedia est signalé sur place. "
+#~ "Détails et licences dans le {readme}."
+#~ msgstr ""
+#~ "Fuentes: INAO ({inao}) para los pliegos"
+#~ " de condiciones y los límites "
+#~ "parcelarios, IGN ({ign}) para la "
+#~ "cartografía de base, Wikipedia ({wikipedia})"
+#~ " para algunos complementos narrativos (CC"
+#~ " BY-SA 4.0), VIVC ({vivc}) — "
+#~ "Vitis International Variety Catalogue, Julius"
+#~ " Kühn-Institut — para los nombres "
+#~ "canónicos y números de variedad (cita"
+#~ " Röckel et al.). Cada extracto de "
+#~ "Wikipedia se indica en el sitio "
+#~ "donde aparece. Detalles y licencias en"
+#~ " el {readme}."
+
+#~ msgid ""
+#~ "20 pays européens cartographiés : "
+#~ "France, Espagne, Portugal, Italie, Autriche,"
+#~ " Allemagne, Suisse, Slovénie, Croatie, "
+#~ "Hongrie, Roumanie, Bulgarie, Grèce, Slovaquie,"
+#~ " Tchéquie, Luxembourg, Belgique, Pays-Bas,"
+#~ " Malte et Chypre. Des itérations "
+#~ "supplémentaires viendront affiner la qualité"
+#~ " des données. La couverture sera "
+#~ "étendue au-delà de l'UE et de "
+#~ "la Suisse, ainsi qu'aux classifications "
+#~ "hors AOP."
+#~ msgstr ""
+#~ "20 países europeos ya cartografiados: "
+#~ "Francia, España, Portugal, Italia, Austria,"
+#~ " Alemania, Suiza, Eslovenia, Croacia, "
+#~ "Hungría, Rumanía, Bulgaria, Grecia, "
+#~ "Eslovaquia, República Checa, Luxemburgo, "
+#~ "Bélgica, Países Bajos, Malta y Chipre."
+#~ " Se seguirá mejorando la calidad de"
+#~ " los datos. La cobertura se ampliará"
+#~ " más allá de la UE y Suiza, "
+#~ "así como a clasificaciones no DOP."
+
+#~ msgid ""
+#~ "Liste des {n} appellations viticoles "
+#~ "européennes cartographiées sur Open Wine "
+#~ "Map, classées par pays — AOC, AOP,"
+#~ " IGP, DOP."
+#~ msgstr ""
+#~ "Lista de las {n} denominaciones "
+#~ "vitivinícolas europeas cartografiadas en Open"
+#~ " Wine Map, organizadas por país — "
+#~ "DOP, IGP."
+
+#~ msgid ""
+#~ "Chaque appellation porte deux noms, qui"
+#~ " désignent deux choses : le terme "
+#~ "traditionnel que le régulateur du pays"
+#~ " lui rattache, et le régime sous "
+#~ "lequel elle est enregistrée. La carte"
+#~ " les affiche sous la forme <em>TERME"
+#~ " (RÉGIME)</em>, par exemple « DOCG "
+#~ "(AOP) » ou « DOQ (AOP) ». "
+#~ "Lorsqu'un pays n'a pas de terme "
+#~ "propre, seul le régime apparaît. Les "
+#~ "AOC suisses sont hors du régime de"
+#~ " l'UE et ne portent aucune parenthèse"
+#~ " ; le Royaume-Uni enregistre ses "
+#~ "appellations dans son propre régime, qui"
+#~ " conserve les mots PDO et PGI ;"
+#~ " les eaux-de-vie françaises sont "
+#~ "des indications géographiques de boissons "
+#~ "spiritueuses, pas des AOP viticoles. "
+#~ "Survolez un terme pour en lire la"
+#~ " définition et la source."
+#~ msgstr ""
+#~ "Cada denominación lleva dos nombres, y"
+#~ " designan dos cosas distintas: el "
+#~ "término tradicional que el regulador del"
+#~ " país le asocia y el régimen "
+#~ "bajo el que está registrada. El "
+#~ "mapa los muestra como <em>TÉRMINO "
+#~ "(RÉGIMEN)</em>, por ejemplo «DOCG (DOP)» "
+#~ "o «DOQ (DOP)». Cuando un país no"
+#~ " tiene un término propio, solo "
+#~ "aparece el régimen. Las AOC suizas "
+#~ "quedan fuera del régimen de la UE"
+#~ " y no llevan paréntesis; el Reino "
+#~ "Unido registra sus denominaciones en un"
+#~ " régimen propio, que conserva las "
+#~ "palabras PDO y PGI; los aguardientes "
+#~ "franceses (eaux-de-vie) son indicaciones"
+#~ " geográficas de bebidas espirituosas, no"
+#~ " DOP vinícolas. Pase el cursor sobre"
+#~ " un término para ver su definición"
+#~ " y su fuente."
+
+#~ msgid "Open Wine Map — carte des appellations"
+#~ msgstr "Open Wine Map — mapa de denominaciones"
+
+#~ msgid ""
+#~ "Carte des AOP et IGP viticoles "
+#~ "d'Europe (AOC, DOCG, DOQ, DAC…), AOC "
+#~ "suisses et IG britanniques : cépages,"
+#~ " styles et terroir, d'après les "
+#~ "registres officiels."
+#~ msgstr ""
+#~ "Mapa de las DOP e IGP vinícolas"
+#~ " de Europa (DOCa, DOQ, DOCG, AOC…),"
+#~ " AOC suizas e IG británicas: "
+#~ "variedades, estilos y terruño según los"
+#~ " registros oficiales."
+

@@ -64,8 +64,8 @@ done*.json
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 
-# gettext catalogs — UI-localisation layer; not committed in the minimal
-# bootstrap. Stage 04 falls back to the FR source when these are absent.
-locale/
+# gettext catalogs: the .po sources + .pot are committed (a fresh checkout must
+# render EN/ES/NL, not the FR msgids); only the compiled .mo is derived.
+locale/**/*.mo
 
 tmp/*

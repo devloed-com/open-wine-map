@@ -4551,6 +4551,71 @@ keys are read from the environment or a repo-root `.env`. Anthropic
 batches use the Messages Batches SDK; Mistral batches use a file-upload /
 poll / download REST flow (no `mistralai` SDK dependency).
 
+## Appellation names: traditional term + legal scheme
+
+Every record carries two naming axes, derived at stage 04 and never
+hand-edited ([scripts/_lib/gi_terms.py](scripts/_lib/gi_terms.py)):
+
+- **`eu_scheme`** — the legally precise scheme: `pdo` / `pgi` (EU wine,
+  Reg. 1308/2013), `spirit-gi` (the 28 FR eaux-de-vie + Marc d'Alsace:
+  spirit-drink GIs under Reg. 2019/787, SIQO `signe_ue = IG`), `uk-pdo` /
+  `uk-pgi` (the six UK wines, GOV.UK register) and `none` (the 75 Swiss
+  cantonal AOCs, outside the EU scheme). FR comes from `signe_ue` with the
+  derived `mvt_kind` as fallback; everyone else from the eAmbrosia kind.
+- **`national_term`** — the EU-registered *traditional term* (Reg. 1308/2013
+  Art. 112(a), Reg. 607/2009 Annex XII) the regulator attaches to the GI as
+  a whole: AOC, DOCG / DOC / IGT, DOCa / DOQ / DO / Vino de Pago / Vino de
+  Calidad / Vino de la Tierra, DOC / Vinho Regional, DOC / IG, DAC /
+  Landwein, DOK / IĠT. The regulator's own string, never gettext-translated
+  (the region-name rule). Admission needs all three: registered in Annex
+  XII, GI-wide (lot-level grades — Qualitätswein, Prädikatswein, kakovostno
+  — are excluded), attached by a public regulator document or a cited pin.
+  Local abbreviations of PDO/PGI (OEM, ZOP, ΠΟΠ, BOB …) are the scheme, not
+  a term; the table loader refuses them.
+- **`class_key`** (`;pdo;it:docg;`) is the `;`-padded MVT property the
+  "Appellation type" facet filters on; **`class_label`** is the per-locale
+  rendered string, composed once in Python (`classification_label`) so the
+  JS panel, `docTitleFor`, the SSR card, entity `<title>` / meta description,
+  browse list and children nav all read the same value.
+
+Rendering is **`TERM (SCHEME)`** with the scheme word in the UI locale —
+`DOQ (PDO)` / `DOQ (AOP)` / `DOQ (DOP)` / `DOQ (BOB)`, `AOC (PDO)`, `IGT
+(PGI)`, `AOC (spirit-drink GI)`; term only when there is no scheme (Swiss
+`AOC`), scheme only when the country has no term (`PDO` for Mosel or
+Sussex, `PGI` for a French IGP — never `IGP (IGP)`). Both tokens are
+hover/focus targets of the pill tooltip (definition + regulator source from
+the term table); the SSR card carries the same text as an `<abbr title>`.
+The stored **`kind`** token (AOC/DOP/IGP/EDV) is untouched — it stays the
+paint and filter key (map_template.py paint expression + the six `'IGP'`
+gates in app.js).
+
+Sources, all sha-pinned and joined on the EU file number:
+
+| country | source | result |
+|---|---|---|
+| IT | MASAF *Elenco alfabetico dei vini DOP* (+ IGP elenco), scraped from IDPagina/4625 by `it/00_fetch_data.py` into `raw/it/masaf-elenchi/`, parsed by [scripts/_lib/it/national_term.py](scripts/_lib/it/national_term.py); IGT constant for IT PGIs | 79 DOCG / 333 DOC / 112 IGT, 524/524; residue pinned in [scripts/_lib/it/national_term_overrides.json](scripts/_lib/it/national_term_overrides.json) (Cirò Classico → DOCG, Reg. 2025/1518; Valtènesi → DOC, Reg. 2026/572; Casauria → DOCG, Reg. 2025/2261). The known static elenco URL serves a 2014 build — the scraper takes the dated `ServeAttachment` link. |
+| ES | MAPA *Listado de DOP e IGP de vinos* (Término tradicional column), fetched by `es/00_fetch_data.py` into `raw/es/mapa/`, parsed by [scripts/_lib/es/national_term.py](scripts/_lib/es/national_term.py) | DO 69 / Vino de la Tierra 43 / Vino de Pago 28 / Vino de Calidad 7 / DOQ 1 / DOCa 1, 149/149; [scripts/_lib/es/national_term_overrides.json](scripts/_lib/es/national_term_overrides.json) pins Priorat → `DOQ` (`castilian_form: DOCa`; Llei 2/2020 art. 4(e) — the regional-language legal form wins when the autonomous community's wine law defines it), Tharsys (file-number bridge, VP per its pliego), Urbezo (VP per the MAPA 2024-10-25 release; the listado still prints DO). No PGI ever receives a PDO-only term (asserted). |
+| FR / CH / PT / RO / AT / DE / MT / rest | the checked-in ruling table [scripts/_lib/traditional_terms.json](scripts/_lib/traditional_terms.json): per-(country, kind) constants with a cited ruling per country, the 18 Austrian DAC pins by file number (BML DAC-Verordnungen + RIS, `since_vintage`), the `marc-d-alsace-gewurztraminer` slug pin, and the per-scheme / per-term tooltip definitions in en/fr/es/nl with sources | FR AOC (incl. EDV), CH AOC, PT DOC / Vinho Regional, RO DOC / IG, AT DAC / Landwein, DE Landwein (PDO none), MT DOK / IĠT; GB / LU / BE / NL / SI / HR / HU / BG / GR / CZ / SK / CY empty with a recorded reason. |
+
+Deferred to a curator pin pass (empty renders scheme-only, never wrong):
+GR ΟΠΑΠ / ΟΠΕ, CZ VOC (Znojmo), CH Grand Cru / premier cru sub-tiers, NL
+Landwijn, SI vino PTP, HU Tájbor, BG Регионално вино, CY ΟΕΟΠ / Τοπικός
+Οίνος — see [CURATOR_TODO.md](CURATOR_TODO.md). Wikipedia extracts for the
+term tooltips are a follow-up (the 02b style-lexicon pattern).
+
+Sub-denominations resolve through their own `file_number` / `signe` (ES
+subzonas and IT sottozone carry the parent's number) with a parent-slug
+fallback in the parents-first record loop; `scripts/audit_gi_terms.py`
+asserts every child equals its parent, that every term's registered scheme
+matches the record's, that no `class_label` is empty, and reports the
+per-country distribution against the rosters. Run it after every stage-04
+build (`--strict` in CI).
+
+The facet is its own two-level tree ("Appellation type", advanced mode):
+scheme rows over flag + term rows, built with `buildTreeFacet` over
+`class_key`; counts are parents-only and wines-only, so DOCG = the roster
+count, not roster + sottozone.
+
 ## Internationalisation
 
 The map UI chrome (sidebar labels, panel headings, link texts, style chip
@@ -4590,9 +4655,9 @@ each run; it rebuilds `messages.mo` only when the `.po` is newer (no-op
 on rerun).
 
 ```
-uv run pybabel extract -F locale/babel.cfg -o locale/messages.pot scripts/_lib/
-uv run pybabel update -i locale/messages.pot -d locale     # after adding a new msgid
-uv run pybabel init   -i locale/messages.pot -d locale -l <lang>   # to add a new locale
+.venv/bin/python -m babel.messages.frontend extract -F locale/babel.cfg -o locale/messages.pot scripts/_lib/
+.venv/bin/python -m babel.messages.frontend update -i locale/messages.pot -d locale --no-fuzzy-matching
+.venv/bin/python -m babel.messages.frontend init -i locale/messages.pot -d locale -l <lang>   # to add a new locale
 ```
 
 After editing a `.po`, just rerun `uv run scripts/04_build_maps.py`.
@@ -4748,6 +4813,18 @@ static link layer (all in [scripts/_lib/map_template.py](scripts/_lib/map_templa
   (resolve storage zone by name, set `Custom404FilePath=/404.html`). Apex→www
   301 stays a manual dashboard rule (smoke-checked by `check_apex_redirect`).
 
+## Analytics
+
+Self-hosted Plausible (site id `openwinemap.com`); the snippet is in
+`_TEMPLATE`, custom events go through `track()` in
+[scripts/_lib/assets/app.js](scripts/_lib/assets/app.js). The event/prop
+reference, the goal-configuration recipe (events are stored but invisible
+until configured as goals — retroactively), and the known reading artefacts
+(replaceState opens are not pageviews; page-load opens are not tracked;
+`Appellation Viewed.slug` is the stack focus, split by `via`) live in
+[docs/analytics.md](docs/analytics.md). Keep that table in sync when adding
+or renaming a `track()` call, and never commit an API key.
+
 ## Code style
 
 - Python 3.12, ruff line length 100.
@@ -4776,15 +4853,3 @@ static link layer (all in [scripts/_lib/map_template.py](scripts/_lib/map_templa
   benign same-value dups without failing); `tests/test_no_duplicate_keys.py`
   runs it under `pytest`. Run `.venv/bin/python scripts/audit_dup_keys.py` (or
   `pytest`) after editing `grape_lexicon.py` or any other large lookup table.
-## Analytics
-
-Self-hosted Plausible (site id `openwinemap.com`); the snippet is in
-`_TEMPLATE`, custom events go through `track()` in
-[scripts/_lib/assets/app.js](scripts/_lib/assets/app.js). The event/prop
-reference, the goal-configuration recipe (events are stored but invisible
-until configured as goals — retroactively), and the known reading artefacts
-(replaceState opens are not pageviews; page-load opens are not tracked;
-`Appellation Viewed.slug` is the stack focus, split by `via`) live in
-[docs/analytics.md](docs/analytics.md). Keep that table in sync when adding
-or renaming a `track()` call, and never commit an API key.
-
