@@ -81,6 +81,18 @@ DGC cascading unlock realised in this round: **+106 DGCs** (Beaune climats, Chas
 
 **To retry the cookie-expired ones:** refresh `cf_clearance` in your browser (open <https://www.legifrance.gouv.fr/loda/id/JORFTEXT000024923948>, copy fresh cookie), update `~/.config/openwinemap/legifrance.json`, then `.venv/bin/python scripts/01b_solve_legifrance.py --refresh --only 71 --only 134 --only 211 --only 230 --only 247`.
 
+### Terroir-fact source contamination — 3 parents bound to the wrong BO Agri PDF — ❌ open (2026-09-11)
+
+Found by the 1,000-bullet terroir-fact review (plan: `docs/plan-terroir-facts-quality.md`, W2b). The extracted `lien_au_terroir` never names the appellation; every terroir fact on these pages is about another AOC. Fix = pin the correct cahier in `raw/inao/cahiers/manual_overrides.json`, then 01 → `02 --only` → `02d --slug` → 02e → 04.
+
+| id | slug | lien actually belongs to | manifest PDF | action |
+|---:|---|---|---|---|
+| 290 | `pierrevert` | Saint-Pourçain (6 mentions, 0 of Pierrevert) | `e2a5794ebf…` | find the Pierrevert cahier on the BO Agri search UI |
+| 187 | `l-etoile` | Bourgogne Passe-tout-grains (byte-identical lien) | `49acff2270…` (shared with 184) | find the L'Étoile cahier |
+| 184 | `grands-echezeaux` | Bourgogne Passe-tout-grains (byte-identical lien) | `49acff2270…` (shared with 187) | find the Grands-Echezeaux cahier |
+
+Code-side guard (lien must name its appellation) is part of the same plan.
+
 ### SIQO referentiel — 2 wines missing (eAmbrosia has them, INAO doesn't) — ✅ both RETIRED (2026-08-26)
 
 ✅ Web-research pass confirmed both are intentionally absent — no pinning needed;
@@ -574,6 +586,8 @@ Cross-canonical implication: all six Iberian names for VIVC #12668 (Trousseau No
 ---
 
 ## Code-side follow-ups (not curator data tasks)
+- **Terroir-fact quality fixes W1–W8** (2026-09-11): 02e preserve-list split, Alsace shared-cahier slicer, in-record dedupe, ellipsis-aware coverage, style normaliser, boilerplate filter, audit extension — full handoff in `docs/plan-terroir-facts-quality.md`.
+
 
 These surfaced in the audit but require code changes, not lookups:
 
