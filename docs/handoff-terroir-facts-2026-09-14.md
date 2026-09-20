@@ -30,10 +30,49 @@ stale-marking works; `--scoped-02d` covers the case that hurt), the
 `multi_sentence` splitter and the Alsace `produit` decision; 3.5, 3.6,
 3.8, 3.9 untouched.
 
+Later the same afternoon: `ff14659` back-check keeps the translation when
+a fix comes back empty (`fix_missing`, backcheck-v2 — 3.8's 512);
+`f2e5f4d` + `1023576` the audit pinned the MASAF template at v2 (every
+regenerated sidecar would have reported stale) and `META_RE` was
+English-only — source-language citations ("secondo il disciplinare",
+"selon le cahier des charges", "laut Produktspezifikation", "according to
+the production specification") are now caught, and the normaliser drops
+such a clause when it trails the sentence; `9e0f8f3` FR 02d records
+`n_dropped` / `n_deduped` / `n_unearned_interactions`; `43d2d5e`
+orchestrator `--scoped-backcheck` (see the smoke).
+
 **Sequencing.** Items 3.1–3.4 all change what the extractor produces, so
 they were landed *before* the corpus migration (2.1) rather than after —
-one full pass, not two. GATE_VERSION is `gate-v2`, so the migration's
-corpus-wide gate step re-gates everything by construction.
+one full pass, not two. GATE_VERSION is `gate-v2` and BACKCHECK_VERSION
+`backcheck-v2`, so the migration's corpus-wide gate and back-check steps
+redo everything by construction.
+
+### Smoke of the new chain — `smoke-cfg-2026-09-14` (6 records, $1.12)
+
+`rerun_terroir_facts.py --scope {barolo, chablis, rioja, mosel, dingac,
+santorini} --scoped-02d --scoped-gate` (+ the back-check scoped by hand,
+see below), then `normalize_terroir_facts.py --only …`, then the audit:
+
+| stage | result |
+|---|---|
+| 02d Sonnet 5 (thinking off) | 58 facts (9.7 / record; the same six had 52 under Sonnet 4.6), 0 grounding drops, 5 unearned `interactions` dropped → 2 kept = **3.4 % share** (was 10.8 %) |
+| gate Opus 5 adaptive | 4 / 58 rewritten (**6.9 %**, was 20–27 %), 0 dropped, 1 moved, 0 cosmetic, 0 empty. All four rewrites read as true source-grounded corrections (Rioja Alavesa / Sierra de Cantabria north–south, "von Hand", "milenaria", the Santorini hedge grading) |
+| 02e Sonnet 4.6 → back-check | 19 / 210 translated bullets fixed (9.0 %), 2 empty fixes kept as `fix_missing`, 0 rejected |
+| audit | strict checks 0; `gate_pending` 1,629 = the rest of the corpus (v2 bump), `feedback_recurrence` 23 — 17 are the do-not-claim entries merged from the two post-r1 LLM audits, still in their (un-re-extracted) records; none in the six |
+| ledger | 02d $0.34 · gate $0.37 · 02e $0.26 · back-check $0.14 |
+
+Two things the smoke taught: (1) after a version bump the corpus-wide
+gate / back-check steps are the whole corpus — the back-check submitted
+5,895 requests before I cancelled it at $0.00 processed; hence
+`--scoped-backcheck`, and the rule *a smoke passes all three `--scoped-*`
+flags, a migration passes none*. (2) Sonnet 5 still cites the document
+once in six records ("secondo il disciplinare") — the normaliser strips a
+trailing citation and the audit now flags the source-language forms.
+
+**Cost projection for 2.1**, from the ledger: $1.12 for the six → ≈ $300
+for 1,640 records as an upper bound (the six include three long sources —
+Barolo's now-uncapped Art. 9 alone is 119 K input tokens); the hand-off's
+$210 is the lower bound. Expect $210–300.
 
 ## 0. State you inherit
 
@@ -132,7 +171,7 @@ python3 -c "import json,glob; json.dump({'slugs':[p.split('/')[-1][:-5] for p in
 .venv/bin/python scripts/rerun_terroir_facts.py --scope tmp/terroir-facts-review/scope-all.json --run cfg-2026-xx-xx --parallel 7
 ```
 
-≈ $210, ≈ 45 min wall-clock. Then the acceptance pair above; expect the
+≈ $210–300 (see the smoke), ≈ 45–60 min wall-clock. Then the acceptance pair above; expect the
 misleading share at or below 3 % on the 120-record frame, more facts per
 record (≈ 8.9 vs 6.8), and check that the Opus gate's rewrite / drop
 shares are in the 4.6 gate's range (20–28 % / 1.5–2 %) — a much higher
