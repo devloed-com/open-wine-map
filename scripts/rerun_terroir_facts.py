@@ -30,6 +30,9 @@ pre-run copy is in the backup before the mark lands.
                       full-text change) re-extracts only the scope
   --scoped-gate       gate only the scoped slugs (a smoke run right after a
                       GATE_VERSION bump would otherwise re-gate the corpus)
+  --scoped-backcheck  back-check only the scoped slugs (same reason, after a
+                      BACKCHECK_VERSION bump). A smoke run passes all three
+                      --scoped-* flags; a corpus migration passes none.
   --skip-02d / --skip-gate / --skip-02e / --skip-02e-verify / --skip-audit
   --dry-run           print the plan, touch nothing
 
@@ -141,6 +144,9 @@ def main() -> int:
     ap.add_argument("--scoped-gate", action="store_true",
                     help="gate only the scoped slugs (default: corpus-wide on whatever is ungated — "
                          "after a GATE_VERSION bump that is the whole corpus)")
+    ap.add_argument("--scoped-backcheck", action="store_true",
+                    help="back-check only the scoped slugs (default: corpus-wide on whatever is unchecked — "
+                         "after a BACKCHECK_VERSION bump that is the whole corpus)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -203,9 +209,14 @@ def main() -> int:
             log(f"02e failed for {[c for c, rc in rcs.items() if rc]} — re-run to resume; continuing to the checks.")
 
     if not args.skip_02e_verify:
-        log("02e_verify --batch (corpus-wide, unchecked translations) …")
+        check_scope: list[str] = []
+        if args.scoped_backcheck:
+            scope_file = logdir / "backcheck-scope.json"
+            scope_file.write_text(json.dumps({"slugs": slugs}), encoding="utf-8")
+            check_scope = ["--only-file", str(scope_file)]
+        log(f"02e_verify --batch ({'scoped' if check_scope else 'corpus-wide, unchecked translations'}) …")
         rc = run_step([str(PY), str(ROOT / "scripts" / "02e_verify_terroir_facts.py"), "--batch",
-                       "--provider", args.provider, "--quiet"], logdir / "02e-verify.log", env)
+                       "--provider", args.provider, "--quiet", *check_scope], logdir / "02e-verify.log", env)
         log(f"  02e-verify: exit {rc} — {logdir / '02e-verify.log'}")
 
     if not args.skip_audit:
