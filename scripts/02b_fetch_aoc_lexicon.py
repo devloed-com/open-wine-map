@@ -684,6 +684,11 @@ def main() -> int:
     ap.add_argument("--refresh", action="store_true", help="re-fetch even if cached")
     ap.add_argument("--throttle", type=float, default=0.2, help="seconds between API calls")
     ap.add_argument("--limit", type=int, default=0, help="cap on entries to process (0 = all)")
+    ap.add_argument(
+        "--only", action="append", default=[],
+        help="restrict to these slugs (repeatable) — with --refresh, re-resolves just them "
+             "(e.g. after pinning a slug in aoc_overrides.json)",
+    )
     args = ap.parse_args()
 
     cfg = LANG_CONFIG[args.lang]
@@ -699,6 +704,11 @@ def main() -> int:
         return 1
 
     targets = collect_targets(source_dir)
+    if args.only:
+        wanted = set(args.only)
+        targets = [t for t in targets if t[0] in wanted]
+        for missing_slug in sorted(wanted - {t[0] for t in targets}):
+            print(f"  --only {missing_slug}: no such non-DGC entry in {source_dir}", file=sys.stderr)
     if args.limit:
         targets = targets[: args.limit]
     print(

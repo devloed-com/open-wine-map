@@ -51,6 +51,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import eambrosia_register as er  # noqa: E402
 from _lib.fr import register_cahier as rc  # noqa: E402
+from _lib.fr import register_match as rm  # noqa: E402
 
 RAW = ROOT / "raw"
 SIQO_CSV = RAW / "inao" / "siqo-referentiel.csv"
@@ -524,15 +525,52 @@ def _register_tier(
     return "register", 0
 
 
+def _prefer_cahier_ids() -> set[str]:
+    """id_appellations pinned `prefer_cahier: true` in the checked-in
+    scripts/_lib/fr/register_overrides.json — bind the register's cahier
+    even though BO Agri serves a PDF, because that PDF is verifiably another
+    appellation's cahier."""
+    try:
+        data = json.loads(rm.OVERRIDES_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    return {k for k, v in data.items() if isinstance(v, dict) and v.get("prefer_cahier")}
+
+
+def _process_prefer_register(
+    app: Appellation, manifest: dict, prior: dict, register: RegisterTier | None,
+) -> tuple[str, int]:
+    """Curator pin: bind this appellation to the eAmbrosia register's cahier
+    ahead of BO Agri. Deliberately bypasses `_has_usable_cahier`: that guard
+    protects working resolutions from a transient INAO outage, and a pin is
+    the opposite of transient — the PDF on disk is the wrong cahier."""
+    if register is None or not register.enabled:
+        print(f"[register] {app.name}: prefer_cahier pinned but the register tier is "
+              f"inert — run scripts/01d_resolve_register.py", file=sys.stderr)
+        return "missed", 0
+    cahier = register.cahier_for(app.id_appellation)
+    if cahier is None:
+        print(f"[register] {app.name}: prefer_cahier pinned but no attachment", file=sys.stderr)
+        return "missed", 0
+    meta = _stub_meta(app, prior)
+    meta["manual_override_note"] = "prefer_cahier pin (scripts/_lib/fr/register_overrides.json)"
+    manifest[app.id_appellation] = _apply_register(
+        meta, app, cahier, register.resolved.get(app.id_appellation, {}))
+    return "register", 0
+
+
 def _process_app(
     session: requests.Session, app: Appellation, manifest: dict,
     overrides: dict, delay: float, register: RegisterTier | None = None,
+    prefer_cahier: set[str] = frozenset(),
 ) -> tuple[str, int]:
     """Resolve and download `app`'s cahier(s). Returns (status, alt_count)
     where status is one of: missed, cached, fetched, legifrance-only,
     override-only, register.
     """
     prior = manifest.get(app.id_appellation, {})
+    if app.id_appellation in prefer_cahier:
+        return _process_prefer_register(app, manifest, prior, register)
     override = overrides.get(app.id_appellation)
     has_override_urls = bool(override and override.get("boagri_urls"))
 
@@ -688,6 +726,11 @@ def main() -> int:
               f"run scripts/01d_resolve_register.py to enable the register tier",
               file=sys.stderr)
 
+    prefer_cahier = _prefer_cahier_ids()
+    if prefer_cahier:
+        print(f"[register] {len(prefer_cahier)} prefer_cahier pin(s) in "
+              f"{rm.OVERRIDES_PATH.relative_to(ROOT)}", file=sys.stderr)
+
     fetched = cached = missed = extra = 0
     counters = {
         "fetched": 0, "cached": 0, "missed": 0,
@@ -697,7 +740,8 @@ def main() -> int:
     try:
         for app in tqdm(appellations, desc="cahiers", leave=False):
             status, alt_count = _process_app(
-                session, app, manifest, overrides, args.delay, register
+                session, app, manifest, overrides, args.delay, register,
+                prefer_cahier=prefer_cahier,
             )
             counters[status] += 1
             extra += alt_count

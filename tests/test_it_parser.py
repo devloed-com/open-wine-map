@@ -346,3 +346,36 @@ def test_masaf_article2_candidate_strips_percent_and_index():
     for p in phrases:
         assert "%" not in p
         assert not p[:2].strip().rstrip(".").isdigit()
+
+
+def test_masaf_extract_article_runs_keeps_the_parent_and_lists_annexes():
+    # A consolidated disciplinare: TOC, the parent's own articles, then one
+    # sub-disciplinare per sottozona restarting at Art. 1. The parent's
+    # Art. 1 / 3 / 9 must come from ITS run, never from the last annex
+    # (review 2026-09-12: Montepulciano d'Abruzzo took San Martino's).
+    from _lib.it.masaf import extract_article_runs
+    body = "x" * 300
+    text = (
+        "Articolo 1 Denominazione\nArticolo 2 Base\nArticolo 3 Zona\nArticolo 9 Legame\n\n"
+        f"Articolo 1\nDenominazione e vini\nLa DOC «Parent» {body}\n"
+        f"Articolo 2\nBase ampelografica\nMontepulciano {body}\n"
+        f"Articolo 3\nZona di produzione\nParent communes {body}\n"
+        f"Articolo 9\nLegame con l'ambiente\nParent terroir {body}\n"
+        "17\nALLEGATO 1\n“PARENT” SOTTOZONA “ALTO TIRINO”\n"
+        f"Articolo 1\nDenominazione e vini\nLa sottozona Alto Tirino {body}\n"
+        f"Articolo 3\nZona di produzione\nAlto Tirino communes {body}\n"
+        f"Articolo 9\nLegame con l'ambiente\nAlto Tirino terroir {body}\n"
+        "ALLEGATO 2\n“PARENT” SOTTOZONA “TEATE”\n"
+        f"Articolo 1\nDenominazione e vini\nLa sottozona Teate {body}\n"
+        f"Articolo 9\nLegame con l'ambiente\nTeate terroir {body}\n"
+    )
+    main, annexes = extract_article_runs(text)
+    assert sorted(main) == [1, 2, 3, 9]
+    assert "La DOC «Parent»" in main[1] and "Parent terroir" in main[9]
+    assert "Alto Tirino" not in main[9] and "Teate" not in main[1]
+    assert [a["title"] for a in annexes] == [
+        "ALLEGATO 1 “PARENT” SOTTOZONA “ALTO TIRINO”", "ALLEGATO 2 “PARENT” SOTTOZONA “TEATE”",
+    ]
+    assert "Alto Tirino terroir" in annexes[0]["articles"][9]
+    assert sorted(annexes[1]["articles"]) == [1, 9]
+    assert extract_articles(text) == main

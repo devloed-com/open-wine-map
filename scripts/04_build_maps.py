@@ -176,6 +176,7 @@ from _lib.style_taxonomy import (
     taxonomy_dfs_order as _taxonomy_dfs_order,
 )
 from _lib.summaries import derive_summary
+from _lib.terroir_normalize import normalize_aocs
 from shapely.geometry import mapping, shape
 from tqdm import tqdm
 from unidecode import unidecode as _unidecode
@@ -4068,6 +4069,10 @@ def emit_html(
                 aocs_for_lang = overlay_translated_facts(aocs_for_lang, facts_translations)
         if facts_drop_idx:
             aocs_for_lang = apply_inherited_facts_filter(aocs_for_lang, facts_drop_idx)
+        # Deterministic bullet clean-up (colour codes, VT/SGN, terminal period)
+        # after the overlay so every locale's text is normalised, and after the
+        # sibling filter so the index-based drops stay aligned.
+        aocs_for_lang = normalize_aocs(aocs_for_lang, lang)
         out = (WIKI / "index.html") if lang == "en" else (WIKI / lang / "index.html")
         out.parent.mkdir(parents=True, exist_ok=True)
         # Pass a swapped facets dict so the per-locale `aocs` is the data bundle.
