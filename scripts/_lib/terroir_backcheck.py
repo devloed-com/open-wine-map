@@ -50,6 +50,7 @@ WATCH_LIST = (
     "Pintes (a Hungarian grape variety, never 'Pinot')",
     "Немски / Рейнски ризлинг (Riesling) versus Италиански ризлинг (Welschriesling) — never swap them",
     "Rodopi / Родопи → Rhodopes (EN, FR) / Rhodopen (NL) / Ródope (ES); Stara Planina stays 'Stara Planina' (a one-time gloss '(Balkan Mountains)' is fine); Bayern → Bavaria / Baviera / Bavière / Beieren",
+    "a river valley in Dutch is 'de X-vallei' or 'het X-dal' (Marnevallei, het Marnedal) — a blend such as 'Marnedallei' or 'Audedallei' is not a word and must be fixed",
 )
 
 SYSTEM = """You are the back-checker for Open Wine Map's machine-translated terroir facts. Each record's bullets were extracted in the source language from a wine regulator's specification and then translated into the target language. You receive both versions side by side; the SOURCE bullet is authoritative. Your job is to find every place where the translation changed the meaning, and to give the corrected translation.

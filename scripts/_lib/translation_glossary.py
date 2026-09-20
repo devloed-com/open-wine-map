@@ -36,6 +36,7 @@ language. Prefer the LEFT term over the RIGHT:
 - "vlezig" (one E) NOT "vleesig" — fleshy mouthfeel.
 - "smeuïg" NOT "smeerend" — smooth, unctuous palate.
 - "geconfijte vruchten" NOT "kandijvruchten" or "confiteraadjes" — for FR "fruits confits" / ES "frutas confitadas".
+- "de Marnevallei" / "het Marnedal", "de Audevallei", "de Rhônevallei" NOT a blend such as "Marnedallei" — for FR "la vallée de la Marne / de l'Aude / du Rhône", IT "la valle del …", ES "el valle del …": a river valley is "X-vallei" or "het X-dal"; "-dallei" is not a Dutch word (it appeared in the 2026-09-14 Champagne translation).
 - "polyfenolen" NOT "polyphenolen" — Dutch spells with f.
 - "tanninerijk" or "rijk aan tannines" NOT "tannisch" — tannic; "tannisch" is a French borrowing not idiomatic in NL wine writing.
 - "bottelen" or "flesrijping" NOT "flessenwijze" — for FR "mise en bouteille / élevage en bouteille" / ES "embotellado / crianza en botella".
