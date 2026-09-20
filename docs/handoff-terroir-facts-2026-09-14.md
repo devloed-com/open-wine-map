@@ -87,8 +87,32 @@ trailing citation and the audit now flags the source-language forms.
 
 **Cost projection for 2.1**, from the ledger: $1.12 for the six → ≈ $300
 for 1,640 records as an upper bound (the six include three long sources —
-Barolo's now-uncapped Art. 9 alone is 119 K input tokens); the hand-off's
-$210 is the lower bound. Expect $210–300.
+Santorini's four calls alone were 119 K input tokens); the hand-off's
+$210 is the lower bound. Expect $210–300 — **before prompt caching**.
+
+### Prompt caching — `78ef64a`
+
+`_lib/prompt_cache.py`: in the 20 non-FR 02d scripts the lien is the
+leading cached system block (the four sub-section calls of a record each
+resent it); the gate (1,365 tokens), the LLM audit (945) and the 21 × 02e
+scripts (≈ 3 K tokens per locale, shared by every record of a batch)
+cache their static system prompt; the back-check's 860-token prompt is
+under Sonnet 4.6's 1,024 minimum (no-op). FR 02d is untouched (its four
+calls share nothing). `OWM_CACHE_TTL` = 5m (default) / 1h / off.
+
+Probe (`gr/02d --only santorini --batch`, 4 requests): **one write of
+25,445 tokens, three reads of 25,445** — a 100 % hit rate on the
+follow-up calls, the requests having been processed in submission order.
+The record's 02d cost fell from $0.14 (smoke) to $0.073: the lien's
+4 × 25 K tokens became one 1.25× write plus three 0.1× reads, 52 % of
+the uncached input cost. Batch hits stay best-effort corpus-wide (the
+ledger's `cache_creation` / `cache_read` columns show the rate per
+batch); the four-call pattern breaks even at 29 % on the 5-minute TTL.
+
+Revised projection for 2.1 with caching: 02d input roughly halves on
+the long-lien countries, 02e's shared system prompt (≈ 3 K of a
+≈ 4–5 K-token request) reads from cache for all but the first record
+per locale — expect **≈ $200–230** for the full corpus.
 
 ## 0. State you inherit
 
@@ -187,7 +211,7 @@ python3 -c "import json,glob; json.dump({'slugs':[p.split('/')[-1][:-5] for p in
 .venv/bin/python scripts/rerun_terroir_facts.py --scope tmp/terroir-facts-review/scope-all.json --run cfg-2026-xx-xx --parallel 7
 ```
 
-≈ $210–300 (see the smoke), ≈ 45–60 min wall-clock. Then the acceptance pair above; expect the
+≈ $200–230 with prompt caching (see §0a), ≈ 45–60 min wall-clock. Then the acceptance pair above; expect the
 misleading share at or below 3 % on the 120-record frame, more facts per
 record (≈ 8.9 vs 6.8), and check that the Opus gate's rewrite / drop
 shares are in the 4.6 gate's range (20–28 % / 1.5–2 %) — a much higher
