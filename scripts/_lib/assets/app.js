@@ -43,7 +43,6 @@
   // the open appellation so it doesn't get stuck on whichever entity page the
   // user landed on / first opened; reset to this when the panel closes.
   const DEFAULT_TITLE = LABELS.page_title;
-  const GITHUB_NEW_ISSUE_URL = "__OWM_github_new_issue_url__";
   // Per-jurisdiction regulator-published specification document name,
   // in the regulator's own language. Used by the stub-message block
   // when no source document has been located for an appellation yet.
@@ -326,15 +325,26 @@
   const LANG = "__OWM_lang_attr__";
   const SOURCE_TYPE = "__OWM_source_type__";
 
-  // Plausible custom-event helper. No-ops gracefully if the analytics
-  // script failed to load (ad-blocker, offline preview, dev build).
-  // All props use bounded slug vocabularies — never raw user text — so
-  // the breakdown UI stays useful and no PII can leak.
+  // Plausible custom-event helper. The page's inline snippet always defines
+  // `window.plausible` (a queue stub until the tracker script arrives), so
+  // when the tracker never loads — ad-blocker, offline preview, a host with
+  // no tracker configured — events queue harmlessly and are never sent.
+  // Every prop is a bounded slug vocabulary, with one deliberate exception:
+  // the `note` of `Feedback Note` is short user text (see docs/analytics.md).
   function track(name, props) {
     try {
       if (typeof window.plausible !== 'function') return;
+      // Nothing will be sent without a loaded tracker (localhost, a blocked
+      // script): echo the event to the console so the flow is still testable.
+      if (!trackerLoaded() && window.console && console.debug) console.debug('[track]', name, props);
       window.plausible(name, props ? { props: props } : undefined);
     } catch (e) {}
+  }
+  // True once the tracker script has run its init (it sets `plausible.l`).
+  // Feedback needs this: a flag that only sits in the queue stub was not
+  // recorded, and the user should get the e-mail fallback instead of "thanks".
+  function trackerLoaded() {
+    try { return !!(window.plausible && window.plausible.l); } catch (e) { return false; }
   }
 
   // Title-case the first letter of each word (after start, whitespace,
@@ -442,7 +452,9 @@
   // CARTO is retiring raster altogether; the successor is vendored next to the
   // runtime libs (scripts/_lib/vendor/openfreemap-*.json — key-free OSM vector
   // tiles, a positron/dark pair that maps onto this same visibility toggle).
-  const CARTO_KEY = __OWM_carto_key_json__;
+  // Per-host key first (CARTO_BASEMAP_KEYS in .env — beta has its own), the
+  // default key for every other host, so one build serves every environment.
+  const CARTO_KEY = (__OWM_carto_keys_json__)[location.hostname.replace(/^www\./, '')] || __OWM_carto_key_json__;
   function cartoTiles(style) {
     const auth = CARTO_KEY ? '?key=' + CARTO_KEY : '';
     return ['a', 'b', 'c'].map(function (s) {
@@ -578,17 +590,19 @@
   // clipboard on click so the link still works for users without a
   // configured mailto handler (Firefox silently drops navigation in
   // that case).
-  // Which feedback channel gets used. The GitHub link is an outbound click
-  // Plausible already counts, but clicks there produced no issues, so the
-  // channel split (github vs e-mail) is the number that matters.
+  // The e-mail channel. Card feedback goes to Plausible (see renderFeedback);
+  // this link is the human channel for anything a chip can't carry, and the
+  // fallback the card offers when the tracker is blocked.
   document.querySelectorAll('a[data-feedback]').forEach(a => {
     a.addEventListener('click', () => track('Feedback Clicked', { channel: a.dataset.feedback, locale: LANG }));
   });
-  document.querySelectorAll('a.feedback-mail').forEach(a => {
+  // `subject` / `body` are pre-encoded query values; the sidebar link has none.
+  function armFeedbackMail(a, subject, body) {
     const address = () => a.dataset.u + '@' + a.dataset.d;
     const arm = () => {
       if (a.dataset.u && a.dataset.d) {
-        a.href = 'mailto:' + address() + '?subject=open%20wine%20map';
+        a.href = 'mailto:' + address() + '?subject=' + (subject || 'open%20wine%20map')
+          + (body ? '&body=' + body : '');
       }
     };
     a.addEventListener('mousedown', arm);
@@ -609,7 +623,8 @@
         toast.addEventListener('transitionend', () => toast.remove(), { once: true });
       }, 1800);
     });
-  });
+  }
+  document.querySelectorAll('a.feedback-mail').forEach(a => armFeedbackMail(a, '', ''));
 
   let viewMode = 'simple';
   try { viewMode = localStorage.getItem('view_mode') || 'simple'; } catch (e) {}
@@ -2355,7 +2370,7 @@
       approxLine = `<div class="approx-line">${fmt(LABELS.geom_approx_cadastre, { lieu_dit: escapeHtml(r.cadastre_lieu_dit), commune: escapeHtml(r.cadastre_commune || ''), source: src })}</div>`;
     }
     const stubLine = r.is_stub
-      ? `<div class="approx-line">${fmt(LABELS.stub_message, { doc: '<em>' + escapeHtml(STUB_DOC_NAMES[r.country] || STUB_DOC_NAMES.fr) + '</em>' })} <a class="stub-help" href="${escapeAttr(GITHUB_NEW_ISSUE_URL)}" target="_blank" rel="noopener">${escapeHtml(LABELS.stub_help_label)}</a></div>`
+      ? `<div class="approx-line">${fmt(LABELS.stub_message, { doc: '<em>' + escapeHtml(STUB_DOC_NAMES[r.country] || STUB_DOC_NAMES.fr) + '</em>' })} <a class="stub-help" href="#" data-fb-aspect="sources">${escapeHtml(LABELS.stub_help_label)}</a></div>`
       : '';
     const dulokBlock = renderDulok(r);
     const menzioniBlock = renderMenzioni(r);
@@ -2393,8 +2408,136 @@
         ${noteBlock}
         ${(!factsBlock && !r.summary) ? provenanceLine(r) : ''}
         ${renderSources(slug, r.sources)}
+        ${renderFeedback(slug)}
       </div>
     `;
+  }
+
+  // ---- per-card feedback -------------------------------------------------
+  // The lowest-friction channel we can offer on a static site: one tap on an
+  // aspect chip records `Feedback Flagged` in Plausible (no account, no form),
+  // then an optional note goes out as `Feedback Note`. A slug × aspect
+  // breakdown is the curator queue; flags ÷ views is a per-record trust score.
+  // Chips already flagged in this browser stay pressed (localStorage) so a
+  // revisit doesn't double-count a visitor's own flag.
+  const FEEDBACK_ASPECTS = ['boundary', 'grapes', 'facts', 'name', 'sources', 'other'];
+  const FEEDBACK_NOTE_MAX = 500;
+  const FEEDBACK_STORE_KEY = 'owm_feedback';
+  function feedbackFlagged(slug) {
+    try {
+      const all = JSON.parse(localStorage.getItem(FEEDBACK_STORE_KEY) || '{}');
+      return Array.isArray(all[slug]) ? all[slug] : [];
+    } catch (e) { return []; }
+  }
+  function rememberFeedback(slug, aspect, on) {
+    try {
+      const all = JSON.parse(localStorage.getItem(FEEDBACK_STORE_KEY) || '{}');
+      const cur = (Array.isArray(all[slug]) ? all[slug] : []).filter(a => a !== aspect);
+      if (on) cur.push(aspect);
+      if (cur.length) all[slug] = cur; else delete all[slug];
+      localStorage.setItem(FEEDBACK_STORE_KEY, JSON.stringify(all));
+    } catch (e) {}
+  }
+  function renderFeedback(slug) {
+    const flagged = feedbackFlagged(slug);
+    const chips = FEEDBACK_ASPECTS.map(a =>
+      `<button type="button" class="fb-chip" data-fb-aspect="${a}" aria-pressed="${flagged.includes(a) ? 'true' : 'false'}">${escapeHtml(LABELS['feedback_aspect_' + a])}</button>`
+    ).join('');
+    return `<div class="card-feedback" data-slug="${escapeAttr(slug)}"><h2>${escapeHtml(LABELS.feedback_h)}</h2><span class="fb-prompt">${escapeHtml(LABELS.feedback_prompt)}</span>${chips}<div class="fb-more" hidden></div></div>`;
+  }
+  // Every chip currently pressed in the row — the status line, the mail
+  // subject and the note all describe that set, not just the last tap.
+  function pressedAspects(row) {
+    return [...row.querySelectorAll('.fb-chip[aria-pressed="true"]')].map(c => c.dataset.fbAspect);
+  }
+  function aspectsHtml(aspects) {
+    return `<strong class="fb-aspect">${escapeHtml(aspects.map(a => LABELS['feedback_aspect_' + a] || a).join(', '))}</strong>`;
+  }
+  function feedbackMailParams(slug, aspects, note) {
+    const r = AOCS[slug] || {};
+    const url = location.origin + '/' + LANG + '/' + slug;
+    const subject = encodeURIComponent('[' + (r.name || slug) + '] ' + aspects.join(', '));
+    const geom = r.geom_source ? '\n' + LABELS.feedback_mail_geometry_label + ': ' + r.geom_source : '';
+    const body = encodeURIComponent((note ? note + '\n\n' : '') + url + geom);
+    return { subject, body };
+  }
+  function renderBlockedFeedback(box, slug, aspects) {
+    const mail = document.querySelector('#sidebar-disclaimer a.feedback-mail');
+    const a = document.createElement('a');
+    a.href = '#'; a.className = 'feedback-mail';
+    a.textContent = LABELS.feedback_email_label;
+    if (mail) { a.dataset.u = mail.dataset.u; a.dataset.d = mail.dataset.d; }
+    const p = feedbackMailParams(slug, aspects, '');
+    armFeedbackMail(a, p.subject, p.body);
+    box.innerHTML = '';
+    const span = document.createElement('span');
+    span.innerHTML = fmt(LABELS.feedback_blocked_html, { aspect: aspectsHtml(aspects), email: '<a></a>' });
+    span.querySelector('a').replaceWith(a);
+    box.appendChild(span);
+    box.hidden = false;
+  }
+  function openFeedback(box, slug, aspect, via) {
+    const row = box.closest('.card-feedback');
+    const chip = row.querySelector(`.fb-chip[data-fb-aspect="${aspect}"]`);
+    const r = AOCS[slug] || {};
+    const pressed = chip && chip.getAttribute('aria-pressed') === 'true';
+    if (!trackerLoaded()) {
+      // The flag would only sit in the snippet's queue stub: nothing gets
+      // recorded, so offer the e-mail channel instead. The chips still show
+      // the choice (a second tap releases one) but nothing is persisted.
+      if (chip) chip.setAttribute('aria-pressed', pressed ? 'false' : 'true');
+      const aspects = pressedAspects(row);
+      if (!aspects.length) { box.hidden = true; box.innerHTML = ''; return; }
+      renderBlockedFeedback(box, slug, aspects);
+      return;
+    }
+    if (pressed && via === 'card') {
+      // Second tap on a flagged chip: a misclick, or a change of mind. The
+      // flag itself can't be recalled from Plausible, so record the
+      // retraction next to it and net the two when reading.
+      chip.setAttribute('aria-pressed', 'false');
+      rememberFeedback(slug, aspect, false);
+      track('Feedback Retracted', { slug: slug, aspect: aspect, locale: LANG });
+      const left = pressedAspects(row);
+      const status = box.querySelector('.fb-status');
+      if (left.length && status && box.querySelector('textarea.fb-note')) {
+        status.innerHTML = fmt(LABELS.feedback_noted_html, { aspect: aspectsHtml(left) });
+      } else {
+        box.hidden = true;
+        box.innerHTML = '';
+      }
+      return;
+    }
+    if (chip && !pressed) {
+      chip.setAttribute('aria-pressed', 'true');
+      rememberFeedback(slug, aspect, true);
+      track('Feedback Flagged', {
+        slug: slug, aspect: aspect, country: r.country || '', kind: r.kind || '',
+        geom_source: r.geom_source || '', via: via, locale: LANG,
+      });
+    }
+    box.hidden = false;
+    const noted = fmt(LABELS.feedback_noted_html, { aspect: aspectsHtml(pressedAspects(row)) });
+    const pending = box.querySelector('textarea.fb-note');
+    if (pending && pending.value.trim()) {
+      // A second chip while a note is being typed: keep the draft, widen it.
+      const status = box.querySelector('.fb-status');
+      if (status) status.innerHTML = noted;
+      return;
+    }
+    box.innerHTML = `<span class="fb-status" role="status">${noted}</span>`
+      + `<textarea class="fb-note" maxlength="${FEEDBACK_NOTE_MAX}" rows="2" placeholder="${escapeAttr(LABELS.feedback_note_placeholder)}" aria-label="${escapeAttr(LABELS.feedback_note_placeholder)}"></textarea>`
+      + `<button type="button" class="fb-send">${escapeHtml(LABELS.feedback_send_label)}</button>`;
+  }
+  function sendFeedbackNote(box, slug) {
+    const row = box.closest('.card-feedback');
+    const aspects = pressedAspects(row);
+    const ta = box.querySelector('textarea.fb-note');
+    const note = ta ? ta.value.replace(/\s+/g, ' ').trim().slice(0, FEEDBACK_NOTE_MAX) : '';
+    // `aspect` is the pressed set joined with '+', so one note about two
+    // things reads `boundary+grapes` in the breakdown rather than only the last tap.
+    if (note) track('Feedback Note', { slug: slug, aspect: aspects.join('+') || 'other', note: note, locale: LANG });
+    box.innerHTML = `<span class="fb-status" role="status">${note ? escapeHtml(LABELS.feedback_sent) : fmt(LABELS.feedback_noted_html, { aspect: aspectsHtml(aspects) })}</span>`;
   }
 
   function bboxArea(b) {
@@ -2443,14 +2586,32 @@
     return span(label, scheme, 'gi-scheme');
   }
 
+  // Mirrors _entity_title in map_template.py: keep the title within 65
+  // characters by dropping the brand, then the term, then the region, trying
+  // the primary alias of a French "X ou Y" name before each cut.
+  const TITLE_MAX = 65;
   function docTitleFor(slug) {
     const r = AOCS[slug];
     if (!r) return DEFAULT_TITLE;
     const region = r.region ? regionLabel(r.region) : '';
     const country = COUNTRY_LABELS[r.country] || '';
+    const kind = r.class_label || r.kind || '';
     const geo = [region, country].filter(Boolean).join(', ');
-    const head = [r.class_label || r.kind, geo].filter(Boolean).join(' · ');
-    return r.name + (head ? ' — ' + head : '') + ' · Open Wine Map';
+    const forms = [r.name];
+    if (r.country === 'fr' && r.name.includes(' ou ')) {
+      const alias = r.name.split(' ou ')[0].trim();
+      if (alias) forms.push(alias);
+    }
+    const tiers = [[kind, geo, true], [kind, geo, false], ['', geo, false], ['', country, false], ['', '', false]];
+    let candidate = r.name;
+    for (const [k, g, brand] of tiers) {
+      for (const form of forms) {
+        const head = [k, g].filter(Boolean).join(' · ');
+        candidate = form + (head ? ' — ' + head : '') + (brand ? ' · Open Wine Map' : '');
+        if (candidate.length <= TITLE_MAX) return candidate;
+      }
+    }
+    return candidate;
   }
 
   // ---- lazy panel-detail hydration (Phase 3 data-bundle diet) -------------
@@ -2823,6 +2984,20 @@
   });
 
   panel.addEventListener('click', e => {
+    const fb = e.target.closest('.fb-chip, .fb-send, a.stub-help');
+    if (fb) {
+      e.preventDefault();
+      const card = fb.closest('.aoc-card');
+      const row = card && card.querySelector('.card-feedback');
+      if (!row) return;
+      const box = row.querySelector('.fb-more');
+      const slug = row.dataset.slug;
+      const aspect = fb.dataset.fbAspect || 'other';
+      if (fb.classList.contains('fb-send')) sendFeedbackNote(box, slug);
+      else openFeedback(box, slug, aspect, fb.classList.contains('stub-help') ? 'stub-help' : 'card');
+      if (fb.classList.contains('stub-help')) row.scrollIntoView({ block: 'nearest' });
+      return;
+    }
     const a = e.target.closest('a.parent-link');
     if (!a) return;
     e.preventDefault();

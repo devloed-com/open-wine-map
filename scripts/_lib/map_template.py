@@ -22,7 +22,7 @@ from pathlib import Path
 from babel.numbers import format_decimal
 
 from _lib.content_block import RenderCtx, esc, render_content_block
-from _lib.env import carto_basemap_key
+from _lib.env import carto_basemap_key, carto_basemap_keys, plausible_host, plausible_sites
 from _lib.i18n import load_translations
 from _lib.wikidata import wikidata_url
 
@@ -245,15 +245,16 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "IGP, les régulateurs nationaux, le répertoire fédéral suisse des AOC "
             "cantonales et le registre britannique des indications géographiques."
         ),
+        # No model version numbers here: they change between builds.
         "about_llm_html": _(
             "Une partie du texte est produite par des modèles de langage : les repères de "
-            "terroir sont dégagés du texte du régulateur et traduits par Claude (Sonnet "
-            "4.6) ; les extraits Wikipedia des infobulles de cépages et de styles sont "
-            "traduits pour l'essentiel par Mistral Small 3.2, exécuté localement, et pour "
-            "quelques-uns par Claude ; les résumés des cahiers des charges ont été "
-            "traduits par un traducteur humain, à l'exception d'un petit reliquat traduit "
-            "automatiquement. Chaque élément porte sa propre ligne d'attribution dans le "
-            "panneau."
+            "terroir sont dégagés du texte du régulateur par Claude, vérifiés contre la "
+            "source par un second modèle Claude, puis traduits ; les extraits Wikipedia "
+            "des infobulles de cépages et de styles sont traduits pour l'essentiel par "
+            "Mistral, exécuté localement, et pour quelques-uns par Claude ; les résumés "
+            "des cahiers des charges ont été traduits par un traducteur humain, à "
+            "l'exception d'un petit reliquat traduit automatiquement. Chaque élément "
+            "porte sa propre ligne d'attribution dans le panneau."
         ),
         "about_made_by_html": _("Réalisé avec ♡ par {devloed}."),
         "about_data_html": _(
@@ -268,12 +269,44 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Wikipedia est signalé sur place. Détails et licences dans le {readme}."
         ),
         "about_contrib_html": _("Suggestions et pull requests bienvenues sur {github}."),
-        "feedback_issue_label": _("ticket GitHub"),
+        "about_privacy_html": _(
+            "Vie privée : la fréquentation est mesurée avec une instance {plausible} "
+            "auto-hébergée, qui reçoit aussi les signalements faits depuis les fiches. "
+            "Aucune donnée personnelle n'est traitée et aucun visiteur n'est suivi "
+            "individuellement : pas de cookies, pas d'identifiant persistant, aucune "
+            "adresse IP conservée, pas de suivi entre sites ni entre appareils — d'où "
+            "l'absence de bandeau de consentement."
+        ),
+        "about_follow_html": _("Suivez les mises à jour sur {bluesky}."),
         "feedback_email_label": _("e-mail"),
         "feedback_copied_label": _("E-mail copié dans le presse-papiers"),
         "sidebar_disclaimer_html": _(
             "Carte générée automatiquement — des erreurs sont possibles. "
-            "Signalez-les via {issue} ou {email}."
+            "Signalez-les depuis la fiche de l'appellation, ou par {email}."
+        ),
+        # Per-card feedback row (app.js renderFeedback). One tap on an aspect
+        # chip records a `Feedback Flagged` event; the optional note goes out as
+        # `Feedback Note`. Both land in Plausible — no account, no form.
+        "feedback_h": _("Signaler une erreur"),
+        "feedback_prompt": _("Un clic nous dit quoi vérifier — sans compte."),
+        "feedback_aspect_boundary": _("Aire / contour"),
+        "feedback_aspect_grapes": _("Cépages"),
+        "feedback_aspect_facts": _("Terroir"),
+        "feedback_aspect_name": _("Nom / type"),
+        "feedback_aspect_sources": _("Sources"),
+        "feedback_aspect_other": _("Autre"),
+        "feedback_noted_html": _("Merci, c'est noté : {aspect}."),
+        "feedback_note_placeholder": _(
+            "Précisez si vous voulez (facultatif, sans données personnelles)"
+        ),
+        "feedback_send_label": _("Envoyer"),
+        # Labels the geom_source token in the prefilled e-mail body so a
+        # visitor doesn't delete an unexplained `mapa-zone` before sending.
+        "feedback_mail_geometry_label": _("Géométrie"),
+        "feedback_sent": _("Envoyé, merci !"),
+        "feedback_blocked_html": _(
+            "{aspect} — votre navigateur bloque notre outil de mesure, "
+            "envoyez plutôt un {email}."
         ),
         "about_roadmap_html": _(
             "{c} pays européens cartographiés ({n} appellations : {parents} appellations "
@@ -470,6 +503,19 @@ _OG_LOCALES = {"fr": "fr_FR", "en": "en_US", "es": "es_ES", "nl": "nl_NL"}
 _GITHUB_URL = "https://github.com/devloed-com/open-wine-map"
 _GITHUB_NEW_ISSUE_URL = _GITHUB_URL + "/issues/new"
 _DEVLOED_URL = "https://devloed.com"
+_BLUESKY_HANDLE = "openwinemap.com"
+_BLUESKY_URL = f"https://bsky.app/profile/{_BLUESKY_HANDLE}"
+_PLAUSIBLE_POLICY_URL = "https://plausible.io/data-policy"
+# The Bluesky butterfly (Simple Icons, CC0). Brand blue; sized to the text.
+_BLUESKY_SVG = (
+    '<svg class="bsky-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+    '<path d="M5.202 2.857C7.954 4.922 10.913 9.11 12 11.358c1.087-2.247 4.046-6.436 '
+    '6.798-8.501C20.783 1.366 24 .213 24 3.883c0 .732-.42 6.156-.667 7.037-.856 '
+    '3.061-3.978 3.842-6.755 3.37 4.854.826 6.089 3.562 3.422 6.299-5.065 5.196-7.28-1.304'
+    '-7.847-2.97-.104-.305-.152-.448-.153-.327 0-.121-.05.022-.153.327-.568 1.666-2.782 '
+    '8.166-7.847 2.97-2.667-2.737-1.432-5.473 3.422-6.3-2.777.473-5.899-.308-6.755-3.369'
+    'C.42 10.04 0 4.615 0 3.883c0-3.67 3.217-2.517 5.202-1.026"/></svg>'
+)
 _INAO_URL = "https://www.inao.gouv.fr/"
 _IGN_URL = "https://www.ign.fr/"
 _WIKIPEDIA_URL = "https://fr.wikipedia.org/"
@@ -490,14 +536,10 @@ def _feedback_email_anchor(label: str) -> str:
 
 
 def _build_sidebar_disclaimer(labels: dict[str, str]) -> str:
-    issue = (
-        f'<a href="{_GITHUB_NEW_ISSUE_URL}" target="_blank" rel="noopener" '
-        f'data-feedback="github">{labels["feedback_issue_label"]}</a>'
-    )
     email = _feedback_email_anchor(labels["feedback_email_label"])
     return (
         f'<div id="sidebar-disclaimer">'
-        f'{labels["sidebar_disclaimer_html"].format(issue=issue, email=email)}'
+        f'{labels["sidebar_disclaimer_html"].format(email=email)}'
         f'</div>'
     )
 
@@ -535,6 +577,15 @@ def _build_about_dialog(
     if browse_path:
         browse_link = f'<a href="{browse_path}">{esc(labels["browse_all_label"])}</a>'
         paragraphs.append(labels["about_browse_html"].format(browse_link=browse_link))
+    paragraphs.append(
+        labels["about_privacy_html"].format(plausible=_ext_link(_PLAUSIBLE_POLICY_URL, "Plausible"))
+    )
+    # Butterfly + "Bluesky" are the link; rel="me": the site vouches for the account.
+    bluesky = (
+        f'<a class="bsky" href="{_BLUESKY_URL}" target="_blank" rel="me noopener">'
+        f'{_BLUESKY_SVG}Bluesky</a>'
+    )
+    paragraphs.append(labels["about_follow_html"].format(bluesky=bluesky))
     paragraphs.append(labels["about_made_by_html"].format(devloed=devloed))
     body = "\n      ".join(f"<p>{p}</p>" for p in paragraphs)
     if data_updated_html:
@@ -553,10 +604,18 @@ def _build_about_dialog(
 _LOCALES_DISPLAY = (("fr", "FR"), ("en", "EN"), ("es", "ES"), ("nl", "NL"))
 
 
-def _lang_switcher(active: str, aria_label: str) -> str:
+def _lang_switcher(active: str, aria_label: str, slug: str | None = None) -> str:
+    """Locale links. On a per-appellation page (`slug`) every locale links to
+    the SAME appellation (`/<lang>/<slug>`) rather than the locale root — the
+    crawlable cross-locale link the hreflang cluster asserts, and a no-JS
+    visitor keeps their place. app.js rewrites the destination on click anyway;
+    the static href is what crawlers and no-JS visitors follow."""
     parts = []
     for code, label in _LOCALES_DISPLAY:
-        path = "/" if code == "en" else f"/{code}/"
+        if slug:
+            path = _entity_path(code, slug)
+        else:
+            path = "/" if code == "en" else f"/{code}/"
         is_active = code == active
         cls = " active" if is_active else ""
         current_attr = ' aria-current="page"' if is_active else ""
@@ -936,6 +995,9 @@ def _browse_lang_switcher(active: str, aria_label: str) -> str:
     return f'<nav class="browse-lang" aria-label="{esc(aria_label)}">' + "".join(parts) + "</nav>"
 
 
+_META_DESC_MAX = 160
+
+
 def _clamp(text: str, n: int = 160) -> str:
     text = " ".join((text or "").split())
     if len(text) <= n:
@@ -1009,17 +1071,54 @@ def _entity_source_docs(rec: dict) -> list[str]:
     return _dedupe_urls((s.get(k) for k in _SOURCE_DOC_KEYS), cap=3)
 
 
-def _entity_jsonld_description(rec: dict, fallback: str) -> str:
-    """Localized one-paragraph description: the translated summary, else the
-    first 1–2 terroir-fact bullets, else the 160-char meta description."""
-    summary = (rec.get("summary") or "").strip()
-    if summary:
-        return _clamp(summary, 300)
+# Language of a record's regulator text, by country — the same table as
+# `_src_lang_for` in 04_build_maps (CH / BE carry it per record; FR default).
+_SOURCE_LANG_BY_COUNTRY = {
+    "at": "de", "si": "sl", "gr": "el", "cy": "el", "cz": "cs", "lu": "fr",
+    "mt": "en", "gb": "en", "nl": "nl",
+    **{c: c for c in ("es", "pt", "it", "de", "hr", "hu", "ro", "bg", "sk")},
+}
+
+
+def _record_source_lang(rec: dict) -> str:
+    return rec.get("source_lang") or _SOURCE_LANG_BY_COUNTRY.get(rec.get("country") or "", "fr")
+
+
+def _entity_lead(rec: dict, locale: str, limit: int = 1) -> str:
+    """The record's own words in the page locale, for the meta / JSON-LD
+    description: up to `limit` terroir-fact bullets (translated per locale;
+    the first one naming the appellation leads, so a regional opener — "La
+    Côte de Beaune forme un relief…" — yields to the sentence about the record
+    itself), else the cahier summary when it is readable in this locale
+    (translated, or written in it). Same rule as the panel — facts XOR
+    summary: a record with facts never surfaces its summary, which for the FR
+    corpus is the untranslated decree boilerplate ("Seuls peuvent prétendre à
+    l'appellation…")."""
     facts = ((rec.get("terroir_facts") or {}).get("facts")) or []
-    joined = " ".join((f.get("bullet") or "").strip() for f in facts[:2]).strip()
-    if joined:
-        return _clamp(joined, 300)
-    return fallback
+    bullets = [b for f in facts if (b := " ".join((f.get("bullet") or "").split()))]
+    if bullets:
+        name = (rec.get("name") or "").casefold()
+        lead = next((b for b in bullets if name and name in b.casefold()), bullets[0])
+        rest = [b for b in bullets if b != lead]
+        return " ".join([lead, *rest[: max(limit - 1, 0)]])
+    summary = " ".join((rec.get("summary") or "").split())
+    if summary and (rec.get("summary_translation") or _record_source_lang(rec) == locale):
+        return summary
+    return ""
+
+
+def _join_sentences(parts) -> str:
+    return " ".join(
+        p if p.endswith((".", "!", "?", "…")) else p + "." for p in parts if p
+    )
+
+
+def _entity_jsonld_description(rec: dict, fallback: str, locale: str = "en") -> str:
+    """Localized one-paragraph description: the first two terroir-fact bullets
+    (the one naming the appellation first), else the summary when readable in
+    this locale, else the 160-char meta description."""
+    lead = _entity_lead(rec, locale, limit=2)
+    return _clamp(lead, 300) if lead else fallback
 
 
 def _entity_breadcrumb(slug, rec, canonical_url, locale, breadcrumb_id) -> dict:
@@ -1054,7 +1153,7 @@ def _build_entity_jsonld(
     author / editorial dates for a mechanically generated reference page."""
     name = rec.get("name") or slug
     country = country_labels.get(rec.get("country") or "", "")
-    description = _entity_jsonld_description(rec, desc)
+    description = _entity_jsonld_description(rec, desc, locale)
 
     contained: list[dict] = []
     if rec.get("is_sub_denomination") and rec.get("parent_name"):
@@ -1123,6 +1222,47 @@ def _build_entity_jsonld(
     )
 
 
+_TITLE_MAX = 65  # the ~600 px Bing / Google show; Bing flags longer as "Title too long"
+_BRAND = "Open Wine Map"
+
+
+def _title_alias(name: str, country_code: str) -> str:
+    """The primary form of a French 'X ou Y ou Z' register name (SIQO lists the
+    main name first: 'Hermitage ou Ermitage ou …' → 'Hermitage'). Other
+    countries' names are returned unchanged — the CH 'Bern / Berne' pairs are
+    bilingual official names, not aliases."""
+    if country_code == "fr" and " ou " in name:
+        return name.split(" ou ", 1)[0].strip() or name
+    return name
+
+
+def _entity_title(name: str, kind: str, region: str, country: str, *, country_code: str = "") -> str:
+    """`<title>` for a per-appellation page, kept within _TITLE_MAX by dropping
+    the least valuable parts first. Full form: `name — TERM (SCHEME) · region,
+    country · Open Wine Map`; then without the brand, then without the term
+    (the description still carries it), then country only, then the name alone.
+    At every step the primary alias of a French 'X ou Y' name is tried before
+    the next cut — 'Côte de Nuits-Villages — AOC (PDO) · Burgundy, France'
+    beats the full 102-character register name with everything else removed.
+    Mirrored by docTitleFor in app.js for client-side navigation."""
+    forms = [name]
+    alias = _title_alias(name, country_code)
+    if alias != name:
+        forms.append(alias)
+    geo = ", ".join(x for x in (region, country) if x)
+    tiers = ((kind, geo, True), (kind, geo, False), ("", geo, False), ("", country, False), ("", "", False))
+    candidate = name
+    for k, g, brand in tiers:
+        for form in forms:
+            head = " · ".join(x for x in (k, g) if x)
+            candidate = f"{form} — {head}" if head else form
+            if brand:
+                candidate = f"{candidate} · {_BRAND}"
+            if len(candidate) <= _TITLE_MAX:
+                return candidate
+    return candidate
+
+
 def _build_entity_meta(
     slug, rec, locale, labels, region_labels, country_labels, grapes_info,
     folded=False, children=None,
@@ -1145,15 +1285,20 @@ def _build_entity_meta(
     country = country_labels.get(rec.get("country") or "", "")
     self_url = f"{_SITE_BASE_URL}{_entity_path(locale, slug)}"
     geo = ", ".join(x for x in (region, country) if x)
-    head_bits = " · ".join(x for x in (kind, geo) if x)
-    title = f"{name} — {head_bits} · Open Wine Map" if head_bits else f"{name} · Open Wine Map"
+    title = _entity_title(name, kind, region, country, country_code=rec.get("country") or "")
     gnames = _entity_grape_names(rec, grapes_info, 4)
-    desc = f"{name}, {geo}" if geo else name
+    head = f"{name}, {geo}" if geo else name
     if kind:
-        desc = f"{desc} · {kind}"
-    if gnames:
-        desc = f"{desc}. {labels.get('facet_principal_h', '')}: {', '.join(gnames)}"
-    desc = _clamp(desc, 160)
+        head = f"{head} · {kind}"
+    grapes = f"{labels.get('facet_principal_h', '')}: {', '.join(gnames)}" if gnames else ""
+    # One sentence in the record's own words (see _entity_lead), then the
+    # principal grapes when they still fit the ~160 characters engines show;
+    # without a lead the grape list is the whole description, as before.
+    lead = _entity_lead(rec, locale)
+    parts = [head, lead]
+    if grapes and (not lead or len(_join_sentences(parts)) + len(grapes) + 2 <= _META_DESC_MAX):
+        parts.append(grapes)
+    desc = _clamp(_join_sentences(parts), _META_DESC_MAX)
     if folded:
         canonical_url = self_url
         jsonld_html = ""
@@ -1629,7 +1774,6 @@ def render(
         term_labels[tk] = f"{_COUNTRY_FLAG_EMOJI.get(cc, '')} {term}".strip()
     script_kwargs = dict(
         lang_attr=locale,
-        github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
         source_block=source_block,
         source_type=source_type,
         styles_tree_json=json.dumps(facet_styles_tree, ensure_ascii=False),
@@ -1661,6 +1805,7 @@ def render(
         country_labels_json=json.dumps(country_labels, ensure_ascii=False),
         country_flag_emoji_json=json.dumps(_COUNTRY_FLAG_EMOJI, ensure_ascii=False),
         carto_key_json=json.dumps(carto_basemap_key()),
+        carto_keys_json=json.dumps(carto_basemap_keys(), sort_keys=True),
     )
 
     style_body = _STYLE_CSS.replace("{{", "{").replace("}}", "}")
@@ -1686,6 +1831,8 @@ def render(
         lang_switcher_html=_lang_switcher(locale, labels["lang_switcher_aria"]),
         sidebar_disclaimer_html=_build_sidebar_disclaimer(labels),
         browse_path=browse_path,
+        plausible_host_json=json.dumps(plausible_host()),
+        plausible_sites_json=json.dumps(plausible_sites(), sort_keys=True),
         aocs_data_src=aocs_data_src,
         style_href=style_href,
         app_src=app_src,
@@ -1695,7 +1842,7 @@ def render(
 
     def _fill(**per_page) -> str:
         return _PAGE_TEMPLATE.replace("%%SIDEBAR%%", _sidebar_html).format(
-            **page_shell, **per_page
+            **{**page_shell, **per_page}
         )
 
     home_about_html = _build_about_dialog(
@@ -1753,6 +1900,7 @@ def render(
                 robots_meta=meta["robots_meta"],
                 ssr_content=ssr,
                 about_dialog_html=entity_about_html,
+                lang_switcher_html=_lang_switcher(locale, labels["lang_switcher_aria"], slug=slug),
                 # Index pages carry the appellation <h1> in their SSR card, so
                 # the brand wordmark demotes to a <p>; fold pages have no card
                 # (only the cross-link nav) so the brand stays their single
@@ -2141,6 +2289,22 @@ _TEMPLATE = """<!doctype html>
   #panel .sources {{ margin:4px 0 0; padding-left:18px; font-size:12.5px; color:#3a3a3a }}
   #panel .sources li {{ margin:3px 0 }}
   #panel .sources code {{ font-size:11px; color:#888 }}
+  #panel .card-feedback {{ margin:18px 0 2px; padding-top:12px; border-top:1px solid #e3ddd4; font-size:13px; line-height:1.6; color:#222 }}
+  #panel .card-feedback h2 {{ margin:0 0 4px }}
+  #panel .card-feedback .fb-prompt {{ display:block; margin:0 0 6px; font-size:12.5px; color:#555 }}
+  #panel .fb-chip {{ display:inline-block; padding:3px 11px; margin:2px 6px 4px 0; border:1px solid #c9bfb2; border-radius:12px; background:#fff; color:#333; font:inherit; font-size:12px; line-height:1.5; cursor:pointer }}
+  #panel .fb-chip:hover {{ background:#f0ebe3; color:#222 }}
+  #panel .fb-chip:focus-visible {{ outline:2px solid #7a1f3a; outline-offset:1px }}
+  #panel .fb-chip[aria-pressed="true"] {{ background:#7a1f3a; border-color:#7a1f3a; color:#fff }}
+  #panel .fb-more {{ margin-top:6px }}
+  #panel .fb-more textarea {{ display:block; width:100%; box-sizing:border-box; min-height:54px; margin:5px 0; padding:6px 8px; border:1px solid #d9d3ca; border-radius:4px; background:#fff; color:#222; font:inherit; font-size:12px; line-height:1.4; resize:vertical }}
+  #panel .fb-more textarea:focus-visible {{ outline:2px solid #7a1f3a; outline-offset:0 }}
+  #panel .fb-send {{ padding:3px 12px; border:1px solid #7a1f3a; border-radius:4px; background:#7a1f3a; color:#fff; font:inherit; font-size:11.5px; cursor:pointer }}
+  #panel .fb-send:hover {{ background:#8d2a48 }}
+  #panel .fb-send:disabled {{ opacity:.5; cursor:default }}
+  #panel .fb-status {{ color:#5a6b3a; font-weight:600 }}
+  #panel .fb-more .fb-aspect {{ color:#7a1f3a; font-weight:600 }}
+  #panel .fb-more a {{ color:#7a1f3a; text-decoration:underline; text-underline-offset:2px }}
   #panel .facts-sub-h {{ font-size:11px; font-weight:600; color:#555; margin:8px 0 2px; text-transform:none; letter-spacing:0 }}
   #panel ul.facts {{ margin:0 0 6px; padding-left:18px; font-size:13px; color:#222 }}
   #panel ul.facts li {{ margin:2px 0 }}
@@ -2222,6 +2386,8 @@ _TEMPLATE = """<!doctype html>
   #about-dialog h1 {{ font-size:20px; margin:0 0 14px; padding-bottom:8px; border-bottom:2px solid #934050 }}
   #about-dialog p {{ margin:0 0 10px }}
   #about-dialog a {{ color:#934050 }}
+  #about-dialog a.bsky {{ white-space:nowrap }}
+  #about-dialog .bsky-logo {{ width:1.05em; height:1.05em; vertical-align:-0.16em; margin-right:0.3em; fill:#1185fe }}
   #grape-tooltip {{ position:fixed; max-width:340px; background:#fff; color:#222; border:1px solid #ddd; border-radius:4px; padding:10px 12px; font-size:12px; line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:1000; display:none }}
   #grape-tooltip .ext {{ margin:0 0 6px }}
   #grape-tooltip .note {{ margin:0 0 6px; font-style:italic; color:#555 }}
@@ -2328,14 +2494,26 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark .pill.grape.observation {{ background:#2e2a14; color:#e0cb84 }}
   html.theme-dark a.pill.grape.observation:hover {{ background:#383218 }}
   html.theme-dark #panel .stack-pos {{ background:#2e2a1c; color:#d8c79a }}
+  html.theme-dark #panel .card-feedback {{ border-top-color:#3a3a3d; color:#e3e3e3 }}
+  html.theme-dark #panel .card-feedback .fb-prompt {{ color:#b5b5b5 }}
+  html.theme-dark #panel .fb-chip {{ background:#232325; border-color:#4a4a4e; color:#d0d0d0 }}
+  html.theme-dark #panel .fb-chip:hover {{ background:#343437; color:#eee }}
+  html.theme-dark #panel .fb-chip[aria-pressed="true"] {{ background:#8d2a48; border-color:#8d2a48; color:#fff }}
+  html.theme-dark #panel .fb-more textarea {{ background:#1e1e20; border-color:#444; color:#ddd }}
+  html.theme-dark #panel .fb-status {{ color:#a7c48a }}
+  html.theme-dark #panel .fb-more .fb-aspect {{ color:#e6a0b6 }}
+  html.theme-dark #panel .fb-more a {{ color:#e6a0b6 }}
   html.theme-dark #panel .verbatim-badge {{ background:#33280f; color:#e6b86a; border-color:#5a4a1e }}
   html.theme-dark #panel details.menzioni .pill.menzione {{ background:#2c2a20; color:#d8c89a; border-color:#3e3a2c }}
 </style>
-<!-- Privacy-friendly analytics by Plausible -->
-<script async src="https://analytics.dev.devloed.com/js/pa-QAprx84urDZKvC3I6r6bc.js"></script>
+<!-- Privacy-friendly analytics by Plausible. The tracker script is per site
+     (its id pins the domain), so it is picked by hostname at runtime: one build
+     serves every environment; a host with no entry loads no tracker. The
+     localhost opt-in only matters when a dev site is keyed on localhost. -->
 <script>
   window.plausible=window.plausible||function(){{(plausible.q=plausible.q||[]).push(arguments)}},plausible.init=plausible.init||function(i){{plausible.o=i||{{}}}};
-  plausible.init()
+  plausible.init({{captureOnLocalhost:true}});
+  (function(sites,host){{var id=sites[host.replace(/^www\\./,'')];if(!id)return;var s=document.createElement('script');s.async=true;s.src={plausible_host_json}+'/js/'+id+'.js';document.head.appendChild(s)}})({plausible_sites_json},location.hostname);
 </script>
 </head>
 <body>

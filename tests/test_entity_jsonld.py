@@ -16,7 +16,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from _lib.map_template import _build_entity_jsonld, _build_entity_meta  # noqa: E402
+from _lib.map_template import (  # noqa: E402
+    _build_entity_jsonld,
+    _build_entity_meta,
+    _lang_switcher,
+)
 
 _COUNTRY_LABELS = {"fr": "France", "es": "España", "nl": "Nederland"}
 _REGION_LABELS = {"PRIORAT": "Priorat"}
@@ -103,21 +107,84 @@ def test_sameas_dedupes_shared_url() -> None:
     assert place["sameAs"] == ["https://example.org/a"]
 
 
-def test_description_prefers_summary() -> None:
+def test_description_uses_summary_when_no_facts_and_readable() -> None:
+    # ES record, ES page: the summary is written in the page locale.
     place = _node(_graph(_RICH, slug="priorat", locale="es"), "AdministrativeArea")
     assert place["description"].startswith("El Priorat es una zona")
+    # Same record on the EN page: an untranslated ES summary is not an English
+    # description — fall back to the meta text.
+    place = _node(_graph(_RICH, slug="priorat", locale="en", desc="META"), "AdministrativeArea")
+    assert place["description"] == "META"
+    # …unless stage 02c translated it.
+    translated = {**_RICH, "summary": "Priorat is a prestigious wine zone.",
+                  "summary_translation": {"translator": "x"}}
+    place = _node(_graph(translated, slug="priorat", locale="en"), "AdministrativeArea")
+    assert place["description"].startswith("Priorat is a prestigious")
 
 
-def test_description_falls_back_to_facts_then_meta() -> None:
-    facts_rec = {"name": "X", "country": "fr", "summary": "",
-                 "terroir_facts": {"facts": [{"bullet": "Schist soils."},
-                                              {"bullet": "Cool nights."}]}}
-    place = _node(_graph(facts_rec), "AdministrativeArea")
-    assert "Schist soils." in place["description"] and "Cool nights." in place["description"]
+def test_description_prefers_facts_over_summary_and_the_bullet_naming_the_record() -> None:
+    # Facts XOR summary, as on the panel: a record with facts never surfaces
+    # its summary (for FR that is the untranslated decree boilerplate).
+    rec = {"name": "Santenay", "country": "fr",
+           "summary": "Seuls peuvent prétendre à l'appellation d'origine contrôlée…",
+           "terroir_facts": {"facts": [
+               {"bullet": "The Côte de Beaune forms a rectilinear relief."},
+               {"bullet": "At Santenay, the Côte curves westward."},
+               {"bullet": "The parcels sit between 210 and 450 metres."}]}}
+    place = _node(_graph(rec, locale="en"), "AdministrativeArea")
+    assert place["description"] == (
+        "At Santenay, the Côte curves westward. The Côte de Beaune forms a rectilinear relief."
+    )
+    assert "Seuls peuvent" not in place["description"]
 
     none_rec = {"name": "X", "country": "fr", "summary": "", "terroir_facts": {}}
     place2 = _node(_graph(none_rec, desc="META FALLBACK"), "AdministrativeArea")
     assert place2["description"] == "META FALLBACK"
+
+
+def test_meta_description_leads_with_the_record_and_fits_160() -> None:
+    rec = {"name": "Santenay", "kind": "AOC", "class_label": "AOC (PDO)", "country": "fr",
+           "region": "PRIORAT", "grapes_principal": ["garnacha"],
+           "summary": "Seuls peuvent prétendre à l'appellation…",
+           "terroir_facts": {"facts": [
+               {"bullet": "The Côte de Beaune forms a rectilinear relief of tectonic origin "
+                          "extending over approximately 25 kilometres."},
+               {"bullet": "At Santenay, the Côte curves westward and continues along the left "
+                          "bank of the Dheune valley, a river draining the granitic hinterland, "
+                          "with slopes that are predominantly south-facing."}]}}
+    meta = _build_entity_meta(
+        "santenay", rec, "en", _LABELS, _REGION_LABELS, _COUNTRY_LABELS, _GRAPES_INFO
+    )
+    desc = meta["meta_description"]
+    assert desc.startswith("Santenay, Priorat, France · AOC (PDO). At Santenay, the Côte curves")
+    assert len(desc) <= 160 and desc.endswith("…")
+    assert "Seuls peuvent" not in desc and "Principal grapes" not in desc
+
+    # A short lead leaves room for the grapes; no lead at all → the grape
+    # template alone, as before.
+    short = {**rec, "terroir_facts": {"facts": [{"bullet": "Schist soils."}]}}
+    meta = _build_entity_meta(
+        "santenay", short, "en", _LABELS, _REGION_LABELS, _COUNTRY_LABELS, _GRAPES_INFO
+    )
+    assert meta["meta_description"] == (
+        "Santenay, Priorat, France · AOC (PDO). Schist soils. Principal grapes: Garnacha."
+    )
+    bare = {**rec, "terroir_facts": {}}
+    meta = _build_entity_meta(
+        "santenay", bare, "en", _LABELS, _REGION_LABELS, _COUNTRY_LABELS, _GRAPES_INFO
+    )
+    assert meta["meta_description"] == (
+        "Santenay, Priorat, France · AOC (PDO). Principal grapes: Garnacha."
+    )
+
+
+def test_lang_switcher_keeps_the_appellation_on_entity_pages() -> None:
+    home = _lang_switcher("en", "Language")
+    assert 'href="/fr/"' in home and 'href="/"' in home
+    page = _lang_switcher("en", "Language", slug="santenay")
+    for path in ("/fr/santenay", "/en/santenay", "/es/santenay", "/nl/santenay"):
+        assert f'href="{path}" data-href="{path}"' in page
+    assert 'href="/fr/"' not in page and 'data-lang="en" class="lang active"' in page
 
 
 def test_inlanguage_matches_locale() -> None:
@@ -224,3 +291,31 @@ def test_jsonld_survives_str_format() -> None:
         "priorat", _RICH, f"{_BASE}/es/priorat", "es", _COUNTRY_LABELS, "Priorat",
     )
     assert "{jsonld_html}".format(jsonld_html=html) == html
+
+
+def test_entity_title_shortens_progressively_and_prefers_the_french_alias() -> None:
+    from _lib.map_template import _entity_title
+
+    full = _entity_title("Santenay", "AOC (PDO)", "Burgundy", "France", country_code="fr")
+    assert full == "Santenay — AOC (PDO) · Burgundy, France · Open Wine Map"
+    # Brand goes first…
+    assert _entity_title("Cebreros", "Vino de Calidad (PDO)", "Castilla y León", "Spain",
+                         country_code="es") == "Cebreros — Vino de Calidad (PDO) · Castilla y León, Spain"
+    # …then the term; the region stays.
+    assert _entity_title("Lambrusco Grasparossa di Castelvetro", "DOC (AOP)", "Emilia-Romagna",
+                         "Italie", country_code="it") == (
+        "Lambrusco Grasparossa di Castelvetro — Emilia-Romagna, Italie")
+    # A French "X ou Y" register name: the primary alias with everything kept
+    # beats the full name with everything cut.
+    assert _entity_title("Côte de Nuits-Villages ou Vins fins de la Côte de Nuits", "AOC (PDO)",
+                         "Burgundy", "France", country_code="fr") == (
+        "Côte de Nuits-Villages — AOC (PDO) · Burgundy, France")
+    assert _entity_title("Hermitage ou Ermitage ou l'Hermitage", "AOC (PDO)", "Rhône Valley",
+                         "France", country_code="fr") == (
+        "Hermitage — AOC (PDO) · Rhône Valley, France · Open Wine Map")
+    # " ou " is only an alias separator for France; a bilingual Swiss name is left whole.
+    assert _entity_title("Bern / Berne", "AOC", "Trois-Lacs", "Suisse", country_code="ch") == (
+        "Bern / Berne — AOC · Trois-Lacs, Suisse · Open Wine Map")
+    # Never longer than the cap unless even the bare name exceeds it.
+    assert len(_entity_title("Sierras de Las Estancias y Los Filabres", "Vino de la Tierra (PGI)",
+                             "España", "Spain", country_code="es")) <= 65

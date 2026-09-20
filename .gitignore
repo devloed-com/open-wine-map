@@ -69,3 +69,8 @@ done*.json
 locale/**/*.mo
 
 tmp/*
+
+# point-in-time archives of the deployed site (scripts/snapshot_deployed.py)
+/snapshots/
+feedback.csv
+scripts/feedback_report.py

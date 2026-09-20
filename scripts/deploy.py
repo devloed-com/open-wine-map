@@ -10,24 +10,40 @@ Also configures, idempotently, the pull zone's security response headers
 Custom404FilePath (/404.html) — each compares against the current state and
 only writes what's missing.
 
-Env:
-  BUNNY_STORAGE_KEY    storage zone password (Bunny dash → Storage →
-                       <zone> → FTP & API access → Password; same value
-                       as the FTP password)
-  BUNNY_API_KEY        account API key, for the cache purge + edge rules
-  BUNNY_PULLZONE_ID    numeric pullzone id, for the cache purge + edge rules
+Usage:
+  scripts/deploy.sh                 → production, https://www.openwinemap.com/
+  scripts/deploy.sh --env beta      → preview,    https://beta.openwinemap.com/
+
+Both deploy the SAME wiki/ build: the page picks its Plausible site and CARTO
+key by hostname at runtime, and every canonical / hreflang / sitemap URL points
+at production from either host. Beta differs only in what a preview must not
+do — be crawled (its robots.txt is overridden to `Disallow: /`), ping IndexNow
+(the URLs would be production's), or be checked for an apex redirect it has no
+apex for. Before touching anything the script reads the pull zone back and
+refuses to continue unless it carries the environment's hostname and storage
+zone, so a mis-set .env cannot land a beta deploy on production.
+
+Env (beta reads the `_BETA`-suffixed variants of the three per-zone values):
+  BUNNY_STORAGE_KEY[_BETA]    storage zone password (Bunny dash → Storage →
+                              <zone> → FTP & API access → Password; same value
+                              as the FTP password)
+  BUNNY_API_KEY               account API key, for the cache purge + edge
+                              rules (shared by every environment)
+  BUNNY_PULLZONE_ID[_BETA]    numeric pullzone id, for the cache purge + edge rules
 
 Optional:
-  BUNNY_STORAGE_HOST   default: storage.bunnycdn.com
-  BUNNY_STORAGE_ZONE   default: open-wine-map
-  BUNNY_WORKERS        default: 8
+  BUNNY_STORAGE_HOST          default: storage.bunnycdn.com
+  BUNNY_STORAGE_ZONE[_BETA]   default: open-wine-map / open-wine-map-beta
+  BUNNY_WORKERS               default: 8
 """
 
 from __future__ import annotations
 
+import argparse
 import concurrent.futures as cf
 import fnmatch
 import hashlib
+import json
 import os
 import pathlib
 import re
@@ -54,6 +70,24 @@ EXCLUDE_GLOBS = (
 
 def excluded(rel: str) -> bool:
     return any(fnmatch.fnmatchcase(rel, pat) for pat in EXCLUDE_GLOBS)
+
+
+# Deploy environments. `suffix` selects the per-zone .env variables
+# (BUNNY_STORAGE_KEY_BETA, …); `zone` is the storage zone's default name;
+# `indexable` gates robots.txt + IndexNow; `apex` gates the apex-301 smoke check.
+_ENVS: dict[str, dict] = {
+    "prod": {"host": "www.openwinemap.com", "zone": "open-wine-map",
+             "suffix": "", "indexable": True, "apex": True},
+    "beta": {"host": "beta.openwinemap.com", "zone": "open-wine-map-beta",
+             "suffix": "_BETA", "indexable": False, "apex": False},
+}
+
+# A preview host must stay out of every index. Its pages canonicalise to
+# production (the build is byte-identical), so the crawl is blocked at
+# robots.txt rather than with a noindex header: noindex on a page whose
+# canonical is a *different* URL is a contradictory signal that can leak into
+# the production canonical cluster (see the folded-page note in map_template).
+_NOINDEX_ROBOTS = b"User-agent: *\nDisallow: /\n"
 
 
 def sha256_hex(path: pathlib.Path) -> str:
@@ -113,7 +147,10 @@ def list_remote(session: requests.Session, host: str, zone: str, workers: int) -
     return out
 
 
-def hash_local(root: pathlib.Path) -> dict[str, str]:
+def hash_local(root: pathlib.Path, overrides: dict[str, bytes]) -> dict[str, str]:
+    """{relative_posix_path: sha256_hex} of the build, with `overrides` (files
+    whose served body differs from the one on disk — beta's robots.txt) hashed
+    from their override body so the diff against the remote stays honest."""
     out: dict[str, str] = {}
     for path in root.rglob("*"):
         if not path.is_file():
@@ -122,6 +159,8 @@ def hash_local(root: pathlib.Path) -> dict[str, str]:
         if excluded(rel):
             continue
         out[rel] = sha256_hex(path)
+    for rel, body in overrides.items():
+        out[rel] = hashlib.sha256(body).hexdigest()
     return out
 
 
@@ -151,18 +190,14 @@ def content_type_for(rel: str) -> str:
 
 
 def put(session: requests.Session, host: str, zone: str,
-        root: pathlib.Path, rel: str, checksum: str) -> None:
+        root: pathlib.Path, rel: str, checksum: str, body: bytes | None = None) -> None:
     url = f"https://{host}/{zone}/{rel}"
-    with (root / rel).open("rb") as body:
-        r = session.put(
-            url,
-            data=body,
-            headers={
-                "Checksum": checksum.upper(),
-                "Content-Type": content_type_for(rel),
-            },
-            timeout=600,
-        )
+    headers = {"Checksum": checksum.upper(), "Content-Type": content_type_for(rel)}
+    if body is not None:
+        r = session.put(url, data=body, headers=headers, timeout=600)
+    else:
+        with (root / rel).open("rb") as f:
+            r = session.put(url, data=f, headers=headers, timeout=600)
     if r.status_code not in (200, 201):
         raise SystemExit(f"PUT {rel} → {r.status_code} {r.text[:200]}")
 
@@ -197,9 +232,66 @@ _APEX_HOST = "openwinemap.com"
 # represents what actually happened (a batch), notifies the entire changed set
 # in ~1-2 requests, and stays warm-don't-fail so a ping blip never aborts a
 # deploy whose real work (upload + purge) is already done.
+#
+# And only pages whose CONTENT changed are submitted. A rebuild that bumps a
+# content-hashed asset name (app.<locale>.<hash>.js, style.<hash>.css, the
+# aocs data blob) re-uploads every page referencing it — ~11.6k files — while
+# nothing a reader or a crawler sees has changed; pinging the whole site for
+# that is what Bing Webmaster Tools flags as "IndexNow batch mode". Each deploy
+# therefore records a per-environment fingerprint of every page with those
+# references normalised (tmp/deploy/indexnow-fingerprints-<env>.json,
+# gitignored) and submits the pages whose fingerprint differs from the last
+# deploy's, plus new and deleted pages. No fingerprint file yet (first deploy
+# from this checkout) → every changed page is submitted, and the file is
+# written for the next run.
 _INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow"
 _INDEXNOW_CHUNK = 10_000  # IndexNow urlList hard cap per request
 _INDEXNOW_KEY_RE = re.compile(r"^[0-9a-f]{32}$")
+# A hashed asset reference inside a page: /assets/app.en.0123456789.js — the
+# same normalisation compare_build_output.py applies.
+_ASSET_REF_RE = re.compile(r"(\.)[0-9a-f]{10}(\.(?:js|css))")
+
+
+def page_fingerprint(path: pathlib.Path) -> str:
+    """sha256 of a page with its content-hashed asset references normalised,
+    so a page that changed ONLY because a bundle was renamed fingerprints the
+    same as before."""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    return hashlib.sha256(_ASSET_REF_RE.sub(r"\1HASH\2", text).encode("utf-8")).hexdigest()
+
+
+def fingerprint_pages(root: pathlib.Path, rels) -> dict[str, str]:
+    return {rel: page_fingerprint(root / rel) for rel in rels if public_url(rel)}
+
+
+def load_fingerprints(path: pathlib.Path) -> dict[str, str]:
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_fingerprints(path: pathlib.Path, fingerprints: dict[str, str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(fingerprints, sort_keys=True, indent=0), encoding="utf-8")
+
+
+def pages_to_submit(
+    to_upload, to_delete, current: dict[str, str], previous: dict[str, str]
+) -> tuple[list[str], int]:
+    """(page paths to notify IndexNow of, count of re-uploaded pages skipped
+    because only a hashed asset reference changed). Deleted pages are always
+    notified; without a previous fingerprint set every changed page is."""
+    uploaded = [rel for rel in to_upload if rel in current]
+    if previous:
+        changed = [rel for rel in uploaded if previous.get(rel) != current[rel]]
+    else:
+        changed = uploaded
+    deleted = [rel for rel in to_delete if public_url(rel)]
+    return sorted({*changed, *deleted}), len(uploaded) - len(changed)
 
 
 def find_indexnow_key(root: pathlib.Path) -> tuple[str, str] | None:
@@ -460,17 +552,57 @@ def ensure_custom_404(api_key: str, zone_name: str) -> None:
         print(f"  warn: storage zone update → {resp.status_code} {resp.text[:120]}", file=sys.stderr)
 
 
+def verify_pullzone(api_key: str, pullzone: str, site_host: str, zone_name: str) -> None:
+    """Refuse to deploy unless the pull zone serves `site_host` from the storage
+    zone `zone_name` — the guard against a `.env` whose beta ids still point at
+    production (or the reverse). Fails closed: the purge step needs the same
+    account API anyway, so an unreachable API would abort the deploy regardless."""
+    base = "https://api.bunny.net"
+    headers = {"AccessKey": api_key, "Accept": "application/json"}
+    r = requests.get(f"{base}/pullzone/{pullzone}", headers=headers, timeout=30)
+    if r.status_code != 200:
+        sys.exit(f"pull zone {pullzone}: GET → {r.status_code} {r.text[:120]}")
+    pz = r.json()
+    hostnames = [hn.get("Value") or "" for hn in pz.get("Hostnames") or []]
+    if site_host not in hostnames:
+        sys.exit(
+            f"pull zone {pullzone} ({pz.get('Name')}) does not serve {site_host} "
+            f"(hostnames: {', '.join(hostnames)}) — check BUNNY_PULLZONE_ID* in .env"
+        )
+    sz = requests.get(f"{base}/storagezone/{pz.get('StorageZoneId')}", headers=headers, timeout=30)
+    if sz.status_code != 200:
+        sys.exit(f"storage zone of pull zone {pullzone}: GET → {sz.status_code} {sz.text[:120]}")
+    origin = sz.json().get("Name")
+    if origin != zone_name:
+        sys.exit(
+            f"pull zone {pullzone} is backed by storage zone {origin!r}, not {zone_name!r} "
+            f"— check BUNNY_STORAGE_ZONE* in .env"
+        )
+    print(f"  pull zone {pullzone} ({pz.get('Name')}): serves {site_host} from {origin}", file=sys.stderr)
+
+
 def main() -> int:
-    storage_key = os.environ.get("BUNNY_STORAGE_KEY")
+    ap = argparse.ArgumentParser(description="Deploy wiki/ to Bunny Storage + purge the CDN.")
+    ap.add_argument("--env", choices=sorted(_ENVS), default="prod",
+                    help="target environment (default: prod)")
+    args = ap.parse_args()
+    env = _ENVS[args.env]
+    sfx = env["suffix"]
+
+    storage_key = os.environ.get(f"BUNNY_STORAGE_KEY{sfx}")
     api_key = os.environ.get("BUNNY_API_KEY")
-    pullzone = os.environ.get("BUNNY_PULLZONE_ID")
+    pullzone = os.environ.get(f"BUNNY_PULLZONE_ID{sfx}")
     if not storage_key:
-        sys.exit("set BUNNY_STORAGE_KEY (storage zone password; same as the FTP password)")
+        sys.exit(f"set BUNNY_STORAGE_KEY{sfx} (storage zone password; same as the FTP password)")
     if not api_key or not pullzone:
-        sys.exit("set BUNNY_API_KEY and BUNNY_PULLZONE_ID for the cache purge")
+        sys.exit(f"set BUNNY_API_KEY and BUNNY_PULLZONE_ID{sfx} for the cache purge")
 
     host = os.environ.get("BUNNY_STORAGE_HOST", "storage.bunnycdn.com")
-    zone = os.environ.get("BUNNY_STORAGE_ZONE", "open-wine-map")
+    zone = os.environ.get(f"BUNNY_STORAGE_ZONE{sfx}", env["zone"])
+    overrides: dict[str, bytes] = {} if env["indexable"] else {"robots.txt": _NOINDEX_ROBOTS}
+
+    print(f"target: {args.env} → https://{env['host']}/", file=sys.stderr)
+    verify_pullzone(api_key, pullzone, env["host"], zone)
     workers = int(os.environ.get("BUNNY_WORKERS", "8"))
     # Listing is one cheap GET per directory over ~11k leaf dirs, so fan
     # out far wider than the (heavier) upload PUTs.
@@ -500,7 +632,7 @@ def main() -> int:
     print(f"  {len(remote)} remote files", file=sys.stderr)
 
     print(f"hashing {root} ...", file=sys.stderr)
-    local = hash_local(root)
+    local = hash_local(root, overrides)
     print(f"  {len(local)} local files", file=sys.stderr)
 
     to_upload = sorted(rel for rel, h in local.items() if remote.get(rel) != h)
@@ -510,7 +642,7 @@ def main() -> int:
     if to_upload:
         with cf.ThreadPoolExecutor(max_workers=workers) as ex:
             futures = {
-                ex.submit(put, storage, host, zone, root, rel, local[rel]): rel
+                ex.submit(put, storage, host, zone, root, rel, local[rel], overrides.get(rel)): rel
                 for rel in to_upload
             }
             for i, fut in enumerate(cf.as_completed(futures), 1):
@@ -535,22 +667,39 @@ def main() -> int:
     if r.status_code not in (200, 204):
         sys.exit(f"purgeCache → {r.status_code} {r.text[:200]}")
 
-    print("notifying IndexNow of changed pages ...", file=sys.stderr)
-    keyinfo = find_indexnow_key(root)
-    if keyinfo is None:
-        print("  indexnow: no key file in wiki/ — skipping (set INDEXNOW_KEY in .env, rerun stage 04)", file=sys.stderr)
+    if not env["indexable"]:
+        print(f"indexnow: skipped ({args.env} is not indexable)", file=sys.stderr)
     else:
-        key, key_location = keyinfo
-        changed = sorted({u for rel in (*to_upload, *to_delete) if (u := public_url(rel))})
-        submit_indexnow(key, key_location, changed)
+        print("notifying IndexNow of changed pages ...", file=sys.stderr)
+        keyinfo = find_indexnow_key(root)
+        if keyinfo is None:
+            print("  indexnow: no key file in wiki/ — skipping (set INDEXNOW_KEY in .env, rerun stage 04)", file=sys.stderr)
+        else:
+            key, key_location = keyinfo
+            fp_path = root.parent / "tmp" / "deploy" / f"indexnow-fingerprints-{args.env}.json"
+            previous = load_fingerprints(fp_path)
+            current = fingerprint_pages(root, local)
+            rels, skipped = pages_to_submit(to_upload, to_delete, current, previous)
+            if skipped:
+                print(
+                    f"  indexnow: {skipped} re-uploaded pages changed only in a hashed "
+                    f"asset reference — not submitted",
+                    file=sys.stderr,
+                )
+            elif not previous:
+                print(f"  indexnow: no fingerprints from a previous deploy at {fp_path} — "
+                      f"submitting every changed page", file=sys.stderr)
+            submit_indexnow(key, key_location, [public_url(rel) for rel in rels])
+            save_fingerprints(fp_path, current)
 
     print("configuring security headers ...", file=sys.stderr)
     ensure_security_headers(api_key, pullzone)
     print("configuring Force-SSL + custom 404 ...", file=sys.stderr)
     ensure_force_ssl(api_key, pullzone)
     ensure_custom_404(api_key, zone)
-    check_apex_redirect()
-    print("\ndeployed. https://www.openwinemap.com/", file=sys.stderr)
+    if env["apex"]:
+        check_apex_redirect()
+    print(f"\ndeployed. https://{env['host']}/", file=sys.stderr)
     return 0
 
 
