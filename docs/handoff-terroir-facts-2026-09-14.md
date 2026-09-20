@@ -114,6 +114,39 @@ the long-lien countries, 02e's shared system prompt (≈ 3 K of a
 ≈ 4–5 K-token request) reads from cache for all but the first record
 per locale — expect **≈ $200–230** for the full corpus.
 
+## 0b. The migration — `cfg-2026-09-14` (2026-09-14 evening) — DONE
+
+`rerun_terroir_facts.py --scope scope-all.json --run cfg-2026-09-14 --parallel 7`,
+1,640 slugs, 2 h 13 min wall-clock, **$195.49** (02d $51.50 · gate $69.52 ·
+02e $38.29 · back-check $36.18), plus the `cfg-2026-09-14-fix` follow-up
+($0.60: the three FR slicer records + 16 rejected translations) and the
+paired audit ($12). Rollback: `rollback_terroir_facts.py --run
+cfg-2026-09-14-fix` then `--run cfg-2026-09-14` (newest first).
+
+| stage | result |
+|---|---|
+| 02d Sonnet 5 | 1,639 records, **15,945 facts = 9.7 / record (was 6.9)**, **1 grounding drop** corpus-wide (was 965), `interactions` 7.5 % (1,192; 529 unearned dropped at extraction); cache hit rate 37 % overall — 13–25 % in the small first-wave batches, 34–47 % in the large ones (a record's four calls run concurrently inside a batch, see below) |
+| gate Opus 5 adaptive | 1,635 records, 0 errors: **8.3 % rewritten** (was 20–27 %), **0.48 % dropped** (was 1.5–2 %), 204 moved, 13 cosmetic, 0 empty, 0 rejected → 15,868 facts; the cached system prompt hit on all but 4 requests |
+| 02e Sonnet 4.6 | 5,897 translations; the per-locale system prompt hit 75 % (≈ $14 saved); 16 replies rejected on bullet count and redone in the follow-up |
+| back-check | 5,887 caches, 4,685 / 56,600 bullets fixed (8.3 %), 766 empty fixes kept as `fix_missing`, 94 rejected |
+| post-passes | normalise: a handful of fixes; dedupe: nothing (02d and the gate dedupe) → **15,893 facts on 1,637 records** |
+| strict audit | **0 failures**; report-only: `feedback_recurrence` 4 (was 23), `gate_pending` 1 (Collioure), `translation_stale` 0, `meta_text` 65 source bullets citing the document mid-sentence (0.4 % — the normaliser strips only trailing citations) |
+| **paired Opus-5 audit, 120 records** | misleading **2.47 % → 1.31 %** [0.8–2.2] on 849 → **1,147 bullets (+35 %)**; records improved 15 / worse 10 / same 95. Extraction-origin residuals **18 → 3** (0.26 %), `unsupported-causal-link` 5 → 2; **12 of the 15 residuals are translation-origin** (mistranslation, wrong direction, added qualifier in the EN rendering) — 02e + back-check on Sonnet 4.6 is now the dominant lever (item 3.8). The 15 are merged into the feedback sidecars (`llm-audit-2026-09-14-after-cfg`). |
+
+Found on the way and fixed (`180ae08`): the FR section-X slicer lost the
+natural-factors slice on three cahiers (an OCR "l°" for "1°", a lien
+opening at "a)" with no "1°", an "a)" heading without its letter) —
+Pouilly-Vinzelles had extracted 1 fact from 9.9 K chars; now 11.
+
+Prompt caching inside a large batch: a record's four 02d calls are
+processed concurrently, so most of them write instead of read (hit rates
+13–47 %, vs 100 % on a 4-request probe). At the 5-minute TTL that is
+break-even to a modest gain, never a loss. To make it a real saving,
+either submit the four sub-section calls as four sequential batches
+(the first writes, the next three read, 1-hour TTL) or extract all four
+sub-sections in one request per record. The static-prompt caching in
+02e (75 %) and the gate (≈ 100 %) worked as intended.
+
 ## 0. State you inherit
 
 - **Corpus**: 1,638 records / 11,255 source bullets / 5,895 translation
@@ -158,8 +191,8 @@ Where it lives: `providers.STAGE_DEFAULTS` + `stage_default()`,
 experiment. `tests/test_stage_defaults.py` pins it. The orchestrator's
 `--model` now applies to 02d only.
 
-**The corpus is NOT yet on this configuration** — it was extracted and
-gated with Sonnet 4.6. Step 2.1 below is the migration.
+**The corpus is on this configuration since the `cfg-2026-09-14` run**
+(§0b); step 2.1 below is what was run.
 
 **Costs** (measured token usage × Batch-API rates): a full corpus pass is
 ≈ **$210** in this configuration (02d $47, gate ≈ $79 with adaptive
