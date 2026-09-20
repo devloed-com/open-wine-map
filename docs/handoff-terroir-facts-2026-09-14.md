@@ -61,7 +61,23 @@ see below), then `normalize_terroir_facts.py --only …`, then the audit:
 | audit | strict checks 0; `gate_pending` 1,629 = the rest of the corpus (v2 bump), `feedback_recurrence` 23 — 17 are the do-not-claim entries merged from the two post-r1 LLM audits, still in their (un-re-extracted) records; none in the six |
 | ledger | 02d $0.34 · gate $0.37 · 02e $0.26 · back-check $0.14 |
 
-Two things the smoke taught: (1) after a version bump the corpus-wide
+A third, found by pulling the smoke's raw 02d outputs from the Batch API
+(the dropped bullets are not stored anywhere else): of the 5 unearned
+`interactions` drops, 3 were **false negatives of the connective table**
+("glavni čimbenik", "fördert", "και έτσι"), 1 a real manufactured link
+(Rioja Oriental's "explican" — the quote lists the conditions and says
+nothing causal) and 1 a non-causal restatement. Sampling the corpus's
+unmatched FR / NL / RO quotes showed the same ("déterminent",
+"contribuant", "hetgeen zich vertaalt in", "dă vinuri", cedilla ţ/ş, Ambt
+Delden's English text under `source_lang: nl`). `a473a47` broadens the
+tables (nouns, verb stems, conjunctions, cedilla folding, NL→EN
+fallback): interactions quotes matched on r1 go **69 % → 85 %**. So the
+smoke's 3.4 % share was partly an artefact; with the corrected table
+expect **≈ 8–10 %**, most of it source-stated links — read the
+migration's `unsupported-causal-link` tags in the paired audit as the
+acceptance signal, not the share.
+
+Two more things the smoke taught: (1) after a version bump the corpus-wide
 gate / back-check steps are the whole corpus — the back-check submitted
 5,895 requests before I cancelled it at $0.00 processed; hence
 `--scoped-backcheck`, and the rule *a smoke passes all three `--scoped-*`
@@ -244,8 +260,9 @@ Each item: **evidence** (measured in this programme) → **do** → **accept**.
   connective check per source language in `apply_verdicts` (a bullet
   under `interactions` whose quote has no connective → move to
   `facteurs_naturels` / `produit` by the verdict's `subsection`).
-- Accept: `interactions` share ≈ 3–5 %; `unsupported-causal-link` tags in
-  the paired audit at or near 0.
+- Accept: `unsupported-causal-link` tags in the paired audit at or near 0
+  (the share itself is not the measure — with the corrected connective
+  table ≈ 8–10 % of bullets are source-stated links; see §0a).
 
 ### 3.5 Calibrate the measurement
 - Evidence: the Opus-5 grader put the pre-programme baseline at 13.8 %
