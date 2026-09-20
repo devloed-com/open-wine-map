@@ -462,13 +462,20 @@ Probably right (a naming-only mismatch): `ahr`, `eger` / `mor`
 `terras-do-dao` (PT: the IGP text names Vinho Verde 21×) and
 `malvasia-handakas-candia` (GR: the spec names Κρήτη 20× — check whether
 the file is the Cretan umbrella spec); `sobes` / `schwabischer-landwein`
-/ `cvicek` are by design (region-wide or parent text).
+/ `cvicek` are by design (region-wide or parent text). Verified correct
+bindings (2026-09-14, from the MASAF sidecars): `terre-del-colleoni`
+(its own disciplinare, *bergamasca* is the adjective for the Bergamo
+area, 15× in Art. 9) and `pompeiano` (its own IGT disciplinare; Napoli is
+the province) — no action.
 
-### `rewrite_rejected` — 52 gate rewrites the guards refused
-Mostly an empty rewrite or one over 420 chars; the original bullet was
-kept and carries `support.verdict = "rewrite-rejected"` with the model's
-note. Re-gate them (`02d_verify_terroir_facts.py --refresh --only-file …`)
-after any prompt change, or hand-check the notes.
+### `rewrite_rejected` / `rewrite_missing` — gate rewrites the guards refused
+Since gate-v2 (2026-09-14) an empty rewrite keeps the original as
+`supported` with `support.rewrite_missing` (audit check
+`rewrite_missing`) and a cosmetic one as `supported` with
+`support.cosmetic_rewrite`; `rewrite-rejected` is left for the guard
+failures (a new number, an arrow, over 420 chars). The corpus migration
+re-gates everything (GATE_VERSION bump); hand-check what the audit still
+lists afterwards.
 
 ### Records without a resolvable source
 `collioure` (already listed under France) — the only record the gate and
