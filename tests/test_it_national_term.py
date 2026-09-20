@@ -77,13 +77,14 @@ def test_sottozona_resolves_through_parent_file_number(monkeypatch, fixture_text
 
 
 def test_override_takes_precedence_over_roster(monkeypatch):
-    monkeypatch.setattr(national_term, "load_it_terms", lambda: {"1188": "DOCG"})
-    assert it_term_for({"slug": "valtenesi", "file_number": "PDO-IT-A1188"}, "DOP") == "DOC"
+    # Cirò Classico is pinned DOCG (Reg. 2025/1518); a roster saying DOC must lose.
+    monkeypatch.setattr(national_term, "load_it_terms", lambda: {"3209": "DOC"})
+    assert it_term_for({"slug": "ciro-classico", "file_number": "PDO-IT-03209"}, "DOP") == "DOCG"
 
 
 def test_overrides_file_is_well_formed():
     overrides = load_it_term_overrides()
-    assert {"valtenesi", "ciro-classico"} <= set(overrides)
+    assert {"casauria", "ciro-classico"} <= set(overrides)
     for slug, entry in overrides.items():
         assert entry["term"] in {"DOC", "DOCG"}, slug
         assert file_number_tail(entry["file_number"]), slug

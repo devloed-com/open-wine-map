@@ -134,6 +134,19 @@ CANCELLED_GIS: dict[str, dict] = {
         "effective": "2026-04-14",
         "note": "Abruzzo IGT consolidation into IGP Terre Abruzzesi",
     },
+    # Valtènesi (PDO-IT-A1188) was folded back into DOC Riviera del Garda
+    # Classico as its sottozona (Reg. (EU) 2024/1868 amended that
+    # disciplinare; the MASAF PDF carries the Valtènesi sub-disciplinare
+    # as Allegato 1) and the stand-alone PDO was then cancelled at Italy's
+    # request (cancellation application C/2025/5016, OJ C 16.9.2025). The
+    # sottozona survives in the corpus as a child of
+    # riviera-del-garda-classico (stage 04 sottozona synthesis).
+    "EUGI00000005541": {
+        "name": "Valtènesi",
+        "regulation": "Commission Implementing Regulation (EU) 2026/572",
+        "effective": "2026-03-18",
+        "note": "cancelled at Italy's request; now sottozona of DOC Riviera del Garda Classico",
+    },
 }
 
 # IDPagina/4625 on www.masaf.gov.it. Bundle URLs taken from the link

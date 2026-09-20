@@ -1,0 +1,63 @@
+{
+  "__doc__": "Wine records whose regulator source genuinely names no grape variety. Keyed by slug → {reason, source}. Reviewed entries report as REVIEWED in scripts/audit_empty_grapes.py and are excluded from --strict. Add an entry only after reading the source; an empty list caused by a parser miss stays FLAGGED.",
+  "vlaamse-landwijn": {
+    "reason": "The BGA productdossier §7 states the broad IGP rule ('Vitis vinifera of kruisingen') and enumerates no variety.",
+    "source": "lv.vlaanderen.be productdossier_bga_vlaamse_landwijn.pdf §7 (CLAUDE.md, BE PDF-source extension)"
+  },
+  "appenzell-ausserrhoden": {
+    "reason": "Cantonal règlement defers to the federal OVin and catalogues no variety locally.",
+    "source": "CLAUDE.md, CH-specific notes (AI/AR/BS/NW/SZ/UR)"
+  },
+  "appenzell-innerrhoden": {
+    "reason": "Cantonal règlement defers to the federal OVin and catalogues no variety locally.",
+    "source": "CLAUDE.md, CH-specific notes (AI/AR/BS/NW/SZ/UR)"
+  },
+  "basel-stadt": {
+    "reason": "BS defers to BL through an inter-cantonal Vereinbarung; no own variety list.",
+    "source": "CLAUDE.md, CH-specific notes (AI/AR/BS/NW/SZ/UR)"
+  },
+  "nidwalden": {
+    "reason": "Cantonal règlement defers to the federal OVin and catalogues no variety locally.",
+    "source": "CLAUDE.md, CH-specific notes (AI/AR/BS/NW/SZ/UR)"
+  },
+  "schwyz": {
+    "reason": "Cantonal règlement defers to the federal OVin and catalogues no variety locally.",
+    "source": "CLAUDE.md, CH-specific notes (AI/AR/BS/NW/SZ/UR)"
+  },
+  "uri": {
+    "reason": "Cantonal règlement defers to the federal OVin and catalogues no variety locally.",
+    "source": "CLAUDE.md, CH-specific notes (AI/AR/BS/NW/SZ/UR)"
+  },
+  "bern-berne": {
+    "reason": "RebG 916.141.1 Art. 6 Abs. 1: 'gilt das eidgenössische Richtsortiment' — the cantonal act adopts the federal variety list and names none (sub-denominations Bielersee, Thunersee inherit).",
+    "source": "cantonal règlement, verified 2026-09-20 (CURATOR_TODO, empty-grape audit)"
+  },
+  "glarus": {
+    "reason": "Kantonale Weinbauverordnung IX D/621/1 Art. 9 Rebsortenliste: 'Der Regierungsrat legt die zulässigen Rebsorten fest' — list kept outside the act.",
+    "source": "cantonal règlement, verified 2026-09-20 (CURATOR_TODO, empty-grape audit)"
+  },
+  "jura": {
+    "reason": "Ordonnance 916.141 Art. 12 Cépages: authorises the OIV list for Switzerland and varieties in the cadastre viticole for > 5 years; no variety enumerated.",
+    "source": "cantonal règlement, verified 2026-09-20 (CURATOR_TODO, empty-grape audit)"
+  },
+  "schaffhausen": {
+    "reason": "Weinverordnung 817.402 § 12 Rebsorten: 'Das kantonale Sortenverzeichnis wird vom Landwirtschaftsamt geführt' — Anhang 1 holds only Prädikat definitions.",
+    "source": "cantonal règlement, verified 2026-09-20 (CURATOR_TODO, empty-grape audit)"
+  },
+  "solothurn": {
+    "reason": "Vereinbarung SO–BL 516.34 § 1 Abs. 2: SO applies the Basel-Landschaft Pflanzenbau-Verordnung Kapitel C Weinbau (BL's Anhang 1 roster is extracted on basel-landschaft).",
+    "source": "cantonal règlement, verified 2026-09-20 (CURATOR_TODO, empty-grape audit)"
+  },
+  "thurgau": {
+    "reason": "Verordnung zum LwG 910.11 § 37 Abs. 1: 'Die Fachstelle führt die Liste der zugelassenen Rebsorten' — list kept outside the act.",
+    "source": "cantonal règlement, verified 2026-09-20 (CURATOR_TODO, empty-grape audit)"
+  },
+  "zug": {
+    "reason": "Reglement AOC 924.25 § 4 Abs. 1: varieties are those of the federal Rebsortenverordnung SR 916.151.7, by reference.",
+    "source": "cantonal règlement, verified 2026-09-20 (CURATOR_TODO, empty-grape audit)"
+  },
+  "zurich": {
+    "reason": "LS 916.51 was repealed 01.01.2018 with no successor in the LS (§ 12c of the repealed text kept the register at the Amt für Landschaft und Natur); ZH runs on the federal Weinverordnung + ALN Rebsortenliste.",
+    "source": "cantonal règlement, verified 2026-09-20 (CURATOR_TODO, empty-grape audit)"
+  }
+}

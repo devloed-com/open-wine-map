@@ -128,6 +128,26 @@ PDF_DIGIT_RE = re.compile(rf"^[ \t]*(\d{{1,2}}(?:\.\d+)*){_HEAD_TAIL}", re.MULTI
 PDF_UPPER_RE = re.compile(rf"^[ \t]*([A-Z](?:\.\d+)*){_HEAD_TAIL}", re.MULTILINE)
 PDF_LOWER_RE = re.compile(rf"^[ \t]*([a-z](?:\.\d+)*){_HEAD_TAIL}", re.MULTILINE)
 
+# The nine canonical single-document headings, anchored at the start of the
+# title so a nested colour sub-heading ("Variedades de uvas blancas") or a
+# wine-type line ("Vino espumoso") never qualifies. Used only to break ties
+# between same-numbered header candidates in `extract_sections_from_pdf_text`.
+_PDF_CANONICAL_TITLE_RE = re.compile(
+    r"(?:"
+    r"nombre|denominaci[oó]n"
+    r"|descripci[oó]n"
+    r"|pr[aá]cticas|t[eé]cnicas de cultivo"
+    r"|delimitaci[oó]n|demarcaci[oó]n|zona geogr[aá]fica"
+    r"|rendimientos?"
+    r"|variedad(?:es)?\s+de\s+(?:uva|vid)s?(?:\s+de\s+vinificaci[oó]n)?\s*(?:[:.]|$)"
+    r"|variedad o variedades"
+    r"|v[ií]nculo"
+    r"|disposiciones"
+    r"|comprobaci[oó]n|controles?\b|verificaci[oó]n"
+    r")",
+    re.IGNORECASE,
+)
+
 
 _PDF_INTRA_LINE_WS_RE = re.compile(r"(\S) {2,}")
 
@@ -199,11 +219,21 @@ def extract_sections_from_pdf_text(text: str) -> tuple[dict[str, str], dict[str,
     # tradicionalmente utilizado…`). When all candidates have similar case
     # mix (e.g. Mondéjar-style sentence-case top-level), the first-occurrence
     # wins by tiebreaker.
+    #
+    # Case alone is not enough when a pliego nests sentence-case enumerations
+    # under sentence-case top-level titles (La Gomera: "2. Descripción del
+    # vino" carries "1. Vino blanco … 6. Vino espumoso … 9. Vino
+    # monovarietal", and "6. Vino espumoso" out-scored "6. Variedades de
+    # uva" on its one capital letter, so the grape section was lost). A
+    # title that reads like a canonical single-document heading therefore
+    # wins outright over any case score.
     def _heading_score(title: str) -> int:
         letters = [c for c in title if c.isalpha()]
         if not letters:
             return 0
-        return int(100 * sum(1 for c in letters if c.isupper()) / len(letters))
+        case = int(100 * sum(1 for c in letters if c.isupper()) / len(letters))
+        canonical = 1000 if _PDF_CANONICAL_TITLE_RE.match(title.strip()) else 0
+        return canonical + case
 
     best: dict[str, tuple[int, re.Match[str]]] = {}
     for m in matches:
@@ -392,6 +422,28 @@ _LEADING_COLON_LABEL_RE = re.compile(
 )
 
 
+# Colour label at the head of a *token* (after PUA-bullet / comma splitting
+# glued "Tintas: …, Blancas: …" into one line) — both the compact colon form
+# ("Blancas:", "Uva tinta:", "Variedades tintas:") and the narrative form
+# that runs straight into the capitalised roster ("Las variedades de Vitis
+# vinífera (L) blancas Moscatel de Grano Menudo B."). `parse_grapes` flips
+# the ambient colour on it, which `_LEADING_COLON_LABEL_RE` alone cannot do
+# (it strips the label, so every white variety inherited the red header).
+# The narrative form needs the "variedades" / "uvas" lead-in: a bare colour
+# word followed by a capital is a grape name (BLANCA DE MONTERREI, Negra
+# Mole), never a label.
+_COLOUR_WORDS = r"(tinta|blanca|negra|rosada|rosa|tintorera|gris)s?"
+_INLINE_COLOUR_LABEL_RE = re.compile(
+    r"^\s*(?:"
+    rf"{_COLOUR_WORDS}\s*:\s*"
+    r"|(?:las\s+)?(?:uvas?|variedad(?:es)?)\s+"
+    r"(?:de\s+(?:uvas?|vid|vitis\s+vin[ií]fera(?:\s*\(l\.?\))?)\s+)?"
+    rf"{_COLOUR_WORDS}(?:\s*:\s*|\s+(?=[A-ZÁÉÍÓÚÑ]))"
+    r")",
+    re.IGNORECASE,
+)
+
+
 def _split_synonym_group(token: str) -> list[str]:
     """Return [primary, *synonyms] from a single grape token. Splits on
     ' - ' (newer template), ' o ' / ' u ' (older narrative), '/' (Basque
@@ -423,11 +475,22 @@ _TRAILING_CONNECTOR_RE = re.compile(r"\s+(?:y/o|y|o|u|e|et|i)$", re.IGNORECASE)
 _FOOTNOTE_MARKER_RE = re.compile(r"\[\d+\]")
 
 
-def _normalise_grape_entry(name: str, ambient_colour: str | None) -> dict | None:
+_OIV_COLOUR_LETTERS = frozenset({"B", "N", "G", "Rs", "Rg", "R"})
+
+
+def _normalise_grape_entry(
+    name: str, ambient_colour: str | None, *, allow_lowercase: bool = False,
+) -> dict | None:
     """Pre-clean a variety token (footnote/colon-label/connector strip,
     structural-noise drop) and hand off to the vocab matcher. Returns
     `{slug, name, colour}` on match, `None` otherwise. Unmatched tokens
-    land in the curator queue via `match_variety`."""
+    land in the curator queue via `match_variety`.
+
+    `allow_lowercase` lifts the proper-noun capital guard for a token that
+    the caller knows sits inside an explicit roster (after a colour / role
+    label or a bullet): the Aragón and Balearic IGP pliegos write their
+    whole list in lower case ("Tintas: cabernet-sauvignon, derechero,
+    garnacha tinta …") and the guard silently emptied all five of them."""
     name = name.strip().strip("«»\"'·")
     name = _FOOTNOTE_MARKER_RE.sub("", name).strip()
     name = _LEADING_COLON_LABEL_RE.sub("", name)
@@ -448,7 +511,10 @@ def _normalise_grape_entry(name: str, ambient_colour: str | None) -> dict | None
         return None
 
     words = name.split()
-    if not words or len(words) > 4:
+    # A trailing OIV colour code ("Moscatel de Grano Menudo B.") is not a
+    # name word; match_variety strips it itself.
+    name_words = words[:-1] if len(words) > 1 and words[-1] in _OIV_COLOUR_LETTERS else words
+    if not words or len(name_words) > 4:
         return None
     if all(w.lower() in _GRAPE_DROP_TOKENS or w.lower() in _GRAPE_HEADER_STOPWORDS
            for w in words):
@@ -457,7 +523,9 @@ def _normalise_grape_entry(name: str, ambient_colour: str | None) -> dict | None
     # AND uppercase. Rejects "son los vinos", "y vijariego negro" after
     # the leading-connector strip already failed, lowercase prose, etc.
     first = words[0]
-    if not first[0].isalpha() or not first[0].isupper():
+    if not first[0].isalpha():
+        return None
+    if not first[0].isupper() and not allow_lowercase:
         return None
 
     result = match_variety(name, ambient_colour=ambient_colour or None)
@@ -469,14 +537,25 @@ def _normalise_grape_entry(name: str, ambient_colour: str | None) -> dict | None
 _HEADER_LINE_RE = re.compile(
     r"^[-•·*]|"
     r"^(?:preferent|principal|permitid|recomendad|autorizad|accesori|complementari)|"
-    r"^[a-z]\.\s|"           # "a. Variedades de uvas blancas"
-    r"^\d+\.\s|"             # "1. La elaboración..."
+    r"^[a-z][.)]\s|"          # "a. Variedades de uvas blancas" / "b) Variedades de uva tinta"
+    r"^\d+[.)]\s|"            # "1. La elaboración..."
     r"variedades?\s+(?:de\s+uvas?\s+)?(?:tinta|blanca|negra|rosa)s?\b",
     re.IGNORECASE,
 )
 
 
-_PDF_PAGE_FOOTER_RE = re.compile(r"^\s*-\s*\d+\s*-\s*$")
+# Page furniture pdftotext leaves inside a section: ` -2- ` footers, bare
+# page numbers (`5`), and the per-page running header of a national-format
+# pliego ("PLIEGO DE CONDICIONES D.O.P. «Urbezo», 4 de marzo de 2019 …").
+# Left in place, a running header ending in a date glued itself to the next
+# roster line, and the digits then failed the whole first token (Urbezo lost
+# Chardonnay).
+_PDF_PAGE_FOOTER_RE = re.compile(r"^\s*(?:-\s*\d+\s*-|\d{1,3})\s*$")
+_PDF_RUNNING_HEADER_RE = re.compile(r"^\s*pliego\s+de\s+condiciones\b", re.IGNORECASE)
+# A line ending in a preposition / connector is mid-phrase — its variety name
+# continues on the next line ("Moscatel de\nAlejandría B." in Valles de
+# Sadacia, where no comma is available to trigger list-mode stitching).
+_DANGLING_CONNECTOR_RE = re.compile(r"\s(?:de|del|y|e|o|u)$", re.IGNORECASE)
 
 
 def _stitch_lines(text: str) -> list[str]:
@@ -499,7 +578,8 @@ def _stitch_lines(text: str) -> list[str]:
     prev_indent = 0
     for raw_line in text.splitlines():
         stripped = raw_line.strip()
-        if not stripped or _PDF_PAGE_FOOTER_RE.match(stripped):
+        if (not stripped or _PDF_PAGE_FOOTER_RE.match(stripped)
+                or _PDF_RUNNING_HEADER_RE.match(stripped)):
             continue
         indent = len(raw_line) - len(raw_line.lstrip())
         is_header = bool(_HEADER_LINE_RE.match(stripped))
@@ -509,7 +589,8 @@ def _stitch_lines(text: str) -> list[str]:
             bool(out) and not is_header
             and "," in prev and not prev.rstrip().endswith((".", ";"))
         )
-        if is_indent_continuation or is_list_continuation:
+        is_phrase_continuation = bool(out) and bool(_DANGLING_CONNECTOR_RE.search(prev))
+        if is_indent_continuation or is_list_continuation or is_phrase_continuation:
             out[-1] = (prev + " " + stripped).strip()
         else:
             out.append(stripped)
@@ -569,13 +650,18 @@ def parse_grapes(section_text: str) -> dict:
     seen_slugs: set[str] = set()
 
     for raw_line in _stitch_lines(text):
-        line = raw_line.strip().strip("-•·").strip()
+        line = raw_line.strip().strip("-•·,*").strip()
         if not line:
             continue
+        # A bullet, a colour / role label or an inline label further along
+        # the line proves the line is a roster, not prose: lower-case names
+        # are then accepted (see `_normalise_grape_entry`).
+        in_roster = raw_line.lstrip()[:1] in "-•·,*"
 
         # Colour header — sets ambient for subsequent variety tokens.
         m_col = _COLOUR_HEADER_RE.search(line)
         if m_col:
+            in_roster = True
             colour_kw = (m_col.group(1) or m_col.group(2) or "").lower()
             ambient_colour = _COLOUR_BY_KEYWORD.get(colour_kw)
             after = line[m_col.end():].lstrip(" :")
@@ -586,6 +672,7 @@ def parse_grapes(section_text: str) -> dict:
         # Role header — flips current bucket; consume the rest of the line.
         m_role = _ROLE_HEADER_RE.match(line)
         if m_role:
+            in_roster = True
             kw = (m_role.group(1) or m_role.group(2) or "").lower()
             for k, v in _ROLE_BY_KEYWORD.items():
                 if kw.startswith(k):
@@ -607,6 +694,7 @@ def parse_grapes(section_text: str) -> dict:
             seg = segments[i] or ""
             if i > 0:
                 # The element at i-1 was the role keyword that introduced this seg.
+                in_roster = True
                 kw = (segments[i - 1] or "").lower()
                 for k, v in _ROLE_BY_KEYWORD.items():
                     if kw.startswith(k):
@@ -617,8 +705,18 @@ def parse_grapes(section_text: str) -> dict:
                 tok = tok.strip(" .:")
                 if not tok:
                     continue
+                m_label = _INLINE_COLOUR_LABEL_RE.match(tok)
+                if m_label:
+                    in_roster = True
+                    colour_kw = (m_label.group(1) or m_label.group(2) or "").lower()
+                    ambient_colour = _COLOUR_BY_KEYWORD.get(colour_kw)
+                    tok = tok[m_label.end():].strip(" .:")
+                    if not tok:
+                        continue
                 for synonym in _split_synonym_group(tok):
-                    entry = _normalise_grape_entry(synonym, ambient_colour)
+                    entry = _normalise_grape_entry(
+                        synonym, ambient_colour, allow_lowercase=in_roster,
+                    )
                     if entry is None:
                         continue
                     _emit_grape_with_split(entry, role, seen_slugs, details)
@@ -922,6 +1020,9 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         # "de uva" reliably qualifies a grape-variety section.
         "variedad(es) de uva", "variedades de uva", "variedad de uva",
         "variedades de uvas", "variedad o variedades",
+        # National-format pliegos (Valles de Sadacia, Pago de Otazu, Urbezo):
+        # "VARIEDADES DE VID [DE LAS QUE PROCEDE EL VINO]".
+        "variedades de vid", "variedad de vid",
         # EU 2024 template variant ("PRINCIPALES UVAS DE VINIFICACIÓN"):
         "uvas de vinificación", "uvas de vinificacion",
         "principales uvas",

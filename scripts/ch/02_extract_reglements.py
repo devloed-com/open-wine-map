@@ -55,6 +55,7 @@ Sub-denomination model (v1):
 
 from __future__ import annotations
 
+import copy
 import json
 import sys
 from collections import Counter
@@ -336,6 +337,12 @@ def main() -> int:
     # `valais-wallis` with a single-commune polygon resolution.
     vs_extract = canton_data.get("vs", {})
     valais_parent = next((e for e in entries if e.canton == "vs" and e.tier == "cantonale"), None)
+    # The communal règlements restrict, never extend, the cantonal roster,
+    # so a grand cru inherits the parent's grapes the way FR DGCs do —
+    # an empty list rendered as "no grapes" (audit_empty_grapes INHERIT).
+    valais_record = next((r for r in records if r["slug"] == "valais-wallis"), None)
+    inherited_grapes = copy.deepcopy((valais_record or {}).get("grapes") or {"details": []})
+    inherited_varieties = ((valais_record or {}).get("section_roles") or {}).get("varieties", "")
     if valais_parent is not None:
         for gc in VS_GRAND_CRU:
             display_name = gc["grand_cru_name"]
@@ -372,12 +379,12 @@ def main() -> int:
                         f"OVV art. 86)."
                     ),
                     "geo_area": "",
-                    "varieties": "",
+                    "varieties": inherited_varieties,
                     "link_to_terroir": "",
                 },
-                "grapes": {"details": []},
+                "grapes": copy.deepcopy(inherited_grapes),
                 "geo_communes": geo_communes,
-                "n_grapes": 0,
+                "n_grapes": len(inherited_grapes.get("details") or []),
                 "n_communes": len(geo_communes),
                 "grand_cru": {
                     "commune": commune_name,

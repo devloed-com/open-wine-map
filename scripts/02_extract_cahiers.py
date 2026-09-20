@@ -329,7 +329,10 @@ IGP_SECTION_HDR_RE = re.compile(
     # header>\n…` — a permissive `\s*` would bind the trailing page number
     # of one page to the "Publié au BO Agri…" header text on the next
     # page, producing phantom section titles. Restricting to space/tab
-    # keeps the header recognition single-line.
+    # keeps the header recognition single-line. Leading whitespace does
+    # admit \x0c, as the Roman regex does: a header that opens a new page
+    # sits right after the form feed ("\x0c5    Encépagement" in the
+    # Île-de-France cahier) and was otherwise never seen.
     # Top-level number is capped at 2 digits (1–99). Real IGP cahiers never
     # exceed ~12 top-level sections, but the unbounded form picked up 5-digit
     # postal codes ("11010 Vitoria-Gasteiz") as phantom section markers
@@ -339,7 +342,7 @@ IGP_SECTION_HDR_RE = re.compile(
     # analytic-norm lines like "125 mg/l …" as phantom titles) — with one
     # carve-out: a literal lowercase "lien" start, seen in the Côte
     # Vermeille cahier ("10- lien avec la zone géographique").
-    rf"^[ \t]*(\d{{1,2}}(?:[.\-]\d+)*)[\.\-:\)]*[ \t]*(?:{DASH}[ \t]*)?"
+    rf"^[ \t\x0c]*(\d{{1,2}}(?:[.\-]\d+)*)[\.\-:\)]*[ \t]*(?:{DASH}[ \t]*)?"
     rf"((?:[A-ZÉÈÀÂÔÎÏÛŸ]|lien\b)[\wÀ-ÿ '’\-]{{3,80}})[ \t]*[:.]?[ \t]*$",
     re.MULTILINE,
 )
@@ -383,12 +386,27 @@ def extract_sections(segment: str) -> tuple[dict[str, str], dict[str, str]]:
     body = segment[: chapitre_starts[1]] if len(chapitre_starts) >= 2 else segment
 
     matches = list(SECTION_HDR_RE.finditer(body))
+    present = {m.group(1) for m in matches}
     bodies: dict[str, str] = {}
     titles: dict[str, str] = {}
+    last_roman = ""
     for i, m in enumerate(matches):
         roman = m.group(1)
+        if roman == last_roman:
+            # The cahier repeats the numeral it just used ("IV.- Aires …"
+            # then "IV.-Encépagement" in Picpoul de Pinet): a typo for the
+            # next numeral, which is then missing from the whole document
+            # and whose successor follows right after. Relabel instead of
+            # dropping the section on the floor. The successor test keeps
+            # a CHAPITRE-II/III "II … II" repeat from being renamed.
+            idx = ROMAN.index(roman)
+            following = matches[i + 1].group(1) if i + 1 < len(matches) else ""
+            if (idx + 2 < len(ROMAN) and ROMAN[idx + 1] not in present
+                    and following == ROMAN[idx + 2]):
+                roman = ROMAN[idx + 1]
         if roman in bodies:
             continue
+        last_roman = roman
         title = re.sub(r"\s+", " ", m.group(2)).strip()
         start = m.end()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
@@ -438,6 +456,29 @@ def route_sections(bodies: dict[str, str], titles: dict[str, str]) -> dict[str, 
     if "lien" not in routed:
         routed["lien"] = bodies.get("X", "")
     return routed
+
+
+# "1°- Encépagement" / "1° - Encépagement" / "1 - Encépagement": the
+# sub-block of section V that carries the role lists.
+ENCEPAGEMENT_BLOCK_RE = re.compile(
+    rf"^[ \t\x0c]*1[ \t]*(?:°[ \t]*{DASH}?|{DASH}|\))[ \t]*Enc[ée]pagement\b",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def encepagement_block(section: str) -> str:
+    """Drop whatever precedes the "1°- Encépagement" sub-block of section V.
+
+    The 2025 MASA republications (Costières de Nîmes) open section V with
+    the page header and the règles-de-proportion prose *before* the 1°
+    sub-block; `parse_grapes` truncates at the first "règles de
+    proportion" and so read nothing. A section that opens with the
+    sub-block — or has none — is returned unchanged.
+    """
+    m = ENCEPAGEMENT_BLOCK_RE.search(section)
+    if m is None or m.start() == 0:
+        return section
+    return section[m.start():]
 
 
 _IGP_LIEN_KEYWORDS = ("lien avec", "lien au terroir", "lien au territoire", "lien à l'origine")
@@ -945,10 +986,22 @@ def extract_one(name: str, text: str) -> dict | None:
              if any(kw in t.lower() for kw in SECTION_ROLE_KEYWORDS["lien"])),
             None,
         )
+        # Encépagement is usually section 5, but some templates fold it
+        # into "4 – Encépagement et conduite de vignoble" (4.1 / 4.2 / 4.3
+        # — Lavilledieu), where section 5 is the harvest. Route by title
+        # keyword first; a sub-numbered hit resolves to its parent, whose
+        # body carries the merged children.
+        enc_key = next(
+            (k for k, t in igp_titles.items()
+             if any(kw in t.lower() for kw in SECTION_ROLE_KEYWORDS["encepagement"])),
+            None,
+        )
+        if enc_key is not None and _is_subnumber(enc_key):
+            enc_key = re.split(r"[.\-]", enc_key)[0]
         routed = {
             "aire": sections.get("4", ""),
             "couleur": sections.get("3", ""),
-            "encepagement": sections.get("5", ""),
+            "encepagement": sections.get(enc_key or "5", ""),
             "lien": sections.get(lien_key, "") if lien_key else next(
                 (sections.get(k, "") for k in ("8", "7", "9") if sections.get(k)), "",
             ),
@@ -1525,7 +1578,7 @@ def main() -> int:
             record["grapes"] = {"principal": [], "accessory": [], "observation": [], "details": []}
             record["styles"] = []
         else:
-            v_text = roles.get("encepagement") or ""
+            v_text = encepagement_block(roles.get("encepagement") or "")
             iii_text = roles.get("couleur") or ""
             grapes = parse_grapes(v_text)
             record["grapes"] = {

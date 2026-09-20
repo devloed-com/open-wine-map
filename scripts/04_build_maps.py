@@ -121,6 +121,8 @@ from _lib.gi_terms import (
 )
 from _lib.gr.geometry import GRPolygonIndex
 from _lib.gr.region import derive_region as derive_gr_region
+from _lib.grape_gaps import classify as classify_grape_gaps
+from _lib.grape_gaps import summary_line as grape_gaps_line
 from _lib.hr.geometry import HRPolygonIndex
 from _lib.hr.region import derive_region as derive_hr_region
 from _lib.hu.geometry import HUPolygonIndex
@@ -3807,6 +3809,10 @@ def emit_html(
                 toks = ck.strip(";").split(";")
                 if len(toks) > 1:
                     gi_term_display[toks[1]] = (p.get("country") or "", p.get("national_term") or "")
+
+    # A wine card with no grape pills is a silent parser or inheritance gap;
+    # one line per build, the full list is scripts/audit_empty_grapes.py.
+    print(grape_gaps_line(classify_grape_gaps(aocs)), file=sys.stderr)
 
     def sort_facet(d: dict[str, int]) -> list[tuple[str, int]]:
         return sorted(d.items(), key=lambda kv: (-kv[1], kv[0]))

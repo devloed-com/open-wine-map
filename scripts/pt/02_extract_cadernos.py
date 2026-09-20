@@ -75,7 +75,7 @@ _GRAPE_HEADER_KEYWORDS = re.compile(
     r"|c[óo]digo\s+nome.*"
     r"|de\s+uva"
     r"|cor"
-    r"|tinta|branca|tinto|branco|tintas|brancas)\s*[:\-]?\s*$",
+    r"|tinta|branca|tinto|branco|tintas|brancas|rosadas?|pret[ao]s?|rox[ao]s?)\s*[:\-]?\s*$",
     re.IGNORECASE,
 )
 # Tokens that look like prose words, not variety names. Used to filter
@@ -101,8 +101,10 @@ _LINE_TAIL_TRIM_RE = re.compile(r"\s+e\s*$", re.IGNORECASE)
 # real variety name. Matches at end-of-line only.
 _COLOUR_CODE_TAIL_RE = re.compile(r"\s+(?:Rs|Rg|[BNRGT])\s*$")
 
-# Bairrada-style PRT tabular row prefix: `PRT52003 ...`.
-_PRT_PREFIX_RE = re.compile(r"^\s*PRT\d{4,6}\s+", re.IGNORECASE)
+# Bairrada-style PRT tabular row prefix: `PRT52003 ...`. The IGP
+# cadernos also print the code with a space (`PRT 52316 Antão Vaz`) and
+# Terras do Dão has a `PT52407` typo — both are the same row shape.
+_PRT_PREFIX_RE = re.compile(r"^\s*PR?T\s?\d{4,6}\s+", re.IGNORECASE)
 
 # PT-IVV tabular name + synonym split. Each side is `<Cap-word>
 # [(de|do|da|dos|das) <Cap-word>]` (handles Pico's `Arinto dos Açores
@@ -231,14 +233,15 @@ def _split_line_into_candidates(line: str) -> list[str]:
     - `Alfrocheiro, Alvarelhão, … e Trincadeira` (enumeration): split.
     - `Arinto (Pedernã)` (parenthesised synonym): emit both as separate
       candidates so the matcher sees `Arinto` and `Pedernã`
-      independently. The matcher's vocab folds them to the same slug;
+      independently; `Aragonez (Tinta-Roriz/Tempranillo)` splits the
+      synonyms on `/` too. The matcher's vocab folds them to the same slug;
       dedupe drops the duplicate. Tolerates an unbalanced opening paren
       from a column-split fragment.
     """
     paren_raw = _PAREN_SYNONYM_RE.findall(line)
     paren_synonyms: list[str] = []
     for content in paren_raw:
-        for piece in re.split(r"\s*[,;]\s*", content):
+        for piece in re.split(r"\s*[,;/]\s*", content):
             piece = piece.strip()
             if piece:
                 paren_synonyms.append(piece)
@@ -347,6 +350,40 @@ def _line_candidates(line: str) -> list[str]:
     return _split_line_into_candidates(line) if line else []
 
 
+_MAX_WRAP_JOINS = 3
+
+
+def _join_wrapped_lines(lines: list[str]) -> list[str]:
+    """Re-join a name or parenthesised synonym that pdftotext wrapped
+    across two lines in the comma-enumeration layout (Algarve:
+    `Mourisco-` / `Branco, Perrum, …` and `Tinta-Caiada (Pau-` /
+    `Ferro/Tinta- Lameira), …`). A line ending in a hyphen joins the
+    next line without a space; a line with an unclosed `(` joins it
+    with one. A wrap may chain (Algarve wraps `(Maria` and `Mourisco-`
+    on consecutive lines) but never beyond `_MAX_WRAP_JOINS` lines, so
+    an unclosed `(` cannot swallow the section; a lone `-` (the
+    empty-list placeholder) is never a wrap.
+    """
+    out: list[str] = []
+    pending = ""
+    joins = 0
+    for line in lines:
+        cur = line.strip()
+        if pending:
+            cur = pending + ("" if pending.endswith("-") else " ") + cur
+            pending = ""
+        wraps = (cur.endswith("-") and len(cur) > 1) or cur.count("(") > cur.count(")")
+        if wraps and joins < _MAX_WRAP_JOINS:
+            pending = cur
+            joins += 1
+            continue
+        out.append(cur)
+        joins = 0
+    if pending:
+        out.append(pending)
+    return out
+
+
 def parse_grape_list(grapes_text: str) -> dict:
     """Best-effort flat slug list from a PT grapes section.
 
@@ -367,8 +404,8 @@ def parse_grape_list(grapes_text: str) -> dict:
         return {"principal": [], "accessory": [], "details": []}
     seen: set[str] = set()
     details: list[dict] = []
-    for raw in grapes_text.split("\n"):
-        candidates = _line_candidates(raw.strip())
+    for raw in _join_wrapped_lines(grapes_text.split("\n")):
+        candidates = _line_candidates(raw)
         if candidates == ["__STOP__"]:
             break
         for candidate in candidates:

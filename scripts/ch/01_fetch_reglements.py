@@ -40,7 +40,7 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 import requests
 
@@ -51,6 +51,17 @@ import requests
 # whose `pdf_link` field points to the canonical PDF. Stage 01 detects
 # the SPA pattern and re-fetches via API + PDF.
 LEXWORK_APP_RE = re.compile(r"/app/(de|fr|it)/texts_of_law/(.+)$")
+
+# Some cantonal collections (Jura's RSJU) answer the registered URL with
+# an HTML shell that only embeds the règlement in a PDF.js viewer: the
+# text is in the PDF the viewer's `file=` parameter points at, and the
+# shell itself carries nothing but site navigation. Stage 02 then scanned
+# the navigation and found no variety and no commune. Detect the viewer
+# and follow its `file=` link to the PDF.
+PDF_VIEWER_FILE_RE = re.compile(
+    r"""(?:PDFViewer|pdfjs|pdf\.js)/[^"'<>]*?viewer\.html\?[^"'<>]*?\bfile=([^"'&<>]+)""",
+    re.I,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -127,6 +138,15 @@ def _resolve_lexwork(url: str) -> tuple[str, str] | None:
     return None
 
 
+def _embedded_pdf_url(html_body: bytes, page_url: str) -> str | None:
+    """Return the PDF a PDF.js viewer shell embeds, resolved against
+    `page_url`, or None when the page is not such a shell."""
+    m = PDF_VIEWER_FILE_RE.search(html_body.decode("utf-8", errors="replace"))
+    if not m:
+        return None
+    return urljoin(page_url, unquote(m.group(1)))
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     overrides = _load_overrides()
@@ -180,6 +200,34 @@ def main() -> int:
             status = "ok-fetched" + (",manual-override"
                                      if overrides.get(canton) else "")
         fmt = effective_fmt
+
+        # PDF.js-viewer shell (RSJU): the règlement is the embedded PDF,
+        # so fetch that instead and hand stage 02 a `reglement.pdf`.
+        if fmt == "html":
+            embedded = _embedded_pdf_url(body, effective_url)
+            if embedded:
+                pdf_dest = canton_dir / "reglement.pdf"
+                if pdf_dest.exists() and not overrides.get(canton):
+                    body = pdf_dest.read_bytes()
+                    print(f"[01-ch] {canton}: viewer shell → cached "
+                          f"{pdf_dest.relative_to(ROOT)}", file=sys.stderr)
+                else:
+                    try:
+                        body = _fetch(embedded)
+                    except requests.RequestException as e:
+                        print(f"[01-ch] {canton}: embedded PDF fetch failed — {e}",
+                              file=sys.stderr)
+                        results[canton] = {
+                            "canton": canton, "status": "fetch-failed",
+                            "url": embedded, "error": str(e),
+                        }
+                        n_fail += 1
+                        continue
+                    pdf_dest.write_bytes(body)
+                    print(f"[01-ch] {canton}: viewer shell → saved "
+                          f"{pdf_dest.relative_to(ROOT)} ({len(body):,} bytes)",
+                          file=sys.stderr)
+                dest, fmt, effective_url = pdf_dest, "pdf", embedded
 
         results[canton] = {
             "canton": canton,

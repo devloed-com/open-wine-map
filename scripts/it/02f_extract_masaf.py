@@ -70,6 +70,8 @@ from _lib.it.masaf import (  # noqa: E402
     derive_geo_area,
     derive_summary,
     extract_article_runs,
+    extract_articles,
+    looks_letter_spaced,
     match_wines_to_pdfs,
     parse_annex_grapes_with,
     parse_grapes_with,
@@ -219,18 +221,39 @@ def extract_pdf_from_bundle(bundle_key: str, archive_path: str,
     return dest.read_bytes()
 
 
-def pdf_to_text(pdf_path: Path) -> str:
-    """Shell out to pdftotext -layout. Same dep the ES + PT pipelines
+def pdf_to_text(pdf_path: Path, mode: str = "-layout") -> str:
+    """Shell out to pdftotext (-layout by default; -raw for the
+    letter-spacing repair below). Same dep the ES + PT pipelines
     already require (poppler from system); raises CalledProcessError on
     failure so the per-slug fallback in main() can surface the error."""
     result = subprocess.run(
-        ["pdftotext", "-layout", str(pdf_path), "-"],
+        ["pdftotext", mode, str(pdf_path), "-"],
         check=True,
         capture_output=True,
         text=True,
         encoding="utf-8",
     )
     return result.stdout
+
+
+def repair_letter_spaced_articles(pdf_path: Path, articles: dict[int, str]) -> list[int]:
+    """Replace every article whose -layout text came out letter-spaced
+    (a font with broken glyph metrics — Catalanesca del Monte Somma's
+    "Cat alan esca bi an ca") with the same article from a -raw
+    extraction, which ignores the metrics. Only the degraded articles
+    are swapped: -raw loses column order elsewhere, so it is never the
+    default. Returns the article numbers repaired."""
+    degraded = [n for n, body in articles.items() if looks_letter_spaced(body)]
+    if not degraded:
+        return []
+    raw_articles = extract_articles(pdf_to_text(pdf_path, "-raw"))
+    repaired: list[int] = []
+    for n in degraded:
+        body = raw_articles.get(n)
+        if body and not looks_letter_spaced(body):
+            articles[n] = body
+            repaired.append(n)
+    return repaired
 
 
 def collapse_whitespace(s: str) -> str:
@@ -461,6 +484,10 @@ def process_slug(
                 f"PDF may be image-only or use a non-standard template"
             )
         return {"slug": slug, "status": "no-articles", "reason": "no-anchors"}
+    repaired = repair_letter_spaced_articles(pdf_dest, articles)
+    if repaired:
+        print(f"  [text] {slug}: letter-spaced article(s) {repaired} re-read with pdftotext -raw",
+              file=sys.stderr)
 
     record = build_record(wine, articles, pdf_meta, match_info, comune_map, raw_text=text,
                           annexes=annexes)

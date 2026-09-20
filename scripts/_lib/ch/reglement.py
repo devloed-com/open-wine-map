@@ -59,6 +59,12 @@ _CH_STOP_SURFACES = frozenset({
     # the Lorraine grape aubin).
     "colombier",
     "saintaubinsauges",
+    # JU ordonnance 916.141 prose: Art. 13 lists the training systems
+    # ("guyot, lyre, cordon et pergola" → the Piedmont grape Invernenga,
+    # alias "pergola") and the signature block reads "Le président"
+    # (→ the Portuguese grape Valente, alias "président").
+    "pergola",
+    "president",
 })
 
 # Section-keyword tables — earliest match wins; ordering is most-

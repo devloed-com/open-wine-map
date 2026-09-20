@@ -47,14 +47,68 @@ def _pdftotext(path: Path) -> str:
     ).stdout
 
 
-def process_region(region: str, cfg: dict, refresh: bool) -> dict:
+CATALOGOVITI_SEARCH = "http://catalogoviti.politicheagricole.it/post1.php"
+CATALOGOVITI_PAGE_SIZE = 50
+
+
+def fetch_catalogoviti_province(province_code: str) -> list[list]:
+    """Every wine-grape variety (clones excluded — `filtro00`) the MASAF
+    Registro Nazionale classifies as idonea alla coltivazione in one
+    province, walking the search endpoint's 50-row pages. Same query the
+    site's Ricerca form issues (see the page's `aggiornamento()`)."""
+    rows: list[list] = []
+    page = 1
+    while True:
+        r = requests.get(
+            CATALOGOVITI_SEARCH,
+            params={
+                "varieta": "", "codice": "", "nclone": "", "codice_clone": "",
+                "gazzetta": "", "colore": "", "catalogo": "UV",
+                "province": province_code, "denominazione": "",
+                "sortname": "sort1", "sortorder": "sorting asc",
+                "page": page, "filtro00": "true",
+            },
+            headers={"User-Agent": UA}, timeout=60,
+        )
+        r.raise_for_status()
+        data = json.loads(r.content.decode("latin-1"))
+        rows.extend(data.get("rows") or [])
+        stats = data.get("stats") or {}
+        if int(stats.get("end", 0)) >= int(stats.get("total", 0)) or not data.get("rows"):
+            return rows
+        page += 1
+
+
+def _fetch_register_body(region: str, cfg: dict, refresh: bool) -> tuple[bytes, str]:
+    """(cached bytes, text handed to the parser) for one region. A PDF
+    register is fetched to `<region>.pdf` and read through pdftotext; a
+    catalogoviti register is the JSON of the per-province rows, cached
+    to `<region>.catalogoviti.json` and parsed as-is."""
+    if cfg.get("format") == "catalogoviti":
+        cache = REG_DIR / f"{region}.catalogoviti.json"
+        if refresh or not cache.exists():
+            provinces = {
+                code: {"name": name, "rows": fetch_catalogoviti_province(code)}
+                for code, name in cfg["provinces"].items()
+            }
+            cache.write_text(json.dumps({
+                "endpoint": CATALOGOVITI_SEARCH,
+                "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "provinces": provinces,
+            }, ensure_ascii=False, indent=1), encoding="utf-8")
+        body = cache.read_bytes()
+        return body, body.decode("utf-8")
     pdf = REG_DIR / f"{region}.pdf"
     if refresh or not pdf.exists():
         r = requests.get(cfg["url"], headers={"User-Agent": UA}, timeout=60)
         r.raise_for_status()
         pdf.write_bytes(r.content)
-    body = pdf.read_bytes()
-    varieties = parse_register(_pdftotext(pdf), cfg["template"])
+    return pdf.read_bytes(), _pdftotext(pdf)
+
+
+def process_region(region: str, cfg: dict, refresh: bool) -> dict:
+    body, text = _fetch_register_body(region, cfg, refresh)
+    varieties = parse_register(text, cfg["template"])
     sidecar = {
         "region": region,
         "source": {
@@ -62,6 +116,8 @@ def process_region(region: str, cfg: dict, refresh: bool) -> dict:
             "source_org": cfg.get("source_org", ""),
             "note": cfg.get("note", ""),
             "template": cfg["template"],
+            "format": cfg.get("format", "pdf"),
+            "provinces": cfg.get("provinces", {}),
             "sha256": hashlib.sha256(body).hexdigest(),
             "bytes": len(body),
             "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),

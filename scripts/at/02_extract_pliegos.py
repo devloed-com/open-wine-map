@@ -40,6 +40,7 @@ from _lib.at.einziges_dokument import (  # noqa: E402
     SECTION_NUM_RE,
     SECTION_ROLE_KEYWORDS,
     STYLE_MARKERS,
+    title_has_keyword,
 )
 from _lib.at.region import derive_bundesland  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
@@ -112,18 +113,23 @@ def _match_section_body(
     """Keyword-priority match: outer loop on keywords (most specific first),
     inner loop on sections in document order. Falls back to a section's
     numbered children when the parent body is empty (newer EUR-Lex
-    template leaves parent headers blank)."""
-    for kw in keywords:
-        for num, title in titles.items():
-            tlow = title.lower()
-            if kw not in tlow:
-                continue
-            if any(b in tlow for b in title_blocklist):
-                continue
-            body = sections.get(num, "")
-            if not body.strip():
-                body = _gather_subsections(sections, num)
-            return body
+    template leaves parent headers blank).
+
+    An exact pass runs over every keyword first; only when no title
+    contains any of them does a second, typo-tolerant pass run (see
+    `title_has_keyword`), so a fuzzy hit never outranks an exact one."""
+    for fuzzy in (False, True):
+        for kw in keywords:
+            for num, title in titles.items():
+                tlow = title.lower()
+                if not title_has_keyword(tlow, kw, fuzzy=fuzzy):
+                    continue
+                if any(title_has_keyword(tlow, b, fuzzy=fuzzy) for b in title_blocklist):
+                    continue
+                body = sections.get(num, "")
+                if not body.strip():
+                    body = _gather_subsections(sections, num)
+                return body
     return None
 
 

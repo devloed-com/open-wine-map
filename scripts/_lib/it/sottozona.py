@@ -59,6 +59,19 @@ PATTERN_A_RE = re.compile(
     re.MULTILINE,
 )
 
+# Pattern C — a sottozona whose rules live in an annex of the same
+# disciplinare, announced in Article 1 without a colon or a list:
+# "La sottozona Valtènesi è regolamentata nell'allegato 1, in calce allo
+# stesso disciplinare" (Riviera del Garda Classico, since the 2024
+# amendment folded the former DOC Valtènesi back in). The name runs up
+# to the verb.
+PATTERN_C_RE = re.compile(
+    r"\b[Ll]a\s+sotto[\s\-]?zona\s+"
+    r"(?P<name>[«»\"“”]?[A-ZÀ-ÖØ-Þ][^\n,;:.]{0,60}?[«»\"“”]?)"
+    r"\s+(?:è|e')\s+(?:regolamentat|disciplinat|normat)\w*\s+"
+    r"(?:nell[’']|dall[’']|all[’']|in|con)\w*\s*allegato\b",
+)
+
 # Pattern B — preamble phrase that announces a sottozona enumeration,
 # followed by a comma-and-`e`-separated list of names. We deliberately
 # allow the list to be open-ended (some preambles run on for a
@@ -140,6 +153,12 @@ def extract_sottozone(geo_area_brief: str, parent_wine_name: str) -> list[dict]:
         name = m.group("name").strip()
         body = m.group("body").strip()
         rec = _emit(name, [body] if body else [], "sottozona-prefix")
+        if rec["slug"] not in seen_slugs and rec["name"]:
+            seen_slugs.add(rec["slug"])
+            out.append(rec)
+
+    for m in PATTERN_C_RE.finditer(geo_area_brief):
+        rec = _emit(m.group("name"), [], "sottozona-annex-reference")
         if rec["slug"] not in seen_slugs and rec["name"]:
             seen_slugs.add(rec["slug"])
             out.append(rec)

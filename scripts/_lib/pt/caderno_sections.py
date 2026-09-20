@@ -29,9 +29,17 @@ anywhere in the document and carve up the text between them. Each
 match's position becomes a boundary; consecutive boundaries delimit
 the body of one semantic section.
 
-The returned dict maps semantic-role names (`area`, `grapes`, `link`,
-`yields`, `description`, `category`, `traditional`, `practices`,
-`additional`) to section bodies. Roles that are absent map to "".
+The returned dict maps semantic-role names (`area`, `grapes`,
+`grapes_secondary`, `link`, `yields`, `description`, `category`,
+`traditional`, `practices`, `additional`) to section bodies. Roles that
+are absent map to "".
+
+Heading variants seen for the grape list: `6. UVAS DE VINHO` (Douro),
+`6. PRINCIPAL(IS) CASTA(S) DE UVA` (Vinho Verde), `6. Castas
+Utilizadas:` (Dão), `6. Principais Uvas de Vinho` (the IGP template +
+Palmela, Távora-Varosa) and a bare `6. CASTAS` (Algarve). The numeric
+prefix must sit within `_NUMERIC_PREFIX_LOOKBACK` chars of the match
+start, so each variant is anchored on its first word.
 """
 
 from __future__ import annotations
@@ -86,14 +94,28 @@ _SECTION_ANCHORS: list[tuple[str, re.Pattern[str]]] = [
             re.IGNORECASE,
         ),
     ),
+    # Listed BEFORE "grapes": the IGP template closes with an (almost
+    # always empty) `5. Uvas de Vinho Secundárias` header after the real
+    # `6. Principais Uvas de Vinho` list. Both start on the same token,
+    # and the sort is stable, so this role wins the overlap and the
+    # secondary block no longer overwrites the principal list.
+    (
+        "grapes_secondary",
+        re.compile(
+            r"(?:UVAS\s+DE\s+VINHO|CASTAS)\s+SECUND[ÁA]RIAS",
+            re.IGNORECASE,
+        ),
+    ),
     (
         "grapes",
         re.compile(
-            r"(?:UVAS\s+DE\s+VINHO"
+            r"(?:PRINCIPAIS\s+UVAS\s+DE\s+VINHO"
+            r"|UVAS\s+DE\s+VINHO"
             r"|PRINCIPAL(?:\(IS\))?\s+CASTA(?:\(S\))?\s+DE\s+UVA"
             r"|PRINCIPAIS\s+CASTAS"
             r"|CASTAS\s+UTILIZADAS"
             r"|CASTAS\s+PRINCIPAIS"
+            r"|CASTAS(?=[ \t]*:?[ \t]*\n)"
             r"|VARIEDADES?\s+DE\s+VITIS\s+VIN[ÍI]FERA)",
             re.IGNORECASE,
         ),

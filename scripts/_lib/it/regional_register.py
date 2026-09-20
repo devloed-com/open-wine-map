@@ -13,6 +13,20 @@ branch per encoding, dispatched by `template`:
   - "columns"  — "<code>  VARIETY  Nero  <synonyms>" with the colour as
                  a spelled word in its own whitespace column (Lazio).
   - "vbcode"   — "<code> Variety V.B.N." (Campania). V.B.N/V.B.B/V.B.G.
+  - "catalogoviti" — the MASAF Registro Nazionale delle Varietà di Vite
+                 (catalogoviti.politicheagricole.it, CREA-VIT) queried
+                 per province: its search endpoint `post1.php` returns
+                 the varieties classified "idonee alla coltivazione" in
+                 a province as JSON rows, each name carrying the same
+                 N./B./G./RS. colour suffix as the regional PDFs. For a
+                 Region that classifies on its whole territory (Molise,
+                 Lombardia — the 2011 MASAF classificazione lists which)
+                 the union over its provinces is the regional list, so
+                 a Region that publishes no standalone PDF (Molise) or
+                 only a JS-gated page (Lombardia) is served from the
+                 national register instead. Stage 02h caches the rows
+                 per province in `<region>.catalogoviti.json`; the
+                 parser reads that JSON text.
 
 Variety names resolve through the shared grape lexicon
 (`_lib.grape_entity.match_variety`); the register's colour marker is
@@ -22,6 +36,8 @@ default.
 
 from __future__ import annotations
 
+import html
+import json
 import re
 import sys
 from pathlib import Path
@@ -95,10 +111,38 @@ def _parse_columns(text: str, out: list[dict], seen: set[str]) -> None:
         _emit(fields[1], col, out, seen)
 
 
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def catalogoviti_variety_lines(cache_text: str) -> list[str]:
+    """The distinct "<code> <Name> <COL>." lines of a stage-02h
+    catalogoviti cache (`{"provinces": {code: {"rows": [...]}}}`), the
+    union over its provinces in register-code order. A row is the
+    endpoint's positional array: `[codice, "<a …>Name N. </a>", clone
+    code, …]`; the variety-only filter leaves the clone columns empty,
+    but a clone row that slips through is keyed by the same codice and
+    collapses into its variety."""
+    data = json.loads(cache_text)
+    by_code: dict[str, str] = {}
+    for prov in (data.get("provinces") or {}).values():
+        for row in prov.get("rows") or []:
+            if len(row) < 2:
+                continue
+            name = html.unescape(_TAG_RE.sub("", str(row[1]))).strip()
+            if name:
+                by_code.setdefault(str(row[0]).strip(), name)
+    return [f"{code} {name}" for code, name in sorted(by_code.items())]
+
+
+def _parse_catalogoviti(text: str, out: list[dict], seen: set[str]) -> None:
+    _parse_suffix("\n".join(catalogoviti_variety_lines(text)), out, seen)
+
+
 _TEMPLATES = {
     "suffix": _parse_suffix,
     "vbcode": _parse_vbcode,
     "columns": _parse_columns,
+    "catalogoviti": _parse_catalogoviti,
 }
 
 

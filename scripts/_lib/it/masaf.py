@@ -196,8 +196,18 @@ def match_wines_to_pdfs(
 # Leading whitespace allows form-feed (\x0c) because MASAF PDFs typically
 # start each new article on its own page, and pdftotext -layout emits a
 # bare \x0c at the start of the article-header line.
+# A PDF whose heading font carries broken glyph metrics comes out of
+# pdftotext with a space inside the word ("Arti col o 2" — Grottino di
+# Roccanova) and, when the number is centred on its own line, with the
+# number on the line after ("Arti col o\n 2" — Catalanesca del Monte
+# Somma; pdftotext -raw does the same for any centred number). The
+# word therefore tolerates a single space between any two of its
+# letters, and the number may follow on the next line — only when the
+# header line carries nothing else, so a body line that happens to
+# start with "Articolo" and continues in prose is not a header.
 _ARTICLE_HEAD_RE = re.compile(
-    r"^[ \t\x0c]*(?:Articolo|Art\.)[ \t]*(\d+)\b[ \t]*([^\n]*)$",
+    r"^[ \t\x0c]*(?:A ?r ?t ?i ?c ?o ?l ?o|Art\.)"
+    r"(?:[ \t]*\n)?[ \t]*(\d+)\b[ \t]*([^\n]*)$",
     re.M,
 )
 
@@ -423,6 +433,15 @@ _WRAP_JOIN_RE = re.compile(
     r"bouschet|bouchet)\b",
     re.I,
 )
+# The same wrap inside a "<name> di <place>" variety name ("Malvasia Nera
+# di\nBasilicata" in Grottino di Roccanova): a line ending in a bare
+# preposition is never a complete enumeration item, so joining it to a
+# capitalised next line only ever restores a wrapped name. Left split,
+# the head alone resolves to the wrong cultivar (Malvasia Nera →
+# malvasia-nera-di-brindisi instead of malvasia-nera-di-basilicata).
+_WRAP_JOIN_PREP_RE = re.compile(
+    r"\b(di|del|della|dell[’'])[ \t]*\n[ \t]*(?=[A-ZÀ-ÖØ-Þ])",
+)
 
 # A disciplinare defines a group designation with a composition
 # parenthetical: "Cabernet (da Cabernet franc e/o Cabernet Sauvignon e/o
@@ -481,7 +500,7 @@ def _scan_vitigno_phrases(text: str) -> list[str]:
 _PERCENT_TAIL_RE = re.compile(
     r"\s*[:\-]?\s*"
     r"(?:(?:dal?|dall['’]|d[ae]ll[ae]|degli|agli|al|all['’]|alla|"
-    r"fino\s+ad?|sino\s+ad?|per|circa|almeno|minimo|massimo|"
+    r"fino\s+a[dl]?|sino\s+a[dl]?|per|circa|almeno|minimo|massimo|"
     r"da\s+0\s+a|un\s+massimo\s+di|l['’])\s*|\d+(?:[.,]\d+)?\s*)*"
     r"\d+(?:[.,]\d+)?\s*%.*$",
     re.I,
@@ -587,6 +606,7 @@ def article2_candidate_phrases(text: str) -> list[str]:
     # break — must run while newlines are still present, before the
     # composition-parenthetical rewrite reads across them.
     single = _WRAP_JOIN_RE.sub(r"\1 \2", single)
+    single = _WRAP_JOIN_PREP_RE.sub(r"\1 ", single)
     # Collapse spaces/tabs but KEEP newlines: disciplinari that list one
     # variety per line ("Merlot\nCabernet franc\nRefosco …") rely on the
     # newline as the enumeration separator (_LINE_SPLIT_RE splits on it).
@@ -649,6 +669,48 @@ def _loose_key(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
+# A disciplinare may write a variety with the OIV berry-colour adjective
+# spelled out after the name ("Catalanesca bianca, minimo 85%") where
+# the lexicon registers the bare name. Only an exact hit on the bare
+# name whose lexicon colour agrees with the adjective is accepted — a
+# name whose colour variant is a distinct cultivar ("Trebbiano nero"
+# against the white trebbiano-toscano) stays unmatched rather than
+# collapsing onto its base.
+_TRAILING_COLOUR_WORD = {
+    "bianco": "blanc", "bianca": "blanc", "nero": "noir", "nera": "noir",
+    "grigio": "gris", "grigia": "gris", "rosa": "rose", "rosato": "rose",
+}
+
+
+def _match_with_colour_word(matcher, phrase: str):
+    parts = phrase.split()
+    if len(parts) < 2:
+        return None
+    colour = _TRAILING_COLOUR_WORD.get(parts[-1].lower())
+    if colour is None:
+        return None
+    hit = matcher(" ".join(parts[:-1]))
+    if hit is None or hit.method != "exact" or (hit.colour or colour) != colour:
+        return None
+    return hit
+
+
+# pdftotext -layout renders a heading/body font with broken glyph metrics
+# as letter-spaced text ("Cat alan esca bi an ca, minimo 85 %" —
+# Catalanesca del Monte Somma). Ordinary Italian prose runs at ~0.16–0.19
+# alphabetic tokens per letter (Barolo 0.16, Chianti 0.17, Quistello
+# 0.18); the letter-spaced article runs at 0.37. pdftotext -raw ignores
+# the metrics and renders the same text whole, so the caller re-extracts
+# an article that trips this test.
+LETTER_SPACED_DENSITY = 0.28
+
+
+def looks_letter_spaced(text: str) -> bool:
+    tokens = re.findall(r"[^\W\d_]+", text)
+    letters = sum(len(t) for t in tokens)
+    return letters >= 40 and len(tokens) / letters > LETTER_SPACED_DENSITY
+
+
 def parse_grapes_with(matcher, article2_body: str, wine_name: str = "") -> dict:
     """Apply `matcher(phrase) -> MatchResult | None` to each candidate
     in `article2_body`. Returns {principal: [...], accessory: [],
@@ -678,7 +740,7 @@ def parse_grapes_with(matcher, article2_body: str, wine_name: str = "") -> dict:
     hits: list = []  # first MatchResult per slug, in order
     from_name: dict[str, bool] = {}  # slug → matched ONLY from phrases restating the wine name
     for phrase in article2_candidate_phrases(article2_body):
-        hit = matcher(phrase)
+        hit = matcher(phrase) or _match_with_colour_word(matcher, phrase)
         if hit is None:
             continue
         if hit.method.startswith("fuzzy"):

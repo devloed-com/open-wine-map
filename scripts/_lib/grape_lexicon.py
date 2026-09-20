@@ -685,6 +685,8 @@ GRAPE_ALIAS = {
     "bouvier": "bouvier",
     "goldburger": "goldburger",
     "rathay": "rathay",
+    "roesler": "roesler",                       # Klosterneuburg red crossing (Zweigelt × [SV 18-402 × Blaufränkisch])
+    "rosler": "roesler",
     "blutenmuskateller": "blutenmuskateller",
     "grauburgunder": "pinot-gris",              # German name for Pinot Gris
     # ----- SI EUR-Lex Enotni-dokument varieties. Slovenian wine grapes
@@ -2081,6 +2083,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "sankt-laurent": "noir",
     "blauer-wildbacher": "noir",
     "rathay": "noir",
+    "roesler": "noir",
     "neuburger": "blanc",
     "scheurebe": "blanc",
     "bouvier": "blanc",

@@ -31,6 +31,8 @@ from __future__ import annotations
 
 import re
 
+from rapidfuzz import fuzz
+
 DOC_ANCHOR_RE = re.compile(
     r'<p[^>]*class="[^"]*\bti-grseq-1\b[^"]*"[^>]*>\s*EINZIGES\s+DOKUMENT\s*</p>',
     re.I | re.S,
@@ -96,6 +98,30 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "kennzeichnung",
     ),
 }
+
+
+# EUR-Lex publishes the single document as the member state typed it, so a
+# section title occasionally carries a typo: Kremstal's section 7 reads
+# "Wichtigste Keltertrauensorte(n)" (a dropped "b") and its section 2
+# "Art der geobrafischen Angabe". An exact substring test then never sees
+# the keyword and the section is silently unrouted — Kremstal shipped with
+# no grape list. `title_has_keyword` therefore falls back to a fuzzy
+# partial match, but only for keywords long enough that a near-miss is
+# still unambiguous: a short keyword such as "name" or "rebsorte" at 90 %
+# would match too much of a wrong title.
+_FUZZY_TITLE_MIN_KEYWORD_LEN = 10
+_FUZZY_TITLE_THRESHOLD = 90
+
+
+def title_has_keyword(title_low: str, keyword: str, *, fuzzy: bool = False) -> bool:
+    """True when `keyword` occurs in the lower-cased section title. With
+    `fuzzy`, a keyword of at least `_FUZZY_TITLE_MIN_KEYWORD_LEN` chars
+    also matches a typo'd title at partial ratio ≥ 90."""
+    if keyword in title_low:
+        return True
+    if not fuzzy or len(keyword) < _FUZZY_TITLE_MIN_KEYWORD_LEN:
+        return False
+    return fuzz.partial_ratio(keyword, title_low) >= _FUZZY_TITLE_THRESHOLD
 
 
 # Title-prefixes that disqualify a section from being routed to `geo_area`
