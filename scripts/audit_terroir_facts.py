@@ -213,7 +213,7 @@ ARROW_RE = re.compile("→")
 # coexist:", "Zierfandler (Synonym: Spätrot)").
 LABEL_PREFIX_RE = re.compile(r"^\s*(?:[^\s:(\d]+\s){0,1}[^\s:(\d]+:\s")
 META_RE = re.compile(
-    r"(?i)\b(wikipedia|according to the (document|specification|cahier)|confirmed by"
+    r"(?i)\b(wikipedia|according to the (production |product )?(document|specification|cahier|disciplinare|pliego)|confirmed by"
     r"|the (cahier|disciplinare|specification|pliego) (states|says|notes)"
     # source-language forms: "secondo il disciplinare", "selon le cahier des charges",
     # "según el pliego", "laut (der) Produktspezifikation", "volgens het productdossier"

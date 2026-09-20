@@ -111,7 +111,8 @@ _TRAILING_META_RE = re.compile(
     r"|gemäß (?:der |dem )?(?:produktspezifikation|einzige[nm] dokument)"
     r"|volgens het (?:productdossier|enig document)|conform het (?:productdossier|enig document)"
     r"|segundo o caderno(?: de especificações)?|de acordo com o caderno(?: de especificações)?"
-    r"|according to the (?:specification|document|cahier))"
+    r"|(?:according to|as (?:stated|set out|indicated) in) the (?:production |product )?(?:specification|document|cahier|disciplinare|pliego)"
+    r"|selon le (?:document unique|pliego)|según el documento único|laut (?:dem )?(?:einzigen dokument|produktdossier))"
     r"\s*(?=[.!?…]?\s*$)",
     re.IGNORECASE,
 )

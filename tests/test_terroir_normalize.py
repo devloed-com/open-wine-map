@@ -87,5 +87,6 @@ def test_trailing_meta_clause_is_dropped_and_the_fact_kept():
     assert normalize_bullet("Un'epoca iniziata 70 milioni di anni fa secondo il disciplinare.") == "Un'epoca iniziata 70 milioni di anni fa."
     assert normalize_bullet("Les sols sont argilo-calcaires, selon le cahier des charges.") == "Les sols sont argilo-calcaires."
     assert normalize_bullet("Die Böden sind Schiefer laut Produktspezifikation") == "Die Böden sind Schiefer."
+    assert normalize_bullet("A period that began 70 million years ago according to the production specification.", "en") == "A period that began 70 million years ago."
     # mid-sentence citations are left to the audit's meta_text check
     assert strip_trailing_meta("Il disciplinare prevede una resa massima di 80 q/ha.") == "Il disciplinare prevede una resa massima di 80 q/ha."
