@@ -29,6 +29,16 @@ os.chdir(WIKI_ROOT)
 
 
 class RangeHandler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        # Local QA only: the per-slug panel JSON (data/d/<locale>/<slug>.json)
+        # and the entity pages are fetched at runtime on stable paths, so a
+        # rebuild does not change their URL and the browser keeps serving its
+        # cached copy across a #hash navigation (2026-09-15: a re-translated
+        # bullet stayed stale on screen). Never cached here; production
+        # caching is the CDN's business.
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
     def send_head(self):
         # Locale-aware SPA fallback: appellations deep-link as real paths
         # (/<lang>/<slug>, EN at /<slug>), which have no file behind them.
