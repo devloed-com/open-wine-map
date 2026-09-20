@@ -611,6 +611,38 @@ fallback.
 
 ## Hungary
 
+### 2026-09-20 — Mura / Murai added (eAmbrosia 41 → 42) ✅
+
+Live eAmbrosia (`country=HU`, `productType=WINE`, `status=registered`) lists
+42 wine GIs (36 DOP + 6 PGI); the cached index had 41. The delta is
+**Mura / Murai** (`PDO-HU-02817`), registered by Commission Implementing
+Regulation (EU) 2026/1792 of 15 July 2026 (single document OJ C/2026/1833).
+
+| Check | reference | pipeline | Match |
+|---|---:|---:|:---:|
+| eAmbrosia wine GIs | 42 | 42 (`raw/hu/eambrosia/index.json`) | ✓ |
+| Mura single document | EUR-Lex C/2026/1833 | fetched (stage 01), 12 varieties, 8 települések, §8 link text (stage 02) | ✓ |
+| Region | Zalai borvidék → Balaton borrégió (the document's own wording) | `Balaton` (`_lib/hu/region.py`) | ✓ |
+| Geometry | post-Bétard; §6 lists Becsehely, Csörnyeföld, Dobri, Letenye, Murarátka, Muraszemenye, Tormafölde, Zajk | `gisco-commune-union`, 8 / 8 communes matched | ✓ |
+| On the map | — | 42 / 42 (`audit_hu_coverage.py`) | ✓ |
+| Terroir facts | — | 12 (gate: 10 supported, 2 rewritten, 0 dropped), translated en/fr/es/nl + back-checked | ✓ |
+
+Recipe:
+
+```
+.venv/bin/python scripts/hu/00_fetch_data.py
+.venv/bin/python scripts/hu/01_fetch_pliegos.py --only mura
+.venv/bin/python scripts/hu/02_extract_pliegos.py --only mura
+.venv/bin/python scripts/02b_fetch_aoc_lexicon.py --lang hu --source raw/hu/dokumentumok-extracted
+.venv/bin/python scripts/hu/02d_extract_terroir_facts.py --only mura --provider anthropic
+.venv/bin/python scripts/02d_verify_terroir_facts.py --only mura
+.venv/bin/python scripts/hu/02e_translate_terroir_facts.py --only mura --provider anthropic
+.venv/bin/python scripts/02e_verify_terroir_facts.py --only mura
+.venv/bin/python scripts/hu/03_generate_wiki.py && .venv/bin/python scripts/04_build_maps.py
+.venv/bin/python scripts/audit_hu_coverage.py
+```
+
+
 ### 2026-05-30 — eAmbrosia ↔ Agrárminisztérium termékleírás register cross-check ✅
 
 **Independent authority**: the Agrárminisztérium (Hungarian Ministry of

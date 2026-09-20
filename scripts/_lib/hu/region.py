@@ -89,6 +89,7 @@ _REGION_BY_FILE_NUMBER: dict[str, str] = {
     "PDO-HU-A1501": "Balaton",          # Nagy-Somló
     "PDO-HU-A1376": "Balaton",          # Somlói
     "PDO-HU-A1502": "Balaton",          # Zala
+    "PDO-HU-02817": "Balaton",          # Mura / Murai (the former Zala area, Reg. 2026/1792)
     "PGI-HU-A1507": "Balaton",          # Balaton PGI
     "PGI-HU-A1508": "Balaton",          # Balatonmelléki PGI (Balaton subset)
     # Pannon
