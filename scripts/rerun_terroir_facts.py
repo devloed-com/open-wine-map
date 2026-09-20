@@ -50,7 +50,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib import cache, terroir_backup  # noqa: E402
+from _lib import batch, cache, terroir_backup  # noqa: E402
 from _lib.terroir_cache import TERROIR, write_source_cache  # noqa: E402
 from _lib.terroir_sources import COUNTRIES  # noqa: E402
 
@@ -192,8 +192,36 @@ def main() -> int:
                       logdir / "audit.log", env)
         log(f"  audit: exit {rc} — {report.relative_to(ROOT)}; strict summary in {logdir / 'audit.log'}")
 
+    log(cost_report(run))
     log(f"done. Rollback with: scripts/rollback_terroir_facts.py --run {run}")
     return 0
+
+
+def cost_report(run: str) -> str:
+    """The run's spend per stage from the batch ledger (`raw/.batch/costs.jsonl`)."""
+    if not batch.COSTS_LEDGER.exists():
+        return "cost: no batch ledger"
+    per_stage: dict[str, float] = {}
+    unpriced = 0
+    for line in batch.COSTS_LEDGER.read_text(encoding="utf-8").splitlines():
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if row.get("run") != run:
+            continue
+        stage = (row.get("stage") or "?").split("-")[0]
+        cost = row.get("cost_usd")
+        if cost is None:
+            unpriced += 1
+            continue
+        per_stage[stage] = per_stage.get(stage, 0.0) + cost
+    if not per_stage and not unpriced:
+        return "cost: no batches recorded for this run"
+    parts = [f"{k} ${v:,.2f}" for k, v in sorted(per_stage.items())]
+    total = sum(per_stage.values())
+    return (f"cost (Batch API): {' · '.join(parts)} — total ${total:,.2f}"
+            + (f" (+{unpriced} unpriced batches)" if unpriced else ""))
 
 
 if __name__ == "__main__":

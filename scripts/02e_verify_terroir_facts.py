@@ -256,6 +256,7 @@ def main() -> int:
     gi_forms = _gi_forms()
     t0 = time.monotonic()
     rows: list[dict] = []
+    batch_stats: dict | None = None
     if args.batch:
         if not batch.supports(args.provider):
             log("--batch requires --provider anthropic|mistral")
@@ -271,8 +272,8 @@ def main() -> int:
             rows = run_checks(prov, model_id, items, run=run, dry_run=args.dry_run or collecting,
                               quiet=collecting or args.quiet, gi_forms=gi_forms)
 
-        batch.run_two_pass(provider=args.provider, model=model_id, sidecar=BATCH_SIDECAR, run_loop=run_loop,
-                           thinking=thinking)
+        batch_stats = batch.run_two_pass(provider=args.provider, model=model_id, sidecar=BATCH_SIDECAR,
+                                         run_loop=run_loop, thinking=thinking)
         kind = f"{args.provider}-api"
     else:
         provider, model_id = providers.make_provider(
@@ -283,6 +284,8 @@ def main() -> int:
         kind = provider.kind
 
     summary = _summary(rows)
+    if batch_stats:
+        summary["batch"] = batch_stats
     summary.update({
         "run": run, "model": model_id, "provider_kind": kind, "dry_run": args.dry_run,
         "version": BACKCHECK_VERSION, "elapsed_seconds": round(time.monotonic() - t0, 1),

@@ -21,6 +21,14 @@ incremental — it enumerates only stale / missing entries, never
 resubmitting an already-processed one — and an interrupted run resumes
 the in-flight batch (via the sidecar) even after a partial pass 2. Runs
 are single-threaded.
+
+Every fetched result carries the provider's `usage` (input / output /
+cache tokens); `run_batch` sums them, prices them at the Batch-API rate
+(`BATCH_PRICES_USD_PER_M`, 50 % of the list price), prints the line and
+appends it to `raw/.batch/costs.jsonl` — one row per batch, keyed by the
+stage sidecar — so a run reports its own cost instead of the numbers
+being re-read from the API afterwards. `run_two_pass` returns the same
+summary in its stats dict for the stage's report.
 """
 
 from __future__ import annotations
@@ -156,6 +164,88 @@ class ReplayProvider:
         return r["text"]
 
 
+# ─────────────────────────────────────────────────────────────────── usage ──
+
+# List price, USD per million tokens (input, output); the Batch API bills
+# BATCH_DISCOUNT of it. Cache reads bill at 10 % of input, cache writes at
+# 125 %. Unknown model → tokens are still summed, cost is None.
+BATCH_PRICES_USD_PER_M: dict[str, tuple[float, float]] = {
+    "claude-opus-5": (5.0, 25.0),
+    "claude-opus-4-8": (5.0, 25.0),
+    "claude-opus-4-7": (5.0, 25.0),
+    "claude-opus-4-6": (5.0, 25.0),
+    "claude-sonnet-5": (2.0, 10.0),
+    "claude-sonnet-4-6": (3.0, 15.0),
+    "claude-haiku-4-5": (1.0, 5.0),
+}
+BATCH_DISCOUNT = 0.5
+COSTS_LEDGER = Path(__file__).resolve().parents[2] / "raw" / ".batch" / "costs.jsonl"
+_USAGE_KEYS = ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+
+
+def _usage_from_anthropic(usage) -> dict:
+    return {k: int(getattr(usage, k, 0) or 0) for k in _USAGE_KEYS}
+
+
+def _usage_from_mistral(usage: dict | None) -> dict:
+    u = usage or {}
+    return {"input_tokens": int(u.get("prompt_tokens") or 0), "output_tokens": int(u.get("completion_tokens") or 0),
+            "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}
+
+
+def batch_cost_usd(usage: dict, model: str) -> float | None:
+    """The Batch-API price of `usage` for `model`, or None for an unpriced model."""
+    prices = BATCH_PRICES_USD_PER_M.get(model)
+    if not prices:
+        return None
+    inp, out = prices
+    per_m = (
+        usage.get("input_tokens", 0) * inp
+        + usage.get("output_tokens", 0) * out
+        + usage.get("cache_read_input_tokens", 0) * inp * 0.1
+        + usage.get("cache_creation_input_tokens", 0) * inp * 1.25
+    )
+    return round(per_m / 1_000_000 * BATCH_DISCOUNT, 4)
+
+
+def usage_summary(results: dict, model: str) -> dict:
+    """Sum the per-result `usage` dicts and price them: {n_results,
+    n_with_usage, input_tokens, output_tokens, cache_creation_input_tokens,
+    cache_read_input_tokens, cost_usd}."""
+    tot = {k: 0 for k in _USAGE_KEYS}
+    n = 0
+    for r in results.values():
+        u = r.get("usage") if isinstance(r, dict) else None
+        if not u:
+            continue
+        n += 1
+        for k in _USAGE_KEYS:
+            tot[k] += int(u.get(k) or 0)
+    return {"n_results": len(results), "n_with_usage": n, **tot, "cost_usd": batch_cost_usd(tot, model)}
+
+
+def _record_cost(*, provider: str, model: str, batch_id: str, sidecar: Path, thinking: str | None,
+                 summary: dict) -> None:
+    row = {
+        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "stage": sidecar.stem, "provider": provider, "model": model, "thinking": thinking,
+        "batch_id": batch_id, "run": os.environ.get("OWM_TERROIR_RUN") or None, **summary,
+    }
+    try:
+        COSTS_LEDGER.parent.mkdir(parents=True, exist_ok=True)
+        with COSTS_LEDGER.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError as e:  # the ledger is bookkeeping, never a reason to fail a run
+        print(f"[batch] could not append to {COSTS_LEDGER.name}: {e}", file=sys.stderr)
+
+
+def _cost_line(summary: dict) -> str:
+    cost = summary.get("cost_usd")
+    return (f"in={summary['input_tokens']:,} out={summary['output_tokens']:,}"
+            + (f" cache_read={summary['cache_read_input_tokens']:,}" if summary.get("cache_read_input_tokens") else "")
+            + (f" ≈ ${cost:,.2f}" if cost is not None else " (unpriced model)"))
+
+
 # ─────────────────────────────────────────────────────────── anthropic batch ──
 
 
@@ -216,7 +306,7 @@ def _fetch_anthropic(batch_id: str, poll_interval: int) -> dict:
         if res.type == "succeeded":
             text = "".join(blk.text for blk in res.message.content
                             if getattr(blk, "type", "") == "text").strip()
-            out[entry.custom_id] = {"text": text}
+            out[entry.custom_id] = {"text": text, "usage": _usage_from_anthropic(res.message.usage)}
         else:
             out[entry.custom_id] = {"error": res.type}
     return out
@@ -323,7 +413,12 @@ def _fetch_mistral(job_id: str, poll_interval: int) -> dict:
             continue
         d = json.loads(line)
         text, err = _mistral_line_text(d)
-        out[d.get("custom_id")] = {"text": text} if err is None else {"error": err}
+        if err is None:
+            resp = d.get("response")
+            body = (resp.get("body") or {}) if isinstance(resp, dict) else {}
+            out[d.get("custom_id")] = {"text": text, "usage": _usage_from_mistral(body.get("usage"))}
+        else:
+            out[d.get("custom_id")] = {"error": err}
     return out
 
 
@@ -380,8 +475,11 @@ def run_batch(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
               f"{sidecar.name} (re-run this command to resume if interrupted)",
               file=sys.stderr)
     results = _fetch(provider, batch_id, poll_interval)
-    print(f"[batch] {provider} batch {batch_id} complete — {len(results)} results",
-          file=sys.stderr)
+    summary = usage_summary(results, model)
+    print(f"[batch] {provider} batch {batch_id} complete — {len(results)} results; "
+          f"{_cost_line(summary)}", file=sys.stderr)
+    _record_cost(provider=provider, model=model, batch_id=batch_id, sidecar=sidecar,
+                 thinking=thinking, summary=summary)
     return results
 
 
@@ -404,10 +502,12 @@ def run_two_pass(*, provider: str, model: str, sidecar: Path, run_loop,
     print(f"[batch] collected {len(reqs)} distinct model requests", file=sys.stderr)
     results = run_batch(provider, model, reqs, sidecar=sidecar,
                         poll_interval=poll_interval, thinking=thinking)
+    usage = usage_summary(results, model)
     run_loop(ReplayProvider(results, kind=_KIND[provider]))  # pass 2 — write caches
     sidecar.unlink(missing_ok=True)  # batch fully consumed — clear resume state
     n_err = sum(1 for r in results.values() if r.get("error"))
     if n_err:
         print(f"[batch] {n_err} of {len(results)} requests errored — re-run to "
               "retry just those (already-done entries are skipped)", file=sys.stderr)
-    return {"n_requests": len(reqs), "n_results": len(results), "n_errored": n_err}
+    return {"n_requests": len(reqs), "n_results": len(results), "n_errored": n_err,
+            "model": model, "usage": usage}
