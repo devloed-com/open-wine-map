@@ -96,11 +96,30 @@ BOAGRI_RE = re.compile(
     r"https://info\.agriculture\.gouv\.fr/[^\"\s]*/document_administratif-[0-9a-f-]+/telechargement",
     re.IGNORECASE,
 )
+# A BO Agri *rectificatif* — a correction notice to a published arrêté, not
+# the cahier itself. INAO now sometimes links only the rectificatif (plus a
+# Légifrance ELI link) from a show_texte page (Atlantique, 2026-09). It is
+# recorded and downloaded as an alternate so stage 02's cross-bundle index
+# sees it, but never becomes the canonical cahier URL.
+BOAGRI_RECTIFICATIF_RE = re.compile(
+    r"https://info\.agriculture\.gouv\.fr/[^\"\s]*/rectificatif-[0-9a-f-]+/telechargement",
+    re.IGNORECASE,
+)
 # Légifrance JORFTEXT id — points at the original consolidated décret on
 # legifrance.gouv.fr. The page is Cloudflare-walled so we can't fetch the
 # PDF here, but we record the id so a later resolver (PISTE API,
 # cloudscraper) can pick it up.
 LEGIFRANCE_JORFTEXT_RE = re.compile(r"cidTexte=(JORFTEXT\d+)", re.IGNORECASE)
+# The ELI form INAO emits since 2025 (`/eli/arrete/2025/11/26/AGRT2525725A/jo/texte`);
+# it carries no JORFTEXT id, so it is recorded as a URL for the same resolver.
+_RESOLVER_LINK_KEYS = (
+    "show_texte_url", "show_texte_paths", "legifrance_jorftext_ids",
+    "legifrance_eli_urls", "boagri_rectificatif_urls",
+)
+LEGIFRANCE_ELI_RE = re.compile(
+    r"https://www\.legifrance\.gouv\.fr/eli/(?:arrete|decret)/\d{4}/\d{1,2}/\d{1,2}/[A-Z0-9]+/jo/texte",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -183,12 +202,15 @@ def _collect_show_texte_paths(html: str, canonical_first: str) -> list[str]:
 def _harvest_show_texte(
     session: requests.Session, paths: list[str], delay: float
 ) -> tuple[list[str], list[str]]:
-    """Walk show_texte pages and return (boagri_urls, legifrance_jorftext_ids).
+    """Walk show_texte pages and return (boagri_urls, legifrance_jorftext_ids,
+    extras) — extras = {"boagri_rectificatif_urls", "legifrance_eli_urls"}.
 
-    Both lists preserve first-seen order and dedup across the walk.
+    All lists preserve first-seen order and dedup across the walk.
     """
     boagri: list[str] = []
     legifrance: list[str] = []
+    rectificatifs: list[str] = []
+    eli_urls: list[str] = []
     for path in paths:
         url = WWW2_SHOW_TEXTE.format(path=path)
         try:
@@ -204,7 +226,16 @@ def _harvest_show_texte(
         for jid in LEGIFRANCE_JORFTEXT_RE.findall(sr.text):
             if jid not in legifrance:
                 legifrance.append(jid)
-    return boagri, legifrance
+        for ru in BOAGRI_RECTIFICATIF_RE.findall(sr.text):
+            if ru not in rectificatifs:
+                rectificatifs.append(ru)
+        for eu in LEGIFRANCE_ELI_RE.findall(sr.text):
+            if eu not in eli_urls:
+                eli_urls.append(eu)
+    return boagri, legifrance, {
+        "boagri_rectificatif_urls": rectificatifs,
+        "legifrance_eli_urls": eli_urls,
+    }
 
 
 def resolve_cahier(
@@ -245,9 +276,9 @@ def resolve_cahier(
 
         canonical_show = canonical_match.group(1)
         show_paths = _collect_show_texte_paths(r.text, canonical_show)
-        boagri_urls, legifrance_ids = _harvest_show_texte(session, show_paths, delay)
+        boagri_urls, legifrance_ids, extras = _harvest_show_texte(session, show_paths, delay)
 
-        if not boagri_urls and not legifrance_ids:
+        if not boagri_urls and not legifrance_ids and not any(extras.values()):
             last_err = (
                 f"no BO Agri or Légifrance links across "
                 f"{len(show_paths)} show_texte page(s)"
@@ -268,6 +299,7 @@ def resolve_cahier(
             "boagri_url": boagri_urls[0] if boagri_urls else "",
             "boagri_url_candidates": boagri_urls,
             "legifrance_jorftext_ids": legifrance_ids,
+            **extras,
         }
         return meta, boagri_urls
 
@@ -433,6 +465,7 @@ def _apply_register(meta: dict, app: Appellation, cahier: rc.RegisterCahier,
 _INAO_META_KEYS = (
     "canonical_idproduit", "canonical_produit", "product_url", "show_texte_url",
     "show_texte_paths", "boagri_url_candidates", "legifrance_jorftext_ids",
+    "legifrance_eli_urls", "boagri_rectificatif_urls",
 )
 
 
@@ -597,6 +630,17 @@ def _process_app(
         status, n = _register_tier(app, manifest, meta, register, prior, fallback=None)
         if status is not None:
             return status, n
+        if _has_usable_cahier(prior):
+            # The page now carries only a rectificatif / Légifrance link (INAO
+            # 2026-09 layout). Keep the earlier cahier resolution and record
+            # the new links; a correction notice is not a new cahier.
+            manifest[app.id_appellation] = {
+                **prior,
+                **{k: meta[k] for k in _RESOLVER_LINK_KEYS if k in meta},
+            }
+            _download_alt_candidates(
+                session, app.name, meta.get("boagri_rectificatif_urls") or [], delay)
+            return "cached", 0
         meta["filename"] = ""
         meta["sha256"] = ""
         meta["fetched_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -613,15 +657,16 @@ def _process_app(
     # canonical (pdf_urls[0]). When an override has just moved a different URL
     # into the canonical slot, the prior URL — even if still present as an
     # alternate — can't reuse the old PDF.
+    rectificatifs = meta.get("boagri_rectificatif_urls") or []
     if prior_url and pdf_urls and prior_url == pdf_urls[0] and (OUT_DIR / f"{prior_sha}.pdf").exists():
-        rest = [u for u in pdf_urls if u != prior_url]
+        rest = [u for u in pdf_urls if u != prior_url] + rectificatifs
         n = _download_alt_candidates(session, app.name, rest, delay)
         return "cached", n
     download = _download_first_pdf(session, app.name, pdf_urls, delay)
     if download is None:
         return _register_tier(app, manifest, meta, register, prior, fallback=("missed", 0))
     canonical_url, digest, dest = download
-    rest = [u for u in pdf_urls if u != canonical_url]
+    rest = [u for u in pdf_urls if u != canonical_url] + rectificatifs
     n = _download_alt_candidates(session, app.name, rest, delay)
     meta["boagri_url"] = canonical_url
     meta["filename"] = dest.name

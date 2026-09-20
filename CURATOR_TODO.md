@@ -3380,12 +3380,13 @@ Full report: [docs/register-drift-2026-09-20.md](docs/register-drift-2026-09-20.
 
 | Country | Item | Action |
 |---|---|---|
-| FR | Cité de Carcassonne (877), Coteaux de Narbonne (881) — IGPs cancelled (arrêté 31-03-2025; Reg. (EU) 2025/2538 / 2025/2536) | drop from the build (SIQO still lists them) |
+| FR | Cité de Carcassonne (877), Coteaux de Narbonne (881) — IGPs cancelled (arrêté 31-03-2025; Reg. (EU) 2025/2538 / 2025/2536) | ✅ kept and marked *Cancelled* via `scripts/_lib/cancelled_gis.json` (2026-09-20) |
 | FR | 22 appellations with a newer homologation arrêté on INAO (Beaujolais 05-08-2026, Mâcon 07-08-2026, Meursault / Bordeaux supérieur 04-06-2026, Coteaux du Giennois / Côte de Nuits-Villages / Côtes de Toul / Entre-deux-Mers / L'Etoile / Marc d'Alsace 02-09-2026, Blagny / Coteaux varois / Crémant de Loire / Moselle / Muscat de Frontignan / Pineau des Charentes / Rosé de Loire / Saint-Bris / Vinsobres 08-06-2026, Viré-Clessé 27-07-2026, Côtes de Provence 27-04-2026, Coteaux de l'Auxois 20-09-2022) | re-run stage 01 → 02 → 02d/02e → 04 once BO Agri answers (connection reset today) |
 | FR | Crémant de Bordeaux (31) — INAO now links the 2021 arrêté, we hold 25-11-2025 | verify which is in force |
 | FR | 11 in PNO (Bordeaux, Chinon, Clos de Vougeot, Cognac, Coteaux d'Aix, Grés de Montpellier, Ladoix, Muscat de Lunel, Premières Côtes de Bordeaux, Périgord, Saumur) + Alsace | re-check after the opposition period |
-| FR | stage 01 regexes miss `boagri/rectificatif-…` and `legifrance.gouv.fr/eli/…` links | code |
-| IT | Salemi (PGI-IT-A0807) cancelled Reg. (EU) 2026/1043 | add to `CANCELLED_GIS` |
-| NL | Ambt Delden (PDO-NL-02169) cancelled Reg. (EU) 2026/1068 | add a cancellation registry to `scripts/nl/00_fetch_data.py` |
-| HU | Mura / Murai (PDO-HU-02817) registered Reg. (EU) 2026/1792, single doc C/2026/1833 | stage 00 → region map → geometry (post-Bétard) |
+| FR | stage 01 regexes miss `boagri/rectificatif-…` and `legifrance.gouv.fr/eli/…` links | ✅ fixed 2026-09-20 (`BOAGRI_RECTIFICATIF_RE`, `LEGIFRANCE_ELI_RE`; a page with only those links keeps its prior cahier) |
+| IT | Salemi (PGI-IT-A0807) cancelled Reg. (EU) 2026/1043 | ✅ in `cancelled_gis.json` (marked, not dropped); the record is a no-geometry stub, so it is not in the blob until it gets a polygon |
+| NL | Ambt Delden (PDO-NL-02169) cancelled Reg. (EU) 2026/1068 | ✅ in `cancelled_gis.json` (kept and marked) |
+| HU | Mura / Murai (PDO-HU-02817) registered Reg. (EU) 2026/1792, single doc C/2026/1833 | ✅ added 2026-09-20 (Balaton; `gisco-commune-union` 8/8; 12 facts) |
 | ES/HU/IT/RO/SI/DE/GR | 38 GIs with a new OJ C / OJ L publication after our fetch (list in the report) | re-fetch 01 → 02 for those slugs |
+| all | earlier cancellations (pre-2023) are not in `cancelled_gis.json` — out of scope for now | ❌ open |

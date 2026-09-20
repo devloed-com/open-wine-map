@@ -629,6 +629,36 @@ keyed by `id_denomination_geo` → `{commune_insee, lieu_dit_names: [...]}`.
 Run [scripts/audit_climats.py](scripts/audit_climats.py) after rerunning
 stage 04 to surface accept / review / reject buckets per cluster DGC.
 
+## Cancelled GIs stay in the corpus, marked
+
+A GI whose registration the Commission cancels is **not** removed from the
+map: bottles, labels and older teaching material still carry the name, so
+the record stays findable and says plainly that it is cancelled. The
+checked-in registry
+[scripts/_lib/cancelled_gis.json](scripts/_lib/cancelled_gis.json) is keyed
+by slug — `name`, `country`, `file_number`, `cancelled_on` (the date the
+cancellation regulation applies), `regulation` + `regulation_url` (the EU
+implementing regulation, cited by title and ELI), optional `national_act` +
+`national_url` (the member-state act / regulator page), optional
+`successor_slug` + `successor_name`. Stage 04 attaches the entry to the
+record as `cancelled` (a startup field, so the sidebar sees it before the
+panel payload loads); the map panel renders a *Cancelled* badge after the
+classification and a dated, source-linked line under the header
+(`cancelledBadge` / `cancelledLine` in app.js, `cancelled_badge_html` /
+`cancelled_line_html` in content_block.py for the SSR card), the sidebar
+tree and the search suggestions carry the compact badge. Wording is the
+EU register's own status word (*cancelled* / *annulée* / *cancelada* /
+*geannuleerd*), never "deprecated". This is the opposite of the AT
+`CANCELLED_PDOS` / IT `CANCELLED_GIS` stage-00 registries, which drop a GI
+from the index outright (used for the names that were consolidated into
+another GI, e.g. the 7 Abruzzo IGTs). Detect new cancellations with the
+register-drift check ([docs/register-drift-2026-09-20.md](docs/register-drift-2026-09-20.md):
+live eAmbrosia `removedFlag` + the regulation title on EUR-Lex); every
+entry must cite the public act. v1 entries: Cité de Carcassonne, Coteaux de
+Narbonne (FR IGPs, Reg. 2025/2538 / 2025/2536), Salemi (IT IGP, Reg.
+2026/1043), Ambt Delden (NL PDO, Reg. 2026/1068). Adding earlier
+cancellations is a curator task.
+
 ## Geometry-outlier overrides
 
 A resolved appellation polygon occasionally carries a part detached far

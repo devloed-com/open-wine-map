@@ -1,0 +1,39 @@
+{
+  "__doc__": "Appellations whose GI registration has been CANCELLED but which stay in the corpus, marked as such, because bottles, labels and older teaching material still carry the name. Keyed by appellation slug. Each entry: name, country, file_number, cancelled_on (ISO date the cancellation regulation applies), regulation (the EU act, cited by its title), regulation_url (ELI), optional national_act + national_url (the member-state act / regulator page), optional successor_slug + successor_name (the GI that took the name over). Stage 04 attaches the entry to the record as `cancelled`; the map panel, sidebar and entity card render a 'Cancelled' badge plus a dated, source-linked line. This registry is NOT a filter: the AT `CANCELLED_PDOS` / IT `CANCELLED_GIS` stage-00 registries drop a GI from the index outright, this one keeps it visible. Adding earlier cancellations is a curator task (see CURATOR_TODO.md); every entry must cite the public act.",
+  "cite-de-carcassonne": {
+    "name": "Cité de Carcassonne",
+    "country": "fr",
+    "file_number": "PGI-FR-A1203",
+    "cancelled_on": "2025-12-17",
+    "regulation": "Commission Implementing Regulation (EU) 2025/2538",
+    "regulation_url": "http://data.europa.eu/eli/reg_impl/2025/2538/oj",
+    "national_act": "Arrêté du 31 mars 2025 relatif à l'annulation de l'indication géographique protégée « Cité de Carcassonne »",
+    "national_url": "https://www2.inao.gouv.fr/show_texte/7843"
+  },
+  "coteaux-de-narbonne": {
+    "name": "Coteaux de Narbonne",
+    "country": "fr",
+    "file_number": "PGI-FR-A1202",
+    "cancelled_on": "2025-12-17",
+    "regulation": "Commission Implementing Regulation (EU) 2025/2536",
+    "regulation_url": "http://data.europa.eu/eli/reg_impl/2025/2536/oj",
+    "national_act": "Arrêté du 31 mars 2025 relatif à l'annulation de l'indication géographique protégée « Coteaux de Narbonne »",
+    "national_url": "https://www2.inao.gouv.fr/show_texte/7844"
+  },
+  "salemi": {
+    "name": "Salemi",
+    "country": "it",
+    "file_number": "PGI-IT-A0807",
+    "cancelled_on": "2026-05-13",
+    "regulation": "Commission Implementing Regulation (EU) 2026/1043",
+    "regulation_url": "http://data.europa.eu/eli/reg_impl/2026/1043/oj"
+  },
+  "ambt-delden": {
+    "name": "Ambt Delden",
+    "country": "nl",
+    "file_number": "PDO-NL-02169",
+    "cancelled_on": "2026-05-19",
+    "regulation": "Commission Implementing Regulation (EU) 2026/1068",
+    "regulation_url": "http://data.europa.eu/eli/reg_impl/2026/1068/oj"
+  }
+}

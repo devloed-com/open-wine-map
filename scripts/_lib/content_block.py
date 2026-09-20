@@ -32,6 +32,9 @@ import hashlib
 import re
 import unicodedata
 from dataclasses import dataclass, field
+from datetime import date as _date
+
+from babel.dates import format_date as _format_date
 
 # Per-jurisdiction regulator-published specification document name, in the
 # regulator's own language — mirrors STUB_DOC_NAMES in map_template.py's JS.
@@ -708,6 +711,52 @@ def _meta_tail(rec: dict, ctx: RenderCtx) -> str:
     return ""
 
 
+def _cancelled_date(c: dict, ctx: RenderCtx) -> str:
+    iso = c.get("cancelled_on") or ""
+    try:
+        return _format_date(_date.fromisoformat(iso), format="long", locale=ctx.locale)
+    except (ValueError, TypeError):
+        return iso
+
+
+def cancelled_badge_html(rec: dict, ctx: RenderCtx, small: bool = False) -> str:
+    """The 'Cancelled' badge for a GI in _lib/cancelled_gis.json — mirrors
+    cancelledBadge in app.js."""
+    c = rec.get("cancelled")
+    if not c:
+        return ""
+    lab = ctx.labels
+    title = fmt(lab["cancelled_badge_title"], {"date": _cancelled_date(c, ctx)})
+    cls = "cancelled-badge sm" if small else "cancelled-badge"
+    return f'<span class="{cls}" title="{esc(title)}">{esc(lab["cancelled_badge"])}</span>'
+
+
+def cancelled_line_html(rec: dict, ctx: RenderCtx) -> str:
+    """Dated, source-linked cancellation line — mirrors cancelledLine in app.js."""
+    c = rec.get("cancelled")
+    if not c:
+        return ""
+    lab = ctx.labels
+    reg = (
+        f'<a href="{esc(c["regulation_url"])}" target="_blank" rel="noopener">{esc(c.get("regulation") or "")}</a>'
+        if c.get("regulation_url")
+        else esc(c.get("regulation") or "")
+    )
+    text = fmt(lab["cancelled_line"], {"date": esc(_cancelled_date(c, ctx)), "regulation": reg})
+    if c.get("national_act"):
+        act = (
+            f'<a href="{esc(c["national_url"])}" target="_blank" rel="noopener">{esc(c["national_act"])}</a>'
+            if c.get("national_url")
+            else esc(c["national_act"])
+        )
+        text += " " + fmt(lab["cancelled_national_act"], {"act": act})
+    if c.get("successor_slug"):
+        name = c.get("successor_name") or c["successor_slug"]
+        succ = f'<a class="parent-link" data-slug="{esc(c["successor_slug"])}" href="#">{esc(name)}</a>'
+        text += " " + fmt(lab["cancelled_successor"], {"successor": succ})
+    return f'<div class="cancelled-line">{text}</div>'
+
+
 def classification_html(rec: dict, ctx: RenderCtx) -> str:
     """The two naming tokens of the meta line — traditional term first, legal
     scheme in brackets — as spans the client tooltip can target, each carrying
@@ -895,8 +944,8 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
 
     inner = (
         f"<h1>{name_with_latin(rec)}</h1>"
-        f'<div class="meta">{country_seg}{classification_html(rec, ctx) or esc(rec.get("kind") or "")}{region_seg}{meta_tail}</div>'
-        f"{dgc_line}{approx_line}{stub_line}"
+        f'<div class="meta">{country_seg}{classification_html(rec, ctx) or esc(rec.get("kind") or "")}{cancelled_badge_html(rec, ctx)}{region_seg}{meta_tail}</div>'
+        f"{cancelled_line_html(rec, ctx)}{dgc_line}{approx_line}{stub_line}"
         f"{_section(lab['panel_styles_h'], style_chips)}"
         f"{_section(lab['facet_principal_h'], principal)}"
         f"{pt_role_disclaimer}"

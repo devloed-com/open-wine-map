@@ -1019,7 +1019,7 @@
           const nameHtml = nameWithLatin(rec);
           const checked = filters.appellations.has(slug) ? ' checked' : '';
           const openLbl = escapeAttr(fmt(LABELS.open_appellation_aria, { name: rec.name || slug }));
-          return `<label data-slug="${safeSlug}" data-name="${escapeAttr(searchableText(rec))}"><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span><button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></label>`;
+          return `<label data-slug="${safeSlug}" data-name="${escapeAttr(searchableText(rec))}"><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span>${cancelledBadge(rec, true)}<button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></label>`;
         }).join('');
         let parentCount = 0;
         for (const s of slugs) if (!AOCS[s].is_sub_denomination) parentCount++;
@@ -1778,7 +1778,8 @@
     function suggestionHtml(it, idx) {
       const sub = it.sub ? ` <span class="sub">${escapeHtml(it.sub)}</span>` : '';
       const count = (it.count != null) ? `<span class="count">${it.count}</span>` : '';
-      return `<div class="suggestion" id="omni-opt-${idx}" role="option" aria-selected="false" data-idx="${idx}" data-type="${escapeAttr(it.type)}" data-key="${escapeAttr(it.key)}"><span class="name">${escapeHtml(it.name)}</span>${sub}${count}</div>`;
+      const badge = it.type === 'appellation' ? cancelledBadge(AOCS[it.key], true) : '';
+      return `<div class="suggestion" id="omni-opt-${idx}" role="option" aria-selected="false" data-idx="${idx}" data-type="${escapeAttr(it.type)}" data-key="${escapeAttr(it.key)}"><span class="name">${escapeHtml(it.name)}</span>${badge}${sub}${count}</div>`;
     }
     // Build the grouped markup for the given {group: items} map; group headers
     // keep a fixed visual order. Resets `items` to the flattened, index-aligned
@@ -2393,7 +2394,8 @@
     return `
       <div class="${klass}">
         <h1>${nameWithLatin(r)}</h1>
-        <div class="meta">${countrySeg}${renderClassification(r)}${regionSeg}${metaTail}</div>
+        <div class="meta">${countrySeg}${renderClassification(r)}${cancelledBadge(r)}${regionSeg}${metaTail}</div>
+        ${cancelledLine(r)}
         ${dgcLine}
         ${approxLine}
         ${stubLine}
@@ -2568,6 +2570,40 @@
   // composer: _lib/gi_terms.classification_label). Each token is a span the
   // pill tooltip targets when TERMS_INFO has a definition for it. Mirrors
   // classification_html in content_block.py.
+  // Cancelled-GI badge (_lib/cancelled_gis.json): shown after the
+  // classification in the panel meta line, in the sidebar tree and in the
+  // search suggestions. `sm` is the compact list variant.
+  function cancelledDate(c) {
+    try {
+      return new Intl.DateTimeFormat(LANG, { dateStyle: 'long' }).format(new Date(c.cancelled_on + 'T00:00:00'));
+    } catch (e) { return c.cancelled_on || ''; }
+  }
+  function cancelledBadge(r, small) {
+    const c = r && r.cancelled;
+    if (!c) return '';
+    const title = escapeAttr(fmt(LABELS.cancelled_badge_title, { date: cancelledDate(c) }));
+    return `<span class="cancelled-badge${small ? ' sm' : ''}" title="${title}">${escapeHtml(LABELS.cancelled_badge)}</span>`;
+  }
+  function cancelledLine(r) {
+    const c = r && r.cancelled;
+    if (!c) return '';
+    const reg = c.regulation_url
+      ? `<a href="${escapeAttr(c.regulation_url)}" target="_blank" rel="noopener">${escapeHtml(c.regulation)}</a>`
+      : escapeHtml(c.regulation || '');
+    let text = fmt(LABELS.cancelled_line, { date: escapeHtml(cancelledDate(c)), regulation: reg });
+    if (c.national_act) {
+      const act = c.national_url
+        ? `<a href="${escapeAttr(c.national_url)}" target="_blank" rel="noopener">${escapeHtml(c.national_act)}</a>`
+        : escapeHtml(c.national_act);
+      text += ' ' + fmt(LABELS.cancelled_national_act, { act: act });
+    }
+    if (c.successor_slug) {
+      const name = (AOCS[c.successor_slug] && AOCS[c.successor_slug].name) || c.successor_name || c.successor_slug;
+      text += ' ' + fmt(LABELS.cancelled_successor, { successor: `<a class="parent-link" data-slug="${escapeAttr(c.successor_slug)}" href="#">${escapeHtml(name)}</a>` });
+    }
+    return `<div class="cancelled-line">${text}</div>`;
+  }
+
   function renderClassification(r) {
     const label = r.class_label || '';
     if (!label) return escapeHtml(r.kind || '');

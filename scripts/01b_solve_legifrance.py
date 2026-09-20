@@ -259,7 +259,8 @@ def _record_success(
               "categorie", "comite_regional", "product_url", "show_texte_url",
               "boagri_url"):
         m.setdefault(k, "")
-    for k in ("show_texte_paths", "boagri_url_candidates", "legifrance_jorftext_ids"):
+    for k in ("show_texte_paths", "boagri_url_candidates", "legifrance_jorftext_ids",
+              "legifrance_eli_urls", "boagri_rectificatif_urls"):
         m.setdefault(k, [])
     m["filename"] = dest_name
     m["sha256"] = digest

@@ -3609,6 +3609,20 @@ def emit_html(
         except (ValueError, OSError) as exc:
             print(f"[warn] appellation_notes.json: {exc}", file=sys.stderr)
 
+    # Cancelled GIs kept in the corpus and marked as such (bottles and older
+    # teaching material still carry the name). Keyed by slug; the panel, the
+    # sidebar and the entity card render the badge + dated, source-linked line.
+    cancelled_gis: dict[str, dict] = {}
+    _cancelled_path = ROOT / "scripts" / "_lib" / "cancelled_gis.json"
+    if _cancelled_path.exists():
+        try:
+            cancelled_gis = {
+                k: v for k, v in json.loads(_cancelled_path.read_text(encoding="utf-8")).items()
+                if not k.startswith("__")
+            }
+        except (ValueError, OSError) as exc:
+            print(f"[warn] cancelled_gis.json: {exc}", file=sys.stderr)
+
     # Wikidata QIDs (stage 02i) → JSON-LD `sameAs` entity reconciliation.
     # Slug-keyed `{slug: {qid, via, …}}`; absent file / unresolved slug → "".
     wikidata_qids: dict[str, dict] = {}
@@ -3789,6 +3803,9 @@ def emit_html(
             "menzioni": _IT_MENZIONI_BY_SLUG.get(slug, []),
             "note": appellation_notes.get(slug),
             "is_stub": is_stub,
+            # Only cancelled GIs carry the key: it is a startup field, and a
+            # null on every other record would pad the startup bundle.
+            **({"cancelled": cancelled_gis[slug]} if slug in cancelled_gis else {}),
         }
         for s in styles:
             style_counts[s] = style_counts.get(s, 0) + 1

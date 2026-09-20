@@ -203,6 +203,18 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Open Wine Map n'a pas encore trouvé de {doc} pour cette appellation."
         ),
         "stub_help_label": _("aidez-nous à le trouver"),
+        # Cancelled GIs (_lib/cancelled_gis.json) — the badge next to the
+        # classification and the dated line under the header. {regulation} and
+        # {national_act} are rendered as links by the caller.
+        "cancelled_badge": _("Annulée"),
+        "cancelled_line": _(
+            "Cette appellation a été annulée le {date} par {regulation}. Des bouteilles, "
+            "étiquettes et supports de formation plus anciens peuvent encore la mentionner ; "
+            "elle est conservée ici à titre de référence."
+        ),
+        "cancelled_national_act": _("Acte national : {act}."),
+        "cancelled_successor": _("Elle est remplacée par {successor}."),
+        "cancelled_badge_title": _("Enregistrement annulé le {date}"),
         # Provenance line — an honest one-sentence sourcing statement shown on
         # factless records. {regulator}/{doc}/{grapes}/{extra} are substituted
         # verbatim (regulator names + native source-doc terms stay in their own
@@ -1522,6 +1534,9 @@ STARTUP_AOCS_FIELDS = frozenset({
     # The appellation tree nests region groups under a country group, and
     # lists a cross-border appellation under every country it spans.
     "country_aliases",
+    # Cancelled-GI marker (_lib/cancelled_gis.json): the sidebar rows and the
+    # panel header badge read it before the panel payload is hydrated.
+    "cancelled",
 })
 
 
@@ -2262,6 +2277,10 @@ _TEMPLATE = """<!doctype html>
   #panel .approx-line, #panel .facts-inherited {{ font-size:11.5px; color:#7a5a1a; background:#fbf3df; border-left:2px solid #d6b35a; padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
   #panel .approx-line a.parent-link, #panel .facts-inherited a.parent-link {{ color:#7a5a1a; text-decoration:underline }}
   #panel .role-disclaimer {{ font-size:11px; color:#888; font-style:italic; margin:2px 0 8px; line-height:1.35 }}
+  .cancelled-badge {{ display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:#8a2323; background:#fbe6e6; border:1px solid #e0a3a3; border-radius:3px; padding:0 5px; margin-left:6px; vertical-align:middle; line-height:16px }}
+  .cancelled-badge.sm {{ font-size:9.5px; line-height:14px; padding:0 4px; margin-left:4px }}
+  #panel .cancelled-line {{ font-size:11.5px; color:#8a2323; background:#fbe6e6; border-left:2px solid #c85a5a; padding:6px 9px; margin:6px 0 8px; border-radius:2px; line-height:1.45 }}
+  #panel .cancelled-line a {{ color:#8a2323; text-decoration:underline }}
   #panel .appellation-note {{ font-size:11.5px; color:#33506b; background:#eef3f8; border-left:2px solid #6f93b5; padding:6px 9px; margin:8px 0; border-radius:2px; line-height:1.45 }}
   #panel .appellation-note .note-srcs {{ margin-top:4px }}
   #panel .appellation-note a {{ color:#33506b; text-decoration:underline }}
@@ -2453,6 +2472,9 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel blockquote.facts-verbatim {{ background:#262320; color:#dcdcdc; border-left-color:#555 }}
   html.theme-dark #panel .approx-line, html.theme-dark #panel .facts-inherited {{ background:#322b18; color:#e6cf86; border-left-color:#6a5a2a }}
   html.theme-dark #panel .approx-line a.parent-link, html.theme-dark #panel .facts-inherited a.parent-link {{ color:#e6cf86 }}
+  html.theme-dark .cancelled-badge {{ color:#f0a8a8; background:#3a1d1d; border-color:#7a3a3a }}
+  html.theme-dark #panel .cancelled-line {{ background:#3a1d1d; color:#f0b4b4; border-left-color:#8a4444 }}
+  html.theme-dark #panel .cancelled-line a {{ color:#f0b4b4 }}
   html.theme-dark #panel .appellation-note {{ background:#1e2a36; color:#aecbe6; border-left-color:#3f6182 }}
   html.theme-dark #panel .appellation-note a {{ color:#aecbe6 }}
   html.theme-dark #panel details.dulok {{ color:#ccc }}
