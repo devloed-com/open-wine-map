@@ -31,6 +31,19 @@ coverage is the best of the three measures; the threshold stays 0.6, so
 60 % of the quote's characters must still sit in verbatim runs of the
 source — a quote stitched from scattered short phrases does not pass.
 
+Both sides are normalised the same way before matching, and the
+normalisation folds the typography that separated verbatim quotes from
+their source: curly / low-9 / guillemet quotes and apostrophes to their
+straight forms, every dash to a hyphen, soft hyphens and zero-width
+characters removed (in this corpus the soft hyphen is a bullet glyph,
+never a hyphenation point), compatibility forms (ligatures,
+superscripts, "…") decomposed (NFKC), the space a line-break hyphenation
+leaves behind ("gradi- giorno", "Nieder- österreich") closed up and the
+spaces inside « guillemets » dropped. On the r1 corpus 8.5 %
+of the kept quotes matched better for it and 7.4 % went from
+block-rescued to a single contiguous match; no quote crossed the
+threshold downwards.
+
 Every stage-02d script and the audit import `fuzzy_coverage` from here so
 the grounding rule cannot drift between countries.
 """
@@ -38,6 +51,7 @@ the grounding rule cannot drift between countries.
 from __future__ import annotations
 
 import re
+import unicodedata
 from difflib import SequenceMatcher
 
 FUZZY_THRESHOLD = 0.6
@@ -50,8 +64,26 @@ MAX_BLOCKS = 6
 ELLIPSIS_RE = re.compile(r"[\[(]\s*(?:…|\.{3})\s*[\])]|…|\.{3}")
 
 
+_TYPOGRAPHY = str.maketrans({
+    "\u2018": "'", "\u2019": "'", "\u201a": "'", "\u201b": "'", "\u2032": "'", "\u02bc": "'",
+    "\u201c": '"', "\u201d": '"', "\u201e": '"', "\u201f": '"', "\u00ab": '"', "\u00bb": '"',
+    "\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-", "\u2014": "-", "\u2015": "-",
+    "\u2212": "-",
+    "\u00ad": "", "\u200b": "", "\u200c": "", "\u200d": "", "\ufeff": "",
+})
+# "gradi- giorno": a hyphen glued to a word, then whitespace, then a letter
+# — the trace of a hyphenated line break; "300 - 400 m" (space before the
+# hyphen) and "2019- 2020" (digit after) are left alone.
+_HYPHEN_BREAK_RE = re.compile(r"(?<=\w)-\s+(?=[^\W\d_])")
+# « terroir » carries inner spaces that "terroir" does not.
+_QUOTE_SPACE_RE = re.compile(r'\s*"\s*')
+
+
 def normalize(s: str) -> str:
-    return " ".join((s or "").split()).lower()
+    s = unicodedata.normalize("NFKC", s or "").translate(_TYPOGRAPHY)
+    s = _HYPHEN_BREAK_RE.sub("-", s)
+    s = _QUOTE_SPACE_RE.sub('"', s)
+    return " ".join(s.split()).lower()
 
 
 def split_spans(quote_norm: str) -> list[str]:

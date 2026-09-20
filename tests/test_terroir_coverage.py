@@ -6,6 +6,7 @@ from _lib.terroir_coverage import (
     FUZZY_THRESHOLD,
     SourceMatcher,
     fuzzy_coverage,
+    normalize,
     provenance_for,
     split_spans,
 )
@@ -38,13 +39,13 @@ def test_empty_quote_is_zero():
 def test_ellipsis_joined_spans_ground_when_every_span_grounds(join):
     quote = f"Le climat est semi-continental à influence océanique {join} sols argilo-calcaires du Kimméridgien"
     # A single contiguous match covers only the longer span (< 0.6); span-wise both are verbatim.
-    assert SourceMatcher(SOURCE).contiguous(quote.lower()) < FUZZY_THRESHOLD
+    assert SourceMatcher(SOURCE).contiguous(normalize(quote)) < FUZZY_THRESHOLD
     assert fuzzy_coverage(quote, SOURCE) == 1.0
 
 
 def test_ellipsis_quote_with_one_ungrounded_span_keeps_whole_quote_grade():
     quote = "Le climat est semi-continental à influence océanique […] vendanges en octobre sous la neige"
-    whole = SourceMatcher(SOURCE).contiguous(quote.lower())
+    whole = SourceMatcher(SOURCE).contiguous(normalize(quote))
     assert fuzzy_coverage(quote, SOURCE) == whole
     assert fuzzy_coverage(quote, SOURCE) < FUZZY_THRESHOLD
 
@@ -74,3 +75,34 @@ def test_source_matcher_reuses_index_across_quotes():
 )
 def test_provenance_for(cahier, wiki, expected):
     assert provenance_for(cahier, wiki) == expected
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "Les précipitations annuelles sont d’environ 600 millimètres.",     # curly apostrophe
+        "Les précipitations annuelles sont d'environ 600 millimètres.",
+        "sols argilo‑calcaires du Kimméridgien",                            # non-breaking hyphen
+        "sols argilo–calcaires du Kimméridgien",                            # en dash
+        "sols argilo—calcaires du Kimméridgien",                            # em dash
+    ],
+)
+def test_typography_variants_of_a_verbatim_quote_match_fully(quote):
+    assert fuzzy_coverage(quote, SOURCE) == 1.0
+
+
+def test_soft_hyphen_bullet_glyph_and_zero_width_characters_are_dropped():
+    source = "\u00ad De bodem bestaat uit l\u200bössleem op een kalkrijke ondergrond."
+    assert fuzzy_coverage("De bodem bestaat uit lössleem op een kalkrijke ondergrond.", source) == 1.0
+
+
+def test_hyphenated_line_break_in_the_source_is_closed_up():
+    source = "La temperatura media è di 1.900 gradi- giorno nel periodo aprile- ottobre sul versante sud."
+    assert fuzzy_coverage("1.900 gradi-giorno nel periodo aprile-ottobre", source) == 1.0
+    assert fuzzy_coverage("fra 300 - 400 m", "vigneti fra 300 - 400 m") == 1.0   # spaced dash untouched
+
+
+def test_low_nine_and_guillemet_quotes_fold_to_straight():
+    source = 'Die g.U. „Rosalia" liegt am Osthang; le « terroir » y est calcaire.'
+    assert fuzzy_coverage('Die g.U. "Rosalia" liegt am Osthang', source) == 1.0
+    assert fuzzy_coverage('le "terroir" y est calcaire', source) == 1.0
