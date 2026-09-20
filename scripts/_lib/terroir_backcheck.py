@@ -49,6 +49,7 @@ WATCH_LIST = (
     "tipologia (a wine type / style, never 'typology')",
     "Urgestein (crystalline basement / primary rock, never 'primeval rock')",
     "Pintes (a Hungarian grape variety, never 'Pinot')",
+    "kvázi savasság / kvázi savassággal (Hungarian; colloquial 'kvázi' = 'so to speak', stressing the wines' notable acidity — render 'a marked / distinct acidity', never the calque 'a quasi acidity' and never 'subdued')",
     "Немски / Рейнски ризлинг (Riesling) versus Италиански ризлинг (Welschriesling) — never swap them",
     "Rodopi / Родопи → Rhodopes (EN, FR) / Rhodopen (NL) / Ródope (ES); Stara Planina stays 'Stara Planina' (a one-time gloss '(Balkan Mountains)' is fine); Bayern → Bavaria / Baviera / Bavière / Beieren",
     "Dutch common noun is 'appellatie(s)', not the French 'appellation(s)' (only the registered term 'appellation d'origine contrôlée / protégée' stays French)",

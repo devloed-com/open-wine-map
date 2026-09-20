@@ -57,6 +57,7 @@ language. Prefer the LEFT term over the RIGHT:
 - "actual alcohol" or "actual alcoholic strength" NOT "developed alcohol" — for IT "gradi svolti" / "alcol svolto" (the alcohol actually present, as opposed to potential).
 - "carbonate soils" or "calcareous soils" NOT "carbonated soils" — for FR "sols carbonatés"; "carbonated" means fizzy.
 - "vineyard sites" or "named vineyards" NOT "lege" / "dűlők" / "tratě" — for SI "lege", HU "dűlő(k)", CZ "viniční tratě" (the site word is a common noun; a site's own name stays verbatim).
+- "a marked acidity" or "a distinct acidity" NOT "a quasi acidity" / "quasi-acidity" — for HU "kvázi savasság(gal)": colloquial "kvázi" means "so to speak / virtually", so the source is stressing the wines' notable acidity, not describing a pseudo-acidity (Eger, 2026-09-19).
 - "para-barros" is a Portuguese soil-classification class (the lighter relatives of the "barros" clay soils) — keep it verbatim; never invent "proto-barros".
 - "submerged cap" NOT "grillage" — for FR "grillage" (the grid that holds the cap under the surface in Beaujolais / Burgundy vats); "punch-down" for "pigeage"; "pump-over" for "remontage".
 - "climat" (kept, italic-free) NOT "climate" — for the Burgundian FR "climat" meaning a named, delimited vineyard site (Les Clos, La Grande Rue); "climate" only for "climat" in its weather sense.

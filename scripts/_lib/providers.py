@@ -43,8 +43,8 @@ STAGE_DEFAULTS: dict[str, tuple[str, str | None]] = {
     "02d": ("claude-sonnet-5", "disabled"),
     "gate": ("claude-opus-5", "adaptive"),
     "audit": ("claude-opus-5", "adaptive"),
-    "02e": ("claude-sonnet-4-6", None),
-    "backcheck": ("claude-sonnet-4-6", None),
+    "02e": ("claude-sonnet-5", None),
+    "backcheck": ("claude-sonnet-5", None),
     "02c": ("claude-sonnet-4-6", None),
 }
 

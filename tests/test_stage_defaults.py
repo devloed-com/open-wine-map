@@ -16,8 +16,8 @@ def test_stage_defaults_are_the_decided_configuration():
     assert providers.stage_default("02d") == ("claude-sonnet-5", "disabled")
     assert providers.stage_default("gate") == ("claude-opus-5", "adaptive")
     assert providers.stage_default("audit") == ("claude-opus-5", "adaptive")
-    assert providers.stage_default("02e") == ("claude-sonnet-4-6", None)
-    assert providers.stage_default("backcheck") == ("claude-sonnet-4-6", None)
+    assert providers.stage_default("02e") == ("claude-sonnet-5", None)
+    assert providers.stage_default("backcheck") == ("claude-sonnet-5", None)
     assert providers.stage_default(None) == (providers.DEFAULT_ANTHROPIC_MODEL, None)
     assert batch.default_model("anthropic", "02d") == "claude-sonnet-5"
     assert batch.default_thinking("anthropic", "gate") == "adaptive"
