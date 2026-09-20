@@ -93,3 +93,37 @@ def test_earn_interactions_drops_unearned_and_caps():
     assert [f["bullet"][:12] for f in res.dropped] == ["Le climat do", "Le vent favo"]
     assert unearned_indices(FACTS, "fr") == [2, 4]
     assert earn_interactions(FACTS, "fr", max_interactions=3).dropped == [FACTS[2]]
+
+
+@pytest.mark.parametrize(
+    "lang,text",
+    [
+        ("hr", "nezaobilazni i glavni čimbenik, uz navedene okolišne uvjete, vrhunske kakvoće grožđa"),
+        ("de", "Intensive Pflege wirkt sich stabilisierend aus. Sie fördert in hohem Maße die Qualität."),
+        ("el", "το ηφαιστειογενές έδαφος απορροφά την υγρασία και έτσι τρέφονται τα αμπέλια"),
+        ("es", "la especial influencia del clima atlántico, que hace que los vinos tengan cuerpo"),
+        ("fr", "La richesse des minéraux dans les sols déterminent la finesse des arômes des vins."),
+        ("fr", "Les sols maigres entrainent une faible production de la plante."),
+        ("nl", "Door zijn mengeling van gesteenten is het rijk aan mineralen, hetgeen zich vertaalt in wijnen"),
+        ("nl", "The climate helps to achieve the required ripeness."),          # Ambt Delden: English source
+        ("ro", "Solul brun dă vinuri extractive; incluziunile au influenţe remarcabile"),   # cedilla spelling
+        ("it", "rese naturalmente basse in quanto le radici affondano nel calcare"),
+        ("bg", "букет и вкус, резултат от съчетанието на тръпчивостта на Мавруд"),
+        ("hu", "A bazaltsapkák és a Balaton közelsége együttesen garantálják a magas mustfokot."),
+    ],
+)
+def test_connective_forms_the_smoke_and_the_corpus_samples_missed(lang, text):
+    assert has_connective(text, lang)
+
+
+@pytest.mark.parametrize(
+    "lang,text",
+    [
+        ("fr", "Les coteaux au caractère marqué sont exposés au sud."),      # "car" must not match "caractère"
+        ("de", "Die Böden bestehen dennoch aus Schiefer."),                  # "denn" is not in the table
+        ("en", "Vines have been planted here since 1950."),                  # "since" is temporal here: not listed
+        ("hu", "A talaj lösz és agyag."),
+    ],
+)
+def test_word_initial_stems_do_not_overreach(lang, text):
+    assert not has_connective(text, lang)
