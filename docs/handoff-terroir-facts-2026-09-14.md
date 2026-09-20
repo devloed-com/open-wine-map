@@ -185,6 +185,24 @@ sub-sections in one request per record. The static-prompt caching in
   back-checked; `rollback_terroir_facts.py --run exp-02e-sonnet5`
   restores 4.6's.
 
+- **Sub-denomination pages** (2026-09-15 afternoon, from Boris's reading of
+  Rioja Alavesa): a parent's bullets are inherited by its sub-pages, where
+  "the appellation" reads as the sub-zone. `1e55136` — for the 133 records
+  with sub-denominations (`_lib/terroir_roster.py`, shared with the dedupe
+  post-pass) the 02e user message and the 02d per-record block ask for
+  the appellation's name where the source is generic; `88e5c43` — the
+  back-check gets the same note (without it, it reverted the name as an
+  added entity — caught on the first pass). Re-translated + re-checked
+  under `ctx-2026-09-15` / `ctx2-2026-09-15` (≈ $12). The source-language
+  bullets on sub-pages keep the generic wording until the next 02d pass.
+  `ceacbd4` — the gate's misfiling rule names wine descriptions stated
+  inside a climate paragraph (Rioja Alavesa's "versatile wines" bullet
+  was under natural factors; re-gated → produit; the 12 other wine-led
+  natural-factor bullets in the corpus are genuine natural factors).
+  `e1fb127` — Dutch river valleys: "Marnevallei / het Marnedal", never the
+  "Marnedallei" blend Sonnet 4.6 produced (glossary + back-check
+  watch-list).
+
 ## 0. State you inherit
 
 - **Corpus**: 1,638 records / 11,255 source bullets / 5,895 translation
