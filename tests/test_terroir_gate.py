@@ -213,3 +213,16 @@ def test_a_move_into_interactions_that_the_earned_rule_reverts_leaves_no_trace()
     f = res["facts"][0]
     assert f["subsection"] == "facteurs_naturels" and "moved_from" not in f["support"]
     assert "unearned_interaction" not in f["support"] and res["moved"] == []
+
+
+def test_backcheck_user_message_carries_the_appellation_note_for_a_parent(monkeypatch):
+    from _lib import terroir_backcheck as tb
+    from _lib import terroir_roster as tr
+    monkeypatch.setattr(tr, "_load", lambda: ({"rioja": ["Rioja Alavesa", "Rioja Alta"]}, {"rioja": "Rioja"}, {}))
+    kw = dict(name="Rioja", source_lang="es", target_lang="en",
+              source_facts=[{"bullet": "Los suelos de la denominación son arcillosos."}],
+              translated=[{"bullet": "The soils of the Rioja appellation are clayey."}], feedback=None)
+    msg = tb.build_user_message(**kw, slug="rioja")
+    assert "CONTEXT FOR THE CHECK:" in msg and "do not flag it as an added or wrong entity" in msg
+    assert "CONTEXT" not in tb.build_user_message(**kw, slug="leaf")
+    assert "CONTEXT" not in tb.build_user_message(**kw)

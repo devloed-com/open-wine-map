@@ -142,6 +142,7 @@ def check_one(
     user = build_user_message(
         name=src.get("name") or slug, source_lang=source_lang, target_lang=lang,
         source_facts=sfacts, translated=t["facts"], feedback=load_feedback(slug), gi_forms=gi_forms,
+        slug=slug,
     )
     try:
         raw = provider.chat(system=mark_cached(system_prompt()), user=user, max_tokens=MAX_TOKENS, num_ctx=16384)

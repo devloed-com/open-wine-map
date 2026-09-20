@@ -28,6 +28,7 @@ from _lib.exonyms import exonym_hits
 from _lib.terroir_dedupe import _numbers
 from _lib.terroir_feedback import _clip, _safe
 from _lib.terroir_normalize import normalize_bullet
+from _lib.terroir_prompts import appellation_context
 
 BACKCHECK_VERSION = "backcheck-v2"
 FIX_MAX_CHARS = 360
@@ -89,9 +90,25 @@ def _constraints_block(fb: dict | None) -> str:
     return ("PRIOR-REVIEW NOTES FOR THIS RECORD\n" + "\n".join(lines) + "\n\n") if lines else ""
 
 
+def _appellation_note(slug: str | None) -> str:
+    """For a record whose bullets are shown on sub-denomination pages, the
+    translation was asked to name the appellation where the source says
+    "the appellation" (terroir_prompts.appellation_context): tell the
+    checker so it does not revert that as an added entity."""
+    if not slug:
+        return ""
+    ctx = appellation_context(slug, for_translation=True)
+    if not ctx:
+        return ""
+    return (ctx.replace("CONTEXT:", "CONTEXT FOR THE CHECK:", 1)
+            + " Naming the appellation where the SOURCE only says \"the appellation / denomination / zone\" "
+              "is therefore intended — do not flag it as an added or wrong entity.\n\n")
+
+
 def build_user_message(
     *, name: str, source_lang: str, target_lang: str, source_facts: list[dict],
     translated: list[dict], feedback: dict | None, gi_forms: frozenset[str] = frozenset(),
+    slug: str | None = None,
 ) -> str:
     src_name = _LANG_NAME.get(source_lang, source_lang)
     tgt_name = _LANG_NAME.get(target_lang, target_lang)
@@ -107,6 +124,7 @@ def build_user_message(
     return _safe(
         f"RECORD: {name} — {src_name} → {tgt_name}; {len(translated)} bullets.\n\n"
         f"{_constraints_block(feedback)}"
+        f"{_appellation_note(slug)}"
         "BULLETS\n" + "\n\n".join(lines)
     )
 
