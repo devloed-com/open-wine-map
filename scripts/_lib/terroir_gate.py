@@ -58,7 +58,7 @@ Verdicts:
 
 Sub-section rule: a bullet filed under "interactions" (causal terroir → wine links) is "supported" only when a source sentence itself states the link with an explicit connective (because, thanks to, gives, confers, results in, explains, favours, allows, or the equivalent in the source language). If the source merely lists factors and wine traits side by side, "rewrite" the bullet into the non-causal statement the source does make (and file it under the right sub-section via "subsection"), or "drop" it when that statement is already given by another bullet.
 
-Misfiling (optional): set "subsection" to one of facteurs_naturels / facteurs_humains / produit / interactions ONLY when the current one is clearly wrong (a soil or climate fact under human factors, a yield rule or a history date under natural factors, a colour/aroma description under natural factors); otherwise null.
+Misfiling (optional): set "subsection" to one of facteurs_naturels / facteurs_humains / produit / interactions ONLY when the current one is clearly wrong: a soil or climate fact under human factors; a yield rule or a history date under natural factors; a description of the wines themselves — colour, aroma, structure, ageing aptitude, versatility, suitability for blending or early drinking — under natural factors, even when the source states it inside a paragraph about a zone's climate or soils (it belongs under produit); otherwise null.
 
 Prior-review constraints, when given, name claims that were verified misleading before: a bullet making one of them is "drop" or "rewrite" unless the source states it explicitly. Record cautions describe known defects of the source (a section copied from another appellation, a wrong Wikipedia article): do not credit text that a caution disqualifies.
 
@@ -338,10 +338,18 @@ def apply_verdicts(
     # by the verdict above.
     for pos in unearned_indices(kept, source_lang):
         f = kept[pos]
+        i = kept_indices[pos]
+        if f["support"].get("moved_from") == DEMOTION_TARGET:
+            # The verdict moved it INTO interactions and the earned rule sends
+            # it straight back: no move happened.
+            f["subsection"] = DEMOTION_TARGET
+            del f["support"]["moved_from"]
+            moved[:] = [m for m in moved if m["index"] != i]
+            continue
         f["support"].setdefault("moved_from", "interactions")
         f["support"]["unearned_interaction"] = True
         f["subsection"] = DEMOTION_TARGET
-        moved.append({"index": kept_indices[pos], "from": "interactions", "to": DEMOTION_TARGET})
+        moved.append({"index": i, "from": "interactions", "to": DEMOTION_TARGET})
     # A rewrite can make two bullets restate each other — collapse them.
     dd = dedupe_facts(kept)
     if dd.drops:

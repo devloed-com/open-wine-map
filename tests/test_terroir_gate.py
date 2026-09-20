@@ -203,3 +203,13 @@ def test_backcheck_keeps_the_translation_when_a_fix_comes_back_empty():
     assert c["verdict"] == "ok" and c["fix_missing"] and c["issue"] == "hedge"
     assert res["facts"][0]["bullet"] == "The soils are mostly clay."
     assert res["missing_fixes"] == [{"index": 0, "issue": "hedge"}] and not res["rejected"]
+
+
+def test_a_move_into_interactions_that_the_earned_rule_reverts_leaves_no_trace():
+    facts = [{"bullet": "I suoli sono di origine vulcanica.", "subsection": "facteurs_naturels",
+              "provenance": "cahier", "cahier_quote": "suoli di origine vulcanica"}]
+    verdicts = [{"verdict": "supported", "note": "", "rewrite": "", "restates": None, "subsection": "interactions"}]
+    res = tg.apply_verdicts(facts, verdicts, source="…", source_lang="it", run="r1", model="m")
+    f = res["facts"][0]
+    assert f["subsection"] == "facteurs_naturels" and "moved_from" not in f["support"]
+    assert "unearned_interaction" not in f["support"] and res["moved"] == []
