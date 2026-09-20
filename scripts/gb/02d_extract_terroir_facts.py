@@ -300,9 +300,10 @@ def _process_subsection(provider, model_id: str, record: dict, sub: dict):
     system = with_feedback(system, record["slug"])
     # The regulator text is the cached leading block: the four sub-section calls share it.
     user, doc = split_user_lead(USER_LEAD, label=label, ctx=cahier_ctx)
-    system = cached_system(doc, system)
+    system = cached_system(doc, system, phased=True)
     try:
-        raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192)
+        raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192,
+                            cache_phase=sub["key"])
     except Exception as e:  # noqa: BLE001
         return [], 0, str(e)
     payload, perr = llm_json.parse_facts(raw)

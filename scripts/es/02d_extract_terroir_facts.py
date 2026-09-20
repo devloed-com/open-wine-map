@@ -278,10 +278,11 @@ def _process_subsection(
     )
     system = with_feedback(system, record["slug"])
     # The lien is the cached leading block: the four sub-section calls share it.
-    system = cached_system(_document_block(lien), system)
+    system = cached_system(_document_block(lien), system, phased=True)
     user = _ask_line(sub["label"])
     try:
-        raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192)
+        raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192,
+                            cache_phase=sub["key"])
     except Exception as e:  # noqa: BLE001
         return [], 0, str(e)
     # Tolerant JSON extraction

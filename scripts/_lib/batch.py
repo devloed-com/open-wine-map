@@ -130,7 +130,7 @@ class CollectingProvider:
         self.requests: list[dict] = []
         self._seen: set[str] = set()
 
-    def chat(self, *, system, user: str, max_tokens: int = 1024, **_: object) -> str:
+    def chat(self, *, system, user: str, max_tokens: int = 1024, cache_phase=None, **_: object) -> str:
         cid = _request_id(system, user)
         if cid not in self._seen:
             self._seen.add(cid)
@@ -139,6 +139,7 @@ class CollectingProvider:
                 "system": system,
                 "user": user,
                 "max_tokens": max_tokens,
+                "phase": cache_phase,
             })
         return ""
 
@@ -485,6 +486,53 @@ def run_batch(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
     return results
 
 
+PHASED_ENV = "OWM_BATCH_PHASED"
+
+
+def phased() -> bool:
+    """Whether requests tagged with a `cache_phase` are submitted as one
+    batch per phase, in order (default on; OWM_BATCH_PHASED=0 disables)."""
+    return (os.environ.get(PHASED_ENV) or "1").strip().lower() not in ("0", "off", "false", "no")
+
+
+def _phase_groups(reqs: list[dict]) -> list[tuple[object, list[dict]]]:
+    """Requests grouped by their `phase`, in order of first appearance;
+    untagged requests form one group."""
+    order: list[object] = []
+    groups: dict[object, list[dict]] = {}
+    for r in reqs:
+        ph = r.get("phase")
+        if ph not in groups:
+            order.append(ph)
+            groups[ph] = []
+        groups[ph].append(r)
+    return [(ph, groups[ph]) for ph in order]
+
+
+def run_phased(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
+               poll_interval: int = POLL_INTERVAL_S, thinking: str | None = None) -> dict:
+    """The requests of a record that share a cached prefix (a 02d record's
+    four sub-section calls) are processed concurrently inside one batch,
+    so most of them write the prefix instead of reading it (13–47 % hits
+    on the cfg-2026-09-14 run). Submitting one batch per `cache_phase`,
+    each after the previous has ended, makes the first phase write and
+    the later phases read — the prefix block carries the 1-hour TTL for
+    this (a read refreshes the timer, so each phase only has to finish
+    within an hour). Each phase has its own sidecar and resumes on its
+    own; the merged results feed one replay."""
+    groups = _phase_groups(reqs)
+    if len(groups) < 2:
+        return run_batch(provider, model, reqs, sidecar=sidecar, poll_interval=poll_interval, thinking=thinking)
+    results: dict = {}
+    for i, (ph, group) in enumerate(groups):
+        side = sidecar.with_name(f"{sidecar.stem}.p{i}{sidecar.suffix}")
+        print(f"[batch] phase {i + 1}/{len(groups)} ({ph}): {len(group)} requests", file=sys.stderr)
+        results.update(run_batch(provider, model, group, sidecar=side, poll_interval=poll_interval,
+                                 thinking=thinking))
+        side.unlink(missing_ok=True)
+    return results
+
+
 def run_two_pass(*, provider: str, model: str, sidecar: Path, run_loop,
                  poll_interval: int = POLL_INTERVAL_S, thinking: str | None = None) -> dict:
     """Run a stage's processing loop as a batch. `run_loop(provider)` runs the
@@ -498,12 +546,15 @@ def run_two_pass(*, provider: str, model: str, sidecar: Path, run_loop,
     with contextlib.redirect_stderr(io.StringIO()):
         run_loop(collector)  # pass 1 — collect prompts (stderr muted: "" noise)
     reqs = collector.requests
-    if not reqs and not sidecar.exists():
+    in_flight = sidecar.exists() or any(sidecar.parent.glob(f"{sidecar.stem}.p*{sidecar.suffix}"))
+    if not reqs and not in_flight:
         print("[batch] nothing to do — all entries already processed.", file=sys.stderr)
         return {"n_requests": 0, "n_results": 0, "n_errored": 0}
     print(f"[batch] collected {len(reqs)} distinct model requests", file=sys.stderr)
-    results = run_batch(provider, model, reqs, sidecar=sidecar,
-                        poll_interval=poll_interval, thinking=thinking)
+    use_phases = phased() and any(r.get("phase") is not None for r in reqs)
+    runner = run_phased if use_phases else run_batch
+    results = runner(provider, model, reqs, sidecar=sidecar,
+                     poll_interval=poll_interval, thinking=thinking)
     usage = usage_summary(results, model)
     run_loop(ReplayProvider(results, kind=_KIND[provider]))  # pass 2 — write caches
     sidecar.unlink(missing_ok=True)  # batch fully consumed — clear resume state

@@ -48,10 +48,25 @@ def cache_control() -> dict | None:
     return {"type": "ephemeral"}
 
 
-def cached_system(shared: str, rest: str) -> list[dict] | str:
-    """System prompt as [shared block (cached), rest]; plain text when
-    caching is off or the shared part is empty."""
+def lien_cache_control() -> dict | None:
+    """The `cache_control` for a block shared by a record's phased requests
+    (a 02d lien): the 1-hour TTL when the batch runner submits one batch
+    per phase (`batch.phased()` — the later phases read what the first
+    wrote, a read refreshes the timer), else the default TTL — inside one
+    concurrent batch the 2× write would be a loss."""
     cc = cache_control()
+    if cc is None:
+        return None
+    if (os.environ.get("OWM_BATCH_PHASED") or "1").strip().lower() not in ("0", "off", "false", "no"):
+        return {"type": "ephemeral", "ttl": "1h"}
+    return cc
+
+
+def cached_system(shared: str, rest: str, *, phased: bool = False) -> list[dict] | str:
+    """System prompt as [shared block (cached), rest]; plain text when
+    caching is off or the shared part is empty. `phased=True` marks the
+    block a record shares across phased batch requests (lien_cache_control)."""
+    cc = lien_cache_control() if phased else cache_control()
     shared = (shared or "").strip()
     if not shared:
         return rest

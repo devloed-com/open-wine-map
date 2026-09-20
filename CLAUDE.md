@@ -4816,7 +4816,16 @@ quotes 30–98 %) — the four calls of a record are submitted adjacently and
 the ledger's `cache_creation_input_tokens` / `cache_read_input_tokens`
 show the achieved rate per batch. `OWM_CACHE_TTL` = `5m` (default; write
 1.25×, the four-call pattern breaks even at a 29 % hit rate), `1h` (write
-2×, break-even 70 %) or `off`. The next
+2×, break-even 70 %) or `off`. Inside one large batch a record's four
+calls are processed concurrently, so most of them write instead of read
+(13–47 % hits on the cfg-2026-09-14 run — break-even, not a saving);
+the 20 scripts therefore tag each call with its sub-section
+(`cache_phase`) and `batch.run_two_pass` submits **one batch per phase,
+in order** (`run_phased`, per-phase sidecars, `OWM_BATCH_PHASED=0`
+disables): the first phase writes the lien, the next three read it, and
+the lien block carries the 1-hour TTL in that mode (a read refreshes the
+timer, so each phase only has to finish within an hour). The trade-off
+is wall-clock — four sequential batches per country instead of one. The next
 steps — migrating the corpus to this configuration and the remaining
 review recommendations — are in
 [docs/handoff-terroir-facts-2026-09-14.md](docs/handoff-terroir-facts-2026-09-14.md). Anthropic
