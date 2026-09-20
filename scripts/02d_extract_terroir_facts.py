@@ -80,8 +80,12 @@ WIKI_HINT_CHAR_CAP = 1500
 
 # Cahier section X anchors. Validated 100% against the 6-AOC eval sample;
 # fall back to a flat slice when the slicer returns < 2 sub-sections.
-TOP_RE = re.compile(r"\b([1-9])°\s*[-–]\s*([A-ZÀ-Ý][^\n]{5,80})")
+# "l°" / "I°" are pdftotext's OCR of "1°" (Pouilly-Vinzelles); the top-level
+# key is normalised in _spans_by_top.
+TOP_RE = re.compile(r"\b([1-9lI])°\s*[-–]\s*([A-ZÀ-Ý][^\n]{5,80})")
 SUB_RE = re.compile(r"\b([a-c])\)\s*[-–]?\s*([A-ZÀ-Ý][^\n]{5,80})")
+_TOP_OCR = {"l": "1", "I": "1"}
+MIN_SLICE_CHARS = 200
 
 SUBSECTIONS = [
     {
@@ -177,7 +181,7 @@ def _spans_by_top(lien: str, tops: list[re.Match]) -> dict[str, tuple[int, int]]
     out: dict[str, tuple[int, int]] = {}
     for i, m in enumerate(tops):
         end = tops[i + 1].start() if i + 1 < len(tops) else len(lien)
-        out[m.group(1)] = (m.start(), end)
+        out.setdefault(_TOP_OCR.get(m.group(1), m.group(1)), (m.start(), end))
     return out
 
 
@@ -191,6 +195,11 @@ def _split_zone_geographique(
     if not sub_in_1:
         return {"facteurs_naturels": (s1, e1)}
     out: dict[str, tuple[int, int]] = {}
+    first = sub_in_1[0]
+    if first.group(1) != "a" and first.start() - s1 >= MIN_SLICE_CHARS:
+        # The a) heading lost its letter ("- Description des facteurs naturels",
+        # Floc de Gascogne): the text before b) is the natural factors.
+        out["facteurs_naturels"] = (s1, first.start())
     for i, m in enumerate(sub_in_1):
         end = sub_in_1[i + 1].start() if i + 1 < len(sub_in_1) else e1
         if m.group(1) == "a":
@@ -214,6 +223,11 @@ def slice_section_x(lien: str) -> dict[str, str]:
     if "1" in by_top:
         s1, e1 = by_top["1"]
         spans.update(_split_zone_geographique(s1, e1, subs))
+    elif tops[0].start() >= MIN_SLICE_CHARS:
+        # No "1°" heading at all — the lien opens straight at "a) - Description
+        # des facteurs naturels" (Menetou-Salon): everything before the first
+        # numbered heading is section 1.
+        spans.update(_split_zone_geographique(0, tops[0].start(), subs))
     if "2" in by_top:
         spans["produit"] = by_top["2"]
     if "3" in by_top:

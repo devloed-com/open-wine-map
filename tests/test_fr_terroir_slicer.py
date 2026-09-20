@@ -47,3 +47,29 @@ def test_single_chapter_cahier_keeps_the_whole_lien():
     single = chapter("Rangen", "Sols volcaniques.")
     job = fr02d._job_from_record(record("Alsace grand cru Rangen", "alsace-grand-cru-rangen", single))
     assert job is not None and job["lien"] == single.strip()
+
+
+def _section_x(head: str, a_line: str) -> str:
+    body = " ".join(["Les sols sont argilo-calcaires sur le versant est du Mâconnais."] * 6)
+    return (
+        f"{head}\n\n{a_line}\n\n{body}\n\n"
+        f"b) - Description des facteurs humains contribuant au lien\n\n{body}\n\n"
+        f"2°- Informations sur la qualité et les caractéristiques du produit\n\n{body}\n\n"
+        f"3°- Interactions causales\n\n{body}\n"
+    )
+
+
+def test_slicer_recovers_the_natural_factors_from_the_three_cahier_defects():
+    ok = fr02d.slice_section_x(_section_x("1°- Informations sur la zone géographique", "a) - Description des facteurs naturels contribuant au lien"))
+    assert set(ok) == {"facteurs_naturels", "facteurs_humains", "produit", "interactions"}
+    # Pouilly-Vinzelles: pdftotext reads "1°" as "l°"
+    ocr = fr02d.slice_section_x(_section_x("l°- Informations sur la zone géographique", "a) - Description des facteurs naturels contribuant au lien"))
+    assert ocr["facteurs_naturels"] == ok["facteurs_naturels"].replace("1°", "l°")
+    # Menetou-Salon: no "1°" heading — the lien opens at a)
+    no_top = fr02d.slice_section_x(_section_x("", "a) - Description des facteurs naturels contribuant au lien").lstrip())
+    assert "facteurs_naturels" in no_top and no_top["facteurs_naturels"].startswith("a) - Description des facteurs naturels")
+    assert set(no_top) == {"facteurs_naturels", "facteurs_humains", "produit", "interactions"}
+    # Floc de Gascogne: the a) heading lost its letter
+    no_a = fr02d.slice_section_x(_section_x("1°- Informations sur la zone géographique", "- Description des facteurs naturels contribuant au lien"))
+    assert "facteurs_naturels" in no_a and "Les sols sont" in no_a["facteurs_naturels"]
+    assert no_a["facteurs_humains"].startswith("b)")
