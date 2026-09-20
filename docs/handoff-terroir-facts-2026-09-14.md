@@ -9,6 +9,32 @@ and the cost. Written for whoever picks this up next (human or agent); read
 "Hard rules" bullets on the gate, the back-check and the per-run backups in
 [../CLAUDE.md](../CLAUDE.md) for the invariants.
 
+## 0a. Progress log (2026-09-14, afternoon)
+
+Landed on `gi-terms-and-analytics` after the hand-off was written — each
+a commit, tests green (632), `ruff` clean:
+
+| item | commit | what changed |
+|---|---|---|
+| §0 commit | `a1e4920` … `5724847` | the whole programme committed in the four suggested slices |
+| 3.1 MASAF cap | `2cfab2e` | 02f emits `link_to_terroir_full` (v3 sidecars, regenerated: 469 of 522 longer, +3.66 M chars); IT 02d / gate / audits read it; panel text byte-identical |
+| 3.2 grounding typography | `5fe8c45` | `normalize()` folds quotes / apostrophes / dashes, NFKC, soft hyphens, hyphen-breaks, guillemet spaces. Measured on every kept r1 quote: FR 1,628 / 3,165 higher (1,387 → contiguous), others 484 / 5,679; 0 threshold regressions |
+| 3.3 extractor does the gate's job | `0b72dba` | claim-support rule first in `STYLE_RULES`; gate-v2: empty rewrite → supported + `rewrite_missing`, cosmetic rewrite (ratio ≥ 95 **and** no differing word of 4+ letters) → supported + `cosmetic_rewrite`; audit lists `rewrite_missing` |
+| 3.4 earned `interactions` | `0b72dba` | `_lib/terroir_interactions.py` (15-language connective table); 02d drops an interactions fact whose *quote* has no connective (cap 2), the gate demotes it. Measured on r1: 69 % of interactions quotes carry one, 8 % bullet-only, 23 % none. The fourth call stays (FR X.3 / EU 8.4 are the earned ones); no promotion (1,388 candidates would triple the share) |
+| 3.7 mechanics | `146a6ef` | `needs_gate` shared by 02d_verify + audit: pending = a fact without a verdict, or source / GATE_VERSION changed — no exact sha, so post-passes no longer re-fire the gate; 02d normalises at write time; `feedback_recurrence` resolves on a meaningful `support.original_bullet` rewrite |
+| 3.10 cost logging | `86c3af0` | per-result usage from both providers, Batch-API pricing, `raw/.batch/costs.jsonl` ledger, `batch` block in gate / back-check reports, per-stage spend logged by the orchestrator |
+| orchestrator | `3133802` | `--scoped-02d` (IT: every record is stale after 3.1 — a scoped run would otherwise re-extract all of Italy) and `--scoped-gate` (gate-v2 made every record ungated — a smoke would otherwise re-gate the corpus) |
+
+Not done, deliberately: 3.7 `--only-file` across the 42 scripts (the
+stale-marking works; `--scoped-02d` covers the case that hurt), the
+`multi_sentence` splitter and the Alsace `produit` decision; 3.5, 3.6,
+3.8, 3.9 untouched.
+
+**Sequencing.** Items 3.1–3.4 all change what the extractor produces, so
+they were landed *before* the corpus migration (2.1) rather than after —
+one full pass, not two. GATE_VERSION is `gate-v2`, so the migration's
+corpus-wide gate step re-gates everything by construction.
+
 ## 0. State you inherit
 
 - **Corpus**: 1,638 records / 11,255 source bullets / 5,895 translation

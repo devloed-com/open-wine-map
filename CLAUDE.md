@@ -157,8 +157,27 @@ details and "Hard rules" for invariants that apply to every country.
   chars) of a quote are summed, so one pdftotext artefact inside a
   quote ("gradi- giorno") no longer halves its coverage (2026-09-13:
   Montepulciano d'Abruzzo had lost 8 of 9 true facts to it); the 0.6
-  threshold is unchanged — and every 02d script plus the audit import
-  it. Two **cache post-passes** apply fixes without an LLM call:
+  threshold is unchanged — and typography-folding (2026-09-14): both
+  sides are NFKC-normalised, every quote / apostrophe / dash variant
+  folded (a cahier's `’` against the model's `'`, „low-9" and
+  « guillemets »), soft hyphens and zero-width characters dropped and
+  hyphenated line breaks closed before matching — on the r1 corpus 51 %
+  of the FR quotes and 8.5 % of the others scored higher, none crossed
+  the threshold downwards. Every 02d script plus the audit import
+  it. The fourth sub-section is earned deterministically
+  ([scripts/_lib/terroir_interactions.py](scripts/_lib/terroir_interactions.py)):
+  after its four calls a 02d script drops an `interactions` fact whose
+  grounding quote carries no causal connective of the source language
+  (15-language table; cap 2 per record), and the gate demotes such a
+  fact to the natural factors — the connective is looked for in the
+  *quote*, never only in the bullet, because a bullet adding the "thanks
+  to" the source lacks is the failure mode. No fact is ever promoted into
+  the sub-section. 02d also normalises bullets at write time
+  (`normalize_facts`), so the normalise post-pass is a no-op on a fresh
+  cache. Italy: stage 02f emits the whole MASAF Art. 9 as
+  `link_to_terroir_full` next to the 4,000-character panel cut
+  (`link_to_terroir`, unchanged); IT 02d, the gate and the audits read
+  the full text (469 of 522 disciplinari are longer than the cut). Two **cache post-passes** apply fixes without an LLM call:
   [scripts/recompute_terroir_provenance.py](scripts/recompute_terroir_provenance.py)
   re-grades the existing caches with that rule (loading each country's
   02d module for the exact source text it graded against; stale caches
@@ -272,23 +291,39 @@ details and "Hard rules" for invariants that apply to every country.
   `rewrite` replaces the bullet with the model's narrower rewrite
   (guarded — no number absent from bullet + source, no arrow, sane
   length; a refused rewrite keeps the original and is listed by the audit
-  as `rewrite_rejected`); `drop` removes it (unsupported, foreign,
-  tautology, or `restates` another bullet — the semantic dedupe);
-  `subsection` moves a clearly misfiled bullet. An `interactions` bullet
-  is supported only when the source sentence states the causal link.
+  as `rewrite_rejected`; a rewrite that came back empty keeps the
+  original as `supported` with `rewrite_missing`, and a *cosmetic* one —
+  ratio ≥ 95 and no differing word of 4+ letters, so an added hedge is
+  never cosmetic — keeps the original as `supported` with
+  `cosmetic_rewrite`, `gate-v2`); `drop` removes it (unsupported,
+  foreign, tautology, or `restates` another bullet — the semantic
+  dedupe); `subsection` moves a clearly misfiled bullet. An
+  `interactions` bullet is supported only when the source sentence
+  states the causal link, and after the verdicts the deterministic
+  connective test demotes any that still lacks one.
   Each kept fact carries `support` ({verdict, note[, original_bullet][,
   moved_from]}); the cache carries a `gate` block (shas it keyed on,
   counts, the dropped bullets) and the feedback sidecar a `history`
   entry. Translations: index-aligned prune for pure drops; a rewrite
   re-keys them `pending:<sha>` so 02e re-translates. Incremental — a
-  record is re-gated when its facts or source sha change; the audit's
-  `gate_pending` lists what is due. The 21 extraction prompts share the
-  same rules through `STYLE_RULES` in
-  [scripts/_lib/terroir_prompts.py](scripts/_lib/terroir_prompts.py):
+  record is due (`terroir_gate.needs_gate`, shared with the audit's
+  `gate_pending`) when any fact carries no gate verdict, or the gate
+  block predates the record's source sha or `GATE_VERSION`; deliberately
+  not an exact sha of the bullets, so the normalise / dedupe /
+  boilerplate post-passes no longer re-fire the gate corpus-wide. The 21
+  extraction prompts share the same rules through `STYLE_RULES` in
+  [scripts/_lib/terroir_prompts.py](scripts/_lib/terroir_prompts.py),
+  which opens with the claim-support rule — the gate's own over-claim
+  catalogue (a causal wrapper on a co-occurrence, a narrowed en-bloc
+  attribution, an invented qualifier, a sibling's statement, a
+  strengthened hedge) — so the extractor does the gate's job first; then
   one full sentence of ~120–220 characters (the 140-character cap that
   produced the "Label:" fragments is gone), named entities and figures
-  first (up to two extra bullets on a long text), no causal wrapper on a
-  co-occurrence, an earned `interactions` sub-section.
+  first (up to two extra bullets on a long text), an earned
+  `interactions` sub-section. The audit's `feedback_recurrence` counts a
+  do-not-claim entry as resolved when the matched fact's
+  `support.original_bullet` is the claim and the gate's rewrite was not
+  cosmetic.
 - **The translation back-check follows 02e (R6).**
   [scripts/02e_verify_terroir_facts.py](scripts/02e_verify_terroir_facts.py)
   ([scripts/_lib/terroir_backcheck.py](scripts/_lib/terroir_backcheck.py))
@@ -312,7 +347,12 @@ details and "Hard rules" for invariants that apply to every country.
   reader-misled share with a Wilson interval; `--from-backup <run>`
   grades the same records' pre-run state and `--compare A B` prints the
   paired before / after. Run it after every scoped re-run; the review's
-  target is < 1.5 % misleading.
+  target is < 1.5 % misleading. Every Batch-API run prices itself:
+  `batch.run_batch` sums the per-result usage, prices it at the batch
+  rate (`BATCH_PRICES_USD_PER_M`) and appends one row per batch to
+  `raw/.batch/costs.jsonl`; the gate and back-check reports carry it
+  under `batch`, and `rerun_terroir_facts.py` logs the run's spend per
+  stage at the end.
 
 ## Denomination model (sub-denominations)
 
@@ -1386,7 +1426,10 @@ Pipeline per stub:
    - **Article 2** → grape varieties via `match_variety` on
      line/colon/comma-split candidates + `vitigno NAME` regex scan
    - **Article 3** → geo area / commune list
-   - **Article 9** → link to terroir
+   - **Article 9** → link to terroir — `link_to_terroir` is the
+     4,000-character panel cut, `link_to_terroir_full` the whole article
+     (what 02d, the gate and the audits read; `terroir_article` records
+     which article it came from)
 5. Emit a sidecar JSON under
    [raw/it/masaf-disciplinari-extracted/<slug>.json](raw/it/masaf-disciplinari-extracted/)
    with full provenance (`bundle_key`, `archive_path`, sha256, match
