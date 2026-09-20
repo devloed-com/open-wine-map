@@ -102,6 +102,11 @@ only (a count and the offending rows, never a failure):
                                 since (`scripts/02d_verify_terroir_facts.py`).
   rewrite_rejected           R  a gate rewrite the guards refused (kept the
                                 original bullet) — for a human look.
+  translation_stale          R  a translation cache keyed to a source facts
+                                sha that is no longer the record's, and not
+                                re-keyed `pending:` — 02e will redo it on its
+                                next corpus-wide pass; listed so it is not a
+                                surprise there.
   rewrite_missing            R  a gate `rewrite` verdict that came back with
                                 no rewrite text (kept the original bullet
                                 as supported, note kept) — for a human look.
@@ -175,7 +180,7 @@ from _lib.terroir_coverage import (  # noqa: E402
     fuzzy_coverage,
     normalize,
 )
-from _lib.terroir_dedupe import duplicate_reason  # noqa: E402
+from _lib.terroir_dedupe import duplicate_reason, facts_sha  # noqa: E402
 from _lib.terroir_feedback import load_feedback, recurrence_findings  # noqa: E402
 from _lib.terroir_normalize import strip_colour_codes  # noqa: E402
 from _lib.terroir_sources import COUNTRIES, Sources, resolve_sources  # noqa: E402
@@ -238,7 +243,7 @@ CHECKS = (
     "cross_record_identical_en", "en_equals_src", "name_guard", "name_guard_other", "foreign_name", "wiki_binding",
     "no_own_chapter", "quote_outside_own_chapter", "wiki_with_cahier_quote",
     "feedback_recurrence", "masaf_sidecar_stale", "gate_pending", "rewrite_rejected",
-    "rewrite_missing",
+    "rewrite_missing", "translation_stale",
 )
 _LETTERS_RE = re.compile(r"[^\W\d_]+")
 
@@ -628,12 +633,19 @@ def audit_translations(slug: str, source_facts: list[dict] | None = None) -> tup
     rows: list[dict] = []
     en_bullets: list[str] = []
     src_bullets = [(f.get("bullet") or "").strip() for f in (source_facts or [])]
+    src_sha = facts_sha(source_facts) if source_facts else None
     for lang in LANGS:
         t = cache.read_json_or_none(TRANSLATIONS / lang / f"{slug}.json")
         if not t or t.get("mode") == "verbatim":
             continue
         facts = t.get("facts") or []
         n_by_lang[lang] = len(facts)
+        key = t.get("source_facts_sha") or ""
+        if src_sha and key != src_sha and not key.startswith("pending:"):
+            # keyed to a source that has since changed and not marked for 02e:
+            # invisible until 02e's next corpus-wide pass (two such caches sat
+            # in LU / AT until the 2026-09-14 smoke happened to pick them up)
+            rows.append({"check": "translation_stale", "slug": slug, "lang": lang})
         for i, f in enumerate(facts):
             bullet = f.get("bullet") or ""
             checks = [c for c in style_findings(bullet) if c != "multi_sentence"]

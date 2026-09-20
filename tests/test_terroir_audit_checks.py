@@ -308,3 +308,14 @@ def test_coverage_is_block_aware_across_a_pdftotext_artefact():
     assert fuzzy_coverage("temperatura media attiva nel periodo aprile-ottobre", source) == 1.0
     assert fuzzy_coverage("clima temperato, suoli argillosi profondi, vigneti a 300 m", source) < 0.3   # scattered
     assert fuzzy_coverage("Bordeaux gravel terraces beside the Gironde estuary", source) < 0.3      # foreign
+
+
+def test_translation_stale_flags_an_outdated_key_but_not_pending(tmp_path, monkeypatch):
+    from _lib.terroir_dedupe import facts_sha
+    monkeypatch.setattr(audit, "TRANSLATIONS", tmp_path)
+    src = [{"bullet": "Les sols sont calcaires."}]
+    for lang, key in (("en", facts_sha(src)), ("es", "0" * 64), ("nl", "pending:" + "0" * 64)):
+        (tmp_path / lang).mkdir()
+        (tmp_path / lang / "x.json").write_text(json.dumps({"source_facts_sha": key, "facts": [{"bullet": "Soils are limestone."}]}))
+    _, rows, _ = audit.audit_translations("x", src)
+    assert [(r["lang"]) for r in rows if r["check"] == "translation_stale"] == ["es"]
