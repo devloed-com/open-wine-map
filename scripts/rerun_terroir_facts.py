@@ -230,6 +230,9 @@ def main() -> int:
     return 0
 
 
+_STAGE_LABEL = {"02d-verify": "gate", "02e-verify": "backcheck", "llm-audit": "audit"}
+
+
 def cost_report(run: str) -> str:
     """The run's spend per stage from the batch ledger (`raw/.batch/costs.jsonl`)."""
     if not batch.COSTS_LEDGER.exists():
@@ -243,7 +246,7 @@ def cost_report(run: str) -> str:
             continue
         if row.get("run") != run:
             continue
-        stage = (row.get("stage") or "?").split("-")[0]
+        stage = _STAGE_LABEL.get(row.get("stage") or "", (row.get("stage") or "?").split("-")[0])
         cost = row.get("cost_usd")
         if cost is None:
             unpriced += 1
