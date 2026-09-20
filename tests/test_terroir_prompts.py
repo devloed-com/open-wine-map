@@ -25,7 +25,8 @@ def test_single_paragraph_prompt_gets_rules_appended():
 
 
 def test_appellation_context_only_for_records_with_sub_denominations(monkeypatch):
-    from _lib import terroir_prompts as tp, terroir_roster as tr
+    from _lib import terroir_prompts as tp
+    from _lib import terroir_roster as tr
     monkeypatch.setattr(tr, "_load", lambda: ({"rioja": ["Rioja Alavesa", "Rioja Alta", "Rioja Oriental"],
                                                 "big": [f"Sub {i}" for i in range(9)]},
                                                {"rioja": "Rioja", "big": "Big", "leaf": "Leaf"}, {}))
