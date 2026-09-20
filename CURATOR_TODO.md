@@ -481,6 +481,74 @@ lists afterwards.
 `collioure` (already listed under France) — the only record the gate and
 the LLM audit skip (`no_source`).
 
+## Cross-country — records rendering with no grape list (2026-09-20)
+
+`scripts/audit_empty_grapes.py` baseline (stage 04 prints the same one-liner). Fix upstream, then re-run stage 04 → the audit; pin a verified absence in `scripts/_lib/empty_grapes_overrides.json`.
+
+### FLAGGED — extraction gaps (39 parents at baseline; 0 open after 2026-09-20)
+
+| country | slug | mechanism |
+|---|---|---|
+| fr | costieres-de-nimes | ✅ 2026-09-20 — `encepagement_block()` starts the grape parse at the `1°- Encépagement` sub-block (6 P + 8 A + 5 obs.) |
+| fr | picpoul-de-pinet | ✅ 2026-09-20 — cahier typo `IV.-Encépagement` after `IV.- Aires`; repeated numeral relabelled when the next header carries numeral+2 (piquepoul; see lexicon note on the B colour) |
+| fr | saint-aubin (+32 premiers crus) | ✅ 2026-09-20 — the bound PNO PDF was a 4-page *extrait* (section X only; register PDO-FR-A0822 = no-cahier). Full cahier (décret 2011-1764, 16 pp) pinned from the BIVB mirror in `manual_overrides.json` (BO Agri unreachable at the time); chardonnay / pinot blanc / pinot noir + pinot gris, lien 9.8 k chars. |
+| fr | ile-de-france (+5 sub-denominations) | ✅ 2026-09-20 — `\x0c5 Encépagement` page-top header now matched (72 varieties) |
+| fr | lavilledieu | ✅ 2026-09-20 — IGP encépagement routed by keyword (section 4.1), not position (5 P + 2 A) |
+| es | bajo-aragon, ibiza, illes-balears, serra-de-tramuntana-costa-nord, valdejalon, valles-de-sadacia | ✅ 2026-09-20 — curator-pinned PDF pliegos; lower-case rosters, `variedades de vid` titles, page furniture and dangling connectors now parsed (by-catch: ribera-del-gallego-cinco-villas, ribera-del-jiloca, castilla-y-leon colours) |
+| es | la-gomera, pago-de-otazu, urbezo | ✅ 2026-09-20 — same PDF branch; La Gomera's nested `6. Vino espumoso` no longer wins the section-6 tie (16 P + 15 A) |
+| it | catalanesca-del-monte-somma, osco, quistello, rotae | ✅ 2026-09-20 — Molise + Lombardia fed from MASAF's Registro Nazionale (catalogoviti, per province; 34 / 34 / 82); catalanesca's letter-spaced PDF re-read from `pdftotext -raw` (1) |
+| it | grottino-di-roccanova, valtenesi | ✅ 2026-09-20 — Grottino: letter-spaced `Arti col o 2` header + `di`-wrapped names (5); Valtènesi: PDO cancelled (Reg. 2026/572) → `CANCELLED_GIS`, now sottozona `riviera-del-garda-classico-valtenesi` |
+| pt | alentejano, algarve, beira-atlantico, minho, peninsula-de-setubal, terras-da-beira, terras-de-cister, terras-do-dao | ✅ 2026-09-20 — `6. Principais Uvas de Vinho` anchor + `Secundárias` block no longer overwrites the roster; `PRT 5xxxx` rows; wrapped lines rejoined (66–259 each; setubal 1 → 17 by-catch) |
+| pt | palmela, tavora-varosa | ✅ 2026-09-20 — same fix (31 / 37) |
+| at | kremstal | ✅ 2026-09-20 — EUR-Lex title typo `Keltertrauensorte(n)`; fuzzy title routing for keywords ≥ 10 chars (riesling, grüner veltliner) |
+| ch | bern-berne (+2), glarus, jura, schaffhausen, solothurn, thurgau, zug, zurich | ✅ verified 2026-09-20: none of the eight acts enumerates a variety (federal list / office-kept register by reference) — pinned REVIEWED with the article cited. Open: `reglement_index.py` `zh` points at LS 916.51, repealed 01.01.2018 with no successor act — flag the entry; JU cached HTML was a PDF.js viewer shell, resolver added to stage 01 (re-run `scripts/ch/01_fetch_reglements.py`). |
+
+### INHERIT — stage-04 gap (12 at baseline; 0 open)
+
+| country | slugs | mechanism |
+|---|---|---|
+| ch | the 12 VS grands crus | ✅ 2026-09-20 — CH stage 02 now copies the `valais-wallis` roster into each grand-cru record (45) |
+
+### PT alias gaps surfaced by the 2026-09-20 caderno parser fix (lexicon, not parser)
+
+| surface (caderno) | should fold to | note |
+|---|---|---|
+| tinta-bastardinha | alfrocheiro | "Alfrocheiro (Tinta-Bastardinha)", Algarve |
+| graciosa | bastardo | "Bastardo (Graciosa)" |
+| molinha | tamarez | "Tamarez (Molinha)" |
+| sousao | vinhao | "Vinhão (Sousão)" |
+| pau-ferro, tinta-lameira | tinta-caiada | "Tinta-Caiada (Pau-Ferro/Tinta-Lameira)" |
+| bastardo ↔ trousseau | one slug | same cultivar (VIVC TROUSSEAU NOIR); fold decision |
+| maria | — | bare first name is an exact alias of trousseau; false-positive trap |
+| pero-pinhao | own slug | PRT54023, distinct old variety; currently hyphen-split to sousao |
+| moscatel-graudo ↔ muscat-d-alexandrie | one slug | same cultivar |
+
+Also: `_prt_canonical_name` enqueues two-column "Name Synonym" strings as unknowns on every run (~110 entries) — noise, not output.
+
+### ES alias questions surfaced by the 2026-09-20 PDF-pliego parser fix (lexicon, verify against VIVC before editing)
+
+| surface | current fold | question |
+|---|---|---|
+| derechero | unmatched | "Derechero de Muniesa", Bajo Aragón native red — add own slug once VIVC-verified |
+| moristell | morrastel (= Graciano) | Ribera del Jiloca writes "moristell (Juan Ibáñez)" and Juan Ibáñez folds to `moristel` — likely should fold to `moristel` |
+| robal | mourisco-branco (white) | fires on Jiloca's red list "bobal, robal" — local red synonym or the Portuguese white? |
+| tintilla / bastardo negro → trousseau, baboso negro → alfrocheiro | existing folds | La Gomera; fine if intended |
+
+### IT follow-ups from the 2026-09-20 roster fixes
+
+- **Valtènesi** (PDO-IT-A1188) cancelled by Reg. (EU) 2026/572, now a sottozona of Riviera del Garda Classico (`riviera-del-garda-classico-valtenesi` via sottozona Pattern C). After `it/00 → it/02 → 04`: remove the `Valtènesi → DOC` pin in `scripts/_lib/it/national_term_overrides.json` and the `valtenesi` entry in `raw/it/oj-pages/manual_overrides.json`.
+- Regional registers now sourced from MASAF's Registro Nazionale (catalogoviti, per province, HTTP only) for Molise + Lombardia; Regione Lombardia's own elenco (d.d.u.o. 10101/2025) is WAF-blocked to non-browser clients.
+- Lexicon (verify VIVC): register code 318 "Malvasia Rosa RS." exact-matches `velteliner-rouge-precoce` — wrong for Italy (pink mutation of Malvasia di Candia Aromatica); "Veltliner B." → gruner-veltliner; "Lambrusco Marani" → generic lambrusco; "Catalanesca bianca" alias. Unmatched Lombardia natives: Timorasso, Groppello di Mocasina, Lambrusco Viadanese, Incrocio Terzi N.1, Bussanello, Moradella, Erbamat, Erbanno, Mornasca, Grappello Ruberti, Bellagna, Merera; Molise: Moscato Nero di Acqui.
+
+### FR follow-ups from the 2026-09-20 parser fix
+
+- Lexicon: bare `piquepoul` + colour B (Picpoul de Pinet "cépage piquepoul B") resolves to slug `piquepoul`, VIVC-bound to #9298 PIQUEPOUL NOIR; needs a colour-qualified fold to `piquepoul-blanc` (#9295). Bare `piquepoul` also appears on la-clape, pierrevert, saint-chinian — check their colour codes first. `match_variety` has no colour-qualified alias mechanism today.
+- Domfront (cidre/poiré IGP) no longer lists the perry pear `antricotin` as a grape (section 5.1.1 header now parsed); drop the stale `raw/vivc/by-slug/antricotin.json` + `raw/vivc/slug_overrides.json` pin.
+
+### REVIEWED — regulator names no variety (15)
+
+vlaamse-landwijn (BGA §7 broad rule); appenzell-ausserrhoden, appenzell-innerrhoden, basel-stadt, nidwalden, schwyz (+ zurichsee), uri (règlement defers to federal OVin).
+
 ## Spain
 
 ### Pliego URLs — ✅ complete (2026-05-10)
@@ -3305,3 +3373,19 @@ vivc_id → canonical table, or make `GRAPE_ALIAS` the first tiebreaker) so
 the choice no longer depends on what happens to be on disk, and add a
 stage-04 assertion comparing the principal-slug set against the previous
 build's blob.
+
+## Cross-country — register drift check (2026-09-20) — ❌ open
+
+Full report: [docs/register-drift-2026-09-20.md](docs/register-drift-2026-09-20.md).
+
+| Country | Item | Action |
+|---|---|---|
+| FR | Cité de Carcassonne (877), Coteaux de Narbonne (881) — IGPs cancelled (arrêté 31-03-2025; Reg. (EU) 2025/2538 / 2025/2536) | drop from the build (SIQO still lists them) |
+| FR | 22 appellations with a newer homologation arrêté on INAO (Beaujolais 05-08-2026, Mâcon 07-08-2026, Meursault / Bordeaux supérieur 04-06-2026, Coteaux du Giennois / Côte de Nuits-Villages / Côtes de Toul / Entre-deux-Mers / L'Etoile / Marc d'Alsace 02-09-2026, Blagny / Coteaux varois / Crémant de Loire / Moselle / Muscat de Frontignan / Pineau des Charentes / Rosé de Loire / Saint-Bris / Vinsobres 08-06-2026, Viré-Clessé 27-07-2026, Côtes de Provence 27-04-2026, Coteaux de l'Auxois 20-09-2022) | re-run stage 01 → 02 → 02d/02e → 04 once BO Agri answers (connection reset today) |
+| FR | Crémant de Bordeaux (31) — INAO now links the 2021 arrêté, we hold 25-11-2025 | verify which is in force |
+| FR | 11 in PNO (Bordeaux, Chinon, Clos de Vougeot, Cognac, Coteaux d'Aix, Grés de Montpellier, Ladoix, Muscat de Lunel, Premières Côtes de Bordeaux, Périgord, Saumur) + Alsace | re-check after the opposition period |
+| FR | stage 01 regexes miss `boagri/rectificatif-…` and `legifrance.gouv.fr/eli/…` links | code |
+| IT | Salemi (PGI-IT-A0807) cancelled Reg. (EU) 2026/1043 | add to `CANCELLED_GIS` |
+| NL | Ambt Delden (PDO-NL-02169) cancelled Reg. (EU) 2026/1068 | add a cancellation registry to `scripts/nl/00_fetch_data.py` |
+| HU | Mura / Murai (PDO-HU-02817) registered Reg. (EU) 2026/1792, single doc C/2026/1833 | stage 00 → region map → geometry (post-Bétard) |
+| ES/HU/IT/RO/SI/DE/GR | 38 GIs with a new OJ C / OJ L publication after our fetch (list in the report) | re-fetch 01 → 02 for those slugs |

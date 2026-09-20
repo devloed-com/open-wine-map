@@ -724,6 +724,39 @@ release, a regional zone layer, or a commune-list resolver). `--strict` exits
 non-zero on any unreviewed FLAGGED finding; `--cutoff` overrides the snapshot
 date.
 
+## Empty grape-list audit
+
+A wine card that renders with no grape pills is a silent failure: a
+cahier layout the section parser did not read (Costières de Nîmes' 2025
+republication buries `1°- Encépagement` behind a conformity paragraph;
+Picpoul de Pinet's section V is missing from the extraction), a
+national-spec sidecar that did not bind, or a sub-denomination that
+inherits nothing from a parent that does carry grapes (the 12 Valais
+grands crus). [scripts/_lib/grape_gaps.py](scripts/_lib/grape_gaps.py)
+classifies every grape-less record of a build — **FLAGGED** (wine
+parent, not a stub, not reviewed; sub-denominations of an empty parent
+are counted on the parent's line, so Saint-Aubin's 32 premiers crus are
+one finding), **INHERIT** (stage-04 gap), **REVIEWED** (slug in
+[scripts/_lib/empty_grapes_overrides.json](scripts/_lib/empty_grapes_overrides.json):
+the regulator names no variety — Vlaamse landwijn's broad IGP rule, the
+CH cantons whose règlement defers to the federal OVin), **STUB**,
+**NON-WINE**. Stage 04 prints the one-line `[grapes]` summary on every
+build; [scripts/audit_empty_grapes.py](scripts/audit_empty_grapes.py) is
+the full report and the gate (`--strict` exits non-zero on FLAGGED or
+INHERIT; `--all` lists stubs and spirits). `tests/test_empty_grapes.py`
+pins the classifier and, when a build is present, that the INHERIT
+bucket never grows. The 2026-09-20 sweep found 39 FLAGGED parents (+39
+sub-denominations) and 12 INHERIT; after the parser fixes of the same day
+(FR encépagement sub-block / repeated-numeral / page-top header / keyword
+routing, PT `Principais Uvas de Vinho` anchor, ES PDF-pliego branch, IT
+letter-spaced MASAF PDFs + catalogoviti registers, AT fuzzy title, CH
+grand-cru inheritance, Saint-Aubin's full cahier pinned from the BIVB
+mirror) the FLAGGED bucket is empty and `--strict` passes; the per-record
+record of that sweep is in [CURATOR_TODO.md](CURATOR_TODO.md). A FLAGGED finding is fixed upstream
+(stage 02 / 02f parser or a manual override), never by editing the
+build; a genuine absence is pinned in the overrides file with its
+source.
+
 ## Page format (per-AOC pages)
 
 ```
@@ -802,6 +835,7 @@ touches many records still wants a full run.
 | 02g_fetch_vivc.py | raw/inao/cahier-extracted/*.json + raw/es/pliegos-extracted/ + raw/pt/cadernos-extracted/ + raw/vivc/slug_overrides.json | raw/vivc/{search,passport,by-slug}/*.html\|json + manifest.json + slug_overrides.example.json |
 | 02i_fetch_wikidata_qids.py | raw/*/*-extracted/*.json (slug + id_eambrosia) + raw/wikipedia/aocs/<lang>/ + raw/wikidata/slug_overrides.json | raw/wikidata/qids-by-slug.json + p9854.json + manifest.json + slug_overrides.example.json |
 | 03_generate_wiki.py | raw/inao/cahier-extracted/*.json + raw/terroir-facts/ | wiki/*.md, wiki/_index.json |
+| audit_empty_grapes.py | wiki/data/aocs.en.*.js + wiki/data/d/en/*.json + scripts/_lib/empty_grapes_overrides.json | (stdout — FLAGGED / INHERIT / REVIEWED / STUB / NON-WINE buckets; `--strict`, `--json PATH`) |
 | 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/{en,fr,es,nl}/<slug>/index.html (per-appellation entity pages), wiki/{en,fr,es,nl}/appellations/index.html (browse-index hub linking every indexable slug, grouped by country — fixes the entity-page link-graph orphan problem), wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (4 home + 4 browse + 1,638 index slugs × 4 locales), wiki/llms.txt (AI-crawler index), wiki/404.html |
 
 ## Spain pipeline (`scripts/es/`)
@@ -4790,7 +4824,10 @@ Default models are **per stage** (`providers.STAGE_DEFAULTS`, decided
 [docs/review-terroir-facts-2026-09-12.md](docs/review-terroir-facts-2026-09-12.md)):
 02d extraction `claude-sonnet-5` with thinking off; the gate
 (`02d_verify`) and the LLM audit `claude-opus-5` with adaptive thinking;
-02e, the back-check and 02c `claude-sonnet-4-6`; mistral
+02e and the back-check `claude-sonnet-5` (switched 2026-09-16 for new
+runs only — the corpus was not re-translated; `effective_thinking` sends
+`disabled` so the JSON budget is not spent on thinking); 02c
+`claude-sonnet-4-6` (human round-trip in practice); mistral
 `mistral-medium-latest`. Used by `--batch` and by synchronous `--provider`
 runs alike (`batch.default_model(provider, stage)` /
 `default_thinking()`, `providers.make_provider(..., stage=)`); override
@@ -5010,7 +5047,10 @@ The tile URLs now carry `?key=`, injected at build time from
 [scripts/_lib/env.py](scripts/_lib/env.py) → the `__OWM_carto_key_json__`
 token. The key is public once the map ships (the browser makes the tile
 request); `.env` keeps it rotatable and out of git history. Unset ⇒ no `?key=`
-and a watermarked basemap, so stage 04 warns loudly on stderr. Free tier is 5M
+and a watermarked basemap, so stage 04 warns loudly on stderr. A second
+environment gets its own key through `CARTO_BASEMAP_KEYS=<host>=<key>` (same
+shape as `PLAUSIBLE_SITES`): app.js picks the entry by hostname at runtime and
+falls back to the default, so one build serves every host. Free tier is 5M
 tile requests/month, **conditional on keeping the CARTO + OpenStreetMap
 attribution visible** — it is set on both raster sources in `app.js`; do not
 drop it.
@@ -5052,8 +5092,26 @@ author / editorial dates for a generated page).
   level is deliberately omitted — there is no per-country landing page, and a
   non-final `ListItem` without an `item` URL is invalid for Google's
   BreadcrumbList rich result. Every emitted crumb carries an `item`.
-- `description` is the localized summary → first terroir-fact bullets → the
-  160-char meta description; `inLanguage` is the page locale.
+- `description` follows the panel's facts-XOR-summary rule (`_entity_lead`):
+  the first two terroir-fact bullets in the page locale, the one naming the
+  appellation first (so a regional opener — "La Côte de Beaune forme un
+  relief…" — yields to the sentence about the record); else the summary, but
+  only when it is readable in that locale (02c-translated, or written in it —
+  an untranslated FR decree boilerplate "Seuls peuvent prétendre…" is not an
+  English description); else the meta description. `inLanguage` is the page
+  locale. The `<meta name="description">` / `og:description` use the same
+  lead: `name, region, country · TERM (SCHEME). <lead sentence>` clamped to
+  160 characters, with the principal grapes appended only when they still fit
+  (Bing flagged the old grape-only template as too short and near-identical
+  across the corpus, 2026-09-18).
+- `<title>` (`_entity_title`, mirrored by `docTitleFor` in app.js) is kept
+  within 65 characters — Bing's "Title too long" (7 of the crawled pages;
+  491 of 1,659 EN index titles were over) — by progressive shortening: full
+  `name — TERM (SCHEME) · region, country · Open Wine Map`, then without the
+  brand, then without the term, then country only, then the name alone; at
+  each step the primary alias of a French "X ou Y" register name is tried
+  first ("Côte de Nuits-Villages — AOC (PDO) · Burgundy, France" rather than
+  the 102-character full name). The `<h1>` keeps the full name.
 - Contract: the builder returns a pre-serialised opaque string filling the
   `{jsonld_html}` `str.format` slot — its JSON braces are data, not format
   fields, so it must not be double-braced or `esc()`-ed.
@@ -5092,24 +5150,67 @@ static link layer (all in [scripts/_lib/map_template.py](scripts/_lib/map_templa
   homepage, dateless for entities) instead of living in `page_shell`, so a
   rebuild churns 5 files, not all ~11.6k entity pages.
 - **Sitemap** grows to 4 home + 4 browse + (index slugs × 4 locales).
+- **Language switcher keeps the appellation.** On an entity page the four
+  static locale links point at `/<lang>/<slug>` (`_lang_switcher(slug=)` —
+  passed per page through `_fill`, which merges per-page slots over
+  `page_shell`), not at the locale roots: that is the crawlable cross-locale
+  link the hreflang cluster asserts, and a no-JS visitor keeps their place.
+  app.js still rewrites the destination on click (camera hash preserved).
 - **Deploy** ([scripts/deploy.py](scripts/deploy.py)) gained two idempotent,
   warn-don't-fail Bunny config steps called from `main()`: `ensure_force_ssl`
   (POST `/pullzone/<id>/setForceSSL` per hostname whose `ForceSSL` is off — was
   serving `http://www.openwinemap.com/` as 200) and `ensure_custom_404`
   (resolve storage zone by name, set `Custom404FilePath=/404.html`). Apex→www
   301 stays a manual dashboard rule (smoke-checked by `check_apex_redirect`).
+  IndexNow receives only pages whose *content* changed: every page is
+  fingerprinted with its hashed asset references normalised and compared with
+  the previous deploy's set in `tmp/deploy/indexnow-fingerprints-<env>.json`,
+  so an asset-hash rebuild no longer pings all ~11.6k pages (Bing's "IndexNow
+  batch mode" warning); see [docs/deploy.md](docs/deploy.md).
+
+## Deploy environments
+
+`scripts/deploy.sh` publishes `wiki/` to production; `scripts/deploy.sh --env
+beta` publishes the *same build* to https://beta.openwinemap.com/ (own Bunny
+pull + storage zone, `_BETA`-suffixed credentials in `.env`, robots.txt
+overridden to `Disallow: /`, no IndexNow). The script reads the pull zone back
+and refuses to run unless it serves the environment's hostname from the
+expected storage zone. Full runbook, the .env layout and the reason beta is
+blocked at robots.txt rather than with a noindex header (it would leak into
+production through the cross-host canonical): [docs/deploy.md](docs/deploy.md).
 
 ## Analytics
 
-Self-hosted Plausible (site id `openwinemap.com`); the snippet is in
-`_TEMPLATE`, custom events go through `track()` in
-[scripts/_lib/assets/app.js](scripts/_lib/assets/app.js). The event/prop
-reference, the goal-configuration recipe (events are stored but invisible
-until configured as goals — retroactively), and the known reading artefacts
-(replaceState opens are not pageviews; page-load opens are not tracked;
-`Appellation Viewed.slug` is the stack focus, split by `via`) live in
+Self-hosted Plausible, one site per environment (`openwinemap.com`,
+`beta.openwinemap.com`, …): the tracker script pins the site, so the snippet
+in `_TEMPLATE` picks it by hostname at runtime from `plausible_sites()`
+([scripts/_lib/env.py](scripts/_lib/env.py); prod is the code default, other
+environments via `PLAUSIBLE_SITES` in `.env`) — one build serves every
+environment, an unknown host loads no tracker. Custom events go through
+`track()` in [scripts/_lib/assets/app.js](scripts/_lib/assets/app.js). The
+event/prop reference, the goal-configuration recipe (events are stored but
+invisible until configured as goals — retroactively), and the known reading
+artefacts (replaceState opens are not pageviews; page-load opens are not
+tracked; `Appellation Viewed.slug` is the stack focus, split by `via`) live in
 [docs/analytics.md](docs/analytics.md). Keep that table in sync when adding
 or renaming a `track()` call, and never commit an API key.
+
+**Visitor feedback lives in Plausible, not GitHub.** Every appellation card
+ends with a "Report a mistake" section (`renderFeedback` in app.js — a
+titled card section, same style as Sources; a top-of-card pill was tried and
+dropped 2026-09-16 as redundant): one tap on an aspect
+chip (boundary / grapes / facts / name / sources / other) fires
+`Feedback Flagged {slug, aspect, geom_source, …}` (a second tap un-flags it:
+`Feedback Retracted`), and an optional note goes out as `Feedback Note {slug,
+aspect, note}` — the single prop that carries visitor text (≤ 500 chars,
+self-hosted). A blocked tracker — localhost included — falls back to the
+prefilled e-mail link (chip shown pressed, nothing persisted), and `track()` echoes events
+to the console; a dev site keyed on `localhost` in `PLAUSIBLE_SITES` makes
+local testing land in a dashboard. The stub card's "help us find it" opens the same row on
+`sources`. The sidebar's GitHub-issue link is gone (clicks, no issues). The
+curation view is [scripts/feedback_report.py](scripts/feedback_report.py)
+(`PLAUSIBLE_API_KEY` in the environment, per-session): net flags per
+appellation × aspect against panel opens, plus every note verbatim.
 
 ## Code style
 
