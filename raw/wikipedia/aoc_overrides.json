@@ -506,6 +506,10 @@
       "missing": true,
       "note": "researched 2026-05; no dedicated wine article on de.wikipedia.org"
     },
+    "tirol": {
+      "missing": true,
+      "note": "review 2026-09-12: the cascade bound de.wikipedia 'Toro (Weinbaugebiet)' — the Spanish DO, not the Austrian Tirol g.U.; no dedicated wine article on de.wikipedia.org"
+    },
     "traisental": {
       "missing": true,
       "note": "researched 2026-05; \"Traisen (Fluss)\" / Traisental is the river/valley geographic article"
@@ -2286,6 +2290,10 @@
     "mitterberg": {
       "missing": true,
       "note": "researched 2026-05; only listed inside Vini a indicazione geografica tipica (Bolzano province IGT entry); no standalone article"
+    },
+    "montecastelli": {
+      "missing": true,
+      "note": "review 2026-09-12: the cascade bound 'Montecastelli Pisano' — the village article, not the IGT; its one wiki-only bullet described the village hill"
     },
     "montello-rosso": {
       "page_url": "https://it.wikipedia.org/wiki/Montello_rosso",

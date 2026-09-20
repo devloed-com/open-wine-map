@@ -26,6 +26,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.prompt_cache import mark_cached  # noqa: E402
+from _lib.terroir_cache import write_translation_cache  # noqa: E402
+from _lib.terroir_prompts import translation_system_prompt, with_appellation_context  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -38,11 +41,13 @@ SYSTEM_PROMPT = """You translate short German bullets describing a German wine a
 
 Rules:
 - Output a JSON array of strings, one translated bullet per input bullet, in the SAME order. The array length must equal the input list length.
-- Preserve German proper nouns verbatim: Anbaugebiet names ("Ahr", "Baden", "Franken", "Hessische Bergstraße", "Mittelrhein", "Mosel", "Nahe", "Pfalz", "Rheingau", "Rheinhessen", "Saale-Unstrut", "Sachsen", "Württemberg"), Bereich / Großlage / Einzellage names ("Bürgstadter Berg", "Würzburger Stein-Berg", "Monzinger Niederberg", "Uhlen Blaufüsser Lay", "Uhlen Laubach", "Uhlen Roth Lay", "Bocksbeutel", "Niersteiner Gutes Domtal"), Bundesland names ("Rheinland-Pfalz", "Baden-Württemberg", "Bayern", "Hessen", "Sachsen", "Sachsen-Anhalt", "Thüringen", "Mecklenburg-Vorpommern", "Brandenburg", "Schleswig-Holstein", "Saarland"), commune and river names (Rhein, Mosel, Saar, Ruwer, Ahr, Nahe, Main, Neckar, Tauber, Saale, Unstrut, Elbe), grape variety names ("Riesling", "Spätburgunder", "Weißburgunder", "Grauburgunder", "Müller-Thurgau", "Silvaner", "Dornfelder", "Trollinger", "Lemberger", "Kerner", "Bacchus", "Scheurebe", "Portugieser", "Frühburgunder", "Schwarzriesling", "Müllerrebe", "Saint Laurent", "Auxerrois", "Elbling", "Gutedel"), named geological formations ("Buntsandstein", "Muschelkalk", "Keuper", "Schiefer", "Devon-Schiefer", "Blauschiefer", "Rotschiefer", "Löss", "Lehm", "Mergel", "Basalt", "Porphyr", "Granit", "Vulkangestein", "Quarzit"), named climatic features ("Föhn", "kontinentaler Einfluss", "atlantischer Einfluss"), and German wine-law / Prädikat terms ("Kabinett", "Spätlese", "Auslese", "Beerenauslese", "Trockenbeerenauslese", "Eiswein", "Sekt", "Qualitätswein", "Prädikatswein", "Großes Gewächs", "Erstes Gewächs", "VDP.Erste Lage", "VDP.Grosse Lage", "VDP.Ortswein", "Steillage", "Steillagenweinbau", "Großlage", "Einzellage", "Ortswein", "Lagenwein").
 - Geological era labels: translate to the standard {lang_name} form when one exists. When unsure, keep the German form.
 - Translate descriptive vocabulary naturally for a wine-literate reader.
 - Match each source bullet's length and register; do not add commentary, footnotes, or explanations.
 - Output ONLY the JSON array, no preface, no markdown fences."""
+
+SOURCE_LANG = "de"
+PROPER_NOUNS = """Anbaugebiet names (Ahr, Baden, Franken, Hessische Bergstraße, Mittelrhein, Mosel, Nahe, Pfalz, Rheingau, Rheinhessen, Saale-Unstrut, Sachsen, Württemberg); Bereich, Großlage and Einzellage names (Bürgstadter Berg, Würzburger Stein-Berg, Monzinger Niederberg, Uhlen Blaufüsser Lay, Uhlen Laubach, Uhlen Roth Lay, Bocksbeutel, Niersteiner Gutes Domtal); Bundesland names (Rheinland-Pfalz, Baden-Württemberg, Bayern, Hessen, Sachsen, Sachsen-Anhalt, Thüringen, Mecklenburg-Vorpommern, Brandenburg, Schleswig-Holstein, Saarland); commune names; river names, in the established target-language form where one exists (Rhine, Moselle, Elbe) and as in the source otherwise (Saar, Ruwer, Ahr, Nahe, Main, Neckar, Tauber, Saale, Unstrut); grape names (Riesling, Spätburgunder, Weißburgunder, Grauburgunder, Müller-Thurgau, Silvaner, Dornfelder, Trollinger, Lemberger, Kerner, Bacchus, Scheurebe, Portugieser, Frühburgunder, Schwarzriesling, Müllerrebe, Saint Laurent, Auxerrois, Elbling, Gutedel); named geological formations (Buntsandstein, Muschelkalk, Keuper, Rotliegend); named winds (Föhn); Prädikat tiers and registered classification terms (Kabinett, Spätlese, Auslese, Beerenauslese, Trockenbeerenauslese, Eiswein, Großes Gewächs, Erstes Gewächs, VDP.Erste Lage, VDP.Grosse Lage, VDP.Ortswein)"""
 
 
 def facts_sha(facts: list[dict]) -> str:
@@ -94,7 +99,7 @@ def write_cache(
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    cache.write_json(cache_path(lang, slug), payload)
+    write_translation_cache(cache_path(lang, slug), payload)
 
 
 def _is_fresh_cache(existing: dict | None, sha: str, expected_len: int) -> bool:
@@ -145,10 +150,15 @@ def build_user_prompt(src_facts: list[dict]) -> str:
 
 
 def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
-    system = SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]])
+    system = translation_system_prompt(
+        SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]]),
+        source_lang=SOURCE_LANG, target_lang=job["lang"], proper_nouns=PROPER_NOUNS,
+    )
     user = build_user_prompt(job["src_facts"])
+    user = with_appellation_context(user, job["slug"])  # names the appellation on sub-denomination pages
     try:
-        raw = provider.chat(system=system, user=user, max_tokens=2000, num_ctx=8192)
+        # One system prompt per locale, shared by every record of the batch: cached.
+        raw = provider.chat(system=mark_cached(system), user=user, max_tokens=2000, num_ctx=8192)
     except Exception as e:  # noqa: BLE001
         return None, f"call: {e}"
     parsed = parse_array(raw, len(job["src_facts"]))
@@ -273,6 +283,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--workers", type=int, default=1,
         help="concurrent (lang, slug) pairs (default 1, keep 1 for Ollama)",
     )
+    ap.add_argument("--only", action="append", default=[], help="restrict to a slug (repeatable)")
     ap.add_argument("--refresh", action="store_true", help="re-translate even if cached")
     ap.add_argument(
         "--batch", action="store_true",
@@ -360,8 +371,10 @@ def _run_batch(args, languages: tuple[str, ...]) -> int:
     if not batch.supports(args.provider):
         print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
         return 1
-    model_id = args.model or batch.default_model(args.provider)
+    model_id = args.model or batch.default_model(args.provider, stage="02e")
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:
@@ -393,6 +406,8 @@ def main() -> int:
         return _run_batch(args, languages)
 
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
 
@@ -402,7 +417,7 @@ def main() -> int:
 
     provider, model_id = providers.make_provider(
         args.provider, model=args.model, ollama_url=args.ollama_url,
-        mistral_url=args.mistral_url,
+        mistral_url=args.mistral_url, stage="02e",
     )
     if provider is None:
         for j in jobs:

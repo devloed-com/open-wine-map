@@ -27,6 +27,9 @@ Outputs:
 - raw/es/eambrosia/manifest.json — fetch metadata for the eAmbrosia call
 - raw/es/figshare/EU_PDO.gpkg — Bétard 2022 wine-PDO polygons
 - raw/es/figshare/manifest.json — fetch metadata + license + sha for the gpkg
+- raw/es/mapa/listado-dop-igp-vinos.pdf — MAPA's listado of EU-registered ES
+  wine DOPs/IGPs (carries the national traditional term per GI)
+- raw/es/mapa/manifest.json — fetch metadata + license + sha for the listado
 
 Each ES wine GI record carries:
 - giIdentifier (e.g. EUGI00000003061) — internal EU id, unstable
@@ -53,6 +56,11 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.es.national_term import (  # noqa: E402
+    LISTADO_DIR,
+    LISTADO_FILE,
+    LISTADO_URL,
+)
 from _lib.es.zones import (  # noqa: E402
     MAPA_LICENCE,
     MAPA_ZONES_FILE,
@@ -342,12 +350,29 @@ def fetch_mapa_zones() -> None:
     )
 
 
+def fetch_mapa_listado() -> None:
+    """MAPA "Listado de DOPs e IGPs de vinos registradas en la UE" — the
+    per-GI national traditional term (DO / DOCa / VP / VC / VT) keyed by
+    EU file number; consumed via scripts/_lib/es/national_term.py."""
+    _fetch_binary_with_manifest(
+        label="mapa-listado",
+        url=LISTADO_URL,
+        out_path=LISTADO_DIR / LISTADO_FILE,
+        manifest_path=LISTADO_DIR / "manifest.json",
+        extra_manifest={
+            "license": MAPA_LICENCE,
+            "attribution": "Fuente: MAPA — reutilización permitida con atribución",
+        },
+    )
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     fetch_figshare_gpkg()
     fetch_gisco_lau()
     fetch_sigpac_comarques()
     fetch_mapa_zones()
+    fetch_mapa_listado()
     full, etag = fetch_list()
     es_wines_all = [
         g for g in full

@@ -30,6 +30,14 @@
   const CLASS_DESCENDANTS = __OWM_class_descendants_json__;
   const CLASS_LABELS = __OWM_class_labels_json__;
   const CLASS_SEARCH_TERMS = __OWM_class_search_terms_json__;
+  // Appellation-type facet: legal scheme rows (pdo / pgi / spirit-gi / uk-* /
+  // none) over the regulator's traditional-term rows ('<cc>:<term>'), matched
+  // against the ';'-padded `class_key` MVT property. TERMS_INFO feeds the
+  // tooltip on the two meta-line tokens (see _lib/gi_terms.py).
+  const FACET_TERM_TREE = __OWM_term_tree_json__;
+  const TERM_DESCENDANTS = __OWM_term_descendants_json__;
+  const TERM_LABELS = __OWM_term_labels_json__;
+  const TERMS_INFO = __OWM_terms_info_json__;
   const LABELS = __OWM_labels_json__;
   // Default document title (the locale homepage title). The tab title tracks
   // the open appellation so it doesn't get stuck on whichever entity page the
@@ -570,6 +578,12 @@
   // clipboard on click so the link still works for users without a
   // configured mailto handler (Firefox silently drops navigation in
   // that case).
+  // Which feedback channel gets used. The GitHub link is an outbound click
+  // Plausible already counts, but clicks there produced no issues, so the
+  // channel split (github vs e-mail) is the number that matters.
+  document.querySelectorAll('a[data-feedback]').forEach(a => {
+    a.addEventListener('click', () => track('Feedback Clicked', { channel: a.dataset.feedback, locale: LANG }));
+  });
   document.querySelectorAll('a.feedback-mail').forEach(a => {
     const address = () => a.dataset.u + '@' + a.dataset.d;
     const arm = () => {
@@ -616,6 +630,7 @@
     styles: new Set(),
     stylesSimple: new Set(),
     classifications: new Set(),
+    appellationType: new Set(),
     principal: new Set(),
     accessory: new Set(),
     grapesAll: new Set(),
@@ -662,6 +677,7 @@
     if (kind === 'styleSimple') filters.stylesSimple.delete(key);
     else if (kind === 'style') filters.styles.delete(key);
     else if (kind === 'classification') filters.classifications.delete(key);
+    else if (kind === 'appellationType') filters.appellationType.delete(key);
     else if (kind === 'grapeAll') filters.grapesAll.delete(key);
     else if (kind === 'principal') filters.principal.delete(key);
     else if (kind === 'accessory') filters.accessory.delete(key);
@@ -695,6 +711,7 @@
       'facet-styles': filters.styles,
       'facet-styles-simple': filters.stylesSimple,
       'facet-classification': filters.classifications,
+      'facet-appellation-type': filters.appellationType,
     };
     for (const [id, set] of Object.entries(sets)) {
       const el = document.getElementById(id);
@@ -832,9 +849,19 @@
   }
   const expandStyles = set => expandTree(set, STYLE_DESCENDANTS);
   const expandClass = set => expandTree(set, CLASS_DESCENDANTS);
+  const expandTerm = set => expandTree(set, TERM_DESCENDANTS);
+  // A record carries one ';'-padded class_key (';pdo;it:docg;'); a pick matches
+  // when any expanded token is one of its segments.
+  function matchesTermSet(rec, set) {
+    if (!set || !set.size) return true;
+    const ck = rec.class_key || '';
+    for (const t of set) if (ck.includes(';' + t + ';')) return true;
+    return false;
+  }
 
   buildTreeFacet('facet-styles', FACET_STYLES_TREE, filters.styles, STYLE_LABELS, STYLE_DESCENDANTS, 'styles');
   buildTreeFacet('facet-classification', FACET_CLASS_TREE, filters.classifications, CLASS_LABELS, CLASS_DESCENDANTS, 'classification');
+  buildTreeFacet('facet-appellation-type', FACET_TERM_TREE, filters.appellationType, TERM_LABELS, TERM_DESCENDANTS, 'appellation-type');
   buildFacet('facet-styles-simple', FACET_STYLES_SIMPLE, filters.stylesSimple, k => SIMPLE_STYLE_LABELS[k] || k);
   document.querySelectorAll('.grape-chip-filter').forEach(container => {
     const role = container.dataset.role || 'all';
@@ -1075,7 +1102,7 @@
     lastPanelTrigger = btn || (label && label.querySelector('.open-aoc')) || null;
     lastStackKey = slug;
     stackFocusIndex = 0;
-    renderPanelStack([slug], 0);
+    renderPanelStack([slug], 0, undefined, 'facet');
     track('Appellation Opened', { slug: slug, via: 'facet', locale: LANG });
     const b = (viewMode === 'simple' && AOCS[slug].bbox_villages) ? AOCS[slug].bbox_villages : AOCS[slug].bbox;
     if (b && typeof map.fitBounds === 'function') {
@@ -1273,6 +1300,7 @@
     filters.q = '';
     filters.styles.clear(); filters.stylesSimple.clear();
     filters.classifications.clear();
+    filters.appellationType.clear();
     filters.principal.clear(); filters.accessory.clear(); filters.grapesAll.clear();
     filters.appellations.clear();
     filters.mainGrapeOnly = false;
@@ -1332,6 +1360,8 @@
     if (sExpr) parts.push(sExpr);
     const cExpr = inField('classifications', expandClass(filters.classifications));
     if (cExpr) parts.push(cExpr);
+    const tExpr = inField('class_key', expandTerm(filters.appellationType));
+    if (tExpr) parts.push(tExpr);
     const gExpr = inField(activeGrapeField(), expandGrapeSet(filters.grapesAll));
     if (gExpr) parts.push(gExpr);
     if (filters.appellations.size) {
@@ -1349,6 +1379,7 @@
     if (styleSet.size && !setIntersects(styleSet, rec.styles || [])) return false;
     const classSet = expandClass(filters.classifications);
     if (classSet && classSet.size && !setIntersects(classSet, rec.classifications || [])) return false;
+    if (!matchesTermSet(rec, expandTerm(filters.appellationType))) return false;
     if (filters.grapesAll.size && !setIntersects(expandGrapeSet(filters.grapesAll), rec[activeGrapeField()] || [])) return false;
     if (filters.appellations.size && !filters.appellations.has(slug)) return false;
     return true;
@@ -1365,6 +1396,7 @@
       const classSet = expandClass(filters.classifications);
       if (classSet && classSet.size && !setIntersects(classSet, rec.classifications || [])) return false;
     }
+    if (!except.has('appellationType') && !matchesTermSet(rec, expandTerm(filters.appellationType))) return false;
     if (!except.has('grapesAll') && filters.grapesAll.size && !setIntersects(expandGrapeSet(filters.grapesAll), rec[activeGrapeField()] || [])) return false;
     if (!except.has('appellations') && filters.appellations.size && !filters.appellations.has(slug)) return false;
     return true;
@@ -1377,6 +1409,7 @@
     for (const k of filters.stylesSimple) chips.push({ kind: 'styleSimple', key: k, label: SIMPLE_STYLE_LABELS[k] || k });
     for (const k of filters.styles) chips.push({ kind: 'style', key: k, label: STYLE_LABELS[k] || k });
     for (const k of filters.classifications) chips.push({ kind: 'classification', key: k, label: CLASS_LABELS[k] || k });
+    for (const k of filters.appellationType) chips.push({ kind: 'appellationType', key: k, label: TERM_LABELS[k] || k });
     for (const k of filters.grapesAll) chips.push({ kind: 'grapeAll', key: k, label: grapeName(k) });
     if (filters.mainGrapeOnly) chips.push({ kind: 'mainGrapeOnly', key: '1', label: LABELS.main_grape_only_label });
     // Collapse a fully-selected subtree into one chip — a whole country first,
@@ -1434,6 +1467,7 @@
     const map_ = {
       styles: filters.stylesSimple.size + filters.styles.size,
       classification: filters.classifications.size,
+      'appellation-type': filters.appellationType.size,
       grapes: filters.grapesAll.size,
       appellations: filters.appellations.size,
       regions: regionsSelectedCount(),
@@ -1501,6 +1535,25 @@
       classEl.querySelectorAll('label').forEach(lbl => {
         const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
         const n = classCounts.get(inp.dataset.key) || 0;
+        const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
+        lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
+      });
+    }
+    const termEl = document.getElementById('facet-appellation-type');
+    if (termEl) {
+      const except = new Set(['appellationType']);
+      const termCounts = new Map();
+      for (const slug in AOCS) {
+        const rec = AOCS[slug];
+        if (rec.is_sub_denomination || !rec.class_key) continue;
+        if (!matchesExceptFacets(rec, slug, except)) continue;
+        for (const node in TERM_DESCENDANTS) {
+          if (matchesTermSet(rec, new Set(TERM_DESCENDANTS[node]))) termCounts.set(node, (termCounts.get(node) || 0) + 1);
+        }
+      }
+      termEl.querySelectorAll('label').forEach(lbl => {
+        const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
+        const n = termCounts.get(inp.dataset.key) || 0;
         const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
         lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
       });
@@ -1672,7 +1725,7 @@
       lastPanelTrigger = document.getElementById('omni');
       lastStackKey = key;
       stackFocusIndex = 0;
-      renderPanelStack([key], 0);
+      renderPanelStack([key], 0, undefined, 'omnisearch');
       track('Appellation Opened', { slug: key, via: 'omnisearch', locale: LANG });
       const b = (viewMode === 'simple' && AOCS[key].bbox_villages) ? AOCS[key].bbox_villages : AOCS[key].bbox;
       if (b && typeof map.fitBounds === 'function') map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: 11, duration: 500 });
@@ -2325,7 +2378,7 @@
     return `
       <div class="${klass}">
         <h1>${nameWithLatin(r)}</h1>
-        <div class="meta">${countrySeg}${r.kind}${regionSeg}${metaTail}</div>
+        <div class="meta">${countrySeg}${renderClassification(r)}${regionSeg}${metaTail}</div>
         ${dgcLine}
         ${approxLine}
         ${stubLine}
@@ -2367,13 +2420,36 @@
   // Tab title for an open appellation — mirrors the server-rendered entity
   // <title> (see _build_entity_meta) so navigating within the SPA and landing
   // on a pre-rendered /<locale>/<slug> page show the same title.
+  // The two naming tokens of the meta line — traditional term first, legal
+  // scheme in brackets — from the precomputed per-locale `class_label` (one
+  // composer: _lib/gi_terms.classification_label). Each token is a span the
+  // pill tooltip targets when TERMS_INFO has a definition for it. Mirrors
+  // classification_html in content_block.py.
+  function renderClassification(r) {
+    const label = r.class_label || '';
+    if (!label) return escapeHtml(r.kind || '');
+    const term = r.national_term || '';
+    const scheme = r.eu_scheme || '';
+    const span = (text, key, cls) => {
+      const has = TERMS_INFO[key] && (TERMS_INFO[key].note || TERMS_INFO[key].full);
+      const extra = has ? ' has-info" tabindex="0' : '';
+      return `<span class="${cls}${extra}" data-key="${escapeAttr(key)}">${escapeHtml(text)}</span>`;
+    };
+    const termKey = r.class_key ? (r.class_key.split(';').filter(Boolean)[1] || '') : '';
+    if (term && label.startsWith(term) && label !== term) {
+      return span(term, termKey, 'gi-term') + ' ' + span(label.slice(term.length).trim(), scheme, 'gi-scheme');
+    }
+    if (term && label === term) return span(term, termKey, 'gi-term');
+    return span(label, scheme, 'gi-scheme');
+  }
+
   function docTitleFor(slug) {
     const r = AOCS[slug];
     if (!r) return DEFAULT_TITLE;
     const region = r.region ? regionLabel(r.region) : '';
     const country = COUNTRY_LABELS[r.country] || '';
     const geo = [region, country].filter(Boolean).join(', ');
-    const head = [r.kind, geo].filter(Boolean).join(' · ');
+    const head = [r.class_label || r.kind, geo].filter(Boolean).join(' · ');
     return r.name + (head ? ' — ' + head : '') + ' · Open Wine Map';
   }
 
@@ -2416,7 +2492,7 @@
       + `</div>`;
   }
 
-  function renderPanelStack(slugs, focusIndex, doTrack) {
+  function renderPanelStack(slugs, focusIndex, doTrack, via) {
     if (!slugs.length) return;
     const sorted = slugs
       .filter(s => AOCS[s])
@@ -2450,8 +2526,15 @@
     }
     // Popularity signal: the appellation brought to the front of the stack.
     // doTrack is suppressed for the localStorage restore (fires on every
-    // reload / language switch — not a fresh view).
-    if (doTrack !== false) {
+    // reload / language switch — not a fresh view). The page-load open of a
+    // /<lang>/<slug> landing is not tracked either: the pageview already
+    // records that slug, and a custom event fired on load made every entity
+    // landing a non-bounce by construction and let a session start with a
+    // custom event (empty entry page) whenever the pageview was deferred.
+    // `via` separates a map click from stack cycling and from the explicit
+    // facet / omnisearch / in-panel opens, so the slug breakdown reads per
+    // intent instead of as one popularity list.
+    if (doTrack !== false && via !== 'landing') {
       const focusSlug = ordered[0];
       const fr = AOCS[focusSlug];
       if (fr) {
@@ -2461,6 +2544,8 @@
           kind: fr.kind || '(none)',
           region: fr.region || '(none)',
           stacked: sorted.length > 1 ? 'true' : 'false',
+          stack_size: String(sorted.length),
+          via: via || 'map',
           locale: LANG,
         });
       }
@@ -2578,7 +2663,7 @@
     if (urlSlug && AOCS[urlSlug]) {
       lastStackKey = urlSlug;
       stackFocusIndex = 0;
-      renderPanelStack([urlSlug], 0);
+      renderPanelStack([urlSlug], 0, undefined, 'landing');
       // Frame the shared appellation, but only when the link carries no
       // explicit camera hash (respect a co-shared #zoom/lat/lon). Use the
       // page-entry snapshot, not the live hash — maplibre has already written
@@ -2655,11 +2740,17 @@
       if (!info || !info.extract) return null;
       return { info, url: info.page_url || '' };
     }
+    if (el.matches('.gi-term.has-info, .gi-scheme.has-info')) {
+      const t = TERMS_INFO[el.dataset.key];
+      if (!t || !(t.note || t.full)) return null;
+      const head = [t.full, t.castilian_form ? `(${t.castilian_form})` : ''].filter(Boolean).join(' ');
+      return { info: { note: [head, t.note].filter(Boolean).join(' — '), sources: t.sources || [] }, url: '' };
+    }
     return null;
   }
 
   const showPillTip = (e) => {
-    const el = e.target.closest('a.pill.grape.has-info, .pill.style.has-info');
+    const el = e.target.closest('a.pill.grape.has-info, .pill.style.has-info, .gi-term.has-info, .gi-scheme.has-info');
     if (!el) return;
     const resolved = resolvePillInfo(el);
     if (!resolved) return;
@@ -2697,6 +2788,10 @@
       const vivcLink = `<a href="${escapeAttr(info.vivc_url)}" target="_blank" rel="noopener" title="${escapeAttr(LABELS.vivc_link_title)}">${escapeHtml(vivcLabel)}</a>`;
       srcBlock += srcBlock ? ` · ${vivcLink}` : vivcLink;
     }
+    if (info.sources && info.sources.length) {
+      const links = info.sources.map(s => `<a href="${escapeAttr(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.label)}</a>`).join(' · ');
+      srcBlock += (srcBlock ? ' · ' : '') + escapeHtml(LABELS.gi_term_source_label) + ' : ' + links;
+    }
     const extPara = hasExtract ? `<p class="ext">${escapeHtml(info.extract)}</p>` : '';
     const notePara = info.note ? `<p class="note">${escapeHtml(info.note)}</p>` : '';
     const srcDiv = srcBlock ? `<div class="src">${srcBlock}</div>` : '';
@@ -2710,7 +2805,7 @@
   };
 
   const hidePillTip = (e) => {
-    if (e.target.closest('a.pill.grape.has-info, .pill.style.has-info')) scheduleGrapeTipClose();
+    if (e.target.closest('a.pill.grape.has-info, .pill.style.has-info, .gi-term.has-info, .gi-scheme.has-info')) scheduleGrapeTipClose();
   };
   // Show on hover (mouseover) and on keyboard focus (focusin); hide on the
   // matching mouseout/focusout; Escape dismisses immediately.
@@ -2736,7 +2831,7 @@
       lastPanelTrigger = null;
       lastStackKey = '';
       stackFocusIndex = 0;
-      renderPanelStack([slug]);
+      renderPanelStack([slug], 0, undefined, 'panel-link');
     }
   });
 
@@ -2793,14 +2888,16 @@ __OWM_source_block__
       }
       if (!slugs.length) { closePanel(false); return; }
       const key = slugs.slice().sort().join('|');
+      let via = 'map';
       if (key === lastStackKey && slugs.length > 1) {
         stackFocusIndex = (stackFocusIndex + 1) % slugs.length;
+        via = 'cycle';
       } else {
         lastStackKey = key;
         stackFocusIndex = 0;
       }
       lastPanelTrigger = null;
-      renderPanelStack(slugs, stackFocusIndex);
+      renderPanelStack(slugs, stackFocusIndex, undefined, via);
     });
 
     // Re-apply feature-state for any selection restored from localStorage

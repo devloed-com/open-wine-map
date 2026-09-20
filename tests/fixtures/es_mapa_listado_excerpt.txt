@@ -1,0 +1,25 @@
+       LISTADO DE DENOMINACIONES DE ORIGEN PROTEGIDAS E INDICACIONES
+                                                 Total:          149
+                                                                   Actualizado a: jueves, 2 de julio de 2026
+             SUPRAAUTONÓMICO                                                                             Total: 4
+             Nombre oficial                                              Término tradicional (*) Nº expediente UE
+             DOP Cava                                                              DO             PDO-ES-A0735
+             DOP Rioja                                                           DOCa             PDO-ES-A0117
+                                                                                                   Total DOPs: 3
+             IGP Ribera del Queiles                                                VT              PGI-ES-A0083
+                                                                                                    Total IGPs: 1
+             ARAGÓN                                                                   Total: 11
+             DOP Aylés                                              VP           PDO-ES-A1522
+             DOP Urbezo                                             DO            PDO-ES-02585
+             IGP Bajo Aragón                                        VT            PGI-ES-A1362
+....JL...//.../INFORMES/IIGGs_NEW4                                                                  Página 1 de 6
+             DOP Lebrija                                                           VC             PDO-ES-A1478
+             DOP Jerez-Xérès-Sherry / Jerez / Xérès / Sherry                       DO             PDO-ES-A1483
+             DOP Priorat / Priorato            DOCa           PDO-ES-A1560
+             DOP Abadía Retuerta                      VP            PDO-ES-02481
+             DOP El Vicario                      VP           PDO-ES-N1634
+             DOP Tharsys                                                                                 VP            PDO-ES-02086
+             IGP Castelló                                                                                VT            PGI-ES-A1173
+  (*) En vinos, la expresión “Denominación de Origen Protegida”       (*) Por su parte, en vinos la expresión "Indicación Geográfica
+  DOCa: “Denominación de Origen Calificada”                           VT: “Vino de la Tierra”
+  VP: “Vino de Pago”                                                  Click en el nombre conduce a la URL de eAmbrosia de la COM

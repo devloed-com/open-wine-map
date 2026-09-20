@@ -66,9 +66,10 @@ from _lib.it.documento_unico import scan_styles  # noqa: E402
 from _lib.it.masaf import (  # noqa: E402
     PdfRecord,
     build_pdf_index,
+    cap_at_sentence,
     derive_geo_area,
     derive_summary,
-    extract_articles,
+    extract_article_runs,
     match_wines_to_pdfs,
     parse_annex_grapes_with,
     parse_grapes_with,
@@ -91,7 +92,9 @@ OJ_PAGES_MANIFEST = OJ_PAGES_DIR / "manifest.json"
 
 OVERRIDES_PATH = BUNDLES_DIR.parent / "manual_overrides.json"
 
-PARSER_VERSION = "it-masaf-disciplinare-v1"
+PARSER_VERSION = "it-masaf-disciplinare-v3"
+# Panel length of the Art. 9 terroir text; the extractor reads the full body.
+TERROIR_BRIEF_CHARS = 4000
 
 
 def load_overrides() -> dict:
@@ -235,7 +238,8 @@ def collapse_whitespace(s: str) -> str:
 
 
 def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
-                 match_info: dict, comune_map: dict, raw_text: str = "") -> dict:
+                 match_info: dict, comune_map: dict, raw_text: str = "",
+                 annexes: list[dict] | None = None) -> dict:
     """Build the sidecar JSON. The shape mirrors the doc-unico extracted
     record where it can (slug / name / kind / file_number / id_eambrosia
     / regione / grapes / styles / sections_present) so stage 04 can
@@ -257,7 +261,12 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
 
     summary = derive_summary(articles.get(1, ""))
     geo_area = derive_geo_area(articles.get(3, ""))
-    terroir_article_num, terroir = pick_terroir_article(articles, raw_text=raw_text)
+    # The panel reads the sentence-capped `link_to_terroir`; 02d, the gate
+    # and the audits read `link_to_terroir_full` — the whole article.
+    terroir_article_num, terroir_full = pick_terroir_article(
+        articles, raw_text=raw_text, max_chars=None
+    )
+    terroir = cap_at_sentence(terroir_full, TERROIR_BRIEF_CHARS)
 
     # Wine-style tags: scan the denominazione/tipologie block (art 1) + the
     # organoleptic "Caratteristiche al consumo" (art 6). Those are colour- and
@@ -296,6 +305,8 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
         "menzioni": menzioni,
         "geo_area_brief": geo_area,
         "link_to_terroir": terroir,
+        "link_to_terroir_full": terroir_full,
+        "terroir_article": terroir_article_num,
         "articles_present": sorted(articles.keys()),
         # Subsection of articles useful to downstream consumers — we
         # keep articles 1 / 3 / 9 verbatim so 02d-style terroir
@@ -305,6 +316,21 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
             for n in sorted({1, 2, 3, 9, terroir_article_num})
             if articles.get(n)
         },
+        # Per-sottozona sub-disciplinari appended to the parent's PDF
+        # (ALLEGATO N — SOTTOZONA «…»), each with its own Art. 1 / 3 / 9:
+        # kept as chapters so a sottozona can be grounded on its own text
+        # rather than on the parent's (the Alsace `terroir_chapters` idea).
+        # Never merged into the parent's fields above.
+        "annexes": [
+            {
+                "title": a.get("title") or "",
+                "article_bodies": {
+                    str(n): body for n, body in sorted((a.get("articles") or {}).items())
+                    if n in (1, 2, 3, 8, 9) and body
+                },
+            }
+            for a in (annexes or [])
+        ],
         "source": pdf_meta,
         "match": match_info,
     }
@@ -427,7 +453,7 @@ def process_slug(
         return {"slug": slug, "status": "pdftotext-failed",
                 "reason": e.stderr[:160] if e.stderr else str(e)[:160]}
 
-    articles = extract_articles(text)
+    articles, annexes = extract_article_runs(text)
     if not articles:
         if strict:
             raise SystemExit(
@@ -436,7 +462,8 @@ def process_slug(
             )
         return {"slug": slug, "status": "no-articles", "reason": "no-anchors"}
 
-    record = build_record(wine, articles, pdf_meta, match_info, comune_map, raw_text=text)
+    record = build_record(wine, articles, pdf_meta, match_info, comune_map, raw_text=text,
+                          annexes=annexes)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"{slug}.json"
     out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")

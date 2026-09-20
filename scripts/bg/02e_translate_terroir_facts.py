@@ -27,6 +27,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.prompt_cache import mark_cached  # noqa: E402
+from _lib.terroir_cache import write_translation_cache  # noqa: E402
+from _lib.terroir_prompts import translation_system_prompt, with_appellation_context  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -39,11 +42,13 @@ SYSTEM_PROMPT = """You translate short Bulgarian bullets describing a Bulgarian 
 
 Rules:
 - Output a JSON array of strings, one translated bullet per input bullet, in the SAME order. The array length must equal the input list length.
-- Preserve Bulgarian proper nouns verbatim: appellation names ("Мелник", "Поморие", "Сунгурларе", "Сандански", "Лясковец", "Карлово", "Хисаря", "Брестник", "Пловдив", "Асеновград", "Перущица", "Хасково", "Стамболово", "Любимец", "Ивайловград", "Сакар", "Стара Загора", "Нова Загора", "Шумен", "Велики Преслав", "Хан Крум", "Драгоево", "Видин", "Враца", "Ловеч", "Плевен", "Свищов", "Русе", "Търговище", "Сухиндол", "Павликени", "Лом", "Монтана", "Ново село", "Лозица", "Нови Пазар", "Оряховица", "Върбица", "Карнобат", "Поморие", "Варна", "Евксиноград", "Южно Черноморие", "Черноморски район", "Славянци", "Долината на Струма", "Хърсово", "Дунавска равнина", "Тракийска низина"), grape variety names ("Мавруд", "Широка мелнишка лоза", "Памид", "Димят", "Червен Мискет", "Тамянка", "Сандански Мискет", "Керацуда", "Ркацители", "Гъмза", "Рубин", "Руен", "Богдан", "Мелник 55", "Мелник 82", "Шевка", "Сторгозия", "Кайлъшки Мискет", "Варненски Мискет", "Букет"), named geographical features ("Стара планина", "Родопи", "Странджа", "Сакар", "Сърнена гора", "Средна гора", "Лудогорие", "Черно море", "Дунавска равнина", "Тракийска низина", "Розова долина", "Долината на Струма"), named soil types ("чернозем", "канелена горска почва", "смолница", "песъчливо-чакълеста", "льос", "мергел", "варовик", "пясъчник"), named climatic features ("умереноконтинентален климат", "преходноконтинентален", "средиземноморско влияние", "понтийско влияние", "фьон", "бора"), and Bulgarian wine-law terms ("лозарски район", "винарска област", "защитено наименование за произход", "защитено географско указание", "ЗНП", "ЗГУ", "ИАЛВ", "продуктова спецификация", "единен документ").
 - Geological era labels: translate to the standard {lang_name} form when one exists. When unsure, keep the Bulgarian form.
 - Translate descriptive vocabulary naturally for a wine-literate reader.
 - Match each source bullet's length and register; do not add commentary, footnotes, or explanations.
 - Output ONLY the JSON array, no preface, no markdown fences."""
+
+SOURCE_LANG = "bg"
+PROPER_NOUNS = """appellation names, written in their Latin form (Melnik, Pomorie, Sungurlare, Sandanski, Lyaskovets, Karlovo, Hisarya, Brestnik, Plovdiv, Asenovgrad, Perushtitsa, Haskovo, Stambolovo, Lyubimets, Ivaylovgrad, Sakar, Stara Zagora, Nova Zagora, Shumen, Veliki Preslav, Han Krum, Dragoevo, Vidin, Vratsa, Lovech, Pleven, Svishtov, Ruse, Targovishte, Suhindol, Pavlikeni, Lom, Montana, Novo Selo, Lozitsa, Novi Pazar, Oryahovitsa, Varbitsa, Karnobat, Varna, Evksinograd, Yuzhno Chernomorie, Slavyantsi, Harsovo, Dolinata na Struma, Dunavska Ravnina, Trakiyska Nizina); grape names in their Latin form (Mavrud, Shiroka Melnishka Loza, Pamid, Dimyat, Cherven Misket, Tamyanka, Sandanski Misket, Kerasuda, Rkatsiteli, Gamza, Rubin, Ruen, Bogdan, Melnik 55, Melnik 82, Shevka, Storgozia, Kaylashki Misket, Varnenski Misket, Buket); named geographical features, in the established target-language form where one exists and transliterated otherwise (Stara Planina, Rodopi, Strandzha, Sakar, Sarnena Gora, Sredna Gora, Ludogorie, Black Sea, Danube Plain, Thracian Lowland, Rose Valley, Struma Valley)"""
 
 
 def facts_sha(facts: list[dict]) -> str:
@@ -95,7 +100,7 @@ def write_cache(
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    cache.write_json(cache_path(lang, slug), payload)
+    write_translation_cache(cache_path(lang, slug), payload)
 
 
 def _is_fresh_cache(existing: dict | None, sha: str, expected_len: int) -> bool:
@@ -146,10 +151,15 @@ def build_user_prompt(src_facts: list[dict]) -> str:
 
 
 def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
-    system = SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]])
+    system = translation_system_prompt(
+        SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]]),
+        source_lang=SOURCE_LANG, target_lang=job["lang"], proper_nouns=PROPER_NOUNS,
+    )
     user = build_user_prompt(job["src_facts"])
+    user = with_appellation_context(user, job["slug"])  # names the appellation on sub-denomination pages
     try:
-        raw = provider.chat(system=system, user=user, max_tokens=2000, num_ctx=8192)
+        # One system prompt per locale, shared by every record of the batch: cached.
+        raw = provider.chat(system=mark_cached(system), user=user, max_tokens=2000, num_ctx=8192)
     except Exception as e:  # noqa: BLE001
         return None, f"call: {e}"
     parsed = parse_array(raw, len(job["src_facts"]))
@@ -259,6 +269,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     ap.add_argument("--lang", action="append", choices=TARGET_LOCALES, default=None)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--workers", type=int, default=1)
+    ap.add_argument("--only", action="append", default=[], help="restrict to a slug (repeatable)")
     ap.add_argument("--refresh", action="store_true")
     ap.add_argument("--batch", action="store_true")
     roundtrip.add_arguments(ap)
@@ -342,8 +353,10 @@ def _run_batch(args, languages: tuple[str, ...]) -> int:
     if not batch.supports(args.provider):
         print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
         return 1
-    model_id = args.model or batch.default_model(args.provider)
+    model_id = args.model or batch.default_model(args.provider, stage="02e")
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:
@@ -375,6 +388,8 @@ def main() -> int:
         return _run_batch(args, languages)
 
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
 
@@ -384,7 +399,7 @@ def main() -> int:
 
     provider, model_id = providers.make_provider(
         args.provider, model=args.model, ollama_url=args.ollama_url,
-        mistral_url=args.mistral_url,
+        mistral_url=args.mistral_url, stage="02e",
     )
     if provider is None:
         for j in jobs:

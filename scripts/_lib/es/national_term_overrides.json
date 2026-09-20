@@ -1,0 +1,59 @@
+{
+  "_doc": "Curator pins for scripts/_lib/es/national_term.py, keyed by record slug. `term` wins outright (display form); `castilian_form` records the Castilian equivalent when the pinned term is a regional-language legal form; `file_number` re-keys the listado lookup when eAmbrosia and the MAPA listado carry different expedientes for the same GI. Every entry cites a public source.",
+  "priorat": {
+    "term": "DOQ",
+    "castilian_form": "DOCa",
+    "rule": "regional-language legal form wins when the autonomous community's wine law defines it",
+    "sources": [
+      {
+        "label": "Llei 2/2020, de 5 de març, de la vitivinicultura (Catalunya), art. 4(e) «denominació d'origen qualificada» — in force since 2020-05-09; BOE núm. 71, 17.3.2020",
+        "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2020-3782"
+      },
+      {
+        "label": "Llei 15/2002, de 27 de juny, d'ordenació vitivinícola (Catalunya), art. 3.3 — DOGC núm. 3673; repealed by Llei 2/2020",
+        "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2002-14986"
+      },
+      {
+        "label": "Ordre ARP/188/2006 — Reglament de la Denominació d'Origen Qualificada Priorat (BOE-A-2009-11168)",
+        "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2009-11168"
+      },
+      {
+        "label": "Consell Regulador de la DOQ Priorat",
+        "url": "https://www.doqpriorat.org/"
+      },
+      {
+        "label": "MAPA listado (Término tradicional: DOCa, PDO-ES-A1560)",
+        "url": "https://www.mapa.gob.es/es/dam/jcr:f9643333-ef75-4a2f-8864-afd1ade63fd1/02_vinos.pdf"
+      }
+    ]
+  },
+  "tharsys": {
+    "term": "Vino de Pago",
+    "file_number": "PDO-ES-02086",
+    "note": "eAmbrosia registers Tharsys as PDO-ES-02980; the MAPA listado keys the same GI as PDO-ES-02086 (VP). The pliego de condiciones section 8 states the Art. 112(a) traditional term is \"vino de pago\".",
+    "sources": [
+      {
+        "label": "Pliego de condiciones DOP Tharsys (MAPA, 2025-10-02), section 8 b) Etiquetado",
+        "url": "https://www.mapa.gob.es/dam/mapa/contenido/alimentacion/temas/calidad-agroalimentaria/2017-calidad-diferenciada/nuevo_denominaciones/pliegos-de-condiciones/pliego-condiciones-vinos/dops/tharsis_2025_10_02.pdf"
+      },
+      {
+        "label": "MAPA listado (Término tradicional: VP, PDO-ES-02086)",
+        "url": "https://www.mapa.gob.es/es/dam/jcr:f9643333-ef75-4a2f-8864-afd1ade63fd1/02_vinos.pdf"
+      }
+    ]
+  },
+  "urbezo": {
+    "term": "Vino de Pago",
+    "note": "The MAPA listado (2026-07-02) still prints DO for PDO-ES-02585; MAPA's own press release of 2024-10-25 announces the EU registration of the DOP \"de vino de pago 'Urbezo'\" — the 26th vino de pago recognised by the EU.",
+    "sources": [
+      {
+        "label": "MAPA press release, 2024-10-25: La Unión Europea registra la nueva Denominación de Origen Protegida de vino de pago “Urbezo”",
+        "url": "https://www.mapa.gob.es/es/prensa/ultimas-noticias/detalle_noticias/la-union-europea-registra-la-nueva-denominacion-de-origen-protegida-de-vino-de-pago--urbezo--/fea9b19d-2912-44ad-800a-532512ce6e33"
+      },
+      {
+        "label": "Pliego de condiciones DOP Urbezo (MAPA, 2024-10-25)",
+        "url": "https://www.mapa.gob.es/dam/mapa/contenido/alimentacion/temas/calidad-agroalimentaria/2017-calidad-diferenciada/nuevo_denominaciones/pliegos-de-condiciones/pliego-condiciones-vinos/dops/urbezo_2024_10_25_pc.pdf"
+      }
+    ]
+  }
+}

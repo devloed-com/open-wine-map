@@ -35,7 +35,6 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from difflib import SequenceMatcher
 from pathlib import Path
 
 from tqdm import tqdm
@@ -44,6 +43,14 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
+from _lib.prompt_cache import cached_system, split_user_lead  # noqa: E402
+from _lib.terroir_cache import write_source_cache  # noqa: E402
+from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
+from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
+from _lib.terroir_feedback import with_feedback  # noqa: E402
+from _lib.terroir_interactions import earn_interactions  # noqa: E402
+from _lib.terroir_normalize import normalize_facts  # noqa: E402
+from _lib.terroir_prompts import with_style_rules  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "mt" / "dokumente-extracted"
 WIKI_AOCS_ROOT = ROOT / "raw" / "wikipedia" / "aocs"
@@ -115,12 +122,13 @@ Strict rules:
 - Quotes are VERBATIM (copy-paste) from their source. NEVER attribute to a source text that does not appear in it.
 - No value judgements ("exceptional", "prestigious"…).
 - No figures absent from both sources.
-- At most {max_bullets} bullets, each ≤ 140 characters.
+- At most {max_bullets} bullets; each bullet is one full sentence of roughly 120–220 characters — never a telegraphic fragment.
 - If neither Wikipedia nor the regulator context contains a concrete noteworthy fact for this sub-section, return an empty list.
 
 Reply ONLY in JSON, no preamble:
 {{"facts": [{{"bullet": "…", "cahier_quote": "…", "wiki_quote": "…"}}, ...]}}
 Use an empty string "" for the missing quote."""
+EXTRACT_SYSTEM = with_style_rules(EXTRACT_SYSTEM)
 
 
 USER_LEAD = "Sub-section: {label}\n\nRegulator context:\n\n{ctx}"
@@ -129,23 +137,8 @@ USER_LEAD = "Sub-section: {label}\n\nRegulator context:\n\n{ctx}"
 # ─────────────────────────────────────────────────────────────── helpers ──
 
 
-def normalize(s: str) -> str:
-    return " ".join((s or "").split()).lower()
-
-
 def wiki_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
-def fuzzy_coverage(quote: str, source: str) -> float:
-    q = normalize(quote)
-    s = normalize(source)
-    if not q:
-        return 0.0
-    match = SequenceMatcher(None, q, s, autojunk=False).find_longest_match(
-        0, len(q), 0, len(s)
-    )
-    return match.size / len(q)
 
 
 def _find_heading(full: str, heading: str) -> int:
@@ -291,9 +284,13 @@ def _process_subsection(provider, model_id: str, record: dict, sub: dict):
         wiki_hint=wiki_hint or "(no Wikipedia extract available)",
         label=label, topics=topic, max_bullets=sub["max_bullets"],
     )
-    user = USER_LEAD.format(label=label, ctx=cahier_ctx)
+    system = with_feedback(system, record["slug"])
+    # The regulator text is the cached leading block: the four sub-section calls share it.
+    user, doc = split_user_lead(USER_LEAD, label=label, ctx=cahier_ctx)
+    system = cached_system(doc, system, phased=True)
     try:
-        raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192)
+        raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192,
+                            cache_phase=sub["key"])
     except Exception as e:  # noqa: BLE001
         return [], 0, str(e)
     payload, perr = llm_json.parse_facts(raw)
@@ -321,6 +318,12 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
             f["subsection"] = sub["key"]
             all_facts.append(f)
 
+    deduped = dedupe_facts(all_facts)
+    all_facts = deduped.kept
+    earned = earn_interactions(all_facts, SOURCE_LANG)
+    all_facts = earned.kept
+    normalize_facts(all_facts)
+
     payload = {
         "country": "mt",
         "source_lang": SOURCE_LANG,
@@ -328,6 +331,8 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "name": record.get("name") or slug,
         "facts": all_facts,
         "n_dropped": n_dropped_total,
+        "n_deduped": len(deduped.drops),
+        "n_unearned_interactions": len(earned.dropped),
         "model": model_id,
         "model_kind": provider.kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -338,7 +343,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "wiki_source_url": wiki.get("page_url"),
         "subsection_errors": sub_errors,
     }
-    cache.write_json(CACHE_DIR / f"{slug}.json", payload)
+    write_source_cache(CACHE_DIR / f"{slug}.json", payload)
     return payload
 
 
@@ -382,11 +387,11 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "subsection": sub["key"],
                 "subsection_label": label,
                 "max_bullets": sub["max_bullets"],
-                "system_prompt": EXTRACT_SYSTEM.format(
+                "system_prompt": with_feedback(EXTRACT_SYSTEM.format(
                     wiki_hint=wiki_hint or "(no Wikipedia extract)",
                     label=label, topics=SUBSECTION_TOPICS[sub["key"]],
                     max_bullets=sub["max_bullets"],
-                ),
+                ), rec["slug"]),
                 "cahier_ctx": rec.get("_cahier_ctx") or "",
                 "wiki_hint": wiki_hint,
                 "cahier_source_sha": wiki_sha(rec.get("_cahier_ctx") or ""),
@@ -430,7 +435,7 @@ def import_todo(in_path: Path, *, translator_id: str, translator_kind: str) -> i
                 f["subsection"] = it.get("subsection") or "facteurs_naturels"
                 facts.append(f)
         wiki = rec.get("_wiki_record") or {}
-        cache.write_json(CACHE_DIR / f"{slug}.json", {
+        write_source_cache(CACHE_DIR / f"{slug}.json", {
             "country": "mt", "source_lang": SOURCE_LANG, "slug": slug,
             "name": rec.get("name") or slug, "facts": facts,
             "model": translator_id, "model_kind": translator_kind,
@@ -485,7 +490,7 @@ def _run_batch(args) -> int:
     if not batch.supports(args.provider):
         print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
         return 1
-    model_id = args.model or batch.default_model(args.provider)
+    model_id = args.model or batch.default_model(args.provider, stage="02d")
     targets = collect_targets()
     if args.only:
         needles = [s.lower() for s in args.only]
@@ -518,7 +523,7 @@ def _run_batch(args) -> int:
     batch.run_two_pass(
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-mt.json",
-        run_loop=run_loop,
+        run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
     )
     return 0
 
@@ -556,7 +561,7 @@ def main() -> int:
         return 0
 
     provider, model_id = providers.make_provider(
-        args.provider, model=args.model, ollama_url=args.ollama_url,
+        args.provider, model=args.model, stage="02d", ollama_url=args.ollama_url,
         mistral_url=args.mistral_url,
     )
     if provider is None:

@@ -50,7 +50,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
-from _lib.translation_glossary import glossary_for  # noqa: E402
+from _lib.prompt_cache import mark_cached  # noqa: E402
+from _lib.terroir_cache import write_translation_cache  # noqa: E402
+from _lib.terroir_prompts import translation_system_prompt, with_appellation_context  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -64,6 +66,8 @@ LOCALE_NAME = {
     "pt": "Portuguese",
 }
 
+PROPER_NOUNS = """named geological formations (Marnes à exogyra virgula, Calcaire du Barrois, Poudingue de Jurançon, tuffeau, llicorella, albariza) and named local soils (caillottes, chailloux); named winds (Mistral, Bise, Tramontane, foehn, cierzo, levante)"""
+
 
 def build_system_prompt(*, source_lang: str, target_lang: str) -> str:
     source_name = LOCALE_NAME.get(source_lang, "French")
@@ -72,13 +76,13 @@ def build_system_prompt(*, source_lang: str, target_lang: str) -> str:
 
 Rules:
 - Output a JSON array of strings, one translated bullet per input bullet, in the SAME order. The array length must equal the input list length.
-- Preserve {source_name} proper nouns verbatim: appellation names, region names, commune names, grape variety names, named geological formations (e.g. "Marnes à exogyra virgula", "Calcaire du Barrois", "Poudingue de Jurançon", "tuffeau", "llicorella", "albariza"), named winds (e.g. "Mistral", "Bise", "Tramontane", "foehn", "cierzo", "levante"), local soil/landscape names ("caillottes", "chailloux", "restanques", "chaillées").
 - Geological era labels: translate to the standard {target_name} form if it exists (e.g. Kimméridgien → Kimmeridgian in EN, Kimmeridgiense in ES). When unsure, keep the source-language form.
 - Translate descriptive vocabulary naturally for a wine-literate reader.
 - Match each source bullet's length and register; do not add commentary, footnotes, or explanations.
 - Output ONLY the JSON array, no preface, no markdown fences."""
-    glossary = glossary_for(target_lang)
-    return base + "\n\n" + glossary if glossary else base
+    return translation_system_prompt(
+        base, source_lang=source_lang, target_lang=target_lang, proper_nouns=PROPER_NOUNS,
+    )
 
 
 # ─────────────────────────────────────────────────────────────── helpers ──
@@ -137,7 +141,7 @@ def write_cache(
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    cache.write_json(cache_path(lang, slug), payload)
+    write_translation_cache(cache_path(lang, slug), payload)
 
 
 def _is_fresh_cache(existing: dict | None, sha: str, expected_len: int) -> bool:
@@ -202,8 +206,10 @@ def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
     source_lang = (job.get("fr_data") or {}).get("source_lang") or "fr"
     system = build_system_prompt(source_lang=source_lang, target_lang=job["lang"])
     user = build_user_prompt(job["fr_facts"])
+    user = with_appellation_context(user, job["slug"])  # names the appellation on sub-denomination pages
     try:
-        raw = provider.chat(system=system, user=user, max_tokens=2000, num_ctx=8192)
+        # One system prompt per locale, shared by every record of the batch: cached.
+        raw = provider.chat(system=mark_cached(system), user=user, max_tokens=2000, num_ctx=8192)
     except Exception as e:  # noqa: BLE001
         return None, f"call: {e}"
     parsed = parse_array(raw, len(job["fr_facts"]))
@@ -342,6 +348,7 @@ def _build_argparser() -> argparse.ArgumentParser:
             "For Anthropic, respect your account's RPM/concurrency limits."
         ),
     )
+    ap.add_argument("--only", action="append", default=[], help="restrict to a slug (repeatable)")
     ap.add_argument("--refresh", action="store_true", help="re-translate even if cached")
     ap.add_argument(
         "--batch", action="store_true",
@@ -381,7 +388,7 @@ def _dispatch_emit_or_import(args, languages: tuple[str, ...]) -> int | None:
 def _make_provider(args) -> tuple[object | None, str]:
     return providers.make_provider(
         args.provider, model=args.model, ollama_url=args.ollama_url,
-        mistral_url=args.mistral_url,
+        mistral_url=args.mistral_url, stage="02e",
     )
 
 
@@ -450,8 +457,10 @@ def _run_batch(args, languages: tuple[str, ...]) -> int:
     if not batch.supports(args.provider):
         print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
         return 1
-    model_id = args.model or batch.default_model(args.provider)
+    model_id = args.model or batch.default_model(args.provider, stage="02e")
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:
@@ -483,6 +492,8 @@ def main() -> int:
         return _run_batch(args, languages)
 
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
 

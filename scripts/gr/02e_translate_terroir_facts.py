@@ -27,6 +27,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.prompt_cache import mark_cached  # noqa: E402
+from _lib.terroir_cache import write_translation_cache  # noqa: E402
+from _lib.terroir_prompts import translation_system_prompt, with_appellation_context  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -39,12 +42,14 @@ SYSTEM_PROMPT = """You translate short Greek bullets describing a Greek wine app
 
 Rules:
 - Output a JSON array of strings, one translated bullet per input bullet, in the SAME order. The array length must equal the input list length.
-- Preserve Greek proper nouns verbatim: appellation names ("Σαντορίνη", "Νεμέα", "Νάουσα", "Μαντινεία", "Ραψάνη", "Πάτρα", "Μαυροδάφνη Πατρών", "Μοσχάτο Πατρών", "Μοσχάτος Ρίου Πάτρας", "Μονεμβασιά-Malvasia", "Ζίτσα", "Αμύνταιο", "Γουμένισσα", "Μεσενικόλα", "Πλαγιές Μελίτωνα", "Σάμος", "Ρόδος", "Λήμνος", "Πάρος", "Σητεία", "Δαφνές", "Πεζά", "Αρχάνες", "Χάνδακας - Candia", "Ρομπόλα Κεφαλληνίας", "Αγχίαλος", "Μοσχάτος Λήμνου", "Μοσχάτος Ρόδου", "Μαυροδάφνη Κεφαλληνίας", "Μοσχάτος Κεφαλληνίας", "Malvasia Πάρος", "Malvasia Σητείας", "Malvasia Χάνδακας-Candia"), grape variety names ("Ασύρτικο", "Ξινόμαυρο", "Αγιωργίτικο", "Μοσχοφίλερο", "Ροδίτης", "Ρομπόλα", "Λημνιό", "Λημνιώνα", "Μαυροδάφνη", "Μαλαγουζιά", "Σαββατιανό", "Βιδιανό", "Βιλάνα", "Λιάτικο", "Κοτσιφάλι", "Μανδηλαριά", "Αθήρι", "Αηδάνι", "Θραψαθήρι", "Ντεμπίνα", "Νεγκόσκα", "Σταυρωτό", "Κρασάτο", "Μπατίκι", "Vinsanto", "Νυχτέρι"), named geographical features ("Μακεδονία", "Θράκη", "Θεσσαλία", "Ήπειρος", "Πελοπόννησος", "Στερεά Ελλάδα", "Κρήτη", "Ιόνια Νησιά", "Νησιά Αιγαίου", "Όλυμπος", "Καλντέρα", "Παρνασσός", "Όρος Μέλιτων", "Πάικο", "Βέρμιο", "Πεντελικό", "Πάρνηθα"), named soil types ("ασπρα γη", "ηφαιστειακά εδάφη", "αλλουβιακά", "ασβεστόλιθος", "σχιστόλιθος", "μάργες", "πυριγενή πετρώματα", "μαυρόχωμα", "αμμώδες", "χαλικώδες", "αργιλώδες", "αμμοχαλικώδες"), named climatic features ("μεσογειακό κλίμα", "ηπειρωτικό κλίμα", "μελτέμια", "ετήσιοι άνεμοι", "αλίπνοες αύρες", "ορεινό μικροκλίμα"), and Greek wine-law terms ("προστατευόμενη ονομασία προέλευσης", "προστατευόμενη γεωγραφική ένδειξη", "ΠΟΠ", "ΠΓΕ", "οινολογικές πρακτικές", "αμπελουργική ζώνη", "ενιαίο έγγραφο", "προδιαγραφές προϊόντος", "αμπελοοινικός χάρτης").
-- Wine-style traditional terms (preserve verbatim): "Vinsanto", "Νυχτέρι", "Λιαστός οίνος", "Vin doux naturel" / "οίνος γλυκός φυσικός", "όψιμη συγκομιδή", "αφρώδης οίνος".
+- Registered Greek wine terms stay, in their Latin form: "Vinsanto", "Nychteri" (for Νυχτέρι), "vin doux naturel" (for οίνος γλυκός φυσικός). Generic style categories (λιαστός οίνος, όψιμη συγκομιδή, αφρώδης οίνος) are common nouns and are translated.
 - Geological era labels: translate to the standard {lang_name} form when one exists. When unsure, keep the Greek form.
 - Translate descriptive vocabulary naturally for a wine-literate reader.
 - Match each source bullet's length and register; do not add commentary, footnotes, or explanations.
 - Output ONLY the JSON array, no preface, no markdown fences."""
+
+SOURCE_LANG = "el"
+PROPER_NOUNS = """appellation names, written in their EU-official Latin form (Santorini, Nemea, Naoussa, Mantinia, Rapsani, Patra, Mavrodafni Patron, Moschato Patron, Moschatos Riou Patras, Monemvasia-Malvasia, Zitsa, Amynteo, Goumenissa, Mesenikola, Playies Melitona, Samos, Rodos, Limnos, Paros, Sitia, Dafnes, Peza, Arhanes, Handakas-Candia, Robola Kefallinias, Anchialos, Moschatos Limnou, Moschato Rodou, Mavrodafni Kefallinias, Moschato Kefallinias, Malvasia Paros, Malvasia Sitia, Malvasia Handakas-Candia, Tyrnavos); grape names in their Latin form (Assyrtiko, Xinomavro, Agiorgitiko, Moschofilero, Roditis, Robola, Limnio, Limniona, Mavrodaphne, Malagousia, Savatiano, Vidiano, Vilana, Liatiko, Kotsifali, Mandilaria, Athiri, Aidani, Thrapsathiri, Debina, Negoska, Stavroto, Krasato, Batiki); named regions and mountains, in the established target-language form where one exists and transliterated otherwise (Macedonia, Thrace, Thessaly, Epirus, Peloponnese, Sterea Ellada, Crete, Ionian Islands, Aegean Islands, Olympus, Parnassus, Meliton, Paiko, Vermio, Penteli, Parnitha, the Santorini caldera); registered traditional terms (Vinsanto, Nychteri)"""
 
 
 def facts_sha(facts: list[dict]) -> str:
@@ -96,7 +101,7 @@ def write_cache(
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    cache.write_json(cache_path(lang, slug), payload)
+    write_translation_cache(cache_path(lang, slug), payload)
 
 
 def _is_fresh_cache(existing: dict | None, sha: str, expected_len: int) -> bool:
@@ -147,10 +152,15 @@ def build_user_prompt(src_facts: list[dict]) -> str:
 
 
 def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
-    system = SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]])
+    system = translation_system_prompt(
+        SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]]),
+        source_lang=SOURCE_LANG, target_lang=job["lang"], proper_nouns=PROPER_NOUNS,
+    )
     user = build_user_prompt(job["src_facts"])
+    user = with_appellation_context(user, job["slug"])  # names the appellation on sub-denomination pages
     try:
-        raw = provider.chat(system=system, user=user, max_tokens=2000, num_ctx=8192)
+        # One system prompt per locale, shared by every record of the batch: cached.
+        raw = provider.chat(system=mark_cached(system), user=user, max_tokens=2000, num_ctx=8192)
     except Exception as e:  # noqa: BLE001
         return None, f"call: {e}"
     parsed = parse_array(raw, len(job["src_facts"]))
@@ -260,6 +270,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     ap.add_argument("--lang", action="append", choices=TARGET_LOCALES, default=None)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--workers", type=int, default=1)
+    ap.add_argument("--only", action="append", default=[], help="restrict to a slug (repeatable)")
     ap.add_argument("--refresh", action="store_true")
     ap.add_argument("--batch", action="store_true")
     roundtrip.add_arguments(ap)
@@ -343,8 +354,10 @@ def _run_batch(args, languages: tuple[str, ...]) -> int:
     if not batch.supports(args.provider):
         print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
         return 1
-    model_id = args.model or batch.default_model(args.provider)
+    model_id = args.model or batch.default_model(args.provider, stage="02e")
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:
@@ -376,6 +389,8 @@ def main() -> int:
         return _run_batch(args, languages)
 
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
 
@@ -385,7 +400,7 @@ def main() -> int:
 
     provider, model_id = providers.make_provider(
         args.provider, model=args.model, ollama_url=args.ollama_url,
-        mistral_url=args.mistral_url,
+        mistral_url=args.mistral_url, stage="02e",
     )
     if provider is None:
         for j in jobs:

@@ -224,33 +224,121 @@ def find_article_offsets(text: str) -> list[tuple[int, int, int]]:
     return out
 
 
-def extract_articles(text: str) -> dict[int, str]:
-    """Carves the pdftotext output into a dict {article_num: body}.
-    Body excludes the header line and stops at the next article's
-    header (or EOF). Newer disciplinari sometimes have the header
-    appear twice (TOC + body); the LAST occurrence is kept since
-    that's where the real body sits."""
+TOC_BODY_MAX_CHARS = 200
+ANNEX_TITLE_LINES = 3
+
+
+def _runs(text: str, heads: list[tuple[int, int, int]]) -> list[list[tuple[int, int, int, int]]]:
+    """Split the header sequence into runs at every restart at Art. 1:
+    a consolidated disciplinare appends one sub-disciplinare per
+    sottozona ("ALLEGATO 3 — SOTTOZONA «ALTO TIRINO»", "TITOLO II
+    «TRENTINO SUPERIORE»"), each numbered from Art. 1 again. Each entry
+    is (num, header_start, header_end, body_end)."""
+    runs: list[list[tuple[int, int, int, int]]] = []
+    cur: list[tuple[int, int, int, int]] = []
+    for i, (num, hs, he) in enumerate(heads):
+        end = heads[i + 1][1] if i + 1 < len(heads) else len(text)
+        if cur and num == 1:
+            runs.append(cur)
+            cur = []
+        cur.append((num, hs, he, end))
+    if cur:
+        runs.append(cur)
+    return runs
+
+
+def _is_toc(run: list[tuple[int, int, int, int]]) -> bool:
+    """A table of contents: every "body" between consecutive headers is a
+    title line, never article text. (When every run looks like this the
+    caller keeps them all — a two-header fixture is not a TOC.)"""
+    return all(end - he < TOC_BODY_MAX_CHARS for _num, _hs, he, end in run)
+
+
+def _bodies(text: str, run: list[tuple[int, int, int, int]]) -> dict[int, str]:
+    """{article_num: body} for one run. A number repeated inside a run (a
+    cross-reference line that happens to start with "Art. 5", an OCR
+    duplicate) keeps the occurrence with the longest body."""
+    bodies: dict[int, str] = {}
+    for num, _hs, he, end in run:
+        body = text[he:end].strip()
+        if len(body) > len(bodies.get(num, "")):
+            bodies[num] = body
+    return bodies
+
+
+_ANNEX_HEADING_RE = re.compile(r"(?i)\b(allegato|sottozona|titolo\s+[ivx]+)\b")
+
+
+def _annex_title(text: str, run_start: int) -> str:
+    """The heading of an annex — "ALLEGATO 3 «MONTEPULCIANO D'ABRUZZO»
+    SOTTOZONA «ALTO TIRINO»" — read from the non-blank lines just before
+    its Art. 1 header (they sit at the tail of the previous run's last
+    article body). Starts at the first line naming an allegato /
+    sottozona / titolo when one is in view; page-number lines dropped."""
+    lines = [ln.strip() for ln in text[max(0, run_start - 600):run_start].splitlines() if ln.strip()]
+    lines = [ln for ln in lines if not ln.isdigit()]
+    tail = lines[-10:]
+    for i, ln in enumerate(tail):
+        if _ANNEX_HEADING_RE.match(ln):
+            return " ".join(tail[i:])
+    for i, ln in enumerate(tail[-6:]):
+        if _ANNEX_HEADING_RE.search(ln) and ln[:1].isupper():
+            return " ".join(tail[-6:][i:])
+    return " ".join(tail[-ANNEX_TITLE_LINES:])
+
+
+_DISCIPLINARE_ART1_RE = re.compile(r"(?i)\briservat[aoei]\b")
+
+
+def _main_run_index(text: str, runs: list[list[tuple[int, int, int, int]]]) -> int:
+    """The run holding the disciplinare proper: the first whose Art. 1
+    reads like one ("La denominazione … è riservata ai vini …"). A
+    ministerial decree bound in front of it (Veneto IGT: five short
+    articles on the 2008/2009 transition, "approvato con decreto …")
+    restarts the numbering too but never reserves the name. Falls back
+    to the longest run."""
+    for i, run in enumerate(runs):
+        art1 = next((text[he:end] for num, _hs, he, end in run if num == 1), "")
+        if _DISCIPLINARE_ART1_RE.search(art1[:400]):
+            return i
+    return max(range(len(runs)), key=lambda i: sum(end - he for _n, _hs, he, end in runs[i]))
+
+
+def extract_article_runs(text: str) -> tuple[dict[int, str], list[dict]]:
+    """(main articles, annexes) of a MASAF disciplinare.
+
+    `main` is `{article_num: body}` for the first substantive run — the
+    parent denomination's own text. `annexes` lists every later run
+    (`{"title", "articles"}`), in document order: the per-sottozona
+    sub-disciplinari whose Art. 1 / Art. 3 / Art. 9 belong to the
+    sottozona, not to the parent. Before 2026-09-13 `extract_articles`
+    kept the LAST occurrence of each article number, so a parent with
+    annexes took its summary, grape roster, area and terroir link from
+    its last sottozona (Montepulciano d'Abruzzo → San Martino sulla
+    Marrucina; Trentino → Valle di Cembra)."""
     heads = find_article_offsets(text)
     if not heads:
-        return {}
+        return {}, []
+    all_runs = _runs(text, heads)
+    runs = [r for r in all_runs if not _is_toc(r)] or all_runs
+    first = _main_run_index(text, runs)
+    runs = runs[first:]
+    main = _bodies(text, runs[0])
+    annexes = [
+        {"title": _annex_title(text, run[0][1]), "articles": _bodies(text, run)}
+        for run in runs[1:]
+    ]
+    return main, annexes
 
-    # When the same article number appears multiple times (TOC + body),
-    # take the LAST occurrence — TOC lines have no body content.
-    last_by_num: dict[int, tuple[int, int, int]] = {}
-    for tup in heads:
-        last_by_num[tup[0]] = tup
-    ordered = sorted(last_by_num.values(), key=lambda t: t[1])
 
-    bodies: dict[int, str] = {}
-    for i, (num, _hstart, hend) in enumerate(ordered):
-        end = ordered[i + 1][1] if i + 1 < len(ordered) else len(text)
-        body = text[hend:end]
-        # Trim a per-article sub-title on the first non-blank line:
-        # MASAF disciplinari place "Denominazione e vini" /
-        # "(Base ampelografica)" / etc. immediately after the header.
-        # Keep it — downstream consumers may want it as a salience hint.
-        bodies[num] = body.strip()
-    return bodies
+def extract_articles(text: str) -> dict[int, str]:
+    """Carves the pdftotext output into `{article_num: body}` for the
+    parent's own disciplinare (the first substantive run — a table of
+    contents is skipped, sottozona annexes are left to
+    `extract_article_runs`). Body excludes the header line and stops at
+    the next article header (or EOF)."""
+    main, _annexes = extract_article_runs(text)
+    return main
 
 
 # Grape extraction from Article 2 ("Base ampelografica"). Two formats
@@ -587,21 +675,28 @@ def parse_grapes_with(matcher, article2_body: str, wine_name: str = "") -> dict:
         "details": [],
     }
     name_key = _loose_key(wine_name)
-    seen: set[str] = set()
-    hits: list[tuple] = []  # (MatchResult, from_wine_name)
+    hits: list = []  # first MatchResult per slug, in order
+    from_name: dict[str, bool] = {}  # slug → matched ONLY from phrases restating the wine name
     for phrase in article2_candidate_phrases(article2_body):
         hit = matcher(phrase)
-        if hit is None or hit.slug in seen:
+        if hit is None:
             continue
         if hit.method.startswith("fuzzy"):
             score = int(hit.method.split(":")[1])
             if score < 90 or len(re.sub(r"[\W\d_]", "", phrase)) < 7:
                 continue
-        seen.add(hit.slug)
-        hits.append((hit, bool(name_key) and _loose_key(phrase) == name_key))
+        restates_name = bool(name_key) and _loose_key(phrase) == name_key
+        if hit.slug not in from_name:
+            hits.append(hit)
+            from_name[hit.slug] = restates_name
+        elif not restates_name:
+            # "Trebbiano d'Abruzzo" (the DOC name) resolves to the grape
+            # trebbiano-abruzzese before the roster's own "Trebbiano
+            # abruzzese" does — the later, genuine phrase must vouch for it.
+            from_name[hit.slug] = False
 
-    real = [h for h, from_name in hits if not from_name]
-    keep = real if real else [h for h, _ in hits]
+    real = [h for h in hits if not from_name[h.slug]]
+    keep = real if real else hits
     for hit in keep:
         out["principal"].append(hit.slug)
         out["details"].append({
@@ -690,10 +785,18 @@ def derive_summary(article1_body: str, max_chars: int = 600) -> str:
     return cut + ("." if not cut.endswith(".") else "")
 
 
-def derive_geo_area(article3_body: str, max_chars: int = 4000) -> str:
+def cap_at_sentence(body: str, max_chars: int | None) -> str:
+    """Cut `body` to at most `max_chars` at the last sentence boundary
+    before the cap; None (or 0) leaves it whole."""
+    if max_chars and len(body) > max_chars:
+        return body[:max_chars].rsplit(".", 1)[0] + "."
+    return body
+
+
+def derive_geo_area(article3_body: str, max_chars: int | None = 4000) -> str:
     """Article 3 ('Zona di produzione delle uve') body. Returned trimmed
     of leading sub-title noise and capped at max_chars so the panel
-    doesn't drown in commune lists."""
+    doesn't drown in commune lists (None = uncapped)."""
     if not article3_body:
         return ""
     text = article3_body.strip()
@@ -713,14 +816,14 @@ def derive_geo_area(article3_body: str, max_chars: int = 4000) -> str:
             skip_subtitle = False
         kept.append(s)
     body = "\n".join(kept).strip()
-    if len(body) > max_chars:
-        body = body[:max_chars].rsplit(".", 1)[0] + "."
-    return body
+    return cap_at_sentence(body, max_chars)
 
 
-def derive_terroir(article9_body: str, max_chars: int = 4000) -> str:
+def derive_terroir(article9_body: str, max_chars: int | None = 4000) -> str:
     """Same shape as `derive_geo_area` but for Article 9 ('Legame con
-    l'ambiente geografico')."""
+    l'ambiente geografico'). The 4,000-char default is the panel length;
+    the terroir-fact extractor reads the uncapped body (469 of 522
+    disciplinari carry an Art. 9 longer than the cap)."""
     return derive_geo_area(article9_body, max_chars=max_chars)
 
 
@@ -731,10 +834,11 @@ _LEGAME_TITLE_RE = re.compile(
 
 
 def pick_terroir_article(
-    articles: dict[int, str], raw_text: str | None = None
+    articles: dict[int, str], raw_text: str | None = None, max_chars: int | None = 4000
 ) -> tuple[int, str]:
     """Return (article_number, derived_terroir_body) for the 'Legame
-    con l'ambiente geografico' section.
+    con l'ambiente geografico' section, the body capped at `max_chars`
+    (None = whole article).
 
     The canonical MASAF template puts it at Article 9; the older
     Veneto-IGT template (colli-trevigiani, conselvano, marca-
@@ -759,7 +863,7 @@ def pick_terroir_article(
     for n in candidates:
         body = articles.get(n, "")
         if body and _LEGAME_TITLE_RE.search(body[:300]):
-            return n, derive_terroir(body)
+            return n, derive_terroir(body, max_chars=max_chars)
 
     # Step 2: raw-text fallback (handles concatenated disciplinari).
     if raw_text:
@@ -781,7 +885,7 @@ def pick_terroir_article(
                 end = next_m.start() if next_m else len(raw_text)
                 body = raw_text[start:end].strip()
                 if body and n:
-                    return n, derive_terroir(body)
+                    return n, derive_terroir(body, max_chars=max_chars)
 
     # Step 3: established canonical fallback.
-    return 9, derive_terroir(articles.get(9, ""))
+    return 9, derive_terroir(articles.get(9, ""), max_chars=max_chars)

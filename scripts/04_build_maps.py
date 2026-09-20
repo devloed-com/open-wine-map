@@ -92,6 +92,7 @@ from _lib.de.geometry import DEPolygonIndex
 from _lib.de.region import derive_region as derive_de_region
 from _lib.env import load_dotenv
 from _lib.es.geometry import ESPolygonIndex
+from _lib.es.national_term import es_term_for
 from _lib.es.region import (
     derive_ccaa as derive_es_ccaa,
 )
@@ -110,6 +111,14 @@ from _lib.geom_chain import (
     union_from_insee,
 )
 from _lib.geometry_overrides import ClipResult, GeometryOverrides
+from _lib.gi_terms import (
+    build_term_tree,
+    build_terms_info,
+    class_key,
+    classification_label,
+    derive_eu_scheme,
+    resolve_national_term,
+)
 from _lib.gr.geometry import GRPolygonIndex
 from _lib.gr.region import derive_region as derive_gr_region
 from _lib.hr.geometry import HRPolygonIndex
@@ -119,6 +128,7 @@ from _lib.hu.region import derive_region as derive_hu_region
 from _lib.i18n import LOCALES, compile_catalogs, load_translations
 from _lib.it.comune import ITCommuneIndex
 from _lib.it.geometry import ITPolygonIndex
+from _lib.it.national_term import it_term_for
 from _lib.it.region import derive_regione as derive_it_regione
 from _lib.it.zones import ITZoneIndex
 from _lib.lexicon_loading import (
@@ -166,6 +176,7 @@ from _lib.style_taxonomy import (
     taxonomy_dfs_order as _taxonomy_dfs_order,
 )
 from _lib.summaries import derive_summary
+from _lib.terroir_normalize import normalize_aocs
 from shapely.geometry import mapping, shape
 from tqdm import tqdm
 from unidecode import unidecode as _unidecode
@@ -585,6 +596,19 @@ def _geojson_bounds(g: dict) -> tuple[float, float, float, float]:
 
     walk(g["coordinates"])
     return minx, miny, maxx, maxy
+
+
+# Villages (simple-mode) polygon vs parcellaire bbox ratio above which a
+# cahier-text commune union is treated as an extraction artefact and
+# narrowed to parcel-bearing communes. Corpus median is ~2x; legitimate
+# single-commune aires around tiny crus reach ~1000x but never pass the
+# commune-count gate. Pouilly-Loché's bad aire was ~44,000x.
+VILLAGES_BBOX_GUARD_RATIO = 20.0
+
+
+def _bbox_area(g) -> float:
+    minx, miny, maxx, maxy = g.bounds
+    return float((maxx - minx) * (maxy - miny))
 
 
 def communes_containing(needle, insee_idx: dict[str, dict]) -> set[str]:
@@ -1358,6 +1382,9 @@ def main() -> int:
         file=sys.stderr,
     )
 
+    # (eu_scheme, national_term) per slug — parents run first, so a
+    # sub-denomination without a term of its own can fall back on its parent.
+    term_by_slug: dict[str, tuple[str, str]] = {}
     for record in tqdm(extracted_records, desc="union", leave=False):
         is_sub_denomination = bool(record.get("is_sub_denomination"))
         country = record.get("country") or "fr"
@@ -2200,6 +2227,42 @@ def main() -> int:
             else:
                 v_geom, v_stats = union_for_appellation(record, commune_idx)
                 v_source = "communes"
+            # Guard: a cahier-text aire that dwarfs the parcellaire polygon is
+            # an extraction artefact (an aire de proximité list read as the
+            # aire — Pouilly-Loché's 2024 cahier drew the AOC across all of
+            # Burgundy in simple mode), not a production area. Narrow the
+            # text-derived communes to those holding parcels, exactly as the
+            # aires-CSV path does, and say so loudly. Dormant for correct
+            # records: a single-commune aire around a tiny cru never trips
+            # the count gate, and a multi-commune aire whose communes all
+            # hold parcels keeps every commune.
+            if (
+                v_source == "communes"
+                and geom_source == "parcellaire"
+                and v_geom is not None
+                and not v_geom.is_empty
+                and geom is not None
+                and not geom.is_empty
+                and v_stats.get("matched", 0) > 3
+                and _bbox_area(v_geom) > VILLAGES_BBOX_GUARD_RATIO * _bbox_area(geom)
+            ):
+                text_codes = cahier_insee(record, commune_idx)
+                narrowed = {
+                    c for c in text_codes
+                    if c in insee_idx and shape(insee_idx[c]).intersects(geom)
+                }
+                if narrowed and len(narrowed) < len(text_codes):
+                    n_geom, n_stats = union_from_insee(narrowed, insee_idx)
+                    if n_geom is not None and not n_geom.is_empty:
+                        ratio = _bbox_area(v_geom) / max(_bbox_area(geom), 1e-12)
+                        print(
+                            f"[villages-guard] {record['slug']}: cahier-text aire "
+                            f"({len(text_codes)} communes) spans {ratio:.0f}x the "
+                            f"parcellaire bbox — narrowed to {len(narrowed)} "
+                            f"parcel-bearing commune(s); check the stage-02 aire",
+                            file=sys.stderr,
+                        )
+                        v_geom, v_stats = n_geom, n_stats
 
         # Drop curator-reviewed spurious parts (geometry-outlier overrides).
         # Applied to both the detail and village geometries; for ES/PT/IT/AT
@@ -2328,6 +2391,16 @@ def main() -> int:
                 mvt_kind = "IGP"
             else:
                 mvt_kind = raw_kind if raw_kind != "STUB" else "AOC"
+        eu_scheme = derive_eu_scheme(record, mvt_kind)
+        national_term = resolve_national_term(
+            record, mvt_kind, it_term_for=it_term_for, es_term_for=es_term_for
+        )
+        if not national_term and is_sub_denomination:
+            parent_axes = term_by_slug.get(record.get("parent_slug") or "")
+            if parent_axes:
+                national_term = parent_axes[1]
+        term_by_slug[record["slug"]] = (eu_scheme, national_term)
+        gi_class_key = class_key(eu_scheme, record.get("country") or "fr", national_term)
         # ES records have `file_number` (e.g. PDO-ES-A0117) instead of FR's
         # numeric id_appellation; we coalesce so the MVT property carries
         # *some* stable identifier regardless of country.
@@ -2546,6 +2619,9 @@ def main() -> int:
             "name": record["name"],
             "name_latin": record.get("name_latin") or "",
             "kind": mvt_kind,
+            "eu_scheme": eu_scheme,
+            "national_term": national_term,
+            "class_key": gi_class_key,
             "region": region_value,
             "categorie": categorie,
             "is_wine": is_wine,
@@ -3501,6 +3577,11 @@ def emit_html(
     principal_counts: dict[str, int] = {}
     accessory_counts: dict[str, int] = {}
     region_counts: dict[str, int] = {}
+    # Appellation-type facet counts (scheme rows + "<cc>:<term>" rows), parents
+    # only and wines only, so a DOCG count is the roster count, not roster +
+    # sottozone, and a DOCa count is Rioja, not Rioja + its subzonas.
+    gi_class_counts: dict[str, int] = {}
+    gi_term_display: dict[str, tuple[str, str]] = {}
     grapes_all_counts: dict[str, int] = {}
     simple_style_counts: dict[str, int] = {}
     village_bbox_by_slug: dict[str, list[float]] = {}
@@ -3671,6 +3752,9 @@ def emit_html(
             "name": p["name"],
             "name_latin": p.get("name_latin") or "",
             "kind": p["kind"],
+            "eu_scheme": p.get("eu_scheme") or "",
+            "national_term": p.get("national_term") or "",
+            "class_key": p.get("class_key") or "",
             "region": p["region"],
             "is_wine": p.get("is_wine", "1") == "1",
             "is_sub_denomination": p.get("is_sub_denomination", "0") == "1",
@@ -3716,6 +3800,13 @@ def emit_html(
             grapes_all_counts[s] = grapes_all_counts.get(s, 0) + 1
         if p["region"]:
             region_counts[p["region"]] = region_counts.get(p["region"], 0) + 1
+        if p.get("is_sub_denomination", "0") != "1" and p.get("is_wine", "1") == "1":
+            ck = p.get("class_key") or ""
+            if ck:
+                gi_class_counts[ck] = gi_class_counts.get(ck, 0) + 1
+                toks = ck.strip(";").split(";")
+                if len(toks) > 1:
+                    gi_term_display[toks[1]] = (p.get("country") or "", p.get("national_term") or "")
 
     def sort_facet(d: dict[str, int]) -> list[tuple[str, int]]:
         return sorted(d.items(), key=lambda kv: (-kv[1], kv[0]))
@@ -3794,6 +3885,8 @@ def emit_html(
     ]
     class_descendants = _aging_tax.descendants_map()
 
+    facet_term_tree, term_descendants = build_term_tree(gi_class_counts)
+
     facets = dict(
         layer_url=layer_url,
         villages_layer_url=villages_layer_url,
@@ -3805,6 +3898,15 @@ def emit_html(
         class_descendants=class_descendants,
         facet_styles_simple=facet_styles_simple,
         facet_regions=sort_facet(region_counts),
+        facet_term_tree=facet_term_tree,
+        term_descendants=term_descendants,
+        term_display=gi_term_display,
+        corpus_counts={
+            "n": len(aocs),
+            "c": len({r.get("country") for r in aocs.values()}),
+            "parents": sum(1 for r in aocs.values() if not r.get("is_sub_denomination")),
+            "subs": sum(1 for r in aocs.values() if r.get("is_sub_denomination")),
+        },
         area_quartiles=(area_q1, area_q3),
         vivc_by_slug=_load_vivc_by_slug(),
     )
@@ -3889,6 +3991,7 @@ def emit_html(
         # summaries that fix extraction quirks — same provenance as the
         # cahier, so no marker.
         aocs_for_lang = {}
+        lang_labels = build_labels(load_translations(lang).gettext)
         for slug, rec in aocs.items():
             rec_country = rec.get("country")
             if rec_country in ("ch", "be"):
@@ -3930,6 +4033,14 @@ def emit_html(
                         "note": {"text": note_text,
                                  "sources": note_obj.get("sources") or []},
                     }
+            # One composer, run once per locale: the JS app and the SSR card
+            # both read this string rather than assembling term + scheme.
+            new_rec = {
+                **new_rec,
+                "class_label": classification_label(
+                    rec.get("national_term") or "", rec.get("eu_scheme") or "", lang_labels
+                ),
+            }
             aocs_for_lang[slug] = new_rec
         # Overlay translated terroir-fact bullets only for records whose
         # source language differs from the current locale (canonical bullets
@@ -3958,6 +4069,10 @@ def emit_html(
                 aocs_for_lang = overlay_translated_facts(aocs_for_lang, facts_translations)
         if facts_drop_idx:
             aocs_for_lang = apply_inherited_facts_filter(aocs_for_lang, facts_drop_idx)
+        # Deterministic bullet clean-up (colour codes, VT/SGN, terminal period)
+        # after the overlay so every locale's text is normalised, and after the
+        # sibling filter so the index-based drops stay aligned.
+        aocs_for_lang = normalize_aocs(aocs_for_lang, lang)
         out = (WIKI / "index.html") if lang == "en" else (WIKI / lang / "index.html")
         out.parent.mkdir(parents=True, exist_ok=True)
         # Pass a swapped facets dict so the per-locale `aocs` is the data bundle.
@@ -3966,6 +4081,7 @@ def emit_html(
         entity_out_dir = WIKI / ("en" if lang == "en" else lang)
         html_out, assets, n_index, n_fold = render_map_html(
             **per_locale_facets, locale=lang, grapes_info=lex, styles_info=styles_lex,
+            terms_info=build_terms_info(lang),
             index_slugs=index_slugs, fold_slugs=fold_slugs, entity_out_dir=entity_out_dir,
             children_map=children_by_parent, build_date=build_date,
         )

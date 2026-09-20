@@ -46,9 +46,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from _lib.grape_entity import match_variety  # noqa: E402
 from _lib.it.masaf import (  # noqa: E402
     article2_candidate_phrases,
+    cap_at_sentence,
     extract_articles,
     find_article_offsets,
     parse_grapes_with,
+    pick_terroir_article,
 )
 from _lib.it.menzione import extract_menzioni  # noqa: E402
 from _lib.it.sottozona import extract_sottozone  # noqa: E402
@@ -346,3 +348,55 @@ def test_masaf_article2_candidate_strips_percent_and_index():
     for p in phrases:
         assert "%" not in p
         assert not p[:2].strip().rstrip(".").isdigit()
+
+
+def test_masaf_extract_article_runs_keeps_the_parent_and_lists_annexes():
+    # A consolidated disciplinare: TOC, the parent's own articles, then one
+    # sub-disciplinare per sottozona restarting at Art. 1. The parent's
+    # Art. 1 / 3 / 9 must come from ITS run, never from the last annex
+    # (review 2026-09-12: Montepulciano d'Abruzzo took San Martino's).
+    from _lib.it.masaf import extract_article_runs
+    body = "x" * 300
+    text = (
+        "Articolo 1 Denominazione\nArticolo 2 Base\nArticolo 3 Zona\nArticolo 9 Legame\n\n"
+        f"Articolo 1\nDenominazione e vini\nLa DOC «Parent» {body}\n"
+        f"Articolo 2\nBase ampelografica\nMontepulciano {body}\n"
+        f"Articolo 3\nZona di produzione\nParent communes {body}\n"
+        f"Articolo 9\nLegame con l'ambiente\nParent terroir {body}\n"
+        "17\nALLEGATO 1\n“PARENT” SOTTOZONA “ALTO TIRINO”\n"
+        f"Articolo 1\nDenominazione e vini\nLa sottozona Alto Tirino {body}\n"
+        f"Articolo 3\nZona di produzione\nAlto Tirino communes {body}\n"
+        f"Articolo 9\nLegame con l'ambiente\nAlto Tirino terroir {body}\n"
+        "ALLEGATO 2\n“PARENT” SOTTOZONA “TEATE”\n"
+        f"Articolo 1\nDenominazione e vini\nLa sottozona Teate {body}\n"
+        f"Articolo 9\nLegame con l'ambiente\nTeate terroir {body}\n"
+    )
+    main, annexes = extract_article_runs(text)
+    assert sorted(main) == [1, 2, 3, 9]
+    assert "La DOC «Parent»" in main[1] and "Parent terroir" in main[9]
+    assert "Alto Tirino" not in main[9] and "Teate" not in main[1]
+    assert [a["title"] for a in annexes] == [
+        "ALLEGATO 1 “PARENT” SOTTOZONA “ALTO TIRINO”", "ALLEGATO 2 “PARENT” SOTTOZONA “TEATE”",
+    ]
+    assert "Alto Tirino terroir" in annexes[0]["articles"][9]
+    assert sorted(annexes[1]["articles"]) == [1, 9]
+    assert extract_articles(text) == main
+
+
+def test_masaf_terroir_uncapped_for_the_extractor_capped_for_the_panel():
+    sentences = ["Il legame con l'ambiente geografico è antico e documentato."]
+    sentences += [f"La frase numero {i} descrive i suoli e il clima della zona." for i in range(200)]
+    body = "Legame con l'ambiente geografico\n" + " ".join(sentences)
+    articles = {1: "Denominazione\nLa denominazione…", 9: body}
+
+    n, full = pick_terroir_article(articles, max_chars=None)
+    assert n == 9
+    assert len(full) > 4000
+    assert full.endswith("della zona.")
+
+    n, brief = pick_terroir_article(articles)
+    assert n == 9
+    assert brief == cap_at_sentence(full, 4000)
+    assert len(brief) <= 4000 and brief.endswith(".")
+    assert full.startswith(brief[:-1])
+    assert cap_at_sentence(full, None) == full

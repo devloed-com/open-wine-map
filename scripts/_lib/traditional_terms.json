@@ -1,0 +1,1369 @@
+{
+ "__doc__": "Curated ruling + definition table for the two naming axes stage 04 derives on every appellation record: eu_scheme (pdo / pgi / spirit-gi / uk-pdo / uk-pgi / none) and national_term — the traditional term (Reg. (EU) 1308/2013 Art. 112(a); registered under Reg. (EC) 607/2009 Annex XII, now kept in the EU register per Reg. (EU) 2019/33) that the member state's regulator attaches to the geographical indication as a whole. Admission rule for a term: (1) it is registered as a traditional term in Annex XII / the EU register (or, for Switzerland, defined in the federal OVin); (2) it is GI-wide — constant for every wine of the GI, never a lot-level quality grade (Qualitätswein, Prädikatswein, kakovostno, jakostní, akostné are excluded); (3) it is attached to the GI by a regulator document (national law, decree, DAC-Verordnung, the register itself) or by a cited curator pin. Scheme abbreviations and their translations (PDO/PGI, AOP/IGP, OEM/OFJ, ZOP/ZGO, ΠΟΠ/ΠΓΕ, CHOP/CHZO, ЗНП/ЗГУ, BOB/BGA, g.U./g.g.A.) are NOT terms. Sections: schemes (the six eu_scheme values, with UI copy), constants (per country, keyed by the record's kind token — FR: AOC/IGP/EDV, others: DOP/IGP; \"\" = no term and a missing (country, kind) also means no term; countries with a per-record roster — it DOP, es DOP+IGP, at DOP — omit that kind here), rulings (the why per country, with sources), pins (per-country file_number → term overrides, e.g. the Austrian DACs), terms (tooltip definitions keyed '<cc>:<term>' exactly as spelled in constants / pins / rosters). Rendering is 'TERM (SCHEME)'; term only when scheme is none; scheme only when the country has no term. To extend: add a constant or a pin with at least one public source URL, add the matching '<cc>:<term>' definition with all four locales, and record the ruling; tests/test_traditional_terms.py validates the shape. Every fact here cites a public source; notes are hand-authored UI copy (en/fr/es/nl), never machine-translated.",
+ "constants": {
+  "at": {
+   "IGP": "Landwein"
+  },
+  "be": {
+   "DOP": "",
+   "IGP": ""
+  },
+  "bg": {
+   "DOP": "",
+   "IGP": ""
+  },
+  "ch": {
+   "AOC": "AOC"
+  },
+  "cy": {
+   "DOP": "",
+   "IGP": ""
+  },
+  "cz": {
+   "DOP": "",
+   "IGP": ""
+  },
+  "de": {
+   "DOP": "",
+   "IGP": "Landwein"
+  },
+  "es": {},
+  "fr": {
+   "AOC": "AOC",
+   "EDV": "AOC",
+   "IGP": ""
+  },
+  "gb": {
+   "DOP": "",
+   "IGP": ""
+  },
+  "gr": {
+   "DOP": "",
+   "IGP": ""
+  },
+  "hr": {
+   "DOP": "",
+   "IGP": ""
+  },
+  "hu": {
+   "DOP": "",
+   "IGP": ""
+  },
+  "it": {
+   "IGP": "IGT"
+  },
+  "lu": {
+   "DOP": "",
+   "IGP": ""
+  },
+  "mt": {
+   "DOP": "DOK",
+   "IGP": "IĠT"
+  },
+  "nl": {
+   "DOP": "",
+   "IGP": ""
+  },
+  "pt": {
+   "DOP": "DOC",
+   "IGP": "Vinho Regional"
+  },
+  "ro": {
+   "DOP": "DOC",
+   "IGP": "IG"
+  },
+  "si": {
+   "DOP": "",
+   "IGP": ""
+  },
+  "sk": {
+   "DOP": "",
+   "IGP": ""
+  }
+ },
+ "pins": {
+  "at": {
+   "PDO-AT-02593": {
+    "since_vintage": "2013",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Wiener Gemischter Satz“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_wiener_gemischter_satz.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Wien (Wiener Gemischter Satz DAC seit Jahrgang 2013)",
+      "url": "https://www.oesterreichwein.at/unser-wein/weinbaugebiete/wien"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-02594": {
+    "since_vintage": "2017",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Rosalia“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_rosalia.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-02769": {
+    "since_vintage": "2020",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Ruster Ausbruch“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_ruster_ausbruch.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Gebietstypischer Qualitätswein (DAC)",
+      "url": "https://www.oesterreichwein.at/unser-wein/strategie-des-herkunftsmarketings/gebietstypischer-qualitaetswein-dac"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0205": {
+    "since_vintage": "2020",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Wachau“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_wachau.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Gebietstypischer Qualitätswein (DAC)",
+      "url": "https://www.oesterreichwein.at/unser-wein/strategie-des-herkunftsmarketings/gebietstypischer-qualitaetswein-dac"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0206": {
+    "since_vintage": "2002",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Weinviertel“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_weinviertel.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Weinviertel (DAC ab Jahrgang 2002)",
+      "url": "https://www.oesterreichwein.at/unser-wein/weinbaugebiete/niederoesterreich/weinviertel"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0208": {
+    "since_vintage": "2007",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Kremstal“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_kremstal.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Kremstal (DAC seit 2007)",
+      "url": "https://www.oesterreichwein.at/unser-wein/weinbaugebiete/niederoesterreich/kremstal"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0209": {
+    "since_vintage": "2008",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Kamptal“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_kamptal.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Kamptal (DAC seit Jahrgang 2008)",
+      "url": "https://www.oesterreichwein.at/unser-wein/weinbaugebiete/niederoesterreich/kamptal"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0210": {
+    "since_vintage": "2006",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Traisental“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_traisental.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Traisental (DAC seit Jahrgang 2006)",
+      "url": "https://www.oesterreichwein.at/unser-wein/weinbaugebiete/niederoesterreich/traisental"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0214": {
+    "since_vintage": "2005",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Mittelburgenland“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_mittelburgenland.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0215": {
+    "since_vintage": "2009",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Eisenberg“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_eisenberg.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Eisenberg (DAC seit Jahrgang 2009)",
+      "url": "https://www.oesterreichwein.at/unser-wein/weinbaugebiete/burgenland/eisenberg"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0216": {
+    "since_vintage": "2008",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Leithaberg“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_leithaberg.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0217": {
+    "since_vintage": "2019",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Carnuntum“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_carnuntum.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Gebietstypischer Qualitätswein (DAC)",
+      "url": "https://www.oesterreichwein.at/unser-wein/strategie-des-herkunftsmarketings/gebietstypischer-qualitaetswein-dac"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0219": {
+    "since_vintage": "2011",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Neusiedlersee“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_neusiedlersee.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Neusiedlersee (DAC trocken seit Jahrgang 2011)",
+      "url": "https://www.oesterreichwein.at/unser-wein/weinbaugebiete/burgenland/neusiedlersee"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0226": {
+    "since_vintage": "2018",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Vulkanland Steiermark“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_vulkanland.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Gebietstypischer Qualitätswein (DAC)",
+      "url": "https://www.oesterreichwein.at/unser-wein/strategie-des-herkunftsmarketings/gebietstypischer-qualitaetswein-dac"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0228": {
+    "since_vintage": "2018",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Südsteiermark“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_suedsteiermark.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Gebietstypischer Qualitätswein (DAC)",
+      "url": "https://www.oesterreichwein.at/unser-wein/strategie-des-herkunftsmarketings/gebietstypischer-qualitaetswein-dac"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0229": {
+    "since_vintage": "2023",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Thermenregion“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_thermenregion.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Gebietstypischer Qualitätswein (DAC)",
+      "url": "https://www.oesterreichwein.at/unser-wein/strategie-des-herkunftsmarketings/gebietstypischer-qualitaetswein-dac"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0233": {
+    "since_vintage": "2021",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Wagram“, BGBl. II Nr. 30/2022 (RIS, geltende Fassung) — § 9: gilt für Wein ab dem Jahrgang 2021",
+      "url": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=20011803"
+     },
+     {
+      "label": "DAC-Verordnung „Wagram“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_wagram.pdf"
+     },
+     {
+      "label": "Österreich Wein Marketing — Gebietstypischer Qualitätswein (DAC)",
+      "url": "https://www.oesterreichwein.at/unser-wein/strategie-des-herkunftsmarketings/gebietstypischer-qualitaetswein-dac"
+     }
+    ],
+    "term": "DAC"
+   },
+   "PDO-AT-A0234": {
+    "since_vintage": "2018",
+    "sources": [
+     {
+      "label": "DAC-Verordnung „Weststeiermark“ (konsolidiert, Bundeskellereiinspektion)",
+      "url": "http://www.bundeskellereiinspektion.at/downloads/dac_vo/dac_vo_weststeiermark.pdf"
+     },
+     {
+      "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+      "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+     },
+     {
+      "label": "Österreich Wein Marketing — Gebietstypischer Qualitätswein (DAC)",
+      "url": "https://www.oesterreichwein.at/unser-wein/strategie-des-herkunftsmarketings/gebietstypischer-qualitaetswein-dac"
+     }
+    ],
+    "term": "DAC"
+   }
+  },
+  "fr": {
+   "marc-d-alsace-gewurztraminer": {
+    "note": "SIQO row with an empty categorie (see CLAUDE.md, FR register pins): a marc (grape-pomace spirit), so a spirit-drink GI carrying the AOC term, not a wine PDO. Pinned by slug because signe_fr/signe_ue are both empty on the row.",
+    "scheme": "spirit-gi",
+    "sources": [
+     {
+      "label": "eAmbrosia — Marc d'Alsace Gewurztraminer (spirit drink GI)",
+      "url": "https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/"
+     },
+     {
+      "label": "INAO — Marc d'Alsace Gewurztraminer (AOC)",
+      "url": "https://www.inao.gouv.fr/produit/"
+     }
+    ],
+    "term": "AOC"
+   }
+  }
+ },
+ "rulings": {
+  "at": {
+   "reason": "DOP: 'Districtus Austriae Controllatus (DAC)' is the Annex XII term, but it attaches only to the Weinbaugebiete for which a DAC-Verordnung under § 34 Weingesetz 2009 exists (BML lists 17; Wagram is the 18th with its own VO, BGBl. II Nr. 30/2022) — so the DOP kind has no constant and is served by 'pins'. The generic Bundesland g.U.s (Burgenland, Niederösterreich, Steiermark, Wien …) carry no term; 'Prädikatswein' is a lot-level grade, excluded. IGP: 'Landwein' is the Annex XII PGI term and every Austrian PGI (Bergland, Steirerland, Weinland) is a Landwein.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "Weingesetz 2009, BGBl. I Nr. 111/2009 (RIS, geltende Fassung) — § 34 DAC-Verordnungen, Landwein",
+     "url": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=20006470"
+    },
+    {
+     "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+     "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+    },
+    {
+     "label": "Österreich Wein Marketing — Gebietstypischer Qualitätswein (DAC)",
+     "url": "https://www.oesterreichwein.at/unser-wein/strategie-des-herkunftsmarketings/gebietstypischer-qualitaetswein-dac"
+    }
+   ]
+  },
+  "be": {
+   "reason": "Annex XII registers 'Appellation d'origine contrôlée' / 'Gecontroleerde oorsprongsbenaming' (PDO) and 'Vin de pays' / 'Landwijn' (PGI) for Belgium, but by its own definition column they are 'traditional terms replacing' the scheme wording, and the Flemish and Walloon regulator documents label the wines BOB/BGA and AOP/IGP — scheme translations, not a distinct national tier. No GI-wide term; a curator pin pass could attach the language-community term per wine if a regional decree is found to require it.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "Vlaamse overheid — geconsolideerd enig document « Vlaamse mousserende kwaliteitswijn » (BOB)",
+     "url": "https://lv.vlaanderen.be/media/9156/download"
+    }
+   ]
+  },
+  "bg": {
+   "reason": "Annex XII terms ГНП / ГКНП (PDO) and 'Регионално вино' (PGI) date from the pre-2012 wine law; the current IAVV product specifications label wines ЗНП / ЗГУ, which are scheme translations, not terms. No GI-wide term in v1; 'Регионално вино' for the two macro PGIs is a candidate for a curator pin pass citing the ЗВСН.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "ИАЛВ / IAVV — Спецификации на вината със ЗНП и ЗГУ",
+     "url": "https://eavw.com/wps/portal/eavw/legislation/wines.with.pdo.and.pgi/specifications.of.wines.with.pdo.and.pgi"
+    }
+   ]
+  },
+  "ch": {
+   "reason": "Outside the EU scheme (eu_scheme = none). Every Swiss wine appellation is a cantonal AOC under OVin art. 21 ss.; the OFAG répertoire is the register, so the AOC kind carries the constant 'AOC' and it is rendered alone (no scheme suffix).",
+   "sources": [
+    {
+     "label": "Ordonnance sur la viticulture et l'importation de vin (OVin, RS 916.140), art. 21 ss. — AOC",
+     "url": "https://www.fedlex.admin.ch/eli/cc/2007/833/fr"
+    },
+    {
+     "label": "OFAG / BLW — Répertoire suisse des AOC (état au 1er janvier 2026)",
+     "url": "https://www.blw.admin.ch/dam/fr/sd-web/bQQd5jj01Ivw/AOC_KUB-AOC_DOC_1er%20janvier%202026.pdf"
+    }
+   ]
+  },
+  "cy": {
+   "reason": "Annex XII registers 'Οίνος Ελεγχόμενης Ονομασίας Προέλευσης (ΟΕΟΠ)' (PDO) and 'Τοπικός Οίνος' (PGI) for Cyprus; the technical files served by the Department of Agriculture label wines ΠΟΠ / ΠΓΕ (scheme translations). Both registered terms are plausibly GI-wide but are deferred to a curator pin pass citing the founding Κ.Δ.Π. regulations; empty in v1.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "Τμήμα Γεωργίας (CY) — Οίνοι ΠΟΠ / ΠΓΕ, τεχνικοί φάκελοι (moa.gov.cy)",
+     "url": "https://www.moa.gov.cy/moa/da/da.nsf/"
+    }
+   ]
+  },
+  "cz": {
+   "reason": "CHOP / CHZO are scheme translations. 'Jakostní víno', 'jakostní víno s přívlastkem' and 'zemské víno' are lot-level categories under zákon 321/2004 Sb., excluded. 'Víno originální certifikace (VOC)' is a registered term that attaches to specific certifications (VOC Znojmo, VOC Mikulov …) — deferred to a curator pin pass citing the founding decrees; empty in v1.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "Zákon č. 321/2004 Sb., o vinohradnictví a vinařství — jakostní víno, VOC, zemské víno",
+     "url": "https://www.zakonyprolidi.cz/cs/2004-321"
+    },
+    {
+     "label": "SZPI — Specifikace CHZO „moravské“",
+     "url": "https://www.szpi.gov.cz/soubor/specifikace-chzo-moravske.aspx"
+    }
+   ]
+  },
+  "de": {
+   "reason": "DOP: Germany's Annex XII PDO terms (Qualitätswein, Prädikatswein, Sekt b.A., Winzersekt …) are lot-level quality categories that vary per bottle within one Anbaugebiet (Weingesetz § 3), so no GI-wide term exists — Mosel renders as scheme only. IGP: 'Landwein' is the Annex XII PGI term and every German PGI is a Landwein g.g.A.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "Weingesetz (DE), § 3 — Landwein (g.g.A.), Qualitätswein und Prädikatswein (g.U.)",
+     "url": "https://www.gesetze-im-internet.de/weing_1994/__3.html"
+    }
+   ]
+  },
+  "es": {
+   "reason": "Ley 6/2015 (DA 3.ª) fixes five traditional terms — Denominación de Origen, Denominación de Origen Calificada, Vino de Pago, Vino de Calidad con Indicación Geográfica (PDO) and Vino de la Tierra (PGI) — but which one applies is a per-GI decision (DOCa Rioja vs DO Rueda; DOQ Priorat in its Catalan form), so both DOP and IGP are served by a per-record roster rather than a constant.",
+   "sources": [
+    {
+     "label": "Ley 6/2015, disposición adicional tercera — términos tradicionales de los vinos DOP/IGP (BOE)",
+     "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-5288"
+    },
+    {
+     "label": "MAPA — Indicaciones geográficas de vinos (FAQ, términos tradicionales)",
+     "url": "https://www.mapa.gob.es/dam/mapa/contenido/alimentacion/temas/calidad-agroalimentaria/2017-calidad-diferenciada/4-informacion-de-interes/especificaciones-faq-agroalim-vinos-bbee-v-aromatiz/faqvinosbbeevaromatizados.pdf"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "INCAVI (Generalitat de Catalunya) — DOQ Priorat",
+     "url": "https://incavi.gencat.cat/ca/coneix-vi-catala/denominacions-origen-catalanes/priorat/index.html"
+    }
+   ]
+  },
+  "fr": {
+   "reason": "AOC: 'Appellation d'origine contrôlée' is the Annex XII PDO term and the mandatory national recognition stage (Code rural L641-5) — every French wine AOP is an AOC. EDV: French spirit-drink GIs (Cognac, Armagnac, Calvados …) are AOCs under the same Code rural article, protected at EU level as spirit-drink GIs (Reg. 2019/787), so the term is AOC with eu_scheme spirit-gi. IGP: 'Vin de pays' is registered but INAO's PGI wines are labelled IGP since 2009, so no term.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "Code rural et de la pêche maritime, art. L641-5 (appellation d'origine contrôlée)",
+     "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000022190244"
+    },
+    {
+     "label": "INAO — Appellation d'origine protégée / contrôlée (AOP / AOC)",
+     "url": "https://www.inao.gouv.fr/en/aop-appellation-origine-protegee"
+    },
+    {
+     "label": "INAO — Indication géographique protégée (IGP)",
+     "url": "https://www.inao.gouv.fr/en/igp-indication-geographique-protegee"
+    },
+    {
+     "label": "INAO — Document méthodologique « Boissons spiritueuses AOC, IG, AOR et AO » (DM/4C/ENQ/003)",
+     "url": "https://extranet.inao.gouv.fr/fichier/COMNAT-EDV-15122015-DM-4C-ENQ-003-V01.pdf"
+    }
+   ]
+  },
+  "gb": {
+   "reason": "The UK GI scheme uses the words PDO / PGI themselves (eu_scheme uk-pdo / uk-pgi), so there is no separate national term; the legacy Annex XII terms 'quality (sparkling) wine' / 'Regional (sparkling) wine' are lot-level categories, excluded.",
+   "sources": [
+    {
+     "label": "GOV.UK — Protected geographical food and drink names: UK GI schemes",
+     "url": "https://www.gov.uk/guidance/protected-geographical-food-and-drink-names-uk-gi-schemes"
+    },
+    {
+     "label": "GOV.UK — Protected food and drink names register",
+     "url": "https://www.gov.uk/protected-food-drink-names"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "gr": {
+   "reason": "ΠΟΠ / ΠΓΕ are scheme translations. Annex XII registers 'Ονομασία Προέλευσης Ανωτέρας Ποιότητας (ΟΠΑΠ)' and 'Ονομασία Προέλευσης Ελεγχόμενη (ΟΠΕ)' (PDO) and 'τοπικός οίνος' (PGI); ΟΠΑΠ / ΟΠΕ are GI-wide (each PDO is one or the other) but are deferred to a curator pin pass citing the founding decrees; empty in v1.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "ΥΠΑΑΤ — Προδιαγραφές προϊόντος ΠΟΠ / ΠΓΕ οίνων (minagric.gr)",
+     "url": "http://wwww.minagric.gr/greek/data/pop-pge/"
+    }
+   ]
+  },
+  "hr": {
+   "reason": "Annex XII predates Croatia's accession; the Croatian traditional terms later registered (kvalitetno vino KZP, vrhunsko vino KZP …) are lot-level quality categories, and the Ministry's product specifications label wines ZOI (scheme translation). No GI-wide term.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "Ministarstvo poljoprivrede (HR) — Oznake izvornosti vina (specifikacije proizvoda)",
+     "url": "https://poljoprivreda.gov.hr/istaknute-teme/hrana-111/oznake-kvalitete/oznake-izvornosti-vina/229"
+    },
+    {
+     "label": "eAmbrosia — EU geographical indications register",
+     "url": "https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/"
+    }
+   ]
+  },
+  "hu": {
+   "reason": "OEM / OFJ are scheme translations. 'Minőségi bor' and 'Védett eredetű bor' (Annex XII, PDO) are quality categories rather than a GI-wide term; 'Tájbor' (PGI) is optional on labels and the termékleírás use OFJ. No term in v1; 'Tájbor' is a candidate for a curator pin pass.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "boraszat.kormany.hu — Termékleírások (HU national product specifications)",
+     "url": "https://boraszat.kormany.hu/termekleirasok2"
+    }
+   ]
+  },
+  "it": {
+   "reason": "DOP: Legge 238/2016 art. 28 makes DOCG and DOC the traditional terms for Italian PDO wines, but which one applies is a per-GI decision (Barolo DOCG vs Bardolino DOC), so DOP is served by a per-record roster. IGP: 'Indicazione geografica tipica (IGT)' is the single term for every Italian PGI.",
+   "sources": [
+    {
+     "label": "Legge 12 dicembre 2016, n. 238 (Testo unico del vino), art. 28 — menzioni specifiche tradizionali DOCG, DOC, IGT",
+     "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:2016-12-12;238"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "MASAF — Disciplinari di produzione dei vini DOP e IGP",
+     "url": "https://www.masaf.gov.it/flex/cm/pages/ServeBLOB.php/L/IT/IDPagina/4625"
+    }
+   ]
+  },
+  "lu": {
+   "reason": "Luxembourg's Annex XII terms are 'Marque nationale' (a national quality seal awarded per wine) and 'Crémant de Luxembourg' (a product designation), neither a GI-wide term; the RGD of 17 December 2015 names the single GI 'AOP Moselle luxembourgeoise'. No term.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "Règlement grand-ducal du 17 décembre 2015 — AOP « Moselle luxembourgeoise » (Legilux)",
+     "url": "https://legilux.public.lu/eli/etat/leg/rgd/2015/12/17"
+    }
+   ]
+  },
+  "mt": {
+   "reason": "Annex XII registers 'Denominazzjoni ta' Origini Kontrollata (D.O.K.)' (PDO) and 'Indikazzjoni Ġeografika Tipika (I.G.T.)' (PGI); Malta's DOK/IĠT scheme attaches them GI-wide — DOK Malta, DOK Gozo, IĠT Maltese Islands — so both kinds carry a constant.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "Malta — DOK and IĠT Wine Quality Scheme (Department for Rural Affairs; L.N. 167/2007, L.N. 416/2007)",
+     "url": "https://ruralaffairs.gov.mt/en/agrikwalita-services/dok-igt-wine-quality-scheme/"
+    }
+   ]
+  },
+  "nl": {
+   "reason": "'Landwijn' is the Annex XII PGI term for the Netherlands, but the twelve provincie PGIs are registered under the bare province name and their enig document labels them BGA (scheme translation); no PDO term exists. No GI-wide term in v1; 'Landwijn' is a candidate for a curator pin pass.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "eAmbrosia — Dutch wine PGIs (the twelve provincies) and PDOs",
+     "url": "https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/"
+    }
+   ]
+  },
+  "pt": {
+   "reason": "Decreto-Lei 212/2004 fixes the menções tradicionais 'Denominação de Origem Controlada' / DOC for DO wines and 'Vinho Regional' for IG wines; IVV applies them GI-wide (every Portuguese DOP is a DOC, every IGP a Vinho Regional), so both kinds carry a constant. The older Annex XII terms D.O. and I.P.R. are no longer attached to any GI.",
+   "sources": [
+    {
+     "label": "Decreto-Lei n.º 212/2004 — menções tradicionais «Denominação de Origem Controlada» / «Vinho Regional» (Diário da República)",
+     "url": "https://diariodarepublica.pt/dr/detalhe/decreto-lei/212-2004-479875"
+    },
+    {
+     "label": "IVV — Cadernos de especificações das DOP (Instituto da Vinha e do Vinho)",
+     "url": "https://www.ivv.gov.pt/np4/8617.html"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "ro": {
+   "reason": "Legea 164/2015 (art. 32, art. 35) and the ONVPV caiete de sarcini attach 'vin cu denumire de origine controlată (D.O.C.)' to every Romanian PDO and 'vin cu indicație geografică (I.G.)' to every PGI; both are Annex XII terms, so both kinds carry a constant.",
+   "sources": [
+    {
+     "label": "Legea nr. 164/2015 a viei și vinului, art. 32 (D.O.C.) și art. 35 (I.G.) (Portal Legislativ)",
+     "url": "https://legislatie.just.ro/Public/DetaliiDocument/169280"
+    },
+    {
+     "label": "ONVPV — Legislație națională în domeniul vitivinicol",
+     "url": "https://www.onvpv.ro/ro/node/23"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "si": {
+   "reason": "ZOP / ZGO are scheme translations. 'Kakovostno' / 'vrhunsko vino ZGP' and 'deželno vino PGO' (Annex XII) are lot-level quality categories, excluded. 'Vino s priznanim tradicionalnim poimenovanjem (vino PTP)' attaches GI-wide to specific PDOs (Cviček, Teran, Metliška črnina, Belokranjec, Bizeljčan) but is deferred to a curator pin pass citing the founding pravilniki; empty in v1.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "Uradni list RS 49/2007 — Pravilnik o seznamu geografskih označb za vina in trsnem izboru",
+     "url": "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2007-01-2634?sop=2007-01-2634"
+    }
+   ]
+  },
+  "sk": {
+   "reason": "CHOP / CHZO are scheme translations. Slovakia's Annex XII terms ('akostné víno', 'akostné víno s prívlastkom', the Tokaj predicates) are lot-level quality categories, and the ÚPV SR specifications label wines CHOP. No GI-wide term.",
+   "sources": [
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "ÚPV SR — Špecifikácia CHOP „Nitrianska“ (Slovak national product specification)",
+     "url": "https://www.indprop.gov.sk/swift_data/source/pdf/specifikacie_op_oz/nitrianska.pdf"
+    }
+   ]
+  }
+ },
+ "schemes": {
+  "none": {
+   "full": {
+    "en": "Outside the EU scheme (Swiss cantonal AOC)",
+    "es": "Fuera del régimen de la UE (AOC cantonal suiza)",
+    "fr": "Hors régime de l'UE (AOC cantonale suisse)",
+    "nl": "Buiten de EU-regeling (Zwitserse kantonnale AOC)"
+   },
+   "note": {
+    "en": "Switzerland is not part of the EU GI scheme; its wine appellations are cantonal AOCs under the federal Ordonnance sur le vin (OVin), each canton setting the production rules. The OFAG/BLW répertoire suisse des AOC is the register.",
+    "es": "Suiza no forma parte del régimen de indicaciones geográficas de la UE; sus denominaciones vinícolas son AOC cantonales según la Ordenanza federal sobre el vino (OVin), y cada cantón fija las reglas de producción. El repertorio suizo de AOC de la OFAG/BLW es el registro.",
+    "fr": "La Suisse ne relève pas du régime d'indications géographiques de l'UE ; ses appellations viticoles sont des AOC cantonales au titre de l'Ordonnance fédérale sur le vin (OVin), chaque canton fixant les conditions de production. Le répertoire suisse des AOC de l'OFAG en est le registre.",
+    "nl": "Zwitserland valt buiten de EU-GI-regeling; zijn wijnappellaties zijn kantonnale AOC's onder de federale Ordonnance sur le vin (OVin), waarbij elk kanton de productieregels vastlegt. Het répertoire suisse des AOC van OFAG/BLW is het register."
+   },
+   "sources": [
+    {
+     "label": "Ordonnance sur la viticulture et l'importation de vin (OVin, RS 916.140), art. 21 ss. — AOC",
+     "url": "https://www.fedlex.admin.ch/eli/cc/2007/833/fr"
+    },
+    {
+     "label": "OFAG / BLW — Répertoire suisse des AOC (état au 1er janvier 2026)",
+     "url": "https://www.blw.admin.ch/dam/fr/sd-web/bQQd5jj01Ivw/AOC_KUB-AOC_DOC_1er%20janvier%202026.pdf"
+    }
+   ]
+  },
+  "pdo": {
+   "full": {
+    "en": "Protected Designation of Origin",
+    "es": "Denominación de Origen Protegida",
+    "fr": "Appellation d'origine protégée",
+    "nl": "Beschermde oorsprongsbenaming"
+   },
+   "note": {
+    "en": "EU quality scheme for wines whose quality or characteristics are essentially due to their geographical origin, with grapes grown and wine made exclusively in the area. Member states may register a traditional term of their own that stands in for it on the label.",
+    "es": "Figura de calidad de la UE para vinos cuya calidad o características se deben esencialmente a su origen geográfico, con uva y elaboración exclusivamente en la zona. Cada Estado miembro puede registrar un término tradicional propio que la sustituya en la etiqueta.",
+    "fr": "Signe européen pour les vins dont la qualité ou les caractéristiques sont dues essentiellement à l'origine géographique, raisins et vinification restant dans l'aire. Chaque État membre peut faire enregistrer sa propre mention traditionnelle, qui le remplace sur l'étiquette.",
+    "nl": "EU-kwaliteitsregeling voor wijnen waarvan de kwaliteit of kenmerken hoofdzakelijk aan de geografische oorsprong te danken zijn, met druiven en vinificatie uitsluitend in het gebied. Elke lidstaat kan een eigen traditionele aanduiding laten registreren die haar op het etiket vervangt."
+   },
+   "sources": [
+    {
+     "label": "Reg. (EU) 1308/2013, Art. 112 — traditional terms (EUR-Lex)",
+     "url": "https://eur-lex.europa.eu/eli/reg/2013/1308/oj"
+    },
+    {
+     "label": "Reg. (EU) 2024/1143 on geographical indications for wine, spirit drinks and agricultural products",
+     "url": "https://eur-lex.europa.eu/eli/reg/2024/1143/oj"
+    },
+    {
+     "label": "eAmbrosia — EU geographical indications register",
+     "url": "https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/"
+    }
+   ]
+  },
+  "pgi": {
+   "full": {
+    "en": "Protected Geographical Indication",
+    "es": "Indicación Geográfica Protegida",
+    "fr": "Indication géographique protégée",
+    "nl": "Beschermde geografische aanduiding"
+   },
+   "note": {
+    "en": "EU quality scheme for wines with a quality, reputation or characteristic attributable to their geographical origin, where at least 85 % of the grapes come from the area. Member states may register a traditional term of their own that stands in for it on the label.",
+    "es": "Figura de calidad de la UE para vinos con una cualidad, reputación o característica atribuible a su origen geográfico, con al menos el 85 % de la uva procedente de la zona. Cada Estado miembro puede registrar un término tradicional propio que la sustituya en la etiqueta.",
+    "fr": "Signe européen pour les vins dont une qualité, la réputation ou une caractéristique est attribuable à l'origine géographique, avec au moins 85 % des raisins issus de l'aire. Chaque État membre peut faire enregistrer sa propre mention traditionnelle, qui le remplace sur l'étiquette.",
+    "nl": "EU-kwaliteitsregeling voor wijnen met een kwaliteit, reputatie of kenmerk dat aan de geografische oorsprong is toe te schrijven, waarbij minstens 85 % van de druiven uit het gebied komt. Elke lidstaat kan een eigen traditionele aanduiding laten registreren die haar op het etiket vervangt."
+   },
+   "sources": [
+    {
+     "label": "Reg. (EU) 1308/2013, Art. 112 — traditional terms (EUR-Lex)",
+     "url": "https://eur-lex.europa.eu/eli/reg/2013/1308/oj"
+    },
+    {
+     "label": "Reg. (EU) 2024/1143 on geographical indications for wine, spirit drinks and agricultural products",
+     "url": "https://eur-lex.europa.eu/eli/reg/2024/1143/oj"
+    },
+    {
+     "label": "eAmbrosia — EU geographical indications register",
+     "url": "https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/"
+    }
+   ]
+  },
+  "spirit-gi": {
+   "full": {
+    "en": "Geographical indication for spirit drinks",
+    "es": "Indicación geográfica de bebida espirituosa",
+    "fr": "Indication géographique de boisson spiritueuse",
+    "nl": "Geografische aanduiding voor gedistilleerde dranken"
+   },
+   "note": {
+    "en": "EU protection for spirit drinks under Regulation (EU) 2019/787 — a single geographical-indication tier, without the wine PDO/PGI split. French eaux-de-vie (Cognac, Armagnac, Calvados) keep AOC as their national term under the Code rural.",
+    "es": "Protección de la UE para bebidas espirituosas conforme al Reglamento (UE) 2019/787: un único nivel de indicación geográfica, sin la distinción DOP/IGP del vino. Los aguardientes franceses (Cognac, Armagnac, Calvados) conservan la AOC como término nacional en virtud del Code rural.",
+    "fr": "Protection européenne des boissons spiritueuses au titre du règlement (UE) 2019/787 — un seul niveau d'indication géographique, sans la distinction AOP/IGP des vins. Les eaux-de-vie françaises (Cognac, Armagnac, Calvados) conservent l'AOC comme mention nationale au titre du Code rural.",
+    "nl": "EU-bescherming voor gedistilleerde dranken onder Verordening (EU) 2019/787 — één niveau van geografische aanduiding, zonder de BOB/BGA-splitsing van wijn. Franse eaux-de-vie (Cognac, Armagnac, Calvados) behouden AOC als nationale term krachtens de Code rural."
+   },
+   "sources": [
+    {
+     "label": "Reg. (EU) 2019/787 on the definition, description, presentation and labelling of spirit drinks",
+     "url": "https://eur-lex.europa.eu/eli/reg/2019/787/oj"
+    },
+    {
+     "label": "INAO — Document méthodologique « Boissons spiritueuses AOC, IG, AOR et AO » (DM/4C/ENQ/003)",
+     "url": "https://extranet.inao.gouv.fr/fichier/COMNAT-EDV-15122015-DM-4C-ENQ-003-V01.pdf"
+    },
+    {
+     "label": "Code rural et de la pêche maritime, art. L641-5 (appellation d'origine contrôlée)",
+     "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000022190244"
+    }
+   ]
+  },
+  "uk-pdo": {
+   "full": {
+    "en": "UK Protected Designation of Origin",
+    "es": "Denominación de Origen Protegida (Reino Unido)",
+    "fr": "Appellation d'origine protégée (Royaume-Uni)",
+    "nl": "Beschermde oorsprongsbenaming (Verenigd Koninkrijk)"
+   },
+   "note": {
+    "en": "The post-Brexit UK GI scheme, administered by DEFRA on the GOV.UK register since 1 January 2021, keeps the words PDO and PGI as its own designations. The six UK wines are also listed in the EU register under the Withdrawal Agreement and the UK–EU agreement.",
+    "es": "El régimen británico de indicaciones geográficas posterior al Brexit, gestionado por DEFRA en el registro GOV.UK desde el 1 de enero de 2021, conserva los términos PDO y PGI como designaciones propias. Los seis vinos británicos figuran también en el registro de la UE en virtud del Acuerdo de Retirada y del acuerdo UE–Reino Unido.",
+    "fr": "Le régime britannique d'indications géographiques d'après le Brexit, tenu par le DEFRA sur le registre GOV.UK depuis le 1er janvier 2021, conserve les termes PDO et PGI comme désignations propres. Les six vins britanniques figurent aussi au registre de l'UE au titre de l'accord de retrait et de l'accord UE–Royaume-Uni.",
+    "nl": "De Britse GI-regeling van na de Brexit, beheerd door DEFRA in het GOV.UK-register sinds 1 januari 2021, behoudt de woorden PDO en PGI als eigen aanduidingen. De zes Britse wijnen staan ook in het EU-register op grond van het terugtrekkingsakkoord en het akkoord EU–VK."
+   },
+   "sources": [
+    {
+     "label": "GOV.UK — Protected geographical food and drink names: UK GI schemes",
+     "url": "https://www.gov.uk/guidance/protected-geographical-food-and-drink-names-uk-gi-schemes"
+    },
+    {
+     "label": "GOV.UK — Protected food and drink names register",
+     "url": "https://www.gov.uk/protected-food-drink-names"
+    },
+    {
+     "label": "eAmbrosia — EU geographical indications register",
+     "url": "https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/"
+    }
+   ]
+  },
+  "uk-pgi": {
+   "full": {
+    "en": "UK Protected Geographical Indication",
+    "es": "Indicación Geográfica Protegida (Reino Unido)",
+    "fr": "Indication géographique protégée (Royaume-Uni)",
+    "nl": "Beschermde geografische aanduiding (Verenigd Koninkrijk)"
+   },
+   "note": {
+    "en": "The PGI tier of the post-Brexit UK GI scheme (GOV.UK register, since 1 January 2021); the two UK wine PGIs are English Regional and Welsh Regional. The UK scheme uses the words PDO/PGI themselves, so no separate national term applies.",
+    "es": "El nivel IGP del régimen británico de indicaciones geográficas posterior al Brexit (registro GOV.UK, desde el 1 de enero de 2021); las dos IGP vinícolas británicas son English Regional y Welsh Regional. El régimen usa los propios términos PDO/PGI, sin término nacional aparte.",
+    "fr": "Le niveau IGP du régime britannique d'indications géographiques d'après le Brexit (registre GOV.UK, depuis le 1er janvier 2021) ; les deux IGP viticoles britanniques sont English Regional et Welsh Regional. Le régime emploie lui-même les termes PDO/PGI, sans mention nationale distincte.",
+    "nl": "Het BGA-niveau van de Britse GI-regeling van na de Brexit (GOV.UK-register, sinds 1 januari 2021); de twee Britse wijn-BGA's zijn English Regional en Welsh Regional. De regeling gebruikt zelf de woorden PDO/PGI, dus er is geen aparte nationale term."
+   },
+   "sources": [
+    {
+     "label": "GOV.UK — Protected geographical food and drink names: UK GI schemes",
+     "url": "https://www.gov.uk/guidance/protected-geographical-food-and-drink-names-uk-gi-schemes"
+    },
+    {
+     "label": "GOV.UK — Protected food and drink names register",
+     "url": "https://www.gov.uk/protected-food-drink-names"
+    }
+   ]
+  }
+ },
+ "terms": {
+  "at:DAC": {
+   "full": "Districtus Austriae Controllatus",
+   "note": {
+    "en": "Austria's traditional term for regionally typical quality wine: a Weinbaugebiet becomes a DAC when a DAC-Verordnung under § 34 Weingesetz 2009 fixes its permitted varieties and style, on the proposal of the regional committee. Attached per region — 18 DACs from Weinviertel (2002 vintage) to Thermenregion (2023).",
+    "es": "Término tradicional austriaco para el vino de calidad típico de su región: un Weinbaugebiet pasa a ser DAC cuando un DAC-Verordnung dictado según el § 34 Weingesetz 2009 fija variedades y estilo permitidos, a propuesta del comité regional. Se atribuye por región: 18 DAC, de Weinviertel (añada 2002) a Thermenregion (2023).",
+    "fr": "Mention traditionnelle autrichienne pour le vin de qualité typique de sa région : un Weinbaugebiet devient DAC lorsqu'un DAC-Verordnung pris au titre du § 34 Weingesetz 2009 fixe cépages et style admis, sur proposition du comité régional. Attribuée par région — 18 DAC, du Weinviertel (millésime 2002) à la Thermenregion (2023).",
+    "nl": "Oostenrijks traditionele aanduiding voor gebiedstypische kwaliteitswijn: een Weinbaugebiet wordt DAC wanneer een DAC-Verordnung krachtens § 34 Weingesetz 2009 de toegestane rassen en stijl vastlegt, op voorstel van het regionale comité. Per gebied toegekend — 18 DAC's, van Weinviertel (jaargang 2002) tot Thermenregion (2023)."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "Weingesetz 2009, BGBl. I Nr. 111/2009 (RIS, geltende Fassung) — § 34 DAC-Verordnungen, Landwein",
+     "url": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=20006470"
+    },
+    {
+     "label": "BML — DAC-Weinbaugebiete (Districtus Austriae Controllatus)",
+     "url": "https://www.bmluk.gv.at/themen/landwirtschaft/gemeinsame-agrarpolitik-foerderungen/gmo-rechtsinfo/gmo-wein/DAC.html"
+    },
+    {
+     "label": "Österreich Wein Marketing — Gebietstypischer Qualitätswein (DAC)",
+     "url": "https://www.oesterreichwein.at/unser-wein/strategie-des-herkunftsmarketings/gebietstypischer-qualitaetswein-dac"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "at:Landwein": {
+   "full": "Landwein (Wein mit geschützter geografischer Angabe)",
+   "note": {
+    "en": "Austria's traditional term for PGI wine: the three Landwein regions Weinland, Steirerland and Bergland, with a minimum must weight of 14° KMW and lighter rules than Qualitätswein. It stands in for g.g.A. on the label.",
+    "es": "Término tradicional austriaco para vino IGP: las tres regiones de Landwein — Weinland, Steirerland y Bergland — con un peso de mosto mínimo de 14° KMW y reglas más ligeras que el Qualitätswein. Sustituye a g.g.A. en la etiqueta.",
+    "fr": "Mention traditionnelle autrichienne pour le vin IGP : les trois régions de Landwein — Weinland, Steirerland et Bergland — avec un poids de moût minimal de 14° KMW et des règles plus légères que le Qualitätswein. Elle tient lieu de g.g.A. sur l'étiquette.",
+    "nl": "Oostenrijks traditionele aanduiding voor BGA-wijn: de drie Landwein-regio's Weinland, Steirerland en Bergland, met een minimaal mostgewicht van 14° KMW en lichtere regels dan Qualitätswein. Vervangt g.g.A. op het etiket."
+   },
+   "scheme": "pgi",
+   "sources": [
+    {
+     "label": "Weingesetz 2009, BGBl. I Nr. 111/2009 (RIS, geltende Fassung) — § 34 DAC-Verordnungen, Landwein",
+     "url": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=20006470"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "ch:AOC": {
+   "full": "Appellation d'origine contrôlée (Swiss cantonal AOC)",
+   "note": {
+    "en": "Swiss cantonal designation of origin under the federal OVin: the canton delimits the area and fixes varieties, yields and minimum must weights. Outside the EU scheme; the OFAG répertoire suisse des AOC is the register.",
+    "es": "Denominación de origen cantonal suiza según la OVin federal: el cantón delimita la zona y fija variedades, rendimientos y grados mínimos del mosto. Fuera del régimen de la UE; el repertorio suizo de AOC de la OFAG es el registro.",
+    "fr": "Appellation d'origine cantonale suisse au titre de l'OVin fédérale : le canton délimite l'aire et fixe cépages, rendements et teneurs minimales en sucre. Hors régime de l'UE ; le répertoire suisse des AOC de l'OFAG en est le registre.",
+    "nl": "Zwitserse kantonnale oorsprongsbenaming onder de federale OVin: het kanton bakent het gebied af en legt rassen, opbrengsten en minimale mostgewichten vast. Buiten de EU-regeling; het répertoire suisse des AOC van OFAG is het register."
+   },
+   "scheme": "none",
+   "sources": [
+    {
+     "label": "Ordonnance sur la viticulture et l'importation de vin (OVin, RS 916.140), art. 21 ss. — AOC",
+     "url": "https://www.fedlex.admin.ch/eli/cc/2007/833/fr"
+    },
+    {
+     "label": "OFAG / BLW — Répertoire suisse des AOC (état au 1er janvier 2026)",
+     "url": "https://www.blw.admin.ch/dam/fr/sd-web/bQQd5jj01Ivw/AOC_KUB-AOC_DOC_1er%20janvier%202026.pdf"
+    }
+   ]
+  },
+  "de:Landwein": {
+   "full": "Landwein (Wein mit geschützter geografischer Angabe)",
+   "note": {
+    "en": "Germany's traditional term for PGI wine (Weingesetz § 3): wine from one of the Landwein areas, with a must weight slightly above table-wine level and looser rules than Qualitätswein. It stands in for g.g.A. on the label.",
+    "es": "Término tradicional alemán para vino IGP (Weingesetz, § 3): vino de una de las zonas de Landwein, con un peso de mosto ligeramente superior al del vino de mesa y reglas más flexibles que el Qualitätswein. Sustituye a g.g.A. en la etiqueta.",
+    "fr": "Mention traditionnelle allemande pour le vin IGP (Weingesetz, § 3) : vin d'une des régions de Landwein, avec un poids de moût légèrement supérieur au vin de table et des règles plus souples que le Qualitätswein. Elle tient lieu de g.g.A. sur l'étiquette.",
+    "nl": "Duitslands traditionele aanduiding voor BGA-wijn (Weingesetz § 3): wijn uit een van de Landwein-gebieden, met een mostgewicht iets boven tafelwijnniveau en soepelere regels dan Qualitätswein. Vervangt g.g.A. op het etiket."
+   },
+   "scheme": "pgi",
+   "sources": [
+    {
+     "label": "Weingesetz (DE), § 3 — Landwein (g.g.A.), Qualitätswein und Prädikatswein (g.U.)",
+     "url": "https://www.gesetze-im-internet.de/weing_1994/__3.html"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "es:DO": {
+   "full": "Denominación de Origen",
+   "note": {
+    "en": "Spain's standard traditional term for PDO wines (Ley 6/2015): the name of a region or place of established trade prestige whose wines owe their quality to that origin. It stands in for DOP on the label.",
+    "es": "Término tradicional español estándar para vinos DOP (Ley 6/2015): nombre de una región o lugar de prestigio comercial reconocido cuyos vinos deben su calidad a ese origen. Sustituye a DOP en la etiqueta.",
+    "fr": "Mention traditionnelle espagnole courante pour les vins AOP (loi 6/2015) : nom d'une région ou d'un lieu de prestige commercial établi dont les vins doivent leur qualité à cette origine. Elle tient lieu de DOP sur l'étiquette.",
+    "nl": "Spanjes gangbare traditionele aanduiding voor BOB-wijnen (wet 6/2015): de naam van een streek of plaats met gevestigd handelsprestige waarvan de wijnen hun kwaliteit aan die oorsprong danken. Vervangt DOP op het etiket."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "Ley 6/2015, disposición adicional tercera — términos tradicionales de los vinos DOP/IGP (BOE)",
+     "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-5288"
+    },
+    {
+     "label": "MAPA — Indicaciones geográficas de vinos (FAQ, términos tradicionales)",
+     "url": "https://www.mapa.gob.es/dam/mapa/contenido/alimentacion/temas/calidad-agroalimentaria/2017-calidad-diferenciada/4-informacion-de-interes/especificaciones-faq-agroalim-vinos-bbee-v-aromatiz/faqvinosbbeevaromatizados.pdf"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "es:DOCa": {
+   "full": "Denominación de Origen Calificada",
+   "note": {
+    "en": "Spain's highest traditional term for PDO wines (Ley 6/2015): a DO of at least ten years' standing with stricter controls and bottling in the area. Held by Rioja and, in its Catalan form DOQ, by Priorat.",
+    "es": "El término tradicional español más alto para vinos DOP (Ley 6/2015): una DO con al menos diez años de reconocimiento, controles más estrictos y embotellado en la zona. La ostentan Rioja y, en su forma catalana DOQ, Priorat.",
+    "fr": "Mention traditionnelle espagnole la plus élevée pour les vins AOP (loi 6/2015) : une DO reconnue depuis dix ans au moins, avec des contrôles renforcés et une mise en bouteille dans l'aire. Portée par la Rioja et, sous sa forme catalane DOQ, par le Priorat.",
+    "nl": "Spanjes hoogste traditionele aanduiding voor BOB-wijnen (wet 6/2015): een DO van minstens tien jaar oud met strengere controles en botteling in het gebied. Gevoerd door Rioja en, in de Catalaanse vorm DOQ, door Priorat."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "Ley 6/2015, disposición adicional tercera — términos tradicionales de los vinos DOP/IGP (BOE)",
+     "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-5288"
+    },
+    {
+     "label": "MAPA — Indicaciones geográficas de vinos (FAQ, términos tradicionales)",
+     "url": "https://www.mapa.gob.es/dam/mapa/contenido/alimentacion/temas/calidad-agroalimentaria/2017-calidad-diferenciada/4-informacion-de-interes/especificaciones-faq-agroalim-vinos-bbee-v-aromatiz/faqvinosbbeevaromatizados.pdf"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "es:DOQ": {
+   "castilian_form": "DOCa",
+   "full": "Denominació d'Origen Qualificada",
+   "note": {
+    "en": "Catalan form of Denominación de Origen Calificada, Spain's highest traditional term for PDO wines, used by Priorat — the only Catalan DO to hold it (recognised 2000). Same legal tier as DOCa Rioja.",
+    "es": "Forma catalana de Denominación de Origen Calificada, el término tradicional español más alto para vinos DOP, que ostenta el Priorat, única DO catalana en tenerlo (reconocida en 2000). Mismo nivel legal que la DOCa Rioja.",
+    "fr": "Forme catalane de Denominación de Origen Calificada, mention traditionnelle espagnole la plus élevée pour les vins AOP, portée par le Priorat — seule DO catalane à la détenir (reconnue en 2000). Même niveau légal que la DOCa Rioja.",
+    "nl": "Catalaanse vorm van Denominación de Origen Calificada, Spanjes hoogste traditionele aanduiding voor BOB-wijnen, gevoerd door Priorat — de enige Catalaanse DO die ze draagt (erkend in 2000). Zelfde wettelijke rang als DOCa Rioja."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "INCAVI (Generalitat de Catalunya) — DOQ Priorat",
+     "url": "https://incavi.gencat.cat/ca/coneix-vi-catala/denominacions-origen-catalanes/priorat/index.html"
+    },
+    {
+     "label": "Ley 6/2015, disposición adicional tercera — términos tradicionales de los vinos DOP/IGP (BOE)",
+     "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-5288"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "es:Vino de Calidad": {
+   "full": "Vino de calidad con indicación geográfica",
+   "note": {
+    "en": "Spanish traditional term for the entry PDO tier (Ley 6/2015), labelled 'Vino de calidad de …': a delimited area with rules lighter than a DO, often a step towards it. Despite the wording it is a PDO, not a PGI.",
+    "es": "Término tradicional español del nivel DOP de entrada (Ley 6/2015), etiquetado «Vino de calidad de …»: zona delimitada con reglas más ligeras que una DO, a menudo un paso previo a ella. Pese a su nombre es una DOP, no una IGP.",
+    "fr": "Mention traditionnelle espagnole du premier niveau AOP (loi 6/2015), étiquetée « Vino de calidad de … » : aire délimitée aux règles plus légères qu'une DO, souvent une étape vers celle-ci. Malgré son libellé, c'est une AOP, non une IGP.",
+    "nl": "Spaanse traditionele aanduiding voor het instap-BOB-niveau (wet 6/2015), geëtiketteerd als 'Vino de calidad de …': een afgebakend gebied met lichtere regels dan een DO, vaak een opstap ernaartoe. Ondanks de naam een BOB, geen BGA."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "Ley 6/2015, disposición adicional tercera — términos tradicionales de los vinos DOP/IGP (BOE)",
+     "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-5288"
+    },
+    {
+     "label": "MAPA — Indicaciones geográficas de vinos (FAQ, términos tradicionales)",
+     "url": "https://www.mapa.gob.es/dam/mapa/contenido/alimentacion/temas/calidad-agroalimentaria/2017-calidad-diferenciada/4-informacion-de-interes/especificaciones-faq-agroalim-vinos-bbee-v-aromatiz/faqvinosbbeevaromatizados.pdf"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "es:Vino de Pago": {
+   "full": "Vino de Pago",
+   "note": {
+    "en": "Spanish traditional term for a single-estate PDO (Ley 6/2015): a pago is a rural site with its own soil and microclimate, and the wine is made and bottled on the estate. A distinct PDO tier, not a sub-zone of a DO.",
+    "es": "Término tradicional español para una DOP de finca única (Ley 6/2015): el pago es un paraje rural con suelo y microclima propios, y el vino se elabora y embotella en la finca. Un nivel DOP distinto, no una subzona de una DO.",
+    "fr": "Mention traditionnelle espagnole pour une AOP de domaine unique (loi 6/2015) : le pago est un lieu-dit rural doté de son propre sol et microclimat, le vin étant vinifié et embouteillé au domaine. Niveau AOP distinct, non une sous-zone de DO.",
+    "nl": "Spaanse traditionele aanduiding voor een BOB van één landgoed (wet 6/2015): een pago is een landelijke plek met eigen bodem en microklimaat, en de wijn wordt op het landgoed gemaakt en gebotteld. Een apart BOB-niveau, geen subzone van een DO."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "Ley 6/2015, disposición adicional tercera — términos tradicionales de los vinos DOP/IGP (BOE)",
+     "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-5288"
+    },
+    {
+     "label": "MAPA — Indicaciones geográficas de vinos (FAQ, términos tradicionales)",
+     "url": "https://www.mapa.gob.es/dam/mapa/contenido/alimentacion/temas/calidad-agroalimentaria/2017-calidad-diferenciada/4-informacion-de-interes/especificaciones-faq-agroalim-vinos-bbee-v-aromatiz/faqvinosbbeevaromatizados.pdf"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "es:Vino de la Tierra": {
+   "full": "Vino de la Tierra",
+   "note": {
+    "en": "Spain's traditional term for PGI wines (Ley 6/2015): a regional indication with at least 85 % of the grapes from the area and looser rules than a DO. It stands in for IGP on the label.",
+    "es": "Término tradicional español para vinos IGP (Ley 6/2015): indicación regional con al menos el 85 % de la uva de la zona y reglas más flexibles que una DO. Sustituye a IGP en la etiqueta.",
+    "fr": "Mention traditionnelle espagnole pour les vins IGP (loi 6/2015) : indication régionale avec au moins 85 % des raisins issus de l'aire et des règles plus souples qu'une DO. Elle tient lieu d'IGP sur l'étiquette.",
+    "nl": "Spanjes traditionele aanduiding voor BGA-wijnen (wet 6/2015): een regionale aanduiding met minstens 85 % van de druiven uit het gebied en soepelere regels dan een DO. Vervangt IGP op het etiket."
+   },
+   "scheme": "pgi",
+   "sources": [
+    {
+     "label": "Ley 6/2015, disposición adicional tercera — términos tradicionales de los vinos DOP/IGP (BOE)",
+     "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-5288"
+    },
+    {
+     "label": "MAPA — Indicaciones geográficas de vinos (FAQ, términos tradicionales)",
+     "url": "https://www.mapa.gob.es/dam/mapa/contenido/alimentacion/temas/calidad-agroalimentaria/2017-calidad-diferenciada/4-informacion-de-interes/especificaciones-faq-agroalim-vinos-bbee-v-aromatiz/faqvinosbbeevaromatizados.pdf"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "fr:AOC": {
+   "full": "Appellation d'origine contrôlée",
+   "note": {
+    "en": "France's national designation of origin, the mandatory recognition stage before EU registration; wine is the only sector that may keep AOC on the label instead of AOP. Registered as a traditional term standing in for PDO.",
+    "es": "Denominación de origen nacional francesa, etapa de reconocimiento obligatoria antes del registro europeo; el vino es el único sector que puede mantener AOC en la etiqueta en lugar de AOP. Término tradicional registrado que sustituye a la DOP.",
+    "fr": "Appellation d'origine nationale française, étape de reconnaissance obligatoire avant l'enregistrement européen ; le vin est le seul secteur autorisé à conserver AOC sur l'étiquette au lieu d'AOP. Mention traditionnelle enregistrée tenant lieu d'AOP.",
+    "nl": "De Franse nationale oorsprongsbenaming, verplichte erkenningsstap vóór de EU-registratie; wijn is de enige sector die AOC in plaats van AOP op het etiket mag houden. Geregistreerde traditionele aanduiding die BOB vervangt."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "Code rural et de la pêche maritime, art. L641-5 (appellation d'origine contrôlée)",
+     "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000022190244"
+    },
+    {
+     "label": "INAO — Appellation d'origine protégée / contrôlée (AOP / AOC)",
+     "url": "https://www.inao.gouv.fr/en/aop-appellation-origine-protegee"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "it:DOC": {
+   "full": "Denominazione di origine controllata",
+   "note": {
+    "en": "Italy's traditional term for PDO wines (Legge 238/2016 art. 28): a geographical name for a wine whose quality and character derive from the environment and the disciplinare. It may appear alone or together with DOP on the label.",
+    "es": "Término tradicional italiano para vinos DOP (Ley 238/2016, art. 28): nombre geográfico de un vino cuya calidad y carácter derivan del entorno y del disciplinare. Puede figurar solo o junto a DOP en la etiqueta.",
+    "fr": "Mention traditionnelle italienne pour les vins AOP (loi 238/2016, art. 28) : nom géographique d'un vin dont la qualité et les caractères découlent du milieu et du disciplinare. Elle peut figurer seule ou avec DOP sur l'étiquette.",
+    "nl": "Italiës traditionele aanduiding voor BOB-wijnen (wet 238/2016, art. 28): een geografische naam voor een wijn waarvan kwaliteit en karakter uit de omgeving en het disciplinare voortkomen. Mag alleen of samen met DOP op het etiket staan."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "Legge 12 dicembre 2016, n. 238 (Testo unico del vino), art. 28 — menzioni specifiche tradizionali DOCG, DOC, IGT",
+     "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:2016-12-12;238"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "MASAF — Disciplinari di produzione dei vini DOP e IGP",
+     "url": "https://www.masaf.gov.it/flex/cm/pages/ServeBLOB.php/L/IT/IDPagina/4625"
+    }
+   ]
+  },
+  "it:DOCG": {
+   "full": "Denominazione di origine controllata e garantita",
+   "note": {
+    "en": "Italy's top traditional term for PDO wines (Legge 238/2016 art. 28): a DOC of particular repute, promoted after at least ten years, with a numbered state seal on every bottle. It may appear alone or together with DOP on the label.",
+    "es": "El término tradicional italiano más alto para vinos DOP (Ley 238/2016, art. 28): una DOC de especial prestigio, promovida tras al menos diez años, con precinto estatal numerado en cada botella. Puede figurar sola o junto a DOP en la etiqueta.",
+    "fr": "Mention traditionnelle italienne la plus élevée pour les vins AOP (loi 238/2016, art. 28) : une DOC de réputation particulière, promue après dix ans au moins, avec un sceau d'État numéroté sur chaque bouteille. Elle peut figurer seule ou avec DOP sur l'étiquette.",
+    "nl": "Italiës hoogste traditionele aanduiding voor BOB-wijnen (wet 238/2016, art. 28): een DOC van bijzondere faam, na minstens tien jaar bevorderd, met een genummerd staatszegel op elke fles. Mag alleen of samen met DOP op het etiket staan."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "Legge 12 dicembre 2016, n. 238 (Testo unico del vino), art. 28 — menzioni specifiche tradizionali DOCG, DOC, IGT",
+     "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:2016-12-12;238"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    },
+    {
+     "label": "MASAF — Disciplinari di produzione dei vini DOP e IGP",
+     "url": "https://www.masaf.gov.it/flex/cm/pages/ServeBLOB.php/L/IT/IDPagina/4625"
+    }
+   ]
+  },
+  "it:IGT": {
+   "full": "Indicazione geografica tipica",
+   "note": {
+    "en": "Italy's traditional term for PGI wines (Legge 238/2016 art. 28): a regional indication with at least 85 % of the grapes from the area and looser rules than DOC. It may appear alone or together with IGP on the label.",
+    "es": "Término tradicional italiano para vinos IGP (Ley 238/2016, art. 28): indicación regional con al menos el 85 % de la uva de la zona y reglas más flexibles que la DOC. Puede figurar solo o junto a IGP en la etiqueta.",
+    "fr": "Mention traditionnelle italienne pour les vins IGP (loi 238/2016, art. 28) : indication régionale avec au moins 85 % des raisins issus de l'aire et des règles plus souples que la DOC. Elle peut figurer seule ou avec IGP sur l'étiquette.",
+    "nl": "Italiës traditionele aanduiding voor BGA-wijnen (wet 238/2016, art. 28): een regionale aanduiding met minstens 85 % van de druiven uit het gebied en soepelere regels dan DOC. Mag alleen of samen met IGP op het etiket staan."
+   },
+   "scheme": "pgi",
+   "sources": [
+    {
+     "label": "Legge 12 dicembre 2016, n. 238 (Testo unico del vino), art. 28 — menzioni specifiche tradizionali DOCG, DOC, IGT",
+     "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:2016-12-12;238"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "mt:DOK": {
+   "full": "Denominazzjoni ta' Oriġini Kontrollata",
+   "note": {
+    "en": "Malta's traditional term for PDO wines (L.N. 416/2007 under the Wine Act): DOK Malta and DOK Gozo, with stricter yields, cultivation rules and a tasting panel before certification. It stands in for PDO on the label.",
+    "es": "Término tradicional maltés para vinos DOP (L.N. 416/2007 según la Wine Act): DOK Malta y DOK Gozo, con rendimientos y normas de cultivo más estrictos y un panel de cata previo a la certificación. Sustituye a DOP en la etiqueta.",
+    "fr": "Mention traditionnelle maltaise pour les vins AOP (L.N. 416/2007 au titre du Wine Act) : DOK Malta et DOK Gozo, avec rendements et règles de culture plus stricts et un jury de dégustation avant certification. Elle tient lieu d'AOP sur l'étiquette.",
+    "nl": "Maltas traditionele aanduiding voor BOB-wijnen (L.N. 416/2007 onder de Wine Act): DOK Malta en DOK Gozo, met strengere opbrengsten, teeltregels en een proefpanel vóór certificering. Vervangt BOB op het etiket."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "Malta — DOK and IĠT Wine Quality Scheme (Department for Rural Affairs; L.N. 167/2007, L.N. 416/2007)",
+     "url": "https://ruralaffairs.gov.mt/en/agrikwalita-services/dok-igt-wine-quality-scheme/"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "mt:IĠT": {
+   "full": "Indikazzjoni Ġeografika Tipika",
+   "note": {
+    "en": "Malta's traditional term for PGI wine (L.N. 167/2007 under the Wine Act): IĠT Maltese Islands, made from grapes grown on the islands under a yield-limited production protocol. It stands in for PGI on the label.",
+    "es": "Término tradicional maltés para vino IGP (L.N. 167/2007 según la Wine Act): IĠT Maltese Islands, elaborado con uva cultivada en las islas bajo un protocolo de producción con rendimiento limitado. Sustituye a IGP en la etiqueta.",
+    "fr": "Mention traditionnelle maltaise pour le vin IGP (L.N. 167/2007 au titre du Wine Act) : IĠT Maltese Islands, issu de raisins cultivés sur les îles selon un protocole de production à rendement limité. Elle tient lieu d'IGP sur l'étiquette.",
+    "nl": "Maltas traditionele aanduiding voor BGA-wijn (L.N. 167/2007 onder de Wine Act): IĠT Maltese Islands, gemaakt van op de eilanden geteelde druiven volgens een productieprotocol met opbrengstlimiet. Vervangt BGA op het etiket."
+   },
+   "scheme": "pgi",
+   "sources": [
+    {
+     "label": "Malta — DOK and IĠT Wine Quality Scheme (Department for Rural Affairs; L.N. 167/2007, L.N. 416/2007)",
+     "url": "https://ruralaffairs.gov.mt/en/agrikwalita-services/dok-igt-wine-quality-scheme/"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "pt:DOC": {
+   "full": "Denominação de Origem Controlada",
+   "note": {
+    "en": "Portugal's traditional term for PDO wines (Decreto-Lei 212/2004): every Portuguese DOP is a DOC, certified by its regional commission or by IVV. It stands in for DOP on the label.",
+    "es": "Término tradicional portugués para vinos DOP (Decreto-Lei 212/2004): cada DOP portuguesa es una DOC, certificada por su comisión regional o por el IVV. Sustituye a DOP en la etiqueta.",
+    "fr": "Mention traditionnelle portugaise pour les vins AOP (décret-loi 212/2004) : chaque DOP portugaise est une DOC, certifiée par sa commission régionale ou par l'IVV. Elle tient lieu de DOP sur l'étiquette.",
+    "nl": "Portugals traditionele aanduiding voor BOB-wijnen (Decreto-Lei 212/2004): elke Portugese DOP is een DOC, gecertificeerd door haar regionale commissie of door het IVV. Vervangt DOP op het etiket."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "Decreto-Lei n.º 212/2004 — menções tradicionais «Denominação de Origem Controlada» / «Vinho Regional» (Diário da República)",
+     "url": "https://diariodarepublica.pt/dr/detalhe/decreto-lei/212-2004-479875"
+    },
+    {
+     "label": "IVV — Cadernos de especificações das DOP (Instituto da Vinha e do Vinho)",
+     "url": "https://www.ivv.gov.pt/np4/8617.html"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "pt:Vinho Regional": {
+   "full": "Vinho Regional",
+   "note": {
+    "en": "Portugal's traditional term for PGI wines (Decreto-Lei 212/2004): a regional indication (Alentejano, Lisboa, Minho …) with at least 85 % of the grapes from the area and a wider variety list than the DOCs. It stands in for IGP on the label.",
+    "es": "Término tradicional portugués para vinos IGP (Decreto-Lei 212/2004): indicación regional (Alentejano, Lisboa, Minho …) con al menos el 85 % de la uva de la zona y una lista de variedades más amplia que las DOC. Sustituye a IGP en la etiqueta.",
+    "fr": "Mention traditionnelle portugaise pour les vins IGP (décret-loi 212/2004) : indication régionale (Alentejano, Lisboa, Minho …) avec au moins 85 % des raisins issus de l'aire et un encépagement plus large que les DOC. Elle tient lieu d'IGP sur l'étiquette.",
+    "nl": "Portugals traditionele aanduiding voor BGA-wijnen (Decreto-Lei 212/2004): een regionale aanduiding (Alentejano, Lisboa, Minho …) met minstens 85 % van de druiven uit het gebied en een ruimere rassenlijst dan de DOC's. Vervangt IGP op het etiket."
+   },
+   "scheme": "pgi",
+   "sources": [
+    {
+     "label": "Decreto-Lei n.º 212/2004 — menções tradicionais «Denominação de Origem Controlada» / «Vinho Regional» (Diário da República)",
+     "url": "https://diariodarepublica.pt/dr/detalhe/decreto-lei/212-2004-479875"
+    },
+    {
+     "label": "IVV — Cadernos de especificações das DOP (Instituto da Vinha e do Vinho)",
+     "url": "https://www.ivv.gov.pt/np4/8617.html"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "ro:DOC": {
+   "full": "Vin cu denumire de origine controlată",
+   "note": {
+    "en": "Romania's traditional term for PDO wines (Legea 164/2015 art. 32): a delimited vineyard area whose wine is made entirely from its own Vitis vinifera grapes under an ONVPV-approved caiet de sarcini. It stands in for DOP on the label.",
+    "es": "Término tradicional rumano para vinos DOP (Ley 164/2015, art. 32): zona vitícola delimitada cuyo vino procede íntegramente de su propia uva Vitis vinifera según un pliego aprobado por la ONVPV. Sustituye a DOP en la etiqueta.",
+    "fr": "Mention traditionnelle roumaine pour les vins AOP (loi 164/2015, art. 32) : aire viticole délimitée dont le vin est issu exclusivement de ses propres raisins de Vitis vinifera selon un cahier des charges approuvé par l'ONVPV. Elle tient lieu de DOP sur l'étiquette.",
+    "nl": "Roemeniës traditionele aanduiding voor BOB-wijnen (wet 164/2015, art. 32): een afgebakend wijngebied waarvan de wijn volledig uit eigen Vitis vinifera-druiven wordt gemaakt volgens een door ONVPV goedgekeurd caiet de sarcini. Vervangt DOP op het etiket."
+   },
+   "scheme": "pdo",
+   "sources": [
+    {
+     "label": "Legea nr. 164/2015 a viei și vinului, art. 32 (D.O.C.) și art. 35 (I.G.) (Portal Legislativ)",
+     "url": "https://legislatie.just.ro/Public/DetaliiDocument/169280"
+    },
+    {
+     "label": "ONVPV — Legislație națională în domeniul vitivinicol",
+     "url": "https://www.onvpv.ro/ro/node/23"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  },
+  "ro:IG": {
+   "full": "Vin cu indicație geografică",
+   "note": {
+    "en": "Romania's traditional term for PGI wines (Legea 164/2015 art. 35): a delimited area with at least 85 % of the grapes from it, Vitis vinifera or interspecific crosses allowed. It stands in for IGP on the label.",
+    "es": "Término tradicional rumano para vinos IGP (Ley 164/2015, art. 35): zona delimitada de la que procede al menos el 85 % de la uva, admitiéndose Vitis vinifera o cruces interespecíficos. Sustituye a IGP en la etiqueta.",
+    "fr": "Mention traditionnelle roumaine pour les vins IGP (loi 164/2015, art. 35) : aire délimitée dont proviennent au moins 85 % des raisins, Vitis vinifera ou hybrides interspécifiques admis. Elle tient lieu d'IGP sur l'étiquette.",
+    "nl": "Roemeniës traditionele aanduiding voor BGA-wijnen (wet 164/2015, art. 35): een afgebakend gebied waaruit minstens 85 % van de druiven komt, Vitis vinifera of interspecifieke kruisingen toegestaan. Vervangt IGP op het etiket."
+   },
+   "scheme": "pgi",
+   "sources": [
+    {
+     "label": "Legea nr. 164/2015 a viei și vinului, art. 32 (D.O.C.) și art. 35 (I.G.) (Portal Legislativ)",
+     "url": "https://legislatie.just.ro/Public/DetaliiDocument/169280"
+    },
+    {
+     "label": "ONVPV — Legislație națională în domeniul vitivinicol",
+     "url": "https://www.onvpv.ro/ro/node/23"
+    },
+    {
+     "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
+     "url": "https://www.legislation.gov.uk/eur/2009/607/annex/XII/adopted/data.xht"
+    }
+   ]
+  }
+ }
+}

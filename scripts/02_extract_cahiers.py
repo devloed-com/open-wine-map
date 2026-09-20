@@ -117,9 +117,35 @@ _DEPT_HEADER_PATTERN = (
     + r")"
     + r"\s*(?:\(\d+\))?"
     + r"(?P<after>(?:[^:\n]*\n?){0,4}?):"
-    + r"(?P<communes>[^\n]*(?:\n(?!\s*\n|\s*-?\s*(?i:D[ée]partement|Dans\s+(?:le|les)\s+d[ée]partement)|\s*\d°|\s*[IVX]+\s*\.\s*-)[^\n]*)*)"
+    + r"(?P<communes>[^\n]*(?:\n(?!\s*\n|\s*-?\s*(?i:D[ée]partement|Dans\s+(?:le|les)\s+d[ée]partement)|\s*\d[ \t]*(?:°|[-–][ \t]*[A-Za-zÀ-ÿ])|\s*[IVX]+\s*\.\s*-)[^\n]*)*)"
 )
 DEPT_HEADER_RE = re.compile(_DEPT_HEADER_PATTERN, re.MULTILINE)
+# Sub-block headers inside section IV: "1° - Aire géographique",
+# "1°- Aire parcellaire délimitée", plus the degree-less "1 - Aire
+# géographique" / "1) Aire …" forms the 2024 PNOCDC republications use
+# (Pouilly-Loché). The marker (°, dash or paren) is mandatory so a body
+# line that merely starts with a digit ("3 communes …") never opens a
+# block. Without the split the whole section is scanned and the aire de
+# proximité immédiate list is taken as the aire géographique.
+# Intra-line gaps are [ \t] only: a page-number line ("   2") followed by a
+# form feed and "- Département du Rhône : …" must not glue into one header.
+_AIRE_BLOCK_HEADER_PATTERN = (
+    r"^[ \t\x0c]*(\d[ \t]*(?:°[ \t]*[-–)]?|[-–]|\))[ \t]*[A-Za-zÀ-ÿ][^\n]*)$"
+)
+# Sentence-form aire, used when a block carries no "Département de X :"
+# list: "… sont assurés sur le territoire de la commune de Mâcon du
+# département de Saône-et-Loire" / "des communes de A, B et C du
+# département de l'Yonne". One match per (commune list, département).
+_AIRE_SENTENCE_PATTERN = (
+    r"(?:territoire\s+)?(?i:de\s+la\s+commune|des\s+communes)\s+(?i:de\s+|d['’]\s*)"
+    r"(?P<communes>[^:;.]+?)\s+"
+    r"(?i:du|dans\s+le)\s+(?i:d[ée]partement)\s+(?i:" + _ART + r")"
+    r"(?P<dept>"
+    r"[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜŸ][\wÀ-ÿ'’]*(?:-[\wÀ-ÿ'’]+)*"
+    r"(?:\s+[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜŸ][\wÀ-ÿ'’]*(?:-[\wÀ-ÿ'’]+)*)*"
+    r")"
+)
+AIRE_SENTENCE_RE = re.compile(_AIRE_SENTENCE_PATTERN)
 COG_YEAR_RE = re.compile(r"code officiel g[ée]ographique de l['’]ann[ée]e\s+(\d{4})")
 
 
@@ -746,16 +772,33 @@ def parse_communes(field: str) -> list[str]:
     return out
 
 
+def _clean_commune_tokens(tokens: list[str]) -> list[str]:
+    """Drop the prose that rides along with a sentence-form commune list.
+
+    A commune name starts with a capital and never contains a sentence
+    break, but the sentence form leaks asides into the split tokens:
+    "sur la base du code officiel géographique …" (Barsac), "située"
+    (Loupiac: "la commune de Loupiac, située dans le département"). Applied
+    to the sentence path only — the list form ("Département de X : …")
+    legitimately carries lowercase-initial tokens in IGP layouts
+    ("l'ensemble des communes …"), so it is left as it was.
+    """
+    out: list[str] = []
+    for c in tokens:
+        if ". " in c:
+            c = c.split(". ", 1)[0].strip()
+        if not c or not c[:1].isupper() or "code officiel" in c.lower():
+            continue
+        out.append(c)
+    return out
+
+
 def extract_aire(section_iv: str) -> dict:
     """Parse section IV. Returns geographique/proximite_immediate commune lists."""
     cog_match = COG_YEAR_RE.search(section_iv)
     cog_year = int(cog_match.group(1)) if cog_match else None
 
-    blocks = re.split(
-        r"^\s*(\d°\s*[-–]?\s*[A-Za-zÀ-ÿ][^\n]*)$",
-        section_iv,
-        flags=re.MULTILINE,
-    )
+    blocks = re.split(_AIRE_BLOCK_HEADER_PATTERN, section_iv, flags=re.MULTILINE)
     # blocks: [pre, header1, body1, header2, body2, ...]
     by_block: dict[str, str] = {}
     for i in range(1, len(blocks) - 1, 2):
@@ -773,6 +816,12 @@ def extract_aire(section_iv: str) -> dict:
             communes = parse_communes(communes_raw)
             if communes:
                 result[dept].extend(communes)
+        if not result:
+            for m in AIRE_SENTENCE_RE.finditer(text):
+                dept = re.sub(r"\s+", " ", m.group("dept")).strip(" '’.,:")
+                communes = _clean_commune_tokens(parse_communes(m.group("communes")))
+                if communes:
+                    result[dept].extend(communes)
         return dict(result)
 
     aire_geo_text = next(
@@ -1581,9 +1630,22 @@ def main() -> int:
             dgc_emitted += 1
 
     set_pliego_context(None)
-    stubs = emit_stub_records(
-        siqo_denoms, siqo_categories, manifest, index, slug_map, OUT_DIR
-    )
+    if args.only or args.limit:
+        # A partial run must leave every unselected record untouched. The
+        # stub pass walks the whole SIQO referentiel and would rewrite
+        # every record outside the selection as `no-extract` (it once
+        # stubbed 1,131 records on a 61-name `--only` run), and the index
+        # would shrink to the selection — so skip the stub pass and merge
+        # the fresh entries into the index on disk instead.
+        stubs = 0
+        if INDEX_PATH.exists():
+            merged = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+            merged.update(index)
+            index = merged
+    else:
+        stubs = emit_stub_records(
+            siqo_denoms, siqo_categories, manifest, index, slug_map, OUT_DIR
+        )
 
     INDEX_PATH.write_text(json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     unknowns_path = ROOT / "raw" / "inao" / "extraction-unknowns.json"

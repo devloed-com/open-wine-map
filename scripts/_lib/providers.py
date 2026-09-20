@@ -24,7 +24,52 @@ import os
 
 import requests
 
+from _lib.prompt_cache import system_text
+
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"
+
+# Per-stage Anthropic defaults — the configuration decided 2026-09-14 after
+# the paired experiments in docs/review-terroir-facts-2026-09-12.md:
+#   02d extraction  Sonnet 5, thinking off — equal per-bullet reliability to
+#                   Sonnet 4.6, 31 % more grounded facts, a third cheaper per
+#                   token; the stages' max_tokens were sized for text only.
+#   gate            Opus 5 with adaptive thinking — the independent Opus-5
+#                   grader caught residuals a Sonnet gate had passed.
+#   llm-audit       Opus 5, adaptive (unchanged).
+#   02e / back-check stay on Sonnet 4.6 (translation was not re-tested).
+# `thinking` is None (send nothing), "disabled" or "adaptive"; the batch
+# library and AnthropicProvider both honour it. OWM_BATCH_THINKING overrides.
+STAGE_DEFAULTS: dict[str, tuple[str, str | None]] = {
+    "02d": ("claude-sonnet-5", "disabled"),
+    "gate": ("claude-opus-5", "adaptive"),
+    "audit": ("claude-opus-5", "adaptive"),
+    "02e": ("claude-sonnet-4-6", None),
+    "backcheck": ("claude-sonnet-4-6", None),
+    "02c": ("claude-sonnet-4-6", None),
+}
+
+
+_CLAUDE5_PREFIXES = ("claude-sonnet-5", "claude-opus-5", "claude-fable-5", "claude-mythos-5")
+
+
+def effective_thinking(model: str, thinking: str | None) -> str | None:
+    """The thinking mode to send. The Claude 5 family runs adaptive thinking
+    when the parameter is omitted (the 4.x models do not), and every stage's
+    max_tokens budget is sized for the JSON reply alone — on a stage that
+    sets no mode, a Claude 5 model therefore gets "disabled" explicitly
+    (2026-09-15: Sonnet 5 on 02e spent the 2,000-token budget on thinking
+    and 64 % of the replies came back truncated and were rejected)."""
+    if thinking in ("disabled", "adaptive"):
+        return thinking
+    if any((model or "").startswith(px) for px in _CLAUDE5_PREFIXES):
+        return "disabled"
+    return None
+
+
+def stage_default(stage: str | None) -> tuple[str, str | None]:
+    """(model id, thinking mode) for an Anthropic stage; the generic default
+    for an unknown stage."""
+    return STAGE_DEFAULTS.get(stage or "", (DEFAULT_ANTHROPIC_MODEL, None))
 DEFAULT_MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions"
 DEFAULT_MISTRAL_MODEL = "mistral-medium-latest"
 DEFAULT_OLLAMA_URL = "http://localhost:11434/api/chat"
@@ -36,7 +81,7 @@ MISTRAL_TIMEOUT_S = 300
 class AnthropicProvider:
     kind = "anthropic-api"
 
-    def __init__(self, model: str):
+    def __init__(self, model: str, thinking: str | None = None):
         try:
             import anthropic  # type: ignore
         except ImportError as e:
@@ -49,14 +94,21 @@ class AnthropicProvider:
             raise SystemExit("error: ANTHROPIC_API_KEY environment variable is unset.")
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
+        self.thinking = os.environ.get("OWM_BATCH_THINKING") or thinking
 
-    def chat(self, *, system: str, user: str, max_tokens: int = 1024, **_: object) -> str:
-        msg = self.client.messages.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        )
+    def chat(self, *, system, user: str, max_tokens: int = 1024, **_: object) -> str:
+        # `system` is a string or a list of text blocks (prompt_cache.cached_system /
+        # mark_cached) — the SDK takes both.
+        params = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "system": system,
+            "messages": [{"role": "user", "content": user}],
+        }
+        mode = effective_thinking(self.model, self.thinking)
+        if mode:
+            params["thinking"] = {"type": mode}
+        msg = self.client.messages.create(**params)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
 
 
@@ -84,7 +136,7 @@ class MistralProvider:
                 "max_tokens": max_tokens,
                 "temperature": 0.2,
                 "messages": [
-                    {"role": "system", "content": system},
+                    {"role": "system", "content": system_text(system)},
                     {"role": "user", "content": user},
                 ],
             },
@@ -107,7 +159,7 @@ class OllamaProvider:
             json={
                 "model": self.model,
                 "messages": [
-                    {"role": "system", "content": system},
+                    {"role": "system", "content": system_text(system)},
                     {"role": "user", "content": user},
                 ],
                 "stream": False,
@@ -135,12 +187,17 @@ def make_provider(
     model: str | None,
     ollama_url: str = DEFAULT_OLLAMA_URL,
     mistral_url: str = DEFAULT_MISTRAL_URL,
+    stage: str | None = None,
+    thinking: str | None = None,
 ) -> tuple[object | None, str]:
     """Return (provider, translator_id) from CLI args. provider is None for
-    manual mode (caller should run the manual-listing path)."""
+    manual mode (caller should run the manual-listing path). `stage` picks
+    the Anthropic model + thinking default (`STAGE_DEFAULTS`); an explicit
+    `model` / `thinking` wins."""
     if provider == "anthropic":
-        model_id = model or DEFAULT_ANTHROPIC_MODEL
-        return AnthropicProvider(model_id), model_id
+        default_model, default_thinking = stage_default(stage)
+        model_id = model or default_model
+        return AnthropicProvider(model_id, thinking=thinking or default_thinking), model_id
     if provider == "mistral":
         model_id = model or DEFAULT_MISTRAL_MODEL
         return MistralProvider(model_id, url=mistral_url), model_id

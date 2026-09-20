@@ -52,7 +52,6 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from difflib import SequenceMatcher
 from pathlib import Path
 
 from tqdm import tqdm
@@ -61,6 +60,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.terroir_cache import write_source_cache  # noqa: E402
+from _lib.terroir_chapters import is_shared, own_chapter  # noqa: E402
+from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
+from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
+from _lib.terroir_feedback import with_feedback  # noqa: E402
+from _lib.terroir_interactions import earn_interactions  # noqa: E402
+from _lib.terroir_normalize import normalize_facts  # noqa: E402
+from _lib.terroir_prompts import with_style_rules  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "fr"
@@ -73,8 +80,12 @@ WIKI_HINT_CHAR_CAP = 1500
 
 # Cahier section X anchors. Validated 100% against the 6-AOC eval sample;
 # fall back to a flat slice when the slicer returns < 2 sub-sections.
-TOP_RE = re.compile(r"\b([1-9])°\s*[-–]\s*([A-ZÀ-Ý][^\n]{5,80})")
+# "l°" / "I°" are pdftotext's OCR of "1°" (Pouilly-Vinzelles); the top-level
+# key is normalised in _spans_by_top.
+TOP_RE = re.compile(r"\b([1-9lI])°\s*[-–]\s*([A-ZÀ-Ý][^\n]{5,80})")
 SUB_RE = re.compile(r"\b([a-c])\)\s*[-–]?\s*([A-ZÀ-Ý][^\n]{5,80})")
+_TOP_OCR = {"l": "1", "I": "1"}
+MIN_SLICE_CHARS = 200
 
 SUBSECTIONS = [
     {
@@ -149,35 +160,20 @@ Règles strictes :
 - Les citations sont VERBATIM (copiées-collées) de leur source respective. NE JAMAIS attribuer à une source un texte qui n'y figure pas.
 - Aucun jugement de valeur (« exceptionnel », « remarquable », « prestigieux »...).
 - Aucune inférence externe. Aucun chiffre absent des deux sources.
-- Maximum {max_bullets} puces, ≤ 140 caractères chacune.
+- Maximum {max_bullets} puces ; chaque puce est une phrase complète d'environ 120 à 220 caractères — jamais un fragment télégraphique.
 - Si ni le cahier ni Wikipedia ne contiennent de fait notable concret pour cette sous-section, retourne une liste vide.
 
 Réponds UNIQUEMENT en JSON, sans texte avant ou après :
 {{"facts": [{{"bullet": "...", "cahier_quote": "...", "wiki_quote": "..."}}, ...]}}
 Utilise une chaîne vide "" pour la citation absente."""
+EXTRACT_SYSTEM = with_style_rules(EXTRACT_SYSTEM)
 
 
 # ─────────────────────────────────────────────────────────────── helpers ──
 
 
-def normalize(s: str) -> str:
-    return " ".join((s or "").split()).lower()
-
-
 def cahier_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
-def fuzzy_coverage(quote: str, source: str) -> float:
-    """Longest-contiguous-match coverage of `quote` in `source` (0.0–1.0)."""
-    q = normalize(quote)
-    s = normalize(source)
-    if not q:
-        return 0.0
-    match = SequenceMatcher(None, q, s, autojunk=False).find_longest_match(
-        0, len(q), 0, len(s)
-    )
-    return match.size / len(q)
 
 
 def _spans_by_top(lien: str, tops: list[re.Match]) -> dict[str, tuple[int, int]]:
@@ -185,7 +181,7 @@ def _spans_by_top(lien: str, tops: list[re.Match]) -> dict[str, tuple[int, int]]
     out: dict[str, tuple[int, int]] = {}
     for i, m in enumerate(tops):
         end = tops[i + 1].start() if i + 1 < len(tops) else len(lien)
-        out[m.group(1)] = (m.start(), end)
+        out.setdefault(_TOP_OCR.get(m.group(1), m.group(1)), (m.start(), end))
     return out
 
 
@@ -199,6 +195,11 @@ def _split_zone_geographique(
     if not sub_in_1:
         return {"facteurs_naturels": (s1, e1)}
     out: dict[str, tuple[int, int]] = {}
+    first = sub_in_1[0]
+    if first.group(1) != "a" and first.start() - s1 >= MIN_SLICE_CHARS:
+        # The a) heading lost its letter ("- Description des facteurs naturels",
+        # Floc de Gascogne): the text before b) is the natural factors.
+        out["facteurs_naturels"] = (s1, first.start())
     for i, m in enumerate(sub_in_1):
         end = sub_in_1[i + 1].start() if i + 1 < len(sub_in_1) else e1
         if m.group(1) == "a":
@@ -222,6 +223,11 @@ def slice_section_x(lien: str) -> dict[str, str]:
     if "1" in by_top:
         s1, e1 = by_top["1"]
         spans.update(_split_zone_geographique(s1, e1, subs))
+    elif tops[0].start() >= MIN_SLICE_CHARS:
+        # No "1°" heading at all — the lien opens straight at "a) - Description
+        # des facteurs naturels" (Menetou-Salon): everything before the first
+        # numbered heading is section 1.
+        spans.update(_split_zone_geographique(0, tops[0].start(), subs))
     if "2" in by_top:
         spans["produit"] = by_top["2"]
     if "3" in by_top:
@@ -355,17 +361,19 @@ def write_cache(
     wiki_meta: dict,
     translator_id: str,
     translator_kind: str,
+    counts: dict | None = None,
 ) -> None:
     payload = {
         "slug": slug,
         "facts": facts,
         **cahier_meta,
         **wiki_meta,
+        **(counts or {}),
         "translator": translator_id,
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    cache.write_json(cache_path(slug), payload)
+    write_source_cache(cache_path(slug), payload)
 
 
 def _job_from_record(rec: dict) -> dict | None:
@@ -379,6 +387,18 @@ def _job_from_record(rec: dict) -> dict | None:
     lien = (rec.get("lien_au_terroir") or "").strip()
     if len(lien) < MIN_CAHIER_CHARS:
         return None
+    if is_shared(lien):
+        # One cahier for the 51 Alsace grands crus: the lien repeats a
+        # chapter per cru, and slicing by section number alone grades every
+        # cru against the last chapter (Zotzenberg). Restrict to the record's
+        # own chapter; a cru without one is skipped, never grounded on
+        # another cru's text.
+        window = own_chapter(lien, rec.get("name") or "")
+        if window is None:
+            print(f"[02d] {slug}: shared cahier but no own chapter for "
+                  f"{rec.get('name')!r} — skipped", file=sys.stderr)
+            return None
+        lien = lien[window[0]:window[1]].strip()
     slices = slice_section_x(lien)
     if len(slices) < 2:
         slices = {"facteurs_naturels": lien}
@@ -432,10 +452,12 @@ def build_prompt(spec: dict, wiki_hint: str) -> str:
     )
 
 
-def extract_one_aoc(provider, job: dict) -> tuple[list[dict], list[str]]:
-    """Run all four sub-section calls for one AOC, return (kept_facts, errors)."""
+def extract_one_aoc(provider, job: dict) -> tuple[list[dict], list[str], dict]:
+    """Run all four sub-section calls for one AOC, return (kept_facts, errors,
+    counts) — counts = {n_dropped, n_deduped, n_unearned_interactions}."""
     facts: list[dict] = []
     errors: list[str] = []
+    n_dropped = 0
     for spec in SUBSECTIONS:
         sub_key = spec["key"]
         cahier_text = job["slices"].get(sub_key, "")
@@ -443,6 +465,7 @@ def extract_one_aoc(provider, job: dict) -> tuple[list[dict], list[str]]:
             continue
         wiki_hint = job["wiki_hints"].get(sub_key, "")
         system = build_prompt(spec, wiki_hint)
+        system = with_feedback(system, job["slug"])
         try:
             raw = provider.chat(system=system, user=cahier_text, max_tokens=2000, num_ctx=8192)
         except Exception as e:  # noqa: BLE001
@@ -457,7 +480,15 @@ def extract_one_aoc(provider, job: dict) -> tuple[list[dict], list[str]]:
             if classified is not None:
                 classified["subsection"] = sub_key
                 facts.append(classified)
-    return facts, errors
+            else:
+                n_dropped += 1
+    deduped = dedupe_facts(facts)
+    earned = earn_interactions(deduped.kept, "fr")
+    kept = earned.kept
+    normalize_facts(kept)
+    counts = {"n_dropped": n_dropped, "n_deduped": len(deduped.drops),
+              "n_unearned_interactions": len(earned.dropped)}
+    return kept, errors, counts
 
 
 # ─────────────────────────────────────────────────── round-trip (manual) ──
@@ -486,7 +517,7 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "subsection_label": spec["label"],
                 "topics": spec["topics"],
                 "max_bullets": spec["max_bullets"],
-                "system_prompt": build_prompt(spec, wiki_hint),
+                "system_prompt": with_feedback(build_prompt(spec, wiki_hint), job["slug"]),
                 "cahier_text": cahier_text,
                 "wiki_hint": wiki_hint,
                 "cahier_source_sha": job["lien_sha"],
@@ -665,7 +696,7 @@ def _select_jobs(refresh: bool, limit: int, slugs: list[str] | None) -> list[dic
 def _make_provider(args) -> tuple[object | None, str]:
     """Returns (provider, translator_id). provider is None for manual mode."""
     return providers.make_provider(
-        args.provider, model=args.model, ollama_url=args.ollama_url,
+        args.provider, model=args.model, stage="02d", ollama_url=args.ollama_url,
         mistral_url=args.mistral_url,
     )
 
@@ -685,7 +716,7 @@ def _print_manual_listing(jobs: list[dict]) -> int:
 def _process_one_job(provider, translator_id: str, job: dict) -> tuple[int, int]:
     """Run one AOC extraction + cache write. Returns (ok, err) where each is
     0 or 1. Errors are printed to stderr; exceptions surface to the caller."""
-    facts, errors = extract_one_aoc(provider, job)
+    facts, errors, counts = extract_one_aoc(provider, job)
     if errors and not facts:
         for e in errors[:4]:
             print(f"  err {job['slug']}: {e[:160]}", file=sys.stderr)
@@ -697,6 +728,7 @@ def _process_one_job(provider, translator_id: str, job: dict) -> tuple[int, int]
         wiki_meta=job["wiki_meta"],
         translator_id=translator_id,
         translator_kind=provider.kind,
+        counts=counts,
     )
     return 1, 0
 
@@ -769,7 +801,7 @@ def _run_batch(args) -> int:
     if not batch.supports(args.provider):
         print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
         return 1
-    model_id = args.model or batch.default_model(args.provider)
+    model_id = args.model or batch.default_model(args.provider, stage="02d")
     jobs = _select_jobs(refresh=args.refresh, limit=args.limit, slugs=args.slug)
     if not jobs:
         print("[02d] batch: nothing to do.", file=sys.stderr)
@@ -785,7 +817,7 @@ def _run_batch(args) -> int:
     batch.run_two_pass(
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-fr.json",
-        run_loop=run_loop,
+        run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
     )
     write_manifest(
         n_jobs=len(jobs), ok=stats.get("ok", 0), err=stats.get("err", 0), cached=0,

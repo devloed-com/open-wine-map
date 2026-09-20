@@ -29,6 +29,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.prompt_cache import mark_cached  # noqa: E402
+from _lib.terroir_cache import write_translation_cache  # noqa: E402
+from _lib.terroir_prompts import translation_system_prompt, with_appellation_context  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -42,7 +45,6 @@ SYSTEM_PROMPT_NL = """You translate short Dutch bullets describing a Belgian win
 
 Rules:
 - Output a JSON array of strings, one translated bullet per input bullet, in the SAME order. The array length must equal the input list length.
-- Preserve Dutch proper nouns verbatim: appellation names ("Hagelandse wijn", "Haspengouwse wijn", "Heuvellandse wijn", "Vlaamse landwijn", "Vlaamse mousserende kwaliteitswijn", "Maasvallei Limburg"), region names ("Vlaanderen", "Hageland", "Haspengouw", "Heuvelland", "Maasvallei"), commune and dorp names, grape variety names ("Acolon", "Dornfelder", "Pinotin", "Cabernet Cortis", "Regent", "Solaris", "Johanniter", "Auxerrois", "Riesling", "Gewürztraminer", "Müller-Thurgau", "Chardonnay", "Pinot blanc/gris/noir", "Siegerrebe"), named geological formations and soil types ("löss", "leem", "krijt", "mergel", "tuffeau", "zandleem", "alluviale grond"), named climatic features ("gematigd zeeklimaat", "gematigd maritiem klimaat"), and Belgian wine-law / EU GI terms ("BOB", "BGA", "enig document", "productdossier", "oorsprongsbenaming", "geografische aanduiding").
 - Geological era labels: translate to the standard {lang_name} form when one exists. When unsure, keep the Dutch form.
 - Translate descriptive vocabulary naturally for a wine-literate reader.
 - Match each source bullet's length and register; do not add commentary, footnotes, or explanations.
@@ -53,7 +55,6 @@ SYSTEM_PROMPT_FR = """You translate short French bullets describing a Belgian wi
 
 Rules:
 - Output a JSON array of strings, one translated bullet per input bullet, in the SAME order. The array length must equal the input list length.
-- Preserve French proper nouns verbatim: appellation names ("Côtes de Sambre et Meuse", "Crémant de Wallonie", "Vin mousseux de qualité de Wallonie", "Vin de pays des jardins de Wallonie"), region names ("Wallonie", "Sambre", "Meuse", "Hesbaye", "Condroz", "Ardenne"), commune names, grape variety names ("Chardonnay", "Pinot noir/blanc/gris", "Auxerrois", "Müller-Thurgau", "Acolon", "Régent", "Solaris", "Johanniter", "Pinotin"), named geological formations and soil types ("craie", "limon", "loess", "marnes", "tuffeau", "alluvions", "sables", "schistes"), named climatic features ("climat tempéré océanique"), and EU GI / Belgian wine-law terms ("AOP", "IGP", "document unique", "cahier des charges", "appellation d'origine protégée", "indication géographique protégée").
 - Geological era labels: translate to the standard {lang_name} form when one exists. When unsure, keep the French form.
 - Translate descriptive vocabulary naturally for a wine-literate reader.
 - Match each source bullet's length and register; do not add commentary, footnotes, or explanations.
@@ -61,6 +62,11 @@ Rules:
 
 
 SYSTEM_PROMPTS = {"nl": SYSTEM_PROMPT_NL, "fr": SYSTEM_PROMPT_FR}
+
+PROPER_NOUNS = {
+    "nl": """appellation names (Hagelandse wijn, Haspengouwse wijn, Heuvellandse wijn, Vlaamse landwijn, Vlaamse mousserende kwaliteitswijn, Maasvallei Limburg); region names (Vlaanderen, Hageland, Haspengouw, Heuvelland, Maasvallei); commune and village names; grape names (Acolon, Dornfelder, Pinotin, Cabernet Cortis, Regent, Solaris, Johanniter, Auxerrois, Riesling, Gewürztraminer, Müller-Thurgau, Chardonnay, Pinot blanc, Pinot gris, Pinot noir, Siegerrebe)""",
+    "fr": """appellation names (Côtes de Sambre et Meuse, Crémant de Wallonie, Vin mousseux de qualité de Wallonie, Vin de pays des jardins de Wallonie); region names (Wallonie, Sambre, Meuse, Hesbaye, Condroz, Ardenne); commune names; grape names (Chardonnay, Pinot noir, Pinot blanc, Pinot gris, Auxerrois, Müller-Thurgau, Acolon, Régent, Solaris, Johanniter, Pinotin)""",
+}
 
 
 # ─────────────────────────────────────────────────────────────── helpers ──
@@ -125,7 +131,7 @@ def write_cache(
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    cache.write_json(cache_path(lang, slug), payload)
+    write_translation_cache(cache_path(lang, slug), payload)
 
 
 def _is_fresh_cache(existing: dict | None, sha: str, expected_len: int) -> bool:
@@ -188,10 +194,15 @@ def build_user_prompt(src_facts: list[dict]) -> str:
 
 def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
     src_lang = job["source_lang"]
-    system = SYSTEM_PROMPTS[src_lang].format(lang_name=LOCALE_NAME[job["lang"]])
+    system = translation_system_prompt(
+        SYSTEM_PROMPTS[src_lang].format(lang_name=LOCALE_NAME[job["lang"]]),
+        source_lang=src_lang, target_lang=job["lang"], proper_nouns=PROPER_NOUNS[src_lang],
+    )
     user = build_user_prompt(job["src_facts"])
+    user = with_appellation_context(user, job["slug"])  # names the appellation on sub-denomination pages
     try:
-        raw = provider.chat(system=system, user=user, max_tokens=2000, num_ctx=8192)
+        # One system prompt per locale, shared by every record of the batch: cached.
+        raw = provider.chat(system=mark_cached(system), user=user, max_tokens=2000, num_ctx=8192)
     except Exception as e:  # noqa: BLE001
         return None, f"call: {e}"
     parsed = parse_array(raw, len(job["src_facts"]))
@@ -300,6 +311,7 @@ def _build_argparser() -> argparse.ArgumentParser:
                     help="restrict to a specific locale (repeatable)")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--workers", type=int, default=1)
+    ap.add_argument("--only", action="append", default=[], help="restrict to a slug (repeatable)")
     ap.add_argument("--refresh", action="store_true")
     ap.add_argument("--batch", action="store_true")
     roundtrip.add_arguments(ap)
@@ -379,8 +391,10 @@ def _run_batch(args, languages: tuple[str, ...] | None) -> int:
     if not batch.supports(args.provider):
         print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
         return 1
-    model_id = args.model or batch.default_model(args.provider)
+    model_id = args.model or batch.default_model(args.provider, stage="02e")
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:
@@ -412,6 +426,8 @@ def main() -> int:
         return _run_batch(args, languages)
 
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:
@@ -420,7 +436,7 @@ def main() -> int:
 
     provider, model_id = providers.make_provider(
         args.provider, model=args.model, ollama_url=args.ollama_url,
-        mistral_url=args.mistral_url,
+        mistral_url=args.mistral_url, stage="02e",
     )
     if provider is None:
         print(f"[02e/be] manual provider: {len(jobs)} entries need translation. "

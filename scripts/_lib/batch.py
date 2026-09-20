@@ -21,6 +21,14 @@ incremental — it enumerates only stale / missing entries, never
 resubmitting an already-processed one — and an interrupted run resumes
 the in-flight batch (via the sidecar) even after a partial pass 2. Runs
 are single-threaded.
+
+Every fetched result carries the provider's `usage` (input / output /
+cache tokens); `run_batch` sums them, prices them at the Batch-API rate
+(`BATCH_PRICES_USD_PER_M`, 50 % of the list price), prints the line and
+appends it to `raw/.batch/costs.jsonl` — one row per batch, keyed by the
+stage sidecar — so a run reports its own cost instead of the numbers
+being re-read from the API afterwards. `run_two_pass` returns the same
+summary in its stats dict for the stage's report.
 """
 
 from __future__ import annotations
@@ -38,6 +46,8 @@ from pathlib import Path
 import requests
 
 from _lib.env import load_dotenv
+from _lib.prompt_cache import system_text
+from _lib.providers import effective_thinking, stage_default
 
 
 def _load_dotenv() -> None:
@@ -53,9 +63,17 @@ _KIND = {"anthropic": "anthropic-api", "mistral": "mistral-api"}
 _DEFAULT_MODEL = {"anthropic": "claude-sonnet-4-6", "mistral": "mistral-medium-latest"}
 
 
-def default_model(provider: str) -> str:
-    """The batch-default model id for a provider (overridable with --model)."""
+def default_model(provider: str, stage: str | None = None) -> str:
+    """The batch-default model id for a provider (overridable with --model);
+    for anthropic the per-stage default from `providers.STAGE_DEFAULTS`."""
+    if provider == "anthropic":
+        return stage_default(stage)[0]
     return _DEFAULT_MODEL.get(provider, "")
+
+
+def default_thinking(provider: str, stage: str | None = None) -> str | None:
+    """The stage's thinking mode for anthropic (None / "disabled" / "adaptive")."""
+    return stage_default(stage)[1] if provider == "anthropic" else None
 
 
 def supports(provider: str) -> bool:
@@ -91,12 +109,13 @@ def _retry(fn, *, what: str, attempts: int = 5):
 # ───────────────────────────────────────────── collecting / replay providers ──
 
 
-def _request_id(system: str, user: str) -> str:
+def _request_id(system, user: str) -> str:
     """Stable content hash of a prompt — the batch `custom_id`. Replay keys
     on this, so it is order-independent: an interrupted run resumes
     correctly even when entries were cached (and thus dropped from the job
     list) in between."""
-    return hashlib.sha256(f"{system}\x00{user}".encode()).hexdigest()[:32]
+    sys_key = system if isinstance(system, str) else json.dumps(system, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(f"{sys_key}\x00{user}".encode()).hexdigest()[:32]
 
 
 class CollectingProvider:
@@ -111,7 +130,7 @@ class CollectingProvider:
         self.requests: list[dict] = []
         self._seen: set[str] = set()
 
-    def chat(self, *, system: str, user: str, max_tokens: int = 1024, **_: object) -> str:
+    def chat(self, *, system, user: str, max_tokens: int = 1024, cache_phase=None, **_: object) -> str:
         cid = _request_id(system, user)
         if cid not in self._seen:
             self._seen.add(cid)
@@ -120,6 +139,7 @@ class CollectingProvider:
                 "system": system,
                 "user": user,
                 "max_tokens": max_tokens,
+                "phase": cache_phase,
             })
         return ""
 
@@ -134,7 +154,7 @@ class ReplayProvider:
         self.results = results
         self.kind = kind
 
-    def chat(self, *, system: str, user: str, **_: object) -> str:
+    def chat(self, *, system, user: str, **_: object) -> str:
         cid = _request_id(system, user)
         r = self.results.get(cid)
         if r is None:
@@ -145,6 +165,88 @@ class ReplayProvider:
         if r.get("error"):
             raise RuntimeError(f"batch request {cid} errored: {r['error']}")
         return r["text"]
+
+
+# ─────────────────────────────────────────────────────────────────── usage ──
+
+# List price, USD per million tokens (input, output); the Batch API bills
+# BATCH_DISCOUNT of it. Cache reads bill at 10 % of input, cache writes at
+# 125 %. Unknown model → tokens are still summed, cost is None.
+BATCH_PRICES_USD_PER_M: dict[str, tuple[float, float]] = {
+    "claude-opus-5": (5.0, 25.0),
+    "claude-opus-4-8": (5.0, 25.0),
+    "claude-opus-4-7": (5.0, 25.0),
+    "claude-opus-4-6": (5.0, 25.0),
+    "claude-sonnet-5": (2.0, 10.0),
+    "claude-sonnet-4-6": (3.0, 15.0),
+    "claude-haiku-4-5": (1.0, 5.0),
+}
+BATCH_DISCOUNT = 0.5
+COSTS_LEDGER = Path(__file__).resolve().parents[2] / "raw" / ".batch" / "costs.jsonl"
+_USAGE_KEYS = ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+
+
+def _usage_from_anthropic(usage) -> dict:
+    return {k: int(getattr(usage, k, 0) or 0) for k in _USAGE_KEYS}
+
+
+def _usage_from_mistral(usage: dict | None) -> dict:
+    u = usage or {}
+    return {"input_tokens": int(u.get("prompt_tokens") or 0), "output_tokens": int(u.get("completion_tokens") or 0),
+            "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}
+
+
+def batch_cost_usd(usage: dict, model: str) -> float | None:
+    """The Batch-API price of `usage` for `model`, or None for an unpriced model."""
+    prices = BATCH_PRICES_USD_PER_M.get(model)
+    if not prices:
+        return None
+    inp, out = prices
+    per_m = (
+        usage.get("input_tokens", 0) * inp
+        + usage.get("output_tokens", 0) * out
+        + usage.get("cache_read_input_tokens", 0) * inp * 0.1
+        + usage.get("cache_creation_input_tokens", 0) * inp * 1.25
+    )
+    return round(per_m / 1_000_000 * BATCH_DISCOUNT, 4)
+
+
+def usage_summary(results: dict, model: str) -> dict:
+    """Sum the per-result `usage` dicts and price them: {n_results,
+    n_with_usage, input_tokens, output_tokens, cache_creation_input_tokens,
+    cache_read_input_tokens, cost_usd}."""
+    tot = {k: 0 for k in _USAGE_KEYS}
+    n = 0
+    for r in results.values():
+        u = r.get("usage") if isinstance(r, dict) else None
+        if not u:
+            continue
+        n += 1
+        for k in _USAGE_KEYS:
+            tot[k] += int(u.get(k) or 0)
+    return {"n_results": len(results), "n_with_usage": n, **tot, "cost_usd": batch_cost_usd(tot, model)}
+
+
+def _record_cost(*, provider: str, model: str, batch_id: str, sidecar: Path, thinking: str | None,
+                 summary: dict) -> None:
+    row = {
+        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "stage": sidecar.stem, "provider": provider, "model": model, "thinking": thinking,
+        "batch_id": batch_id, "run": os.environ.get("OWM_TERROIR_RUN") or None, **summary,
+    }
+    try:
+        COSTS_LEDGER.parent.mkdir(parents=True, exist_ok=True)
+        with COSTS_LEDGER.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError as e:  # the ledger is bookkeeping, never a reason to fail a run
+        print(f"[batch] could not append to {COSTS_LEDGER.name}: {e}", file=sys.stderr)
+
+
+def _cost_line(summary: dict) -> str:
+    cost = summary.get("cost_usd")
+    return (f"in={summary['input_tokens']:,} out={summary['output_tokens']:,}"
+            + (f" cache_read={summary['cache_read_input_tokens']:,}" if summary.get("cache_read_input_tokens") else "")
+            + (f" ≈ ${cost:,.2f}" if cost is not None else " (unpriced model)"))
 
 
 # ─────────────────────────────────────────────────────────── anthropic batch ──
@@ -161,19 +263,28 @@ def _anthropic_client():
     return anthropic.Anthropic(api_key=key)
 
 
-def _submit_anthropic(model: str, reqs: list[dict]) -> str:
+def _anthropic_params(model: str, r: dict, thinking: str | None) -> dict:
+    params = {
+        "model": model,
+        "max_tokens": r["max_tokens"],
+        "system": r["system"],
+        "messages": [{"role": "user", "content": r["user"]}],
+    }
+    # The Claude 5 family runs adaptive thinking when `thinking` is omitted,
+    # and the extraction stages' 1,500–2,000-token `max_tokens` budgets were
+    # sized for text only: each stage passes its `STAGE_DEFAULTS` mode
+    # ("disabled" for 02d, "adaptive" for the gate); `OWM_BATCH_THINKING`
+    # overrides for an experiment.
+    mode = effective_thinking(model, os.environ.get("OWM_BATCH_THINKING") or thinking)
+    if mode:
+        params["thinking"] = {"type": mode}
+    return params
+
+
+def _submit_anthropic(model: str, reqs: list[dict], thinking: str | None = None) -> str:
     client = _anthropic_client()
     batch = client.messages.batches.create(requests=[
-        {
-            "custom_id": r["custom_id"],
-            "params": {
-                "model": model,
-                "max_tokens": r["max_tokens"],
-                "system": r["system"],
-                "messages": [{"role": "user", "content": r["user"]}],
-            },
-        }
-        for r in reqs
+        {"custom_id": r["custom_id"], "params": _anthropic_params(model, r, thinking)} for r in reqs
     ])
     return batch.id
 
@@ -198,7 +309,7 @@ def _fetch_anthropic(batch_id: str, poll_interval: int) -> dict:
         if res.type == "succeeded":
             text = "".join(blk.text for blk in res.message.content
                             if getattr(blk, "type", "") == "text").strip()
-            out[entry.custom_id] = {"text": text}
+            out[entry.custom_id] = {"text": text, "usage": _usage_from_anthropic(res.message.usage)}
         else:
             out[entry.custom_id] = {"error": res.type}
     return out
@@ -226,7 +337,7 @@ def _submit_mistral(model: str, reqs: list[dict]) -> str:
                 "max_tokens": r["max_tokens"],
                 "temperature": 0.2,
                 "messages": [
-                    {"role": "system", "content": r["system"]},
+                    {"role": "system", "content": system_text(r["system"])},
                     {"role": "user", "content": r["user"]},
                 ],
             },
@@ -305,16 +416,21 @@ def _fetch_mistral(job_id: str, poll_interval: int) -> dict:
             continue
         d = json.loads(line)
         text, err = _mistral_line_text(d)
-        out[d.get("custom_id")] = {"text": text} if err is None else {"error": err}
+        if err is None:
+            resp = d.get("response")
+            body = (resp.get("body") or {}) if isinstance(resp, dict) else {}
+            out[d.get("custom_id")] = {"text": text, "usage": _usage_from_mistral(body.get("usage"))}
+        else:
+            out[d.get("custom_id")] = {"error": err}
     return out
 
 
 # ───────────────────────────────────────────────────────────── orchestration ──
 
 
-def _submit(provider: str, model: str, reqs: list[dict]) -> str:
+def _submit(provider: str, model: str, reqs: list[dict], thinking: str | None = None) -> str:
     if provider == "anthropic":
-        return _submit_anthropic(model, reqs)
+        return _submit_anthropic(model, reqs, thinking)
     if provider == "mistral":
         return _submit_mistral(model, reqs)
     raise ValueError(f"batch unsupported for provider {provider!r}")
@@ -327,7 +443,7 @@ def _fetch(provider: str, batch_id: str, poll_interval: int) -> dict:
 
 
 def run_batch(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
-              poll_interval: int = POLL_INTERVAL_S) -> dict:
+              poll_interval: int = POLL_INTERVAL_S, thinking: str | None = None) -> dict:
     """Submit `reqs` to `provider`'s Batch API, poll to completion, return
     {custom_id: {"text": ...} | {"error": ...}}. If `sidecar` already holds
     an in-flight batch id for this provider, resume that batch (no resubmit,
@@ -350,25 +466,75 @@ def run_batch(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
             return {}
         print(f"[batch] submitting {len(reqs)} requests to the {provider} batch "
               f"API (model={model}, ~50% cheaper than synchronous)", file=sys.stderr)
-        batch_id = _retry(lambda: _submit(provider, model, reqs),
+        batch_id = _retry(lambda: _submit(provider, model, reqs, thinking),
                           what=f"{provider} batch submit")
         sidecar.parent.mkdir(parents=True, exist_ok=True)
         sidecar.write_text(json.dumps({
             "provider": provider, "model": model, "batch_id": batch_id,
-            "n_requests": len(reqs),
+            "thinking": thinking, "n_requests": len(reqs),
             "submitted_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }, indent=2), encoding="utf-8")
         print(f"[batch] {provider} batch {batch_id} submitted — id saved to "
               f"{sidecar.name} (re-run this command to resume if interrupted)",
               file=sys.stderr)
     results = _fetch(provider, batch_id, poll_interval)
-    print(f"[batch] {provider} batch {batch_id} complete — {len(results)} results",
-          file=sys.stderr)
+    summary = usage_summary(results, model)
+    print(f"[batch] {provider} batch {batch_id} complete — {len(results)} results; "
+          f"{_cost_line(summary)}", file=sys.stderr)
+    _record_cost(provider=provider, model=model, batch_id=batch_id, sidecar=sidecar,
+                 thinking=thinking, summary=summary)
+    return results
+
+
+PHASED_ENV = "OWM_BATCH_PHASED"
+
+
+def phased() -> bool:
+    """Whether requests tagged with a `cache_phase` are submitted as one
+    batch per phase, in order (default on; OWM_BATCH_PHASED=0 disables)."""
+    return (os.environ.get(PHASED_ENV) or "1").strip().lower() not in ("0", "off", "false", "no")
+
+
+def _phase_groups(reqs: list[dict]) -> list[tuple[object, list[dict]]]:
+    """Requests grouped by their `phase`, in order of first appearance;
+    untagged requests form one group."""
+    order: list[object] = []
+    groups: dict[object, list[dict]] = {}
+    for r in reqs:
+        ph = r.get("phase")
+        if ph not in groups:
+            order.append(ph)
+            groups[ph] = []
+        groups[ph].append(r)
+    return [(ph, groups[ph]) for ph in order]
+
+
+def run_phased(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
+               poll_interval: int = POLL_INTERVAL_S, thinking: str | None = None) -> dict:
+    """The requests of a record that share a cached prefix (a 02d record's
+    four sub-section calls) are processed concurrently inside one batch,
+    so most of them write the prefix instead of reading it (13–47 % hits
+    on the cfg-2026-09-14 run). Submitting one batch per `cache_phase`,
+    each after the previous has ended, makes the first phase write and
+    the later phases read — the prefix block carries the 1-hour TTL for
+    this (a read refreshes the timer, so each phase only has to finish
+    within an hour). Each phase has its own sidecar and resumes on its
+    own; the merged results feed one replay."""
+    groups = _phase_groups(reqs)
+    if len(groups) < 2:
+        return run_batch(provider, model, reqs, sidecar=sidecar, poll_interval=poll_interval, thinking=thinking)
+    results: dict = {}
+    for i, (ph, group) in enumerate(groups):
+        side = sidecar.with_name(f"{sidecar.stem}.p{i}{sidecar.suffix}")
+        print(f"[batch] phase {i + 1}/{len(groups)} ({ph}): {len(group)} requests", file=sys.stderr)
+        results.update(run_batch(provider, model, group, sidecar=side, poll_interval=poll_interval,
+                                 thinking=thinking))
+        side.unlink(missing_ok=True)
     return results
 
 
 def run_two_pass(*, provider: str, model: str, sidecar: Path, run_loop,
-                 poll_interval: int = POLL_INTERVAL_S) -> dict:
+                 poll_interval: int = POLL_INTERVAL_S, thinking: str | None = None) -> dict:
     """Run a stage's processing loop as a batch. `run_loop(provider)` runs the
     stage loop once, single-threaded; it is called twice (collect, replay).
     The stage should enumerate only stale / missing entries — replay matches
@@ -380,16 +546,21 @@ def run_two_pass(*, provider: str, model: str, sidecar: Path, run_loop,
     with contextlib.redirect_stderr(io.StringIO()):
         run_loop(collector)  # pass 1 — collect prompts (stderr muted: "" noise)
     reqs = collector.requests
-    if not reqs and not sidecar.exists():
+    in_flight = sidecar.exists() or any(sidecar.parent.glob(f"{sidecar.stem}.p*{sidecar.suffix}"))
+    if not reqs and not in_flight:
         print("[batch] nothing to do — all entries already processed.", file=sys.stderr)
         return {"n_requests": 0, "n_results": 0, "n_errored": 0}
     print(f"[batch] collected {len(reqs)} distinct model requests", file=sys.stderr)
-    results = run_batch(provider, model, reqs, sidecar=sidecar,
-                        poll_interval=poll_interval)
+    use_phases = phased() and any(r.get("phase") is not None for r in reqs)
+    runner = run_phased if use_phases else run_batch
+    results = runner(provider, model, reqs, sidecar=sidecar,
+                     poll_interval=poll_interval, thinking=thinking)
+    usage = usage_summary(results, model)
     run_loop(ReplayProvider(results, kind=_KIND[provider]))  # pass 2 — write caches
     sidecar.unlink(missing_ok=True)  # batch fully consumed — clear resume state
     n_err = sum(1 for r in results.values() if r.get("error"))
     if n_err:
         print(f"[batch] {n_err} of {len(results)} requests errored — re-run to "
               "retry just those (already-done entries are skipped)", file=sys.stderr)
-    return {"n_requests": len(reqs), "n_results": len(results), "n_errored": n_err}
+    return {"n_requests": len(reqs), "n_results": len(results), "n_errored": n_err,
+            "model": model, "usage": usage}
