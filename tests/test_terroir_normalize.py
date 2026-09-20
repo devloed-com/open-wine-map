@@ -1,0 +1,82 @@
+"""Deterministic bullet clean-up (scripts/_lib/terroir_normalize.py)."""
+from __future__ import annotations
+
+import pytest
+from _lib.terroir_normalize import (
+    ensure_terminal_period,
+    expand_mentions,
+    latinize_residual_script,
+    normalize_bullet,
+    normalize_facts,
+    strip_colour_codes,
+)
+
+
+@pytest.mark.parametrize(
+    "src,expected",
+    [
+        ("Cépages : pinot noir N, chardonnay B et pinot gris G.", "Cépages : pinot noir, chardonnay et pinot gris."),
+        ("Riesling B, gewurztraminer Rs, pinot gris G et sylvaner B.", "Riesling, gewurztraminer, pinot gris et sylvaner."),
+        ("Seul grand cru à inclure le sylvaner B parmi ses cépages.", "Seul grand cru à inclure le sylvaner parmi ses cépages."),
+        ("Grenache G (Rg) et muscat à petits grains B dominent.", "Grenache et muscat à petits grains dominent."),
+        ("Vignoble de Colmar N exposé au sud.", "Vignoble de Colmar N exposé au sud."),
+        ("Classé en 1936 en catégorie B du référentiel.", "Classé en 1936 en catégorie B du référentiel."),
+    ],
+)
+def test_colour_codes_are_stripped_only_after_grape_names(src, expected):
+    assert strip_colour_codes(src) == expected
+
+
+def test_vt_sgn_are_expanded():
+    assert expand_mentions("VT : arômes exotiques ; SGN plus concentrés.") == (
+        "Vendanges Tardives : arômes exotiques ; Sélection de Grains Nobles plus concentrés."
+    )
+    assert expand_mentions("Mentions VT/SGN exigent 18 mois.") == (
+        "Mentions Vendanges Tardives / Sélection de Grains Nobles exigent 18 mois."
+    )
+    assert expand_mentions("La SGNV n'existe pas.") == "La SGNV n'existe pas."
+
+
+@pytest.mark.parametrize(
+    "src,expected",
+    [
+        ("Sols argilo-calcaires", "Sols argilo-calcaires."),
+        ("Sols argilo-calcaires.", "Sols argilo-calcaires."),
+        ("AOC reconnue en 1936 (JORF)", "AOC reconnue en 1936 (JORF)."),
+        ("Renommée « Montlouis-sur-Loire »", "Renommée « Montlouis-sur-Loire »."),
+        ("Trailing space   ", "Trailing space."),
+        ("Déjà ponctué ?", "Déjà ponctué ?"),
+        ("", ""),
+    ],
+)
+def test_terminal_period(src, expected):
+    assert ensure_terminal_period(src) == expected
+
+
+def test_normalize_facts_counts_changes_and_edits_in_place():
+    facts = [{"bullet": "Pinot noir N dominant"}, {"bullet": "Déjà propre."}]
+    assert normalize_facts(facts) == 1
+    assert facts[0]["bullet"] == "Pinot noir dominant."
+    assert normalize_bullet("") == ""
+
+
+@pytest.mark.parametrize(
+    "src,expected",
+    [
+        ("Thermoheliоhydric index 4,596–4,765.", "Thermoheliohydric index 4,596–4,765."),
+        ("Dr. Nik. Piniatorοs founded a company.", "Dr. Nik. Piniatoros founded a company."),
+        ("Terraces with dry-stone walls (ξερολιθιές) of 1–2 m.", "Terraces with dry-stone walls (xerolithies) of 1–2 m."),
+        ("Vertisols (смолници) and brown forest soils.", "Vertisols (smolnitsi) and brown forest soils."),
+        ("Bяло Мискет врачански: fine misket aroma.", "Bialo Misket vrachanski: fine misket aroma."),
+        ("A bitter, resinous note of α-terpineol.", "A bitter, resinous note of α-terpineol."),
+        ("Οι θερινοί άνεμοι αποτελούν παράγοντα μοναδικότητας των οίνων.", "Οι θερινοί άνεμοι αποτελούν παράγοντα μοναδικότητας των οίνων."),
+    ],
+)
+def test_residual_script_is_latinised_only_in_mostly_latin_bullets(src, expected):
+    assert latinize_residual_script(src) == expected
+
+
+def test_latinisation_applies_to_target_locales_only():
+    src = "Wijngaarden op terrassen met droogstenen muren (πεζούλες), tot 900 m hoogte."
+    assert normalize_bullet(src, "nl") == "Wijngaarden op terrassen met droogstenen muren (pezoules), tot 900 m hoogte."
+    assert normalize_bullet(src, "") == src

@@ -40,7 +40,6 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from difflib import SequenceMatcher
 from pathlib import Path
 
 from tqdm import tqdm
@@ -49,6 +48,11 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
+from _lib.terroir_cache import write_source_cache  # noqa: E402
+from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
+from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
+from _lib.terroir_feedback import with_feedback  # noqa: E402
+from _lib.terroir_prompts import with_style_rules  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "ch" / "dokumente-extracted"
 WIKI_AOCS_ROOT = ROOT / "raw" / "wikipedia" / "aocs"
@@ -188,7 +192,7 @@ Règles strictes:
 - Les citations sont VERBATIM (copier-coller) depuis leur source. N'attribue JAMAIS à une source un texte qui n'y figure pas.
 - Pas de jugements de valeur ("exceptionnel", "prestigieux"…).
 - Pas de chiffres absents des deux sources.
-- Maximum {max_bullets} puces, ≤ 140 caractères chacune.
+- Maximum {max_bullets} puces ; chaque puce est une phrase complète d'environ 120 à 220 caractères — jamais un fragment télégraphique.
 - Si ni Wikipédia ni le règlement ne contiennent de fait concret remarquable pour cette sous-section, renvoie une liste vide.
 
 Réponds UNIQUEMENT en JSON, sans préambule:
@@ -213,7 +217,7 @@ Strenge Regeln:
 - Zitate sind WÖRTLICH (kopieren und einfügen). Schreibe NIEMALS einer Quelle einen Text zu, der dort nicht vorkommt.
 - Keine Werturteile ("aussergewöhnlich", "prestigeträchtig"…).
 - Keine Zahlen, die in keiner der beiden Quellen stehen.
-- Maximal {max_bullets} Einträge, je ≤ 140 Zeichen.
+- Maximal {max_bullets} Einträge; jeder Eintrag ist ein vollständiger Satz von etwa 120–220 Zeichen — nie ein telegrafisches Fragment.
 - Wenn weder Wikipedia noch die Verordnung einen konkreten bemerkenswerten Fakt enthalten, gib eine leere Liste zurück.
 
 Antworte NUR in JSON, ohne Text davor oder danach:
@@ -238,13 +242,14 @@ Regole rigorose:
 - Le citazioni sono TESTUALI (copia-incolla). NON attribuire MAI a una fonte un testo che non vi compare.
 - Niente giudizi di valore ("eccezionale", "prestigioso"…).
 - Niente cifre assenti da entrambe le fonti.
-- Massimo {max_bullets} voci, ≤ 140 caratteri ciascuna.
+- Massimo {max_bullets} voci; ogni voce è una frase completa di circa 120–220 caratteri — mai un frammento telegrafico.
 - Se né Wikipedia né il regolamento contengono un fatto concreto rilevante per questa sottosezione, restituisci una lista vuota.
 
 Rispondi SOLO in JSON, senza testo prima o dopo:
 {{"facts": [{{"bullet": "…", "cahier_quote": "…", "wiki_quote": "…"}}, ...]}}
 Usa una stringa vuota "" per la citazione mancante.""",
 }
+EXTRACT_SYSTEM = with_style_rules(EXTRACT_SYSTEM)
 
 
 USER_LEAD: dict[str, str] = {
@@ -257,23 +262,8 @@ USER_LEAD: dict[str, str] = {
 # ─────────────────────────────────────────────────────────────── helpers ──
 
 
-def normalize(s: str) -> str:
-    return " ".join((s or "").split()).lower()
-
-
 def wiki_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
-def fuzzy_coverage(quote: str, source: str) -> float:
-    q = normalize(quote)
-    s = normalize(source)
-    if not q:
-        return 0.0
-    match = SequenceMatcher(None, q, s, autojunk=False).find_longest_match(
-        0, len(q), 0, len(s)
-    )
-    return match.size / len(q)
 
 
 def _find_heading(full: str, heading: str) -> int:
@@ -448,6 +438,7 @@ def _process_subsection(
         topics=topic,
         max_bullets=sub["max_bullets"],
     )
+    system = with_feedback(system, record["slug"])
     user = USER_LEAD[lang].format(label=label, ctx=cahier_ctx)
     try:
         raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192)
@@ -485,6 +476,9 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
     sources_list = record.get("sources") or []
     reglement = next((s for s in sources_list
                       if s.get("kind") == "cantonal-reglement"), {})
+    deduped = dedupe_facts(all_facts)
+    all_facts = deduped.kept
+
     payload = {
         "country": "ch",
         "source_lang": lang,
@@ -492,6 +486,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "name": record.get("name") or slug,
         "facts": all_facts,
         "n_dropped": n_dropped_total,
+        "n_deduped": len(deduped.drops),
         "model": model_id,
         "model_kind": provider.kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -502,7 +497,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "wiki_source_url": wiki.get("page_url"),
         "subsection_errors": sub_errors,
     }
-    cache.write_json(CACHE_DIR / f"{slug}.json", payload)
+    write_source_cache(CACHE_DIR / f"{slug}.json", payload)
     return payload
 
 
@@ -561,12 +556,12 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "subsection": sub["key"],
                 "subsection_label": label,
                 "max_bullets": sub["max_bullets"],
-                "system_prompt": EXTRACT_SYSTEM[lang].format(
+                "system_prompt": with_feedback(EXTRACT_SYSTEM[lang].format(
                     wiki_hint=wiki_hint or "(no Wikipedia extract)",
                     label=label,
                     topics=topics[sub["key"]],
                     max_bullets=sub["max_bullets"],
-                ),
+                ), job["slug"]),
                 "cahier_ctx": job["cahier_ctx"],
                 "wiki_hint": wiki_hint,
                 "cahier_source_sha": wiki_sha(job["cahier_ctx"]),
@@ -603,7 +598,7 @@ def _write_imported_cache(*, slug: str, name: str, lang: str, facts: list[dict],
         "wiki_source_revision": wiki_record.get("revision"),
         "wiki_source_url": wiki_record.get("page_url"),
     }
-    cache.write_json(CACHE_DIR / f"{slug}.json", payload)
+    write_source_cache(CACHE_DIR / f"{slug}.json", payload)
 
 
 def _classify_imported_facts(slug_items: list[dict], cahier_ctx: str) -> list[dict]:
@@ -701,7 +696,7 @@ def _run_batch(args) -> int:
     if not batch.supports(args.provider):
         print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
         return 1
-    model_id = args.model or batch.default_model(args.provider)
+    model_id = args.model or batch.default_model(args.provider, stage="02d")
     targets = collect_targets()
     if args.only:
         needles = [s.lower() for s in args.only]
@@ -734,7 +729,7 @@ def _run_batch(args) -> int:
     batch.run_two_pass(
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-ch.json",
-        run_loop=run_loop,
+        run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
     )
     return 0
 
@@ -772,7 +767,7 @@ def main() -> int:
         return 0
 
     provider, model_id = providers.make_provider(
-        args.provider, model=args.model, ollama_url=args.ollama_url,
+        args.provider, model=args.model, stage="02d", ollama_url=args.ollama_url,
         mistral_url=args.mistral_url,
     )
     if provider is None:

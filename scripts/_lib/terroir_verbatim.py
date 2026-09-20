@@ -120,6 +120,9 @@ def is_verbatim_cache_valid(cache_path: Path, country: str, lien: str) -> bool:
 
 
 def write_verbatim_record(cache_path: Path, payload: dict) -> None:
+    from _lib.terroir_backup import snapshot_slug  # local import: no cycle with terroir_cache
+
+    snapshot_slug(cache_path.stem)
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),

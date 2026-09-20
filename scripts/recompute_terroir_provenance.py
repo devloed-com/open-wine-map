@@ -34,10 +34,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import hashlib
-import importlib.util
-import inspect
-import json
 import sys
 from collections import Counter
 from dataclasses import dataclass
@@ -48,8 +44,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import cache  # noqa: E402
-from _lib.terroir_coverage import SourceMatcher, fuzzy_coverage, provenance_for  # noqa: E402
-from _lib.terroir_dedupe import facts_sha  # noqa: E402
+from _lib.terroir_cache import sync_translation_provenance, write_source_cache  # noqa: E402
+from _lib.terroir_coverage import fuzzy_coverage, provenance_for  # noqa: E402
+from _lib.terroir_sources import Sources, resolve_sources  # noqa: E402
 
 TERROIR = ROOT / "raw" / "terroir-facts"
 TRANSLATIONS = ROOT / "raw" / "translations" / "terroir-facts"
@@ -59,89 +56,6 @@ DEFAULT_REPORT = ROOT / "tmp" / "terroir-facts-review" / "provenance-recompute.j
 
 def log(msg: str) -> None:
     print(f"[provenance] {msg}", file=sys.stderr)
-
-
-def _sha(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
-def stage_path(country: str) -> Path:
-    if country == "fr":
-        return ROOT / "scripts" / "02d_extract_terroir_facts.py"
-    return ROOT / "scripts" / country / "02d_extract_terroir_facts.py"
-
-
-def load_stage(country: str):
-    path = stage_path(country)
-    spec = importlib.util.spec_from_file_location(f"owm_02d_{country}", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-
-@dataclass
-class Sources:
-    cahier: str
-    cahier_sha: str
-    wiki_revision: object
-    hints: dict[str, str]
-    _matcher: SourceMatcher | None = None
-
-    @property
-    def matcher(self) -> SourceMatcher:
-        if self._matcher is None:
-            self._matcher = SourceMatcher(self.cahier)
-        return self._matcher
-
-
-def _wiki_record(mod, rec: dict, lang: str) -> dict:
-    slug = rec["slug"]
-    if hasattr(mod, "_wiki_record_for"):
-        params = inspect.signature(mod._wiki_record_for).parameters
-        return mod._wiki_record_for(slug, lang) if "lang" in params else mod._wiki_record_for(slug)
-    wiki_path = mod.WIKI_AOCS / f"{slug}.json"
-    if not wiki_path.exists():
-        return {}
-    try:
-        return json.loads(wiki_path.read_text(encoding="utf-8"))
-    except (ValueError, OSError):
-        return {}
-
-
-def _hints(mod, wiki: dict, lang: str, sub_keys: list[str]) -> dict[str, str]:
-    fn = mod._wiki_hint_for_subsection
-    if "lang" in inspect.signature(fn).parameters:
-        return {k: fn(wiki, lang, k) for k in sub_keys}
-    return {k: fn(wiki, k) for k in sub_keys}
-
-
-def resolve_sources(country: str) -> dict[str, Sources]:
-    """slug → the exact cahier text + per-sub-section wiki hints stage 02d
-    grades against for this country, built through the stage's own code."""
-    mod = load_stage(country)
-    out: dict[str, Sources] = {}
-    if country == "fr":
-        for job in mod.enumerate_aocs():
-            out[job["slug"]] = Sources(
-                job["lien"], job["lien_sha"],
-                job["wiki_meta"]["wiki_source_revision"], dict(job["wiki_hints"]),
-            )
-        return out
-    sub_keys = [s["key"] for s in mod.SUBSECTIONS]
-    default_lang = getattr(mod, "SOURCE_LANG", None) or "fr"
-    for rec in mod.collect_targets():
-        lang = rec.get("source_lang") or default_lang
-        if "_cahier_ctx" in rec:
-            cahier = rec["_cahier_ctx"] or ""
-            wiki = rec.get("_wiki_record") or {}
-        else:
-            cahier = rec.get("link_to_terroir") or ""
-            wiki = _wiki_record(mod, rec, lang)
-        out[rec["slug"]] = Sources(
-            cahier, _sha(cahier), wiki.get("revision") if wiki else None,
-            _hints(mod, wiki, lang, sub_keys),
-        )
-    return out
 
 
 @dataclass
@@ -179,34 +93,6 @@ def regrade_facts(facts: list[dict], src: Sources) -> Regrade:
             })
         f["cahier_coverage"], f["wiki_coverage"], f["provenance"] = new
     return out
-
-
-def sync_translation_provenance(slug: str, facts: list[dict], *, dry_run: bool) -> tuple[int, list[str]]:
-    """Copy the source cache's provenance into the aligned bullet-mode
-    translation caches. Returns (n_written, misaligned_langs)."""
-    sha = facts_sha(facts)
-    written = 0
-    misaligned: list[str] = []
-    for lang in LANGS:
-        tp = TRANSLATIONS / lang / f"{slug}.json"
-        if not tp.exists():
-            continue
-        t = cache.read_json_or_none(tp)
-        if not t or t.get("mode") == "verbatim" or not t.get("facts"):
-            continue
-        if t.get("source_facts_sha") != sha or len(t["facts"]) != len(facts):
-            misaligned.append(lang)
-            continue
-        changed = False
-        for tf, sf in zip(t["facts"], facts):
-            if tf.get("provenance") != sf.get("provenance"):
-                tf["provenance"] = sf.get("provenance")
-                changed = True
-        if changed:
-            written += 1
-            if not dry_run:
-                cache.write_json(tp, t)
-    return written, misaligned
 
 
 def main() -> int:
@@ -277,7 +163,7 @@ def main() -> int:
             if res.changed or res.coverage_only:
                 n_records_written += 1
                 if not args.dry_run:
-                    cache.write_json(p, d)
+                    write_source_cache(p, d)
             if res.changed:
                 n_t, mis = sync_translation_provenance(slug, facts, dry_run=args.dry_run)
                 n_translations_written += n_t

@@ -25,6 +25,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.terroir_cache import write_translation_cache  # noqa: E402
+from _lib.terroir_prompts import translation_system_prompt  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -37,11 +39,13 @@ SYSTEM_PROMPT = """You translate short French bullets describing the AOP-Moselle
 
 Rules:
 - Output a JSON array of strings, one translated bullet per input bullet, in the SAME order. The array length must equal the input list length.
-- Preserve French proper nouns verbatim: appellation name ("AOP Moselle Luxembourgeoise", "Moselle luxembourgeoise"), regulatory bodies and names ("Institut Viti-Vinicole", "IVV", "Marque Nationale", "Office national des appellations d'origine protégées", "ONAOP"), commune names ("Schengen", "Wormeldange", "Remich", "Grevenmacher", "Stadtbredimus", "Lenningen", "Mertert", "Bous-Waldbredimus", "Rosport - Mompach", "Flaxweiler", "Mondorf-les-Bains", and the historic communes "Burmerange", "Wellenstein", "Mompach", "Waldbredimus", "Ahn", "Ehnen", "Machtum", "Greiveldange", "Hettermillen", "Schwebsange", "Niederdonven", "Oberdonven"), the Moselle (river), canton names ("Canton de Remich", "Canton de Grevenmacher"), grape variety names ("Elbling", "Rivaner", "Sylvaner", "Auxerrois", "Pinot blanc", "Chardonnay", "Pinot gris", "Riesling", "Gewürztraminer", "Muscat-Ottonel", "Pinot noir", "Pinot noir précoce", "Saint Laurent", "Gamay"), named geological formations and soil types ("Trias", "marnes keupériennes", "calcaire conchylien", "gypse"), the Luxembourg wine mentions ("Crémant de Luxembourg", "Vendanges Tardives", "Vin de Glace", "Vin de Paille", "Premier cru", "Grand premier cru", "Vin classé"), private quality charters ("Domaine et Tradition", "Charta Privatwënzer", "Charta Schengen Prestige"), and Luxembourg wine-law terms ("AOP", "cahier des charges", "périmètre viticole", "Règlement grand-ducal").
 - Geological era labels (Trias, Keuper): translate to the standard {lang_name} form when one exists. When unsure, keep the French form.
 - Translate descriptive vocabulary naturally for a wine-literate reader.
 - Match each source bullet's length and register; do not add commentary, footnotes, or explanations.
 - Output ONLY the JSON array, no preface, no markdown fences."""
+
+SOURCE_LANG = "fr"
+PROPER_NOUNS = """appellation name (AOP Moselle Luxembourgeoise, Moselle luxembourgeoise); institutions (Institut Viti-Vinicole, IVV, Marque Nationale, Office national des appellations d'origine protégées, ONAOP); commune names (Schengen, Wormeldange, Remich, Grevenmacher, Stadtbredimus, Lenningen, Mertert, Bous-Waldbredimus, Rosport - Mompach, Flaxweiler, Mondorf-les-Bains, and the historic communes Burmerange, Wellenstein, Mompach, Waldbredimus, Ahn, Ehnen, Machtum, Greiveldange, Hettermillen, Schwebsange, Niederdonven, Oberdonven); the Moselle river and canton names (Canton de Remich, Canton de Grevenmacher); grape names (Elbling, Rivaner, Sylvaner, Auxerrois, Pinot blanc, Chardonnay, Pinot gris, Riesling, Gewürztraminer, Muscat-Ottonel, Pinot noir, Pinot noir précoce, Saint Laurent, Gamay); registered Luxembourg mentions (Crémant de Luxembourg, Vendanges Tardives, Vin de Glace, Vin de Paille, Premier cru, Grand premier cru, Vin classé); private quality charters (Domaine et Tradition, Charta Privatwënzer, Charta Schengen Prestige)"""
 
 
 # ─────────────────────────────────────────────────────────────── helpers ──
@@ -99,7 +103,7 @@ def write_cache(
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    cache.write_json(cache_path(lang, slug), payload)
+    write_translation_cache(cache_path(lang, slug), payload)
 
 
 def _is_fresh_cache(existing: dict | None, sha: str, expected_len: int) -> bool:
@@ -153,7 +157,10 @@ def build_user_prompt(src_facts: list[dict]) -> str:
 
 
 def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
-    system = SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]])
+    system = translation_system_prompt(
+        SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]]),
+        source_lang=SOURCE_LANG, target_lang=job["lang"], proper_nouns=PROPER_NOUNS,
+    )
     user = build_user_prompt(job["src_facts"])
     try:
         raw = provider.chat(system=system, user=user, max_tokens=2000, num_ctx=8192)
@@ -276,6 +283,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--workers", type=int, default=1)
+    ap.add_argument("--only", action="append", default=[], help="restrict to a slug (repeatable)")
     ap.add_argument("--refresh", action="store_true")
     ap.add_argument("--batch", action="store_true")
     roundtrip.add_arguments(ap)
@@ -361,6 +369,8 @@ def _run_batch(args, languages: tuple[str, ...]) -> int:
         return 1
     model_id = args.model or batch.default_model(args.provider)
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:
@@ -392,6 +402,8 @@ def main() -> int:
         return _run_batch(args, languages)
 
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:

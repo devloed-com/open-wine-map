@@ -19,6 +19,18 @@ that already passed as a whole is never demoted. Spans shorter than
 `MIN_SPAN_CHARS` are too short to grade on their own and are ignored
 (unless every span is that short).
 
+A verbatim quote can also straddle a pdftotext artefact in the source —
+"gradi- giorno", a hyphenated line break, a stray footnote mark — which a
+single contiguous match cannot cross: one wrong character in the middle
+of a 120-character quote halved its coverage and dropped eight of nine
+true facts from Montepulciano d'Abruzzo (2026-09-13). A quote is
+therefore also graded by *blocks*: the longest match is taken, then the
+quote's remainders on either side are matched again, recursively, and
+the sizes of every block of at least `MIN_BLOCK_CHARS` are summed. The
+coverage is the best of the three measures; the threshold stays 0.6, so
+60 % of the quote's characters must still sit in verbatim runs of the
+source — a quote stitched from scattered short phrases does not pass.
+
 Every stage-02d script and the audit import `fuzzy_coverage` from here so
 the grounding rule cannot drift between countries.
 """
@@ -30,6 +42,8 @@ from difflib import SequenceMatcher
 
 FUZZY_THRESHOLD = 0.6
 MIN_SPAN_CHARS = 15
+MIN_BLOCK_CHARS = 12
+MAX_BLOCKS = 6
 
 # "[…]" / "[...]" / "(…)" / "(...)" / bare "…" / bare "..." — the joins the
 # model uses when it stitches two source spans into one quote.
@@ -61,16 +75,40 @@ class SourceMatcher:
         m = self._sm.find_longest_match(0, len(quote_norm), 0, len(self.source))
         return m.size / len(quote_norm)
 
+    def _blocks(self, quote_norm: str, budget: int) -> int:
+        """Total size of the verbatim blocks (≥ MIN_BLOCK_CHARS) of
+        `quote_norm` in the source: the longest match, then the remainders
+        on either side of it, recursively, at most `budget` matches."""
+        if len(quote_norm) < MIN_BLOCK_CHARS or budget <= 0:
+            return 0
+        self._sm.set_seq1(quote_norm)
+        m = self._sm.find_longest_match(0, len(quote_norm), 0, len(self.source))
+        if m.size < MIN_BLOCK_CHARS:
+            return 0
+        total = m.size
+        left, right = quote_norm[: m.a].strip(), quote_norm[m.a + m.size:].strip()
+        total += self._blocks(left, budget - 1)
+        total += self._blocks(right, budget - 1)
+        return total
+
+    def blocks(self, quote_norm: str) -> float:
+        if not quote_norm:
+            return 0.0
+        return min(1.0, self._blocks(quote_norm, MAX_BLOCKS) / len(quote_norm))
+
     def coverage(self, quote: str) -> float:
         q = normalize(quote)
         if not q:
             return 0.0
         whole = self.contiguous(q)
+        if whole >= 1.0:
+            return whole
+        best = max(whole, self.blocks(q))
         spans = split_spans(q)
         if len(spans) < 2:
-            return whole
+            return best
         graded = [p for p in spans if len(p) >= MIN_SPAN_CHARS] or spans
-        return max(whole, min(self.contiguous(p) for p in graded))
+        return max(best, min(self.contiguous(p) for p in graded))
 
 
 def fuzzy_coverage(quote: str, source: str) -> float:

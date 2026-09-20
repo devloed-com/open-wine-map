@@ -7,19 +7,23 @@ showed recurring problems. Append the returned block to a translation
 SYSTEM_PROMPT under a blank-line separator; an empty return makes the
 append a no-op for locales without curated guidance.
 
-Curated for NL and EN based on a sweep of the existing FR + ES → target
-corpus (~6850 terroir-fact bullets and ~340 ollama-translated summaries
-per target). ES and FR targets were probed and showed no recurring
-issues worth a rule today — Mistral handles FR↔ES cleanly, and the few
-suspicious-looking FR phrases ("phase visuelle", "vins francs") turn out
-to be legitimate French wine vocabulary.
+Curated for NL and EN. The first pass came from a sweep of the FR + ES →
+target corpus (~6850 terroir-fact bullets and ~340 ollama-translated
+summaries per target); the 2026-09-11 corpus-wide review (plan W1) added
+the EN calques that the IT / CZ / SI / HU / PT / FR sources produce. Since
+that pass the glossary is appended by `terroir_prompts.translation_system_
+prompt` for every 02e script (all 21 source corpora), not only the FR one,
+so entries must hold whatever the source language. ES and FR targets were
+probed and showed no recurring issues worth a rule today — Mistral handles
+FR↔ES cleanly, and the few suspicious-looking FR phrases ("phase visuelle",
+"vins francs") turn out to be legitimate French wine vocabulary.
 """
 
 from __future__ import annotations
 
 _NL_GLOSSARY = """\
-Dutch (NL) sommelier-register vocabulary — applies to translations from \
-both French and Spanish source. Prefer the LEFT term over the RIGHT:
+Dutch (NL) sommelier-register vocabulary — applies whatever the source \
+language. Prefer the LEFT term over the RIGHT:
 - "stille wijn(en)" NOT "rustige wijn(en)" — for FR "tranquille" / ES "tranquilo"; "rustige" reads as "calm/peaceful".
 - "mousserende wijn(en)" NOT "schuimwijn" — for FR "mousseux" / ES "espumoso".
 - "aroma's" NOT "aromen" — plural of aroma in modern NL wine writing.
@@ -39,12 +43,30 @@ both French and Spanish source. Prefer the LEFT term over the RIGHT:
 
 
 _EN_GLOSSARY = """\
-English (EN) sommelier-register vocabulary — applies to translations from \
-both French and Spanish source. Prefer the LEFT term over the RIGHT:
+English (EN) sommelier-register vocabulary — applies whatever the source \
+language. Prefer the LEFT term over the RIGHT:
 - "appearance / nose / palate" NOT "visual phase / olfactory phase / gustatory phase" — for FR "phase visuelle/olfactive/gustative" or ES "fase visual/olfativa/gustativa"; these are the standard English tasting-note phase names.
 - "clean" or "fault-free" (of aromas or wines) NOT "frank" — for ES "vinos francos / aromas francos" (or FR "vins francs"); "frank" carries no oenological meaning in English.
 - "brick(-red)" or "tile(-red)" NOT "brick tone" or "tile tone" — for FR "tuile" / ES "teja" (the colour of aged wine).
-- Render Spanish-pliego header fragments like "Wine product", "Wine product VINO", "Wine product VINO Whites and rosés" as plain "Wines" or just drop them — they are pliego template scaffolding, not titles to preserve."""
+- Render Spanish-pliego header fragments like "Wine product", "Wine product VINO", "Wine product VINO Whites and rosés" as plain "Wines" or just drop them — they are pliego template scaffolding, not titles to preserve.
+- "minerality" NOT "mineralité" — for FR "minéralité"; the English word exists.
+- "wine-grape varieties" or "grape varieties" NOT "must varieties" — for CZ "moštové odrůdy" / SK "muštové odrody" (the legal class of Vitis vinifera varieties authorised for winemaking).
+- "style", "version" or "wine type" NOT "typology" — for IT "tipologia" (the wine types a DOC defines: Riserva, Superiore, Spumante, …).
+- "actual alcohol" or "actual alcoholic strength" NOT "developed alcohol" — for IT "gradi svolti" / "alcol svolto" (the alcohol actually present, as opposed to potential).
+- "carbonate soils" or "calcareous soils" NOT "carbonated soils" — for FR "sols carbonatés"; "carbonated" means fizzy.
+- "vineyard sites" or "named vineyards" NOT "lege" / "dűlők" / "tratě" — for SI "lege", HU "dűlő(k)", CZ "viniční tratě" (the site word is a common noun; a site's own name stays verbatim).
+- "para-barros" is a Portuguese soil-classification class (the lighter relatives of the "barros" clay soils) — keep it verbatim; never invent "proto-barros".
+- "submerged cap" NOT "grillage" — for FR "grillage" (the grid that holds the cap under the surface in Beaujolais / Burgundy vats); "punch-down" for "pigeage"; "pump-over" for "remontage".
+- "climat" (kept, italic-free) NOT "climate" — for the Burgundian FR "climat" meaning a named, delimited vineyard site (Les Clos, La Grande Rue); "climate" only for "climat" in its weather sense.
+- "tirage" or "bottling for the second fermentation" NOT "disgorgement" — for FR "tirage" (sparkling: the bottling with liqueur de tirage; "dégorgement" is disgorgement; "à compter du tirage" = "from the date of tirage").
+- "fortified wine(s)" or "generoso wine(s)" NOT "generous wine(s)" — for ES "vino generoso / vinos generosos" (the regulatory category of fortified, oxidatively aged wines: fino, amontillado, oloroso).
+- "loam" NOT "clay" — for DE "Lehm" (clay is "Ton"); "loess" for "Löss"; "primary rock" or "crystalline basement" NOT "primeval rock" for "Urgestein".
+- "slight sparkle" or "light spritz" NOT "spiciness" — for DE "Spritzigkeit / spritzig".
+- "depth of colour" / "deep-coloured" NOT "layer" — for ES "capa" as in "capa alta / media" (colour intensity).
+- "Riesling" for BG "Немски ризлинг / Рейнски ризлинг" and "Welschriesling" for "Италиански ризлинг" — never swap the two.
+- "Rhodopes" (EN) for BG "Родопи" / "Rodopi"; keep "Stara Planina" as such (a one-time gloss "(Balkan Mountains)" is fine); "Bavaria" for DE "Bayern".
+- A grape name is never translated by sound-alike: HU "Pintes" is the variety Pintes, not "Pinot"; HR "Plavac" stays Plavac.
+- A demonym is rendered as its town, never back-formed into a place: IT "caiatino" is "of Caiazzo" (not "the Caiata area"), "aversano" is "of Aversa"."""
 
 
 _GLOSSARIES: dict[str, str] = {

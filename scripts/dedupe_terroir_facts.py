@@ -18,6 +18,14 @@ indices from every aligned bullet-mode translation cache and updates its
 needed. A translation cache that is already out of step (hash or length
 mismatch) is left alone and listed — 02e re-translates it.
 
+Sibling guard: a parent's bullets may lead with the name of one of its
+sub-denominations ("Rioja Oriental: …"); stage 04's sibling filter keeps
+such a bullet only on that sub-denomination's page. Two bullets leading
+with different sub-denomination names (or one labelled, one not) are
+therefore never merged, so no sub-zone loses the one bullet about it.
+The roster comes from the last stage-04 startup blob (which includes the
+sottozone stage 04 synthesises), falling back to `wiki/_index.json`.
+
 Usage:
   .venv/bin/python scripts/dedupe_terroir_facts.py --dry-run
   .venv/bin/python scripts/dedupe_terroir_facts.py [--only SLUG …]
@@ -27,8 +35,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -36,11 +45,10 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import cache  # noqa: E402
+from _lib.terroir_cache import prune_translations, write_source_cache  # noqa: E402
 from _lib.terroir_dedupe import dedupe_facts, facts_sha  # noqa: E402
 
 TERROIR = ROOT / "raw" / "terroir-facts"
-TRANSLATIONS = ROOT / "raw" / "translations" / "terroir-facts"
-LANGS = ("en", "fr", "es", "nl")
 DEFAULT_REPORT = ROOT / "tmp" / "terroir-facts-review" / "dedupe.json"
 
 
@@ -48,30 +56,39 @@ def log(msg: str) -> None:
     print(f"[dedupe] {msg}", file=sys.stderr)
 
 
-def prune_translations(
-    slug: str, old_sha: str, n_old: int, kept_indices: list[int], new_sha: str, *, dry_run: bool,
-) -> tuple[list[str], list[dict]]:
-    """Prune the dropped indices from every aligned translation cache.
-    Returns (pruned_langs, stale_entries)."""
-    pruned: list[str] = []
-    stale: list[dict] = []
-    for lang in LANGS:
-        tp = TRANSLATIONS / lang / f"{slug}.json"
-        if not tp.exists():
-            continue
-        t = cache.read_json_or_none(tp)
-        if not t or t.get("mode") == "verbatim":
-            continue
-        tfacts = t.get("facts") or []
-        if t.get("source_facts_sha") != old_sha or len(tfacts) != n_old:
-            stale.append({"slug": slug, "lang": lang, "reason": "already-misaligned"})
-            continue
-        t["facts"] = [tfacts[i] for i in kept_indices]
-        t["source_facts_sha"] = new_sha
-        pruned.append(lang)
-        if not dry_run:
-            cache.write_json(tp, t)
-    return pruned, stale
+def load_children_names() -> dict[str, list[str]]:
+    """parent slug → names of its sub-denominations, as stage 04 sees them.
+
+    `wiki/_index.json` (stage 03) carries `parent_slug` for every
+    on-disk sub-denomination; the sottozone stage 04 synthesises from the
+    MASAF sidecars exist only in the startup blob, where the parent is the
+    longest parent slug prefixing the sottozona slug (chianti-rufina →
+    chianti)."""
+    out: dict[str, list[str]] = defaultdict(list)
+    index_path = ROOT / "wiki" / "_index.json"
+    index = json.loads(index_path.read_text(encoding="utf-8")) if index_path.exists() else {}
+    for slug, rec in index.items():
+        if rec.get("parent_slug") and rec.get("name"):
+            out[rec["parent_slug"]].append(rec["name"])
+    n_index = sum(len(v) for v in out.values())
+    blobs = sorted((ROOT / "wiki" / "data").glob("aocs.en.*.js"))
+    n_blob = 0
+    if blobs:
+        text = blobs[-1].read_text(encoding="utf-8")
+        aocs = json.loads(text[text.index("=") + 1:].strip().rstrip(";")).get("aocs") or {}
+        parents = sorted((s for s, r in aocs.items() if not r.get("is_sub_denomination")), key=len, reverse=True)
+        for slug, rec in aocs.items():
+            if not rec.get("is_sub_denomination") or not rec.get("name"):
+                continue
+            if slug in index and index[slug].get("parent_slug"):
+                continue
+            parent = next((p for p in parents if slug.startswith(p + "-")), None)
+            if parent:
+                out[parent].append(rec["name"])
+                n_blob += 1
+    log(f"sibling roster: {n_index} sub-denominations from wiki/_index.json + {n_blob} synthesised "
+        f"ones from the startup blob, under {len(out)} parents")
+    return out
 
 
 def main() -> int:
@@ -81,7 +98,9 @@ def main() -> int:
     ap.add_argument("--report", type=Path, default=DEFAULT_REPORT, help="JSON report path")
     args = ap.parse_args()
 
+    children_names = load_children_names()
     n_records = n_touched = n_facts_before = n_facts_after = 0
+    n_sibling_guarded = 0
     reasons: Counter = Counter()
     per_country: dict[str, Counter] = {}
     translations_pruned = 0
@@ -101,7 +120,9 @@ def main() -> int:
         facts = d["facts"]
         n_records += 1
         n_facts_before += len(facts)
-        res = dedupe_facts(facts)
+        res = dedupe_facts(facts, protected_names=children_names.get(slug, ()))
+        if children_names.get(slug) and len(dedupe_facts(facts).drops) > len(res.drops):
+            n_sibling_guarded += 1
         n_facts_after += len(res.kept)
         stats = per_country.setdefault(cc, Counter())
         stats["records"] += 1
@@ -128,7 +149,7 @@ def main() -> int:
         if not args.dry_run:
             d["facts"] = res.kept
             d["n_deduped"] = int(d.get("n_deduped") or 0) + len(res.drops)
-            cache.write_json(p, d)
+            write_source_cache(p, d)
 
     verb = "would drop" if args.dry_run else "dropped"
     n_dropped = n_facts_before - n_facts_after
@@ -138,6 +159,7 @@ def main() -> int:
         f"{translations_pruned} translation caches pruned in step; "
         f"{len(stale)} translation caches already misaligned (left for 02e)")
     log("by reason: " + ", ".join(f"{r}: {n}" for r, n in reasons.most_common()))
+    log(f"records where the sibling-name guard kept a bullet apart: {n_sibling_guarded}")
     log(f"{'cc':4} {'records':>7} {'touched':>7} {'before':>6} {'after':>6} {'dropped':>7}")
     for cc, st in sorted(per_country.items()):
         log(f"{cc:4} {st['records']:7} {st['records_touched']:7} {st['facts_before']:6} "
@@ -153,6 +175,7 @@ def main() -> int:
             "dropped_by_reason": dict(reasons),
             "translation_caches_pruned": translations_pruned,
             "translation_caches_stale": len(stale),
+            "records_sibling_guarded": n_sibling_guarded,
             "per_country": {cc: dict(st) for cc, st in sorted(per_country.items())},
         },
         "stale_translations": stale,

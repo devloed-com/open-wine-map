@@ -27,6 +27,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.terroir_cache import write_translation_cache  # noqa: E402
+from _lib.terroir_prompts import translation_system_prompt  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -39,11 +41,13 @@ SYSTEM_PROMPT = """You translate short Romanian bullets describing a Romanian wi
 
 Rules:
 - Output a JSON array of strings, one translated bullet per input bullet, in the SAME order. The array length must equal the input list length.
-- Preserve Romanian proper nouns verbatim: appellation names ("Cotnari", "Murfatlar", "Drăgășani", "Recaș", "Dealu Mare", "Târnave", "Iași", "Huși", "Odobești", "Panciu", "Bohotin", "Coteşti", "Banat", "Crișana", "Miniș", "Diosig", "Sâmburești", "Banu Mărăcine", "Mehedinți", "Severin", "Sarica Niculițel", "Babadag", "Aiud", "Lechința", "Sebeș-Apold", "Pietroasa", "Ștefănești", "Dealurile Munteniei", "Dealurile Olteniei", "Dealurile Crișanei", "Dealurile Sătmarului", "Viile Timișului", "Colinele Dobrogei", "Terasele Dunării"), commune and vineyard-site names ("Cernavodă", "Ostrov", "Mărăcineni", "Bujoreni", "Cotești"), grape variety names ("Fetească Albă", "Fetească Regală", "Fetească Neagră", "Tămâioasă Românească", "Grasă de Cotnari", "Băbească Neagră", "Negru de Drăgășani", "Novac", "Crâmpoșie Selecționată", "Frâncușă", "Galbenă de Odobești", "Plăvaie", "Zghihară de Huși", "Șarbă", "Busuioacă de Bohotin"), named geological formations and soil types ("cernoziom", "brun-roșcat", "loess", "marnă", "calcar", "gresie", "sol scheletic", "podzol"), named climatic features ("climă continentală", "climă temperat-continentală", "influență mediteraneană", "climă pontică", "crivăț", "austru", "băltăreț"), and Romanian wine-law terms ("podgorie", "regiune viticolă", "indicație geografică", "denumire de origine", "DOP", "IGP", "ONVPV", "Caiet de sarcini").
 - Geological era labels: translate to the standard {lang_name} form when one exists. When unsure, keep the Romanian form.
 - Translate descriptive vocabulary naturally for a wine-literate reader.
 - Match each source bullet's length and register; do not add commentary, footnotes, or explanations.
 - Output ONLY the JSON array, no preface, no markdown fences."""
+
+SOURCE_LANG = "ro"
+PROPER_NOUNS = """appellation names (Cotnari, Murfatlar, Drăgășani, Recaș, Dealu Mare, Târnave, Iași, Huși, Odobești, Panciu, Bohotin, Coteşti, Banat, Crișana, Miniș, Diosig, Sâmburești, Banu Mărăcine, Mehedinți, Severin, Sarica Niculițel, Babadag, Aiud, Lechința, Sebeș-Apold, Pietroasa, Ștefănești, Dealurile Munteniei, Dealurile Olteniei, Dealurile Crișanei, Dealurile Sătmarului, Viile Timișului, Colinele Dobrogei, Terasele Dunării); commune and vineyard-site names (Cernavodă, Ostrov, Mărăcineni, Bujoreni, Cotești); grape names (Fetească Albă, Fetească Regală, Fetească Neagră, Tămâioasă Românească, Grasă de Cotnari, Băbească Neagră, Negru de Drăgășani, Novac, Crâmpoșie Selecționată, Frâncușă, Galbenă de Odobești, Plăvaie, Zghihară de Huși, Șarbă, Busuioacă de Bohotin); named winds (crivăț, austru, băltăreț); institutions (ONVPV)"""
 
 
 # ─────────────────────────────────────────────────────────────── helpers ──
@@ -102,7 +106,7 @@ def write_cache(
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    cache.write_json(cache_path(lang, slug), payload)
+    write_translation_cache(cache_path(lang, slug), payload)
 
 
 def _is_fresh_cache(existing: dict | None, sha: str, expected_len: int) -> bool:
@@ -157,7 +161,10 @@ def build_user_prompt(src_facts: list[dict]) -> str:
 
 
 def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
-    system = SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]])
+    system = translation_system_prompt(
+        SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]]),
+        source_lang=SOURCE_LANG, target_lang=job["lang"], proper_nouns=PROPER_NOUNS,
+    )
     user = build_user_prompt(job["src_facts"])
     try:
         raw = provider.chat(system=system, user=user, max_tokens=2000, num_ctx=8192)
@@ -291,6 +298,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--workers", type=int, default=1,
         help="concurrent (lang, slug) pairs (default 1, keep 1 for Ollama)",
     )
+    ap.add_argument("--only", action="append", default=[], help="restrict to a slug (repeatable)")
     ap.add_argument("--refresh", action="store_true", help="re-translate even if cached")
     ap.add_argument(
         "--batch", action="store_true",
@@ -380,6 +388,8 @@ def _run_batch(args, languages: tuple[str, ...]) -> int:
         return 1
     model_id = args.model or batch.default_model(args.provider)
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:
@@ -411,6 +421,8 @@ def main() -> int:
         return _run_batch(args, languages)
 
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
 

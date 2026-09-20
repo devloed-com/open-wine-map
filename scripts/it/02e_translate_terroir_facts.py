@@ -36,6 +36,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.terroir_cache import write_translation_cache  # noqa: E402
+from _lib.terroir_prompts import translation_system_prompt  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -48,11 +50,13 @@ SYSTEM_PROMPT = """You translate short Italian bullets describing an Italian win
 
 Rules:
 - Output a JSON array of strings, one translated bullet per input bullet, in the SAME order. The array length must equal the input list length.
-- Preserve Italian proper nouns verbatim: appellation names ("Barolo", "Brunello di Montalcino", "Chianti Classico", "Amarone della Valpolicella", "Soave", "Prosecco", "Franciacorta", "Bolgheri", "Etna", "Taurasi"), region names ("Piemonte", "Toscana", "Veneto", "Trentino-Alto Adige", "Friuli-Venezia Giulia", "Emilia-Romagna", "Marche", "Sicilia", "Sardegna", "Puglia"), commune and locality names, grape variety names ("Nebbiolo", "Sangiovese", "Barbera", "Dolcetto", "Corvina", "Glera", "Garganega", "Aglianico", "Nero d'Avola", "Vermentino", "Pignoletto", "Lagrein", "Lambrusco", "Greco di Tufo", "Fiano", "Trebbiano", "Verdicchio", "Cesanese", "Primitivo", "Negroamaro", "Cannonau", "Carricante"), named geological formations and soil types ("tufo", "galestro", "alberese", "calcare", "arenaria", "scisti", "marne", "argille", "morene", "porfido"), named winds and local climatic features ("bora", "scirocco", "ora del Garda", "tramontana", "garbino"), training systems and local vinification terms ("pergola", "tendone", "alberello", "guyot", "cordone speronato", "appassimento", "ripasso", "governo", "metodo classico", "metodo Martinotti", "vendemmia tardiva").
 - Geological era labels: translate to the standard {lang_name} form when one exists. When unsure, keep the Italian form.
 - Translate descriptive vocabulary naturally for a wine-literate reader.
 - Match each source bullet's length and register; do not add commentary, footnotes, or explanations.
 - Output ONLY the JSON array, no preface, no markdown fences."""
+
+SOURCE_LANG = "it"
+PROPER_NOUNS = """appellation names (Barolo, Brunello di Montalcino, Chianti Classico, Amarone della Valpolicella, Soave, Prosecco, Franciacorta, Bolgheri, Etna, Taurasi); region names (Piemonte, Toscana, Veneto, Trentino-Alto Adige, Friuli-Venezia Giulia, Emilia-Romagna, Marche, Sicilia, Sardegna, Puglia); commune and locality names; grape names (Nebbiolo, Sangiovese, Barbera, Dolcetto, Corvina, Glera, Garganega, Aglianico, Nero d'Avola, Vermentino, Pignoletto, Lagrein, Lambrusco, Greco di Tufo, Fiano, Trebbiano, Verdicchio, Cesanese, Primitivo, Negroamaro, Cannonau, Carricante); named geological formations (galestro, alberese); named winds (bora, scirocco, ora del Garda, tramontana, garbino); named techniques and registered terms (appassimento, ripasso, governo all'uso toscano, metodo classico, metodo Martinotti)"""
 
 
 # ─────────────────────────────────────────────────────────────── helpers ──
@@ -113,7 +117,7 @@ def write_cache(
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    cache.write_json(cache_path(lang, slug), payload)
+    write_translation_cache(cache_path(lang, slug), payload)
 
 
 def _is_fresh_cache(existing: dict | None, sha: str, expected_len: int) -> bool:
@@ -171,7 +175,10 @@ def build_user_prompt(src_facts: list[dict]) -> str:
 
 
 def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
-    system = SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]])
+    system = translation_system_prompt(
+        SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]]),
+        source_lang=SOURCE_LANG, target_lang=job["lang"], proper_nouns=PROPER_NOUNS,
+    )
     user = build_user_prompt(job["src_facts"])
     try:
         raw = provider.chat(system=system, user=user, max_tokens=2000, num_ctx=8192)
@@ -311,6 +318,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--workers", type=int, default=1,
         help="concurrent (lang, slug) pairs to translate (default 1, keep 1 for Ollama on M1 32GB)",
     )
+    ap.add_argument("--only", action="append", default=[], help="restrict to a slug (repeatable)")
     ap.add_argument("--refresh", action="store_true", help="re-translate even if cached")
     ap.add_argument(
         "--batch", action="store_true",
@@ -420,6 +428,8 @@ def _run_batch(args, languages: tuple[str, ...]) -> int:
         return 1
     model_id = args.model or batch.default_model(args.provider)
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:
@@ -451,6 +461,8 @@ def main() -> int:
         return _run_batch(args, languages)
 
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
 

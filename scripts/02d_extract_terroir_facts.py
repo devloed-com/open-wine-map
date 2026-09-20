@@ -52,7 +52,6 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from difflib import SequenceMatcher
 from pathlib import Path
 
 from tqdm import tqdm
@@ -61,6 +60,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.terroir_cache import write_source_cache  # noqa: E402
+from _lib.terroir_chapters import is_shared, own_chapter  # noqa: E402
+from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
+from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
+from _lib.terroir_feedback import with_feedback  # noqa: E402
+from _lib.terroir_prompts import with_style_rules  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "fr"
@@ -149,35 +154,20 @@ Règles strictes :
 - Les citations sont VERBATIM (copiées-collées) de leur source respective. NE JAMAIS attribuer à une source un texte qui n'y figure pas.
 - Aucun jugement de valeur (« exceptionnel », « remarquable », « prestigieux »...).
 - Aucune inférence externe. Aucun chiffre absent des deux sources.
-- Maximum {max_bullets} puces, ≤ 140 caractères chacune.
+- Maximum {max_bullets} puces ; chaque puce est une phrase complète d'environ 120 à 220 caractères — jamais un fragment télégraphique.
 - Si ni le cahier ni Wikipedia ne contiennent de fait notable concret pour cette sous-section, retourne une liste vide.
 
 Réponds UNIQUEMENT en JSON, sans texte avant ou après :
 {{"facts": [{{"bullet": "...", "cahier_quote": "...", "wiki_quote": "..."}}, ...]}}
 Utilise une chaîne vide "" pour la citation absente."""
+EXTRACT_SYSTEM = with_style_rules(EXTRACT_SYSTEM)
 
 
 # ─────────────────────────────────────────────────────────────── helpers ──
 
 
-def normalize(s: str) -> str:
-    return " ".join((s or "").split()).lower()
-
-
 def cahier_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
-def fuzzy_coverage(quote: str, source: str) -> float:
-    """Longest-contiguous-match coverage of `quote` in `source` (0.0–1.0)."""
-    q = normalize(quote)
-    s = normalize(source)
-    if not q:
-        return 0.0
-    match = SequenceMatcher(None, q, s, autojunk=False).find_longest_match(
-        0, len(q), 0, len(s)
-    )
-    return match.size / len(q)
 
 
 def _spans_by_top(lien: str, tops: list[re.Match]) -> dict[str, tuple[int, int]]:
@@ -365,7 +355,7 @@ def write_cache(
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    cache.write_json(cache_path(slug), payload)
+    write_source_cache(cache_path(slug), payload)
 
 
 def _job_from_record(rec: dict) -> dict | None:
@@ -379,6 +369,18 @@ def _job_from_record(rec: dict) -> dict | None:
     lien = (rec.get("lien_au_terroir") or "").strip()
     if len(lien) < MIN_CAHIER_CHARS:
         return None
+    if is_shared(lien):
+        # One cahier for the 51 Alsace grands crus: the lien repeats a
+        # chapter per cru, and slicing by section number alone grades every
+        # cru against the last chapter (Zotzenberg). Restrict to the record's
+        # own chapter; a cru without one is skipped, never grounded on
+        # another cru's text.
+        window = own_chapter(lien, rec.get("name") or "")
+        if window is None:
+            print(f"[02d] {slug}: shared cahier but no own chapter for "
+                  f"{rec.get('name')!r} — skipped", file=sys.stderr)
+            return None
+        lien = lien[window[0]:window[1]].strip()
     slices = slice_section_x(lien)
     if len(slices) < 2:
         slices = {"facteurs_naturels": lien}
@@ -443,6 +445,7 @@ def extract_one_aoc(provider, job: dict) -> tuple[list[dict], list[str]]:
             continue
         wiki_hint = job["wiki_hints"].get(sub_key, "")
         system = build_prompt(spec, wiki_hint)
+        system = with_feedback(system, job["slug"])
         try:
             raw = provider.chat(system=system, user=cahier_text, max_tokens=2000, num_ctx=8192)
         except Exception as e:  # noqa: BLE001
@@ -457,7 +460,7 @@ def extract_one_aoc(provider, job: dict) -> tuple[list[dict], list[str]]:
             if classified is not None:
                 classified["subsection"] = sub_key
                 facts.append(classified)
-    return facts, errors
+    return dedupe_facts(facts).kept, errors
 
 
 # ─────────────────────────────────────────────────── round-trip (manual) ──
@@ -486,7 +489,7 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "subsection_label": spec["label"],
                 "topics": spec["topics"],
                 "max_bullets": spec["max_bullets"],
-                "system_prompt": build_prompt(spec, wiki_hint),
+                "system_prompt": with_feedback(build_prompt(spec, wiki_hint), job["slug"]),
                 "cahier_text": cahier_text,
                 "wiki_hint": wiki_hint,
                 "cahier_source_sha": job["lien_sha"],
@@ -665,7 +668,7 @@ def _select_jobs(refresh: bool, limit: int, slugs: list[str] | None) -> list[dic
 def _make_provider(args) -> tuple[object | None, str]:
     """Returns (provider, translator_id). provider is None for manual mode."""
     return providers.make_provider(
-        args.provider, model=args.model, ollama_url=args.ollama_url,
+        args.provider, model=args.model, stage="02d", ollama_url=args.ollama_url,
         mistral_url=args.mistral_url,
     )
 
@@ -769,7 +772,7 @@ def _run_batch(args) -> int:
     if not batch.supports(args.provider):
         print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
         return 1
-    model_id = args.model or batch.default_model(args.provider)
+    model_id = args.model or batch.default_model(args.provider, stage="02d")
     jobs = _select_jobs(refresh=args.refresh, limit=args.limit, slugs=args.slug)
     if not jobs:
         print("[02d] batch: nothing to do.", file=sys.stderr)
@@ -785,7 +788,7 @@ def _run_batch(args) -> int:
     batch.run_two_pass(
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-fr.json",
-        run_loop=run_loop,
+        run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
     )
     write_manifest(
         n_jobs=len(jobs), ok=stats.get("ok", 0), err=stats.get("err", 0), cached=0,

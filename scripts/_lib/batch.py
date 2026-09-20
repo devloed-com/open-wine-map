@@ -38,6 +38,7 @@ from pathlib import Path
 import requests
 
 from _lib.env import load_dotenv
+from _lib.providers import stage_default
 
 
 def _load_dotenv() -> None:
@@ -53,9 +54,17 @@ _KIND = {"anthropic": "anthropic-api", "mistral": "mistral-api"}
 _DEFAULT_MODEL = {"anthropic": "claude-sonnet-4-6", "mistral": "mistral-medium-latest"}
 
 
-def default_model(provider: str) -> str:
-    """The batch-default model id for a provider (overridable with --model)."""
+def default_model(provider: str, stage: str | None = None) -> str:
+    """The batch-default model id for a provider (overridable with --model);
+    for anthropic the per-stage default from `providers.STAGE_DEFAULTS`."""
+    if provider == "anthropic":
+        return stage_default(stage)[0]
     return _DEFAULT_MODEL.get(provider, "")
+
+
+def default_thinking(provider: str, stage: str | None = None) -> str | None:
+    """The stage's thinking mode for anthropic (None / "disabled" / "adaptive")."""
+    return stage_default(stage)[1] if provider == "anthropic" else None
 
 
 def supports(provider: str) -> bool:
@@ -161,19 +170,28 @@ def _anthropic_client():
     return anthropic.Anthropic(api_key=key)
 
 
-def _submit_anthropic(model: str, reqs: list[dict]) -> str:
+def _anthropic_params(model: str, r: dict, thinking: str | None) -> dict:
+    params = {
+        "model": model,
+        "max_tokens": r["max_tokens"],
+        "system": r["system"],
+        "messages": [{"role": "user", "content": r["user"]}],
+    }
+    # The Claude 5 family runs adaptive thinking when `thinking` is omitted,
+    # and the extraction stages' 1,500–2,000-token `max_tokens` budgets were
+    # sized for text only: each stage passes its `STAGE_DEFAULTS` mode
+    # ("disabled" for 02d, "adaptive" for the gate); `OWM_BATCH_THINKING`
+    # overrides for an experiment.
+    mode = os.environ.get("OWM_BATCH_THINKING") or thinking
+    if mode in ("disabled", "adaptive"):
+        params["thinking"] = {"type": mode}
+    return params
+
+
+def _submit_anthropic(model: str, reqs: list[dict], thinking: str | None = None) -> str:
     client = _anthropic_client()
     batch = client.messages.batches.create(requests=[
-        {
-            "custom_id": r["custom_id"],
-            "params": {
-                "model": model,
-                "max_tokens": r["max_tokens"],
-                "system": r["system"],
-                "messages": [{"role": "user", "content": r["user"]}],
-            },
-        }
-        for r in reqs
+        {"custom_id": r["custom_id"], "params": _anthropic_params(model, r, thinking)} for r in reqs
     ])
     return batch.id
 
@@ -312,9 +330,9 @@ def _fetch_mistral(job_id: str, poll_interval: int) -> dict:
 # ───────────────────────────────────────────────────────────── orchestration ──
 
 
-def _submit(provider: str, model: str, reqs: list[dict]) -> str:
+def _submit(provider: str, model: str, reqs: list[dict], thinking: str | None = None) -> str:
     if provider == "anthropic":
-        return _submit_anthropic(model, reqs)
+        return _submit_anthropic(model, reqs, thinking)
     if provider == "mistral":
         return _submit_mistral(model, reqs)
     raise ValueError(f"batch unsupported for provider {provider!r}")
@@ -327,7 +345,7 @@ def _fetch(provider: str, batch_id: str, poll_interval: int) -> dict:
 
 
 def run_batch(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
-              poll_interval: int = POLL_INTERVAL_S) -> dict:
+              poll_interval: int = POLL_INTERVAL_S, thinking: str | None = None) -> dict:
     """Submit `reqs` to `provider`'s Batch API, poll to completion, return
     {custom_id: {"text": ...} | {"error": ...}}. If `sidecar` already holds
     an in-flight batch id for this provider, resume that batch (no resubmit,
@@ -350,12 +368,12 @@ def run_batch(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
             return {}
         print(f"[batch] submitting {len(reqs)} requests to the {provider} batch "
               f"API (model={model}, ~50% cheaper than synchronous)", file=sys.stderr)
-        batch_id = _retry(lambda: _submit(provider, model, reqs),
+        batch_id = _retry(lambda: _submit(provider, model, reqs, thinking),
                           what=f"{provider} batch submit")
         sidecar.parent.mkdir(parents=True, exist_ok=True)
         sidecar.write_text(json.dumps({
             "provider": provider, "model": model, "batch_id": batch_id,
-            "n_requests": len(reqs),
+            "thinking": thinking, "n_requests": len(reqs),
             "submitted_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }, indent=2), encoding="utf-8")
         print(f"[batch] {provider} batch {batch_id} submitted — id saved to "
@@ -368,7 +386,7 @@ def run_batch(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
 
 
 def run_two_pass(*, provider: str, model: str, sidecar: Path, run_loop,
-                 poll_interval: int = POLL_INTERVAL_S) -> dict:
+                 poll_interval: int = POLL_INTERVAL_S, thinking: str | None = None) -> dict:
     """Run a stage's processing loop as a batch. `run_loop(provider)` runs the
     stage loop once, single-threaded; it is called twice (collect, replay).
     The stage should enumerate only stale / missing entries — replay matches
@@ -385,7 +403,7 @@ def run_two_pass(*, provider: str, model: str, sidecar: Path, run_loop,
         return {"n_requests": 0, "n_results": 0, "n_errored": 0}
     print(f"[batch] collected {len(reqs)} distinct model requests", file=sys.stderr)
     results = run_batch(provider, model, reqs, sidecar=sidecar,
-                        poll_interval=poll_interval)
+                        poll_interval=poll_interval, thinking=thinking)
     run_loop(ReplayProvider(results, kind=_KIND[provider]))  # pass 2 — write caches
     sidecar.unlink(missing_ok=True)  # batch fully consumed — clear resume state
     n_err = sum(1 for r in results.values() if r.get("error"))

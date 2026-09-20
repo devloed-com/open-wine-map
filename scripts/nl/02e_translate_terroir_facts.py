@@ -25,6 +25,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.terroir_cache import write_translation_cache  # noqa: E402
+from _lib.terroir_prompts import translation_system_prompt  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -37,11 +39,13 @@ SYSTEM_PROMPT = """You translate short Dutch bullets describing a Dutch wine app
 
 Rules:
 - Output a JSON array of strings, one translated bullet per input bullet, in the SAME order. The array length must equal the input list length.
-- Preserve Dutch proper nouns verbatim: province names ("Limburg", "Gelderland", "Zeeland", "Noord-Brabant", "Zuid-Holland", "Noord-Holland", "Utrecht", "Overijssel", "Flevoland", "Drenthe", "Groningen", "Friesland"), appellation names ("Mergelland", "Vijlen", "Oolde", "Ambt Delden", "Achterhoek - Winterswijk", "Rivierenland", "Schouwen-Duiveland", "De Voerendaalse Bergen", "Twente"), commune and dorp names, grape variety names ("Solaris", "Johanniter", "Regent", "Acolon", "Pinotin", "Cabernet Cortis", "Auxerrois", "Riesling", "Gewürztraminer", "Müller-Thurgau", "Chardonnay", "Pinot blanc/gris/noir", "Souvignier Gris", "Cabernet Cantor", "Dornfelder"), named geological formations and soil types ("krijt", "kalksteen", "löss", "leem", "mergel", "tuffeau", "zandleem", "klei", "rivierklei", "alluviale grond"), named climatic features ("gematigd zeeklimaat", "gematigd maritiem klimaat", "invloed Noordzee"), and Dutch wine-law / EU GI terms ("BOB", "BGA", "enig document", "productdossier", "oorsprongsbenaming", "geografische aanduiding").
 - Geological era labels: translate to the standard {lang_name} form when one exists. When unsure, keep the Dutch form.
 - Translate descriptive vocabulary naturally for a wine-literate reader.
 - Match each source bullet's length and register; do not add commentary, footnotes, or explanations.
 - Output ONLY the JSON array, no preface, no markdown fences."""
+
+SOURCE_LANG = "nl"
+PROPER_NOUNS = """province names (Limburg, Gelderland, Zeeland, Noord-Brabant, Zuid-Holland, Noord-Holland, Utrecht, Overijssel, Flevoland, Drenthe, Groningen, Friesland); appellation names (Mergelland, Vijlen, Oolde, Ambt Delden, Achterhoek - Winterswijk, Rivierenland, Schouwen-Duiveland, De Voerendaalse Bergen, Twente); commune and village names; grape names (Solaris, Johanniter, Regent, Acolon, Pinotin, Cabernet Cortis, Auxerrois, Riesling, Gewürztraminer, Müller-Thurgau, Chardonnay, Pinot blanc, Pinot gris, Pinot noir, Souvignier Gris, Cabernet Cantor, Dornfelder)"""
 
 
 # ─────────────────────────────────────────────────────────────── helpers ──
@@ -91,7 +95,7 @@ def write_cache(
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    cache.write_json(cache_path(lang, slug), payload)
+    write_translation_cache(cache_path(lang, slug), payload)
 
 
 def _is_fresh_cache(existing: dict | None, sha: str, expected_len: int) -> bool:
@@ -142,7 +146,10 @@ def build_user_prompt(src_facts: list[dict]) -> str:
 
 
 def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
-    system = SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]])
+    system = translation_system_prompt(
+        SYSTEM_PROMPT.format(lang_name=LOCALE_NAME[job["lang"]]),
+        source_lang=SOURCE_LANG, target_lang=job["lang"], proper_nouns=PROPER_NOUNS,
+    )
     user = build_user_prompt(job["src_facts"])
     try:
         raw = provider.chat(system=system, user=user, max_tokens=2000, num_ctx=8192)
@@ -246,6 +253,7 @@ def _build_argparser() -> argparse.ArgumentParser:
     ap.add_argument("--lang", action="append", choices=TARGET_LOCALES, default=None)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--workers", type=int, default=1)
+    ap.add_argument("--only", action="append", default=[], help="restrict to a slug (repeatable)")
     ap.add_argument("--refresh", action="store_true")
     ap.add_argument("--batch", action="store_true")
     roundtrip.add_arguments(ap)
@@ -323,6 +331,8 @@ def _run_batch(args, languages: tuple[str, ...]) -> int:
         return 1
     model_id = args.model or batch.default_model(args.provider)
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:
@@ -350,6 +360,8 @@ def main() -> int:
     if args.batch:
         return _run_batch(args, languages)
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
+    if args.only:
+        jobs = [j for j in jobs if j["slug"] in set(args.only)]
     if args.limit:
         jobs = jobs[: args.limit]
     if not jobs:

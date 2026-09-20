@@ -32,7 +32,6 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from difflib import SequenceMatcher
 from pathlib import Path
 
 from tqdm import tqdm
@@ -49,6 +48,11 @@ from _lib import (  # noqa: E402
     roundtrip,
     terroir_verbatim,
 )
+from _lib.terroir_cache import write_source_cache  # noqa: E402
+from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
+from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
+from _lib.terroir_feedback import with_feedback  # noqa: E402
+from _lib.terroir_prompts import with_style_rules  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "si" / "dokumenti-extracted"
 SPECIFIKACIJE = ROOT / "raw" / "si" / "specifikacije-extracted"
@@ -141,35 +145,20 @@ Stroga pravila:
 - Citati so DOBESEDNI (kopirani) iz ustreznega vira. NIKOLI ne pripiši viru besedila, ki se tam ne pojavi.
 - Brez vrednostnih sodb ("izjemno", "prestižno" ...).
 - Brez zunanjih sklepov. Brez številk, ki jih ni v nobenem od obeh virov.
-- Največ {max_bullets} vnosov, vsak ≤ 140 znakov.
+- Največ {max_bullets} vnosov; vsak vnos je en poln stavek z približno 120–220 znaki — nikoli telegrafski fragment.
 - Če niti enotni dokument niti Wikipedija ne vsebujeta konkretnega omembe vrednega dejstva za ta podrazdelek, vrni prazen seznam.
 
 Odgovori SAMO v JSON, brez besedila pred ali za njim:
 {{"facts": [{{"bullet": "...", "cahier_quote": "...", "wiki_quote": "..."}}, ...]}}
 Za manjkajoči citat uporabi prazen niz ""."""
+EXTRACT_SYSTEM = with_style_rules(EXTRACT_SYSTEM)
 
 
 # ─────────────────────────────────────────────────────────────── helpers ──
 
 
-def normalize(s: str) -> str:
-    return " ".join((s or "").split()).lower()
-
-
 def cahier_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
-def fuzzy_coverage(quote: str, source: str) -> float:
-    """Longest-contiguous-match coverage of `quote` in `source` (0–1)."""
-    q = normalize(quote)
-    s = normalize(source)
-    if not q:
-        return 0.0
-    match = SequenceMatcher(None, q, s, autojunk=False).find_longest_match(
-        0, len(q), 0, len(s)
-    )
-    return match.size / len(q)
 
 
 def _find_heading(full: str, heading: str) -> int:
@@ -344,6 +333,7 @@ def _process_subsection(
         topics=sub["topics"],
         max_bullets=sub["max_bullets"],
     )
+    system = with_feedback(system, record["slug"])
     user = _build_user_message(sub["label"], lien)
     try:
         raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192)
@@ -381,6 +371,9 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
             f["subsection"] = sub["key"]
             all_facts.append(f)
 
+    deduped = dedupe_facts(all_facts)
+    all_facts = deduped.kept
+
     payload = {
         "country": "si",
         "source_lang": "sl",
@@ -388,6 +381,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "name": record.get("name") or slug,
         "facts": all_facts,
         "n_dropped": n_dropped_total,
+        "n_deduped": len(deduped.drops),
         "model": model_id,
         "model_kind": provider.kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -398,7 +392,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "wiki_source_url": wiki_url,
         "subsection_errors": sub_errors,
     }
-    cache.write_json(CACHE_DIR / f"{slug}.json", payload)
+    write_source_cache(CACHE_DIR / f"{slug}.json", payload)
     return payload
 
 
@@ -467,12 +461,12 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "subsection_label": sub["label"],
                 "topics": sub["topics"],
                 "max_bullets": sub["max_bullets"],
-                "system_prompt": EXTRACT_SYSTEM.format(
+                "system_prompt": with_feedback(EXTRACT_SYSTEM.format(
                     wiki_hint=wiki_hint or "(izvleček Wikipedije ni na voljo)",
                     label=sub["label"],
                     topics=sub["topics"],
                     max_bullets=sub["max_bullets"],
-                ),
+                ), job["slug"]),
                 "cahier_text": job["lien"],
                 "wiki_hint": wiki_hint,
                 "cahier_source_sha": job["lien_sha"],
@@ -513,7 +507,7 @@ def _write_imported_cache(
         "wiki_source_revision": wiki_record.get("revision") if wiki_record else None,
         "wiki_source_url": wiki_record.get("page_url") if wiki_record else None,
     }
-    cache.write_json(CACHE_DIR / f"{slug}.json", payload)
+    write_source_cache(CACHE_DIR / f"{slug}.json", payload)
 
 
 def _classify_imported_facts(slug_items: list[dict], lien: str) -> list[dict]:
@@ -651,7 +645,7 @@ def _run_batch(args) -> int:
     if not batch.supports(args.provider):
         print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
         return 1
-    model_id = args.model or batch.default_model(args.provider)
+    model_id = args.model or batch.default_model(args.provider, stage="02d")
     targets = collect_targets()
     if args.only:
         needles = [s.lower() for s in args.only]
@@ -684,7 +678,7 @@ def _run_batch(args) -> int:
     batch.run_two_pass(
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-si.json",
-        run_loop=run_loop,
+        run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
     )
     return 0
 
@@ -734,7 +728,7 @@ def main() -> int:
         return 0
 
     provider, model_id = providers.make_provider(
-        args.provider, model=args.model, ollama_url=args.ollama_url,
+        args.provider, model=args.model, stage="02d", ollama_url=args.ollama_url,
         mistral_url=args.mistral_url,
     )
     if provider is None:

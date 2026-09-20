@@ -11,16 +11,25 @@ Two facts are duplicates when
 
 - their bullets are near-identical (`token_set_ratio` ≥
   `BULLET_DUP_SIMILARITY`), or
-- they cite the same source sentence (an identical normalised
-  `cahier_quote` or `wiki_quote` of at least `QUOTE_MIN_CHARS`) *and*
-  their bullets overlap substantially (≥ `QUOTE_DUP_BULLET_SIMILARITY`).
-  A shared quote alone is not enough: one long source sentence often
-  yields two distinct facts (alluvial soils / river water supply), and
-  dropping either would lose information.
+- they cite the same source sentence (a normalised `cahier_quote` or
+  `wiki_quote` of at least `QUOTE_MIN_CHARS` that is identical, or one a
+  longer cut of the other) *and* their bullets overlap substantially
+  (≥ `QUOTE_DUP_BULLET_SIMILARITY`). A shared quote alone is not enough:
+  one long source sentence often yields two distinct facts (alluvial
+  soils / river water supply), and dropping either would lose
+  information.
 
 Neither rule fires when the two bullets carry different sets of numbers
 with neither set contained in the other — different quantities are
-different facts, however similar the wording.
+different facts, however similar the wording. Nor when the bullets lead
+with different `protected_names` (the record's sub-denominations, as
+stage 04's sibling filter sees them): a parent's bullet "Rioja Alavesa:
+…" must survive next to "Rioja Oriental: …" or an unlabelled twin, or a
+sub-denomination page loses the one bullet that was about it.
+
+Duplicates are transitive: a fact restating an already-dropped fact is
+dropped too (the third cut of one sentence rarely resembles the first as
+closely as it resembles the second).
 
 Of a duplicate pair the more informative fact is kept: `both` provenance
 first, then more numbers, then longer quotes; ties keep the earlier one.
@@ -32,6 +41,8 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from rapidfuzz import fuzz
@@ -64,16 +75,42 @@ def _quotes(fact: dict) -> list[str]:
     return out
 
 
-def duplicate_reason(a: dict, b: dict) -> str | None:
+def _share_quote(a: dict, b: dict) -> bool:
+    return any(x == y or x in y or y in x for x in _quotes(a) for y in _quotes(b))
+
+
+def _norm_name(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return " ".join(s.casefold().split())
+
+
+def _leads_with_name(bullet: str, name: str) -> bool:
+    """Mirror of stage 04's sibling test (`_leads_with_name` in
+    04_build_maps.py): the bullet starts with the name as a whole word."""
+    nb, nn = _norm_name(bullet), _norm_name(name)
+    if not nn or not nb.startswith(nn):
+        return False
+    return len(nb) == len(nn) or not nb[len(nn)].isalnum()
+
+
+def _lead_name(bullet: str, names: Iterable[str]) -> str | None:
+    return next((n for n in names if _leads_with_name(bullet, n)), None)
+
+
+def duplicate_reason(a: dict, b: dict, protected_names: Iterable[str] = ()) -> str | None:
     """`similar-bullet` / `same-quote` when `a` and `b` restate one fact."""
     bullet_a = a.get("bullet") or ""
     bullet_b = b.get("bullet") or ""
     if not _numbers_compatible(_numbers(bullet_a), _numbers(bullet_b)):
         return None
+    names = tuple(protected_names)
+    if names and _lead_name(bullet_a, names) != _lead_name(bullet_b, names):
+        return None
     similarity = fuzz.token_set_ratio(bullet_a, bullet_b)
     if similarity >= BULLET_DUP_SIMILARITY:
         return "similar-bullet"
-    if similarity >= QUOTE_DUP_BULLET_SIMILARITY and set(_quotes(a)) & set(_quotes(b)):
+    if similarity >= QUOTE_DUP_BULLET_SIMILARITY and _share_quote(a, b):
         return "same-quote"
     return None
 
@@ -97,22 +134,27 @@ class DedupeResult:
         return bool(self.drops)
 
 
-def dedupe_facts(facts: list[dict]) -> DedupeResult:
+def dedupe_facts(facts: list[dict], protected_names: Iterable[str] = ()) -> DedupeResult:
     """Collapse restated facts; `drops` records each dropped fact with the
-    index and bullet of the fact it duplicated."""
+    index and bullet of the fact it duplicated. `protected_names` are the
+    record's sub-denomination names (see `duplicate_reason`)."""
+    names = tuple(protected_names)
     kept: list[tuple[int, dict]] = []
+    group_of: dict[int, int] = {}  # original index → position in `kept` of its group's survivor
     drops: list[dict] = []
     for idx, fact in enumerate(facts):
         twin_pos = None
         reason = None
-        for pos, (_, k) in enumerate(kept):
-            reason = duplicate_reason(k, fact)
+        for j in range(idx):
+            reason = duplicate_reason(facts[j], fact, names)
             if reason:
-                twin_pos = pos
+                twin_pos = group_of[j]
                 break
         if twin_pos is None:
+            group_of[idx] = len(kept)
             kept.append((idx, fact))
             continue
+        group_of[idx] = twin_pos
         twin_idx, twin = kept[twin_pos]
         if _rank(fact) > _rank(twin):
             kept[twin_pos] = (idx, fact)

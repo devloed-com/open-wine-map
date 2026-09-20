@@ -82,3 +82,35 @@ def test_facts_sha_hashes_bullets_only():
     b = [fact("x", cq="other"), fact("y", wq="w")]
     assert facts_sha(a) == facts_sha(b)
     assert facts_sha(a) != facts_sha(a[:1])
+
+
+def test_one_quote_being_a_longer_cut_of_the_other_counts_as_shared():
+    a = fact("El estrés hídrico estival genera uvas con alto contenido en polifenoles y graduación óptima, dando un aroma frutado.", cq=QUOTE)
+    b = fact("El estrés hídrico estival genera uva de bajo rendimiento con alto potencial vínico: polifenoles elevados y graduación óptima.", cq=QUOTE + " toscano, ricco di minerali, conferisce serbevolezza")
+    assert duplicate_reason(a, b) == "same-quote"
+    assert duplicate_reason(fact(a["bullet"], cq="unrelated quote long enough to count here"), b) is None
+
+
+def test_restatement_of_a_dropped_fact_is_dropped_too():
+    a = fact("Raues Klima mit hohen Tag-Nacht-Temperaturschwankungen sorgt für eine ausgeprägte Säurestruktur.")
+    b = fact("Raues Klima mit hohen Tag-Nacht-Temperaturschwankungen prägt eine ausgeprägte Säurestruktur der Tiroler Weine.")
+    c = fact("Raues Klima mit hohen Tag-Nacht-Temperaturunterschieden sorgt für eine gute Säurestruktur der Tiroler Weine.")
+    res = dedupe_facts([a, b, c])
+    assert res.kept_indices == [0]
+    assert [d["dropped_index"] for d in res.drops] == [1, 2]
+
+
+def test_bullets_leading_with_different_sub_denomination_names_are_kept_apart():
+    names = ["Rioja Alavesa", "Rioja Alta", "Rioja Oriental"]
+    a = fact("Rioja Alavesa: suelos arcillo-calcáreos en terrazas y laderas, vinos de gran frescura y acidez.", cq=QUOTE)
+    b = fact("Rioja Oriental: suelos arcillo-calcáreos en terrazas y laderas, vinos de gran frescura y acidez.", cq=QUOTE)
+    c = fact("Suelos arcillo-calcáreos en terrazas y laderas dan vinos de gran frescura y acidez.", cq=QUOTE)
+    assert dedupe_facts([a, b, c], protected_names=names).kept_indices == [0, 1, 2]
+    assert dedupe_facts([a, b, c]).kept_indices == [0]
+
+
+def test_protected_name_must_lead_the_bullet_as_a_whole_word():
+    names = ["Rioja Alta"]
+    a = fact("Rioja Altamira: suelos arcillo-calcáreos, vinos frescos con buena acidez y fruta roja madura.")
+    b = fact("Rioja Altamira: suelos arcillo-calcáreos, vinos frescos con buena acidez y fruta roja.")
+    assert dedupe_facts([a, b], protected_names=names).kept_indices == [0]
