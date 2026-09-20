@@ -51,6 +51,7 @@ WATCH_LIST = (
     "Pintes (a Hungarian grape variety, never 'Pinot')",
     "Немски / Рейнски ризлинг (Riesling) versus Италиански ризлинг (Welschriesling) — never swap them",
     "Rodopi / Родопи → Rhodopes (EN, FR) / Rhodopen (NL) / Ródope (ES); Stara Planina stays 'Stara Planina' (a one-time gloss '(Balkan Mountains)' is fine); Bayern → Bavaria / Baviera / Bavière / Beieren",
+    "Dutch common noun is 'appellatie(s)', not the French 'appellation(s)' (only the registered term 'appellation d'origine contrôlée / protégée' stays French)",
     "a river valley in Dutch is 'de X-vallei' or 'het X-dal' (Marnevallei, het Marnedal) — a blend such as 'Marnedallei' or 'Audedallei' is not a word and must be fixed",
 )
 

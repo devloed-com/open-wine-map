@@ -155,6 +155,23 @@ def latinize_residual_script(bullet: str) -> str:
     return re.sub(r"\S+", lambda m: _latinize_token(m.group(0)), bullet)
 
 
+# Dutch: the common noun is "appellatie" (the UI's own word — "Appellatie
+# zoeken…", "{p} appellaties"); the French loanword stayed in 260 NL bullets
+# ("De appellation is gelegen in de streek Revermont", 2026-09-15). The
+# registered term "appellation d'origine contrôlée / protégée" is a name
+# and stays.
+_NL_APPELLATION_RE = re.compile(r"\b([Aa])ppellation(s?)\b(?!\s+d[’']origine)")
+
+_LOCALE_FIXES = {
+    "nl": lambda b: _NL_APPELLATION_RE.sub(r"\1ppellatie\2", b),
+}
+
+
+def locale_fixes(bullet: str, lang: str) -> str:
+    fix = _LOCALE_FIXES.get(lang)
+    return fix(bullet) if fix else bullet
+
+
 def normalize_bullet(bullet: str, lang: str = "") -> str:
     """Apply every deterministic fix. `lang` is the locale the bullet is
     rendered in: for the four target locales residual Greek / Cyrillic
@@ -163,7 +180,7 @@ def normalize_bullet(bullet: str, lang: str = "") -> str:
         return bullet
     out = strip_trailing_meta(expand_mentions(strip_colour_codes(bullet)))
     if lang in _TARGET_LOCALES:
-        out = latinize_residual_script(out)
+        out = latinize_residual_script(locale_fixes(out, lang))
     return ensure_terminal_period(out)
 
 

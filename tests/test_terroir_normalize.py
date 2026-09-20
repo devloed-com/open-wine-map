@@ -90,3 +90,15 @@ def test_trailing_meta_clause_is_dropped_and_the_fact_kept():
     assert normalize_bullet("A period that began 70 million years ago according to the production specification.", "en") == "A period that began 70 million years ago."
     # mid-sentence citations are left to the audit's meta_text check
     assert strip_trailing_meta("Il disciplinare prevede una resa massima di 80 q/ha.") == "Il disciplinare prevede una resa massima di 80 q/ha."
+
+
+def test_dutch_common_noun_appellatie_keeps_the_registered_french_term():
+    from _lib.terroir_normalize import normalize_bullet
+    assert normalize_bullet("De appellation is gelegen in de streek Revermont.", "nl") == "De appellatie is gelegen in de streek Revermont."
+    assert normalize_bullet("In 2009 coëxisteerden de appellations Limoux en Crémant de Limoux.", "nl") == "In 2009 coëxisteerden de appellaties Limoux en Crémant de Limoux."
+    assert normalize_bullet("Appellation Alsace grand cru werd erkend in 1975.", "nl") == "Appellatie Alsace grand cru werd erkend in 1975."
+    kept = "De appellation d'origine contrôlée Alsace grand cru Muenchberg werd erkend in 1992."
+    assert normalize_bullet(kept, "nl") == kept
+    assert normalize_bullet("De appellation d’origine protégée omvat 12 gemeenten.", "nl") == "De appellation d’origine protégée omvat 12 gemeenten."
+    # other locales untouched
+    assert normalize_bullet("The appellation lies in the Revermont.", "en") == "The appellation lies in the Revermont."
