@@ -29,7 +29,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
 from _lib.prompt_cache import mark_cached  # noqa: E402
 from _lib.terroir_cache import write_translation_cache  # noqa: E402
-from _lib.terroir_prompts import translation_system_prompt  # noqa: E402
+from _lib.terroir_prompts import translation_system_prompt, with_appellation_context  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -154,6 +154,7 @@ def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
         proper_nouns=PROPER_NOUNS,
     )
     user = build_user_prompt(job["src_facts"])
+    user = with_appellation_context(user, job["slug"])  # names the appellation on sub-denomination pages
     try:
         # One system prompt per locale, shared by every record of the batch: cached.
         raw = provider.chat(system=mark_cached(system), user=user, max_tokens=2000, num_ctx=8192)

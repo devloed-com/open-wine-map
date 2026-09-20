@@ -60,6 +60,7 @@ def with_style_rules(prompt):
 # passes it in as `proper_nouns`. Plain text, no `{` / `}` anywhere, so a
 # script that still pushes its prompt through `str.format` cannot break.
 
+from _lib.terroir_roster import children_names, record_name  # noqa: E402
 from _lib.translation_glossary import glossary_for  # noqa: E402
 
 _LANG_NAME = {
@@ -173,3 +174,49 @@ def translation_system_prompt(
     if glossary:
         parts.append(glossary)
     return "\n\n".join(parts)
+
+
+# ───────────────────────────── appellation context on sub-denomination pages ──
+#
+# A parent's bullets are inherited by its sub-denominations' pages (FR DGCs,
+# ES subzonas, IT sottozone, …). "The clay-limestone soils in the northernmost
+# part of the appellation, straddling Rioja Alavesa and Rioja Alta …" is
+# Rioja's own sentence, but on the Rioja Alavesa page "the appellation" reads
+# as Alavesa (2026-09-15). For a record that has sub-denominations the
+# extraction and translation prompts therefore ask for the appellation's
+# name wherever the source refers to it only generically. Per record, so it
+# lives in the per-record parts of the prompts (the 02e user message, the
+# 02d per-record block) — the shared, cached system prompts stay identical.
+
+MAX_LISTED_CHILDREN = 6
+
+
+def _listed(names: list[str]) -> str:
+    head = ", ".join(names[:MAX_LISTED_CHILDREN])
+    rest = len(names) - MAX_LISTED_CHILDREN
+    return f"{head} and {rest} more" if rest > 0 else head
+
+
+def appellation_context(slug: str, *, for_translation: bool) -> str:
+    """The per-record instruction for a record whose bullets are also
+    shown on its sub-denominations' pages; "" for a record without any."""
+    kids = children_names(slug)
+    if not kids:
+        return ""
+    name = record_name(slug) or slug
+    where = "in the translation" if for_translation else "in the bullet"
+    return (
+        f"CONTEXT: these bullets describe «{name}» and are also shown on the pages of its "
+        f"{len(kids)} sub-denominations ({_listed(kids)}). Where the source refers to the appellation "
+        f"as a whole only generically — \"the appellation\", \"the denomination\", \"the DOC / DOCa / DOP\", "
+        f"\"the geographical area\", \"the zone\", \"the vineyard\" — name it {where} (\"the {name} appellation\" "
+        f"or \"{name}\"), so the sentence stays unambiguous on a sub-denomination page. Keep every "
+        f"sub-denomination's own name exactly as it is, and never attach the parent's name to a statement "
+        f"that the source makes about one sub-denomination only."
+    )
+
+
+def with_appellation_context(user: str, slug: str) -> str:
+    """A 02e user message + the record's context (translation wording)."""
+    ctx = appellation_context(slug, for_translation=True)
+    return f"{user.rstrip()}\n\n{ctx}" if ctx else user

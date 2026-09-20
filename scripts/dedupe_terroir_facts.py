@@ -35,9 +35,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -47,6 +46,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _lib import cache  # noqa: E402
 from _lib.terroir_cache import prune_translations, write_source_cache  # noqa: E402
 from _lib.terroir_dedupe import dedupe_facts, facts_sha  # noqa: E402
+from _lib.terroir_roster import load_children_names, roster_stats  # noqa: E402
 
 TERROIR = ROOT / "raw" / "terroir-facts"
 DEFAULT_REPORT = ROOT / "tmp" / "terroir-facts-review" / "dedupe.json"
@@ -54,41 +54,6 @@ DEFAULT_REPORT = ROOT / "tmp" / "terroir-facts-review" / "dedupe.json"
 
 def log(msg: str) -> None:
     print(f"[dedupe] {msg}", file=sys.stderr)
-
-
-def load_children_names() -> dict[str, list[str]]:
-    """parent slug → names of its sub-denominations, as stage 04 sees them.
-
-    `wiki/_index.json` (stage 03) carries `parent_slug` for every
-    on-disk sub-denomination; the sottozone stage 04 synthesises from the
-    MASAF sidecars exist only in the startup blob, where the parent is the
-    longest parent slug prefixing the sottozona slug (chianti-rufina →
-    chianti)."""
-    out: dict[str, list[str]] = defaultdict(list)
-    index_path = ROOT / "wiki" / "_index.json"
-    index = json.loads(index_path.read_text(encoding="utf-8")) if index_path.exists() else {}
-    for slug, rec in index.items():
-        if rec.get("parent_slug") and rec.get("name"):
-            out[rec["parent_slug"]].append(rec["name"])
-    n_index = sum(len(v) for v in out.values())
-    blobs = sorted((ROOT / "wiki" / "data").glob("aocs.en.*.js"))
-    n_blob = 0
-    if blobs:
-        text = blobs[-1].read_text(encoding="utf-8")
-        aocs = json.loads(text[text.index("=") + 1:].strip().rstrip(";")).get("aocs") or {}
-        parents = sorted((s for s, r in aocs.items() if not r.get("is_sub_denomination")), key=len, reverse=True)
-        for slug, rec in aocs.items():
-            if not rec.get("is_sub_denomination") or not rec.get("name"):
-                continue
-            if slug in index and index[slug].get("parent_slug"):
-                continue
-            parent = next((p for p in parents if slug.startswith(p + "-")), None)
-            if parent:
-                out[parent].append(rec["name"])
-                n_blob += 1
-    log(f"sibling roster: {n_index} sub-denominations from wiki/_index.json + {n_blob} synthesised "
-        f"ones from the startup blob, under {len(out)} parents")
-    return out
 
 
 def main() -> int:
@@ -99,6 +64,9 @@ def main() -> int:
     args = ap.parse_args()
 
     children_names = load_children_names()
+    st = roster_stats()
+    log(f"sibling roster: {st['index']} sub-denominations from wiki/_index.json + {st['blob']} synthesised "
+        f"ones from the startup blob, under {len(children_names)} parents")
     n_records = n_touched = n_facts_before = n_facts_after = 0
     n_sibling_guarded = 0
     reasons: Counter = Counter()

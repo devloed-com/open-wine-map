@@ -36,6 +36,7 @@ from pathlib import Path
 from rapidfuzz import fuzz
 
 from _lib.terroir_dedupe import is_cosmetic_rewrite
+from _lib.terroir_prompts import appellation_context
 
 ROOT = Path(__file__).resolve().parents[2]
 FEEDBACK_DIR = ROOT / "raw" / "terroir-facts-feedback"
@@ -139,11 +140,20 @@ def feedback_prompt_block(
 
 
 def with_feedback(system: str, slug: str, *, stage: str = "extraction") -> str:
-    """`system` + the record's feedback block, or `system` unchanged."""
+    """`system` + the record's per-record block: its review feedback
+    (do-not-claim constraints, cautions) and, for a record whose bullets
+    are inherited by sub-denomination pages, the instruction to name the
+    appellation where the source says "the appellation"
+    (`terroir_prompts.appellation_context`). `system` unchanged when the
+    record has neither."""
+    parts = [system.rstrip()]
     block = feedback_prompt_block(load_feedback(slug), stage=stage)
-    if not block:
-        return system
-    return f"{system.rstrip()}\n\n{block}"
+    if block:
+        parts.append(block)
+    ctx = appellation_context(slug, for_translation=False)
+    if ctx:
+        parts.append(ctx)
+    return "\n\n".join(parts) if len(parts) > 1 else system
 
 
 def recurrence_findings(
