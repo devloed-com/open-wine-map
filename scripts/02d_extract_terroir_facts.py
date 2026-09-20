@@ -347,12 +347,14 @@ def write_cache(
     wiki_meta: dict,
     translator_id: str,
     translator_kind: str,
+    counts: dict | None = None,
 ) -> None:
     payload = {
         "slug": slug,
         "facts": facts,
         **cahier_meta,
         **wiki_meta,
+        **(counts or {}),
         "translator": translator_id,
         "translator_kind": translator_kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -436,10 +438,12 @@ def build_prompt(spec: dict, wiki_hint: str) -> str:
     )
 
 
-def extract_one_aoc(provider, job: dict) -> tuple[list[dict], list[str]]:
-    """Run all four sub-section calls for one AOC, return (kept_facts, errors)."""
+def extract_one_aoc(provider, job: dict) -> tuple[list[dict], list[str], dict]:
+    """Run all four sub-section calls for one AOC, return (kept_facts, errors,
+    counts) — counts = {n_dropped, n_deduped, n_unearned_interactions}."""
     facts: list[dict] = []
     errors: list[str] = []
+    n_dropped = 0
     for spec in SUBSECTIONS:
         sub_key = spec["key"]
         cahier_text = job["slices"].get(sub_key, "")
@@ -462,9 +466,15 @@ def extract_one_aoc(provider, job: dict) -> tuple[list[dict], list[str]]:
             if classified is not None:
                 classified["subsection"] = sub_key
                 facts.append(classified)
-    kept = earn_interactions(dedupe_facts(facts).kept, "fr").kept
+            else:
+                n_dropped += 1
+    deduped = dedupe_facts(facts)
+    earned = earn_interactions(deduped.kept, "fr")
+    kept = earned.kept
     normalize_facts(kept)
-    return kept, errors
+    counts = {"n_dropped": n_dropped, "n_deduped": len(deduped.drops),
+              "n_unearned_interactions": len(earned.dropped)}
+    return kept, errors, counts
 
 
 # ─────────────────────────────────────────────────── round-trip (manual) ──
@@ -692,7 +702,7 @@ def _print_manual_listing(jobs: list[dict]) -> int:
 def _process_one_job(provider, translator_id: str, job: dict) -> tuple[int, int]:
     """Run one AOC extraction + cache write. Returns (ok, err) where each is
     0 or 1. Errors are printed to stderr; exceptions surface to the caller."""
-    facts, errors = extract_one_aoc(provider, job)
+    facts, errors, counts = extract_one_aoc(provider, job)
     if errors and not facts:
         for e in errors[:4]:
             print(f"  err {job['slug']}: {e[:160]}", file=sys.stderr)
@@ -704,6 +714,7 @@ def _process_one_job(provider, translator_id: str, job: dict) -> tuple[int, int]
         wiki_meta=job["wiki_meta"],
         translator_id=translator_id,
         translator_kind=provider.kind,
+        counts=counts,
     )
     return 1, 0
 
