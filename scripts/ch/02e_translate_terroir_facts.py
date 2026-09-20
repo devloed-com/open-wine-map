@@ -332,7 +332,7 @@ def _run_batch(args, languages: tuple[str, ...]) -> int:
     if not batch.supports(args.provider):
         print("error: --batch requires --provider anthropic|mistral", file=sys.stderr)
         return 1
-    model_id = args.model or batch.default_model(args.provider)
+    model_id = args.model or batch.default_model(args.provider, stage="02e")
     jobs = enumerate_jobs(languages, skip_cached=not args.refresh)
     if args.only:
         jobs = [j for j in jobs if j["slug"] in set(args.only)]
@@ -393,7 +393,7 @@ def main() -> int:
 
     provider, model_id = providers.make_provider(
         args.provider, model=args.model, ollama_url=args.ollama_url,
-        mistral_url=args.mistral_url,
+        mistral_url=args.mistral_url, stage="02e",
     )
     if provider is None:
         for j in jobs:

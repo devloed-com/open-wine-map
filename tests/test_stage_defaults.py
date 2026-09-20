@@ -42,6 +42,17 @@ def test_gate_backcheck_and_audit_use_their_stage():
         assert f'stage="{stage}"' in src, name
 
 
+def test_every_02e_script_resolves_its_model_through_the_02e_stage():
+    # Without stage="02e" a script silently takes the generic default and a
+    # change to STAGE_DEFAULTS["02e"] changes nothing (2026-09-15).
+    scripts = [ROOT / "scripts" / "02e_translate_terroir_facts.py"] + sorted(
+        (ROOT / "scripts").glob("*/02e_translate_terroir_facts.py"))
+    assert len(scripts) == 21
+    for p in scripts:
+        src = p.read_text(encoding="utf-8")
+        assert src.count('stage="02e"') == 2, p
+
+
 def test_anthropic_params_carry_the_thinking_mode(monkeypatch):
     monkeypatch.delenv("OWM_BATCH_THINKING", raising=False)
     r = {"custom_id": "x", "system": "s", "user": "u", "max_tokens": 10}
