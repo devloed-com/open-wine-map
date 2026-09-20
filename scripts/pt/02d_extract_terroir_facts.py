@@ -43,6 +43,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
+from _lib.prompt_cache import cached_system  # noqa: E402
 from _lib.terroir_cache import write_source_cache  # noqa: E402
 from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
 from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
@@ -256,11 +257,12 @@ def collect_targets() -> list[dict]:
     return out
 
 
-def _build_user_message(label: str, lien_text: str) -> str:
-    return (
-        f"Sub-secção a tratar: {label}\n\n"
-        f"Texto do caderno (Relação com a área geográfica):\n\n{lien_text}"
-    )
+def _ask_line(label: str) -> str:
+    return f"Sub-secção a tratar: {label}"
+
+
+def _document_block(lien_text: str) -> str:
+    return f"Texto do caderno (Relação com a área geográfica):\n\n{lien_text}"
 
 
 def _process_subsection(
@@ -277,7 +279,9 @@ def _process_subsection(
         max_bullets=sub["max_bullets"],
     )
     system = with_feedback(system, record["slug"])
-    user = _build_user_message(sub["label"], lien)
+    # The lien is the cached leading block: the four sub-section calls share it.
+    system = cached_system(_document_block(lien), system)
+    user = _ask_line(sub["label"])
     try:
         raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192)
     except Exception as e:  # noqa: BLE001

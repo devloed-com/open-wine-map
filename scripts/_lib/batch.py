@@ -46,6 +46,7 @@ from pathlib import Path
 import requests
 
 from _lib.env import load_dotenv
+from _lib.prompt_cache import system_text
 from _lib.providers import stage_default
 
 
@@ -108,12 +109,13 @@ def _retry(fn, *, what: str, attempts: int = 5):
 # ───────────────────────────────────────────── collecting / replay providers ──
 
 
-def _request_id(system: str, user: str) -> str:
+def _request_id(system, user: str) -> str:
     """Stable content hash of a prompt — the batch `custom_id`. Replay keys
     on this, so it is order-independent: an interrupted run resumes
     correctly even when entries were cached (and thus dropped from the job
     list) in between."""
-    return hashlib.sha256(f"{system}\x00{user}".encode()).hexdigest()[:32]
+    sys_key = system if isinstance(system, str) else json.dumps(system, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(f"{sys_key}\x00{user}".encode()).hexdigest()[:32]
 
 
 class CollectingProvider:
@@ -128,7 +130,7 @@ class CollectingProvider:
         self.requests: list[dict] = []
         self._seen: set[str] = set()
 
-    def chat(self, *, system: str, user: str, max_tokens: int = 1024, **_: object) -> str:
+    def chat(self, *, system, user: str, max_tokens: int = 1024, **_: object) -> str:
         cid = _request_id(system, user)
         if cid not in self._seen:
             self._seen.add(cid)
@@ -151,7 +153,7 @@ class ReplayProvider:
         self.results = results
         self.kind = kind
 
-    def chat(self, *, system: str, user: str, **_: object) -> str:
+    def chat(self, *, system, user: str, **_: object) -> str:
         cid = _request_id(system, user)
         r = self.results.get(cid)
         if r is None:
@@ -334,7 +336,7 @@ def _submit_mistral(model: str, reqs: list[dict]) -> str:
                 "max_tokens": r["max_tokens"],
                 "temperature": 0.2,
                 "messages": [
-                    {"role": "system", "content": r["system"]},
+                    {"role": "system", "content": system_text(r["system"])},
                     {"role": "user", "content": r["user"]},
                 ],
             },

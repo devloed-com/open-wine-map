@@ -50,6 +50,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.prompt_cache import mark_cached  # noqa: E402
 from _lib.terroir_cache import write_translation_cache  # noqa: E402
 from _lib.terroir_prompts import translation_system_prompt  # noqa: E402
 
@@ -206,7 +207,8 @@ def translate_one(provider, job: dict) -> tuple[list[str] | None, str | None]:
     system = build_system_prompt(source_lang=source_lang, target_lang=job["lang"])
     user = build_user_prompt(job["fr_facts"])
     try:
-        raw = provider.chat(system=system, user=user, max_tokens=2000, num_ctx=8192)
+        # One system prompt per locale, shared by every record of the batch: cached.
+        raw = provider.chat(system=mark_cached(system), user=user, max_tokens=2000, num_ctx=8192)
     except Exception as e:  # noqa: BLE001
         return None, f"call: {e}"
     parsed = parse_array(raw, len(job["fr_facts"]))

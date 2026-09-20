@@ -44,6 +44,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, providers, terroir_backup  # noqa: E402
 from _lib.exonyms import gi_forms_from_names  # noqa: E402
+from _lib.prompt_cache import mark_cached  # noqa: E402
 from _lib.terroir_backcheck import (  # noqa: E402
     BACKCHECK_VERSION,
     apply_fixes,
@@ -143,7 +144,7 @@ def check_one(
         source_facts=sfacts, translated=t["facts"], feedback=load_feedback(slug), gi_forms=gi_forms,
     )
     try:
-        raw = provider.chat(system=system_prompt(), user=user, max_tokens=MAX_TOKENS, num_ctx=16384)
+        raw = provider.chat(system=mark_cached(system_prompt()), user=user, max_tokens=MAX_TOKENS, num_ctx=16384)
     except Exception as e:  # noqa: BLE001
         return {"slug": slug, "lang": lang, "country": country, "status": "error", "error": str(e)[:200]}
     checks, err = parse_checks(raw, len(t["facts"]))

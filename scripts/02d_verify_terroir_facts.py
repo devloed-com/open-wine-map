@@ -60,6 +60,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, providers, terroir_backup  # noqa: E402
+from _lib.prompt_cache import mark_cached  # noqa: E402
 from _lib.terroir_cache import (  # noqa: E402
     TERROIR,
     prune_translations,
@@ -156,7 +157,7 @@ def gate_record(
         cahier=src.cahier, hints=src.hints, facts=facts, feedback=fb,
     )
     try:
-        raw = provider.chat(system=SYSTEM, user=user, max_tokens=MAX_TOKENS, num_ctx=32768)
+        raw = provider.chat(system=mark_cached(SYSTEM), user=user, max_tokens=MAX_TOKENS, num_ctx=32768)
     except Exception as e:  # noqa: BLE001
         return {"slug": slug, "country": country, "status": "error", "error": str(e)[:200]}
     verdicts, err = parse_verdicts(raw, len(facts))

@@ -4796,7 +4796,27 @@ runs alike (`batch.default_model(provider, stage)` /
 `default_thinking()`, `providers.make_provider(..., stage=)`); override
 per run with `--model` / `--thinking`, or `OWM_BATCH_THINKING` for an
 experiment. `tests/test_stage_defaults.py` pins the configuration. API
-keys are read from the environment or a repo-root `.env`. The next
+keys are read from the environment or a repo-root `.env`.
+
+**Prompt caching** ([scripts/_lib/prompt_cache.py](scripts/_lib/prompt_cache.py),
+Anthropic only; Mistral / Ollama get the flat text). Text sent more than
+once is placed *first* in the system prompt as its own block with
+`cache_control`, so every request after the first reads it at 0.1× the
+input price: in the 20 non-FR 02d scripts the lien is the leading cached
+block (`cached_system(_document_block(lien), instructions)` — the four
+sub-section calls of a record each resent the whole lien; the user turn
+now carries only the sub-section request; FR slices section X per call
+and shares nothing, so it is left alone), and the gate, the back-check,
+the LLM audit and the 21 × 02e scripts cache their static system prompt
+(`mark_cached`, shared by every record of a batch — 02e's is ≈ 3 K
+tokens per locale). A block below the model's minimum (Sonnet 5 / 4.6
+1,024 tokens, Opus 5 512) silently does not cache and costs nothing; the
+Batch API processes concurrently, so hits are best-effort (Anthropic
+quotes 30–98 %) — the four calls of a record are submitted adjacently and
+the ledger's `cache_creation_input_tokens` / `cache_read_input_tokens`
+show the achieved rate per batch. `OWM_CACHE_TTL` = `5m` (default; write
+1.25×, the four-call pattern breaks even at a 29 % hit rate), `1h` (write
+2×, break-even 70 %) or `off`. The next
 steps — migrating the corpus to this configuration and the remaining
 review recommendations — are in
 [docs/handoff-terroir-facts-2026-09-14.md](docs/handoff-terroir-facts-2026-09-14.md). Anthropic

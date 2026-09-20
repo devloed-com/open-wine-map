@@ -48,6 +48,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
+from _lib.prompt_cache import cached_system, split_user_lead  # noqa: E402
 from _lib.terroir_cache import write_source_cache  # noqa: E402
 from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
 from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
@@ -441,7 +442,9 @@ def _process_subsection(
         max_bullets=sub["max_bullets"],
     )
     system = with_feedback(system, record["slug"])
-    user = USER_LEAD[lang].format(label=label, ctx=cahier_ctx)
+    # The regulator text is the cached leading block: the four sub-section calls share it.
+    user, doc = split_user_lead(USER_LEAD[lang], label=label, ctx=cahier_ctx)
+    system = cached_system(doc, system)
     try:
         raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192)
     except Exception as e:  # noqa: BLE001

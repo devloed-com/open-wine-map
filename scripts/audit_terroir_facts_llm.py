@@ -46,6 +46,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, terroir_backup  # noqa: E402
+from _lib.prompt_cache import mark_cached  # noqa: E402
 from _lib.terroir_cache import TERROIR, TRANSLATIONS  # noqa: E402
 from _lib.terroir_dedupe import facts_sha  # noqa: E402
 from _lib.terroir_feedback import _safe  # noqa: E402
@@ -204,7 +205,8 @@ def grade(provider, model_id: str, items: list[tuple[str, dict, dict]], resolver
         user = build_user_message(name=src.get("name") or slug, country=country, source_lang=source_lang,
                                   lang=lang, src=src, t=t, sources=s)
         try:
-            raw = provider.chat(system=SYSTEM.replace("{tags}", ", ".join(TAGS)), user=user, max_tokens=MAX_TOKENS)
+            raw = provider.chat(system=mark_cached(SYSTEM.replace("{tags}", ", ".join(TAGS))), user=user,
+                                max_tokens=MAX_TOKENS)
         except Exception as e:  # noqa: BLE001
             rows.append({"slug": slug, "country": country, "status": "error", "error": str(e)[:200]})
             continue

@@ -24,6 +24,8 @@ import os
 
 import requests
 
+from _lib.prompt_cache import system_text
+
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"
 
 # Per-stage Anthropic defaults — the configuration decided 2026-09-14 after
@@ -77,7 +79,9 @@ class AnthropicProvider:
         self.model = model
         self.thinking = os.environ.get("OWM_BATCH_THINKING") or thinking
 
-    def chat(self, *, system: str, user: str, max_tokens: int = 1024, **_: object) -> str:
+    def chat(self, *, system, user: str, max_tokens: int = 1024, **_: object) -> str:
+        # `system` is a string or a list of text blocks (prompt_cache.cached_system /
+        # mark_cached) — the SDK takes both.
         params = {
             "model": self.model,
             "max_tokens": max_tokens,
@@ -114,7 +118,7 @@ class MistralProvider:
                 "max_tokens": max_tokens,
                 "temperature": 0.2,
                 "messages": [
-                    {"role": "system", "content": system},
+                    {"role": "system", "content": system_text(system)},
                     {"role": "user", "content": user},
                 ],
             },
@@ -137,7 +141,7 @@ class OllamaProvider:
             json={
                 "model": self.model,
                 "messages": [
-                    {"role": "system", "content": system},
+                    {"role": "system", "content": system_text(system)},
                     {"role": "user", "content": user},
                 ],
                 "stream": False,
