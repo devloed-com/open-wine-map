@@ -194,7 +194,7 @@ NAME_GUARD_WHITELIST = {"saone-et-loire", "calvados-domfontais"}
 FOREIGN_NAME_MIN_HITS = 5
 FOREIGN_NAME_MIN_CHARS = 6
 MASAF_SIDECARS = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
-MASAF_CURRENT_TEMPLATE = "it-masaf-disciplinare-v2"
+MASAF_CURRENT_TEMPLATE = "it-masaf-disciplinare-v3"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs"
 _WIKI_LANG = {"at": "de", "si": "sl", "gr": "el", "cz": "cs", "lu": "fr", "mt": "en", "gb": "en", "cy": "el"}
 NAME_STOP_WORDS = frozenset(
@@ -214,7 +214,15 @@ ARROW_RE = re.compile("→")
 LABEL_PREFIX_RE = re.compile(r"^\s*(?:[^\s:(\d]+\s){0,1}[^\s:(\d]+:\s")
 META_RE = re.compile(
     r"(?i)\b(wikipedia|according to the (document|specification|cahier)|confirmed by"
-    r"|the (cahier|disciplinare|specification|pliego) (states|says|notes))\b"
+    r"|the (cahier|disciplinare|specification|pliego) (states|says|notes)"
+    # source-language forms: "secondo il disciplinare", "selon le cahier des charges",
+    # "según el pliego", "laut (der) Produktspezifikation", "volgens het productdossier"
+    r"|secondo (il|quanto (previsto|indicato|riportato) (dal|nel)) disciplinare|il disciplinare (prevede|stabilisce|indica|riporta)"
+    r"|selon le cahier des charges|le cahier des charges (précise|indique|prévoit|stipule)"
+    r"|según (el|lo (establecido|indicado) en el) pliego|el pliego (establece|indica|recoge)"
+    r"|laut (der |dem )?(produktspezifikation|einzige[nm] dokument)|gemäß (der |dem )?(produktspezifikation|einzige[nm] dokument)"
+    r"|volgens het (productdossier|enig document)|conform het (productdossier|enig document)"
+    r"|segundo o caderno|de acordo com o caderno)\b"
 )
 TERMINAL_PUNCT = ".!?…"
 MULTI_SENTENCE_RE = re.compile(r"[.!?]\s+[A-ZÀ-ÝΑ-ΩА-Я]")

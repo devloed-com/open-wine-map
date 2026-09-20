@@ -100,6 +100,27 @@ def expand_mentions(bullet: str) -> str:
     return bullet
 
 
+# A bullet that ends by citing its own source — ", secondo il disciplinare."
+# — despite the prompt's rule; the clause is dropped, the fact stays.
+_TRAILING_META_RE = re.compile(
+    r"[,;]?\s+(?:secondo (?:il|quanto (?:previsto|indicato|riportato) (?:dal|nel)) disciplinare"
+    r"|come (?:indicato|previsto|riportato) (?:dal|nel) disciplinare"
+    r"|selon le cahier des charges|comme (?:l'indique|le précise|le prévoit) le cahier des charges"
+    r"|según (?:el|lo (?:establecido|indicado) en el) pliego(?: de condiciones)?"
+    r"|laut (?:der |dem )?(?:produktspezifikation|einzige[nm] dokument)"
+    r"|gemäß (?:der |dem )?(?:produktspezifikation|einzige[nm] dokument)"
+    r"|volgens het (?:productdossier|enig document)|conform het (?:productdossier|enig document)"
+    r"|segundo o caderno(?: de especificações)?|de acordo com o caderno(?: de especificações)?"
+    r"|according to the (?:specification|document|cahier))"
+    r"\s*(?=[.!?…]?\s*$)",
+    re.IGNORECASE,
+)
+
+
+def strip_trailing_meta(bullet: str) -> str:
+    return _TRAILING_META_RE.sub("", bullet or "")
+
+
 def ensure_terminal_period(bullet: str) -> str:
     b = bullet.rstrip()
     if not b or b[-1] in _TERMINAL:
@@ -139,7 +160,7 @@ def normalize_bullet(bullet: str, lang: str = "") -> str:
     script is also Latinised."""
     if not bullet:
         return bullet
-    out = expand_mentions(strip_colour_codes(bullet))
+    out = strip_trailing_meta(expand_mentions(strip_colour_codes(bullet)))
     if lang in _TARGET_LOCALES:
         out = latinize_residual_script(out)
     return ensure_terminal_period(out)

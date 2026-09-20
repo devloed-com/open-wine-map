@@ -107,6 +107,11 @@ def test_arrow_and_meta_text():
     assert audit.has_meta_text("The disciplinare states that yields are capped.")
     assert audit.has_meta_text("According to the specification, the area is 5 ha.")
     assert not audit.has_meta_text("Slate soils on south-facing slopes.")
+    # source-language forms
+    assert audit.has_meta_text("Un'epoca iniziata 70 milioni di anni fa secondo il disciplinare.")
+    assert audit.has_meta_text("Les sols sont calcaires, selon le cahier des charges.")
+    assert audit.has_meta_text("Laut Produktspezifikation dominieren Schieferböden.")
+    assert not audit.has_meta_text("Il disciplinare del 1966 fu il primo in Italia.")   # a dated fact about the rules, not a citation
 
 
 def test_style_findings_lists_every_defect_in_order():

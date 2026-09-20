@@ -80,3 +80,12 @@ def test_latinisation_applies_to_target_locales_only():
     src = "Wijngaarden op terrassen met droogstenen muren (πεζούλες), tot 900 m hoogte."
     assert normalize_bullet(src, "nl") == "Wijngaarden op terrassen met droogstenen muren (pezoules), tot 900 m hoogte."
     assert normalize_bullet(src, "") == src
+
+
+def test_trailing_meta_clause_is_dropped_and_the_fact_kept():
+    from _lib.terroir_normalize import normalize_bullet, strip_trailing_meta
+    assert normalize_bullet("Un'epoca iniziata 70 milioni di anni fa secondo il disciplinare.") == "Un'epoca iniziata 70 milioni di anni fa."
+    assert normalize_bullet("Les sols sont argilo-calcaires, selon le cahier des charges.") == "Les sols sont argilo-calcaires."
+    assert normalize_bullet("Die Böden sind Schiefer laut Produktspezifikation") == "Die Böden sind Schiefer."
+    # mid-sentence citations are left to the audit's meta_text check
+    assert strip_trailing_meta("Il disciplinare prevede una resa massima di 80 q/ha.") == "Il disciplinare prevede una resa massima di 80 q/ha."
