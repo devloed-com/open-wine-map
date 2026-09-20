@@ -47,7 +47,7 @@ import requests
 
 from _lib.env import load_dotenv
 from _lib.prompt_cache import system_text
-from _lib.providers import stage_default
+from _lib.providers import effective_thinking, stage_default
 
 
 def _load_dotenv() -> None:
@@ -275,8 +275,8 @@ def _anthropic_params(model: str, r: dict, thinking: str | None) -> dict:
     # sized for text only: each stage passes its `STAGE_DEFAULTS` mode
     # ("disabled" for 02d, "adaptive" for the gate); `OWM_BATCH_THINKING`
     # overrides for an experiment.
-    mode = os.environ.get("OWM_BATCH_THINKING") or thinking
-    if mode in ("disabled", "adaptive"):
+    mode = effective_thinking(model, os.environ.get("OWM_BATCH_THINKING") or thinking)
+    if mode:
         params["thinking"] = {"type": mode}
     return params
 

@@ -49,6 +49,23 @@ STAGE_DEFAULTS: dict[str, tuple[str, str | None]] = {
 }
 
 
+_CLAUDE5_PREFIXES = ("claude-sonnet-5", "claude-opus-5", "claude-fable-5", "claude-mythos-5")
+
+
+def effective_thinking(model: str, thinking: str | None) -> str | None:
+    """The thinking mode to send. The Claude 5 family runs adaptive thinking
+    when the parameter is omitted (the 4.x models do not), and every stage's
+    max_tokens budget is sized for the JSON reply alone — on a stage that
+    sets no mode, a Claude 5 model therefore gets "disabled" explicitly
+    (2026-09-15: Sonnet 5 on 02e spent the 2,000-token budget on thinking
+    and 64 % of the replies came back truncated and were rejected)."""
+    if thinking in ("disabled", "adaptive"):
+        return thinking
+    if any((model or "").startswith(px) for px in _CLAUDE5_PREFIXES):
+        return "disabled"
+    return None
+
+
 def stage_default(stage: str | None) -> tuple[str, str | None]:
     """(model id, thinking mode) for an Anthropic stage; the generic default
     for an unknown stage."""
@@ -88,8 +105,9 @@ class AnthropicProvider:
             "system": system,
             "messages": [{"role": "user", "content": user}],
         }
-        if self.thinking in ("disabled", "adaptive"):
-            params["thinking"] = {"type": self.thinking}
+        mode = effective_thinking(self.model, self.thinking)
+        if mode:
+            params["thinking"] = {"type": mode}
         msg = self.client.messages.create(**params)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
 

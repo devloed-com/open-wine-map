@@ -60,3 +60,14 @@ def test_anthropic_params_carry_the_thinking_mode(monkeypatch):
     assert batch._anthropic_params("m", r, "adaptive")["thinking"] == {"type": "adaptive"}
     monkeypatch.setenv("OWM_BATCH_THINKING", "disabled")
     assert batch._anthropic_params("m", r, "adaptive")["thinking"] == {"type": "disabled"}
+
+
+def test_claude5_models_get_thinking_disabled_when_the_stage_sets_no_mode(monkeypatch):
+    monkeypatch.delenv("OWM_BATCH_THINKING", raising=False)
+    assert providers.effective_thinking("claude-sonnet-5", None) == "disabled"
+    assert providers.effective_thinking("claude-opus-5", "adaptive") == "adaptive"
+    assert providers.effective_thinking("claude-sonnet-4-6", None) is None
+    r = {"custom_id": "x", "system": "s", "user": "u", "max_tokens": 10}
+    assert batch._anthropic_params("claude-sonnet-5", r, None)["thinking"] == {"type": "disabled"}
+    assert "thinking" not in batch._anthropic_params("claude-sonnet-4-6", r, None)
+    assert batch._anthropic_params("claude-opus-5", r, "adaptive")["thinking"] == {"type": "adaptive"}
