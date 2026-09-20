@@ -184,3 +184,44 @@ def facts_sha(facts: list[dict]) -> str:
     `source_facts_sha` every stage-02e translation cache is keyed on."""
     blob = "\n".join((f.get("bullet") or "") for f in facts)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+# ───────────────────────────────────────── cosmetic vs meaning change ──
+#
+# A rewrite this close to the original (rapidfuzz ratio, 0–100) whose
+# differing words are all short is cosmetic — case, punctuation, an
+# article — not a meaning change. The gate keeps the original bullet as
+# supported for such a rewrite (so the rewritten cohort stays meaning
+# changes only and the translations are not redone for nothing: 44 % of
+# the r1 rewrites were light edits, 9 % near-cosmetic), and the feedback
+# recurrence check counts a do-not-claim entry as resolved only when the
+# gate's rewrite was NOT cosmetic. A hedge added to a long bullet scores
+# ≈ 98 too, so the ratio alone is not the test: any differing word of
+# COSMETIC_WORD_CHARS letters or more ("mainly", "esclusivamente") makes
+# it a real rewrite.
+NEAR_IDENTICAL_RATIO = 95
+COSMETIC_WORD_CHARS = 4
+
+
+def _words(s: str) -> list[str]:
+    folded = unicodedata.normalize("NFKD", (s or "").lower())
+    folded = "".join(ch for ch in folded if not unicodedata.combining(ch))
+    return re.findall(r"[^\W_]+", folded)
+
+
+def is_cosmetic_rewrite(original: str, rewrite: str) -> bool:
+    """True when `rewrite` differs from `original` only cosmetically:
+    near-identical overall (ratio ≥ NEAR_IDENTICAL_RATIO) and every word
+    present in one but not the other is shorter than COSMETIC_WORD_CHARS
+    — so a hedge, a qualifier or a changed entity is never cosmetic."""
+    o = " ".join((original or "").split())
+    r = " ".join((rewrite or "").split())
+    if o == r:
+        return True
+    if fuzz.ratio(o, r) < NEAR_IDENTICAL_RATIO:
+        return False
+    ow, rw = _words(o), _words(r)
+    if ow == rw:
+        return True
+    diff = set(ow) ^ set(rw)
+    return all(len(w) < COSMETIC_WORD_CHARS for w in diff)

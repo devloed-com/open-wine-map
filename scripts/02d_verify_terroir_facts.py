@@ -73,6 +73,7 @@ from _lib.terroir_gate import (  # noqa: E402
     SYSTEM,
     apply_verdicts,
     build_user_message,
+    needs_gate,
     parse_verdicts,
 )
 from _lib.terroir_sources import COUNTRIES, Sources, resolve_sources  # noqa: E402
@@ -88,22 +89,6 @@ def log(msg: str) -> None:
 
 
 # ────────────────────────────────────────────────────────── selection ──
-
-
-def needs_gate(d: dict, *, refresh: bool) -> bool:
-    facts = d.get("facts") or []
-    if not facts:
-        return False
-    if refresh:
-        return True
-    g = d.get("gate") or {}
-    if not g:
-        return True
-    return (
-        g.get("facts_sha_after") != facts_sha(facts)
-        or g.get("cahier_source_sha") != d.get("cahier_source_sha")
-        or g.get("version") != GATE_VERSION
-    )
 
 
 def select_records(
@@ -316,6 +301,7 @@ def main() -> int:
     t0 = time.monotonic()
     rows: list[dict] = []
 
+    batch_stats: dict | None = None
     if args.batch:
         if not batch.supports(args.provider):
             log("--batch requires --provider anthropic|mistral")
@@ -331,8 +317,8 @@ def main() -> int:
             rows = run_gate(prov, model_id, selected, resolver, run=run,
                             dry_run=args.dry_run or collecting, quiet=collecting or args.quiet)
 
-        batch.run_two_pass(provider=args.provider, model=model_id, sidecar=BATCH_SIDECAR, run_loop=run_loop,
-                           thinking=thinking)
+        batch_stats = batch.run_two_pass(provider=args.provider, model=model_id, sidecar=BATCH_SIDECAR,
+                                         run_loop=run_loop, thinking=thinking)
         kind = f"{args.provider}-api"
     else:
         provider, model_id = providers.make_provider(
@@ -344,6 +330,8 @@ def main() -> int:
         kind = provider.kind
 
     summary = _summary(rows)
+    if batch_stats:
+        summary["batch"] = batch_stats
     summary.update({
         "run": run, "model": model_id, "provider_kind": kind, "dry_run": args.dry_run,
         "gate_version": GATE_VERSION, "elapsed_seconds": round(time.monotonic() - t0, 1),

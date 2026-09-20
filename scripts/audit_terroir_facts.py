@@ -402,10 +402,8 @@ def masaf_sidecar_stale(slug: str) -> bool:
 
 
 def gate_pending(data: dict) -> bool:
-    from _lib.terroir_dedupe import facts_sha  # local import: keep the audit's imports flat
-    g = data.get("gate") or {}
-    facts = data.get("facts") or []
-    return bool(facts) and (not g or g.get("facts_sha_after") != facts_sha(facts))
+    from _lib.terroir_gate import needs_gate  # local import: keep the audit's imports flat
+    return needs_gate(data)
 
 
 def own_chapter_findings(lien: str, name: str, facts: list[dict]) -> list[dict]:

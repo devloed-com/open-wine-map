@@ -47,6 +47,7 @@ from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
 from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
 from _lib.terroir_feedback import with_feedback  # noqa: E402
 from _lib.terroir_interactions import earn_interactions  # noqa: E402
+from _lib.terroir_normalize import normalize_facts  # noqa: E402
 from _lib.terroir_prompts import with_style_rules  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "sk" / "dokumenty-extracted"
@@ -348,6 +349,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
     all_facts = deduped.kept
     earned = earn_interactions(all_facts, "sk")
     all_facts = earned.kept
+    normalize_facts(all_facts)
 
     payload = {
         "country": "sk",

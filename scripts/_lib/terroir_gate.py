@@ -33,12 +33,9 @@ from __future__ import annotations
 
 import json
 import re
-import unicodedata
-
-from rapidfuzz import fuzz
 
 from _lib import llm_json
-from _lib.terroir_dedupe import _numbers, dedupe_facts
+from _lib.terroir_dedupe import _numbers, dedupe_facts, is_cosmetic_rewrite
 from _lib.terroir_feedback import _clip, _safe
 from _lib.terroir_interactions import DEMOTION_TARGET, unearned_indices
 from _lib.terroir_normalize import normalize_bullet
@@ -48,17 +45,6 @@ VERDICTS = ("supported", "rewrite", "drop")
 MAX_SOURCE_CHARS = 60_000
 MAX_HINT_CHARS = 2_000
 REWRITE_MAX_CHARS = 420
-# A rewrite this close to the original (rapidfuzz ratio, 0–100) whose
-# differing words are all short is cosmetic — case, punctuation, an
-# article — not a meaning change; the original is kept as supported so
-# the rewritten cohort stays meaning changes only and the translations
-# are not redone for nothing (44 % of the r1 rewrites were light edits,
-# 9 % near-cosmetic). A hedge added to a long bullet scores ≈ 98 too,
-# so the ratio alone is not the test: any differing word of
-# COSMETIC_WORD_CHARS letters or more ("mainly", "esclusivamente") makes
-# it a real rewrite.
-NEAR_IDENTICAL_RATIO = 95
-COSMETIC_WORD_CHARS = 4
 GATE_VERSION = "gate-v2"
 
 SYSTEM = """You are the claim-support verifier for Open Wine Map's terroir facts: short bullets an LLM extracted from a wine regulator's product specification (the "source text" — a cahier des charges, disciplinare, pliego, Einziges Dokument, …) and, secondarily, from the appellation's Wikipedia article (the "Wikipedia hints"). The bullets are in the source language; they will be translated and shown to wine enthusiasts as facts about the appellation.
@@ -79,6 +65,27 @@ Prior-review constraints, when given, name claims that were verified misleading 
 Answer ONLY with JSON, no text before or after:
 {"facts": [{"i": 0, "verdict": "supported|rewrite|drop", "note": "one precise sentence quoting the decisive source words, or the assertion the source lacks", "rewrite": "" , "restates": null, "subsection": null}, ...]}
 One object per bullet, in order, with "i" equal to the bullet's index."""
+
+
+def needs_gate(d: dict, *, refresh: bool = False) -> bool:
+    """A record is due for the gate when it has facts and any of them carries
+    no gate verdict (`support` — a fresh 02d extraction writes none), or the
+    gate block predates the current GATE_VERSION or the record's source
+    text. Deliberately not an exact sha of the bullets: the normalise,
+    dedupe and boilerplate post-passes change bullets or remove facts
+    without invalidating the verdicts on the rest, and used to re-fire the
+    gate corpus-wide."""
+    facts = d.get("facts") or []
+    if not facts:
+        return False
+    if refresh:
+        return True
+    g = d.get("gate") or {}
+    if not g or g.get("version") != GATE_VERSION:
+        return True
+    if g.get("cahier_source_sha") != d.get("cahier_source_sha"):
+        return True
+    return any(not (f.get("support") or {}).get("verdict") for f in facts)
 
 
 def _constraints_block(fb: dict | None) -> str:
@@ -252,30 +259,6 @@ def rewrite_ok(original: str, rewrite: str, source: str) -> str | None:
     if new_nums:
         return f"new numbers {sorted(new_nums)}"
     return None
-
-
-def _words(s: str) -> list[str]:
-    folded = unicodedata.normalize("NFKD", (s or "").lower())
-    folded = "".join(ch for ch in folded if not unicodedata.combining(ch))
-    return re.findall(r"[^\W_]+", folded)
-
-
-def is_cosmetic_rewrite(original: str, rewrite: str) -> bool:
-    """True when `rewrite` differs from `original` only cosmetically:
-    near-identical overall (ratio ≥ NEAR_IDENTICAL_RATIO) and every word
-    present in one but not the other is shorter than COSMETIC_WORD_CHARS
-    — so a hedge, a qualifier or a changed entity is never cosmetic."""
-    o = " ".join((original or "").split())
-    r = " ".join((rewrite or "").split())
-    if o == r:
-        return True
-    if fuzz.ratio(o, r) < NEAR_IDENTICAL_RATIO:
-        return False
-    ow, rw = _words(o), _words(r)
-    if ow == rw:
-        return True
-    diff = set(ow) ^ set(rw)
-    return all(len(w) < COSMETIC_WORD_CHARS for w in diff)
 
 
 def apply_verdicts(

@@ -35,6 +35,8 @@ from pathlib import Path
 
 from rapidfuzz import fuzz
 
+from _lib.terroir_dedupe import is_cosmetic_rewrite
+
 ROOT = Path(__file__).resolve().parents[2]
 FEEDBACK_DIR = ROOT / "raw" / "terroir-facts-feedback"
 
@@ -149,7 +151,15 @@ def recurrence_findings(
 ) -> list[dict]:
     """Do-not-claim entries (extraction / both) whose source-language bullet
     still matches a current fact's bullet — the known error is still there
-    (before a re-run) or came back (after one)."""
+    (before a re-run) or came back (after one).
+
+    The match is lexical (token-set ratio), so a bullet the gate has since
+    rewritten still matches its own misleading original on most of its
+    words. Such an entry is counted as resolved, not recurring, when the
+    matched fact carries `support.original_bullet`, the claim matches that
+    original at least as well as it matches the current bullet, and the
+    rewrite was not cosmetic (5 of the 6 residual hits of the r1 audit were
+    fixed bullets)."""
     if not fb:
         return []
     out: list[dict] = []
@@ -167,11 +177,20 @@ def recurrence_findings(
             score = fuzz.token_set_ratio(probe, b)
             if score > best:
                 best_i, best = i, score
-        if best >= threshold:
-            out.append({
-                "index": best_i, "score": round(best, 1), "mode": c.get("mode"),
-                "review": c.get("review"), "claim": _clip(c.get("claim_en") or probe, 160),
-            })
+        if best < threshold:
+            continue
+        current = facts[best_i].get("bullet") or ""
+        original = (facts[best_i].get("support") or {}).get("original_bullet") or ""
+        if (
+            original
+            and fuzz.token_set_ratio(probe, original) >= best
+            and not is_cosmetic_rewrite(original, current)
+        ):
+            continue
+        out.append({
+            "index": best_i, "score": round(best, 1), "mode": c.get("mode"),
+            "review": c.get("review"), "claim": _clip(c.get("claim_en") or probe, 160),
+        })
     return out
 
 

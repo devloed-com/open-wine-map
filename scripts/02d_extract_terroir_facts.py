@@ -66,6 +66,7 @@ from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
 from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
 from _lib.terroir_feedback import with_feedback  # noqa: E402
 from _lib.terroir_interactions import earn_interactions  # noqa: E402
+from _lib.terroir_normalize import normalize_facts  # noqa: E402
 from _lib.terroir_prompts import with_style_rules  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
@@ -461,7 +462,9 @@ def extract_one_aoc(provider, job: dict) -> tuple[list[dict], list[str]]:
             if classified is not None:
                 classified["subsection"] = sub_key
                 facts.append(classified)
-    return earn_interactions(dedupe_facts(facts).kept, "fr").kept, errors
+    kept = earn_interactions(dedupe_facts(facts).kept, "fr").kept
+    normalize_facts(kept)
+    return kept, errors
 
 
 # ─────────────────────────────────────────────────── round-trip (manual) ──

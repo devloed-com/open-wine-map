@@ -179,3 +179,15 @@ def test_gate_demotes_an_interactions_bullet_whose_quote_states_no_link():
     assert res["facts"][1]["support"]["moved_from"] == "interactions"
     assert res["facts"][1]["support"]["unearned_interaction"] is True
     assert res["moved"] == [{"index": 1, "from": "interactions", "to": "facteurs_naturels"}]
+
+
+def test_needs_gate_keys_on_verdicts_and_source_not_on_an_exact_sha():
+    gated = {"cahier_source_sha": "abc", "facts": [{"bullet": "A.", "support": {"verdict": "supported"}}],
+             "gate": {"version": tg.GATE_VERSION, "cahier_source_sha": "abc", "facts_sha_after": "stale"}}
+    assert not tg.needs_gate(gated)                       # a post-pass changed the bullets: still gated
+    assert tg.needs_gate(gated, refresh=True)
+    assert tg.needs_gate({**gated, "cahier_source_sha": "def"})           # source changed
+    assert tg.needs_gate({**gated, "gate": {**gated["gate"], "version": "gate-v1"}})
+    assert tg.needs_gate({**gated, "facts": gated["facts"] + [{"bullet": "B."}]})   # a fresh, unverdicted fact
+    assert not tg.needs_gate({**gated, "facts": []})
+    assert tg.needs_gate({"facts": [{"bullet": "A."}]})

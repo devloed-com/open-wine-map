@@ -162,3 +162,16 @@ def test_all_02d_scripts_are_wired():
         expected = 1 if path.parent.name == "es" else 2
         assert calls >= expected, f"{path}: {calls} with_feedback calls, expected ≥ {expected}"
         assert re.search(r"^\s*system = with_feedback\(system, (record|job)\[\"slug\"\]\)", src, re.M), path
+
+
+def test_recurrence_counts_a_meaningful_gate_rewrite_as_resolved():
+    probe = "Il clima mediterraneo conferisce ai vini una spiccata mineralità."
+    fb = {"do_not_claim": [{"claim_src": probe, "stage": "extraction", "mode": "causal"}]}
+    rewritten = {"bullet": "Il clima è mediterraneo e i vini mostrano una spiccata mineralità.",
+                 "support": {"verdict": "rewrite", "original_bullet": probe}}
+    assert tf.recurrence_findings(fb, [rewritten]) == []
+    # a cosmetic rewrite (punctuation only) is not a resolution
+    cosmetic = {"bullet": probe.rstrip(".") + ",", "support": {"verdict": "rewrite", "original_bullet": probe}}
+    assert len(tf.recurrence_findings(fb, [cosmetic])) == 1
+    # the same claim re-extracted without a gate verdict recurs
+    assert len(tf.recurrence_findings(fb, [{"bullet": probe}])) == 1
