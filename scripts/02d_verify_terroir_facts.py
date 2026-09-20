@@ -187,8 +187,11 @@ def gate_record(
         "n_supported": sum(1 for f in res["facts"] if f["support"]["verdict"] == "supported"),
         "n_rewritten": len(res["rewritten"]), "n_dropped": len(res["dropped"]),
         "n_moved": len(res["moved"]), "n_rejected_rewrites": len(res["rejected_rewrites"]),
+        "n_cosmetic_rewrites": len(res["cosmetic_rewrites"]),
+        "n_missing_rewrites": len(res["missing_rewrites"]),
         "dropped": res["dropped"], "rewritten": res["rewritten"], "moved": res["moved"],
         "rejected_rewrites": res["rejected_rewrites"],
+        "cosmetic_rewrites": res["cosmetic_rewrites"], "missing_rewrites": res["missing_rewrites"],
         "verdicts": [{"i": i, **v} for i, v in enumerate(verdicts)],
     }
     if dry_run:
@@ -204,6 +207,8 @@ def gate_record(
         "n_supported": row["n_supported"], "n_rewritten": row["n_rewritten"],
         "n_dropped": row["n_dropped"], "n_moved": row["n_moved"],
         "n_rejected_rewrites": row["n_rejected_rewrites"],
+        "n_cosmetic_rewrites": row["n_cosmetic_rewrites"],
+        "n_missing_rewrites": row["n_missing_rewrites"],
         "dropped": res["dropped"],
     }
     write_source_cache(path, d)
@@ -236,7 +241,8 @@ def _summary(rows: list[dict]) -> dict:
     for r in ok:
         c = by_country.setdefault(r["country"], Counter())
         c["records"] += 1
-        for k in ("n_before", "n_after", "n_supported", "n_rewritten", "n_dropped", "n_moved", "n_rejected_rewrites"):
+        for k in ("n_before", "n_after", "n_supported", "n_rewritten", "n_dropped", "n_moved",
+                  "n_rejected_rewrites", "n_cosmetic_rewrites", "n_missing_rewrites"):
             c[k] += r[k]
     tot = Counter()
     for c in by_country.values():

@@ -9,16 +9,24 @@ one sentence restated by three sub-section calls all slipped through
 it fine inside a Greek or Bulgarian prompt — and `with_style_rules`
 splices it in front of the prompt's final paragraph (the JSON-only
 instruction), so every script carries the same rules.
+
+The block opens with the claim-support rule — the gate's own definition
+of an over-claim (a causal wrapper on a co-occurrence, a narrowed
+attribution, an invented qualifier, a sibling's statement, a
+strengthened hedge) — so the extractor does the gate's job first: the
+gate rewrote 27 % of the r1 bullets, 44 % of them light edits.
 """
 
 from __future__ import annotations
 
 STYLE_RULES = """\
+Claim-support rule — it comes first and every bullet is checked against it afterwards by a verifier that reads the whole source:
+- A bullet asserts only what its quoted sentence itself states — every entity, number, unit, direction, spatial or temporal qualifier, hedge and causal link in the bullet must be in the quote. Concretely: never turn the mere presence of a factor into a cause ("volcanic soils give the wine minerality" is admissible only when the source says the soils give it — otherwise write "the soils are volcanic"); never credit one factor with what the source credits to several, and never narrow an attribution the source makes en bloc ("soils, climate and exposure" stays all three); never add a spatial or temporal qualifier ("on the upper slopes", "since the 1960s") the source does not give; never move a statement about a sub-zone, a single site or a neighbouring appellation onto the appellation as a whole; never strengthen or drop a hedge. When the sentence you would like to write goes beyond what the quote supports, write the narrower sentence the quote does support — or leave the fact out.
+
 Style rules (they apply whatever the language of the bullets):
 - One fact per bullet, written as one full sentence that ends with a period. No arrows (→), no label prefixes such as "Colour:", "Climate:", "Soils:".
 - A bullet is a complete sentence of roughly 120–220 characters. Never compress it into a telegraphic fragment ("Roero (syn. Tanaro)", "Climate: avg 9.8 °C"); a qualifier, a hedge or a spatial attribution is never dropped to save space — write the longer precise sentence instead.
 - Prefer bullets that carry a specific named entity or figure — a named wind, lake, river, mountain, geological formation, an altitude, area or rainfall figure, a dated event, a named practice — over general statements. When the text you are given is long (over ~4,000 characters) and describes more such specifics than the maximum allows, you may return up to two extra bullets.
-- Assert only what the quoted sentence itself states. Never turn the mere presence of a factor into a cause ("volcanic soils give the wine minerality" is admissible only when the source says the soils give it); never attribute to one factor what the source credits to several; never invent a spatial or temporal qualifier the source does not give; never move a statement from a sub-zone or a neighbouring appellation onto the appellation as a whole.
 - The causal-interactions sub-section is earned, not filled: a bullet there is admitted only when the quoted source sentence itself states the link between a terroir factor and a wine trait with an explicit connective (because, thanks to, gives, confers, results in, explains, favours, allows — or its equivalent in the source language). If the text only lists factors and wine traits side by side, return an empty list for that sub-section rather than composing the link yourself, and never restate under it a fact already given under the natural factors or the product.
 - Grape names without regulatory colour codes: write "Pinot noir", never "Pinot noir N", "Chardonnay B", "Grenache G", "Gewurztraminer Rs", "Pinot gris G".
 - Spell out abbreviations on first use: VT = Vendanges Tardives, SGN = Sélection de Grains Nobles, TBA = Trockenbeerenauslese.

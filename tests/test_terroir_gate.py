@@ -133,3 +133,49 @@ def test_backcheck_user_message_flags_exonyms_and_translation_feedback():
     assert "250–490" in msg and msg.count("previous review verified") == 1
     assert "Spanish → English" in msg and "{" not in msg
     assert "generoso" in tb.system_prompt() and "{watch_list}" not in tb.system_prompt()
+
+
+def test_cosmetic_rewrite_is_case_punctuation_or_short_words_only():
+    orig = "Le vignoble s'étage entre 200 et 400 mètres, sur des marnes calcaires exposées au sud."
+    assert tg.is_cosmetic_rewrite(orig, orig)
+    assert tg.is_cosmetic_rewrite(orig, "Le vignoble s’étage entre 200 et 400 mètres, sur des marnes calcaires exposées au sud")
+    assert tg.is_cosmetic_rewrite(orig, "le vignoble s'étage entre 200 et 400 metres sur des marnes calcaires exposees au sud.")
+    assert tg.is_cosmetic_rewrite(orig, "Le vignoble s'étage entre 200 et 400 mètres, sur les marnes calcaires exposées au sud.")
+    # a hedge, a qualifier or an entity change is a real rewrite even at ratio ≥ 95
+    assert not tg.is_cosmetic_rewrite(orig, "Le vignoble s'étage surtout entre 200 et 400 mètres, sur des marnes calcaires exposées au sud.")
+    assert not tg.is_cosmetic_rewrite(orig, "Le vignoble s'étage entre 200 et 400 mètres, sur des marnes calcaires exposées au nord.")
+    assert not tg.is_cosmetic_rewrite("La vendemmia avviene esclusivamente a mano.", "La vendemmia avviene a mano.")
+
+
+def test_apply_verdicts_keeps_the_original_for_empty_and_cosmetic_rewrites():
+    verdicts = [
+        {"verdict": "rewrite", "note": "could not phrase", "rewrite": "", "restates": None, "subsection": None},
+        {"verdict": "rewrite", "note": "punctuation", "rewrite": "Il clima è mediterraneo, con estati calde e secche", "restates": None, "subsection": None},
+        {"verdict": "rewrite", "note": "hedge", "rewrite": "La vendemmia è di norma manuale.", "restates": None, "subsection": None},
+        {"verdict": "supported", "note": "", "rewrite": "", "restates": None, "subsection": None},
+    ]
+    res = tg.apply_verdicts(FACTS, verdicts, source=SOURCE, source_lang="it", run="r1", model="m")
+    s0, s1, s2 = (f["support"] for f in res["facts"][:3])
+    assert s0["verdict"] == "supported" and s0["rewrite_missing"] and s0["note"] == "could not phrase"
+    assert s1["verdict"] == "supported" and s1["cosmetic_rewrite"].startswith("Il clima")
+    assert res["facts"][1]["bullet"] == FACTS[1]["bullet"]
+    assert s2["verdict"] == "rewrite" and res["facts"][2]["bullet"] == "La vendemmia è di norma manuale."
+    assert [m["index"] for m in res["missing_rewrites"]] == [0]
+    assert [c["index"] for c in res["cosmetic_rewrites"]] == [1]
+    assert [r["index"] for r in res["rewritten"]] == [2] and res["text_changed"]
+    assert not res["rejected_rewrites"]
+
+
+def test_gate_demotes_an_interactions_bullet_whose_quote_states_no_link():
+    facts = [
+        {"bullet": "I suoli vulcanici conferiscono mineralità al vino.", "subsection": "interactions",
+         "provenance": "cahier", "cahier_quote": "i suoli vulcanici conferiscono mineralità al vino"},
+        {"bullet": "I suoli sono di origine vulcanica.", "subsection": "interactions",
+         "provenance": "cahier", "cahier_quote": "suoli di origine vulcanica"},
+    ]
+    verdicts = [{"verdict": "supported", "note": "", "rewrite": "", "restates": None, "subsection": None}] * 2
+    res = tg.apply_verdicts(facts, verdicts, source="…", source_lang="it", run="r1", model="m")
+    assert [f["subsection"] for f in res["facts"]] == ["interactions", "facteurs_naturels"]
+    assert res["facts"][1]["support"]["moved_from"] == "interactions"
+    assert res["facts"][1]["support"]["unearned_interaction"] is True
+    assert res["moved"] == [{"index": 1, "from": "interactions", "to": "facteurs_naturels"}]

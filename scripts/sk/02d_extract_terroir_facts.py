@@ -46,6 +46,7 @@ from _lib.terroir_cache import write_source_cache  # noqa: E402
 from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
 from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
 from _lib.terroir_feedback import with_feedback  # noqa: E402
+from _lib.terroir_interactions import earn_interactions  # noqa: E402
 from _lib.terroir_prompts import with_style_rules  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "sk" / "dokumenty-extracted"
@@ -345,6 +346,8 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
 
     deduped = dedupe_facts(all_facts)
     all_facts = deduped.kept
+    earned = earn_interactions(all_facts, "sk")
+    all_facts = earned.kept
 
     payload = {
         "country": "sk",
@@ -354,6 +357,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "facts": all_facts,
         "n_dropped": n_dropped_total,
         "n_deduped": len(deduped.drops),
+        "n_unearned_interactions": len(earned.dropped),
         "model": model_id,
         "model_kind": provider.kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),

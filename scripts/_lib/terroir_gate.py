@@ -33,10 +33,14 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
+
+from rapidfuzz import fuzz
 
 from _lib import llm_json
 from _lib.terroir_dedupe import _numbers, dedupe_facts
 from _lib.terroir_feedback import _clip, _safe
+from _lib.terroir_interactions import DEMOTION_TARGET, unearned_indices
 from _lib.terroir_normalize import normalize_bullet
 
 SUBSECTION_KEYS = ("facteurs_naturels", "facteurs_humains", "produit", "interactions")
@@ -44,7 +48,18 @@ VERDICTS = ("supported", "rewrite", "drop")
 MAX_SOURCE_CHARS = 60_000
 MAX_HINT_CHARS = 2_000
 REWRITE_MAX_CHARS = 420
-GATE_VERSION = "gate-v1"
+# A rewrite this close to the original (rapidfuzz ratio, 0–100) whose
+# differing words are all short is cosmetic — case, punctuation, an
+# article — not a meaning change; the original is kept as supported so
+# the rewritten cohort stays meaning changes only and the translations
+# are not redone for nothing (44 % of the r1 rewrites were light edits,
+# 9 % near-cosmetic). A hedge added to a long bullet scores ≈ 98 too,
+# so the ratio alone is not the test: any differing word of
+# COSMETIC_WORD_CHARS letters or more ("mainly", "esclusivamente") makes
+# it a real rewrite.
+NEAR_IDENTICAL_RATIO = 95
+COSMETIC_WORD_CHARS = 4
+GATE_VERSION = "gate-v2"
 
 SYSTEM = """You are the claim-support verifier for Open Wine Map's terroir facts: short bullets an LLM extracted from a wine regulator's product specification (the "source text" — a cahier des charges, disciplinare, pliego, Einziges Dokument, …) and, secondarily, from the appellation's Wikipedia article (the "Wikipedia hints"). The bullets are in the source language; they will be translated and shown to wine enthusiasts as facts about the appellation.
 
@@ -52,7 +67,7 @@ Your job is adversarial: for EACH bullet decide whether every assertion it makes
 
 Verdicts:
 - "supported": every assertion is stated by the sources. A simplification is not an error; a number written differently in the source (13°5, 22, 5, anni '60, XVIIIe) is not missing; a bullet grounded on the Wikipedia hint is legitimately grounded.
-- "rewrite": the main fact is stated, but the bullet adds something the sources do not state — a causal wrapper on a mere co-occurrence ("volcanic soils give minerality" when the source only records volcanic soils and, elsewhere, minerality), a narrowed attribution (one factor credited with what the source credits to several), a spatial or temporal qualifier the source does not give, a hedge strengthened ("typically" → "exclusively", "weakly" → "moderately") or dropped, a detail from a neighbouring sub-zone applied to the whole appellation. Provide "rewrite": the bullet in the SAME language, keeping the supported fact and removing or softening only what goes beyond the source. Never add content, never add a number that is not in the bullet or the source, keep it one full sentence ending with a period.
+- "rewrite": the main fact is stated, but the bullet adds something the sources do not state — a causal wrapper on a mere co-occurrence ("volcanic soils give minerality" when the source only records volcanic soils and, elsewhere, minerality), a narrowed attribution (one factor credited with what the source credits to several), a spatial or temporal qualifier the source does not give, a hedge strengthened ("typically" → "exclusively", "weakly" → "moderately") or dropped, a detail from a neighbouring sub-zone applied to the whole appellation. Provide "rewrite": the bullet in the SAME language, keeping the supported fact and removing or softening only what goes beyond the source. Never add content, never add a number that is not in the bullet or the source, keep it one full sentence ending with a period. A "rewrite" verdict MUST carry a non-empty "rewrite" that differs in meaning from the bullet — if you cannot phrase the narrower sentence, choose "supported" (with the note) or "drop" instead; a rewrite that only changes wording, punctuation or word order is not a rewrite.
 - "drop": the main claim itself is unsupported or contradicted, describes another appellation or a sub-zone/neighbour rather than this one, is a tautology true of any appellation ("the terroir gives the wines their typicity"), or restates a fact another bullet already gives (then set "restates" to that bullet's index; keep the more precise one and drop the other).
 
 Sub-section rule: a bullet filed under "interactions" (causal terroir → wine links) is "supported" only when a source sentence itself states the link with an explicit connective (because, thanks to, gives, confers, results in, explains, favours, allows, or the equivalent in the source language). If the source merely lists factors and wine traits side by side, "rewrite" the bullet into the non-causal statement the source does make (and file it under the right sub-section via "subsection"), or "drop" it when that statement is already given by another bullet.
@@ -239,21 +254,50 @@ def rewrite_ok(original: str, rewrite: str, source: str) -> str | None:
     return None
 
 
+def _words(s: str) -> list[str]:
+    folded = unicodedata.normalize("NFKD", (s or "").lower())
+    folded = "".join(ch for ch in folded if not unicodedata.combining(ch))
+    return re.findall(r"[^\W_]+", folded)
+
+
+def is_cosmetic_rewrite(original: str, rewrite: str) -> bool:
+    """True when `rewrite` differs from `original` only cosmetically:
+    near-identical overall (ratio ≥ NEAR_IDENTICAL_RATIO) and every word
+    present in one but not the other is shorter than COSMETIC_WORD_CHARS
+    — so a hedge, a qualifier or a changed entity is never cosmetic."""
+    o = " ".join((original or "").split())
+    r = " ".join((rewrite or "").split())
+    if o == r:
+        return True
+    if fuzz.ratio(o, r) < NEAR_IDENTICAL_RATIO:
+        return False
+    ow, rw = _words(o), _words(r)
+    if ow == rw:
+        return True
+    diff = set(ow) ^ set(rw)
+    return all(len(w) < COSMETIC_WORD_CHARS for w in diff)
+
+
 def apply_verdicts(
     facts: list[dict], verdicts: list[dict], *, source: str, source_lang: str = "",
     run: str, model: str,
 ) -> dict:
     """Apply the gate's verdicts to a record's facts. Returns
     {facts, kept_indices, dropped, rewritten, moved, rejected_rewrites,
-    text_changed}. Every kept fact carries `support` ({verdict, note[,
-    original_bullet][, moved_from]}); dropped facts are listed with their
-    reason so the cache and the feedback history can record them."""
+    cosmetic_rewrites, missing_rewrites, text_changed}. Every kept fact
+    carries `support` ({verdict, note[, original_bullet][, moved_from]});
+    dropped facts are listed with their reason so the cache and the
+    feedback history can record them. A `rewrite` verdict with no rewrite
+    text, or with a cosmetic one, keeps the original bullet as
+    `supported` (the note is kept, the case is listed)."""
     kept: list[dict] = []
     kept_indices: list[int] = []
     dropped: list[dict] = []
     rewritten: list[dict] = []
     moved: list[dict] = []
     rejected: list[dict] = []
+    cosmetic: list[dict] = []
+    missing: list[dict] = []
     text_changed = False
     for i, (fact, v) in enumerate(zip(facts, verdicts)):
         verdict = v["verdict"]
@@ -275,8 +319,18 @@ def apply_verdicts(
         new = dict(fact)
         support = {"verdict": verdict, "note": note, "gate": GATE_VERSION, "run": run, "model": model}
         if verdict == "rewrite":
-            reason = rewrite_ok(fact.get("bullet") or "", v.get("rewrite") or "", source)
-            if reason is None:
+            original = fact.get("bullet") or ""
+            proposed = (v.get("rewrite") or "").strip()
+            reason = rewrite_ok(original, proposed, source)
+            if not proposed:
+                support["verdict"] = "supported"
+                support["rewrite_missing"] = True
+                missing.append({"index": i, "note": note})
+            elif is_cosmetic_rewrite(original, proposed):
+                support["verdict"] = "supported"
+                support["cosmetic_rewrite"] = proposed
+                cosmetic.append({"index": i, "from": original, "to": proposed, "note": note})
+            elif reason is None:
                 new_bullet = normalize_bullet(v["rewrite"], source_lang)
                 support["original_bullet"] = fact.get("bullet") or ""
                 new["bullet"] = new_bullet
@@ -295,6 +349,16 @@ def apply_verdicts(
         new["support"] = support
         kept.append(new)
         kept_indices.append(i)
+    # The earned-interactions rule (R3), deterministic: a kept `interactions`
+    # bullet whose grounding quote states no link — or beyond the cap — moves
+    # to the natural factors; its causal wrapper, if any, was rewritten away
+    # by the verdict above.
+    for pos in unearned_indices(kept, source_lang):
+        f = kept[pos]
+        f["support"].setdefault("moved_from", "interactions")
+        f["support"]["unearned_interaction"] = True
+        f["subsection"] = DEMOTION_TARGET
+        moved.append({"index": kept_indices[pos], "from": "interactions", "to": DEMOTION_TARGET})
     # A rewrite can make two bullets restate each other — collapse them.
     dd = dedupe_facts(kept)
     if dd.drops:
@@ -308,5 +372,6 @@ def apply_verdicts(
     return {
         "facts": kept, "kept_indices": kept_indices, "dropped": sorted(dropped, key=lambda d: d["index"]),
         "rewritten": rewritten, "moved": moved, "rejected_rewrites": rejected,
+        "cosmetic_rewrites": cosmetic, "missing_rewrites": missing,
         "text_changed": text_changed,
     }

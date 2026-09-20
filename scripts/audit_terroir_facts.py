@@ -102,6 +102,9 @@ only (a count and the offending rows, never a failure):
                                 since (`scripts/02d_verify_terroir_facts.py`).
   rewrite_rejected           R  a gate rewrite the guards refused (kept the
                                 original bullet) — for a human look.
+  rewrite_missing            R  a gate `rewrite` verdict that came back with
+                                no rewrite text (kept the original bullet
+                                as supported, note kept) — for a human look.
 
   name_guard_other           R  the name guard for the 20 non-FR countries
                                 (the record's source text through
@@ -227,6 +230,7 @@ CHECKS = (
     "cross_record_identical_en", "en_equals_src", "name_guard", "name_guard_other", "foreign_name", "wiki_binding",
     "no_own_chapter", "quote_outside_own_chapter", "wiki_with_cahier_quote",
     "feedback_recurrence", "masaf_sidecar_stale", "gate_pending", "rewrite_rejected",
+    "rewrite_missing",
 )
 _LETTERS_RE = re.compile(r"[^\W\d_]+")
 
@@ -583,6 +587,7 @@ def audit_one(
     rejected = [
         i for i, f in enumerate(facts) if (f.get("support") or {}).get("verdict") == "rewrite-rejected"
     ]
+    missing = [i for i, f in enumerate(facts) if (f.get("support") or {}).get("rewrite_missing")]
 
     return {
         "slug": slug,
@@ -605,6 +610,7 @@ def audit_one(
         "masaf_sidecar_stale": country == "it" and masaf_sidecar_stale(slug),
         "gate_pending": gate_pending(data),
         "rewrite_rejected": rejected,
+        "rewrite_missing": missing,
     }
 
 
@@ -684,6 +690,8 @@ def collect_findings(
             rows["gate_pending"].append({"slug": slug})
         for i in a.get("rewrite_rejected") or []:
             rows["rewrite_rejected"].append({"slug": slug, "index": i})
+        for i in a.get("rewrite_missing") or []:
+            rows["rewrite_missing"].append({"slug": slug, "index": i})
     for r in translation_rows:
         rows[r["check"]].append({k: v for k, v in r.items() if k != "check"})
     rows["cross_record_shared_quotes"] = shared_groups
@@ -731,7 +739,8 @@ def summarize(
         if name in dict(STYLE_CHECKS) or name == "non_latin":
             entry["source"] = sum(1 for r in rows if "lang" not in r)
             entry["translated"] = len(rows) - entry["source"]
-        if name in ("intra_record_duplicates", "feedback_recurrence", "rewrite_rejected", "en_equals_src"):
+        if name in ("intra_record_duplicates", "feedback_recurrence", "rewrite_rejected", "rewrite_missing",
+                    "en_equals_src"):
             entry["records"] = len({r["slug"] for r in rows})
         checks[name] = entry
     strict_failures = sum(c["count"] for c in checks.values() if c["strict"])
@@ -803,6 +812,8 @@ def print_per_aoc(audit: dict, verbose: bool) -> None:
         flags.append("gate-pending")
     if audit.get("rewrite_rejected"):
         flags.append(f"rewrite-rejected={len(audit['rewrite_rejected'])}")
+    if audit.get("rewrite_missing"):
+        flags.append(f"rewrite-missing={len(audit['rewrite_missing'])}")
     flag_str = (" [" + ", ".join(flags) + "]") if flags else ""
     print(
         f"  {audit['slug']:40} {audit['country']:2} n={audit['n_facts']:2} "
