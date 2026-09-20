@@ -149,7 +149,170 @@ details and "Hard rules" for invariants that apply to every country.
   `--workers N` for concurrent processing (Ollama needs
   `OLLAMA_NUM_PARALLEL >= N`; Anthropic respects account limits).
   `scripts/audit_terroir_facts.py` recomputes coverage against the
-  current sources and flags drift / erosion.
+  current sources and flags drift / erosion. The grounding test itself is
+  the shared [scripts/_lib/terroir_coverage.py](scripts/_lib/terroir_coverage.py)
+  — ellipsis-aware: a quote that joins two source spans with "[…]" is
+  graded span by span, so it no longer fails the single-contiguous-match
+  test and flips to `wiki` — and block-aware: the verbatim blocks (≥ 12
+  chars) of a quote are summed, so one pdftotext artefact inside a
+  quote ("gradi- giorno") no longer halves its coverage (2026-09-13:
+  Montepulciano d'Abruzzo had lost 8 of 9 true facts to it); the 0.6
+  threshold is unchanged — and every 02d script plus the audit import
+  it. Two **cache post-passes** apply fixes without an LLM call:
+  [scripts/recompute_terroir_provenance.py](scripts/recompute_terroir_provenance.py)
+  re-grades the existing caches with that rule (loading each country's
+  02d module for the exact source text it graded against; stale caches
+  are skipped, never dropped) and syncs the per-fact `provenance` into
+  the 02e caches; [scripts/dedupe_terroir_facts.py](scripts/dedupe_terroir_facts.py)
+  collapses facts restated across the four sub-section calls
+  ([scripts/_lib/terroir_dedupe.py](scripts/_lib/terroir_dedupe.py):
+  near-identical bullets, or same/contained source quote + substantial
+  bullet overlap; never two bullets with different numbers, never two
+  bullets leading with different sub-denomination names — stage 04's
+  sibling filter depends on those) and prunes the same indices from the
+  index-aligned 02e caches, updating their `source_facts_sha`, so no
+  translation is lost or redone. Both take `--dry-run` / `--only` and
+  write a JSON report under `tmp/terroir-facts-review/`. Two more
+  post-passes of the same shape: [scripts/normalize_terroir_facts.py](scripts/normalize_terroir_facts.py)
+  applies the deterministic clean-up of
+  [scripts/_lib/terroir_normalize.py](scripts/_lib/terroir_normalize.py)
+  (regulatory colour codes after a grape name — "Pinot noir N" — VT /
+  SGN expansion, terminal period, and in the four target locales the
+  Latinisation of residual Greek / Cyrillic script: homoglyphs mapped,
+  gloss tokens transliterated, chemical prefixes such as "α-terpineol"
+  and predominantly non-Latin bullets left alone) to source and
+  translation caches in step, and stage 04 applies the same normaliser at
+  render time;
+  [scripts/filter_terroir_boilerplate.py](scripts/filter_terroir_boilerplate.py)
+  drops facts whose quote is a tautology pattern
+  ([scripts/_lib/terroir_boilerplate.py](scripts/_lib/terroir_boilerplate.py))
+  quoted by ≥ 3 records of one country ("the wines' uniqueness is due to
+  soil, climate and summer winds" — most Greek PGI specs), never a
+  record's only fact and never a bullet carrying a number. Stage 02d
+  itself now dedupes after its four sub-section calls, appends one shared
+  English style block to every country's extraction prompt
+  ([scripts/_lib/terroir_prompts.py](scripts/_lib/terroir_prompts.py):
+  full sentences, no arrows, no colour codes, expand VT / SGN, never
+  mention the document, keep hedges, skip tautologies) and, for a cahier
+  shared by several appellations (the 51 Alsace grands crus), grades
+  each record against its own chapter only
+  ([scripts/_lib/terroir_chapters.py](scripts/_lib/terroir_chapters.py))
+  — a cru without an own chapter is skipped, never grounded on another
+  cru's text. On the translation side every 02e script builds its prompt
+  through `translation_system_prompt` in the same module: appellation,
+  commune, vineyard, grape and institution names stay verbatim; common
+  nouns (generic soils, climates, harvest categories, scheme
+  abbreviations) are translated; geography takes the target language's
+  established exonym (Vosges → Vogezen, Rhin → Rijn, Piemonte →
+  Piedmont; verbatim only as an appellation name); Greek and Bulgarian
+  sources must come out in Latin script. `scripts/_lib/exonyms.py` holds
+  the exonym table and
+  [scripts/detect_untranslated_terroir_facts.py](scripts/detect_untranslated_terroir_facts.py)
+  lists the (slug, locale) pairs still carrying non-Latin script, a
+  leaked common noun or a source-form geographic name, with the exact
+  `02e --refresh --only … --lang …` command per country; every 02e
+  script takes `--only`.
+- **Per-record review feedback is a constraint layer for the next
+  extraction, never content.** A quality review's verified findings are
+  kept per record in `raw/terroir-facts-feedback/<slug>.json`
+  ([scripts/_lib/terroir_feedback.py](scripts/_lib/terroir_feedback.py)):
+  `do_not_claim` (verified misleading claims with the failure mode, the
+  stage — `extraction` / `translation` / `both` — and the verifier's
+  source-quoting reason), `capture_if_present` (what the source describes
+  prominently and no bullet captured), `record_cautions` (sibling text
+  inside the source, a wrong binding, a source typo, a wrong Wikipedia
+  article), `reviews` and a `history` list for later gate runs. Every
+  02d script calls `with_feedback(system, slug)` right after formatting
+  its system prompt (live call and `--emit-todo` alike; the wiring lint
+  in `tests/test_terroir_feedback.py` fails when a script drops it):
+  the block phrases each negative as "do not assert … unless the source
+  states it explicitly", never carries the reviewer's corrected text,
+  and includes only the `extraction` / `both` entries — `translation`
+  entries are for a 02e back-check. `audit_terroir_facts.py` reports
+  `feedback_recurrence`: a do-not-claim entry whose source-language
+  bullet still matches a current bullet (the known error is still there
+  before a re-run, or came back after one). Sidecars are built and
+  merged from a review's evidence directory by
+  [scripts/build_terroir_feedback.py](scripts/build_terroir_feedback.py)
+  (review 2026-09-12: 384 do-not-claim entries in 346 records, 1,133
+  hints, 96 cautions over 1,238 records — see
+  [docs/review-terroir-facts-2026-09-12.md](docs/review-terroir-facts-2026-09-12.md)).
+  Like the other `raw/` caches the sidecars are gitignored; a checkout
+  without them extracts exactly as before.
+- **Every terroir-fact write is snapshotted; the chain is one rollback
+  unit.** Stage 02d, the gate, stage 02e, the back-check and the four
+  post-passes write the caches only through
+  `terroir_cache.write_source_cache` / `write_translation_cache`
+  ([scripts/_lib/terroir_cache.py](scripts/_lib/terroir_cache.py); the
+  wiring lint in `tests/test_terroir_backup.py` fails on a direct
+  `cache.write_json`). The first write to a slug in a run copies its
+  source cache AND its four translation caches to
+  `raw/terroir-facts-backup/<run>/` ([scripts/_lib/terroir_backup.py](scripts/_lib/terroir_backup.py):
+  one entry file per slug, so parallel per-country processes share a run
+  id without racing); the run id is `OWM_TERROIR_RUN`, else a
+  per-process timestamp. `scripts/rollback_terroir_facts.py --list` /
+  `--run <id> [--only slug] [--dry-run]` restores every file the run
+  overwrote and deletes every file it created, source and translations
+  together (a rollback is itself snapshotted, so it can be undone); then
+  rebuild with stage 04. [scripts/rerun_terroir_facts.py](scripts/rerun_terroir_facts.py)
+  runs a scoped re-run under one id — it marks the scoped caches stale
+  (`cahier_source_sha` prefixed `stale:`, written through the backup) and
+  then chains `02d --batch` per country (parallel) → `02d_verify --batch`
+  → `02e --batch` per country → `02e_verify --batch` → the audit, logs
+  under `/tmp/owm-<run>/`.
+- **The claim-support gate is part of the pipeline (review 2026-09-12,
+  R2 / R3 / R7 / R8).** Stage 02d's coverage test only proves the *quote*
+  exists; [scripts/02d_verify_terroir_facts.py](scripts/02d_verify_terroir_facts.py)
+  ([scripts/_lib/terroir_gate.py](scripts/_lib/terroir_gate.py)) grades,
+  per record in ONE request, every bullet's *claim* against the exact
+  source text 02d graded against (`terroir_sources`), the Wikipedia
+  hints and the record's feedback sidecar (verified-misleading claims
+  become explicit checks, record cautions disqualify pasted or mis-bound
+  text). Verdicts are applied deterministically: `supported` stays;
+  `rewrite` replaces the bullet with the model's narrower rewrite
+  (guarded — no number absent from bullet + source, no arrow, sane
+  length; a refused rewrite keeps the original and is listed by the audit
+  as `rewrite_rejected`); `drop` removes it (unsupported, foreign,
+  tautology, or `restates` another bullet — the semantic dedupe);
+  `subsection` moves a clearly misfiled bullet. An `interactions` bullet
+  is supported only when the source sentence states the causal link.
+  Each kept fact carries `support` ({verdict, note[, original_bullet][,
+  moved_from]}); the cache carries a `gate` block (shas it keyed on,
+  counts, the dropped bullets) and the feedback sidecar a `history`
+  entry. Translations: index-aligned prune for pure drops; a rewrite
+  re-keys them `pending:<sha>` so 02e re-translates. Incremental — a
+  record is re-gated when its facts or source sha change; the audit's
+  `gate_pending` lists what is due. The 21 extraction prompts share the
+  same rules through `STYLE_RULES` in
+  [scripts/_lib/terroir_prompts.py](scripts/_lib/terroir_prompts.py):
+  one full sentence of ~120–220 characters (the 140-character cap that
+  produced the "Label:" fragments is gone), named entities and figures
+  first (up to two extra bullets on a long text), no causal wrapper on a
+  co-occurrence, an earned `interactions` sub-section.
+- **The translation back-check follows 02e (R6).**
+  [scripts/02e_verify_terroir_facts.py](scripts/02e_verify_terroir_facts.py)
+  ([scripts/_lib/terroir_backcheck.py](scripts/_lib/terroir_backcheck.py))
+  compares, per (record, locale) in one request, each translated bullet
+  with its source bullet — changed numbers, dropped or upgraded hedges,
+  wrong entities and back-formed names, the watch-list false friends
+  (generoso → generous, tirage → disgorgement, Burgundian climat →
+  climate, Lehm → clay, Pintes → Pinot, Немски ризлинг ↔
+  Welschriesling), untranslated common nouns, missing exonyms
+  (`exonyms.exonym_hits` feeds the model its hits) — and applies the
+  corrected translation under the same guards; every checked bullet
+  carries `check`, the cache a `backcheck` block keyed on both shas. The
+  glossary ([scripts/_lib/translation_glossary.py](scripts/_lib/translation_glossary.py))
+  and the exonym table carry the same terms so 02e gets them right
+  first time.
+- **The LLM audit is the acceptance measure.**
+  [scripts/audit_terroir_facts_llm.py](scripts/audit_terroir_facts_llm.py)
+  grades a sample of records' rendered EN bullets against the full source
+  with an adversarial verifier on a *different* model
+  (`claude-opus-5`, vs the sonnet-4-6 extractor / gate) and reports the
+  reader-misled share with a Wilson interval; `--from-backup <run>`
+  grades the same records' pre-run state and `--compare A B` prints the
+  paired before / after. Run it after every scoped re-run; the review's
+  target is < 1.5 % misleading.
 
 ## Denomination model (sub-denominations)
 
@@ -219,6 +382,18 @@ PDFs into the cahiers directory, and points the manifest at the first
 override URL. Stage 02's cross-bundle rescue then matches the cahier
 header by name across the corpus, so overrides automatically promote
 matching stubs to full extracts. Re-run stages 01 → 04 after edits.
+
+The opposite failure — BO Agri serves a PDF that downloads fine but is
+verifiably *another* appellation's cahier (Pierrevert carried
+Saint-Pourçain's lien; L'Étoile and Grands-Echezeaux carried Bourgogne
+Passe-tout-grains') — is pinned in the **checked-in**
+[scripts/_lib/fr/register_overrides.json](scripts/_lib/fr/register_overrides.json)
+with `prefer_cahier: true`: stage 01 then binds the eAmbrosia register's
+cahier attachment ahead of BO Agri (full `eambrosia-register` provenance,
+`boagri_url` left empty), bypassing the has-usable-cahier guard that
+otherwise protects working resolutions from INAO outages. The audit's FR
+name guard (`audit_terroir_facts.py`, strict) flags a lien that never
+names its appellation, so a recurrence cannot go unnoticed.
 
 ## eAmbrosia register — second source for the FR cahier
 
@@ -572,8 +747,18 @@ touches many records still wants a full run.
 | 02b_translate_styles.py | raw/wikipedia/styles/<lang>/*.json | raw/translations/styles/<lang>/*.json + manifest.json |
 | 02b_translate_grapes.py | raw/wikipedia/grapes/<lang>/*.json + grape-corpus dominant-lang | raw/translations/grapes/<lang>/*.json + manifest.json |
 | 02c_translate_summaries.py | raw/inao/cahier-extracted/*.json | raw/translations/summaries/<lang>/*.json |
-| 02d_extract_terroir_facts.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/aocs/fr/ | raw/terroir-facts/*.json + manifest.json |
+| 02d_extract_terroir_facts.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/aocs/fr/ + raw/terroir-facts-feedback/*.json (optional) | raw/terroir-facts/*.json + manifest.json |
 | 02e_translate_terroir_facts.py | raw/terroir-facts/*.json | raw/translations/terroir-facts/<lang>/*.json |
+| recompute_terroir_provenance.py | raw/terroir-facts/*.json + each country's 02d source resolver | raw/terroir-facts/*.json (coverage + provenance, in place) + raw/translations/terroir-facts/<lang>/*.json (provenance) |
+| dedupe_terroir_facts.py | raw/terroir-facts/*.json + wiki/_index.json + wiki/data/aocs.en.*.js (sub-denomination roster) | raw/terroir-facts/*.json (facts pruned, `n_deduped`) + raw/translations/terroir-facts/<lang>/*.json (same indices pruned, `source_facts_sha` updated) |
+| normalize_terroir_facts.py | raw/terroir-facts/*.json + raw/translations/terroir-facts/<lang>/*.json | same files (bullets normalised in place, translation caches re-keyed) |
+| filter_terroir_boilerplate.py | raw/terroir-facts/*.json | raw/terroir-facts/*.json (facts pruned, `n_boilerplate`) + raw/translations/terroir-facts/<lang>/*.json (same indices pruned) |
+| build_terroir_feedback.py | a review evidence dir (`confirmed-misleading.json`, `merged.json`) + raw/terroir-facts/*.json (graded-against shas) | raw/terroir-facts-feedback/<slug>.json + manifest.json (merged, never overwritten) |
+| 02d_verify_terroir_facts.py | raw/terroir-facts/*.json + each country's 02d source resolver + raw/terroir-facts-feedback/*.json | raw/terroir-facts/*.json (facts gated, `support` per fact, `gate` block) + raw/translations/terroir-facts/<lang>/*.json (pruned / re-keyed `pending:`) + feedback `history` + manifest-gate.json + tmp/terroir-facts-review/gate-<run>.json |
+| 02e_verify_terroir_facts.py | raw/translations/terroir-facts/<lang>/*.json + raw/terroir-facts/*.json + raw/terroir-facts-feedback/*.json | raw/translations/terroir-facts/<lang>/*.json (fixed bullets, `check` per fact, `backcheck` block) + feedback `history` + manifest-backcheck.json + tmp/terroir-facts-review/backcheck-<run>.json |
+| rerun_terroir_facts.py | a scope (slug list) | raw/terroir-facts-backup/<run>/ (snapshots) → the chain above; logs /tmp/owm-<run>/ |
+| rollback_terroir_facts.py | raw/terroir-facts-backup/<run>/ | raw/terroir-facts/*.json + raw/translations/terroir-facts/<lang>/*.json (restored / deleted) |
+| audit_terroir_facts_llm.py | raw/terroir-facts/ + raw/translations/terroir-facts/en/ (or a backup run) + each country's 02d source resolver | tmp/terroir-facts-review/llm-audit-<stamp>.json (read-only) |
 | 02g_fetch_vivc.py | raw/inao/cahier-extracted/*.json + raw/es/pliegos-extracted/ + raw/pt/cadernos-extracted/ + raw/vivc/slug_overrides.json | raw/vivc/{search,passport,by-slug}/*.html\|json + manifest.json + slug_overrides.example.json |
 | 02i_fetch_wikidata_qids.py | raw/*/*-extracted/*.json (slug + id_eambrosia) + raw/wikipedia/aocs/<lang>/ + raw/wikidata/slug_overrides.json | raw/wikidata/qids-by-slug.json + p9854.json + manifest.json + slug_overrides.example.json |
 | 03_generate_wiki.py | raw/inao/cahier-extracted/*.json + raw/terroir-facts/ | wiki/*.md, wiki/_index.json |
@@ -1183,7 +1368,20 @@ Pipeline per stub:
    and run `pdftotext -layout`.
 4. Carve the layout-text into a `{article_num: body}` dict via
    `extract_articles` (anchor regex tolerates the form-feed page
-   breaks pdftotext emits between articles), then parse:
+   breaks pdftotext emits between articles). A consolidated
+   disciplinare appends one sub-disciplinare per sottozona (ALLEGATO N —
+   SOTTOZONA «…», Trentino's TITOLO II), each restarting at Art. 1:
+   `extract_article_runs` splits the header sequence into runs at every
+   restart, drops a table of contents (every body a title line) and a
+   decree preamble bound in front (an Art. 1 that never *reserves* the
+   name), keeps the parent's own run as `article_bodies` and the later
+   runs as the sidecar's `annexes` (`{title, article_bodies}`). Before
+   2026-09-13 the last occurrence of each article number won, so a parent
+   with annexes took its summary, roster, area and Art. 9 lien from its
+   last sottozona (Montepulciano d'Abruzzo → San Martino sulla Marrucina;
+   20 parents affected, review R4) — and, as the parent's real Art. 1 now
+   names them, the stage-04 sottozona detector finds 77 sottozone in 17
+   parents (was 38 in 10). Then parse:
    - **Article 1** → summary (first paragraph, ≤ 600 chars)
    - **Article 2** → grape varieties via `match_variety` on
      line/colon/comma-split candidates + `vitigno NAME` regex scan
@@ -4544,10 +4742,21 @@ entries and never resubmits an already-processed one — and pass 2 matches
 answers by content, not call order (runs are single-threaded all the
 same).
 
-Default models (`scripts/_lib/providers.py`): `claude-sonnet-4-6` for
-anthropic, `mistral-medium-latest` for mistral — used by `--batch` and by
-synchronous `--provider` runs alike; override per run with `--model`. API
-keys are read from the environment or a repo-root `.env`. Anthropic
+Default models are **per stage** (`providers.STAGE_DEFAULTS`, decided
+2026-09-14 after the paired experiments in
+[docs/review-terroir-facts-2026-09-12.md](docs/review-terroir-facts-2026-09-12.md)):
+02d extraction `claude-sonnet-5` with thinking off; the gate
+(`02d_verify`) and the LLM audit `claude-opus-5` with adaptive thinking;
+02e, the back-check and 02c `claude-sonnet-4-6`; mistral
+`mistral-medium-latest`. Used by `--batch` and by synchronous `--provider`
+runs alike (`batch.default_model(provider, stage)` /
+`default_thinking()`, `providers.make_provider(..., stage=)`); override
+per run with `--model` / `--thinking`, or `OWM_BATCH_THINKING` for an
+experiment. `tests/test_stage_defaults.py` pins the configuration. API
+keys are read from the environment or a repo-root `.env`. The next
+steps — migrating the corpus to this configuration and the remaining
+review recommendations — are in
+[docs/handoff-terroir-facts-2026-09-14.md](docs/handoff-terroir-facts-2026-09-14.md). Anthropic
 batches use the Messages Batches SDK; Mistral batches use a file-upload /
 poll / download REST flow (no `mistralai` SDK dependency).
 

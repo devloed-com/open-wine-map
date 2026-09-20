@@ -81,17 +81,27 @@ DGC cascading unlock realised in this round: **+106 DGCs** (Beaune climats, Chas
 
 **To retry the cookie-expired ones:** refresh `cf_clearance` in your browser (open <https://www.legifrance.gouv.fr/loda/id/JORFTEXT000024923948>, copy fresh cookie), update `~/.config/openwinemap/legifrance.json`, then `.venv/bin/python scripts/01b_solve_legifrance.py --refresh --only 71 --only 134 --only 211 --only 230 --only 247`.
 
-### Terroir-fact source contamination — 3 parents bound to the wrong BO Agri PDF — ❌ open (2026-09-11)
+### Terroir-fact source contamination — 3 parents bound to the wrong BO Agri PDF — ✅ resolved via the register (2026-09-11)
 
-Found by the 1,000-bullet terroir-fact review (plan: `docs/plan-terroir-facts-quality.md`, W2b). The extracted `lien_au_terroir` never names the appellation; every terroir fact on these pages is about another AOC. Fix = pin the correct cahier in `raw/inao/cahiers/manual_overrides.json`, then 01 → `02 --only` → `02d --slug` → 02e → 04.
+Found by the 1,000-bullet terroir-fact review (plan: `docs/plan-terroir-facts-quality.md`, W2b) — **resolved 2026-09-11** without a BO Agri lookup: the eAmbrosia register serves each appellation's own cahier ("cdc Pierrevert BO.pdf", "l-Etoile CDC homologue.pdf", "Grands-Echezeaux CDC publication BO.pdf"). The three are pinned `prefer_cahier: true` in the checked-in `scripts/_lib/fr/register_overrides.json`; stage 01 binds the register attachment ahead of BO Agri for them, stage 02 re-extracted them (liens now name the appellation), and the audit's FR name guard (`audit_terroir_facts.py`) catches any recurrence.
 
-| id | slug | lien actually belongs to | manifest PDF | action |
-|---:|---|---|---|---|
-| 290 | `pierrevert` | Saint-Pourçain (6 mentions, 0 of Pierrevert) | `e2a5794ebf…` | find the Pierrevert cahier on the BO Agri search UI |
-| 187 | `l-etoile` | Bourgogne Passe-tout-grains (byte-identical lien) | `49acff2270…` (shared with 184) | find the L'Étoile cahier |
-| 184 | `grands-echezeaux` | Bourgogne Passe-tout-grains (byte-identical lien) | `49acff2270…` (shared with 187) | find the Grands-Echezeaux cahier |
+| id | slug | was bound to | now |
+|---:|---|---|---|
+| 290 | `pierrevert` | Saint-Pourçain's cahier | register attachment 2952, `eambrosia-register` |
+| 187 | `l-etoile` | Bourgogne Passe-tout-grains' cahier | register attachment 2083, `eambrosia-register` |
+| 184 | `grands-echezeaux` | Bourgogne Passe-tout-grains' cahier | register attachment 4206, `eambrosia-register` |
 
-Code-side guard (lien must name its appellation) is part of the same plan.
+
+### Terroir-fact source contamination — Bourgogne Passe-tout-grains + a shared PDF — ✅ resolved (2026-09-13)
+
+Found by the full-corpus review (`docs/review-terroir-facts-2026-09-12.md`, R4).
+
+| id | slug | problem | resolution |
+|---:|---|---|---|
+| 144 | `bourgogne-passe-tout-grains` | bound to PDF `49acff22…` (BO Agri `e89b7ce3…`) whose extracted lien is the **AOC Beaujolais** cahier | `prefer_cahier` pin in `scripts/_lib/fr/register_overrides.json` → register attachment `CDC_Bourgogne_Passe-tout-grains.pdf` (`3ace5ac0…`); re-extracted: lien names Passe-tout-grains 6×, grapes gamay + pinot noir (+ chardonnay / pinot blanc / pinot gris accessory), styles red + rosé; 02d re-run in the R1 batch |
+| 870 / 980 | `hautes-alpes` / `haute-vienne` | both manifest entries carry BO Agri `22caf075…` / PDF `1106c71b…` | **not a misattribution**: the PDF is the arrêté of 2 Nov 2011 bundling ~20 IGP cahiers (Agenais, Comté Tolosan, Coteaux de Glanes, …); stage 02's cross-bundle rescue carved each record's own cahier (Hautes-Alpes 3× / Haute-Vienne 16× own name, 0× the other), and the shared `boagri_url` is the document that contains both. No change. |
+
+The audit's name guard now requires the whole folded name or the stem of its longest token (≥ 6 letters) — "tout" / "grains" no longer pass a Beaujolais cahier — and stays strict for FR (`name_guard`), report-only for the other 20 countries (`name_guard_other`: CZ region-wide texts never name the wine by design).
 
 ### SIQO referentiel — 2 wines missing (eAmbrosia has them, INAO doesn't) — ✅ both RETIRED (2026-08-26)
 
@@ -426,6 +436,43 @@ Two pins were needed:
 |---:|---|---|---|
 | 335 | Calvados Domfontais | `PGI-FR-01837` | SIQO spelling; register + cahier both say *Domfrontais* |
 | 1091 | Marc d'Alsace Gewurztraminer | `PGI-FR-01836` | SIQO carries no `categorie`, so the product-type partition cannot be picked (same root cause as the `cote-roannaise` / `muscat-du-cap-corse` `is_wine` side-finding above; those two resolve on the all-partition fallback) |
+
+## Cross-country — terroir-facts audit findings after the 2026-09-13 re-run
+
+Report-only checks added by review R9 (`scripts/audit_terroir_facts.py`,
+run `tmp/terroir-facts-review/audit-r1-2026-09-13.json`). Each needs a
+human look; none blocks the strict gate.
+
+### `wiki_binding` — 23 records whose Wikipedia article title shares no token with the name
+Pin the right article or `missing` in `raw/wikipedia/aoc_overrides.json`,
+then `02b_fetch_aoc_lexicon.py --lang <l> --source <dir> --only <slug> --refresh`
+(a changed revision re-triggers 02d for the record). Probably wrong:
+`frusinate` → *Provincia di Frosinone* (the province), `lisboa` → *Lista
+de vinhos* (a list), `lesvos` → *Λευκό κρασί* (white wine in general),
+`regensburger-landwein` → *Baierwein*, `starkenburger-landwein` →
+*Hessische Bergstraße*, the 7 HR records bound to *Vinogradarska
+područja Republike Hrvatske* (the umbrella article — legitimate as a
+hint, like LU / MT, but pin it explicitly so the check stops firing).
+Probably right (a naming-only mismatch): `ahr`, `eger` / `mor`
+(*borvidék*), `saint-mont`, `var`, `coteaux-de-die`, `english-wine` /
+`welsh-wine` (*Wine from the United Kingdom*), `chios` (*Αριούσιος
+οίνος* is the Chios wine), `colli-etruschi-viterbesi` (*Tuscia*).
+
+### `foreign_name` — source text names another appellation ≥ 5× and its own never
+`terras-do-dao` (PT: the IGP text names Vinho Verde 21×) and
+`malvasia-handakas-candia` (GR: the spec names Κρήτη 20× — check whether
+the file is the Cretan umbrella spec); `sobes` / `schwabischer-landwein`
+/ `cvicek` are by design (region-wide or parent text).
+
+### `rewrite_rejected` — 52 gate rewrites the guards refused
+Mostly an empty rewrite or one over 420 chars; the original bullet was
+kept and carries `support.verdict = "rewrite-rejected"` with the model's
+note. Re-gate them (`02d_verify_terroir_facts.py --refresh --only-file …`)
+after any prompt change, or hand-check the notes.
+
+### Records without a resolvable source
+`collioure` (already listed under France) — the only record the gate and
+the LLM audit skip (`no_source`).
 
 ## Spain
 
@@ -839,6 +886,16 @@ consortium-management decree, and not a different product entirely) —
 or wait out its expected cancellation. (The research prompt formerly at
 `tmp/it-masaf-disciplinare-research-prompt.md` was cleaned from tmp/;
 resurface from git history if needed.)
+
+### MASAF article carver takes the last sottozona annex — ✅ fixed (2026-09-13)
+
+`extract_articles` kept the **last** occurrence of each article number, so a consolidated disciplinare whose sottozona annexes restart at *Art. 1* yielded the last annex's summary / grapes / area / Art. 9 for the whole DOP (review 2026-09-12, R4). `extract_article_runs` in `scripts/_lib/it/masaf.py` now splits the header sequence into runs at every restart, drops a TOC run (all bodies < 200 chars) and a decree preamble bound in front of the disciplinare (Veneto IGT: five transitional articles whose Art. 1 never *reserves* the name), keeps the parent's own run and stores the later runs as the sidecar's `annexes` (`{title, article_bodies}` — "ALLEGATO 3 «MONTEPULCIANO D'ABRUZZO» SOTTOZONA «ALTO TIRINO»"). `parse_grapes_with` also lets a genuine roster phrase vouch for a slug first hit via the DOC name (Trebbiano d'Abruzzo → trebbiano-abruzzese was lost). Parser template bumped to `it-masaf-disciplinare-v2`; 02f re-run for all 522.
+
+Result: 20 parents structurally corrected (Abruzzo grapes 2→17, Trentino 4→28, Colli Tortonesi 1→24, Langhe 1→14, Romagna 1→15, Terre di Cosenza 9→17, Friuli Colli Orientali 2→19; Montepulciano / Cerasuolo / Trebbiano d'Abruzzo + Abruzzo get the parent's Art. 9 lien) and, because the parent's real Art. 1 now names the sottozone, the stage-04 detector emits **77 sottozone in 17 parents** (was 38 in 10 — Romagna 16, Terre di Cosenza 7, Friuli Colli Orientali 5, Riviera Ligure di Ponente 5, Asti / Barbera d'Asti / Colli Tortonesi 2 each).
+
+Open follow-ups:
+- Sottozone whose parent Art. 1 does not enumerate them but whose annex titles do (Montepulciano d'Abruzzo 9, Abruzzo 4, Trentino 5 + Titolo II Trentino Superiore) — feed the `annexes[].title` roster to `extract_it_sottozone`, and ground each synthesized sottozona on its own annex Art. 9 (the Alsace `terroir_chapters` pattern) instead of inheriting the parent's bullets.
+- `friuli-colli-orientali`: the detector merges «Schioppettino di Prepotto» and «Savorgnano» into one slug (`schioppettino-di-prepotto-savorgnano`) — a quote-splitting quirk in `_split_pattern_b_list`.
 
 ### MASAF grape-extraction fix — ✅ landed 2026-05-20
 
@@ -2060,6 +2117,19 @@ now points at the same **Tokaj Wine Road Association** entry as
 `vinohradnicka-oblast-tokaj` — the two PDOs are the same physical Tokaj
 oblasť under different brand registrations.
 
+### ΥΠΑΑΤ specs with sections pasted from another PGI — ❌ open (2026-09-12)
+
+The national technical files reuse text across PGIs; the terroir facts inherit it (`docs/review-terroir-facts-2026-09-12.md`, R4):
+
+| slug | pasted from | affected |
+|---|---|---|
+| `fthiotida` | ΠΓΕ Παρνασσός (names it; delimits Gravia / Elateia / Parnassos / Amfikleia above 350 m) | naturels facts #0–#4 |
+| `peloponnisos` | ΠΓΕ Αχαΐα / Πλαγιές Αιγιαλείας / Αρκαδία (semi-sparkling section) | #0, #3–#6 |
+| `retsina-evias` | Retsina Attikis (Mesogia, Markopoulo, MARKO cooperative) | human-factors facts |
+| `ipiros` | Ioannina sparkling section; #5's 1972 recognition is Zitsa's | #5, #7, #8 |
+
+Route: a foreign-name guard in 02d / the audit (source names another GI of the same country ≥ 3 × and its own 0 ×) so these sections are refused; curator note to ΥΠΑΑΤ optional.
+
 ## Czech Republic
 
 Country #14 (added 2026-05-24). 13 wine GIs (11 DOP + 2 PGI), all 13
@@ -2487,6 +2557,15 @@ title claimed by more than one appellation — which is exactly how these two
 surfaced. Worth running after each `02b_fetch_aoc_lexicon` sweep.
 
 ---
+
+## Cross-country — terroir-fact full-corpus review (2026-09-12) — ❌ open
+
+Report: `docs/review-terroir-facts-2026-09-12.md`; evidence `tmp/terroir-facts-review/full-review-2026-09-12/`. Data-side items not covered by the country sections above:
+
+- Wikipedia bindings: `tirol` → de.wikipedia *Toro (Weinbaugebiet)* (the Spanish DO); `montecastelli` → the village article (its wiki-only bullet #4 describes the village hill). Pin both `missing` in `raw/wikipedia/aoc_overrides.json`.
+- `sobes` fact #1 (Mikulov bioregion, Pavlov Hills limestone) is the Mikulovská podoblast 50 km east; Šobes sits on Bohemian Massif crystalline rock — the region-wide CHZO grounding plus the podoblast wiki hint.
+- `montana` (BG): the IAVV spec has the Danube "to the south" and Stara Planina "to the north"; bullet #0 silently corrects it — a source typo worth a note.
+- Re-run scope: `rerun-slugs.txt` (346 records with a verified misleading bullet) and the 730 records with "Label:" bullets (`det_checks.json` → `rows.label_prefix`), all but one extracted before the 2026-09-11 style block.
 
 ## Cross-country — grape pills show another country's spelling ✅ fixed 2026-09-06
 

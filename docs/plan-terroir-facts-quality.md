@@ -1,5 +1,12 @@
 # Terroir-fact quality fixes — implementation handoff (2026-09-11)
 
+> **2026-09-12 — full-corpus review:** every EN bullet was graded and the
+> high-severity findings verified; see
+> [review-terroir-facts-2026-09-12.md](review-terroir-facts-2026-09-12.md)
+> for the measured state after the fixes below and the next ranked work items
+> (R1–R10). Its headline: ≈ 7 % of bullets still mislead, three quarters from
+> extraction, and 83 % of the corpus predates the style block.
+
 Self-contained plan for a fresh session. Everything below was established by
 reading a stratified sample of 1,000 English terroir-fact bullets (plus an
 earlier 100) against their source quotes, and by a set of corpus-wide checks.
@@ -44,6 +51,185 @@ Baseline rates (n = 1,000, Wilson 95 % CI) to beat after the fixes:
 | misfiled sub-section | 1.7 % (1.1–2.7) |
 | no terminal punctuation | 8.1 % (6.6–10.0) |
 | fully clean | 58.1 % |
+
+## Landed 2026-09-11 — W3 + W4 as cache post-passes (no LLM call)
+
+- **W4** — `scripts/_lib/terroir_coverage.py` is now the one grounding
+  function (ellipsis-aware: a multi-span quote is graded span by span, and the
+  grade is the better of whole-quote and weakest-span, so nothing already
+  passing is demoted); all 21 `02d` scripts and `audit_terroir_facts.py`
+  import it. `scripts/recompute_terroir_provenance.py` re-graded the caches
+  through each country's own 02d source resolver: 467 caches rewritten,
+  provenance changed on **204 facts (174 wiki→both, 30 cahier→both)**, 481
+  translation caches synced; 26 stale records skipped (22 Wikipedia-revision
+  drift, 3 CH cahier-context drift, `collioure` no longer a 02d target) —
+  those want a 02d re-run, not a post-pass. The "~600" estimate above counted
+  every wiki-labelled fact with a cahier quote; only 226 of those quotes carry
+  an ellipsis, and 174 ground on every span. The residual ~400 are light
+  paraphrases / typography (coverage 0.4–0.59, no ellipsis) — a normalisation
+  question for W5/W8, not a coverage-rule bug. Report:
+  `tmp/terroir-facts-review/provenance-recompute.json`.
+- **W3** — `scripts/_lib/terroir_dedupe.py` + `scripts/dedupe_terroir_facts.py`.
+  The rule as landed, calibrated against the 1,000-bullet review: bullets
+  near-identical (`token_set_ratio ≥ 85`), or same / contained source quote
+  (≥ 30 chars) **and** bullet similarity ≥ 60; never when the bullets carry
+  different number sets; never when they lead with different sub-denomination
+  names (the roster stage 04's sibling filter uses — commit 24bd059d — so no
+  sub-zone page loses the bullet about it); transitive. The plan's bare
+  "identical quote" rule was rejected on evidence: 183 of the 552
+  identical-quote pairs are two distinct facts from one source sentence
+  (alluvial soils / river water supply). Recall against the review's `dup`
+  tags: 78 %. Applied: **798 of 12,114 facts dropped (6.6 %)** — 698
+  same-quote, 100 similar-bullet — in 560 records. FR is nearly untouched (3)
+  because FR 02d slices the lien into disjoint sub-sections, while every other
+  country re-reads the whole lien per sub-section call (IT 296, ES 136, BG 69,
+  GR 50). The 2,132 index-aligned 02e caches were pruned in step and their
+  `source_facts_sha` updated, so no translation was lost or redone; the sibling
+  guard never had to fire on the current corpus. Report:
+  `tmp/terroir-facts-review/dedupe.json`.
+- **W2b** — no BO Agri lookup was needed: the eAmbrosia register serves each
+  of the three appellations' own cahier. Pinned `prefer_cahier: true` in the
+  checked-in `scripts/_lib/fr/register_overrides.json`; stage 01 gained the
+  prefer-register path (bypasses its has-usable-cahier guard for a pin), the
+  three were re-bound and re-extracted (Pierrevert 5.2 KB lien naming
+  Pierrevert, L'Étoile 9.4 KB / 14 mentions, Grands-Echezeaux 8.6 KB / 17
+  mentions; Saint-Pourçain and Passe-tout-grains 0). Name guard → W8 audit.
+- **W2a** — `scripts/_lib/terroir_chapters.py` finds the `« Alsace grand cru
+  X »` chapter headings; FR 02d's `_job_from_record` windows a shared cahier to
+  the record's own chapter (51 / 51 resolve, 5.9–8.9 KB each, four slices) and
+  skips a record with no own chapter instead of falling back. The 51 caches
+  are stale by sha and are in the scoped re-extraction list.
+- **W3b** — every 02d script now calls `dedupe_facts` after its sub-section
+  loop (`n_deduped` in the cache) and carries the shared style block
+  (`scripts/_lib/terroir_prompts.STYLE_RULES`, spliced before the JSON-only
+  paragraph of all 21 prompts: full sentences, no arrows / labels / colour
+  codes, expand VT-SGN-TBA, never mention the document, keep hedges, do not
+  restate, skip tautologies).
+- **W5** — `scripts/_lib/terroir_normalize.py` (colour codes stripped only
+  after a name the grape matcher's vocabulary recognises — "l'ugni blanc B" →
+  "l'ugni blanc", "orizzonte B" / "Weinbauzone B" untouched; VT / SGN
+  expanded; terminal period; and, for the four target locales only, residual
+  Greek / Cyrillic script Latinised — homoglyphs inside a Latin word mapped
+  ("Thermoheliоhydric"), whole non-Latin gloss tokens transliterated with
+  unidecode ("(ξερολιθιές)" → "(xerolithies)"), a Greek-letter chemical
+  prefix ("α-terpineol") and a predominantly non-Latin bullet left alone).
+  Applied at stage-04 render after the overlay and sibling filter, and as
+  `scripts/normalize_terroir_facts.py` over the caches: **1,261 source bullets in 365 records and 4,037 translated bullets
+  in 1,015 caches** normalised, translation caches re-keyed, nothing
+  re-translated. Arrows / meta text / dropped hedges go through the scoped
+  re-extraction (169 arrow records, 9 meta, 5 hedge).
+- **W6** — `scripts/_lib/terroir_boilerplate.py` + `filter_terroir_boilerplate.py`.
+  Grouping by exact quote failed (the sentence embeds the appellation name
+  and the model quotes spans of varying length), so records are grouped per
+  (country, tautology pattern): a pattern quoted by ≥ 3 records of one
+  country is boilerplate for all of them; never a record's only fact, never a
+  bullet carrying a number. Dry run: 137 facts in 116 records (GR 84, FR 44 —
+  the Zotzenberg-contaminated Alsace ones, IT 6, DE 3). Applied after the
+  Alsace re-extraction.
+
+- **W8** — `scripts/audit_terroir_facts.py` rewritten over
+  `scripts/_lib/terroir_sources.py` (each country's own 02d resolver, so all
+  21 countries are audited, not fr/es/gb). New checks, each counted in
+  `summary.checks` with its rows in the report: non-Latin script in the four
+  translation locales (S), colour code (S), missing terminal punctuation (S),
+  arrow / label prefix / meta text (R), intra-record duplicates via
+  `duplicate_reason` (S), cross-record shared quotes (R), the FR name guard
+  (S, whitelist `saone-et-loire`), the shared-cahier own-chapter checks (S),
+  wiki-provenance-with-cahier-quote (R). `--country`, `--strict` (exit 1 on
+  any strict finding), 31 unit tests, ~2 min on the corpus. Baseline before
+  the re-runs: non-Latin 3,167, arrows 819 (216 source), intra-record
+  duplicates 27, quote-outside-own-chapter 198 (the Alsace crus), colour codes
+  0 and missing periods 0 (normaliser already applied).
+- **W1** — `translation_rules()` / `translation_system_prompt()` in
+  `scripts/_lib/terroir_prompts.py`: two buckets (keep names verbatim /
+  translate the common nouns, with the plan's per-language examples), the
+  one-time-gloss allowance, the hard Latin-script rule for el/bg, the two W5
+  02e rules and keep-hedges; every 02e script now passes its proper-noun
+  roster (common nouns dropped per country — see the agent report in the
+  session) through it and appends the EN/NL glossary (previously FR-only).
+  `_EN_GLOSSARY` +8 calques. `--only SLUG` on all 21 scripts.
+  `scripts/detect_untranslated_terroir_facts.py` (non-Latin + the LEAK regex,
+  minus tokens that are correct target-language words: NL leem / zandleem /
+  mergel / lege, FR marne + the proper noun Marne) flagged **5,091 bullets =
+  1,984 (slug, locale) pairs in 596 slugs** (gr 2,069, bg 1,000, it 974).
+- **W1 follow-up (Boris, live check of `/nl/alsace-bergheim`: "Vosges" must be
+  "Vogezen")** — the keep-verbatim rule was too broad: "region names" kept
+  mountain ranges, rivers, seas and regions-as-places in the source form.
+  `translation_rules` now has a geography rule (established target exonym
+  where one exists — Vogezen / Rijn / Apennijnen / Tuscany / Piedmont /
+  Burgundy-as-region — while appellation names stay exactly as registered even
+  when they coincide with a region, and grape or institution names built on a
+  place stay verbatim). `scripts/_lib/exonyms.py` carries the table and the
+  detector flags residual source forms (`exonym:` reason; GI-homonym forms
+  only in place-like context): **418 bullets in 313 (slug, locale) pairs**
+  (Piemonte 51, Sardegna 44, Tejo 42, Sicilia 33, "Danube Plain" 27, Wien
+  25, Toscana 21, Massif Central 20 …), re-translated on Anthropic batch in
+  two passes. Result: **418 → 120 bullets (75 pairs)**; the second pass
+  changed nothing, because the model's output is deterministic for an
+  unchanged prompt — the residue is its settled judgement: Wien / Mosel /
+  Tejo / Piemonte kept as region names in ES, NL and FR ("la región
+  vitivinícola de Wien"), named ranges kept as names (Appennino Dauno, Alpi
+  Apuane), Kärnten as the g.U. English "Mosel" and "Tejo" were removed from
+  the table — English wine writing uses them for the regions. Vogezen / Rijn
+  / Apennijnen / Tuscany / Piedmont / Sicily / Sardinia are now in place.
+  Clearing the last 120 needs either a stronger, example-heavy nudge for
+  those exact forms or a curated deterministic replacement for the non-GI
+  ones (Bayern → Bavaria, Appennino → Apennines) — left open; the audit
+  stays at 0 strict findings.
+- **Re-runs (all `--batch --provider anthropic`)**: 02d `--refresh` on 262
+  records (51 Alsace, 3 re-sourced, 169 arrow, 9 meta, 5 hedge, 25 stale;
+  17 country batches, 1,016 requests, all concurrent) — every record
+  re-extracted, 0 arrows / 0 meta left in them, Rangen volcanic /
+  Gloeckelberg granitic / Kitterlé sandstone, no cru mentions Zotzenberg;
+  then dedupe (26 more) and boilerplate (92 facts: GR 83, IT 6, DE 3);
+  then 02e `--refresh --only` over the union of flagged and re-extracted
+  slugs (797 slugs, 19 country batches). Gotcha met on the way: a stale
+  `raw/.batch/02e-at.json` from May resumed an expired batch — delete
+  old sidecars before a `--batch` run.
+
+## Acceptance (2026-09-11, after all of the above)
+
+200-bullet re-sample (seed 2027, ≥ 5 per country, rest proportional;
+`tmp/terroir-facts-review/sample200*.{json,txt}`), tagged with the same
+rubric, against the 1,000-bullet baseline:
+
+| category | baseline (n = 1,000) | after (n = 200) | target |
+|---|---|---|---|
+| content error / over-claim / mistranslation | 3.4 % | 0.5 % (one inverted "<" sign carried from the source bullet) | < 1.5 % ✓ |
+| untranslated common noun or non-Latin script | 16.1 % | 2.0 % (andezity/ryolity, climă temperat-continentală, kontinentális klíma, Kalk/Schiefer) | < 2 % ✓ |
+| near-duplicate within record | 10.1 % | 0 % | < 2 % ✓ |
+| provenance mislabelled as wiki | 5.4 % | 0 % | ≈ 0 ✓ |
+| style (arrow / colour code / abbreviation / meta) | 4.3 % | 0 % | < 1 % ✓ |
+| "Label:" prefix (not in the baseline definition; report-only in the audit) | — | 4.5 % | — |
+| no information | 3.4 % | 3.5 % (residual: quotes under the 60-char W6 floor, phrasing variants outside the pattern gate) | — |
+| no terminal punctuation | 8.1 % | 0 % | — |
+| fully clean | 58.1 % | 94 % (89.5 % counting label prefixes) | — |
+
+Corpus-wide, the extended audit (`audit_terroir_facts.py --strict`,
+`tmp/terroir-facts-review/audit-after.json`; the "before" is `audit-w8.json`):
+
+| check | before | after |
+|---|---:|---:|
+| non-Latin script in the four translation locales | 3,167 | 0 (45 after the batch re-run; 38 pairs re-translated → 21 residual glosses / homoglyphs, then Latinised deterministically by the normaliser) |
+| colour codes / missing terminal period (source + translations) | 0 / 0 (normaliser) | 0 / 0 |
+| arrows (source / translated) | 216 / 603 | 0 / 2 |
+| meta text (source / translated) | 14 / 48 | 0 / 10 |
+| intra-record duplicate pairs | 27 | 0 |
+| FR name guard / no own chapter | 0 / 0 | 0 / 0 |
+| cahier-grounded quote outside the own Alsace chapter | 198 | 0 (44 Wikipedia-grounded paraphrases were being counted; check narrowed) |
+| eroded bullets / cahier drift / wiki drift | 198 / 57 / 22 | 1 (Collioure) / 0 / 0 |
+| facts (source) | 11,316 | 11,260 |
+| `--strict` exit | 1 (3,392 strict findings) | **0** (`audit-final.json`) |
+
+~~Still open: **W7** (sub-section per fact), the "Label:" lead prefixes, and
+the residual no-information bullets whose quote is shorter than the W6 floor.~~
+**Closed 2026-09-13** by the follow-up programme in
+[review-terroir-facts-2026-09-12.md](review-terroir-facts-2026-09-12.md)
+("Implemented" / "Results"): W7 is the claim-support gate's `subsection`
+verdict (`scripts/02d_verify_terroir_facts.py`), the label prefixes went
+with the re-extraction of the whole pre-style-block corpus (1,365 records)
+under the 120–220-character rule, and the tautological / no-information
+bullets are the gate's `drop` verdict.
 
 ## Recommended order
 
@@ -268,6 +454,16 @@ disagrees with the slice, or add a keyword reclassifier in the post-pass
 Sample cases: `haspengouwse-wijn` 4/10 (yield cap under naturels), `la-tache`
 1/9, `moselle-luxembourgeoise` 6/10, `tarquinia` 5/5 (climate under humains),
 `castelli-romani` 3/5, `vin-santo-del-chianti` 8/8.
+
+**Deferred (Boris, 2026-09-11).** No re-extraction is needed: `subsection` is
+a per-fact field in the source cache, copied by index into the four 02e
+caches and not part of the translation hash. Preferred routes when picked
+up: a keyword reclassifier over the EN rendering (one table, not 21) or a
+classification-only LLM pass (one batch request per record, bullets
+untouched) — either as a post-pass that rewrites `subsection` and syncs the
+translation caches (`_lib/terroir_cache.py` pattern), then one stage-04
+rebuild. Move a fact only on a clear contradiction and never into
+`interactions`.
 
 ## W8 — Audit extension
 
