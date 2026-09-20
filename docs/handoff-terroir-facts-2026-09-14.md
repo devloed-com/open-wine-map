@@ -147,6 +147,44 @@ either submit the four sub-section calls as four sequential batches
 sub-sections in one request per record. The static-prompt caching in
 02e (75 %) and the gate (≈ 100 %) worked as intended.
 
+## 0c. 2026-09-15 — after the migration
+
+- `e1bd757` the 21 × 02e scripts resolved their model through the *generic*
+  default, not `STAGE_DEFAULTS["02e"]` (they coincided); fixed + wiring
+  test — a prerequisite for changing the 02e default after the experiment
+  below.
+- `35a7908` phase-sequenced batch submission (`batch.run_phased`,
+  `cache_phase` on the 20 non-FR 02d scripts, 1-hour TTL on the lien in
+  that mode, `OWM_BATCH_PHASED=0` to disable): one batch per sub-section,
+  in order, so the later phases read the lien the first wrote. Trade-off:
+  four sequential batches per country. Probe + numbers below.
+- `bd897cd` **Sonnet 5 runs adaptive thinking when `thinking` is
+  omitted** (4.x does not); every stage's max_tokens is sized for the JSON
+  reply, so the first Sonnet-5 02e run spent its 2,000-token budget
+  thinking and 64 % of the replies were rejected as truncated (the old
+  4.6 caches silently stayed). `providers.effective_thinking` now sends
+  "disabled" for a Claude 5 model on a stage that sets no mode. The
+  migration's 02e ran on 4.6 and was unaffected.
+- Phased runner probe (2 IT records, rolled back): four sequential
+  batches, **1 write / 3 reads** of the lien in the ledger — the pattern
+  a single concurrent batch could not give. Provider queueing was slow
+  that morning (a 2-request phase sat 3 h), so wall-clock is the cost.
+- **Experiment 3.8 — Sonnet 5 for 02e + the back-check**, paired on 60
+  records (`exp-02e-sonnet5`, kept in place, its own rollback unit;
+  ≈ $9): misleading **3 → 6 of 575** (0.5 % → 1.0 %, CIs [0.2–1.5] vs
+  [0.5–2.3]) but the three extra "after" flags are source-bullet defects
+  the before-grader let pass; **translation-origin errors 3 vs 3** (5's:
+  a compass swap, *szőlő* → "wine"; 4.6's: a dropped hedge, an inverted
+  "favourable"); defective 37 → 30 (6.4 % → 5.2 %); the back-check found
+  5.5 % to fix vs ≈ 8.5 % on 4.6 translations. **No detectable quality
+  difference at this size; Sonnet 5 is a third cheaper** ($1 / $5 vs
+  $1.5 / $7.5 per M batch — ≈ $25 per corpus pass). Recommendation:
+  switch `STAGE_DEFAULTS["02e"]` / `["backcheck"]` to `claude-sonnet-5`
+  on cost (Boris's call — he set the 4.6 default on 2026-09-14). The 60
+  records (+ 10 substring extras) carry Sonnet-5 translations,
+  back-checked; `rollback_terroir_facts.py --run exp-02e-sonnet5`
+  restores 4.6's.
+
 ## 0. State you inherit
 
 - **Corpus**: 1,638 records / 11,255 source bullets / 5,895 translation

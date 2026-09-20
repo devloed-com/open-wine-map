@@ -4796,7 +4796,12 @@ runs alike (`batch.default_model(provider, stage)` /
 `default_thinking()`, `providers.make_provider(..., stage=)`); override
 per run with `--model` / `--thinking`, or `OWM_BATCH_THINKING` for an
 experiment. `tests/test_stage_defaults.py` pins the configuration. API
-keys are read from the environment or a repo-root `.env`.
+keys are read from the environment or a repo-root `.env`. The Claude 5
+family runs adaptive thinking when `thinking` is omitted and every
+stage's `max_tokens` is sized for the JSON reply alone, so
+`providers.effective_thinking` sends `disabled` for a Claude 5 model on a
+stage that sets no mode (2026-09-15: Sonnet 5 on 02e had 64 % of its
+replies truncated by thinking and rejected).
 
 **Prompt caching** ([scripts/_lib/prompt_cache.py](scripts/_lib/prompt_cache.py),
 Anthropic only; Mistral / Ollama get the flat text). Text sent more than
