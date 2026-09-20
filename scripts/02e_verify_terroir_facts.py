@@ -153,6 +153,7 @@ def check_one(
     row = {
         "slug": slug, "lang": lang, "country": country, "status": "ok", "n": len(t["facts"]),
         "n_fixed": len(res["fixed"]), "n_rejected": len(res["rejected"]),
+        "n_missing_fixes": len(res["missing_fixes"]),
         "n_flagged": sum(1 for c in checks if c["verdict"] == "fix"),
         "fixed": res["fixed"], "rejected": res["rejected"],
         "issues": [{"i": i, **c} for i, c in enumerate(checks) if c["verdict"] == "fix"],
@@ -165,6 +166,7 @@ def check_one(
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "source_facts_sha": t.get("source_facts_sha"), "translated_sha": _translated_sha(res["facts"]),
         "n_fixed": len(res["fixed"]), "n_rejected": len(res["rejected"]),
+        "n_missing_fixes": len(res["missing_fixes"]),
     }
     write_translation_cache(path, t)
     if res["fixed"]:
@@ -181,7 +183,7 @@ def _summary(rows: list[dict]) -> dict:
     for r in ok:
         c = by_lang.setdefault(r["lang"], Counter())
         c["caches"] += 1
-        for k in ("n", "n_fixed", "n_rejected", "n_flagged"):
+        for k in ("n", "n_fixed", "n_rejected", "n_flagged", "n_missing_fixes"):
             c[k] += r[k]
     tot = Counter()
     for c in by_lang.values():

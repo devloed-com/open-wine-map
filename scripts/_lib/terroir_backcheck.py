@@ -29,7 +29,7 @@ from _lib.terroir_dedupe import _numbers
 from _lib.terroir_feedback import _clip, _safe
 from _lib.terroir_normalize import normalize_bullet
 
-BACKCHECK_VERSION = "backcheck-v1"
+BACKCHECK_VERSION = "backcheck-v2"
 FIX_MAX_CHARS = 360
 
 _LANG_NAME = {
@@ -63,7 +63,7 @@ Flag a bullet ("fix") when the translation:
 - garbles grammar so the sentence no longer says what the source says.
 Do NOT flag: a legitimate simplification; a different but equivalent number format; a synonym in register; a sentence that is merely awkward but faithful. When in doubt, "ok".
 
-For a "fix", give "fix": the full corrected bullet in the target language, faithful to the SOURCE bullet, one complete sentence ending with a period, without adding content. Keep the source's proper nouns exactly; transliterate Greek and Cyrillic to the EU-official Latin form.
+For a "fix", give "fix": the full corrected bullet in the target language, faithful to the SOURCE bullet, one complete sentence ending with a period, without adding content. Keep the source's proper nouns exactly; transliterate Greek and Cyrillic to the EU-official Latin form. A "fix" verdict MUST carry a non-empty "fix" — if you cannot write the corrected sentence, answer "ok" and put your concern in "issue".
 
 Answer ONLY with JSON, no text before or after:
 {"facts": [{"i": 0, "verdict": "ok|fix", "issue": "short reason, or empty", "fix": ""}, ...]}
@@ -204,17 +204,24 @@ def apply_fixes(
 ) -> dict:
     """Apply the back-check to a translation cache's facts (in place on
     copies). Returns {facts, fixed: [{index, from, to, issue}], rejected:
-    [{index, reason}]}."""
+    [{index, reason}], missing_fixes: [{index, issue}]}."""
     out: list[dict] = []
     fixed: list[dict] = []
     rejected: list[dict] = []
+    missing: list[dict] = []
     for i, (tf, sf, c) in enumerate(zip(translated, source_facts, checks)):
         new = dict(tf)
         check = {"verdict": c["verdict"], "issue": c.get("issue") or "", "version": BACKCHECK_VERSION,
                  "run": run, "model": model}
         if c["verdict"] == "fix":
             reason = fix_ok(sf.get("bullet") or "", tf.get("bullet") or "", c.get("fix") or "")
-            if reason is None:
+            if reason == "empty":
+                # The model flagged a concern it could not phrase (512 did in
+                # r1): keep the translation, keep the issue, list the case.
+                check["verdict"] = "ok"
+                check["fix_missing"] = True
+                missing.append({"index": i, "issue": check["issue"]})
+            elif reason is None:
                 fx = normalize_bullet(c["fix"], lang)
                 check["original"] = tf.get("bullet") or ""
                 new["bullet"] = fx
@@ -226,4 +233,4 @@ def apply_fixes(
                 rejected.append({"index": i, "reason": reason})
         new["check"] = check
         out.append(new)
-    return {"facts": out, "fixed": fixed, "rejected": rejected}
+    return {"facts": out, "fixed": fixed, "rejected": rejected, "missing_fixes": missing}

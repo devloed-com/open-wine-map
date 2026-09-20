@@ -191,3 +191,15 @@ def test_needs_gate_keys_on_verdicts_and_source_not_on_an_exact_sha():
     assert tg.needs_gate({**gated, "facts": gated["facts"] + [{"bullet": "B."}]})   # a fresh, unverdicted fact
     assert not tg.needs_gate({**gated, "facts": []})
     assert tg.needs_gate({"facts": [{"bullet": "A."}]})
+
+
+def test_backcheck_keeps_the_translation_when_a_fix_comes_back_empty():
+    from _lib import terroir_backcheck as tb
+    translated = [{"bullet": "The soils are mostly clay."}]
+    source = [{"bullet": "Les sols sont surtout argileux."}]
+    checks = [{"verdict": "fix", "issue": "hedge", "fix": ""}]
+    res = tb.apply_fixes(translated, source, checks, lang="en", run="r", model="m")
+    c = res["facts"][0]["check"]
+    assert c["verdict"] == "ok" and c["fix_missing"] and c["issue"] == "hedge"
+    assert res["facts"][0]["bullet"] == "The soils are mostly clay."
+    assert res["missing_fixes"] == [{"index": 0, "issue": "hedge"}] and not res["rejected"]
