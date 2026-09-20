@@ -25,6 +25,11 @@ pre-run copy is in the backup before the mark lands.
                       and the back-check always run corpus-wide on
                       whatever is ungated / stale / unchecked.
   --parallel N        per-country batch processes at once (default 6)
+  --scoped-02d        pass the scope down to each 02d (--slug / --only) so a
+                      country whose sources all changed (IT after the MASAF
+                      full-text change) re-extracts only the scope
+  --scoped-gate       gate only the scoped slugs (a smoke run right after a
+                      GATE_VERSION bump would otherwise re-gate the corpus)
   --skip-02d / --skip-gate / --skip-02e / --skip-02e-verify / --skip-audit
   --dry-run           print the plan, touch nothing
 
@@ -130,6 +135,12 @@ def main() -> int:
                     "the gate, 02e and the back-check keep their own stage defaults")
     for step in ("02d", "gate", "02e", "02e-verify", "audit"):
         ap.add_argument(f"--skip-{step}", action="store_true")
+    ap.add_argument("--scoped-02d", action="store_true",
+                    help="pass the scoped slugs down to each 02d (--slug for FR, --only elsewhere) so a "
+                         "country whose sources all changed re-extracts only the scope")
+    ap.add_argument("--scoped-gate", action="store_true",
+                    help="gate only the scoped slugs (default: corpus-wide on whatever is ungated — "
+                         "after a GATE_VERSION bump that is the whole corpus)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -155,17 +166,28 @@ def main() -> int:
     model = ["--model", args.model] if args.model else []
     if not args.skip_02d and countries:
         log(f"02d --batch for {len(countries)} countries (parallel {args.parallel}) …")
-        jobs = [(cc, [str(PY), str(stage_script("02d", cc)), "--batch", "--provider", args.provider, *model])
-                for cc in countries]
+        jobs = []
+        for cc in countries:
+            scoped: list[str] = []
+            if args.scoped_02d:
+                flag = "--slug" if cc == "fr" else "--only"
+                scoped = [x for slug in by_cc.get(cc, []) for x in (flag, slug)]
+            jobs.append((cc, [str(PY), str(stage_script("02d", cc)), "--batch", "--provider", args.provider,
+                              *model, *scoped]))
         rcs = run_parallel("02d", jobs, logdir, env, args.parallel)
         if any(rcs.values()):
             log(f"02d failed for {[c for c, rc in rcs.items() if rc]} — re-run the same command to resume; stopping.")
             return 1
 
     if not args.skip_gate:
-        log("02d_verify --batch (corpus-wide, ungated records) …")
+        gate_scope: list[str] = []
+        if args.scoped_gate:
+            scope_file = logdir / "gate-scope.json"
+            scope_file.write_text(json.dumps({"slugs": slugs}), encoding="utf-8")
+            gate_scope = ["--only-file", str(scope_file)]
+        log(f"02d_verify --batch ({'scoped' if gate_scope else 'corpus-wide, ungated records'}) …")
         rc = run_step([str(PY), str(ROOT / "scripts" / "02d_verify_terroir_facts.py"), "--batch",
-                       "--provider", args.provider, "--quiet"], logdir / "gate.log", env)
+                       "--provider", args.provider, "--quiet", *gate_scope], logdir / "gate.log", env)
         log(f"  gate: exit {rc} — {logdir / 'gate.log'}")
         if rc:
             return 1
