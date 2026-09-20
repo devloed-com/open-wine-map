@@ -263,7 +263,9 @@ def _resolve_lien_and_source(rec: dict) -> tuple[str, dict]:
         sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return on_disk_lien, {"pdf_url": eu_url, "kind": "none"}
-    masaf_lien = sidecar.get("link_to_terroir") or ""
+    # The whole Art. 9 (v3 sidecars); the panel-length `link_to_terroir`
+    # is a 4,000-char cut that hid 3.7 M characters of terroir text.
+    masaf_lien = sidecar.get("link_to_terroir_full") or sidecar.get("link_to_terroir") or ""
     msrc = sidecar.get("source") or {}
     # MASAF bundle matches have no direct URL; overrides do (`url` field).
     masaf_url = msrc.get("url") or eu_url

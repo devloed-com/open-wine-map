@@ -785,10 +785,18 @@ def derive_summary(article1_body: str, max_chars: int = 600) -> str:
     return cut + ("." if not cut.endswith(".") else "")
 
 
-def derive_geo_area(article3_body: str, max_chars: int = 4000) -> str:
+def cap_at_sentence(body: str, max_chars: int | None) -> str:
+    """Cut `body` to at most `max_chars` at the last sentence boundary
+    before the cap; None (or 0) leaves it whole."""
+    if max_chars and len(body) > max_chars:
+        return body[:max_chars].rsplit(".", 1)[0] + "."
+    return body
+
+
+def derive_geo_area(article3_body: str, max_chars: int | None = 4000) -> str:
     """Article 3 ('Zona di produzione delle uve') body. Returned trimmed
     of leading sub-title noise and capped at max_chars so the panel
-    doesn't drown in commune lists."""
+    doesn't drown in commune lists (None = uncapped)."""
     if not article3_body:
         return ""
     text = article3_body.strip()
@@ -808,14 +816,14 @@ def derive_geo_area(article3_body: str, max_chars: int = 4000) -> str:
             skip_subtitle = False
         kept.append(s)
     body = "\n".join(kept).strip()
-    if len(body) > max_chars:
-        body = body[:max_chars].rsplit(".", 1)[0] + "."
-    return body
+    return cap_at_sentence(body, max_chars)
 
 
-def derive_terroir(article9_body: str, max_chars: int = 4000) -> str:
+def derive_terroir(article9_body: str, max_chars: int | None = 4000) -> str:
     """Same shape as `derive_geo_area` but for Article 9 ('Legame con
-    l'ambiente geografico')."""
+    l'ambiente geografico'). The 4,000-char default is the panel length;
+    the terroir-fact extractor reads the uncapped body (469 of 522
+    disciplinari carry an Art. 9 longer than the cap)."""
     return derive_geo_area(article9_body, max_chars=max_chars)
 
 
@@ -826,10 +834,11 @@ _LEGAME_TITLE_RE = re.compile(
 
 
 def pick_terroir_article(
-    articles: dict[int, str], raw_text: str | None = None
+    articles: dict[int, str], raw_text: str | None = None, max_chars: int | None = 4000
 ) -> tuple[int, str]:
     """Return (article_number, derived_terroir_body) for the 'Legame
-    con l'ambiente geografico' section.
+    con l'ambiente geografico' section, the body capped at `max_chars`
+    (None = whole article).
 
     The canonical MASAF template puts it at Article 9; the older
     Veneto-IGT template (colli-trevigiani, conselvano, marca-
@@ -854,7 +863,7 @@ def pick_terroir_article(
     for n in candidates:
         body = articles.get(n, "")
         if body and _LEGAME_TITLE_RE.search(body[:300]):
-            return n, derive_terroir(body)
+            return n, derive_terroir(body, max_chars=max_chars)
 
     # Step 2: raw-text fallback (handles concatenated disciplinari).
     if raw_text:
@@ -876,7 +885,7 @@ def pick_terroir_article(
                 end = next_m.start() if next_m else len(raw_text)
                 body = raw_text[start:end].strip()
                 if body and n:
-                    return n, derive_terroir(body)
+                    return n, derive_terroir(body, max_chars=max_chars)
 
     # Step 3: established canonical fallback.
-    return 9, derive_terroir(articles.get(9, ""))
+    return 9, derive_terroir(articles.get(9, ""), max_chars=max_chars)

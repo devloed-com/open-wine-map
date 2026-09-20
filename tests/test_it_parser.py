@@ -46,9 +46,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from _lib.grape_entity import match_variety  # noqa: E402
 from _lib.it.masaf import (  # noqa: E402
     article2_candidate_phrases,
+    cap_at_sentence,
     extract_articles,
     find_article_offsets,
     parse_grapes_with,
+    pick_terroir_article,
 )
 from _lib.it.menzione import extract_menzioni  # noqa: E402
 from _lib.it.sottozona import extract_sottozone  # noqa: E402
@@ -379,3 +381,22 @@ def test_masaf_extract_article_runs_keeps_the_parent_and_lists_annexes():
     assert "Alto Tirino terroir" in annexes[0]["articles"][9]
     assert sorted(annexes[1]["articles"]) == [1, 9]
     assert extract_articles(text) == main
+
+
+def test_masaf_terroir_uncapped_for_the_extractor_capped_for_the_panel():
+    sentences = ["Il legame con l'ambiente geografico è antico e documentato."]
+    sentences += [f"La frase numero {i} descrive i suoli e il clima della zona." for i in range(200)]
+    body = "Legame con l'ambiente geografico\n" + " ".join(sentences)
+    articles = {1: "Denominazione\nLa denominazione…", 9: body}
+
+    n, full = pick_terroir_article(articles, max_chars=None)
+    assert n == 9
+    assert len(full) > 4000
+    assert full.endswith("della zona.")
+
+    n, brief = pick_terroir_article(articles)
+    assert n == 9
+    assert brief == cap_at_sentence(full, 4000)
+    assert len(brief) <= 4000 and brief.endswith(".")
+    assert full.startswith(brief[:-1])
+    assert cap_at_sentence(full, None) == full

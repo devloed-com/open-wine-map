@@ -66,6 +66,7 @@ from _lib.it.documento_unico import scan_styles  # noqa: E402
 from _lib.it.masaf import (  # noqa: E402
     PdfRecord,
     build_pdf_index,
+    cap_at_sentence,
     derive_geo_area,
     derive_summary,
     extract_article_runs,
@@ -91,7 +92,9 @@ OJ_PAGES_MANIFEST = OJ_PAGES_DIR / "manifest.json"
 
 OVERRIDES_PATH = BUNDLES_DIR.parent / "manual_overrides.json"
 
-PARSER_VERSION = "it-masaf-disciplinare-v2"
+PARSER_VERSION = "it-masaf-disciplinare-v3"
+# Panel length of the Art. 9 terroir text; the extractor reads the full body.
+TERROIR_BRIEF_CHARS = 4000
 
 
 def load_overrides() -> dict:
@@ -258,7 +261,12 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
 
     summary = derive_summary(articles.get(1, ""))
     geo_area = derive_geo_area(articles.get(3, ""))
-    terroir_article_num, terroir = pick_terroir_article(articles, raw_text=raw_text)
+    # The panel reads the sentence-capped `link_to_terroir`; 02d, the gate
+    # and the audits read `link_to_terroir_full` — the whole article.
+    terroir_article_num, terroir_full = pick_terroir_article(
+        articles, raw_text=raw_text, max_chars=None
+    )
+    terroir = cap_at_sentence(terroir_full, TERROIR_BRIEF_CHARS)
 
     # Wine-style tags: scan the denominazione/tipologie block (art 1) + the
     # organoleptic "Caratteristiche al consumo" (art 6). Those are colour- and
@@ -297,6 +305,8 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
         "menzioni": menzioni,
         "geo_area_brief": geo_area,
         "link_to_terroir": terroir,
+        "link_to_terroir_full": terroir_full,
+        "terroir_article": terroir_article_num,
         "articles_present": sorted(articles.keys()),
         # Subsection of articles useful to downstream consumers — we
         # keep articles 1 / 3 / 9 verbatim so 02d-style terroir
