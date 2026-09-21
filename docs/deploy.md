@@ -19,6 +19,27 @@ from either host — which is what a preview host should say about itself.
 | IndexNow ping | yes — only pages whose content changed (see below) | skipped |
 | apex-301 smoke check | yes | skipped (no apex) |
 | security headers, Force-SSL, custom 404 | set by deploy.py | set by deploy.py |
+| status (2026-09-20) | live | **parked** — every request 301s to production (`--park`) |
+
+## Parking beta (current state since 2026-09-20)
+
+Beta is not in use, so it is *parked*: one catch-all Redirect edge rule on
+its pull zone (`Parked: 301 every request to production`, target
+`https://www.openwinemap.com{{path}}` — `{{path}}` carries the path **and**
+query string, the same form as production's apex → www rule) sends every
+request to production with a 301. The storage zone, DNS, certificate, CARTO
+key and Plausible site all stay in place, so nothing has to be rebuilt to
+bring it back:
+
+    scripts/deploy.sh --env beta --park      # enable the redirect (uploads nothing)
+    scripts/deploy.sh --env beta --unpark    # disable it (the rule is kept, disabled)
+    scripts/deploy.sh --env beta             # then redeploy the preview as before
+
+`deploy.py` refuses a file deploy to a parked environment (the upload would be
+invisible behind the redirect) until it is unparked, and `--park` checks the
+live host for the expected 301 + `Location` after applying the rule (edge rules
+take up to ~60 s to propagate; a warning there is not a failure). Parking is
+per environment (`park_to` in `_ENVS`); production cannot be parked.
 
 ## IndexNow: content changes only
 

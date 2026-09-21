@@ -13,6 +13,14 @@ only writes what's missing.
 Usage:
   scripts/deploy.sh                 → production, https://www.openwinemap.com/
   scripts/deploy.sh --env beta      → preview,    https://beta.openwinemap.com/
+  scripts/deploy.sh --env beta --park    → beta 301-redirects every URL to
+                                           production (nothing is uploaded)
+  scripts/deploy.sh --env beta --unpark  → beta serves its own files again
+
+A parked environment keeps its storage zone and everything else in place; the
+park is one catch-all Redirect edge rule on its pull zone, disabled (never
+deleted) by --unpark. A file deploy to a parked environment is refused until
+it is unparked, so a stale preview cannot silently replace the redirect.
 
 Both deploy the SAME wiki/ build: the page picks its Plausible site and CARTO
 key by hostname at runtime, and every canonical / hreflang / sitemap URL points
@@ -74,12 +82,14 @@ def excluded(rel: str) -> bool:
 
 # Deploy environments. `suffix` selects the per-zone .env variables
 # (BUNNY_STORAGE_KEY_BETA, …); `zone` is the storage zone's default name;
-# `indexable` gates robots.txt + IndexNow; `apex` gates the apex-301 smoke check.
+# `indexable` gates robots.txt + IndexNow; `apex` gates the apex-301 smoke check;
+# `park_to` names the host a parked environment redirects to (--park / --unpark).
 _ENVS: dict[str, dict] = {
     "prod": {"host": "www.openwinemap.com", "zone": "open-wine-map",
-             "suffix": "", "indexable": True, "apex": True},
+             "suffix": "", "indexable": True, "apex": True, "park_to": None},
     "beta": {"host": "beta.openwinemap.com", "zone": "open-wine-map-beta",
-             "suffix": "_BETA", "indexable": False, "apex": False},
+             "suffix": "_BETA", "indexable": False, "apex": False,
+             "park_to": "www.openwinemap.com"},
 }
 
 # A preview host must stay out of every index. Its pages canonicalise to
@@ -453,6 +463,84 @@ def ensure_security_headers(api_key: str, pullzone: str) -> None:
             print(f"  warn: edge rule for {header_name} → {resp.status_code} {resp.text[:120]}", file=sys.stderr)
 
 
+# Bunny Edge Rule ActionType 1 = Redirect; `{{path}}` carries the request
+# path and query string over (the same form as production's apex → www rule).
+_PARK_DESCRIPTION = "Parked: 301 every request to production"
+
+
+def _edge_rules(api_key: str, pullzone: str) -> list[dict] | None:
+    r = requests.get(
+        f"https://api.bunny.net/pullzone/{pullzone}",
+        headers={"AccessKey": api_key, "Accept": "application/json"},
+        timeout=30,
+    )
+    if r.status_code != 200:
+        print(f"  warn: could not fetch pull zone {pullzone} ({r.status_code})", file=sys.stderr)
+        return None
+    return r.json().get("EdgeRules") or []
+
+
+def find_park_rule(api_key: str, pullzone: str) -> dict | None:
+    rules = _edge_rules(api_key, pullzone)
+    for rule in rules or []:
+        if rule.get("ActionType") == 1 and rule.get("Description") == _PARK_DESCRIPTION:
+            return rule
+    return None
+
+
+def set_parked(api_key: str, pullzone: str, target_host: str, enabled: bool) -> None:
+    """Add or update the catch-all 301 rule and set its Enabled flag. The rule
+    is never deleted, so the redirect target stays visible in the dashboard
+    while unparked."""
+    current = find_park_rule(api_key, pullzone)
+    if current and bool(current.get("Enabled")) == enabled \
+            and current.get("ActionParameter1") == f"https://{target_host}{{{{path}}}}":
+        print(f"  park rule: already {'enabled' if enabled else 'disabled'}", file=sys.stderr)
+        return
+    body: dict = {
+        "ActionType": 1,
+        "ActionParameter1": f"https://{target_host}{{{{path}}}}",
+        "ActionParameter2": "301",
+        "Description": _PARK_DESCRIPTION,
+        "Enabled": enabled,
+        "Triggers": [dict(_CATCH_ALL_TRIGGER)],
+        "TriggerMatchingType": 0,
+    }
+    if current:
+        body["Guid"] = current.get("Guid") or ""
+    resp = requests.post(
+        f"https://api.bunny.net/pullzone/{pullzone}/edgerules/addOrUpdate",
+        headers={"AccessKey": api_key, "Content-Type": "application/json", "Accept": "application/json"},
+        json=body,
+        timeout=30,
+    )
+    if resp.status_code not in (200, 201, 204):
+        sys.exit(f"park rule → {resp.status_code} {resp.text[:200]}")
+    print(f"  park rule: {'enabled' if enabled else 'disabled'} (301 → https://{target_host}{{{{path}}}})",
+          file=sys.stderr)
+
+
+def check_park_redirect(host: str, target_host: str) -> bool:
+    bad: list[str] = []
+    for path in ("/", "/fr/chablis/?x=1"):
+        url = f"https://{host}{path}"
+        try:
+            r = requests.head(url, allow_redirects=False, timeout=30)
+        except requests.RequestException as e:
+            print(f"warn: park redirect check skipped ({url}): {e}", file=sys.stderr)
+            return False
+        loc = r.headers.get("Location", "")
+        want = f"https://{target_host}{path}"
+        if r.status_code != 301 or loc != want:
+            bad.append(f"  {url} → {r.status_code} {loc or '(no Location)'}  (want 301 → {want})")
+    if bad:
+        print("\nwarn: parked host is not (yet) redirecting — edge rules take ~60 s to propagate:\n"
+              + "\n".join(bad), file=sys.stderr)
+        return False
+    print(f"{host} → {target_host} 301 redirect (path + query preserved): OK", file=sys.stderr)
+    return True
+
+
 def check_apex_redirect() -> None:
     bad: list[str] = []
     for path in ("/", "/fr/"):
@@ -585,6 +673,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Deploy wiki/ to Bunny Storage + purge the CDN.")
     ap.add_argument("--env", choices=sorted(_ENVS), default="prod",
                     help="target environment (default: prod)")
+    park = ap.add_mutually_exclusive_group()
+    park.add_argument("--park", action="store_true",
+                      help="301-redirect every request of this environment to production; "
+                           "uploads nothing")
+    park.add_argument("--unpark", action="store_true",
+                      help="disable the park redirect so the environment serves its own files")
     args = ap.parse_args()
     env = _ENVS[args.env]
     sfx = env["suffix"]
@@ -592,13 +686,40 @@ def main() -> int:
     storage_key = os.environ.get(f"BUNNY_STORAGE_KEY{sfx}")
     api_key = os.environ.get("BUNNY_API_KEY")
     pullzone = os.environ.get(f"BUNNY_PULLZONE_ID{sfx}")
-    if not storage_key:
-        sys.exit(f"set BUNNY_STORAGE_KEY{sfx} (storage zone password; same as the FTP password)")
     if not api_key or not pullzone:
         sys.exit(f"set BUNNY_API_KEY and BUNNY_PULLZONE_ID{sfx} for the cache purge")
+    zone = os.environ.get(f"BUNNY_STORAGE_ZONE{sfx}", env["zone"])
+
+    if args.park or args.unpark:
+        if not env["park_to"]:
+            sys.exit(f"{args.env} cannot be parked (no park_to in _ENVS)")
+        print(f"checking pull zone {pullzone} ...", file=sys.stderr)
+        verify_pullzone(api_key, pullzone, env["host"], zone)
+        set_parked(api_key, pullzone, env["park_to"], enabled=args.park)
+        r = requests.post(f"https://api.bunny.net/pullzone/{pullzone}/purgeCache",
+                          headers={"AccessKey": api_key}, timeout=60)
+        if r.status_code not in (200, 204):
+            sys.exit(f"purgeCache → {r.status_code} {r.text[:200]}")
+        if args.park:
+            time.sleep(5)
+            check_park_redirect(env["host"], env["park_to"])
+            print(f"\nparked. https://{env['host']}/ → https://{env['park_to']}/", file=sys.stderr)
+        else:
+            print(f"\nunparked. https://{env['host']}/ serves its own files again "
+                  f"(redeploy with --env {args.env}).", file=sys.stderr)
+        return 0
+
+    if not storage_key:
+        sys.exit(f"set BUNNY_STORAGE_KEY{sfx} (storage zone password; same as the FTP password)")
+    if env["park_to"]:
+        rule = find_park_rule(api_key, pullzone)
+        if rule and rule.get("Enabled"):
+            sys.exit(
+                f"{args.env} is parked (every request 301s to {env['park_to']}); "
+                f"a file deploy would be invisible. Run --env {args.env} --unpark first."
+            )
 
     host = os.environ.get("BUNNY_STORAGE_HOST", "storage.bunnycdn.com")
-    zone = os.environ.get(f"BUNNY_STORAGE_ZONE{sfx}", env["zone"])
     overrides: dict[str, bytes] = {} if env["indexable"] else {"robots.txt": _NOINDEX_ROBOTS}
 
     print(f"target: {args.env} → https://{env['host']}/", file=sys.stderr)
