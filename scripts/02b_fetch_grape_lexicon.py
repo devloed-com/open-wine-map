@@ -274,7 +274,8 @@ def _try_one(session: requests.Session, lang: str, title: str) -> dict | None:
 def _build_candidates(lang: str, slug: str) -> list[tuple[str, str]]:
     """Ordered `[(title, matched_via), …]` candidate list per (slug, lang).
 
-    1. The per-lang `LANG_OVERRIDES` title (curator-pinned), bare.
+    1. The per-lang `LANG_OVERRIDES` title (curator-pinned), bare. A `null`
+       title is handled upstream by `_override_absent` (no candidates at all).
     2. The slug-derived title with `_(disambig)` suffix, then bare.
     3. The VIVC-derived chain: prime → priority synonyms → rest.
 
@@ -383,6 +384,16 @@ def _fetch_locale(
     }
 
 
+def _override_absent(lang: str, slug: str) -> bool:
+    """A `null` value in `raw/wikipedia/grape_overrides.json` pins the
+    (slug, lang) pair as deliberately article-less: neither the slug title,
+    the VIVC synonym chain nor a same-VIVC donor may bind it (2026-09-20:
+    the donor chain gave Caíño tinto the Trincadeira article and Negro Saurí
+    the white Verdejo)."""
+    table = (LANG_OVERRIDES or {}).get(lang) or {}
+    return slug in table and table[slug] is None
+
+
 def _resolve_one(
     session: requests.Session, lang: str, slug: str, donors: dict[int, dict], throttle: float
 ) -> dict:
@@ -390,8 +401,17 @@ def _resolve_one(
     the candidate-chain fetch — that path is the only one paying the
     `throttle` sleep."""
     vivc = _vivc_fingerprint(slug)
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    if _override_absent(lang, slug):
+        return {
+            "slug": slug,
+            "lang": lang,
+            "missing": True,
+            "matched_via": "override-absent",
+            "vivc_consulted": vivc,
+            "fetched_at": now,
+        }
     if vivc and vivc.get("vivc_id") in donors:
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         return _shared_record(slug, lang, donors[vivc["vivc_id"]], vivc, now)
     result = fetch_summary(session, lang, slug)
     time.sleep(throttle)

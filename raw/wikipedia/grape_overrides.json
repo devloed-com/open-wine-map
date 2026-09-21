@@ -77,7 +77,7 @@
     "blaufrankisch": "Blaufränkisch",
     "bouchales": "Bouchalès",
     "bouquettraube": "Bukettraube",
-    "bouteillan": "Bouteillan noir",
+    "bouteillan": null,
     "brun-argente": "Brun Argenté",
     "brun-fourca": "Brun Fourca",
     "brustianu": "Brustiano bianco",
@@ -155,7 +155,7 @@
     "mourvedre-blanc": "Mourvèdre",
     "mourvedre-gris": "Mourvèdre",
     "muller-thurgau": "Müller-Thurgau",
-    "muscadin": "Vitis rotundifolia",
+    "muscadin": null,
     "muscat-a-petits-grains": "Muscat Blanc à Petits Grains",
     "muscat-a-petits-grains-roses": "Muscat Rose à Petits Grains",
     "muscat-a-petits-grains-rouges": "Muscat Rouge à Petits Grains",
@@ -199,7 +199,7 @@
     "triomphe-dalsace": "Triomphe d'Alsace",
     "ugni-blanc": "Trebbiano",
     "valdiguie": "Valdiguié",
-    "verdejo-negro": "Verdejo",
+    "verdejo-negro": "Trousseau (grape)",
     "villard-blanc": "Villard grapes",
     "villard-noir": "Villard grapes",
     "xarello": "Xarel·lo",
@@ -283,7 +283,7 @@
     "trousseau": "Bastardo (uva)",
     "ugni-blanc": "Trebbiano",
     "valdiguie": "Valdiguié",
-    "verdejo-negro": "Verdejo",
+    "verdejo-negro": "Verdejo Negro",
     "xarel-lo": "Charelo",
     "xarello": "Charelo",
     "xinomavro": "Xinómavro"
@@ -300,8 +300,10 @@
     "beclan": "Béclan",
     "bequignol": "Béquignol",
     "blaufrankisch": "Blaufränkisch",
+    "borracal": null,
     "bouchales": "Bouchalès",
     "brun-argente": "Brun argenté",
+    "caino-tinto": null,
     "camaralet-de-lasseube": "Camaralet de Lasseube",
     "carcajolo": "Carcajolo blanc",
     "carignan": "Carignan N",
@@ -353,6 +355,7 @@
     "mourvedre-blanc": "Mourvèdre",
     "mourvedre-gris": "Mourvèdre",
     "muller-thurgau": "Müller-thurgau",
+    "muresconu": null,
     "muscat-a-petits-grains": "Muscat blanc à petits grains",
     "muscat-a-petits-grains-roses": "Muscat rose à petits grains",
     "muscat-a-petits-grains-rouges": "Muscat rouge à petits grains",
@@ -394,7 +397,7 @@
     "trousseau-gris": "Trousseau",
     "ugni-blanc": "Trebbiano",
     "valdiguie": "Valdiguié",
-    "verdejo-negro": "Verdejo",
+    "verdejo-negro": "Trousseau",
     "verdelho": "Verdelho blanc",
     "villard": "Villard noir",
     "xarel-lo": "Xarel·lo"
@@ -443,6 +446,7 @@
     "incrocio-manzoni": "Manzoni bianco",
     "malvasia-nera-lunga": "Malvasia nera di Brindisi",
     "moscato-di-scanzo": "Moscato di Scanzo (vitigno)",
+    "muresconu": null,
     "pelaverga-piccolo": "Pelaverga",
     "schiava-grigia": "Schiava (vitigno)"
   },
@@ -497,6 +501,7 @@
     "mourvedre-blanc": "Mourvèdre",
     "mourvedre-gris": "Mourvèdre",
     "muller-thurgau": "Müller-Thurgau",
+    "muresconu": null,
     "negrette": "Négrette",
     "palomino": "Palomino (wit druivenras)",
     "pedro-ximenez": "Pedro Ximénez",
@@ -523,7 +528,7 @@
     "terret": "Terret gris",
     "touriga-nacional": "Touriga Nacional",
     "ugni-blanc": "Trebbiano toscano",
-    "verdejo-negro": "Verdejo",
+    "verdejo-negro": null,
     "xarel-lo": "Xarel·lo",
     "zierfandler": "Zierfandler"
   },
@@ -542,5 +547,10 @@
   "sl": {
     "kraljevina": "Kraljevina (sorta)",
     "zametovka": "Žametovka"
+  },
+  "pt": {
+    "borracal": null,
+    "caino-tinto": null,
+    "espadeiro": null
   }
 }

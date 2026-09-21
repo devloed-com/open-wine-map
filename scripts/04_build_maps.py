@@ -121,6 +121,10 @@ from _lib.gi_terms import (
 )
 from _lib.gr.geometry import GRPolygonIndex
 from _lib.gr.region import derive_region as derive_gr_region
+from _lib.grape_display_overrides import (
+    display_name_overrides,
+    load_grape_display_overrides,
+)
 from _lib.grape_gaps import classify as classify_grape_gaps
 from _lib.grape_gaps import summary_line as grape_gaps_line
 from _lib.hr.geometry import HRPolygonIndex
@@ -182,6 +186,8 @@ from _lib.terroir_normalize import normalize_aocs
 from shapely.geometry import mapping, shape
 from tqdm import tqdm
 from unidecode import unidecode as _unidecode
+
+GRAPE_DISPLAY_OVERRIDES = load_grape_display_overrides()
 
 ROOT = Path(__file__).resolve().parent.parent
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
@@ -3750,6 +3756,15 @@ def emit_html(
                     latin = _latin_form_or_empty(s_name)
                     if latin:
                         grape_names_latin[s_slug] = latin
+            # A verbatim cahier surface that is itself a source defect (a
+            # fused candidate) is relabelled per record, never corpus-wide.
+            for s_slug, s_name in display_name_overrides(
+                GRAPE_DISPLAY_OVERRIDES, slug, parent_slug_for_facts, set(grape_names)
+            ).items():
+                grape_names[s_slug] = s_name
+                latin = _latin_form_or_empty(s_name)
+                if latin:
+                    grape_names_latin[s_slug] = latin
         syndicate = resolve_appellation_url(
             slug, parent_slug_for_facts, p.get("region", "") or "", appellation_urls
         )

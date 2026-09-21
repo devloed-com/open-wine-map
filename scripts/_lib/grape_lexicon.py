@@ -1720,6 +1720,11 @@ GRAPE_ALIAS = {
     "nero-d-avola": "nero-davola",              # apostrophe-split variant of the incumbent slug
     "maccabeu": "macabeu",                      # FR double-c one-off
     "muscat-a-petit-grains-blancs": "muscat-a-petits-grains",  # petit/petits typo
+    # Haute-Marne IGP cahier (2011) drops the comma in "muscat à petit grains
+    # blancs, muscat ottonel B" — the blancs is already listed on its own line,
+    # so the fused surface is the ottonel entry.
+    "petit-grains-blancs-muscat-ottonel": "muscat-ottonel",
+    "muscat-a-petit-grains-blancs-muscat-ottonel": "muscat-ottonel",
     "lledonner-pelut": "lledoner-pelut",        # FR double-n variant
     "castet": "castets",                        # singular one-off
     "godelho": "godello",                       # PT spelling of the incumbent (VIVC #12953 GOUVEIO)

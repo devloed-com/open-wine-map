@@ -1,0 +1,10 @@
+{
+  "__doc__": "Per-record display spelling for a grape pill. Keyed by record slug → grape slug → {name, reason, source}. The pill normally shows the regulator's spelling verbatim (with the VIVC prime in brackets); use an entry only when that verbatim surface is a source defect — a fused or truncated candidate — and never to translate or 'improve' a real spelling. The grape slug must be one the record carries; stage 04 warns STALE and ignores an entry whose slug is absent (the extractor changed, re-verify). Sub-denominations inherit their parent's entries. Guarded by tests/test_grape_display_overrides.py.",
+  "haute-marne": {
+    "muscat-ottonel": {
+      "name": "muscat ottonel",
+      "reason": "The cahier line reads 'muscat à petit grains blancs muscat ottonel B' with the comma dropped; 'muscat à petit grains blancs B' is already listed on its own, so the fused surface is the ottonel entry (GRAPE_ALIAS folds it to muscat-ottonel; the verbatim surface rendered as 'Petit Grains Blancs Muscat Ottonel').",
+      "source": "IGP Haute-Marne cahier des charges, homologated 2011-11-14, chapter 5 (BO Agri document_administratif-b7f52a62-c149-453a-b8bb-49a28ba8db16)"
+    }
+  }
+}

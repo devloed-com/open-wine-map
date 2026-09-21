@@ -8,6 +8,13 @@ per-slug usage counts) and reports:
   the corpus name (Mourvèdre → MONASTRELL, Tinta Roriz → TEMPRANILLO TINTO).
 - **Not found / uncertain queue** — slugs the curator should pin manually,
   weighted by appellation-usage count so high-impact items surface first.
+- **Pin consistency** — every curator pin in `raw/vivc/slug_overrides.json`
+  is checked against the passport 02g fetched for it: the pinned id must be
+  the one on disk, and the pin's `_prime` annotation must be the passport's
+  prime name or one of its synonyms. A pin whose number was written from
+  memory lands on an unrelated passport (2026-09-20: `oneca` pinned 4359 =
+  GALVANI, so the Navarra pill read "Oneca (Galvani)" — 22 pins were off
+  that way); `--strict` exits non-zero on any such mismatch.
 
 `--curator-todo PATH` mode appends the queue to `CURATOR_TODO.md` as
 a dated section. No network. No writes (other than the optional
@@ -25,6 +32,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
+OVERRIDES = ROOT / "raw" / "vivc" / "slug_overrides.json"
 
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.grape_corpus import collect_grape_slugs  # noqa: E402
@@ -120,6 +128,67 @@ def _print_uncertain(records: list[dict], usage: dict[str, dict]) -> tuple[list[
     return ambig, misses
 
 
+def check_pins(records: list[dict], overrides_path: Path = OVERRIDES) -> list[dict]:
+    """Return one finding per curator pin that disagrees with the passport on
+    disk: `kind` ∈ {mismatch, stale, skip-stale}. `mismatch` is the dangerous
+    one — the pin's `_prime` is neither the fetched prime name nor a synonym,
+    so the id points at some other variety and every pill carrying the slug
+    renders that variety's name in brackets."""
+    if not overrides_path.exists():
+        return []
+    entries = json.loads(overrides_path.read_text(encoding="utf-8")).get("entries") or {}
+    by_slug = {r["slug"]: r for r in records if r.get("slug")}
+    out: list[dict] = []
+    for slug, ent in entries.items():
+        if not isinstance(ent, dict):
+            continue
+        vid = ent.get("vivc_id")
+        rec = by_slug.get(slug)
+        if vid is False:
+            if rec is not None and rec.get("vivc_id"):
+                out.append({"slug": slug, "kind": "skip-stale", "pin": vid,
+                            "got": rec.get("vivc_id"), "prime": rec.get("prime_name")})
+            continue
+        if not isinstance(vid, int) or rec is None:
+            continue
+        if rec.get("vivc_id") != vid:
+            out.append({"slug": slug, "kind": "stale", "pin": vid,
+                        "got": rec.get("vivc_id"), "prime": rec.get("prime_name")})
+            continue
+        if not rec.get("prime_name"):
+            out.append({"slug": slug, "kind": "empty-passport", "pin": vid})
+            continue
+        expected = _norm(ent.get("_prime") or "")
+        if not expected:
+            continue
+        names = {_norm(rec.get("prime_name") or "")}
+        names |= {_norm(s.get("name") or "") for s in rec.get("synonyms") or []}
+        if expected not in names:
+            out.append({"slug": slug, "kind": "mismatch", "pin": vid,
+                        "expected": ent.get("_prime"), "prime": rec.get("prime_name"),
+                        "country": rec.get("country")})
+    return out
+
+
+def _print_pin_findings(findings: list[dict], usage: dict[str, dict]) -> None:
+    print(f"## Pin consistency — {len(findings)} finding(s)")
+    for f in sorted(findings, key=lambda f: -(usage.get(f["slug"], {}).get("total", 0))):
+        uses = usage.get(f["slug"], {}).get("total", 0)
+        if f["kind"] == "mismatch":
+            print(f"  MISMATCH {f['slug']:28s} pin={f['pin']:>6} _prime={f['expected']!r} "
+                  f"but passport is {f['prime']!r} ({f['country']}) uses={uses}")
+        elif f["kind"] == "empty-passport":
+            print(f"  EMPTY    {f['slug']:28s} pin={f['pin']:>6} cached passport has no prime "
+                  f"name — re-run 02g --refresh --only {f['slug']}")
+        elif f["kind"] == "stale":
+            print(f"  STALE    {f['slug']:28s} pin={f['pin']:>6} but by-slug carries "
+                  f"#{f['got']} {f['prime']!r} — re-run 02g --only {f['slug']}")
+        else:
+            print(f"  STALE    {f['slug']:28s} pinned absent but by-slug carries "
+                  f"#{f['got']} {f['prime']!r} — re-run 02g --only {f['slug']}")
+    print()
+
+
 def _write_curator_section(
     todo_path: Path, ambig: list[dict], misses: list[dict], usage: dict[str, dict]
 ) -> None:
@@ -175,6 +244,11 @@ def main() -> int:
         help="append the not-found/ambiguous queue to a CURATOR_TODO.md section "
         "(default path: CURATOR_TODO.md at repo root)",
     )
+    ap.add_argument(
+        "--strict",
+        action="store_true",
+        help="exit non-zero when a curator pin disagrees with the passport on disk",
+    )
     args = ap.parse_args()
 
     records = _load_records()
@@ -186,10 +260,15 @@ def main() -> int:
     _bucket_summary(records)
     _print_wins(records, usage)
     ambig, misses = _print_uncertain(records, usage)
+    pin_findings = check_pins(records)
+    _print_pin_findings(pin_findings, usage)
 
     if args.curator_todo:
         _write_curator_section(args.curator_todo, ambig, misses, usage)
 
+    if args.strict and pin_findings:
+        print(f"strict: {len(pin_findings)} pin finding(s)", file=sys.stderr)
+        return 1
     return 0
 
 

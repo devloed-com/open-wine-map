@@ -102,6 +102,17 @@ details and "Hard rules" for invariants that apply to every country.
   Röckel et al., Vitis International Variety Catalogue — www.vivc.de.
   Ambiguous slugs (multiple candidate VIVC entries) get pinned via
   `raw/vivc/slug_overrides.json` (template at `slug_overrides.example.json`).
+  A pin is only as good as its number: `scripts/audit_vivc_coverage.py
+  --strict` (and `tests/test_vivc_pins.py`) fails when a pin's `_prime`
+  is neither the fetched passport's prime name nor one of its synonyms,
+  when the passport came back blank, or when the by-slug cache no longer
+  matches the pin. Visitor feedback on Navarra (2026-09-20: the pill read
+  "Oneca (Galvani)") exposed 33 pins written from memory that landed on
+  unrelated or non-existent passports; every pin now records the
+  verification date and the previous id. Verify a number against the
+  live passport before pinning it; when VIVC has no entry or folds the
+  name under several primes, pin `false` with the reason — an empty
+  bracket is never wrong.
 - **Machine-translated summaries are a bounded narrative layer.** Stage 02c
   (`scripts/02c_translate_summaries.py`) translates the FR cahier summary
   paragraph into `en` / `es` / `nl` for the map detail panel only. FR remains
@@ -786,6 +797,23 @@ record of that sweep is in [CURATOR_TODO.md](CURATOR_TODO.md). A FLAGGED finding
 (stage 02 / 02f parser or a manual override), never by editing the
 build; a genuine absence is pinned in the overrides file with its
 source.
+
+## Grape pill labels: verbatim, with one per-record escape hatch
+
+A grape pill shows the regulator's own spelling (`details[].name`) with
+the VIVC prime in brackets, so a cahier typo renders as written ("Muscat À
+Petit Grains Blancs (Muscat A Petits Grains Blancs)") — the slug is folded
+by `GRAPE_ALIAS`, the label is not. When the verbatim surface is a *source
+defect* rather than a spelling — the Haute-Marne cahier drops a comma and
+the candidate comes out as "petit grains blancs muscat ottonel" —
+[scripts/_lib/grape_display_overrides.json](scripts/_lib/grape_display_overrides.json)
+(record slug → grape slug → `{name, reason, source}`) relabels it for that
+record only; stage 04 applies it in the `grape_names` block
+([scripts/_lib/grape_display_overrides.py](scripts/_lib/grape_display_overrides.py)),
+sub-denominations inherit the parent's entries, and an entry whose grape
+the record no longer carries is ignored with a STALE warning.
+`tests/test_grape_display_overrides.py` validates the table. Never use it
+to translate or "improve" a real spelling.
 
 ## Page format (per-AOC pages)
 

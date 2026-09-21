@@ -2904,6 +2904,62 @@ guard for image-scan long tail; the resolver's bulk filter-list is ~4 MB
 - **ES grape alias gaps** — [scripts/audit_es_grape_aliases.py](scripts/audit_es_grape_aliases.py) lists tokens that don't resolve through `GRAPE_ALIAS` / `DEFAULT_COLOUR`. ~250 distinct tokens after current seeding; biggest residual classes are Canary Islands varieties (Bermejuela, Marmajuelo, Vijariego, Listán Negro, …) and Galician varieties (Brancellao, Sousón, Loureira, Caíño…). Most are genuine ES-only varieties — register their canonical slug in `DEFAULT_COLOUR` rather than aliasing.
 - **Parenthesised synonyms in ES variety lists** — pliegos like 3-riberas write "Albillo Mayor (Turruntés)" where the parenthetical is the regional synonym. Parser currently keeps the parenthesis in the name → 3-token slug. Extract the parenthesised tail as a synonym (route through `GRAPE_ALIAS`) and slug from the primary token only.
 
+## Cross-country — VIVC curator pins that pointed at the wrong passport ✅ fixed 2026-09-20
+
+Visitor feedback (Plausible `Feedback Flagged`, navarra / grapes, 2026-09-20):
+the Navarra card rendered the pill **"Oneca (Galvani)"** — VIVC 4359 is the
+Italian table grape Pirovano 86, not the Navarra white recovered by EVENA
+(registered in Spain 2023, no VIVC entry). The Navarra roster itself was
+correct (16 varieties = the 2025 documento único, C/2025/297).
+
+`audit_vivc_coverage.py --strict` (new `check_pins`) found the pin was one of
+**33** in `raw/vivc/slug_overrides.json` written from memory: 22 landed on an
+unrelated passport, 11 on ids VIVC serves blank. All re-pinned against the live
+passport (each entry records `_previous_vivc_id` + the verification date);
+`02g --refresh --only …`, `02b_fetch_grape_lexicon --refresh --only …` re-run
+for them (the wrong passports had steered three Wikipedia tooltips: riminese →
+Sangiovese, muscadin → Muscadine, antricotin → Aramon blanc).
+
+| slug | was | now | basis |
+|---|---:|---:|---|
+| oneca | 4359 GALVANI | absent | no VIVC entry (search 2026-09-20) |
+| diagalves | 3551 DIANA HAMBURG | 2520 MONTUA | JKI DNA: Diagalves = Chelva / Montúa |
+| espadeiro | 3998 EUGENE DURET | 24552 ESPADEIRO TINTO | VIVC prime |
+| riminese | 10117 RKATSITELI 4N | 224 ALBANA BIANCA | Corsican riminèse B; VIVC synonym |
+| mayorquin | 7541 MAXATAWNEY | 9542 PLANTA FINA | VIVC synonym |
+| muresconu | 8095 MOVSESI | 8959 PASCALE DI CAGLIARI | MASAF registro scheda 180 |
+| bouteillan | 1632 BOWMAN | 14834 COLOMBAUD | corpus is bouteillan B; VIVC synonym |
+| caino-tinto | 2002 CALLO | 1564 BORRACAL | VIVC + Wine Grapes |
+| camaralet-de-lasseube | 2014 CAMACHA | 24189 CAMARALET | VIVC prime |
+| oberlin | 8678 OBITKI | 8652 OBERLIN NOIR | Oberlin 595 |
+| ratino-gallega | 9942 RAVAZ 1 | 24127 RATINO | VIVC Spain, blanc |
+| terret | 12397 TERZI 97-41 | 12384 TERRET NOIR | as the note intended |
+| crujidera, crudijera | 23167 MAVROTHIRIKO | 23166 MORAVIA DULCE | VIVC synonym |
+| negro-sauri, bastardillo-chico | 17252 / 1029 | 12668 TROUSSEAU NOIR | = Merenzao (DO León / Arribes) |
+| ferraudou | 4112 FERTILIA | 24201 FERRADOU | Gers spelling |
+| giro-negre | 5005 AMERIKANIKO | 4811 GIRO NERO | VIVC Spain; syn. Giró de Baleares |
+| jaen-blanca | 5651 JAEN GARCIA | 5648 CAYETANA BLANCA | VIVC synonym |
+| meslier-saint-francais | 7676 MESLIER ROSE | 7677 | prime |
+| franc-noir-de-haute-saone | 4253 blank | 4916 | prime |
+| soreli-blanc, soleri | 22841 blank | 24892 SORELI | prime |
+| saborinho | 10395 blank | 15678 MOLAR | VIVC synonym |
+| izkiriota | 5070 blank | 7338 MANSENG GROS BLANC | Basque name of Gros Manseng |
+| muscadin, pirene, antricotin, plant-de-brunet, mourvedre-blanc | wrong / blank | absent | no VIVC entry |
+| torrontes, alvarelhao-branco, caino-longo | blank | absent | VIVC folds the name under several primes / two accessions |
+
+Open follow-ups:
+
+- ✅ 2026-09-21 `petit-grains-blancs-muscat-ottonel` (haute-marne): the cahier
+  itself drops the comma ("muscat à petit grains blancs muscat ottonel B"), so
+  it is a source typo, folded by `GRAPE_ALIAS` to `muscat-ottonel`; the slug is
+  gone from the corpus and its override / caches were removed.
+- `torrontes` (39 ES records, Galicia / Canarias / Madrid / Montilla) has no
+  single VIVC identity; a per-region alias (Galician Torrontés vs. Torrontés de
+  Montilla) would need regulator evidence before pinning.
+- `espadeiro` pt-Wikipedia resolves to the Trincadeira article (Wikipedia's own
+  redirect); the nl translation inherits it. Pin a better title in
+  `raw/wikipedia/grape_overrides.json` if one exists.
+
 ## VIVC grape resolution — ✅ closed 2026-06-03
 
 All 11 ambiguous slugs + all 17 IT VIVC pins from the earlier pass are now
