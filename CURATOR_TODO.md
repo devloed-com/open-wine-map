@@ -543,7 +543,7 @@ Also: `_prt_canonical_name` enqueues two-column "Name Synonym" strings as unknow
 ### FR follow-ups from the 2026-09-20 parser fix
 
 - Lexicon: bare `piquepoul` + colour B (Picpoul de Pinet "cépage piquepoul B") resolves to slug `piquepoul`, VIVC-bound to #9298 PIQUEPOUL NOIR; needs a colour-qualified fold to `piquepoul-blanc` (#9295). Bare `piquepoul` also appears on la-clape, pierrevert, saint-chinian — check their colour codes first. `match_variety` has no colour-qualified alias mechanism today.
-- Domfront (cidre/poiré IGP) no longer lists the perry pear `antricotin` as a grape (section 5.1.1 header now parsed); drop the stale `raw/vivc/by-slug/antricotin.json` + `raw/vivc/slug_overrides.json` pin.
+- ✅ 2026-09-21 Domfront (cidre/poiré IGP) no longer lists the perry pear `antricotin` as a grape (section 5.1.1 header now parsed); drop the stale `raw/vivc/by-slug/antricotin.json` + `raw/vivc/slug_overrides.json` pin. (done)
 
 ### REVIEWED — regulator names no variety (15)
 
@@ -2953,12 +2953,31 @@ Open follow-ups:
   itself drops the comma ("muscat à petit grains blancs muscat ottonel B"), so
   it is a source typo, folded by `GRAPE_ALIAS` to `muscat-ottonel`; the slug is
   gone from the corpus and its override / caches were removed.
-- `torrontes` (39 ES records, Galicia / Canarias / Madrid / Montilla) has no
-  single VIVC identity; a per-region alias (Galician Torrontés vs. Torrontés de
-  Montilla) would need regulator evidence before pinning.
-- `espadeiro` pt-Wikipedia resolves to the Trincadeira article (Wikipedia's own
-  redirect); the nl translation inherits it. Pin a better title in
-  `raw/wikipedia/grape_overrides.json` if one exists.
+- ✅ 2026-09-21 `izkiriota` (Getariako Txakolina): the pliego names the variety
+  twice, in Basque and Castilian; `GRAPE_ALIAS` now folds izkiriota /
+  izkiriota-handia → gros-manseng and izkiriota-ttipia → petit-manseng, so the
+  card shows one pill.
+- ✅ 2026-09-21 `espadeiro` pt: pt.wikipedia has no Espadeiro article (the title
+  redirects to Trincadeira), so the pair is pinned `null` in
+  `raw/wikipedia/grape_overrides.json`; the nl translation was pruned.
+- ✅ 2026-09-21 `antricotin` (Domfront perry pear, no longer extracted as a
+  grape): pin and caches removed.
+- ❌ `ondarrabi-zuri-zerratia` (the 3 Txakoli pliegos): pinned VIVC #22838
+  Albarín Blanco ("DNA-confirmed"), but VIVC's cultivarname index folds
+  HONDARRABI ZERRATIA under Courbu blanc #3211, and Getariako lists "Petit
+  Courbu" (#3213) beside it. Three candidates for one name; verify against the
+  Basque register / Wine Grapes before touching the pin (a wrong bracket is
+  worse than none — pin `false` if unresolved).
+- ❌ `torrontes` (39 ES records) stays bracket-less by decision: one slug covers
+  at least three varieties. Galicia (Ribeiro, Rías Baixas, Ribeira Sacra,
+  Valdeorras …) = the Spanish register's Torrontés, DNA-identical to Alarije
+  (VIVC #213 lists TORRONTES as a synonym; OEVV "dual legal status");
+  "Turruntés" of Rioja / Madrid = Albillo Mayor (Hebén × unknown, 2015);
+  Torrontés de Montilla = Puerto Alto / Zalema; Canarias unverified. Binding
+  any one of them corpus-wide would be wrong for the others, and a
+  record-scoped alias (surface → slug per record / region) does not exist —
+  the same gap as the colour-qualified piquepoul fold above. Build that
+  mechanism first, then split the slug per region with the pliego as evidence.
 
 ## VIVC grape resolution — ✅ closed 2026-06-03
 

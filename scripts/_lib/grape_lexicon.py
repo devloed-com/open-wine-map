@@ -110,6 +110,12 @@ GRAPE_ALIAS = {
     "ondarrabi-beltza": "hondarrabi-beltza",
     "hondarrabi-zuri": "hondarrabi-zuri",
     "ondarrabi-zuri": "hondarrabi-zuri",
+    # Basque names of the Manseng pair in the Txakoli pliegos (Getariako
+    # lists both "Izkiriota" and "Gros Manseng" — one variety, VIVC #7338).
+    "izkiriota": "gros-manseng",
+    "izkiriota-handia": "gros-manseng",
+    "izkiriota-ttipia": "petit-manseng",
+    "izkiriota-ttippia": "petit-manseng",
     "moscatel-de-alejandria": "muscat-d-alexandrie",
     "moscatel": "muscat-d-alexandrie",
     "moscatel-de-grano-menudo": "muscat-a-petits-grains",
