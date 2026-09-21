@@ -399,7 +399,10 @@ def _resolve_one(
 ) -> dict:
     """Try the donor index first (free, no API call). On miss, fall back to
     the candidate-chain fetch — that path is the only one paying the
-    `throttle` sleep."""
+    `throttle` sleep. A curator-pinned title outranks the donor: the donor
+    is whichever same-VIVC record was cached first, and when that record is
+    the wrong article (albarin-blanco carried Albariño) the pin is the
+    correction."""
     vivc = _vivc_fingerprint(slug)
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     if _override_absent(lang, slug):
@@ -411,7 +414,8 @@ def _resolve_one(
             "vivc_consulted": vivc,
             "fetched_at": now,
         }
-    if vivc and vivc.get("vivc_id") in donors:
+    pinned_title = ((LANG_OVERRIDES or {}).get(lang) or {}).get(slug)
+    if not pinned_title and vivc and vivc.get("vivc_id") in donors:
         return _shared_record(slug, lang, donors[vivc["vivc_id"]], vivc, now)
     result = fetch_summary(session, lang, slug)
     time.sleep(throttle)

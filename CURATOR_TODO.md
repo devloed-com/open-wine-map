@@ -2962,12 +2962,27 @@ Open follow-ups:
   `raw/wikipedia/grape_overrides.json`; the nl translation was pruned.
 - ✅ 2026-09-21 `antricotin` (Domfront perry pear, no longer extracted as a
   grape): pin and caches removed.
-- ❌ `ondarrabi-zuri-zerratia` (the 3 Txakoli pliegos): pinned VIVC #22838
-  Albarín Blanco ("DNA-confirmed"), but VIVC's cultivarname index folds
-  HONDARRABI ZERRATIA under Courbu blanc #3211, and Getariako lists "Petit
-  Courbu" (#3213) beside it. Three candidates for one name; verify against the
-  Basque register / Wine Grapes before touching the pin (a wrong bracket is
-  worse than none — pin `false` if unresolved).
+- ✅ 2026-09-21 `albarin-blanco` (19 records: Cangas, Tierra de León, …): the
+  en / es Wikipedia caches were the Albariño article (Wine Grapes: distinct
+  varieties, a classic confusion), and Zerratia inherited it through the
+  same-VIVC donor chain. es now pins the "Albarín blanco" article, en is
+  pinned absent; fr / nl / en tooltips re-translated from es.
+- ✅ 2026-09-21 `ondarrabi-zuri-zerratia` (Txakoli pliegos) folds to
+  **Petit Courbu** (#3213): the Bizkaiko Txakolina documento único states
+  "la variedad recomendada Hondarrabi Zuri Zerratia (Petit Courbu)", and
+  Getariako lists both names the way it lists Izkiriota beside Gros Manseng.
+  The earlier "DNA-confirmed = Albarín Blanco" pin was unsupported (VIVC
+  #22838 carries only Galician synonyms; the Wine Grapes Albarín Blanco entry
+  names no Basque synonym). Conflicting third-party reading, not followed:
+  VIVC #651 Arrufiac lists ZURIZERRATIA and Wine Grapes gives "Zurizerratia
+  (Pays Basque)" under Arrufiac — the French-Basque use of the name. If a
+  Basque-government act ever names Arrufiac, revisit.
+- ❌ `hondarrabi-zuri` binds to Courbu blanc #3211 (VIVC flags HONDARRABI ZURI
+  as the official Spanish name there), but Wine Grapes notes the Basque name
+  covers three varieties in the vineyards — Courbu blanc, Crouchen and the
+  hybrid Noah — and the pliegos cannot tell them apart. Bracket kept on
+  VIVC's authority; a regulator statement naming the variety per DO would
+  settle it.
 - ❌ `torrontes` (39 ES records) stays bracket-less by decision: one slug covers
   at least three varieties. Galicia (Ribeiro, Rías Baixas, Ribeira Sacra,
   Valdeorras …) = the Spanish register's Torrontés, DNA-identical to Alarije

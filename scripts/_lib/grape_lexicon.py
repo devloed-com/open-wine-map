@@ -112,6 +112,13 @@ GRAPE_ALIAS = {
     "ondarrabi-zuri": "hondarrabi-zuri",
     # Basque names of the Manseng pair in the Txakoli pliegos (Getariako
     # lists both "Izkiriota" and "Gros Manseng" — one variety, VIVC #7338).
+    # Hondarrabi Zuri Zerratia: the Bizkaiko Txakolina documento único
+    # names it "(Petit Courbu)" — regulator statement, so it folds there
+    # (Getariako lists both names, as it does Izkiriota / Gros Manseng).
+    # VIVC #651 and Wine Grapes give "Zurizerratia (Pays Basque)" as an
+    # Arrufiac synonym instead; recorded in CURATOR_TODO, not followed.
+    "ondarrabi-zuri-zerratia": "petit-courbu",
+    "hondarrabi-zuri-zerratia": "petit-courbu",
     "izkiriota": "gros-manseng",
     "izkiriota-handia": "gros-manseng",
     "izkiriota-ttipia": "petit-manseng",
