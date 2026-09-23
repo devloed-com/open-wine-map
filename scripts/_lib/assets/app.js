@@ -13,6 +13,12 @@
   const FACET_STYLES_TREE = __OWM_styles_tree_json__;
   const STYLE_DESCENDANTS = __OWM_style_descendants_json__;
   const FACET_STYLES_SIMPLE = __OWM_styles_simple_json__;
+  // Level of detail (scripts/_lib/vineyard_envelope.py): below
+  // LOD.overview_max_zoom the map draws the generalised vineyard footprint of
+  // a French parcel-level record (its 250 m closing), from LOD.detail_min_zoom
+  // the INAO parcels; every other record keeps one polygon at every zoom.
+  const LOD = __OWM_lod_json__;
+  const LOD_SOURCES = new Set(LOD.sources || []);
   const FACET_PRINCIPAL = __OWM_principal_json__;
   const FACET_ACCESSORY = __OWM_accessory_json__;
   const FACET_GRAPES_ALL = __OWM_grapes_all_json__;
@@ -672,7 +678,7 @@
   function applyFilter(opts) {
     const expr = buildFilterExpr();
     for (const id of ['appellations-fill', 'appellations-outline',
-                       'appellations-fill-villages', 'appellations-outline-villages']) {
+                       'appellations-fill-overview', 'appellations-outline-overview']) {
       if (map.getLayer(id)) map.setFilter(id, expr);
     }
     updateStatus();
@@ -738,12 +744,64 @@
     refreshAllGrapeChipFilters();
   }
 
+  // Which polygon of a record is on screen depends on the zoom: the footprint
+  // / zone (`bbox_villages` = the overview feature's bbox) below
+  // LOD.overview_max_zoom, the parcels (`bbox`) from there. Ranking a click
+  // stack must look at what was clicked; framing a record fits its parcels
+  // (the footprint contains them within the closing radius).
+  function drawnBbox(r) {
+    if (!r) return null;
+    const overview = map.getZoom() < LOD.footprint_max_zoom;
+    return overview ? (r.bbox_villages || r.bbox) : (r.bbox || r.bbox_villages);
+  }
+  function fitBbox(r) {
+    return r ? (r.bbox || r.bbox_villages) : null;
+  }
+  // The record whose parcels a footprint generalises: the record itself, or
+  // the parent / umbrella sibling it inherited its polygon from (those two are
+  // panel-payload fields, so before hydration an inherited DGC reads as
+  // 'zone').
+  function envelopeDonor(r) {
+    if (!r || (LOD.countries || []).indexOf(r.country || 'fr') < 0) return null;
+    if (LOD_SOURCES.has(r.geom_source)) return r;
+    if (r.geom_source === 'parent-appellation' && r.parent_slug) {
+      const p = AOCS[r.parent_slug];
+      return p && LOD_SOURCES.has(p.geom_source) ? p : null;
+    }
+    if (r.geom_source === 'sibling-dgc' && r.geom_fallback_slug) {
+      const u = AOCS[r.geom_fallback_slug];
+      return u && LOD_SOURCES.has(u.geom_source) ? u : null;
+    }
+    return null;
+  }
+  function hasFootprint(r) { return !!envelopeDonor(r); }
+  // What the visitor is looking at for this record: 'footprint' (generalised
+  // parcels, below the detail zoom), 'parcels', or 'zone' (one polygon at
+  // every zoom). Reported on the feedback and view events so a boundary flag
+  // can be read against the shape that was on screen.
+  function lodBand(r) {
+    if (!hasFootprint(r)) return 'zone';
+    // footprint_max_zoom = the end of the crossfade: the overview layers stop
+    // there, so "footprint" is claimed only while some of it is on screen.
+    return map.getZoom() < LOD.footprint_max_zoom ? 'footprint' : 'parcels';
+  }
+  function zoomStr() { return String(Math.round(map.getZoom() * 10) / 10); }
+  // The footprint note in an open card is a zoom-dependent statement: show it
+  // below the detail zoom, hide it above. Patch the node in place — never
+  // re-render the card from a zoom, that would wipe pressed feedback chips
+  // and a half-typed note.
+  function refreshLodLines() {
+    const overview = map.getZoom() < LOD.footprint_max_zoom;
+    document.querySelectorAll('#panel [data-lod-line]').forEach(el => { el.hidden = !overview; });
+  }
+  map.on('zoomend', refreshLodLines);
+
   function fitToFiltered() {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     let any = false;
     for (const slug in AOCS) {
       const rec = AOCS[slug];
-      const b = (viewMode === 'simple' && rec.bbox_villages) ? rec.bbox_villages : rec.bbox;
+      const b = fitBbox(rec);
       if (!b) continue;
       if (!matchesClient(rec, slug)) continue;
       if (b[0] < minX) minX = b[0];
@@ -1119,9 +1177,11 @@
     stackFocusIndex = 0;
     renderPanelStack([slug], 0, undefined, 'facet');
     track('Appellation Opened', { slug: slug, via: 'facet', locale: LANG });
-    const b = (viewMode === 'simple' && AOCS[slug].bbox_villages) ? AOCS[slug].bbox_villages : AOCS[slug].bbox;
+    const b = fitBbox(AOCS[slug]);
     if (b && typeof map.fitBounds === 'function') {
-      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: 11, duration: 500 });
+      // maxZoom = LOD.overview_max_zoom: "show me this appellation" lands on
+      // its parcels, not on the half-faded footprint at the crossfade.
+      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: LOD.overview_max_zoom, duration: 500 });
     }
   });
 
@@ -1210,29 +1270,14 @@
       const modes = el.dataset.modes.split(/\s+/);
       el.classList.toggle('mode-hidden', !modes.includes(viewMode));
     });
-    swapMapLayers();
+    // The geometry is no longer the mode's business: zoom decides between the
+    // overview and detail sources (see the source block). The mode only
+    // gates the sidebar (facet depth, spirits).
     // The appellation tree's contents depend on spiritsVisible(), which
     // depends on viewMode — rebuild on every mode switch (optional-chain the
     // children check defensively).
     if (document.getElementById('facet-appellations')?.children.length) {
       buildAppellationFacet();
-    }
-  }
-
-  function swapMapLayers() {
-    // Halo layers must flip with their fill/outline siblings: the selection
-    // halo is a dark, wide stroke drawn UNDER the cream outline. If the
-    // inactive mode's halo stays visible it sits above the active mode's cream
-    // outline (later in draw order) and dims the selection — so simple mode
-    // looked far less clearly selected than advanced. Toggle all three.
-    const advLayers = ['appellations-fill', 'appellations-halo', 'appellations-outline'];
-    const vilLayers = ['appellations-fill-villages', 'appellations-halo-villages', 'appellations-outline-villages'];
-    const showAdv = viewMode === 'advanced';
-    for (const id of advLayers) {
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showAdv ? 'visible' : 'none');
-    }
-    for (const id of vilLayers) {
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showAdv ? 'none' : 'visible');
     }
   }
 
@@ -1742,8 +1787,8 @@
       stackFocusIndex = 0;
       renderPanelStack([key], 0, undefined, 'omnisearch');
       track('Appellation Opened', { slug: key, via: 'omnisearch', locale: LANG });
-      const b = (viewMode === 'simple' && AOCS[key].bbox_villages) ? AOCS[key].bbox_villages : AOCS[key].bbox;
-      if (b && typeof map.fitBounds === 'function') map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: 11, duration: 500 });
+      const b = fitBbox(AOCS[key]);
+      if (b && typeof map.fitBounds === 'function') map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: LOD.overview_max_zoom, duration: 500 });
     }
   }
 
@@ -2286,6 +2331,25 @@
     return `<p class="provenance-line">${sentence}</p>`;
   }
 
+  // Provenance sentence for the zone-level sources (the other countries'
+  // regulators): what the polygon is and at what resolution. Mirrored by
+  // _geom_source_line in scripts/_lib/content_block.py.
+  function geomSourceLine(r) {
+    const gs = r.geom_source || '';
+    if (gs.startsWith('geoportal-zone:') || gs.startsWith('geoportal-canton:')) {
+      let region = gs.slice(gs.indexOf(':') + 1);
+      region = gs.startsWith('geoportal-canton:')
+        ? region.toUpperCase()
+        : region.split('+').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' + ');
+      return escapeHtml(fmt(LABELS.geom_src_geoportal, { region: region }));
+    }
+    if (gs === 'mapa-zone') return escapeHtml(LABELS.geom_src_mapa);
+    if (gs === 'figshare-pdo' || gs === 'figshare-pdo-alias') return escapeHtml(LABELS.geom_src_betard);
+    if (gs === 'region-pdo-union') return escapeHtml(LABELS.geom_src_pdo_union);
+    if (/^(gisco-|caop-|swissboundaries-|ons-)/.test(gs) || gs === 'nuts2-province' || gs === 'geometry-research-municipios') return escapeHtml(LABELS.geom_src_admin_union);
+    return '';
+  }
+
   function renderAocCard(slug, isPrimary) {
     const r = AOCS[slug];
     if (!r) return '';
@@ -2369,7 +2433,21 @@
     } else if (r.geom_source === 'cadastre-lieu-dit-dgc' && r.cadastre_lieu_dit) {
       const src = `<a href="https://cadastre.data.gouv.fr/" target="_blank" rel="noopener">${escapeHtml(LABELS.geom_approx_cadastre_source_label)}</a>`;
       approxLine = `<div class="approx-line">${fmt(LABELS.geom_approx_cadastre, { lieu_dit: escapeHtml(r.cadastre_lieu_dit), commune: escapeHtml(r.cadastre_commune || ''), source: src })}</div>`;
+    } else if (r.geom_source === 'aires-csv' || r.geom_source === 'dgc-village-override' || r.geom_source === 'communes') {
+      // A commune union: no parcel delimitation for this record, so the
+      // polygon includes water and non-vineyard land — say so (every French
+      // IGP and Champagne draw this way).
+      approxLine = `<div class="approx-line">${escapeHtml(fmt(LABELS.geom_approx_aires_union, { n: r.communes_matched || 0 }))}</div>`;
+    } else {
+      const src = geomSourceLine(r);
+      if (src) approxLine = `<div class="approx-line">${src}</div>`;
     }
+    // Zoom-dependent: below the detail zoom the map shows a generalised
+    // footprint of this record's parcels, not the delimitation. Hidden above
+    // it; refreshLodLines() flips the node on zoomend.
+    const lodLine = hasFootprint(r)
+      ? `<div class="approx-line lod-line" data-lod-line="${escapeAttr(slug)}"${lodBand(r) === 'footprint' ? '' : ' hidden'}>${escapeHtml(fmt(LABELS.geom_lod_footprint, { radius: LOD.radius_m }))}</div>`
+      : '';
     const stubLine = r.is_stub
       ? `<div class="approx-line">${fmt(LABELS.stub_message, { doc: '<em>' + escapeHtml(STUB_DOC_NAMES[r.country] || STUB_DOC_NAMES.fr) + '</em>' })} <a class="stub-help" href="#" data-fb-aspect="sources">${escapeHtml(LABELS.stub_help_label)}</a></div>`
       : '';
@@ -2398,6 +2476,7 @@
         ${cancelledLine(r)}
         ${dgcLine}
         ${approxLine}
+        ${lodLine}
         ${stubLine}
         ${styleChips ? '<h2>' + LABELS.panel_styles_h + '</h2><div class="pills">' + styleChips + '</div>' : ''}
         ${principal ? '<h2>' + LABELS.facet_principal_h + '</h2><div class="pills">' + principal + '</div>' : ''}
@@ -2499,7 +2578,7 @@
       // retraction next to it and net the two when reading.
       chip.setAttribute('aria-pressed', 'false');
       rememberFeedback(slug, aspect, false);
-      track('Feedback Retracted', { slug: slug, aspect: aspect, locale: LANG });
+      track('Feedback Retracted', { slug: slug, aspect: aspect, view_mode: viewMode, lod: lodBand(r), zoom: zoomStr(), locale: LANG });
       const left = pressedAspects(row);
       const status = box.querySelector('.fb-status');
       if (left.length && status && box.querySelector('textarea.fb-note')) {
@@ -2515,7 +2594,8 @@
       rememberFeedback(slug, aspect, true);
       track('Feedback Flagged', {
         slug: slug, aspect: aspect, country: r.country || '', kind: r.kind || '',
-        geom_source: r.geom_source || '', via: via, locale: LANG,
+        geom_source: r.geom_source || '', view_mode: viewMode, lod: lodBand(r), zoom: zoomStr(),
+        via: via, locale: LANG,
       });
     }
     box.hidden = false;
@@ -2538,7 +2618,7 @@
     const note = ta ? ta.value.replace(/\s+/g, ' ').trim().slice(0, FEEDBACK_NOTE_MAX) : '';
     // `aspect` is the pressed set joined with '+', so one note about two
     // things reads `boundary+grapes` in the breakdown rather than only the last tap.
-    if (note) track('Feedback Note', { slug: slug, aspect: aspects.join('+') || 'other', note: note, locale: LANG });
+    if (note) track('Feedback Note', { slug: slug, aspect: aspects.join('+') || 'other', note: note, view_mode: viewMode, lod: lodBand(AOCS[slug]), zoom: zoomStr(), locale: LANG });
     box.innerHTML = `<span class="fb-status" role="status">${note ? escapeHtml(LABELS.feedback_sent) : fmt(LABELS.feedback_noted_html, { aspect: aspectsHtml(aspects) })}</span>`;
   }
 
@@ -2556,10 +2636,8 @@
     // polygon area is smaller.
     const r = AOCS[slug];
     if (!r) return Infinity;
-    const primary = viewMode === 'advanced' ? r.bbox : r.bbox_villages;
-    const fallback = viewMode === 'advanced' ? r.bbox_villages : r.bbox;
-    const a = bboxArea(primary);
-    return Number.isFinite(a) ? a : bboxArea(fallback);
+    const a = bboxArea(drawnBbox(r));
+    return Number.isFinite(a) ? a : bboxArea(r.bbox);
   }
 
   // Tab title for an open appellation — mirrors the server-rendered entity
@@ -2743,6 +2821,8 @@
           stacked: sorted.length > 1 ? 'true' : 'false',
           stack_size: String(sorted.length),
           via: via || 'map',
+          lod: lodBand(fr),
+          zoom: zoomStr(),
           locale: LANG,
         });
       }
@@ -2762,11 +2842,11 @@
   }
 
   // ----- selection highlight + persistence (across reload / language switch) -----
-  // Selection is mirrored into both `appellations` (advanced/parcellaire) and
-  // `appellations-villages` (simple/commune) sources so the highlight follows
-  // the user across mode toggles. setFeatureState calls before map.on('load')
-  // throw because the source isn't registered yet — we swallow and re-apply
-  // at the end of map.on('load').
+  // Selection is mirrored into both `appellations` (the parcels, detail zoom)
+  // and `appellations-overview` (the footprint / zone below it) so the
+  // highlight survives zooming across the crossfade. setFeatureState calls
+  // before map.on('load') throw because the source isn't registered yet — we
+  // swallow and re-apply at the end of map.on('load').
   let selectedSlugs = [];
   // The element that opened the panel (a facet "open" button), so focus can
   // return there on close (WCAG 2.4.3). Null for map clicks / in-panel
@@ -2780,7 +2860,7 @@
   let stackFocusIndex = 0;
 
   function setSelectedState(slug, selected) {
-    for (const source of ['appellations', 'appellations-villages']) {
+    for (const source of ['appellations', 'appellations-overview']) {
       const opts = { source: source, id: slug };
       if (SOURCE_TYPE === 'pmtiles') opts.sourceLayer = 'appellations';
       try { map.setFeatureState(opts, { selected: selected }); } catch (e) {}
@@ -2866,10 +2946,8 @@
       // page-entry snapshot, not the live hash — maplibre has already written
       // the default camera into location.hash by now.
       if (!INITIAL_CAMERA_HASH) {
-        // Mode-aware like fitToFiltered / the facet-open handler: simple mode
-        // renders the villages geometry, so frame that extent, not parcellaire.
-        const b = (viewMode === 'simple' && AOCS[urlSlug].bbox_villages) ? AOCS[urlSlug].bbox_villages : AOCS[urlSlug].bbox;
-        if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, maxZoom: 11, duration: 0 }));
+        const b = fitBbox(AOCS[urlSlug]);
+        if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, maxZoom: LOD.overview_max_zoom, duration: 0 }));
       }
       return;
     }
@@ -3052,7 +3130,7 @@
   map.on('load', () => {
 __OWM_source_block__
     for (const id of ['appellations-fill', 'appellations-outline',
-                      'appellations-fill-villages', 'appellations-outline-villages']) {
+                      'appellations-fill-overview', 'appellations-outline-overview']) {
       map.on('mousemove', id, e => {
         if (!e.features.length) return;
         map.getCanvas().style.cursor = 'pointer';
@@ -3077,8 +3155,10 @@ __OWM_source_block__
       // typical zoom; a point-only hit-test misses them.
       const r = 4;
       const bbox = [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
+      // Both fill layers: inside the crossfade band a record is present in
+      // both sources (the same slug twice — deduped below).
       const features = map.queryRenderedFeatures(bbox, {
-        layers: ['appellations-fill', 'appellations-fill-villages'],
+        layers: ['appellations-fill', 'appellations-fill-overview'],
       });
       if (!features.length) { closePanel(false); return; }
       // Dedupe by slug, and drop DGCs that share another AOC's polygon

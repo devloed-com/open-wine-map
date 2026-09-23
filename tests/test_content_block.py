@@ -29,6 +29,14 @@ _LABELS = {
     "geom_approx_aires": "Approx area — commune envelope.",
     "geom_approx_cadastre": "From lieu-dit «{lieu_dit}» (commune {commune}, {source}).",
     "geom_approx_cadastre_source_label": "cadastre.data.gouv.fr",
+    "geom_approx_pdo_plan": "Approx area — reconstructed from the plan.",
+    "geom_approx_aires_union": "Approx area — union of the {n} commune(s), water included.",
+    "geom_lod_footprint_static": "At overview zooms drawn as a footprint generalised at {radius} m.",
+    "geom_src_geoportal": "Official production zone from the geoportal ({region}).",
+    "geom_src_mapa": "Official MAPA production zone.",
+    "geom_src_betard": "Approx area — Bétard 2022 polygon, municipality resolution.",
+    "geom_src_pdo_union": "Approx area — union of the member PDO polygons.",
+    "geom_src_admin_union": "Approx area — union of the named administrative units.",
     "stub_message": "No {doc} found yet.",
     "stub_help_label": "help us find it",
     "panel_styles_h": "Styles",
@@ -101,12 +109,17 @@ _COUNTRY_FLAG = {"fr": "🇫🇷", "be": "🇧🇪", "nl": "🇳🇱", "it": "�
                  "pt": "🇵🇹", "es": "🇪🇸", "gr": "🇬🇷"}
 
 
-def _ctx(locale: str = "fr") -> RenderCtx:
+_LOD = {"radius_m": 250, "overview_max_zoom": 12, "countries": ["fr"],
+        "sources": ["parcellaire", "parcellaire-dgc"]}
+
+
+def _ctx(locale: str = "fr", lod: dict | None = None) -> RenderCtx:
     return RenderCtx(
         locale=locale, labels=_LABELS, region_labels={"BORDEAUX": "Bordeaux"},
         country_labels=_COUNTRY_LABELS, country_flag_emoji=_COUNTRY_FLAG,
         grapes_info=_GRAPES_INFO, styles_info=_STYLES_INFO, style_labels=_STYLE_LABELS,
         github_new_issue_url="https://github.com/x/y/issues/new",
+        lod=lod or {},
     )
 
 
@@ -378,3 +391,67 @@ def test_fr_source_marker_only_off_locale() -> None:
     rec = {"name": "M", "kind": "AOC", "country": "fr", "summary": "Texte."}
     assert "(French)" not in _render(rec, locale="fr")  # native locale: no marker
     assert "(French)" in _render(rec, locale="en")      # off-locale: marker shown
+
+
+# ---- geometry provenance lines (the approx-line chain, mirrored in app.js) ----
+
+def _geom_rec(**over) -> dict:
+    rec = {"name": "X", "country": "fr", "kind": "AOC", "region": "BORDEAUX",
+           "styles": ["red"], "grapes_principal": ["merlot"]}
+    rec.update(over)
+    return rec
+
+
+def test_commune_union_line_names_count_and_water() -> None:
+    html = _render(_geom_rec(geom_source="aires-csv", communes_matched=7))
+    assert "union of the 7 commune(s), water included" in html
+    html = _render(_geom_rec(geom_source="dgc-village-override", communes_matched=1))
+    assert "union of the 1 commune(s)" in html
+    html = _render(_geom_rec(geom_source="communes", communes_matched=3))
+    assert "union of the 3 commune(s)" in html
+
+
+def test_parcellaire_has_no_approx_line_without_lod() -> None:
+    html = _render(_geom_rec(geom_source="parcellaire"))
+    assert "approx-line" not in html
+
+
+def test_footprint_line_only_for_parcel_level_french_records_when_lod_set() -> None:
+    ctx = _ctx(lod=_LOD)
+    html = render_content_block(_geom_rec(geom_source="parcellaire"), "x", ctx)
+    assert '<div class="approx-line lod-line">' in html
+    assert "generalised at 250 m" in html
+    html = render_content_block(_geom_rec(geom_source="parcellaire-dgc"), "x", ctx)
+    assert "lod-line" in html
+    # Not for a commune union, not for another country, not without config.
+    assert "lod-line" not in render_content_block(_geom_rec(geom_source="aires-csv"), "x", ctx)
+    assert "lod-line" not in render_content_block(
+        _geom_rec(geom_source="parcellaire", country="es"), "x", ctx
+    )
+    assert "lod-line" not in _render(_geom_rec(geom_source="parcellaire"))
+
+
+def test_zone_source_lines_for_other_countries() -> None:
+    html = _render(_geom_rec(country="it", geom_source="geoportal-zone:piemonte"))
+    assert "geoportal (Piemonte)" in html
+    assert "<" not in html.split('approx-line">')[1].split("</div>")[0]
+    html = _render(_geom_rec(country="it", geom_source="geoportal-zone:lazio+umbria"))
+    assert "geoportal (Lazio + Umbria)" in html
+    html = _render(_geom_rec(country="ch", geom_source="geoportal-canton:ge"))
+    assert "geoportal (GE)" in html
+    assert "Official MAPA production zone" in _render(_geom_rec(country="es", geom_source="mapa-zone"))
+    assert "Bétard 2022 polygon" in _render(_geom_rec(country="gr", geom_source="figshare-pdo"))
+    assert "Bétard 2022 polygon" in _render(_geom_rec(country="sk", geom_source="figshare-pdo-alias"))
+    assert "member PDO polygons" in _render(_geom_rec(country="si", geom_source="region-pdo-union"))
+    for gs in ("gisco-commune-list", "caop-concelho-union", "swissboundaries-canton-union",
+               "ons-country", "nuts2-province", "geometry-research-municipios"):
+        assert "named administrative units" in _render(_geom_rec(country="pt", geom_source=gs)), gs
+    # Parcel-precise or unknown sources say nothing (sigpac-hybrid-pliego is
+    # what stage 04 writes for the SIGPAC-resolved Priorat / Montsant records).
+    assert "approx-line" not in _render(_geom_rec(country="es", geom_source="sigpac-hybrid-pliego"))
+    assert "approx-line" not in _render(_geom_rec(country="lu", geom_source="ivv-commune-vineyard"))
+
+
+def test_pdo_plan_line() -> None:
+    html = _render(_geom_rec(country="gb", geom_source="pdo-plan-parcel-hull-approx"))
+    assert "reconstructed from the plan" in html

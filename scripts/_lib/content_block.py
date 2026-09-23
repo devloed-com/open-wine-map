@@ -100,6 +100,9 @@ class RenderCtx:
     # Tooltip payload for the two naming tokens (scheme id / '<cc>:<term>'),
     # see _lib/gi_terms.build_terms_info. Empty = plain text, no <abbr>.
     terms_info: dict = field(default_factory=dict)
+    # Level-of-detail config (scripts/_lib/vineyard_envelope.py lod_config):
+    # which records draw a generalised footprint below the detail zoom.
+    lod: dict = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------- primitives
@@ -794,28 +797,82 @@ def classification_html(rec: dict, ctx: RenderCtx) -> str:
     return _span(label, scheme, "gi-scheme")
 
 
+_ADMIN_UNION_PREFIXES = ("gisco-", "caop-", "swissboundaries-", "ons-")
+
+
+def _geom_source_line(rec: dict, lab: dict) -> str:
+    """Provenance sentence for the zone-level sources (no parcel delimitation):
+    the regional geoportal / MAPA production zone, Bétard 2022, or an
+    administrative union. Mirrors ``geomSourceLine`` in app.js."""
+    gs = rec.get("geom_source") or ""
+    if gs.startswith("geoportal-zone:") or gs.startswith("geoportal-canton:"):
+        region = gs.split(":", 1)[1]
+        if gs.startswith("geoportal-canton:"):
+            region = region.upper()
+        else:
+            region = " + ".join(part[:1].upper() + part[1:] for part in region.split("+"))
+        return esc(fmt(lab["geom_src_geoportal"], {"region": region}))
+    if gs == "mapa-zone":
+        return esc(lab["geom_src_mapa"])
+    if gs in ("figshare-pdo", "figshare-pdo-alias"):
+        return esc(lab["geom_src_betard"])
+    if gs == "region-pdo-union":
+        return esc(lab["geom_src_pdo_union"])
+    if gs.startswith(_ADMIN_UNION_PREFIXES) or gs in ("nuts2-province", "geometry-research-municipios"):
+        return esc(lab["geom_src_admin_union"])
+    return ""
+
+
+def has_footprint(rec: dict, lod: dict) -> bool:
+    """Does the map draw a generalised footprint of this record below the
+    detail zoom? Same rule as stage 04 (`is_envelope_source`) and
+    ``hasFootprint`` in app.js, minus the inherited-donor case, which needs
+    the donor record and is resolved client-side only."""
+    if not lod:
+        return False
+    return (rec.get("country") or "fr") in (lod.get("countries") or []) and (
+        rec.get("geom_source") in (lod.get("sources") or [])
+    )
+
+
 def _approx_line(rec: dict, ctx: RenderCtx) -> str:
     lab = ctx.labels
     gs = rec.get("geom_source")
+    line = ""
     if gs == "sibling-dgc" and rec.get("geom_fallback_slug"):
         u = (
             f'<a class="parent-link" data-slug="{esc(rec["geom_fallback_slug"])}" href="#">'
             f'{esc(rec.get("geom_fallback_name") or rec["geom_fallback_slug"])}</a>'
         )
-        return f'<div class="approx-line">{fmt(lab["geom_approx_within"], {"umbrella": u})}</div>'
-    if gs == "parent-appellation":
-        return f'<div class="approx-line">{esc(lab["geom_approx_parent"])}</div>'
-    if gs == "aires-csv-dgc":
-        return f'<div class="approx-line">{esc(lab["geom_approx_aires"])}</div>'
-    if gs == "cadastre-lieu-dit-dgc" and rec.get("cadastre_lieu_dit"):
+        line = fmt(lab["geom_approx_within"], {"umbrella": u})
+    elif gs == "parent-appellation":
+        line = esc(lab["geom_approx_parent"])
+    elif gs == "aires-csv-dgc":
+        line = esc(lab["geom_approx_aires"])
+    elif gs == "pdo-plan-parcel-hull-approx":
+        line = esc(lab["geom_approx_pdo_plan"])
+    elif gs == "cadastre-lieu-dit-dgc" and rec.get("cadastre_lieu_dit"):
         src = (
             '<a href="https://cadastre.data.gouv.fr/" target="_blank" rel="noopener">'
             f'{esc(lab["geom_approx_cadastre_source_label"])}</a>'
         )
-        return (
-            f'<div class="approx-line">{fmt(lab["geom_approx_cadastre"], {"lieu_dit": esc(rec["cadastre_lieu_dit"]), "commune": esc(rec.get("cadastre_commune") or ""), "source": src})}</div>'
+        line = fmt(
+            lab["geom_approx_cadastre"],
+            {
+                "lieu_dit": esc(rec["cadastre_lieu_dit"]),
+                "commune": esc(rec.get("cadastre_commune") or ""),
+                "source": src,
+            },
         )
-    return ""
+    elif gs in ("aires-csv", "dgc-village-override", "communes"):
+        line = esc(fmt(lab["geom_approx_aires_union"], {"n": rec.get("communes_matched") or 0}))
+    else:
+        line = _geom_source_line(rec, lab)
+    out = f'<div class="approx-line">{line}</div>' if line else ""
+    if has_footprint(rec, ctx.lod):
+        note = fmt(lab["geom_lod_footprint_static"], {"radius": ctx.lod.get("radius_m", "")})
+        out += f'<div class="approx-line lod-line">{esc(note)}</div>'
+    return out
 
 
 # ---------------------------------------------------------------- entry point

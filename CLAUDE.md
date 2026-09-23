@@ -724,7 +724,8 @@ disjoint commune lists should *tile*, not overlap with real 2-D area.
 
 [scripts/audit_geometry_overlaps.py](scripts/audit_geometry_overlaps.py)
 streams `wiki/map-data/appellations-villages.geojson` (commune-level —
-the right granularity for a one-commune sliver), reprojects to
+the right granularity for a one-commune sliver; since the zoom-LOD split
+this file is written for the audit only and is no longer tiled), reprojects to
 EPSG:3035, lightly simplifies, and computes every pairwise polygon
 overlap. It skips hierarchy pairs (parent ⊃ sub-denomination; siblings
 of one appellation) and classifies the rest by `share` = overlap area
@@ -5118,6 +5119,112 @@ is vendored at `scripts/_lib/vendor/openfreemap-{positron,dark}.json` — key-fr
 OpenStreetMap vector tiles that merge into one style and keep the same
 visibility toggle. See [scripts/_lib/vendor/README.md](scripts/_lib/vendor/README.md).
 
+## Zoom-dependent level of detail (vineyard footprints)
+
+Zoom, not the Simple/Advanced toggle, decides which geometry the map
+draws (branch `feat/zoom-lod`, 2026-09-23). Two vector sources, one
+`source-layer` (`appellations`) and one `promoteId: 'slug'` each, built by
+`_build_source_block` in
+[scripts/_lib/map_template.py](scripts/_lib/map_template.py); the constants
+live in [scripts/_lib/vineyard_envelope.py](scripts/_lib/vineyard_envelope.py)
+(`lod_config()`) and reach app.js as the `LOD` object, so Python and JS
+never disagree about the zoom bands:
+
+- **`appellations-overview`** (`wiki/map-data/appellations-overview.pmtiles`,
+  tippecanoe z3–z11, layers `maxzoom: 11.9` = the end of the crossfade, so
+  the layers are neither drawn nor hit-testable once the parcels are at
+  full opacity). For the ~1,260 French records
+  whose detail geometry is the INAO parcellaire (`geom_source` `parcellaire`
+  / `parcellaire-dgc`) it carries a **generalised vineyard footprint**: a
+  morphological closing of the parcels — buffer +250 m then −250 m in
+  EPSG:3035, simplify 30 m — `geom_source = parcellaire-envelope`. Parcels
+  closer than 500 m merge into one silhouette, holes narrower than that
+  fill, and the result never leaves the parcels' 250 m dilation; median
+  area 1.3× the parcels, against 5–8× for the commune union it replaces
+  (which painted the Gironde estuary for Saint-Estèphe). A sub-denomination
+  that inherits its polygon (`parent-appellation` / `sibling-dgc`) inherits
+  the donor's footprint (`overview_by_slug`), so a child never draws a
+  larger low-zoom shape than its parent. Every other record — the other
+  countries' zones, Champagne and the IGPs (commune unions), the
+  lieux-dits — draws the same polygon in both sources.
+- **`appellations`** (`appellations.pmtiles`, tippecanoe z11–z12 with
+  `--no-tiny-polygon-reduction-at-maximum-zoom`, layers `minzoom: 11`,
+  overzoomed to the client's maxZoom 14): the parcels, exactly as the old
+  advanced mode.
+- **Crossfade z11.0 → z11.9**: both sources drawn with complementary
+  `fill-opacity` / `line-opacity`; the selection halos fade with their
+  fills and sit above both fills (layer order: fill-overview, fill,
+  halo-overview, halo, outline-overview, outline). Single-record fits cap
+  at z12 so "show me this appellation" lands on parcels; `fitToFiltered`
+  stays at z10.
+- **Feature properties.** `area` is the detail polygon's area on *both*
+  features (fill-sort-key and the paint ramps read it; it must not step at
+  the crossfade); the overview feature adds `area_drawn`. `parts` and
+  `frag` (perimeter/area in m⁻¹, measured on the tiled geometry by
+  `shape_metrics`) drive the outline: from z10, `line-width =
+  min(area ramp, max(W_min, K_z / frag))` with `K_z = 0.35·2^z / 108747`
+  — constant ink per fill area, so a 112-parcel record gets a 0.4–0.8 px
+  edge at z11–z12 where a single-part record keeps the area ramp, with
+  floors (0.25 / 0.35 / 0.5 / 0.7 px at z10 / z11 / z12 / z14) so a small
+  compact climat stays visible — and below the crossfade a `line-opacity`
+  ramp on `parts` (scale-free; perimeter/area would dim every small climat)
+  removes the stroke of the shapes that survive generalisation in hundreds
+  of patches (a sub-half-pixel width still renders as a hairline; only
+  opacity removes it). At the continental overview footprints stack five to
+  ten deep per region, so `parcellaire-envelope` features draw with no
+  outline below z6.5 and a fill scaled ×0.5 at z3 → ×1 at z8.
+- **Build.** Stage 04 computes the footprint after the geometry-outlier
+  clip on the tile-simplified parcels; the parcellaire is split into
+  connected components first (STRtree over the r-dilated part bounds +
+  union-find — exact, a closing cannot merge parts more than 2r apart),
+  which takes Languedoc's 31,488 parts from 832 s to ~30 s. Results are
+  cached under `raw/cache/vineyard-envelopes/v<N>-r<r>/` keyed on the
+  input geometry's digest, so a warm build costs nothing, a new
+  parcellaire release invalidates exactly the records that changed, and
+  the fresh-build rule holds; bump `ENVELOPE_VERSION` whenever the
+  parameters change. Fatal gates: every slug in both tilesets (before the
+  split, Crozes-Hermitage and Fiefs Vendéens had no low-zoom feature at
+  all), the footprint bbox inside the parcels' bbox + r + simplify
+  (`_check_envelope`), no empty geometry; a footprint above 3× its parcels
+  is reported. A sub-denomination that inherits its footprint still gets
+  its own geometry-outlier clip applied to it. The commune-level
+  `appellations-villages.geojson` is still
+  written — not tiled — because
+  [scripts/audit_geometry_overlaps.py](scripts/audit_geometry_overlaps.py)
+  is calibrated on commune borders; the old
+  `appellations-villages.pmtiles` is unlinked.
+- **Disclosure** (same commit as the geometry, JS and SSR in step:
+  `renderAocCard` in app.js and `_approx_line` in
+  [scripts/_lib/content_block.py](scripts/_lib/content_block.py)): the
+  zoom-reactive footprint line (`geom_lod_footprint`, shown below z12,
+  patched in place on `zoomend` — never re-render the card from a zoom, it
+  would wipe pressed feedback chips and a half-typed note); the
+  commune-union line `geom_approx_aires_union` ("réunion des {n}
+  communes …, plans d'eau … compris") for plain `aires-csv` /
+  `dgc-village-override` / `communes` records — every French IGP and
+  Champagne, which said nothing before; a zone-source line for the other
+  countries (`geom_src_geoportal` / `_mapa` / `_betard` / `_pdo_union` /
+  `_admin_union`); an About paragraph. `Feedback Flagged / Retracted /
+  Note` and `Appellation Viewed` carry `lod` (`footprint` / `parcels` /
+  `zone` — the band boundary is `footprint_max_zoom` = 11.9, where the
+  overview layers stop) and `zoom` — see [docs/analytics.md](docs/analytics.md).
+- **The toggle** no longer swaps layers; it still gates spirits and the
+  expert facets and keeps its `view_mode` key (to be simplified to one
+  mode — next step). `bbox_villages` on the startup record is now the
+  overview feature's bbox; `drawnBbox` / `fitBbox` in app.js replace the
+  mode-keyed reads.
+- **Audit.** [scripts/audit_vineyard_envelopes.py](scripts/audit_vineyard_envelopes.py):
+  parity, containment (within `containment_tolerance_m`, the polygonal
+  buffer's corner shave plus the simplify), bbox, inflation, and
+  **bridging** — the share of the footprint's *added* area that lies on
+  another appellation's parcels, umbrellas whose parcels contain the
+  record's excluded; `--water` fetches IGN BD TOPO
+  `surface_hydrographique` (every nature, rivers included) per record into
+  `raw/ign/bdtopo-hydro/` and measures the water inside the added area.
+  Run it with `--strict` after any stage-04 build that touches geometry;
+  the golden comparator does not see geometry (only the four app bundles
+  go red on a tileset change, through the `?v=` fingerprint).
+
 ## Structured data (JSON-LD) on entity pages
 
 Each **indexable** per-appellation entity page (`/<lang>/<slug>`) carries a
@@ -5267,7 +5374,7 @@ to the console; a dev site keyed on `localhost` in `PLAUSIBLE_SITES` makes
 local testing land in a dashboard. The stub card's "help us find it" opens the same row on
 `sources`. The sidebar's GitHub-issue link is gone (clicks, no issues). The
 curation view is [scripts/feedback_report.py](scripts/feedback_report.py)
-(`PLAUSIBLE_API_KEY` in the environment, per-session): net flags per
+(`PLAUSIBLE_API_KEY` in the repo-root `.env`): net flags per
 appellation × aspect against panel opens, plus every note verbatim.
 
 ## Code style

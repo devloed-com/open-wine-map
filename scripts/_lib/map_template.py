@@ -162,6 +162,48 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "parcellaires du plan de l'aire délimitée annexé au cahier des "
             "charges ; ce n'est pas une limite officielle."
         ),
+        # Provenance lines for the polygons that are not a parcel delimitation:
+        # a commune union (French records without an INAO parcellaire — every
+        # IGP, Champagne), the zone-level sources of the other countries, and
+        # the zoom-dependent footprint (scripts/_lib/vineyard_envelope.py).
+        "geom_approx_aires_union": _(
+            "Aire approchée — réunion des {n} commune(s) de l'aire délimitée "
+            "(INAO), plans d'eau et terres non viticoles compris ; pas de "
+            "délimitation parcellaire pour cette dénomination."
+        ),
+        "geom_lod_footprint": _(
+            "Vue d'ensemble : silhouette du vignoble, généralisée à {radius} m "
+            "à partir de la délimitation parcellaire INAO — pas la délimitation "
+            "elle-même ; les parcelles apparaissent en zoomant."
+        ),
+        "geom_lod_footprint_static": _(
+            "Sur la carte, aux zooms d'ensemble, cette appellation est dessinée "
+            "comme une silhouette de son vignoble généralisée à {radius} m à "
+            "partir de la délimitation parcellaire INAO ; les parcelles "
+            "elles-mêmes apparaissent en zoomant."
+        ),
+        "geom_src_geoportal": _(
+            "Aire : zone de production officielle publiée par le géoportail "
+            "({region})."
+        ),
+        "geom_src_mapa": _(
+            "Aire : zone de production officielle du MAPA (Zonas de Calidad "
+            "Diferenciada : Vinos)."
+        ),
+        "geom_src_betard": _(
+            "Aire approchée — polygone du jeu de données Bétard 2022 (AOP de "
+            "l'UE), à la résolution des communes ; peut inclure des terres non "
+            "viticoles."
+        ),
+        "geom_src_pdo_union": _(
+            "Aire approchée — réunion des polygones des appellations membres "
+            "(Bétard 2022), à la résolution des communes."
+        ),
+        "geom_src_admin_union": _(
+            "Aire approchée — réunion des unités administratives nommées dans "
+            "le document (limites Eurostat GISCO ou cadastre national), terres "
+            "non viticoles comprises."
+        ),
         "stack_header": _("{n} appellations à ce point"),
         "stack_cycle_hint": _("Cliquer à nouveau pour parcourir les autres"),
         "src_cahier": _("Cahier des charges (BO Agri, PDF)"),
@@ -279,6 +321,14 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "International Variety Catalogue du Julius Kühn-Institut, pour les noms "
             "canoniques et numéros de cépage (citation Röckel et al.). Tout extrait "
             "Wikipedia est signalé sur place. Détails et licences dans le {readme}."
+        ),
+        "about_lod_html": _(
+            "Niveau de détail : en dessous du zoom {zoom}, les appellations "
+            "françaises dotées d'une délimitation parcellaire INAO sont dessinées "
+            "comme une silhouette de leur vignoble, généralisée à {radius} m "
+            "(fermeture morphologique des parcelles) ; à partir du zoom {zoom}, "
+            "ce sont les parcelles elles-mêmes. Les autres appellations gardent "
+            "le même contour à tous les zooms."
         ),
         "about_contrib_html": _("Suggestions et pull requests bienvenues sur {github}."),
         "about_privacy_html": _(
@@ -563,6 +613,7 @@ def _build_about_dialog(
     data_updated_html: str = "",
     corpus_counts: dict | None = None,
     locale: str = "en",
+    lod: dict | None = None,
 ) -> str:
     devloed = _ext_link(_DEVLOED_URL, "devloed.com")
     github = _ext_link(_GITHUB_URL, "GitHub")
@@ -581,6 +632,13 @@ def _build_about_dialog(
         labels["about_lead_html"],
         labels["about_data_html"].format(
             inao=inao, ign=ign, wikipedia=wikipedia, vivc=vivc, readme=readme
+        ),
+        *(
+            [labels["about_lod_html"].format(
+                zoom=lod["overview_max_zoom"], radius=lod["radius_m"]
+            )]
+            if lod
+            else []
         ),
         labels["about_llm_html"],
         roadmap,
@@ -651,160 +709,261 @@ def _bassin_match_expr() -> str:
 def _build_source_block(
     *,
     layer_url: str,
-    villages_layer_url: str,
+    overview_layer_url: str,
     source_type: str,
     area_q1: float,
     area_q3: float,
+    lod: dict | None = None,
 ) -> str:
-    """Build the JS that adds appellation sources (detailed + villages) and
-    twin fill/outline layers. The mode toggle on the client flips visibility
-    between the two sets of layers; the bassin underlay is shared.
-    """
-    bassin_expr = _bassin_match_expr()
+    """Build the JS that adds the two appellation sources and their layers.
 
-    def _layer_block(suffix: str, source_id: str, layer_meta: str, *, with_bassin: bool) -> str:
-        bassin = ""
-        if with_bassin:
-            bassin = (
-                "    map.addLayer({\n"
-                f"      id: 'appellations-bassin{suffix}', type: 'fill', source: '{source_id}',\n"
-                + layer_meta
-                + "      paint: {\n"
-                + f"        'fill-color': {bassin_expr},\n"
-                + "        'fill-opacity': [\n"
-                + "          'interpolate', ['linear'], ['zoom'],\n"
-                + "          5, 0.35,\n"
-                + "          8, 0.0\n"
-                + "        ],\n"
-                + "        'fill-outline-color': 'rgba(0,0,0,0)'\n"
-                + "      }\n"
-                + "    });\n"
-            )
+    Zoom, not a toggle, decides which source is drawn (see
+    scripts/_lib/vineyard_envelope.py): `appellations-overview` — the
+    generalised vineyard footprint for French parcel-level records, the same
+    polygon as the detail source for everything else — below
+    `overview_max_zoom`; `appellations` (the parcels) from `detail_min_zoom`;
+    both across the crossfade band with complementary opacity. The fill, halo
+    and outline layers of the two sources are interleaved so the selection
+    halo always sits above both fills, and one `source-layer` id serves both.
+    """
+    lod = lod or {}
+    z_detail_min = lod.get("detail_min_zoom", 11)
+    fade0, fade1 = lod.get("crossfade", (11.0, 11.9))
+    # The overview layers end where the crossfade ends, so they are neither
+    # drawn nor hit-testable once the parcels are at full opacity.
+    z_over_max = lod.get("footprint_max_zoom", fade1)
+    # The zoom stops below are literals around the configurable band; a retune
+    # that pulls the crossfade under them would emit a non-ascending
+    # interpolate and MapLibre would refuse the whole style.
+    assert 10 < fade0 < fade1 <= z_over_max, (fade0, fade1, z_over_max)
+    assert z_detail_min <= fade0, (z_detail_min, fade0)
+    sel = "['boolean', ['feature-state', 'selected'], false]"
+
+    def ramp(small: float, large: float) -> str:
         return (
-            bassin
-            + "    map.addLayer({\n"
-            + f"      id: 'appellations-fill{suffix}', type: 'fill', source: '{source_id}',\n"
-            + layer_meta
-            # Smaller polygons (DGCs, lieux-dits, grand crus) must render
-            # on top of their containing parent so the user can see them.
-            # MapLibre's fill-sort-key sorts ascending; -area makes the
-            # smallest polygon get the highest sort key (drawn last/on top).
-            + "      layout: {\n"
-            + "        'fill-sort-key': ['-', 0, ['get', 'area']]\n"
-            + "      },\n"
-            + "      paint: {\n"
-            + "        'fill-color': [\n"
-            + "          'case',\n"
-            + "          ['==', ['get', 'kind'], 'IGP'], '#6e7546',\n"
-            + "          '#934050'\n"
-            + "        ],\n"
-            # Zoom-aware so small appellations stay legible at the continental
-            # overview (z3) — their opacity floor is lifted there, reverting to
-            # the detail-zoom value by z8. The large-area end is unchanged so the
-            # overview isn't flooded with heavy regional fills.
-            # NOTE: a ['zoom'] expression must be the *top-level* input — it
-            # cannot be nested under the feature-state ['case']. So zoom is the
-            # outer interpolate and the selected-override + area ramp live inside
-            # each zoom stop (the selected value is constant across stops).
-            + "        'fill-opacity': [\n"
-            + "          'interpolate', ['linear'], ['zoom'],\n"
-            + "          3, ['case',\n"
-            + "            ['boolean', ['feature-state', 'selected'], false], 0.60,\n"
-            + f"            ['interpolate', ['linear'], ['get', 'area'], {area_q1}, 0.60, {area_q3}, 0.20]],\n"
-            + "          8, ['case',\n"
-            + "            ['boolean', ['feature-state', 'selected'], false], 0.60,\n"
-            + f"            ['interpolate', ['linear'], ['get', 'area'], {area_q1}, 0.50, {area_q3}, 0.20]]\n"
-            + "        ]\n"
-            + "      }\n"
-            + "    });\n"
-            # Halo line drawn under the outline so the cream selection stroke
-            # has a dark edge against the cream basemap. Width 0 / fully
-            # transparent unless `selected` feature-state is set.
-            + "    map.addLayer({\n"
-            + f"      id: 'appellations-halo{suffix}', type: 'line', source: '{source_id}',\n"
-            + layer_meta
-            + "      layout: {\n"
-            + "        'line-sort-key': ['-', 0, ['get', 'area']],\n"
-            + "        'line-join': 'round'\n"
-            + "      },\n"
-            + "      paint: {\n"
-            + "        'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#1a0810', 'rgba(0,0,0,0)'],\n"
-            + "        'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 4.5, 0],\n"
-            + "        'line-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.85, 0]\n"
-            + "      }\n"
-            + "    });\n"
-            + "    map.addLayer({\n"
-            + f"      id: 'appellations-outline{suffix}', type: 'line', source: '{source_id}',\n"
-            + layer_meta
-            + "      layout: {\n"
-            + "        'line-sort-key': ['-', 0, ['get', 'area']]\n"
-            + "      },\n"
-            + "      paint: {\n"
-            + "        'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#fff8e8', '#2a1014'],\n"
-            # Zoom-aware (see fill-opacity above): a slightly heavier outline on
-            # small appellations at the overview keeps them as crisp marks when
-            # the fill is sub-pixel; large-area outlines stay thin to avoid a
-            # cluttered web of borders at z3. ['zoom'] is top-level (see note
-            # above) — the selected-override + area ramp live inside each stop.
-            + "        'line-width': [\n"
-            + "          'interpolate', ['linear'], ['zoom'],\n"
-            + "          3, ['case',\n"
-            + "            ['boolean', ['feature-state', 'selected'], false], 2.5,\n"
-            + f"            ['interpolate', ['linear'], ['get', 'area'], {area_q1}, 1.4, {area_q3}, 0.3]],\n"
-            + "          8, ['case',\n"
-            + "            ['boolean', ['feature-state', 'selected'], false], 2.5,\n"
-            + f"            ['interpolate', ['linear'], ['get', 'area'], {area_q1}, 1.2, {area_q3}, 0.3]]\n"
-            + "        ]\n"
-            + "      }\n"
-            + "    });\n"
+            f"['interpolate', ['linear'], ['get', 'area'], "
+            f"{area_q1}, {small}, {area_q3}, {large}]"
         )
 
+    # Fill: selected 0.60, else the area ramp (small polygons more opaque so
+    # DGCs / climats read on top of their parent; large ones translucent so the
+    # overview isn't flooded by regional fills).
+    def fill_op(small: float) -> str:
+        return f"['case', {sel}, 0.60, {ramp(small, 0.20)}]"
+
+    # At the continental overview a footprint is a few pixels across and a
+    # region stacks five to ten of them (regional AOC, village AOCs, crus);
+    # drawn at full ramp opacity with dark outlines they compound into black
+    # speckle. Footprints only: fill scaled down below z8, no outline below
+    # z6.5 (the frag / area laws take over from z8). Everything else keeps
+    # today's overview paint.
+    is_env = "['==', ['get', 'geom_source'], 'parcellaire-envelope']"
+
+    def fill_op_over(small: float, env_scale: float) -> str:
+        return (
+            f"['case', {sel}, 0.60, ['case', {is_env}, "
+            f"['*', {env_scale}, {ramp(small, 0.20)}], {ramp(small, 0.20)}]]"
+        )
+
+    # Outline — constant ink. `frag` is perimeter/area in m⁻¹, so
+    # frag × width_px × m_per_px is the stroke area per fill area; capping that
+    # ratio at 0.35 gives width = K_z / frag with K_z = 0.35 / m_per_px(z),
+    # m_per_px(z) = 156543 · cos 46° / 2^z. A 112-parcel record draws a
+    # 0.4–0.8 px edge at z11–z12 where a single-part one keeps the area ramp
+    # (the clamp only ever lowers the width). A missing / zero `frag` falls
+    # through to the ramp.
+    def ink(z: float, w_min: float) -> str:
+        k = 0.35 * (2 ** z) / 108_747.0
+        return (
+            f"['max', {w_min}, ['/', {k:.5g}, "
+            f"['max', 1e-6, ['coalesce', ['get', 'frag'], 0]]]]"
+        )
+
+    def width(z: float, small: float, large: float, w_min: float | None = None) -> str:
+        base = ramp(small, large)
+        if w_min is None:
+            return f"['case', {sel}, 2.5, {base}]"
+        return f"['case', {sel}, 2.5, ['min', {base}, {ink(z, w_min)}]]"
+
+    # Below the detail zoom a sub-half-pixel stroke still renders as a
+    # hairline, so the shredded shapes that survive generalisation (a
+    # regional footprint in hundreds of patches, the few multi-hundred-part
+    # zones) lose their outline through opacity, not width. Keyed on `parts`,
+    # which is scale-free — perimeter/area would dim every small compact
+    # climat too. Selected always draws in full.
+    parts_op = (
+        "['interpolate', ['linear'], ['coalesce', ['get', 'parts'], 1], "
+        "20, 1.0, 200, 0.3]"
+    )
+    line_op_over = f"['case', {sel}, 1.0, {parts_op}]"
+    line_op_over_low = f"['case', {sel}, 1.0, ['case', {is_env}, 0, {parts_op}]]"
+
     if source_type == "pmtiles":
-        adv_decl = (
+        decl = (
             "    map.addSource('appellations', {\n"
             "      type: 'vector',\n"
             f"      url: 'pmtiles://{layer_url}',\n"
             "      promoteId: 'slug',\n"
             "    });\n"
-        )
-        vil_decl = (
-            "    map.addSource('appellations-villages', {\n"
+            "    map.addSource('appellations-overview', {\n"
             "      type: 'vector',\n"
-            f"      url: 'pmtiles://{villages_layer_url}',\n"
+            f"      url: 'pmtiles://{overview_layer_url}',\n"
             "      promoteId: 'slug',\n"
             "    });\n"
         )
         layer_meta = "      'source-layer': 'appellations',\n"
     else:
-        adv_decl = (
+        decl = (
             "    map.addSource('appellations', {\n"
             "      type: 'geojson',\n"
             f"      data: '{layer_url}',\n"
             "      promoteId: 'slug'\n"
             "    });\n"
-        )
-        vil_decl = (
-            "    map.addSource('appellations-villages', {\n"
+            "    map.addSource('appellations-overview', {\n"
             "      type: 'geojson',\n"
-            f"      data: '{villages_layer_url}',\n"
+            f"      data: '{overview_layer_url}',\n"
             "      promoteId: 'slug'\n"
             "    });\n"
         )
         layer_meta = ""
 
+    over_meta = layer_meta + f"      maxzoom: {z_over_max},\n"
+    detail_meta = layer_meta + f"      minzoom: {z_detail_min},\n"
+    # MapLibre needs ['zoom'] as the TOP-LEVEL interpolate input — it cannot
+    # be nested under the feature-state ['case'] — so zoom is the outer
+    # interpolate and the selected override + area / frag ramps live inside
+    # each stop.
+    fill_sort = "      layout: {\n        'fill-sort-key': ['-', 0, ['get', 'area']]\n      },\n"
+    fill_color = (
+        "        'fill-color': [\n"
+        "          'case',\n"
+        "          ['==', ['get', 'kind'], 'IGP'], '#6e7546',\n"
+        "          '#934050'\n"
+        "        ],\n"
+    )
+    halo_layout = (
+        "      layout: {\n"
+        "        'line-sort-key': ['-', 0, ['get', 'area']],\n"
+        "        'line-join': 'round'\n"
+        "      },\n"
+    )
+    halo_color = f"        'line-color': ['case', {sel}, '#1a0810', 'rgba(0,0,0,0)'],\n"
+    halo_width = f"        'line-width': ['case', {sel}, 4.5, 0],\n"
+    outline_layout = "      layout: {\n        'line-sort-key': ['-', 0, ['get', 'area']]\n      },\n"
+    outline_color = f"        'line-color': ['case', {sel}, '#fff8e8', '#2a1014'],\n"
+
     return (
-        adv_decl
-        + vil_decl
-        # Villages layers are added first so advanced overlays cleanly when
-        # toggled on. The bassin underlay is shared across modes; we only
-        # add it once (to the villages source — visibility unaffected by
-        # which appellation layer is active because bassin is a fill of
-        # `region` polygons, not appellation outlines).
-        # Bassin underlay temporarily disabled: the regional colour fill made
-        # it hard to tell which appellations are actually visible. Flip back to
-        # with_bassin=True to restore it.
-        + _layer_block("-villages", "appellations-villages", layer_meta, with_bassin=False)
-        + _layer_block("", "appellations", layer_meta, with_bassin=False)
+        decl
+        # ---- fills (overview under detail) ----
+        + "    map.addLayer({\n"
+        + "      id: 'appellations-fill-overview', type: 'fill', source: 'appellations-overview',\n"
+        + over_meta
+        + fill_sort
+        + "      paint: {\n"
+        + fill_color
+        + "        'fill-opacity': [\n"
+        + "          'interpolate', ['linear'], ['zoom'],\n"
+        + f"          3, {fill_op_over(0.60, 0.5)},\n"
+        + f"          6, {fill_op_over(0.55, 0.65)},\n"
+        + f"          8, {fill_op(0.50)},\n"
+        + f"          {fade0}, {fill_op(0.50)},\n"
+        + f"          {fade1}, 0\n"
+        + "        ]\n"
+        + "      }\n"
+        + "    });\n"
+        + "    map.addLayer({\n"
+        + "      id: 'appellations-fill', type: 'fill', source: 'appellations',\n"
+        + detail_meta
+        + fill_sort
+        + "      paint: {\n"
+        + fill_color
+        + "        'fill-opacity': [\n"
+        + "          'interpolate', ['linear'], ['zoom'],\n"
+        + f"          {fade0}, 0,\n"
+        + f"          {fade1}, {fill_op(0.50)}\n"
+        + "        ]\n"
+        + "      }\n"
+        + "    });\n"
+        # ---- selection halos (dark, wide, under the cream outline; above
+        # BOTH fills so a half-faded detail fill never tints the stroke) ----
+        + "    map.addLayer({\n"
+        + "      id: 'appellations-halo-overview', type: 'line', source: 'appellations-overview',\n"
+        + over_meta
+        + halo_layout
+        + "      paint: {\n"
+        + halo_color
+        + halo_width
+        + "        'line-opacity': [\n"
+        + "          'interpolate', ['linear'], ['zoom'],\n"
+        + f"          {fade0}, ['case', {sel}, 0.85, 0],\n"
+        + f"          {fade1}, 0\n"
+        + "        ]\n"
+        + "      }\n"
+        + "    });\n"
+        + "    map.addLayer({\n"
+        + "      id: 'appellations-halo', type: 'line', source: 'appellations',\n"
+        + detail_meta
+        + halo_layout
+        + "      paint: {\n"
+        + halo_color
+        + halo_width
+        + "        'line-opacity': [\n"
+        + "          'interpolate', ['linear'], ['zoom'],\n"
+        + f"          {fade0}, 0,\n"
+        + f"          {fade1}, ['case', {sel}, 0.85, 0]\n"
+        + "        ]\n"
+        + "      }\n"
+        + "    });\n"
+        # ---- outlines ----
+        # A slightly heavier outline on small appellations at the overview
+        # keeps them as crisp marks when the fill is sub-pixel; large-area
+        # outlines stay thin. From z10 the constant-ink clamp applies.
+        + "    map.addLayer({\n"
+        + "      id: 'appellations-outline-overview', type: 'line', source: 'appellations-overview',\n"
+        + over_meta
+        + outline_layout
+        + "      paint: {\n"
+        + outline_color
+        + "        'line-width': [\n"
+        + "          'interpolate', ['linear'], ['zoom'],\n"
+        + f"          3, {width(3, 1.4, 0.3)},\n"
+        + f"          8, {width(8, 1.2, 0.3)},\n"
+        + f"          10, {width(10, 1.2, 0.3, 0.25)},\n"
+        + f"          12, {width(12, 1.2, 0.3, 0.5)}\n"
+        + "        ],\n"
+        + "        'line-opacity': [\n"
+        + "          'interpolate', ['linear'], ['zoom'],\n"
+        + f"          3, {line_op_over_low},\n"
+        + f"          6.5, {line_op_over_low},\n"
+        + f"          8, {line_op_over},\n"
+        + f"          {fade0}, {line_op_over},\n"
+        + f"          {fade1}, 0\n"
+        + "        ]\n"
+        + "      }\n"
+        + "    });\n"
+        + "    map.addLayer({\n"
+        + "      id: 'appellations-outline', type: 'line', source: 'appellations',\n"
+        + detail_meta
+        + outline_layout
+        + "      paint: {\n"
+        + outline_color
+        + "        'line-width': [\n"
+        + "          'interpolate', ['linear'], ['zoom'],\n"
+        # The floors keep a small compact climat visible (constant ink alone
+        # would give a 1.8 ha grand cru a hairline at z12); Saint-Bris sits
+        # above them (0.4 px at z11, 0.8 px at z12) so they never bind for the
+        # fragmented records the clamp exists for.
+        + f"          {fade0}, {width(fade0, 1.2, 0.3, 0.35)},\n"
+        + f"          12, {width(12, 1.2, 0.3, 0.5)},\n"
+        + f"          14, {width(14, 1.4, 0.4, 0.7)}\n"
+        + "        ],\n"
+        + "        'line-opacity': [\n"
+        + "          'interpolate', ['linear'], ['zoom'],\n"
+        + f"          {fade0}, 0,\n"
+        + f"          {fade1}, 1.0\n"
+        + "        ]\n"
+        + "      }\n"
+        + "    });\n"
     )
 
 
@@ -1543,7 +1702,7 @@ STARTUP_AOCS_FIELDS = frozenset({
 def render(
     *,
     layer_url: str,
-    villages_layer_url: str,
+    overview_layer_url: str,
     source_type: str,
     aocs: dict,
     facet_styles_tree: list[dict],
@@ -1567,6 +1726,7 @@ def render(
     entity_out_dir=None,
     children_map: dict[str, list[str]] | None = None,
     build_date: str = "",
+    lod: dict | None = None,
 ) -> tuple[str, str, bytes, dict[str, str]]:
     """Render the full map page (index.html) for one locale.
 
@@ -1595,10 +1755,11 @@ def render(
     area_q1, area_q3 = area_quartiles
     source_block = _build_source_block(
         layer_url=layer_url,
-        villages_layer_url=villages_layer_url,
+        overview_layer_url=overview_layer_url,
         source_type=source_type,
         area_q1=area_q1,
         area_q3=area_q3,
+        lod=lod,
     )
 
     simple_style_labels = {
@@ -1821,6 +1982,7 @@ def render(
         country_flag_emoji_json=json.dumps(_COUNTRY_FLAG_EMOJI, ensure_ascii=False),
         carto_key_json=json.dumps(carto_basemap_key()),
         carto_keys_json=json.dumps(carto_basemap_keys(), sort_keys=True),
+        lod_json=json.dumps(lod or {}, sort_keys=True),
     )
 
     style_body = _STYLE_CSS.replace("{{", "{").replace("}}", "}")
@@ -1865,6 +2027,7 @@ def render(
         browse_path=browse_path,
         corpus_counts=corpus_counts,
         locale=locale,
+        lod=lod,
         data_updated_html=(
             labels["about_updated_html"].format(date=esc(build_date)) if build_date else ""
         ),
@@ -1897,10 +2060,10 @@ def render(
             country_labels=country_labels, country_flag_emoji=_COUNTRY_FLAG_EMOJI,
             grapes_info=grapes_info or {}, styles_info=styles_info or {},
             style_labels=style_labels, github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
-            terms_info=terms_info or {},
+            terms_info=terms_info or {}, lod=lod or {},
         )
         entity_about_html = _build_about_dialog(
-            labels, browse_path=browse_path, corpus_counts=corpus_counts, locale=locale
+            labels, browse_path=browse_path, corpus_counts=corpus_counts, locale=locale, lod=lod
         )
 
         def _emit(slug: str, meta: dict, ssr: str, has_card: bool) -> None:
