@@ -53,7 +53,6 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "search_h": _("Recherche"),
         "search_placeholder": _("nom d'appellation…"),
         "search_appellation_placeholder": _("Recherche d'appellation…"),
-        "search_grape_placeholder": _("Recherche de cépage…"),
         # Search-UX experiment (lab variants only — see _render_sidebar).
         "omnisearch_placeholder": _("Rechercher une appellation, un cépage, une région…"),
         "main_grape_only_label": _("Cépage principal uniquement"),
@@ -2251,12 +2250,9 @@ _TEMPLATE = """<!doctype html>
   #sidebar .brand-title .brand-mark {{ width:18px; height:18px; flex:0 0 18px; display:inline-block }}
   #sidebar .subtitle {{ font-size:11px; color:#888; padding:0 16px 10px; border-bottom:1px solid #333 }}
   #sidebar h2 {{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#888; padding:14px 16px 4px; margin:0 }}
-  /* `:not(.grape-search)` excludes the chip-filter's typeahead input —
-     it owns its own layout via `.grape-search-wrap`, which already
-     applies the 16/16 horizontal margin. Without the exclusion the
-     catch-all rule stacks margin on top of the wrap's, leaving the
-     grape input 32px narrower than the appellation search. */
-  #sidebar input[type=text]:not(.grape-search):not(.omni-input) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; border-radius:3px; font-size:13px }}
+  /* The omnisearch input owns its own layout (`.omni-input`); the catch-all
+     rule below is for any other text input in the sidebar. */
+  #sidebar input[type=text]:not(.omni-input) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; border-radius:3px; font-size:13px }}
   #sidebar input[type=text]:focus {{ outline:none; border-color:#934050 }}
   #sidebar input[type=text]:focus-visible {{ outline:2px solid #fff8e8; outline-offset:1px; border-color:#934050 }}
   /* Search-UX lab variants (a/b/c): unified omnisearch box + grouped dropdown
@@ -2275,11 +2271,7 @@ _TEMPLATE = """<!doctype html>
   .omni-suggestions .suggestion .count {{ margin-left:auto; color:#9a9a9a; font-size:11px; font-variant-numeric:tabular-nums; flex:0 0 auto }}
   /* No-match feedback row (variant fix: the dropdown used to silently hide). */
   .omni-empty {{ padding:10px 12px; color:#9a9a9a; font-size:12.5px; font-style:italic }}
-  .omni-subopt {{ padding:2px 16px 8px; border-bottom:1px solid #333 }}
-  .omni-subopt label {{ display:flex; align-items:center; gap:6px; font-size:12px; color:#bbb; cursor:pointer }}
   /* "Main grape only" relocated inside the Grapes facet (variant c). */
-  .grape-subopt {{ padding:6px 16px 4px; border-bottom:none }}
-  .omni-subopt input {{ accent-color:#934050; flex:0 0 auto }}
   #lang-switcher {{ display:flex; gap:2px; padding:6px 12px 8px; border-bottom:1px solid #333 }}
   #lang-switcher a {{ color:#888; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; text-decoration:none; padding:3px 8px; border-radius:3px }}
   #lang-switcher a:hover {{ color:#fff }}
@@ -2315,36 +2307,17 @@ _TEMPLATE = """<!doctype html>
   .filter-chip.region-chip {{ border-color:#934050; box-shadow:inset 0 0 0 1px #934050; font-weight:600 }}
   .filter-chip button {{ background:none; border:none; color:#888; cursor:pointer; padding:0 4px; font-size:14px; line-height:1; border-radius:50% }}
   .filter-chip button:hover {{ color:#fff; background:#444 }}
+  /* The "main grape only" scope, rendered as a chip-shaped checkbox right
+     after the grape chips it refines. */
+  .filter-chip.toggle-chip {{ padding:2px 9px 2px 6px; cursor:pointer; border-color:#934050; gap:5px }}
+  .filter-chip.toggle-chip:hover {{ background:#332028 }}
+  .filter-chip.toggle-chip input {{ accent-color:#934050; margin:0; width:12px; height:12px }}
+  .filter-chip.toggle-chip:has(input:checked) {{ background:#3a2730; color:#fff }}
   #active-filters #reset {{ background:transparent; color:#888; border:none; padding:2px 6px; cursor:pointer; font-size:11px; text-decoration:underline; flex:0 0 auto }}
   #active-filters #reset:hover {{ color:#fff }}
   #active-filters-chips:empty + #reset {{ display:none }}
   .facet-search {{ width:calc(100% - 32px); margin:4px 16px 6px; padding:5px 8px; box-sizing:border-box; background:#1f1f1f; color:#eee; border:1px solid #3a3a3a; border-radius:3px; font-size:12px }}
   .facet-search:focus {{ outline:none; border-color:#934050 }}
-  /* Grape chip filter — replaces the long-list checkbox facet with a
-     typeahead + selected-chip UX. Three instances on the page (simple
-     all, advanced principal, advanced accessory) all share these rules. */
-  /* Horizontal spacing matches `.facet-search`'s `margin:4px 16px 6px`
-     so the grape search input lines up with the appellation search
-     input below it. The chip-tray and search-wrap each carry their
-     own 16px L/R margin instead of the chip-filter container padding. */
-  .grape-chip-filter {{ padding:0 }}
-  .grape-chip-filter .chip-tray {{ display:flex; flex-wrap:wrap; gap:4px; margin:4px 16px 6px }}
-  .grape-chip-filter .chip-tray:empty {{ display:none }}
-  .grape-chip-filter .chip {{ display:inline-flex; align-items:center; gap:4px; padding:2px 4px 2px 8px; background:#3a2730; color:#fff; border:1px solid #934050; border-radius:11px; font-size:11px; line-height:1.3 }}
-  .grape-chip-filter .chip .canon {{ color:#cfa; opacity:0.7; font-style:italic }}
-  .grape-chip-filter .chip-x {{ background:none; border:none; color:#cfa; cursor:pointer; padding:0 4px; font-size:14px; line-height:1; border-radius:50% }}
-  .grape-chip-filter .chip-x:hover {{ color:#fff; background:#5a3045 }}
-  .grape-search-wrap {{ position:relative; margin:4px 16px 6px }}
-  .grape-search {{ width:100%; padding:5px 8px; box-sizing:border-box; background:#1f1f1f; color:#eee; border:1px solid #3a3a3a; border-radius:3px; font-size:12px }}
-  .grape-search:focus {{ outline:none; border-color:#934050 }}
-  .grape-suggestions {{ position:absolute; left:0; right:0; top:calc(100% + 2px); z-index:50; max-height:280px; overflow-y:auto; background:#1a1a1a; border:1px solid #3a3a3a; border-radius:3px; box-shadow:0 4px 12px rgba(0,0,0,0.4) }}
-  .grape-suggestions[hidden] {{ display:none }}
-  .grape-suggestions .suggestion {{ display:flex; align-items:center; gap:6px; padding:5px 8px; cursor:pointer; font-size:12px; color:#ddd; border-bottom:1px solid #2a2a2a }}
-  .grape-suggestions .suggestion:last-child {{ border-bottom:none }}
-  .grape-suggestions .suggestion.active, .grape-suggestions .suggestion:hover {{ background:#2a1f25 }}
-  .grape-suggestions .suggestion .name {{ flex:0 0 auto }}
-  .grape-suggestions .suggestion .canon {{ flex:1 1 auto; color:#999; font-style:italic; font-size:11px }}
-  .grape-suggestions .suggestion .count {{ flex:0 0 auto; margin-left:auto; color:#888; font-size:11px; font-variant-numeric:tabular-nums }}
   #sidebar > details > summary .facet-badge {{ display:inline-block; margin-left:6px; padding:1px 6px; background:#934050; color:#fff; border-radius:8px; font-size:10px; font-weight:600 }}
   #sidebar > details > summary .facet-badge:empty {{ display:none }}
   #sidebar > details > summary {{ display:flex; align-items:center }}
@@ -2846,14 +2819,6 @@ _SIDEBAR = _LAB_HEAD_TOP + _LAB_ACTIVE + """
     <details data-modes="advanced" data-facet="appellation-type">
       <summary><span class="facet-label">{labels[facet_appellation_type_h]}</span><span class="facet-badge"></span></summary>
       <div class="facet" id="facet-appellation-type"></div>
-    </details>
-
-    <details open data-facet="grapes">
-      <summary><span class="facet-label">{labels[facet_grapes_h]}</span><span class="facet-badge"></span></summary>
-      <div class="omni-subopt grape-subopt">
-        <label><input type="checkbox" id="main-grape-only"> <span class="name">{labels[main_grape_only_label]}</span></label>
-      </div>
-      <div class="grape-chip-filter" data-role="all"></div>
     </details>
 
     <details open data-facet="appellations">

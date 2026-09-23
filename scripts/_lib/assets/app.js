@@ -164,166 +164,6 @@
     return out.slice(0, limit).map(o => ({ entry: o.entry, matched: o.matched, score: o.score }));
   }
 
-  function _findGrapeEntry(slug) {
-    for (const e of _GRAPE_INDEX_NORM) if (e.entry.slug === slug) return e.entry;
-    return null;
-  }
-
-  function _grapeChipHtml(entry) {
-    const canon = entry.canonical && !canonicalEqualsCahier(entry.canonical, entry.label)
-      ? ` <span class="canon">(${escapeHtml(entry.canonical)})</span>` : '';
-    return (
-      `<span class="chip" data-slug="${escapeAttr(entry.slug)}">` +
-        `<span class="name">${escapeHtml(toTitleCase(entry.label))}</span>${canon}` +
-        `<button class="chip-x" type="button" aria-label="Remove ${escapeAttr(entry.label)}">×</button>` +
-      `</span>`
-    );
-  }
-
-  function _grapeSuggestionHtml(entry, matched, role, active) {
-    // When the query matched on an alias (e.g. "ull de llebre" → Tempranillo
-    // via the GRAPE_ALIAS reverse-key "ull-de-llebre"), promote the
-    // matched alias to the primary slot so the suggestion reads in the
-    // user's terminology — "Ull de Llebre (Tempranillo)" — instead of
-    // burying the match in the canonical row label.
-    const primary = matched || entry.label;
-    const secondary = matched && matched.toLowerCase() !== entry.label.toLowerCase()
-      ? entry.label
-      : (entry.canonical && !canonicalEqualsCahier(entry.canonical, entry.label) ? entry.canonical : '');
-    const secondaryHtml = secondary
-      ? ` <span class="canon">${escapeHtml(toTitleCase(secondary))}</span>` : '';
-    const countKey = role === 'principal' ? 'count_principal'
-                   : role === 'accessory' ? 'count_accessory' : 'count';
-    const cls = ['suggestion'];
-    if (active) cls.push('active');
-    return (
-      `<div class="${cls.join(' ')}" role="option" data-slug="${escapeAttr(entry.slug)}">` +
-        `<span class="name">${escapeHtml(toTitleCase(primary))}</span>${secondaryHtml}` +
-        `<span class="count">${entry[countKey]}</span>` +
-      `</div>`
-    );
-  }
-
-  function buildGrapeChipFilter(container, role, filterSet) {
-    container.innerHTML =
-      `<div class="chip-tray" aria-live="polite"></div>` +
-      `<div class="grape-search-wrap">` +
-        `<input type="text" class="grape-search" name="grape-search-${escapeAttr(role)}" placeholder="${escapeAttr(LABELS.search_grape_placeholder)}" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list">` +
-        `<div class="grape-suggestions" role="listbox" hidden></div>` +
-      `</div>`;
-    const tray = container.querySelector('.chip-tray');
-    const input = container.querySelector('.grape-search');
-    const drop  = container.querySelector('.grape-suggestions');
-    let activeIdx = 0;
-    let currentSuggestions = [];
-
-    function renderChips() {
-      const chips = [];
-      for (const slug of filterSet) {
-        const e = _findGrapeEntry(slug);
-        if (e) chips.push(_grapeChipHtml(e));
-      }
-      tray.innerHTML = chips.join('');
-    }
-
-    function renderSuggestions(q) {
-      currentSuggestions = rankGrapeSuggestions(q, role, 12)
-        .filter(s => !filterSet.has(s.entry.slug));
-      activeIdx = 0;
-      if (!currentSuggestions.length) {
-        drop.innerHTML = '';
-        drop.hidden = true;
-        input.setAttribute('aria-expanded', 'false');
-        return;
-      }
-      drop.innerHTML = currentSuggestions
-        .map((s, i) => _grapeSuggestionHtml(s.entry, s.matched, role, i === activeIdx)).join('');
-      drop.hidden = false;
-      input.setAttribute('aria-expanded', 'true');
-    }
-
-    function highlight(i) {
-      const items = drop.querySelectorAll('.suggestion');
-      if (!items.length) return;
-      items.forEach((el, k) => el.classList.toggle('active', k === i));
-      activeIdx = i;
-      const cur = items[i];
-      if (cur) cur.scrollIntoView({ block: 'nearest' });
-    }
-
-    function pick(slug) {
-      filterSet.add(slug);
-      input.value = '';
-      renderChips();
-      renderSuggestions('');
-      applyFilter();
-      input.focus();
-    }
-
-    function remove(slug) {
-      filterSet.delete(slug);
-      renderChips();
-      renderSuggestions(input.value);
-      applyFilter();
-    }
-
-    tray.addEventListener('click', (e) => {
-      const btn = e.target.closest('.chip-x');
-      if (!btn) return;
-      const chip = btn.closest('.chip');
-      if (chip) remove(chip.dataset.slug);
-    });
-
-    drop.addEventListener('mousedown', (e) => {
-      const s = e.target.closest('.suggestion');
-      if (!s) return;
-      e.preventDefault();  // keep focus on input
-      pick(s.dataset.slug);
-    });
-
-    drop.addEventListener('mousemove', (e) => {
-      const s = e.target.closest('.suggestion');
-      if (!s) return;
-      const items = Array.from(drop.querySelectorAll('.suggestion'));
-      highlight(items.indexOf(s));
-    });
-
-    input.addEventListener('input', () => renderSuggestions(input.value));
-    input.addEventListener('focus', () => renderSuggestions(input.value));
-    input.addEventListener('blur', () => {
-      // Delay so the mousedown handler runs before we hide.
-      setTimeout(() => { drop.hidden = true; input.setAttribute('aria-expanded', 'false'); }, 120);
-    });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (drop.hidden) renderSuggestions(input.value);
-        else highlight((activeIdx + 1) % currentSuggestions.length);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (!drop.hidden) highlight((activeIdx - 1 + currentSuggestions.length) % currentSuggestions.length);
-      } else if (e.key === 'Enter') {
-        if (!drop.hidden && currentSuggestions[activeIdx]) {
-          e.preventDefault();
-          pick(currentSuggestions[activeIdx].entry.slug);
-        }
-      } else if (e.key === 'Escape') {
-        drop.hidden = true;
-        input.setAttribute('aria-expanded', 'false');
-      } else if (e.key === 'Backspace' && !input.value && filterSet.size) {
-        // Remove the most-recently-added chip.
-        const last = [...filterSet].pop();
-        remove(last);
-      }
-    });
-
-    renderChips();
-    container._refresh = () => { renderChips(); if (!drop.hidden) renderSuggestions(input.value); };
-  }
-
-  function refreshAllGrapeChipFilters() {
-    document.querySelectorAll('.grape-chip-filter').forEach(c => c._refresh && c._refresh());
-  }
   const STYLES_INFO = __OWM_styles_info_json__;
   const REGION_LABELS = __OWM_region_labels_json__;
   const COUNTRY_LABELS = __OWM_country_labels_json__;
@@ -658,9 +498,11 @@
     appellations: new Set(),
     // When true, the grape filter matches grapes_principal instead of grapes_all
     // (the "main grape only" toggle inside the Grapes facet).
+    // "Main grape only" narrows a grape filter to the principal roster. It is
+    // a refinement of the grape chips, shown as a toggle next to them, and
+    // ends with them — not a persisted preference.
     mainGrapeOnly: false,
   };
-  try { filters.mainGrapeOnly = localStorage.getItem('main_grape_only') === '1'; } catch (e) {}
 
   function debounce(fn, ms) {
     let t = null;
@@ -699,7 +541,10 @@
     else if (kind === 'style') filters.styles.delete(key);
     else if (kind === 'classification') filters.classifications.delete(key);
     else if (kind === 'appellationType') filters.appellationType.delete(key);
-    else if (kind === 'grapeAll') filters.grapesAll.delete(key);
+    else if (kind === 'grapeAll') {
+      filters.grapesAll.delete(key);
+      if (!filters.grapesAll.size) filters.mainGrapeOnly = false;
+    }
     else if (kind === 'principal') filters.principal.delete(key);
     else if (kind === 'accessory') filters.accessory.delete(key);
     else if (kind === 'appellation') filters.appellations.delete(key);
@@ -707,11 +552,6 @@
     // both Hungarian and Slovak), so the country rides along on the chip.
     else if (kind === 'region') setSlugSelection(visibleSlugsInRegion(chip.dataset.country || '', key), false);
     else if (kind === 'country') setSlugSelection(visibleSlugsInCountry(key), false);
-    else if (kind === 'mainGrapeOnly') {
-      filters.mainGrapeOnly = false;
-      const m = document.getElementById('main-grape-only'); if (m) m.checked = false;
-      try { localStorage.setItem('main_grape_only', '0'); } catch (e) {}
-    }
     // Sync the underlying checkboxes for the cleared filter.
     document.querySelectorAll('#sidebar .facet input[type=checkbox]').forEach(inp => {
       const k = inp.dataset.key;
@@ -724,10 +564,20 @@
     refreshTreeTriStates();
     applyFilter();
   });
+  // The "main grape only" toggle is rendered inside the chip tray next to the
+  // grape chips (renderActiveFilters), so it is re-created on every render;
+  // one delegated listener serves every instance.
+  document.getElementById('active-filters-chips').addEventListener('change', e => {
+    const inp = e.target;
+    if (!inp || inp.id !== 'main-grape-only') return;
+    filters.mainGrapeOnly = !!inp.checked;
+    track('Grape Scope Toggled', { scope: filters.mainGrapeOnly ? 'main' : 'all', locale: LANG });
+    applyFilter({ fit: true });
+  });
 
   function refreshSidebarCheckedState() {
-    // Re-sync facet checkboxes (styles only — grapes are chip filters
-    // and re-render their chip tray via `refreshAllGrapeChipFilters`).
+    // Re-sync facet checkboxes (styles only — the grape filter lives in the
+    // chip tray and is rendered from `filters.grapesAll`).
     const sets = {
       'facet-styles': filters.styles,
       'facet-styles-simple': filters.stylesSimple,
@@ -741,7 +591,6 @@
         inp.checked = set.has(inp.dataset.key);
       });
     }
-    refreshAllGrapeChipFilters();
   }
 
   // Which polygon of a record is on screen depends on the zoom: the footprint
@@ -936,13 +785,6 @@
   buildTreeFacet('facet-classification', FACET_CLASS_TREE, filters.classifications, CLASS_LABELS, CLASS_DESCENDANTS, 'classification');
   buildTreeFacet('facet-appellation-type', FACET_TERM_TREE, filters.appellationType, TERM_LABELS, TERM_DESCENDANTS, 'appellation-type');
   buildFacet('facet-styles-simple', FACET_STYLES_SIMPLE, filters.stylesSimple, k => SIMPLE_STYLE_LABELS[k] || k);
-  document.querySelectorAll('.grape-chip-filter').forEach(container => {
-    const role = container.dataset.role || 'all';
-    const set = role === 'principal' ? filters.principal
-              : role === 'accessory' ? filters.accessory
-              : filters.grapesAll;
-    buildGrapeChipFilter(container, role, set);
-  });
 
   // Country → region → list of slugs, computed once. The tree re-renders on
   // spirits-toggle (entries appear/disappear), but the grouping itself is
@@ -1364,8 +1206,6 @@
     filters.principal.clear(); filters.accessory.clear(); filters.grapesAll.clear();
     filters.appellations.clear();
     filters.mainGrapeOnly = false;
-    try { localStorage.setItem('main_grape_only', '0'); } catch (e) {}
-    const _mgo = document.getElementById('main-grape-only'); if (_mgo) _mgo.checked = false;
     const _omni = document.getElementById('omni');
     if (_omni) {
       _omni.value = '';
@@ -1471,7 +1311,9 @@
     for (const k of filters.classifications) chips.push({ kind: 'classification', key: k, label: CLASS_LABELS[k] || k });
     for (const k of filters.appellationType) chips.push({ kind: 'appellationType', key: k, label: TERM_LABELS[k] || k });
     for (const k of filters.grapesAll) chips.push({ kind: 'grapeAll', key: k, label: grapeName(k) });
-    if (filters.mainGrapeOnly) chips.push({ kind: 'mainGrapeOnly', key: '1', label: LABELS.main_grape_only_label });
+    // The scope toggle rides with the grape chips: a grape picked in the
+    // search box gets a "main grape only" checkbox right after it.
+    if (filters.grapesAll.size) chips.push({ kind: 'mainGrapeToggle', key: '1', label: LABELS.main_grape_only_label });
     // Collapse a fully-selected subtree into one chip — a whole country first,
     // else each of its whole regions. The flag prefix disambiguates region
     // names shared across a border, which the tree does by nesting.
@@ -1505,6 +1347,9 @@
       if (rec) chips.push({ kind: 'appellation', key: slug, label: rec.name });
     }
     el.innerHTML = chips.map(c => {
+      if (c.kind === 'mainGrapeToggle') {
+        return `<label class="filter-chip toggle-chip" data-kind="mainGrapeToggle"><input type="checkbox" id="main-grape-only"${filters.mainGrapeOnly ? ' checked' : ''}> <span>${escapeHtml(c.label)}</span></label>`;
+      }
       const bulk = c.kind === 'region' || c.kind === 'country';
       const cls = bulk ? 'filter-chip region-chip' : 'filter-chip';
       const removeAria = fmt(LABELS.remove_filter_aria, { label: c.label });
@@ -1754,7 +1599,6 @@
     if (type === 'grape') {
       filters.grapesAll.add(key);
       track('Omnisearch Result Picked', { type: 'grape', locale: LANG });
-      refreshAllGrapeChipFilters();
       applyFilter({ fit: true });
     } else if (type === 'region') {
       setRegionNameSelection(key, true);
@@ -1969,26 +1813,6 @@
   }
 
   buildOmnisearch();
-  // Rescope the Grapes facet typeahead/counts to the active grape field so
-  // "main grape only" surfaces principal-relevant grapes with principal counts
-  // (picks still land in filters.grapesAll).
-  function rescopeGrapeFacet() {
-    const gc = document.querySelector('.grape-chip-filter[data-role="all"]');
-    if (gc) buildGrapeChipFilter(gc, filters.mainGrapeOnly ? 'principal' : 'all', filters.grapesAll);
-  }
-  const mgoEl = document.getElementById('main-grape-only');
-  if (mgoEl) {
-    mgoEl.checked = filters.mainGrapeOnly;
-    if (filters.mainGrapeOnly) rescopeGrapeFacet();  // reflect a restored toggle on first paint
-    mgoEl.addEventListener('change', e => {
-      filters.mainGrapeOnly = e.target.checked;
-      try { localStorage.setItem('main_grape_only', filters.mainGrapeOnly ? '1' : '0'); } catch (err) {}
-      track('Grape Scope Toggled', { scope: filters.mainGrapeOnly ? 'main' : 'all', locale: LANG });
-      rescopeGrapeFacet();
-      applyFilter({ fit: true });
-    });
-  }
-
   // ----- detail panel -----
   const panel = document.getElementById('panel');
   const panelBody = document.getElementById('panel-body');

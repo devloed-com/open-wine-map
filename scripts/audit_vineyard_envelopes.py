@@ -205,7 +205,9 @@ def main() -> int:
         ratio = env.area / parcels.area if parcels.area > 0 else 1.0
         # Bridging onto other appellations' parcels.
         bridges: list[tuple[str, float]] = []
+        bridge_km2 = 0.0
         if added_km2 > 0:
+            others = []
             for j in tree.query(added, predicate="intersects").tolist():
                 other = idx_slugs[j]
                 if other == slug:
@@ -217,16 +219,22 @@ def main() -> int:
                 clipped = _clip(og, added.bounds)
                 if clipped.is_empty:
                     continue
-                # An umbrella whose parcels contain most of this record's is
-                # shared ground (regional over village), not a bridge.
+                # An appellation whose parcels cover at least half of this
+                # record's shares its ground (a regional over a village, a
+                # VDN over a table-wine AOC on the same slopes) — not a bridge.
                 shared = _inter_km2(_clip(og, parcels.bounds), parcels)
-                if parcels.area > 0 and shared / _km2(parcels) >= 0.9:
+                if parcels.area > 0 and shared / _km2(parcels) >= 0.5:
                     continue
                 b = _inter_km2(clipped, added)
                 if b > 0.005:
                     bridges.append((other, b))
+                    others.append(_valid(clipped))
+            # The total is the UNION of the neighbours' parcels inside the
+            # added area — overlapping neighbours (a climat under its village
+            # AOC) must not be summed twice.
+            if others:
+                bridge_km2 = _inter_km2(_valid(shapely.union_all(others)), added)
         bridges.sort(key=lambda t: -t[1])
-        bridge_km2 = sum(b for _, b in bridges)
         row = {
             "slug": slug,
             "parts": p.get("parts"),

@@ -58,7 +58,7 @@ option is inert, and a build with no `localhost` entry loads nothing there.
 | `Filters Reset` | `locale` | the reset button |
 | `Kind Toggled` | `kind` (`igp` / `spirits`), `enabled`, `via` (`reveal-hint`, optional), `locale` | the IGP / spirits switches |
 | `View Mode Switched` | `mode` (`simple` / `advanced`), `locale` | the mode toggle |
-| `Grape Scope Toggled` | `scope` (`main` / `all`), `locale` | principal-only vs all grapes |
+| `Grape Scope Toggled` | `scope` (`main` / `all`), `locale` | the "main grape only" checkbox that appears as a chip next to the grape chips once a grape is picked in the search box (2026-09-23; before that, a permanent checkbox in the Grapes facet). Not persisted: it ends with the last grape chip. |
 | `Omnisearch Used` | `result_count`, `had_match`, `groups` (a/g/r/s), `query_len`, `locale` | 1 s after typing stops in the omnisearch |
 | `Omnisearch Result Picked` | `type` (`grape` / `region` / `style` / `classification`), `locale` | a non-appellation suggestion is picked (appellation picks fire `Appellation Opened`) |
 | `Search Used` | `result_count`, `had_match`, `query_len`, `locale` | the legacy sidebar search (superseded by the omnisearch in June 2026) |
