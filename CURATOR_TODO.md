@@ -572,6 +572,17 @@ vlaamse-landwijn (BGA §7 broad rule); appenzell-ausserrhoden, appenzell-innerrh
 - ~~Disclosure (owed regardless of the clip)~~ superseded by the branch above (the drawn shape is now a function of zoom, not of a hidden `v_source`): ~~emit `geom_source_villages` (from `v_source`) as a startup field (register it in `STARTUP_AOCS_FIELDS`), render a mode-aware `approx-line` when `viewMode === 'simple'` and it differs from `geom_source` (the label `meta_geom_approx_communal` exists in every catalogue and is unused), and re-render the open panel from `applyMode()` — today a mode switch leaves the card stale. `geom_approx_aires` fires only for `aires-csv-dgc`; plain `aires-csv` records (pineau-des-charentes) get no line either.~~
 - Done 2026-09-22: `Feedback Flagged` / `Retracted` / `Note` now carry `view_mode`, and the report prints it — the flag's `geom_source` is the *advanced* provenance and was misread as "the visitor was looking at the parcellaire".
 
+## Cross-country — delimitation sweep (2026-09-23) — 🟡 report written, nothing implemented
+
+Full report: [docs/delimitation-sweep-2026-09-23.md](docs/delimitation-sweep-2026-09-23.md); per-record classification, overlap pairs and source texts in `tmp/delimitation-sweep-2026-09-23/`. 849 non-French records read (every record with a cadastral / exclusion / partial-municipality marker or a real same-country overlap), 135 high-rated ones re-verified against the text.
+
+- Overlapping specifications almost never name each other (104 of 2,338 partners); where a border is resolved it is by each document's own sub-municipal line.
+- Cadastral identifiers in 99 records: ES 50 (polígonos / parcelas — the Vinos de Pago estates and DO-level inclusions / exclusions; SIGPAC resolves them, the Priorat/Montsant code is the seed), IT 20 (fogli / particelle — Agenzia delle Entrate cadastral map, licence to confirm), SI 12 + SK 7 (cadastral municipalities + contour lines, open layers), DE 8 (Flurstücke, ALKIS open only in BB / SN / ST).
+- Sub-municipal administrative units: PT freguesias (43, CAOP already on disk), RO sate (34, no open layer), GR / CY κοινότητες (38, GISCO LAU already at that level), BG землища.
+- Italy: 278 narrative traces (roads, rivers, contours) — digitising, not parsing; 58 IT + 29 GR altitude limits could be a DEM clip of the zone, labelled as a display refinement.
+- ≈ 80 records defer to an annexed map only (GR 29, PT 15, IT 11, CY 10, ES 9, DE 4): nothing to parse.
+- Suggested order: ES polígonos → PT freguesias → SI/SK cadastral municipalities → IT fogli → DE Flurstücke → altitude clips. No step maps parcels the documents do not reference.
+
 ## Spain
 
 ### Pliego URLs — ✅ complete (2026-05-10)
