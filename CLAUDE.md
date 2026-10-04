@@ -1452,6 +1452,15 @@ augmentation is in-memory only (the on-disk doc-único record stays
 immutable) and propagates via a slug-keyed cache into
 `_sources_for()`. The map panel renders a "Pliego de condiciones
 (national, PDF)" source link with the count of pliego-added varieties.
+A subzona reads its DO's pliego (2026-10-04: Rioja Alta had lacked the
+Malvasía the Rioja pliego adds), and where the pliego names a subzona's
+principal varieties — Vinos de Madrid's "Principales Subzona de Arganda —
+Blancas: Malvar. — Tintas: Tinto Fino (Tempranillo)." — those are its
+principal grapes and the rest of the DO's roster its accessory
+(`_apply_subzona_principals`). Rías Baixas' ≥ 70 % rules for its white
+subzona labels (a three-column table) are not read yet; the other
+subzonas (Rioja, Ribeira Sacra, Monterrei, Costers del Segre, Alicante,
+Valencia) are named only for their area and terroir.
 
 Re-runnable per slug or in sweep mode:
 ```
@@ -1693,8 +1702,14 @@ sub-regiões exist in regulatory documents but aren't in the caderno
 text. Sub-região records carry `is_sub_denomination=true`,
 `parent_slug`, `parent_id_eambrosia`, `parent_name` (same data
 model as FR DGCs and ES subzonas) and share the parent's
-`file_number` / sections / grapes (parent inherited at the
-rendering layer).
+`file_number` / sections. Their grapes are the parent's unless the
+caderno's grapes section has a table under "Sub-região de X"
+(`subregion_grapes` in stage 02, 2026-10-04): Vinho Verde's "os vinhos …
+com indicação de sub-região devem ser exclusivamente obtidos a partir das
+castas enumeradas nos quadros seguintes" — Monção e Melgaço is seven
+varieties with Alvarinho, not the DOC's 46; a two-word row whose words
+both resolve is a name and its lost-";" synonym ("Vinhão Sousão"). The
+other cadernos name their sub-regiões for area and terroir only.
 
 | Script | Reads | Writes |
 |---|---|---|
@@ -4067,9 +4082,18 @@ CH-specific notes:
   - **TI**: skipped — the 3 colour-tier sub-DOCs share the canton-
     wide production area; per-AOC carving adds nothing.
 
-  Per-AOC variety carving (VD's Lavaux-only Chasselas split, GE's
-  per-premier-cru annex) is still deferred — would need per-region
-  Art. 18 / Art. 14 parsing for each variety/yield rule.
+  Per-AOC varieties (2026-10-04): the TI regolamento's art. 23 splits the
+  DOC roster by grape colour ("a) per le uve rosse: … b) per le uve
+  bianche: …") and art. 20 reserves «Rosso - Bianco - Rosato del Ticino»
+  to blends of one colour, so each tier takes its colour's list and an
+  explicit style (`colour_blocks` + `list_varieties` in
+  `_lib/ch/reglement.py`); the DOC Ticino takes both lists (the
+  whole-document scan had added Alphonse Lavallée, Léon Millot and
+  Plantet from the list of varieties barred from blending). The VS
+  Grands Crus take OVV art. 88's list (`grand_cru_block`). The other
+  règlements carry no per-sub-AOC variety rule: GE has one annex for every
+  AOC Genève wine, VD's Dézaley / Calamin Grand cru have must weights for
+  whites, Gamay and other reds, BE / SZ / FR use one cantonal list.
 - Sub-denomination model: tier "régionale" and "locale" entries are
   tagged `is_sub_denomination=true` with `parent_slug` = the same
   canton's "cantonale" AOC slug (when one exists). Orphan régionale
@@ -4100,7 +4124,11 @@ CH-specific notes:
   | Savièse | Savièse Grand Cru | n/a | to-verify |
   | Visperterminen | Visperterminen Grand Cru | n/a | to-verify |
 
-  Each entry resolves to a single-commune polygon via
+  Their roster is OVV art. 88's ("L'appellation Grand Cru est réservée aux
+  cépages suivants": ten whites, five reds — Amigne, Humagne blanc, Rèze,
+  Cornalin du Valais and Humagne rouge are not in the grape lexicon yet,
+  pending a VIVC pass), not the Valais AOC list; a communal règlement may
+  narrow it again. Each entry resolves to a single-commune polygon via
   swissBOUNDARIES3D `BFS_NUMMER`. Per OVV Art. 86, each commune
   homologates its own communal Grand Cru règlement — the OVV itself
   does NOT enumerate them, so the roster requires external research

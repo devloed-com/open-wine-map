@@ -477,6 +477,39 @@ def make_parent_record(
     }
 
 
+def subregion_grapes(grapes_text: str, name: str) -> dict | None:
+    """A sub-região's own roster: the table under its "Sub-região de X"
+    header in the parent's grapes section (Vinho Verde: "os vinhos … com
+    indicação de sub-região devem ser exclusivamente obtidos a partir das
+    castas enumeradas nos quadros seguintes para a respetiva sub-região");
+    `parse_grape_list` stops at the next sub-região header. None when the
+    section has no table for it — the sub-região then follows the parent."""
+    head = re.compile(
+        rf"^[ \t]*Sub-?regi[ãa]o\s+(?:de|do|da|dos|das)\s+{re.escape(name)}[ \t]*$",
+        re.MULTILINE | re.IGNORECASE,
+    )
+    m = head.search(grapes_text or "")
+    if m is None:
+        return None
+    lines = [_synonym_pair(ln) for ln in grapes_text[m.end():].split("\n")]
+    grapes = parse_grape_list("\n".join(lines))
+    return grapes if grapes["principal"] else None
+
+
+def _synonym_pair(line: str) -> str:
+    """Restore the "; " a table row lost between a variety and its synonym
+    ("Vinhão Sousão", "Alvarelhão Brancelho" in the Baião and Lima tables).
+    These tables hyphenate a multi-word name ("Tinta-Barroca"), so a
+    two-word row whose words both resolve is a name and its synonym —
+    read whole, "Alvarelhão Brancelho" fuzzy-matched a white variety."""
+    words = line.split()
+    if len(words) != 2 or ";" in line:
+        return line
+    if all(_candidate_to_slug(w) for w in words):
+        return f"{words[0]}; {words[1]}"
+    return line
+
+
 def make_subregion_record(
     parent: dict,
     subregiao: dict,
@@ -509,7 +542,8 @@ def make_subregion_record(
         "summary": parent["summary"],
         "geo_area_brief": (subregiao.get("body") or "")[:1200],
         "link_to_terroir": parent["link_to_terroir"],
-        "grapes": parent["grapes"],
+        "grapes": subregion_grapes(parent["sections"].get("grapes", ""), subregiao["name"])
+        or parent["grapes"],
         "subregioes_count": 0,
         "source_pattern": subregiao.get("source_pattern", ""),
         "source": parent["source"],

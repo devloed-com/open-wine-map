@@ -439,3 +439,65 @@ def summary_paragraph(text: str, *, max_chars: int = 800) -> str:
             continue
         return line[:max_chars]
     return ""
+
+
+# Two cantons state a narrower roster than the whole-document scan finds.
+# Valais (OVV art. 88): "L'appellation Grand Cru est réservée aux cépages
+# suivants : a) Cépages blancs: … b) Cépages rouges: …" — the twelve
+# communal Grands Crus carried Valais's whole AOC list. Ticino (art. 23):
+# "Sono vini DOC solo quelli prodotti con uve dei seguenti vitigni: a) per
+# le uve rosse: … b) per le uve bianche: …", and art. 20 reserves «Rosso -
+# Bianco - Rosato del Ticino» to blends of grapes of one colour.
+_GRAND_CRU_BLOCK = re.compile(
+    r"appellation\s+Grand\s+Cru\s+est\s+r[ée]serv[ée]e\s+aux\s+c[ée]pages\s+suivants\s*:"
+    r"(.*?)(?=\bArt\.\s*\d|\Z)",
+    re.IGNORECASE | re.DOTALL,
+)
+_COLOUR_LIST_END = r"(?=\n\s*[b-z]\)\s|\n\s*\n|\n\s*\d+\s{2,}|\Z)"
+_COLOUR_LIST = {
+    "red": re.compile(r"per\s+le\s+uve\s+rosse\s*:(.*?)" + _COLOUR_LIST_END, re.I | re.S),
+    "white": re.compile(r"per\s+le\s+uve\s+bianche\s*:(.*?)" + _COLOUR_LIST_END, re.I | re.S),
+}
+
+
+def grand_cru_block(text: str) -> str:
+    m = _GRAND_CRU_BLOCK.search(text or "")
+    return m.group(1) if m else ""
+
+
+def colour_blocks(text: str) -> dict[str, str]:
+    """{"red": …, "white": …} variety lists of a règlement that splits its
+    roster by grape colour; empty when it does not."""
+    out = {}
+    for colour, rx in _COLOUR_LIST.items():
+        m = rx.search(text or "")
+        if m:
+            out[colour] = m.group(1)
+    return out if len(out) == 2 else {}
+
+
+_LIST_FOOTNOTE = re.compile(r"(?<=[;.:,])\s*\d+(?:,\d+)*(?=\s|$)|^\s*\d+\s*$", re.MULTILINE)
+_LIST_HEAD = re.compile(r"\b[a-z]\)\s*(?:c[ée]pages?\s+(?:blancs?|rouges?)\s*:)?", re.I)
+_LIST_SPLIT = re.compile(r"[;,]|\.(?:\s|$)|\s+(?:e|et|und)\s+", re.I)
+_LIST_ARTICLE = re.compile(r"^(?:il|lo|la|le|i|gli|l['’])\s*", re.I)
+
+
+def list_varieties(block: str, match_fn) -> list[dict]:
+    """A short variety enumeration ("Chasselas (Fendant), Sylvaner (Rhin ou
+    gros Rhin), …;4", "la Bondola, il Cabernet Franc, … e la Syrah"): lines
+    joined, footnote numbers dropped, split on the separators, articles and
+    synonym parentheses stripped; an exact or near-exact match only."""
+    text = re.sub(r"\s+", " ", _LIST_FOOTNOTE.sub(" ", block or ""))
+    text = _LIST_HEAD.sub(" ", text)
+    out: dict[str, dict] = {}
+    for part in _LIST_SPLIT.split(text):
+        name = _LIST_ARTICLE.sub("", re.sub(r"\([^)]*\)", " ", part).strip()).strip(" .:-")
+        if not name:
+            continue
+        hit = match_fn(name)
+        if hit is None or hit.slug in out:
+            continue
+        if hit.method.startswith("fuzzy") and int(hit.method.split(":")[1]) < _CH_FUZZY_FLOOR:
+            continue
+        out[hit.slug] = {"slug": hit.slug, "name": hit.name, "colour": hit.colour}
+    return list(out.values())
