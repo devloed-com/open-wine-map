@@ -35,10 +35,16 @@ from _lib.terroir_chapters import fold
 
 _QUOTED = re.compile(r"«\s*([^»]{1,160}?)\s*»")
 _CLAUSE = re.compile(r"^[ \t]*[a-z]\)[ \t]*[-–—]", re.MULTILINE)
-_ROW = re.compile(r"^[ \t]*«\s*([^»\n]{1,160}?)\s*»", re.MULTILINE)
+# A table row opens on the « name » (with any "ou « alias »") and then the
+# line ends or a column gap follows — a prose list wrapped onto a line that
+# starts with a name ("« Sablet », « Saint-Gervais », …") is not a row.
+_ROW = re.compile(
+    r"^[ \t]*«\s*([^»\n]{1,160}?)\s*»(?:\s+ou\s+«[^»\n]*»)*[ \t]*(?:$|[ \t]{2})",
+    re.MULTILINE,
+)
 _ALIAS = re.compile(r"\s+ou\s+", re.IGNORECASE)
 _SENTENCE = re.compile(r"(?<=[.;])\s+(?=[A-ZÀ-ÖØ-Þ«])|\n[ \t]*\n")
-_EXCEPT = re.compile(r"à\s+l['’]exception\b", re.IGNORECASE)
+_EXCEPT = re.compile(r"à\s+l['’]exception\b|\bhormis\b|\bsauf\b|\bexcept[ée]\b", re.IGNORECASE)
 _EXCEPT_END = re.compile(r"\b(?:sont|est|peuvent|peut)\b")
 # parse_grapes reads the 1° block only; the proportion rules after it name
 # the same crus and would read as rosters of their own.

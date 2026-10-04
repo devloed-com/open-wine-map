@@ -394,9 +394,30 @@ parent denomination (where `denomination == appellation`) gets the canonical
 slug; each sub-denomination gets `slug(denomination)` and carries
 `is_sub_denomination=true` plus `parent_id_appellation`, `parent_slug`,
 `parent_name`. Sub-denominations share the parent's cahier text — INAO
-publishes one cahier des charges per appellation, and sub-sections inside
-it are not parsed in v1, so sub-denomination records inherit `sections` /
-`aire` / `grapes` / `styles` from the parent.
+publishes one cahier des charges per appellation — and inherit `sections`
+/ `aire` from the parent. Their `styles` and `grapes` are the parent's
+unless the cahier singles the DGC out ([scripts/_lib/fr/dgc_rules.py](scripts/_lib/fr/dgc_rules.py),
+`_apply_dgc_rules` in stage 02, 2026-10-04): a section III reservation rule
+naming it ("La dénomination géographique complémentaire « Puy-Notre-Dame »
+est réservée aux vins tranquilles rouges", or its row of the colour table)
+sets its colours with the DGC's own SIQO categories; its section V rows or
+clauses set its roster — a two-column `pdftotext -layout` table is read by
+column, a centred or full-width heading scoping the rows below it, a left
+label pairing with the value block it overlaps (a name wrapped over two
+lines, a value printed above its label); and a DGC section V does not name
+keeps the parent's roster minus the clauses / rows of a colour it is not
+allowed (Côtes de Bordeaux Cadillac drops "b)- Les vins blancs"). In prose
+only a reservation sentence counts (an IGP's description "Pour l'unité
+géographique « Coteaux du Grésivaudan », les vins blancs présentent …" is
+not a rule), "hormis / sauf / à l'exception de « X »" excepts X, and a
+clause ending "… la liste suivante :" takes the list after it (Var
+Correns). The record carries `dgc_rules` ({types, encepagement} → own /
+colour) where it applied. First run: 78 of 1,074 DGCs changed — Touraine
+Oisly is white Sauvignon, Saumur Puy-Notre-Dame red Cabernet franc, the
+Languedoc and Côtes du Rhône Villages red-only DGCs lost white and rosé,
+Mâcon Fuissé / Loché / Vinzelles white Chardonnay. Known residue: a grape
+both accessory in one colour row and principal in another takes the first
+role read (Fiefs Vendéens Vix's rosé Gamay).
 
 Stage 04 resolves sub-denomination geometry by `id_denomination_geo`
 against the INAO parcellaire shapefile (the shapefile carries `id_denom`
