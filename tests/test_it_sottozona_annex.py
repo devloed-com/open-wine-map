@@ -6,21 +6,10 @@ Ponente as MASAF publishes them.
 """
 from __future__ import annotations
 
-import importlib.util
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-
-from _lib.augment.it import _sottozona_annex  # noqa: E402
-from _lib.grape_entity import match_variety  # noqa: E402
-from _lib.it.documento_unico import scan_styles  # noqa: E402
-from _lib.it.masaf import annex_grapes, annex_sottozona_names  # noqa: E402
-
-_spec = importlib.util.spec_from_file_location("it_02f", ROOT / "scripts/it/02f_extract_masaf.py")
-it_02f = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(it_02f)
+from _lib.augment.it import _sottozona_annex
+from _lib.grape_entity import match_variety
+from _lib.it.documento_unico import scan_styles
+from _lib.it.masaf import annex_entry, annex_grapes, annex_sottozona_names
 
 
 def slugs(grapes: dict | None) -> list[str]:
@@ -117,13 +106,11 @@ def test_styles_come_from_the_organoleptic_article_found_by_its_opening():
             ),
         },
     }
-    entry = it_02f._annex_entry({"slug": "friuli-colli-orientali",
-                                 "name": "Friuli Colli Orientali"}, annex, "")
+    entry = annex_entry(annex, "", "Friuli Colli Orientali", match_variety)
     assert slugs(entry["grapes"]) == ["pignolo"]
     assert entry["styles"] == ["dry", "noir"]
     annex["articles"].pop(6)
-    assert "styles" not in it_02f._annex_entry({"slug": "x", "name": "Friuli Colli Orientali"},
-                                               annex, "")
+    assert "styles" not in annex_entry(annex, "", "Friuli Colli Orientali", match_variety)
 
 
 def test_stage04_binds_a_sottozona_to_its_annex_by_any_alias():

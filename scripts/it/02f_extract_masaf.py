@@ -65,8 +65,7 @@ from _lib.grape_entity import (  # noqa: E402
 from _lib.it.documento_unico import scan_styles  # noqa: E402
 from _lib.it.masaf import (  # noqa: E402
     PdfRecord,
-    annex_grapes,
-    annex_sottozona_names,
+    annex_entry,
     build_pdf_index,
     cap_at_sentence,
     derive_geo_area,
@@ -262,41 +261,10 @@ def collapse_whitespace(s: str) -> str:
 
 
 def _annex_entry(wine: dict, annex: dict, raw_text: str) -> dict:
-    articles = annex.get("articles") or {}
-    names = annex_sottozona_names(annex.get("title") or "")
-    entry = {
-        "title": annex.get("title") or "",
-        "sottozone": names,
-        "article_bodies": {
-            str(n): body for n, body in sorted(articles.items())
-            if n in (1, 2, 3, 8, 9) and body
-        },
-    }
-    if not names:
-        return entry
     set_pliego_context(wine["slug"])
-    grapes = annex_grapes(match_variety, articles.get(2, ""), raw_text,
-                          wine.get("name", ""), names)
+    entry = annex_entry(annex, raw_text, wine.get("name", ""), match_variety)
     set_pliego_context(None)
-    if grapes:
-        entry["grapes"] = grapes
-        # Styles only from an annex with its own organoleptic article, found
-        # by title (annexes renumber); one without (Asti's Strevi) defers to
-        # the parent's disciplinare and keeps the parent's styles.
-        consumo = next((b for _, b in sorted(articles.items()) if _is_consumo_article(b)), "")
-        if consumo:
-            entry["styles"] = scan_styles(" ".join((articles.get(1, ""), consumo)))
     return entry
-
-
-# "Caratteristiche al consumo", "Caratteristiche del vino al consumo",
-# Barbera d'Asti's "Caratteristiche dei al consumo", or untitled "I vini …
-# all'atto dell'immissione al consumo, devono rispondere alle seguenti
-# caratteristiche" (Friuli Colli Orientali) — read in the article's opening
-# lines, where Art. 1 can also say "immesso al consumo".
-def _is_consumo_article(body: str) -> bool:
-    head = body[:300]
-    return bool(re.search(r"\bal\s+consumo\b", head, re.I) and re.search(r"caratteristic", head, re.I))
 
 
 def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,

@@ -39,6 +39,8 @@ from typing import Iterable
 
 from rapidfuzz import fuzz
 
+from _lib.it.documento_unico import scan_styles
+
 # Filename markers that should be stripped before slugifying — these
 # are doc-type qualifiers MASAF embeds inconsistently.
 _JUNK_RE = re.compile(
@@ -1135,3 +1137,40 @@ def pick_terroir_article(
 
     # Step 3: established canonical fallback.
     return 9, derive_terroir(articles.get(9, ""), max_chars=max_chars)
+
+
+def annex_entry(annex: dict, raw_text: str, wine_name: str, matcher) -> dict:
+    """A sidecar annex: its title, the sottozona names it declares, its
+    articles 1 / 2 / 3 / 8 / 9 and — when it has a variety article of its
+    own — its roster, plus its styles when it has an organoleptic article
+    (found by its opening; annexes renumber, and one without, Asti's
+    Strevi, defers to the parent's disciplinare and keeps the parent's)."""
+    articles = annex.get("articles") or {}
+    names = annex_sottozona_names(annex.get("title") or "")
+    entry = {
+        "title": annex.get("title") or "",
+        "sottozone": names,
+        "article_bodies": {
+            str(n): body for n, body in sorted(articles.items())
+            if n in (1, 2, 3, 8, 9) and body
+        },
+    }
+    if not names:
+        return entry
+    grapes = annex_grapes(matcher, articles.get(2, ""), raw_text, wine_name, names)
+    if grapes:
+        entry["grapes"] = grapes
+        consumo = next((b for _, b in sorted(articles.items()) if _is_consumo_article(b)), "")
+        if consumo:
+            entry["styles"] = scan_styles(" ".join((articles.get(1, ""), consumo)))
+    return entry
+
+
+# "Caratteristiche al consumo", "Caratteristiche del vino al consumo",
+# Barbera d'Asti's "Caratteristiche dei al consumo", or untitled "I vini …
+# all'atto dell'immissione al consumo, devono rispondere alle seguenti
+# caratteristiche" (Friuli Colli Orientali) — read in the article's opening
+# lines, where Art. 1 can also say "immesso al consumo".
+def _is_consumo_article(body: str) -> bool:
+    head = body[:300]
+    return bool(re.search(r"\bal\s+consumo\b", head, re.I) and re.search(r"caratteristic", head, re.I))
