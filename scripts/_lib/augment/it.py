@@ -9,8 +9,10 @@ private helper of `augment_it_records_with_masaf` and moves with it;
 from __future__ import annotations
 
 import json
+import re
 
 from _lib.it.sottozona import extract_sottozone as extract_it_sottozone
+from _lib.terroir_chapters import fold
 
 from ._shared import (
     _IT_MASAF_BY_SLUG,
@@ -260,8 +262,12 @@ def synthesize_it_sottozone_records(records: list[dict]) -> int:
     Each sottozona becomes a child record mirroring the ES subzona /
     FR DGC model: `is_sub_denomination=True`, `parent_slug`,
     `parent_name`, `parent_id_eambrosia`, inheriting the parent's
-    grapes / styles / terroir / regione. Geometry resolves via the
-    stage-04 `parent-appellation` inheritance step. Appended to
+    grapes / styles / terroir / regione — except where the PDF carries
+    the sottozona's own sub-disciplinare (a sidecar annex naming it):
+    its roster replaces the parent's, and its styles too when the annex
+    has an organoleptic article (Pignolo di Rosazzo is Pignolo and red,
+    not Friuli Colli Orientali's nineteen varieties). Geometry resolves
+    via the stage-04 `parent-appellation` inheritance step. Appended to
     `records` (processed after every parent, so parent geometry is
     available). Returns the number of sottozona records created."""
     if not MASAF_DISCIPLINARI_IT.exists():
@@ -284,6 +290,7 @@ def synthesize_it_sottozone_records(records: list[dict]) -> int:
             [sidecar.get("geo_area_brief") or "", bodies.get("1", ""), bodies.get("3", "")]
         )
         parent_name = record.get("name") or slug
+        annexes = [a for a in sidecar.get("annexes") or [] if a.get("grapes")]
         for sz in extract_it_sottozone(text, parent_name):
             sz_slug = f"{slug}-{sz['slug']}"
             if not sz["slug"] or sz_slug in existing:
@@ -300,6 +307,33 @@ def synthesize_it_sottozone_records(records: list[dict]) -> int:
                 "menzioni": [],
                 "sottozona_source": "masaf-disciplinare-article-1",
             })
+            annex = _sottozona_annex(sz["name"], annexes)
+            if annex is not None:
+                child["grapes"] = annex["grapes"]
+                if "styles" in annex:
+                    child["styles"] = list(annex["styles"])
+                child["sottozona_rules"] = {
+                    "source": "masaf-disciplinare-annex",
+                    "annex_title": annex.get("title") or "",
+                }
             new_records.append(child)
     records.extend(new_records)
     return len(new_records)
+
+
+_SZ_QUOTES = re.compile(r"[“”«»\"]")
+_SZ_ALIAS = re.compile(r"\s+o\s+", re.I)
+
+
+def _sottozona_keys(name: str) -> set[str]:
+    """Folded aliases of a sottozona name ("Colli Astiani” o “Astiano")."""
+    return {fold(p) for p in _SZ_ALIAS.split(_SZ_QUOTES.sub(" ", name or "")) if p.strip()}
+
+
+def _sottozona_annex(name: str, annexes: list[dict]) -> dict | None:
+    """The first sidecar annex whose title names this sottozona."""
+    keys = _sottozona_keys(name)
+    for annex in annexes:
+        if keys & {k for n in annex.get("sottozone") or [] for k in _sottozona_keys(n)}:
+            return annex
+    return None

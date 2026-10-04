@@ -1034,9 +1034,11 @@ def main() -> int:
         )
     n_sz_it = synthesize_it_sottozone_records(extracted_records)
     if n_sz_it:
+        n_sz_rules = sum(1 for r in extracted_records if r.get("sottozona_rules"))
         print(
             f"[load] IT sottozone: {n_sz_it} sub-denomination records "
-            "synthesized from MASAF disciplinari",
+            f"synthesized from MASAF disciplinari, {n_sz_rules} with the "
+            "roster of their own annex",
             file=sys.stderr,
         )
     # Snapshot the in-memory menzioni (documento-unico + MASAF-allegato

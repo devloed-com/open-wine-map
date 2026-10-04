@@ -1869,8 +1869,22 @@ Italy has two layers of sub-denomination granularity:
   live in the **MASAF disciplinare Article 1** — `synthesize_it_
   sottozone_records()` in stage 04 runs the detector over the cached
   sidecar `article_bodies` and appends a child record per sottozona,
-  inheriting the parent's grapes/styles/terroir; geometry resolves via
-  `parent-appellation`. v1 yield: **38 sottozone across 10 DOPs**
+  inheriting the parent's grapes/styles/terroir — except where the PDF
+  binds the sottozona's own sub-disciplinare (2026-10-04, parser v5): 02f
+  records each annex's `sottozone` (the quoted names after the title's
+  last "sottozona"), its Article 2 roster when that article is a variety
+  article (`masaf.annex_grapes`; the sottozona's own name never reads as
+  a grape — "Tinella" had fuzzy-matched Grenache) and its styles when it
+  has an organoleptic article (found by its opening, annexes renumber);
+  stage 04 gives them to the sottozona the annex names
+  (`sottozona_rules` on the record). 42 of 78 sottozone have an annex
+  and 37 take its roster — Pignolo di Rosazzo is Pignolo, Romagna Cesena
+  Sangiovese, Valtènesi Groppello first; Riviera Ligure di Ponente's five
+  annexes carry no variety article and keep the parent's, as does the
+  detector's merged "Schioppettino di Prepotto» «Savorgnano" record. Annex sottozone with no record yet
+  (Montepulciano d'Abruzzo's 9, Trentino's 5, …) are not emitted — some
+  are DOCGs or cancelled IGTs now. `chiaretto` reads as rosé.
+  Geometry resolves via `parent-appellation`. v1 yield: **38 sottozone across 10 DOPs**
   (Chianti 7, Vin Santo del Chianti 7, Valtellina Superiore 5, Bardolino
   3, Costa d'Amalfi 3, Cannonau di Sardegna 3, Penisola Sorrentina 3,
   Cinque Terre, Lambrusco Mantovano, Lago di Caldaro).
