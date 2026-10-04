@@ -2875,6 +2875,7 @@
       .filter(s => AOCS[s])
       .sort((a, b) => localityRank(a) - localityRank(b));
     if (!sorted.length) return;
+    if (via !== 'stack-pick') currentStackIsSet = via === 'set';
     currentStack = sorted;
     const focus = ((((focusIndex | 0) % sorted.length) + sorted.length) % sorted.length);
     const ordered = focus === 0
@@ -2882,8 +2883,12 @@
       : [sorted[focus], ...sorted.filter((_, i) => i !== focus)];
     let header = '';
     if (sorted.length > 1) {
-      const pos = `<span class="stack-pos" title="${escapeAttr(LABELS.stack_cycle_hint)}">${focus + 1} / ${sorted.length}</span>`;
-      header = `<div class="stack-header"><span>${fmt(LABELS.stack_header, { n: sorted.length })}</span>${pos}</div>`;
+      // A shared ?aocs= set is a list, not the polygons under one map point:
+      // a plain count, and no "click again to cycle" hint (a card pick keeps it).
+      const isSet = currentStackIsSet;
+      const posTitle = isSet ? '' : ` title="${escapeAttr(LABELS.stack_cycle_hint)}"`;
+      const pos = `<span class="stack-pos"${posTitle}>${focus + 1} / ${sorted.length}</span>`;
+      header = `<div class="stack-header"><span>${fmt(isSet ? LABELS.count_total : LABELS.stack_header, { n: sorted.length })}</span>${pos}</div>`;
     }
     // A generation token cancels a stale fetch's render when the user opens or
     // cycles to a different stack before this one's detail arrives.
@@ -2968,6 +2973,7 @@
   // sort), so a click on a subordinate card re-renders the same stack with
   // that card in front — and a map re-click on the spot cycles on from it.
   let currentStack = [];
+  let currentStackIsSet = false;
 
   // Bring one record of the open stack to the front: first card, gold
   // outline on the map, URL and title follow. The sidebar's counterpart of
@@ -3072,6 +3078,33 @@
       if (!INITIAL_CAMERA_HASH) {
         const b = fitBbox(AOCS[urlSlug]);
         if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, maxZoom: LOD.overview_max_zoom, duration: 0 }));
+      }
+      return;
+    }
+    // A set shared as ?aocs=a,b,c (the MCP server's show_on_map links one):
+    // the whole set in the panel stack, all of it highlighted, the map framed
+    // on all of it. The URL keeps the query until the reader opens something
+    // else (setAocPath drops it), so the view stays shareable.
+    let setSlugs = [];
+    try {
+      const q = new URLSearchParams(window.location.search).get('aocs');
+      if (q) setSlugs = [...new Set(q.split(','))].filter(s => AOCS[s]).slice(0, 50);
+    } catch (e) {}
+    if (setSlugs.length) {
+      lastStackKey = setSlugs.slice().sort().join('|');
+      stackFocusIndex = 0;
+      renderPanelStack(setSlugs, 0, false, 'set');
+      setSelection(setSlugs);
+      if (_ssr) _ssr.remove();
+      if (!INITIAL_CAMERA_HASH) {
+        const boxes = setSlugs.map(s => fitBbox(AOCS[s])).filter(Boolean);
+        if (boxes.length) {
+          const b = [
+            Math.min(...boxes.map(x => x[0])), Math.min(...boxes.map(x => x[1])),
+            Math.max(...boxes.map(x => x[2])), Math.max(...boxes.map(x => x[3])),
+          ];
+          map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, maxZoom: LOD.overview_max_zoom, duration: 0 }));
+        }
       }
       return;
     }

@@ -13,6 +13,7 @@ Tools — the same definitions and code the map page registers as WebMCP tools
 | `filter_appellations` | country, region, style, grape (VIVC synonyms), scheme / traditional term |
 | `get_appellation` | grapes, styles, terroir facts with provenance, sources, attribution |
 | `list_facets` | the values `filter_appellations` accepts, with counts |
+| `show_on_map` | the appellations on an interactive map in the chat (MCP Apps view `ui://open-wine-map/map`; text link elsewhere) — on the spike, not yet in production |
 
 ## Layout
 
@@ -22,6 +23,8 @@ Tools — the same definitions and code the map page registers as WebMCP tools
   stage 04), caches it per isolate, revalidates by ETag
 - `src/http.js` — routing (`POST /mcp`), CORS, `no-store`
 - `src/edge.js` — Bunny entry point; optional `MCP Tool` Plausible event
+- `view/` — the `show_on_map` view (MapLibre + pmtiles + the ext-apps `App`),
+  bundled into one HTML file, `dist/view.html`, by `scripts/build-view.mjs`
 
 ## Develop
 
@@ -31,12 +34,14 @@ npm test                      # needs a stage-04 build in ../wiki for most tests
 npm run build                 # → dist/edge.js (single file, uploaded as is)
 node test/smoke.js https://mcp.openwinemap.com/mcp   # all three protocol modes
 ../.venv/bin/python test/parity_webmcp.py            # page WebMCP tools == server
+../.venv/bin/python test/apps_host_check.py --shots /tmp/shots  # the view in a local MCP Apps host
 ```
 
 Deploy: `.venv/bin/python scripts/deploy_mcp.py deploy` from the repo root
 (see that script's docstring; `BUNNY_API_KEY`, `BUNNY_MCP_SCRIPT_ID` in `.env`).
 Script variables: `DATA_ORIGIN` (default https://www.openwinemap.com),
-`PLAUSIBLE_HOST`, `PLAUSIBLE_DOMAIN`.
+`PLAUSIBLE_HOST`, `PLAUSIBLE_DOMAIN`; for the view `TILE_ORIGIN`, `CARTO_KEY`
+and (spike only) `TILE_PROXY=1`.
 
 Add it to a client: Le Chat → Connectors → Custom MCP Connector → server URL
 `https://mcp.openwinemap.com/mcp`; Claude → Settings → Connectors → Add custom

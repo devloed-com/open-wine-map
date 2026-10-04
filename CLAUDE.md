@@ -6286,6 +6286,19 @@ instance — change search semantics in the core, never in app.js.
   WebMCP tools and the server answer the same calls identically, headless
   Chromium). Plan, decisions and spike results:
   [docs/plan-mcp-server.md](docs/plan-mcp-server.md).
+- **The map inside the chat** (MCP Apps, on the spike only so far): a fifth
+  tool, `show_on_map` {slugs}, carries `_meta.ui.resourceUri` →
+  `ui://open-wine-map/map`, a self-contained MapLibre view
+  ([mcp/view/](mcp/view/), built into `dist/view.html` by `npm run build:view`)
+  that draws the requested appellations from the site's pmtiles. With ≤ 10
+  appellations each has its own colour and a legend list: hover a row or a
+  polygon to light it, click a row to zoom to it (the site button then opens
+  its page), the colour square hides it. Its text result and the view's site
+  button link the set as **`/?aocs=a,b,c`** (any locale home, ≤ 50 slugs):
+  app.js opens that stack in the panel, highlights all of it and frames the
+  map on it; the query stays in the URL until the reader opens something else.
+  Host check: `.venv/bin/python mcp/test/apps_host_check.py [--shots DIR]
+  [--live MCP_URL]`. Plan and phases: [docs/plan-mcp-apps.md](docs/plan-mcp-apps.md).
 
 ## Analytics
 
