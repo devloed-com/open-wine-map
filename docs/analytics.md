@@ -52,20 +52,21 @@ option is inert, and a build with no `localhost` entry loads nothing there.
 
 | Event | Props | Fired when |
 |---|---|---|
-| `Appellation Viewed` | `slug`, `country`, `kind`, `region`, `stacked`, `stack_size`, `via`, `locale` | the detail panel opens or the stack focus changes. `via` ∈ `map` (click on the map), `cycle` (re-click cycling a stack), `facet`, `omnisearch`, `panel-link` (parent/child link inside a card). **Not** fired for the page-load open of a `/<lang>/<slug>` landing (the pageview already records it) nor for the localStorage restore. |
-| `Appellation Opened` | `slug`, `via` (`facet` / `omnisearch`), `locale` | an explicit pick — the cleanest interest signal |
+| `Appellation Viewed` | `slug`, `country`, `kind`, `region`, `stacked`, `stack_size`, `via`, `lod`, `zoom`, `locale` | the detail panel opens or the stack focus changes. `via` ∈ `map` (click on the map), `cycle` (re-click cycling a stack), `stack-pick` (a subordinate card of a stack brought to the front — a click on the card or its ↑ button; since the 2026-09-24 build), `facet`, `omnisearch`, `panel-link` (parent/child link inside a card), `webmcp` (a browser agent called the `show_appellation` WebMCP tool). **Not** fired for the page-load open of a `/<lang>/<slug>` landing (the pageview already records it) nor for the localStorage restore. |
+| `Appellation Opened` | `slug`, `via` (`facet` / `omnisearch` / `webmcp`), `locale` | an explicit pick — the cleanest interest signal |
 | `Filter Applied` | `facet`, `value`, `locale` | a facet checkbox / chip / country / region / appellation filter changes |
 | `Filters Reset` | `locale` | the reset button |
-| `Kind Toggled` | `kind` (`igp` / `spirits`), `enabled`, `via` (`reveal-hint`, optional), `locale` | the IGP / spirits switches |
-| `View Mode Switched` | `mode` (`simple` / `advanced`), `locale` | the mode toggle |
-| `Grape Scope Toggled` | `scope` (`main` / `all`), `locale` | principal-only vs all grapes |
-| `Omnisearch Used` | `result_count`, `had_match`, `groups` (a/g/r/s), `query_len`, `locale` | 1 s after typing stops in the omnisearch |
+| `Kind Toggled` | `kind` (`igp` / `spirits`), `enabled`, `via` (`reveal-hint` / `omnisearch` / `webmcp`, optional — absent when the switch itself was used), `locale` | the IGP / spirits switches; `omnisearch` = the toggle was turned on because a hidden record was picked from the search results |
+| `View Mode Switched` | `mode` (`simple` / `advanced`), `via` (`omnisearch` / `webmcp`, optional), `locale` | the mode toggle; `omnisearch` = switched to advanced because a hidden spirit was picked from the search results |
+| `Grape Scope Toggled` | `scope` (`main` / `all`), `locale` | the "main grape only" checkbox that appears as a chip next to the grape chips once a grape is picked in the search box (2026-09-23; before that, a permanent checkbox in the Grapes facet). Not persisted: it ends with the last grape chip. |
+| `Omnisearch Used` | `result_count`, `had_match`, `groups` (a/g/r/s/c — appellations / grapes / regions / styles / classifications; `c` and the classification count in `result_count` since the 2026-09-25 build, so a query that matched only a classification — an aging / Prädikat / selection tier — no longer logs `had_match=false`), `query_len`, `locale` | 1 s after typing stops in the omnisearch |
 | `Omnisearch Result Picked` | `type` (`grape` / `region` / `style` / `classification`), `locale` | a non-appellation suggestion is picked (appellation picks fire `Appellation Opened`) |
+| `WebMCP Tool` | `tool` (`search_appellations` / `filter_appellations` / `get_appellation` / `show_appellation`), `locale` | a browser agent called one of the page's WebMCP tools (`document.modelContext`, end of app.js; registered only where the browser exposes the API). Arguments are never sent — the query text stays private, as for the search box. |
 | `Search Used` | `result_count`, `had_match`, `query_len`, `locale` | the legacy sidebar search (superseded by the omnisearch in June 2026) |
 | `Theme Changed` | `theme`, `locale` | light / dark toggle |
-| `Feedback Flagged` | `slug`, `aspect` (`boundary` / `grapes` / `facts` / `name` / `sources` / `other`), `country`, `kind`, `geom_source`, `via` (`card` / `stub-help`), `locale` | one tap on an aspect chip in the **"Report a mistake" section at the bottom of every appellation card** (2026-09). No account, no form. Pressed chips are remembered per browser (localStorage) so a revisit does not re-fire. A `slug × aspect` breakdown is the curator queue; flags ÷ `Appellation Viewed` is a per-record trust score. |
-| `Feedback Retracted` | `slug`, `aspect`, `locale` | a second tap on a pressed chip un-flags it (a misclick, or a change of mind). A flag cannot be recalled from Plausible, so net the two: flags − retractions per `slug × aspect`. |
-| `Feedback Note` | `slug`, `aspect`, `note`, `locale` | the optional free-text note sent after a flag. `aspect` is every chip pressed on the card at send time, joined with `+` (`boundary+grapes`). **`note` is visitor text** — whitespace-collapsed, capped at 500 characters client-side (Plausible accepts up to 2,000), with an inline "no personal details" hint. Self-hosted, no visitor identity attached; `scripts/feedback_report.py` lists every note with its slug and date. |
+| `Feedback Flagged` | `slug`, `aspect` (`boundary` / `grapes` / `facts` / `name` / `sources` / `other`), `country`, `kind`, `geom_source`, `view_mode` (`simple` / `advanced` — since the 2026-09-22 build; `geom_source` is the record's *advanced* provenance, so without the mode a boundary flag on a French appellation cannot be attributed to the commune outline or the parcellaire), `lod` (`footprint` / `parcels` / `zone` — what was on screen for this record: below the detail zoom a French parcel-level record draws its generalised vineyard footprint, from z12 its parcels, every other record one polygon at every zoom), `zoom` (the map zoom at the tap, one decimal), `via` (`card` / `stub-help`), `locale` | one tap on an aspect chip in the **"Report a mistake" section at the bottom of every appellation card** (2026-09). No account, no form. Pressed chips are remembered per browser (localStorage) so a revisit does not re-fire. A `slug × aspect` breakdown is the curator queue; flags ÷ `Appellation Viewed` is a per-record trust score. |
+| `Feedback Retracted` | `slug`, `aspect`, `view_mode`, `lod`, `zoom`, `locale` | a second tap on a pressed chip un-flags it (a misclick, or a change of mind). A flag cannot be recalled from Plausible, so net the two: flags − retractions per `slug × aspect`. |
+| `Feedback Note` | `slug`, `aspect`, `note`, `view_mode`, `lod`, `zoom`, `locale` | the optional free-text note sent after a flag. `aspect` is every chip pressed on the card at send time, joined with `+` (`boundary+grapes`). **`note` is visitor text** — whitespace-collapsed, capped at 500 characters client-side (Plausible accepts up to 2,000), with an inline "no personal details" hint. Self-hosted, no visitor identity attached; `scripts/feedback_report.py` lists every note with its slug and date. |
 | `Feedback Clicked` | `channel` (`email`), `locale` | the e-mail link in the sidebar disclaimer. The GitHub-issue link was removed 2026-09: months of clicks produced zero issues (a login wall + blank form). GitHub stays reachable from the About dialog for PRs. |
 | `Outbound Link: Click` | `url` | Plausible's own outbound-link tracking (source PDFs, Wikipedia, interprofessions, GitHub) |
 
@@ -133,9 +134,9 @@ cannot net a flag against its retraction, so the curation view is
 three `Feedback *` goals through the Stats API and prints a Markdown report —
 the queue (net flags per appellation × aspect, `Appellation Viewed` over the
 same range as a trust ratio, geometry source) and every note verbatim with
-its date. The key comes from the environment, never a file:
+its date. The Stats API key is `PLAUSIBLE_API_KEY` in the repo-root `.env`
+(gitignored, next to the deploy and CARTO keys; an exported variable wins):
 
-    export PLAUSIBLE_API_KEY=<per-session Stats API key>
     .venv/bin/python scripts/feedback_report.py                       # production, all time
     .venv/bin/python scripts/feedback_report.py --site beta.openwinemap.com --range 30d
     .venv/bin/python scripts/feedback_report.py --range 2026-09-01,2026-09-30 --json /tmp/fb.json

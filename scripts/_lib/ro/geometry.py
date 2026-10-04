@@ -27,12 +27,16 @@ Stage 04 resolves each RO record by:
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Iterable
 
 import geopandas as gpd
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
+
+# Romania's 41 județe + Bucharest — the NUTS-3 units the county masks use.
+N_JUDETE = 42
 
 
 class ROPolygonIndex:
@@ -43,6 +47,7 @@ class ROPolygonIndex:
         self,
         figshare_gpkg: Path,
         gisco_lau_zip: Path | None = None,
+        nuts3_geojson: Path | None = None,
         target_crs: str = "EPSG:4326",
     ) -> None:
         self.target_crs = target_crs
@@ -51,12 +56,14 @@ class ROPolygonIndex:
         # Romanian communes can share a name (e.g. "Cernavodă" town vs.
         # any neighbouring "Cernavodă" rural unit); we keep all candidates
         # and union them all when the commune list mentions the bare name.
-        # The ES pattern uses a (province, name) tuple as the key when
-        # province context is known, but Romania's documento-unic
-        # commune lists usually disambiguate by județ prefix in prose;
-        # the simple-name-keyed index is enough for v1, and ambiguous
-        # cases land in the audit's `unmatched`/`ambiguous` bucket.
+        # Keyed on the bare commune name, so a name that repeats across
+        # județe lands several polygons. That is resolved at union time
+        # against the record's declared județe (`commune_union`), not
+        # here — the index keeps every candidate.
         self._lau_by_name: dict[str, list[BaseGeometry]] = {}
+        # județ (NUTS-3) polygons, keyed by the `_JUDET_NAMES` form —
+        # the disambiguator for a commune name that repeats nationwide.
+        self._judet_by_name: dict[str, BaseGeometry] = {}
         self._n_lau = 0
 
         if figshare_gpkg.exists():
@@ -82,6 +89,32 @@ class ROPolygonIndex:
                 self._lau_by_name.setdefault(_normalise_commune(name), []).append(geom)
                 self._n_lau += 1
 
+        if nuts3_geojson is not None and nuts3_geojson.exists():
+            from .commune import _normalise_commune  # late import — same package
+            gdf = gpd.read_file(nuts3_geojson)
+            ro = gdf[gdf["CNTR_CODE"] == "RO"]
+            if ro.crs is None or ro.crs.to_string() != target_crs:
+                ro = ro.to_crs(target_crs)
+            # Romania's 41 județe + Bucharest ARE the NUTS-3 units, so the
+            # GISCO NUTS-3 layer is the județ boundary set. NUTS_NAME
+            # matches `_JUDET_NAMES` after the shared normaliser.
+            for _, r in ro.iterrows():
+                nm = _normalise_commune((r.get("NUTS_NAME") or "").strip())
+                if nm and r.geometry is not None and not r.geometry.is_empty:
+                    self._judet_by_name[nm] = r.geometry
+        # Without the masks commune_union still runs, unmasked: homonyms are
+        # skipped but prose-scraped names 400 km away are unioned again, and
+        # nothing else would say so. The file is fetched by the GR stage 00.
+        if nuts3_geojson is not None and len(self._judet_by_name) < N_JUDETE:
+            why = ("missing" if not nuts3_geojson.exists()
+                   else f"has {len(self._judet_by_name)} of {N_JUDETE} RO județe")
+            print(
+                f"[warn] RO county masks: {nuts3_geojson} {why} — RO commune-list "
+                f"unions will be UNMASKED and may span the country "
+                f"(fetch it with scripts/gr/00_fetch_data.py)",
+                file=sys.stderr,
+            )
+
     @property
     def n_pdo_polygons(self) -> int:
         return len(self._pdo_polygons)
@@ -90,33 +123,97 @@ class ROPolygonIndex:
     def n_lau(self) -> int:
         return self._n_lau
 
+    @property
+    def n_judete(self) -> int:
+        return len(self._judet_by_name)
+
     def figshare_polygon(self, file_number: str) -> BaseGeometry | None:
         return self._pdo_polygons.get(file_number)
 
     def commune_union(
-        self, commune_names: Iterable[str],
+        self, commune_names: Iterable[str], judete: Iterable[str] | None = None,
+        scoped: Iterable[tuple[str, list[str]]] | None = None,
     ) -> tuple[BaseGeometry | None, dict]:
         """Union the GISCO LAU polygons that match the given commune
         names (after normalisation). Returns (geometry, stats) where
-        stats counts matched / unmatched commune names."""
-        from .commune import _normalise_commune
+        stats counts matched / unmatched / ambiguous commune names.
+
+        Romanian commune names repeat heavily across județe — `Izvoarele`
+        is 5 communes, `Fântânele` 7, `Ștefan cel Mare` 6 — so a bare
+        name match can pull in a polygon 400 km from the appellation.
+        When the spec's declared `judete` disambiguate the candidates
+        down to one, that one is used; otherwise the name contributes
+        nothing and is reported. Never a blind union of every homonym:
+        that drew Colinele Dobrogei, a Black Sea appellation, across the
+        full width of the country."""
+        from .commune import _SPELLING_ALIASES, _normalise_commune
+        record_masks = [
+            self._judet_by_name[j]
+            for j in (judete or [])
+            if j in self._judet_by_name
+        ]
+        # `scoped` pairs each name with the județe of the section header it
+        # sits under; a name whose section is unknown uses the record-wide
+        # mask. Griviţa is a commune in both Galaţi and Vaslui and Dealurile
+        # Moldovei lists it under each — record-wide, that is an ambiguity;
+        # section-scoped, it is two matches.
+        items: list[tuple[str, list[BaseGeometry]]]
+        if scoped is not None:
+            items = []
+            for raw_name, own in scoped:
+                own_masks = [self._judet_by_name[j] for j in own if j in self._judet_by_name]
+                items.append((raw_name, own_masks or record_masks))
+        else:
+            items = [(n, record_masks) for n in commune_names]
         polys: list[BaseGeometry] = []
         matched: list[str] = []
         unmatched: list[str] = []
-        for raw_name in commune_names:
+        ambiguous: list[str] = []
+        outside: list[str] = []
+        for raw_name, masks in items:
             key = _normalise_commune(raw_name)
             if not key:
                 continue
+            key = _SPELLING_ALIASES.get(key, key)
             cands = self._lau_by_name.get(key)
             if not cands:
                 unmatched.append(raw_name)
+                continue
+            if masks:
+                # Every candidate is held to the declared județe, not just
+                # the ambiguous ones: the commune parser also scrapes
+                # place names out of surrounding prose, and those land
+                # far outside the area (Colinele Dobrogei, on the Black
+                # Sea, was picking up Abrud and Hațeg, ~400 km west).
+                inside = [
+                    g for g in cands
+                    if any(m.intersects(g.representative_point()) for m in masks)
+                ]
+                if not inside:
+                    outside.append(raw_name)
+                    continue
+                if len(inside) > 1:
+                    ambiguous.append(f"{raw_name} ({len(inside)} in-județ)")
+                    continue
+                cands = inside
+            elif len(cands) > 1:
+                # No declared județ to disambiguate with, so a name that
+                # matches several communes contributes nothing rather
+                # than all of them.
+                ambiguous.append(f"{raw_name} ({len(cands)})")
                 continue
             polys.extend(cands)
             matched.append(raw_name)
         stats = {
             "matched": len(matched),
             "unmatched": len(unmatched),
-            "names_unmatched": unmatched[:30],
+            "n_ambiguous": len(ambiguous),
+            "n_outside_judet": len(outside),
+            "names_unmatched": unmatched,
+            "names_ambiguous": ambiguous,
+            "names_outside_judet": outside,
+            "judete": list(judete or []),
+            "scoped": scoped is not None,
         }
         if not polys:
             return None, stats
@@ -124,6 +221,8 @@ class ROPolygonIndex:
 
     def resolve(
         self, file_number: str, commune_names: Iterable[str] | None = None,
+        judete: Iterable[str] | None = None,
+        scoped: Iterable[tuple[str, list[str]]] | None = None,
     ) -> tuple[BaseGeometry | None, str, dict]:
         """Resolve geometry for one RO record. Returns (geometry,
         geom_source, stats). Bétard PDO match first; commune-union
@@ -135,7 +234,7 @@ class ROPolygonIndex:
                 {"matched": -1, "unmatched": 0},
             )
         if commune_names:
-            geom, stats = self.commune_union(commune_names)
+            geom, stats = self.commune_union(commune_names, judete, scoped)
             if geom is not None:
                 return geom, "gisco-commune-list", stats
             return None, "stub-no-geometry", stats

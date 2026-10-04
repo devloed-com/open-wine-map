@@ -32,7 +32,6 @@ sha256 under `raw/inao/register/`.
 from __future__ import annotations
 
 import argparse
-import csv
 import hashlib
 import json
 import re
@@ -52,6 +51,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _lib import eambrosia_register as er  # noqa: E402
 from _lib.fr import register_cahier as rc  # noqa: E402
 from _lib.fr import register_match as rm  # noqa: E402
+from _lib.fr import siqo  # noqa: E402
 
 RAW = ROOT / "raw"
 SIQO_CSV = RAW / "inao" / "siqo-referentiel.csv"
@@ -149,40 +149,36 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-WINE_SIGNS = {"AOC", "AOP", "IGP"}
+WINE_SIGNS = siqo.WINE_SIGNS
 
 
 def load_appellations(csv_path: Path) -> list[Appellation]:
-    """Parse SIQO csv → list[Appellation], wine AOC/AOP/IGP + Publié only.
+    """Parse the SIQO referentiel → list[Appellation], wine AOC/AOP/IGP +
+    Publié only.
 
     SIQO bundles cider and a few stray Label Rouge entries under sector
     VITICOLE; we keep only rows with an AOC/AOP/IGP sign so the manifest
-    matches what publishes a cahier des charges.
+    matches what publishes a cahier des charges. The rows come through
+    `siqo.siqo_rows`, so the checked-in supplements (a GI the export
+    predates, a row the export dropped) are appellations like any other.
     """
     groups: dict[str, Appellation] = {}
-    with open(csv_path, encoding="utf-8-sig", newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if row["secteur"].strip() != "VITICOLE":
-                continue
-            if row["lib_etat"].strip() != "Publié":
-                continue
-            sign = row["signe_fr"].strip() or row["signe_ue"].strip()
-            if sign not in WINE_SIGNS:
-                continue
-            id_app = row["id_appellation"].strip()
-            name = row["appellation"].strip()
-            grp = groups.setdefault(id_app, Appellation(id_appellation=id_app, name=name))
-            grp.products.append(
-                {
-                    "idproduit": row["idproduit"].strip(),
-                    "produit": row["produit"].strip(),
-                    "signe_fr": row["signe_fr"].strip(),
-                    "signe_ue": row["signe_ue"].strip(),
-                    "categorie": row["categorie"].strip(),
-                    "comite_regional": row.get("comite_regional", "").strip(),
-                }
-            )
+    for row in siqo.siqo_rows(csv_path):
+        if not siqo.is_wine_row(row):
+            continue
+        id_app = row["id_appellation"].strip()
+        name = row["appellation"].strip()
+        grp = groups.setdefault(id_app, Appellation(id_appellation=id_app, name=name))
+        grp.products.append(
+            {
+                "idproduit": row["idproduit"].strip(),
+                "produit": row["produit"].strip(),
+                "signe_fr": row["signe_fr"].strip(),
+                "signe_ue": row["signe_ue"].strip(),
+                "categorie": row["categorie"].strip(),
+                "comite_regional": row.get("comite_regional", "").strip(),
+            }
+        )
     return sorted(groups.values(), key=lambda a: a.name.lower())
 
 

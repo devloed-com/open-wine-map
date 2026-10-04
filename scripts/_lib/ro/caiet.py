@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import re
 
-from .commune import parse_commune_list
+from .commune import parse_commune_list, parse_commune_list_scoped
 from .document_unic import COLOUR_BY_KEYWORD, STYLE_MARKERS
 
 # Late import — grape_entity lives one package up. Imported lazily inside
@@ -242,6 +242,7 @@ def parse_caiet(text: str, slug: str) -> dict:
     bodies, titles = split_sections(text)
     grapes = parse_grapes(bodies.get("grape_varieties", ""))
     geo_area = bodies.get("geo_area", "")
+    geo_scoped = parse_commune_list_scoped(geo_area) if geo_area else []
     geo_communes = parse_commune_list(geo_area) if geo_area else []
     link = (bodies.get("link_to_terroir") or "").strip()
     summary = _derive_summary(bodies.get("summary") or bodies.get("description") or "")
@@ -250,6 +251,7 @@ def parse_caiet(text: str, slug: str) -> dict:
         "grapes": grapes,
         "geo_area_brief": _derive_summary(geo_area, max_chars=2000),
         "geo_communes": geo_communes,
+        "geo_communes_scoped": [[n, j] for n, j in geo_scoped],
         "link_to_terroir": link,
         "styles": parse_styles(bodies, grapes),
         "section_roles": {

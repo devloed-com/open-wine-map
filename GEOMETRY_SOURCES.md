@@ -26,7 +26,7 @@ Active tiers per country as of today:
 |---|---|---|---|
 | FR | ✓ (not used — FR has richer national sources) | INAO aires CSV + IGN communes | INAO parcellaire shapefile + cadastre lieux-dits |
 | AT | ✓ (fallback) | **GISCO LAU + Statistik Austria registry** (commune-union from Einziges Dokument text) | — |
-| ES | ✓ (fallback) | **MAPA national wine-zone layer** | SIGPAC parcels (Priorat comarca only) |
+| ES | ✓ (fallback) | **MAPA national wine-zone layer** | SIGPAC parcels (Priorat comarca only); IET parroquias (Galicia, sub-municipal) |
 | IT | ✓ (fallback) | **5 regional geoportals** (Piemonte/Veneto/Lazio/Lombardia/Toscana) | — |
 | PT | ✓ (DOPs fallback) | **DGT CAOP 2025 município-union** parsed from caderno "Área Delimitada" | — |
 | SI | ✓ (DOPs); PGI = region-union of member-PDO Bétard polygons | none yet | — |
@@ -100,8 +100,47 @@ the geoportal layers carve the real lines.
 
 | Layer | Endpoint | Licence | Notes |
 |---|---|---|---|
-| **MAPA national** — "Zonas de Calidad Diferenciada: Vinos" (96 zones) | `wmts.mapama.gob.es/sig-api/ogc/features/v1/collections/alimentacion:CDZ_Vinos/items?f=json&limit=1000` (OGC API-Features GeoJSON) | CC BY 4.0 (per the MAPA IDE metadata; the .aspx page carries softer non-commercial wording — the machine-readable metadata is the citable licence and the project is non-commercial regardless) | © Ministerio de Agricultura, Pesca y Alimentación (MAPA). Single national layer covers ~90 of 106 ES DOPs. 16 newer Vinos de Pago post-date the layer and fall through to Bétard. |
+| **MAPA national** — "Zonas de Calidad Diferenciada: Vinos" (96 zones) | `wmts.mapama.gob.es/sig-api/ogc/features/v1/collections/alimentacion:CDZ_Vinos/items?f=json&limit=1000` (OGC API-Features GeoJSON) | CC BY 4.0 (per the MAPA IDE metadata; the .aspx page carries softer non-commercial wording — the machine-readable metadata is the citable licence and the project is non-commercial regardless) | © Ministerio de Agricultura, Pesca y Alimentación (MAPA). Single national layer covers ~90 of 106 ES DOPs. 16 newer Vinos de Pago post-date the layer and fall through to Bétard. Where checked the zones are drawn at **whole-municipio resolution** (Monterrei, Ribeiro, Ribeira Sacra, Valdeorras: every GISCO municipio touched is covered ≥ 95 % or ≤ 5 %), and the layer lags amendments (Monterrei's 2025 parish extension is absent); a whole-municipio zone whose pliego names parishes is redrawn from the IET parishes in stage 04 (Monterrei, 2026-09-27). |
 | **SIGPAC** parcels — Priorat comarca | `descargas.sigpac.fega.es` | Open data | Currently only Priorat is downloaded (the wine whose pliego enumerates polygon inclusions per municipio). Add more comarcas by editing `SIGPAC_COMARCA_CODIS` in `scripts/es/00_fetch_data.py`. |
+| **IET Mapa de Parroquias de Galicia** — civil-parish polygons (3,785 over 313 concellos) | `visorgis.cmati.xunta.es/cdix/descargas/visor_basico/Parroquias.zip` | Open — aviso legal mapas.xunta.gal (Decreto 14/2017, CC-BY 4.0 compatible); conflict with the zip's 2015 PDF and the abertos CC BY-SA listing recorded below | © Xunta de Galicia – Instituto de Estudos do Territorio (IET), Mapa de Parroquias. Sub-municipal step after the commune union for the Galician pliegos that name parishes of a municipio (see the sub-section below). |
+
+#### Sub-municipal: Galician parroquias — wired into [scripts/_lib/es/parroquia.py](scripts/_lib/es/parroquia.py) (2026-09-24)
+
+Nine Galician records delimit their area with **parroquias** (civil
+parishes) of a municipio — "las parroquias de Iria Flavia y Padrón, del
+término municipal de Padrón" (Barbanza e Iria); Betanzos, Monterrei and
+its two subzonas, Ribeiro, Terras do Navia, Valle del Miño-Ourense, Cangas
+(narrative only). Parroquias are not administrative units in Spanish law,
+so GISCO LAU and SIGPAC do not carry them; the one public polygon layer is
+the IET's.
+
+| Field | Value |
+|---|---|
+| Layer | **Mapa de Parroquias de Galicia**, layer «Parroquias» — shapefile dated 2026-06-01; the IDEG REST service labels it «Parroquias (Febreiro 2026)» |
+| Publisher | Xunta de Galicia – Instituto de Estudos do Territorio (IET), Consellería de Medio Ambiente, Territorio e Infraestruturas, via Información Xeográfica de Galicia (mapas.xunta.gal) / IDEG (ideg.xunta.gal); listed on abertos.xunta.gal as dataset 0343 «Límites administrativos de Galicia» |
+| Download | `https://visorgis.cmati.xunta.es/cdix/descargas/visor_basico/Parroquias.zip` (zipped shapefile, ~19.7 MB; `Parroquias.shp` polygons, also `Parroquias_linea.shp`, ISO metadata, a stale `Condicions de Uso.pdf`). Fetched by `scripts/es/00_fetch_data.py` via curl — the host omits the GlobalSign intermediate from its TLS chain — into `raw/es/xunta/parroquias/`, sha-pinned in its `manifest.json`. Alternative live source: the IDEG REST service (MapServer/18, 4 pages of 1,000, GeoJSON); no WFS |
+| Content | 3,785 polygons (3,620 Polygon + 165 MultiPolygon, all valid) over 313 concellos |
+| CRS | EPSG:25829 (ETRS89 / UTM 29N); reprojected to EPSG:4326 at load |
+| Fields | `CODCONC` (float concello code), `CONCELLO` (Galician name with article, «O Porto do Son»), `NOMECAPITA`, `CODIGOINE` (5-char INE municipio code = GISCO LAU `ES_` + `CODIGOINE`, the join key), `NOMEMAY`, `CODPARRO` (7-digit parish code = INE + 2 digits, unique), `PARROQUIA` («Name (patron saint)», e.g. «Iria Flavia (Santa María)» — the parenthetical is stripped before matching), `SHAPE_LENG`, `SHAPE_Le_1`, `SHAPE_Area` |
+| Licence | Open. Publisher's legal notice (https://mapas.xunta.gal/es/aviso-legal): «La información disponible en este Portal, salvo indicación expresa en contrario, es susceptible de reutilización, quedando autorizada su reproducción total o parcial, modificación, distribución y comunicación, para usos comerciales y no comerciales, con sujeción a las siguientes condiciones: El usuario queda obligado a citar la fuente de los documentos objecto de la reutilización.» and, for IET geodata: «En razón de ello, y de la política de datos determinada por la Xunta de Galicia, establecida en el Decreto 14/2017 y especificada en el Plan Galego de Cartografía e Información Xeográfica, el uso de la información de los productos y servicios de datos geográficos definidos en ella, así como sus derivados, conlleva la aceptación implícita por el usuario de las condiciones generales de dicha orden, concretada en una licencia de uso compatible con CC-BY 4.0 INT.» |
+| Licence conflict (recorded verbatim) | «Condicions de Uso.pdf» inside Parroquias.zip (file date 2015-06-18, predating Decreto 14/2017) says «A cesión da información xeográfica é exclusivamente para usos non comerciais … copyright Xunta de Galicia»; abertos.xunta.gal dataset 0343 lists the same service as «Creative Commons BY SA 4.0» (https://abertos.xunta.gal/catalogo/territorio-vivienda-transporte/-/dataset/0343/limites-administrativos-galicia); the ISO metadata says «No caso de publicación … deberá facerse referencia ao SITGA como o produtor dos datos.» The current aviso legal (Decreto 14/2017, CC-BY 4.0 compatible) is cited as the governing licence, as this repo does for the MAPA layer's IDE metadata |
+| Attribution | «© Xunta de Galicia – Instituto de Estudos do Territorio (IET), Mapa de Parroquias» — rendered on every record that draws parish polygons (the Sources block + an area line naming the parishes drawn, linked to the aviso legal) |
+| Caveat | The boundaries are the IET's cartographic parroquias, not legally official limits |
+
+Resolution (`apply_es_parroquias` in `scripts/_lib/geom_chain.py`, after
+the whole-municipio union): the pliego's municipio name resolves to an INE
+exactly (never the first-word fallback; a name GISCO carries in several
+provinces is kept only when exactly one lies in Galicia), each named
+parish is looked up inside that municipio only, a municipio named only as
+a parish holder is never drawn whole, and a parish the layer cannot match
+is left out and reported. Curator pins for a pliego spelling the layer
+writes differently live in
+[scripts/_lib/es/parroquia_overrides.json](scripts/_lib/es/parroquia_overrides.json)
+(record slug → INE → {pliego spelling: layer spelling}; `_municipios` for
+a merged municipio's old name — Oza dos Ríos → 15902 Oza-Cesuras).
+Records refined on 2026-09-24: Barbanza e Iria, Betanzos, Terras do Navia,
+Valle del Miño-Ourense, and the two Monterrei subzonas (`iet-parroquia-union`);
+Monterrei and Ribeiro keep their MAPA zone.
 
 MAPA is municipality-resolution — that's why the Priorat / Montsant
 overlap fix (SIGPAC parcel-resolution union from the pliego's enumerated
@@ -124,7 +163,7 @@ was lower priority. Listed for revisit if MAPA gets retired:
 - Castilla y León — idecyl.jcyl.es
 - La Rioja — iderioja.larioja.org
 - Cataluña — ICGC (icgc.cat) + DARP catalogues
-- Galicia — mapas.xunta.gal
+- Galicia — mapas.xunta.gal (no wine-zone layer found; its parroquia layer is wired as the sub-municipal step, see above)
 - Aragón — idearagon.aragon.es
 - País Vasco — geo.euskadi.eus
 - Murcia — sitmurcia.carm.es

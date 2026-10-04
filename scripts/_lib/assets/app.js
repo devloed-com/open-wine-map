@@ -1,7 +1,15 @@
 
   const AOCS = (window.__OWM_DATA && window.__OWM_DATA.aocs) || {};
+  // The server-rendered #ssr-content card is hidden pre-paint by the `js`
+  // class (see the head script). Every path on which the live panel cannot
+  // replace it — the data bundle failed to load (Googlebot fetches only the
+  // first 2 MB of a resource), the map cannot be constructed (Googlebot has no
+  // WebGL) — must drop that class again, or a rendering crawler sees a page
+  // with no content at all.
+  function showSsrFallback() { document.documentElement.classList.remove('js'); }
   if (!window.__OWM_DATA) {
     console.error('Open Wine Map: data bundle failed to load — appellation details unavailable. Try reloading.');
+    showSsrFallback();
   }
   // Snapshot the URL camera hash (#zoom/lat/lon) NOW, before the map is
   // constructed: maplibre's `hash: true` writes the default camera into
@@ -13,6 +21,12 @@
   const FACET_STYLES_TREE = __OWM_styles_tree_json__;
   const STYLE_DESCENDANTS = __OWM_style_descendants_json__;
   const FACET_STYLES_SIMPLE = __OWM_styles_simple_json__;
+  // Level of detail (scripts/_lib/vineyard_envelope.py): below
+  // LOD.overview_max_zoom the map draws the generalised vineyard footprint of
+  // a French parcel-level record (its 250 m closing), from LOD.detail_min_zoom
+  // the INAO parcels; every other record keeps one polygon at every zoom.
+  const LOD = __OWM_lod_json__;
+  const LOD_SOURCES = new Set(LOD.sources || []);
   const FACET_PRINCIPAL = __OWM_principal_json__;
   const FACET_ACCESSORY = __OWM_accessory_json__;
   const FACET_GRAPES_ALL = __OWM_grapes_all_json__;
@@ -24,6 +38,17 @@
   // of GRAPE_SYNONYMS; makes a style findable by a local name in the omnisearch
   // (typing "fondillon" surfaces the rancio style → its appellations).
   const STYLE_SEARCH_TERMS = __OWM_style_search_terms_json__;
+  // {region facet key -> {forms, labels}} (_lib/region_search_terms.py):
+  // `forms` are search-only — Wikidata labels and aliases in the four UI
+  // languages, the romanisations of a Greek / Cyrillic label, every locale's
+  // gettext label of a French bassin; `labels` is the subset a row may echo
+  // in its sub-line (a Wikidata or gettext label, never an alias or a
+  // derived romanisation). The displayed label stays native either way.
+  const REGION_SEARCH_TERMS = __OWM_region_search_terms_json__;
+  function regionSearchForms(region) {
+    const t = REGION_SEARCH_TERMS[region];
+    return t ? t.forms : [];
+  }
   // Classification facet (aging / Prädikat / selection tiers) — a facet parallel
   // to styles; same tree/descendants/labels/synonym shape.
   const FACET_CLASS_TREE = __OWM_class_tree_json__;
@@ -158,166 +183,6 @@
     return out.slice(0, limit).map(o => ({ entry: o.entry, matched: o.matched, score: o.score }));
   }
 
-  function _findGrapeEntry(slug) {
-    for (const e of _GRAPE_INDEX_NORM) if (e.entry.slug === slug) return e.entry;
-    return null;
-  }
-
-  function _grapeChipHtml(entry) {
-    const canon = entry.canonical && !canonicalEqualsCahier(entry.canonical, entry.label)
-      ? ` <span class="canon">(${escapeHtml(entry.canonical)})</span>` : '';
-    return (
-      `<span class="chip" data-slug="${escapeAttr(entry.slug)}">` +
-        `<span class="name">${escapeHtml(toTitleCase(entry.label))}</span>${canon}` +
-        `<button class="chip-x" type="button" aria-label="Remove ${escapeAttr(entry.label)}">×</button>` +
-      `</span>`
-    );
-  }
-
-  function _grapeSuggestionHtml(entry, matched, role, active) {
-    // When the query matched on an alias (e.g. "ull de llebre" → Tempranillo
-    // via the GRAPE_ALIAS reverse-key "ull-de-llebre"), promote the
-    // matched alias to the primary slot so the suggestion reads in the
-    // user's terminology — "Ull de Llebre (Tempranillo)" — instead of
-    // burying the match in the canonical row label.
-    const primary = matched || entry.label;
-    const secondary = matched && matched.toLowerCase() !== entry.label.toLowerCase()
-      ? entry.label
-      : (entry.canonical && !canonicalEqualsCahier(entry.canonical, entry.label) ? entry.canonical : '');
-    const secondaryHtml = secondary
-      ? ` <span class="canon">${escapeHtml(toTitleCase(secondary))}</span>` : '';
-    const countKey = role === 'principal' ? 'count_principal'
-                   : role === 'accessory' ? 'count_accessory' : 'count';
-    const cls = ['suggestion'];
-    if (active) cls.push('active');
-    return (
-      `<div class="${cls.join(' ')}" role="option" data-slug="${escapeAttr(entry.slug)}">` +
-        `<span class="name">${escapeHtml(toTitleCase(primary))}</span>${secondaryHtml}` +
-        `<span class="count">${entry[countKey]}</span>` +
-      `</div>`
-    );
-  }
-
-  function buildGrapeChipFilter(container, role, filterSet) {
-    container.innerHTML =
-      `<div class="chip-tray" aria-live="polite"></div>` +
-      `<div class="grape-search-wrap">` +
-        `<input type="text" class="grape-search" name="grape-search-${escapeAttr(role)}" placeholder="${escapeAttr(LABELS.search_grape_placeholder)}" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list">` +
-        `<div class="grape-suggestions" role="listbox" hidden></div>` +
-      `</div>`;
-    const tray = container.querySelector('.chip-tray');
-    const input = container.querySelector('.grape-search');
-    const drop  = container.querySelector('.grape-suggestions');
-    let activeIdx = 0;
-    let currentSuggestions = [];
-
-    function renderChips() {
-      const chips = [];
-      for (const slug of filterSet) {
-        const e = _findGrapeEntry(slug);
-        if (e) chips.push(_grapeChipHtml(e));
-      }
-      tray.innerHTML = chips.join('');
-    }
-
-    function renderSuggestions(q) {
-      currentSuggestions = rankGrapeSuggestions(q, role, 12)
-        .filter(s => !filterSet.has(s.entry.slug));
-      activeIdx = 0;
-      if (!currentSuggestions.length) {
-        drop.innerHTML = '';
-        drop.hidden = true;
-        input.setAttribute('aria-expanded', 'false');
-        return;
-      }
-      drop.innerHTML = currentSuggestions
-        .map((s, i) => _grapeSuggestionHtml(s.entry, s.matched, role, i === activeIdx)).join('');
-      drop.hidden = false;
-      input.setAttribute('aria-expanded', 'true');
-    }
-
-    function highlight(i) {
-      const items = drop.querySelectorAll('.suggestion');
-      if (!items.length) return;
-      items.forEach((el, k) => el.classList.toggle('active', k === i));
-      activeIdx = i;
-      const cur = items[i];
-      if (cur) cur.scrollIntoView({ block: 'nearest' });
-    }
-
-    function pick(slug) {
-      filterSet.add(slug);
-      input.value = '';
-      renderChips();
-      renderSuggestions('');
-      applyFilter();
-      input.focus();
-    }
-
-    function remove(slug) {
-      filterSet.delete(slug);
-      renderChips();
-      renderSuggestions(input.value);
-      applyFilter();
-    }
-
-    tray.addEventListener('click', (e) => {
-      const btn = e.target.closest('.chip-x');
-      if (!btn) return;
-      const chip = btn.closest('.chip');
-      if (chip) remove(chip.dataset.slug);
-    });
-
-    drop.addEventListener('mousedown', (e) => {
-      const s = e.target.closest('.suggestion');
-      if (!s) return;
-      e.preventDefault();  // keep focus on input
-      pick(s.dataset.slug);
-    });
-
-    drop.addEventListener('mousemove', (e) => {
-      const s = e.target.closest('.suggestion');
-      if (!s) return;
-      const items = Array.from(drop.querySelectorAll('.suggestion'));
-      highlight(items.indexOf(s));
-    });
-
-    input.addEventListener('input', () => renderSuggestions(input.value));
-    input.addEventListener('focus', () => renderSuggestions(input.value));
-    input.addEventListener('blur', () => {
-      // Delay so the mousedown handler runs before we hide.
-      setTimeout(() => { drop.hidden = true; input.setAttribute('aria-expanded', 'false'); }, 120);
-    });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (drop.hidden) renderSuggestions(input.value);
-        else highlight((activeIdx + 1) % currentSuggestions.length);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (!drop.hidden) highlight((activeIdx - 1 + currentSuggestions.length) % currentSuggestions.length);
-      } else if (e.key === 'Enter') {
-        if (!drop.hidden && currentSuggestions[activeIdx]) {
-          e.preventDefault();
-          pick(currentSuggestions[activeIdx].entry.slug);
-        }
-      } else if (e.key === 'Escape') {
-        drop.hidden = true;
-        input.setAttribute('aria-expanded', 'false');
-      } else if (e.key === 'Backspace' && !input.value && filterSet.size) {
-        // Remove the most-recently-added chip.
-        const last = [...filterSet].pop();
-        remove(last);
-      }
-    });
-
-    renderChips();
-    container._refresh = () => { renderChips(); if (!drop.hidden) renderSuggestions(input.value); };
-  }
-
-  function refreshAllGrapeChipFilters() {
-    document.querySelectorAll('.grape-chip-filter').forEach(c => c._refresh && c._refresh());
-  }
   const STYLES_INFO = __OWM_styles_info_json__;
   const REGION_LABELS = __OWM_region_labels_json__;
   const COUNTRY_LABELS = __OWM_country_labels_json__;
@@ -414,23 +279,93 @@
     return norm(canon) === norm(cahier);
   }
 
+  // Both sides of every search comparison go through this: diacritics
+  // stripped, lower-cased, and every run of punctuation or whitespace folded
+  // to one space, so "aloxe corton" finds Aloxe-Corton and "d alba" finds
+  // d'Alba (727 records were unfindable by their own full name before the
+  // fold, 2026-09-25).
   function searchNormalize(s) {
-    return (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+    return (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '')
+      .toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   }
 
-  // BG / GR appellations carry both a native-script name (Cyrillic /
-  // Greek) and an informational Latin transliteration (`name_latin`).
-  // Search has to match either form so a user typing "Mavrud" finds
-  // "Мавруд".
+  // The forms a record can be found by: the regulator's own name, the EU /
+  // official Latin transcription (`name_latin`, the bracket on screen) and
+  // the search-only `search_forms` stage 04 derives from the name (ELOT 743
+  // and unidecode for Greek, unidecode for Bulgarian — _lib/romanise.py).
+  // Derived forms are never displayed: what is on screen stays the
+  // regulator's string; they only make "agio oros" or "targovishte" match.
+  // Each form is matched on its own, so a query never spans two forms.
+  function searchForms(rec) {
+    if (!rec) return [];
+    if (!rec._sf) {
+      const raw = [rec.name || '', rec.name_latin || ''].concat(rec.search_forms || []);
+      const seen = new Set();
+      rec._sf = [];
+      for (const f of raw.map(searchNormalize)) {
+        if (f && !seen.has(f)) { seen.add(f); rec._sf.push(f); }
+      }
+    }
+    return rec._sf;
+  }
+
+  // Best match of a normalised query against a record's forms: prefix 100,
+  // substring 80, no match -1.
+  function searchScore(rec, nq) {
+    let best = -1;
+    for (const f of searchForms(rec)) {
+      const s = f.startsWith(nq) ? 100 : (f.includes(nq) ? 80 : -1);
+      if (s > best) best = s;
+    }
+    return best;
+  }
+
+  // The tree row's data-name: the forms joined by a newline, which no
+  // normalised query contains, so a substring test on it is a per-form test.
   function searchableText(rec) {
-    return searchNormalize(((rec && rec.name) || '') + ' ' + ((rec && rec.name_latin) || ''));
+    return searchForms(rec).join('\n');
+  }
+
+  // The toggles that currently hide a record from the map, 'igp' and/or
+  // 'spirit' (a cider PGI is behind both).
+  function hiddenGates(rec) {
+    const gates = [];
+    if (!showIgp && (rec.kind || 'AOC') === 'IGP') gates.push('igp');
+    if (!spiritsVisible() && rec.is_wine === false) gates.push('spirit');
+    return gates;
+  }
+
+  // The first of them, for the one-line hint in the search results: 'igp',
+  // 'spirit' or ''.
+  function hiddenBy(rec) {
+    return hiddenGates(rec)[0] || '';
+  }
+
+  function latinBracket(rec) {
+    const latin = (rec && rec.name_latin) || '';
+    return latin && latin !== rec.name ? latin : '';
   }
 
   function nameWithLatin(rec) {
     const native = escapeHtml((rec && rec.name) || '');
-    const latin = (rec && rec.name_latin) || '';
-    if (!latin || latin === rec.name) return native;
+    const latin = latinBracket(rec);
+    if (!latin) return native;
     return native + ' <span class="latin">(' + escapeHtml(latin) + ')</span>';
+  }
+
+  // Does the query name the region itself: its displayed label, its native
+  // facet key, or one of its search-only forms? Matched at the start of a
+  // word only — this decides whether a WHOLE group stays visible, and a
+  // bare substring test opened Bayern for "ria" (via Bavaria) and all of
+  // Burgundy for "bourg".
+  function wordPrefixHit(text, nq) {
+    return text.startsWith(nq) || text.includes(' ' + nq);
+  }
+  function regionSearchHit(region, nq) {
+    if (!region || !nq) return false;
+    if (wordPrefixHit(searchNormalize(regionLabel(region)), nq)) return true;
+    if (wordPrefixHit(searchNormalize(region), nq)) return true;
+    return regionSearchForms(region).some(f => wordPrefixHit(searchNormalize(f), nq));
   }
 
   const proto = new pmtiles.Protocol();
@@ -469,7 +404,14 @@
   }
   const basemapAttribution = '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
   const initialDark = effectiveTheme() === 'dark';
-  const map = new maplibregl.Map({
+  let map;
+  try {
+    map = buildMap();
+  } catch (e) {
+    showSsrFallback();
+    throw e;
+  }
+  function buildMap() { return new maplibregl.Map({
     container: 'map',
     style: {
       version: 8,
@@ -487,7 +429,7 @@
     // an empty, polygon-less void. maxZoom 14 is defensive (tiles max at z12;
     // MapLibre overzooms cleanly above that).
     center: [2.6, 46.5], zoom: 5.4, minZoom: 3, maxZoom: 14, hash: true
-  });
+  }); }
 
   // ----- theme switch (light / dark / system) -----
   function applyBasemap() {
@@ -652,9 +594,11 @@
     appellations: new Set(),
     // When true, the grape filter matches grapes_principal instead of grapes_all
     // (the "main grape only" toggle inside the Grapes facet).
+    // "Main grape only" narrows a grape filter to the principal roster. It is
+    // a refinement of the grape chips, shown as a toggle next to them, and
+    // ends with them — not a persisted preference.
     mainGrapeOnly: false,
   };
-  try { filters.mainGrapeOnly = localStorage.getItem('main_grape_only') === '1'; } catch (e) {}
 
   function debounce(fn, ms) {
     let t = null;
@@ -672,7 +616,7 @@
   function applyFilter(opts) {
     const expr = buildFilterExpr();
     for (const id of ['appellations-fill', 'appellations-outline',
-                       'appellations-fill-villages', 'appellations-outline-villages']) {
+                       'appellations-fill-overview', 'appellations-outline-overview']) {
       if (map.getLayer(id)) map.setFilter(id, expr);
     }
     updateStatus();
@@ -693,7 +637,10 @@
     else if (kind === 'style') filters.styles.delete(key);
     else if (kind === 'classification') filters.classifications.delete(key);
     else if (kind === 'appellationType') filters.appellationType.delete(key);
-    else if (kind === 'grapeAll') filters.grapesAll.delete(key);
+    else if (kind === 'grapeAll') {
+      filters.grapesAll.delete(key);
+      if (!filters.grapesAll.size) filters.mainGrapeOnly = false;
+    }
     else if (kind === 'principal') filters.principal.delete(key);
     else if (kind === 'accessory') filters.accessory.delete(key);
     else if (kind === 'appellation') filters.appellations.delete(key);
@@ -701,11 +648,6 @@
     // both Hungarian and Slovak), so the country rides along on the chip.
     else if (kind === 'region') setSlugSelection(visibleSlugsInRegion(chip.dataset.country || '', key), false);
     else if (kind === 'country') setSlugSelection(visibleSlugsInCountry(key), false);
-    else if (kind === 'mainGrapeOnly') {
-      filters.mainGrapeOnly = false;
-      const m = document.getElementById('main-grape-only'); if (m) m.checked = false;
-      try { localStorage.setItem('main_grape_only', '0'); } catch (e) {}
-    }
     // Sync the underlying checkboxes for the cleared filter.
     document.querySelectorAll('#sidebar .facet input[type=checkbox]').forEach(inp => {
       const k = inp.dataset.key;
@@ -718,10 +660,20 @@
     refreshTreeTriStates();
     applyFilter();
   });
+  // The "main grape only" toggle is rendered inside the chip tray next to the
+  // grape chips (renderActiveFilters), so it is re-created on every render;
+  // one delegated listener serves every instance.
+  document.getElementById('active-filters-chips').addEventListener('change', e => {
+    const inp = e.target;
+    if (!inp || inp.id !== 'main-grape-only') return;
+    filters.mainGrapeOnly = !!inp.checked;
+    track('Grape Scope Toggled', { scope: filters.mainGrapeOnly ? 'main' : 'all', locale: LANG });
+    applyFilter({ fit: true });
+  });
 
   function refreshSidebarCheckedState() {
-    // Re-sync facet checkboxes (styles only — grapes are chip filters
-    // and re-render their chip tray via `refreshAllGrapeChipFilters`).
+    // Re-sync facet checkboxes (styles only — the grape filter lives in the
+    // chip tray and is rendered from `filters.grapesAll`).
     const sets = {
       'facet-styles': filters.styles,
       'facet-styles-simple': filters.stylesSimple,
@@ -735,15 +687,66 @@
         inp.checked = set.has(inp.dataset.key);
       });
     }
-    refreshAllGrapeChipFilters();
   }
+
+  // Which polygon of a record is on screen depends on the zoom: the footprint
+  // / zone (`bbox_villages` = the overview feature's bbox) below
+  // LOD.overview_max_zoom, the parcels (`bbox`) from there. Ranking a click
+  // stack must look at what was clicked; framing a record fits its parcels
+  // (the footprint contains them within the closing radius).
+  function drawnBbox(r) {
+    if (!r) return null;
+    const overview = map.getZoom() < LOD.footprint_max_zoom;
+    return overview ? (r.bbox_villages || r.bbox) : (r.bbox || r.bbox_villages);
+  }
+  function fitBbox(r) {
+    return r ? (r.bbox || r.bbox_villages) : null;
+  }
+  // The record whose parcels a footprint generalises: the record itself, or
+  // the parent / umbrella sibling it inherited its polygon from (those two are
+  // panel-payload fields, so before hydration an inherited DGC reads as
+  // 'zone').
+  function envelopeDonor(r) {
+    if (!r || (LOD.countries || []).indexOf(r.country || 'fr') < 0) return null;
+    if (LOD_SOURCES.has(r.geom_source)) return r;
+    if (r.geom_source === 'parent-appellation' && r.parent_slug) {
+      const p = AOCS[r.parent_slug];
+      return p && LOD_SOURCES.has(p.geom_source) ? p : null;
+    }
+    if (r.geom_source === 'sibling-dgc' && r.geom_fallback_slug) {
+      const u = AOCS[r.geom_fallback_slug];
+      return u && LOD_SOURCES.has(u.geom_source) ? u : null;
+    }
+    return null;
+  }
+  function hasFootprint(r) { return !!envelopeDonor(r); }
+  // What the visitor is looking at for this record: 'footprint' (generalised
+  // parcels, below the detail zoom), 'parcels', or 'zone' (one polygon at
+  // every zoom). Reported on the feedback and view events so a boundary flag
+  // can be read against the shape that was on screen.
+  function lodBand(r) {
+    if (!hasFootprint(r)) return 'zone';
+    // footprint_max_zoom = the end of the crossfade: the overview layers stop
+    // there, so "footprint" is claimed only while some of it is on screen.
+    return map.getZoom() < LOD.footprint_max_zoom ? 'footprint' : 'parcels';
+  }
+  function zoomStr() { return String(Math.round(map.getZoom() * 10) / 10); }
+  // The footprint note in an open card is a zoom-dependent statement: show it
+  // below the detail zoom, hide it above. Patch the node in place — never
+  // re-render the card from a zoom, that would wipe pressed feedback chips
+  // and a half-typed note.
+  function refreshLodLines() {
+    const overview = map.getZoom() < LOD.footprint_max_zoom;
+    document.querySelectorAll('#panel [data-lod-line]').forEach(el => { el.hidden = !overview; });
+  }
+  map.on('zoomend', refreshLodLines);
 
   function fitToFiltered() {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     let any = false;
     for (const slug in AOCS) {
       const rec = AOCS[slug];
-      const b = (viewMode === 'simple' && rec.bbox_villages) ? rec.bbox_villages : rec.bbox;
+      const b = fitBbox(rec);
       if (!b) continue;
       if (!matchesClient(rec, slug)) continue;
       if (b[0] < minX) minX = b[0];
@@ -878,13 +881,6 @@
   buildTreeFacet('facet-classification', FACET_CLASS_TREE, filters.classifications, CLASS_LABELS, CLASS_DESCENDANTS, 'classification');
   buildTreeFacet('facet-appellation-type', FACET_TERM_TREE, filters.appellationType, TERM_LABELS, TERM_DESCENDANTS, 'appellation-type');
   buildFacet('facet-styles-simple', FACET_STYLES_SIMPLE, filters.stylesSimple, k => SIMPLE_STYLE_LABELS[k] || k);
-  document.querySelectorAll('.grape-chip-filter').forEach(container => {
-    const role = container.dataset.role || 'all';
-    const set = role === 'principal' ? filters.principal
-              : role === 'accessory' ? filters.accessory
-              : filters.grapesAll;
-    buildGrapeChipFilter(container, role, set);
-  });
 
   // Country → region → list of slugs, computed once. The tree re-renders on
   // spirits-toggle (entries appear/disappear), but the grouping itself is
@@ -1019,7 +1015,7 @@
           const nameHtml = nameWithLatin(rec);
           const checked = filters.appellations.has(slug) ? ' checked' : '';
           const openLbl = escapeAttr(fmt(LABELS.open_appellation_aria, { name: rec.name || slug }));
-          return `<label data-slug="${safeSlug}" data-name="${escapeAttr(searchableText(rec))}"><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span>${cancelledBadge(rec, true)}<button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></label>`;
+          return `<label data-slug="${safeSlug}" data-name="${escapeAttr(searchableText(rec))}"><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span>${cancelledBadge(rec, true)}${promotedBadge(rec, true)}<button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></label>`;
         }).join('');
         let parentCount = 0;
         for (const s of slugs) if (!AOCS[s].is_sub_denomination) parentCount++;
@@ -1119,9 +1115,11 @@
     stackFocusIndex = 0;
     renderPanelStack([slug], 0, undefined, 'facet');
     track('Appellation Opened', { slug: slug, via: 'facet', locale: LANG });
-    const b = (viewMode === 'simple' && AOCS[slug].bbox_villages) ? AOCS[slug].bbox_villages : AOCS[slug].bbox;
+    const b = fitBbox(AOCS[slug]);
     if (b && typeof map.fitBounds === 'function') {
-      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: 11, duration: 500 });
+      // maxZoom = LOD.overview_max_zoom: "show me this appellation" lands on
+      // its parcels, not on the half-faded footprint at the crossfade.
+      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: LOD.overview_max_zoom, duration: 500 });
     }
   });
 
@@ -1174,8 +1172,11 @@
         let countryVisible = 0;
         countryGroup.querySelectorAll('.region-group').forEach(group => {
           let visible = 0;
+          // A query that names the region ("macedonia", "burgundy",
+          // "bourgogne") keeps every row of the group.
+          const regionHit = !!nq && regionSearchHit(group.dataset.region, nq);
           group.querySelectorAll('label').forEach(lbl => {
-            const match = !nq || lbl.dataset.name.includes(nq);
+            const match = !nq || regionHit || lbl.dataset.name.includes(nq);
             lbl.style.display = match ? '' : 'none';
             if (match) visible++;
           });
@@ -1210,29 +1211,14 @@
       const modes = el.dataset.modes.split(/\s+/);
       el.classList.toggle('mode-hidden', !modes.includes(viewMode));
     });
-    swapMapLayers();
+    // The geometry is no longer the mode's business: zoom decides between the
+    // overview and detail sources (see the source block). The mode only
+    // gates the sidebar (facet depth, spirits).
     // The appellation tree's contents depend on spiritsVisible(), which
     // depends on viewMode — rebuild on every mode switch (optional-chain the
     // children check defensively).
     if (document.getElementById('facet-appellations')?.children.length) {
       buildAppellationFacet();
-    }
-  }
-
-  function swapMapLayers() {
-    // Halo layers must flip with their fill/outline siblings: the selection
-    // halo is a dark, wide stroke drawn UNDER the cream outline. If the
-    // inactive mode's halo stays visible it sits above the active mode's cream
-    // outline (later in draw order) and dims the selection — so simple mode
-    // looked far less clearly selected than advanced. Toggle all three.
-    const advLayers = ['appellations-fill', 'appellations-halo', 'appellations-outline'];
-    const vilLayers = ['appellations-fill-villages', 'appellations-halo-villages', 'appellations-outline-villages'];
-    const showAdv = viewMode === 'advanced';
-    for (const id of advLayers) {
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showAdv ? 'visible' : 'none');
-    }
-    for (const id of vilLayers) {
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showAdv ? 'none' : 'visible');
     }
   }
 
@@ -1319,8 +1305,6 @@
     filters.principal.clear(); filters.accessory.clear(); filters.grapesAll.clear();
     filters.appellations.clear();
     filters.mainGrapeOnly = false;
-    try { localStorage.setItem('main_grape_only', '0'); } catch (e) {}
-    const _mgo = document.getElementById('main-grape-only'); if (_mgo) _mgo.checked = false;
     const _omni = document.getElementById('omni');
     if (_omni) {
       _omni.value = '';
@@ -1426,7 +1410,9 @@
     for (const k of filters.classifications) chips.push({ kind: 'classification', key: k, label: CLASS_LABELS[k] || k });
     for (const k of filters.appellationType) chips.push({ kind: 'appellationType', key: k, label: TERM_LABELS[k] || k });
     for (const k of filters.grapesAll) chips.push({ kind: 'grapeAll', key: k, label: grapeName(k) });
-    if (filters.mainGrapeOnly) chips.push({ kind: 'mainGrapeOnly', key: '1', label: LABELS.main_grape_only_label });
+    // The scope toggle rides with the grape chips: a grape picked in the
+    // search box gets a "main grape only" checkbox right after it.
+    if (filters.grapesAll.size) chips.push({ kind: 'mainGrapeToggle', key: '1', label: LABELS.main_grape_only_label });
     // Collapse a fully-selected subtree into one chip — a whole country first,
     // else each of its whole regions. The flag prefix disambiguates region
     // names shared across a border, which the tree does by nesting.
@@ -1460,6 +1446,9 @@
       if (rec) chips.push({ kind: 'appellation', key: slug, label: rec.name });
     }
     el.innerHTML = chips.map(c => {
+      if (c.kind === 'mainGrapeToggle') {
+        return `<label class="filter-chip toggle-chip" data-kind="mainGrapeToggle"><input type="checkbox" id="main-grape-only"${filters.mainGrapeOnly ? ' checked' : ''}> <span>${escapeHtml(c.label)}</span></label>`;
+      }
       const bulk = c.kind === 'region' || c.kind === 'country';
       const cls = bulk ? 'filter-chip region-chip' : 'filter-chip';
       const removeAria = fmt(LABELS.remove_filter_aria, { label: c.label });
@@ -1612,9 +1601,16 @@
   }
 
   // ---- omnisearch ----
-  const _REGION_INDEX = FACET_REGIONS.map(([region, count]) => ({
-    region, count, label: regionLabel(region), labelN: searchNormalize(regionLabel(region)),
-  }));
+  // Search-only forms first and the native key last, so on a tie the form a
+  // visitor typed ("Bourgogne") is what the row echoes, not "BOURGOGNE".
+  const _REGION_INDEX = FACET_REGIONS.map(([region, count]) => {
+    const aliases = regionSearchForms(region).concat([region]);
+    const echo = new Set((REGION_SEARCH_TERMS[region] || {}).labels || []);
+    return {
+      region, count, label: regionLabel(region), labelN: searchNormalize(regionLabel(region)),
+      aliases, aliasesN: aliases.map(searchNormalize), echo,
+    };
+  });
   // Index the FULL style taxonomy (the 6 buckets + interior groups + distinctive
   // leaves like rancio / vin jaune / fino / oloroso), not just the 6 simple
   // buckets, so detailed styles are findable in the omnisearch. Depth-0 tree
@@ -1649,9 +1645,25 @@
     }));
     const scoreLabel = labelN => labelN.startsWith(nq) ? 100 : (labelN.includes(nq) ? 80 : -1);
     const regions = _REGION_INDEX
-      .map(r => ({ r, score: scoreLabel(r.labelN) })).filter(x => x.score >= 0)
+      .map(r => {
+        let score = scoreLabel(r.labelN);
+        let matched = '';
+        r.aliasesN.forEach((a, i) => {
+          const sc = scoreLabel(a);
+          if (sc > score) { score = sc; matched = r.aliases[i]; }
+        });
+        return { r, score, matched };
+      }).filter(x => x.score >= 0)
       .sort((a, b) => b.score - a.score || b.r.count - a.r.count).slice(0, perGroup)
-      .map(x => ({ type: 'region', key: x.r.region, name: x.r.label, sub: '', count: x.r.count, score: x.score }));
+      // The label stays native; a matched Wikidata or gettext label goes in
+      // the sub-line so "Macedonia" visibly explains the Μακεδονία row. An
+      // alias or a derived romanisation that matched is never echoed.
+      .map(x => ({
+        type: 'region', key: x.r.region, name: x.r.label,
+        sub: x.matched && x.r.echo.has(x.matched)
+          && x.matched.toLowerCase() !== x.r.label.toLowerCase() ? x.matched : '',
+        count: x.r.count, score: x.score,
+      }));
     const styles = _STYLE_INDEX
       .map(s => {
         // Best score across the localized label and any synonym (fondillón,
@@ -1691,16 +1703,24 @@
     const apps = [];
     for (const slug in AOCS) {
       const rec = AOCS[slug];
-      if (!showIgp && (rec.kind || 'AOC') === 'IGP') continue;
-      if (!spiritsVisible() && rec.is_wine === false) continue;
-      const t = searchableText(rec);
-      const score = t.startsWith(nq) ? 100 : (t.includes(nq) ? 80 : -1);
-      if (score >= 0) apps.push({ slug, rec, score });
+      // The IGP / spirits toggles hide records from the map and the tree, but
+      // a name typed here is an explicit ask: a hidden record is surfaced and
+      // marked, and picking it turns the toggle on (pickOmni). Silently
+      // skipping it made every PGI in the corpus unsearchable by default —
+      // "Ayio Oros" returned nothing while the record sat one toggle away.
+      const hidden = hiddenBy(rec);
+      const score = searchScore(rec, nq);
+      if (score >= 0) apps.push({ slug, rec, score, hidden });
     }
     apps.sort((a, b) => b.score - a.score || (a.rec.name || '').localeCompare(b.rec.name || '', 'fr'));
     const appellations = apps.slice(0, perGroup).map(a => ({
       type: 'appellation', key: a.slug, name: a.rec.name,
-      sub: a.rec.region ? regionLabel(a.rec.region) : '', count: null, score: a.score,
+      // A Greek or Cyrillic name gets its Latin bracket in the sub-line, as in
+      // the tree, so a Latin-keyboard match is recognisable on screen.
+      sub: [latinBracket(a.rec), a.rec.region ? regionLabel(a.rec.region) : '']
+        .filter(Boolean).join(' · '),
+      count: null, score: a.score,
+      hidden: a.hidden,
     }));
     return { appellations, grapes, regions, styles, classifications };
   }
@@ -1709,7 +1729,6 @@
     if (type === 'grape') {
       filters.grapesAll.add(key);
       track('Omnisearch Result Picked', { type: 'grape', locale: LANG });
-      refreshAllGrapeChipFilters();
       applyFilter({ fit: true });
     } else if (type === 'region') {
       setRegionNameSelection(key, true);
@@ -1736,15 +1755,52 @@
       track('Omnisearch Result Picked', { type: 'classification', locale: LANG });
       applyFilter({ fit: true });
     } else if (type === 'appellation') {
-      if (!AOCS[key]) return;
-      lastPanelTrigger = document.getElementById('omni');
-      lastStackKey = key;
-      stackFocusIndex = 0;
-      renderPanelStack([key], 0, undefined, 'omnisearch');
-      track('Appellation Opened', { slug: key, via: 'omnisearch', locale: LANG });
-      const b = (viewMode === 'simple' && AOCS[key].bbox_villages) ? AOCS[key].bbox_villages : AOCS[key].bbox;
-      if (b && typeof map.fitBounds === 'function') map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: 11, duration: 500 });
+      openAppellation(key, 'omnisearch', document.getElementById('omni'));
     }
+  }
+
+  // Open one appellation as an explicit ask: turn on every toggle that hides
+  // it, open its panel and frame it. Shared by the omnisearch pick and the
+  // WebMCP show_appellation tool (`via` tags the events).
+  function openAppellation(key, via, trigger) {
+    if (!AOCS[key]) return false;
+    // Turn on every gate that hides the record, not only the first: a cider
+    // PGI flipped to "IGP on" alone stayed off the map and out of the tree
+    // while its panel opened.
+    const gates = hiddenGates(AOCS[key]);
+    if (gates.includes('igp')) {
+      showIgp = true;
+      const igpEl = document.getElementById('show-igp');
+      if (igpEl) igpEl.checked = true;
+      try { localStorage.setItem('show_igp', '1'); } catch (err) {}
+      track('Kind Toggled', { kind: 'igp', enabled: 'true', locale: LANG, via: via });
+    }
+    if (gates.includes('spirit')) {
+      // Spirits are gated by the advanced mode AND their own toggle; flip
+      // both the way their handlers do, so the tree and map agree with the
+      // panel about to open.
+      if (viewMode !== 'advanced') {
+        viewMode = 'advanced';
+        try { localStorage.setItem('view_mode', viewMode); } catch (err) {}
+        track('View Mode Switched', { mode: viewMode, locale: LANG, via: via });
+        applyMode();
+      }
+      showSpirits = true;
+      const spiritsEl = document.getElementById('show-spirits');
+      if (spiritsEl) spiritsEl.checked = true;
+      try { localStorage.setItem('show_spirits', '1'); } catch (err) {}
+      track('Kind Toggled', { kind: 'spirits', enabled: 'true', locale: LANG, via: via });
+      buildAppellationFacet();
+    }
+    if (gates.length) applyFilter();
+    lastPanelTrigger = trigger || null;
+    lastStackKey = key;
+    stackFocusIndex = 0;
+    renderPanelStack([key], 0, undefined, via);
+    track('Appellation Opened', { slug: key, via: via, locale: LANG });
+    const b = fitBbox(AOCS[key]);
+    if (b && map && typeof map.fitBounds === 'function') map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: LOD.overview_max_zoom, duration: 500 });
+    return true;
   }
 
   function buildOmnisearch() {
@@ -1778,8 +1834,11 @@
     function suggestionHtml(it, idx) {
       const sub = it.sub ? ` <span class="sub">${escapeHtml(it.sub)}</span>` : '';
       const count = (it.count != null) ? `<span class="count">${it.count}</span>` : '';
-      const badge = it.type === 'appellation' ? cancelledBadge(AOCS[it.key], true) : '';
-      return `<div class="suggestion" id="omni-opt-${idx}" role="option" aria-selected="false" data-idx="${idx}" data-type="${escapeAttr(it.type)}" data-key="${escapeAttr(it.key)}"><span class="name">${escapeHtml(it.name)}</span>${badge}${sub}${count}</div>`;
+      const badge = it.type === 'appellation' ? cancelledBadge(AOCS[it.key], true) + promotedBadge(AOCS[it.key], true) : '';
+      const hidden = it.hidden
+        ? ` <span class="sub hidden-hint">${escapeHtml(it.hidden === 'igp' ? LABELS.omni_hidden_igp : LABELS.omni_hidden_spirit)}</span>`
+        : '';
+      return `<div class="suggestion" id="omni-opt-${idx}" role="option" aria-selected="false" data-idx="${idx}" data-type="${escapeAttr(it.type)}" data-key="${escapeAttr(it.key)}"><span class="name">${escapeHtml(it.name)}</span>${badge}${sub}${hidden}${count}</div>`;
     }
     // Build the grouped markup for the given {group: items} map; group headers
     // keep a fixed visual order. Resets `items` to the flattened, index-aligned
@@ -1837,7 +1896,9 @@
       setLive(msg);
     }
     function renderDrop(q) {
-      if (!q) { renderSeeds(); return; }
+      // A query of only punctuation or spaces folds to nothing: seeds, as
+      // for an empty box (the tree filter already treats it that way).
+      if (!searchNormalize(q)) { renderSeeds(); return; }
       const res = rankAllSuggestions(q, 5);
       const html = paintGroups(res, ['appellations', 'grapes', 'regions', 'styles', 'classifications']);
       if (!items.length) { renderNoResults(q); return; }
@@ -1893,13 +1954,14 @@
       renderDrop(q);
       syncTreeFilter(q);
       if (trackTimer) clearTimeout(trackTimer);
-      if (q) trackTimer = setTimeout(() => {
+      if (searchNormalize(q)) trackTimer = setTimeout(() => {
         const r = rankAllSuggestions(q, 5);
-        const total = r.appellations.length + r.grapes.length + r.regions.length + r.styles.length;
+        const total = r.appellations.length + r.grapes.length + r.regions.length
+          + r.styles.length + r.classifications.length;
         track('Omnisearch Used', {
           result_count: String(total),
           had_match: total > 0 ? 'true' : 'false',
-          groups: [r.appellations.length && 'a', r.grapes.length && 'g', r.regions.length && 'r', r.styles.length && 's'].filter(Boolean).join(''),
+          groups: [r.appellations.length && 'a', r.grapes.length && 'g', r.regions.length && 'r', r.styles.length && 's', r.classifications.length && 'c'].filter(Boolean).join(''),
           query_len: String(q.length),
           locale: LANG,
         });
@@ -1924,26 +1986,6 @@
   }
 
   buildOmnisearch();
-  // Rescope the Grapes facet typeahead/counts to the active grape field so
-  // "main grape only" surfaces principal-relevant grapes with principal counts
-  // (picks still land in filters.grapesAll).
-  function rescopeGrapeFacet() {
-    const gc = document.querySelector('.grape-chip-filter[data-role="all"]');
-    if (gc) buildGrapeChipFilter(gc, filters.mainGrapeOnly ? 'principal' : 'all', filters.grapesAll);
-  }
-  const mgoEl = document.getElementById('main-grape-only');
-  if (mgoEl) {
-    mgoEl.checked = filters.mainGrapeOnly;
-    if (filters.mainGrapeOnly) rescopeGrapeFacet();  // reflect a restored toggle on first paint
-    mgoEl.addEventListener('change', e => {
-      filters.mainGrapeOnly = e.target.checked;
-      try { localStorage.setItem('main_grape_only', filters.mainGrapeOnly ? '1' : '0'); } catch (err) {}
-      track('Grape Scope Toggled', { scope: filters.mainGrapeOnly ? 'main' : 'all', locale: LANG });
-      rescopeGrapeFacet();
-      applyFilter({ fit: true });
-    });
-  }
-
   // ----- detail panel -----
   const panel = document.getElementById('panel');
   const panelBody = document.getElementById('panel-body');
@@ -1984,6 +2026,13 @@
     if (sources.regional_register_url) {
       const reg = sources.regional_register_region ? ' — ' + escapeHtml(sources.regional_register_region) : '';
       links.push(`<li><a href="${escapeAttr(sources.regional_register_url)}" target="_blank" rel="noopener">${LABELS.src_regional_register}</a>${reg}</li>`);
+    }
+    if (sources.parroquias_url) {
+      // The CC-BY attribution the IET layer requires, beside the dataset link.
+      const licence = sources.parroquias_licence_url
+        ? `<a href="${escapeAttr(sources.parroquias_licence_url)}" target="_blank" rel="noopener">${escapeHtml(sources.parroquias_licence || '')}</a>`
+        : escapeHtml(sources.parroquias_licence || '');
+      links.push(`<li><a href="${escapeAttr(sources.parroquias_url)}" target="_blank" rel="noopener">${LABELS.src_parroquias}</a> — ${escapeHtml(sources.parroquias_attribution || '')} · ${licence}</li>`);
     }
     if (sources.id_eambrosia) {
       const eambrosiaUrl = `https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/details/${encodeURIComponent(sources.id_eambrosia)}`;
@@ -2286,6 +2335,130 @@
     return `<p class="provenance-line">${sentence}</p>`;
   }
 
+  // Provenance sentence for the zone-level sources (the other countries'
+  // regulators): what the polygon is and at what resolution. Mirrored by
+  // _geom_source_line in scripts/_lib/content_block.py.
+  function geomSourceLine(r) {
+    const gs = r.geom_source || '';
+    if (gs.startsWith('geoportal-zone:') || gs.startsWith('geoportal-canton:')) {
+      let region = gs.slice(gs.indexOf(':') + 1);
+      region = gs.startsWith('geoportal-canton:')
+        ? region.toUpperCase()
+        : region.split('+').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' + ');
+      return escapeHtml(fmt(LABELS.geom_src_geoportal, { region: region }));
+    }
+    if (gs === 'mapa-zone') return escapeHtml(LABELS.geom_src_mapa);
+    if (gs === 'figshare-pdo' || gs === 'figshare-pdo-alias') return escapeHtml(LABELS.geom_src_betard);
+    if (gs === 'region-pdo-union') return escapeHtml(LABELS.geom_src_pdo_union);
+    if (/^(gisco-|caop-|swissboundaries-|ons-)/.test(gs) || gs === 'nuts2-province' || gs === 'geometry-research-municipios') return escapeHtml(LABELS.geom_src_admin_union);
+    return '';
+  }
+
+  // Galician parishes drawn from the IET Mapa de Parroquias: which ones,
+  // with the layer's attribution linked to its licence. Mirrored by
+  // _parroquias_line in scripts/_lib/content_block.py.
+  function parroquiasLine(r) {
+    const sources = r.sources || {};
+    const names = sources.parroquias_matched || [];
+    if (!names.length) return '';
+    const src = `<a href="${escapeAttr(sources.parroquias_licence_url || '')}" target="_blank" rel="noopener">${escapeHtml(sources.parroquias_attribution || '')} · ${escapeHtml(sources.parroquias_licence || '')}</a>`;
+    return `<div class="approx-line">${fmt(LABELS.geom_parroquias_line, { n: names.length, source: src, names: escapeHtml(names.join('; ')) })}</div>`;
+  }
+
+  // SIGPAC polígono inclusions: which reading drew them (the polígonos
+  // whole, or their vineyard parcels), per municipio the polígonos found
+  // over those listed, the whole municipios beside them, and the
+  // publication's attribution linked. Mirrored by _sigpac_line in
+  // scripts/_lib/content_block.py.
+  // What the area text named that the commune layer does not carry (not
+  // drawn), and the localities drawn as their container — the Greek
+  // area-units resolver's disclosure. Mirrored by _units_line in
+  // scripts/_lib/content_block.py.
+  // INAO parcellaire gaps a curator pin filled — which communes, drawn as a
+  // donor appellation's parcels or whole — and the gaps of a pinned record
+  // still open (scripts/_lib/parcellaire_gaps.py). Mirrored by
+  // _parcel_fill_line in scripts/_lib/content_block.py.
+  function parcelFillLine(r) {
+    let out = '';
+    const fills = r.geom_parcel_fill || [];
+    const byDonor = new Map();
+    const whole = [];
+    for (const f of fills) {
+      if (f.how === 'donor-parcels' && f.donor) {
+        if (!byDonor.has(f.donor)) byDonor.set(f.donor, []);
+        byDonor.get(f.donor).push(f.name);
+      } else {
+        whole.push(f.name);
+      }
+    }
+    for (const [donor, names] of byDonor) {
+      out += `<div class="approx-line">${fmt(LABELS.geom_parcel_fill_donor, { donor: escapeHtml(donor), names: names.map(n => escapeHtml(String(n))).join(', ') })}</div>`;
+    }
+    if (whole.length) {
+      out += `<div class="approx-line">${fmt(LABELS.geom_parcel_fill_commune, { names: whole.map(n => escapeHtml(String(n))).join(', ') })}</div>`;
+    }
+    const gaps = r.geom_parcel_gaps || [];
+    if (gaps.length) {
+      out += `<div class="approx-line">${fmt(LABELS.geom_parcel_gaps, { names: gaps.map(n => escapeHtml(String(n))).join(', ') })}</div>`;
+    }
+    const carry = r.geom_parcel_carry;
+    if (carry && carry.release) {
+      out += `<div class="approx-line">${fmt(LABELS.geom_parcel_carry, { release: escapeHtml(String(carry.release)), current: escapeHtml(String(carry.current)) })}</div>`;
+    }
+    return out;
+  }
+
+  function unitsLine(r) {
+    let out = '';
+    const unmatched = r.geom_units_unmatched || [];
+    if (unmatched.length) {
+      out += `<div class="approx-line">${fmt(LABELS.geom_units_unmatched, { names: unmatched.map(n => escapeHtml(String(n))).join(', ') })}</div>`;
+    }
+    const proxied = r.geom_units_proxied || [];
+    if (proxied.length) {
+      out += `<div class="approx-line">${fmt(LABELS.geom_units_proxied, { names: proxied.map(n => escapeHtml(String(n))).join(', ') })}</div>`;
+    }
+    for (const key of ['geom_units_boundary', 'geom_units_boundary_units']) {
+      const boundary = r[key] || [];
+      if (boundary.length) {
+        out += `<div class="approx-line">${fmt(LABELS[key], { names: boundary.map(n => escapeHtml(String(n))).join(', ') })}</div>`;
+      }
+    }
+    return out;
+  }
+
+  function sigpacLine(r) {
+    const sources = r.sources || {};
+    const semantics = sources.sigpac_semantics || '';
+    const municipios = sources.sigpac_municipios || [];
+    if (r.geom_source !== 'sigpac-hybrid-pliego' || !semantics || !municipios.length) return '';
+    const src = (sources.sigpac_sources || []).map(s =>
+      `<a href="${escapeAttr(s.licence_url || s.url || '')}" target="_blank" rel="noopener">${escapeHtml(s.attribution || '')}${s.licence ? ' · ' + escapeHtml(s.licence) : ''}</a>`
+    ).join(' · ');
+    const munis = municipios.map(m =>
+      `${escapeHtml(m.name || '')} (${m.found || 0}${(m.found || 0) === (m.listed || 0) ? '' : '/' + (m.listed || 0)})`
+    ).join(', ');
+    const label = semantics === 'vineyard' ? LABELS.geom_sigpac_vineyard : LABELS.geom_sigpac_footprint;
+    let line = fmt(label, { n: municipios.reduce((a, m) => a + (m.listed || 0), 0), municipios: munis, source: src });
+    const whole = sources.sigpac_whole || [];
+    if (whole.length) line += ' ' + escapeHtml(fmt(LABELS.geom_sigpac_whole, { whole: whole.join(', ') }));
+    return `<div class="approx-line">${line}</div>`;
+  }
+
+  // Card title. A subordinate card (a stacked overlap's non-focus record)
+  // carries the "bring to the front" button: the keyboard / screen-reader
+  // path for what a click anywhere on that card also does (panel click
+  // handler below). The focus card has no button — it is already in front.
+  function cardTitle(slug, r, isPrimary) {
+    const name = `<span class="h1-name">${nameWithLatin(r)}</span>`;
+    if (isPrimary) return name;
+    const t = escapeAttr(LABELS.stack_focus_title);
+    return name + `<button type="button" class="stack-focus" data-slug="${escapeAttr(slug)}" aria-label="${t}" title="${t}">↑</button>`;
+  }
+  function cardTitleAttr(isPrimary) {
+    return isPrimary ? '' : ` title="${escapeAttr(LABELS.stack_focus_title)}"`;
+  }
+
   function renderAocCard(slug, isPrimary) {
     const r = AOCS[slug];
     if (!r) return '';
@@ -2369,7 +2542,23 @@
     } else if (r.geom_source === 'cadastre-lieu-dit-dgc' && r.cadastre_lieu_dit) {
       const src = `<a href="https://cadastre.data.gouv.fr/" target="_blank" rel="noopener">${escapeHtml(LABELS.geom_approx_cadastre_source_label)}</a>`;
       approxLine = `<div class="approx-line">${fmt(LABELS.geom_approx_cadastre, { lieu_dit: escapeHtml(r.cadastre_lieu_dit), commune: escapeHtml(r.cadastre_commune || ''), source: src })}</div>`;
+    } else if (r.geom_source === 'aires-csv' || r.geom_source === 'dgc-village-override' || r.geom_source === 'communes') {
+      // A commune union: say what the polygon is and that no parcel
+      // delimitation exists for this record (every French IGP and Champagne
+      // draw this way) — nothing more; a reader does not take a commune-wide
+      // area for vineyard.
+      approxLine = `<div class="approx-line">${escapeHtml(fmt(LABELS.geom_approx_aires_union, { n: r.communes_matched || 0 }))}</div>`;
+    } else {
+      const src = geomSourceLine(r);
+      if (src) approxLine = `<div class="approx-line">${src}</div>`;
     }
+    approxLine += parroquiasLine(r) + sigpacLine(r) + unitsLine(r) + parcelFillLine(r);
+    // Zoom-dependent: below the detail zoom the map shows a generalised
+    // footprint of this record's parcels, not the delimitation. Hidden above
+    // it; refreshLodLines() flips the node on zoomend.
+    const lodLine = hasFootprint(r)
+      ? `<div class="approx-line lod-line" data-lod-line="${escapeAttr(slug)}"${lodBand(r) === 'footprint' ? '' : ' hidden'}>${escapeHtml(fmt(LABELS.geom_lod_footprint, { radius: r.geom_lod_radius_m || LOD.radius_m }))}</div>`
+      : '';
     const stubLine = r.is_stub
       ? `<div class="approx-line">${fmt(LABELS.stub_message, { doc: '<em>' + escapeHtml(STUB_DOC_NAMES[r.country] || STUB_DOC_NAMES.fr) + '</em>' })} <a class="stub-help" href="#" data-fb-aspect="sources">${escapeHtml(LABELS.stub_help_label)}</a></div>`
       : '';
@@ -2392,12 +2581,13 @@
         }</div>`
       : '';
     return `
-      <div class="${klass}">
-        <h1>${nameWithLatin(r)}</h1>
-        <div class="meta">${countrySeg}${renderClassification(r)}${cancelledBadge(r)}${regionSeg}${metaTail}</div>
-        ${cancelledLine(r)}
+      <div class="${klass}" data-slug="${escapeAttr(slug)}">
+        <h1${cardTitleAttr(isPrimary)}>${cardTitle(slug, r, isPrimary)}</h1>
+        <div class="meta">${countrySeg}${renderClassification(r)}${cancelledBadge(r)}${promotedBadge(r)}${regionSeg}${metaTail}</div>
+        ${cancelledLine(r)}${promotedLine(r)}
         ${dgcLine}
         ${approxLine}
+        ${lodLine}
         ${stubLine}
         ${styleChips ? '<h2>' + LABELS.panel_styles_h + '</h2><div class="pills">' + styleChips + '</div>' : ''}
         ${principal ? '<h2>' + LABELS.facet_principal_h + '</h2><div class="pills">' + principal + '</div>' : ''}
@@ -2499,7 +2689,7 @@
       // retraction next to it and net the two when reading.
       chip.setAttribute('aria-pressed', 'false');
       rememberFeedback(slug, aspect, false);
-      track('Feedback Retracted', { slug: slug, aspect: aspect, locale: LANG });
+      track('Feedback Retracted', { slug: slug, aspect: aspect, view_mode: viewMode, lod: lodBand(r), zoom: zoomStr(), locale: LANG });
       const left = pressedAspects(row);
       const status = box.querySelector('.fb-status');
       if (left.length && status && box.querySelector('textarea.fb-note')) {
@@ -2515,7 +2705,8 @@
       rememberFeedback(slug, aspect, true);
       track('Feedback Flagged', {
         slug: slug, aspect: aspect, country: r.country || '', kind: r.kind || '',
-        geom_source: r.geom_source || '', via: via, locale: LANG,
+        geom_source: r.geom_source || '', view_mode: viewMode, lod: lodBand(r), zoom: zoomStr(),
+        via: via, locale: LANG,
       });
     }
     box.hidden = false;
@@ -2538,7 +2729,7 @@
     const note = ta ? ta.value.replace(/\s+/g, ' ').trim().slice(0, FEEDBACK_NOTE_MAX) : '';
     // `aspect` is the pressed set joined with '+', so one note about two
     // things reads `boundary+grapes` in the breakdown rather than only the last tap.
-    if (note) track('Feedback Note', { slug: slug, aspect: aspects.join('+') || 'other', note: note, locale: LANG });
+    if (note) track('Feedback Note', { slug: slug, aspect: aspects.join('+') || 'other', note: note, view_mode: viewMode, lod: lodBand(AOCS[slug]), zoom: zoomStr(), locale: LANG });
     box.innerHTML = `<span class="fb-status" role="status">${note ? escapeHtml(LABELS.feedback_sent) : fmt(LABELS.feedback_noted_html, { aspect: aspectsHtml(aspects) })}</span>`;
   }
 
@@ -2556,10 +2747,8 @@
     // polygon area is smaller.
     const r = AOCS[slug];
     if (!r) return Infinity;
-    const primary = viewMode === 'advanced' ? r.bbox : r.bbox_villages;
-    const fallback = viewMode === 'advanced' ? r.bbox_villages : r.bbox;
-    const a = bboxArea(primary);
-    return Number.isFinite(a) ? a : bboxArea(fallback);
+    const a = bboxArea(drawnBbox(r));
+    return Number.isFinite(a) ? a : bboxArea(r.bbox);
   }
 
   // Tab title for an open appellation — mirrors the server-rendered entity
@@ -2603,6 +2792,37 @@
     }
     return `<div class="cancelled-line">${text}</div>`;
   }
+  // Promoted-denomination badge (_lib/promoted_gis.json): a former DGC that
+  // became an appellation of its own. Same surfaces as the cancelled badge;
+  // mirrors promoted_badge_html / promoted_line_html in content_block.py.
+  function promotedDate(c) {
+    try {
+      return new Intl.DateTimeFormat(LANG, { dateStyle: 'long' }).format(new Date(c.promoted_on + 'T00:00:00'));
+    } catch (e) { return c.promoted_on || ''; }
+  }
+  function promotedBadge(r, small) {
+    const c = r && r.promoted;
+    if (!c) return '';
+    const title = escapeAttr(fmt(LABELS.promoted_badge_title, { date: promotedDate(c) }));
+    return `<span class="promoted-badge${small ? ' sm' : ''}" title="${title}">${escapeHtml(LABELS.promoted_badge)}</span>`;
+  }
+  function promotedLine(r) {
+    const c = r && r.promoted;
+    if (!c) return '';
+    const act = c.national_url
+      ? `<a href="${escapeAttr(c.national_url)}" target="_blank" rel="noopener">${escapeHtml(c.national_act || '')}</a>`
+      : escapeHtml(c.national_act || '');
+    const name = (c.successor_slug && AOCS[c.successor_slug] && AOCS[c.successor_slug].name) || c.successor_name || c.successor_slug || '';
+    const successor = c.successor_slug
+      ? `<a class="parent-link" data-slug="${escapeAttr(c.successor_slug)}" href="#">${escapeHtml(name)}</a>`
+      : escapeHtml(name);
+    let text = fmt(LABELS.promoted_line, { date: escapeHtml(promotedDate(c)), successor: successor, act: act });
+    if (c.cahier_url) {
+      const cahier = `<a href="${escapeAttr(c.cahier_url)}" target="_blank" rel="noopener">${escapeHtml(LABELS.promoted_cahier_link)}</a>`;
+      text += ' ' + fmt(LABELS.promoted_cahier, { cahier: cahier });
+    }
+    return `<div class="promoted-line">${text}</div>`;
+  }
 
   function renderClassification(r) {
     const label = r.class_label || '';
@@ -2622,28 +2842,50 @@
     return span(label, scheme, 'gi-scheme');
   }
 
-  // Mirrors _entity_title in map_template.py: keep the title within 65
-  // characters by dropping the brand, then the term, then the region, trying
-  // the primary alias of a French "X ou Y" name before each cut.
   const TITLE_MAX = 65;
+  // Mirrors _entity_title / seo_display_name in map_template.py: the same
+  // ladder, map phrase, Latin-first Greek / Cyrillic names and region
+  // exonyms, so a client-side navigation lands on the title the page shipped.
+  const TITLE_REGION_LABELS = __OWM_title_region_labels_json__;
+  const COUNTRY_AS_REGION = new Set(__OWM_country_as_region_json__);
   function docTitleFor(slug) {
     const r = AOCS[slug];
     if (!r) return DEFAULT_TITLE;
-    const region = r.region ? regionLabel(r.region) : '';
-    const country = COUNTRY_LABELS[r.country] || '';
+    const regionRaw = r.region || '';
+    let region = (!regionRaw || COUNTRY_AS_REGION.has(regionRaw))
+      ? '' : (TITLE_REGION_LABELS[regionRaw] || regionLabel(regionRaw));
+    // A region (or country) named after the appellation itself repeats the name.
+    const frAlias = (r.country === 'fr' && r.name.includes(' ou ')) ? r.name.split(' ou ')[0].trim() : '';
+    const selfNames = [r.name, r.name_latin, frAlias, slug.replace(/-/g, ' ')].concat(r.name.split(' / ')).filter(Boolean).map(n => n.toLowerCase());
+    if (region && (selfNames.includes(region.toLowerCase()) || selfNames.includes(regionRaw.toLowerCase()))) region = '';
+    let country = COUNTRY_LABELS[r.country] || '';
+    if (country && selfNames.includes(country.toLowerCase())) country = '';
     const kind = r.class_label || r.kind || '';
+    const term = kind.replace(/\s*\([^)]*\)\s*$/, '') || kind;
     const geo = [region, country].filter(Boolean).join(', ');
-    const forms = [r.name];
+    const latin = (r.name_latin && r.name_latin !== r.name) ? r.name_latin : '';
+    const base = latin ? ((latin.includes('(') || r.name.includes('(')) ? latin + ' / ' + r.name : latin + ' (' + r.name + ')') : r.name;
+    const forms = [base];
     if (r.country === 'fr' && r.name.includes(' ou ')) {
       const alias = r.name.split(' ou ')[0].trim();
       if (alias) forms.push(alias);
     }
-    const tiers = [[kind, geo, true], [kind, geo, false], ['', geo, false], ['', country, false], ['', '', false]];
-    let candidate = r.name;
-    for (const [k, g, brand] of tiers) {
+    if (latin) forms.push(latin);
+    const mapTpl = r.is_wine === false ? '' : (LABELS.title_with_map || '');
+    const withMap = f => (mapTpl ? mapTpl.replace('{name}', f) : f);
+    const tiers = [
+      [LANG !== 'en', kind, geo, true], [LANG !== 'en', term, geo, true],
+      [true, kind, geo, false], [true, term, geo, false],
+      [true, '', geo, false], [true, term, region, false], [true, '', region, false],
+      [true, term, country, false], [true, '', country, false],
+      [true, '', '', false], [false, '', '', true], [false, '', '', false],
+    ];
+    let candidate = base;
+    for (const [mapped, k, g, brand] of tiers) {
       for (const form of forms) {
+        const lead = mapped ? withMap(form) : form;
         const head = [k, g].filter(Boolean).join(' · ');
-        candidate = form + (head ? ' — ' + head : '') + (brand ? ' · Open Wine Map' : '');
+        candidate = lead + (head ? ' — ' + head : '') + (brand ? ' · Open Wine Map' : '');
         if (candidate.length <= TITLE_MAX) return candidate;
       }
     }
@@ -2656,20 +2898,22 @@
   // display-names, dűlők, menzioni, notes …) loads on first open from
   // /data/d/<locale>/<slug>.json and is merged into AOCS[slug]. A fetch is
   // issued at most once per slug (deduped while in flight); repeat opens are
-  // instant. A failed fetch degrades to the startup fields rather than hanging.
+  // instant. A failed fetch degrades to the startup fields rather than hanging,
+  // and is not cached: the next open tries again. Resolves to whether the
+  // detail is loaded, so a caller can tell a full record from a partial one.
   const PANEL_DATA_BASE = '/data/d/' + LANG + '/';
   const _panelFetches = {};
   let panelGen = 0;
   function hydratePanel(slug) {
     const r = AOCS[slug];
-    if (!r) return Promise.resolve();
-    if (r._hydrated) return Promise.resolve();
+    if (!r) return Promise.resolve(false);
+    if (r._hydrated) return Promise.resolve(true);
     if (_panelFetches[slug]) return _panelFetches[slug];
     const p = fetch(PANEL_DATA_BASE + encodeURIComponent(slug) + '.json')
-      .then(resp => resp.ok ? resp.json() : null)
-      .then(data => { if (data) Object.assign(r, data); r._hydrated = true; })
-      .catch(() => { r._hydrated = true; })
-      .then(() => { delete _panelFetches[slug]; });
+      .then(resp => { if (!resp.ok) throw new Error('HTTP ' + resp.status); return resp.json(); })
+      .then(data => { Object.assign(r, data); r._hydrated = true; })
+      .catch(() => {})
+      .then(() => { delete _panelFetches[slug]; return !!r._hydrated; });
     _panelFetches[slug] = p;
     return p;
   }
@@ -2680,8 +2924,8 @@
   function skeletonCard(slug, isPrimary) {
     const r = AOCS[slug] || {};
     const klass = isPrimary ? 'aoc-card' : 'aoc-card subordinate';
-    return `<div class="${klass} aoc-skeleton" aria-busy="true">`
-      + `<h1>${nameWithLatin(r)}</h1>`
+    return `<div class="${klass} aoc-skeleton" aria-busy="true" data-slug="${escapeAttr(slug)}">`
+      + `<h1${cardTitleAttr(isPrimary)}>${cardTitle(slug, r, isPrimary)}</h1>`
       + `<div class="meta"><span class="skel skel-meta"></span></div>`
       + `<div class="skel skel-h"></div>`
       + `<div class="skel skel-line"></div><div class="skel skel-line"></div>`
@@ -2695,6 +2939,7 @@
       .filter(s => AOCS[s])
       .sort((a, b) => localityRank(a) - localityRank(b));
     if (!sorted.length) return;
+    currentStack = sorted;
     const focus = ((((focusIndex | 0) % sorted.length) + sorted.length) % sorted.length);
     const ordered = focus === 0
       ? sorted
@@ -2720,6 +2965,9 @@
     if (doTrack !== false) {
       setAocPath(ordered[0]);
       if (typeof panel.focus === 'function') panel.focus({ preventScroll: true });
+      // The focus card is the first one: a cycle or a card pick must show it,
+      // not leave the panel scrolled to wherever the reader was.
+      panel.scrollTop = 0;
     }
     // Popularity signal: the appellation brought to the front of the stack.
     // doTrack is suppressed for the localStorage restore (fires on every
@@ -2743,6 +2991,8 @@
           stacked: sorted.length > 1 ? 'true' : 'false',
           stack_size: String(sorted.length),
           via: via || 'map',
+          lod: lodBand(fr),
+          zoom: zoomStr(),
           locale: LANG,
         });
       }
@@ -2762,11 +3012,11 @@
   }
 
   // ----- selection highlight + persistence (across reload / language switch) -----
-  // Selection is mirrored into both `appellations` (advanced/parcellaire) and
-  // `appellations-villages` (simple/commune) sources so the highlight follows
-  // the user across mode toggles. setFeatureState calls before map.on('load')
-  // throw because the source isn't registered yet — we swallow and re-apply
-  // at the end of map.on('load').
+  // Selection is mirrored into both `appellations` (the parcels, detail zoom)
+  // and `appellations-overview` (the footprint / zone below it) so the
+  // highlight survives zooming across the crossfade. setFeatureState calls
+  // before map.on('load') throw because the source isn't registered yet — we
+  // swallow and re-apply at the end of map.on('load').
   let selectedSlugs = [];
   // The element that opened the panel (a facet "open" button), so focus can
   // return there on close (WCAG 2.4.3). Null for map clicks / in-panel
@@ -2778,9 +3028,24 @@
   // a few pixels and still cycle; moving to a different overlap resets.
   let lastStackKey = '';
   let stackFocusIndex = 0;
+  // The stack as last rendered, in display-rank order (renderPanelStack's
+  // sort), so a click on a subordinate card re-renders the same stack with
+  // that card in front — and a map re-click on the spot cycles on from it.
+  let currentStack = [];
+
+  // Bring one record of the open stack to the front: first card, gold
+  // outline on the map, URL and title follow. The sidebar's counterpart of
+  // re-clicking the map to cycle; the camera does not move.
+  function focusStackSlug(slug) {
+    const idx = currentStack.indexOf(slug);
+    if (idx < 0 || !AOCS[slug]) return;
+    stackFocusIndex = idx;
+    lastPanelTrigger = null;
+    renderPanelStack(currentStack, idx, undefined, 'stack-pick');
+  }
 
   function setSelectedState(slug, selected) {
-    for (const source of ['appellations', 'appellations-villages']) {
+    for (const source of ['appellations', 'appellations-overview']) {
       const opts = { source: source, id: slug };
       if (SOURCE_TYPE === 'pmtiles') opts.sourceLayer = 'appellations';
       try { map.setFeatureState(opts, { selected: selected }); } catch (e) {}
@@ -2835,6 +3100,7 @@
     setSelection([]);
     lastStackKey = '';
     stackFocusIndex = 0;
+    currentStack = [];
     setAocPath(null);
     if (returnFocus && wasOpen) {
       const target = (lastPanelTrigger && document.contains(lastPanelTrigger))
@@ -2849,10 +3115,11 @@
   // was last open. Both run before map.on('load') — the setFeatureState
   // highlight throws are swallowed and re-applied at the end of map.on('load').
   (function () {
-    // JS is live, so drop the no-JS / crawler SSR fallback article — the
-    // interactive panel below supersedes it. No-op on the homepage (no article).
+    // The no-JS / crawler SSR fallback article is dropped only once the
+    // interactive panel has actually replaced it (below); on an entity page
+    // whose record the bundle does not carry, the card is shown instead.
+    // No-op on the homepage (no article).
     var _ssr = document.getElementById('ssr-content');
-    if (_ssr) _ssr.remove();
     let urlSlug = slugFromPath();
     if (!(urlSlug && AOCS[urlSlug])) {
       try { const q = new URLSearchParams(window.location.search).get('aoc'); if (q && AOCS[q]) urlSlug = q; } catch (e) {}
@@ -2861,18 +3128,18 @@
       lastStackKey = urlSlug;
       stackFocusIndex = 0;
       renderPanelStack([urlSlug], 0, undefined, 'landing');
+      if (_ssr) _ssr.remove();
       // Frame the shared appellation, but only when the link carries no
       // explicit camera hash (respect a co-shared #zoom/lat/lon). Use the
       // page-entry snapshot, not the live hash — maplibre has already written
       // the default camera into location.hash by now.
       if (!INITIAL_CAMERA_HASH) {
-        // Mode-aware like fitToFiltered / the facet-open handler: simple mode
-        // renders the villages geometry, so frame that extent, not parcellaire.
-        const b = (viewMode === 'simple' && AOCS[urlSlug].bbox_villages) ? AOCS[urlSlug].bbox_villages : AOCS[urlSlug].bbox;
-        if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, maxZoom: 11, duration: 0 }));
+        const b = fitBbox(AOCS[urlSlug]);
+        if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, maxZoom: LOD.overview_max_zoom, duration: 0 }));
       }
       return;
     }
+    if (_ssr) { showSsrFallback(); return; }
     let saved = null;
     try { saved = localStorage.getItem('selected_slugs'); } catch (e) {}
     if (!saved) return;
@@ -3035,15 +3302,32 @@
       return;
     }
     const a = e.target.closest('a.parent-link');
-    if (!a) return;
-    e.preventDefault();
-    const slug = a.dataset.slug;
-    if (slug && AOCS[slug]) {
-      lastPanelTrigger = null;
-      lastStackKey = '';
-      stackFocusIndex = 0;
-      renderPanelStack([slug], 0, undefined, 'panel-link');
+    if (a) {
+      e.preventDefault();
+      const slug = a.dataset.slug;
+      if (slug && AOCS[slug]) {
+        lastPanelTrigger = null;
+        lastStackKey = '';
+        stackFocusIndex = 0;
+        renderPanelStack([slug], 0, undefined, 'panel-link');
+      }
+      return;
     }
+    // A stacked overlap: a click on a subordinate card — its ↑ button, or
+    // any spot of the card that is not itself interactive — brings that
+    // appellation to the front. Links, pills, buttons, collapsibles and the
+    // feedback row keep their own behaviour, and so does selecting text.
+    // `#panel` carries tabindex, so the interactive test is scoped to the card.
+    const card = e.target.closest('.aoc-card.subordinate[data-slug]');
+    if (!card) return;
+    if (!e.target.closest('.stack-focus')) {
+      const interactive = e.target.closest('a, button, input, textarea, select, summary, .pill[tabindex], .card-feedback');
+      if (interactive && card.contains(interactive)) return;
+      const sel = window.getSelection ? String(window.getSelection()) : '';
+      if (sel) return;
+    }
+    e.preventDefault();
+    focusStackSlug(card.dataset.slug);
   });
 
   // ----- map interactions -----
@@ -3052,7 +3336,7 @@
   map.on('load', () => {
 __OWM_source_block__
     for (const id of ['appellations-fill', 'appellations-outline',
-                      'appellations-fill-villages', 'appellations-outline-villages']) {
+                      'appellations-fill-overview', 'appellations-outline-overview']) {
       map.on('mousemove', id, e => {
         if (!e.features.length) return;
         map.getCanvas().style.cursor = 'pointer';
@@ -3077,8 +3361,10 @@ __OWM_source_block__
       // typical zoom; a point-only hit-test misses them.
       const r = 4;
       const bbox = [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
+      // Both fill layers: inside the crossfade band a record is present in
+      // both sources (the same slug twice — deduped below).
       const features = map.queryRenderedFeatures(bbox, {
-        layers: ['appellations-fill', 'appellations-fill-villages'],
+        layers: ['appellations-fill', 'appellations-fill-overview'],
       });
       if (!features.length) { closePanel(false); return; }
       // Dedupe by slug, and drop DGCs that share another AOC's polygon
@@ -3119,3 +3405,230 @@ __OWM_source_block__
     applyFilter();
     updateStatus();
   });
+
+  // ---- WebMCP (document.modelContext) --------------------------------------
+  // The map is a WebGL canvas and the panel is client-rendered, so a browser
+  // agent cannot read either. WebMCP (W3C Web Machine Learning CG draft;
+  // Chrome 146+ behind a flag, `navigator.modelContext` before the July 2026
+  // draft) lets the page hand it typed, read-only tools over the records it
+  // already holds, plus one tool that opens a panel. A no-op where the API is
+  // absent. Results carry the canonical page URL and the same attribution the
+  // panel shows: an agent quoting a terroir fact must be able to cite it.
+  (function registerWebMcpTools() {
+    const mc = document.modelContext || navigator.modelContext;
+    if (!mc || typeof mc.registerTool !== 'function' || !window.__OWM_DATA) return;
+    const PAGE_ORIGIN = window.location.origin;
+    const asContent = obj => ({ content: [{ type: 'text', text: JSON.stringify(obj) }] });
+    const fail = msg => ({ content: [{ type: 'text', text: msg }], isError: true });
+    const capInt = (v, dflt, max) => Math.max(1, Math.min(max, parseInt(v, 10) || dflt));
+
+    function brief(slug) {
+      const r = AOCS[slug];
+      const out = {
+        slug: slug,
+        name: r.name,
+        country: r.country || 'fr',
+        country_name: countryLabel(r.country || 'fr'),
+        region: r.region ? regionLabel(r.region) : null,
+        classification: r.class_label || r.kind || null,
+        url: PAGE_ORIGIN + SLUG_BASE + encodeURIComponent(slug),
+      };
+      if (r.name_latin) out.name_latin = r.name_latin;
+      if (r.is_sub_denomination) out.is_sub_denomination = true;
+      if (r.is_wine === false) out.is_wine = false;
+      if (r.cancelled) out.cancelled = r.cancelled;
+      if (r.promoted) out.promoted = r.promoted;
+      return out;
+    }
+
+    // A grape given by name or slug → every slug of its VIVC variety.
+    function grapeSlugsFor(q) {
+      const nq = searchNormalize(q);
+      if (!nq) return null;
+      const hits = new Set();
+      for (const e of _GRAPE_INDEX_NORM) {
+        if (searchNormalize(e.entry.slug) === nq || e.labelN === nq || e.aliasesN.includes(nq)) hits.add(e.entry.slug);
+      }
+      if (!hits.size) for (const slug in GRAPES_INFO) {
+        const info = GRAPES_INFO[slug] || {};
+        if (searchNormalize(slug) === nq || searchNormalize(info.name) === nq) hits.add(slug);
+      }
+      if (!hits.size) for (const k in AOCS) {
+        for (const s of AOCS[k].grapes_all || []) if (searchNormalize(s) === nq) hits.add(s);
+      }
+      return hits.size ? expandGrapeSet(hits) : new Set();
+    }
+
+    // A style given by slug or by its label in this locale → the style and
+    // every style under it in the taxonomy.
+    function styleSlugsFor(q) {
+      const nq = searchNormalize(q);
+      if (!nq) return null;
+      const keys = new Set(Object.keys(STYLE_DESCENDANTS).concat(Object.keys(STYLE_LABELS), Object.keys(SIMPLE_STYLE_BUCKETS)));
+      for (const s of keys) {
+        if (searchNormalize(s) === nq || searchNormalize(STYLE_LABELS[s]) === nq || searchNormalize(SIMPLE_STYLE_LABELS[s]) === nq) {
+          return new Set([s].concat(STYLE_DESCENDANTS[s] || [], SIMPLE_STYLE_BUCKETS[s] || []));
+        }
+      }
+      return new Set();
+    }
+
+    function register(tool) {
+      const run = tool.execute;
+      tool.execute = async input => {
+        track('WebMCP Tool', { tool: tool.name, locale: LANG });
+        try { return await run(input || {}); } catch (e) { return fail(String(e && e.message || e)); }
+      };
+      try { mc.registerTool(tool); } catch (e) { console.warn('WebMCP: could not register ' + tool.name, e); }
+    }
+
+    register({
+      name: 'search_appellations',
+      description: 'Find European wine appellations (PDO/PGI, AOC, DOC, DO, …) by name, including romanised forms of Greek and Bulgarian names. Returns slug, official name, country, region, classification and the page URL.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Appellation name or part of it, e.g. "Priorat", "Chablis", "naoussa".' },
+          country: { type: 'string', description: 'Optional ISO 3166-1 alpha-2 code, lower-case (fr, es, it, pt, de, at, gr, gb, …).' },
+          limit: { type: 'integer', description: 'Maximum results (default 20, max 100).' },
+        },
+        required: ['query'],
+      },
+      annotations: { readOnlyHint: true },
+      execute: async ({ query, country, limit }) => {
+        const nq = searchNormalize(query);
+        if (!nq) return fail('query is empty');
+        const cc = (country || '').toLowerCase();
+        const hits = [];
+        for (const slug in AOCS) {
+          const r = AOCS[slug];
+          if (cc && (r.country || 'fr') !== cc && !(r.country_aliases || []).includes(cc)) continue;
+          const score = searchScore(r, nq);
+          if (score < 0) continue;
+          hits.push({ slug, score, sub: r.is_sub_denomination ? 1 : 0, name: r.name || slug });
+        }
+        hits.sort((a, b) => b.score - a.score || a.sub - b.sub || a.name.localeCompare(b.name));
+        const n = capInt(limit, 20, 100);
+        return asContent({ total: hits.length, results: hits.slice(0, n).map(h => brief(h.slug)) });
+      },
+    });
+
+    register({
+      name: 'filter_appellations',
+      description: 'List wine appellations matching structured criteria: country, region, wine style, grape variety, legal scheme or traditional term. All criteria are optional and combined with AND.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          country: { type: 'string', description: 'ISO 3166-1 alpha-2 code, lower-case.' },
+          region: { type: 'string', description: 'Wine region as shown on the map, e.g. "Bourgogne", "Catalunya", "Mosel".' },
+          style: { type: 'string', description: 'Wine style slug or label, e.g. "red", "white", "rose", "sparkling", "sweet", "fortified", "vin-jaune".' },
+          grape: { type: 'string', description: 'Grape variety name or slug, e.g. "Garnacha", "pinot-noir". Synonyms of the same VIVC variety are included.' },
+          main_grape_only: { type: 'boolean', description: 'Only match the grape among the principal varieties (default false).' },
+          scheme: { type: 'string', description: 'Legal scheme (pdo, pgi, spirit-gi, uk-pdo, uk-pgi, none) or traditional term (aoc, docg, doc, igt, doca, doq, dac, …).' },
+          include_sub_denominations: { type: 'boolean', description: 'Include sub-denominations (DGCs, subzonas, sottozone, crus); default false.' },
+          include_spirits: { type: 'boolean', description: 'Include spirit-drink and cider GIs; default false.' },
+          limit: { type: 'integer', description: 'Maximum results (default 50, max 200).' },
+        },
+      },
+      annotations: { readOnlyHint: true },
+      execute: async (a) => {
+        const cc = (a.country || '').toLowerCase();
+        // A criterion that was given but normalises to nothing ("!!") is an
+        // error, never silently dropped from the AND.
+        const nRegion = searchNormalize(a.region);
+        if (a.region && !nRegion) return fail('unknown region: ' + a.region);
+        const styles = a.style ? styleSlugsFor(a.style) : null;
+        if (a.style && !(styles && styles.size)) return fail('unknown style: ' + a.style);
+        const grapes = a.grape ? grapeSlugsFor(a.grape) : null;
+        if (a.grape && !(grapes && grapes.size)) return fail('unknown grape: ' + a.grape);
+        const term = searchNormalize(a.scheme).replace(/ /g, '-');
+        if (a.scheme && !term) return fail('unknown scheme: ' + a.scheme);
+        const out = [];
+        for (const slug in AOCS) {
+          const r = AOCS[slug];
+          if (!a.include_sub_denominations && r.is_sub_denomination) continue;
+          if (!a.include_spirits && r.is_wine === false) continue;
+          if (cc && (r.country || 'fr') !== cc && !(r.country_aliases || []).includes(cc)) continue;
+          if (nRegion && searchNormalize(r.region) !== nRegion && searchNormalize(regionLabel(r.region)) !== nRegion
+              && !regionSearchForms(r.region).some(f => searchNormalize(f) === nRegion)) continue;
+          if (styles && !setIntersects(styles, r.styles || [])) continue;
+          if (grapes && !setIntersects(grapes, (a.main_grape_only ? r.grapes_principal : r.grapes_all) || [])) continue;
+          if (term) {
+            const segs = (r.class_key || '').split(';').filter(Boolean);
+            if (!segs.some(s => s === term || s.split(':').pop() === term)) continue;
+          }
+          out.push(slug);
+        }
+        out.sort((x, y) => (AOCS[x].name || x).localeCompare(AOCS[y].name || y));
+        const n = capInt(a.limit, 50, 200);
+        return asContent({ total: out.length, results: out.slice(0, n).map(brief) });
+      },
+    });
+
+    register({
+      name: 'get_appellation',
+      description: 'Full record of one wine appellation by slug: grape varieties (principal / accessory), wine styles, terroir facts with their provenance, source documents and the attribution to give when quoting it.',
+      inputSchema: {
+        type: 'object',
+        properties: { slug: { type: 'string', description: 'Appellation slug, as returned by search_appellations.' } },
+        required: ['slug'],
+      },
+      annotations: { readOnlyHint: true },
+      execute: async ({ slug }) => {
+        if (!AOCS[slug]) return fail('unknown appellation slug: ' + slug);
+        const complete = await hydratePanel(slug);
+        const r = AOCS[slug];
+        const out = brief(slug);
+        if (!complete) {
+          out.detail_unavailable = 'The detail data (terroir facts, sources, attribution) could not be loaded; '
+            + 'this record is partial. Call get_appellation again to retry.';
+        }
+        if (r.parent_slug && AOCS[r.parent_slug]) out.parent = brief(r.parent_slug);
+        out.styles = (r.styles || []).map(s => STYLE_LABELS[s] || s);
+        out.grapes = {
+          principal: (r.grapes_principal || []).map(grapeName),
+          accessory: (r.grapes_accessory || []).map(grapeName),
+        };
+        const tf = r.terroir_facts;
+        if (tf && tf.facts && tf.facts.length) {
+          out.terroir_facts = tf.facts.map(f => ({
+            text: f.bullet,
+            section: FACTS_SUB_LABELS[f.subsection] || f.subsection,
+            source: f.provenance === 'wiki' ? 'wikipedia' : 'specification',
+          }));
+          out.terroir_facts_attribution = {
+            specification_url: tf.cahier_source_pdf_url || null,
+            wikipedia_url: tf.wiki_source_url || null,
+            wikipedia_licence: tf.facts.some(f => f.provenance === 'wiki') ? 'CC BY-SA 4.0' : null,
+            note: 'Extracted from the regulator specification (and Wikipedia where marked), machine-translated outside the source language.',
+          };
+        } else if (r.summary) {
+          out.summary = r.summary;
+          if (r.summary_translation) out.summary_note = 'Machine translated from the regulator specification.';
+        }
+        const src = {};
+        for (const [k, v] of Object.entries(r.sources || {})) {
+          if (typeof v === 'string' && /^https?:\/\//.test(v)) src[k] = v;
+        }
+        if ((r.sources || {}).file_number) out.eu_file_number = r.sources.file_number;
+        out.sources = src;
+        if (r.note) out.note = r.note;
+        out.geometry_source = r.geom_source || null;
+        return asContent(out);
+      },
+    });
+
+    register({
+      name: 'show_appellation',
+      description: 'Open an appellation on the map: shows its detail panel and frames its area. Use after search_appellations when the user wants to see it.',
+      inputSchema: {
+        type: 'object',
+        properties: { slug: { type: 'string', description: 'Appellation slug.' } },
+        required: ['slug'],
+      },
+      execute: async ({ slug }) => {
+        if (!openAppellation(slug, 'webmcp', null)) return fail('unknown appellation slug: ' + slug);
+        return asContent({ shown: brief(slug) });
+      },
+    });
+  })();

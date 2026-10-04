@@ -1,0 +1,42 @@
+{
+  "_about": "Curator pins for scripts/_lib/es/parroquia.py: record slug → INE → {pliego spelling: IET Mapa de Parroquias spelling}; `_municipios` maps a pliego municipio name to its INE when GISCO's name differs. Keys starting with `_` are notes. A pin must name a parish that exists in the layer for that INE (a stale pin is logged and ignored). Every pin below was added from the 2026-09-24 probe's unmatched list, with the two spellings as its reason; a parish the layer does not carry at all (Ourense's Cabeza de Vaca / Santiago das Caldas / Tras do Hospital, folded into the city parish on the IET map) is left out, not pinned.",
+  "betanzos": {
+    "_note": "Oza dos Ríos merged with Cesuras into Oza-Cesuras (INE 15902) in 2013; GISCO and the IET layer carry the merged name. Abegondo: the pliego's Castilianised Sarandóns / Vilacoba are the layer's Sarandós / Vilacova.",
+    "_municipios": {
+      "Oza dos Ríos": "15902"
+    },
+    "15001": {
+      "Sarandóns": "Sarandós",
+      "Vilacoba": "Vilacova"
+    }
+  },
+  "terras-do-navia": {
+    "_note": "A Fonsagrada: the pliego's Galician San Martiño de Suarna is the layer's San Martín de Suarna. Navia de Suarna: the pliego's A Pobra de Navia is the layer's A Proba de Navia (the Galician normative spelling).",
+    "27018": {
+      "San Martiño de Suarna": "San Martín de Suarna"
+    },
+    "27034": {
+      "A Pobra de Navia": "A Proba de Navia"
+    }
+  },
+  "valle-del-mino-ourense": {
+    "_note": "Cartelle: the pliego's bare San Tomé is the layer's San Tomé das Olas (the only San Tomé parish of Cartelle).",
+    "32020": {
+      "San Tomé": "San Tomé das Olas"
+    }
+  },
+  "monterrei": {
+    "_note": "The parent's delimitation is the two subzonas' text (section 9 of the documento único, PDO-ES-A1114-AM03), read whole once the MAPA zone — six whole municipios — gave way to its parishes; Riós' Castrelo de Abaixo / Castrelo de Cima are the layer's Castrelos de Abaixo / Castrelos de Cima, as pinned for the Ladera subzona.",
+    "32071": {
+      "Castrelo de Abaixo": "Castrelos de Abaixo",
+      "Castrelo de Cima": "Castrelos de Cima"
+    }
+  },
+  "monterrei-ladera-de-monterrei": {
+    "_note": "Riós: the documento único's Castrelo de Abaixo / Castrelo de Cima are the layer's Castrelos de Abaixo / Castrelos de Cima.",
+    "32071": {
+      "Castrelo de Abaixo": "Castrelos de Abaixo",
+      "Castrelo de Cima": "Castrelos de Cima"
+    }
+  }
+}

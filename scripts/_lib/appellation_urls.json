@@ -4454,7 +4454,39 @@
     "molise": null,
     "pentro-di-isernia": null,
     "osco": null,
-    "rotae": null
+    "rotae": null,
+    "menetou-salon": {
+      "url": "https://www.vins-centre-loire.com/",
+      "label": "BIVC — Vins du Centre-Loire"
+    },
+    "pouilly-fume-ou-blanc-fume-de-pouilly": {
+      "url": "https://www.vins-centre-loire.com/",
+      "label": "BIVC — Vins du Centre-Loire"
+    },
+    "pouilly-sur-loire": {
+      "url": "https://www.vins-centre-loire.com/",
+      "label": "BIVC — Vins du Centre-Loire"
+    },
+    "quincy": {
+      "url": "https://www.vins-centre-loire.com/",
+      "label": "BIVC — Vins du Centre-Loire"
+    },
+    "reuilly": {
+      "url": "https://www.vins-centre-loire.com/",
+      "label": "BIVC — Vins du Centre-Loire"
+    },
+    "coteaux-du-giennois": {
+      "url": "https://www.vins-centre-loire.com/",
+      "label": "BIVC — Vins du Centre-Loire"
+    },
+    "chateaumeillant": {
+      "url": "https://www.vins-centre-loire.com/",
+      "label": "BIVC — Vins du Centre-Loire"
+    },
+    "cotes-d-auvergne": null,
+    "cotes-du-forez": null,
+    "cote-roannaise": null,
+    "saint-pourcain": null
   },
   "by_bassin": {
     "BOURGOGNE": {
@@ -4465,7 +4497,7 @@
       "url": "https://www.champagne.fr/",
       "label": "Comité Champagne"
     },
-    "ALSACE ET EST": {
+    "ALSACE": {
       "url": "https://www.vinsalsace.com/",
       "label": "CIVA"
     },
@@ -4477,13 +4509,29 @@
       "url": "https://www.vins-rhone.com/",
       "label": "Inter Rhône"
     },
-    "LANGUEDOC-ROUSSILLON": {
+    "LANGUEDOC": {
       "url": "https://www.languedoc-wines.com/",
       "label": "CIVL"
     },
-    "PROVENCE-CORSE": {
+    "ROUSSILLON": {
+      "url": "https://www.roussillon.wine/",
+      "label": "CIVR — Conseil Interprofessionnel des Vins du Roussillon"
+    },
+    "PROVENCE": {
       "url": "https://www.vinsdeprovence.com/",
       "label": "CIVP"
+    },
+    "CORSE": {
+      "url": "https://www.vinsdecorse.com/",
+      "label": "CIV Corse — Conseil Interprofessionnel des Vins de Corse"
+    },
+    "BORDEAUX": {
+      "url": "https://www.bordeaux.com/",
+      "label": "CIVB — Conseil Interprofessionnel du Vin de Bordeaux"
+    },
+    "SUD-OUEST": {
+      "url": "https://www.vignobles-sudouest.fr/",
+      "label": "IVSO — Interprofession des Vins du Sud-Ouest"
     },
     "COGNAC": {
       "url": "https://www.cognac.fr/",
@@ -4493,13 +4541,25 @@
       "url": "https://www.armagnac.fr/",
       "label": "BNIA"
     },
-    "SUD-OUEST": {
-      "url": "https://www.vignobles-sudouest.fr/",
-      "label": "IVSO — Interprofession des Vins du Sud-Ouest"
+    "BEAUJOLAIS": {
+      "url": "https://www.beaujolais.com/",
+      "label": "Inter Beaujolais"
     },
-    "TOULOUSE-PYRENEES": {
-      "url": "https://www.vignobles-sudouest.fr/",
-      "label": "IVSO — Interprofession des Vins du Sud-Ouest"
+    "SAVOIE": {
+      "url": "https://vindesavoie.fr/",
+      "label": "CIVS — Comité Interprofessionnel des Vins de Savoie"
+    },
+    "JURA": {
+      "url": "https://www.jura-vins.com/",
+      "label": "CIVJ — Comité Interprofessionnel des Vins du Jura"
+    },
+    "BUGEY": {
+      "url": "https://vinsdubugey.net/fr/",
+      "label": "Syndicat des Vins du Bugey"
+    },
+    "EAUX-DE-VIE DE CIDRE": {
+      "url": "https://www.idac-aoc.fr/",
+      "label": "IDAC — Interprofession des Appellations Cidricoles"
     },
     "Дунавска равнина": {
       "url": "https://www.bulgarianwines.org/",
@@ -4632,26 +4692,6 @@
     "Deutschschweiz": {
       "url": "https://deutschschweizerwein.ch/",
       "label": "Branchenverband Deutschschweizer Wein (BDW)"
-    },
-    "BEAUJOLAIS": {
-      "url": "https://www.beaujolais.com/",
-      "label": "Inter Beaujolais"
-    },
-    "SAVOIE": {
-      "url": "https://vindesavoie.fr/",
-      "label": "CIVS — Comité Interprofessionnel des Vins de Savoie"
-    },
-    "JURA": {
-      "url": "https://www.jura-vins.com/",
-      "label": "CIVJ — Comité Interprofessionnel des Vins du Jura"
-    },
-    "BUGEY": {
-      "url": "https://vinsdubugey.net/fr/",
-      "label": "Syndicat des Vins du Bugey"
-    },
-    "EAUX-DE-VIE DE CIDRE": {
-      "url": "https://www.idac-aoc.fr/",
-      "label": "IDAC — Interprofession des Appellations Cidricoles"
     },
     "Ελλάδα": {
       "url": "https://winesofgreece.org/",

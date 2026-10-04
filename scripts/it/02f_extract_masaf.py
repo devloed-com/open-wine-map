@@ -71,10 +71,9 @@ from _lib.it.masaf import (  # noqa: E402
     derive_summary,
     extract_article_runs,
     extract_articles,
+    grapes_with_annex,
     looks_letter_spaced,
     match_wines_to_pdfs,
-    parse_annex_grapes_with,
-    parse_grapes_with,
     pick_terroir_article,
 )
 from _lib.it.menzione import extract_menzioni  # noqa: E402
@@ -94,7 +93,7 @@ OJ_PAGES_MANIFEST = OJ_PAGES_DIR / "manifest.json"
 
 OVERRIDES_PATH = BUNDLES_DIR.parent / "manual_overrides.json"
 
-PARSER_VERSION = "it-masaf-disciplinare-v3"
+PARSER_VERSION = "it-masaf-disciplinare-v4"
 # Panel length of the Art. 9 terroir text; the extractor reads the full body.
 TERROIR_BRIEF_CHARS = 4000
 
@@ -268,12 +267,13 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
     / regione / grapes / styles / sections_present) so stage 04 can
     merge it into the stub with minimal branching."""
     set_pliego_context(wine["slug"])
-    grapes = parse_grapes_with(match_variety, articles.get(2, ""), wine.get("name", ""))
-    # Regional IGTs whose article 2 defers to an in-PDF "Allegato … vitigni"
-    # numbered roster (Toscano et al.) parse zero inline varieties — recover
-    # them from the annex.
-    if not grapes["principal"]:
-        grapes = parse_annex_grapes_with(match_variety, raw_text)
+    # Article 2 plus the in-PDF variety annex: the whole roster for a
+    # regional IGT whose article 2 names nothing (Toscano), the accessory
+    # roster for a DOC whose article 2 names its principals and defers the
+    # complement to "allegato 1" (Bolgheri Sassicaia) — see masaf.py.
+    grapes = grapes_with_annex(
+        match_variety, articles.get(2, ""), raw_text, wine.get("name", "")
+    )
     set_pliego_context(None)
 
     # Menzioni / Unità Geografiche Aggiuntive (MGA) chip list — harvested

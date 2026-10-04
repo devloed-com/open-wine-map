@@ -1,0 +1,84 @@
+{
+  "__doc__": "Curator supplements to the INAO aires-communes CSVs — see scripts/_lib/aires.py (apply_supplements). The CSV rows of an aire can predate the cahier des charges in force (the IGP Cévennes rows carry Date MAJ 2012; the cahier homologated in 2024 adds 40 Lozère communes), so a commune-union record drew the old aire. Keyed by record slug: `aire` + `ida` (the CSV's `Aire géographique` label and IDA the communes are added to), `communes` {INSEE (IGN AdminExpress, current): name} — communes the homologated cahier lists and the CSV lacks, `not_drawn` {INSEE: why} — cahier communes left out because only a part of the commune is in the aire and no public polygon of that part is in the build, `reason` (what the cahier says, with its publication), `source` (the files the claim rests on), `verified`. Only a cahier published in the Bulletin officiel (homologated) is pinned, never a PNO project. A pinned commune the CSV carries again is STALE: it is not added twice, stage 04 says so and tests/test_aires_supplements.py fails — re-verify against the new CSV release and drop the pin.",
+  "cevennes": {
+    "aire": "Cévennes",
+    "ida": "2217",
+    "communes": {
+      "48004": "Altier",
+      "48019": "Barre-des-Cévennes",
+      "48020": "Bassurels",
+      "48050": "Bédouès-Cocurès",
+      "48166": "Cans et Cévennes",
+      "48036": "Cassagnas",
+      "48051": "Le Collet-de-Dèze",
+      "48061": "Florac Trois Rivières",
+      "48065": "Fraissinet-de-Fourques",
+      "48067": "Gabriac",
+      "48069": "Gatuzières",
+      "48146": "Gorges du Tarn Causses",
+      "48075": "Ispagnac",
+      "48088": "La Malène",
+      "48096": "Meyrueis",
+      "48097": "Moissac-Vallée-Française",
+      "48098": "Molezon",
+      "48015": "Pied-de-Borne",
+      "48115": "Le Pompidou",
+      "48116": "Pont de Montvert - Sud Mont Lozère",
+      "48117": "Pourcharesses",
+      "48130": "Rousses",
+      "48131": "Le Rozier",
+      "48135": "Saint-André-Capcèze",
+      "48136": "Saint-André-de-Lancize",
+      "48144": "Sainte-Croix-Vallée-Française",
+      "48148": "Saint-Étienne-Vallée-Française",
+      "48155": "Saint-Germain-de-Calberte",
+      "48158": "Saint-Hilaire-de-Lavit",
+      "48163": "Saint-Julien-des-Points",
+      "48170": "Saint-Martin-de-Boubaux",
+      "48171": "Saint-Martin-de-Lansuscle",
+      "48173": "Saint-Michel-de-Dèze",
+      "48176": "Saint-Pierre-des-Tripiers",
+      "48178": "Saint-Privat-de-Vallongue",
+      "48193": "Vebron",
+      "48152": "Ventalon en Cévennes",
+      "48194": "Vialas",
+      "48198": "Villefort"
+    },
+    "not_drawn": {
+      "48094": "Massegros Causses Gorges — the cahier includes it « pour la partie correspondant au territoire de la commune déléguée Les Vignes » only; IGN AdminExpress communes carry no polygon for a commune déléguée, and the whole commune nouvelle (five former communes) would over-draw."
+    },
+    "reason": "Cahier des charges section 4.1, « Pour le département de la Lozère : » — 40 communes (code officiel géographique 2023) beside the Gard list; section 7.1 opens « Le vignoble des Cévennes est situé dans les départements du Gard et de la Lozère ». Published in the BO du MASA on 8 August 2024 (arrêté at JORF 4 August 2024). The INAO IGP aires CSV (release 2025-10-09) still carries the 236 Gard rows of 14 September 2012 and no Lozère row, so the map drew a Gard-only Cévennes — the boundary flag of 2026-09-29 (fr, z7.2). The Gard list of the cahier equals the CSV rows (pre-merger names apart).",
+    "source": "raw/inao/cahier-extracted/cevennes.json (sections 4 and 7; BO Agri document_administratif-239e6295-725b-497b-b2fc-12d1f78383e4); raw/inao/igp-aires-communes.csv (Aire géographique = Cévennes, IDA 2217, Date MAJ 2012-09-14, 236 rows, all CI 30xxx); raw/ign/communes.geojson (names → INSEE)",
+    "verified": "2026-09-30"
+  },
+  "cotes-de-thau": {
+    "aire": "Côtes de Thau",
+    "ida": "2106",
+    "communes": {
+      "34023": "Balaruc-les-Bains",
+      "34024": "Balaruc-le-Vieux",
+      "34039": "Bouzigues",
+      "34108": "Frontignan",
+      "34143": "Loupian",
+      "34157": "Mèze",
+      "34213": "Poussan",
+      "34301": "Sète",
+      "34341": "Villeveyrac"
+    },
+    "reason": "Cahier des charges section 4.1: « La récolte des raisins, la vinification et l’élaboration des vins […] sont réalisées sur le territoire des communes suivantes du département de l’Hérault : Agde, Balaruc-les-Bains, Balaruc-le-Vieux, Bouzigues, Castelnau-de-Guers, Florensac, Frontignan, Loupian, Marseillan, Mèze, Pinet, Pomerols, Poussan, Sète, Villeveyrac » — 15 communes, published in the BO du MASA on 24 August 2023. The INAO IGP aires CSV (release 2025-10-09) carries the six rows of 13 October 2015 (Agde, Castelnau-de-Guers, Florensac, Marseillan, Pinet, Pomérols): the nine communes around the Étang de Thau itself were missing from the polygon.",
+    "source": "raw/inao/cahier-extracted/cotes-de-thau.json (section 4; BO Agri document_administratif-2be0b2aa-19dd-4eb7-aa62-96e0946c763a); raw/inao/igp-aires-communes.csv (Aire géographique = Côtes de Thau, IDA 2106, Date MAJ 2015-10-13, 6 rows); raw/ign/communes.geojson",
+    "verified": "2026-09-30"
+  },
+  "maures": {
+    "aire": "Maures",
+    "ida": "2077",
+    "communes": {
+      "83018": "Besse-sur-Issole",
+      "83026": "Cabasse",
+      "83136": "Le Thoronet"
+    },
+    "reason": "Cahier des charges section 4.1: « sont réalisées sur les communes suivantes du département du Var selon le code officiel géographique de l’année 2024 (46 communes) » — the list includes Besse-sur-Issole, Cabasse and Le Thoronet; published in the BO Agri on 11 December 2025. The INAO IGP aires CSV (release 2025-10-09, older than the cahier) carries the 43 rows of 13 September 2012 without the three.",
+    "source": "raw/inao/cahier-extracted/maures.json (section 4; BO Agri document_administratif-8cc4e04b-62bb-4690-af3b-7bd8ac01f56d); raw/inao/igp-aires-communes.csv (Aire géographique = Maures, IDA 2077, Date MAJ 2012-09-13, 43 rows); raw/ign/communes.geojson",
+    "verified": "2026-09-30"
+  }
+}

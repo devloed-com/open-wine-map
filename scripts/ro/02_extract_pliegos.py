@@ -41,7 +41,10 @@ from _lib.grape_entity import (  # noqa: E402
     match_variety,
     set_pliego_context,
 )
-from _lib.ro.commune import parse_commune_list  # noqa: E402
+from _lib.ro.commune import (  # noqa: E402
+    _normalise_commune,
+    parse_commune_list_scoped,
+)
 from _lib.ro.document_unic import (  # noqa: E402
     _GEO_AREA_TITLE_BLOCKLIST,
     COLOUR_BY_KEYWORD,
@@ -305,24 +308,50 @@ _AREA_MARKER_RE = re.compile(
 )
 
 
-def _harvest_communes_fallback(sections: dict[str, str]) -> list[str]:
+_JUDET_TITLE_RE = re.compile(r"\bjude[țţt]ul\s+\S", re.IGNORECASE)
+
+
+def _harvest_communes_fallback(
+    sections: dict[str, str], titles: dict[str, str] | None = None,
+) -> list[tuple[str, list[str]]]:
     """When geo_area routing yields too few communes (mangled section
     numbering / template drift), scan every section body and parse the
     commune list out of the ones that are commune-dense (≥3 area
-    markers). `parse_commune_list` already rejects județ names, prose
-    tokens and over-long chunks, so this stays safe against false
-    positives from terroir prose."""
-    seen: set[str] = set()
-    out: list[str] = []
-    for body in sections.values():
-        if len(_AREA_MARKER_RE.findall(body or "")) < 3:
+    markers) — or whose TITLE is a county header ("6 Judeţul Iaşi",
+    "Judeţul Galaţi"): that is the area section itself, split by the
+    conversion into one pseudo-section per county, and the county in the
+    title is prepended to the body so every name in it is scoped to it.
+    `parse_commune_list_scoped` already rejects județ names, prose tokens
+    and over-long chunks, so this stays safe against false positives from
+    terroir prose. Returns (name, [județe]) pairs, deduped on the
+    normalised name + county set."""
+    titles = titles or {}
+    seen: set[tuple[str, tuple[str, ...]]] = set()
+    out: list[tuple[str, list[str]]] = []
+    for num, body in sections.items():
+        title = titles.get(num, "") or ""
+        county_titled = bool(_JUDET_TITLE_RE.search(title))
+        if not county_titled and len(_AREA_MARKER_RE.findall(body or "")) < 3:
             continue
-        for name in parse_commune_list(body):
-            key = name.lower()
+        text = f"{title}: {body}" if county_titled else (body or "")
+        for name, judete in parse_commune_list_scoped(text):
+            key = (_normalise_commune(name), tuple(judete))
             if key in seen:
                 continue
             seen.add(key)
-            out.append(name)
+            out.append((name, judete))
+    return out
+
+
+def _dedupe_names(scoped: list[tuple[str, list[str]]]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for name, _judete in scoped:
+        key = _normalise_commune(name)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(name)
     return out
 
 
@@ -332,13 +361,13 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
     grapes = parse_grapes(routed.get("grape_varieties", ""))
     styles = parse_styles(sections, titles)
     geo_area = routed.get("geo_area", "")
-    geo_communes = parse_commune_list(geo_area) if geo_area else []
-    if len(geo_communes) < 2:
-        geo_communes = _harvest_communes_fallback(sections)
+    geo_scoped = parse_commune_list_scoped(geo_area) if geo_area else []
+    if len(geo_scoped) < 2:
+        geo_scoped = _harvest_communes_fallback(sections, titles)
+    geo_communes = _dedupe_names(geo_scoped)
     region = derive_region(
         {"file_number": wine["fileNumber"]},
         geo_area,
-        routed.get("link_to_terroir", ""),
         wine["name"],
     )
     return {
@@ -359,6 +388,7 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
         "grapes": grapes,
         "styles": styles,
         "geo_area_brief": geo_area,
+        "geo_communes_scoped": [[n, j] for n, j in geo_scoped],
         "geo_communes": geo_communes,
         "link_to_terroir": routed.get("link_to_terroir", ""),
         "producer_group": wine["producer_group"],

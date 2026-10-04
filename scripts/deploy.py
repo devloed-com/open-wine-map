@@ -243,6 +243,10 @@ _APEX_HOST = "openwinemap.com"
 # in ~1-2 requests, and stays warm-don't-fail so a ping blip never aborts a
 # deploy whose real work (upload + purge) is already done.
 #
+# Only self-canonical, indexable URLs are submitted — the form the sitemap
+# carries (no trailing slash on an entity page, `/` for the EN home), never a
+# noindex fold page — so Bing's crawl budget goes to pages it can index.
+#
 # And only pages whose CONTENT changed are submitted. A rebuild that bumps a
 # content-hashed asset name (app.<locale>.<hash>.js, style.<hash>.css, the
 # aocs data blob) re-uploads every page referencing it — ~11.6k files — while
@@ -315,19 +319,73 @@ def find_indexnow_key(root: pathlib.Path) -> tuple[str, str] | None:
     return None
 
 
+_NOINDEX_RE = re.compile(r'<meta\s+name="robots"\s+content="[^"]*noindex', re.I)
+
+
 def public_url(rel: str) -> str | None:
-    """Map a wiki/-relative path to its public clean URL, or None if it is not a
-    crawlable page. Only `.html` pages map (404.html is noindex). The clean-URL
-    layout means every page is `<dir>/index.html`; we emit the directory URL
-    (trailing slash) and engines consolidate to the page's <link rel=canonical>."""
+    """Map a wiki/-relative path to the URL the page itself declares canonical,
+    or None if it is not a crawlable page. Only `.html` pages map (404.html is
+    noindex). The layout is `<dir>/index.html` throughout, but the canonical
+    forms differ by page kind (stage 04 — `_entity_path`, `_browse_path`):
+    the four homepages and the browse hubs are directory URLs with a trailing
+    slash, `en/index.html` is a duplicate of `/`, and an entity page is
+    `/<lang>/<slug>` with no slash. Submitting the slash form told Bing about
+    11,821 URLs it had never seen in the sitemap (2026-09-26)."""
     if not rel.endswith(".html") or rel == "404.html":
         return None
     base = f"https://{_CANONICAL_HOST}"
-    if rel == "index.html":
+    if rel in ("index.html", "en/index.html"):
         return base + "/"
-    if rel.endswith("/index.html"):
-        return f"{base}/{rel[: -len('index.html')]}"
-    return f"{base}/{rel}"
+    if not rel.endswith("/index.html"):
+        return f"{base}/{rel}"
+    parts = rel[: -len("/index.html")].split("/")
+    if len(parts) == 1 or parts[-1] == "appellations":
+        return f"{base}/{'/'.join(parts)}/"
+    return f"{base}/{'/'.join(parts)}"
+
+
+def is_noindex_page(path: pathlib.Path) -> bool:
+    """True when the page's <head> carries a robots noindex — the folded
+    sub-denomination / stub pages, which are never in the sitemap and must
+    not be pushed to IndexNow either."""
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as f:
+            head = f.read(8192)
+    except OSError:
+        return False
+    return bool(_NOINDEX_RE.search(head))
+
+
+def indexnow_urls(root: pathlib.Path, rels) -> list[str]:
+    """The canonical URLs to notify for `rels`: deleted pages as-is (nothing
+    to inspect), existing pages only when indexable, duplicates collapsed
+    (`index.html` and `en/index.html` are both `/`). A page that has just
+    turned noindex is deliberately not pinged: Bing drops it on its own
+    recrawl, and a ping would only spend the quota on a URL we are asking it
+    to forget. The skipped counts are logged so a drop from ~11.8k changed
+    files to ~6.6k URLs is explained."""
+    out: list[str] = []
+    seen: set[str] = set()
+    noindex = duplicates = 0
+    for rel in rels:
+        url = public_url(rel)
+        if not url:
+            continue
+        if url in seen:
+            duplicates += 1
+            continue
+        path = root / rel
+        if path.exists() and is_noindex_page(path):
+            noindex += 1
+            continue
+        seen.add(url)
+        out.append(url)
+    if noindex or duplicates:
+        print(
+            f"  indexnow: {noindex} noindex page(s) and {duplicates} duplicate URL(s) not submitted",
+            file=sys.stderr,
+        )
+    return out
 
 
 def _indexnow_post_chunk(
@@ -809,8 +867,8 @@ def main() -> int:
                 )
             elif not previous:
                 print(f"  indexnow: no fingerprints from a previous deploy at {fp_path} — "
-                      f"submitting every changed page", file=sys.stderr)
-            submit_indexnow(key, key_location, [public_url(rel) for rel in rels])
+                      f"submitting every changed indexable page", file=sys.stderr)
+            submit_indexnow(key, key_location, indexnow_urls(root, rels))
             save_fingerprints(fp_path, current)
 
     print("configuring security headers ...", file=sys.stderr)

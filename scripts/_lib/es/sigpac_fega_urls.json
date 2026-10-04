@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "publisher": "FEGA — Fondo Español de Garantía Agraria O.A. (Ministerio de Agricultura, Pesca y Alimentación), Servicio de descargas SIGPAC",
+    "landing_url": "https://sigpac-hubcloud.es/html/sdsigpac/descServicio.html",
+    "explorer_url": "https://sigpac-hubcloud.es/html/sdsigpac/descargas/exploradorArchivos.html",
+    "data_model_url": "https://sigpac-hubcloud.es/html/sdsigpac/modelos/recintos-SIGPAC.html",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/deed.es",
+    "license_quote": "Condiciones de acceso y uso: El acceso a este servicio es gratuito. Al acceder al servicio se dan por aceptadas las condiciones de uso establecidas en la licencia pública Creative Commons.Atribución/Reconocimiento (CC BY 4.0).",
+    "license_verified": "2026-09-24",
+    "note": "One recintos GeoPackage per province and campaign (PR_NOMBRE_rec_CAMP_AAAAMMDD_gpkg.zip, layer `recinto`, EPSG:4258). Stage 00 keeps the sha-pinned zip and writes a per-province extract limited to the `municipios` listed here (all uses, so a later change of use filter needs no re-download); the municipio name is not in the FEGA data — it is the INE name, added for the pliego name join."
+  },
+  "23": {
+    "provincia": "Jaén",
+    "campaign": 2026,
+    "validity_date": "2025-12-15",
+    "filename": "23_JAEN_rec_2026_20251215_gpkg.zip",
+    "url": "https://sigpac-hubcloud.es/geopackages/2026/recintos/23_JAEN_rec_2026_20251215_gpkg.zip",
+    "inner_gpkg": "0123_JAEN_rec_2026_20251215.gpkg",
+    "layer": "recinto",
+    "extract_gpkg": "SIGPAC_FEGA_23_JAEN.gpkg",
+    "municipios": {
+      "23003": "Alcaudete",
+      "23060": "Martos"
+    },
+    "wines": ["sierra-sur-de-jaen"]
+  }
+}

@@ -15,44 +15,41 @@ Run: uv run python scripts/audit_coverage.py
 
 from __future__ import annotations
 
-import csv
 import json
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from _lib.fr import siqo  # noqa: E402
+
 SIQO_CSV = ROOT / "raw" / "inao" / "siqo-referentiel.csv"
 MANIFEST = ROOT / "raw" / "inao" / "cahiers" / "manifest.json"
 INDEX = ROOT / "raw" / "inao" / "cahier-extracted" / "_index.json"
 
-WINE_SIGNS = {"AOC", "AOP", "IGP"}
+WINE_SIGNS = siqo.WINE_SIGNS
 
 
 def load_siqo() -> dict[str, dict]:
     """id_appellation → {name, denoms: [(id_denomination_geo, denomination)]}."""
     apps: dict[str, dict] = {}
-    with open(SIQO_CSV, encoding="utf-8-sig", newline="") as f:
-        for row in csv.DictReader(f):
-            if row["secteur"].strip() != "VITICOLE":
-                continue
-            if row["lib_etat"].strip() != "Publié":
-                continue
-            sign = row["signe_fr"].strip() or row["signe_ue"].strip()
-            if sign not in WINE_SIGNS:
-                continue
-            id_app = row["id_appellation"].strip()
-            entry = apps.setdefault(
-                id_app,
-                {
-                    "name": row["appellation"].strip(),
-                    "comite_regional": row.get("comite_regional", "").strip(),
-                    "denoms": set(),
-                },
-            )
-            entry["denoms"].add(
-                (row["id_denomination_geo"].strip(), row["denomination"].strip())
-            )
+    for row in siqo.siqo_rows(SIQO_CSV):
+        if not siqo.is_wine_row(row):
+            continue
+        id_app = row["id_appellation"].strip()
+        entry = apps.setdefault(
+            id_app,
+            {
+                "name": row["appellation"].strip(),
+                "comite_regional": row.get("comite_regional", "").strip(),
+                "denoms": set(),
+            },
+        )
+        entry["denoms"].add(
+            (row["id_denomination_geo"].strip(), row["denomination"].strip())
+        )
     return apps
 
 

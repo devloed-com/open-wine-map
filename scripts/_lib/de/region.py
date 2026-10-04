@@ -42,7 +42,13 @@ REGIONS = (
     "Sachsen",
     "Württemberg",
     # Landwein-PGI territories that are not coextensive with an
-    # Anbaugebiet.
+    # Anbaugebiet. A Landwein coextensive with one Anbaugebiet keeps that
+    # name (Badischer Landwein → Baden, Landwein Neckar → Württemberg); one
+    # that straddles several takes its Bundesland like every other Land —
+    # Taubertäler Landwein spans Württemberg's Kocher-Jagst-Tauber, Baden's
+    # Tauberfranken and five Bavarian communes, and its spec (§1) places it
+    # "in den Bundesländern Baden-Württemberg und Bayern".
+    "Baden-Württemberg",
     "Bayern",
     "Brandenburg",
     "Hessen",
@@ -59,6 +65,8 @@ REGIONS = (
 _VARIANTS: dict[str, str] = {
     "wuerttemberg": "Württemberg",
     "wurttemberg": "Württemberg",
+    "badenwuerttemberg": "Baden-Württemberg",
+    "badenwurttemberg": "Baden-Württemberg",
     "hessische bergstrasse": "Hessische Bergstraße",
     "saale unstrut": "Saale-Unstrut",
     "rheinland pfalz": "Rheinland-Pfalz",
@@ -131,10 +139,10 @@ _REGION_BY_FILE_NUMBER: dict[str, str] = {
     "PGI-DE-A1301": "Rheinland-Pfalz",           # Rheinischer Landwein
     "PGI-DE-A1302": "Saarland",                  # Saarländischer Landwein
     "PGI-DE-A1304": "Schleswig-Holstein",        # Schleswig-Holsteinischer Landwein
-    "PGI-DE-A1305": "Baden",                     # Schwäbischer Landwein
+    "PGI-DE-A1305": "Württemberg",               # Schwäbischer Landwein — its sole member is the Württemberg PDO; BLE spec §4 names Kreßbronn, Ravensburg, Taldorf (the Bodensee outpost)
     "PGI-DE-A1306": "Hessen",                    # Starkenburger Landwein
     "PGI-DE-A1303": "Sachsen",                   # Sächsischer Landwein
-    "PGI-DE-A1307": "Württemberg",               # Taubertäler Landwein
+    "PGI-DE-A1307": "Baden-Württemberg",         # Taubertäler Landwein — straddles three Anbaugebiete; BLE spec §1 "Baden-Württemberg und Bayern" (13 of 18 communes in BW)
 }
 
 

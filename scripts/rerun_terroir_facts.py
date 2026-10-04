@@ -85,6 +85,17 @@ def load_scope(args) -> list[str]:
     return sorted(set(slugs))
 
 
+def _country_of_uncached(slug: str) -> str:
+    """The country of a record that has no facts cache yet, read from its
+    extracted JSON (`raw/<cc>/*-extracted/<slug>.json`)."""
+    for path in sorted(ROOT.glob(f"raw/*/*-extracted/{slug}.json")):
+        d = cache.read_json_or_none(path) or {}
+        cc = d.get("country")
+        if cc:
+            return cc
+    return ""
+
+
 def mark_stale(slugs: list[str], *, dry_run: bool) -> dict[str, list[str]]:
     """Snapshot + mark each scoped cache stale. Returns {country: [slugs]}."""
     by_cc: dict[str, list[str]] = {}
@@ -92,7 +103,16 @@ def mark_stale(slugs: list[str], *, dry_run: bool) -> dict[str, list[str]]:
         p = TERROIR / f"{slug}.json"
         d = cache.read_json_or_none(p)
         if not d:
-            log(f"  {slug}: no cache — will be extracted if its country's 02d finds a source")
+            # A record that never had facts (a new appellation) still has to
+            # reach its country's 02d — with --scoped-02d the pass-down is
+            # built from this map, so an uncached slug left out here was
+            # silently never extracted (Montpeyroux, 2026-10-04).
+            cc = _country_of_uncached(slug)
+            if cc:
+                log(f"  {slug}: no cache — scoped into {cc}'s 02d for a first extraction")
+                by_cc.setdefault(cc, []).append(slug)
+            else:
+                log(f"  {slug}: no cache and no extracted record found — skipped")
             continue
         cc = d.get("country") or "fr"
         by_cc.setdefault(cc, []).append(slug)

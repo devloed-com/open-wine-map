@@ -1,0 +1,301 @@
+{
+  "_source": "Every Spanish municipio whose GISCO LAU 2024 name contains the whole-word conjunction ' y ', ' i ' or ' e ' (Eurostat GISCO, raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip, CNTR_CODE='ES', fields GISCO_ID + LAU_NAME; (c) EuroGeographics for the administrative boundaries). The ES commune-list tokenizers split on those conjunctions and consult this table to keep such a name whole; regenerate from the zip when GISCO ships a new LAU vintage.",
+  "municipios": [
+    {
+      "gisco_id": "ES_03117",
+      "name": "Sanet y Negrals"
+    },
+    {
+      "gisco_id": "ES_05088",
+      "name": "Grandes y San Martín"
+    },
+    {
+      "gisco_id": "ES_05119",
+      "name": "Manjabálago y Ortigosa de Rioalmar"
+    },
+    {
+      "gisco_id": "ES_08023",
+      "name": "Bigues i Riells del Fai"
+    },
+    {
+      "gisco_id": "ES_08042",
+      "name": "Cànoves i Samalús"
+    },
+    {
+      "gisco_id": "ES_08053",
+      "name": "Castellbell i el Vilar"
+    },
+    {
+      "gisco_id": "ES_08058",
+      "name": "Castellet i la Gornal"
+    },
+    {
+      "gisco_id": "ES_08125",
+      "name": "Montcada i Reixac"
+    },
+    {
+      "gisco_id": "ES_08156",
+      "name": "Palau-solità i Plegamans"
+    },
+    {
+      "gisco_id": "ES_08182",
+      "name": "Pont de Vilomara i Rocafort, El"
+    },
+    {
+      "gisco_id": "ES_08251",
+      "name": "Santa Margarida i els Monjos"
+    },
+    {
+      "gisco_id": "ES_08307",
+      "name": "Vilanova i la Geltrú"
+    },
+    {
+      "gisco_id": "ES_08308",
+      "name": "Viver i Serrateix"
+    },
+    {
+      "gisco_id": "ES_08901",
+      "name": "Rupit i Pruit"
+    },
+    {
+      "gisco_id": "ES_09312",
+      "name": "Revilla y Ahedo, La"
+    },
+    {
+      "gisco_id": "ES_09421",
+      "name": "Vid y Barrios, La"
+    },
+    {
+      "gisco_id": "ES_09901",
+      "name": "Quintanilla del Agua y Tordueles"
+    },
+    {
+      "gisco_id": "ES_16273",
+      "name": "Villaverde y Pasaconsol"
+    },
+    {
+      "gisco_id": "ES_16910",
+      "name": "Villar y Velasco"
+    },
+    {
+      "gisco_id": "ES_17028",
+      "name": "Brunyola i Sant Martí Sapresa"
+    },
+    {
+      "gisco_id": "ES_17029",
+      "name": "Boadella i les Escaules"
+    },
+    {
+      "gisco_id": "ES_17034",
+      "name": "Calonge i Sant Antoni"
+    },
+    {
+      "gisco_id": "ES_17048",
+      "name": "Castell d'Aro, Platja d'Aro i s'Agaró"
+    },
+    {
+      "gisco_id": "ES_17109",
+      "name": "Montagut i Oix"
+    },
+    {
+      "gisco_id": "ES_17129",
+      "name": "Pedret i Marzà"
+    },
+    {
+      "gisco_id": "ES_17146",
+      "name": "Riells i Viabrea"
+    },
+    {
+      "gisco_id": "ES_17187",
+      "name": "Saus, Camallera i Llampaies"
+    },
+    {
+      "gisco_id": "ES_17901",
+      "name": "Cruïlles, Monells i Sant Sadurní de l'Heura"
+    },
+    {
+      "gisco_id": "ES_17903",
+      "name": "Sant Julià del Llor i Bonmatí"
+    },
+    {
+      "gisco_id": "ES_18054",
+      "name": "Cortes y Graena"
+    },
+    {
+      "gisco_id": "ES_22064",
+      "name": "Blecua y Torres"
+    },
+    {
+      "gisco_id": "ES_22155",
+      "name": "Monesma y Cajigar"
+    },
+    {
+      "gisco_id": "ES_22212",
+      "name": "Santaliestra y San Quílez"
+    },
+    {
+      "gisco_id": "ES_22247",
+      "name": "Viacamp y Litera"
+    },
+    {
+      "gisco_id": "ES_22908",
+      "name": "Hoz y Costean"
+    },
+    {
+      "gisco_id": "ES_23902",
+      "name": "Bedmar y Garcíez"
+    },
+    {
+      "gisco_id": "ES_24125",
+      "name": "Quintana y Congosto"
+    },
+    {
+      "gisco_id": "ES_24167",
+      "name": "Soto y Amío"
+    },
+    {
+      "gisco_id": "ES_24902",
+      "name": "Villaornate y Castro"
+    },
+    {
+      "gisco_id": "ES_25005",
+      "name": "Alàs i Cerc"
+    },
+    {
+      "gisco_id": "ES_25037",
+      "name": "Avellanes i Santa Linya, Les"
+    },
+    {
+      "gisco_id": "ES_25115",
+      "name": "Isona i Conca Dellà"
+    },
+    {
+      "gisco_id": "ES_25139",
+      "name": "Montellà i Martinet"
+    },
+    {
+      "gisco_id": "ES_25140",
+      "name": "Montferrer i Castellbò"
+    },
+    {
+      "gisco_id": "ES_25163",
+      "name": "Coma i la Pedra, La"
+    },
+    {
+      "gisco_id": "ES_25175",
+      "name": "Prats i Sansor"
+    },
+    {
+      "gisco_id": "ES_25243",
+      "name": "Vielha e Mijaran"
+    },
+    {
+      "gisco_id": "ES_25907",
+      "name": "Torrefeta i Florejacs"
+    },
+    {
+      "gisco_id": "ES_25908",
+      "name": "Fígols i Alinyà"
+    },
+    {
+      "gisco_id": "ES_25909",
+      "name": "Vansa i Fórnols, La"
+    },
+    {
+      "gisco_id": "ES_25910",
+      "name": "Josa i Tuixén"
+    },
+    {
+      "gisco_id": "ES_25912",
+      "name": "Gimenells i el Pla de la Font"
+    },
+    {
+      "gisco_id": "ES_28063",
+      "name": "Gargantilla del Lozoya y Pinilla de Buitrago"
+    },
+    {
+      "gisco_id": "ES_28097",
+      "name": "Navarredonda y San Mamés"
+    },
+    {
+      "gisco_id": "ES_33078",
+      "name": "Yernes y Tameza"
+    },
+    {
+      "gisco_id": "ES_34176",
+      "name": "Sotobañado y Priorato"
+    },
+    {
+      "gisco_id": "ES_37142",
+      "name": "Galindo y Perahuy"
+    },
+    {
+      "gisco_id": "ES_37320",
+      "name": "Tejeda y Segoyuela"
+    },
+    {
+      "gisco_id": "ES_38033",
+      "name": "San Andrés y Sauces"
+    },
+    {
+      "gisco_id": "ES_40104",
+      "name": "Ituero y Lama"
+    },
+    {
+      "gisco_id": "ES_40182",
+      "name": "San Martín y Mudrián"
+    },
+    {
+      "gisco_id": "ES_40213",
+      "name": "Valdevacas y Guijar"
+    },
+    {
+      "gisco_id": "ES_40224",
+      "name": "Ventosilla y Tejadilla"
+    },
+    {
+      "gisco_id": "ES_41069",
+      "name": "Palacios y Villafranca, Los"
+    },
+    {
+      "gisco_id": "ES_41099",
+      "name": "Villanueva del Río y Minas"
+    },
+    {
+      "gisco_id": "ES_43101",
+      "name": "Passanant i Belltall"
+    },
+    {
+      "gisco_id": "ES_43162",
+      "name": "Vandellòs i l'Hospitalet de l'Infant"
+    },
+    {
+      "gisco_id": "ES_43176",
+      "name": "Vimbodí i Poblet"
+    },
+    {
+      "gisco_id": "ES_43178",
+      "name": "Vinyols i els Arcs"
+    },
+    {
+      "gisco_id": "ES_44217",
+      "name": "Toril y Masegoso"
+    },
+    {
+      "gisco_id": "ES_45028",
+      "name": "Calera y Chozas"
+    },
+    {
+      "gisco_id": "ES_46074",
+      "name": "Bonrepòs i Mirambell"
+    },
+    {
+      "gisco_id": "ES_46217",
+      "name": "Rotglà i Corberà"
+    },
+    {
+      "gisco_id": "ES_48002",
+      "name": "Abanto y Ciérvana-Abanto Zierbena"
+    }
+  ]
+}

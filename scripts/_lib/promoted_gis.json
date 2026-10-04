@@ -1,0 +1,14 @@
+{
+  "__doc__": "Denominations that were PROMOTED into an appellation of their own and stay in the corpus, marked as such — the former DGC / sub-denomination name is still on older labels and teaching material, so the record stays findable and says what became of it. Keyed by the former record's slug. Each entry: name, country, promoted_on (ISO date of the national act that recognised the new appellation), successor_slug + successor_name (the new appellation's record), national_act (cited by title) + national_url (the act — Légifrance ELI or the regulator's text page), optional cahier_url (the new appellation's specification), optional note. Stage 04 attaches the entry to the record as `promoted`; the map panel, sidebar and entity card render a 'Promoted' badge plus a dated, source-linked line. Not a cancellation: the registration was not withdrawn, the name moved up a tier — cancelled_gis.json is for a GI the Commission cancelled. Not a filter either: the record is kept; when the SIQO export drops its row, keep the row with a `retained` entry in scripts/_lib/fr/siqo_supplements.json. Every entry must cite the public act.",
+  "languedoc-montpeyroux": {
+    "name": "Languedoc Montpeyroux",
+    "country": "fr",
+    "promoted_on": "2026-08-11",
+    "successor_slug": "montpeyroux",
+    "successor_name": "Montpeyroux",
+    "national_act": "Arrêté du 11 août 2026 homologuant le cahier des charges de l'appellation d'origine protégée « Montpeyroux » (JORF du 15 août 2026)",
+    "national_url": "https://www.legifrance.gouv.fr/eli/arrete/2026/8/11/AGRT2607509A/jo/texte",
+    "cahier_url": "https://info.agriculture.gouv.fr/boagri/document_administratif-2128d40f-f2c2-436a-8d1c-cd993626aa30/telechargement",
+    "note": "The Languedoc cahier homologated the same day (arrêté du 11 août 2026, NOR AGRT2607507A) lists nine dénominations géographiques complémentaires and no longer « Montpeyroux ». INAO's catalogue retired the product (18131); the SIQO export of 2025-12-31 still carries denomination 1313. The new AOC is red-only over Arboras, Montpeyroux, Lagamas and Saint-Jean-de-Fos, under national transitional protection pending the EU registration."
+  }
+}

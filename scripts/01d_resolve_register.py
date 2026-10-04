@@ -22,7 +22,6 @@ exact alias keys is a curator decision.
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import sys
 from collections import Counter
@@ -36,10 +35,11 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _lib import eambrosia_register as er  # noqa: E402
 from _lib.fr import register_cahier as rc  # noqa: E402
 from _lib.fr import register_match as rm  # noqa: E402
+from _lib.fr import siqo  # noqa: E402
 
 MANIFEST_PATH = ROOT / "raw" / "inao" / "cahiers" / "manifest.json"
 SIQO_CSV = ROOT / "raw" / "inao" / "siqo-referentiel.csv"
-WINE_SIGNS = {"AOC", "AOP", "IGP"}
+WINE_SIGNS = siqo.WINE_SIGNS
 
 
 def appellations_from_manifest() -> list[dict]:
@@ -54,18 +54,15 @@ def appellations_from_siqo() -> list[dict]:
     """Stage-01-free fallback: the same VITICOLE / AOC-AOP-IGP / Publié
     filter stage 01 applies, one row per id_appellation."""
     out: dict[str, dict] = {}
-    with open(SIQO_CSV, encoding="utf-8-sig", newline="") as f:
-        for row in csv.DictReader(f):
-            if row["secteur"].strip() != "VITICOLE" or row["lib_etat"].strip() != "Publié":
-                continue
-            if (row["signe_fr"].strip() or row["signe_ue"].strip()) not in WINE_SIGNS:
-                continue
-            id_app = row["id_appellation"].strip()
-            out.setdefault(id_app, {
-                "id_appellation": id_app,
-                "name": row["appellation"].strip(),
-                "categorie": row["categorie"].strip(),
-            })
+    for row in siqo.siqo_rows(SIQO_CSV):
+        if not siqo.is_wine_row(row):
+            continue
+        id_app = row["id_appellation"].strip()
+        out.setdefault(id_app, {
+            "id_appellation": id_app,
+            "name": row["appellation"].strip(),
+            "categorie": row["categorie"].strip(),
+        })
     return list(out.values())
 
 

@@ -23,8 +23,8 @@
     "name": "L'Etoile",
     "file_number": "PDO-FR-A0598",
     "register_name": "L'Etoile",
-    "prefer_cahier": true,
-    "note": "BO Agri serves another appellation's cahier for this AOC (terroir-facts review 2026-09-11); the register attachment 'AGRT1108018D - l-Etoile CDC homologue.pdf' is the AOC's own cahier — bind it instead."
+    "prefer_cahier": false,
+    "note": "BO Agri serves another appellation's cahier for this AOC (terroir-facts review 2026-09-11); the register attachment 'AGRT1108018D - l-Etoile CDC homologue.pdf' is the AOC's own cahier — bind it instead. Released 2026-10-01: INAO now publishes L'Etoile's own cahier (arrêté du 2 septembre 2026, BO Agri 7d79e5e4-…), pinned in raw/inao/cahiers/manual_overrides.json."
   },
   "290": {
     "name": "Pierrevert",
@@ -39,5 +39,11 @@
     "register_name": "Bourgogne Passe-tout-grains",
     "prefer_cahier": true,
     "note": "BO Agri serves the AOC Beaujolais cahier for this AOC (terroir-facts review 2026-09-12: 23 mentions of Beaujolais in the lien, 0 of Passe-tout-grains); the register attachment 'CDC_Bourgogne_Passe-tout-grains.pdf' is the AOC's own cahier — bind it instead."
+  },
+  "p23354": {
+    "name": "Montpeyroux",
+    "file_number": "",
+    "register_name": "",
+    "note": "Verified absence 2026-10-03: AOC recognised by arrêté du 11 août 2026 under national transitional protection (Reg. (EU) 2024/1143 art. 11) 'en vue de la transmission de la demande d'enregistrement'; eAmbrosia carries no Montpeyroux application yet. Provisional SIQO id (scripts/_lib/fr/siqo_supplements.json) — re-key when INAO's export publishes the real id_appellation, and look the file number up once the Commission publishes the application."
   }
 }

@@ -1,0 +1,89 @@
+{
+  "_source": "Former municipios (or villages of a former municipio) that an ES pliego still names as if they were municipios, mapped to the current municipio that absorbed them — `current` and `ine` as in the GISCO LAU 2024 layer (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip, GISCO_ID ES_<ine>). Every entry cites the public page (ca.wikipedia.org, CC BY-SA 4.0) and quotes verbatim the sentence stating the merger and its target; `aliases` are the pliego's other spellings of the same place. Consulted by ESPolygonIndex only after exact and fallback name matching have given up, and only inside the provinces the list's exact matches established. v1 (2026-09-24): the Costers del Segre 'Unidad geográfica menor Pallars' list, whose text itself names each holder ('las pedanías de Tremp denominadas …', 'Del término de Castell de Mur, los agregados de …', 'Del término de Gavet de la Conca …', 'Del término de Isona i Conca Dellà …').",
+  "mergers": {
+    "Palau de Noguera": {
+      "current": "Tremp",
+      "ine": "25234",
+      "year": 1972,
+      "source_url": "https://ca.wikipedia.org/wiki/Palau_de_Noguera",
+      "quote": "La vila de Palau de Noguera, antigament Vilanova de Pallars, fou cap d'un municipi independent des de la promulgació de la Constitució de Cadis (1812) fins al 1972. Des d'aquell any pertany al terme municipal de Tremp, sempre dins de la comarca del Pallars Jussà."
+    },
+    "Puigcercós": {
+      "current": "Tremp",
+      "ine": "25234",
+      "year": 1972,
+      "source_url": "https://ca.wikipedia.org/wiki/Puigcerc%C3%B3s_(Tremp)",
+      "quote": "Puigcercós és un nucli de població actualment del municipi de Tremp, al Pallars Jussà",
+      "note": "A municipio of its own until 1842 ('en el moment de fusionar-se amb Palau de Noguera. A partir d'aquell any, en haver-se creat el municipi de Palau de Noguera'); it reached Tremp with Palau de Noguera in 1972 (see that entry)."
+    },
+    "Suterranya": {
+      "current": "Tremp",
+      "ine": "25234",
+      "year": 1973,
+      "source_url": "https://ca.wikipedia.org/wiki/Suterranya",
+      "quote": "El poble de Suterranya fou cap del municipi del mateix nom, del Pallars Jussà annexat a Tremp l'any 1973."
+    },
+    "Vilamitjana": {
+      "current": "Tremp",
+      "ine": "25234",
+      "year": 1972,
+      "source_url": "https://ca.wikipedia.org/wiki/Vilamitjana",
+      "quote": "Vilamitjana, o Vilamitjana de la Conca, és una vila constituïda en entitat municipal descentralitzada […] pertanyent actualment al terme municipal de Tremp […] Fou cap d'un municipi independent fins al 1972."
+    },
+    "Guàrdia de Tremp": {
+      "current": "Castell de Mur",
+      "ine": "25904",
+      "year": 1972,
+      "aliases": ["Guàrdia de Noguera"],
+      "source_url": "https://ca.wikipedia.org/wiki/Gu%C3%A0rdia_de_Tremp",
+      "quote": "Guàrdia de Noguera, o Guàrdia de Tremp, és la vila que fa de cap del municipi de Castell de Mur, del Pallars Jussà. […] Antigament aquesta vila ja era cap de l'antic terme de Guàrdia de Tremp, un dels dos que, juntament amb Mur formaren el 1972 el nou terme de Castell de Mur."
+    },
+    "Sant Martí de Barcedana": {
+      "current": "Gavet de la Conca",
+      "ine": "25098",
+      "year": 1970,
+      "source_url": "https://ca.wikipedia.org/wiki/Sant_Mart%C3%AD_de_Barcedana",
+      "quote": "Sant Martí de Barcedana és un poble de l'antic terme d'Aransís, actualment inclòs en el terme municipal de Gavet de la Conca.",
+      "note": "Aransís → Gavet de la Conca per https://ca.wikipedia.org/wiki/Gavet_de_la_Conca: 'Es formà el 1970 per l'agrupació de tres antics municipis independents: Aransís, Sant Salvador de Toló i Sant Serni.'"
+    },
+    "Sant Miquel de la Vall": {
+      "current": "Gavet de la Conca",
+      "ine": "25098",
+      "year": 1970,
+      "source_url": "https://ca.wikipedia.org/wiki/Sant_Miquel_de_la_Vall",
+      "quote": "Sant Miquel de la Vall, de vegades anomenat Sant Miquel de la Vall Jussà, pel que s'explica a l'apartat d'història, és un poble de l'antic terme d'Aransís, actualment inclòs en el terme municipal de Gavet de la Conca.",
+      "note": "Aransís → Gavet de la Conca per https://ca.wikipedia.org/wiki/Gavet_de_la_Conca: 'Es formà el 1970 per l'agrupació de tres antics municipis independents: Aransís, Sant Salvador de Toló i Sant Serni.'"
+    },
+    "Figuerola d'Orcau": {
+      "current": "Isona i Conca Dellà",
+      "ine": "25115",
+      "year": 1970,
+      "source_url": "https://ca.wikipedia.org/wiki/Figuerola_d%27Orcau",
+      "quote": "Figuerola d'Orcau és una vila que tingué ajuntament propi fins al 1970, quan s'ajuntà a Isona […] al terme municipal d'Isona i Conca Dellà"
+    },
+    "Orcau": {
+      "current": "Isona i Conca Dellà",
+      "ine": "25115",
+      "year": 1970,
+      "aliases": ["Orcau-Basturs"],
+      "source_url": "https://ca.wikipedia.org/wiki/Orcau",
+      "quote": "El poble d'Orcau era el cap de l'antic municipi d'Orcau, de la comarca del Pallars Jussà, un dels cinc termes ajuntats el 1970 al d'Isona per tal de formar el nou terme municipal d'Isona i Conca Dellà",
+      "note": "The pliego writes 'Orcau-Basturs'; Basturs is a village of the former Orcau municipio (see the Basturs entry)."
+    },
+    "Basturs": {
+      "current": "Isona i Conca Dellà",
+      "ine": "25115",
+      "year": 1970,
+      "source_url": "https://ca.wikipedia.org/wiki/Basturs",
+      "quote": "Basturs és un poble i territori de l'antic terme d'Orcau, actualment d'Isona i Conca Dellà, al Pallars Jussà.",
+      "note": "Orcau → Isona i Conca Dellà in 1970 (see the Orcau entry)."
+    },
+    "Sant Romà d'Abella": {
+      "current": "Isona i Conca Dellà",
+      "ine": "25115",
+      "year": 1970,
+      "source_url": "https://ca.wikipedia.org/wiki/Sant_Rom%C3%A0_d%27Abella",
+      "quote": "Forma part del municipi d'Isona i Conca Dellà. […] En el passat tingué municipi propi fins al 1970, any en què s'integrà a Isona i Conca Dellà, juntament amb cinc antics municipis més: Benavent de Tremp, Conques, Figuerola d'Orcau, Isona i Orcau."
+    }
+  }
+}

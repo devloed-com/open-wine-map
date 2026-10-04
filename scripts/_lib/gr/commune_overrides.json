@@ -1,0 +1,488 @@
+{
+  "_README": [
+    "Per-record pins for the Greek area-units resolver (scripts/_lib/gr/geometry.py, units_union):",
+    "a name the spec writes that GISCO LAU 2024 does not carry as such — a spelling or",
+    "inflection variant (Κομήτου / Κομίτου), a renamed village (Μιράκα → Αρχαία Πίσα), or a",
+    "former δήμος / κοινότητα / δημοτική ενότητα whose seat has another name (Δήμος Νέστορος,",
+    "seat Χώρα), which no community row names.",
+    "Keys: record slug → {name as written in the spec → {gisco, reason, source[, quote]}}.",
+    "`gisco` is a community id (EL_ + 8 digits) or a unit / municipality prefix (EL_ + 6 or",
+    "4 digits) whose every row is drawn. A pin is used only for that record and only when the",
+    "text names the unit; it never widens a text that does not.",
+    "Every pin must cite a public source: the el.wikipedia article of the former unit (seat +",
+    "constituent communities, matched one-to-one against the GISCO rows of the prefix) or the",
+    "GISCO row itself (name, NUTS-3 and municipality prefix checked against the spec text).",
+    "Verified 2026-09-24 by two independent reviews against the LAU table.",
+    "`eparchies`: former επαρχίες (abolished 2006, a tier GISCO never carried) that a spec names",
+    "as its area (\"τέως επαρχίας Θηβών\"), shared by every record → {gisco: [the 9-character",
+    "prefixes of its 1997-2010 δήμοι / κοινότητες], reason, source, quote}. A record pin keyed",
+    "\"επαρχία <name>\" outranks the table; an empty one marks a source defect (the text pastes",
+    "another wine's delimitation) and draws nothing."
+  ],
+  "records": {
+    "meteora": {
+      "Παληοκάστρου": {
+        "gisco": "EL_260106",
+        "reason": "Former unit whose seat is Παλαιόπυργος; the article's communities are the 7 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος Τρικκαίων",
+        "quote": "\"Η Δημοτική Ενότητα (πρώην Δήμος) Παληοκάστρου κατακαλαμβάνει έκταση 198 τ.χλμ. και έχει συνολικό πληθυσμό 2.732 κατοίκους. Ο πρώην Δήμος λειτούργησε από το 1999 έως το 2010 με έδρα τον Παλαιόπυργο\" — followed by: \"Τοπική Κοινότητα Παλαιοπύργου [ 923 ], ο Παλαιόπυργος [ 904 ], η Κοκκόνα [ 19 ]\"; \"Το"
+      },
+      "Παραληθαίων": {
+        "gisco": "EL_260107",
+        "reason": "Former unit whose seat is Ρίζωμα; the article's communities are the 5 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Παραληθαίων",
+        "quote": "Η Δημοτική Ενότητα (πρώην Δήμος) Παραληθαίων καταλαμβάνει έκταση 98 τ.χλμ. και έχει συνολικό πληθυσμό 2.660 κατοίκους. Ο πρώην δήμος λειτούργησε από το 1999 έως το 2010 με έδρα το Ρίζωμα. Περιλαμβάνει τις παρακάτω Τοπικές Κοινότητες και οικισμούς: Τοπική Κοινότητα Ριζώματος -- το Ρίζωμα [ 917 ] Τοπι"
+      },
+      "Τυμφαίων": {
+        "gisco": "EL_260207",
+        "reason": "Former unit whose seat is Κονισκός; the article's communities are the 9 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Τυμφαίων",
+        "quote": "Ο Δήμος Τυμφαίων υπήρξε δήμος της Ελλάδας στο νομό Τρικάλων. Λειτούργησε σύμφωνα με το Σχέδιο Καποδίστριας από το 1998 έως το 2010 με έδρα τον Κονισκό."
+      },
+      "Χασίων": {
+        "gisco": "EL_260208",
+        "reason": "Former unit whose seat is Χάνι; the article's communities are the 9 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Χασίων_Τρικάλων",
+        "quote": "Συστάθηκε το 1994 με τη συνένωση των πρώην κοινοτήτων Ασπροκκλησιάς, Αγιοφύλλου, Αχλαδέας, Γάβρου και Σκεπαρίου. Έδρα του δήμου ορίστηκε η θέση Χάνι της πρώην κοινότητας Αγιοφύλλου. Το 1999, σύμφωνα με το Σχέδιο «Καποδίστριας», στο Δήμο Χασίων προστέθηκαν οι πρώην κοινότητες Αγναντιάς, Κακοπλευρίου "
+      }
+    },
+    "kissamos": {
+      "Ινναχωρίου": {
+        "gisco": "EL_740502",
+        "reason": "Former unit whose seat is Έλος; the article's communities are the 8 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Ινναχωρίου",
+        "quote": "Ο Δήμος Ιναχωρίου ήταν δήμος του νομού Χανίων που συστάθηκε με το πρόγραμμα Καποδίστριας από τη συνένωση παλαιότερων κοινοτήτων της περιοχής, που αποτέλεσαν στη συνέχεια τα δημοτικά διαμερίσματα του δήμου. Λειτούργησε την περίοδο 1999 -2010 οπότε και καταργήθηκε με την εφαρμογή του προγράμματος Καλλ"
+      },
+      "Μυθήμνης": {
+        "gisco": "EL_740503",
+        "reason": "Former unit whose seat is Δραπανιάς; the article's communities are the 12 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος Μυθήμνης",
+        "quote": "Λειτούργησε την περίοδο 1999 -2010 οπότε και καταργήθηκε με την εφαρμογή του προγράμματος Καλλικράτης και εντάχθηκε στον νέο δήμο Κισσάμου. Βρισκόταν στα βόρεια και δυτικά του νομού Χανίων και είχε σαν έδρα το χωριό Δραπανιάς. [...] Ο δήμος περιλάμβανε 12 δημοτικά διαμερίσματα: Δ.δ. Δραπανιά, Δ.δ. Β"
+      }
+    },
+    "trifilia": {
+      "Νέστορος": {
+        "gisco": "EL_440504",
+        "reason": "Former unit whose seat is Χώρα; the article's communities are the 8 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Νέστορος",
+        "quote": "Έδρα του ήταν η Χώρα. ... Ο δήμος περιλάμβανε τα παρακάτω δημοτικά διαμερίσματα και οικισμούς: Δ.δ. Χώρας, Δ.δ. Αμπελοφύτου, Δ.δ. Κορυφασίου, Δ.δ. Μεταξάδας, Δ.δ. Μυρσινοχωρίου, Δ.δ. Παλαιού Λουτρού, Δ.δ. Ρωμανού, Δ.δ. Φλεσιάδος"
+      },
+      "Είρας": {
+        "gisco": "EL_440404",
+        "reason": "Former unit whose seat is Νέδα; the article's communities are the 8 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Είρας",
+        "quote": "Ο Δήμος Είρας ήταν δήμος του Νομού Μεσσηνίας που συστάθηκε με το Πρόγραμμα Καποδίστριας από τη συνένωση παλαιότερων κοινοτήτων της περιοχής, που αποτέλεσαν στη συνέχεια τα δημοτικά διαμερίσματα του δήμου. Λειτούργησε την περίοδο 1999 -2010 οπότε και καταργήθηκε με την εφαρμογή του Προγράμματος Καλλι"
+      },
+      "Τριπύλας": {
+        "gisco": "EL_440605",
+        "reason": "The spec names the Kapodistrian κοινότητα Τριπύλας (1997–2010) beside the δήμοι of the same period; the κοινότητα is today's municipal unit EL_440605 (7 communities, seat Ραπτόπουλο), of which Τριπύλα is community 07.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "pylia": {
+      "Αίπειας": {
+        "gisco": "EL_440302",
+        "reason": "Former unit whose seat is Λογγά; the article's communities are the 5 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/wiki/Δήμος_Αιπείας",
+        "quote": "Ο Δήμος Αιπείας ήταν Δήμος του Νομού Μεσσηνίας που συστάθηκε το 1997 με το Σχέδιο «Καποδίστριας», από τη συνένωση παλαιότερων Κοινοτήτων της περιοχής, που αποτέλεσαν στη συνέχεια τα Δημοτικά Διαμερίσματα του Δήμου. Λειτούργησε την περίοδο 1999 - 2010, οπότε και καταργήθηκε με την εφαρμογή του Προγρά"
+      },
+      "Βουφράδων": {
+        "gisco": "EL_440305",
+        "reason": "Former unit whose seat is Χατζής; the article's communities are the 6 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&formatversion=2&titles=Δήμος Βουφράδων",
+        "quote": "Λειτούργησε την περίοδο 1999 -2010 οπότε και καταργήθηκε με την εφαρμογή του προγράμματος Καλλικράτης και εντάχθηκε στον νέο δήμο Μεσσήνης. ... Ο δήμος αποτελούταν από 6 δημοτικά διαμερίσματα και είχε συνολικό πληθυσμό 1.802 κατοίκους σύμφωνα με την απογραφή του 2001. Έδρα του δήμου ήταν ο Χατζής. ="
+      },
+      "Χιλιοχωρίων": {
+        "gisco": "EL_440506",
+        "reason": "Former unit whose seat is Χανδρινός; the article's communities are the 5 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/wiki/Δήμος_Χιλιοχωρίων",
+        "quote": "Λειτούργησε την περίοδο 1998 -2010 οπότε και καταργήθηκε με την εφαρμογή του προγράμματος Καλλικράτης και εντάχθηκε στον νέο δήμο Πύλου-Νέστορος. ... Ο δήμος αποτελούταν από 5 δημοτικά διαμερίσματα και είχε συνολικό πληθυσμό 2.916 κατοίκους σύμφωνα με την απογραφή του 2001. Έδρα του δήμου ήταν ο Χαν"
+      }
+    },
+    "letrini": {
+      "Ιαρδάνου": {
+        "gisco": "EL_390103",
+        "reason": "Former unit whose seat is Βούναργο; the article's communities are the 9 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/wiki/Δήμος_Ιαρδάνου",
+        "quote": "Ο Δήμος Ιαρδάνου ήταν δήμος του νομού Ηλείας που συστάθηκε με το πρόγραμμα Καποδίστριας ... Λειτούργησε την περίοδο 1999 -2010 οπότε και καταργήθηκε με την εφαρμογή του προγράμματος Καλλικράτης και εντάχθηκε στον νέο δήμο Πύργου. ... Έδρα του ήταν το Βούναργο, στο οποίο στεγάζεται και το δημαρχείο. "
+      }
+    },
+    "karystos": {
+      "Καφηρέως": {
+        "gisco": "EL_290502",
+        "reason": "Former unit whose seat is Αμυγδαλιά; the article's communities are the 2 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Κοινότητα_Καφηρέως",
+        "quote": "Η κοινότητα αποτελούταν από 2 κοινοτικά διαμερίσματα, καταλάμβανε έκταση 77,8 τ.χλμ. και είχε συνολικό πληθυσμό 1.003 κατοίκους. Έδρα της κοινότητας ήταν η Αμυγδαλιά. [...] Η κοινότητα περιλάμβανε τα παρακάτω κοινοτικά διαμερίσματα και οικισμούς: Κ.δ. Αμυγδαλέας [552] [...] Κ.δ. Κομίτου [451]"
+      },
+      "Αμυγδαλιάς": {
+        "gisco": "EL_29050201",
+        "reason": "Spec spelling Αμυγδαλιάς; GISCO Δημοτική Κοινότητα Αμυγδαλέας, the seat of the former κοινότητα Καφηρέως in southern Euboea. The only exact 'Αμυγδαλιάς' row is in Φωκίδα (EL_31020103), across the gulf.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      },
+      "Κομήτου": {
+        "gisco": "EL_29050202",
+        "reason": "Spec spelling Κομήτου; GISCO Δημοτική Κοινότητα Κομίτου, the other community of the former κοινότητα Καφηρέως.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "lilantio-pedio": {
+      "Ληλαντίου": {
+        "gisco": "EL_290104",
+        "reason": "Former unit whose seat is Βασιλικό; the article's communities are the 6 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Ληλαντίων",
+        "quote": "Ο δήμος Ληλαντίων ήταν δήμος του νομού Ευβοίας που υπήρχε μέχρι το 2010. [...] Το 2011 συγχωνεύτηκε στο πλαίσιο του σχεδίου Καλλικράτης στο νέο Δήμο Χαλκιδέων. [...] Ο δήμος αποτελείτο από 6 δημοτικά διαμερίσματα, καταλάμβανε έκταση 58,6 τ.χλμ. και είχε συνολικό πληθυσμό 15.586 κατοίκους. Έδρα του ή"
+      },
+      "Βασιλικών": {
+        "gisco": "EL_29010401",
+        "reason": "Spec 'Δ.Δ. Βασιλικών' of the former Δήμος Ληλαντίου; GISCO Δημοτική Κοινότητα Βασιλικού, seat of unit EL_290104 beside the text's Αφρατίου, Μύτικα and Φύλλων. The exact 'Βασιλικών' row (EL_29040305) is in Ιστιαία-Αιδηψός, northern Euboea.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "thiva": {
+      "Θεσπιέων": {
+        "gisco": "EL_280202",
+        "reason": "Former unit whose seat is Θεσπιές; the article's communities are the 5 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Θεσπιέων",
+        "quote": "Ο Δήμος Θεσπιών ήταν δήμος του νομού Βοιωτίας που συστάθηκε με το πρόγραμμα Καποδίστριας από τη συνένωση παλαιότερων κοινοτήτων της περιοχής, που αποτέλεσαν στη συνέχεια τα δημοτικά διαμερίσματα του δήμου. Λειτούργησε την περίοδο 1999 -2010 οπότε και καταργήθηκε με την εφαρμογή του προγράμματος Καλλ"
+      }
+    },
+    "playies-egialias": {
+      "Αιγιαλείας": {
+        "gisco": "EL_3702",
+        "reason": "Former unit whose seat is Αίγιο; the article's communities are the 73 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&formatversion=2&titles=Δήμος_Αιγιαλείας",
+        "quote": "Ο Δήμος Αιγιαλείας είναι δήμος της Περιφέρειας Δυτικής Ελλάδας που συστάθηκε με το Πρόγραμμα Καλλικράτης από την συνένωση των προϋπαρχόντων δήμων Αιγείρας, Αιγίου, Ακράτας, Διακοπτού, Ερινεού και Συμπολιτείας. ... Έδρα του δήμου είναι το Αίγιο."
+      },
+      "Ρογών": {
+        "gisco": "EL_37050127",
+        "reason": "Spec spelling Ρογών; GISCO Δημοτική Κοινότητα Ρωγών inside the Καλαβρύτων unit EL_370501 the text names.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "pisatis": {
+      "Μιράκας": {
+        "gisco": "EL_39040102",
+        "reason": "Μιράκα was renamed Αρχαία Πίσα (ΦΕΚ 145Α/8.7.1997); GISCO Δημοτική Κοινότητα Αρχαίας Πίσας in the Αρχαίας Ολυμπίας unit.",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Αρχαία_Πίσα_Ηλείας",
+        "quote": "Η Αρχαία Πίσα ή Μιράκα είναι πεδινό χωριό της Ηλείας στην Περιφερειακή Ενότητα Ηλείας σε υψόμετρο 95 μέτρα. [...] Το 1912 με το ΦΕΚ 256Α - 28/08/1912 ορίστηκε έδρα της ομώνυμης νεοϊδρυθείσας κοινότητας και το 1940 το όνομα διορθώθηκε σε Μιράκα ενώ το 1997 με το ΦΕΚ 145Α - 08/07/1997 μετονομάστηκε σε"
+      },
+      "Χειμαδίου": {
+        "gisco": "EL_39010415",
+        "reason": "Spec Χειμαδίου; GISCO Δημοτική Κοινότητα Χειμαδιού in the Ωλένης unit EL_390104 the text names.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      },
+      "Λαντζοϊου": {
+        "gisco": "EL_39010409",
+        "reason": "Spec Λαντζοϊου; GISCO Δημοτική Κοινότητα Λατζοΐου in the Ωλένης unit EL_390104.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      },
+      "Αγ. Άννης": {
+        "gisco": "EL_39010402",
+        "reason": "Spec 'Αγ. Άννης'; GISCO Δημοτική Κοινότητα Αγίας Άννης in the Ωλένης unit EL_390104 (the other row is in Euboea).",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      },
+      "Ανδρωνίου": {
+        "gisco": "EL_39040301",
+        "reason": "Spec Ανδρωνίου του Δήμου Λασιώνος; GISCO Δημοτική Κοινότητα Αντρωνίου, seat of unit EL_390403.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "tegea": {
+      "Άνω Δολιανών": {
+        "gisco": "EL_40020007",
+        "reason": "Spec Άνω Δολιανών; GISCO carries one Δολιανών in Arcadia (Βόρεια Κυνουρία, EL_4002); the other row is in Ιωάννινα.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      },
+      "Μεσσοράχης": {
+        "gisco": "EL_40020015",
+        "reason": "Spec Μεσσοράχης; GISCO Δημοτική Κοινότητα Μεσορράχης in Βόρεια Κυνουρία beside Δολιανά and Καστρί (the other row is in Σέρρες).",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      },
+      "Κερασίτσας": {
+        "gisco": "EL_40010708",
+        "reason": "Spec Κερασίτσας; GISCO Δημοτική Κοινότητα Κερασίτσης in the Tegea unit EL_400107.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      },
+      "Βλαχοκερασιάς": {
+        "gisco": "EL_40010601",
+        "reason": "Spec Βλαχοκερασιάς; GISCO Δημοτική Κοινότητα Βλαχοκερασέας, seat of unit EL_400106 whose other communities the text lists.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      },
+      "Δόριζας": {
+        "gisco": "EL_40010208",
+        "reason": "Spec Δόριζας; GISCO Δημοτική Κοινότητα Δόριζα in the Βαλτετσίου unit EL_400102 beside the text's Βαλτετσίου and Μάναρη.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      },
+      "Καστρίου": {
+        "gisco": "EL_40020011",
+        "reason": "Five Καστρίου rows nationwide; the Arcadian one (Βόρεια Κυνουρία, EL_4002) lies beside the text's Δολιανά and Μεσορράχη.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "opountia-lokridas": {
+      "Γολεμίου": {
+        "gisco": "EL_27050203",
+        "reason": "Spec Γολεμίου της Δ.Ε. Δαφνουσίων; GISCO Δημοτική Κοινότητα Γουλεμίου in unit EL_270502 (Δαφνουσίων, seat Λιβανάτες).",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "playies-knimidas": {
+      "Γολεμίου": {
+        "gisco": "EL_27050203",
+        "reason": "Spec Γολεμίου της Δ.Ε. Δαφνουσίων; GISCO Δημοτική Κοινότητα Γουλεμίου in unit EL_270502.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      },
+      "Αγνάντη": {
+        "gisco": "EL_27040202",
+        "reason": "Spec 'περιοχή Αγνάντη της Δ.Ε. Αγίου Κωνσταντίνου'; GISCO Δημοτική Κοινότητα Αγνάντης in unit EL_270402 beside Αγίου Κωνσταντίνου.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "agora": {
+      "Πηγαδιών Μεγάλου Αλεξάνδρου": {
+        "gisco": "EL_02020206",
+        "reason": "Spec 'οικισμών Αγοράς και Πηγαδιών Μεγάλου Αλεξάνδρου της δημοτικής κοινότητας Δοξάτου'; GISCO Δημοτική Κοινότητα Πηγαδίων in the Δοξάτου unit EL_020202 (Δράμα); the three other Πηγαδίων rows are in Ξάνθη, Ιωάννινα and Μεσσηνία.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "ritsona": {
+      "Αυλίδας": {
+        "gisco": "EL_290103",
+        "reason": "Former unit whose seat is Βαθύ Αυλίδας; the article's communities are the 4 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Αυλίδας",
+        "quote": "Καταργήθηκε το 2011 με το σχέδιο Καλλικράτης, συγχωνευόμενος στο νέο Δήμο Χαλκιδέων. Ο δήμος αποτελείτο από 4 δημοτικά διαμερίσματα, καταλάμβανε έκταση 122,2 τ.χλμ. και είχε συνολικό πληθυσμό 9306  κατοίκους. Έδρα του ήταν το Βαθύ Αυλίδας. Ο Δήμος αποτελείτο από τα παρακάτω δημοτικά διαμερίσματα και"
+      }
+    },
+    "anavyssos": {
+      "Σαρωνικού": {
+        "gisco": "EL_4911",
+        "reason": "Former unit whose seat is Καλύβια Θορικού; the article's communities are the 5 rows of this prefix (community 01 = the seat). The spec keeps only the southern part of the municipality ('στα νότια του Δήμου Σαρωνικού'); the whole municipality is the finest public polygon that holds it.",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Σαρωνικού",
+        "quote": "Ο δήμος σχηματίστηκε με τη συνένωση των δήμων Καλυβίων Θορικού και Αναβύσσου και των κοινοτήτων Κουβαρά, Παλαιάς Φώκαιας και Σαρωνίδας. Ως έδρα του δήμου ορίστηκαν τα Καλύβια Θορικού."
+      },
+      "Λαυρεωτικής": {
+        "gisco": "EL_490503",
+        "reason": "The spec (PDF of 16.12.2011, naming the 2011 Δήμος Σαρωνικού) keeps 'μέρος της δυτικής πλευράς του Δήμου Λαυρεωτικής': of the 2011 municipality's three units only Κερατέας (EL_490503) borders Δήμος Σαρωνικού (31.6 km of shared boundary in GISCO LAU 2024); the Lavrio unit EL_490501 is its eastern end, 1.75 km from the zone.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "metsovo": {
+      "Ανατολικού Ζαγορίου": {
+        "gisco": "EL_180402",
+        "reason": "Former unit whose seat is Μηλιωτάδες; the article's communities are the 15 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Ανατολικού_Ζαγορίου",
+        "quote": "Ο Δήμος Ανατολικού Ζαγορίου ήταν δήμος του νομού Ιωαννίνων που συστάθηκε με το πρόγραμμα Καποδίστριας ... Λειτούργησε την περίοδο 1999 -2010 οπότε και καταργήθηκε με την εφαρμογή του προγράμματος Καλλικράτης και εντάχθηκε στον νέο δήμο Ζαγορίου. ... Έδρα του δήμου ήταν ο οικισμός Μηλιωτάδες. Ο δήμος"
+      }
+    },
+    "playies-enou": {
+      "Ελειού-Πρόννων": {
+        "gisco": "EL_350102",
+        "reason": "Former unit whose seat is Πάστρα; the article's communities are the 11 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Ελειού-Πρόννων",
+        "quote": "Ο Δήμος Ελειού-Πρόννων ήταν ένας από τους επτά δήμους και μία κοινότητα, στους οποίους διαιρούνταν διοικητικά η Κεφαλονιά την περίοδο που ίσχυσε το πρόγραμμα Καποδίστριας. ... Έδρα του δήμου ήταν η Πάστρα. ... Ο δήμος περιλάμβανε τα παρακάτω δημοτικά διαμερίσματα και οικισμούς:"
+      },
+      "Λειβαθούς": {
+        "gisco": "EL_350103",
+        "reason": "Former unit whose seat is Κεραμειές; the article's communities are the 11 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Λειβαθούς",
+        "quote": "Αποτελούνταν από 11 δημοτικά διαμερίσματα και  είχε (πραγματικό) πληθυσμό 4.663 κατοίκους. Έδρα του ήταν οι Κεραμειές. [...] Στο  δήμο περιλαμβάνονταν 11 Δημοτικά διαμερίσματα: Δ.δ. Κεραμειών -- οι Κεραμειές [ 379 ] / Δ.δ. Βλαχάτων Εικοσιμίας [ 728 ] / Δ.δ. Καραβάδου -- ο Καραβάδος [ 244 ] / Δ.δ. Λα"
+      },
+      "Πυλαρέων": {
+        "gisco": "EL_350303",
+        "reason": "Former unit whose seat is Αγία Ευφημία; the article's communities are the 3 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Πυλαρέων",
+        "quote": "Ο δήμος Πυλαρέων αποτελούνταν από 3 δημοτικά διαμερίσματα, καταλάμβανε έκταση 81,1 τ.χλμ. και είχε συνολικό πληθυσμό 1.565 κατοίκους. Έδρα του δήμου ήταν η Αγία Ευφημία. ... Ο δήμος περιλάμβανε τα παρακάτω δημοτικά διαμερίσματα και οικισμούς: Δ.δ. Αγίας Ευφημίας [ 635 ] ... Δ.δ. Διβαράτων [ 414 ] .."
+      },
+      "Αγροστολίου": {
+        "gisco": "EL_350101",
+        "reason": "Former unit whose seat is Αργοστόλι; the article's communities are the 11 rows of this prefix (community 01 = the seat). The spec's spelling swaps two letters of Αργοστολίου; no GISCO row contains Αγροστολ.",
+        "source": "https://el.wikipedia.org/w/api.php?action=parse&page=Δήμος_Αργοστολίου&prop=wikitext&format=json&formatversion=2",
+        "quote": "\"Επανασυστάθηκε την 1η Σεπτεμβρίου του 2019, από τη διάσπαση του καλλικρατικού Δήμου Κεφαλονιάς, και πια αποτελείται από τις δημοτικές ενότητες Αργοστολίου, Ελειού-Πρόννων, Λειβαθούς και Ομαλών.\" ... \"Βρίσκεται στα δυτικά του νησιού και περιλαμβάνει την πρωτεύουσα του νομού Κεφαλονιάς, Αργοστόλι. Ο "
+      },
+      "Μονοπολάτων Σκινέως": {
+        "gisco": [
+          "EL_35020009",
+          "EL_35020011"
+        ],
+        "reason": "The Παλική list reads 'Κουβαλάτων, Μονοπολάτων Σκινέως, Σουλλάρων' with a missing comma: two communities of Δ.Ε. Παλικής, Δημοτική Κοινότητα Μονοπολάτων and Δημοτική Κοινότητα Σκινέως (EL623).",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "retsina-mesogion-attikis": {
+      "Μαρκόπουλου": {
+        "gisco": "EL_49070000",
+        "reason": "The 1979 decree's Μαρκόπουλο of the Mesogeia retsina; GISCO Ψευδοδημοτική Κοινότητα Μαρκοπούλου Μεσογαίας (the other Attic Μαρκοπούλου is Ωρωπού, on the north coast; the bare-name row is on Kefalonia).",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      },
+      "Καλυβίων Θρακικού": {
+        "gisco": "EL_49110101",
+        "reason": "Spec spelling Θρακικού; GISCO Δημοτική Κοινότητα Καλυβίων Θορικού (Δήμος Σαρωνικού), the Mesogeia village between Κορωπί and Κερατέα the decree lists.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "paggeo": {
+      "Παγγαίου": {
+        "gisco": "EL_050304",
+        "reason": "Former unit whose seat is Νικήσιανη; the article's communities are the 3 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος Παγγαίου",
+        "quote": "=== Δημοτική Ενότητα Παγγαίου === Έδρα της ενότητας είναι η Νικήσιανη. Πληθυσμός 3.452 βάση απογραφής 2021. Κοινότητα Νικήσιανης -- η Νικήσιανη (1.701) Κοινότητα Γεωργιανής -- η Γεωργιανή (637) Κοινότητα Παλαιοχωρίου -- το Παλαιοχώρι (1.114)"
+      },
+      "Πιερέων": {
+        "gisco": "EL_050305",
+        "reason": "Former unit whose seat is Μουσθένη; the article's communities are the 8 rows of this prefix (community 01 = the seat).",
+        "source": "https://el.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles=Δήμος_Πιερέων",
+        "quote": "Ο Δήμος Πιερέων ήταν ένας από τους 11 Δήμους του νομού Καβάλας, με 5.002 κατοίκους σύμφωνα με την απογραφή πληθυσμού του 2001. Έδρα του δήμου ήταν η Μουσθένη. | Δ.δ. Μουσθένης -- η Μουσθένη [ 1.075 ] / Δ.δ. Αυλής -- η Αυλή [ 556 ] / Δ.δ. Δωματίων -- τα Δωμάτια [ 590 ] / Δ.δ. Μελισσοκομείου [ 512 ] /"
+      }
+    },
+    "markopoulo": {
+      "Μαρκοπούλου Αττικής": {
+        "gisco": "EL_4907",
+        "reason": "Δήμος Μαρκοπούλου Μεσογαίας — GISCO Ψευδοδημοτική Κοινότητα Μαρκοπούλου Μεσογαίας (EL_49070000, its only row), the one Markopoulo municipality in Attica; Μαρκοπούλου Ωρωπού (EL_49130701) is a community of Δήμος Ωρωπού, and the bare-name row is on Kefalonia.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "retsina-markopoulou-attikis": {
+      "Μαρκοπούλου": {
+        "gisco": "EL_4907",
+        "reason": "Δήμος Μαρκοπούλου Μεσογαίας — GISCO Ψευδοδημοτική Κοινότητα Μαρκοπούλου Μεσογαίας (EL_49070000, its only row), the one Markopoulo municipality in Attica; Μαρκοπούλου Ωρωπού (EL_49130701) is a community of Δήμος Ωρωπού, and the bare-name row is on Kefalonia.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "elassona": {
+      "Ελασσόνας": {
+        "gisco": [
+          "EL_22030101",
+          "EL_22030108",
+          "EL_22030901",
+          "EL_22030801",
+          "EL_22030803",
+          "EL_22030806",
+          "EL_22030606",
+          "EL_22030604",
+          "EL_22030607"
+        ],
+        "reason": "The spec's own detail section reads 'στα διοικητικά όρια του Δήμου Ελασσόνας … και συγκεκριμένα περιλαμβάνει τα παρακάτω δημοτικά διαμερίσματα: Ελασσόνας, Στεφανοβούνου, Τσαριτσάνης, Σαρανταπόρου, Γερανίων, Μηλέας, Πυθίου, Λόφου και Φλάμπουρου' — nine communities of four pre-2011 units of today's Δήμος Ελασσόνας (EL_2203), all in Λάρισα (EL612); the 24.12.2010 decree's 'Δήμος Ελασσόνας' is therefore neither the Kapodistrian unit EL_220301 alone nor the whole Kallikratis municipality.",
+        "source": "raw/gr/national-specs-extracted/elassona.json (ΥΠΑΑΤ τεχνικός φάκελος PGI-GR-A1101, section on the delimited area) + GISCO LAU 2024 rows; review 2026-09-24"
+      }
+    },
+    "klimenti": {
+      "Κλημέντι": {
+        "gisco": "EL_42060107",
+        "reason": "No Δήμος Κλημέντι ever existed; the spec's detail section says 'Η αμπελουργική ζώνη στο Δημοτικό Διαμέρισμα Κλημεντίου του Δήμου Σικυώνος εκτείνεται σε υψόμετρα από 700μ έως 1000μ' — the single community Δημοτική Κοινότητα Κλημεντίου (EL652 Κορινθία), not the Σικυών unit that carries it.",
+        "source": "raw/gr/national-specs-extracted/klimenti.json (ΥΠΑΑΤ τεχνικός φάκελος, section Γ) + GISCO LAU 2024; review 2026-09-24"
+      }
+    },
+    "lefkada": {
+      "Σφακιωτών": {
+        "gisco": "EL_360107",
+        "reason": "'Δημοτικά Διαμερίσματα Σφακιωτών (οικισμοί Λαζαράτων, Καβάλλων, Σπανοχωρίου, Πινακοχωρίου, Ασπρογερακάτων), Εξανθείας, Δρυμώνας του Δήμου Σφακιωτών': the former Δ.Δ. Σφακιωτών is today the five communities its bracket names (Λαζαράτων the seat, Καβάλου, Σπανοχωρίου, Πινακοχωρίου, Ασπρογερακάτων), which with Εξανθείας and Δρυμώνος are the seven rows of the Σφακιωτών unit.",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "parnassos": {
+      "Αγ. Μαρίνας": {
+        "gisco": "EL_27020102",
+        "reason": "'Δ.Δ. Τιθορέας, Κ. Τιθορέας και Αγ. Μαρίνας του Δήμου Τιθορέας': GISCO Δημοτική Κοινότητα Αγίας Μαρίνης Λοκρίδος, in the Τιθορέας unit EL_270201 beside the two Tithorea communities (EL644 Φθιώτιδα).",
+        "source": "GISCO LAU 2024 (raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), name + NUTS-3 + municipality prefix checked against the spec text; review 2026-09-24"
+      }
+    },
+    "krania": {
+      "Κρανέας": {
+        "gisco": "EL_22050403",
+        "reason": "Two Λάρισα communities carry the name; the spec's container, the former Δήμος Κάτω Ολύμπου (seat Πυργετός), is today's unit EL_220504, whose four rows — Πυργετού, Αιγάνης, Κρανέας, Ραψάνης — are the article's four Δ.δ.; the other row is Κρανέα Ελασσόνος (EL_22030201).",
+        "source": "https://el.wikipedia.org/wiki/Δήμος_Κάτω_Ολύμπου",
+        "quote": "Ο δήμος περιελάμβανε τα παρακάτω δημοτικά διαμερίσματα και οικισμούς: Δ.δ. Πυργετού … Δ.δ. Αιγάνης … Δ.δ. Κρανέας: η Κρανέα, η Κουλούρα, οι Μαθητικές Κατασκηνώσεις, η Παραλία Κουλούρας / Δ.δ. Ραψάνης …"
+      }
+    },
+    "retsina-koropiou": {
+      "επαρχία Καρυστίας": {
+        "gisco": [],
+        "reason": "Source defect: the ΥΠΑΑΤ spec of Ρετσίνα Κορωπίου (Attica, Mesogeia) pastes Ρετσίνα Καρύστου's delimitation — \"τέως επαρχίας Καρυστίας\" is southern Euboea. Drawing the eparchy would put the wine 60 km away; the record stays at the curated NUTS pin (EL30 Αττική) until the regulator corrects the text (PD 514/1979, ΦΕΚ 157/Α, defines the zone).",
+        "source": "http://wwww.minagric.gr/greek/data/pop-pge/ (ΥΠΑΑΤ τεχνικός φάκελος PGI-GR-A1585 Ρετσίνα Κορωπίου, section Οριοθετημένη περιοχή)"
+      }
+    }
+  },
+  "eparchies": {
+    "Θηβών": {
+      "gisco": [
+        "EL_280202",
+        "EL_280401",
+        "EL_280402",
+        "EL_280403",
+        "EL_280404",
+        "EL_280502",
+        "EL_280601",
+        "EL_280602",
+        "EL_280603",
+        "EL_280604",
+        "EL_280605"
+      ],
+      "reason": "The ten Kapodistrian δήμοι the article lists (Ακραιφνίας, Βαγίων, Δερβενοχωρίων, Θεσπιέων, Θηβαίων, Θίσβης, Οινοφύτων, Πλαταιών, Σχηματαρίου, Τανάγρας) as today's units, each prefix's rows matched to the δήμος article's Δ.δ.; EL_280603 Δηλεσίου (created 2014 from Οινοφύτων's Δήλεσι and Σχηματαρίου's Πλάκα) lies wholly inside. The complement, Επαρχία Λεβαδείας, holds the other ten units of Βοιωτία (Αλιάρτου EL_280201 and Ορχομενού EL_280501 included, although they now share a Kallikratis δήμος with Θεσπιέων / Ακραιφνίας). Verified by two independent reviews 2026-09-24.",
+      "source": "https://el.wikipedia.org/wiki/Επαρχία_Θηβών",
+      "quote": "Εκτεινόταν στα όρια των πρώην δήμων(επί καποδίστρια) Ακραιφνίας, Βαγίων, Δερβενοχωρίων, Θεσπιέων, Θηβαίων, Θίσβης, Οινοφύτων, Πλαταιών, Σχηματαρίου και Τανάγρας. […] Έδρα της ήταν η Θήβα"
+    },
+    "Μεγάρων": {
+      "gisco": [
+        "EL_500101",
+        "EL_500102",
+        "EL_500200",
+        "EL_500301",
+        "EL_500302",
+        "EL_500303",
+        "EL_500304",
+        "EL_500401",
+        "EL_500402"
+      ],
+      "reason": "Επαρχία Μεγαρίδος (the spec's 'τέως επαρχίας Μεγάρων'), seat Μέγαρα: the 1991 ΕΣΥΕ census composition cited by en.wikipedia (Megaris) — today's Δήμοι Μεγαρέων (units Μεγαρέων + Κινέτας, Νέας Περάμου), Ελευσίνας (Ελευσίνος, Μαγούλας), Ασπροπύργου and Μάνδρας-Ειδυλλίας (Μάνδρας, Βιλίων, Ερυθρών, Οινόης); Ασπρόπυργος moved from Επαρχία Αττικής to Μεγαρίδος on 07/04/1951 (ΕΕΤΑΑ, ΦΕΚ 183Α/1953); Δήμος Φυλής (EL_5005: Άνω Λιόσια, Ζεφύρι, Φυλή) stayed in Επαρχία Αττικής; Σαλαμίνα left for Επαρχία Πειραιά in 1964. Every prefix's rows checked against GISCO EL_50. Verified by two independent reviews 2026-09-24.",
+      "source": "https://el.wikipedia.org/wiki/Επαρχία_Μεγαρίδας",
+      "quote": "Η επαρχία Μεγαρίδας (ή επαρχία Μεγάρων) ήταν επαρχία του νομού Αττικής. Καταλάμβανε το δυτικό τμήμα του νομού. Έδρα της ήταν τα Μέγαρα. […] Η επαρχία περιλάμβανε αρχικά και τη Σαλαμίνα, η οποία το 1964 ενσωματώθηκε στην επαρχία Πειραιά."
+    },
+    "Χαλκίδας": {
+      "gisco": [
+        "EL_290101",
+        "EL_290102",
+        "EL_290103",
+        "EL_290104",
+        "EL_290105",
+        "EL_290201",
+        "EL_290202",
+        "EL_290301",
+        "EL_290302",
+        "EL_290701",
+        "EL_290702",
+        "EL_290703",
+        "EL_29060508"
+      ],
+      "reason": "Επαρχία Χαλκίδας (Κυρίως Ευβοίας), seat Χαλκίδα, central and northern Euboea plus, from 1974, the mainland δήμοι Ανθηδώνας and Αυλίδας taken from Επαρχία Θηβών: the twelve Kapodistrian δήμοι Χαλκιδέων, Ανθηδόνος, Αυλίδος, Ληλαντίων, Νέας Αρτάκης, Μεσσαπίων, Διρφύων, Ερέτριας, Αμαρυνθίων, Ελυμνίων, Κηρέως, Νηλέως (the 1997–2010 seat list, each unit's rows matched to GISCO) plus the one community Μετοχίου Διρφύων (EL_29060508), which the 1991 ΕΣΥΕ census files under Επαρχία Χαλκίδος (code 04313900, population 461 — the exact gap between the eparchy total 134,845 and the twelve δήμοι) and which Kallikratis attached to the Kymi unit. Ιστιαίας (EL_2904) and the Karystia units are excluded. Verified by two independent reviews 2026-09-24 (the second added the community).",
+      "source": "https://el.wikipedia.org/wiki/Επαρχία_Χαλκίδας",
+      "quote": "Η επαρχία Χαλκίδας (ή Κυρίως Εύβοιας) ήταν μία από τις τρεις επαρχίες του νομού Εύβοιας. Καταλάμβανε το κεντρικό και βόρειο τμήμα του νομού ενώ από το 1974 περιλάμβανε και ένα τμήμα της ηπειρωτικής Ελλάδας, απέναντι από την Χαλκίδα. Έδρα της επαρχίας ήταν η Χαλκίδα […] Το 1974 προστέθηκε στην επαρχία και το γειτονικό τμήμα της Στερεάς Ελλάδας που περιλαμβάνει τους δήμους Ανθηδώνας και Αυλίδας."
+    },
+    "Καρυστίας": {
+      "gisco": [
+        "EL_290501",
+        "EL_290502",
+        "EL_290503",
+        "EL_290504",
+        "EL_290601",
+        "EL_290602",
+        "EL_290603",
+        "EL_290604",
+        "EL_29060501",
+        "EL_29060502",
+        "EL_29060503",
+        "EL_29060504",
+        "EL_29060505",
+        "EL_29060506",
+        "EL_29060507",
+        "EL_29060509",
+        "EL_29060510",
+        "EL_29060511",
+        "EL_29060512",
+        "EL_290800"
+      ],
+      "reason": "Επαρχία Καρυστίας (Καρύστου και Σκύρου), seat Κύμη — southern Euboea and, from 1958 until the eparchies were abolished in 1997, the island of Σκύρος: the Kapodistrian δήμοι Καρύστου, Καφηρέως, Μαρμαρίου, Στυρέων, Ταμυνέων (Αλιβέρι), Αυλώνος, Δυστίων, Κονιστρών and Κύμης plus Δήμος Σκύρου, each unit's rows matched to GISCO; the 1991 ΕΣΥΕ census (Επαρχία Καρυστίας: 4 δήμοι + 65 κοινότητες, 50,436) files Κοινότητα Μετοχίου Διρφύων (EL_29060508, 04313900) under Επαρχία Χαλκίδος, so the Kymi unit is listed by community without it. Skyros is drawn because the spec delimits the eparchy, which held it (the geometry-outlier whitelist records the same). Verified by two independent reviews 2026-09-24 (the second removed the community).",
+      "source": "https://el.wikipedia.org/wiki/Επαρχία_Καρυστίας",
+      "quote": "Η επαρχία Καρυστίας (ή Καρύστου και Σκύρου ή Κεντρικής και Νότιας Εύβοιας) ήταν μία από τις τρεις επαρχίες του νομού Εύβοιας. Καταλάμβανε το νότιο τμήμα του νομού και το νησί της Σκύρου. Έδρα της επαρχίας ήταν η Κύμη. […] Το 1958 προστέθηκε στην επαρχία και η Σκύρος που μέχρι τότε ανήκε στην επαρχία Βορείων Σποράδων. Στη συνέχεια η επαρχία παρέμεινε αμετάβλητη μέχρι την κατάργησή της το 1997 με το σχέδιο Καποδίστριας."
+    }
+  }
+}

@@ -51,6 +51,12 @@ _CH_STOP_SURFACES = frozenset({
     "weisse", "weiss", "rote", "roten",  # German colour headers → obscure grapes
     "oeildeperdrix",  # Swiss rosé STYLE made from Pinot noir, not a variety → cot
     "dole",           # Valais red WINE (Pinot noir + Gamay blend), not a variety
+    "precoce",        # French adjective "précoce" (early-ripening) used of
+                      # a ripening class in the VS règlement; on its own it
+                      # bound to the Czech variety Jakubské, whose synonym
+                      # list carries a "précoce" form. A real Swiss variety
+                      # name always carries its head noun (Pinot noir
+                      # précoce), which matches before the bare adjective.
     # NE Art. 4 "appellations communales" villages that merged away and
     # so evade the swissBOUNDARIES3D commune guard: Colombier (→
     # Milvignes 2013; the surface fuzzy-bound to colombard — and if a

@@ -65,7 +65,6 @@ DE_PGI_MEMBER_PDOS: dict[str, tuple[str, ...]] = {
     "PGI-DE-A1303": ("PDO-DE-A1277",),   # Sächsischer Landwein → Sachsen
     "PGI-DE-A1305": ("PDO-DE-A1276",),   # Schwäbischer Landwein → Württemberg
     "PGI-DE-A1284": ("PDO-DE-A1276",),   # Landwein Neckar → Württemberg (Neckar-Teilgebiet)
-    "PGI-DE-A1307": ("PDO-DE-A1276",),   # Taubertäler Landwein → Württemberg (Tauberfranken-Teilgebiet)
     "PGI-DE-A1306": ("PDO-DE-A1268",),   # Starkenburger Landwein → Hessische Bergstraße
     # ── Multi-Anbaugebiet Landwein PGIs (river-basin unions) ──────────
     # Landwein Rhein covers the Rhine-side German Anbaugebiete (Mosel,
@@ -133,19 +132,25 @@ DE_EINZELLAGE_PARENT_PDO: dict[str, str] = {
 
 def _de_norm(s: str) -> str:
     """Normalise a German place name for GISCO-LAU matching: lowercase,
-    transliterate umlauts, drop the ", Stadt" suffix and parentheticals
-    (so "Werder (Havel), Stadt" and "Werder/ Havel" both collapse to
-    "werder havel")."""
+    transliterate umlauts, drop the ", Stadt" suffix — and its Bavarian
+    abbreviations ", St" / ", GKSt" / ", M" (Stadt / Große Kreisstadt /
+    Markt: "Röttingen, St", "Rothenburg ob der Tauber, GKSt") — and
+    parentheticals (so "Werder (Havel), Stadt" and "Werder/ Havel" both
+    collapse to "werder havel"). A name merely ending in "-stadt" keeps it."""
     s = s.lower().strip()
     s = s.replace("ß", "ss").replace("ä", "a").replace("ö", "o").replace("ü", "u")
-    s = re.sub(r",?\s*stadt\s*$", "", s)
+    s = re.sub(r",?\s*\b(stadt|st|gkst|m)\s*$", "", s)
     s = s.replace("/", " ").replace("(", " ").replace(")", " ")
     return re.sub(r"\s+", " ", s).strip()
 
 
-# Brandenburg Kreis name → 5-digit AGS (the GISCO_ID `DE_<AGS8>` prefix
-# positions 3:8). Used to union every GISCO commune of a whole Landkreis
-# / kreisfreie Stadt. Keys are pre-normalised via `_de_norm`.
+# Kreis name → 5-digit AGS (the GISCO_ID `DE_<AGS8>` prefix positions
+# 3:8) for every Kreis DE_LANDWEIN_AREA refers to: used to union every
+# GISCO commune of a whole Landkreis / kreisfreie Stadt, and to scope a
+# named Gemeinde to its Kreis (Boxberg and Adelshofen have homonyms in
+# other Länder). A Landkreis sharing its name with a kreisfreie Stadt
+# (Würzburg 09663, Ansbach 09561) is keyed "Landkreis X". Keys are
+# pre-normalised via `_de_norm`.
 _DE_KREIS_AGS: dict[str, str] = {
     _de_norm(name): code for name, code in {
         "Brandenburg an der Havel": "12051",
@@ -166,6 +171,9 @@ _DE_KREIS_AGS: dict[str, str] = {
         "Spree-Neiße": "12071",
         "Teltow-Fläming": "12072",
         "Uckermark": "12073",
+        "Main-Tauber-Kreis": "08128",
+        "Landkreis Würzburg": "09679",
+        "Landkreis Ansbach": "09571",
     }.items()
 }
 
@@ -201,6 +209,38 @@ DE_LANDWEIN_AREA: dict[str, dict] = {
         ],
         "source": "BLE Produktspezifikation Brandenburger Landwein, Abschnitt 3 (Abgrenzung des Gebietes)",
     },
+    # Taubertäler Landwein (PGI-DE-A1307): §4.1 lists 50 "Gemeinden und
+    # Gemarkungen" of the Main-Tauber-Kreis (the Kreis is named in §7.1.1)
+    # — the 13 Gemeinden are transcribed here; the other 37 are
+    # Gemarkungen (Beckstein, Markelsheim, Dertingen, …), sub-commune
+    # cadastral districts with no GISCO LAU polygon of their own. §4.2
+    # adds five Bavarian places: four Gemeinden and the Ortsteil
+    # Tauberzell, which the Gemeinde Adelshofen lists as its own (Landkreis
+    # Ansbach — the BLE Franken and Landwein Main specifications name
+    # "Landkreis Ansbach: Adelshofen, Rothenburg ob der Tauber").
+    "PGI-DE-A1307": {
+        "gemeinden": [
+            {"name": "Bad Mergentheim", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Boxberg", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Creglingen", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Großrinderfeld", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Grünsfeld", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Königheim", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Külsheim", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Lauda-Königshofen", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Niederstetten", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Tauberbischofsheim", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Weikersheim", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Werbach", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Wertheim", "kreis": "Main-Tauber-Kreis"},
+            {"name": "Bieberehren", "kreis": "Landkreis Würzburg"},
+            {"name": "Röttingen", "kreis": "Landkreis Würzburg"},
+            {"name": "Tauberrettersheim", "kreis": "Landkreis Würzburg"},
+            {"name": "Rothenburg ob der Tauber", "kreis": "Landkreis Ansbach", "spec": "Rothenburg o.d.T."},
+            {"name": "Adelshofen", "kreis": "Landkreis Ansbach", "spec": "Tauberzell (Ortsteil der Gemeinde Adelshofen)"},
+        ],
+        "source": "BLE Produktspezifikation Taubertäler Landwein, Abschnitt 4.1 (Baden-Württemberg) und 4.2 (Bayern)",
+    },
 }
 
 
@@ -233,21 +273,22 @@ class DEPolygonIndex:
             self._load_communes(gisco_lau_zip)
 
     def _load_communes(self, gisco_lau_zip: Path) -> None:
-        """Load GISCO LAU 2024 communes for the Länder referenced by
-        DE_LANDWEIN_AREA (only the 2-digit Land prefixes actually needed,
-        so the index stays small — Brandenburg alone is 413 communes)."""
-        land2 = {code[:2] for area in DE_LANDWEIN_AREA.values()
-                 for code in (_DE_KREIS_AGS.get(_de_norm(n))
-                              for n in (*area.get("landkreise", []),
-                                        *area.get("kreisfreie", []),
-                                        *(g["kreis"] for g in area.get("gemeinden", []))))
-                 if code}
-        if not land2:
+        """Load GISCO LAU 2024 communes for the Kreise referenced by
+        DE_LANDWEIN_AREA (only the 5-digit AGS prefixes actually needed,
+        so the index stays small — Brandenburg alone is 413 communes,
+        Bayern would be 2,000 more)."""
+        kreise = {code for area in DE_LANDWEIN_AREA.values()
+                  for code in (_DE_KREIS_AGS.get(_de_norm(n))
+                               for n in (*area.get("landkreise", []),
+                                         *area.get("kreisfreie", []),
+                                         *(g["kreis"] for g in area.get("gemeinden", []))))
+                  if code}
+        if not kreise:
             return
         gdf = gpd.read_file(f"zip://{gisco_lau_zip}")
         gdf = gdf[gdf["CNTR_CODE"] == "DE"]
         gid = gdf["GISCO_ID"].astype(str)
-        gdf = gdf[gid.str[3:5].isin(land2)]
+        gdf = gdf[gid.str[3:8].isin(kreise)]
         if gdf.crs is None or gdf.crs.to_string() != self.target_crs:
             gdf = gdf.to_crs(self.target_crs)
         for _, row in gdf.iterrows():
@@ -361,7 +402,8 @@ class DEPolygonIndex:
         if geom is not None:
             return geom, "figshare-pdo", {"matched": -1, "unmatched": 0}
         # 4. Curated commune-list union (multi-Bundesland Landwein PGIs
-        #    not coextensive with one Anbaugebiet — Brandenburger, …).
+        #    not coextensive with one Anbaugebiet — Brandenburger,
+        #    Taubertäler, …).
         if fn in DE_LANDWEIN_AREA:
             geom, stats = self.landwein_commune_union(fn)
             if geom is not None:

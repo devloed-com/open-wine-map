@@ -54,6 +54,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from _lib.pt.caderno_sections import extract_sections  # noqa: E402
 from _lib.pt.commune_list import parse_commune_list  # noqa: E402
+from _lib.pt.geometry import PTPolygonIndex, _Concelho  # noqa: E402
 from _lib.pt.subregiao import (  # noqa: E402
     detect_pattern_a,
     detect_pattern_b,
@@ -353,6 +354,7 @@ def test_commune_list_empty_input():
     cl = parse_commune_list("")
     assert cl == {
         "concelhos": [],
+        "excluded_concelhos": [],
         "distritos": [],
         "macro_regions": [],
         "raw_hits": 0,
@@ -374,3 +376,110 @@ def test_commune_list_rejects_boundary_prose():
     for c in cl["concelhos"]:
         assert "ribeira" not in c.lower()
         assert "estrada" not in c.lower()
+
+
+def test_commune_list_parenthetical_freguesias_are_not_concelhos():
+    """Duriense-shaped list: every concelho head carries its freguesias in
+    parentheses, and one parenthetical holds an abbreviation period ("D.
+    Maria Angélica") plus nested parens ("Lamego (Almacave, Sé)"). Only the
+    heads may survive — a freguesia named Pombal must not become the Leiria
+    concelho, and the heads after the "D." must not be sheared off."""
+    text = (
+        "Do distrito de Bragança, abrange os concelhos de Alfândega da Fé "
+        "(freguesia de Vilarelhos), Carrazeda de Ansiães (freguesias de Beira "
+        "Grande, Pombal e Vilarinho da Castanheira), Freixo de Espada à Cinta "
+        "(as freguesias de Freixo de Espada à Cinta e Poiares), Mirandela (as "
+        "propriedades que foram de D. Maria Angélica de Sousa, na freguesia de "
+        "Frechas), Torre de Moncorvo (as freguesias de Açoreira e Urros), e "
+        "Vila Flor (freguesias de Assares e Vila Flor).\n"
+        "Do distrito de Viseu, os concelhos de Armamar (freguesias de Aldeias e "
+        "Folgosa), Lamego (freguesias de Cambres, Lamego (Almacave, Sé), Sande) "
+        "e Tabuaço (freguesias de Adorigo e Barcos)."
+    )
+    cl = parse_commune_list(text)
+    assert cl["concelhos"] == [
+        "Alfândega da Fé",
+        "Carrazeda de Ansiães",
+        "Freixo de Espada à Cinta",
+        "Mirandela",
+        "Torre de Moncorvo",
+        "Vila Flor",
+        "Armamar",
+        "Lamego",
+        "Tabuaço",
+    ]
+    assert cl["excluded_concelhos"] == []
+
+
+def test_commune_list_exception_clause_is_an_exclusion():
+    """Beira Atlântico-shaped area: an enumerated "a) O distrito de X, com
+    exceção dos municípios de …" is a whole-distrito inclusion whose
+    following list is what the area LEAVES OUT. The distrito must be
+    captured, the listed municípios must land in `excluded_concelhos`,
+    never in `concelhos`, and the plain "Do distrito de …, os municípios
+    de …" clause still enumerates inclusions."""
+    text = (
+        "A área geográfica de produção da IG «Beira Atlântico» abrange:\n"
+        "a) O distrito de Aveiro, com exceção dos municípios de Arouca, "
+        "Castelo de Paiva e Vale de Cambra e, do município de Oliveira de "
+        "Azeméis, a freguesia de Ossela;\n"
+        "b) O distrito de Coimbra, com exceção dos municípios de Arganil, "
+        "Oliveira do Hospital e Tábua;\n"
+        "c) Do distrito de Leiria, os municípios de Alvaiázere, Ansião e "
+        "Pombal (apenas as freguesias de Abiul, Pelariga, Redinha e Vila Cã).\n"
+    )
+    cl = parse_commune_list(text)
+    assert cl["distritos"] == ["Aveiro", "Coimbra"]
+    assert cl["excluded_concelhos"] == [
+        "Arouca",
+        "Castelo de Paiva",
+        "Vale de Cambra",
+        "Arganil",
+        "Oliveira do Hospital",
+        "Tábua",
+    ]
+    assert cl["concelhos"] == ["Alvaiázere", "Ansião", "Pombal"]
+    # The bullet form Lisboa / Tejo use — "à exceção do concelho de X" —
+    # is the same exclusion.
+    cl2 = parse_commune_list("• O distrito de Lisboa, à exceção do concelho de Azambuja;")
+    assert cl2["distritos"] == ["Lisboa"]
+    assert cl2["excluded_concelhos"] == ["Azambuja"]
+    # (The bullet head "O distrito de Lisboa" still leaks into `concelhos`
+    # through _BULLET_CONCELHO_RE — pre-existing, unmatched in CAOP, not
+    # pinned here.)
+    assert "Azambuja" not in cl2["concelhos"]
+
+
+def _synthetic_pt_index() -> PTPolygonIndex:
+    """A PTPolygonIndex with no gpkg on disk and two unit-square concelhos
+    hand-registered under one distrito, so the resolver can be exercised
+    without the CAOP download."""
+    from shapely.geometry import box
+
+    idx = PTPolygonIndex(Path("/nonexistent/EU_PDO.gpkg"), [])
+    for name, geom in (("Arouca", box(0, 0, 1, 1)), ("Aveiro", box(1, 0, 2, 1))):
+        c = _Concelho(geom=geom, name=name, norm=name.lower(), distrito="Aveiro")
+        idx._concelho_by_norm.setdefault(c.norm, []).append(c)
+        idx._concelhos_by_distrito.setdefault("aveiro", []).append(c)
+    return idx
+
+
+def test_geometry_excluded_concelhos_leave_the_distrito_expansion():
+    """`union_from_parsed` must drop the parsed `excluded_concelhos` from
+    the distrito expansion — before, "O distrito de Aveiro, com exceção dos
+    municípios de Arouca" still painted Arouca."""
+    idx = _synthetic_pt_index()
+    geom, stats = idx.union_from_parsed(
+        {"concelhos": [], "excluded_concelhos": ["Arouca"], "distritos": ["Aveiro"],
+         "macro_regions": []}
+    )
+    assert geom.area == 1.0
+    assert geom.centroid.x == 1.5
+    assert stats["distritos_matched"] == 1
+    assert stats["concelhos_excluded"] == 1
+    # An explicitly enumerated concelho is never dropped by the exclusion.
+    geom2, _ = idx.union_from_parsed(
+        {"concelhos": ["Arouca"], "excluded_concelhos": ["Arouca"], "distritos": ["Aveiro"],
+         "macro_regions": []}
+    )
+    assert geom2.area == 2.0

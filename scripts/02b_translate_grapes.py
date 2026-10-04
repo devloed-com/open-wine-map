@@ -64,7 +64,11 @@ VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
 # for translation (some grapes only have authoritative pages on
 # the country's Wikipedia).
 LOCALES = ("fr", "en", "es", "nl")
-SOURCE_LOCALES = ("fr", "en", "es", "nl", "pt", "it", "hr")
+# Every locale 02b/grapes can write a card for. `de` / `sl` sit last: their
+# cards were fetched only for varieties with no native fr/en/es/nl article
+# (Blauer Wildbacher, Rathay, Kraljevina, Roter Riesling), so appending them
+# gives those a source without moving any cached translation to another one.
+SOURCE_LOCALES = ("fr", "en", "es", "nl", "pt", "it", "hr", "de", "sl", "bg")
 
 LOCALE_NAME = {
     "en": "English",
@@ -74,6 +78,9 @@ LOCALE_NAME = {
     "pt": "Portuguese",
     "it": "Italian",
     "hr": "Croatian",
+    "de": "German",
+    "sl": "Slovenian",
+    "bg": "Bulgarian",
 }
 
 

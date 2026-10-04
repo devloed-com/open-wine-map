@@ -28,16 +28,16 @@ Re-runnable: a per-PDF cache keyed by sha avoids re-running pdftotext.
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
 import shutil
 import subprocess
 import sys
 import unicodedata
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
+from _lib.fr import siqo
 from _lib.fr.naming import candidate_keys, normalize_name
 from _lib.grape_entity import (
     flush_unknowns_queue,
@@ -113,11 +113,15 @@ _DEPT_HEADER_PATTERN = (
     + r"(?P<dept>"
     + r"[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜŸ][\wÀ-ÿ'’]*"
     + r"(?:-[\wÀ-ÿ'’]+)*"
-    + r"(?:\s+[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜŸ][\wÀ-ÿ'’]*(?:-[\wÀ-ÿ'’]+)*)*"
+    + r"(?:[ \t]+[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜŸ][\wÀ-ÿ'’]*(?:-[\wÀ-ÿ'’]+)*)*"
     + r")"
     + r"\s*(?:\(\d+\))?"
-    + r"(?P<after>(?:[^:\n]*\n?){0,4}?):"
-    + r"(?P<communes>[^\n]*(?:\n(?!\s*\n|\s*-?\s*(?i:D[ée]partement|Dans\s+(?:le|les)\s+d[ée]partement)|\s*\d[ \t]*(?:°|[-–][ \t]*[A-Za-zÀ-ÿ])|\s*[IVX]+\s*\.\s*-)[^\n]*)*)"
+    # up to four whole lines then the rest of a line before the colon — each
+    # iteration must end on its newline, so a line with no colon costs its
+    # length, not every way of splitting it (the optional `\n?` form took
+    # 40 s on Saint-Chinian's centred "Département de l'Aude" headers)
+    + r"(?P<after>(?:[^:\n]*\n){0,4}?[^:\n]*):"
+    + r"(?P<communes>[^\n]*(?:\n(?!\s*\n|\s*-?\s*(?i:D[ée]partement|Dans\s+(?:le|les)\s+d[ée]partement)|\s*\d[ \t]*(?:°|[-–][ \t]*[A-Za-zÀ-ÿ])|\s*[IVX]+\s*\.\s*-|\s*[a-z]\)[ \t])[^\n]*)*)"
 )
 DEPT_HEADER_RE = re.compile(_DEPT_HEADER_PATTERN, re.MULTILINE)
 # Sub-block headers inside section IV: "1° - Aire géographique",
@@ -147,6 +151,68 @@ _AIRE_SENTENCE_PATTERN = (
 )
 AIRE_SENTENCE_RE = re.compile(_AIRE_SENTENCE_PATTERN)
 COG_YEAR_RE = re.compile(r"code officiel g[ée]ographique de l['’]ann[ée]e\s+(\d{4})")
+# The Loire republications (Saumur 2019 and 2024, Touraine, Anjou …) and
+# some 260 other cahiers print the aire as a table: a label column ("Vins
+# tranquilles blancs et / rosés", "Dénomination géographique complémentaire
+# « Puy-Notre-Dame »") beside the commune column. pdftotext -layout
+# interleaves the label words with the commune lines of the same row, so a
+# commune read "Doué-en-Anjou (… de Doué-la-Vins tranquilles blancs et
+# Fontaine …)" and every row repeated the list. The table is recognised by
+# its "COMMUNES" header cell; `strip_table_label_column` then cuts each row
+# block at the commune column.
+_AIRE_TABLE_HEADER_RE = re.compile(
+    r"^[ \t]*(?:COULEUR\s+DES\s+VINS|TYPE\s+DE\s+VIN|APPELLATION\s+D['’]ORIGINE"
+    r"|D[ÉE]NOMINATIONS?\s+G[ÉE]OGRAPHIQUES?)[^\n]*\n"
+    r"(?:[^\n]*\n){0,6}?[^\n]*\bCOMMUNES\b",
+    re.MULTILINE,
+)
+# The BO Agri running header pdftotext prints at every page break. Inside a
+# commune list it splits the list with a blank line, which ends the
+# "Département de X :" capture (Marc d'Alsace's Haut-Rhin list stopped at
+# Houssen); after a comma the list continues, so the header and its blank
+# lines fold into one newline, elsewhere the blank lines stay.
+_BO_PAGE_HEADER_RE = re.compile(r"(,?)\n[ \t\x0c]*Publié au BO[^\n]*\n((?:[ \t\x0c]*\n)*)")
+# Sentence-form proximity zone, where the section has no numbered sub-blocks
+# (the IGP template): "La zone de proximité immédiate définie par dérogation
+# … est constituée par …". From that sentence on the text is the proximity
+# zone, never the aire — Côtes du Lot's six out-of-département cantons were
+# read as its aire until 2026-10-04.
+_PROX_SENTENCE_RE = re.compile(
+    r"^[ \t\x0c]*(?:La|L['’])\s*(?:zone|aire)\s+de\s+proximit[ée]\s+imm[ée]diate\b",
+    re.MULTILINE | re.IGNORECASE,
+)
+# A whole département as the aire — "La récolte des raisins, la vinification
+# et l'élaboration des vins … sont réalisées dans le département du Lot",
+# "… sur le territoire du département de la Haute-Marne", "… sur la totalité
+# du territoire du département de la Drôme", "… dans toutes les communes du
+# département des Bouches-du-Rhône", "l'ensemble des communes des
+# départements de l'Aude, de l'Hérault, du Gard et des Pyrénées-Orientales"
+# — names no commune, so the record carries the département itself. The
+# sentence is anchored here; the names are read from the window that follows
+# it against the département table, so "Lot-et-Garonne", "Alpes de Haute
+# Provence" and an article-less list come out whole.
+_WHOLE_DEPT_ANCHOR_RE = re.compile(
+    r"(?:(?i:r[ée]colte|production|toutes\s+les\s+[ée]tapes)[^.;:]{0,240}?"
+    r"(?i:r[ée]alis[ée]e?s?|effectu[ée]e?s?|assur[ée]e?s?|ont\s+lieu|a\s+lieu)\s+"
+    r"(?i:dans|sur)\s+(?i:la\s+totalit[ée]\s+du\s+territoire\s+(?:du|des)|le\s+territoire\s+(?:du|des)"
+    r"|l['’]ensemble\s+(?:des\s+communes\s+)?(?:du|des)|toutes\s+les\s+communes\s+(?:du|des)|le|les|du|des)"
+    r"\s+(?i:d[ée]partements?)\s+"
+    r"|(?i:l['’]ensemble\s+des\s+communes\s+(?:du|des)\s+d[ée]partements?)\s+)"
+)
+_WHOLE_DEPT_WINDOW_END_RE = re.compile(
+    r"[.;:]|\b(?i:ainsi\s+que|[àa]\s+l['’]ex(?:ception|clusion)|sauf|hormis|except[ée]|"
+    r"et\s+(?:sur|les\s+communes|des\s+communes|pour)|correspondant|selon|sur\s+la\s+base)\b"
+)
+
+
+_DEPT_ITEM_ARTICLE_RE = re.compile(
+    r"^(?:(?:et|ou)\s+)?(?:du|de\s+la|de\s+l['’]|des|de|d['’])\s*", re.IGNORECASE,
+)
+
+
+def _dept_key(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[\s'’-]+", " ", s).strip(" .,;:()")
 
 
 def slug(s: str) -> str:
@@ -412,6 +478,57 @@ def extract_sections(segment: str) -> tuple[dict[str, str], dict[str, str]]:
         end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
         bodies[roman] = body[start:end].strip()
         titles[roman] = title
+    return bodies, titles
+
+
+# The XII canonical section titles of the AOC template, for a cahier whose
+# headings carry no numeral at all: the 2024 Saumur cahier (arrêté du 12
+# janvier 2024) prints "CHAPITRE Ier / Nom de l'appellation / Dénominations
+# géographiques … / Couleurs et types de produit / Aires et zones …" as bare
+# centred lines — pdftotext never sees the "I. -" the PDF draws as list
+# numbering — so the Roman splitter returned nothing and the record was
+# silently rescued from the superseded 2019 cahier. Each pattern must fill
+# a whole line on its own; the sub-block "1°- Encépagement" does not.
+_UNNUMBERED_TITLES: tuple[tuple[str, str], ...] = (
+    ("I", r"Nom de l['’]appellation"),
+    ("II", r"D[ée]nominations? g[ée]ographiques? et mentions? compl[ée]mentaires?"),
+    ("III", r"Couleurs? et types? de produits?"),
+    ("IV", r"Aires? et zones? dans lesquelles diff[ée]rentes op[ée]rations sont r[ée]alis[ée]es"),
+    ("V", r"Enc[ée]pagement"),
+    ("VI", r"Conduite du vignoble"),
+    ("VII", r"R[ée]colte, transport et maturit[ée] du raisin"),
+    ("VIII", r"Rendements?(?:\.?\s*" + DASH + r"?\s*Entr[ée]e en production)?"),
+    ("IX", r"Transformation, [ée]laboration, [ée]levage, conditionnement, stockage"),
+    ("X", r"Lien avec la zone g[ée]ographique"),
+    ("XI", r"Mesures transitoires"),
+    ("XII", r"R[èe]gles de pr[ée]sentation et d['’][ée]tiquetage"),
+)
+_UNNUMBERED_HDR_RE = re.compile(
+    r"^[ \t\x0c]*(" + "|".join(f"(?P<r{i}>{pat})" for i, (_, pat) in enumerate(_UNNUMBERED_TITLES))
+    + r")[ \t]*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def extract_unnumbered_sections(segment: str) -> tuple[dict[str, str], dict[str, str]]:
+    """The Roman-template sections of a cahier whose headings lost their
+    numerals — see `_UNNUMBERED_TITLES`. Same (bodies, titles) shape as
+    `extract_sections`; CHAPITRE Ier only; a title seen twice keeps its
+    first occurrence."""
+    chapitre_starts = [m.start() for m in CHAPITRE_RE.finditer(segment)]
+    body = segment[: chapitre_starts[1]] if len(chapitre_starts) >= 2 else segment
+    matches = list(_UNNUMBERED_HDR_RE.finditer(body))
+    bodies: dict[str, str] = {}
+    titles: dict[str, str] = {}
+    for i, m in enumerate(matches):
+        roman = next(
+            _UNNUMBERED_TITLES[j][0] for j in range(len(_UNNUMBERED_TITLES)) if m.group(f"r{j}")
+        )
+        if roman in bodies:
+            continue
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+        bodies[roman] = body[m.end():end].strip()
+        titles[roman] = re.sub(r"\s+", " ", m.group(1)).strip()
     return bodies, titles
 
 
@@ -682,15 +799,106 @@ def extract_spiritueux_sections(segment: str) -> tuple[dict[str, str], dict[str,
     return bodies, titles
 
 
-def route_spiritueux(bodies: dict[str, str], titles: dict[str, str]) -> dict[str, str]:
-    """Map semantic role → spiritueux section body using title keywords."""
+def route_by_keywords(
+    bodies: dict[str, str], titles: dict[str, str], keywords_by_role: dict[str, tuple[str, ...]],
+) -> dict[str, str]:
+    """Map semantic role → section body by title keyword, first match wins."""
     routed: dict[str, str] = {}
-    for role, keywords in SPIRITUEUX_ROLE_KEYWORDS.items():
+    for role, keywords in keywords_by_role.items():
         for label, title in titles.items():
             if any(kw in title.lower() for kw in keywords):
                 routed[role] = bodies.get(label, "")
                 break
     return routed
+
+
+def route_spiritueux(bodies: dict[str, str], titles: dict[str, str]) -> dict[str, str]:
+    """Map semantic role → spiritueux section body using title keywords."""
+    return route_by_keywords(bodies, titles, SPIRITUEUX_ROLE_KEYWORDS)
+
+
+# The 2026 eau-de-vie template (Marc d'Alsace Gewurztraminer, arrêté du 2
+# septembre 2026). "Chapitre Ier : Conditions de production et lien à
+# l'origine" carries Arabic "N. - Title" sections — Nom, Description de la
+# boisson spiritueuse, Définition de la zone géographique concernée,
+# Description de la méthode d'obtention (whose "4.1° Matière première" names
+# the grape), Lien à l'origine géographique, Règles de présentation —
+# Chapitre II the declarations and Chapitre III the control plan, whose
+# table rows "A. - RÈGLES STRUCTURELLES / B. - RÈGLES ANNUELLES / C. –
+# PRODUIT" are letter headers: they passed for an EU documento único (A/B/C)
+# and the record came out with no aire, no lien and no grape.
+SPIRITUEUX_2026_DESCRIPTION_RE = re.compile(
+    rf"^[ \t\x0c]*\d{{1,2}}\s*\.\s*(?:{DASH}\s*)?Description\s+de\s+la\s+boisson\s+spiritueuse",
+    re.MULTILINE | re.IGNORECASE,
+)
+SPIRITUEUX_CHAPITRE_RE = re.compile(
+    r"^[ \t\x0c]*Chapitre\s+(?:I(?:er|ᵉʳ|°)?|II|III|IV|\d)\b", re.MULTILINE,
+)
+SPIRITUEUX_2026_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
+    **SPIRITUEUX_ROLE_KEYWORDS,
+    "encepagement": (
+        "méthode d'obtention", "méthode d’obtention", "methode d'obtention",
+        "matière première", "matiere premiere",
+    ),
+}
+MATIERE_PREMIERE_RE = re.compile(
+    rf"^[ \t\x0c]*\d\.\d\s*°?\s*(?:{DASH}\s*)?Mati[èe]re\s+premi[èe]re\b",
+    re.MULTILINE | re.IGNORECASE,
+)
+_SPIRITUEUX_SUBBLOCK_RE = re.compile(r"^[ \t\x0c]*\d\.\d\s*°", re.MULTILINE)
+# "5. - Lien à l'origine géographique" is a section; "1. Description des
+# facteurs du lien au terroir" inside it is a sub-item — the dash tells them
+# apart, so the dash is mandatory here where SPIRITUEUX_HDR_DIGIT_RE has it
+# optional.
+SPIRITUEUX_2026_HDR_RE = re.compile(
+    rf"^[ \t\x0c]*(\d{{1,2}})\s*\.\s*{DASH}\s*([A-ZÉÈÀÂÔÎÏÛŸ][^\n]{{3,90}}?)\s*$",
+    re.MULTILINE,
+)
+
+
+def is_spiritueux_2026_template(segment: str) -> bool:
+    """A 2026-template eau-de-vie cahier has a numbered "Description de la
+    boisson spiritueuse" section (the Partie-I template is tested first)."""
+    return bool(SPIRITUEUX_2026_DESCRIPTION_RE.search(segment[:20000]))
+
+
+def extract_spiritueux_2026_sections(segment: str) -> tuple[dict[str, str], dict[str, str]]:
+    """Slice Chapitre Ier of a 2026-template eau-de-vie cahier into its
+    Arabic-numbered sections; the later chapters are left out."""
+    chapters = list(SPIRITUEUX_CHAPITRE_RE.finditer(segment))
+    start = chapters[0].end() if chapters else 0
+    end = chapters[1].start() if len(chapters) >= 2 else len(segment)
+    body = segment[start:end]
+    matches = list(SPIRITUEUX_2026_HDR_RE.finditer(body))
+    bodies: dict[str, str] = {}
+    titles: dict[str, str] = {}
+    for i, m in enumerate(matches):
+        label = m.group(1)
+        if label in bodies:
+            continue
+        titles[label] = re.sub(r"\s+", " ", m.group(2)).strip()
+        stop = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+        bodies[label] = body[m.end(): stop].strip()
+    return bodies, titles
+
+
+def matiere_premiere_block(section: str) -> str:
+    """The "N.1° Matière première" sub-block of the méthode d'obtention
+    section — the one that names the grape — or the section when it has
+    none."""
+    m = MATIERE_PREMIERE_RE.search(section)
+    if m is None:
+        return section
+    rest = section[m.end():]
+    nxt = _SPIRITUEUX_SUBBLOCK_RE.search(rest)
+    return rest[: nxt.start()] if nxt else rest
+
+
+def is_grape_spirit(categorie: str) -> bool:
+    """An eau-de-vie made from grapes or wine (marc, vin), whose matière
+    première is an encépagement — not cider, pear or fruit spirits."""
+    cat = (categorie or "").lower()
+    return "marc" in cat or "de vin" in cat or "raisin" in cat
 
 
 # EU "documento único" letter-section template. Used by Franco-Spanish /
@@ -780,7 +988,9 @@ def parse_communes(field: str) -> list[str]:
     (`Saint-\n Claude-de-Diray` → `Saint- Claude-de-Diray`); we re-glue.
     """
     s = re.sub(r"\s+", " ", field).strip().rstrip(".;")
-    s = re.sub(r"-\s+(?=[A-ZÀ-ÿ])", "-", s)
+    # a soft-wrapped hyphen also precedes a lowercase particle
+    # ("Fontevraud-\nl'Abbaye", "Villeneuve-\nde-la-Raho")
+    s = re.sub(r"-\s+(?=[A-Za-zÀ-ÿ])", "-", s)
     out: list[str] = []
     depth = 0
     cur: list[str] = []
@@ -834,10 +1044,139 @@ def _clean_commune_tokens(tokens: list[str]) -> list[str]:
     return out
 
 
+def strip_table_label_column(text: str) -> str:
+    """Cut the label column off a tabular aire list.
+
+    Each row of the table is a block of non-blank lines whose commune cell
+    starts at one column — the leftmost indent of the block's indented
+    lines, always deep in the page. A line of the block that starts at the
+    margin carries the row label ("Vins tranquilles rouges", "rosés",
+    "Dénomination géographique complémentaire « La Méjanelle »"); what it
+    has at the commune column is commune text, the rest is dropped, and a
+    label line with nothing at that column disappears so the list is not cut
+    by a blank. A block that is not mostly indented lines is a plain
+    paragraph and is left as it was.
+    """
+    out: list[str] = []
+    block: list[str] = []
+
+    def lead(line: str) -> int:
+        return len(line) - len(line.lstrip(" "))
+
+    def flush() -> None:
+        leads = [lead(line) for line in block]
+        indented = [x for x in leads if x >= 8]
+        dept_leads = [x for line, x in zip(block, leads)
+                      if x >= 8 and re.match(r"-?\s*D[ée]partement\b", line.lstrip(" "))]
+        # the commune cell starts where the block's "Département de X :"
+        # lines do — the table header's own cells ("COMPLEMENTAIRES") and a
+        # row's centred line sit elsewhere — else at the indent most of the
+        # block's indented lines share; a margin line keeps what it has at
+        # that column, past a space so a label is never cut mid-word, and
+        # nothing else
+        if dept_leads:
+            col = min(dept_leads)
+        elif len(indented) >= 2:
+            col = Counter(indented).most_common(1)[0][0]
+        else:
+            col = 0
+        # a table row: mostly cell lines, or "Département" lines sharing one
+        # indent beside a line that carries both a label and cell text. A
+        # centred "Département de l'Aude" over a list at the margin (Saint-
+        # Chinian's proximity zone) is neither and is left as it was.
+        mostly_cells = len(indented) >= 2 and len(indented) * 10 >= len(block) * 6
+        dept_rows = [line for line, x in zip(block, leads)
+                     if x >= 8 and re.match(r"-?\s*D[ée]partement\b", line.lstrip(" "))]
+        two_columns = bool(dept_rows) and all(":" in line for line in dept_rows) and any(
+            x < 8 and len(line) > col and line[col - 1] == " " and line[col:].strip()
+            for line, x in zip(block, leads)
+        )
+        if col < 8 or not (mostly_cells or two_columns):
+            out.extend(block)
+        else:
+            for line, x in zip(block, leads):
+                if x >= 8:
+                    out.append(line)
+                    continue
+                if len(line) > col and line[col - 1] == " " and line[col:].strip():
+                    out.append(" " * col + line[col:])
+        block.clear()
+
+    for line in text.split("\n"):
+        if line.strip():
+            block.append(line)
+        else:
+            flush()
+            out.append(line)
+    flush()
+    return "\n".join(out)
+
+
+def whole_departements(text: str) -> list[str]:
+    """Départements the aire sentence names as a whole, in text order, spelt
+    as the département table spells them."""
+    from _lib.geom_chain import DEPT_NAME_TO_CODE
+
+    by_key = {_dept_key(name): name for name in DEPT_NAME_TO_CODE}
+    flat = re.sub(r"-\s*\n\s*", "-", text)
+    flat = re.sub(r"\s+", " ", flat)
+    out: list[str] = []
+    for m in _WHOLE_DEPT_ANCHOR_RE.finditer(flat):
+        window = flat[m.end(): m.end() + 400]
+        stop = _WHOLE_DEPT_WINDOW_END_RE.search(window)
+        if stop:
+            window = window[: stop.start()]
+        # "du Doubs, de la Haute-Saône, du Territoire de Belfort, et du Jura":
+        # each item, its article dropped, must be a département whole — the
+        # first that is not ends the list
+        for item in re.split(r"\s*,\s*|\s+et\s+|\s+ou\s+", window):
+            item = _DEPT_ITEM_ARTICLE_RE.sub("", item.strip())
+            name = by_key.get(_dept_key(item))
+            if name is None:
+                if item.strip():
+                    break
+                continue
+            if name not in out:
+                out.append(name)
+    return out
+
+
+_PARAGRAPH_AFTER_RE = re.compile(
+    r"(?:[ \t]*\n)+((?:(?![ \t]*\n|[ \t\x0c]*-?[ \t]*D[ée]partement\b|[ \t]*\d[ \t]*(?:°|[-–][ \t]*[A-Za-zÀ-ÿ])"
+    r"|[ \t]*[IVX]+[ \t]*\.[ \t]*-)[^\n]*\n?)+)"
+)
+
+
+def _list_paragraph_after(text: str, pos: int) -> str:
+    """The paragraph after `pos` when it reads as a commune list — mostly
+    capitalised, comma-separated tokens — else an empty string."""
+    m = _PARAGRAPH_AFTER_RE.match(text, pos)
+    if not m:
+        return ""
+    para = m.group(1)
+    first = para.strip().split("\n", 1)[0]
+    if "," not in first and " et " not in first:
+        return ""  # a table header, a title, prose
+    tokens = parse_communes(para)
+    if len(tokens) < 2 or any("«" in t or re.fullmatch(r"[A-ZÉÈÀÂÔÎÏÛŸ' ]{6,}", t) for t in tokens):
+        return ""
+    capitalised = sum(1 for t in tokens if t[:1].isupper())
+    return para if capitalised * 10 >= len(tokens) * 7 else ""
+
+
 def extract_aire(section_iv: str) -> dict:
-    """Parse section IV. Returns geographique/proximite_immediate commune lists."""
+    """Parse section IV. Returns geographique/proximite_immediate commune lists
+    and, when the aire is a whole département, `aire_departements`."""
     cog_match = COG_YEAR_RE.search(section_iv)
     cog_year = int(cog_match.group(1)) if cog_match else None
+
+    section_iv = _BO_PAGE_HEADER_RE.sub(
+        lambda m: ",\n" if m.group(1) else "\n" + m.group(2), section_iv,
+    )
+    if _AIRE_TABLE_HEADER_RE.search(section_iv):
+        section_iv = strip_table_label_column(section_iv)
+    # a name hyphenated across lines ("Saône-et-\nLoire", "Doué-la-\nFontaine")
+    section_iv = re.sub(r"(?<=\w)-\n(?=[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜŸa-zà-ÿ])", "-", section_iv)
 
     blocks = re.split(_AIRE_BLOCK_HEADER_PATTERN, section_iv, flags=re.MULTILINE)
     # blocks: [pre, header1, body1, header2, body2, ...]
@@ -845,7 +1184,10 @@ def extract_aire(section_iv: str) -> dict:
     for i in range(1, len(blocks) - 1, 2):
         by_block[blocks[i].strip()] = blocks[i + 1]
 
+    sentence_form_used = False
+
     def by_dept(text: str) -> dict[str, list[str]]:
+        nonlocal sentence_form_used
         result: dict[str, list[str]] = defaultdict(list)
         for m in DEPT_HEADER_RE.finditer(text):
             dept = re.sub(r"\s+", " ", m.group("dept")).strip(" '’.,:")
@@ -854,15 +1196,25 @@ def extract_aire(section_iv: str) -> dict:
             # comma/period there isn't treated as a commune separator.
             communes_raw = m.group("communes")
             communes_raw = re.split(r"\n\s*\n|\f", communes_raw)[0]
-            communes = parse_communes(communes_raw)
+            # "Département de l'Ardèche : 96 communes" — the count is not a
+            # commune; and a header whose list starts after a blank line
+            # ("de la Meuse :\n\nBilly-sous-les-Côtes, …") has its list in
+            # the next paragraph, when that paragraph reads as a list.
+            communes_raw = re.sub(r"^\s*\d+\s+communes?\b\s*:?", "", communes_raw)
+            if not communes_raw.strip():
+                communes_raw = _list_paragraph_after(text, m.end())
+            communes = [c.split(". ", 1)[0].strip() if ". " in c else c
+                        for c in parse_communes(communes_raw)]
             if communes:
-                result[dept].extend(communes)
+                # a table lists the same communes once per wine type
+                result[dept].extend(c for c in communes if c not in result[dept])
         if not result:
             for m in AIRE_SENTENCE_RE.finditer(text):
                 dept = re.sub(r"\s+", " ", m.group("dept")).strip(" '’.,:")
                 communes = _clean_commune_tokens(parse_communes(m.group("communes")))
                 if communes:
                     result[dept].extend(communes)
+                    sentence_form_used = True
         return dict(result)
 
     aire_geo_text = next(
@@ -873,12 +1225,29 @@ def extract_aire(section_iv: str) -> dict:
         (v for k, v in by_block.items() if "proximit" in k.lower()),
         "",
     )
+    if not aire_prox_text:
+        m = _PROX_SENTENCE_RE.search(aire_geo_text)
+        if m:
+            aire_geo_text, aire_prox_text = aire_geo_text[: m.start()], aire_geo_text[m.start():]
 
-    return {
+    geo = by_dept(aire_geo_text)
+    geo_from_sentence = sentence_form_used
+    whole = whole_departements(aire_geo_text)
+    if whole and geo_from_sentence:
+        # "La récolte … est réalisée dans le département du Lot" is the aire;
+        # a sentence naming one commune of that département is a DGC's zone
+        # (Côtes du Lot Rocamadour), not the appellation's. A list the same
+        # text carries for a whole département (a DGC's, an exclusion list)
+        # stays on the record; the wiki shows the département whole.
+        geo = {d: c for d, c in geo.items() if d not in whole}
+    out = {
         "code_officiel_geographique_annee": cog_year,
-        "aire_geographique": by_dept(aire_geo_text),
+        "aire_geographique": geo,
         "aire_proximite_immediate": by_dept(aire_prox_text) if aire_prox_text else {},
     }
+    if whole:
+        out["aire_departements"] = whole
+    return out
 
 
 def parse_appellation_header(segment: str) -> dict:
@@ -886,12 +1255,12 @@ def parse_appellation_header(segment: str) -> dict:
     head = segment[:1500]
     out: dict[str, str] = {}
     m = re.search(
-        r"homologu[ée](?:e)?\s+par\s+(?:le|l['’])\s+(d[ée]cret|arr[ée]t[ée])\s*n[°º]?\s*([\d\-/]+)\s+du\s+([^\n,]+?)\s*(?:,\s*JORF|\.|\n)",
+        r"homologu[ée](?:e)?\s+pa(?:r)?\s+(?:le\s+|l['’]\s*)?(d[ée]cret|arr[êée]t[ée])\s*(?:n[°º]?\s*([\d\-/]+)\s+)?du\s+([^\n,]+?)\s*(?:,\s*(?:JORF|publi)|\.|\n)",
         head, re.IGNORECASE,
     )
     if m:
         out["homologation_type"] = m.group(1).lower()
-        out["homologation_numero"] = m.group(2)
+        out["homologation_numero"] = m.group(2) or ""
         out["homologation_date"] = m.group(3).strip()
     m = re.search(r"JORF(?: n[°º]?\s*[\d]+)?\s+du\s+([^\n]+?)(?:\s+page|\s+texte|\.|\n)", head, re.IGNORECASE)
     if m:
@@ -929,7 +1298,33 @@ def extract_one(name: str, text: str) -> dict | None:
             "lien_au_terroir": lien,
         }
 
+    if is_spiritueux_2026_template(segment):
+        sections, section_titles = extract_spiritueux_2026_sections(segment)
+        if sections:
+            routed = route_by_keywords(sections, section_titles, SPIRITUEUX_2026_ROLE_KEYWORDS)
+            if routed.get("encepagement"):
+                routed["encepagement"] = matiere_premiere_block(routed["encepagement"])
+            return {
+                "name": name,
+                "kind": "EDV",
+                "header": parse_appellation_header(segment),
+                "is_bundle_member": len(segments) > 1,
+                "bundle_size": len(segments),
+                "sections": sections,
+                "section_titles": section_titles,
+                "section_roles": routed,
+                "aire": extract_aire(routed.get("aire", "")),
+                "lien_au_terroir": routed.get("lien", ""),
+            }
+
     sections, section_titles = extract_sections(segment)
+    if len(sections) < 3:
+        # Headings without numerals (the 2024 Saumur layout): accept the
+        # unnumbered read only when it finds most of the template, so a
+        # stray centred "Encépagement" line never passes for a cahier.
+        un_sections, un_titles = extract_unnumbered_sections(segment)
+        if len(un_sections) >= 6:
+            sections, section_titles = un_sections, un_titles
 
     # EU documento-único letter-section template (Franco-Spanish / cross-
     # border AOPs). Gated on AOC Roman parser returning <3 sections — every
@@ -1205,24 +1600,44 @@ _FR_MONTHS = {
     "septembre": 9, "octobre": 10, "novembre": 11,
     "décembre": 12, "decembre": 12,
 }
+# "homologué par le décret n° … du …", "par l'arrêté du …", "par arrêté du …"
+# (no article — 150 cahiers), "pa l'arrêté" (INAO's own typo, Montpeyroux
+# 2026), "du 1er septembre".
+_HOMOL_HEAD = (
+    r"homologu[ée]e?\s+pa(?:r)?\s+(?:le\s+|l['’]\s*)?(?:d[ée]cret|arr[êe]t[ée])\s+"
+    r"(?:n[°º]?\s*\S+\s+)?du\s+(\d{1,2})(?:er)?"
+)
 _HOMOL_LONG_RE = re.compile(
-    r"homologu[ée]\s+par\s+(?:le\s+d[ée]cret|l['’]arr[êe]t[ée])\s+"
-    r"(?:n[°º]?\s*\S+\s+)?du\s+(\d{1,2})\s+"
+    _HOMOL_HEAD + r"\s+"
     r"(janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[ûu]t|"
     r"septembre|octobre|novembre|d[ée]cembre)\s+(\d{4})",
     re.IGNORECASE,
 )
 _HOMOL_NUMERIC_RE = re.compile(
-    r"homologu[ée]\s+par\s+(?:le\s+d[ée]cret|l['’]arr[êe]t[ée])\s+"
-    r"(?:n[°º]?\s*\S+\s+)?du\s+(\d{1,2})[\s/-](\d{1,2})[\s/-](\d{4})",
+    _HOMOL_HEAD + r"[\s/-](\d{1,2})[\s/-](\d{4})",
     re.IGNORECASE,
 )
 
 
-def homologation_date(segment: str) -> str | None:
+def homologation_date(segment: str, before: str = "") -> str | None:
     """Best-effort ISO YYYY-MM-DD for the homologation date stamped in a
-    cahier segment. Returns None when no date can be parsed."""
-    head = segment[:1500]
+    cahier segment. Returns None when no date can be parsed.
+
+    `before` is the text that precedes the segment in its PDF: a BO Agri
+    cover sheet or a JORF décret preamble stamps the date above the
+    "Cahier des charges" title the bundle splitter cuts at, so a segment
+    whose head carries no date is read together with the 600 characters
+    before it (263 of 467 parents had no date before 2026-10-04)."""
+    for head in (segment[:1500], before[-600:] + " " + segment[:300]):
+        if not head.strip():
+            continue
+        iso = _homologation_date_in(head)
+        if iso:
+            return iso
+    return None
+
+
+def _homologation_date_in(head: str) -> str | None:
     m = _HOMOL_LONG_RE.search(head)
     if m:
         day = int(m.group(1))
@@ -1236,6 +1651,15 @@ def homologation_date(segment: str) -> str | None:
         if 1 <= month <= 12:
             return f"{year:04d}-{month:02d}-{day:02d}"
     return None
+
+
+def _text_before(text: str, segment: str) -> str:
+    """The text that precedes `segment` inside `text` ("" when the segment
+    is the text itself or cannot be located)."""
+    if not segment or segment is text:
+        return ""
+    pos = text.find(segment[:400])
+    return text[:pos] if pos > 0 else ""
 
 
 def build_global_segment_index(
@@ -1265,7 +1689,7 @@ def build_global_segment_index(
         except subprocess.CalledProcessError:
             continue
         for header_name, segment in split_bundle(text).items():
-            date_iso = homologation_date(segment) or ""
+            date_iso = homologation_date(segment, _text_before(text, segment)) or ""
             # Insert under every alias-split key so a parent named
             # "Cidre de Normandie ou Cidre normand" can rescue from a
             # segment header that only carries one of the aliases.
@@ -1318,7 +1742,7 @@ def _disambiguate_slugs(items: list[tuple[str, dict]]) -> dict[str, str]:
     return out
 
 
-WINE_SIGNS = {"AOC", "AOP", "IGP"}
+WINE_SIGNS = siqo.WINE_SIGNS
 
 
 def load_siqo_denominations() -> dict[str, list[dict]]:
@@ -1335,33 +1759,27 @@ def load_siqo_denominations() -> dict[str, list[dict]]:
     out: dict[str, dict[str, dict]] = defaultdict(dict)
     if not SIQO_CSV.exists():
         return {}
-    with SIQO_CSV.open(encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            if row["secteur"].strip() != "VITICOLE":
-                continue
-            if row["lib_etat"].strip() != "Publié":
-                continue
-            sign = row["signe_fr"].strip() or row["signe_ue"].strip()
-            if sign not in WINE_SIGNS:
-                continue
-            id_app = row["id_appellation"].strip()
-            id_denom = row["id_denomination_geo"].strip()
-            if not id_denom:
-                continue
-            denom = row["denomination"].strip()
-            app = row["appellation"].strip()
-            cat = row["categorie"].strip()
-            entry = out[id_app].setdefault(
-                id_denom,
-                {
-                    "id_denomination_geo": id_denom,
-                    "denomination": denom,
-                    "appellation": app,
-                    "categories": set(),
-                },
-            )
-            if cat:
-                entry["categories"].add(cat)
+    for row in siqo.siqo_rows(SIQO_CSV):
+        if not siqo.is_wine_row(row):
+            continue
+        id_app = row["id_appellation"].strip()
+        id_denom = row["id_denomination_geo"].strip()
+        if not id_denom:
+            continue
+        denom = row["denomination"].strip()
+        app = row["appellation"].strip()
+        cat = row["categorie"].strip()
+        entry = out[id_app].setdefault(
+            id_denom,
+            {
+                "id_denomination_geo": id_denom,
+                "denomination": denom,
+                "appellation": app,
+                "categories": set(),
+            },
+        )
+        if cat:
+            entry["categories"].add(cat)
     # Flatten + sort: parent denomination (denomination == appellation) first,
     # then DGCs alphabetically. The parent ordering matters for slug
     # collision handling — when a DGC's denomination_slug happens to clash
@@ -1391,19 +1809,57 @@ def load_siqo_categories() -> dict[str, list[str]]:
     out: dict[str, set[str]] = defaultdict(set)
     if not SIQO_CSV.exists():
         return {}
-    with SIQO_CSV.open(encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            id_app = (row.get("id_appellation") or "").strip()
-            cat = (row.get("categorie") or "").strip()
-            if id_app and cat:
-                out[id_app].add(cat)
+    for row in siqo.siqo_rows(SIQO_CSV):
+        id_app = (row.get("id_appellation") or "").strip()
+        cat = (row.get("categorie") or "").strip()
+        if id_app and cat:
+            out[id_app].add(cat)
     return {k: sorted(v) for k, v in out.items()}
+
+
+def dropped_denominations(
+    prior_index: dict, manifest: dict, siqo_denoms: dict[str, list[dict]]
+) -> list[dict]:
+    """Records of the previous full run that this run would not emit at all.
+
+    A full run rebuilds `cahier-extracted/` from the referentiel, so a
+    denomination the SIQO export stopped listing vanishes from the corpus
+    without anyone deciding so — INAO's export lags its own catalogue by
+    months in both directions. The index keys follow the emission rule
+    (`id_denomination_geo`, else `app:<id_appellation>`), so the universe of
+    keys this run can produce is known before anything is deleted.
+    """
+    universe: set[str] = set()
+    for id_app, denoms in siqo_denoms.items():
+        universe.update(d["id_denomination_geo"] for d in denoms)
+        if not any(_is_parent_denom(d) for d in denoms):
+            universe.add(f"app:{id_app}")
+    for id_app in manifest:
+        if id_app not in siqo_denoms:
+            universe.add(f"app:{id_app}")
+    out = []
+    for key, entry in prior_index.items():
+        if key in universe:
+            continue
+        out.append({
+            "key": key,
+            "slug": entry.get("slug", ""),
+            "name": entry.get("name", ""),
+            "id_appellation": entry.get("id_appellation", ""),
+        })
+    return sorted(out, key=lambda d: d["name"].lower())
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--only", action="append", default=[], help="appellation name substring (repeatable)")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument(
+        "--allow-drop", action="store_true",
+        help="let a full run remove records the SIQO referentiel no longer lists "
+             "(the default refuses: a record leaves the corpus by a cited decision, "
+             "never because an export stopped listing it)",
+    )
     args = ap.parse_args()
 
     if shutil.which("pdftotext") is None:
@@ -1420,6 +1876,22 @@ def main() -> int:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     siqo_categories = load_siqo_categories()
     siqo_denoms = load_siqo_denominations()
+    # The manifest is a fetch cache: its `name` is the referentiel's at fetch
+    # time. The record (name, slug) follows the referentiel as read through
+    # `siqo.siqo_rows` — supplements and the name overrides included — so a
+    # pin or a renamed row does not wait for a stage-01 re-run.
+    siqo_names = {
+        r["id_appellation"].strip(): r["appellation"].strip()
+        for r in siqo.siqo_rows() if siqo.is_wine_row(r)
+    }
+    for id_app, meta in manifest.items():
+        siqo_name = siqo_names.get(id_app)
+        if siqo_name and siqo_name != meta.get("name"):
+            print(
+                f"[name] {id_app}: manifest {meta.get('name')!r} → referentiel {siqo_name!r}",
+                file=sys.stderr,
+            )
+            meta["name"] = siqo_name
     # Include manifest entries with no filename too — they can still extract
     # via the cross-bundle rescue index when a sibling AOC's PDF carries
     # their cahier (e.g. Légifrance-canonical AOCs whose cookie expired
@@ -1443,6 +1915,25 @@ def main() -> int:
     # varieties (e.g. `aubun` would lose to `corvo` from PT/duriense
     # under VIVC's shared vivc_id 761).
     if not (args.only or args.limit):
+        if INDEX_PATH.exists():
+            prior_index = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+            dropped = dropped_denominations(prior_index, manifest, siqo_denoms)
+            for d in dropped:
+                print(
+                    f"[dropped] {d['name']} ({d['slug']}, id_appellation {d['id_appellation']}): "
+                    f"no longer in the SIQO referentiel or the manifest",
+                    file=sys.stderr,
+                )
+            if dropped and not args.allow_drop:
+                print(
+                    f"error: this run would remove {len(dropped)} record(s) listed above. A record "
+                    f"is never removed because the SIQO export stopped listing it: keep it with a "
+                    f"`retained` row in scripts/_lib/fr/siqo_supplements.json and record the public "
+                    f"act in scripts/_lib/cancelled_gis.json or promoted_gis.json — or re-run with "
+                    f"--allow-drop if the removal is the decision.",
+                    file=sys.stderr,
+                )
+                return 2
         preheat_vocabulary()
         shutil.rmtree(OUT_DIR, ignore_errors=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1529,7 +2020,7 @@ def main() -> int:
             homologated_at = rescue_date
         else:
             seg_for_date = find_segment(split_bundle(text), meta["name"]) or text
-            homologated_at = homologation_date(seg_for_date) or ""
+            homologated_at = homologation_date(seg_for_date, _text_before(text, seg_for_date)) or ""
         latest_known = next(
             (r for k in candidate_keys(meta["name"])
              if (r := global_segments.get(k)) is not None),
@@ -1574,8 +2065,21 @@ def main() -> int:
         # "Description de la boisson" doesn't yield wine-style colours, so
         # we skip both parsers and emit empty results.
         roles = record.get("section_roles") or {}
-        if record["kind"] == "EDV":
+        if record["kind"] == "EDV" and not (
+            roles.get("encepagement") and is_grape_spirit(record["categorie"])
+        ):
             record["grapes"] = {"principal": [], "accessory": [], "observation": [], "details": []}
+            record["styles"] = []
+        elif record["kind"] == "EDV":
+            # a 2026-template marc / eau-de-vie de vin names its grape in the
+            # matière première block; no wine style follows from a spirit
+            grapes = parse_grapes(roles["encepagement"])
+            record["grapes"] = {
+                "principal": [t["slug"] for t in grapes["principal"]],
+                "accessory": [t["slug"] for t in grapes["accessory"]],
+                "observation": [t["slug"] for t in grapes["observation"]],
+                "details": grapes["all"],
+            }
             record["styles"] = []
         else:
             v_text = encepagement_block(roles.get("encepagement") or "")

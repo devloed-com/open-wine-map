@@ -13,6 +13,29 @@ both appellations' commune lists (or a same-name collision, or imprecise
 source polygons). Two appellations built from disjoint commune lists should
 *tile* — touch along borders, not overlap with real 2-D area.
 
+The first corpus-wide review (2026-09-25, 520 slivers) found that premise
+holds only for one class of pair, so every sliver is first classified —
+listed in full, never hidden — and only the last class is SUSPICIOUS:
+
+  BORDER          — two countries, a band under --thin-km wide: the two
+                    national layers digitise the state border differently.
+  TIER            — a PGI / IGP (or a spirit-drink GI) over a PDO / AOC of
+                    the same country: the broader tier shares ground with
+                    the narrower one by design, nothing is double-assigned.
+  GENERALISATION  — same country and tier, a band under --thin-km wide,
+                    the two records drawn from different geometry sources
+                    (Bétard vs a GISCO union, a geoportal zone vs a commune
+                    list): a coastline or boundary drawn at two resolutions.
+  SOURCE-DRAWN    — same country and tier, both polygons taken from an
+                    official zone layer (regional geoportal, MAPA, INAO
+                    parcellaire) or Bétard: the overlap is the publisher's
+                    own statement (Tuscany's DOCs, Bétard's padded
+                    municipalities); a commune list cannot fix it.
+  SUSPICIOUS      — what is left: same country and tier, at least one side
+                    drawn from a commune list of ours, and either wide or
+                    from the same source — the one class where a double-
+                    assigned commune is the likely cause.
+
 For every pair of appellation polygons whose bounding boxes meet, the audit:
 
   - skips hierarchy pairs — parent ⊃ sub-denomination, and siblings of one
@@ -73,11 +96,21 @@ OVERRIDES_PATH = ROOT / "scripts" / "_lib" / "geometry_overlap_overrides.json"
 _to_3035 = Transformer.from_crs("EPSG:4326", "EPSG:3035", always_xy=True).transform
 
 
+def _display(path: Path) -> str:
+    """Repo-relative when the file is inside the repo, absolute otherwise —
+    ``--geojson`` may point at a snapshot outside the checkout."""
+    try:
+        return str(path.resolve().relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+
 class Feat:
     """One appellation: metadata plus its reprojected, simplified geometry."""
 
     __slots__ = ("slug", "name", "country", "region", "kind", "geom", "area",
-                 "parent", "id_app")
+                 "parent", "id_app", "geom_source")
 
     def __init__(self, props: dict, geom: BaseGeometry):
         self.slug = props.get("slug") or ""
@@ -87,6 +120,7 @@ class Feat:
         self.kind = props.get("kind") or ""
         self.parent = props.get("parent_slug") or ""
         self.id_app = props.get("id_appellation")
+        self.geom_source = props.get("geom_source") or ""
         self.geom = geom
         self.area = geom.area
 
@@ -99,6 +133,55 @@ def _hierarchy(a: Feat, b: Feat) -> bool:
     if b.parent and b.parent == a.slug:
         return True
     return a.id_app is not None and a.id_app == b.id_app
+
+
+# GI tiers: a PGI over a PDO is expected to share ground.
+_TIER = {"AOC": "pdo", "AOP": "pdo", "DOP": "pdo", "PDO": "pdo",
+         "IGP": "pgi", "PGI": "pgi", "EDV": "spirit"}
+# Provenances that are a published zone polygon (or Bétard), not a commune
+# list of ours. A sub-denomination that inherits its polygon is read through
+# its parent (`root_source`).
+_ZONE_SOURCE_PREFIXES = (
+    "figshare-pdo", "mapa-zone", "geoportal-zone", "geoportal-canton", "sigpac",
+    "parcellaire", "cadastre-lieu-dit", "ivv-commune-vineyard", "region-pdo-union",
+    "pdo-plan-parcel",
+)
+_INHERITING_SOURCES = ("parent-appellation", "parent-aoc", "sibling-dgc")
+CLASSES = ("border", "tier", "generalisation", "source", "suspicious")
+
+
+def _tier(kind: str) -> str:
+    return _TIER.get(kind or "", kind or "?")
+
+
+def is_zone_source(src: str) -> bool:
+    return any(src.startswith(p) for p in _ZONE_SOURCE_PREFIXES)
+
+
+def root_source(f: "Feat", by_slug: dict[str, "Feat"]) -> str:
+    """The provenance a polygon was drawn with — an inheriting
+    sub-denomination reports its parent's."""
+    src = f.geom_source
+    hops = 0
+    while src in _INHERITING_SOURCES and f.parent in by_slug and hops < 4:
+        f = by_slug[f.parent]
+        src = f.geom_source
+        hops += 1
+    return src
+
+
+def classify(ov: "Overlap", src_a: str, src_b: str, thin_km: float) -> str:
+    """One of CLASSES for a sliver (see the module docstring)."""
+    a, b = ov.a, ov.b
+    if a.country != b.country:
+        return "border" if ov.eff_width_km < thin_km else "suspicious"
+    if _tier(a.kind) != _tier(b.kind):
+        return "tier"
+    if ov.eff_width_km < thin_km and src_a != src_b:
+        return "generalisation"
+    if is_zone_source(src_a) and is_zone_source(src_b):
+        return "source"
+    return "suspicious"
 
 
 def load_overrides(path: Path) -> dict[frozenset, str]:
@@ -161,6 +244,12 @@ def main() -> int:
         "--strict", action="store_true",
         help="exit non-zero when unreviewed suspicious slivers remain",
     )
+    ap.add_argument(
+        "--thin-km", type=float, default=0.3,
+        help="a sliver narrower than this (2·area/perimeter) between two countries "
+             "or two geometry sources is a digitisation band, not a commune",
+    )
+    ap.add_argument("--json", type=Path, help="write every sliver (all classes + accepted) here")
     args = ap.parse_args()
     sys.stdout.reconfigure(line_buffering=True)
 
@@ -172,7 +261,7 @@ def main() -> int:
     overrides = load_overrides(OVERRIDES_PATH)
 
     # ---- load -------------------------------------------------------------
-    print(f"loading {args.geojson.relative_to(ROOT)} …", file=sys.stderr)
+    print(f"loading {_display(args.geojson)} …", file=sys.stderr)
     feats: list[Feat] = []
     n = 0
     for ft in stream_features(args.geojson):
@@ -271,6 +360,16 @@ def main() -> int:
     suspicious.sort(key=lambda t: -t[0].area_km2)
     stale_wl = [sorted(k) for k in overrides if k not in used_keys]
 
+    # ---- classify: only the last class is an artefact we could fix ------
+    by_slug = {f.slug: f for f in feats}
+    classes: dict[str, list[tuple[Overlap, int]]] = {c: [] for c in CLASSES}
+    class_of: dict[frozenset, str] = {}
+    for ov, extra in suspicious:
+        cls = classify(ov, root_source(ov.a, by_slug), root_source(ov.b, by_slug), args.thin_km)
+        classes[cls].append((ov, extra))
+        class_of[frozenset((ov.a.slug, ov.b.slug))] = cls
+    suspicious = classes["suspicious"]
+
     def _fmt(ov: Overlap, extra: int) -> str:
         a, b = ov.a, ov.b
         if a.country != b.country:
@@ -289,7 +388,7 @@ def main() -> int:
     print()
     print("GEOMETRY-OVERLAP AUDIT")
     print("=" * 78)
-    print(f"source     : {args.geojson.relative_to(ROOT)} ({len(feats)} appellations)")
+    print(f"source     : {_display(args.geojson)} ({len(feats)} appellations)")
     print(f"sliver rule: {args.min_overlap_km2:g}–{args.max_sliver_km2:g} km2 "
           f"overlap, < {args.sliver_max * 100:g}% of BOTH appellations "
           f"(or any cross-country overlap)")
@@ -302,10 +401,23 @@ def main() -> int:
         print(f"  {ov.a.name} vs {ov.b.name}  (~{ov.area_km2:.0f} km2) — {reason}")
     print()
 
+    expected_titles = {
+        "border": f"BORDER — two national layers along a state border, < {args.thin_km:g} km wide",
+        "tier": "TIER — a PGI / IGP or spirit-drink GI over a PDO / AOC of the same country",
+        "generalisation": f"GENERALISATION — same tier, two geometry sources, < {args.thin_km:g} km wide",
+        "source": "SOURCE-DRAWN — same tier, both polygons from an official zone layer or Bétard",
+    }
+    for cls in ("border", "tier", "generalisation", "source"):
+        rows_c = classes[cls]
+        print(f"{expected_titles[cls]}  [{len(rows_c)}]")
+        for ov, extra in rows_c:
+            print(_fmt(ov, extra))
+        print()
+
     cross = [t for t in suspicious if t[0].a.country != t[0].b.country]
     same = [t for t in suspicious if t[0].a.country == t[0].b.country]
-    print(f"SUSPICIOUS — sliver overlaps between otherwise-disjoint "
-          f"appellations  [{len(suspicious)}]")
+    print(f"SUSPICIOUS — same tier, a commune list of ours on at least one side  "
+          f"[{len(suspicious)}]")
     print()
     print(f"  cross-country — appellations of different countries should not "
           f"share ground  [{len(cross)}]")
@@ -322,11 +434,35 @@ def main() -> int:
               f"overlap (data changed?): "
               f"{', '.join('+'.join(p) for p in stale_wl)}")
 
+    if args.json:
+        def _row(ov: Overlap, extra: int, reason: str | None) -> dict:
+            return {
+                "a": {"slug": ov.a.slug, "name": ov.a.name, "country": ov.a.country,
+                      "kind": ov.a.kind, "region": ov.a.region, "geom_source": ov.a.geom_source,
+                      "area_km2": round(ov.a.area / 1e6, 2)},
+                "b": {"slug": ov.b.slug, "name": ov.b.name, "country": ov.b.country,
+                      "kind": ov.b.kind, "region": ov.b.region, "geom_source": ov.b.geom_source,
+                      "area_km2": round(ov.b.area / 1e6, 2)},
+                "overlap_km2": round(ov.area_km2, 3), "share_a": round(ov.share_a, 4),
+                "share_b": round(ov.share_b, 4), "eff_width_km": round(ov.eff_width_km, 3),
+                "extra_pairs": extra, "accepted": reason is not None, "reason": reason,
+            }
+        rows = []
+        for cls in CLASSES:
+            for ov, extra in classes[cls]:
+                rows.append({**_row(ov, extra, None), "class": cls})
+        rows += [{**_row(ov, extra, reason), "class": "accepted"} for ov, extra, reason in accepted]
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(json.dumps(rows, ensure_ascii=False, indent=1))
+        print(f"\nrows → {_display(args.json)}")
+
     print()
     print("SUMMARY")
     print("-" * 78)
     print(f"  suspicious slivers  : {len(suspicious)}  "
           f"({len(cross)} cross-country, {len(same)} same-country)")
+    print("  expected slivers    : " + ", ".join(
+        f"{len(classes[c])} {c}" for c in ("border", "tier", "generalisation", "source")))
     print(f"  accepted (whitelist): {len(accepted)}")
     print(f"  normal overlaps     : {nested} nested + {partial} large partial "
           f"+ {wide} wide")

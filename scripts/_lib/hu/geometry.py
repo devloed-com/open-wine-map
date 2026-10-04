@@ -156,6 +156,7 @@ class HUPolygonIndex:
         polys: list[BaseGeometry] = []
         matched: list[str] = []
         unmatched: list[str] = []
+        ambiguous: list[str] = []
         for raw_name in commune_names:
             key = _normalise_commune(raw_name)
             if not key:
@@ -164,12 +165,21 @@ class HUPolygonIndex:
             if not cands:
                 unmatched.append(raw_name)
                 continue
+            if len(cands) > 1:
+                # A bare name that matches several communes nationwide is
+                # ambiguous; unioning all of them stretches the polygon
+                # across the country instead of drawing the appellation
+                # (see the GR / RO chains, where that shipped). It
+                # contributes nothing and is reported instead.
+                ambiguous.append(f"{raw_name} ({len(cands)})")
+                continue
             polys.extend(cands)
             matched.append(raw_name)
         stats = {
             "matched": len(matched),
             "unmatched": len(unmatched),
             "names_unmatched": unmatched[:30],
+            "names_ambiguous": ambiguous[:30],
         }
         if not polys:
             return None, stats

@@ -1,0 +1,41 @@
+{
+  "__doc__": "Rows the INAO SIQO referentiel export (raw/inao/siqo-referentiel.csv) should carry and does not — read by scripts/_lib/fr/siqo.py and appended to the CSV for every FR stage. Each row uses the CSV's own 22 columns plus `_status` (`added`: a GI INAO has recognised that the export predates; `retained`: a row the export dropped that the corpus keeps — a record is never removed because an export stopped listing it; the retirement itself is recorded in cancelled_gis.json / promoted_gis.json), `_source` (the public act and the INAO product page), `_verified` (date), `_note`. Provisional ids are `p<idproduit>` (the INAO product id is public and stable); replace them with INAO's numbers when the export carries the row, keeping the slug unchanged.",
+  "rows": [
+    {
+      "_status": "added",
+      "_source": "Arrêté du 11 août 2026 homologuant le cahier des charges de l'appellation d'origine protégée « Montpeyroux » (NOR AGRT2607509A, JORF 15 août 2026; https://www.legifrance.gouv.fr/eli/arrete/2026/8/11/AGRT2607509A/jo/texte); INAO product page https://www2.inao.gouv.fr/produit/23354 (updated 21 September 2026); cahier BO Agri du MAASA 20 août 2026 https://info.agriculture.gouv.fr/boagri/document_administratif-2128d40f-f2c2-436a-8d1c-cd993626aa30/telechargement",
+      "_verified": "2026-10-03",
+      "_note": "Formerly the DGC « Montpeyroux » of AOC Languedoc (SIQO id_denomination_geo 1313), dropped from the Languedoc cahier homologated the same day. National transitional protection pending the EU registration (eAmbrosia carries no application yet) — signe_ue is therefore empty, as on INAO's product page. The CVI code on the product page reads '475' and is not a complete douane code; left empty.",
+      "signe_fr": "AOC",
+      "signe_ue": "",
+      "id_categorie_produit": "1",
+      "categorie": "Vin tranquille",
+      "id_type_produit": "2",
+      "classe_ue": "Vins",
+      "secteur": "VITICOLE",
+      "id_appellation": "p23354",
+      "appellation": "Montpeyroux",
+      "id_denomination_geo": "p23354",
+      "denomination": "Montpeyroux",
+      "produit": "Montpeyroux",
+      "idproduit": "23354",
+      "pro_etat": "2",
+      "lib_etat": "Publié",
+      "cvi_douane": "",
+      "reference_produit": "",
+      "comite_national": "CNV",
+      "comite_regional": "LANGUEDOC-ROUSSILLON",
+      "site_inao": "Montpellier",
+      "delegation_territoriale_inao": "4 Occitanie",
+      "date_extraction": ""
+    }
+  ],
+  "name_overrides": {
+    "1091": {
+      "appellation": "Marc d'Alsace Gewurztraminer",
+      "_reason": "The export's `appellation` column reads 'Marc d'Alsace'; its own `produit` column, the INAO product page (idproduit 13046), the EU register (PGI-FR-01836, protectedName 'Marc d'Alsace Gewurztraminer') and the cahier des charges homologated by the arrêté du 2 septembre 2026 (section 2: « enregistrée sous la dénomination « Marc d'Alsace Gewurztraminer » au registre des Indications Géographiques ») name the GI with its mandatory dénomination. The record, its slug and its URL (/en/marc-d-alsace-gewurztraminer, live since the first build, keyed by every pin) keep the registered name; the 2026-10-01 manifest refresh re-read the column and renamed the record marc-d-alsace until this pin (2026-10-04).",
+      "_source": "https://www2.inao.gouv.fr/produit/13046 ; https://info.agriculture.gouv.fr/boagri/document_administratif-11f6768c-d390-4f6c-b551-07ff5554f796/telechargement ; raw/inao/siqo-referentiel.csv (2025-12-31, row id_appellation 1091, produit column)",
+      "_verified": "2026-10-04"
+    }
+  }
+}

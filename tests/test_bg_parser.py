@@ -22,6 +22,9 @@ that the BG section of CLAUDE.md enumerates):
   - scripts/_lib/bg/commune.py — Cyrillic-preserving obshtina matching:
     `.casefold()` (NOT NFKD-ASCII), settlement-tier prefixes (с./гр./
     село/град) dropped, област markers consumed with their trailing name.
+  - scripts/_lib/bg/geometry.py + scripts/_lib/bg/region.py — the two
+    hand-curated PGI-membership / region tables, which must agree (a PDO
+    filed under the wrong PGI draws a detached part in that PGI union).
 
 Real cached docs live under raw/bg/{oj-pages,national-specs}/ (gitignored).
 The HTML/text fixtures here are short redacted excerpts under
@@ -49,6 +52,12 @@ from _lib.bg.commune import _normalise_commune, parse_commune_list  # noqa: E402
 from _lib.bg.edinen_dokument import (  # noqa: E402
     _GEO_AREA_TITLE_BLOCKLIST,
     SECTION_ROLE_KEYWORDS,
+)
+from _lib.bg.geometry import BG_PGI_MEMBER_PDOS  # noqa: E402
+from _lib.bg.region import (  # noqa: E402
+    _REGION_BY_FILE_NUMBER,
+    REGIONS,
+    region_for_file_number,
 )
 from _lib.bg.specifikacija import parse_specifikacija  # noqa: E402
 
@@ -425,3 +434,38 @@ def test_specifikacija_styles_from_grape_colours(fixture_text):
     out = parse_specifikacija(text, "sliven")
     assert "blanc" in out["styles"]
     assert "rouge" in out["styles"]
+
+
+# ==========================================================================
+# geometry.py / region.py — PGI member tables ↔ region facet consistency
+# ==========================================================================
+
+def test_pgi_member_tables_partition_the_pdos():
+    """Every BG PDO is a member of exactly one of the 2 PGIs, and the
+    membership agrees with the curated region facet: Дунавска равнина
+    members carry the Дунавска равнина region, Тракийска низина members
+    one of the 4 southern regions. A PDO under both PGIs is drawn twice;
+    one under neither drops out of its PGI polygon."""
+    north = set(BG_PGI_MEMBER_PDOS["PGI-BG-A1538"])
+    south = set(BG_PGI_MEMBER_PDOS["PGI-BG-A1552"])
+    assert not north & south
+    pdos = {fn for fn in _REGION_BY_FILE_NUMBER if fn.startswith("PDO-")}
+    assert north | south == pdos
+    for fn in north:
+        assert region_for_file_number(fn) == "Дунавска равнина", fn
+    for fn in south:
+        assert region_for_file_number(fn) in REGIONS[1:], fn
+
+
+def test_regression_oriakhovitsa_is_a_trakiiska_nizina_member():
+    """PDO-BG-A1344 Оряховица sat in the Дунавска равнина group — confused
+    with Горна Оряховица (област Велико Търново), which the Дунавска
+    равнина PGI text does list. The ИАЛВ spec §3 delimits the wine to
+    "с. Дълбоки, с. Оряховица, с. Братя Кунчеви и с. Колена, находящи се в
+    област Стара Загора" — south of Stara Planina, inside the Тракийска
+    низина PGI (whose spec lists област Стара Загора). The wrong entry put
+    the whole 1,076 km² Bétard polygon as a detached part of the Дунавска
+    равнина union."""
+    assert "PDO-BG-A1344" in BG_PGI_MEMBER_PDOS["PGI-BG-A1552"]
+    assert "PDO-BG-A1344" not in BG_PGI_MEMBER_PDOS["PGI-BG-A1538"]
+    assert region_for_file_number("PDO-BG-A1344") == "Тракийска низина"

@@ -50,6 +50,11 @@ _INFLECTION_PAREN_RE = re.compile(r"\([^)]{0,5}\)")
 _INFLECTION_SLASH_RE = re.compile(r"/-?[α-ω]{1,4}(?![α-ω])")
 
 
+_LATIN_TO_GREEK = str.maketrans("aeiokntxyvpbhmz", "αειοκντχυνρβημζ")
+_GREEK_LETTER_RE = re.compile(r"[α-ω]")
+_LATIN_IN_WORD_RE = re.compile(r"[a-z]")
+
+
 def greek_norm(s: str) -> str:
     """Greek-aware comparator key. casefold + diacritic-strip + final-sigma
     fold + inflection-suffix-paren drop. Handles four Greek-specific gotchas
@@ -86,6 +91,13 @@ def greek_norm(s: str) -> str:
         c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
     )
     s = s.replace("ς", "σ")
+    # A Latin letter typed inside a Greek word — GISCO's NUTS name "Aττική"
+    # carries a Latin A, a spec's "Μυρoδάτου" a Latin o — reads as the
+    # Greek letter it looks like.
+    s = " ".join(
+        w.translate(_LATIN_TO_GREEK) if _GREEK_LETTER_RE.search(w) and _LATIN_IN_WORD_RE.search(w) else w
+        for w in s.split(" ")
+    )
     s = _INFLECTION_PAREN_RE.sub("", s)
     s = _INFLECTION_SLASH_RE.sub("", s)
     s = re.sub(r"\s+", " ", s).strip()
@@ -139,6 +151,11 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "μέγιστη απόδοση",
     ),
     "geo_area": (
+        # Reg. (EU) 2024/1143 template, section 9 — genitive, so the
+        # nominative keywords below never matched it and the section was
+        # dropped from the parse (Μακεδονία, OJ C/2026/2625).
+        "συνοπτικός καθορισμός της οριοθετημένης γεωγραφικής περιοχής",
+        "οριοθετημένης γεωγραφικής περιοχής",
         "οριοθετημένη γεωγραφική ζώνη",
         "οριοθετημένη γεωγραφική περιοχή",
         "οριοθετημένη περιοχή",
@@ -192,6 +209,10 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
 # γεωγραφικής ένδειξης") carries "γεωγραφικής" inflected but its body is
 # just "ΠΟΠ" / "ΠΓΕ".
 _GEO_AREA_TITLE_BLOCKLIST = (
+    # The 2024/1143 template's section 3, "Χώρα στην οποία ανήκει η
+    # οριοθετημένη γεωγραφική περιοχή", whose body is the word "Ελλάδα" —
+    # the RO decoy ("Țara căreia îi aparține…"), in Greek.
+    "χώρα στην οποία ανήκει",
     "είδος γεωγραφικής ένδειξης",
     "τύπος γεωγραφικής ένδειξης",
     "κατηγορίες αμπελοοινικών προϊόντων",

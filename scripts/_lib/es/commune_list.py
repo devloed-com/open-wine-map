@@ -23,13 +23,23 @@ Returns a list of commune-name strings; caller unions them via GISCO.
 
 from __future__ import annotations
 
+import json
 import re
+import unicodedata
+from functools import lru_cache
+from pathlib import Path
 
 # Markers that signal the *municipi list ends* (transition from list to
 # explanatory prose). Used to truncate the captured commune list. Same
-# idiom as scripts/_lib/es/subzona.py:_COMMUNE_LIST_END_MARKERS.
+# idiom as scripts/_lib/es/subzona.py:_COMMUNE_LIST_END_MARKERS. Matched
+# case-insensitively and across line breaks (`_LIST_END_RE`): the
+# mid-sentence ", así\ncomo las parroquias de …" of Barbanza e Iria and
+# Betanzos is the same transition as a sentence-initial "Así como". A
+# mid-sentence "así como los términos municipales de …" is not: it adds
+# whole municipios and is folded into the list first (`_WHOLE_MUNI_CONT_RE`).
 _LIST_END_MARKERS = (
     "Así como", "Asi como", "Así mismo", "Asi mismo",
+    "Todos los términos municipales mencionados",
     "Dichos polígonos", "Dichos poligonos",
     "según la cartografía", "segun la cartografia",
     "siempre y cuando",
@@ -52,6 +62,59 @@ _LIST_END_MARKERS = (
     "(*).—", "(*) .—", "(*)—",
     "(**).—", "(**) .—", "(**)—",
     "**(En ", "*(En ",
+)
+
+_LIST_END_RE = re.compile(
+    "|".join(re.sub(r"(?:\\\s|\\\n|\s)+", r"\\s+", re.escape(m)) for m in _LIST_END_MARKERS),
+    re.IGNORECASE,
+)
+
+# "…, La Viñuela y Yunquera, pertenecientes a la provincia de Málaga, así
+# como los términos municipales de Benamejí y Palenciana pertenecientes a la
+# provincia de Córdoba." (Sierras de Málaga; Málaga says "los municipios
+# de"): the clause continues the whole-municipio list up to the end of its
+# sentence, which is then the end of the list.
+_WHOLE_MUNI_CONT_RE = re.compile(
+    r"\s*,?\s*as[ií]\s+como\s+"
+    r"(?:los\s+t[eé]rminos\s+municipales|el\s+t[eé]rmino\s+municipal|los\s+municipios"
+    r"|el\s+municipio)\s+de\s+",
+    re.IGNORECASE,
+)
+_SENTENCE_END_RE = re.compile(r"\.(?=\s|$)|\n[ \t]*\n")
+
+
+def _fold_whole_muni_continuation(body: str) -> str:
+    m = _WHOLE_MUNI_CONT_RE.search(body)
+    if not m:
+        return body
+    end = _SENTENCE_END_RE.search(body, m.end())
+    return body[: m.start()] + ", " + body[m.end() : end.start() if end else len(body)]
+
+
+# A parish enumeration bracketed by its municipio: "las parroquias de
+# Camboño, Fruíme y Tállara del término municipal de Lousame" (Barbanza e
+# Iria), "… Viós en el término municipal de Abegondo" (Betanzos). The
+# whole span goes, parishes and closing municipio alike — the module
+# docstring's rule is that only *named* municipios are kept, and a
+# municipio named only as the holder of a few parishes is not in the zone
+# as a whole (Padrón's Iria Flavia and Padrón parishes, not Padrón).
+# Bounded so a stray "parroquias de" without a closing clause cannot eat
+# the rest of the list.
+_PARROQUIA_ENUM_RE = re.compile(
+    r"(?:de\s+)?(?:las?\s+)?parroquias?\s+de\b.{0,600}?"
+    r"(?:en\s+el|del)\s+(?:t[eé]rmino\s+municipal|concello)\s+de\s+[^,;.\n]+",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+# "- <municipio>: las parroquias de …" lines (Valle del Miño-Ourense): the
+# municipio is named before the colon, the parishes after it. When a list
+# is written this way the named municipios are the whole list; the
+# parishes are dropped per the module docstring. Line-anchored, so the
+# page-break footer sitting between two entries is simply skipped.
+_MUNI_WITH_PARROQUIAS_RE = re.compile(
+    r"^\s*[-•—]\s*(?P<muni>[^:\n]+?)\s*:\s*las?\s+parroquias?\s+de\b",
+    re.IGNORECASE | re.MULTILINE,
 )
 
 # Phrases that introduce a flat commune enumeration. We capture
@@ -91,7 +154,7 @@ _LIST_LEADIN_RE = re.compile(
     # Original patterns (kept verbatim — handle Bailén, Liébana, Ribeiras
     # do Morrazo's section 9 "constituida por los terrenos aptos para la
     # producción de uva de los términos municipales de Bueu, …", etc.):
-    r"|los\s+t[eé]rminos\s+municipales\s+(?:siguientes\s*:|de)?\s*"
+    r"|los\s+t[eé]rminos\s+municipales\s+(?:(?:y\s+parroquias\s+)?siguientes\s*:|de(?:\s*:)?)?\s*"
     r"|t[eé]rminos\s+municipales\s+de\s+"
     # Defer to the "los términos municipales de" lead-in when a more
     # specific list intro follows the "terrenos aptos … de" preamble
@@ -163,6 +226,159 @@ _NAME_STOPWORDS = frozenset({
     "mediante",
     "san", "santa",  # too generic alone, keep only with following word
 })
+
+
+# ---------------------------------------------------------------------------
+# Name normalisation — the key both sides of the GISCO match are reduced to.
+# Lives here rather than in geometry.py so the tokenizers below can use it
+# without stage 02 importing geopandas; geometry.py imports it from here.
+# ---------------------------------------------------------------------------
+
+def _normalise_commune_name(s: str) -> str:
+    """Strip diacritics, articles (leading + GISCO's trailing-comma
+    convention), and parenthetical suffixes; lowercase. Same idiom as
+    scripts/_lib/lieu_dit.py:_normalise_name on the FR side."""
+    # Pliegos type the Valencian/Catalan apostrophe as U+2019 ("Sant Joan
+    # d’Alacant") or as an acute accent ("Vall d´Alba"); GISCO uses the
+    # ASCII one, and NFKD would simply drop the other forms.
+    s = re.sub(r"[\u2018\u2019\u00b4`]", "'", s)
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    # GISCO writes co-official names as "Labastida / Bastida"; the first
+    # form is the key. This has to run before the character-class pass
+    # below, which turns "/" into a space — it used to run after, so no
+    # bilingual name ever matched exactly and every one of them fell
+    # through to the noisy first-word lookup. The other forms are indexed
+    # too (see `_name_forms`).
+    if "/" in s:
+        s = s.split("/", 1)[0]
+    s = re.sub(r"\([^)]*\)", " ", s)  # drop parenthetical context
+    # A hyphen is a word separator, not part of the word: the pliego's
+    # "Vélez Rubio" is GISCO's "Vélez-Rubio", and "Oyón-Oion" must key on
+    # the first word "oyon" for the pliego's bare "Oyón" to reach it.
+    s = re.sub(r"[^A-Za-z0-9\s']", " ", s)
+    s = re.sub(r"\s+", " ", s).strip().lower()
+    # GISCO lists Catalan / Castilian / Galician / Mallorquí articled
+    # names as "Borges del Camp, Les" / "Canonja, La" / "Castell, Es",
+    # so after the comma-to-space pass the article surfaces as a
+    # trailing token. Pliegos use article-first ("Les Borges del Camp").
+    # Strip both forms so the two normalise to the same root.
+    _articles = {
+        "la", "el", "los", "las", "lo",
+        "les", "els", "l'",
+        "es", "sa", "ses",
+        "o", "a", "os", "as",
+    }
+    s = re.sub(r"^l'", "", s)
+    # Catalan "i" and Castilian "y" are the same conjunction: the pliego's
+    # "Sanet i Negrals" is GISCO's "Sanet y Negrals".
+    s = re.sub(r"\bi\b", "y", s)
+    parts = s.split(" ", 1)
+    if len(parts) == 2 and parts[0] in _articles:
+        s = parts[1]
+    parts = s.rsplit(" ", 1)
+    if len(parts) == 2 and parts[1] in _articles:
+        s = parts[0]
+    return s
+
+
+# Particles that vary between a pliego's and GISCO's spelling of one name
+# ("Cogollos Vega" / "Cogollos de la Vega", "San Miguel de Cinca" / "San
+# Miguel del Cinca"); the remaining words are what identifies the place.
+_CONNECTORS = frozenset({
+    "de", "del", "la", "las", "los", "el", "l'", "d'", "y", "e", "en",
+    "do", "da", "dos", "das", "o", "a", "os", "as",
+})
+
+
+def _content_words(norm: str) -> tuple[str, ...]:
+    """The words of a normalised name that identify the place: particles
+    dropped, and an elided one ("d'Anglesola", "l'Alcora") peeled off its
+    word, so "Sant Joan de Alacant" and "Sant Joan d'Alacant" agree."""
+    words = (re.sub(r"^[dl]'", "", w) for w in norm.split())
+    return tuple(w for w in words if w and w not in _CONNECTORS)
+
+
+def _same_name(a: str, b: str) -> bool:
+    """Two normalised names that differ only in particles or in where a
+    word breaks ("Lapuebla de La barca" / "Lapuebla de Labarca")."""
+    return _content_words(a) == _content_words(b) or a.replace(" ", "") == b.replace(" ", "")
+
+
+# ---------------------------------------------------------------------------
+# Municipio names that contain a conjunction — "Los Palacios y Villafranca",
+# "Gimenells i el Pla de la Font", "Vielha e Mijaran" — which the " y " /
+# " i " / " e " split below would cut in two (and then bind the second half
+# to a homonym: Navarra's Villafranca, 580 km from Sevilla). Stage 02 has no
+# GISCO access, so the roster is checked in, generated from the LAU zip.
+# ---------------------------------------------------------------------------
+
+_COMPOUND_MUNICIPIOS_PATH = Path(__file__).with_name("compound_municipios.json")
+
+# A piece may be re-joined to the next one across a comma or a conjunction,
+# never across ";" or a sentence / line break.
+_SOFT_SEP_RE = re.compile(r"\s*,\s*|\s+(?:y|i|e)\s+")
+
+
+@lru_cache(maxsize=1)
+def _compound_keys() -> tuple[frozenset[str], frozenset[tuple[str, ...]]]:
+    """The compound names as the normalised key and as the content-word
+    tuple (particles dropped — the pliego's "Gimenells y Pla de la Font" is
+    GISCO's "Gimenells i el Pla de la Font")."""
+    doc = json.loads(_COMPOUND_MUNICIPIOS_PATH.read_text(encoding="utf-8"))
+    norms = {_normalise_commune_name(m["name"]) for m in doc["municipios"]}
+    return frozenset(norms), frozenset(_content_words(n) for n in norms)
+
+
+# A whole token that is only an article — GISCO's "Les" (Val d'Aran) — or
+# nothing once normalised. Never a piece of a compound name.
+_BARE_ARTICLES = frozenset({"el", "la", "los", "las", "els", "les", "es", "sa", "a", "o", "os", "as", "l", "d"})
+
+
+def _bare_article(token: str) -> bool:
+    norm = _normalise_commune_name(token)
+    return not norm or norm in _BARE_ARTICLES or not _content_words(norm)
+
+
+def merge_compound_municipios(tokens: list[str], seps: list[str]) -> list[str]:
+    """Re-join the pieces of a compound municipio name. `seps[k]` is the
+    separator that preceded `tokens[k]` in the source (`seps[0]` is empty).
+    Up to four pieces are tried, longest run first, and a run is one name
+    only when its whole text is a `compound_municipios.json` name — so two
+    real municipios listed side by side are never fused."""
+    exact, by_words = _compound_keys()
+    out: list[str] = []
+    i = 0
+    while i < len(tokens):
+        end = i
+        for j in range(min(i + 3, len(tokens) - 1), i, -1):
+            if not all(_SOFT_SEP_RE.fullmatch(seps[k]) for k in range(i + 1, j + 1)):
+                continue
+            # Every piece must be a name of its own. "Vielha e Mijaran, Les
+            # y Bossòst" would otherwise fuse Les — the one municipio whose
+            # whole name is an article (Val d'Aran, INE 25125) — into the
+            # compound before it, because the normaliser strips a trailing
+            # article the way GISCO writes "Borges del Camp, Les".
+            if any(_bare_article(tokens[k]) for k in range(i, j + 1)):
+                continue
+            joined = tokens[i] + "".join(seps[k] + tokens[k] for k in range(i + 1, j + 1))
+            norm = _normalise_commune_name(joined)
+            if norm in exact or _content_words(norm) in by_words:
+                end = j
+                break
+        if end == i:
+            out.append(tokens[i])
+        else:
+            joined = tokens[i] + "".join(seps[k] + tokens[k] for k in range(i + 1, end + 1))
+            out.append(re.sub(r"\s+", " ", joined).strip())
+        i = end + 1
+    return out
+
+
+def _split_municipios(body: str, separators: str) -> list[str]:
+    """Split an enumeration on the `separators` alternation, keeping every
+    compound municipio name whole."""
+    parts = re.split(f"({separators})", body)
+    return merge_compound_municipios(parts[0::2], [""] + parts[1::2])
 
 
 # Province-wide IGP pattern: "todos los términos municipales de las
@@ -316,6 +532,10 @@ def parse_commune_list(geo_area_brief: str) -> list[str]:
         return []
     body = text[leadin.end():]
 
+    munis = [m.group("muni") for m in _MUNI_WITH_PARROQUIAS_RE.finditer(body)]
+    if len(munis) >= 2:
+        return _dedupe([_clean_token(m) for m in munis])
+
     # Strip parenthetical asides BEFORE end-marker truncation so polygon
     # text trapped inside parentheses ("Zaragoza (en Zaragoza, polígonos
     # catastrales 152, …)") doesn't trigger a false cut on "polígono".
@@ -323,13 +543,14 @@ def parse_commune_list(geo_area_brief: str) -> list[str]:
     # end-marker checks so the "(*).—Municipio que engloba …" anchor
     # still matches as an end marker.
     body = _PAREN_ASIDE_RE.sub("", body)
+    body = _PARROQUIA_ENUM_RE.sub(" ", body)
+    body = _fold_whole_muni_continuation(body)
 
     # Truncate at the first end marker.
     cut = len(body)
-    for marker in _LIST_END_MARKERS:
-        i = body.find(marker)
-        if 0 <= i < cut:
-            cut = i
+    end = _LIST_END_RE.search(body)
+    if end:
+        cut = end.start()
     # Also truncate at the first sentence break that's followed by a
     # narrative clause (period + capital letter that ISN'T a continuation
     # of a commune list).
@@ -339,6 +560,7 @@ def parse_commune_list(geo_area_brief: str) -> list[str]:
                ("la mayor", "el resto", "esta zona", "todo el territorio",
                 "las parroquias son", "los polígonos",
                 "en los vinos", "la uva proceder", "la uva procede",
+                "las parcelas",
                 "en la siguiente", "se extiende", "se localiza",
                 "se sitúa", "la serra", "el conjunto", "las illes",
                 "las características", "ocupa una")):
@@ -355,11 +577,15 @@ def parse_commune_list(geo_area_brief: str) -> list[str]:
     # Tokenise: split on commas, " y ", " i " (Catalan), semicolons,
     # period-then-newline (sub-list boundary between provinces, after
     # the header has been replaced).
-    raw_tokens = re.split(r"\s*[,;]\s*|\s+(?:y|i|e)\s+|\.\s*\n+", body)
+    raw_tokens = _split_municipios(body, r"\s*[,;]\s*|\s+(?:y|i|e)\s+|\.\s*\n+")
+    return _dedupe(_clean_token(tok) for tok in raw_tokens)
+
+
+def _dedupe(names) -> list[str]:
+    """Drop empties and case-folded repeats, keeping first-seen order."""
     out: list[str] = []
     seen: set[str] = set()
-    for tok in raw_tokens:
-        name = _clean_token(tok)
+    for name in names:
         if not name:
             continue
         key = name.casefold()
@@ -392,6 +618,11 @@ def parse_whole_commune_prefix(geo_area_brief: str) -> list[str]:
         r"Y,?\s+en\s+parte,?",
         r"Y\s+las\s+parcelas",
         r"y\s+las\s+parcelas",
+        # "…, así como las zonas de sierra pertenecientes a los términos
+        # municipales de Alcaudete (polígonos …)" — Sierra Sur de Jaén;
+        # "así como en los polígonos catastrales … de Mallén" — Campo de
+        # Borja. The conjunction opens the partial-commune tail.
+        r"\bas[ií]\s+como\b",
     ]
     cut = len(text)
     for pat in cut_patterns:
@@ -417,8 +648,14 @@ def parse_whole_commune_prefix(geo_area_brief: str) -> list[str]:
             re.IGNORECASE,
         )
     body = text[leadin.end():cut] if leadin else text[:cut]
+    # A line break inside a name ("Castillo de\nLocubín") is a PDF wrap,
+    # not a list separator: a commune name never ends in a preposition
+    # or an article.
+    body = re.sub(
+        r"\b(de|del|la|las|los|el|les|els|d')\n\s*", r"\1 ", body, flags=re.IGNORECASE,
+    )
 
-    raw_tokens = re.split(r"\s*[,;]\s*|\s+(?:y|i|e)\s+|\n+", body)
+    raw_tokens = _split_municipios(body, r"\s*[,;]\s*|\s+(?:y|i|e)\s+|\n+")
     out: list[str] = []
     seen: set[str] = set()
     for tok in raw_tokens:
@@ -464,4 +701,128 @@ def _clean_token(t: str) -> str:
         return ""
     # Strip "del término municipal de X" suffix
     t = re.sub(r"\s+del\s+t[eé]rmino\s+municipal\s+de\s+\S+.*$", "", t, flags=re.IGNORECASE)
+    # "los términos municipales de Villaviciosa de Córdoba y de Espiel en
+    # la provincia de Córdoba": the repeated "de" after the split and the
+    # province tail are the sentence, not the name.
+    t = re.sub(r"^de\s+(?=[A-ZÁÉÍÓÚÑÜÀ])", "", t)
+    t = re.sub(
+        r"\s+en\s+(?:la|el|las|los)\b(?:\s+(?:provincia|comunidad|comarca|isla|zona)\b.*)?$",
+        "", t, flags=re.IGNORECASE,
+    )
+    t = re.sub(r"\s+pertenecientes?\s+a\s.*$", "", t, flags=re.IGNORECASE)
     return t.strip()
+
+
+# ---------------------------------------------------------------------------
+# Parroquia inclusions — the sub-municipal enumerations the functions above
+# strip. Resolved against the IET Mapa de Parroquias (scripts/_lib/es/
+# parroquia.py); the whole-municipio parsers are untouched by this section.
+# ---------------------------------------------------------------------------
+
+# The unit word, tolerant of a PDF line-break hyphen ("parro-quias" in the
+# Monterrei documento único) and of the singular.
+_PARR = r"parro-?\s*quias?"
+_MUNI_UNIT = r"(?:t[eé]rmino\s+municipal|ayuntamiento|concello|municipio)"
+_NAME_LIST = r"(?:(?!" + _PARR + r"\s+de\b)[^;:])+?"
+
+# Form A — parishes first, holder last: "las parroquias de A, B y C del
+# término municipal de X" / "… en el ayuntamiento de X" / "la parroquia de
+# A, del término municipal de X". The list may not cross a ";" or ":", nor
+# a second "parroquias de" (that one is the next enumeration); the holder
+# ends at punctuation, the conjunction into another enumeration ("y de las
+# parroquias de …", Betanzos) or the end of the text.
+_PARR_FORM_A_RE = re.compile(
+    r"(?:las?\s+)?" + _PARR + r"\s+de\s+(?P<names>" + _NAME_LIST + r")"
+    r"\s*,?\s+(?:del|en\s+el)\s+" + _MUNI_UNIT + r"\s+de\s+"
+    r"(?P<muni>[^,;.:\n]+?)"
+    r"(?=\s*[,;.:\n]|\s+y\s+(?:de\s+)?las?\s+" + _PARR + r"\b|\s+las?\s+" + _PARR + r"\b|\Z)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+# Form B — holder first: "del ayuntamiento de Riós, las parroquias de A, B y
+# C" (Monterrei), "del ayuntamiento de Toén los lugares de … y la parroquia
+# de Alongos" (Ribeiro — the lugares between are villages, not parishes, and
+# are skipped). The holder ends at a comma / colon or before an article, and
+# the enumeration runs to the end of the clause.
+# The gap between holder and enumeration may not name another holder —
+# "… en el ayuntamiento de Ourense, y del ayuntamiento de Toén los lugares
+# de … y la parroquia de Alongos" binds Alongos to Toén, not Ourense.
+_PARR_FORM_B_RE = re.compile(
+    r"(?:del|en\s+el)\s+" + _MUNI_UNIT + r"\s+de\s+"
+    r"(?P<muni>[^,;:\n]+?)(?=\s*[,:]|\s+(?:los|las|la|el)\s)"
+    r"(?:(?!(?:del|en\s+el)\s+" + _MUNI_UNIT + r"\s+de\b)[^;])*?"
+    r"\b(?:las?\s+)?" + _PARR + r"\s+de\s+(?P<names>" + _NAME_LIST + r")"
+    r"(?=\s*[;:]|\s*\.\s*(?:\n|\Z)|\Z)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+# Form C — one line per holder: "- X: las parroquias de A, B y C." (Valle
+# del Miño-Ourense). The list may wrap lines; it ends at the sentence's
+# period, the next dash line or the end of the text.
+_PARR_FORM_C_RE = re.compile(
+    r"^\s*[-•—]\s*(?P<muni>[^:\n]+?)\s*:\s*(?:las?\s+)?" + _PARR + r"\s+de\s+"
+    r"(?P<names>" + _NAME_LIST + r")"
+    r"(?=\s*\.\s*(?:\n|\Z)|\n\s*[-•—]|\Z)",
+    re.IGNORECASE | re.MULTILINE | re.DOTALL,
+)
+
+# Whole-municipio inclusions written beside the parish ones: "la totalidad
+# del municipio de Negueira de Muñiz" (Terras do Navia), "comprende el
+# ayuntamiento de Vilardevós," (Monterrei's ladera subzona). Kept in the
+# same result so a resolver sees the record's sub-municipal delimitation in
+# one list.
+_WHOLE_MUNI_RE = re.compile(
+    r"(?:la\s+totalidad\s+del\s+" + _MUNI_UNIT + r"|comprende\s+el\s+ayuntamiento)"
+    r"\s+de\s+(?P<muni>[^,;.:\n]+?)(?=\s*[,;.:\n]|\Z)",
+    re.IGNORECASE,
+)
+
+
+def parse_parroquia_inclusions(text: str) -> list[dict]:
+    """Parishes a pliego names inside a municipio, as
+    `[{"municipio": str, "parroquias": [str, …]}, …]` in text order, one
+    entry per (municipio, enumeration); a whole-municipio inclusion written
+    alongside comes back as `{"municipio": str, "parroquias": [], "whole":
+    True}`. Empty when the text enumerates no parishes. The three forms are
+    matched in order — line form, parishes-first, holder-first — each on
+    the text with the earlier matches blanked, so a holder-first clause can
+    never swallow the parishes-first enumeration that follows it."""
+    if not text or not re.search(_PARR + r"\s+de\b", text, re.IGNORECASE):
+        return []
+    body = _PAREN_ASIDE_RE.sub("", text)
+    out: list[dict] = []
+    for pattern in (_PARR_FORM_C_RE, _PARR_FORM_A_RE, _PARR_FORM_B_RE):
+        spans: list[tuple[int, int]] = []
+        for m in pattern.finditer(body):
+            names = _split_parroquia_names(m.group("names"))
+            muni = _clean_token(m.group("muni"))
+            if not names or not muni:
+                continue
+            out.append({"municipio": muni, "parroquias": names, "start": m.start()})
+            spans.append(m.span())
+        for start, end in spans:
+            body = body[:start] + " " * (end - start) + body[end:]
+    for m in _WHOLE_MUNI_RE.finditer(body):
+        muni = _clean_token(m.group("muni"))
+        if muni:
+            out.append({"municipio": muni, "parroquias": [], "whole": True, "start": m.start()})
+    out.sort(key=lambda e: e.pop("start"))
+    return out
+
+
+def _split_parroquia_names(raw: str) -> list[str]:
+    """Split an enumeration on commas and the Castilian " y " (also the
+    Oxford ", y "). The Galician " e " is left inside a name ("Fumaces e A
+    Trepa" is one parish); a line break inside a name is a PDF wrap, a
+    hyphen at it a hyphenation artefact ("Tama-\\nguelos")."""
+    raw = re.sub(r"-\n\s*", "-", raw)
+    raw = re.sub(r"\s*\n\s*", " ", raw)
+    names: list[str] = []
+    for tok in re.split(r"\s*,\s*(?:y\s+)?|\s+y\s+", raw):
+        tok = re.sub(r"\s+", " ", tok).strip(" .;")
+        if not tok or tok.lower() in _NAME_STOPWORDS:
+            continue
+        if not re.match(r"[A-ZÁÉÍÓÚÑÜÀ]", tok):
+            continue
+        names.append(tok)
+    return _dedupe(names)

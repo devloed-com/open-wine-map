@@ -21,6 +21,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -31,7 +32,12 @@ from collections import Counter
 from pathlib import Path
 
 from _lib import aging_taxonomy as _aging_tax
-from _lib.aires import load_aires
+from _lib.aires import (
+    apply_supplements,
+    load_aires,
+    load_aires_departements,
+    lookup_departements,
+)
 from _lib.aires import lookup as lookup_aire
 from _lib.aoc_translations import (
     load_summary_translations,
@@ -49,11 +55,14 @@ from _lib.augment._shared import (
     _CZ_NATIONAL_SPEC_BY_SLUG,
     _DE_PRODUKTSPEZIFIKATION_BY_SLUG,
     _ES_NATIONAL_PLIEGO_BY_SLUG,
+    _GR_GEOM_DISCLOSURE_BY_SLUG,
     _GR_NATIONAL_SPEC_BY_SLUG,
     _HR_SPECIFIKACIJA_BY_SLUG,
     _HU_NATIONAL_SPEC_BY_SLUG,
     _IT_MASAF_BY_SLUG,
     _IT_REGISTER_BY_SLUG,
+    _LOD_RADIUS_BY_SLUG,
+    _PARCEL_FILL_BY_SLUG,
     _RO_NATIONAL_SPEC_BY_SLUG,
     _SI_SPECIFIKACIJA_BY_SLUG,
     _SK_NATIONAL_SPEC_BY_SLUG,
@@ -93,17 +102,27 @@ from _lib.de.region import derive_region as derive_de_region
 from _lib.env import load_dotenv
 from _lib.es.geometry import ESPolygonIndex
 from _lib.es.national_term import es_term_for
+from _lib.es.parroquia import (
+    PARROQUIAS_ATTRIBUTION,
+    PARROQUIAS_DATASET_URL,
+    PARROQUIAS_LICENCE_SHORT,
+    PARROQUIAS_LICENCE_URL,
+)
 from _lib.es.region import (
     derive_ccaa as derive_es_ccaa,
 )
 from _lib.es.sigpac import SigpacIndex
 from _lib.es.zones import MAPA_ZONES_FILE, ESZoneIndex
+from _lib.fr_wine_region import FR_WINE_REGIONS
 from _lib.fr_wine_region import derive_wine_region as derive_fr_wine_region
 from _lib.gb.geometry import GBPolygonIndex
 from _lib.gb.region import derive_region as derive_gb_region
+from _lib.geom_chain import ES_PARROQUIA_PROVENANCE as _ES_PARROQUIAS_BY_SLUG
+from _lib.geom_chain import ES_SIGPAC_PROVENANCE as _ES_SIGPAC_BY_SLUG
 from _lib.geom_chain import (
     _resolve_es_igp_fallback,
     _resolve_es_sigpac,
+    apply_es_parroquias,
     cahier_insee,
     load_commune_index,
     resolve_dgc_geometry,
@@ -121,6 +140,7 @@ from _lib.gi_terms import (
 )
 from _lib.gr.geometry import GRPolygonIndex
 from _lib.gr.region import derive_region as derive_gr_region
+from _lib.gr.region import region_for_nuts_ids as gr_region_for_nuts_ids
 from _lib.grape_display_overrides import (
     display_name_overrides,
     load_grape_display_overrides,
@@ -148,17 +168,37 @@ from _lib.lexicon_loading import (
 from _lib.lieu_dit import LieuDitIndex
 from _lib.lu.geometry import LUPolygonIndex
 from _lib.lu.region import derive_region as derive_lu_region
-from _lib.map_template import STARTUP_AOCS_FIELDS, build_country_labels, build_labels
+from _lib.map_template import (
+    STARTUP_AOCS_FIELDS,
+    build_country_labels,
+    build_labels,
+    seo_display_name,
+)
 from _lib.map_template import render as render_map_html
 from _lib.mt.geometry import MTPolygonIndex
 from _lib.nl.geometry import NLPolygonIndex
 from _lib.nl.region import derive_region as derive_nl_region
 from _lib.parcellaire import build_aoc_polygons
+from _lib.parcellaire_gaps import (
+    apply_gap_fill,
+    load_gap_fills,
+    parcel_gaps,
+)
+from _lib.parcellaire_gaps import (
+    disclosure as parcel_fill_disclosure,
+)
+from _lib.parcellaire_gaps import (
+    load_coverage as load_parcel_coverage,
+)
 from _lib.pt.commune_list import parse_commune_list as parse_pt_commune_list
 from _lib.pt.geometry import PTPolygonIndex
 from _lib.pt.region import derive_region as derive_pt_region
+from _lib.region_search_terms import region_search_terms_for
+from _lib.ro.commune import judet_source_text as ro_judet_source_text
+from _lib.ro.commune import parse_judet_list as parse_ro_judet_list
 from _lib.ro.geometry import ROPolygonIndex
 from _lib.ro.region import derive_region as derive_ro_region
+from _lib.romanise import fold_confusables, search_forms
 from _lib.si.geometry import SIPolygonIndex
 from _lib.si.region import derive_region as derive_si_region
 from _lib.sk.geometry import SKPolygonIndex
@@ -183,6 +223,15 @@ from _lib.style_taxonomy import (
 )
 from _lib.summaries import derive_summary
 from _lib.terroir_normalize import normalize_aocs
+from _lib.vineyard_envelope import (
+    ENVELOPE_GEOM_SOURCE,
+    ENVELOPE_RADIUS_M,
+    ENVELOPE_SIMPLIFY_M,
+    is_envelope_source,
+    lod_config,
+    shape_metrics,
+)
+from _lib.vineyard_envelope import envelope as vineyard_envelope
 from shapely.geometry import mapping, shape
 from tqdm import tqdm
 from unidecode import unidecode as _unidecode
@@ -236,8 +285,22 @@ ASSETS_OUT = WIKI / "assets"
 VENDOR_SRC = ROOT / "scripts" / "_lib" / "vendor"
 GEOJSON_OUT = MAP_DATA / "appellations.geojson"
 PMTILES_OUT = MAP_DATA / "appellations.pmtiles"
+# Low-zoom tileset: the generalised vineyard footprint for French parcel-level
+# records (scripts/_lib/vineyard_envelope.py), the same polygon as the detail
+# tileset for everything else. Drawn below LOD_OVERVIEW_MAX_ZOOM; the detail
+# tileset takes over from LOD_DETAIL_MIN_ZOOM (crossfade in between).
+GEOJSON_OVERVIEW_OUT = MAP_DATA / "appellations-overview.geojson"
+PMTILES_OVERVIEW_OUT = MAP_DATA / "appellations-overview.pmtiles"
+# Commune-level polygons (aires-CSV / cahier commune unions). No longer tiled:
+# written for scripts/audit_geometry_overlaps.py, whose sliver heuristic is
+# calibrated on commune borders.
 GEOJSON_VILLAGES_OUT = MAP_DATA / "appellations-villages.geojson"
-PMTILES_VILLAGES_OUT = MAP_DATA / "appellations-villages.pmtiles"
+# The pre-LOD tileset name; unlinked so a stale copy is never served.
+PMTILES_VILLAGES_STALE = MAP_DATA / "appellations-villages.pmtiles"
+# A footprint this much larger than its parcels is reported after the build
+# (the corpus maximum at 250 m is 2.4×; a larger ratio means parcels on both
+# sides of something wide were bridged — check the water audit).
+ENVELOPE_RATIO_WARN = 3.0
 WIKIDATA_QIDS = ROOT / "raw" / "wikidata" / "qids-by-slug.json"
 
 # Geometry fed to tippecanoe is Douglas-Peucker simplified to cap the absurd
@@ -279,6 +342,10 @@ _CROSS_BORDER_COUNTRY_ALIASES: dict[str, list[str]] = {
 # Populated after the IT augments (menzioni live on the in-memory record,
 # not in the feature props or the on-disk stub) and read by the aocs blob.
 _IT_MENZIONI_BY_SLUG: dict[str, list] = {}
+# Raw INAO comité per FR slug, filled in main() where the wine region is
+# derived and read in emit_html() by the interprofession fallback
+# (appellation_urls.resolve keys the cider body on the comité).
+_FR_COMITE_BY_SLUG: dict[str, str] = {}
 
 
 
@@ -619,6 +686,24 @@ def _bbox_area(g) -> float:
     return float((maxx - minx) * (maxy - miny))
 
 
+def _check_envelope(slug: str, parcels, footprint) -> None:
+    """A closing never leaves the r-dilation of its input (plus the final
+    simplify), so the footprint's bbox must sit inside the parcels' bbox grown
+    by r + simplify. Anything else is a bug in the envelope code, not data —
+    fatal, because the map would draw the footprint as the vineyard."""
+    slack_m = ENVELOPE_RADIUS_M + ENVELOPE_SIMPLIFY_M + 5.0
+    minx, miny, maxx, maxy = parcels.bounds
+    lat = math.radians((miny + maxy) / 2.0)
+    dlat = slack_m / 111_320.0
+    dlon = dlat / max(math.cos(lat), 0.2)
+    ominx, ominy, omaxx, omaxy = footprint.bounds
+    if ominx < minx - dlon or ominy < miny - dlat or omaxx > maxx + dlon or omaxy > maxy + dlat:
+        raise SystemExit(
+            f"[geo] FATAL: footprint of {slug} leaves its parcels' bbox by more than "
+            f"{slack_m:.0f} m: parcels {parcels.bounds} vs footprint {footprint.bounds}"
+        )
+
+
 def communes_containing(needle, insee_idx: dict[str, dict]) -> set[str]:
     """Return the INSEE codes of every IGN commune intersecting `needle`.
 
@@ -665,12 +750,24 @@ def main() -> int:
         file=sys.stderr,
     )
 
-    aires_by_app = load_aires()
+    aires_by_app = load_aires(supplements=False)
+    aire_supplements = apply_supplements(aires_by_app)
+    # Département profile per aire, for the FR wine-region bucket of a record
+    # whose comité names no region or two (fr_wine_region.derive_wine_region).
+    aires_departements = load_aires_departements()
     print(
         f"[load] INAO aires-communes: {len(aires_by_app)} appellations, "
         f"{sum(len(v) for v in aires_by_app.values())} commune-rows",
         file=sys.stderr,
     )
+    for row in aire_supplements:
+        state = "UNBOUND" if row["unbound"] else "STALE" if row["stale"] else "applied"
+        print(
+            f"[geo] aires supplement {row['slug']}: {state} — {len(row['added'])} commune(s) "
+            f"added from the cahier"
+            + (f", {len(row['stale'])} already in the CSV: re-verify the pin" if row["stale"] else ""),
+            file=sys.stderr,
+        )
 
     parcels_by_app: dict[str, dict] = {}
     parcels_by_denom: dict[str, dict] = {}
@@ -695,6 +792,19 @@ def main() -> int:
 
     features: list[dict] = []
     village_features: list[dict] = []
+    overview_features: list[dict] = []
+    # slug -> (overview geometry, its provenance) for every record with a
+    # polygon, so a sub-denomination that inherits its detail polygon from a
+    # parent / umbrella sibling inherits the same overview shape (a child must
+    # never draw a larger low-zoom shape than its parent).
+    overview_by_slug: dict[str, tuple[object, str]] = {}
+    envelope_stats: dict[str, float] = {}
+    envelope_hits = envelope_inherited = 0
+    # Closing radius per record (vineyard_envelope.adaptive_radius): a
+    # sub-denomination that inherits a footprint inherits its radius too.
+    envelope_radius_by_slug: dict[str, int] = {}
+    envelope_radii: Counter[int] = Counter()
+    envelope_ratio_warnings: list[tuple[str, float]] = []
     skipped = 0
     coverage: list[tuple[str, int, int]] = []
     parcel_hits = aires_hits = commune_hits = 0
@@ -1215,10 +1325,12 @@ def main() -> int:
     ro_polygons = ROPolygonIndex(
         figshare_gpkg=ES_FIGSHARE_GPKG,
         gisco_lau_zip=ES_GISCO_LAU_ZIP,
+        nuts3_geojson=GR_NUTS3_GEOJSON,
     )
     print(
         f"[load] RO polygons: {ro_polygons.n_pdo_polygons} Figshare RO-PDOs / "
-        f"{ro_polygons.n_lau} GISCO RO communes",
+        f"{ro_polygons.n_lau} GISCO RO communes / "
+        f"{ro_polygons.n_judete} NUTS-3 județe (county masks)",
         file=sys.stderr,
     )
     ro_hits: Counter[str] = Counter()
@@ -1256,6 +1368,7 @@ def main() -> int:
         file=sys.stderr,
     )
     gr_hits: Counter[str] = Counter()
+    gr_nuts_ids_by_slug: dict[str, list[str]] = {}
     # CY polygon index: Bétard 2022 covers all 7 CY PDOs (Cyprus joined
     # the EU in 2004). The 4 CY PGIs are the island's wine districts
     # (Πάφος / Λεμεσός / Λάρνακα / Λευκωσία) and resolve as the union of
@@ -1390,6 +1503,70 @@ def main() -> int:
         file=sys.stderr,
     )
 
+    # INAO parcellaire gaps closed by a curator pin — aire communes the
+    # parcel layer does not cover, filled with a donor appellation's parcels
+    # inside the commune or with the whole commune, and said on the card.
+    # See scripts/_lib/parcellaire_gaps.py and scripts/audit_parcellaire_gaps.py.
+    parcel_fills = load_gap_fills()
+    parcel_coverage = load_parcel_coverage() if parcel_fills and parcels_by_app else None
+    parcel_fill_hits: Counter[str] = Counter()
+    parcel_fill_stale: list[tuple[str, dict]] = []
+    _fr_name_by_slug = {
+        r["slug"]: r["name"] for r in extracted_records
+        if (r.get("country") or "fr") == "fr" and r.get("slug") and r.get("name")
+    }
+    _donor_geom_cache: dict[str, object] = {}
+
+    def _donor_geom(slug: str):
+        if slug not in _donor_geom_cache:
+            feat = parcels_by_app.get(_fr_name_by_slug.get(slug, ""))
+            _donor_geom_cache[slug] = shape(feat["geometry"]) if feat is not None else None
+        return _donor_geom_cache[slug]
+
+    def _fill_parcel_gaps(record: dict, geom, geom_source: str):
+        spec = parcel_fills.get(record["slug"])
+        if spec is None or parcel_coverage is None or geom is None or geom.is_empty:
+            return geom
+        aire_codes = lookup_aire(
+            aires_by_app, record["name"], cahier_insee(record, commune_idx)
+        ) or set()
+        if geom_source == "parcellaire-dgc":
+            parcel_codes = parcel_coverage.communes_for_denom(
+                record.get("parent_name") or record["name"],
+                record.get("id_denomination_geo") or "",
+            )
+        else:
+            parcel_codes = parcel_coverage.communes_for_app(record["name"])
+        gaps, _unknown = parcel_gaps(set(aire_codes), parcel_codes, insee_idx)
+        res = apply_gap_fill(
+            spec, geom, gaps, insee_idx, insee_name_idx,
+            _donor_geom, lambda d: _fr_name_by_slug.get(d, ""),
+            lambda d, c: c in parcel_coverage.communes_for_app(_fr_name_by_slug.get(d, "")),
+        )
+        for st in res.stale:
+            parcel_fill_stale.append((record["slug"], st))
+            print(
+                f"[geo] STALE parcellaire gap fill: {record['slug']} / {st['name']} "
+                f"({st['insee']}) — {st['why']}; left alone, re-verify the pin",
+                file=sys.stderr,
+            )
+        if res.filled:
+            for f in res.filled:
+                parcel_fill_hits[f["how"]] += 1
+            parcel_fill_hits["records"] += 1
+            print(
+                f"[geo] parcellaire gap fill: {record['slug']}: "
+                + ", ".join(
+                    f"{f['name']} ({f['how']}" + (f" of {f['donor']}" if f["donor"] else "") + ")"
+                    for f in res.filled
+                )
+                + (f"; still open: {', '.join(g['name'] for g in res.gaps)}" if res.gaps else ""),
+                file=sys.stderr,
+            )
+        if res.filled or res.gaps:
+            _PARCEL_FILL_BY_SLUG[record["slug"]] = parcel_fill_disclosure(res)
+        return res.geom
+
     # (eu_scheme, national_term) per slug — parents run first, so a
     # sub-denomination without a term of its own can fall back on its parent.
     term_by_slug: dict[str, tuple[str, str]] = {}
@@ -1496,6 +1673,15 @@ def main() -> int:
                             geom = igp_geom
                             geom_source = igp_source
                             stats = igp_stats
+            # Galician parish inclusions refine a commune union (or stand
+            # in for a missing polygon); a MAPA zone drawn at whole-municipio
+            # resolution that the parishes restate is redrawn from them
+            # (Monterrei); a sub-municipal zone or a Bétard polygon is left
+            # alone. Provenance for the panel attribution lands in
+            # ES_PARROQUIA_PROVENANCE, read back by _sources_for().
+            geom, geom_source, stats = apply_es_parroquias(
+                record, es_polygons, geom, geom_source, stats,
+            )
             es_hits[geom_source] += 1
             v_geom = geom
             v_source = geom_source
@@ -1611,7 +1797,8 @@ def main() -> int:
                     # text. gisco-comune-union / -provincia-union /
                     # -regione-union per how the area is delimited.
                     cgeom, csrc, cstats = it_communes.resolve(
-                        record.get("geo_area_brief") or ""
+                        record.get("geo_area_brief") or "",
+                        regione=record.get("regione") or "",
                     )
                     if cgeom is not None and not cgeom.is_empty:
                         geom = cgeom
@@ -1749,6 +1936,8 @@ def main() -> int:
             geom, geom_source, stats = ro_polygons.resolve(
                 record.get("file_number") or "",
                 record.get("geo_communes") or [],
+                parse_ro_judet_list(ro_judet_source_text(record)),
+                [(n, j) for n, j in (record.get("geo_communes_scoped") or [])] or None,
             )
             ro_hits[geom_source] += 1
             v_geom = geom
@@ -1807,8 +1996,57 @@ def main() -> int:
                 record.get("file_number") or "",
                 record.get("geo_communes") or [],
                 record=record,
+                area_text=(record.get("section_roles") or {}).get("geo_area")
+                or record.get("geo_area_brief") or "",
             )
             gr_hits[geom_source] += 1
+            disclosure: dict[str, list] = {}
+            if stats.get("nuts_ids"):
+                gr_nuts_ids_by_slug[record["slug"]] = list(stats["nuts_ids"])
+                # Panel-payload field: lets audit_geometry_outliers re-derive
+                # a clip on a NUTS-union record from the NUTS layers.
+                disclosure["geom_nuts_ids"] = list(stats["nuts_ids"])
+            if stats.get("how") == "area-units":
+                # Panel-payload fields: what the text named that the commune
+                # layer does not carry (not drawn) and the localities drawn
+                # as the unit that holds them — the disclosure the panel and
+                # the SSR card render (`_units_line` / `unitsLine`).
+                unmatched = list(stats.get("names_unmatched") or []) + [
+                    a.rsplit(" (", 1)[0] for a in stats.get("names_ambiguous") or []
+                ] + list(stats.get("dimoi_unmatched") or [])
+                if unmatched:
+                    disclosure["geom_units_unmatched"] = unmatched
+                if stats.get("proxied"):
+                    disclosure["geom_units_proxied"] = [
+                        p.split(" → ", 1)[0] for p in stats["proxied"]
+                    ]
+                if stats.get("landmarks_polygon"):
+                    # the boundary is a line through named places: the
+                    # polygon they outline is drawn, each at its gazetteer
+                    # point (approximate — the card says so)
+                    disclosure["geom_units_boundary"] = list(stats["landmarks_polygon"])
+                elif stats.get("landmarks_drawn"):
+                    # too few places located: the units they lie in instead
+                    disclosure["geom_units_boundary_units"] = [
+                        p.split(" → ", 1)[0] for p in stats["landmarks_drawn"]
+                    ]
+                if stats.get("landmarks_unmatched"):
+                    unmatched.extend(stats["landmarks_unmatched"])
+                    disclosure["geom_units_unmatched"] = unmatched
+            if disclosure:
+                # the panel-blob phase re-reads records from disk, so this
+                # rides the module-level slug cache like the other countries'
+                # provenance
+                _GR_GEOM_DISCLOSURE_BY_SLUG[record["slug"]] = disclosure
+            if not stats.get("nuts_ids") and geom is not None and not geom.is_empty:
+                # a record drawn from LAU units carries no NUTS id: the
+                # region facet reads the unit the spec cites, else the units
+                # the polygon lies in (never the panel's `geom_nuts_ids`,
+                # which is the outlier audit's clip source)
+                gr_nuts_ids_by_slug[record["slug"]] = (
+                    [stats["spec_nuts"]] if stats.get("spec_nuts")
+                    else gr_polygons.nuts_ids_covering(geom)
+                )
             v_geom = geom
             v_source = geom_source
             v_stats = stats
@@ -2153,6 +2391,8 @@ def main() -> int:
                     geom, stats = union_for_appellation(record, commune_idx)
                     geom_source = "communes"
                     commune_hits += 1 if geom is not None and not geom.is_empty else 0
+        if geom_source in ("parcellaire", "parcellaire-dgc"):
+            geom = _fill_parcel_gaps(record, geom, geom_source)
         coverage.append((record["name"], stats["matched"], stats["unmatched"]))
 
         # Village geometry: always commune-level (skip parcellaire), so the
@@ -2290,6 +2530,49 @@ def main() -> int:
         if geom is None or geom.is_empty:
             skipped += 1
             continue
+        # Overview (low-zoom) geometry — what the map draws below the detail
+        # zoom. Parcel-level French records get the generalised vineyard
+        # footprint; a sub-denomination that inherits its polygon inherits the
+        # donor's footprint; everything else draws the same polygon as the
+        # commune-level villages layer (identical to the detail polygon outside
+        # France). Computed AFTER the outlier clip, on the tile-simplified
+        # geometry (the closing's own 30 m simplify swallows the difference and
+        # the cache key is then a function of what is tiled).
+        tile_geom = _simplify_for_tiles(geom)
+        o_geom, o_source = v_geom, v_source
+        if is_envelope_source(country, geom_source):
+            o_geom = vineyard_envelope(tile_geom, stats=envelope_stats)
+            o_source = ENVELOPE_GEOM_SOURCE
+            # The closing radius scales with the record (vineyard_envelope
+            # .adaptive_radius); the card states the one actually used.
+            record["geom_lod_radius_m"] = envelope_stats.get("radius_m", ENVELOPE_RADIUS_M)
+            envelope_radius_by_slug[record["slug"]] = record["geom_lod_radius_m"]
+            _LOD_RADIUS_BY_SLUG[record["slug"]] = record["geom_lod_radius_m"]
+            envelope_radii[record["geom_lod_radius_m"]] += 1
+            envelope_hits += 1
+            _check_envelope(record["slug"], geom, o_geom)
+            if geom.area > 0 and o_geom.area / geom.area > ENVELOPE_RATIO_WARN:
+                envelope_ratio_warnings.append((record["slug"], o_geom.area / geom.area))
+        elif geom_source == "parent-appellation" and record.get("parent_slug") in overview_by_slug:
+            o_geom, _donor_source = overview_by_slug[record["parent_slug"]]
+            envelope_inherited += 1 if _donor_source == ENVELOPE_GEOM_SOURCE else 0
+            if _donor_source == ENVELOPE_GEOM_SOURCE:
+                record["geom_lod_radius_m"] = envelope_radius_by_slug.get(record["parent_slug"])
+                _LOD_RADIUS_BY_SLUG[record["slug"]] = record["geom_lod_radius_m"]
+            # The donor's shape was clipped under the donor's slug; honour an
+            # outlier override keyed on this record too (as v_geom was).
+            o_geom = geom_overrides.clip(record["slug"], o_geom, geom_source).geom
+        elif geom_source == "sibling-dgc" and sib_slug in overview_by_slug:
+            o_geom, _donor_source = overview_by_slug[sib_slug]
+            envelope_inherited += 1 if _donor_source == ENVELOPE_GEOM_SOURCE else 0
+            if _donor_source == ENVELOPE_GEOM_SOURCE:
+                record["geom_lod_radius_m"] = envelope_radius_by_slug.get(sib_slug)
+                _LOD_RADIUS_BY_SLUG[record["slug"]] = record["geom_lod_radius_m"]
+            o_geom = geom_overrides.clip(record["slug"], o_geom, geom_source).geom
+        if o_geom is None or o_geom.is_empty:
+            # Never let a record exist only above the detail zoom.
+            o_geom, o_source = geom, geom_source
+        overview_by_slug[record["slug"]] = (o_geom, o_source)
         if not is_sub_denomination:
             parent_geom_by_slug[record["slug"]] = geom
             if v_geom is not None and not v_geom.is_empty:
@@ -2469,7 +2752,6 @@ def main() -> int:
                 region_value = record.get("region") or derive_de_region(
                     record,
                     record.get("section_roles", {}).get("geo_area", ""),
-                    record.get("section_roles", {}).get("link_to_terroir", ""),
                     record.get("name", ""),
                 ) or "Deutschland"
                 es_region_by_parent_slug[f"de::{record['slug']}"] = region_value
@@ -2480,7 +2762,6 @@ def main() -> int:
             region_value = record.get("region") or derive_si_region(
                 record,
                 record.get("section_roles", {}).get("geo_area", ""),
-                record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
             ) or "Slovenija"
         elif record.get("country") == "hr":
@@ -2491,7 +2772,6 @@ def main() -> int:
             region_value = record.get("region") or derive_hr_region(
                 record,
                 record.get("section_roles", {}).get("geo_area", ""),
-                record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
             ) or "Hrvatska"
         elif record.get("country") == "hu":
@@ -2501,7 +2781,6 @@ def main() -> int:
             region_value = record.get("region") or derive_hu_region(
                 record,
                 record.get("section_roles", {}).get("geo_area", ""),
-                record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
             ) or "Magyarország"
         elif record.get("country") == "ro":
@@ -2513,7 +2792,6 @@ def main() -> int:
             region_value = record.get("region") or derive_ro_region(
                 record,
                 record.get("section_roles", {}).get("geo_area", ""),
-                record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
             ) or "România"
         elif record.get("country") == "bg":
@@ -2524,7 +2802,6 @@ def main() -> int:
             region_value = record.get("region") or derive_bg_region(
                 record,
                 record.get("section_roles", {}).get("geo_area", ""),
-                record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
             ) or "България"
         elif record.get("country") == "gr":
@@ -2533,11 +2810,15 @@ def main() -> int:
             # Νησιά Αιγαίου / Κρήτη). The curated file_number map covers
             # every PDO at v1; PGIs fall back to text scan + "Ελλάδα".
             # No sub-denominations in v1.
+            # The spec-cited NUTS unit the geometry resolved to comes after
+            # the curated map and the geo-area / name scan, never the
+            # terroir narrative (which filed all 15 retsinas under Κρήτη).
             region_value = record.get("region") or derive_gr_region(
                 record,
                 record.get("section_roles", {}).get("geo_area", ""),
-                record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
+            ) or gr_region_for_nuts_ids(
+                gr_nuts_ids_by_slug.get(record.get("slug", ""))
             ) or "Ελλάδα"
         elif record.get("country") == "cy":
             # CY region = wine district (επαρχία): Πάφος / Λεμεσός /
@@ -2547,7 +2828,6 @@ def main() -> int:
             region_value = record.get("region") or derive_cy_region(
                 record,
                 record.get("section_roles", {}).get("geo_area", ""),
-                record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
             ) or "Κύπρος"
         elif record.get("country") == "sk":
@@ -2558,7 +2838,6 @@ def main() -> int:
             region_value = record.get("region") or derive_sk_region(
                 record,
                 record.get("section_roles", {}).get("geo_area", ""),
-                record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
             ) or "Slovensko"
         elif record.get("country") == "cz":
@@ -2571,7 +2850,6 @@ def main() -> int:
             region_value = record.get("region") or derive_cz_region(
                 record,
                 record.get("section_roles", {}).get("geo_area", ""),
-                record.get("section_roles", {}).get("link_to_terroir", ""),
                 record.get("name", ""),
             ) or "Česko"
         elif record.get("country") == "ch":
@@ -2612,7 +2890,20 @@ def main() -> int:
             # GI to (England / Wales). Carried on the record from stage 02.
             region_value = derive_gb_region(record) or "United Kingdom"
         else:
-            region_value = derive_fr_wine_region(record)
+            region_value = derive_fr_wine_region(
+                record,
+                lookup_departements(
+                    aires_departements, record.get("parent_name") or record["name"]
+                ),
+            )
+            _FR_COMITE_BY_SLUG[record["slug"]] = record.get("comite_regional") or ""
+            if region_value not in FR_WINE_REGIONS:
+                print(
+                    f"[region] warn: {record['slug']} → {region_value!r} is not a wine-region "
+                    f"bucket (comité {record.get('comite_regional')!r}); pin it in "
+                    "fr_wine_region._SLUG_BUCKET",
+                    file=sys.stderr,
+                )
         common_props = {
             "country": record.get("country") or "fr",
             "source_lang": record.get("source_lang") or "",
@@ -2625,7 +2916,7 @@ def main() -> int:
             "id_denomination_geo": record.get("id_denomination_geo") or "",
             "slug": record["slug"],
             "name": record["name"],
-            "name_latin": record.get("name_latin") or "",
+            "name_latin": fold_confusables(record.get("name_latin") or ""),
             "kind": mvt_kind,
             "eu_scheme": eu_scheme,
             "national_term": national_term,
@@ -2654,13 +2945,19 @@ def main() -> int:
             "area": area_deg2,
             "bbox": ",".join(f"{v:.5f}" for v in bbox),
         }
+        # Outline paint reads `frag` (perimeter/area, m⁻¹ — ink per fill) and
+        # `parts`, measured on the geometry that is actually tiled, so a
+        # 112-parcel record and a compact one of the same area get different
+        # stroke widths (scripts/_lib/map_template.py, _build_source_block).
+        common_props["parts"], common_props["frag"] = shape_metrics(tile_geom)
         features.append(
             {
                 "type": "Feature",
-                "geometry": mapping(_simplify_for_tiles(geom)),
+                "geometry": mapping(tile_geom),
                 "properties": common_props,
             }
         )
+        v_tile = None
         if v_geom is not None and not v_geom.is_empty:
             v_minx, v_miny, v_maxx, v_maxy = v_geom.bounds
             v_bbox = [float(v_minx), float(v_miny), float(v_maxx), float(v_maxy)]
@@ -2668,10 +2965,14 @@ def main() -> int:
             village_props["geom_source"] = v_source
             village_props["area"] = float(v_geom.area)
             village_props["bbox"] = ",".join(f"{v:.5f}" for v in v_bbox)
+            # Shape metrics describe the parcels, not this commune union.
+            village_props.pop("parts", None)
+            village_props.pop("frag", None)
+            v_tile = _simplify_for_tiles(v_geom)
             village_features.append(
                 {
                     "type": "Feature",
-                    "geometry": mapping(_simplify_for_tiles(v_geom)),
+                    "geometry": mapping(v_tile),
                     "properties": village_props,
                 }
             )
@@ -2681,16 +2982,64 @@ def main() -> int:
                 village_commune_hits += 1
         else:
             village_skipped += 1
+        # Overview feature: same properties (`area` stays the parcellaire area
+        # — fill-sort-key and both paint ramps read it and must not step at the
+        # crossfade), its own provenance, bbox and shape metrics.
+        if o_geom is v_geom and v_tile is not None:
+            o_tile = v_tile
+        elif o_geom is geom:
+            o_tile = tile_geom
+        else:
+            o_tile = _simplify_for_tiles(o_geom)
+        o_minx, o_miny, o_maxx, o_maxy = o_geom.bounds
+        overview_props = dict(common_props)
+        overview_props["geom_source"] = o_source
+        overview_props["area_drawn"] = float(o_geom.area)
+        overview_props["bbox"] = ",".join(
+            f"{v:.5f}" for v in (float(o_minx), float(o_miny), float(o_maxx), float(o_maxy))
+        )
+        overview_props["parts"], overview_props["frag"] = shape_metrics(o_tile)
+        overview_features.append(
+            {
+                "type": "Feature",
+                "geometry": mapping(o_tile),
+                "properties": overview_props,
+            }
+        )
 
     fc = {"type": "FeatureCollection", "features": features}
     GEOJSON_OUT.write_text(json.dumps(fc, ensure_ascii=False), encoding="utf-8")
     village_fc = {"type": "FeatureCollection", "features": village_features}
     GEOJSON_VILLAGES_OUT.write_text(json.dumps(village_fc, ensure_ascii=False), encoding="utf-8")
+    overview_fc = {"type": "FeatureCollection", "features": overview_features}
+    GEOJSON_OVERVIEW_OUT.write_text(json.dumps(overview_fc, ensure_ascii=False), encoding="utf-8")
+    if PMTILES_VILLAGES_STALE.exists():
+        PMTILES_VILLAGES_STALE.unlink()
+        print(f"[geo] removed stale {PMTILES_VILLAGES_STALE.relative_to(ROOT)}", file=sys.stderr)
+
+    # QA: every appellation must exist in BOTH zoom bands, or it vanishes on
+    # one side of the detail zoom with no error (before the LOD split two
+    # records had no low-zoom feature at all). Cannot fire with today's
+    # control flow (both appends are unconditional in the same iteration) —
+    # it is here to catch a future early `continue` between them. Fatal.
+    detail_slugs = [f["properties"]["slug"] for f in features]
+    overview_slugs = {f["properties"]["slug"] for f in overview_features}
+    missing_low = [s_ for s_ in detail_slugs if s_ not in overview_slugs]
+    if missing_low or len(overview_features) != len(features):
+        raise SystemExit(
+            f"[geo] FATAL: overview/detail feature mismatch — {len(features)} detail vs "
+            f"{len(overview_features)} overview features; missing below the detail zoom: "
+            f"{missing_low[:10]}"
+        )
 
     # QA: tile-geometry simplification must never drop an appellation. Every
     # emitted feature must keep a non-empty geometry (a collapse would silently
     # hide that appellation from the map). Fatal so a regression can't ship.
-    for label, feats in (("appellations", features), ("villages", village_features)):
+    for label, feats in (
+        ("appellations", features),
+        ("overview", overview_features),
+        ("villages", village_features),
+    ):
         empties = [
             f["properties"].get("slug")
             for f in feats
@@ -2707,6 +3056,26 @@ def main() -> int:
         f"aires-csv={village_aires_hits} commune-text={village_commune_hits} skipped={village_skipped}",
         file=sys.stderr,
     )
+    print(
+        f"[geo] overview: {len(overview_features)} polygons → {GEOJSON_OVERVIEW_OUT.relative_to(ROOT)} "
+        f"({GEOJSON_OVERVIEW_OUT.stat().st_size // (1<<20)} MB), "
+        f"footprints={envelope_hits} (r={ENVELOPE_RADIUS_M} m on "
+        f"{envelope_radii.get(ENVELOPE_RADIUS_M, 0)}, adaptive on "
+        f"{envelope_hits - envelope_radii.get(ENVELOPE_RADIUS_M, 0)}, min r="
+        f"{min(envelope_radii) if envelope_radii else ENVELOPE_RADIUS_M} m; cache hits="
+        f"{envelope_stats.get('hits', 0)}, computed={envelope_stats.get('misses', 0)} in "
+        f"{envelope_stats.get('secs', 0.0):.0f} s) inherited={envelope_inherited}",
+        file=sys.stderr,
+    )
+    if envelope_ratio_warnings:
+        worst = sorted(envelope_ratio_warnings, key=lambda t: -t[1])[:10]
+        print(
+            f"[geo] WARNING: {len(envelope_ratio_warnings)} footprint(s) exceed "
+            f"{ENVELOPE_RATIO_WARN}× their parcels — bridged something wide? "
+            + ", ".join(f"{s_} {r_:.1f}×" for s_, r_ in worst)
+            + " — run scripts/audit_vineyard_envelopes.py",
+            file=sys.stderr,
+        )
     print(
         f"[geo] {len(features)} appellation polygons → {GEOJSON_OUT.relative_to(ROOT)} "
         f"({GEOJSON_OUT.stat().st_size // (1<<20)} MB), "
@@ -2733,6 +3102,46 @@ def main() -> int:
             f"scripts/audit_geometry_outliers.py",
             file=sys.stderr,
         )
+    if parcel_fills:
+        print(
+            f"[geo] parcellaire gap fills: {parcel_fill_hits['records']} record(s), "
+            f"{parcel_fill_hits['donor-parcels']} commune(s) from donor parcels, "
+            f"{parcel_fill_hits['commune']} whole; "
+            f"STALE: {len(parcel_fill_stale)}"
+            + (
+                " — " + ", ".join(f"{slug}/{st['name']}" for slug, st in parcel_fill_stale)
+                if parcel_fill_stale else ""
+            ),
+            file=sys.stderr,
+        )
+    # Rows carried forward from an earlier parcellaire release
+    # (scripts/_lib/parcellaire_carry_forward.json): the card says which
+    # release the polygon comes from.
+    if parcel_coverage is not None and parcel_coverage.carried:
+        current_release = parcel_coverage.shapefile[:10]
+        by_app = {c["key"][4:]: c for c in parcel_coverage.carried if c["key"].startswith("app=")}
+        by_denom = {
+            str(d): c for c in parcel_coverage.carried if c.get("id_denom") for d in c["id_denom"]
+        }
+        n_carry = 0
+        for record in extracted_records:
+            if (record.get("country") or "fr") != "fr":
+                continue
+            c = (
+                by_denom.get(str(record.get("id_denomination_geo") or ""))
+                if record.get("is_sub_denomination") else by_app.get(record.get("name") or "")
+            )
+            if c is None or c["state"] != "APPLIED":
+                continue
+            _PARCEL_FILL_BY_SLUG.setdefault(record["slug"], {})["geom_parcel_carry"] = {
+                "release": c["release"], "current": current_release,
+            }
+            n_carry += 1
+        print(
+            f"[geo] parcellaire carry-forward: {n_carry} record(s) drawn from an earlier release — "
+            + ", ".join(f"{c['label']} ({c['state']}, {c['release']})" for c in parcel_coverage.carried),
+            file=sys.stderr,
+        )
     print(
         f"[geo] DGC resolution: parcellaire={dgc_hits['parcellaire-dgc']} "
         f"village-override={dgc_hits['dgc-village-override']} "
@@ -2757,19 +3166,26 @@ def main() -> int:
         # Skip the slow tippecanoe pass but still re-emit the HTML so
         # template/metadata changes propagate. Use the existing pmtiles
         # if it's on disk, otherwise fall back to the geojson source.
-        if PMTILES_OUT.exists() and PMTILES_VILLAGES_OUT.exists():
+        if PMTILES_OUT.exists() and PMTILES_OVERVIEW_OUT.exists():
             emit_html(
-                features, village_features,
+                features, overview_features,
                 layer_url=_fingerprint("/map-data/appellations.pmtiles", PMTILES_OUT),
-                villages_layer_url=_fingerprint("/map-data/appellations-villages.pmtiles", PMTILES_VILLAGES_OUT),
+                overview_layer_url=_fingerprint("/map-data/appellations-overview.pmtiles", PMTILES_OVERVIEW_OUT),
                 source_type="pmtiles",
                 use_translations=not args.no_translations,
             )
         else:
+            print(
+                "warn: --no-tippecanoe but wiki/map-data/appellations{,-overview}.pmtiles "
+                "are not both on disk (a checkout built before the zoom-LOD split has "
+                "only the old villages tileset) — emitting GeoJSON sources, which "
+                "deploy.py does not upload. Run a full build once.",
+                file=sys.stderr,
+            )
             emit_html(
-                features, village_features,
+                features, overview_features,
                 layer_url=_fingerprint("/map-data/appellations.geojson", GEOJSON_OUT),
-                villages_layer_url=_fingerprint("/map-data/appellations-villages.geojson", GEOJSON_VILLAGES_OUT),
+                overview_layer_url=_fingerprint("/map-data/appellations-overview.geojson", GEOJSON_OVERVIEW_OUT),
                 source_type="geojson",
                 use_translations=not args.no_translations,
             )
@@ -2778,30 +3194,42 @@ def main() -> int:
     if shutil.which("tippecanoe") is None:
         print("warn: tippecanoe not on PATH (brew install tippecanoe) — skipping pmtiles", file=sys.stderr)
         emit_html(
-            features, village_features,
+            features, overview_features,
             layer_url=_fingerprint("/map-data/appellations.geojson", GEOJSON_OUT),
-            villages_layer_url=_fingerprint("/map-data/appellations-villages.geojson", GEOJSON_VILLAGES_OUT),
+            overview_layer_url=_fingerprint("/map-data/appellations-overview.geojson", GEOJSON_OVERVIEW_OUT),
             source_type="geojson",
             use_translations=not args.no_translations,
         )
         return 0
 
-    for src_geojson, dst_pmtiles, layer_id in (
-        (GEOJSON_OUT, PMTILES_OUT, "appellations"),
-        (GEOJSON_VILLAGES_OUT, PMTILES_VILLAGES_OUT, "appellations"),
+    # Two tilesets, one zoom band each (scripts/_lib/vineyard_envelope.py
+    # LOD_*): the overview tileset carries z3–z11 and is drawn below z12
+    # (overzoomed across the crossfade); the detail tileset carries z11–z12
+    # and is drawn from z11 (overzoomed to the client's maxZoom 14). The
+    # same `-l` layer name on both so one source-layer id serves both sources.
+    for src_geojson, dst_pmtiles, zoom_flags in (
+        (
+            GEOJSON_OUT,
+            PMTILES_OUT,
+            [
+                "--minimum-zoom=11",
+                "--maximum-zoom=12",
+                # z12 is overzoomed to z14: keep every real parcel shape
+                # instead of reducing sub-pixel ones to squares / dropping them.
+                "--no-tiny-polygon-reduction-at-maximum-zoom",
+            ],
+        ),
+        (GEOJSON_OVERVIEW_OUT, PMTILES_OVERVIEW_OUT, ["--minimum-zoom=3", "--maximum-zoom=11"]),
     ):
         if dst_pmtiles.exists():
             dst_pmtiles.unlink()
         cmd = [
             "tippecanoe",
             "-o", str(dst_pmtiles),
-            "-l", layer_id,
-            # z3 (was z4): the default "simple" view renders the villages
-            # source at all zooms, so both sources must reach the continental
-            # overview level or polygons vanish on zoom-out (paired with the
-            # client's minZoom: 3).
-            "--minimum-zoom=3",
-            "--maximum-zoom=12",
+            "-l", "appellations",
+            # Overview starts at z3: paired with the client's minZoom 3 so the
+            # continental view never zooms out into a polygon-less void.
+            *zoom_flags,
             "--coalesce-densest-as-needed",
             "--extend-zooms-if-still-dropping",
             "--no-feature-limit",
@@ -2823,9 +3251,9 @@ def main() -> int:
         )
 
     emit_html(
-        features, village_features,
+        features, overview_features,
         layer_url=_fingerprint("/map-data/appellations.pmtiles", PMTILES_OUT),
-        villages_layer_url=_fingerprint("/map-data/appellations-villages.pmtiles", PMTILES_VILLAGES_OUT),
+        overview_layer_url=_fingerprint("/map-data/appellations-overview.pmtiles", PMTILES_OVERVIEW_OUT),
         source_type="pmtiles",
         use_translations=not args.no_translations,
     )
@@ -3284,6 +3712,14 @@ def _sources_for(record: dict) -> dict:
         nat = record.get("national_pliego") or _ES_NATIONAL_PLIEGO_BY_SLUG.get(
             record.get("slug", ""), {}
         )
+        # Galician parishes drawn from the IET Mapa de Parroquias (the
+        # geometry step in apply_es_parroquias); the attribution + licence
+        # the panel must show ride the sources block, so every record that
+        # uses parish polygons carries them.
+        parr = _ES_PARROQUIAS_BY_SLUG.get(record.get("slug", ""), {})
+        # SIGPAC polígono inclusions (_resolve_es_sigpac): which reading drew
+        # them and the publication's attribution, for the panel line.
+        sig = _ES_SIGPAC_BY_SLUG.get(record.get("slug", ""), {})
         return {
             "country": "es",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
@@ -3296,6 +3732,16 @@ def _sources_for(record: dict) -> dict:
             "national_pliego_sha256": nat.get("sha256", ""),
             "national_pliego_fetched_at": nat.get("fetched_at", ""),
             "national_pliego_added_slugs": nat.get("added_slugs") or [],
+            "parroquias_url": PARROQUIAS_DATASET_URL if parr.get("matched") else "",
+            "parroquias_licence_url": PARROQUIAS_LICENCE_URL if parr.get("matched") else "",
+            "parroquias_licence": PARROQUIAS_LICENCE_SHORT if parr.get("matched") else "",
+            "parroquias_attribution": PARROQUIAS_ATTRIBUTION if parr.get("matched") else "",
+            "parroquias_matched": list(parr.get("matched") or []),
+            "parroquias_unmatched": list(parr.get("unmatched") or []),
+            "sigpac_semantics": sig.get("semantics") or "",
+            "sigpac_municipios": list(sig.get("municipios") or []),
+            "sigpac_whole": list(sig.get("whole") or []),
+            "sigpac_sources": list(sig.get("sources") or []),
         }
     fr = {
         "country": "fr",
@@ -3572,10 +4018,10 @@ def _fingerprint(url: str, file: Path) -> str:
 
 def emit_html(
     features: list[dict],
-    village_features: list[dict],
+    overview_features: list[dict],
     *,
     layer_url: str,
-    villages_layer_url: str,
+    overview_layer_url: str,
     source_type: str,
     use_translations: bool = True,
 ) -> None:
@@ -3592,8 +4038,10 @@ def emit_html(
     gi_term_display: dict[str, tuple[str, str]] = {}
     grapes_all_counts: dict[str, int] = {}
     simple_style_counts: dict[str, int] = {}
+    # `bbox_villages` on the startup record = the bbox of what is drawn below
+    # the detail zoom (the footprint / zone), read by localityRank.
     village_bbox_by_slug: dict[str, list[float]] = {}
-    for feat in village_features:
+    for feat in overview_features:
         p = feat["properties"]
         bbox_str = p.get("bbox") or ""
         if bbox_str:
@@ -3628,6 +4076,19 @@ def emit_html(
             }
         except (ValueError, OSError) as exc:
             print(f"[warn] cancelled_gis.json: {exc}", file=sys.stderr)
+    # Promoted denominations (scripts/_lib/promoted_gis.json): a former DGC
+    # that became an appellation of its own, kept and marked the same way —
+    # the badge says where the name went, never that it was cancelled.
+    promoted_gis: dict[str, dict] = {}
+    _promoted_path = ROOT / "scripts" / "_lib" / "promoted_gis.json"
+    if _promoted_path.exists():
+        try:
+            promoted_gis = {
+                k: v for k, v in json.loads(_promoted_path.read_text(encoding="utf-8")).items()
+                if not k.startswith("__")
+            }
+        except (ValueError, OSError) as exc:
+            print(f"[warn] promoted_gis.json: {exc}", file=sys.stderr)
 
     # Wikidata QIDs (stage 02i) → JSON-LD `sameAs` entity reconciliation.
     # Slug-keyed `{slug: {qid, via, …}}`; absent file / unresolved slug → "".
@@ -3766,7 +4227,8 @@ def emit_html(
                 if latin:
                     grape_names_latin[s_slug] = latin
         syndicate = resolve_appellation_url(
-            slug, parent_slug_for_facts, p.get("region", "") or "", appellation_urls
+            slug, parent_slug_for_facts, p.get("region", "") or "", appellation_urls,
+            comite=_FR_COMITE_BY_SLUG.get(slug, ""), is_wine=p.get("is_wine", "1") == "1",
         )
         if syndicate:
             sources["syndicate"] = syndicate
@@ -3775,13 +4237,18 @@ def emit_html(
         bbox_str = p.get("bbox") or ""
         bbox = [float(v) for v in bbox_str.split(",")] if bbox_str else None
         bbox_villages = village_bbox_by_slug.get(slug)
+        # The EU register's transcription of Αργολίδα starts with a Greek
+        # capital Alpha; the fold makes the bracket typeable. The derived
+        # forms are search-only (see STARTUP_AOCS_FIELDS).
+        name_latin = fold_confusables(p.get("name_latin") or "")
+        record_search_forms = search_forms(p["name"], name_latin, p.get("country") or "fr")
 
         aocs[slug] = {
             "country": p.get("country") or "fr",
             "country_aliases": _CROSS_BORDER_COUNTRY_ALIASES.get(file_number, []),
             "source_lang": p.get("source_lang") or "",
             "name": p["name"],
-            "name_latin": p.get("name_latin") or "",
+            "name_latin": name_latin,
             "kind": p["kind"],
             "eu_scheme": p.get("eu_scheme") or "",
             "national_term": p.get("national_term") or "",
@@ -3795,6 +4262,28 @@ def emit_html(
             "geom_source": p.get("geom_source", "communes"),
             "geom_fallback_slug": p.get("geom_fallback_slug", "") or "",
             "geom_fallback_name": p.get("geom_fallback_name", "") or "",
+            # Closing radius of the low-zoom footprint (panel payload; the
+            # card prints it). None for a record without a footprint.
+            "geom_lod_radius_m": _LOD_RADIUS_BY_SLUG.get(slug),
+            # Only a record with a parcellaire gap fill carries the two keys.
+            **(_PARCEL_FILL_BY_SLUG.get(slug) or {}),
+            # Greek resolver disclosure (panel payload, not the tile props):
+            # the NUTS ids a NUTS-union record was drawn from, what the text
+            # named that the commune layer does not carry, and the
+            # localities drawn as their container.
+            "geom_nuts_ids": list(_GR_GEOM_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_nuts_ids") or []),
+            "geom_units_unmatched": list(
+                _GR_GEOM_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_unmatched") or []
+            ),
+            "geom_units_proxied": list(
+                _GR_GEOM_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_proxied") or []
+            ),
+            "geom_units_boundary": list(
+                _GR_GEOM_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_boundary") or []
+            ),
+            "geom_units_boundary_units": list(
+                _GR_GEOM_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_boundary_units") or []
+            ),
             "cadastre_lieu_dit": p.get("cadastre_lieu_dit", "") or "",
             "cadastre_commune": p.get("cadastre_commune", "") or "",
             "area": p.get("area", 0),
@@ -3821,6 +4310,8 @@ def emit_html(
             # Only cancelled GIs carry the key: it is a startup field, and a
             # null on every other record would pad the startup bundle.
             **({"cancelled": cancelled_gis[slug]} if slug in cancelled_gis else {}),
+            **({"promoted": promoted_gis[slug]} if slug in promoted_gis else {}),
+            **({"search_forms": record_search_forms} if record_search_forms else {}),
         }
         for s in styles:
             style_counts[s] = style_counts.get(s, 0) + 1
@@ -3927,8 +4418,9 @@ def emit_html(
 
     facets = dict(
         layer_url=layer_url,
-        villages_layer_url=villages_layer_url,
+        overview_layer_url=overview_layer_url,
         source_type=source_type,
+        lod=lod_config(),
         aocs=aocs,
         facet_styles_tree=facet_styles_tree,
         style_descendants=style_descendants,
@@ -3936,6 +4428,7 @@ def emit_html(
         class_descendants=class_descendants,
         facet_styles_simple=facet_styles_simple,
         facet_regions=sort_facet(region_counts),
+        region_search_terms=region_search_terms_for(region_counts),
         facet_term_tree=facet_term_tree,
         term_descendants=term_descendants,
         term_display=gi_term_display,
@@ -3992,8 +4485,8 @@ def emit_html(
     # Full-corpus gate: every record gets a pre-rendered file (so the CDN can
     # serve any /<locale>/<slug> deep-link). index slugs get a full, indexable
     # entity page; fold slugs (sub-denominations, stubs, no-geometry, thin) get a
-    # lightweight noindex page that canonicalises to the parent — on the map for
-    # the deep-link, kept out of the index as a near-duplicate of the parent.
+    # lightweight self-canonical noindex page — on the map for the deep-link,
+    # kept out of the index as a near-duplicate of the parent.
     index_slugs: list[str] = []
     fold_slugs: list[str] = []
     for _slug, _rec in aocs.items():
@@ -4170,6 +4663,15 @@ def emit_html(
         for _stale in panel_dir.glob("*.json"):
             if _stale.name not in panel_written:
                 _stale.unlink()
+        # A slug that left the corpus (renamed, cancelled) must not keep an
+        # indexable page on disk — the deploy diff then deletes it on the CDN
+        # (four /valtenesi pages from 2026-09-20 survived two renames).
+        _lang_dir = WIKI / lang
+        for _d in _lang_dir.iterdir() if _lang_dir.is_dir() else []:
+            if _d.is_dir() and _d.name != "appellations" and _d.name not in aocs \
+                    and (_d / "index.html").exists():
+                shutil.rmtree(_d)
+                print(f"[entity] {lang}: removed stale page dir {_d.name}/", file=sys.stderr)
         print(
             f"[data] {lang}: wrote {len(panel_written)} per-slug panel JSON → "
             f"{panel_dir.relative_to(ROOT)}",
@@ -4207,7 +4709,7 @@ def emit_html(
     )
 
     entity_entries = [
-        (slug, aocs[slug].get("name") or slug, aocs[slug].get("country") or "")
+        (slug, seo_display_name(aocs[slug]) or slug, aocs[slug].get("country") or "")
         for slug in index_slugs
     ]
     write_seo_files(entity_entries)

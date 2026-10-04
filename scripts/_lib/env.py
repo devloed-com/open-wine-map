@@ -57,6 +57,21 @@ def carto_basemap_key() -> str:
     return key
 
 
+def webmcp_origin_trial_token() -> str:
+    """Chrome origin-trial token for WebMCP, emitted as
+    `<meta http-equiv="origin-trial">` on every map page.
+
+    Registered for https://openwinemap.com with subdomain matching, so one
+    token serves www and beta from the same build. Public by design (it ships
+    in the page); kept in `.env` like the CARTO key because Chrome reissues it
+    on renewal and a swap should be an .env edit plus a rebuild, not a code
+    change. Unset: no tag, and app.js registers its WebMCP tools only in
+    browsers that expose the API without a token (flag on).
+    """
+    load_dotenv()
+    return os.environ.get("WEBMCP_ORIGIN_TRIAL_TOKEN", "").strip()
+
+
 def carto_basemap_keys() -> dict[str, str]:
     """hostname → CARTO key, for hosts that must not share the default key
     (a per-environment quota, or a key referrer-locked to one host):
