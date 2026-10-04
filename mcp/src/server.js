@@ -112,7 +112,15 @@ async function showOnMap(entry, { slugs }, locale, siteOrigin) {
   const mapUrl = appellations.length === 1
     ? appellations[0].url
     : appellations.length <= MAX_LINKED_SET ? `${home}?aocs=${known.join(',')}` : home;
-  return { appellations, bbox, map_url: mapUrl, unknown };
+  return { appellations, bbox, map_url: mapUrl, tiles: tilePaths(entry.tiles), unknown };
+}
+
+// The site's fingerprinted tile paths (/map-data/<name>.pmtiles?v=<sha8>, from
+// the query context); null before the site carries them, and the view then
+// falls back to the bare paths.
+function tilePaths(tiles) {
+  const ok = p => typeof p === 'string' && /^\/map-data\/[a-z0-9-]+\.pmtiles(\?v=[0-9a-f]+)?$/.test(p);
+  return tiles && ok(tiles.overview) && ok(tiles.detail) ? { overview: tiles.overview, detail: tiles.detail } : null;
 }
 
 function showOnMapText(out) {

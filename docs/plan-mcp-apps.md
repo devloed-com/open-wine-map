@@ -1,9 +1,29 @@
 # Plan — the map inside the chat (MCP Apps)
 
-Status (2026-10-04): phase 0 done locally and on the spike, checked live in
-Claude by Boris ("mcp server worked"); his two follow-ups landed the same day
-(see "After the first live check"). Builds on the live MCP server
-(docs/plan-mcp-server.md).
+Status (2026-10-04): live on the production server (mcp.openwinemap.com).
+Phase 0 was checked in Claude by Boris ("mcp server worked"), his two
+follow-ups landed the same day (see "After the first live check"), and
+phases 1 and 4 followed (see "Production"). Phase 2's shared paint module is
+still open. Builds on the live MCP server (docs/plan-mcp-server.md).
+
+## Production
+
+- **Phase 1 needed no CDN rule.** The production pull zone already answers
+  `/map-data/*.pmtiles` cross-origin: `Access-Control-Allow-Origin: *` on the
+  ranged GET (206) and a 200 OPTIONS preflight allowing `Range`. pmtiles 3
+  sends only `Range` and reads `Content-Length` (safelisted), plus `ETag` and
+  `Content-Range` only when exposed (Bunny sends no ETag; `Content-Range` is
+  read on a 416 alone), so nothing more needs exposing. `TILE_ORIGIN` defaults
+  to the site; no proxy.
+- **Versioned tile URLs.** The files are served `max-age=2592000`, so a
+  widget fetching the bare path would mix cached ranges of an old file with
+  fresh ones after a deploy. Stage 04 now writes the map's own fingerprinted
+  URLs (`/map-data/<name>.pmtiles?v=<sha8>`) into the query context as
+  `tiles`; `show_on_map` passes them in its result and the view uses them
+  (bare paths only while the site predates the key). Additive, so the
+  context format stays 1.
+- `CARTO_KEY` set on the production script (the site's default key, which
+  works from the hosts' sandbox origins); llms.txt names `show_on_map`.
 
 Decisions (Boris, 2026-10-04): option B (widget); CARTO basemap; `show_on_map`
 as its own tool with a strong hint (tool description + server instructions);

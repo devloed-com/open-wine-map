@@ -6286,11 +6286,16 @@ instance — change search semantics in the core, never in app.js.
   WebMCP tools and the server answer the same calls identically, headless
   Chromium). Plan, decisions and spike results:
   [docs/plan-mcp-server.md](docs/plan-mcp-server.md).
-- **The map inside the chat** (MCP Apps, on the spike only so far): a fifth
-  tool, `show_on_map` {slugs}, carries `_meta.ui.resourceUri` →
-  `ui://open-wine-map/map`, a self-contained MapLibre view
-  ([mcp/view/](mcp/view/), built into `dist/view.html` by `npm run build:view`)
-  that draws the requested appellations from the site's pmtiles. With ≤ 10
+- **The map inside the chat** (MCP Apps): a fifth tool, `show_on_map`
+  {slugs}, carries `_meta.ui.resourceUri` → `ui://open-wine-map/map`, a
+  self-contained MapLibre view ([mcp/view/](mcp/view/), built into
+  `dist/view.html` by `npm run build:view`) that draws the requested
+  appellations straight from the site's pmtiles (`TILE_ORIGIN`, default the
+  site; Bunny already answers them cross-origin, `Range` preflight included)
+  over the CARTO basemap (`CARTO_KEY` script variable). The tile URLs carry the
+  site's own `?v=` content fingerprint, handed over in the query context's
+  `tiles` key and the tool result — the files are browser-cached for 30 days,
+  so a deploy must change the URL. With ≤ 10
   appellations each has its own colour and a legend list: hover a row or a
   polygon to light it, click a row to zoom to it (the site button then opens
   its page), the colour square hides it. Its text result and the view's site

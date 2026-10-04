@@ -32,7 +32,7 @@ export function coreFromContext(ctx, siteOrigin) {
 }
 
 export function createContextStore({ dataOrigin, fetchImpl = fetch, ttlMs = 5 * 60 * 1000, now = Date.now }) {
-  const entries = new Map(); // locale → { core, aocs, etag, checkedAt, pending }
+  const entries = new Map(); // locale → { core, aocs, tiles, etag, checkedAt, pending }
 
   async function refresh(locale, entry) {
     const headers = entry?.etag ? { 'If-None-Match': entry.etag } : {};
@@ -43,7 +43,10 @@ export function createContextStore({ dataOrigin, fetchImpl = fetch, ttlMs = 5 * 
     }
     if (!resp.ok) throw new Error(`query context ${locale}: HTTP ${resp.status}`);
     const ctx = await resp.json();
-    const fresh = { core: coreFromContext(ctx, dataOrigin), aocs: ctx.aocs, etag: resp.headers.get('ETag'), checkedAt: now() };
+    const fresh = {
+      core: coreFromContext(ctx, dataOrigin), aocs: ctx.aocs, tiles: ctx.tiles || null,
+      etag: resp.headers.get('ETag'), checkedAt: now(),
+    };
     entries.set(locale, fresh);
     return fresh;
   }

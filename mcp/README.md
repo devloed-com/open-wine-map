@@ -13,7 +13,7 @@ Tools — the same definitions and code the map page registers as WebMCP tools
 | `filter_appellations` | country, region, style, grape (VIVC synonyms), scheme / traditional term |
 | `get_appellation` | grapes, styles, terroir facts with provenance, sources, attribution |
 | `list_facets` | the values `filter_appellations` accepts, with counts |
-| `show_on_map` | the appellations on an interactive map in the chat (MCP Apps view `ui://open-wine-map/map`; text link elsewhere) — on the spike, not yet in production |
+| `show_on_map` | the appellations on an interactive map in the chat (MCP Apps view `ui://open-wine-map/map`; a text answer with the site link elsewhere) |
 
 ## Layout
 

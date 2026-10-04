@@ -56,6 +56,9 @@ function setFeatureFlag(slug, key, on) {
 }
 
 function buildMap() {
+  // The site's versioned paths (the files are browser-cached for 30 days, so
+  // a deploy must change the URL); bare paths until the server has them.
+  const tiles = (data && data.tiles) || { overview: '/map-data/appellations-overview.pmtiles', detail: '/map-data/appellations.pmtiles' };
   const protocol = new Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
   const attribution = '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> · <a href="https://www.openwinemap.com/">Open Wine Map</a>';
@@ -66,8 +69,8 @@ function buildMap() {
       sources: {
         'basemap-light': { type: 'raster', tileSize: 256, tiles: cartoTiles('rastertiles/voyager'), attribution },
         'basemap-dark': { type: 'raster', tileSize: 256, tiles: cartoTiles('dark_all'), attribution },
-        overview: { type: 'vector', url: `pmtiles://${CONFIG.tileOrigin}/map-data/appellations-overview.pmtiles`, promoteId: 'slug' },
-        detail: { type: 'vector', url: `pmtiles://${CONFIG.tileOrigin}/map-data/appellations.pmtiles`, promoteId: 'slug' },
+        overview: { type: 'vector', url: `pmtiles://${CONFIG.tileOrigin}${tiles.overview}`, promoteId: 'slug' },
+        detail: { type: 'vector', url: `pmtiles://${CONFIG.tileOrigin}${tiles.detail}`, promoteId: 'slug' },
       },
       layers: [
         { id: 'basemap-light', type: 'raster', source: 'basemap-light' },

@@ -4957,9 +4957,10 @@ def _write_llms_txt(entity_entries: list[tuple[str, str, str]]) -> None:
         "",
         f"- [MCP server]({MCP_ENDPOINT_URL}): a remote MCP server (Streamable HTTP, "
         "no authentication) with the tools search_appellations, filter_appellations, "
-        "get_appellation and list_facets, in en / fr / es / nl. Add it as a custom "
-        "connector.",
-        "- Every map page registers the same tools as WebMCP tools "
+        "get_appellation and list_facets, in en / fr / es / nl, and show_on_map, which "
+        "draws the appellations on an interactive map in clients that support MCP Apps. "
+        "Add it as a custom connector.",
+        "- Every map page registers the same search tools as WebMCP tools "
         "(document.modelContext; Chrome origin trial).",
         "- Per-appellation pages (below) are server-rendered: grapes, styles, terroir "
         "facts and links to the regulator's specification.",

@@ -72,6 +72,8 @@ test('show_on_map: briefs with bbox, union bbox, map links, UI resource', { skip
     assert.ok(out.appellations.every(a => a.bbox && a.kind && a.url));
     assert.match(res.content[0].text, /\[Priorat\]\(https:\/\/data\.test\/en\/priorat\)/);
     assert.equal(out.map_url, 'https://data.test/?aocs=priorat,montsant');
+    assert.match(out.tiles.overview, /^\/map-data\/appellations-overview\.pmtiles\?v=[0-9a-f]{8}$/);
+    assert.match(out.tiles.detail, /^\/map-data\/appellations\.pmtiles\?v=[0-9a-f]{8}$/);
     assert.ok(res.content[0].text.includes('All of them on the map: https://data.test/?aocs=priorat,montsant'));
     const one = await client.callTool({ name: 'show_on_map', arguments: { slugs: ['priorat'], locale: 'fr' } });
     assert.equal(one.structuredContent.map_url, 'https://data.test/fr/priorat');

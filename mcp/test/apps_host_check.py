@@ -78,7 +78,7 @@ def tool_result(slugs: list[str], site: str) -> dict:
     bb = [b["bbox"] for b in out]
     union = [min(b[0] for b in bb), min(b[1] for b in bb), max(b[2] for b in bb), max(b[3] for b in bb)]
     map_url = out[0]["url"] if len(out) == 1 else f"{site}/?aocs={','.join(slugs)}"
-    return {"appellations": out, "bbox": union, "map_url": map_url, "unknown": []}
+    return {"appellations": out, "bbox": union, "map_url": map_url, "tiles": ctx.get("tiles"), "unknown": []}
 
 
 def interactions(page, frame, features_before: int, shots: Path | None) -> bool:

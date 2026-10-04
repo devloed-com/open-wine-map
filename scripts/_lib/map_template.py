@@ -2083,7 +2083,7 @@ QUERY_CONTEXT_KEYS = frozenset({
     "format_version", "locale", "aocs", "grapes_info", "grape_search_index",
     "vivc_siblings", "style_descendants", "style_labels", "simple_style_labels",
     "simple_style_buckets", "region_labels", "region_search_terms",
-    "country_labels", "term_labels", "labels",
+    "country_labels", "term_labels", "labels", "tiles",
 })
 QUERY_CONTEXT_LABELS = (
     "meta_no_region", "facts_sub_facteurs_naturels", "facts_sub_facteurs_humains",
@@ -2481,6 +2481,10 @@ def render(
         "country_labels": country_labels,
         "term_labels": term_labels,
         "labels": {k: labels[k] for k in QUERY_CONTEXT_LABELS},
+        # The map's own tile URLs with their content fingerprint (?v=): the
+        # MCP map view reads them so its 30-day-cached range requests change
+        # URL exactly when a tile file changes, as the site's do.
+        "tiles": {"detail": layer_url, "overview": overview_layer_url},
     }
     assert set(query_context) == QUERY_CONTEXT_KEYS, set(query_context) ^ QUERY_CONTEXT_KEYS
     query_bytes = json.dumps(query_context, ensure_ascii=False, sort_keys=True).encode("utf-8")
