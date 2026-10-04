@@ -34,7 +34,6 @@ import sys
 from pathlib import Path
 
 from tqdm import tqdm
-from unidecode import unidecode
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -56,6 +55,7 @@ from _lib.grape_entity import (  # noqa: E402
     match_variety,
     set_pliego_context,
 )
+from _lib.romanise import latin_form_bg  # noqa: E402
 
 INDEX_IN = ROOT / "raw" / "bg" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "bg" / "oj-pages"
@@ -320,11 +320,12 @@ def derive_summary(role_text: str, max_chars: int = 600) -> str:
 
 def _latin_form(name: str) -> str:
     # eAmbrosia does not ship a `transcriptions` array for BG wines (unlike
-    # GR, which carries the EU-official Latin form), so we romanise the
-    # Cyrillic name via unidecode so the UI can render an informational
-    # bracket alongside the native script.
-    latin = unidecode(name or "").strip()
-    return latin if latin and latin != name else ""
+    # GR, which carries the EU-official Latin form), so the bracket shown
+    # next to the native name is Bulgaria's official Streamlined System
+    # (Transliteration Act 2009: Търговище → Targovishte). Until 2026-09-25 it
+    # was unidecode (T'rgovishche), which no visitor types; that spelling
+    # survives as a search-only form (stage 04, _lib/romanise.search_forms).
+    return latin_form_bg(name or "")
 
 
 def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
@@ -337,7 +338,6 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
     region = derive_region(
         {"file_number": wine["fileNumber"]},
         geo_area,
-        routed.get("link_to_terroir", ""),
         wine["name"],
     )
     return {

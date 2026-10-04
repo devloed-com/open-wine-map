@@ -99,7 +99,7 @@ def test_cache_round_trip_is_keyed_on_input(tmp_path, monkeypatch) -> None:
     g = _to4326(_two_squares(300))
     stats: dict = {}
     first = ve.envelope(g, stats=stats)
-    assert stats == pytest.approx({"misses": 1, "secs": stats["secs"]})
+    assert stats == pytest.approx({"misses": 1, "secs": stats["secs"], "radius_m": stats["radius_m"]})
     second = ve.envelope(g, stats=stats)
     assert stats["hits"] == 1
     assert first.equals_exact(second, 1e-12)
@@ -145,3 +145,34 @@ def test_is_envelope_source() -> None:
     assert not ve.is_envelope_source("fr", "aires-csv")
     assert not ve.is_envelope_source("es", "parcellaire")
     assert not ve.is_envelope_source("fr", "parent-appellation")
+
+
+def test_adaptive_radius_scales_with_the_record_below_one_km2() -> None:
+    # 1 km² and above: the full 250 m closing; below, r = 0.25·√area, so a
+    # premier-cru climat of 0.05 km² closes at 56 m and never laps across
+    # its neighbour; the floor is 30 m.
+    assert ve.adaptive_radius(4e6) == ve.ENVELOPE_RADIUS_M
+    assert ve.adaptive_radius(1e6) == ve.ENVELOPE_RADIUS_M
+    assert ve.adaptive_radius(2.5e5) == 125
+    assert ve.adaptive_radius(5e4) == 56
+    assert ve.adaptive_radius(1e4) == ve.ENVELOPE_MIN_RADIUS_M
+    assert ve.adaptive_radius(0) == ve.ENVELOPE_MIN_RADIUS_M
+    assert isinstance(ve.adaptive_radius(5e4), int)
+
+
+def test_envelope_uses_the_adaptive_radius_and_reports_it(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(ve, "CACHE_DIR", tmp_path)
+    # Two 40 × 40 m squares 100 m apart (a 0.003 km² record): at the adaptive
+    # 30 m radius they stay two parts; pinned at 250 m they merge into one.
+    a = shp_transform(ve._TO_4326, box(4_000_000, 2_800_000, 4_000_040, 2_800_040))
+    b = shp_transform(ve._TO_4326, box(4_000_140, 2_800_000, 4_000_180, 2_800_040))
+    geom = MultiPolygon([a, b])
+    stats: dict = {}
+    out = ve.envelope(geom, stats=stats, use_cache=False)
+    assert stats["radius_m"] == ve.ENVELOPE_MIN_RADIUS_M
+    assert out.geom_type == "MultiPolygon" and len(out.geoms) == 2
+    stats = {}
+    out = ve.envelope(geom, ve.ENVELOPE_RADIUS_M, stats=stats, use_cache=False)
+    assert stats["radius_m"] == ve.ENVELOPE_RADIUS_M
+    assert out.geom_type == "Polygon"
+    assert "min_radius_m" in ve.lod_config() and ve.lod_config()["radius_m"] == ve.ENVELOPE_RADIUS_M

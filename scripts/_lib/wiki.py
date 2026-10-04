@@ -32,6 +32,7 @@ GRAPE_KEYWORDS = {
     "hr": ("vinova loza", "sorta vinove loze", "sorta grožđa",
            "vinska sorta", "grožđe", "kultivar vinove loze",
            "vitis vinifera"),
+    "bg": ("сорт грозде", "винен сорт", "сорт лоза", "грозде", "лозарство"),
 }
 
 

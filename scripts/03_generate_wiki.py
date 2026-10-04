@@ -42,12 +42,19 @@ SUBSECTION_LABEL_FR = {
 }
 
 
-def fmt_communes(by_dept: dict[str, list[str]]) -> str:
-    """Render a {dept: [commune, ...]} dict as a département-grouped list."""
-    if not by_dept:
+def fmt_communes(by_dept: dict[str, list[str]], whole: list[str] | None = None) -> str:
+    """Render a {dept: [commune, ...]} dict as a département-grouped list. A
+    département the cahier names as a whole (`aire_departements` — "La
+    récolte … est réalisée dans le département du Lot") is one line, and a
+    commune list the parser read for it is not shown: on the appellation's
+    page it is a sub-denomination's zone or an exclusion list."""
+    whole = whole or []
+    if not by_dept and not whole:
         return "_Non renseigné dans le cahier des charges parsé._"
-    lines: list[str] = []
+    lines: list[str] = [f"**{dept}** — l'ensemble du département" for dept in whole]
     for dept, communes in sorted(by_dept.items()):
+        if dept in whole:
+            continue
         lines.append(f"**{dept}** ({len(communes)}) — " + ", ".join(communes))
     return "\n\n".join(lines)
 
@@ -396,7 +403,7 @@ def render_page(record: dict) -> str:
     body += [
         "## Aire géographique",
         "",
-        fmt_communes(aire_geo),
+        fmt_communes(aire_geo, record["aire"].get("aire_departements")),
         "",
     ]
     if aire_prox:

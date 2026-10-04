@@ -1,0 +1,85 @@
+{
+  "__doc__": "Curator fills for INAO parcellaire gaps — see scripts/_lib/parcellaire_gaps.py. Keyed by record slug: `communes` {INSEE (IGN AdminExpress, current): name}, `donors` appellation slugs whose parcels inside the commune stand in for the missing ones (tried in order; whole commune when none has any), `reason` (what the regulator text says), `source` (the files the claim rests on), `verified` (date the layer was checked). A pinned commune that carries a parcel row again is STALE: stage 04 leaves it alone and says so; scripts/audit_parcellaire_gaps.py --strict fails. Re-verify against the new release before removing or keeping the pin.",
+  "cotes-du-rhone-villages": {
+    "communes": {
+      "84137": "Vaison-la-Romaine",
+      "84111": "Saint-Marcellin-lès-Vaison",
+      "84116": "Saint-Romain-en-Viennois",
+      "26188": "Mollans-sur-Ouvèze",
+      "84127": "Sérignan-du-Comtat",
+      "84129": "Sorgues",
+      "84150": "Visan"
+    },
+    "donors": [
+      "cotes-du-rhone"
+    ],
+    "reason": "All seven are communes of the aire géographique in the cahier (section IV 1°: Ardèche, Drôme, Gard, Vaucluse lists) and in the INAO aires-communes CSV (IDA 1287, 95 communes); six are named communes of a dénomination géographique complémentaire in section IV 2° — Vaison-la-Romaine and Saint-Marcellin-lès-Vaison (« Vaison-la-Romaine »), Saint-Romain-en-Viennois and Mollans-sur-Ouvèze (« Puyméras »), Sérignan-du-Comtat (« Massif d'Uchaux », « Sainte-Cécile »), Visan (« Visan »). The 2026-05-11 INAO parcellaire release carries no row for the commune for any AOC (Vaison-la-Romaine, Saint-Marcellin-lès-Vaison, Saint-Romain-en-Viennois, Mollans-sur-Ouvèze) or Côtes du Rhône rows only (Sérignan-du-Comtat, Sorgues, Visan), so the dissolved Villages polygon had a hole at each — the boundary flag of 2026-09-29 (en, z8.8). Côtes du Rhône parcels stand in where they exist (the Villages delimitation lies inside the Côtes du Rhône one); the other four are drawn whole.",
+    "source": "raw/inao/cahier-extracted/cotes-du-rhone-villages.json (aire.aire_geographique; sections IV 1° and 2°); raw/inao/aoc-aop-aires-communes.csv (Aire géographique = Côtes du Rhône Villages, IDA 1287); raw/inao/parcellaire 2026-05-11_delim-parcellaire-aoc-shp: id_app 276 rows by insee",
+    "verified": "2026-09-29"
+  },
+  "cotes-du-rhone": {
+    "communes": {
+      "84137": "Vaison-la-Romaine",
+      "84111": "Saint-Marcellin-lès-Vaison",
+      "84116": "Saint-Romain-en-Viennois",
+      "26188": "Mollans-sur-Ouvèze",
+      "30278": "Saint-Laurent-des-Arbres"
+    },
+    "donors": [],
+    "reason": "Communes of the Côtes du Rhône aire géographique (cahier section IV; INAO aires-communes CSV, 172 communes) with no row in the INAO parcellaire release for any AOC — the commune's delimitation is not digitised — so the dissolved polygon had a hole at each. Drawn whole: no finer public delimitation exists.",
+    "source": "raw/inao/cahier-extracted/cotes-du-rhone.json (aire.aire_geographique); raw/inao/aoc-aop-aires-communes.csv (Aire géographique = Côtes du Rhône); raw/inao/parcellaire 2026-05-11_delim-parcellaire-aoc-shp: no row with insee 84137 / 84111 / 84116 / 26188 / 30278",
+    "verified": "2026-09-29"
+  },
+  "cotes-du-rhone-villages-vaison-la-romaine": {
+    "communes": {
+      "84137": "Vaison-la-Romaine",
+      "84111": "Saint-Marcellin-lès-Vaison",
+      "84117": "Saint-Roman-de-Malegarde"
+    },
+    "donors": [
+      "cotes-du-rhone-villages",
+      "cotes-du-rhone"
+    ],
+    "reason": "The cahier (section IV 2°) gives the « Vaison-la-Romaine » dénomination five communes — Buisson, Saint-Marcellin-lès-Vaison, Saint-Roman-de-Malegarde, Vaison-la-Romaine, Villedieu — and the INAO aires-communes CSV the same five; the parcellaire release carries id_denom 2828 rows for Buisson and Villedieu only. Saint-Roman-de-Malegarde holds Côtes du Rhône Villages parcels (drawn from them); Vaison-la-Romaine and Saint-Marcellin-lès-Vaison have no row for any AOC (drawn whole).",
+    "source": "raw/inao/cahier-extracted/cotes-du-rhone-villages.json (section IV 2°); raw/inao/aoc-aop-aires-communes.csv (Aire géographique = Côtes du Rhône Villages Vaison-la-Romaine); raw/inao/parcellaire 2026-05-11_delim-parcellaire-aoc-shp: id_denom 2828 rows",
+    "verified": "2026-09-29"
+  },
+  "cotes-du-rhone-villages-massif-d-uchaux": {
+    "communes": {
+      "84127": "Sérignan-du-Comtat",
+      "84135": "Uchaux"
+    },
+    "donors": [
+      "cotes-du-rhone-villages",
+      "cotes-du-rhone"
+    ],
+    "reason": "The cahier (section IV 2°) gives « Massif d'Uchaux » five communes — Lagarde-Paréol, Mondragon, Piolenc, Sérignan-du-Comtat, Uchaux — and the INAO aires-communes CSV the same five; the parcellaire release carries id_denom 1708 rows for three. Uchaux holds Côtes du Rhône Villages parcels and Sérignan-du-Comtat Côtes du Rhône parcels; each is drawn from those.",
+    "source": "raw/inao/cahier-extracted/cotes-du-rhone-villages.json (section IV 2°); raw/inao/aoc-aop-aires-communes.csv (Aire géographique = Côtes du Rhône Villages Massif d'Uchaux); raw/inao/parcellaire 2026-05-11_delim-parcellaire-aoc-shp: id_denom 1708 rows",
+    "verified": "2026-09-29"
+  },
+  "cotes-du-rhone-villages-puymeras": {
+    "communes": {
+      "26188": "Mollans-sur-Ouvèze",
+      "84116": "Saint-Romain-en-Viennois"
+    },
+    "donors": [
+      "cotes-du-rhone-villages",
+      "cotes-du-rhone"
+    ],
+    "reason": "The cahier (section IV 2°) gives « Puyméras » five communes — Faucon, Puyméras, Saint-Romain-en-Viennois (Vaucluse), Mérindol-les-Oliviers, Mollans-sur-Ouvèze (Drôme) — and the INAO aires-communes CSV the same five; the parcellaire release carries id_denom 1710 rows for three. Mollans-sur-Ouvèze and Saint-Romain-en-Viennois have no row for any AOC (drawn whole).",
+    "source": "raw/inao/cahier-extracted/cotes-du-rhone-villages.json (section IV 2°); raw/inao/aoc-aop-aires-communes.csv (Aire géographique = Côtes du Rhône Villages Puyméras); raw/inao/parcellaire 2026-05-11_delim-parcellaire-aoc-shp: id_denom 1710 rows",
+    "verified": "2026-09-29"
+  },
+  "cotes-du-rhone-villages-sainte-cecile": {
+    "communes": {
+      "84127": "Sérignan-du-Comtat"
+    },
+    "donors": [
+      "cotes-du-rhone-villages",
+      "cotes-du-rhone"
+    ],
+    "reason": "The INAO aires-communes CSV gives « Sainte-Cécile » five communes including Sérignan-du-Comtat (the cahier, section IV 2°, names it in the same list); the parcellaire release carries id_denom 2826 rows for four. Sérignan-du-Comtat holds Côtes du Rhône parcels; drawn from those.",
+    "source": "raw/inao/cahier-extracted/cotes-du-rhone-villages.json (section IV 2°); raw/inao/aoc-aop-aires-communes.csv (Aire géographique = Côtes du Rhône Villages Sainte-Cécile); raw/inao/parcellaire 2026-05-11_delim-parcellaire-aoc-shp: id_denom 2826 rows",
+    "verified": "2026-09-29"
+  }
+}

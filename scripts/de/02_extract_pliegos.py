@@ -264,7 +264,6 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
     region = derive_region(
         {"file_number": wine["fileNumber"]},
         geo_area,
-        routed.get("link_to_terroir", ""),
         wine["name"],
     )
     return {

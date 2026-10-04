@@ -14,6 +14,27 @@ MAX_CHARS = 480
 SOFT_MAX_CHARS = 1200
 
 
+# Section-3 titles of the 2024/1143 template, per language of the EU-OJ single
+# documents in the corpus (a title need only contain one of these).
+_COUNTRY_SECTION_TITLES = (
+    "χώρα στην οποία ανήκει",       # el
+    "țara căreia îi aparține", "tara careia ii apartine",  # ro
+    "country to which",             # en
+    "país al que pertenece",        # es
+    "paese a cui appartiene", "paese in cui",  # it
+    "land, zu dem", "land zu dem",  # de
+    "land waartoe",                 # nl
+    "pays auquel appartient",       # fr
+    "država, ki ji pripada", "zemlja kojoj pripada", "ország, amelyhez", "държава, към която",
+    "krajina, do ktorej", "země, do níž", "país a que pertence",
+)
+
+
+def _is_country_section(titles: dict) -> bool:
+    title = (titles.get("3") or titles.get("III") or "").casefold()
+    return any(t in title for t in _COUNTRY_SECTION_TITLES)
+
+
 def derive_summary(record: dict) -> str:
     """Trim source-document text into a one-paragraph blurb.
 
@@ -48,7 +69,12 @@ def derive_summary(record: dict) -> str:
     # equals sections["I"] when title routing succeeded, so output is
     # unchanged.
     s = roles.get("nom") or sections.get("I") or sections.get("1") or ""
-    s += " " + (roles.get("couleur") or sections.get("III") or sections.get("3") or "")
+    third = roles.get("couleur") or sections.get("III") or sections.get("3") or ""
+    if _is_country_section(record.get("section_titles") or {}):
+        # The Reg. (EU) 2024/1143 single document puts "Country to which the
+        # area belongs" third, so the blurb read "«Μακεδονία» Ελλάδα".
+        third = ""
+    s += " " + third
     s = re.sub(r"\s+", " ", s).strip()
     if len(s) <= SOFT_MAX_CHARS:
         return s

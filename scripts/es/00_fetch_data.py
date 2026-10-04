@@ -30,6 +30,10 @@ Outputs:
 - raw/es/mapa/listado-dop-igp-vinos.pdf — MAPA's listado of EU-registered ES
   wine DOPs/IGPs (carries the national traditional term per GI)
 - raw/es/mapa/manifest.json — fetch metadata + license + sha for the listado
+- raw/es/xunta/parroquias/Parroquias.zip — IET Mapa de Parroquias de Galicia
+  (civil-parish polygons; the sub-municipal unit Galician pliegos delimit with)
+- raw/es/xunta/parroquias/manifest.json — fetch metadata + licence (with the
+  recorded licence conflict) + attribution + sha for the zip
 
 Each ES wine GI record carries:
 - giIdentifier (e.g. EUGI00000003061) — internal EU id, unstable
@@ -47,10 +51,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
 import sys
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable
 
 import requests
 
@@ -60,6 +66,19 @@ from _lib.es.national_term import (  # noqa: E402
     LISTADO_DIR,
     LISTADO_FILE,
     LISTADO_URL,
+)
+from _lib.es.parroquia import (  # noqa: E402
+    PARROQUIAS_ATTRIBUTION,
+    PARROQUIAS_DATASET_URL,
+    PARROQUIAS_LICENCE,
+    PARROQUIAS_LICENCE_CONFLICT,
+    PARROQUIAS_LICENCE_SHORT,
+    PARROQUIAS_LICENCE_URL,
+    PARROQUIAS_MANIFEST,
+    PARROQUIAS_PUBLISHER,
+    PARROQUIAS_URL,
+    PARROQUIAS_ZIP,
+    parroquias_dataset,
 )
 from _lib.es.zones import (  # noqa: E402
     MAPA_LICENCE,
@@ -118,6 +137,23 @@ SIGPAC_LICENSE = (
 # entry in this list.
 SIGPAC_COMARCA_CODIS = (
     "29",  # Priorat (Falset, El Molar, … — covers Priorat DOQ + most of Montsant)
+)
+
+# SIGPAC outside Catalonia: FEGA's national "Servicio de descargas SIGPAC"
+# publishes one recintos GeoPackage per province and campaign under
+# CC BY 4.0 (licence line quoted in the catalogue's `_meta`). A province
+# file is 0.2–1.3 GB, so stage 00 keeps the sha-pinned zip and writes a
+# small extract limited to the municipios the catalogue lists — the
+# ones a pliego delimits at SIGPAC-polígono level (Sierra Sur de Jaén:
+# Alcaudete + Martos). Adding a province is one catalogue entry.
+SIGPAC_FEGA_URLS_JSON = ROOT / "scripts" / "_lib" / "es" / "sigpac_fega_urls.json"
+SIGPAC_FEGA_LICENSE = (
+    "© FEGA / MAPA, SIGPAC. CC BY 4.0 "
+    "(https://creativecommons.org/licenses/by/4.0/deed.es). "
+    "Source: sigpac-hubcloud.es (Servicio de descargas SIGPAC)."
+)
+SIGPAC_FEGA_PROVINCIAS = (
+    "23",  # Jaén (Alcaudete + Martos — Sierra Sur de Jaén IGP polígono inclusions)
 )
 
 EAMBROSIA_LIST_URL = (
@@ -192,11 +228,17 @@ def _fetch_binary_with_manifest(
     out_path: Path,
     manifest_path: Path,
     extra_manifest: dict,
+    via_curl: bool = False,
+    artifact_manifest: Callable[[Path], dict] | None = None,
 ) -> None:
     """Download a binary artifact (gpkg, zip, …) once and cache by sha. Re-uses
     the cached file as long as the on-disk sha matches the manifest's recorded
     sha. To force re-fetch, delete the artifact OR the manifest. Same idiom
-    used for FR `parcellaire.zip` style artifacts."""
+    used for FR `parcellaire.zip` style artifacts. `via_curl` shells out to
+    curl for a host that serves an incomplete certificate chain, which
+    `requests` rejects ('unable to get local issuer certificate') and the
+    system curl completes (the HU 01c precedent). `artifact_manifest` reads
+    manifest fields from the downloaded file itself (a dataset date)."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if out_path.exists() and manifest_path.exists():
         try:
@@ -210,19 +252,29 @@ def _fetch_binary_with_manifest(
                       file=sys.stderr)
                 return
     print(f"[{label}] fetching {url}", file=sys.stderr)
-    r = requests.get(url, headers={"User-Agent": UA}, timeout=600)
-    r.raise_for_status()
-    out_path.write_bytes(r.content)
-    sha = hashlib.sha256(r.content).hexdigest()
+    if via_curl:
+        subprocess.run(
+            ["curl", "-fsSL", "--retry", "2", "--max-time", "600",
+             "-A", UA, "-o", str(out_path), url],
+            capture_output=True, text=True, check=True,
+        )
+        content = out_path.read_bytes()
+    else:
+        r = requests.get(url, headers={"User-Agent": UA}, timeout=600)
+        r.raise_for_status()
+        content = r.content
+        out_path.write_bytes(content)
+    sha = hashlib.sha256(content).hexdigest()
     manifest_path.write_text(json.dumps({
         **extra_manifest,
+        **(artifact_manifest(out_path) if artifact_manifest else {}),
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "source_url": url,
-        "bytes": len(r.content),
+        "bytes": len(content),
         "sha256": sha,
     }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     print(
-        f"[{label}] {len(r.content) // (1<<20)} MB → "
+        f"[{label}] {len(content) // (1<<20)} MB → "
         f"{out_path.relative_to(ROOT)}",
         file=sys.stderr,
     )
@@ -252,12 +304,7 @@ def fetch_sigpac_comarques() -> None:
         return
     catalog = json.loads(SIGPAC_URLS_JSON.read_text(encoding="utf-8"))
     SIGPAC_OUT_DIR.mkdir(parents=True, exist_ok=True)
-    overall: dict[str, dict] = {}
-    if SIGPAC_MANIFEST_PATH.exists():
-        try:
-            overall = json.loads(SIGPAC_MANIFEST_PATH.read_text(encoding="utf-8")).get("comarques", {})
-        except (ValueError, OSError):
-            overall = {}
+    overall: dict[str, dict] = _read_sigpac_manifest().get("comarques") or {}
     for codi in SIGPAC_COMARCA_CODIS:
         entry = catalog.get(codi)
         if entry is None:
@@ -301,12 +348,198 @@ def fetch_sigpac_comarques() -> None:
             "zip": zip_name,
             "gpkg": gpkg_inner,
         }
-    SIGPAC_MANIFEST_PATH.write_text(json.dumps({
+    _update_sigpac_manifest({
         "license": SIGPAC_LICENSE,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "source": "analisi.transparenciacatalunya.cat (Generalitat de Catalunya)",
         "comarques": overall,
+    })
+
+
+def _read_sigpac_manifest() -> dict:
+    if not SIGPAC_MANIFEST_PATH.exists():
+        return {}
+    try:
+        data = json.loads(SIGPAC_MANIFEST_PATH.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _update_sigpac_manifest(updates: dict) -> None:
+    """Merge `updates` into the manifest the Catalan and the FEGA fetchers
+    share. Each owns its own keys, and the FEGA extract cache is keyed on
+    `fega_provincias`, so neither may rewrite the file whole."""
+    manifest = _read_sigpac_manifest()
+    manifest.update(updates)
+    SIGPAC_MANIFEST_PATH.write_text(json.dumps(
+        manifest, ensure_ascii=False, indent=2, sort_keys=True,
+    ), encoding="utf-8")
+
+
+def _stream_binary_with_manifest(
+    *,
+    label: str,
+    url: str,
+    out_path: Path,
+    manifest_path: Path,
+    extra_manifest: dict,
+) -> str:
+    """`_fetch_binary_with_manifest` for artifacts too large to hold in
+    memory: streams to `<out>.part`, hashes on the way, renames on
+    success. Returns the artifact's sha256 (cached or fresh)."""
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if out_path.exists() and manifest_path.exists():
+        try:
+            existing = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            existing = {}
+        if existing.get("sha256"):
+            h = hashlib.sha256()
+            with out_path.open("rb") as fh:
+                for chunk in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(chunk)
+            if h.hexdigest() == existing["sha256"]:
+                print(f"[{label}] cached → {out_path.relative_to(ROOT)}", file=sys.stderr)
+                return existing["sha256"]
+    print(f"[{label}] fetching {url}", file=sys.stderr)
+    part = out_path.with_suffix(out_path.suffix + ".part")
+    h = hashlib.sha256()
+    n = 0
+    with requests.get(url, headers={"User-Agent": UA}, timeout=600, stream=True) as r:
+        r.raise_for_status()
+        with part.open("wb") as fh:
+            for chunk in r.iter_content(chunk_size=1 << 20):
+                fh.write(chunk)
+                h.update(chunk)
+                n += len(chunk)
+    part.replace(out_path)
+    sha = h.hexdigest()
+    manifest_path.write_text(json.dumps({
+        **extra_manifest,
+        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "source_url": url,
+        "bytes": n,
+        "sha256": sha,
     }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    print(f"[{label}] {n // (1<<20)} MB → {out_path.relative_to(ROOT)}", file=sys.stderr)
+    return sha
+
+
+def fetch_sigpac_fega_provincias() -> None:
+    """Fetch FEGA per-province SIGPAC recintos for the curated provinces
+    (SIGPAC_FEGA_PROVINCIAS) and write, per province, an extract of the
+    municipios the catalogue lists as `raw/es/sigpac/SIGPAC_FEGA_<PR>_<NOMBRE>.gpkg`
+    (layer `recinto`, FEGA columns verbatim + `municipio_nombre`). Stage
+    04 loads every `SIGPAC_*.gpkg` in that directory, so the extract —
+    not the 0.9 GB province file — is what the build reads. No-op when
+    the zip's sha matches its manifest and the extract lists the same
+    municipios."""
+    if not SIGPAC_FEGA_URLS_JSON.exists():
+        print(f"[sigpac-fega] URL catalog missing at {SIGPAC_FEGA_URLS_JSON} — skipping",
+              file=sys.stderr)
+        return
+    catalog = json.loads(SIGPAC_FEGA_URLS_JSON.read_text(encoding="utf-8"))
+    SIGPAC_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    overall: dict[str, dict] = _read_sigpac_manifest().get("fega_provincias") or {}
+    import zipfile
+    for pr in SIGPAC_FEGA_PROVINCIAS:
+        entry = catalog.get(pr)
+        if entry is None:
+            print(f"[sigpac-fega] provincia {pr}: not in URL catalog", file=sys.stderr)
+            continue
+        zip_path = SIGPAC_OUT_DIR / entry["filename"]
+        sub_manifest_path = SIGPAC_OUT_DIR / f"manifest-fega-{pr}.json"
+        sha = _stream_binary_with_manifest(
+            label=f"sigpac-fega/{pr}",
+            url=entry["url"],
+            out_path=zip_path,
+            manifest_path=sub_manifest_path,
+            extra_manifest={
+                "provincia": entry["provincia"],
+                "provincia_codigo": pr,
+                "campaign": entry["campaign"],
+                "validity_date": entry["validity_date"],
+                "license": SIGPAC_FEGA_LICENSE,
+                "license_url": catalog["_meta"]["license_url"],
+                "license_quote": catalog["_meta"]["license_quote"],
+            },
+        )
+        municipios = dict(sorted(entry["municipios"].items()))
+        extract_path = SIGPAC_OUT_DIR / entry["extract_gpkg"]
+        prev = overall.get(pr) or {}
+        if (
+            extract_path.exists()
+            and prev.get("zip_sha256") == sha
+            and prev.get("municipios") == municipios
+        ):
+            print(f"[sigpac-fega/{pr}] extract cached → {extract_path.relative_to(ROOT)}",
+                  file=sys.stderr)
+        else:
+            _write_sigpac_fega_extract(
+                pr=pr, zip_path=zip_path, entry=entry, municipios=municipios,
+                extract_path=extract_path, zipfile_mod=zipfile,
+            )
+        overall[pr] = {
+            "provincia": entry["provincia"],
+            "zip": entry["filename"],
+            "zip_sha256": sha,
+            "extract_gpkg": entry["extract_gpkg"],
+            "municipios": municipios,
+            "wines": list(entry.get("wines") or []),
+        }
+    _update_sigpac_manifest({
+        "fega_provincias": overall,
+        "fega_license": SIGPAC_FEGA_LICENSE,
+        "fega_source": "sigpac-hubcloud.es (FEGA, Servicio de descargas SIGPAC)",
+    })
+
+
+def _write_sigpac_fega_extract(
+    *, pr: str, zip_path: Path, entry: dict, municipios: dict[str, str],
+    extract_path: Path, zipfile_mod,
+) -> None:
+    """Unzip the province GeoPackage to a scratch dir, keep the rows of
+    the listed municipios (every SIGPAC use — the vineyard filter is the
+    loader's), add `municipio_nombre`, write the extract, drop the
+    scratch copy. FEGA keys municipios by province + Catastro municipio
+    code, which for these provinces equals the INE code."""
+    import shutil
+
+    import geopandas as gpd
+
+    scratch = SIGPAC_OUT_DIR / f".extract-fega-{pr}"
+    shutil.rmtree(scratch, ignore_errors=True)
+    scratch.mkdir(parents=True)
+    try:
+        with zipfile_mod.ZipFile(zip_path) as zf:
+            zf.extract(entry["inner_gpkg"], scratch)
+        full_path = scratch / entry["inner_gpkg"]
+        prov = int(pr)
+        codes = sorted(int(ine[2:]) for ine in municipios)
+        where = (
+            f"provincia = {prov} AND municipio IN ({', '.join(str(c) for c in codes)})"
+        )
+        gdf = gpd.read_file(full_path, layer=entry["layer"], where=where)
+        # Zero-padded like the catalogue's keys: province 05 is "05176".
+        ine = (gdf["provincia"].astype(int) * 1000 + gdf["municipio"].astype(int)).map(
+            "{:05d}".format,
+        )
+        gdf["municipio_nombre"] = ine.map(municipios)
+        missing = sorted(set(municipios) - set(ine.unique()))
+        if missing:
+            print(f"[sigpac-fega/{pr}] WARNING: no recintos for INE {missing}", file=sys.stderr)
+        tmp_out = extract_path.with_suffix(".tmp.gpkg")
+        tmp_out.unlink(missing_ok=True)
+        gdf.to_file(tmp_out, layer=entry["layer"], driver="GPKG")
+        tmp_out.replace(extract_path)
+        print(
+            f"[sigpac-fega/{pr}] extract: {len(gdf)} recintos in "
+            f"{gdf['municipio'].nunique()} municipios → {extract_path.relative_to(ROOT)}",
+            file=sys.stderr,
+        )
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
 
 
 def fetch_gisco_lau() -> None:
@@ -366,13 +599,45 @@ def fetch_mapa_listado() -> None:
     )
 
 
+def fetch_xunta_parroquias() -> None:
+    """IET Mapa de Parroquias de Galicia — the civil-parish polygons
+    (3,785 over 313 concellos, EPSG:25829) behind the Galician pliegos'
+    "las parroquias de A, B y C del término municipal de X" inclusions;
+    consumed via scripts/_lib/es/parroquia.py. The zip is read in place
+    (zip://…!Parroquias.shp), so nothing is extracted. The licence text
+    records the conflict between the zip's stale 2015 conditions PDF,
+    the current aviso legal and the abertos.xunta.gal listing.
+    visorgis.cmati.xunta.es omits the GlobalSign intermediate from its
+    chain, hence curl."""
+    _fetch_binary_with_manifest(
+        label="xunta-parroquias",
+        via_curl=True,
+        url=PARROQUIAS_URL,
+        out_path=PARROQUIAS_ZIP,
+        manifest_path=PARROQUIAS_MANIFEST,
+        artifact_manifest=parroquias_dataset,
+        extra_manifest={
+            "dataset_url": PARROQUIAS_DATASET_URL,
+            "publisher": PARROQUIAS_PUBLISHER,
+            "licence": PARROQUIAS_LICENCE,
+            "licence_short": PARROQUIAS_LICENCE_SHORT,
+            "licence_url": PARROQUIAS_LICENCE_URL,
+            "licence_conflict": PARROQUIAS_LICENCE_CONFLICT,
+            "attribution": PARROQUIAS_ATTRIBUTION,
+            "crs": "EPSG:25829 (ETRS89 / UTM 29N)",
+        },
+    )
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     fetch_figshare_gpkg()
     fetch_gisco_lau()
     fetch_sigpac_comarques()
+    fetch_sigpac_fega_provincias()
     fetch_mapa_zones()
     fetch_mapa_listado()
+    fetch_xunta_parroquias()
     full, etag = fetch_list()
     es_wines_all = [
         g for g in full

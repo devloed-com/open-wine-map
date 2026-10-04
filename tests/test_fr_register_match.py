@@ -159,7 +159,9 @@ def test_cross_border_rows_are_french_rows() -> None:
 
 def test_shipped_overrides_are_well_formed() -> None:
     for id_app, pin in rm.load_overrides().items():
-        assert id_app.isdigit(), id_app
+        # INAO's id, or the provisional `p<idproduit>` of a supplement row
+        # (scripts/_lib/fr/siqo_supplements.json) the SIQO export predates.
+        assert id_app.isdigit() or (id_app.startswith("p") and id_app[1:].isdigit()), id_app
         assert "file_number" in pin and "note" in pin, id_app
         if pin["file_number"]:
             assert pin["file_number"].startswith(("PDO-", "PGI-")), id_app

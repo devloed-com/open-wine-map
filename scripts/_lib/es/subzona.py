@@ -47,6 +47,8 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from _lib.es.commune_list import merge_compound_municipios
+
 
 def slugify(s: str) -> str:
     """Same shape as scripts/02_extract_cahiers.py:slug — for parity with
@@ -118,6 +120,13 @@ def _all_caps_header_re(parent_wine_name: str) -> re.Pattern:
     )
 
 
+# A Galician / Catalan / Castilian article in lower case followed by a
+# capitalised word: the one lower-case opening that is a name, not prose
+# ("a Pobra de Trives", "l'Alcora"; never "los agregados de Cellers").
+_LOWER_ARTICLE_RE = re.compile(
+    r"(?:(?:a|o|as|os|el|la|los|las|els|les|es|sa)\s+|l')[A-ZÁÉÍÓÚÑÜÀÈÒÇ]"
+)
+
 # Word-tokens that should never be parsed as a commune name. Stage 02's
 # parse_communes split is intentionally permissive; this filter trims the
 # obvious junk.
@@ -141,7 +150,16 @@ _COMMUNE_LIST_END_MARKERS = (
     "según la cartografía", "segun la cartografia",
     "siempre y cuando", "y los polígonos", "y los poligonos",
     "Y las parcelas", "y las parcelas",
+    # Alicante's list ends and a separate paragraph about the Torrevieja
+    # lagoons begins; pattern A's commune capture runs on to it.
+    "Viñedos ubicados",
 )
+
+# A sentence boundary inside a commune list is the end of the list: what
+# follows "Cocentaina. Viñedos ubicados …" / "Xàtiva. Componen también …"
+# is prose, and read as communes it turned "Torrevieja»" into a municipio
+# of El Comtat.
+_SENTENCE_BOUNDARY_RE = re.compile(r"\.\s+[A-ZÁÉÍÓÚÑ]")
 
 
 def _split_inline_communes(s: str) -> list[str]:
@@ -158,12 +176,31 @@ def _split_inline_communes(s: str) -> list[str]:
         i = s.find(marker)
         if i >= 0 and i < cut:
             cut = i
-    s = s[:cut].rstrip(" ,;.")
+    s = s[:cut]
+    boundary = _SENTENCE_BOUNDARY_RE.search(s)
+    if boundary:
+        s = s[:boundary.start()]
+    s = s.rstrip(" ,;.")
 
-    out: list[str] = []
+    # Each token is kept with the separator that preceded it, so a compound
+    # municipio the " y " split cut in two ("Gimenells y Pla de la Font")
+    # can be put back together.
+    tokens: list[str] = []
+    seps: list[str] = []
     depth = 0
     cur: list[str] = []
+    sep = ""
     i = 0
+
+    def flush(next_sep: str) -> None:
+        nonlocal cur, sep
+        tok = "".join(cur).strip()
+        if tok:
+            tokens.append(tok)
+            seps.append(sep)
+        cur = []
+        sep = next_sep
+
     while i < len(s):
         ch = s[i]
         if ch == "(":
@@ -173,24 +210,16 @@ def _split_inline_communes(s: str) -> list[str]:
             depth -= 1
             cur.append(ch)
         elif depth == 0 and ch == ",":
-            tok = "".join(cur).strip()
-            if tok:
-                out.append(tok)
-            cur = []
+            flush(", ")
         elif depth == 0 and s[i : i + 3] == " y ":
-            tok = "".join(cur).strip()
-            if tok:
-                out.append(tok)
-            cur = []
+            flush(" y ")
             i += 2
         else:
             cur.append(ch)
         i += 1
-    tok = "".join(cur).strip()
-    if tok:
-        out.append(tok)
+    flush("")
 
-    return [t for t in out if _is_commune_token(t)]
+    return [t for t in merge_compound_municipios(tokens, seps) if _is_commune_token(t)]
 
 
 def _is_commune_token(t: str) -> bool:
@@ -201,11 +230,17 @@ def _is_commune_token(t: str) -> bool:
     comma split and end up here."""
     if len(t) < 2 or any(c.isdigit() for c in t):
         return False
+    # Guillemets and a period followed by a space are quotation and
+    # sentence punctuation — prose that slipped past the split.
+    if "«" in t or "»" in t or ". " in t:
+        return False
     if t.lower() in _COMMUNE_DROP_TOKENS:
         return False
     # Lowercase first character → almost certainly a fragment of prose,
-    # not a commune name (Spanish proper nouns are title-cased).
-    if t[0].islower():
+    # not a commune name (Spanish proper nouns are title-cased) — unless
+    # it is an article the pliego forgot to capitalise in front of one
+    # (Ribeira Sacra's "a Pobra de Trives").
+    if t[0].islower() and not _LOWER_ARTICLE_RE.match(t):
         return False
     # Spanish function words that may appear at the start of a captured
     # fragment when the comma-split doesn't align with sentence structure.

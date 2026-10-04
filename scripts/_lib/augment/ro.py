@@ -72,6 +72,7 @@ def augment_ro_records_with_national_specs(records: list[dict]) -> int:
             record["geo_area_brief"] = sidecar["geo_area_brief"]
         if sidecar.get("geo_communes"):
             record["geo_communes"] = sidecar["geo_communes"]
+            record["geo_communes_scoped"] = sidecar.get("geo_communes_scoped") or []
         if sidecar.get("link_to_terroir"):
             record["link_to_terroir"] = sidecar["link_to_terroir"]
         if sidecar.get("styles"):

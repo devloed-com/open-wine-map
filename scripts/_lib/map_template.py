@@ -21,8 +21,14 @@ from pathlib import Path
 
 from babel.numbers import format_decimal
 
-from _lib.content_block import RenderCtx, esc, render_content_block
-from _lib.env import carto_basemap_key, carto_basemap_keys, plausible_host, plausible_sites
+from _lib.content_block import RenderCtx, esc, render_content_block, to_title_case
+from _lib.env import (
+    carto_basemap_key,
+    carto_basemap_keys,
+    plausible_host,
+    plausible_sites,
+    webmcp_origin_trial_token,
+)
 from _lib.i18n import load_translations
 from _lib.wikidata import wikidata_url
 
@@ -43,7 +49,10 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         # on the browse page, which actually lists them; here they read as a
         # spec sheet. "Appellation", not "region" — region is the facet one
         # level up (bassin / regione / Bundesland).
-        "page_title": _("Open Wine Map — appellations viticoles d'Europe"),
+        "page_title": _("Open Wine Map — carte des appellations viticoles d'Europe"),
+        # Wraps the appellation name in the locale's map phrase for the
+        # <title> tiers that carry no brand (see _entity_title).
+        "title_with_map": _("{name}, carte du vignoble"),
         "subtitle": _("carte des appellations viticoles"),
         "meta_description": _(
             "Carte interactive des appellations viticoles d'Europe : cépages, "
@@ -57,6 +66,8 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "omnisearch_placeholder": _("Rechercher une appellation, un cépage, une région…"),
         "main_grape_only_label": _("Cépage principal uniquement"),
         "omni_no_results": _("Aucun résultat pour « {q} »"),
+        "omni_hidden_igp": _("IGP masquée · s'affiche à la sélection"),
+        "omni_hidden_spirit": _("Eau-de-vie masquée · s'affiche à la sélection"),
         "options_h": _("Options"),
         "active_filters_aria": _("Filtres actifs"),
         "select_all_aria": _("Tout sélectionner"),
@@ -167,8 +178,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         # the zoom-dependent footprint (scripts/_lib/vineyard_envelope.py).
         "geom_approx_aires_union": _(
             "Aire approchée — réunion des {n} commune(s) de l'aire délimitée "
-            "(INAO), plans d'eau et terres non viticoles compris ; pas de "
-            "délimitation parcellaire pour cette dénomination."
+            "(INAO) ; pas de délimitation parcellaire pour cette dénomination."
         ),
         "geom_lod_footprint": _(
             "Vue d'ensemble : silhouette du vignoble, généralisée à {radius} m "
@@ -191,8 +201,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         ),
         "geom_src_betard": _(
             "Aire approchée — polygone du jeu de données Bétard 2022 (AOP de "
-            "l'UE), à la résolution des communes ; peut inclure des terres non "
-            "viticoles."
+            "l'UE), à la résolution des communes."
         ),
         "geom_src_pdo_union": _(
             "Aire approchée — réunion des polygones des appellations membres "
@@ -200,11 +209,83 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         ),
         "geom_src_admin_union": _(
             "Aire approchée — réunion des unités administratives nommées dans "
-            "le document (limites Eurostat GISCO ou cadastre national), terres "
-            "non viticoles comprises."
+            "le document (limites Eurostat GISCO ou cadastre national)."
         ),
+        # Named units the commune layer does not carry, and localities drawn
+        # as the unit that holds them (Greek area-units resolver,
+        # scripts/_lib/gr/geometry.py) — the record's `geom_units_unmatched`
+        # / `geom_units_proxied` panel-payload fields.
+        "geom_units_unmatched": _(
+            "Nommé(s) dans le document mais absent(s) de la couche communale, "
+            "donc non tracé(s) : {names}."
+        ),
+        "geom_units_proxied": _(
+            "Localité(s) sans polygone propre, tracée(s) par l'unité "
+            "administrative qui les contient : {names}."
+        ),
+        "geom_units_boundary": _(
+            "Aire approchée : le document délimite la zone par une ligne "
+            "passant par des lieux-dits ; tracée ici comme le polygone que "
+            "ces lieux dessinent, chacun à son point central (coordonnées "
+            "Wikidata) : {names}."
+        ),
+        "geom_units_boundary_units": _(
+            "Aire approchée : le document délimite la zone par une ligne "
+            "passant par des lieux-dits, tracée ici comme les unités "
+            "administratives qui les contiennent : {names}."
+        ),
+        # INAO parcellaire gaps closed by a curator pin
+        # (scripts/_lib/parcellaire_gap_fills.json) — the record's
+        # `geom_parcel_fill` / `geom_parcel_gaps` panel-payload fields.
+        "geom_parcel_fill_commune": _(
+            "Commune(s) de l'aire délimitée (INAO) sans délimitation parcellaire "
+            "publiée dans la couche parcellaire INAO, tracée(s) entière(s) : {names}."
+        ),
+        "geom_parcel_fill_donor": _(
+            "Commune(s) de l'aire délimitée (INAO) sans délimitation parcellaire "
+            "publiée pour cette dénomination, tracée(s) par les parcelles "
+            "{donor} de la commune : {names}."
+        ),
+        "geom_parcel_gaps": _(
+            "Commune(s) de l'aire délimitée (INAO) sans délimitation parcellaire "
+            "publiée dans la couche parcellaire INAO, non tracée(s) : {names}."
+        ),
+        # rows of an earlier parcellaire release kept when the current one
+        # dropped them (scripts/_lib/parcellaire_carry_forward.json) — the
+        # record's `geom_parcel_carry` panel-payload field
+        "geom_parcel_carry": _(
+            "Délimitation parcellaire de la publication INAO du {release} ; la "
+            "publication du {current} ne porte pas cette dénomination."
+        ),
+        # Galician parishes (parroquias) drawn from the IET Mapa de Parroquias
+        # — the attribution the layer's licence requires, on every record
+        # that uses its polygons ({source} is the linked attribution string).
+        "geom_parroquias_line": _(
+            "Aire complétée par {n} paroisse(s) civile(s) (parroquias) nommée(s) "
+            "dans le document, dessinée(s) d'après le Mapa de Parroquias de "
+            "Galicia ({source}) : {names}."
+        ),
+        # SIGPAC polígono inclusions (scripts/_lib/es/sigpac.py): the reading
+        # that drew them — the polígonos whole (a plot planted inside a listed
+        # polígono qualifies) or only their vineyard parcels (Priorat /
+        # Montsant) — and the publication's attribution ({source}, linked).
+        "geom_sigpac_footprint": _(
+            "Aire : les {n} polígonos cadastraux SIGPAC que le document énumère "
+            "dans {municipios}, chacun dessiné en entier — toute parcelle qui y "
+            "serait plantée relève de l'appellation ({source})."
+        ),
+        "geom_sigpac_vineyard": _(
+            "Aire : les parcelles de vigne (SIGPAC, usage VI) situées dans les "
+            "{n} polígonos cadastraux que le document énumère dans {municipios} "
+            "({source})."
+        ),
+        "geom_sigpac_whole": _("S'y ajoutent, en totalité, les communes {whole}."),
         "stack_header": _("{n} appellations à ce point"),
-        "stack_cycle_hint": _("Cliquer à nouveau pour parcourir les autres"),
+        "stack_cycle_hint": _(
+            "Cliquer à nouveau sur la carte pour parcourir les autres, "
+            "ou sur une fiche pour l'afficher en premier"
+        ),
+        "stack_focus_title": _("Afficher cette appellation en premier"),
         "src_cahier": _("Cahier des charges (BO Agri, PDF)"),
         "src_cahier_eu_register": _("Cahier des charges (registre GI de l'UE, PDF)"),
         "src_homologated": _("homologué"),
@@ -218,6 +299,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_national_spec": _("Cahier des charges national (PDF)"),
         "src_chzo_spec": _("Spécification du produit (IGP, PDF)"),
         "src_regional_register": _("Registre régional des cépages (PDF)"),
+        "src_parroquias": _("Mapa de Parroquias de Galicia (IET, Xunta de Galicia)"),
         "src_eambrosia": _("Registre eAmbrosia (UE)"),
         "src_eambrosia_id": _("Numéro de dossier"),
         "src_cantonal_reglement": _("Règlement cantonal sur la vigne et le vin"),
@@ -256,6 +338,18 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "cancelled_national_act": _("Acte national : {act}."),
         "cancelled_successor": _("Elle est remplacée par {successor}."),
         "cancelled_badge_title": _("Enregistrement annulé le {date}"),
+        # Promoted denominations (_lib/promoted_gis.json) — a former DGC that
+        # became an appellation of its own. {successor} and {act} are rendered
+        # as links by the caller; {cahier} is the link text below.
+        "promoted_badge": _("Promue"),
+        "promoted_line": _(
+            "Cette dénomination est devenue l'appellation {successor} à part entière "
+            "le {date} ({act}). Des étiquettes plus anciennes peuvent encore porter "
+            "l'ancien nom ; elle est conservée ici à titre de référence."
+        ),
+        "promoted_cahier": _("Cahier des charges de la nouvelle appellation : {cahier}."),
+        "promoted_cahier_link": _("BO Agri (PDF)"),
+        "promoted_badge_title": _("Devenue appellation à part entière le {date}"),
         # Provenance line — an honest one-sentence sourcing statement shown on
         # factless records. {regulator}/{doc}/{grapes}/{extra} are substituted
         # verbatim (regulator names + native source-doc terms stay in their own
@@ -281,6 +375,10 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "wiki_lang_nl": _("Wikipédia en néerlandais"),
         "wiki_lang_pt": _("Wikipédia en portugais"),
         "wiki_lang_hr": _("Wikipédia en croate"),
+        "wiki_lang_it": _("Wikipédia en italien"),
+        "wiki_lang_de": _("Wikipédia en allemand"),
+        "wiki_lang_sl": _("Wikipédia en slovène"),
+        "wiki_lang_bg": _("Wikipédia en bulgare"),
         "vivc_link_title": _("Vitis International Variety Catalogue (Julius Kühn-Institut)"),
         "vivc_link_label": _("VIVC #{id}"),
         "translation_attribution": _("Traduction automatique depuis {source}"),
@@ -324,8 +422,9 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "about_lod_html": _(
             "Niveau de détail : en dessous du zoom {zoom}, les appellations "
             "françaises dotées d'une délimitation parcellaire INAO sont dessinées "
-            "comme une silhouette de leur vignoble, généralisée à {radius} m "
-            "(fermeture morphologique des parcelles) ; à partir du zoom {zoom}, "
+            "comme une silhouette de leur vignoble, généralisée à {radius} m au "
+            "plus (fermeture morphologique des parcelles, au rayon réduit pour "
+            "les petites appellations) ; à partir du zoom {zoom}, "
             "ce sont les parcelles elles-mêmes. Les autres appellations gardent "
             "le même contour à tous les zooms."
         ),
@@ -379,8 +478,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "browse_title": _("Toutes les appellations viticoles — Open Wine Map"),
         "browse_meta_description": _(
             "Liste des {n} appellations viticoles cartographiées sur Open Wine Map, "
-            "classées par pays : AOP et IGP de l'UE avec leurs termes traditionnels (AOC, "
-            "DOCG, DOQ…), AOC suisses et IG britanniques."
+            "classées par pays : AOP et IGP de l'UE, AOC suisses et IG britanniques."
         ),
         "browse_intro_html": _(
             "Les {n} appellations ci-dessous sont classées par pays. "
@@ -398,14 +496,17 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
 
 
 def build_region_labels(_: Callable[[str], str]) -> dict[str, str]:
-    """Bassin (comité régional INAO) → translatable display label.
+    """FR wine-region bucket → translatable display label.
 
-    The msgid is the FR canonical name as it appears in
-    `record.comite_regional` (matches `raw/inao/cahier-extracted/*.json`).
-    Public source: INAO comités régionaux list — see
-    https://www.inao.gouv.fr/eng/Our-organisation (INAO regional committees).
-    A future translator should consult that page; the FR strings here are
-    verbatim from the cahier extraction so the join key stays exact.
+    The keys are the buckets `fr_wine_region.derive_wine_region` emits: INAO
+    comité régional names where the comité is one wine region (VAL DE LOIRE,
+    CHAMPAGNE, COGNAC …), and the region's own name where a comité spans
+    several (SUD-OUEST is split into BORDEAUX / SUD-OUEST by département,
+    LANGUEDOC-ROUSSILLON into LANGUEDOC / ROUSSILLON, PROVENCE-CORSE,
+    ALSACE ET EST, the VDN and cider product comités likewise — 2026-09-26,
+    when Pauillac was still titled "South-West, France"). Public sources:
+    the INAO comités list (https://www.inao.gouv.fr/eng/Our-organisation)
+    and the INAO aires-communes CSV for the département of each aire.
     """
     return {
         "BOURGOGNE": _("BOURGOGNE"),
@@ -413,16 +514,21 @@ def build_region_labels(_: Callable[[str], str]) -> dict[str, str]:
         "JURA": _("JURA"),
         "SAVOIE": _("SAVOIE"),
         "BUGEY": _("BUGEY"),
-        "ALSACE ET EST": _("ALSACE ET EST"),
+        "ALSACE": _("ALSACE"),
+        "LORRAINE": _("LORRAINE"),
         "VAL DE LOIRE": _("VAL DE LOIRE"),
+        "BORDEAUX": _("BORDEAUX"),
         "SUD-OUEST": _("SUD-OUEST"),
         "VALLEE DU RHÔNE": _("VALLEE DU RHÔNE"),
-        "LANGUEDOC-ROUSSILLON": _("LANGUEDOC-ROUSSILLON"),
-        "TOULOUSE-PYRENEES": _("TOULOUSE-PYRENEES"),
-        "PROVENCE-CORSE": _("PROVENCE-CORSE"),
+        "LANGUEDOC": _("LANGUEDOC"),
+        "ROUSSILLON": _("ROUSSILLON"),
+        "PROVENCE": _("PROVENCE"),
+        "CORSE": _("CORSE"),
         "CHAMPAGNE": _("CHAMPAGNE"),
-        "EAUX-DE-VIE DE CIDRE": _("EAUX-DE-VIE DE CIDRE"),
-        "VIN DOUX NATURELS": _("VIN DOUX NATURELS"),
+        "ILE-DE-FRANCE": _("ILE-DE-FRANCE"),
+        "NORMANDIE": _("NORMANDIE"),
+        "BRETAGNE": _("BRETAGNE"),
+        "MAINE": _("MAINE"),
         "COGNAC": _("COGNAC"),
         "ARMAGNAC": _("ARMAGNAC"),
         "RHUM": _("RHUM"),
@@ -492,19 +598,23 @@ def build_country_labels(_: Callable[[str], str]) -> dict[str, str]:
 # Region underlay colour, keyed by the value written to the MVT `region`
 # property: FR wine region (ALL-CAPS — INAO bassin name, except that the
 # BOURGOGNE bassin is split by `derive_fr_wine_region` into BOURGOGNE /
-# BEAUJOLAIS / JURA / SAVOIE / BUGEY) or ES Comunidad Autónoma (canonical
+# BEAUJOLAIS / JURA / SAVOIE / BUGEY, and the paired comités into their
+# regions — BORDEAUX / SUD-OUEST, LANGUEDOC / ROUSSILLON, PROVENCE / CORSE,
+# ALSACE / LORRAINE) or ES Comunidad Autónoma (canonical
 # Spanish, mixed case). The two key spaces are disjoint so a single match
 # expression serves both countries.
 #
 # Hand-picked muted palette (Set3-derived) so wine regions are
 # distinguishable on a CartoDB Voyager basemap and survive a
 # deuteranopia/protanopia simulation. Adjacent regions along the Pyrenees
-# (FR SUD-OUEST / LANGUEDOC-ROUSSILLON vs ES Navarra / País Vasco / Aragón
+# (FR SUD-OUEST / ROUSSILLON vs ES Navarra / País Vasco / Aragón
 # / Cataluña) are checked for contrast.
 #
 # Omitted (fall through to transparent):
-#   - FR spirit-only bassins (COGNAC, ARMAGNAC, RHUM, EAUX-DE-VIE DE CIDRE)
-#     — the underlay shouldn't tint regions whose appellations are non-wine.
+#   - FR regions that are mostly spirits or cider (COGNAC, ARMAGNAC, RHUM,
+#     NORMANDIE, BRETAGNE, MAINE; a wine IGP or two sits in Cognac and
+#     Normandie) — the underlay shouldn't tint regions whose appellations
+#     are non-wine. (The table is not wired into the source block today.)
 #   - ES "España" (fallback for wines whose pliego doesn't yield a CCAA)
 #     and "" (explicit multi-region: Cava, Castilla) — these wines are
 #     scattered nationwide; tinting them would produce splotchy noise.
@@ -515,15 +625,18 @@ _BASSIN_COLOURS: dict[str, str] = {
     "JURA": "#ffffb3",
     "SAVOIE": "#b7d9e8",
     "BUGEY": "#e8c89f",
-    "ALSACE ET EST": "#80b1d3",
+    "ALSACE": "#80b1d3",
+    "LORRAINE": "#c6c6e0",
     "VAL DE LOIRE": "#b3de69",
-    "SUD-OUEST": "#fb8072",
+    "BORDEAUX": "#fb8072",
+    "SUD-OUEST": "#ccebc5",
     "VALLEE DU RHÔNE": "#bebada",
-    "LANGUEDOC-ROUSSILLON": "#ffed6f",
-    "TOULOUSE-PYRENEES": "#ccebc5",
-    "PROVENCE-CORSE": "#fccde5",
+    "LANGUEDOC": "#ffed6f",
+    "ROUSSILLON": "#8dd3c7",
+    "PROVENCE": "#fccde5",
+    "CORSE": "#dcd0a8",
     "CHAMPAGNE": "#d9d9d9",
-    "VIN DOUX NATURELS": "#8dd3c7",
+    "ILE-DE-FRANCE": "#f2f2c2",
     # Spain — Comunidades Autónomas
     "Galicia":              "#a6c5d8",
     "Asturias":             "#b3e2cd",
@@ -1166,25 +1279,94 @@ def _browse_lang_switcher(active: str, aria_label: str) -> str:
 
 
 _META_DESC_MAX = 160
+_LEAD_MIN_ROOM = 60
+# The simple styles in the order a searcher reads them: colours first, so a
+# roster cut never loses "white" to "oxidative" (an alphabetical cut did, on
+# 420 pages, 2026-09-26).
+_STYLE_ORDER = ("white", "red", "rose", "sparkling", "sweet", "oxidative", "other")
 
 
 def _clamp(text: str, n: int = 160) -> str:
     text = " ".join((text or "").split())
     if len(text) <= n:
         return text
-    return text[:n].rsplit(" ", 1)[0].rstrip(" ,.;:") + "…"
+    return text[:n].rsplit(" ", 1)[0].rstrip(" ,.;:…—–-«(“\"'") + "…"
 
 
-def _entity_grape_names(rec: dict, grapes_info: dict, limit: int) -> list[str]:
-    out = []
-    for g in (rec.get("grapes_principal") or [])[:limit]:
-        nm = (
-            (rec.get("grape_names") or {}).get(g)
-            or (grapes_info.get(g) or {}).get("name")
-            or g.replace("-", " ")
-        )
-        out.append(nm)
-    return out
+_NON_LATIN_RE = re.compile(r"[\u0370-\u03FF\u0400-\u04FF]")
+# A regulator's berry-colour code after a grape name ("Pinot noir N", "Αθήρι Β").
+_COLOUR_CODE_RE = re.compile(r"\s+(?:N|B|G|Rs|Rg|Gr|Ν|Β|Ρ)\.?$")
+_PARTICLE_RE = re.compile(r"(?<=\S )(?:De|Di|Del|Della|Du|Des|Da|Do|Dos|La|Le|Les|À|Y|E|Van|Von)(?= )")
+
+
+def _seo_grape_label(name: str) -> str:
+    """A grape name for the SERP surfaces: colour code and stray punctuation
+    dropped, Title Case with the Romance particles kept lower-case
+    ("Muscat à Petits Grains Blancs", "Moscatel de Alejandría")."""
+    cleaned = _COLOUR_CODE_RE.sub("", (name or "").strip().strip(",;:. "))
+    titled = to_title_case(cleaned)
+    titled = _PARTICLE_RE.sub(lambda m: m.group(0).lower(), titled)
+    return re.sub(r" D(['’])", r" d\1", titled)
+
+
+def _entity_grape_names(
+    rec: dict, grapes_info: dict, limit: int, grape_rank: dict | None = None,
+    canon_of: dict | None = None,
+) -> tuple[list[str], bool]:
+    """(the record's first `limit` principal grapes for the SERP surfaces,
+    more-exist flag). The regulator's spelling in Title Case, as on the pill —
+    except a Greek / Cyrillic spelling, which yields to the lexicon's Latin
+    name ("Гренаш" → "Grenache"; a transliteration would be "Grenash"). With
+    `grape_rank` (slug → sort key, lowest first: minus the number of the
+    country's records carrying the grape, see render) an unmentioned grape
+    the country grows widely precedes one it barely grows — Rioja's
+    alphabetical roster starts "alarije, albillo mayor"; ranked it starts
+    with Tempranillo — and ties keep the roster's order."""
+    slugs: list[str] = []
+    seen_canon: set[str] = set()
+    for g in rec.get("grapes_principal") or []:
+        # A roster that carries an alias and its canonical slug (Nielluccio
+        # and Sangiovese) names the grape once.
+        c = (canon_of or {}).get(g, g)
+        if c in seen_canon:
+            continue
+        seen_canon.add(c)
+        slugs.append(g)
+
+    def display(g: str) -> str:
+        cahier = (rec.get("grape_names") or {}).get(g) or ""
+        if cahier and not _NON_LATIN_RE.search(cahier):
+            return cahier
+        # Without a Latin cahier spelling: the slug's words — the slug is the
+        # corpus's canonical Latin form (albana, savatiano, mavrud), whereas the
+        # lexicon's `name` may be a VIVC prime that disambiguates it
+        # ("Forsellina N." for Albana) or a Greek article title.
+        return g.replace("-", " ")
+
+    # A grape the record's own text names comes first, in the order the text
+    # names it (the regulator's emphasis: Pauillac's facts name Cabernet
+    # Sauvignon and Merlot, not the Cot its roster also allows); the rest by
+    # `grape_rank`, then the roster's order.
+    facts = ((rec.get("terroir_facts") or {}).get("facts")) or []
+    text = " ".join([*(f.get("bullet") or "" for f in facts), rec.get("summary") or ""]).casefold()
+
+    def first_mention(g: str) -> int:
+        cands = {_seo_grape_label(display(g)), (grapes_info.get(g) or {}).get("name") or "",
+                 g.replace("-", " ")}
+        hits = []
+        for c in cands:
+            c = c.casefold().strip()
+            if len(c) < 3:
+                continue
+            m = re.search(r"(?<![\w-])" + re.escape(c) + r"(?![\w-])", text)
+            if m:
+                hits.append(m.start())
+        return min(hits) if hits else 10**9
+
+    if text.strip() or grape_rank:
+        slugs.sort(key=lambda g: (first_mention(g), (grape_rank or {}).get(g, 0.0)))
+    out = [_seo_grape_label(display(g)) for g in slugs[:limit]]
+    return out, len(slugs) > limit
 
 
 # Wikidata class for the Place.additionalType — "wine-producing region"
@@ -1265,16 +1447,46 @@ def _entity_lead(rec: dict, locale: str, limit: int = 1) -> str:
     corpus is the untranslated decree boilerplate ("Seuls peuvent prétendre à
     l'appellation…")."""
     facts = ((rec.get("terroir_facts") or {}).get("facts")) or []
-    bullets = [b for f in facts if (b := " ".join((f.get("bullet") or "").split()))]
+    pairs = [
+        (f.get("subsection") or "", b)
+        for f in facts if (b := " ".join((f.get("bullet") or "").split()))
+    ]
+    bullets = [b for _, b in pairs]
     if bullets:
-        name = (rec.get("name") or "").casefold()
-        lead = next((b for b in bullets if name and name in b.casefold()), bullets[0])
+        # The natural-factors bullets first (the "human factors" ones are the
+        # decree history — Pauillac's lead was "The ruling of the Lesparre
+        # tribunal of 29 November 1926…"), and among them the first that
+        # names the record as a standalone word: "Rioja" inside "Rioja
+        # Alavesa" is a sibling's sentence, "the Rioja appellation" is not.
+        natural = [b for sub, b in pairs if sub == "facteurs_naturels"] or bullets
+        prose = [b for b in natural if not re.match(r"[\d%]", b)] or natural
+        name = rec.get("name") or ""
+        lead = next((b for b in prose if _name_stands_alone(name, b)), prose[0])
         rest = [b for b in bullets if b != lead]
         return " ".join([lead, *rest[: max(limit - 1, 0)]])
-    summary = " ".join((rec.get("summary") or "").split())
+    summary = " ".join((rec.get("summary") or "").lstrip("- ").split())
+    # A pliego summary that is a form heading ("Wine.", "- Categoría de
+    # producto vitícola: vino.") is no lead.
+    if summary and len(summary.split()) < 8:
+        return ""
     if summary and (rec.get("summary_translation") or _record_source_lang(rec) == locale):
         return summary
     return ""
+
+
+def _name_stands_alone(name: str, text: str) -> bool:
+    """True when `name` occurs in `text` as whole words and is not the first
+    part of a longer proper name (a following capitalised word): "Rioja
+    Alavesa", "Rosso Orvietano" for Orvieto, "Burgenland" for Burgenland is
+    fine, "Mercurey premier cru" is fine (lower-case continuation)."""
+    if not name:
+        return False
+    # The name matches case-insensitively; the capital-letter lookahead must
+    # not (a module-level IGNORECASE would read "appellation" as capitalised).
+    pat = re.compile(
+        r"(?<![\w-])(?i:" + re.escape(name) + r")(?![\w-])(?!\s+[A-ZÀ-ÝΑ-ΩА-Я][\w'’-]+)"
+    )
+    return bool(pat.search(text))
 
 
 def _join_sentences(parts) -> str:
@@ -1369,6 +1581,9 @@ def _build_entity_jsonld(
         place["geo"] = {"@type": "GeoShape", "box": f"{bbox[1]} {bbox[0]} {bbox[3]} {bbox[2]}"}
     if contained:
         place["containedInPlace"] = contained if len(contained) > 1 else contained[0]
+    latin = rec.get("name_latin") or ""
+    if latin and latin != name:
+        place["alternateName"] = latin
     # Parent → folded sub-denominations: the entity-graph half of surfacing the
     # children. They have no indexable page, so the parent declares them here as
     # the places it contains (inverse of containedInPlace).
@@ -1396,6 +1611,64 @@ _TITLE_MAX = 65  # the ~600 px Bing / Google show; Bing flags longer as "Title t
 _BRAND = "Open Wine Map"
 
 
+_REGION_EXONYMS_PATH = Path(__file__).resolve().parent / "region_exonyms.json"
+
+# Values stage 04 writes into `region` when a record's region is the whole
+# country (the ES pliego names no comunidad, the AT / IT / SK / MT umbrella
+# GIs): the country already follows, so the SERP surfaces drop the slot
+# rather than print "España, Spain" (19 pages) or "Italia, Italy".
+_COUNTRY_AS_REGION: frozenset[str] = frozenset({
+    "España", "Italia", "Österreich", "Slovensko", "Malta", "Deutschland",
+    "Nederland", "België", "Belgique", "Schweiz", "United Kingdom", "Ελλάδα",
+    "Κύπρος", "България", "Magyarország", "România", "Slovenija", "Hrvatska",
+    "Česko", "Luxembourg", "Portugal", "France",
+    # A product comité, not a place: "Rum, France" is no region.
+    "RHUM",
+})
+
+
+def load_region_exonyms() -> dict[str, dict[str, str]]:
+    """Per-locale exonyms of the Greek / Cypriot / Bulgarian region labels
+    (scripts/_lib/region_exonyms.json, Wikidata-cited). Used only where the
+    page addresses a search engine or a crawler in the UI language — the
+    <title>, the meta description, og:title, JSON-LD containedInPlace; the
+    card, the facet tree and the sidebar keep the native label."""
+    try:
+        data = json.loads(_REGION_EXONYMS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {k: v for k, v in data.items() if not k.startswith("__") and isinstance(v, dict)}
+
+
+def title_region_labels(locale: str) -> dict[str, str]:
+    """{native region label: exonym in `locale`} for the non-Latin regions."""
+    return {k: v[locale] for k, v in load_region_exonyms().items() if v.get(locale)}
+
+
+def seo_display_name(rec: dict) -> str:
+    """The name a Greek / Bulgarian / Cypriot page is listed under where the
+    surface speaks the UI language — <title>, meta description, og:title,
+    browse hub, llms.txt: the official Latin transcription first, the
+    regulator's string in brackets ("Naoussa (Νάουσα)"). Every other record
+    is its regulator string. The H1, the card and the sidebar keep the
+    regulator's string first (search-alias decision of 2026-09-25); these
+    surfaces are the one exception, because Google says a title should be
+    in the page's writing system and a Latin query never matched the
+    native-only title (212 pages per locale, 2026-09-26)."""
+    name = rec.get("name") or ""
+    latin = rec.get("name_latin") or ""
+    if latin and latin != name:
+        if "(" in latin or "(" in name:
+            return f"{latin} / {name}"
+        return f"{latin} ({name})"
+    return name
+
+
+def _strip_scheme(kind: str) -> str:
+    """'AOC (PDO)' → 'AOC'; a scheme-only label ('PDO') is kept."""
+    return re.sub(r"\s*\([^)]*\)\s*$", "", kind) or kind
+
+
 def _title_alias(name: str, country_code: str) -> str:
     """The primary form of a French 'X ou Y ou Z' register name (SIQO lists the
     main name first: 'Hermitage ou Ermitage ou …' → 'Hermitage'). Other
@@ -1406,26 +1679,61 @@ def _title_alias(name: str, country_code: str) -> str:
     return name
 
 
-def _entity_title(name: str, kind: str, region: str, country: str, *, country_code: str = "") -> str:
+def _entity_title(
+    name: str, kind: str, region: str, country: str, *,
+    country_code: str = "", map_tpl: str = "", locale: str = "en",
+    extra_forms: tuple[str, ...] = (),
+) -> str:
     """`<title>` for a per-appellation page, kept within _TITLE_MAX by dropping
-    the least valuable parts first. Full form: `name — TERM (SCHEME) · region,
-    country · Open Wine Map`; then without the brand, then without the term
-    (the description still carries it), then country only, then the name alone.
-    At every step the primary alias of a French 'X ou Y' name is tried before
-    the next cut — 'Côte de Nuits-Villages — AOC (PDO) · Burgundy, France'
-    beats the full 102-character register name with everything else removed.
-    Mirrored by docTitleFor in app.js for client-side navigation."""
+    the least valuable parts first, and always carrying a map word: on the EN
+    page the brand ("Open Wine Map") is that word, elsewhere `map_tpl` wraps
+    the name in the locale's phrase ("{name}, carte du vignoble", "{name},
+    mapa del viñedo", "{name}, wijnkaart" — bare "carte" / "wijnkaart" alone
+    also means a restaurant wine list, so the phrase names the vineyard).
+    Ladder: `name — TERM (SCHEME) · region, country · brand` (EN only; the
+    other locales start with the map phrase in place of the brand); the same
+    with the scheme stripped ("AOC (PDO)" → "AOC"); then the map phrase
+    without the brand, with and without the scheme; then without the term;
+    then the term with the region only, the region alone, the term with the
+    country, the country alone (a region is worth more than its country to a
+    searcher, so it outlives the country); then the map phrase alone; then
+    the bare name with the brand; then the bare name. At every step the primary alias of a French
+    'X ou Y' name is tried before the next cut. Mirrored by docTitleFor in
+    app.js for client-side navigation."""
     forms = [name]
     alias = _title_alias(name, country_code)
     if alias != name:
         forms.append(alias)
+    # A Greek / Cyrillic page's "Latin (native)" form may be too long for a
+    # tier with the term and the region; the Latin form alone is tried before
+    # the tier is given up (the description still carries both).
+    forms.extend(f for f in extra_forms if f and f not in forms)
+
+    def with_map(form: str) -> str:
+        return map_tpl.format(name=form) if map_tpl else form
+
+    term = _strip_scheme(kind)
     geo = ", ".join(x for x in (region, country) if x)
-    tiers = ((kind, geo, True), (kind, geo, False), ("", geo, False), ("", country, False), ("", "", False))
+    tiers = [
+        (locale != "en", kind, geo, True),
+        (locale != "en", term, geo, True),
+        (True, kind, geo, False),
+        (True, term, geo, False),
+        (True, "", geo, False),
+        (True, term, region, False),
+        (True, "", region, False),
+        (True, term, country, False),
+        (True, "", country, False),
+        (True, "", "", False),
+        (False, "", "", True),
+        (False, "", "", False),
+    ]
     candidate = name
-    for k, g, brand in tiers:
+    for mapped, k, g, brand in tiers:
         for form in forms:
+            lead = with_map(form) if mapped else form
             head = " · ".join(x for x in (k, g) if x)
-            candidate = f"{form} — {head}" if head else form
+            candidate = f"{lead} — {head}" if head else lead
             if brand:
                 candidate = f"{candidate} · {_BRAND}"
             if len(candidate) <= _TITLE_MAX:
@@ -1435,7 +1743,8 @@ def _entity_title(name: str, kind: str, region: str, country: str, *, country_co
 
 def _build_entity_meta(
     slug, rec, locale, labels, region_labels, country_labels, grapes_info,
-    folded=False, children=None,
+    folded=False, children=None, style_labels=None, title_regions=None,
+    grape_rank=None, canon_of=None,
 ) -> dict:
     """Per-appellation <head> values.
 
@@ -1449,25 +1758,86 @@ def _build_entity_meta(
     indexed independently, and the folded page's empty SSR means no
     near-duplicate-of-parent body is ever server-exposed, so the page simply
     drops out of the index cleanly.)"""
-    name = rec.get("name") or slug
+    name = seo_display_name(rec) or slug
     kind = rec.get("class_label") or rec.get("kind") or ""
-    region = region_labels.get(rec.get("region") or "", rec.get("region") or "")
-    country = country_labels.get(rec.get("country") or "", "")
+    region_raw = rec.get("region") or ""
+    cc = rec.get("country") or ""
+    region = "" if region_raw in _COUNTRY_AS_REGION else region_labels.get(region_raw, region_raw)
+    region = (title_regions or {}).get(region_raw, region) if region else ""
+    # A region named after the appellation itself (the Mosel PDO in the Mosel
+    # Anbaugebiet, Champagne, Kriti, the "Alsace" alias of "Alsace ou Vin
+    # d'Alsace") repeats the name: "Mosel, Mosel, Germany" — the slot is
+    # dropped, the country stays; and a country named after the appellation
+    # (the Malta PDO) is dropped too.
+    self_names = {
+        x.casefold() for x in (
+            rec.get("name") or "", rec.get("name_latin") or "",
+            _title_alias(rec.get("name") or "", cc), slug.replace("-", " "),
+            # A bilingual Swiss name ("Valais / Wallis") repeats through either half.
+            *(rec.get("name") or "").split(" / "),
+        ) if x
+    }
+    if region and (region.casefold() in self_names or region_raw.casefold() in self_names):
+        region = ""
+    country = country_labels.get(cc, "")
+    if country and country.casefold() in self_names:
+        country = ""
     self_url = f"{_SITE_BASE_URL}{_entity_path(locale, slug)}"
     geo = ", ".join(x for x in (region, country) if x)
-    title = _entity_title(name, kind, region, country, country_code=rec.get("country") or "")
-    gnames = _entity_grape_names(rec, grapes_info, 4)
-    head = f"{name}, {geo}" if geo else name
+    latin = rec.get("name_latin") or ""
+    # The map phrase names a vineyard: a cider or a spirit GI (Calvados,
+    # Cognac) carries none; the EN brand still says "Map" on its first tier.
+    map_tpl = labels.get("title_with_map", "") if rec.get("is_wine", True) else ""
+    title = _entity_title(
+        name, kind, region, country, country_code=cc, map_tpl=map_tpl, locale=locale,
+        extra_forms=(latin,) if latin and latin != rec.get("name") else (),
+    )
+    # The description head takes the primary alias of a French "X ou Y"
+    # register name (the H1 and JSON-LD keep the full string).
+    head_name = _title_alias(name, cc)
+    head = f"{head_name}, {geo}" if geo else head_name
     if kind:
         head = f"{head} · {kind}"
-    grapes = f"{labels.get('facet_principal_h', '')}: {', '.join(gnames)}" if gnames else ""
-    # One sentence in the record's own words (see _entity_lead), then the
-    # principal grapes when they still fit the ~160 characters engines show;
-    # without a lead the grape list is the whole description, as before.
+    # Facts first — the styles and the top principal grapes, the two things
+    # every searcher wants from a wine appellation and that most descriptions
+    # never named (57 of 1,661 EN pages before 2026-09-26) — then one
+    # sentence in the record's own words (see _entity_lead).
+    # A colour bucket that only a "primeur" leaf rolled up to (Muscadet's
+    # white primeur became "red") is not the record's colour.
+    own = set(rec.get("styles") or [])
+    simple = sorted(
+        (st for st in (rec.get("styles_simple") or [])
+         if st not in ("red", "white", "rose") or st in own or not own),
+        key=lambda st: _STYLE_ORDER.index(st) if st in _STYLE_ORDER else len(_STYLE_ORDER),
+    )
+    styles = [(style_labels or {}).get(st, "") for st in simple]
+    styles_txt = ", ".join(x for x in styles if x)
+    if styles_txt:
+        styles_txt = styles_txt[0].upper() + styles_txt[1:]
+    gnames, _more = _entity_grape_names(rec, grapes_info, 3, grape_rank, canon_of)
+    grapes_txt = ", ".join(gnames)
+    facts = " — ".join(x for x in (styles_txt, grapes_txt) if x)
     lead = _entity_lead(rec, locale)
-    parts = [head, lead]
-    if grapes and (not lead or len(_join_sentences(parts)) + len(grapes) + 2 <= _META_DESC_MAX):
-        parts.append(grapes)
+    # The lead is one sentence in the record's words, not a stub: it needs
+    # room to say something. When the head and the facts leave it less, the
+    # styles go first (the grapes matter more), then the lead itself.
+    has_lead = bool(lead)
+
+    def room(facts_txt: str) -> int:
+        return _META_DESC_MAX - len(_join_sentences([head, facts_txt])) - 1
+
+    if lead and room(facts) < _LEAD_MIN_ROOM and styles_txt and grapes_txt:
+        facts = grapes_txt
+    if lead and room(facts) < _LEAD_MIN_ROOM:
+        lead = ""
+    parts = [head, facts, lead]
+    # A record with neither facts nor summary (the thin CH cantonal AOCs that
+    # are indexed only as parents) names the denominations it carries instead,
+    # so the description is never the bare head line Bing flags as too short.
+    if not has_lead and children:
+        kids = ", ".join(c["name"] for c in children[:6] if c.get("name"))
+        if kids:
+            parts.append(f"{labels.get('entity_nav_children', '')}: {kids}".lstrip(": "))
     desc = _clamp(_join_sentences(parts), _META_DESC_MAX)
     if folded:
         canonical_url = self_url
@@ -1476,7 +1846,7 @@ def _build_entity_meta(
     else:
         canonical_url = self_url
         jsonld_html = _build_entity_jsonld(
-            slug, rec, self_url, locale, country_labels, region, desc=desc, children=children
+            slug, rec, self_url, locale, country_labels, region, desc=desc, children=children,
         )
         robots_meta = ""
     return {
@@ -1602,7 +1972,7 @@ def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) ->
             continue
         cc = rec.get("country") or ""
         by_country.setdefault(cc, []).append(
-            (rec.get("name") or slug, slug, rec.get("class_label") or "")
+            (seo_display_name(rec) or slug, slug, rec.get("class_label") or "")
         )
 
     def _country_name(cc: str) -> str:
@@ -1680,6 +2050,10 @@ def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) ->
 # maps.py imports this to emit the complement as the per-slug panel JSON.
 STARTUP_AOCS_FIELDS = frozenset({
     "name", "name_latin", "kind", "region", "country", "is_wine",
+    # Search-only romanisations of a Greek / Cyrillic name (_lib/romanise.py):
+    # the omnisearch and the tree filter read them at startup, never display
+    # them. Sparse — only records that have one carry the key.
+    "search_forms",
     # Two naming axes (see _lib/gi_terms.py): read by the panel meta line,
     # docTitleFor (pre-hydration) and the appellation-type facet.
     "eu_scheme", "national_term", "class_key", "class_label",
@@ -1695,6 +2069,8 @@ STARTUP_AOCS_FIELDS = frozenset({
     # Cancelled-GI marker (_lib/cancelled_gis.json): the sidebar rows and the
     # panel header badge read it before the panel payload is hydrated.
     "cancelled",
+    # Promoted-denomination marker (_lib/promoted_gis.json): same surfaces.
+    "promoted",
 })
 
 
@@ -1718,6 +2094,7 @@ def render(
     locale: str = "fr",
     grapes_info: dict | None = None,
     styles_info: dict | None = None,
+    region_search_terms: dict[str, list[str]] | None = None,
     vivc_by_slug: dict | None = None,
     area_quartiles: tuple[float, float] = (0.0, 1.0),
     index_slugs: list[str] | None = None,
@@ -1761,6 +2138,7 @@ def render(
         lod=lod,
     )
 
+    title_regions = title_region_labels(locale)
     simple_style_labels = {
         "white": labels["style_simple_white"],
         "rose": labels["style_simple_rose"],
@@ -1854,6 +2232,32 @@ def render(
         for m in used:
             slug_to_canonical[m] = canon
 
+    def _grape_rank_by_country(
+        records: dict, canon_of: dict, by_region: bool = False
+    ) -> dict[str, dict[str, float]]:
+        by_cc: dict[str, dict[str, int]] = {}
+        n_records: dict[str, int] = {}
+        for rec in records.values():
+            # A sub-denomination inherits its parent's roster: counting it would
+            # tie every grape of a family (Rioja and its three subzonas).
+            if rec.get("is_sub_denomination"):
+                continue
+            cc = rec.get("country") or ""
+            if by_region:
+                cc = f"{cc}::{rec.get('region') or ''}"
+            n_records[cc] = n_records.get(cc, 0) + 1
+            for g in {canon_of.get(x, x) for x in rec.get("grapes_principal") or []}:
+                by_cc.setdefault(cc, {})[g] = by_cc.setdefault(cc, {}).get(g, 0) + 1
+        out: dict[str, dict[str, float]] = {}
+        for cc, counts in by_cc.items():
+            rank = {g: -float(n) for g, n in counts.items()}
+            rank["__n__"] = n_records.get(cc, 0)
+            for alias, canon in canon_of.items():
+                if canon in rank:
+                    rank.setdefault(alias, rank[canon])
+            out[cc] = rank
+        return out
+
     def _merged_facet(field: str) -> list[tuple[str, int]]:
         counts: dict[str, int] = {}
         for _slug, rec in (aocs or {}).items():
@@ -1863,6 +2267,26 @@ def render(
         return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
 
     facet_principal_merged = _merged_facet("grapes_principal")
+    # Per-country grape rank for the meta descriptions (_entity_grape_names):
+    # the number of the country's records carrying the grape as principal —
+    # so an unmentioned Rioja roster opens with Tempranillo, Garnacha and
+    # Macabeo rather than the Chardonnay a corpus-wide count puts first
+    # (hundreds of records) or the Alarije a share-based score puts first
+    # (two records). Keyed on the canonical slug and every alias that folds
+    # to it.
+    grape_rank_by_country = _grape_rank_by_country(aocs or {}, slug_to_canonical)
+    grape_rank_by_region = _grape_rank_by_country(aocs or {}, slug_to_canonical, by_region=True)
+
+    def _grape_rank_for(rec: dict) -> dict[str, float] | None:
+        # The region's own count when the region has enough records to mean
+        # something (an Alsace grand cru ranks Riesling, not the Pinot Noir
+        # that leads France), else the country's.
+        cc = rec.get("country") or ""
+        key = f"{cc}::{rec.get('region') or ''}"
+        regional = grape_rank_by_region.get(key)
+        if regional and regional.get("__n__", 0) >= 5:
+            return regional
+        return grape_rank_by_country.get(cc)
     facet_accessory_merged = _merged_facet("grapes_accessory")
     facet_grapes_all_merged = _merged_facet("grapes_all")
 
@@ -1977,6 +2401,11 @@ def render(
         style_search_terms_json=json.dumps(style_search_index, ensure_ascii=False, sort_keys=True),
         styles_info_json=json.dumps(styles_info or {}, ensure_ascii=False),
         region_labels_json=json.dumps(region_labels, ensure_ascii=False),
+        title_region_labels_json=json.dumps(title_regions, ensure_ascii=False, sort_keys=True),
+        country_as_region_json=json.dumps(sorted(_COUNTRY_AS_REGION), ensure_ascii=False),
+        region_search_terms_json=json.dumps(
+            region_search_terms or {}, ensure_ascii=False, sort_keys=True
+        ),
         country_labels_json=json.dumps(country_labels, ensure_ascii=False),
         country_flag_emoji_json=json.dumps(_COUNTRY_FLAG_EMOJI, ensure_ascii=False),
         carto_key_json=json.dumps(carto_basemap_key()),
@@ -2009,6 +2438,7 @@ def render(
         browse_path=browse_path,
         plausible_host_json=json.dumps(plausible_host()),
         plausible_sites_json=json.dumps(plausible_sites(), sort_keys=True),
+        origin_trial_meta=_origin_trial_meta(),
         aocs_data_src=aocs_data_src,
         style_href=style_href,
         app_src=app_src,
@@ -2102,6 +2532,8 @@ def render(
             meta = _build_entity_meta(
                 slug, rec, locale, labels, region_labels, country_labels,
                 grapes_info or {}, folded=False, children=kids,
+                style_labels=simple_style_labels, title_regions=title_regions,
+                grape_rank=_grape_rank_for(rec), canon_of=slug_to_canonical,
             )
             nav = _entity_nav_html(
                 slug, rec, locale=locale, labels=labels, aocs=aocs,
@@ -2117,6 +2549,8 @@ def render(
             meta = _build_entity_meta(
                 slug, rec, locale, labels, region_labels, country_labels,
                 grapes_info or {}, folded=True,
+                style_labels=simple_style_labels, title_regions=title_regions,
+                grape_rank=_grape_rank_for(rec), canon_of=slug_to_canonical,
             )
             nav = _entity_nav_html(
                 slug, rec, locale=locale, labels=labels, aocs=aocs,
@@ -2142,11 +2576,18 @@ def render(
     return html, assets, n_index, n_fold
 
 
+def _origin_trial_meta() -> str:
+    """The WebMCP origin-trial tag, or "" when no token is configured. Placed
+    straight after <meta charset> so Chrome has the token before app.js runs."""
+    token = webmcp_origin_trial_token()
+    return f'<meta http-equiv="origin-trial" content="{esc(token)}">\n' if token else ""
+
+
 _TEMPLATE = """<!doctype html>
 <html lang="{lang_attr}">
 <head>
 <meta charset="utf-8">
-<title>{page_title}</title>
+{origin_trial_meta}<title>{page_title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{meta_description}">
 <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -2220,6 +2661,17 @@ _TEMPLATE = """<!doctype html>
     // so JS users skip the brief boot flash; non-JS visitors and non-rendering
     // crawlers still receive the card in the HTML.
     document.documentElement.classList.add('js');
+    // The promise behind that class is kept by app.js (it removes the card
+    // once the live panel has rendered) or withdrawn here: if the card is
+    // still in the DOM when the page has finished loading, the app never got
+    // that far — the script failed to load or was cut short (Google's
+    // renderer reported app.js as "Other error", 2026-09-26), the data bundle
+    // was truncated, or the map could not be built — and a rendering crawler
+    // must see the card rather than an empty page. Scripts are synchronous,
+    // so on the happy path the card is already gone when `load` fires.
+    window.addEventListener('load', function () {{
+      if (document.getElementById('ssr-content')) document.documentElement.classList.remove('js');
+    }});
   }})();
   (function () {{
     // Resolve the effective theme before first paint so dark mode never
@@ -2417,6 +2869,10 @@ _TEMPLATE = """<!doctype html>
   .cancelled-badge.sm {{ font-size:9.5px; line-height:14px; padding:0 4px; margin-left:4px }}
   #panel .cancelled-line {{ font-size:11.5px; color:#8a2323; background:#fbe6e6; border-left:2px solid #c85a5a; padding:6px 9px; margin:6px 0 8px; border-radius:2px; line-height:1.45 }}
   #panel .cancelled-line a {{ color:#8a2323; text-decoration:underline }}
+  .promoted-badge {{ display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:#1f5e3a; background:#e3f3e8; border:1px solid #9cc9ab; border-radius:3px; padding:0 5px; margin-left:6px; vertical-align:middle; line-height:16px }}
+  .promoted-badge.sm {{ font-size:9.5px; line-height:14px; padding:0 4px; margin-left:4px }}
+  #panel .promoted-line {{ font-size:11.5px; color:#1f5e3a; background:#e3f3e8; border-left:2px solid #4f9a6b; padding:6px 9px; margin:6px 0 8px; border-radius:2px; line-height:1.45 }}
+  #panel .promoted-line a {{ color:#1f5e3a; text-decoration:underline }}
   #panel .appellation-note {{ font-size:11.5px; color:#33506b; background:#eef3f8; border-left:2px solid #6f93b5; padding:6px 9px; margin:8px 0; border-radius:2px; line-height:1.45 }}
   #panel .appellation-note .note-srcs {{ margin-top:4px }}
   #panel .appellation-note a {{ color:#33506b; text-decoration:underline }}
@@ -2430,7 +2886,16 @@ _TEMPLATE = """<!doctype html>
   #panel .appellation-note .note-srcs a {{ margin-right:10px; white-space:nowrap }}
   #panel .aoc-card + .aoc-card {{ margin-top:24px; padding-top:20px; border-top:1px dashed #ccc }}
   #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid #934050 }}
-  #panel .aoc-card.subordinate h1 {{ font-size:16px; color:#444; border-bottom-color:#ccc }}
+  /* Stacked overlap: a subordinate card is a click target that brings its
+     appellation to the front (see the panel click handler in app.js); the ↑
+     button in its title is the keyboard path. */
+  #panel .aoc-card.subordinate {{ cursor:pointer }}
+  #panel .aoc-card.subordinate .card-feedback {{ cursor:auto }}
+  #panel .aoc-card.subordinate h1 {{ font-size:16px; color:#444; border-bottom-color:#ccc; display:flex; align-items:center; justify-content:space-between; gap:8px }}
+  #panel .aoc-card.subordinate:hover h1 {{ color:#222; border-bottom-color:#934050 }}
+  #panel .stack-focus {{ flex:0 0 auto; width:24px; height:24px; padding:0; border:1px solid #ccc; border-radius:50%; background:none; color:#666; font:inherit; font-size:13px; line-height:1; cursor:pointer; transition:background 0.12s ease, color 0.12s ease, border-color 0.12s ease }}
+  #panel .aoc-card.subordinate:hover .stack-focus, #panel .stack-focus:focus-visible {{ border-color:#934050; color:#934050 }}
+  #panel .stack-focus:hover {{ background:#934050; border-color:#934050; color:#fff }}
   /* First-open skeleton: real title shows from startup data; the body shimmers
      until the lazy panel-detail JSON lands (Phase 3 data-bundle diet). */
   #panel .aoc-skeleton .skel {{ display:block; border-radius:4px; height:13px; margin:9px 0;
@@ -2518,6 +2983,7 @@ _TEMPLATE = """<!doctype html>
     #panel {{ position:fixed; bottom:0; left:0; right:0; width:auto; height:0; flex:none; max-height:75vh; transition:height 0.18s ease; border-left:none; border-top:1px solid #ddd; z-index:20 }}
     #panel.open {{ width:auto; height:75vh; flex-basis:auto }}
     #panel .close {{ width:44px; height:44px; font-size:20px }}
+    #panel .stack-focus {{ width:36px; height:36px; font-size:16px }}
     .facet input[type=checkbox] {{ width:18px; height:18px }}
     .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
     #actions button {{ min-height:36px }}
@@ -2601,6 +3067,10 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel .stack-header {{ border-bottom-color:#333 }}
   html.theme-dark #panel .aoc-card + .aoc-card {{ border-top-color:#444 }}
   html.theme-dark #panel .aoc-card.subordinate h1 {{ color:#bbb; border-bottom-color:#444 }}
+  html.theme-dark #panel .aoc-card.subordinate:hover h1 {{ color:#eee; border-bottom-color:#d98b97 }}
+  html.theme-dark #panel .stack-focus {{ border-color:#555; color:#bbb }}
+  html.theme-dark #panel .aoc-card.subordinate:hover .stack-focus, html.theme-dark #panel .stack-focus:focus-visible {{ border-color:#d98b97; color:#d98b97 }}
+  html.theme-dark #panel .stack-focus:hover {{ background:#d98b97; border-color:#d98b97; color:#1c1c1e }}
   html.theme-dark #panel .aoc-skeleton .skel {{ background:linear-gradient(90deg,#2b2b2b 25%,#363636 37%,#2b2b2b 63%); background-size:400% 100% }}
   html.theme-dark #panel .sources, html.theme-dark #panel .facts-sub-h {{ color:#bbb }}
   html.theme-dark #panel ul.facts {{ color:#e0e0e0 }}
@@ -2611,6 +3081,9 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark .cancelled-badge {{ color:#f0a8a8; background:#3a1d1d; border-color:#7a3a3a }}
   html.theme-dark #panel .cancelled-line {{ background:#3a1d1d; color:#f0b4b4; border-left-color:#8a4444 }}
   html.theme-dark #panel .cancelled-line a {{ color:#f0b4b4 }}
+  html.theme-dark .promoted-badge {{ color:#a8e0bb; background:#1b3324; border-color:#3f7a54 }}
+  html.theme-dark #panel .promoted-line {{ background:#1b3324; color:#b6e3c5; border-left-color:#3f7a54 }}
+  html.theme-dark #panel .promoted-line a {{ color:#b6e3c5 }}
   html.theme-dark #panel .appellation-note {{ background:#1e2a36; color:#aecbe6; border-left-color:#3f6182 }}
   html.theme-dark #panel .appellation-note a {{ color:#aecbe6 }}
   html.theme-dark #panel details.dulok {{ color:#ccc }}

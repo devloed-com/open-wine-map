@@ -21,6 +21,7 @@ of concelho names + distrito names.
 Returned shape:
   {
     "concelhos": [name, …],   # município names, deduped, preserved case
+    "excluded_concelhos": [name, …],  # "com exceção dos municípios de …"
     "distritos": [name, …],   # distrito names for the "todos os…" pattern
     "raw_hits": int,          # match-count for the audit
   }
@@ -39,15 +40,28 @@ from __future__ import annotations
 import re
 import unicodedata
 
+# The honorific "D." (Dom / Dona) is not a sentence end — "Mirandela (as
+# propriedades que foram de D. Maria Angélica …), Torre de Moncorvo (…),
+# e Vila Flor (…)" (Duriense) — so the capture must step over it or every
+# concelho after it is lost. Case-sensitive on purpose: the outer regex is
+# IGNORECASE and a lower-case "d." is an ordinary abbreviation.
+_LIST_BODY = r"(?:(?-i:\bD\.(?=\s+[A-ZÀ-Ý]))|[^.;:])+?"
+_LIST_END = r"(?:[.;:]|\bcom\s+exce[çc][ãa]o\b|$)"
 _MUNICIPIO_RE = re.compile(
-    r"munic[íi]pios?\s+(?:de|da|do|das|dos)\s+([^.;:]+?)"
-    r"(?:[.;:]|\bcom\s+exce[çc][ãa]o\b|$)",
+    r"munic[íi]pios?\s+(?:de|da|do|das|dos)\s+(" + _LIST_BODY + r")" + _LIST_END,
     re.IGNORECASE | re.DOTALL,
 )
 _CONCELHO_RE = re.compile(
-    r"concelhos?\s+(?:de|da|do|das|dos)\s+([^.;:]+?)"
-    r"(?:[.;:]|\bcom\s+exce[çc][ãa]o\b|$)",
+    r"concelhos?\s+(?:de|da|do|das|dos)\s+(" + _LIST_BODY + r")" + _LIST_END,
     re.IGNORECASE | re.DOTALL,
+)
+# The list right after an exception phrase names what the area LEAVES
+# OUT — "O distrito de Aveiro, com exceção dos municípios de Arouca, …"
+# (Beira Atlântico), "à exceção do concelho de Azambuja" (Lisboa).
+# Matched against the text that ends where the município match starts.
+_EXCLUSION_LEAD_RE = re.compile(
+    r"(?:(?:com|à|a)\s+exce[çc][ãa]o\s+(?:de|do|dos|da|das)|exceto|excluindo)\s*$",
+    re.IGNORECASE,
 )
 _DISTRITO_ALL_RE = re.compile(
     r"todos\s+os\s+munic[íi]pios\s+(?:do|dos)\s+distritos?\s+de\s+"
@@ -61,13 +75,15 @@ _WHOLE_DISTRITO_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 # Bullet-style "• O distrito de Santarém, à exceção do concelho de Ourém"
-# (Tejo, Lisboa). The capital `O`/`Os` is the definite article — this
-# form is whole-distrito-minus-exception. Distinguish from "Do/Dos
-# distrito" (a scoping prefix to a concelho list) by anchoring on the
-# bullet start AND requiring CAPITAL O/Os (case-sensitive).
+# (Tejo, Lisboa) or enumerated "a) O distrito de Aveiro, com exceção
+# dos municípios de …" (Beira Atlântico). The capital `O`/`Os` is the
+# definite article — this form is whole-distrito-minus-exception.
+# Distinguish from "Do/Dos distrito" (a scoping prefix to a concelho
+# list) by anchoring on the bullet / enumerator start AND requiring
+# CAPITAL O/Os (case-sensitive).
 _BULLET_WHOLE_DISTRITO_RE = re.compile(
-    r"(?:^|[\n•·*-])\s*(?:O|Os)\s+distritos?\s+de\s+"
-    r"([^.;,\n]+?)(?:[.,;]|\s+(?:à|a)\s+exce[çc][ãa]o|$)",
+    r"(?:^|[\n•·*-])\s*(?:[a-z]\)|\d+[.)])?\s*(?:O|Os)\s+distritos?\s+de\s+"
+    r"([^.;,\n]+?)(?:[.,;]|\s+(?:com|à|a)\s+exce[çc][ãa]o|$)",
     re.MULTILINE,
 )
 
@@ -142,6 +158,22 @@ _HYPHEN_SPACING = re.compile(r"\s*-\s*")
 # Strip parenthetical content from a candidate ("Mourão (a área total
 # das três freguesias" → "Mourão").
 _PAREN_TAIL = re.compile(r"\s*\(.*$", re.DOTALL)
+_BALANCED_PAREN = re.compile(r"\([^()]*\)")
+
+
+def _strip_parentheticals(captured: str) -> str:
+    """Drop the freguesia detail a concelho list carries in parentheses
+    before the list is split — otherwise only the first comma-token of
+    "(freguesias de A, B, C)" loses its tail and B, C survive as concelho
+    candidates (Duriense's "Pombal" was a freguesia of Carrazeda de
+    Ansiães, matched to the Leiria concelho). Innermost first, so
+    "Lamego (…, Lamego (Almacave, Sé), …)" folds completely; an unclosed
+    tail goes with `_PAREN_TAIL`."""
+    prev = None
+    while prev != captured:
+        prev = captured
+        captured = _BALANCED_PAREN.sub(" ", captured)
+    return _PAREN_TAIL.sub(" ", captured)
 
 
 def _strip_freguesia_tail(captured: str) -> str:
@@ -207,31 +239,39 @@ def _dedupe_preserve_order(items: list[str]) -> list[str]:
 
 
 def parse_commune_list(area_text: str) -> dict:
-    """Walk the area text, return {concelhos, distritos, macro_regions, raw_hits}.
+    """Walk the area text, return {concelhos, excluded_concelhos, distritos,
+    macro_regions, raw_hits}.
 
     `concelhos` is a list of município names in the canonical
     Portuguese form (with diacritics) preserving case. `distritos`
     is the same for the "todos os municípios do distrito de X" form
-    — callers expand it via a CAOP distrito index. `macro_regions`
-    is a list of `"acores"` / `"madeira"` tokens emitted when the
-    caderno declares the area as the whole autonomous region —
-    callers expand each into its constituent ilhas.
+    — callers expand it via a CAOP distrito index, leaving out the
+    `excluded_concelhos` an exception clause carves out of it.
+    `macro_regions` is a list of `"acores"` / `"madeira"` tokens
+    emitted when the caderno declares the area as the whole autonomous
+    region — callers expand each into its constituent ilhas.
     """
     if not area_text:
-        return {"concelhos": [], "distritos": [], "macro_regions": [], "raw_hits": 0}
+        return {"concelhos": [], "excluded_concelhos": [], "distritos": [],
+                "macro_regions": [], "raw_hits": 0}
 
     raw_hits = 0
     concelhos: list[str] = []
+    excluded: list[str] = []
     distritos: list[str] = []
     macro_regions: list[str] = []
 
     for pat in (_MUNICIPIO_RE, _CONCELHO_RE):
         for m in pat.finditer(area_text):
             raw_hits += 1
-            captured = _strip_freguesia_tail(m.group(1))
+            captured = _strip_freguesia_tail(_strip_parentheticals(m.group(1)))
+            target = (
+                excluded if _EXCLUSION_LEAD_RE.search(area_text[: m.start()])
+                else concelhos
+            )
             for token in _split_list(captured):
                 if _looks_like_name(token):
-                    concelhos.append(token)
+                    target.append(token)
 
     for m in _BULLET_CONCELHO_RE.finditer(area_text):
         raw_hits += 1
@@ -256,6 +296,7 @@ def parse_commune_list(area_text: str) -> dict:
 
     return {
         "concelhos": _dedupe_preserve_order(concelhos),
+        "excluded_concelhos": _dedupe_preserve_order(excluded),
         "distritos": _dedupe_preserve_order(distritos),
         "macro_regions": _dedupe_preserve_order(macro_regions),
         "raw_hits": raw_hits,

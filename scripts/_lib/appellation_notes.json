@@ -35,5 +35,19 @@
         "url": "https://curia.europa.eu/juris/liste.jsf?num=T-626/17"
       }
     ]
+  },
+  "valencia-clariano": {
+    "note": {
+      "en": "Besides the Valencian municipalities drawn here, the Clariano sub-zone also covers vineyard parcels registered in the Registro Vitícola in named parajes of Almansa and Caudete (province of Albacete). Those are parcel-level inclusions without a public boundary layer, so they are not drawn.",
+      "fr": "Outre les communes valenciennes dessinées ici, la sous-zone Clariano couvre aussi des parcelles de vigne inscrites au Registro Vitícola dans des lieux-dits (parajes) nommés d'Almansa et de Caudete (province d'Albacete). Ces inclusions à l'échelle de la parcelle n'ont pas de couche publique de limites et ne sont donc pas dessinées.",
+      "es": "Además de los municipios valencianos dibujados aquí, la subzona Clariano comprende también parcelas inscritas en el Registro Vitícola situadas en parajes nombrados de Almansa y Caudete (provincia de Albacete). Son inclusiones a nivel de parcela sin una capa pública de límites, por lo que no se dibujan.",
+      "nl": "Naast de hier getekende Valenciaanse gemeenten omvat de subzone Clariano ook wijngaardpercelen die in het Registro Vitícola zijn ingeschreven, in met naam genoemde parajes van Almansa en Caudete (provincie Albacete). Dat zijn insluitingen op perceelniveau zonder openbare grenslaag en worden daarom niet getekend."
+    },
+    "sources": [
+      {
+        "label": "Documento único DOP Valencia (PDO-ES-A0872), DO C 224, 2023 — sección 5, zona geográfica delimitada",
+        "url": "https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=uriserv:OJ.C_.2023.224.01.0015.01.SPA"
+      }
+    ]
   }
 }

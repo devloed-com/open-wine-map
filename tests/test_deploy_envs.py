@@ -93,3 +93,61 @@ def test_indexnow_skips_pages_changed_only_by_an_asset_hash(tmp_path):
     assert rels == ["en/santenay/index.html"] and skipped == 0
     # Non-page files never reach IndexNow.
     assert "assets/app.en.abcdefabcd.js" not in rels
+
+
+def test_indexnow_urls_are_the_pages_own_canonicals(tmp_path):
+    deploy = _load("deploy")
+    base = "https://www.openwinemap.com"
+    assert deploy.public_url("index.html") == base + "/"
+    assert deploy.public_url("en/index.html") == base + "/"
+    assert deploy.public_url("fr/index.html") == base + "/fr/"
+    assert deploy.public_url("nl/appellations/index.html") == base + "/nl/appellations/"
+    assert deploy.public_url("en/mercurey/index.html") == base + "/en/mercurey"
+    assert deploy.public_url("404.html") is None
+    assert deploy.public_url("assets/app.en.0123456789.js") is None
+
+    (tmp_path / "en" / "mercurey").mkdir(parents=True)
+    (tmp_path / "en" / "macon-ige").mkdir(parents=True)
+    (tmp_path / "en").mkdir(exist_ok=True)
+    (tmp_path / "en" / "mercurey" / "index.html").write_text(
+        '<html><head><link rel="canonical" href="x"></head><body>ok</body></html>'
+    )
+    (tmp_path / "en" / "macon-ige" / "index.html").write_text(
+        '<html><head><meta name="robots" content="noindex, follow"></head></html>'
+    )
+    (tmp_path / "index.html").write_text("<html><head></head></html>")
+    (tmp_path / "en" / "index.html").write_text("<html><head></head></html>")
+    urls = deploy.indexnow_urls(
+        tmp_path,
+        ["en/mercurey/index.html", "en/macon-ige/index.html", "index.html",
+         "en/index.html", "fr/gone/index.html"],
+    )
+    # noindex fold skipped; the two homepage files collapse to one URL; a
+    # deleted page (no file to inspect) is still notified.
+    assert urls == [base + "/en/mercurey", base + "/", base + "/fr/gone"]
+
+
+def test_interprofession_fallback_by_region_then_comite():
+    import importlib.util
+    import pathlib
+
+    spec = importlib.util.spec_from_file_location(
+        "appellation_urls",
+        pathlib.Path(__file__).resolve().parents[1] / "scripts" / "_lib" / "appellation_urls.py",
+    )
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    data = {"by_slug": {"quincy": {"url": "q"}, "cotes-du-forez": None},
+            "by_bassin": {"BORDEAUX": {"url": "b"}, "JURA": {"url": "j"}, "COGNAC": {"url": "k"},
+                          "VAL DE LOIRE": {"url": "v"}, "EAUX-DE-VIE DE CIDRE": {"url": "c"}}}
+    assert m.resolve("pauillac", "", "BORDEAUX", data)["url"] == "b"
+    assert m.resolve("calvados", "", "NORMANDIE", data, comite="EAUX-DE-VIE DE CIDRE", is_wine=False)["url"] == "c"
+    assert m.resolve("moselle", "", "LORRAINE", data, comite="ALSACE ET EST") is None
+    # A wine body never lands on a spirit; a spirit body may; a comité that is
+    # also a region key is not a fallback (Whisky breton, comité COGNAC).
+    assert m.resolve("kirsch", "", "JURA", data, comite="BOURGOGNE", is_wine=False) is None
+    assert m.resolve("cognac", "", "COGNAC", data, comite="COGNAC", is_wine=False)["url"] == "k"
+    assert m.resolve("whisky-breton", "", "BRETAGNE", data, comite="COGNAC", is_wine=False) is None
+    # An explicit null is verified none; by_slug beats the region.
+    assert m.resolve("quincy", "", "VAL DE LOIRE", data)["url"] == "q"
+    assert m.resolve("cotes-du-forez", "", "VAL DE LOIRE", data) is None

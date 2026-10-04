@@ -103,7 +103,7 @@ _CANON_BY_ASCII.update({_ascii(k): v for k, v in {
 # Planina PDOs go to Дунавска равнина; the 4 southern wine regions
 # subdivide everything south of Stara Planina.
 _REGION_BY_FILE_NUMBER: dict[str, str] = {
-    # Дунавска равнина (Northern) — 22 wines incl. the PGI
+    # Дунавска равнина (Northern) — 21 wines incl. the PGI
     "PGI-BG-A1538": "Дунавска равнина",
     "PDO-BG-A0952": "Дунавска равнина",  # Драгоево
     "PDO-BG-A1030": "Дунавска равнина",  # Хан Крум
@@ -114,7 +114,6 @@ _REGION_BY_FILE_NUMBER: dict[str, str] = {
     "PDO-BG-A1314": "Дунавска равнина",  # Монтана
     "PDO-BG-A1031": "Дунавска равнина",  # Нови Пазар
     "PDO-BG-A0382": "Дунавска равнина",  # Ново село
-    "PDO-BG-A1344": "Дунавска равнина",  # Оряховица
     "PDO-BG-A0420": "Дунавска равнина",  # Павликени
     "PDO-BG-A1477": "Дунавска равнина",  # Плевен
     "PDO-BG-A1425": "Дунавска равнина",  # Русе
@@ -141,7 +140,7 @@ _REGION_BY_FILE_NUMBER: dict[str, str] = {
     "PDO-BG-A1044": "Розова долина",      # Карлово
     "PDO-BG-A1393": "Розова долина",      # Хисаря
 
-    # Тракийска низина (South-Central / Thracian Lowlands) — 18 wines
+    # Тракийска низина (South-Central / Thracian Lowlands) — 19 wines
     # incl. the PGI
     "PGI-BG-A1552": "Тракийска низина",
     "PDO-BG-A0877": "Тракийска низина",   # Асеновград
@@ -152,6 +151,7 @@ _REGION_BY_FILE_NUMBER: dict[str, str] = {
     "PDO-BG-A1043": "Тракийска низина",   # Хасково
     "PDO-BG-A1177": "Тракийска низина",   # Любимец
     "PDO-BG-A1494": "Тракийска низина",   # Нова Загора
+    "PDO-BG-A1344": "Тракийска низина",   # Оряховица — област Стара Загора, not Горна Оряховица
     "PDO-BG-A1182": "Тракийска низина",   # Пазарджик
     "PDO-BG-A1474": "Тракийска низина",   # Перущица
     "PDO-BG-A1297": "Тракийска низина",   # Пловдив

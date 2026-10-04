@@ -771,55 +771,177 @@ def parse_grapes_with(matcher, article2_body: str, wine_name: str = "") -> dict:
     return out
 
 
-# Some regional IGT disciplinari (Toscano, and others whose article 2
-# says "i vitigni … riportati nell'allegato 1") carry the variety roster
-# in an in-PDF annex rather than the article body. The annex is a numbered
-# list, one variety per line: "1. Abrusco N." / "53. Montepulciano N." —
-# index, name, optional colour code. A bare-number line ("14") is a
-# pdftotext page number to skip.
-_ANNEX_ANCHOR_RE = re.compile(
-    r"^[ \t\x0c]*Allegat[oi]\b[^\n]*?\bvitigni\b",
+# Variety annexes. Many disciplinari carry a variety list in an in-PDF
+# annex rather than in the article body — two cases:
+#   (a) a regional IGT whose article 2 only says "i vitigni … riportati
+#       nell'allegato 1" (Toscano et al.): the annex IS the roster;
+#   (b) a DOC whose article 2 names its principal variety and hands the
+#       complement to the annex — "possono concorrere altri vitigni …
+#       riportati nell'allegato 1" (Bolgheri Sassicaia: Cabernet Sauvignon
+#       >= 80 %, 49 red varieties in "Allegato 1 – Elenco vitigni
+#       complementari"): the annex is the accessory roster. Until
+#       2026-10-04 only case (a) read the annex, so Sassicaia's card showed
+#       no Cabernet Franc (visitor flag of 2026-10-03); 54 disciplinari
+#       carried an unread annex.
+# Layouts: a numbered list ("10. Cabernet Franc N."), bare colour-coded
+# lines ("AGLIANICO N."), register tables with a code column ("004   ALBANA
+# B.", "14   Arneis B.   248   Uva Rara N."), two-column lists (Maremma
+# Toscana), the colour in brackets ("CABERNET FRANC (N)", Vigneti delle
+# Dolomiti). The heading is "Allegato N …" with the list title on the same
+# or one of the next lines, or a bare "Elenco (dei) vitigni / varietà …
+# idonei / complementari" line; the list runs to the next "Allegato" /
+# "Articolo" heading (Chianti Classico's Allegato 2) or to the end of the
+# PDF. A bare-number line ("14") is a pdftotext page number.
+_ANNEX_ALLEGATO_RE = re.compile(
+    r"^[ \t\x0c]*Allegat[oi]\b(?:[^\n]*\n){0,3}?[^\n]*?(?:vitign|variet)",
     re.M | re.I,
 )
-_ANNEX_ITEM_RE = re.compile(r"^[ \t\x0c]*\d{1,3}[.)]\s+(\S.*\S|\S)\s*$", re.M)
+_ANNEX_ELENCO_RE = re.compile(
+    r"^[ \t\x0c]*Elenco\b[^\n]*?(?:vitign|variet)(?:[^\n]*\n){0,2}?[^\n]*?"
+    r"(?:idone|complementar|autorizzat|ammess)",
+    re.M | re.I,
+)
+_ANNEX_END_RE = re.compile(
+    r"^[ \t\x0c]*(?:Allegat[oi]\b|Articolo\s+\d|Art\.\s*\d)", re.M | re.I
+)
+_ANNEX_CELL_SPLIT_RE = re.compile(r"\s{2,}|\t")
+_ANNEX_BARE_INDEX_RE = re.compile(r"\(?\d{1,3}\)?[.)]?")
+_ANNEX_NUMBERED_CELL_RE = re.compile(r"^\d{1,3}[.)]\s+(\S.*)$")
+_ANNEX_LEADING_INDEX_RE = re.compile(r"^\(?\d{1,3}\)?[.)]?\s+")
+# The colour code that closes a register row: "N." / "B" / "Rs." / "(N)".
+# Upper-case only — a lower-case " b" ends prose, never a variety row.
+_ANNEX_CELL_COLOUR_RE = re.compile(r"\s(?:[NBG]|Rs|Rg)\.?$|\s\((?:[NBG]|Rs|Rg)\)$")
+_ANNEX_PAREN_COLOUR_RE = re.compile(r"\s*\((?:[NBG]|Rs|Rg)\)\s*$")
+_ANNEX_ALTERNATIVE_RE = re.compile(r"\s+o\s+")
+# Article 2 hands the complement to the annex explicitly ("riportati
+# nell'allegato 1"). A disciplinare that only says the complement is
+# "idoneo alla coltivazione nella Regione" is left alone: Roero attaches
+# the whole Piedmont register, aromatic varieties its own rule excludes
+# included.
+_ART2_ANNEX_REF_RE = re.compile(r"allegat", re.I)
+# A regional IGT's article 2 reads "da uno o più vitigni idonei … riportati
+# nell'allegato 1": the annex is the whole roster, and the few names the
+# article singles out (the varieties excluded from varietal labelling —
+# Grillo and Calabrese for Terre Siciliane) are not its principals over a
+# complement. A DOC's "Cabernet Sauvignon: almeno l'80 %; possono concorrere
+# altri vitigni … riportati nell'allegato 1" is the complement case.
+_ART2_ROSTER_RE = re.compile(r"\b(?:uno|una)\s+o\s+pi[uù]\s+(?:vitign|variet)", re.I)
 
 
-def parse_annex_grapes_with(matcher, raw_text: str) -> dict:
-    """Recover the variety roster from an in-PDF "Allegato … vitigni"
-    numbered list when article 2 referenced it instead of listing the
-    varieties inline. Returns the same shape as `parse_grapes_with`
-    (all `principal`). Empty when no annex anchor is present."""
-    out = {"principal": [], "accessory": [], "observation": [], "details": []}
-    if not raw_text:
-        return out
-    anchor = _ANNEX_ANCHOR_RE.search(raw_text)
-    if anchor is None:
-        return out
-    body = raw_text[anchor.end():]
-    seen: set[str] = set()
-    for m in _ANNEX_ITEM_RE.finditer(body):
-        cand = m.group(1).strip(_TRIM_CHARS)
-        cand = _COLOUR_SUFFIX_RE.sub("", cand).strip(_TRIM_CHARS)
-        cand = _strip_winetype(cand)
-        if not cand or cand.lower() in _BARE_TYPE_WORDS or len(cand) > 80:
-            continue
-        hit = matcher(cand)
-        if hit is None or hit.slug in seen:
+def _annex_bodies(raw_text: str) -> list[str]:
+    anchors = sorted({
+        m.end()
+        for rx in (_ANNEX_ALLEGATO_RE, _ANNEX_ELENCO_RE)
+        for m in rx.finditer(raw_text)
+    })
+    bodies = []
+    for start in anchors:
+        nxt = _ANNEX_END_RE.search(raw_text, start)
+        bodies.append(raw_text[start:nxt.start() if nxt else len(raw_text)])
+    return bodies
+
+
+def _annex_candidates(body: str):
+    """Variety-name cells of an annex body, in reading order. A row is
+    split on runs of two or more spaces (the register tables' columns);
+    a cell is a candidate when it follows a bare index cell ("14",
+    "1."), carries its own index ("10. Cabernet Franc N.") or ends in a
+    colour code ("Uva Rara N."). Header cells ("Denominazione varietà"),
+    synonym cells ("LANCELLOTTA") and page numbers never qualify."""
+    for raw_line in body.split("\n"):
+        pending_index = False
+        for cell in _ANNEX_CELL_SPLIT_RE.split(raw_line.strip()):
+            cell = cell.strip()
+            if not cell:
+                continue
+            if _ANNEX_BARE_INDEX_RE.fullmatch(cell):
+                pending_index = True
+                continue
+            if pending_index:
+                pending_index = False
+                yield cell
+                continue
+            m = _ANNEX_NUMBERED_CELL_RE.match(cell)
+            if m:
+                yield m.group(1)
+            elif _ANNEX_CELL_COLOUR_RE.search(cell):
+                # " 1 Aglianico N." (Terre Siciliane): the index without a dot.
+                yield _ANNEX_LEADING_INDEX_RE.sub("", cell)
+
+
+def _match_annex_candidate(matcher, cand: str):
+    cand = _ANNEX_PAREN_COLOUR_RE.sub("", cand).strip(_TRIM_CHARS)
+    cand = _COLOUR_SUFFIX_RE.sub("", cand).strip(_TRIM_CHARS)
+    if not cand or len(cand) > 80 or cand.lower() in _BARE_TYPE_WORDS:
+        return None
+    # The name as written first: "Refosco dal Peduncolo rosso" loses its
+    # "rosso" to the wine-type stripper, which is only a fallback here.
+    variants = [cand]
+    stripped = _strip_winetype(cand)
+    if stripped and stripped != cand:
+        variants.append(stripped)
+    if _ANNEX_ALTERNATIVE_RE.search(cand):
+        # "Cabernet Franc o Cabernet" (Mitterberg): the name before its synonym.
+        variants.append(_ANNEX_ALTERNATIVE_RE.split(cand)[0].strip(_TRIM_CHARS))
+    for v in variants:
+        hit = matcher(v)
+        if hit is None:
             continue
         if hit.method.startswith("fuzzy"):
             score = int(hit.method.split(":")[1])
-            if score < 90 or len(re.sub(r"[\W\d_]", "", cand)) < 7:
+            if score < 90 or len(re.sub(r"[\W\d_]", "", v)) < 7:
                 continue
-        seen.add(hit.slug)
-        out["principal"].append(hit.slug)
-        out["details"].append({
-            "slug": hit.slug,
-            "name": hit.name,
-            "role": "principal",
-            "colour": hit.colour,
-            "source": "masaf-disciplinare-allegato",
-        })
+        return hit
+    return None
+
+
+def parse_annex_grapes_with(matcher, raw_text: str, role: str = "principal") -> dict:
+    """Recover the variety roster from the in-PDF "Allegato … vitigni" /
+    "Elenco vitigni" list(s). Returns the same shape as
+    `parse_grapes_with`, every variety under `role`. Empty when no annex
+    heading is present."""
+    out = {"principal": [], "accessory": [], "observation": [], "details": []}
+    if not raw_text:
+        return out
+    seen: set[str] = set()
+    for body in _annex_bodies(raw_text):
+        for cand in _annex_candidates(body):
+            hit = _match_annex_candidate(matcher, cand)
+            if hit is None or hit.slug in seen:
+                continue
+            seen.add(hit.slug)
+            out[role].append(hit.slug)
+            out["details"].append({
+                "slug": hit.slug,
+                "name": hit.name,
+                "role": role,
+                "colour": hit.colour,
+                "source": "masaf-disciplinare-allegato",
+            })
     return out
+
+
+def grapes_with_annex(matcher, article2_body: str, raw_text: str, wine_name: str = "") -> dict:
+    """Article 2 roster plus the annex: the annex is the whole roster
+    (`principal`) when article 2 names no variety or says the wine comes
+    from "uno o più vitigni" of the annex, the accessory roster when
+    article 2 names its principals and hands the complement to the
+    allegato, and ignored otherwise. A variety article 2 already names is
+    never repeated."""
+    grapes = parse_grapes_with(matcher, article2_body, wine_name)
+    if not grapes["principal"]:
+        return parse_annex_grapes_with(matcher, raw_text)
+    if not _ART2_ANNEX_REF_RE.search(article2_body or ""):
+        return grapes
+    role = "principal" if _ART2_ROSTER_RE.search(article2_body) else "accessory"
+    have = set(grapes["principal"]) | set(grapes["accessory"])
+    for d in parse_annex_grapes_with(matcher, raw_text, role=role)["details"]:
+        if d["slug"] in have:
+            continue
+        have.add(d["slug"])
+        grapes[role].append(d["slug"])
+        grapes["details"].append(d)
+    return grapes
 
 
 def derive_summary(article1_body: str, max_chars: int = 600) -> str:

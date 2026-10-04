@@ -1,0 +1,50 @@
+{
+  "_README": [
+    "Landmark coordinates for a Greek spec that delimits its zone as a line through named places",
+    "(\"οριοθετείται από την διαχωριστική γραμμή Δροσιά- Άνοιξη- …\"). The resolver draws the polygon",
+    "those places outline, in the order the text names them, each place at the point given here",
+    "(scripts/_lib/gr/geometry.py, units_union). Keys: record slug → {name exactly as the parser",
+    "emits it → {lat, lon, source}}. Sources must be public and licence-clear: Wikidata (CC0,",
+    "cite the item) or GeoNames (CC BY 4.0, cite the id). A place with no located point is",
+    "listed on the card as not drawn; the polygon then runs straight between its neighbours."
+  ],
+  "records": {
+    "playies-pentelikou": {
+      "Δροσιά": {
+        "lat": 38.1167,
+        "lon": 23.85,
+        "source": "wikidata:Q1021665 (Δροσιά Αττικής, οικισμός)"
+      },
+      "Άνοιξη": {
+        "lat": 38.1333,
+        "lon": 23.8667,
+        "source": "wikidata:Q1135193 (Άνοιξη Αττικής)"
+      },
+      "Άγιος Στέφανος": {
+        "lat": 38.1407,
+        "lon": 23.8585,
+        "source": "wikidata:Q2698815 (Άγιος Στέφανος Αττικής)"
+      },
+      "Λίμνη Μαραθώνα": {
+        "lat": 38.1686,
+        "lon": 23.9,
+        "source": "wikidata:Q1166181 (Λίμνη Μαραθώνα, the reservoir)"
+      },
+      "Αγ. Γεώργιος Βρανά": {
+        "lat": 38.1244,
+        "lon": 23.9475,
+        "source": "wikidata:Q24882385 (Βρανάς Αττικής, the village whose church the text names)"
+      },
+      "Κουκουνάρι": null,
+      "Σταματοβούνι": null,
+      "Διόνυσος": {
+        "lat": 38.1011,
+        "lon": 23.8837,
+        "source": "wikidata:Q10755817 (Διόνυσος Αττικής)"
+      }
+    }
+  },
+  "_unlocated": {
+    "playies-pentelikou": "Κουκουνάρι (a locality) and Σταματοβούνι (the hill above Σταμάτα) are in neither Wikidata nor the GeoNames GR dump (2026-09-25); the polygon runs straight from Βρανάς to Διόνυσος until a licence-clear gazetteer locates them."
+  }
+}

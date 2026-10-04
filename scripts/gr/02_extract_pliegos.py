@@ -54,6 +54,7 @@ from _lib.grape_entity import (  # noqa: E402
     match_variety,
     set_pliego_context,
 )
+from _lib.romanise import fold_confusables  # noqa: E402
 
 INDEX_IN = ROOT / "raw" / "gr" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "gr" / "oj-pages"
@@ -332,7 +333,6 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
     region = derive_region(
         {"file_number": wine["fileNumber"]},
         geo_area,
-        routed.get("link_to_terroir", ""),
         wine["name"],
     )
     return {
@@ -342,7 +342,7 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
         "file_number": wine["fileNumber"],
         "slug": wine["slug"],
         "name": wine["name"],
-        "name_latin": wine.get("name_latin", ""),
+        "name_latin": fold_confusables(wine.get("name_latin", "")),
         "kind": wine["kind"],
         "is_sub_denomination": False,
         "region": region,
@@ -377,7 +377,7 @@ def build_stub(wine: dict, oj_meta: dict, reason: str) -> dict:
         "file_number": wine["fileNumber"],
         "slug": wine["slug"],
         "name": wine["name"],
-        "name_latin": wine.get("name_latin", ""),
+        "name_latin": fold_confusables(wine.get("name_latin", "")),
         "kind": wine["kind"],
         "is_sub_denomination": False,
         "region": derive_region({"file_number": wine["fileNumber"]}),

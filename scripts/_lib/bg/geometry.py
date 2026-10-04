@@ -43,7 +43,7 @@ from shapely.ops import unary_union
 # низина + Долината на Струма) = Тракийска низина PGI. Hand-verified
 # against `scripts/_lib/bg/region.py:_REGION_BY_FILE_NUMBER`.
 BG_PGI_MEMBER_PDOS: dict[str, tuple[str, ...]] = {
-    "PGI-BG-A1538": (  # Дунавска равнина — 21 northern PDOs
+    "PGI-BG-A1538": (  # Дунавска равнина — 20 northern PDOs
         "PDO-BG-A0952",  # Драгоево
         "PDO-BG-A1030",  # Хан Крум
         "PDO-BG-A0951",  # Лясковец
@@ -53,7 +53,6 @@ BG_PGI_MEMBER_PDOS: dict[str, tuple[str, ...]] = {
         "PDO-BG-A1314",  # Монтана
         "PDO-BG-A1031",  # Нови Пазар
         "PDO-BG-A0382",  # Ново село
-        "PDO-BG-A1344",  # Оряховица
         "PDO-BG-A0420",  # Павликени
         "PDO-BG-A1477",  # Плевен
         "PDO-BG-A1425",  # Русе
@@ -66,7 +65,7 @@ BG_PGI_MEMBER_PDOS: dict[str, tuple[str, ...]] = {
         "PDO-BG-A1346",  # Видин
         "PDO-BG-A0955",  # Враца
     ),
-    "PGI-BG-A1552": (  # Тракийска низина — 31 southern PDOs
+    "PGI-BG-A1552": (  # Тракийска низина — 32 southern PDOs
         # Черноморски район (Black Sea coast) — 8
         "PDO-BG-A1392",  # Черноморски район
         "PDO-BG-A0881",  # Евксиноград
@@ -79,7 +78,7 @@ BG_PGI_MEMBER_PDOS: dict[str, tuple[str, ...]] = {
         # Розова долина (Sub-Balkan / Rose Valley) — 2
         "PDO-BG-A1044",  # Карлово
         "PDO-BG-A1393",  # Хисаря
-        # Тракийска низина (South-Central) — 17
+        # Тракийска низина (South-Central) — 18
         "PDO-BG-A0877",  # Асеновград
         "PDO-BG-A0985",  # Болярово
         "PDO-BG-A0944",  # Брестник
@@ -88,6 +87,7 @@ BG_PGI_MEMBER_PDOS: dict[str, tuple[str, ...]] = {
         "PDO-BG-A1043",  # Хасково
         "PDO-BG-A1177",  # Любимец
         "PDO-BG-A1494",  # Нова Загора
+        "PDO-BG-A1344",  # Оряховица — област Стара Загора (ИАЛВ spec §3), not Горна Оряховица
         "PDO-BG-A1182",  # Пазарджик
         "PDO-BG-A1474",  # Перущица
         "PDO-BG-A1297",  # Пловдив
@@ -181,6 +181,7 @@ class BGPolygonIndex:
         polys: list[BaseGeometry] = []
         matched: list[str] = []
         unmatched: list[str] = []
+        ambiguous: list[str] = []
         for raw_name in commune_names:
             key = _normalise_commune(raw_name)
             if not key:
@@ -189,12 +190,21 @@ class BGPolygonIndex:
             if not cands:
                 unmatched.append(raw_name)
                 continue
+            if len(cands) > 1:
+                # A bare name that matches several communes nationwide is
+                # ambiguous; unioning all of them stretches the polygon
+                # across the country instead of drawing the appellation
+                # (see the GR / RO chains, where that shipped). It
+                # contributes nothing and is reported instead.
+                ambiguous.append(f"{raw_name} ({len(cands)})")
+                continue
             polys.extend(cands)
             matched.append(raw_name)
         stats = {
             "matched": len(matched),
             "unmatched": len(unmatched),
             "names_unmatched": unmatched[:30],
+            "names_ambiguous": ambiguous[:30],
         }
         if not polys:
             return None, stats

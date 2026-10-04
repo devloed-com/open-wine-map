@@ -48,11 +48,13 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
+import numpy as np
+import shapely
 from pyproj import Transformer
-from shapely.geometry import Point, shape
+from shapely import STRtree
+from shapely.geometry import Point, box, shape
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import transform as shp_transform
-from shapely.ops import unary_union
 from shapely.prepared import prep
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -63,9 +65,24 @@ WGS84 = "EPSG:4326"
 EQ_AREA = "EPSG:3035"
 DEFAULT_GEOJSON = ROOT / "wiki" / "map-data" / "appellations.geojson"
 DEFAULT_FIGSHARE = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
+DEFAULT_PANEL_DIR = ROOT / "wiki" / "data" / "d" / "en"
+DEFAULT_NUTS_LAYERS = (
+    ROOT / "raw" / "gr" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_3.geojson",
+    ROOT / "raw" / "nl" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_2.geojson",
+)
 
 _to_3035 = Transformer.from_crs(WGS84, EQ_AREA, always_xy=True).transform
 _to_4326 = Transformer.from_crs(EQ_AREA, WGS84, always_xy=True).transform
+
+
+def _display(path: Path) -> str:
+    """Repo-relative when the file is inside the repo, absolute otherwise —
+    ``--geojson`` may point at a snapshot outside the checkout."""
+    try:
+        return str(path.resolve().relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
 
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -99,12 +116,55 @@ class Outlier:
         return self.area_km2 * self.gap_km
 
 
+def _clusters(parts: list[BaseGeometry], gap_km: float) -> np.ndarray:
+    """Label every part with its cluster: the connected components of the
+    graph that links two parts no more than `gap_km` apart.
+
+    Each part is queried once, with its envelope widened by the gap, and
+    the exact distance is only computed for candidates not yet labelled —
+    within 25 km almost every parcel of a parcellaire union is near every
+    other, so an all-pairs `dwithin` query would be quadratic."""
+    gap_m = gap_km * 1000.0
+    tree = STRtree(parts)
+    geoms = tree.geometries
+    label = np.full(len(parts), -1, dtype=np.int64)
+    for seed in range(len(parts)):
+        if label[seed] >= 0:
+            continue
+        label[seed] = seed
+        stack = [seed]
+        while stack:
+            i = stack.pop()
+            minx, miny, maxx, maxy = parts[i].bounds
+            cand = tree.query(box(minx - gap_m, miny - gap_m, maxx + gap_m, maxy + gap_m))
+            cand = cand[label[cand] < 0]
+            if cand.size == 0:
+                continue
+            near = cand[shapely.distance(geoms[cand], parts[i]) <= gap_m]
+            label[near] = seed
+            stack.extend(near.tolist())
+    return label
+
+
 def detect_outliers(
     geom_3035: BaseGeometry, gap_km: float, area_frac: float
 ) -> list[Outlier]:
-    """Return the detached parts of a MultiPolygon: parts whose gap to the
-    main body (the parts holding >=95% of total area) exceeds `gap_km` and
-    whose area is below `area_frac` of the total."""
+    """Return the detached parts of a MultiPolygon.
+
+    Parts no more than `gap_km` apart belong to one cluster, transitively.
+    The main body is the cluster holding the most area; every part outside
+    it lies more than `gap_km` from the body, and is an outlier when its
+    cluster holds less than `area_frac` of the total: a cluster that large
+    is a genuine second lobe, however many parcels it is drawn in.
+
+    Proximity, not area rank: an area-rank body (the largest parts up to
+    95% of the total) swallowed a large detached part, and Saale-Unstrut's
+    Werderaner Wachtelberg (117 km², 87 km out) went untested. Seeding by
+    the largest cluster rather than the largest part matters too — skipping
+    parts with no neighbour made the lone 1,207 km² Sevilla body of Los
+    Palacios lose to the two touching Navarra parts of its homonym leak,
+    and Crémant de Bourgogne's single largest parcel sits in the Yonne
+    lobe, not in the lobe that holds 85% of its area."""
     if geom_3035.geom_type != "MultiPolygon":
         return []
     parts = sorted(geom_3035.geoms, key=lambda p: p.area, reverse=True)
@@ -113,27 +173,25 @@ def detect_outliers(
     total = sum(p.area for p in parts)
     if total <= 0:
         return []
-    body_parts: list[BaseGeometry] = []
-    acc = 0.0
-    for p in parts:
-        body_parts.append(p)
-        acc += p.area
-        if acc / total >= 0.95:
-            break
-    body = unary_union(body_parts)
-    body_ids = {id(p) for p in body_parts}
+    label = _clusters(parts, gap_km)
+    cluster_area: dict[int, float] = {}
+    for lab, p in zip(label.tolist(), parts):
+        cluster_area[lab] = cluster_area.get(lab, 0.0) + p.area
+    # Labels are the index of the cluster's largest part, so ties go to the
+    # cluster holding the largest part.
+    body_label = max(cluster_area, key=lambda lab: (cluster_area[lab], -lab))
+    body_tree = STRtree([p for lab, p in zip(label.tolist(), parts) if lab == body_label])
     out: list[Outlier] = []
-    for p in parts:
-        if id(p) in body_ids:
+    for lab, p in zip(label.tolist(), parts):
+        if lab == body_label or cluster_area[lab] / total >= area_frac:
             continue
-        gap = p.distance(body) / 1000.0
-        frac = p.area / total
-        if gap > gap_km and frac < area_frac:
-            c = p.centroid
-            clon, clat = _to_4326(c.x, c.y)
-            r = p.representative_point()
-            rlon, rlat = _to_4326(r.x, r.y)
-            out.append(Outlier(p.area / 1e6, gap, frac, clat, clon, rlat, rlon))
+        _, dist = body_tree.query_nearest(p, return_distance=True)
+        gap = float(dist.min()) / 1000.0
+        c = p.centroid
+        clon, clat = _to_4326(c.x, c.y)
+        r = p.representative_point()
+        rlon, rlat = _to_4326(r.x, r.y)
+        out.append(Outlier(p.area / 1e6, gap, p.area / total, clat, clon, rlat, rlon))
     return out
 
 
@@ -212,6 +270,54 @@ def load_figshare_polygons(path: Path, file_numbers: set[str]) -> dict[str, Base
     return {str(row["PDOid"]): row.geometry for _, row in gdf.iterrows()}
 
 
+def load_nuts_union_polygons(
+    clip_specs: dict[str, dict], panel_dir: Path, nuts_layers: tuple[Path, ...],
+) -> dict[str, BaseGeometry]:
+    """The pre-clip source geometry of every `gisco-nuts-region` clip: the
+    union of the GISCO NUTS polygons the record resolved to. Stage 04
+    writes those ids on the record as `geom_nuts_ids` (panel payload
+    wiki/data/d/en/<slug>.json), so the audit re-derives the union from the
+    same layers the resolver unioned; a slug without the field (a build
+    that predates it) stays unverifiable and is reported STALE."""
+    slugs = [s for s, spec in clip_specs.items() if spec.get("geom_source") == "gisco-nuts-region"]
+    if not slugs:
+        return {}
+    ids_by_slug: dict[str, list[str]] = {}
+    for slug in slugs:
+        path = panel_dir / f"{slug}.json"
+        if not path.exists():
+            continue
+        try:
+            ids = json.loads(path.read_text(encoding="utf-8")).get("geom_nuts_ids") or []
+        except (OSError, ValueError):
+            continue
+        if ids:
+            ids_by_slug[slug] = [str(i) for i in ids]
+    wanted = {i for ids in ids_by_slug.values() for i in ids}
+    if not wanted:
+        return {}
+    import geopandas as gpd
+
+    nuts: dict[str, BaseGeometry] = {}
+    for layer in nuts_layers:
+        if not layer.exists():
+            continue
+        gdf = gpd.read_file(layer)
+        gdf = gdf[gdf["NUTS_ID"].astype(str).isin(wanted)]
+        if gdf.empty:
+            continue
+        if gdf.crs is None or gdf.crs.to_string() != WGS84:
+            gdf = gdf.to_crs(WGS84)
+        for _, row in gdf.iterrows():
+            nuts[str(row["NUTS_ID"])] = row.geometry
+    out: dict[str, BaseGeometry] = {}
+    for slug, ids in ids_by_slug.items():
+        polys = [nuts[i] for i in ids if i in nuts]
+        if polys and len(polys) == len(ids):
+            out[slug] = shapely.union_all(polys)
+    return out
+
+
 def feature_bbox(ft: dict) -> tuple[float, float, float, float] | None:
     """(minx, miny, maxx, maxy) in lon/lat. Uses the `bbox` property stage 04
     writes per feature; falls back to a walk over the raw coordinates. This
@@ -250,12 +356,17 @@ def main() -> int:
     ap.add_argument("--geojson", type=Path, default=DEFAULT_GEOJSON)
     ap.add_argument("--figshare", type=Path, default=DEFAULT_FIGSHARE)
     ap.add_argument(
+        "--panel-dir", type=Path, default=DEFAULT_PANEL_DIR,
+        help="per-slug panel payloads (geom_nuts_ids of NUTS-union records)",
+    )
+    ap.add_argument(
         "--gap-km", type=float, default=25.0,
         help="minimum gap from the main body for a part to count as detached",
     )
     ap.add_argument(
         "--area-frac", type=float, default=0.20,
-        help="a detached part must be below this fraction of total area",
+        help="a detached part's cluster must hold less than this fraction of "
+             "the total area",
     )
     ap.add_argument(
         "--minor-km2", type=float, default=1.0,
@@ -282,7 +393,7 @@ def main() -> int:
     # a part detached by more than `gap-km` if its own bbox spans at least
     # that far, so small appellations skip the expensive reprojection
     # entirely. Geometry is dropped as soon as it is scanned.
-    print(f"pass 1/2: scanning {args.geojson.relative_to(ROOT)} for outliers …",
+    print(f"pass 1/2: scanning {_display(args.geojson)} for outliers …",
           file=sys.stderr)
     detected: dict[str, dict] = {}  # slug -> {name, country, geom_source, ...}
     n_features = n_checked = 0
@@ -357,16 +468,30 @@ def main() -> int:
 
     # Pass 3 — verify clip overrides against the SOURCE figshare data.
     clip_specs = overrides.clip_specs
-    file_numbers = {s.get("file_number") for s in clip_specs.values()}
+    file_numbers = {
+        s.get("file_number") for s in clip_specs.values()
+        if s.get("geom_source", "figshare-pdo") == "figshare-pdo"
+    }
     file_numbers.discard(None)
     src_polys = load_figshare_polygons(args.figshare, file_numbers)
+    nuts_polys = load_nuts_union_polygons(clip_specs, args.panel_dir, DEFAULT_NUTS_LAYERS)
 
     confirmed: list[str] = []
     pending: list[str] = []
     stale: list[str] = []
     for slug, spec in sorted(clip_specs.items()):
         fn = spec.get("file_number") or ""
-        src_geom = src_polys.get(fn)
+        if spec.get("geom_source") == "gisco-nuts-region":
+            src_geom = nuts_polys.get(slug)
+            if src_geom is None:
+                stale.append(
+                    f"  {slug:32s} {fn:14s} SOURCE POLYGON NOT FOUND — no "
+                    f"geom_nuts_ids in {_display(args.panel_dir / (slug + '.json'))} "
+                    f"(rebuild with scripts/04_build_maps.py) or NUTS layer missing"
+                )
+                continue
+        else:
+            src_geom = src_polys.get(fn)
         if src_geom is None:
             stale.append(
                 f"  {slug:32s} {fn:14s} SOURCE POLYGON NOT FOUND — cannot "
@@ -428,9 +553,9 @@ def main() -> int:
     print()
     print("GEOMETRY-OUTLIER AUDIT")
     print("=" * 72)
-    print(f"source     : {args.geojson.relative_to(ROOT)} ({n_features} features)")
-    print(f"thresholds : gap > {args.gap_km:g} km, outlier area < "
-          f"{args.area_frac * 100:g}% of total")
+    print(f"source     : {_display(args.geojson)} ({n_features} features)")
+    print(f"thresholds : gap > {args.gap_km:g} km, detached cluster < "
+          f"{args.area_frac * 100:g}% of total area")
     print()
 
     print(f"CONFIRMED clips — override active, fix verified against source  "
@@ -505,16 +630,24 @@ def main() -> int:
     return 0
 
 
+_MAX_PARTS_SHOWN = 10
+
+
 def _print_unreviewed(info: dict, ols: list[Outlier], compact: bool = False) -> None:
     ols = sorted(ols, key=lambda o: -o.severity)
     print(f"  {info['name']}  [{info['country']}]  "
           f"src={info['geom_source']}  ({info['n_parts']} parts)")
-    for ol in (ols[:1] if compact else ols):
+    # A detached parcellaire lobe is hundreds of parcels; the worst ones
+    # locate it.
+    shown = ols[:1] if compact else ols[:_MAX_PARTS_SHOWN]
+    for ol in shown:
         ov = "; ".join(ol.overlaps) if ol.overlaps else "no appellation"
         print(f"      part ~{ol.area_km2:8.2f} km2  gap {ol.gap_km:6.1f} km  "
               f"@({ol.lat:.4f},{ol.lon:.4f})  inside: {ov}")
-    if compact and len(ols) > 1:
-        print(f"      … +{len(ols) - 1} more detached part(s)")
+    rest = ols[len(shown):]
+    if rest:
+        print(f"      … +{len(rest)} more detached part(s), "
+              f"~{sum(o.area_km2 for o in rest):.2f} km2")
 
 
 if __name__ == "__main__":

@@ -494,3 +494,85 @@ def _role_split(text: str) -> tuple[str, set[str], set[str]]:
                 principal_slugs.add(m.slug)
 
     return role_split_method, principal_slugs, accessory_slugs
+
+
+# ==========================================================================
+# Landwein commune-list geometry (scripts/_lib/de/geometry.py)
+# ==========================================================================
+
+def test_de_norm_strips_bavarian_gisco_suffixes():
+    """GISCO LAU spells Bavarian towns "Röttingen, St" / "Rothenburg ob der
+    Tauber, GKSt" / "Zell a.Main, M" (Stadt / Große Kreisstadt / Markt),
+    the way Brandenburg's carry ", Stadt". The suffix must go so the
+    Produktspezifikation's bare name matches; a name merely ENDING in
+    "-stadt" is not a suffix."""
+    from _lib.de.geometry import _de_norm
+
+    assert _de_norm("Röttingen, St") == _de_norm("Röttingen") == "rottingen"
+    assert _de_norm("Rothenburg ob der Tauber, GKSt") == _de_norm("Rothenburg ob der Tauber")
+    assert _de_norm("Zell a.Main, M") == "zell a.main"
+    assert _de_norm("Bad Mergentheim, Stadt") == "bad mergentheim"
+    assert _de_norm("Ingolstadt") == "ingolstadt"
+
+
+def test_landwein_area_kreise_all_have_an_ags():
+    """Every Kreis a DE_LANDWEIN_AREA entry names must be in _DE_KREIS_AGS —
+    otherwise _load_communes never loads it and the Gemeinde silently
+    lands in `unmatched`."""
+    from _lib.de.geometry import _DE_KREIS_AGS, DE_LANDWEIN_AREA, _de_norm
+
+    for file_number, area in DE_LANDWEIN_AREA.items():
+        for name in (*area.get("landkreise", []), *area.get("kreisfreie", []),
+                     *(g["kreis"] for g in area.get("gemeinden", []))):
+            assert _de_norm(name) in _DE_KREIS_AGS, (file_number, name)
+
+
+def test_regression_taubertaler_landwein_is_a_commune_union_not_wurttemberg():
+    """Regression (geometry-outlier audit 2026-09): PGI-DE-A1307 sat in
+    DE_PGI_MEMBER_PDOS as the whole Württemberg Anbaugebiet, so it drew
+    Württemberg's detached Lake-Constance part. Its Produktspezifikation
+    §4 names 13 Main-Tauber-Kreis Gemeinden + 5 Bavarian places, so it
+    resolves by GISCO commune union like Brandenburger Landwein."""
+    from pathlib import Path
+
+    from _lib.de.geometry import (
+        _DE_KREIS_AGS,
+        DE_LANDWEIN_AREA,
+        DE_PGI_MEMBER_PDOS,
+        DEPolygonIndex,
+        _de_norm,
+    )
+    from shapely.geometry import box
+
+    assert "PGI-DE-A1307" not in DE_PGI_MEMBER_PDOS
+    idx = DEPolygonIndex(figshare_gpkg=Path("/nonexistent.gpkg"))
+    bodensee = box(9.3, 47.6, 9.6, 47.8)
+    idx._pdo_polygons["PDO-DE-A1276"] = box(9.0, 48.7, 9.6, 49.4).union(bodensee)
+    gemeinden = DE_LANDWEIN_AREA["PGI-DE-A1307"]["gemeinden"]
+    for i, g in enumerate(gemeinden):
+        kreis = _DE_KREIS_AGS[_de_norm(g["kreis"])]
+        idx._commune_by_kreis_name[(kreis, _de_norm(g["name"]))] = box(
+            9.6 + i * 0.02, 49.5, 9.61 + i * 0.02, 49.51
+        )
+    geom, source, stats = idx.resolve("PGI-DE-A1307")
+    assert source == "gisco-commune-union"
+    assert stats["gemeinden"] == len(gemeinden) == 18
+    assert stats["unmatched"] == 0
+    assert not geom.intersects(bodensee)
+
+
+def test_landwein_region_facet_follows_the_anbaugebiet_or_bundesland_rule():
+    """A Landwein coextensive with one Anbaugebiet keeps that name; one that
+    straddles several takes its Bundesland. Taubertäler Landwein spans
+    Württemberg's Kocher-Jagst-Tauber, Baden's Tauberfranken and five
+    Bavarian communes (BLE spec §1: "Baden-Württemberg und Bayern") and was
+    filed under Württemberg; Schwäbischer Landwein, whose only union member
+    is the Württemberg PDO (BLE spec §4: Kreßbronn, Ravensburg, Taldorf),
+    was filed under Baden (2026-09-24)."""
+    from _lib.de.region import REGIONS, region_for_file_number
+
+    assert "Baden-Württemberg" in REGIONS
+    assert region_for_file_number("PGI-DE-A1307") == "Baden-Württemberg"
+    assert region_for_file_number("PGI-DE-A1305") == "Württemberg"
+    assert region_for_file_number("PGI-DE-A1284") == "Württemberg"   # Landwein Neckar, coextensive
+    assert region_for_file_number("PGI-DE-A1279") == "Baden"         # Badischer Landwein, coextensive

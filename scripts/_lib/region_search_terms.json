@@ -1,0 +1,2317 @@
+{
+ "Abruzzo": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Abruzzes",
+   "Abruzos",
+   "Abruzzen",
+   "Abruzzi"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Abruzzes",
+   "Abruzos",
+   "Abruzzen"
+  ],
+  "qid": "Q1284",
+  "source": "https://www.wikidata.org/wiki/Q1284"
+ },
+ "Ahr": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "note": "wine region, not the river Q153394",
+  "qid": "Q402640",
+  "source": "https://www.wikidata.org/wiki/Q402640"
+ },
+ "Alentejo": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Alemtejo"
+  ],
+  "label_check": "exact",
+  "labels": [],
+  "note": "the geographic region; Q2832668 is the DOC",
+  "qid": "Q20963720",
+  "source": "https://www.wikidata.org/wiki/Q20963720"
+ },
+ "Algarve": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "note": "the traditional province",
+  "qid": "Q15782399",
+  "source": "https://www.wikidata.org/wiki/Q15782399"
+ },
+ "Andalucía": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Andalusia",
+   "Andalousie",
+   "Andalusië",
+   "Andaloesië"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Andalusia",
+   "Andalousie",
+   "Andalusië"
+  ],
+  "qid": "Q5783",
+  "source": "https://www.wikidata.org/wiki/Q5783"
+ },
+ "Aragón": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "qid": "Q4040",
+  "source": "https://www.wikidata.org/wiki/Q4040"
+ },
+ "Asturias": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Asturies",
+   "Asturië",
+   "Principáu d'Asturies"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Asturies",
+   "Asturië"
+  ],
+  "qid": "Q3934",
+  "source": "https://www.wikidata.org/wiki/Q3934"
+ },
+ "Açores": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Azores",
+   "Azoren"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Azores",
+   "Azoren"
+  ],
+  "qid": "Q25263",
+  "source": "https://www.wikidata.org/wiki/Q25263"
+ },
+ "Baden": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "note": "wine region, not the historical territory Q6877935",
+  "qid": "Q647902",
+  "source": "https://www.wikidata.org/wiki/Q647902"
+ },
+ "Baden-Württemberg": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Bade-Wurtemberg",
+   "Baden-Wurtemberg",
+   "Baden-Wuerttemberg"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Bade-Wurtemberg",
+   "Baden-Wurtemberg"
+  ],
+  "qid": "Q985",
+  "source": "https://www.wikidata.org/wiki/Q985"
+ },
+ "Bairrada": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "qid": "Q9643639",
+  "source": "https://www.wikidata.org/wiki/Q9643639"
+ },
+ "Balaton": {
+  "country": "hu",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Balatonmeer",
+   "Platten-See"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Balatonmeer"
+  ],
+  "note": "the lake; Q4049117 is labelled Balatoni (adjective)",
+  "qid": "Q6383",
+  "source": "https://www.wikidata.org/wiki/Q6383"
+ },
+ "Baleares": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Balearic"
+  ],
+  "label_check": "variant: Islas Baleares",
+  "labels": [
+   "Balearic"
+  ],
+  "note": "the community; Q5765 is the archipelago",
+  "qid": "Q107356467",
+  "source": "https://www.wikidata.org/wiki/Q107356467"
+ },
+ "Banat": {
+  "country": "ro",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Banato",
+   "Banaat"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Banato",
+   "Banaat"
+  ],
+  "qid": "Q170143",
+  "source": "https://www.wikidata.org/wiki/Q170143"
+ },
+ "Basilicata": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Basilicate",
+   "Lucania"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Basilicate"
+  ],
+  "qid": "Q1452",
+  "source": "https://www.wikidata.org/wiki/Q1452"
+ },
+ "Bayern": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Bavaria",
+   "Bavière",
+   "Baviera",
+   "Beieren"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Bavaria",
+   "Bavière",
+   "Baviera",
+   "Beieren"
+  ],
+  "qid": "Q980",
+  "source": "https://www.wikidata.org/wiki/Q980"
+ },
+ "Beira Interior": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Beira Interior (DOC)",
+  "labels": [],
+  "note": "Beira Interior (DOC)",
+  "qid": "Q2894017",
+  "source": "https://www.wikidata.org/wiki/Q2894017"
+ },
+ "Brandenburg": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Brandebourg",
+   "Brandeburgo"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Brandebourg",
+   "Brandeburgo"
+  ],
+  "qid": "Q1208",
+  "source": "https://www.wikidata.org/wiki/Q1208"
+ },
+ "Burgenland": {
+  "country": "at",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "qid": "Q43210",
+  "source": "https://www.wikidata.org/wiki/Q43210"
+ },
+ "Calabria": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Calabre",
+   "Calabrië"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Calabre",
+   "Calabrië"
+  ],
+  "qid": "Q1458",
+  "source": "https://www.wikidata.org/wiki/Q1458"
+ },
+ "Campania": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Campanie"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Campanie"
+  ],
+  "qid": "Q1438",
+  "source": "https://www.wikidata.org/wiki/Q1438"
+ },
+ "Canarias": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Canary",
+   "Canaries",
+   "Canarische",
+   "Canariae Insulae",
+   "archipiélago canario",
+   "Afortunadas",
+   "Canarische eilandengroep"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Canary",
+   "Canaries",
+   "Canarische"
+  ],
+  "qid": "Q5813",
+  "source": "https://www.wikidata.org/wiki/Q5813"
+ },
+ "Cantabria": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Cantabrie"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Cantabrie"
+  ],
+  "qid": "Q3946",
+  "source": "https://www.wikidata.org/wiki/Q3946"
+ },
+ "Castilla y León": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Castile and León",
+   "Castille-et-León",
+   "Castilië en León"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Castile and León",
+   "Castille-et-León",
+   "Castilië en León"
+  ],
+  "note": "the community; Q5049887 is the Vino de la Tierra",
+  "qid": "Q5739",
+  "source": "https://www.wikidata.org/wiki/Q5739"
+ },
+ "Castilla-La Mancha": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Castille-La Manche",
+   "Castilië-La Mancha",
+   "Castile-La Mancha"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Castille-La Manche",
+   "Castilië-La Mancha"
+  ],
+  "qid": "Q5748",
+  "source": "https://www.wikidata.org/wiki/Q5748"
+ },
+ "Cataluña": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Catalonia",
+   "Catalogne",
+   "Catalonië",
+   "Catalonha"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Catalonia",
+   "Catalogne",
+   "Catalonië"
+  ],
+  "qid": "Q5705",
+  "source": "https://www.wikidata.org/wiki/Q5705"
+ },
+ "Comunidad Valenciana": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Valenciaanse",
+   "País Valencià",
+   "valencien",
+   "País Valenciano"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Valenciaanse"
+  ],
+  "qid": "Q5720",
+  "source": "https://www.wikidata.org/wiki/Q5720"
+ },
+ "Crișana și Maramureș": {
+  "country": "ro",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "label_check": "none",
+  "labels": [],
+  "qid": null,
+  "reason": "Crișana Q268034 + Maramureș Q10975458; no item"
+ },
+ "Deutschschweiz": {
+  "country": "ch",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "German-speaking Switzerland",
+   "Suisse alémanique",
+   "Suiza alemana",
+   "Suisse allemande"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "German-speaking Switzerland",
+   "Suisse alémanique",
+   "Suiza alemana"
+  ],
+  "qid": "Q689055",
+  "source": "https://www.wikidata.org/wiki/Q689055"
+ },
+ "Dobrogea": {
+  "country": "ro",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Dobruja",
+   "Dobroudja",
+   "Dobroedzja",
+   "Dobrogée",
+   "Dobrudja",
+   "Dobrudzha",
+   "Dobroedsja"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Dobruja",
+   "Dobroudja",
+   "Dobroedzja"
+  ],
+  "note": "Dobruja; Q2673270 is Northern Dobruja",
+  "qid": "Q182660",
+  "source": "https://www.wikidata.org/wiki/Q182660"
+ },
+ "Douro/Porto": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Douro (DOC)",
+  "labels": [],
+  "note": "Douro (DOC); the facet label folds Porto in",
+  "qid": "Q1094448",
+  "source": "https://www.wikidata.org/wiki/Q1094448"
+ },
+ "Drenthe": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Drente"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Drente"
+  ],
+  "qid": "Q772",
+  "source": "https://www.wikidata.org/wiki/Q772"
+ },
+ "Duna": {
+  "country": "hu",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Duna borrégió",
+  "labels": [],
+  "note": "Duna wine region; the river is Q1653",
+  "qid": "Q1508457",
+  "source": "https://www.wikidata.org/wiki/Q1508457"
+ },
+ "Dão": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Dão (DOC)",
+  "labels": [],
+  "note": "Dão (DOC)",
+  "qid": "Q1269612",
+  "source": "https://www.wikidata.org/wiki/Q1269612"
+ },
+ "Emilia-Romagna": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Émilie-Romagne",
+   "Emilia-Romaña"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Émilie-Romagne",
+   "Emilia-Romaña"
+  ],
+  "qid": "Q1263",
+  "source": "https://www.wikidata.org/wiki/Q1263"
+ },
+ "England": {
+  "country": "gb",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Angleterre",
+   "Inglaterra",
+   "Engeland"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Angleterre",
+   "Inglaterra",
+   "Engeland"
+  ],
+  "qid": "Q21",
+  "source": "https://www.wikidata.org/wiki/Q21"
+ },
+ "España": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Spain",
+   "Espagne",
+   "Spanje"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Spain",
+   "Espagne",
+   "Spanje"
+  ],
+  "qid": "Q29",
+  "source": "https://www.wikidata.org/wiki/Q29"
+ },
+ "Extremadura": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Estrémadure",
+   "Estremadura"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Estrémadure"
+  ],
+  "note": "the community; Q5422290 is the Vino de la Tierra",
+  "qid": "Q5777",
+  "source": "https://www.wikidata.org/wiki/Q5777"
+ },
+ "Felső-Magyarország": {
+  "country": "hu",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "label_check": "none",
+  "labels": [],
+  "qid": null,
+  "reason": "no item; Q999030 is historical Upper Hungary (SK)"
+ },
+ "Felső-Pannon": {
+  "country": "hu",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "label_check": "none",
+  "labels": [],
+  "qid": null,
+  "reason": "no item for the Felső-Pannon borrégió"
+ },
+ "Flevoland": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Flevolanda"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Flevolanda"
+  ],
+  "qid": "Q707",
+  "source": "https://www.wikidata.org/wiki/Q707"
+ },
+ "Franken": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Franconia",
+   "Franconie"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Franconia",
+   "Franconie"
+  ],
+  "note": "wine region, not the cultural region Q150907",
+  "qid": "Q153250",
+  "source": "https://www.wikidata.org/wiki/Q153250"
+ },
+ "Friesland": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Frise",
+   "Frisia",
+   "Fryslân"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Frise",
+   "Frisia"
+  ],
+  "qid": "Q770",
+  "source": "https://www.wikidata.org/wiki/Q770"
+ },
+ "Friuli-Venezia Giulia": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Frioul-Vénétie Julienne",
+   "Friul-Venecia Julia",
+   "Friuli-Julian March"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Frioul-Vénétie Julienne",
+   "Friul-Venecia Julia"
+  ],
+  "qid": "Q1250",
+  "source": "https://www.wikidata.org/wiki/Q1250"
+ },
+ "Galicia": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Galice",
+   "Galicië",
+   "Galiza"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Galice",
+   "Galicië"
+  ],
+  "qid": "Q3908",
+  "source": "https://www.wikidata.org/wiki/Q3908"
+ },
+ "Gelderland": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Gueldre",
+   "Güeldres",
+   "Guelders"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Gueldre",
+   "Güeldres"
+  ],
+  "qid": "Q775",
+  "source": "https://www.wikidata.org/wiki/Q775"
+ },
+ "Genève": {
+  "country": "ch",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Geneva",
+   "Ginebra"
+  ],
+  "label_check": "variant: canton de Genève",
+  "labels": [
+   "Geneva",
+   "Ginebra"
+  ],
+  "note": "the canton, not the city Q71",
+  "qid": "Q11917",
+  "source": "https://www.wikidata.org/wiki/Q11917"
+ },
+ "Gozo": {
+  "country": "mt",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Goso"
+  ],
+  "label_check": "exact",
+  "labels": [],
+  "qid": "Q170488",
+  "source": "https://www.wikidata.org/wiki/Q170488"
+ },
+ "Groningen": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Groningue",
+   "Groninga"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Groningue",
+   "Groninga"
+  ],
+  "note": "the province, not the city Q749",
+  "qid": "Q752",
+  "source": "https://www.wikidata.org/wiki/Q752"
+ },
+ "Hessen": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "qid": "Q1199",
+  "source": "https://www.wikidata.org/wiki/Q1199"
+ },
+ "Hessische Bergstraße": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Hessische Bergstrasse"
+  ],
+  "label_check": "exact",
+  "labels": [],
+  "qid": "Q323855",
+  "source": "https://www.wikidata.org/wiki/Q323855"
+ },
+ "Istočna kontinentalna Hrvatska": {
+  "country": "hr",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "label_check": "none",
+  "labels": [],
+  "qid": null,
+  "reason": "no item; Q16951229 = continental HR"
+ },
+ "Italia": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Italy",
+   "Italie"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Italy",
+   "Italie"
+  ],
+  "qid": "Q38",
+  "source": "https://www.wikidata.org/wiki/Q38"
+ },
+ "Južnoslovenská": {
+  "country": "sk",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Južnoslovenská vinohradnícka oblasť",
+  "labels": [],
+  "note": "Južnoslovenská vinohradnícka oblasť",
+  "qid": "Q13421176",
+  "source": "https://www.wikidata.org/wiki/Q13421176"
+ },
+ "Kärnten": {
+  "country": "at",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Carinthia",
+   "Carinthie",
+   "Carintia",
+   "Karinthië"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Carinthia",
+   "Carinthie",
+   "Carintia",
+   "Karinthië"
+  ],
+  "qid": "Q37985",
+  "source": "https://www.wikidata.org/wiki/Q37985"
+ },
+ "La Rioja": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "qid": "Q5727",
+  "source": "https://www.wikidata.org/wiki/Q5727"
+ },
+ "Lazio": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Latium",
+   "Lacio"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Latium",
+   "Lacio"
+  ],
+  "qid": "Q1282",
+  "source": "https://www.wikidata.org/wiki/Q1282"
+ },
+ "Liguria": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Ligurie"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Ligurie"
+  ],
+  "qid": "Q1256",
+  "source": "https://www.wikidata.org/wiki/Q1256"
+ },
+ "Limburg": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Limbourg",
+   "Limburgo",
+   "Limbourg néerlandais"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Limbourg",
+   "Limburgo"
+  ],
+  "note": "the Dutch province, not the Belgian one Q1095",
+  "qid": "Q1093",
+  "source": "https://www.wikidata.org/wiki/Q1093"
+ },
+ "Lisboa": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Lisbon",
+   "Lisbonne",
+   "Lissabon"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Lisbon",
+   "Lisbonne",
+   "Lissabon"
+  ],
+  "note": "Lisbon District, whose name the VR carries (the VR item Q3242467 has no Lisbon / Lisbonne / Lissabon label); not the city Q597",
+  "qid": "Q207199",
+  "source": "https://www.wikidata.org/wiki/Q207199"
+ },
+ "Lombardia": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Lombardy",
+   "Lombardie",
+   "Lombardije"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Lombardy",
+   "Lombardie",
+   "Lombardije"
+  ],
+  "qid": "Q1210",
+  "source": "https://www.wikidata.org/wiki/Q1210"
+ },
+ "Madeira": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Madère"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Madère"
+  ],
+  "qid": "Q26253",
+  "source": "https://www.wikidata.org/wiki/Q26253"
+ },
+ "Madrid": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Comunidad de Madrid",
+  "labels": [],
+  "note": "Community of Madrid, not the city Q2807",
+  "qid": "Q5756",
+  "source": "https://www.wikidata.org/wiki/Q5756"
+ },
+ "Malokarpatská": {
+  "country": "sk",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Malokarpatská vinohradnícka oblasť",
+  "labels": [],
+  "note": "Malokarpatská vinohradnícka oblasť",
+  "qid": "Q1887684",
+  "source": "https://www.wikidata.org/wiki/Q1887684"
+ },
+ "Malta": {
+  "country": "mt",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Malte"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Malte"
+  ],
+  "note": "the island (Malta PDO), not the country Q233",
+  "qid": "Q193896",
+  "source": "https://www.wikidata.org/wiki/Q193896"
+ },
+ "Maltese Islands": {
+  "country": "mt",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "archipel maltais",
+   "Archipiélago de Malta"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "archipel maltais",
+   "Archipiélago de Malta"
+  ],
+  "qid": "Q3803158",
+  "source": "https://www.wikidata.org/wiki/Q3803158"
+ },
+ "Marche": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Marches",
+   "Marcas",
+   "Marken"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Marches",
+   "Marcas",
+   "Marken"
+  ],
+  "qid": "Q1279",
+  "source": "https://www.wikidata.org/wiki/Q1279"
+ },
+ "Minho": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Minho (VR)",
+  "labels": [],
+  "note": "Minho (VR); the former province is Q512317",
+  "qid": "Q374743",
+  "source": "https://www.wikidata.org/wiki/Q374743"
+ },
+ "Mittelrhein": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Rhin-moyen"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Rhin-moyen"
+  ],
+  "note": "wine region, not the landscape Q571607",
+  "qid": "Q464929",
+  "source": "https://www.wikidata.org/wiki/Q464929"
+ },
+ "Moldova": {
+  "country": "ro",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Western Moldavia",
+   "Moldavie",
+   "Moldavia Occidental",
+   "Romanian Moldavia",
+   "Moldavia"
+  ],
+  "label_check": "variant: Moldova Occidentală",
+  "labels": [
+   "Western Moldavia",
+   "Moldavie",
+   "Moldavia Occidental"
+  ],
+  "note": "Western Moldavia, not the country Q217",
+  "qid": "Q209754",
+  "source": "https://www.wikidata.org/wiki/Q209754"
+ },
+ "Molise": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "qid": "Q1443",
+  "source": "https://www.wikidata.org/wiki/Q1443"
+ },
+ "Morava": {
+  "country": "cz",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Moravia",
+   "Moravie"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Moravia",
+   "Moravie"
+  ],
+  "note": "Moravia, not the river Q179251",
+  "qid": "Q43266",
+  "source": "https://www.wikidata.org/wiki/Q43266"
+ },
+ "Mosel": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Moselle",
+   "Moezel"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Moselle"
+  ],
+  "note": "wine region, not the river Q1667",
+  "qid": "Q672776",
+  "source": "https://www.wikidata.org/wiki/Q672776"
+ },
+ "Moselle Luxembourgeoise": {
+  "country": "lu",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "label_check": "none",
+  "labels": [],
+  "qid": null,
+  "reason": "no item; Q14211572 is en-only, Q1759014 = wine"
+ },
+ "Muntenia": {
+  "country": "ro",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Munténie",
+   "Groot-Walachije"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Munténie"
+  ],
+  "qid": "Q207388",
+  "source": "https://www.wikidata.org/wiki/Q207388"
+ },
+ "Murcia": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Murcie"
+  ],
+  "label_check": "variant: Región de Murcia",
+  "labels": [
+   "Murcie"
+  ],
+  "note": "Region of Murcia, not the city Q12225",
+  "qid": "Q5772",
+  "source": "https://www.wikidata.org/wiki/Q5772"
+ },
+ "Nahe": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "note": "wine region, not the river Q168696",
+  "qid": "Q315052",
+  "source": "https://www.wikidata.org/wiki/Q315052"
+ },
+ "Navarra": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Navarre"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Navarre"
+  ],
+  "qid": "Q4018",
+  "source": "https://www.wikidata.org/wiki/Q4018"
+ },
+ "Niederösterreich": {
+  "country": "at",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Lower Austria",
+   "Basse-Autriche",
+   "Baja Austria",
+   "Neder-Oostenrijk",
+   "Nieder-österreich",
+   "Nederoostenrijk"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Lower Austria",
+   "Basse-Autriche",
+   "Baja Austria",
+   "Neder-Oostenrijk"
+  ],
+  "qid": "Q42497",
+  "source": "https://www.wikidata.org/wiki/Q42497"
+ },
+ "Nitrianska": {
+  "country": "sk",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Nitra"
+  ],
+  "label_check": "variant: Nitrianska vinohradnícka oblasť",
+  "labels": [
+   "Nitra"
+  ],
+  "note": "Nitrianska vinohradnícka oblasť",
+  "qid": "Q12772543",
+  "source": "https://www.wikidata.org/wiki/Q12772543"
+ },
+ "Noord-Brabant": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "North Brabant",
+   "Brabant-Septentrional",
+   "Brabante Septentrional",
+   "Brabant-du-Nord",
+   "Brabante del Norte"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "North Brabant",
+   "Brabant-Septentrional",
+   "Brabante Septentrional"
+  ],
+  "qid": "Q1101",
+  "source": "https://www.wikidata.org/wiki/Q1101"
+ },
+ "Noord-Holland": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "North Holland",
+   "Hollande-Septentrionale",
+   "Holanda Septentrional",
+   "Hollande-du-Nord"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "North Holland",
+   "Hollande-Septentrionale",
+   "Holanda Septentrional"
+  ],
+  "qid": "Q701",
+  "source": "https://www.wikidata.org/wiki/Q701"
+ },
+ "Oberösterreich": {
+  "country": "at",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Upper Austria",
+   "Haute-Autriche",
+   "Alta Austria",
+   "Opper-Oostenrijk",
+   "Opperoostenrijk"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Upper Austria",
+   "Haute-Autriche",
+   "Alta Austria",
+   "Opper-Oostenrijk"
+  ],
+  "qid": "Q41967",
+  "source": "https://www.wikidata.org/wiki/Q41967"
+ },
+ "Oltenia": {
+  "country": "ro",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Olténie",
+   "Petite-Valachie",
+   "Klein-Walachije"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Olténie"
+  ],
+  "qid": "Q208629",
+  "source": "https://www.wikidata.org/wiki/Q208629"
+ },
+ "Overijssel": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Overissel"
+  ],
+  "label_check": "exact",
+  "labels": [],
+  "qid": "Q773",
+  "source": "https://www.wikidata.org/wiki/Q773"
+ },
+ "Pannon": {
+  "country": "hu",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Pannon borrégió",
+  "labels": [],
+  "note": "Pannon wine region; not Roman Pannonia Q170062",
+  "qid": "Q4052414",
+  "source": "https://www.wikidata.org/wiki/Q4052414"
+ },
+ "País Vasco": {
+  "country": "es",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Basque",
+   "Baskenland",
+   "Euskal Autonomia Erkidegoa",
+   "Euskadi",
+   "Vascongadas"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Basque",
+   "Baskenland"
+  ],
+  "note": "the community; Q47588 is the cultural region",
+  "qid": "Q3995",
+  "source": "https://www.wikidata.org/wiki/Q3995"
+ },
+ "Pfalz": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Palatinate",
+   "Palatinat",
+   "Palatinado",
+   "Palts"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Palatinate",
+   "Palatinat",
+   "Palatinado",
+   "Palts"
+  ],
+  "note": "wine region, not the historical region Q326359",
+  "qid": "Q185439",
+  "source": "https://www.wikidata.org/wiki/Q185439"
+ },
+ "Piemonte": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Piedmont",
+   "Piamonte"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Piedmont",
+   "Piamonte"
+  ],
+  "qid": "Q1216",
+  "source": "https://www.wikidata.org/wiki/Q1216"
+ },
+ "Podravje": {
+  "country": "si",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Podravska"
+  ],
+  "label_check": "variant: Vinorodna dežela Podravje",
+  "labels": [
+   "Podravska"
+  ],
+  "note": "vinorodna dežela; Q856328 is the statistical region",
+  "qid": "Q12805797",
+  "source": "https://www.wikidata.org/wiki/Q12805797"
+ },
+ "Posavje": {
+  "country": "si",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Posavska"
+  ],
+  "label_check": "variant: Vinorodna dežela Posavje",
+  "labels": [
+   "Posavska"
+  ],
+  "note": "vinorodna dežela; Q218276 is the Lower Sava valley",
+  "qid": "Q19937666",
+  "source": "https://www.wikidata.org/wiki/Q19937666"
+ },
+ "Primorska": {
+  "country": "si",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Vinorodna dežela Primorska",
+  "labels": [],
+  "note": "vinorodna dežela; Q125323 is the Slovenian Littoral",
+  "qid": "Q19937667",
+  "source": "https://www.wikidata.org/wiki/Q19937667"
+ },
+ "Primorska Hrvatska": {
+  "country": "hr",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "label_check": "none",
+  "labels": [],
+  "qid": null,
+  "reason": "no item; Q1789654 (Croatian Littoral) is narrower"
+ },
+ "Puglia": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Apulia",
+   "Pouilles",
+   "Apulië"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Apulia",
+   "Pouilles",
+   "Apulië"
+  ],
+  "qid": "Q1447",
+  "source": "https://www.wikidata.org/wiki/Q1447"
+ },
+ "Rheingau": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "note": "wine region, not the landscape Q212376",
+  "qid": "Q387316",
+  "source": "https://www.wikidata.org/wiki/Q387316"
+ },
+ "Rheinhessen": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Hesse-Rhénane",
+   "Rhine-Hesse"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Hesse-Rhénane"
+  ],
+  "note": "wine region, not the region Q707297",
+  "qid": "Q567327",
+  "source": "https://www.wikidata.org/wiki/Q567327"
+ },
+ "Rheinland-Pfalz": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Rhineland-Palatinate",
+   "Rhénanie-Palatinat",
+   "Renania-Palatinado",
+   "Rijnland-Palts"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Rhineland-Palatinate",
+   "Rhénanie-Palatinat",
+   "Renania-Palatinado",
+   "Rijnland-Palts"
+  ],
+  "qid": "Q1200",
+  "source": "https://www.wikidata.org/wiki/Q1200"
+ },
+ "Saale-Unstrut": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Saale-Unstrut-Region",
+  "labels": [],
+  "qid": "Q683582",
+  "source": "https://www.wikidata.org/wiki/Q683582"
+ },
+ "Saarland": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Sarre"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Sarre"
+  ],
+  "qid": "Q1201",
+  "source": "https://www.wikidata.org/wiki/Q1201"
+ },
+ "Sachsen": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Saxony",
+   "Saxe",
+   "Sajonia",
+   "Saksen"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Saxony",
+   "Saxe",
+   "Sajonia",
+   "Saksen"
+  ],
+  "note": "wine region (Anbaugebiet); the Bundesland is Q1202",
+  "qid": "Q467095",
+  "source": "https://www.wikidata.org/wiki/Q467095"
+ },
+ "Sachsen-Anhalt": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Saxony-Anhalt",
+   "Saxe-Anhalt",
+   "Sajonia-Anhalt",
+   "Saksen-Anhalt"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Saxony-Anhalt",
+   "Saxe-Anhalt",
+   "Sajonia-Anhalt",
+   "Saksen-Anhalt"
+  ],
+  "qid": "Q1206",
+  "source": "https://www.wikidata.org/wiki/Q1206"
+ },
+ "Salzburg": {
+  "country": "at",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Salzbourg",
+   "Salzburgo"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Salzbourg",
+   "Salzburgo"
+  ],
+  "note": "the Bundesland, not the city Q34713",
+  "qid": "Q43325",
+  "source": "https://www.wikidata.org/wiki/Q43325"
+ },
+ "Sardegna": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Sardinia",
+   "Sardaigne",
+   "Cerdeña",
+   "Sardinië",
+   "Sardigna"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Sardinia",
+   "Sardaigne",
+   "Cerdeña",
+   "Sardinië"
+  ],
+  "qid": "Q1462",
+  "source": "https://www.wikidata.org/wiki/Q1462"
+ },
+ "Setúbal": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Terras do Sado"
+  ],
+  "label_check": "variant: Península de Setúbal (VR)",
+  "labels": [],
+  "note": "Península de Setúbal (VR); not the city / district",
+  "qid": "Q3518577",
+  "source": "https://www.wikidata.org/wiki/Q3518577"
+ },
+ "Sicilia": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Sicily",
+   "Sicile",
+   "Sicilië"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Sicily",
+   "Sicile",
+   "Sicilië"
+  ],
+  "qid": "Q1460",
+  "source": "https://www.wikidata.org/wiki/Q1460"
+ },
+ "Slovensko": {
+  "country": "sk",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Slovakia",
+   "Slovaquie",
+   "Eslovaquia",
+   "Slowakije",
+   "Slovakije"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Slovakia",
+   "Slovaquie",
+   "Eslovaquia",
+   "Slowakije"
+  ],
+  "qid": "Q214",
+  "source": "https://www.wikidata.org/wiki/Q214"
+ },
+ "Steiermark": {
+  "country": "at",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Styria",
+   "Styrie",
+   "Estiria",
+   "Stiermarken",
+   "Upper Styria",
+   "Austrian Styria"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Styria",
+   "Styrie",
+   "Estiria",
+   "Stiermarken"
+  ],
+  "qid": "Q41358",
+  "source": "https://www.wikidata.org/wiki/Q41358"
+ },
+ "Stredoslovenská": {
+  "country": "sk",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Stredoslovenská vinohradnícka oblasť",
+  "labels": [],
+  "note": "Stredoslovenská vinohradnícka oblasť",
+  "qid": "Q12776835",
+  "source": "https://www.wikidata.org/wiki/Q12776835"
+ },
+ "Tejo": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Ribatejo"
+  ],
+  "label_check": "variant: Do Tejo (DOC)",
+  "labels": [
+   "Ribatejo"
+  ],
+  "note": "Do Tejo (DOC), ex-Ribatejo; not the river Q14294",
+  "qid": "Q140562000",
+  "source": "https://www.wikidata.org/wiki/Q140562000"
+ },
+ "Terasele Dunării": {
+  "country": "ro",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "label_check": "none",
+  "labels": [],
+  "qid": null,
+  "reason": "no item for the Danube Terraces wine region"
+ },
+ "Ticino": {
+  "country": "ch",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Tessin",
+   "Tesino",
+   "Ticinum",
+   "Tisin",
+   "Tesin",
+   "Ticinu"
+  ],
+  "label_check": "variant: Canton Ticino",
+  "labels": [
+   "Tessin",
+   "Tesino"
+  ],
+  "note": "the canton, not the river Q14366",
+  "qid": "Q12724",
+  "source": "https://www.wikidata.org/wiki/Q12724"
+ },
+ "Tirol": {
+  "country": "at",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Tyrol",
+   "Tirool"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Tyrol"
+  ],
+  "note": "the Bundesland, not the historical region Q153809",
+  "qid": "Q42880",
+  "source": "https://www.wikidata.org/wiki/Q42880"
+ },
+ "Tokaj": {
+  "country": [
+   "hu",
+   "sk"
+  ],
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Hegyalja"
+  ],
+  "label_check": "variant: Tokaj-hegyaljai borvidék",
+  "labels": [],
+  "note": "one label, two facets; the Slovak Tokaj is Q1950186",
+  "qid": "Q828125",
+  "source": "https://www.wikidata.org/wiki/Q828125"
+ },
+ "Toscana": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Tuscany",
+   "Toscane"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Tuscany",
+   "Toscane"
+  ],
+  "qid": "Q1273",
+  "source": "https://www.wikidata.org/wiki/Q1273"
+ },
+ "Transilvania": {
+  "country": "ro",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Transylvania",
+   "Transylvanie",
+   "Transsylvanië",
+   "Siebenbürgen",
+   "Ardeal",
+   "Transylvanie roumaine",
+   "Transilvanie",
+   "Transsilvanië",
+   "Zevenburgen"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Transylvania",
+   "Transylvanie",
+   "Transsylvanië"
+  ],
+  "qid": "Q39473",
+  "source": "https://www.wikidata.org/wiki/Q39473"
+ },
+ "Trentino-Alto Adige": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Trentino-South Tyrol",
+   "Trentin-Haut-Adige",
+   "Trentino-Alto Adigio",
+   "Trentino-Zuid-Tirol",
+   "South Tyrol-Trentino",
+   "Trentin-Tyrol du Sud"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Trentino-South Tyrol",
+   "Trentin-Haut-Adige",
+   "Trentino-Alto Adigio",
+   "Trentino-Zuid-Tirol"
+  ],
+  "qid": "Q1237",
+  "source": "https://www.wikidata.org/wiki/Q1237"
+ },
+ "Trois-Lacs": {
+  "country": "ch",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Three-Lakes",
+   "Tres Lagos",
+   "Jura & Three-Lakes"
+  ],
+  "label_check": "variant: Pays des Trois-Lacs",
+  "labels": [
+   "Three-Lakes",
+   "Tres Lagos"
+  ],
+  "note": "Three-Lakes Region (Drei-Seen-Land)",
+  "qid": "Q693912",
+  "source": "https://www.wikidata.org/wiki/Q693912"
+ },
+ "Trás-os-Montes": {
+  "country": "pt",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Trás-os-Montes (DOC)",
+  "labels": [],
+  "note": "the DOC; the former province is Q2179774",
+  "qid": "Q3541228",
+  "source": "https://www.wikidata.org/wiki/Q3541228"
+ },
+ "Umbria": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Ombrie",
+   "Umbrië"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Ombrie",
+   "Umbrië"
+  ],
+  "qid": "Q1280",
+  "source": "https://www.wikidata.org/wiki/Q1280"
+ },
+ "Utrecht": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "note": "the province, not the city Q803",
+  "qid": "Q776",
+  "source": "https://www.wikidata.org/wiki/Q776"
+ },
+ "Valais": {
+  "country": "ch",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Wallis"
+  ],
+  "label_check": "variant: canton du Valais",
+  "labels": [
+   "Wallis"
+  ],
+  "qid": "Q834",
+  "source": "https://www.wikidata.org/wiki/Q834"
+ },
+ "Valle d'Aosta": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Aosta Valley",
+   "Vallée d'Aoste",
+   "Valle de Aosta",
+   "Val d'Aoste",
+   "Val d’Oûta"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Aosta Valley",
+   "Vallée d'Aoste",
+   "Valle de Aosta"
+  ],
+  "note": "the regione; Q140130978 is the wine area",
+  "qid": "Q1222",
+  "source": "https://www.wikidata.org/wiki/Q1222"
+ },
+ "Vaud": {
+  "country": "ch",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: canton de Vaud",
+  "labels": [],
+  "qid": "Q12771",
+  "source": "https://www.wikidata.org/wiki/Q12771"
+ },
+ "Veneto": {
+  "country": "it",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Vénétie"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Vénétie"
+  ],
+  "qid": "Q1243",
+  "source": "https://www.wikidata.org/wiki/Q1243"
+ },
+ "Vlaanderen": {
+  "country": "be",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Flemish",
+   "Flamenca",
+   "Vlaams",
+   "Flanders",
+   "Flandre"
+  ],
+  "label_check": "variant: Vlaanderen",
+  "labels": [
+   "Flemish",
+   "Flamenca",
+   "Vlaams"
+  ],
+  "note": "Flemish Region; Q234 is the ethnic territory",
+  "qid": "Q9337",
+  "source": "https://www.wikidata.org/wiki/Q9337"
+ },
+ "Vorarlberg": {
+  "country": "at",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "exact",
+  "labels": [],
+  "qid": "Q38981",
+  "source": "https://www.wikidata.org/wiki/Q38981"
+ },
+ "Východoslovenská": {
+  "country": "sk",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Východoslovenská vinohradnícka oblasť",
+  "labels": [],
+  "note": "Východoslovenská vinohradnícka oblasť",
+  "qid": "Q16520436",
+  "source": "https://www.wikidata.org/wiki/Q16520436"
+ },
+ "Wales": {
+  "country": "gb",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Galles",
+   "Gales",
+   "Cambria"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Galles",
+   "Gales"
+  ],
+  "qid": "Q25",
+  "source": "https://www.wikidata.org/wiki/Q25"
+ },
+ "Wallonie": {
+  "country": "be",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Wallonia",
+   "Valonia",
+   "Waals",
+   "Walloon",
+   "Valona"
+  ],
+  "label_check": "variant: Wallonie",
+  "labels": [
+   "Wallonia",
+   "Valonia",
+   "Waals"
+  ],
+  "note": "Walloon Region; Q83078 is the ethnic territory",
+  "qid": "Q231",
+  "source": "https://www.wikidata.org/wiki/Q231"
+ },
+ "Wien": {
+  "country": "at",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Vienna",
+   "Vienne",
+   "Viena",
+   "Wenen"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Vienna",
+   "Vienne",
+   "Viena",
+   "Wenen"
+  ],
+  "qid": "Q1741",
+  "source": "https://www.wikidata.org/wiki/Q1741"
+ },
+ "Württemberg": {
+  "country": "de",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "forms_empty_reason": "every en/fr/es/nl label of the item is the native label or carries it as whole words",
+  "label_check": "variant: Weinbaugebiet Württemberg",
+  "labels": [],
+  "note": "wine region, not the historical state Q159626",
+  "qid": "Q166387",
+  "source": "https://www.wikidata.org/wiki/Q166387"
+ },
+ "Zapadna kontinentalna Hrvatska": {
+  "country": "hr",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "label_check": "none",
+  "labels": [],
+  "qid": null,
+  "reason": "no item; Q16951229 = continental HR"
+ },
+ "Zeeland": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Zélande",
+   "Zelanda"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Zélande",
+   "Zelanda"
+  ],
+  "qid": "Q705",
+  "source": "https://www.wikidata.org/wiki/Q705"
+ },
+ "Zemplén": {
+  "country": "hu",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "label_check": "none",
+  "labels": [],
+  "qid": null,
+  "reason": "no item; Q897633 is the Zempléni-hegység range"
+ },
+ "Zuid-Holland": {
+  "country": "nl",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "South Holland",
+   "Hollande-Méridionale",
+   "Holanda Meridional",
+   "Hollande-du-Sud"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "South Holland",
+   "Hollande-Méridionale",
+   "Holanda Meridional"
+  ],
+  "qid": "Q694",
+  "source": "https://www.wikidata.org/wiki/Q694"
+ },
+ "__generated_by__": "scripts/refresh_region_search_terms.py",
+ "__license__": "Wikidata, CC0 1.0 — https://creativecommons.org/publicdomain/zero/1.0/",
+ "Österreich": {
+  "country": "at",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Austria",
+   "Autriche",
+   "Oostenrijk"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Austria",
+   "Autriche",
+   "Oostenrijk"
+  ],
+  "qid": "Q40",
+  "source": "https://www.wikidata.org/wiki/Q40"
+ },
+ "Čechy": {
+  "country": "cz",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Bohemia",
+   "Bohême",
+   "Bohemen",
+   "Bohmen"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Bohemia",
+   "Bohême",
+   "Bohemen"
+  ],
+  "qid": "Q39193",
+  "source": "https://www.wikidata.org/wiki/Q39193"
+ },
+ "Ήπειρος": {
+  "country": "gr",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Epiros",
+   "Épire",
+   "Epirus"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Epiros",
+   "Épire"
+  ],
+  "note": "Epirus, Greek geographic region; Q565751 spans Albania",
+  "qid": "Q19543299",
+  "source": "https://www.wikidata.org/wiki/Q19543299"
+ },
+ "Θεσσαλία": {
+  "country": "gr",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Thessaly",
+   "Thessalie",
+   "Tesalia",
+   "Thessalia"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Thessaly",
+   "Thessalie",
+   "Tesalia"
+  ],
+  "qid": "Q166919",
+  "source": "https://www.wikidata.org/wiki/Q166919"
+ },
+ "Θράκη": {
+  "country": "gr",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Thrace",
+   "Thrace occidentale",
+   "Tracia Occidental",
+   "West-Thracië",
+   "Thrace égéenne",
+   "Tracia griega"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Thrace",
+   "Thrace occidentale",
+   "Tracia Occidental",
+   "West-Thracië"
+  ],
+  "note": "Thrace (Greece); Q41741 is the wider historical region",
+  "qid": "Q1192701",
+  "source": "https://www.wikidata.org/wiki/Q1192701"
+ },
+ "Ιόνια Νησιά": {
+  "country": "gr",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Ionian",
+   "Ioniennes",
+   "Jónicas",
+   "Ionische",
+   "Heptaneso",
+   "Heptonesos"
+  ],
+  "label_check": "variant: Ιόνια νησιά",
+  "labels": [
+   "Ionian",
+   "Ioniennes",
+   "Jónicas",
+   "Ionische"
+  ],
+  "note": "island group; Q1147674 is the administrative region",
+  "qid": "Q170295",
+  "source": "https://www.wikidata.org/wiki/Q170295"
+ },
+ "Κρήτη": {
+  "country": "gr",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Crete",
+   "Creta",
+   "Kreta",
+   "Candia"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Crete",
+   "Creta",
+   "Kreta"
+  ],
+  "note": "the island; Q1267522 is the administrative region",
+  "qid": "Q34374",
+  "source": "https://www.wikidata.org/wiki/Q34374"
+ },
+ "Λάρνακα": {
+  "country": "cy",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Larnaca"
+  ],
+  "label_check": "variant: Επαρχία Λάρνακας",
+  "labels": [
+   "Larnaca"
+  ],
+  "note": "Larnaca District",
+  "qid": "Q59153",
+  "source": "https://www.wikidata.org/wiki/Q59153"
+ },
+ "Λεμεσός": {
+  "country": "cy",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Limassol",
+   "Limasol"
+  ],
+  "label_check": "variant: Επαρχία Λεμεσού",
+  "labels": [
+   "Limassol",
+   "Limasol"
+  ],
+  "note": "Limassol District",
+  "qid": "Q59150",
+  "source": "https://www.wikidata.org/wiki/Q59150"
+ },
+ "Λευκωσία": {
+  "country": "cy",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Nicosia",
+   "Nicosie"
+  ],
+  "label_check": "variant: Επαρχία Λευκωσίας",
+  "labels": [
+   "Nicosia",
+   "Nicosie"
+  ],
+  "note": "Nicosia District",
+  "qid": "Q59147",
+  "source": "https://www.wikidata.org/wiki/Q59147"
+ },
+ "Μακεδονία": {
+  "country": "gr",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Macedonia",
+   "Macédoine grecque",
+   "Macedonië",
+   "Greek Macedonia",
+   "Makedhonía",
+   "Aegean Macedonia",
+   "Macédoine",
+   "Macedonia griega"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Macedonia",
+   "Macédoine grecque",
+   "Macedonië"
+  ],
+  "note": "Macedonia (Greece); not North Macedonia / the kingdom",
+  "qid": "Q81734",
+  "source": "https://www.wikidata.org/wiki/Q81734"
+ },
+ "Νησιά Αιγαίου": {
+  "country": "gr",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Aegean"
+  ],
+  "label_check": "variant: Νησιά Αιγαίου (διαμέρισμα)",
+  "labels": [
+   "Aegean"
+  ],
+  "note": "Greek geographic division; Q878481 spans Turkey",
+  "qid": "Q19543318",
+  "source": "https://www.wikidata.org/wiki/Q19543318"
+ },
+ "Πάφος": {
+  "country": "cy",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Paphos",
+   "Pafos"
+  ],
+  "label_check": "variant: Επαρχία Πάφου",
+  "labels": [
+   "Paphos",
+   "Pafos"
+  ],
+  "note": "Paphos District — labelled in the genitive (Επαρχία Πάφου)",
+  "qid": "Q59133",
+  "source": "https://www.wikidata.org/wiki/Q59133"
+ },
+ "Πελοπόννησος": {
+  "country": "gr",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Peloponnese",
+   "Peloponeso",
+   "Peloponnesos",
+   "Peloponnesus",
+   "Morée",
+   "Péloponèse",
+   "Morea"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Peloponnese",
+   "Peloponeso",
+   "Peloponnesos"
+  ],
+  "note": "peninsula / geographic region, en label 'Peloponnese'",
+  "qid": "Q78967",
+  "source": "https://www.wikidata.org/wiki/Q78967"
+ },
+ "Στερεά Ελλάδα": {
+  "country": "gr",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Central Greece",
+   "Grèce centrale",
+   "Grecia Central",
+   "Sterea Ellada",
+   "Continental Greece"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Central Greece",
+   "Grèce centrale",
+   "Grecia Central"
+  ],
+  "note": "traditional region; Q199580 is the admin region",
+  "qid": "Q190600",
+  "source": "https://www.wikidata.org/wiki/Q190600"
+ },
+ "Долината на Струма": {
+  "country": "bg",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "label_check": "none",
+  "labels": [],
+  "qid": null,
+  "reason": "no item for the wine region; Q204127 is the river"
+ },
+ "Дунавска равнина": {
+  "country": "bg",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Danubian Plain",
+   "Llanura danubiana"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Danubian Plain",
+   "Llanura danubiana"
+  ],
+  "qid": "Q1241026",
+  "source": "https://www.wikidata.org/wiki/Q1241026"
+ },
+ "Розова долина": {
+  "country": "bg",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Rose Valley",
+   "vallée des roses",
+   "Valle de las Rosas",
+   "Rozova Dolina"
+  ],
+  "label_check": "exact",
+  "labels": [
+   "Rose Valley",
+   "vallée des roses",
+   "Valle de las Rosas"
+  ],
+  "qid": "Q768480",
+  "source": "https://www.wikidata.org/wiki/Q768480"
+ },
+ "Тракийска низина": {
+  "country": "bg",
+  "fetched_at": "2026-09-25",
+  "forms": [
+   "Upper Thracian Plain",
+   "Llanura tracia superior",
+   "Thracische vlakte",
+   "Llanura tracia"
+  ],
+  "label_check": "variant: Тракийската низина",
+  "labels": [
+   "Upper Thracian Plain",
+   "Llanura tracia superior",
+   "Thracische vlakte"
+  ],
+  "note": "Upper Thracian Plain; alias Тракийската низина",
+  "qid": "Q1091567",
+  "source": "https://www.wikidata.org/wiki/Q1091567"
+ },
+ "Черноморски район": {
+  "country": "bg",
+  "fetched_at": "2026-09-25",
+  "forms": [],
+  "label_check": "none",
+  "labels": [],
+  "qid": null,
+  "reason": "no item for the wine region; Q1142729 is the coast"
+ }
+}

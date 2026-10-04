@@ -143,8 +143,16 @@ def _build_canton_extracts(commune_idx: CHCommuneIndex,
         # area-of-application). A canton's règlement that name-drops
         # another canton's commune in a cross-reference shouldn't add
         # that commune to the AOC's polygon.
-        communes = [c for c in communes if c.get("canton") == canton
-                    or canton in ("be", "vs", "fr", "gr")]  # bilingual cantons may straddle
+        #
+        # This used to be waived for be/vs/fr/gr as "bilingual cantons
+        # may straddle", which conflates language with territory: a
+        # canton is not bilingual across a border, and its règlement
+        # still delimits communes inside it. The waiver let the BE
+        # règlement's German common noun "Messen" resolve to the
+        # Solothurn commune Messen and join the Bern AOC polygon. The
+        # one genuine cross-canton area (Vully, FR + VD) is curated in
+        # PER_AOC_COMMUNE_LISTS, which bypasses this filter below.
+        communes = [c for c in communes if c.get("canton") == canton]
         summary = summary_paragraph(text)
 
         # Per-AOC carving (multi-AOC cantons VD/BE/FR). Returns
@@ -161,7 +169,7 @@ def _build_canton_extracts(commune_idx: CHCommuneIndex,
                 for h in hits:
                     if h["bfs_id"] in seen_bfs:
                         continue
-                    if h["canton"] != canton and canton not in ("be", "vs", "fr", "gr"):
+                    if h["canton"] != canton:
                         continue
                     seen_bfs.add(h["bfs_id"])
                     kept_hits.append(h)

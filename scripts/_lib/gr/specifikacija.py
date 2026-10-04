@@ -415,6 +415,27 @@ def _terroir_window(text: str) -> str:
     return re.sub(r"\s+", " ", text[start:end]).strip()
 
 
+_GEO_START_ANCHORS = ("οριοθετημενη περιοχη", "οριοθετημενη ζωνη")
+_GEO_END_ANCHORS = (
+    "μεγιστη αποδοση", "μεγιστη(εσ) αποδοση", "νομικο πλαισιο", "χαρτησ οριοθετημενησ",
+    "οινοποιησιμεσ ποικιλιεσ", "δεσμοσ με",
+)
+
+
+def _geo_window(text: str) -> str:
+    """The 'ΟΡΙΟΘΕΤΗΜΕΝΗ ΠΕΡΙΟΧΗ' paragraph carved out of the full text by
+    anchor, for a salvaged .doc with no header lines (Σιάτιστα): from the
+    section heading to the next section's heading, capped at 2 500 chars."""
+    folded = _fold_keep_len(text)
+    start = min((folded.find(a) for a in _GEO_START_ANCHORS if a in folded), default=-1)
+    if start < 0:
+        return ""
+    ends = [folded.find(a, start + 40) for a in _GEO_END_ANCHORS]
+    ends = [e for e in ends if e != -1]
+    end = min([*ends, start + 2500])
+    return re.sub(r"\s+", " ", text[start:end]).strip()
+
+
 def parse_spec(path: Path, slug: str, name: str = "") -> dict:
     """Parse one national-spec file into a sidecar dict. `name` is the
     appellation's own name — excluded from grape matching so the name
@@ -439,6 +460,10 @@ def parse_spec(path: Path, slug: str, name: str = "") -> dict:
                 best = cand
         grapes = best
     geo = sections.get("geo_area", "")
+    if len(geo) < 60:
+        # No clean area section (corrupt-doc salvage): window the
+        # 'ΟΡΙΟΘΕΤΗΜΕΝΗ ΠΕΡΙΟΧΗ' paragraph out of the full text.
+        geo = _geo_window(text) or geo
     link = sections.get("link_to_terroir", "")
     if len(link) < 400:
         # No clean link section (corrupt-doc salvage): window the

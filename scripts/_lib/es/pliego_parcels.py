@@ -51,6 +51,8 @@ class PolygonInclusion:
 #   - dotted enum:       `1. 4. 5`
 #   - "del N al N" range:  `del 11 al 16`
 #   - plain " al " range:  `7 al 11`
+# The trailing "ambos incluidos" / "inclusive estos" of a closed range
+# is not part of the list and is simply left unmatched.
 _NUMBER_LIST_INNER = (
     r"\d+"
     r"(?:"
@@ -62,11 +64,29 @@ _NUMBER_LIST_INNER = (
     r")*"
 )
 
+# A closed-range list with no bare number in front: "del 1 al 12 y del
+# 18 al 29" / "del 33 al 42" (Sierra Sur de Jaén). Kept apart from the
+# comma form because POLYGONS_LIST_RE demands a leading "N," to stay
+# clear of "polígono 19 parcelas …" references.
+_RANGE_LIST = (
+    r"del?\s+\d+\s+al\s+\d+"
+    r"(?:\s*(?:,|;|\s(?:y|i|e))\s*del?\s+\d+\s+al\s+\d+)*"
+)
+
+# The keyword that opens a polygon list. Pliegos write "polígonos
+# números", "polígonos n.º", "polígonos catastrales" (Rueda, Campo de
+# Borja, Valdejalón) and "polígonos catastrales actuales" (Sierra Sur de
+# Jaén); the qualifiers are optional and never change the meaning.
+_POLYGONS_KW = (
+    r"pol[ií]gonos?\s+(?:catastrales\s+)?(?:actuales\s+)?"
+    r"(?:números?\s+|n\s*[ºo°]?\s*\.?\s*)?"
+)
+
 # Pattern A — "X polígonos números 1, 4, 5, 6, 7, 21 y 25 enteros".
 # `enteros` is the keyword that says "the whole polygon is included".
 WHOLE_POLYGONS_RE = re.compile(
-    r"polígonos?\s+(?:números?\s+|n\s*[ºo°]?\s*\.?\s*)?"
-    rf"(?P<list>{_NUMBER_LIST_INNER})"
+    _POLYGONS_KW
+    + rf"(?P<list>{_NUMBER_LIST_INNER})"
     r"\s*enteros?\b",
     re.IGNORECASE,
 )
@@ -77,9 +97,11 @@ WHOLE_POLYGONS_RE = re.compile(
 # multi-number list, otherwise we'd false-positive on "polígono 19" /
 # "del polígono n.º 2" style references that introduce parcela lists.
 POLYGONS_LIST_RE = re.compile(
-    r"(?<![\.\d])(?:los\s+)?polígonos\s+(?:números?\s+|n\s*[ºo°]?\s*\.?\s*)?"
-    r"(?P<list>\d+\s*[,;]\s*"  # at least one comma to ensure multi-number
-    rf"{_NUMBER_LIST_INNER})",
+    r"(?<![\.\d])(?:los\s+)?"
+    + _POLYGONS_KW
+    + r"(?P<list>\d+\s*[,;]\s*"  # at least one comma to ensure multi-number
+    rf"{_NUMBER_LIST_INNER}"
+    rf"|{_RANGE_LIST})",
     re.IGNORECASE,
 )
 
@@ -102,6 +124,26 @@ MUNICIPIO_ANCHOR_RE = re.compile(
 COLON_MUNI_ANCHOR_RE = re.compile(
     r"(?:^|\n)\s*(?P<name>[A-ZÀ-ÿ][A-Za-zÀ-ÿ' ]{2,40}?)\s*:\s*\n",
     re.MULTILINE,
+)
+
+# C. Parenthetical anchor: "Alcaudete (polígonos catastrales actuales del
+#    1 al 12 …) y Martos (polígonos …)" (Sierra Sur de Jaén), "Órbita
+#    (polígonos catastrales 1, 2, 4 y 5)" (Rueda). The name is the
+#    capitalised run right before the bracket; a run that swallowed an
+#    earlier list item ("Los Villares y Valdepeñas") keeps only the part
+#    after the last "y" / "i" / "e".
+PAREN_MUNI_ANCHOR_RE = re.compile(
+    r"(?P<name>[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÿ' ]{1,40}?)\s*\(\s*(?=pol[ií]gonos)",
+)
+
+# D. Post-anchor: "los polígonos catastrales número 4, 5, … y 11 del
+#    término municipal de Mallén" (Campo de Borja) — the municipio comes
+#    AFTER its list, so a list followed by this phrase binds to that
+#    name rather than to the closest preceding anchor.
+POST_MUNI_ANCHOR_RE = re.compile(
+    r"\s*del?\s+t[eé]rmino\s+municipal\s+de(?:l)?\s+"
+    r"(?P<name>[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÿ' ]{1,40}?)"
+    r"(?=[,;:\n).]|\s+(?:y|i|e)\s|$)",
 )
 
 # Stopwords that look like names but aren't (Spanish/Catalan function
@@ -165,13 +207,20 @@ def parse_polygon_inclusions(text: str) -> list[PolygonInclusion]:
         for m in COLON_MUNI_ANCHOR_RE.finditer(text)
         if m.group("name").strip().lower() not in _ANCHOR_STOPWORDS
     ]
-    anchors = sorted(inline_anchors + colon_anchors, key=lambda a: a[0])
+    # Pattern C anchors: NAME (polígonos …). The anchor position is the
+    # bracket, so it is the closest preceding anchor for its own list.
+    paren_anchors = []
+    for m in PAREN_MUNI_ANCHOR_RE.finditer(text):
+        name = re.split(r"\s+(?:y|i|e)\s+", m.group("name").strip())[-1].strip()
+        if name and name.lower() not in _ANCHOR_STOPWORDS:
+            paren_anchors.append((m.end() - 1, name))
+    anchors = sorted(inline_anchors + colon_anchors + paren_anchors, key=lambda a: a[0])
 
     by_muni_norm: dict[str, PolygonInclusion] = {}
 
     # Strict pass: enteros-marked polygons (Pattern A)
     for m in WHOLE_POLYGONS_RE.finditer(text):
-        _attribute(m, anchors, _parse_number_list(m.group("list")), by_muni_norm)
+        _attribute(m, text, anchors, _parse_number_list(m.group("list")), by_muni_norm)
 
     # Soft pass: any "polígonos N, N, N" enumeration. Avoid double-counting
     # by skipping mentions whose start position overlaps an enteros match.
@@ -179,27 +228,34 @@ def parse_polygon_inclusions(text: str) -> list[PolygonInclusion]:
     for m in POLYGONS_LIST_RE.finditer(text):
         if any(s <= m.start() < e for s, e in enteros_spans):
             continue
-        _attribute(m, anchors, _parse_number_list(m.group("list")), by_muni_norm)
+        _attribute(m, text, anchors, _parse_number_list(m.group("list")), by_muni_norm)
 
     return list(by_muni_norm.values())
 
 
 def _attribute(
     match: re.Match,
+    text: str,
     anchors: list[tuple[int, str]],
     polygons: set[int],
     out: dict[str, PolygonInclusion],
 ) -> None:
-    """Find the closest preceding anchor and add `polygons` to that
-    municipio's inclusion set in `out` (in-place)."""
+    """Bind `polygons` to a municipio — the "del término municipal de X"
+    phrase right after the list when there is one, else the closest
+    preceding anchor — and add them to that municipio's inclusion set
+    in `out` (in-place)."""
     if not polygons:
         return
     municipio = None
-    for anchor_pos, anchor_name in anchors:
-        if anchor_pos < match.start():
-            municipio = anchor_name
-        else:
-            break
+    post = POST_MUNI_ANCHOR_RE.match(text, match.end())
+    if post and post.group("name").strip().lower() not in _ANCHOR_STOPWORDS:
+        municipio = post.group("name").strip()
+    else:
+        for anchor_pos, anchor_name in anchors:
+            if anchor_pos < match.start():
+                municipio = anchor_name
+            else:
+                break
     if not municipio:
         return
     norm = _normalise_municipi(municipio)

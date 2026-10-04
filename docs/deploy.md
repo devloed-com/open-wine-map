@@ -55,6 +55,16 @@ first deploy from a fresh checkout has no fingerprints and submits every
 changed page, then writes the file. The upload itself is still the byte-level
 diff against the storage zone — the filter only narrows the IndexNow list.
 
+Each page is submitted under its own canonical URL, the form the sitemap
+carries (`public_url`: `/` for `index.html` and `en/index.html`, `/<lang>/`
+and `/<lang>/appellations/` with the trailing slash, `/<lang>/<slug>` without
+it), and a page whose head carries a robots `noindex` (the folded
+sub-denomination / stub pages) is never submitted (`indexnow_urls`) — not
+even when it has just turned noindex: Bing drops it on its own recrawl, and
+the deploy log says how many noindex pages and duplicate URLs it left out. Until
+2026-09-26 the deploy pushed the directory form of every page — 11,821 URLs
+Bing had never seen in the sitemap — plus 5,180 noindex pages.
+
 ## Commands
 
     scripts/deploy.sh                 # production (unchanged default)

@@ -443,6 +443,19 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
             f'<li><a href="{esc(sources["regional_register_url"])}" target="_blank" rel="noopener">'
             f'{lab["src_regional_register"]}</a>{reg}</li>'
         )
+    if sources.get("parroquias_url"):
+        # The CC-BY attribution the IET layer requires, beside the dataset link.
+        licence = (
+            f'<a href="{esc(sources["parroquias_licence_url"])}" target="_blank" rel="noopener">'
+            f'{esc(sources["parroquias_licence"])}</a>'
+            if sources.get("parroquias_licence_url")
+            else esc(sources.get("parroquias_licence") or "")
+        )
+        links.append(
+            f'<li><a href="{esc(sources["parroquias_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_parroquias"]}</a> — {esc(sources.get("parroquias_attribution") or "")}'
+            f" · {licence}</li>"
+        )
     if sources.get("id_eambrosia"):
         from urllib.parse import quote
 
@@ -760,6 +773,57 @@ def cancelled_line_html(rec: dict, ctx: RenderCtx) -> str:
     return f'<div class="cancelled-line">{text}</div>'
 
 
+def _promoted_date(c: dict, ctx: RenderCtx) -> str:
+    iso = c.get("promoted_on") or ""
+    try:
+        return _format_date(_date.fromisoformat(iso), format="long", locale=ctx.locale)
+    except (ValueError, TypeError):
+        return iso
+
+
+def promoted_badge_html(rec: dict, ctx: RenderCtx, small: bool = False) -> str:
+    """The 'Promoted' badge for a denomination in _lib/promoted_gis.json —
+    a former DGC that became an appellation of its own. Mirrors
+    promotedBadge in app.js."""
+    c = rec.get("promoted")
+    if not c:
+        return ""
+    lab = ctx.labels
+    title = fmt(lab["promoted_badge_title"], {"date": _promoted_date(c, ctx)})
+    cls = "promoted-badge sm" if small else "promoted-badge"
+    return f'<span class="{cls}" title="{esc(title)}">{esc(lab["promoted_badge"])}</span>'
+
+
+def promoted_line_html(rec: dict, ctx: RenderCtx) -> str:
+    """Dated, source-linked promotion line — mirrors promotedLine in app.js."""
+    c = rec.get("promoted")
+    if not c:
+        return ""
+    lab = ctx.labels
+    act = (
+        f'<a href="{esc(c["national_url"])}" target="_blank" rel="noopener">{esc(c.get("national_act") or "")}</a>'
+        if c.get("national_url")
+        else esc(c.get("national_act") or "")
+    )
+    name = c.get("successor_name") or c.get("successor_slug") or ""
+    succ = (
+        f'<a class="parent-link" data-slug="{esc(c["successor_slug"])}" href="#">{esc(name)}</a>'
+        if c.get("successor_slug")
+        else esc(name)
+    )
+    text = fmt(
+        lab["promoted_line"],
+        {"date": esc(_promoted_date(c, ctx)), "successor": succ, "act": act},
+    )
+    if c.get("cahier_url"):
+        cahier = (
+            f'<a href="{esc(c["cahier_url"])}" target="_blank" rel="noopener">'
+            f'{esc(lab["promoted_cahier_link"])}</a>'
+        )
+        text += " " + fmt(lab["promoted_cahier"], {"cahier": cahier})
+    return f'<div class="promoted-line">{text}</div>'
+
+
 def classification_html(rec: dict, ctx: RenderCtx) -> str:
     """The two naming tokens of the meta line — traditional term first, legal
     scheme in brackets — as spans the client tooltip can target, each carrying
@@ -835,6 +899,124 @@ def has_footprint(rec: dict, lod: dict) -> bool:
     )
 
 
+def _parroquias_line(rec: dict, lab: dict) -> str:
+    """Galician parishes drawn from the IET Mapa de Parroquias: which ones,
+    with the layer's attribution linked to its licence. Mirrors
+    ``parroquiasLine`` in app.js."""
+    sources = rec.get("sources") or {}
+    names = sources.get("parroquias_matched") or []
+    if not names:
+        return ""
+    src = (
+        f'<a href="{esc(sources.get("parroquias_licence_url") or "")}" target="_blank" '
+        f'rel="noopener">{esc(sources.get("parroquias_attribution") or "")} · '
+        f'{esc(sources.get("parroquias_licence") or "")}</a>'
+    )
+    line = fmt(
+        lab["geom_parroquias_line"],
+        {"n": len(names), "source": src, "names": esc("; ".join(names))},
+    )
+    return f'<div class="approx-line">{line}</div>'
+
+
+def _sigpac_line(rec: dict, lab: dict) -> str:
+    """SIGPAC polígono inclusions: which reading drew them (the polígonos
+    whole, or their vineyard parcels), per municipio the polígonos found
+    over those listed, the whole municipios beside them, and the
+    publication's attribution linked. Mirrors ``sigpacLine`` in app.js."""
+    sources = rec.get("sources") or {}
+    semantics = sources.get("sigpac_semantics") or ""
+    municipios = sources.get("sigpac_municipios") or []
+    if rec.get("geom_source") != "sigpac-hybrid-pliego" or not semantics or not municipios:
+        return ""
+    src = " · ".join(
+        f'<a href="{esc(s.get("licence_url") or s.get("url") or "")}" target="_blank" '
+        f'rel="noopener">{esc(s.get("attribution") or "")}'
+        f'{" · " + esc(s["licence"]) if s.get("licence") else ""}</a>'
+        for s in (sources.get("sigpac_sources") or [])
+    )
+    munis = ", ".join(
+        f'{esc(m.get("name") or "")} ({m.get("found", 0)}'
+        f'{"" if m.get("found", 0) == m.get("listed", 0) else "/" + str(m.get("listed", 0))})'
+        for m in municipios
+    )
+    key = "geom_sigpac_vineyard" if semantics == "vineyard" else "geom_sigpac_footprint"
+    line = fmt(
+        lab[key],
+        {"n": sum(m.get("listed", 0) for m in municipios), "municipios": munis, "source": src},
+    )
+    whole = sources.get("sigpac_whole") or []
+    if whole:
+        line += " " + esc(fmt(lab["geom_sigpac_whole"], {"whole": ", ".join(whole)}))
+    return f'<div class="approx-line">{line}</div>'
+
+
+def _units_line(rec: dict, lab: dict) -> str:
+    """What the area text named that the commune layer does not carry (not
+    drawn), and the localities drawn as their container — the Greek
+    area-units resolver's disclosure. Mirrors ``unitsLine`` in app.js."""
+    out = ""
+    unmatched = rec.get("geom_units_unmatched") or []
+    if unmatched:
+        names = ", ".join(esc(str(n)) for n in unmatched)
+        out += f'<div class="approx-line">{fmt(lab["geom_units_unmatched"], {"names": names})}</div>'
+    proxied = rec.get("geom_units_proxied") or []
+    if proxied:
+        names = ", ".join(esc(str(n)) for n in proxied)
+        out += f'<div class="approx-line">{fmt(lab["geom_units_proxied"], {"names": names})}</div>'
+    for key in ("geom_units_boundary", "geom_units_boundary_units"):
+        boundary = rec.get(key) or []
+        if boundary:
+            names = ", ".join(esc(str(n)) for n in boundary)
+            out += f'<div class="approx-line">{fmt(lab[key], {"names": names})}</div>'
+    return out
+
+
+def _parcel_fill_line(rec: dict, lab: dict) -> str:
+    """INAO parcellaire gaps a curator pin filled — which communes, drawn as
+    a donor appellation's parcels or whole — and the gaps of a pinned record
+    still open (scripts/_lib/parcellaire_gaps.py). Mirrors
+    ``parcelFillLine`` in app.js."""
+    out = ""
+    fills = rec.get("geom_parcel_fill") or []
+    by_donor: dict[str, list[str]] = {}
+    whole: list[str] = []
+    for f in fills:
+        if f.get("how") == "donor-parcels" and f.get("donor"):
+            by_donor.setdefault(f["donor"], []).append(f["name"])
+        else:
+            whole.append(f["name"])
+    for donor, names in by_donor.items():
+        out += (
+            '<div class="approx-line">'
+            + fmt(lab["geom_parcel_fill_donor"],
+                  {"donor": esc(donor), "names": ", ".join(esc(n) for n in names)})
+            + "</div>"
+        )
+    if whole:
+        out += (
+            '<div class="approx-line">'
+            + fmt(lab["geom_parcel_fill_commune"], {"names": ", ".join(esc(n) for n in whole)})
+            + "</div>"
+        )
+    gaps = rec.get("geom_parcel_gaps") or []
+    if gaps:
+        out += (
+            '<div class="approx-line">'
+            + fmt(lab["geom_parcel_gaps"], {"names": ", ".join(esc(str(n)) for n in gaps)})
+            + "</div>"
+        )
+    carry = rec.get("geom_parcel_carry") or {}
+    if carry.get("release"):
+        out += (
+            '<div class="approx-line">'
+            + fmt(lab["geom_parcel_carry"],
+                  {"release": esc(str(carry["release"])), "current": esc(str(carry.get("current", "")))})
+            + "</div>"
+        )
+    return out
+
+
 def _approx_line(rec: dict, ctx: RenderCtx) -> str:
     lab = ctx.labels
     gs = rec.get("geom_source")
@@ -869,8 +1051,13 @@ def _approx_line(rec: dict, ctx: RenderCtx) -> str:
     else:
         line = _geom_source_line(rec, lab)
     out = f'<div class="approx-line">{line}</div>' if line else ""
+    out += (
+        _parroquias_line(rec, lab) + _sigpac_line(rec, lab) + _units_line(rec, lab)
+        + _parcel_fill_line(rec, lab)
+    )
     if has_footprint(rec, ctx.lod):
-        note = fmt(lab["geom_lod_footprint_static"], {"radius": ctx.lod.get("radius_m", "")})
+        note = fmt(lab["geom_lod_footprint_static"],
+                   {"radius": rec.get("geom_lod_radius_m") or ctx.lod.get("radius_m", "")})
         out += f'<div class="approx-line lod-line">{esc(note)}</div>'
     return out
 
@@ -1001,8 +1188,8 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
 
     inner = (
         f"<h1>{name_with_latin(rec)}</h1>"
-        f'<div class="meta">{country_seg}{classification_html(rec, ctx) or esc(rec.get("kind") or "")}{cancelled_badge_html(rec, ctx)}{region_seg}{meta_tail}</div>'
-        f"{cancelled_line_html(rec, ctx)}{dgc_line}{approx_line}{stub_line}"
+        f'<div class="meta">{country_seg}{classification_html(rec, ctx) or esc(rec.get("kind") or "")}{cancelled_badge_html(rec, ctx)}{promoted_badge_html(rec, ctx)}{region_seg}{meta_tail}</div>'
+        f"{cancelled_line_html(rec, ctx)}{promoted_line_html(rec, ctx)}{dgc_line}{approx_line}{stub_line}"
         f"{_section(lab['panel_styles_h'], style_chips)}"
         f"{_section(lab['facet_principal_h'], principal)}"
         f"{pt_role_disclaimer}"

@@ -23,6 +23,13 @@
     "Exactly one part must match — zero or several is reported as STALE and the",
     "part is NOT clipped (fail loud, never guess).",
     "",
+    "A clip's `geom_source` names the resolver whose output it applies to (stage 04",
+    "skips the clip when another resolver won the record). `file_number` lets the",
+    "audit re-derive a `figshare-pdo` clip against EU_PDO.gpkg. A clip on a",
+    "`gisco-nuts-region` union has no Bétard polygon: its signatures are taken from",
+    "the union of the GISCO NUTS polygons the record resolves to (raw/gr/nuts,",
+    "raw/nl/nuts), which is the geometry stage 04 clips.",
+    "",
     "Every clip entry must cite a public, checkable reason: what the part is, why",
     "it does not belong, and what it overlaps. `verified` is the review date."
   ],
@@ -154,6 +161,165 @@
           "verified": "2026-05-22"
         }
       ]
+    },
+    "hrvatsko-primorje": {
+      "file_number": "PDO-HR-A1650",
+      "geom_source": "figshare-pdo",
+      "drop": [
+        {
+          "centroid_latlon": [
+            43.881,
+            15.8909
+          ],
+          "area_km2": 184.23,
+          "reason": "Fragment 57 km SE of the Kvarner / Vinodol main body. It is the whole LAU of Skradin (GISCO HR_03948, 184.3 km2, Šibenik-Knin) and lies inside Dalmatinska zagora (PDO-HR-A1648) and Primorska Hrvatska. The MPS product specification (poljoprivreda.gov.hr, Hrvatsko_primorje.doc, 'Granice područja') does not list Skradin. It lists Lovran … Bakar, Bribir, Crikvenica, Novi Vinodolski, Vinodolska općina … Senj plus the islands Krk, Rab, Cres, Lošinj, Susak, Pag and Vir, with Bribir placed in vinogorje Opatija-Rijeka-Vinodol. The MPS Dalmatinska zagora spec lists Skradin. Bétard 2022 EU_PDO.gpkg cross-attribution, most likely from the Vinodol 'Bribir' being matched to a namesake place in Skradin.",
+          "verified": "2026-09-24"
+        }
+      ]
+    },
+    "moschatos-riou-patras": {
+      "file_number": "PDO-GR-A1316",
+      "geom_source": "figshare-pdo",
+      "drop": [
+        {
+          "centroid_latlon": [
+            38.0782,
+            22.2156
+          ],
+          "area_km2": 17.595,
+          "reason": "Δ.Κ. Πλατάνου of the Aigialeia municipality (GISCO LAU EL_37020312, 21.2 km²; 96 % of the part), on the Gulf of Corinth coast at Akrata, ~28 km E of the Rio main body. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/moschatos-riou-patras.json, geo_area_brief; Β.Δ. 386/1971 as amended by Π.Δ. 242/1982) says the zone 'εκτείνεται κυρίως στην περιοχή Ρίου (Άγιος Βασίλειος, Άγιος Γεώργιος, Άνω & Κάτω Καστρίτσι, Αργυρά, Βερναρδέικα, Δρέπανο, Πλατάνι, Ρίο, Ψαθόπυργος), ενώ μικρή έκταση είναι στο ΒΑ τμήμα της περιοχής Πατρέων' — Πλατάνι of Rio is GISCO Δ.Κ. Πλατανίου (EL_37010510, 5.8 km², in the Ρίου municipal unit 370105 with Άνω Καστριτσίου, Αργυράς and Ψαθοπύργου, which the main body covers). Bétard 2022 EU_PDO.gpkg matched the Aigialeia homonym instead and draws only 4 % of the Rio community.",
+          "verified": "2026-09-24"
+        },
+        {
+          "centroid_latlon": [
+            38.166,
+            22.2567
+          ],
+          "area_km2": 3.702,
+          "reason": "Second piece of the same GISCO LAU Δ.Κ. Πλατάνου of Aigialeia (EL_37020312; 89 % of the part), ~26 km E of the Rio main body. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/moschatos-riou-patras.json, geo_area_brief; Β.Δ. 386/1971 as amended by Π.Δ. 242/1982) says the zone 'εκτείνεται κυρίως στην περιοχή Ρίου (Άγιος Βασίλειος, Άγιος Γεώργιος, Άνω & Κάτω Καστρίτσι, Αργυρά, Βερναρδέικα, Δρέπανο, Πλατάνι, Ρίο, Ψαθόπυργος), ενώ μικρή έκταση είναι στο ΒΑ τμήμα της περιοχής Πατρέων' — Πλατάνι of Rio is GISCO Δ.Κ. Πλατανίου (EL_37010510, 5.8 km², in the Ρίου municipal unit 370105 with Άνω Καστριτσίου, Αργυράς and Ψαθοπύργου, which the main body covers). Bétard 2022 EU_PDO.gpkg matched the Aigialeia homonym instead and draws only 4 % of the Rio community.",
+          "verified": "2026-09-24"
+        }
+      ]
+    },
+    "moschato-patron": {
+      "file_number": "PDO-GR-A1087",
+      "geom_source": "figshare-pdo",
+      "drop": [
+        {
+          "centroid_latlon": [
+            37.9074,
+            22.1579
+          ],
+          "area_km2": 5.02,
+          "reason": "Δ.Κ. Αγίου Νικολάου of the Kalavryta municipality (GISCO LAU EL_37050302, 5.1 km²; 95 % of the part), in the mountains ~40 km SE of the main body. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/moschato-patron.json, geo_area_brief; Β.Δ. 386/1971 as amended by Π.Δ. 242/1982) lists the zone's areas around Patras — Βραχναίικων, Δύμης, 'Λαρισσού (Άγιος Νικόλαος, Ρίολος)', Μεσσάτιδος, Παραλίας, Ρίου, Φαρρών, Ωλενίας — with NUTS 'GR232 Αχαΐα'. The Άγιος Νικόλαος it names is the one under Λαρισσού in western Achaia (GISCO: Δ.Κ. Αγίου Νικολάου Κράλης EL_37030402 and Δ.Κ. Αγίου Νικολάου Σπάτων EL_37030202, both in the Δυτική Αχαΐα municipality 3703); Bétard 2022 EU_PDO.gpkg matched the Kalavryta homonym instead and draws neither (6 % / 0 % covered).",
+          "verified": "2026-09-24"
+        }
+      ]
+    },
+    "mavrodafni-patron": {
+      "file_number": "PDO-GR-A1048",
+      "geom_source": "figshare-pdo",
+      "drop": [
+        {
+          "centroid_latlon": [
+            38.0782,
+            22.2156
+          ],
+          "area_km2": 17.595,
+          "reason": "Δ.Κ. Πλατάνου of the Aigialeia municipality (GISCO LAU EL_37020312, 21.2 km²; 96 % of the part), on the Gulf of Corinth coast at Akrata, ~27 km E of the main body. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/mavrodafni-patron.json, geo_area_brief; Β.Δ. 386/1971 as amended by Π.Δ. 201/1993) confines the PDO to 'τριών ζωνών της επαρχίας Πατρών του Νομού Αχαΐας' (NUTS 'GR232 Αχαΐα'): zone α around Patras, zone β 'του Ρίου' and zone γ west of the Arla road. Zone β names 'Πλατανιού' — Πλατάνι of Rio, GISCO Δ.Κ. Πλατανίου (EL_37010510, under the main body); Bétard 2022 EU_PDO.gpkg matched the Aigialeia homonym instead.",
+          "verified": "2026-09-24"
+        },
+        {
+          "centroid_latlon": [
+            38.166,
+            22.2567
+          ],
+          "area_km2": 3.702,
+          "reason": "Second piece of the same GISCO LAU Δ.Κ. Πλατάνου of Aigialeia (EL_37020312; 89 % of the part), ~26 km E of the main body. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/mavrodafni-patron.json, geo_area_brief; Β.Δ. 386/1971 as amended by Π.Δ. 201/1993) confines the PDO to 'τριών ζωνών της επαρχίας Πατρών του Νομού Αχαΐας' (NUTS 'GR232 Αχαΐα'): zone α around Patras, zone β 'του Ρίου' and zone γ west of the Arla road. Zone β names 'Πλατανιού' (Rio); Bétard 2022 EU_PDO.gpkg matched the Aigialeia homonym instead.",
+          "verified": "2026-09-24"
+        },
+        {
+          "centroid_latlon": [
+            37.9074,
+            22.1579
+          ],
+          "area_km2": 5.02,
+          "reason": "Δ.Κ. Αγίου Νικολάου of the Kalavryta municipality (GISCO LAU EL_37050302, 5.1 km²; 95 % of the part), in the mountains ~32 km SE of the main body. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/mavrodafni-patron.json, geo_area_brief; Β.Δ. 386/1971 as amended by Π.Δ. 201/1993) confines the PDO to 'τριών ζωνών της επαρχίας Πατρών του Νομού Αχαΐας' (NUTS 'GR232 Αχαΐα'): zone α around Patras, zone β 'του Ρίου' and zone γ west of the Arla road. Zone α names 'Αγ. Νικολάου' among the communities around Patras (GISCO: Δ.Κ. Αγίου Νικολάου Κράλης EL_37030402 / Σπάτων EL_37030202, Δυτική Αχαΐα); Bétard 2022 EU_PDO.gpkg matched the Kalavryta homonym instead.",
+          "verified": "2026-09-24"
+        },
+        {
+          "centroid_latlon": [
+            37.875,
+            21.5977
+          ],
+          "area_km2": 24.135,
+          "reason": "Δ.Κ. Μαζαρακίου in Ilia (GISCO LAU EL_39060213, 23.9 km²; 97 % of the part), inside NUTS-3 EL633 Ηλεία — outside Νομός Αχαΐας altogether, ~11 km SW of the main body. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/mavrodafni-patron.json, geo_area_brief; Β.Δ. 386/1971 as amended by Π.Δ. 201/1993) confines the PDO to 'τριών ζωνών της επαρχίας Πατρών του Νομού Αχαΐας' (NUTS 'GR232 Αχαΐα'): zone α around Patras, zone β 'του Ρίου' and zone γ west of the Arla road. Zone α names 'Μαζαρακίου' among the communities around Patras; Bétard 2022 EU_PDO.gpkg matched the Ilia homonym instead. Not listed as detached by the audit: the part lies within 25 km of the main body and is chained to it.",
+          "verified": "2026-09-24"
+        },
+        {
+          "centroid_latlon": [
+            37.703,
+            21.4369
+          ],
+          "area_km2": 6.426,
+          "reason": "Δ.Κ. Αγίου Γεωργίου of the Pyrgos municipality (GISCO LAU EL_39010102, 6.4 km²; 94 % of the part), inside NUTS-3 EL633 Ηλεία — outside Νομός Αχαΐας altogether, ~35 km SSW of the main body. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/mavrodafni-patron.json, geo_area_brief; Β.Δ. 386/1971 as amended by Π.Δ. 201/1993) confines the PDO to 'τριών ζωνών της επαρχίας Πατρών του Νομού Αχαΐας' (NUTS 'GR232 Αχαΐα'): zone α around Patras, zone β 'του Ρίου' and zone γ west of the Arla road. Zone β (Ρίου) names 'Αγίου Γεωργίου'; Bétard 2022 EU_PDO.gpkg matched the Ilia homonym instead. Not listed as detached by the audit: it is chained to the main body through the Μαζαρακίου part, ~24 km away.",
+          "verified": "2026-09-24"
+        }
+      ]
+    },
+    "zakynthos": {
+      "file_number": "PGI-GR-A0945",
+      "geom_source": "gisco-nuts-region",
+      "drop": [
+        {
+          "centroid_latlon": [
+            37.246,
+            21.0119
+          ],
+          "area_km2": 1.788,
+          "reason": "The Strofades islets (Στροφάδες), ~46 km S of Zakynthos (~37.25°N, 21.01°E): the ~1.8 km² part of the NUTS-3 EL621 Ζάκυνθος polygon the record is drawn from (raw/gr/nuts/NUTS_RG_03M_2024_4326_LEVL_3.geojson); GISCO LAU Δ.Κ. Ζακυνθίων (EL_33010101) carries them (70 % of the part, the rest is the coarser NUTS coastline). The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/zakynthos.json, geo_area_brief; ΥΑ 310945/24.12.2010, ΦΕΚ 2042/B/29.12.2010) delimits 'τις περιοχές της νήσου Ζακύνθου και σε υψόμετρο άνω των 20 μέτρων' — the island of Zakynthos itself, not the islets. There is no Bétard polygon for this PGI; the clip applies to the gisco-nuts-region union.",
+          "verified": "2026-09-24"
+        }
+      ]
+    },
+    "verdea-zakyntou": {
+      "file_number": "PGI-GR-A1050",
+      "geom_source": "gisco-nuts-region",
+      "drop": [
+        {
+          "centroid_latlon": [
+            37.246,
+            21.0119
+          ],
+          "area_km2": 1.788,
+          "reason": "The Strofades islets (Στροφάδες), ~46 km S of Zakynthos (~37.25°N, 21.01°E): the ~1.8 km² part of the NUTS-3 EL621 Ζάκυνθος polygon the record is drawn from (raw/gr/nuts/NUTS_RG_03M_2024_4326_LEVL_3.geojson); GISCO LAU Δ.Κ. Ζακυνθίων (EL_33010101) carries them (70 % of the part, the rest is the coarser NUTS coastline). The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/verdea-zakyntou.json, geo_area_brief; ΥΑ 397719/1.10.1992, ΦΕΚ 623/B/22.10.1992) delimits 'όλη την νήσο Ζάκυνθο' — the island of Zakynthos itself, not the islets. There is no Bétard polygon for this PGI; the clip applies to the gisco-nuts-region union.",
+          "verified": "2026-09-24"
+        }
+      ]
+    },
+    "kriti": {
+      "file_number": "PGI-GR-A1605",
+      "geom_source": "gisco-nuts-region",
+      "drop": [
+        {
+          "centroid_latlon": [
+            34.8441,
+            24.0857
+          ],
+          "area_km2": 32.613,
+          "reason": "Gavdos (Γαύδος), ~36 km S of the Cretan coast (~34.84°N, 24.09°E): GISCO LAU Ψευδοδημοτική Κοινότητα Γαύδου (EL_74030000, 34.5 km²; 88 % of the part), NUTS-3 EL434 Χανιά. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/kriti.json, geo_area_brief; ΥΑ 340578/1.9.1989, ΦΕΚ 694/Β/15.9.1989, as amended 1995 and 2000) delimits 'όλες τις περιοχές της νήσου Κρήτης για τις οποίες έχουν αναγνωρισθεί οίνοι ΠΓΕ και ΠΟΠ' — the island of Crete; Gavdos is a separate island. There is no Bétard polygon for this PGI; the clip applies to the gisco-nuts-region union of NUTS-2 EL43 Κρήτη (raw/nl/nuts/NUTS_RG_03M_2024_4326_LEVL_2.geojson).",
+          "verified": "2026-09-24"
+        },
+        {
+          "centroid_latlon": [
+            34.9258,
+            24.0058
+          ],
+          "area_km2": 1.84,
+          "reason": "Gavdopoula (Γαυδοπούλα), the islet NW of Gavdos, ~29 km S of the Cretan coast (~34.93°N, 24.01°E): the same GISCO LAU Ψευδοδημοτική Κοινότητα Γαύδου (EL_74030000; 71 % of the part), NUTS-3 EL434 Χανιά. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/kriti.json, geo_area_brief; ΥΑ 340578/1.9.1989, ΦΕΚ 694/Β/15.9.1989, as amended 1995 and 2000) delimits 'όλες τις περιοχές της νήσου Κρήτης για τις οποίες έχουν αναγνωρισθεί οίνοι ΠΓΕ και ΠΟΠ' — the island of Crete; Gavdos is a separate island. There is no Bétard polygon for this PGI; the clip applies to the gisco-nuts-region union of NUTS-2 EL43 Κρήτη (raw/nl/nuts/NUTS_RG_03M_2024_4326_LEVL_2.geojson).",
+          "verified": "2026-09-24"
+        }
+      ]
     }
   },
   "whitelist": {
@@ -165,7 +331,72 @@
     "saale-unstrut": "German Anbaugebiet legally extended to Werder (Havel) in Brandenburg — the Werderaner Wachtelberg, Germany's northernmost vineyard. BLE Produktspezifikation §11.3 names the Brandenburg-side Gemarkungen Werder (Havel), Phöben, Plessow and Neu Töplitz; the ~117 km² polygon ~150 km NE of the main Sachsen-Anhalt body (~52.38°N, 12.88°E) is therefore legitimate, not a Bétard cross-attribution.",
     "english-wine": "Offshore England — the detached parts are the Isles of Scilly (~40-54 km off Land's End) plus other coastal islands of the ONS England country polygon. The PDO is demarcated to ENGLAND, so they are legitimately in the area; Scilly has commercial vineyard plantings.",
     "english-regional-wine": "Offshore England — same ONS England footprint as the English PDO.",
-    "welsh-wine": "Offshore Wales — the detached part is off Anglesey (Holy Island area) in the ONS Wales country polygon. The PDO is demarcated to WALES, so the island parts are legitimately in the area.",
-    "welsh-regional-wine": "Offshore Wales — same ONS Wales footprint as the Welsh PDO."
+    "landwein-neckar": "Landwein Neckar (PGI-DE-A1284) is drawn from the Württemberg Anbaugebiet (PDO-DE-A1276), which has a legal outpost on Lake Constance. The BLE Produktspezifikation §4 lists Kreßbronn, Ravensburg and Taldorf among its Gemeinden/Gemarkungen. §7.1 says 'Ein kleiner Bereich am Bodensee um Kressbronn ist ebenfalls Bestandteil des abgegrenzten Gebiets'. The ~710 km² lakeshore part ~36 km S of the Tübingen/Metzingen main body (~47.72°N, 9.42°E) is therefore legitimate, not a Bétard cross-attribution. Caveat: Bétard draws it at roughly district level (the whole Bodenseekreis plus Lindau/Wasserburg/Nonnenhorn/Bodolz), so it overlaps the Baden Bereich Bodensee.",
+    "schwabischer-landwein": "Württemberg-aligned Landwein with a legal Bodensee exclave. BLE Produktspezifikation 'Schwäbischer Landwein' §4 lists the Gemarkungen Kreßbronn, Ravensburg and Taldorf, and §7.1 states 'Ein kleiner Bereich am Bodensee um Kressbronn ist ebenfalls Bestandteil des abgegrenzten Gebiets'. The ~710 km² part ~36 km S of the Neckar main body (~47.72°N, 9.42°E) is the Bodensee piece of the sole union member, Württemberg PDO (PDO-DE-A1276), whose own spec §4.1/§4.2 names Kressbronn, Ravensburg and Taldorf plus Nonnenhorn, Wasserburg, Bodolz and Lindau (Hoyren, Aeschach). The part is legitimate, not a Bétard cross-attribution. Caveat: Bétard draws it at district level (the whole Bodenseekreis plus the four Lindau-district communes), so ~94% of it overlaps Baden's Bodensee Bereich, and it barely covers Ravensburg/Taldorf.",
+    "wurttemberg": "German Anbaugebiet legally extended to Lake Constance, the Württembergischer Bodensee. The EU single document (OJ C/2025/5177, section 6) lists the Baden-Württemberg Gemarkungen Kressbronn (9960), Ravensburg (9580) and Taldorf (9583). A separate Bavarian block adds the Gemeinden Nonnenhorn, Wasserburg and Bod(h)olz and the Lindau Gemarkungen Hoyren and Aeschach. The ~710 km² polygon about 36 km S of the Neckar/Tauber main body (~47.72°N, 9.42°E) is therefore legitimate, not a Bétard cross-attribution. Caveat: Bétard draws it as the whole Bodenseekreis plus the Lindau communes, which over-extends into Baden's Bereich Bodensee (Meersburg, Hagnau, Überlingen, …) and leaves out Ravensburg/Taldorf. That is a precision issue, not a spurious part.",
+    "rheingauer-landwein": "Law-listed northern-Hessen outpost: the BLE Produktspezifikation 'Rheingauer Landwein' (§3 Abgrenzung des Gebietes) lists the Stadt Felsberg (Schwalm-Eder-Kreis, the Böddiger Berg vineyard) among the Hessian Städte und Gemeinden of the area, like the Rheingau g.U. spec it mirrors. The 83 km2 part ~130 km NE of the Rhine is the Felsberg Gemeinde (LAU DE_06634003) and is expected.",
+    "rheingau": "German Anbaugebiet with a legal exclave in northern Hesse: Felsberg (Schwalm-Eder-Kreis), home of the Böddiger Berg vineyard. BLE Produktspezifikation §3 'Abgrenzung des Gebietes' names Felsberg among the Städte und Gemeinden of the PDO (Eltville am Rhein, Felsberg, Flörsheim am Main, Frankfurt am Main, …, Wiesbaden), and §8.1.1 describes the area as reaching 'bis nach Frankfurt am Main und Felsberg'. The ~83 km² part ~129 km NE of the main Rheingau body (~51.14°N, 9.45°E) is the GISCO LAU Felsberg, Stadt polygon (DE_06634003), so it is legitimate, not a Bétard cross-attribution. It overlaps only the same-family Rheingauer Landwein / Landwein Rhein PGIs, whose spec also lists Felsberg.",
+    "viile-timisului": "Multi-vineyard Timiș PGI: the EU single document (OJ C 90, 17.3.2021, PGI-RO-A0108) lists six separate podgorii, including '5. Podgoria Teremia, din judeţul Timiş, cu localităţile: Teremia Mare'. The ~84 km² part ~48 km west of the Recaș/Giarmata/Buziaș body (~45.95°N, 20.54°E) is the GISCO LAU commune Teremia Mare (RO_158859), so it is legitimate and not a homonym or parser leak.",
+    "marc-d-alsace-gewurztraminer": "Alsace northern outpost: the detached ~81 km² part (~49.01°N, 7.94°E) is the Wissembourg/Cleebourg vineyard: Cleebourg, Oberhoffen(-lès-Wissembourg), Riedseltz, Rott, Steinseltz and Wissembourg. The INAO cahier des charges of AOC Marc d'Alsace, section C (Définition de la zone géographique, Bas-Rhin commune list), names all six, and INAO's aires-communes CSV lists them under Marc d'Alsace (IDA 2132). The DGC inherits this list. The only other detached part, Kienheim (~3 km², 4 km from the main body), is also listed. The part is legitimate and is not a homonym or cross-attribution.",
+    "alsace-suivi-d-un-nom-de-lieu-dit": "Northern Alsace (Wissembourg) vineyard. The AOC Alsace cahier des charges, IV 1° a), which covers « Alsace » suivie ou non du nom d'un lieu-dit, explicitly lists Cleebourg, Oberhoffen-lès-Wissembourg, Riedseltz, Rott, Steinseltz and Wissembourg (Bas-Rhin), and INAO's aires-communes CSV row for this DGC carries the same six INSEE codes. Their union is the ~81 km2 detached part, ~37 km north of the Marlenheim end of the main vineyard. The small Gimbrett part near Berstett is also listed by name. The disjoint parts are expected.",
+    "moschato-kefallinias": "Poros outpost on Kefalonia. Under Β.Δ. 386/1971 as amended by Π.Δ. 242/1982, the ΠΟΠ Μοσχάτος Κεφαλληνίας zone is the Paliki peninsula (Δήμος Ληξουρίου plus the communities Σουλάρων, Ζύλων, Κατωγής, Σκηνέας and Χαυδάτων) plus 'την περιοχή της κοινότητας Πόρου της επαρχίας Κραναίας'. This is stated in the YPAAT product specification and in the eAmbrosia fiche technique Ares(2011)1411645, §5, NUTS GR223. The ~25.8 km² part ~25 km ESE of the Paliki main body (~38.13°N, 20.77°E) matches the GISCO LAU Δημοτική Κοινότητα Πόρου (EL_35010209) on Kefalonia's south-east coast. It is therefore legitimate, not a Bétard cross-attribution.",
+    "terasele-dunarii": "Danube-terrace IGP made of listed communes strung along ~300 km of the river, not one contiguous zone. The DOCUMENT UNIC (OJ C/2026/893, PGI-RO-A0113, section 6) lists the area county by county — 'judeţul Teleorman: municipiul Zimnicea cu localităţile componente; judeţul Giurgiu: comuna Daia …, comuna Greaca …, …; judeţul Ialomiţa …; judeţul Brăila …; judeţul Constanţa …'. Every resolved part is one of those listed communes (Zimnicea, Greaca, Izvoarele, Iepureşti, Lipniţa, Feteşti, Însurăţei), each scoped to the county the document puts it under; the ~134 km² westernmost part ~34 km from the Giurgiu group (~43.69°N, 25.37°E) is Oraş Zimnicea (RO_151978). Legitimate, not a homonym or parser leak.",
+    "thraki": "Samothrace. The ~181 km² part ~39 km S of the Thracian coast (~40.45°N, 25.58°E) is the island of Samothrace — GISCO LAU Ψευδοδημοτική Κοινότητα Σαμοθράκης (EL_03040000, 180.8 km², 98 % of the part) — inside NUTS-3 EL511 Έβρος. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/thraki.json, geo_area_brief; ΥΑ 259741/19.2.1997, ΦΕΚ 140/Β/3.3.1997, corrected ΦΕΚ 419/Β/20.4.1999) delimits the PGI as 'όλες τις περιοχές της Θράκης που περιγράφονται επακριβώς στις αντίστοιχες υπουργικές αποφάσεις' and cites 'a. Περιοχή NUTS GR11 Aνατολική Μακεδονία, Θράκη'; the record is drawn as the three Thracian units EL511 + EL512 + EL513 (scripts/_lib/gr/nuts.py), so the island rides with its unit. Legitimate, not a homonym or cross-attribution.",
+    "evia": "Skyros. The ~204 km² island part (~38.9°N, 24.55°E) plus its islets Skyropoula, Valaxa and Sarakino are GISCO LAU Ψευδοδημοτική Κοινότητα Σκύρου (EL_29080000), inside NUTS-3 EL642 Εύβοια. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/evia.json, geo_area_brief) delimits the PGI as 'στα διοικητικά όρια της Περιφερειακής Ενότητας (πρώην Νομός) Ευβοίας' — the administrative regional unit, of which Skyros (Δήμος Σκύρου) is part. Legitimate.",
+    "evros": "Samothrace. The ~181 km² part ~39 km S of the Thracian coast (~40.45°N, 25.58°E) is GISCO LAU Ψευδοδημοτική Κοινότητα Σαμοθράκης (EL_03040000), inside NUTS-3 EL511 Έβρος. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/evros.json, geo_area_brief) delimits the PGI as 'τις περιοχές που βρίσκονται στα διοικητικά όρια του νομού Έβρου σε υψόμετρο μεγαλύτερο από 20 μέτρα' — the whole prefecture, of which Samothrace (Δήμος Σαμοθράκης) is part. Legitimate.",
+    "cremant-de-bourgogne": "Yonne lobe. The detached parts ~80–100 km NW of the Côte (Chablis, Auxerrois, Tonnerrois, Vézelien communes, INSEE 89xxx) are INAO parcellaire parcels delimited for this appellation (raw/inao/parcellaire, id_denom of the record); the cahier des charges lists the Yonne communes in its aire géographique (raw/inao/cahier-extracted/cremant-de-bourgogne.json, aire_geographique: Yonne). The Bourgogne regional appellations run from Chablis to the Mâconnais in two lobes. Legitimate.",
+    "coteaux-bourguignons-ou-bourgogne-grand-ordinaire-ou-bourgogne-ordinaire": "Yonne lobe. The detached parts ~80–100 km NW of the Côte (Chablis, Auxerrois, Tonnerrois, Vézelien communes, INSEE 89xxx) are INAO parcellaire parcels delimited for this appellation (raw/inao/parcellaire, id_denom of the record); the cahier des charges lists the Yonne communes in its aire géographique (raw/inao/cahier-extracted/coteaux-bourguignons-ou-bourgogne-grand-ordinaire-ou-bourgogne-ordinaire.json, aire_geographique: Yonne). The Bourgogne regional appellations run from Chablis to the Mâconnais in two lobes. Legitimate.",
+    "bourgogne-aligote": "Yonne lobe. The detached parts ~80–100 km NW of the Côte (Chablis, Auxerrois, Tonnerrois, Vézelien communes, INSEE 89xxx) are INAO parcellaire parcels delimited for this appellation (raw/inao/parcellaire, id_denom of the record); the cahier des charges lists the Yonne communes in its aire géographique (raw/inao/cahier-extracted/bourgogne-aligote.json, aire_geographique: Yonne). The Bourgogne regional appellations run from Chablis to the Mâconnais in two lobes. Legitimate.",
+    "bourgogne-mousseux": "Yonne lobe. The detached parts ~80–100 km NW of the Côte (Chablis, Auxerrois, Tonnerrois, Vézelien communes, INSEE 89xxx) are INAO parcellaire parcels delimited for this appellation (raw/inao/parcellaire, id_denom of the record); the cahier des charges lists the Yonne communes in its aire géographique (raw/inao/cahier-extracted/bourgogne-mousseux.json, aire_geographique: Yonne). The Bourgogne regional appellations run from Chablis to the Mâconnais in two lobes. Legitimate.",
+    "bourgogne-passe-tout-grains": "Yonne lobe. The detached parts ~80–100 km NW of the Côte (Chablis, Auxerrois, Tonnerrois, Vézelien communes, INSEE 89xxx) are INAO parcellaire parcels delimited for this appellation (raw/inao/parcellaire, id_denom of the record); the cahier des charges lists the Yonne communes in its aire géographique (raw/inao/cahier-extracted/bourgogne-passe-tout-grains.json, aire_geographique: Yonne). The Bourgogne regional appellations run from Chablis to the Mâconnais in two lobes. Legitimate.",
+    "bourgogne": "Yonne lobe. The detached parts ~80–100 km NW of the Côte (Chablis, Auxerrois, Tonnerrois, Vézelien communes, INSEE 89xxx) are INAO parcellaire parcels delimited for this appellation (raw/inao/parcellaire, id_denom of the record); the cahier des charges lists the Yonne communes in its aire géographique (raw/inao/cahier-extracted/bourgogne.json, aire_geographique: Yonne). The Bourgogne regional appellations run from Chablis to the Mâconnais in two lobes. Legitimate.",
+    "cotes-du-rhone": "Northern Rhône. The detached parts 50–115 km N of the main body — Ardèche (07), Drôme (26), Rhône (69) and Loire (42) communes around Cornas, Crozes-Hermitage and Côte-Rôtie — are INAO parcellaire parcels delimited for the AOC (raw/inao/parcellaire); its cahier lists the communes of the Ardèche, Drôme, Loire and Rhône départements in the aire géographique (raw/inao/cahier-extracted/cotes-du-rhone.json). The AOC has a northern and a southern sector. Legitimate.",
+    "sable-de-camargue": "Hérault littoral. The detached part near Vic-la-Gardiole / Frontignan (34) is an INAO parcellaire parcel of the AOC; the cahier's aire géographique lists Hérault communes beside Bouches-du-Rhône and Gard (raw/inao/cahier-extracted/sable-de-camargue.json) — the coastal sand strip runs from the Camargue to the Hérault lagoons. Legitimate.",
+    "vin-de-savoie-ou-savoie": "Ripaille / Marin outpost on the Lake Geneva shore (Haute-Savoie, ~56 km N of the main body): INAO parcellaire parcels of the AOC; the cahier's aire géographique lists the Haute-Savoie communes (raw/inao/cahier-extracted/vin-de-savoie-ou-savoie.json) — Vin de Savoie Ripaille and Marin are DGCs of the appellation. Legitimate.",
+    "roussette-de-savoie": "Ripaille / Marin outpost on the Lake Geneva shore (Haute-Savoie, ~56 km N of the main body): INAO parcellaire parcels of the AOC; the cahier's aire géographique lists the Haute-Savoie communes (raw/inao/cahier-extracted/roussette-de-savoie.json) — Vin de Savoie Ripaille and Marin are DGCs of the appellation. Legitimate.",
+    "alsace-ou-vin-d-alsace": "Wissembourg / Cleebourg outpost (Bas-Rhin, ~45 km N of the main Alsace vineyard): INAO parcellaire parcels of the AOC; the AOC Alsace cahier lists Cleebourg, Oberhoffen-lès-Wissembourg, Riedseltz, Rott, Steinseltz and Wissembourg in its Bas-Rhin aire (raw/inao/cahier-extracted/alsace-ou-vin-d-alsace.json). The same outpost is accepted for alsace-suivi-d-un-nom-de-lieu-dit and marc-d-alsace-gewurztraminer. Legitimate.",
+    "cremant-d-alsace": "Wissembourg / Cleebourg outpost (Bas-Rhin, ~45 km N of the main Alsace vineyard): INAO parcellaire parcels of the AOC; the AOC Alsace cahier lists Cleebourg, Oberhoffen-lès-Wissembourg, Riedseltz, Rott, Steinseltz and Wissembourg in its Bas-Rhin aire (raw/inao/cahier-extracted/alsace-ou-vin-d-alsace.json). The same outpost is accepted for alsace-suivi-d-un-nom-de-lieu-dit and marc-d-alsace-gewurztraminer. Legitimate.",
+    "moselle": "Sierck-les-Bains sector (Moselle, ~31 km N of the Metz sector): INAO parcellaire parcels of the AOC; the AOC Moselle cahier's aire (raw/inao/cahier-extracted/moselle.json: Meurthe-et-Moselle, Moselle) covers three separate sectors — Vic-sur-Seille, Metz and Sierck. Legitimate.",
+    "cotes-de-provence": "Villars-sur-Var (Alpes-Maritimes, ~46 km NE of the Var body): an INAO parcellaire parcel of the AOC; the cahier's aire géographique lists Alpes-Maritimes beside Bouches-du-Rhône and Var (raw/inao/cahier-extracted/cotes-de-provence.json). Legitimate.",
+    "touraine": "Bossay-sur-Claise (Indre-et-Loire, ~36 km S of the Loire): INAO parcellaire parcels of the appellation in that commune; the Touraine cahier's aire géographique lists the Indre-et-Loire communes (raw/inao/cahier-extracted/touraine.json) and Crémant de Loire / Rosé de Loire share the Touraine delimitation there. Legitimate.",
+    "cremant-de-loire": "Bossay-sur-Claise (Indre-et-Loire, ~36 km S of the Loire): INAO parcellaire parcels of the appellation in that commune; the Touraine cahier's aire géographique lists the Indre-et-Loire communes (raw/inao/cahier-extracted/touraine.json) and Crémant de Loire / Rosé de Loire share the Touraine delimitation there. Legitimate.",
+    "rose-de-loire": "Bossay-sur-Claise (Indre-et-Loire, ~36 km S of the Loire): INAO parcellaire parcels of the appellation in that commune; the Touraine cahier's aire géographique lists the Indre-et-Loire communes (raw/inao/cahier-extracted/touraine.json) and Crémant de Loire / Rosé de Loire share the Touraine delimitation there. Legitimate.",
+    "mediterranee": "Corsica. The IGP Méditerranée cahier des charges names the départements of Corse-du-Sud and Haute-Corse in its aire (raw/inao/cahier-extracted/mediterranee.json: '… Corse-du-Sud, Haute-Corse ainsi que sur le territoire des communes suivantes …'); the island parts are the INAO aires-communes CSV rows for those départements (raw/inao/igp-aires-communes.csv). Legitimate.",
+    "mediterranee-comte-de-grignan": "Corsica — the DGC inherits the parent IGP Méditerranée polygon (parent-appellation); see mediterranee: the cahier names Corse-du-Sud and Haute-Corse in the aire. Legitimate.",
+    "pommeau-de-normandie": "Pays de Bray. The detached parts — Forges-les-Eaux, Londinières, Bailleul-Neuville (Seine-Maritime), Grémévillers, Sarnois (Oise), 36–79 km E of the main body — are rows of the INAO aires-communes CSV for this appellation (raw/inao/aoc-aop-aires-communes.csv, IDA 2378): the aire extends over the Pays de Bray. Legitimate.",
+    "ile-de-france": "Eure-et-Loir communes. Écrosnes, Abondant and Mézières-en-Drouais (28) are rows of the INAO igp-aires-communes CSV for 'Île-de-France' (IDA 2456): the IGP's aire lists communes outside the region. Legitimate.",
+    "cognac-bois-ordinaires-ou-bois-a-terroirs": "La Roche-Chalais (Dordogne, ~50 km SE of the cru's main body) is a row of the INAO aires-communes CSV for 'Cognac Bois ordinaires ou Bois à terroirs' (IDA 1354), as for Cognac (IDA 1348) and Cognac Bons Bois (IDA 2133): the regulator's cru table lists this Dordogne commune. Legitimate.",
+    "lorraine": "Neufmaisons (Meurthe-et-Moselle, ~36 km S of the main body) is a row of the INAO igp-aires-communes CSV for 'Lorraine' (IDA 2496). Legitimate.",
+    "marc-du-jura": "Les Fourgs (Doubs, high Jura, ~26 km E of the vineyard body) is a row of the INAO aires-communes CSV for 'Marc du Jura' (IDA 1737): the eau-de-vie's aire is wider than the wine vineyard. Legitimate.",
+    "trakiiska-nizina": "Struma valley. ПГЕ Тракийска низина is the southern of Bulgaria's two PGIs and covers the four southern wine regions — Тракийска низина, Розова долина, Черноморски район and Долината на Струма (scripts/_lib/bg/geometry.py BG_PGI_MEMBER_PDOS, hand-verified against the wine-law region structure in scripts/_lib/bg/region.py); the part ~37 km SW of the Thracian lowland is the union of the Struma-valley member PDOs beyond the Rila–Pirin massif. Legitimate.",
+    "aegeo-pelagos": "Aegean archipelago. The ΥΠΑΑΤ product specification (raw/gr/national-specs-extracted/aegeo-pelagos.json; ΥΑ 443760/10.12.1993, ΦΕΚ 915/Β, as amended 2000) cites 'GR41 Βόρειο Αιγαίο, GR42 Νότιο Αιγαίο'; the record is the union of NUTS-2 EL41 + EL42 (scripts/_lib/gr/nuts.py) — every island is a detached part. Legitimate.",
+    "dodekanisos": "Dodecanese archipelago. The ΥΠΑΑΤ spec (raw/gr/national-specs-extracted/dodekanisos.json; ΥΑ 378508/3.9.1990, ΦΕΚ 609/Β, as amended 2008, 2011) delimits 'τα διοικητικά όρια του νομού Δωδεκανήσου' and cites NUTS-3 EL421; drawn from that unit, every island is a detached part. Legitimate.",
+    "chios": "The ΥΠΑΑΤ spec (raw/gr/national-specs-extracted/chios.json; ΥΑ 280931/16.7.2010, ΦΕΚ 1125/Β) delimits 'τα διοικητικά όρια του νομού Χίου' and cites NUTS-3 GR413; the islets of the Chios regional unit (Psara, Oinousses, the rocks between) ride with EL413. Legitimate.",
+    "hania": "Gavdos. The ΥΠΑΑΤ spec (raw/gr/national-specs-extracted/hania.json; ΥΑ 310943/24.12.2010, ΦΕΚ 2040/Β) delimits 'τις περιοχές του νομού Χανίων Κρήτης' — the prefecture, of which Δήμος Γαύδου is part — and cites NUTS-3 GR434; drawn from EL434. Unlike ΠΓΕ Κρήτη, whose spec names the island of Crete and whose Gavdos part is clipped, the prefecture-wide wording keeps the island. Legitimate.",
+    "attiki": "Kythira / Antikythera. The ΥΠΑΑΤ spec (raw/gr/national-specs-extracted/attiki.json; ΥΑ 397722/1.10.1992, ΦΕΚ 623/Β, as amended 1997, 2011) delimits 'όλες τις περιοχές που βρίσκονται στο Νομό Αττικής' above 30 m and cites NUTS GR30; the former Νομός Αττικής and the region EL30 include the Kythira islands (regional unit Νήσων). Legitimate.",
+    "retsina-attikis": "Kythira / Antikythera. The ΥΠΑΑΤ spec (raw/gr/national-specs-extracted/retsina-attikis.json; Π.Δ. 514/5.7.1979, ΦΕΚ 157/Α) delimits 'το σύνολο του νομού Αττικής'; drawn from NUTS EL30, which carries the Kythira islands. Legitimate.",
+    "retsina-koropiou": "Kythira / Antikythera, riding with the NUTS unit the record is drawn from. The ΥΠΑΑΤ spec's delimitation paragraph is a source defect (it pastes Ρετσίνα Καρύστου's 'τέως επαρχίας Καρυστίας' — recorded as an empty eparchy pin in scripts/_lib/gr/commune_overrides.json), so the record falls back to its NUTS line 'GR30 Aττική' (curated pin EL30 in scripts/_lib/gr/nuts.py). The detached parts are islands of EL30, not a stray commune; community precision for Koropi is a CURATOR_TODO item, not an outlier fix.",
+    "sterea-ellada": "Skyros. The ΥΠΑΑΤ spec (raw/gr/national-specs-extracted/sterea-ellada.json; ΥΑ 330505/24.5.1996, ΦΕΚ 548/Β, as amended 2000) delimits 'όλες τις περιοχές της Στερεάς Ελλάδας'; drawn from NUTS-2 EL64, whose Euboea unit EL642 carries Δήμος Σκύρου (the island already accepted for evia). Legitimate.",
+    "playies-enou": "Echinades islets. The detached parts (Petalas, ~5.5 km², and the smaller Echinades off the Aitoloakarnania coast, 34–39 km E of Kefalonia) belong to GISCO LAU Δ.Κ. Αγίας Ευφημίας (EL_35030301, a MultiPolygon whose main part is on Kefalonia), a community of the former Δήμος Πυλαρέων; the ΥΠΑΑΤ spec (raw/gr/national-specs-extracted/playies-enou.json; ΥΑ 259740/19.2.1997 as amended 2002, 2011) delimits 'στα διοικητικά όρια των Δημοτικών Ενοτήτων … Πυλαρέων, Σάμης …', and the islands are administratively part of that unit (GISCO NUTS-3 EL623 Κεφαλληνία, Ιθάκη carries them too). Legitimate.",
+    "illes-balears": "Balearic archipelago. The pliego (raw/es/pliegos-extracted/illes-balears.json) extends the IGP 'a toda las islas que conforman la Comunidad Autónoma de les Illes Balears'; drawn as the whole CCAA (gisco-ccaa-wide), Ibiza, Formentera and Menorca are detached from Mallorca. Legitimate.",
+    "cataluna": "Empordà lobe. DO Catalunya's pliego enumerates municipios across every Catalan wine comarca (raw/es/pliegos-extracted/cataluna.json: Agullana, Cadaqués, Capmany … of the Alt Empordà) and the MAPA 'Zonas de Calidad Diferenciada: Vinos' layer the record is drawn from (mapa-zone) carries it; the parts on the Cap de Creus / Empordà coast, inside DO Empordà, are that lobe. Legitimate.",
+    "acores": "Azores archipelago. The caderno (raw/pt/cadernos-extracted/acores.json) delimits the IG as 'todas as ilhas do Arquipélago dos Açores'; nine islands drawn as the CAOP concelho union. Legitimate.",
+    "terras-madeirenses": "Madeira archipelago. The caderno (raw/pt/cadernos-extracted/terras-madeirenses.json) delimits the IGP by the Região Autónoma da Madeira — 'a Ilha da Madeira, a Ilha de Porto Santo e … Ilhas Desertas e Ilhas Selvagens'; the CAOP concelho union carries Porto Santo, the Desertas and the Selvagens (~260 km S). Same footprint accepted for madeira / madeirense. Legitimate.",
+    "brandenburger-landwein": "Scattered Gemeinden. The BLE Produktspezifikation 'Brandenburger Landwein' §3 'Abgrenzung des Gebietes' lists whole Landkreise plus single Gemeinden, transcribed in scripts/_lib/de/geometry.py DE_LANDWEIN_AREA (PGI-DE-A1281); the Uckermark / Barnim / Oberhavel parts 28–74 km from the body are those listed units. Legitimate.",
+    "landwein-rhein": "Felsberg exclave. Landwein Rhein is drawn as the union of its member Anbaugebiete (scripts/_lib/de/geometry.py DE_PGI_MEMBER_PDOS), Rheingau among them; the Rheingau BLE Produktspezifikation §3 lists the Stadt Felsberg (Schwalm-Eder-Kreis, the Böddiger Berg) — the outpost accepted for rheingau and rheingauer-landwein. Legitimate.",
+    "mitteldeutscher-landwein": "Union of Saale-Unstrut and Sachsen (scripts/_lib/de/geometry.py DE_PGI_MEMBER_PDOS, PGI-DE-A1291). Detached parts: Werder (Havel) — the Werderaner Wachtelberg, BLE Produktspezifikation Saale-Unstrut §11.3, accepted for saale-unstrut — and the eastern Saxon Gemeinden Ostritz and Mittelherwigsdorf, listed in the BLE Produktspezifikation Sachsen §3 as Rebflächen outside the core delimitation. Legitimate.",
+    "sachsen": "Eastern Saxony outposts. The BLE Produktspezifikation Sachsen (raw/de/produktspezifikationen/sachsen.pdf) §3 'Abgrenzung des Gebietes': 'Zum bestimmten Anbaugebiet „Sachsen“ gehören auch Rebflächen, die außerhalb der … Abgrenzung liegen … in den Gemeinden … Ostritz, … Mittelherwigsdorf …'; the parts near Görlitz / Zittau in the Bétard polygon of PDO-DE-A1277 are those Gemeinden. Legitimate.",
+    "sachsischer-landwein": "Eastern Saxony outposts. The BLE Produktspezifikation Sachsen (raw/de/produktspezifikationen/sachsen.pdf) §3 'Abgrenzung des Gebietes': 'Zum bestimmten Anbaugebiet „Sachsen“ gehören auch Rebflächen, die außerhalb der … Abgrenzung liegen … in den Gemeinden … Ostritz, … Mittelherwigsdorf …'; the parts near Görlitz / Zittau in the Bétard polygon of PDO-DE-A1277 are those Gemeinden. Legitimate (Sächsischer Landwein is drawn from the same PDO).",
+    "terre-siciliane": "Sicilian minor islands. The MASAF disciplinare Art. 3 (raw/it/masaf-disciplinari-extracted/terre-siciliane.json) delimits 'l'intero territorio amministrativo della Regione Siciliana'; drawn as the GISCO regione union, Pantelleria, Lampedusa / Linosa and Ustica are detached parts. Legitimate.",
+    "toscano": "Tuscan archipelago. The MASAF disciplinare Art. 3.1 (raw/it/masaf-disciplinari-extracted/toscano.json) delimits 'l'intero territorio amministrativo delle province di Arezzo, Firenze, Grosseto, Livorno, …'; drawn as the GISCO province union, Capraia, Gorgona, Montecristo and the other island comuni are detached parts. Legitimate.",
+    "costa-toscana": "Tuscan archipelago. The MASAF disciplinare Art. 3.1 (raw/it/masaf-disciplinari-extracted/costa-toscana.json) lists 'Provincia di Livorno: Comuni costituenti l'intero territorio provinciale' and, for Grosseto, Isola del Giglio; the Toscana geoportal zone the record is drawn from carries the island comuni. Legitimate.",
+    "lazio": "Pontine islands. The MASAF disciplinare Art. 3 (raw/it/masaf-disciplinari-extracted/lazio.json) delimits 'l'intero territorio della regione Lazio'; the Lazio geoportal zone carries Ponza and Ventotene (Latina). Legitimate.",
+    "bukk": "Barabás (Szabolcs-Szatmár-Bereg, 92 km E of the Bükkalja body). The HU termékleírás of the Bükk PDO (raw/hu/national-specs-extracted/bukk.json, geo_area_brief) lists 'Aszaló, Barabás, Bogács, …' among the borvidék's települések; the Bétard part of PDO-HU-A1500 at 48.23°N 22.43°E is that settlement (GISCO HU_26480). Legitimate.",
+    "felso-magyarorszag": "Barabás (Szabolcs-Szatmár-Bereg, 92 km E of the Bükkalja body). The HU termékleírás of the Bükk PDO (raw/hu/national-specs-extracted/bukk.json, geo_area_brief) lists 'Aszaló, Barabás, Bogács, …' among the borvidék's települések; the Bétard part of PDO-HU-A1500 at 48.23°N 22.43°E is that settlement (GISCO HU_26480). Felső-Magyarország PGI is the union of its member PDOs, Bükk among them (scripts/_lib/hu/geometry.py). Legitimate.",
+    "melnicka": "Scattered Bohemian obce 35–65 km E of Mělník (Kutná Hora, Čáslav, Kuks …). Vyhláška 254/2010 Sb. lists them in the Mělnická podoblast (raw/cz/national-specs/communes/melnicka.json, stage 02f); Bétard's Mělnická and Čechy polygons carry the same obce. Legitimate.",
+    "ceske": "Scattered Bohemian obce 35–65 km E of Mělník (Kutná Hora, Čáslav, Kuks …). Vyhláška 254/2010 Sb. lists them in the Mělnická podoblast (raw/cz/national-specs/communes/melnicka.json, stage 02f); Bétard's Mělnická and Čechy polygons carry the same obce, and the PGI české is the union of the Čechy PDO (scripts/_lib/cz/geometry.py CZ_PGI_MEMBER_PDOS). Legitimate.",
+    "cechy": "Scattered Bohemian obce 35–65 km E of Mělník (Kutná Hora, Čáslav, Kuks …). Vyhláška 254/2010 Sb. lists them in the Mělnická podoblast (raw/cz/national-specs/communes/melnicka.json, stage 02f); Bétard's Mělnická and Čechy polygons carry the same obce. Legitimate.",
+    "znojmo": "Kojetice (CZ_590860, Třebíč district, 27 km NW of the Znojmo body). Vyhláška 254/2010 Sb. lists Kojetice among the obce of the Znojemská podoblast (raw/cz/national-specs/communes/znojemska.json); the Bétard polygon of PDO-CZ-A1086 carries it. Legitimate.",
+    "calvados-spiritueux": "Pays de Bray. The detached parts — Forges-les-Eaux, Londinières, Bailleul-Neuville (Seine-Maritime), Grémévillers, Sarnois (Oise), 36–79 km E of the main body — are rows of the INAO aires-communes CSV for the eau-de-vie 'Calvados' (raw/inao/aoc-aop-aires-communes.csv, IDA 2375 — the IGP wine of the same name is the Calvados département, IDA 1993, and is not detached): the aire extends over the Pays de Bray. Legitimate."
   }
 }

@@ -19,5 +19,238 @@
     "artifact means correcting the upstream commune list / resolver, not",
     "editing this file."
   ],
-  "whitelist": []
+  "whitelist": [
+    {
+      "pair": [
+        "ayio-oros",
+        "halkidiki"
+      ],
+      "reason": "Ouranoupoli, not a stray commune: ΠΓΕ Άγιο Όρος delimits 'τη διοικητική περιοχή του Αγίου Όρους και το όμορο δημοτικό διαμέρισμα Ουρανούπολης του Δήμου Σταγίρων – Ακάνθου του Ν. Χαλκιδικής' (EU single document, OJ C/2022/143, section 6), so the 21.7 km² mainland community Ουρανούπολη (GISCO EL_13020105) is part of the appellation. ΠΓΕ Χαλκιδική delimits 'όλες τις περιοχές του νομού Χαλκιδικής' (technical file PGI-GR-A1403, ΥΑ 296419/1995 as amended), and Ouranoupoli is a community of that prefecture. Genuine nesting of a commune-precise area in a prefecture-wide one — the ~21 km² overlap is Ouranoupoli itself.",
+      "reviewed": "2026-09-24"
+    },
+    {
+      "pair": [
+        "ayio-oros",
+        "makedonia"
+      ],
+      "reason": "Ouranoupoli, not a stray commune: ΠΓΕ Άγιο Όρος delimits 'τη διοικητική περιοχή του Αγίου Όρους και το όμορο δημοτικό διαμέρισμα Ουρανούπολης του Δήμου Σταγίρων – Ακάνθου του Ν. Χαλκιδικής' (EU single document, OJ C/2022/143, section 6), so the 21.7 km² mainland community Ουρανούπολη (GISCO EL_13020105) is part of the appellation. ΠΓΕ Μακεδονία lists 'στην Περιφερειακή Ενότητα Χαλκιδικής' with no altitude condition (EU single document, OJ C/2026/2625, section 9, item 12), and Ouranoupoli is a community of that regional unit. Genuine nesting of a commune-precise area in a region-wide one — the ~21 km² overlap is Ouranoupoli itself.",
+      "reviewed": "2026-09-24"
+    },
+    {
+      "pair": [
+        "beaujolais",
+        "bourgogne-aligote"
+      ],
+      "reason": "Shared communes listed for both appellations: Romanèche-Thorins, Saint-Symphorien-d'Ancelles, Chânes, Saint-Vérand, Chaintré, Leynes, Crêches-sur-Saône, Chasselas. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the communes in the rows of both 'Beaujolais' and 'Bourgogne aligoté' — the regulator assigns the ground to both, so the 41 km² overlap is the commune itself, not a double assignment of ours. The Beaujolais cahier's aire and the Bourgogne regional appellations' aire both list the eight Saône-et-Loire communes of the Mâconnais–Beaujolais border (Chânes, Chasselas, Crêches-sur-Saône, Leynes, Romanèche-Thorins, Saint-Symphorien-d'Ancelles, Saint-Vérand, Chaintré): Bourgogne can be produced on Beaujolais ground there.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "beaujolais",
+        "coteaux-bourguignons-ou-bourgogne-grand-ordinaire-ou-bourgogne-ordinaire"
+      ],
+      "reason": "Shared communes listed for both appellations: Romanèche-Thorins, Saint-Symphorien-d'Ancelles, Chânes, Saint-Vérand, Chaintré, Leynes, Crêches-sur-Saône, Chasselas. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the communes in the rows of both 'Beaujolais' and 'Coteaux Bourguignons' — the regulator assigns the ground to both, so the 41 km² overlap is the commune itself, not a double assignment of ours. The Beaujolais cahier's aire and the Bourgogne regional appellations' aire both list the eight Saône-et-Loire communes of the Mâconnais–Beaujolais border (Chânes, Chasselas, Crêches-sur-Saône, Leynes, Romanèche-Thorins, Saint-Symphorien-d'Ancelles, Saint-Vérand, Chaintré): Bourgogne can be produced on Beaujolais ground there. The Coteaux Bourguignons row bound only on 2026-09-26, when the aires lookup learned to take the exact row of one alias of a SIQO \"X ou Y\" name (its register name is \"Coteaux Bourguignons ou Bourgogne grand ordinaire ou Bourgogne ordinaire\"), so the pair post-dates the 2026-09-25 review; the 41 km² is the same eight communes as the aligoté / mousseux / Passe-tout-grains pairs.",
+      "reviewed": "2026-09-27"
+    },
+    {
+      "pair": [
+        "beaujolais",
+        "bourgogne-mousseux"
+      ],
+      "reason": "Shared communes listed for both appellations: Romanèche-Thorins, Saint-Symphorien-d'Ancelles, Chânes, Saint-Vérand, Chaintré, Leynes, Crêches-sur-Saône, Chasselas. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the communes in the rows of both 'Beaujolais' and 'Bourgogne mousseux' — the regulator assigns the ground to both, so the 41 km² overlap is the commune itself, not a double assignment of ours. The Beaujolais cahier's aire and the Bourgogne regional appellations' aire both list the eight Saône-et-Loire communes of the Mâconnais–Beaujolais border (Chânes, Chasselas, Crêches-sur-Saône, Leynes, Romanèche-Thorins, Saint-Symphorien-d'Ancelles, Saint-Vérand, Chaintré): Bourgogne can be produced on Beaujolais ground there.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "beaujolais",
+        "bourgogne-passe-tout-grains"
+      ],
+      "reason": "Shared communes listed for both appellations: Romanèche-Thorins, Saint-Symphorien-d'Ancelles, Chânes, Saint-Vérand, Chaintré, Leynes, Crêches-sur-Saône, Chasselas. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the communes in the rows of both 'Beaujolais' and 'Bourgogne Passe-tout-grains' — the regulator assigns the ground to both, so the 41 km² overlap is the commune itself, not a double assignment of ours. The Beaujolais cahier's aire and the Bourgogne regional appellations' aire both list the eight Saône-et-Loire communes of the Mâconnais–Beaujolais border (Chânes, Chasselas, Crêches-sur-Saône, Leynes, Romanèche-Thorins, Saint-Symphorien-d'Ancelles, Saint-Vérand, Chaintré): Bourgogne can be produced on Beaujolais ground there.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "bearn",
+        "floc-de-gascogne"
+      ],
+      "reason": "Shared communes listed for both appellations: Viella, Maumusson-Laguian. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the communes in the rows of both 'Béarn' and 'Floc de Gascogne' — the regulator assigns the ground to both, so the 32 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "gres-de-montpellier",
+        "terrasses-du-larzac"
+      ],
+      "reason": "Shared commune listed for both appellations: Gignac. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Grés de Montpellier' and 'Terrasses du Larzac' — the regulator assigns the ground to both, so the 30 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "comte-tolosan",
+        "perigord"
+      ],
+      "reason": "Shared commune listed for both appellations: Salviac. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Comté Tolosan' and 'Périgord' — the regulator assigns the ground to both, so the 30 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "perigord",
+        "cotes-du-lot-rocamadour"
+      ],
+      "reason": "Shared commune listed for both appellations: Salviac. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Périgord' and 'Côtes du Lot Rocamadour' — the regulator assigns the ground to both, so the 30 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "gard",
+        "saint-guilhem-le-desert"
+      ],
+      "reason": "Shared communes listed for both appellations: Brouzet-lès-Quissac, Corconne. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the communes in the rows of both 'Gard' and 'Saint-Guilhem-le-Désert' — the regulator assigns the ground to both, so the 29 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "beaujolais",
+        "bourgogne"
+      ],
+      "reason": "Shared communes listed for both appellations: Chânes, Saint-Vérand, Chaintré, Leynes, Crêches-sur-Saône, Chasselas. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the communes in the rows of both 'Beaujolais' and 'Bourgogne' — the regulator assigns the ground to both, so the 25 km² overlap is the commune itself, not a double assignment of ours. The Beaujolais cahier's aire and the Bourgogne regional appellations' aire both list the eight Saône-et-Loire communes of the Mâconnais–Beaujolais border (Chânes, Chasselas, Crêches-sur-Saône, Leynes, Romanèche-Thorins, Saint-Symphorien-d'Ancelles, Saint-Vérand, Chaintré): Bourgogne can be produced on Beaujolais ground there.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "beaujolais",
+        "macon"
+      ],
+      "reason": "Shared communes listed for both appellations: Chânes, Saint-Vérand, Chaintré, Leynes, Crêches-sur-Saône, Chasselas. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the communes in the rows of both 'Beaujolais' and 'Mâcon' — the regulator assigns the ground to both, so the 25 km² overlap is the commune itself, not a double assignment of ours. The Beaujolais cahier's aire and the Bourgogne regional appellations' aire both list the eight Saône-et-Loire communes of the Mâconnais–Beaujolais border (Chânes, Chasselas, Crêches-sur-Saône, Leynes, Romanèche-Thorins, Saint-Symphorien-d'Ancelles, Saint-Vérand, Chaintré): Bourgogne can be produced on Beaujolais ground there.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "cheverny",
+        "touraine"
+      ],
+      "reason": "Shared commune listed for both appellations: Monthou-sur-Bièvre. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Cheverny' and 'Touraine' — the regulator assigns the ground to both, so the 17 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "cheverny",
+        "rose-de-loire"
+      ],
+      "reason": "Shared commune listed for both appellations: Monthou-sur-Bièvre. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Cheverny' and 'Rosé de Loire' — the regulator assigns the ground to both, so the 17 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "pic-saint-loup",
+        "languedoc-sommieres"
+      ],
+      "reason": "Shared commune listed for both appellations: Brouzet-lès-Quissac. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Pic Saint-Loup' and 'Languedoc Sommières' — the regulator assigns the ground to both, so the 16 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "brulhois",
+        "floc-de-gascogne"
+      ],
+      "reason": "Shared commune listed for both appellations: Fieux. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Brulhois' and 'Floc de Gascogne' — the regulator assigns the ground to both, so the 15 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "cite-de-carcassonne",
+        "aude-val-de-dagne"
+      ],
+      "reason": "Shared commune listed for both appellations: Montirat. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Cité de Carcassonne' and 'Aude Val de Dagne' — the regulator assigns the ground to both, so the 13 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "aude-cotes-de-prouilhe",
+        "coteaux-de-peyriac-haut-de-badens"
+      ],
+      "reason": "Shared commune listed for both appellations: Villarzel-du-Razès. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Aude Côtes de Prouilhe' and 'Coteaux de Peyriac Haut de Badens' — the regulator assigns the ground to both, so the 13 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "haute-vallee-de-l-aude",
+        "aude-cotes-de-prouilhe"
+      ],
+      "reason": "Shared commune listed for both appellations: La Cassaigne. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Haute Vallée de l'Aude' and 'Aude Côtes de Prouilhe' — the regulator assigns the ground to both, so the 13 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "cite-de-carcassonne",
+        "haute-vallee-de-l-aude"
+      ],
+      "reason": "Shared commune listed for both appellations: Rouffiac-d'Aude. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Cité de Carcassonne' and 'Haute Vallée de l'Aude' — the regulator assigns the ground to both, so the 6 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "cotes-de-thongue",
+        "pays-d-herault-coteaux-de-laurens"
+      ],
+      "reason": "Shared commune listed for both appellations: Fouzilhon. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Côtes de Thongue' and 'Pays d'Hérault Coteaux de Laurens' — the regulator assigns the ground to both, so the 6 km² overlap is the commune itself, not a double assignment of ours.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "agenais",
+        "cotes-du-lot"
+      ],
+      "reason": "Fumel (Lot-et-Garonne). Listed in the INAO igp-aires-communes CSV rows of 'Agenais' and in the Côtes du Lot cahier's aire géographique (raw/inao/cahier-extracted/cotes-du-lot.json, aire_geographique → Lot-et-Garonne: Fumel; the record is drawn from that commune text). Both regulator texts assign Fumel to their IGP — the overlap is the commune itself.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "cotes-de-bourg-bourg-et-bourgeais",
+        "cotes-de-bordeaux-blaye"
+      ],
+      "reason": "The 3.9 km² band is INAO parcellaire parcels delimited for Côtes de Bordeaux Blaye (a parcel-level DGC, raw/inao/parcellaire) lying inside communes that the INAO aires-communes CSV lists for 'Côtes de Bourg' (a commune-union record): the regulator's parcel delimitation of one appellation overlaps the regulator's commune list of its neighbour along the Blaye / Bourg boundary. Both sides are INAO data; nothing of ours to correct.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "martino",
+        "retsina-of-viotia"
+      ],
+      "reason": "Μαρτίνο / Ρετσίνα Βοιωτίας: a 0.3–0.4 km band along the Fthiotida / Boeotia unit boundary (NUTS-3 EL641 Βοιωτία). One record is a union of GISCO LAU communities (1:1M, raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), the other the GISCO NUTS-3 polygon (1:3M, raw/gr/nuts/NUTS_RG_03M_2024_4326_LEVL_3.geojson) of the neighbouring regional unit; the two generalisations of the same administrative boundary differ by up to a few hundred metres. A digitisation band, not a community assigned to both.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "retsina-thivon-viotias",
+        "fthiotida"
+      ],
+      "reason": "Ρετσίνα Θηβών / Φθιώτιδα: a 0.3–0.4 km band along the Boeotia / Fthiotida unit boundary (NUTS-3 EL644 Φθιώτιδα). One record is a union of GISCO LAU communities (1:1M, raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), the other the GISCO NUTS-3 polygon (1:3M, raw/gr/nuts/NUTS_RG_03M_2024_4326_LEVL_3.geojson) of the neighbouring regional unit; the two generalisations of the same administrative boundary differ by up to a few hundred metres. A digitisation band, not a community assigned to both.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "epanomi",
+        "halkidiki"
+      ],
+      "reason": "Επανομή / Χαλκιδική: a 0.3–0.4 km band along the Thessaloniki / Chalkidiki unit boundary (NUTS-3 EL527 Χαλκιδική). One record is a union of GISCO LAU communities (1:1M, raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip), the other the GISCO NUTS-3 polygon (1:3M, raw/gr/nuts/NUTS_RG_03M_2024_4326_LEVL_3.geojson) of the neighbouring regional unit; the two generalisations of the same administrative boundary differ by up to a few hundred metres. A digitisation band, not a community assigned to both.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "terre-del-volturno",
+        "pompeiano"
+      ],
+      "reason": "Terre del Volturno IGT is drawn from the 78 comuni its MASAF disciplinare Art. 3 enumerates (raw/it/masaf-disciplinari-extracted/terre-del-volturno.json), which include comuni of the province of Napoli beside those of Caserta; pompeiano is drawn as the whole province of Napoli (its disciplinare: 'l'intero territorio amministrativo dei comuni in provincia di Napoli esclusi quelli ricadenti nell'isola d'Ischia'). Two GISCO unions sharing the province's comuni: the 13 km² band is the regulator's own overlap of two IGTs, not a comune assigned in error.",
+      "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "terre-del-volturno",
+        "epomeo"
+      ],
+      "reason": "Terre del Volturno IGT is drawn from the 78 comuni its MASAF disciplinare Art. 3 enumerates (raw/it/masaf-disciplinari-extracted/terre-del-volturno.json), which include comuni of the province of Napoli beside those of Caserta; epomeo is drawn as the whole province of Napoli (a resolver fallback — its disciplinare names the comuni of the isola d'Ischia, which the parser does not expand; queued in CURATOR_TODO). Two GISCO unions sharing the province's comuni: the 13 km² band is the regulator's own overlap of two IGTs, not a comune assigned in error.",
+      "reviewed": "2026-09-25"
+    }
+  ]
 }

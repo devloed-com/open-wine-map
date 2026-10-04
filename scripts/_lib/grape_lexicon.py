@@ -808,6 +808,8 @@ GRAPE_ALIAS = {
     "leanyszolo": "feteasca-alba",
     "madchentraube": "feteasca-alba",           # German synonym
     "juhfark": "juhfark",                       # native Hungarian (Somló signature white)
+    "lammerschwanz": "juhfark",                 # German name (de.wikipedia "Juhfark (deutsch: Lämmerschwanz)"); VIVC lists LAEMMERSCHWANZ under JUHFARK #5852 and also CSOMORIKA #3281 / HARSLEVELUE #5314 / RABO DE OVELHA #16956 — the Franken EU document lists it bare, pinned to the German usage
+    "laemmerschwanz": "juhfark",
     "ezerjo": "ezerjo",                         # native Hungarian (Mór signature white)
     "kolmreifler": "ezerjo",
     "tausendgute": "ezerjo",
@@ -1036,6 +1038,7 @@ GRAPE_ALIAS = {
     "bogdan": "bogdan",                           # BG modern crossing
     "rubin": "rubin",                             # BG Nebbiolo × Syrah crossing
     "ruen": "ruen",                               # BG modern crossing
+    "gergana": "gergana",                         # Гергана — VIVC #23144, BG white (verified live 2026-09-24); fuzzy-bound to glera, then vitovska-grganja, before
     "storgozia": "storgozia",                     # BG modern crossing
     "kaylashki-misket": "kaylashki-misket",       # BG modern crossing (white)
     "varnenski-misket": "varnenski-misket",       # BG Varna-area Misket
@@ -1287,6 +1290,8 @@ GRAPE_ALIAS = {
     "weisser-elbling": "elbling",
     "roter-elbling": "roter-elbling",              # VIVC #3819 ELBLING RUDE — red colour-mutation
     "elbling-rouge": "roter-elbling",
+    "roter-riesling": "roter-riesling",            # VIVC #10076 RIESLING ROT — red colour-mutation of Riesling (DE Sortenliste; verified live 2026-09-24). Not Roter Veltliner, whose VIVC synonym "RIESLING ROTER" otherwise wins the fuzzy match
+    "riesling-rot": "roter-riesling",
     "dornfelder": "dornfelder",                   # VIVC #3776 DORNFELDER (Helfensteiner × Heroldrebe)
     "helfensteiner": "helfensteiner",              # VIVC #5364 HELFENSTEINER
     "heroldrebe": "heroldrebe",                   # VIVC #5400 HEROLDREBE
@@ -2236,6 +2241,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "bogdan": "noir",
     "rubin": "noir",
     "ruen": "noir",
+    "gergana": "blanc",
     "storgozia": "noir",
     "kaylashki-misket": "blanc",
     "varnenski-misket": "blanc",
@@ -2320,6 +2326,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     # vinification practice.
     "elbling": "blanc",
     "roter-elbling": "rose",         # red-skinned colour mutation, vinified pale
+    "roter-riesling": "rose",        # VIVC #10076 RIESLING ROT — red-skinned colour mutation, vinified white
     "frueburgunder": "noir",
     "dornfelder": "noir",
     "helfensteiner": "noir",

@@ -16,11 +16,17 @@ below the detail zoom) — and checks, per French parcel-level record:
                 ~2.4×; more means something wide was bridged);
   bridging      how much of the AREA THE FOOTPRINT ADDS (footprint − parcels)
                 lies on another appellation's parcels. Umbrella appellations
-                whose parcels contain this record's (Bourgogne over Chablis,
-                Haut-Médoc over Pauillac — ≥ 90 % of the record's parcels) and
-                the record's own parent / children are not "other": their
-                ground is legitimately shared. What remains is a real bridge
-                across a neighbour, worst first.
+                whose parcels cover this record's (Bourgogne over Chablis,
+                Haut-Médoc over Pauillac — ≥ 50 % of the record's parcels), the
+                record's own parent / children and its siblings (the DGCs of
+                one appellation share their parent's ground — Grés de
+                Montpellier over Languedoc Saint-Georges-d'Orques) are not
+                "other": their ground is legitimately shared. What remains is a
+                real bridge across a neighbour, worst first. A bridge under
+                --bridge-min-km2 (default 0.05 km²) never fails --strict: at
+                the last footprint zoom (z11.9, ~57 m/px at 47 °N) five
+                hectares are under four pixels across, and the closing of a
+                concave climat inevitably fills a corner of the next one.
   --water       km² of IGN BD TOPO `surface_hydrographique` (every nature,
                 including `Ecoulement naturel` — rivers) inside the added area,
                 fetched per record from the Géoplateforme WFS and cached under
@@ -155,6 +161,7 @@ def main() -> int:
     ap.add_argument("--only", action="append", default=[], help="slug substring filter (repeatable)")
     ap.add_argument("--top", type=int, default=15, help="rows per worst-first table")
     ap.add_argument("--bridge-max", type=float, default=0.05, help="--strict fails above this bridge share of the footprint")
+    ap.add_argument("--bridge-min-km2", type=float, default=0.05, help="--strict ignores a bridge smaller than this (invisible at the last footprint zoom)")
     ap.add_argument("--ratio-warn", type=float, default=3.0)
     ap.add_argument("--json", type=Path, help="write every per-record row here")
     ap.add_argument("--strict", action="store_true")
@@ -215,6 +222,8 @@ def main() -> int:
                 op = detail[other]["props"]
                 if op.get("parent_slug") == slug or p.get("parent_slug") == other:
                     continue
+                if p.get("parent_slug") and op.get("parent_slug") == p.get("parent_slug"):
+                    continue  # a sibling sub-denomination: the parent's ground, shared
                 og = detail[other]["geom"]
                 clipped = _clip(og, added.bounds)
                 if clipped.is_empty:
@@ -314,11 +323,12 @@ def main() -> int:
         args.json.write_text(json.dumps(rows, ensure_ascii=False, indent=1))
         print(f"\nrows → {args.json}")
 
-    over_bridge = [r for r in rows if r["bridge_share"] > args.bridge_max]
+    over_bridge = [r for r in rows if r["bridge_share"] > args.bridge_max and r["bridge_km2"] >= args.bridge_min_km2]
     failed = bool(no_footprint or orphan or bad_contain or bad_bbox or over_bridge)
     if args.strict and failed:
         print(f"\nSTRICT: {len(no_footprint)} missing, {len(orphan)} orphan, {len(bad_contain)} containment, "
-              f"{len(bad_bbox)} bbox, {len(over_bridge)} bridge > {args.bridge_max:.0%}", file=sys.stderr)
+              f"{len(bad_bbox)} bbox, {len(over_bridge)} bridge > {args.bridge_max:.0%} "
+              f"(and ≥ {args.bridge_min_km2:g} km²)", file=sys.stderr)
         return 1
     return 0
 

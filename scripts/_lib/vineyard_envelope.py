@@ -75,6 +75,19 @@ LOD_FOOTPRINT_MAX_ZOOM = LOD_CROSSFADE[1]
 # Single-record fits stop here: from this zoom only the parcels are drawn.
 LOD_OVERVIEW_MAX_ZOOM = 12
 
+# The closing radius scales with the record below one square kilometre:
+# r = ADAPTIVE_FACTOR · √(parcel area), floored at ENVELOPE_MIN_RADIUS_M and
+# capped at ENVELOPE_RADIUS_M. A 250 m closing generalises a village AOC or a
+# regional appellation the way it should, but on a Burgundy premier-cru climat
+# of 0.01–0.1 km² it laps across the neighbouring climat (Les Gaudichots'
+# footprint was 65 % La Tâche parcels, 2026-09-24 audit): there the gaps
+# worth closing are the row breaks and tracks inside the climat, tens of
+# metres, not the 500 m the regional silhouette needs. √area is the
+# record's own length scale — 1 km² → 250 m, 0.25 km² → 125 m,
+# 0.05 km² → 56 m — so the footprint of a small record follows its parcels.
+ADAPTIVE_FACTOR = 0.25
+ENVELOPE_MIN_RADIUS_M = 30
+
 CACHE_DIR = ROOT / "raw" / "cache" / "vineyard-envelopes"
 
 _TO_3035 = Transformer.from_crs("EPSG:4326", "EPSG:3035", always_xy=True).transform
@@ -89,6 +102,15 @@ def containment_tolerance_m(radius_m: float = ENVELOPE_RADIUS_M) -> float:
     never leaves the r-dilation of its input."""
     sagitta = radius_m * (1.0 - math.cos(math.pi / (4 * ENVELOPE_QUAD_SEGS)))
     return sagitta + ENVELOPE_SIMPLIFY_M
+
+
+def adaptive_radius(area_m2: float) -> int:
+    """Closing radius for a record whose parcels cover `area_m2` (EPSG:3035
+    square metres): whole metres, so the cache key and the card agree."""
+    if area_m2 <= 0:
+        return ENVELOPE_MIN_RADIUS_M
+    r = ADAPTIVE_FACTOR * math.sqrt(area_m2)
+    return int(round(min(ENVELOPE_RADIUS_M, max(ENVELOPE_MIN_RADIUS_M, r))))
 
 
 def is_envelope_source(country: str | None, geom_source: str | None) -> bool:
@@ -165,20 +187,26 @@ def envelope_3035(geom_3035: BaseGeometry, radius_m: float = ENVELOPE_RADIUS_M) 
 
 def envelope(
     geom_4326: BaseGeometry,
-    radius_m: int = ENVELOPE_RADIUS_M,
+    radius_m: int | None = None,
     *,
     use_cache: bool = True,
     stats: dict | None = None,
 ) -> BaseGeometry:
     """Footprint of a WGS84 (multi)polygon, cached on disk by input digest.
 
-    `stats`, when given, is incremented in place: `hits`, `misses`, `secs`.
-    Never returns an empty geometry for a non-empty input: on the (theoretical)
-    degenerate case the input itself is returned, so a record can never vanish
-    from the overview layer.
+    `radius_m` defaults to `adaptive_radius` of the polygon's area (see the
+    constants); a caller may pin it. `stats`, when given, is incremented in
+    place: `hits`, `misses`, `secs`, and `radius_m` is set to the radius
+    used. Never returns an empty geometry for a non-empty input: on the
+    (theoretical) degenerate case the input itself is returned, so a record
+    can never vanish from the overview layer.
     """
     if geom_4326 is None or geom_4326.is_empty:
         return geom_4326
+    if radius_m is None:
+        radius_m = adaptive_radius(_area_m2(geom_4326))
+    if stats is not None:
+        stats["radius_m"] = radius_m
     key = cache_key(geom_4326, radius_m)
     path = _cache_path(key, radius_m)
     if use_cache and path.exists():
@@ -210,6 +238,12 @@ def envelope(
     return out
 
 
+def _area_m2(geom_4326: BaseGeometry) -> float:
+    """Equal-area (EPSG:3035) area of a WGS84 polygon. Reprojecting is the
+    honest measure and costs a fraction of the closing it sizes."""
+    return float(shp_transform(_TO_3035, geom_4326).area)
+
+
 def shape_metrics(geom_4326: BaseGeometry) -> tuple[int, float]:
     """`(parts, frag)` for the outline paint: the number of polygon parts and
     the perimeter/area ratio in m⁻¹ — ink per fill for a given stroke width.
@@ -232,6 +266,8 @@ def lod_config() -> dict:
     """The LOD constants the client needs (rendered into app.js as one JSON)."""
     return {
         "radius_m": ENVELOPE_RADIUS_M,
+        "min_radius_m": ENVELOPE_MIN_RADIUS_M,
+        "adaptive_factor": ADAPTIVE_FACTOR,
         "overview_max_zoom": LOD_OVERVIEW_MAX_ZOOM,
         "footprint_max_zoom": LOD_FOOTPRINT_MAX_ZOOM,
         "detail_min_zoom": LOD_DETAIL_MIN_ZOOM,

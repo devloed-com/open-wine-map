@@ -243,7 +243,18 @@ Reconciled 2026-08-26 against `raw/terroir-facts/`:
 
 ---
 
-### `extract_aire` regex backtracks pathologically on JORF-issue layouts — ❌ open
+### `extract_aire` regex backtracks pathologically on JORF-issue layouts — ✅ fixed 2026-10-04
+
+Fixed with the verification pass this entry asked for: the `after` group is
+now `(?:[^:\n]*\n){0,4}?[^:\n]*` (each line ends on its newline), the full
+stage-02 re-run + snapshot diff over the 1,541 FR records changed no grape
+and only the aire fields the same day's table / proximity rules changed
+(see « stage 02 homologation dates … » below). The in-build trigger was
+Saint-Chinian's proximity zone (centred "Département de l'Aude" headers, no
+colon): 40 s on a 4 KB section, now 0.3 s. The Pouilly-Fumé reproducer below
+(`--extract-timeout 0`, unbounded) ran the same day in 0.5 s, verdict
+`differs` as for every other register vintage. Original note kept for the
+record:
 
 Found while running the register shadow sweep (2026-08-29). Not a register
 bug and not new — a **pre-existing latent defect in the FR extractor** that no
@@ -557,8 +568,253 @@ vlaamse-landwijn (BGA §7 broad rule); appenzell-ausserrhoden, appenzell-innerrh
 |---|---|---|---|
 | navarra | grapes | VIVC pin "Oneca (Galvani)" | ✅ fixed 2026-09-20 (pins verified live) |
 | pineau-des-charentes | grapes (fr, retracted) | roster = cahier §V (14 varieties incl. trousseau gris) — but the **fr tooltip for Trousseau Gris showed the Trousseau *noir* article** (`raw/wikipedia/grape_overrides.json` fr pin → "Trousseau": Bastardo photo, "Le trousseau N…", VIVC 14165 gris in the footer); nl was translated from that same fr card | ✅ fixed 2026-09-22: fr pin set to `null` (`override-absent`), fr + nl cards re-translated from en *Trousseau gris* |
-| gres-de-montpellier | boundary (retracted) | advanced polygon = the 44 INAO parcellaire rows (Saint-Vincent-de-Barbeyrargues has a Languedoc row, none for id_denom 2917 — INAO's gap); **default (simple) mode draws the 45-commune aires-csv union: 819.8 km², 18× the 46.4 km² parcellaire, 45.9 km² of it lagoon (Étang de l'Or 29 km²), no on-screen disclosure** | ❌ open — same class as saint-estephe |
+| gres-de-montpellier | boundary (retracted) | advanced polygon = the 44 INAO parcellaire rows (Saint-Vincent-de-Barbeyrargues has a Languedoc row, none for id_denom 2917 — INAO's gap); **default (simple) mode draws the 45-commune aires-csv union: 819.8 km², 18× the 46.4 km² parcellaire, 45.9 km² of it lagoon (Étang de l'Or 29 km²), no on-screen disclosure** | 🟡 simple-mode water superseded by the footprint (branch `feat/zoom-lod`); the Saint-Vincent gap is a candidate pin — see the Côtes du Rhône Villages entry below |
 | saint-estephe | boundary (open) | advanced polygon sound: 1 INAO row, 99.95 % in commune 33395, 100 % of RPG 2023/2024 vineyard parcels inside (IGN RPG via data.geopf.fr WFS), every 1855 growth + cru bourgeois inside or < 250 m; detached 1.18 km² part = Saint-Corbian / Le Boscq; **default mode draws the IGN commune: 33.05 km², of which 8.56 km² (25.9 %) is BD TOPO `Estuaire` (Gironde) and ~9 km² western forest / palus** | ❌ open — see below |
+
+### Monterrei boundary flag (2026-09-27, en, zone view at z9.3) — ✅ fixed
+
+The parent's polygon was the MAPA zone: six municipios whole (Castrelo do
+Val, Monterrei, Oímbra, Verín, Riós, Vilardevós ≥ 98.8 % each, 674 km²).
+The documento único (PDO-ES-A1114-AM03, 12 September 2025, "Ampliación de
+la zona delimitada") delimits by parishes: seven mountain parishes of
+Castrelo do Val (Campobecerros, Parada da Serra, Piornedo, Portocamba) and
+Riós (O Navallo, Rubiós, Trasestrada) it excludes were drawn (~111 km²);
+the six it added in Cualedro (San Millao, Montes, Rebordondo, A Xironda)
+and Laza (Matamá, Retorta) were missing (~79 km²), so the Ladera de
+Monterrei subzona — already drawn from the IET parishes — stuck out west of
+its parent on screen. Fixed by the whole-municipio MAPA-zone rule in
+`apply_es_parroquias` (CLAUDE.md, ES chain; `tests/test_es_parroquias.py`):
+the parent is now `iet-parroquia-union`, Vilardevós plus 49 parishes, 640
+km², one polygon, both subzonas inside it. Ribeiro and Ribeira Sacra keep
+their whole-municipio zones — see the Galician parroquias residue section
+under Spain. The post-build audits were clean (outliers 0 unreviewed,
+footprints strict) except one overlap sliver unrelated to Monterrei —
+Beaujolais / Coteaux Bourguignons, 41 km², the eight Mâconnais–Beaujolais
+border communes both INAO rows list; the Coteaux Bourguignons row only
+bound on 2026-09-26 through the "X ou Y" alias fold, so it post-dated the
+09-25 review and is now whitelisted with its siblings.
+
+### Côtes du Rhône Villages boundary flag (2026-09-29, en, footprint view at z8.8; flagged twice, retracted once) — ✅ fixed
+
+The parent polygon is the INAO parcellaire dissolved over id_app 276 (88
+of the aire's 95 communes). Seven communes of the aire géographique
+(cahier section IV; aires-communes CSV IDA 1287) carry no Villages parcel
+in the 2026-05-11 release: Vaison-la-Romaine, Saint-Marcellin-lès-Vaison,
+Saint-Romain-en-Viennois and Mollans-sur-Ouvèze have no row for **any**
+AOC (not digitised); Visan, Sérignan-du-Comtat and Sorgues have Côtes du
+Rhône rows only. Six of the seven are named DGC communes (« Vaison-la-
+Romaine », « Puyméras », « Massif d'Uchaux », « Sainte-Cécile », « Visan »),
+so at z8.8 the footprint stopped short of Vaison with the town label on
+bare basemap — what the visitor saw. Fixed by the new curator-pin layer
+(CLAUDE.md "INAO parcellaire gaps";
+`scripts/_lib/parcellaire_gap_fills.json`, `scripts/_lib/parcellaire_gaps.py`,
+`scripts/audit_parcellaire_gaps.py`): six pins — Côtes du Rhône Villages
+(7 communes, 426 → 538 km²; Sérignan, Sorgues and Visan from the Côtes du
+Rhône parcels of the commune, the four undigitised ones whole), Côtes du
+Rhône (5 whole, incl. Saint-Laurent-des-Arbres — a Lirac commune with no
+row for any AOC; 1,323 → 1,377 km²), and the Vaison-la-Romaine (2.2 → 35
+km²), Massif d'Uchaux, Puyméras and Sainte-Cécile DGCs. Every filled card
+says which communes and how. Visan's own DGC stays the whole commune
+(`aires-csv-dgc`, already disclosed). Post-build audits: outliers 0 unreviewed / 0
+stale, overlaps 0 suspicious, gap pins 6 APPLIED / 0 STALE; the footprint
+audit's `--strict` exits 1 on 11 bridges > 5 % (pouilly-fuisse-premier-cru
+20 % onto the Mâcon villages, saint-bris, gres-de-montpellier, la-clape,
+the Corton / Blagny / Ladoix climats) and 7 containment findings of 0.1 %
+— **byte-identical to the 2026-09-27 run** (`/tmp/owm-audit-envelopes-
+monterrei.log`; the "footprints strict" wording in the Monterrei entry
+above was loose), the fill only removed cotes-du-rhone from the containment
+list. Those 11 bridges are a separate review item (whitelist with evidence,
+or a smaller closing for the climats). Side fix: `feedback_report.py` dropped `lod` / `zoom` on
+the *flagged* rows (only retractions carried them) — the CSV now shows the
+zoom band a flag was raised in.
+
+**Candidate pins the audit surfaces (verify each against the cahier before
+pinning; `scripts/audit_parcellaire_gaps.py`, 167 records with ≥ 1 gap,
+most of them CSV legal aires that are not production areas):**
+
+- gres-de-montpellier — Saint-Vincent-de-Barbeyrargues (Languedoc row, no
+  Grés row; the 2026-09-18 flag above) → pin with donor `languedoc`.
+- rasteau-tranquille (DGC) — Cairanne, Sablet (the aire lists parts of both).
+- touraine-azay-le-rideau (DGC) — Artannes-sur-Indre, Thilouze (no row for
+  any AOC); touraine-amboise — Montreuil-en-Touraine, Saint-Ouen-les-Vignes.
+- macon-villages (DGC) — Pruzilly, Romanèche-Thorins, Saint-Amour-Bellevue,
+  Saint-Symphorien-d'Ancelles (Beaujolais rows only).
+- anjou — Corzé, Louzy, Orée d'Anjou, Verrie, Verrières-en-Anjou, Antoigné;
+  cotes-de-bordeaux-blaye — Donnezac, Étauliers.
+- languedoc — 58 Limoux-area communes with Limoux / Blanquette rows and no
+  Languedoc row (is the regional delimitation there simply not digitised?
+  a single INAO question settles all 58); cotes-de-bordeaux — 22;
+  vin-de-corse-ou-corse — 36 communes with no row for any AOC.
+- NOT gaps (CSV legal aire ≠ production area; leave unpinned): the Corton
+  and Givry premier-cru climats (three-commune CSV rows for one-commune
+  crus), the Alsace grands crus (47-commune rows), Bourgogne / Bordeaux
+  regional aires (vineless communes).
+
+### Cévennes boundary flag (2026-09-29, fr, zone view at z7.2) — ✅ fixed
+
+IGP Cévennes is a commune union from the INAO IGP aires CSV. Its 236 rows
+(IDA 2217) carry `Date MAJ` 14 September 2012 and are all Gard; the cahier
+des charges in the build (BO du MASA 8 August 2024, arrêté at JORF 4 August
+2024) lists the same Gard communes **plus 40 Lozère communes** ("Pour le
+département de la Lozère : Altier, Barre-des-Cévennes … Villefort"; section
+7.1: "situé dans les départements du Gard et de la Lozère"). The latest CSV
+release (2025-10-09, the one in `raw/`) has no Lozère row, so the polygon
+stopped at the département border — a Cévennes without Florac, the Vallée
+Française or the Tarn gorges. Fixed by a curator-pin layer (CLAUDE.md "INAO
+aires-communes supplements"; `scripts/_lib/aires_supplements.json`,
+`aires.apply_supplements`, `tests/test_aires_supplements.py`): 39 Lozère
+communes added (3,482 → 4,952 km², 233 → 272 communes drawn). Two more
+records with the same defect were found by diffing every cahier's commune
+list against its CSV rows and pinned on the same evidence: Côtes de Thau
+(+9 communes around the Étang de Thau — Sète, Mèze, Frontignan …; cahier BO
+24 August 2023, CSV rows of 2015; 181 → 422 km²) and Maures (+3 — Besse-sur-
+Issole, Cabasse, Le Thoronet; cahier BO 11 December 2025; 2,193 → 2,313 km²).
+Post-build (2026-09-30, `/tmp/owm-build-aires-supplements.log`): the three
+supplements applied, 0 stale; against the previous build only the three
+records changed (12 entity pages, their panel JSON, the startup blobs, the
+tile fingerprint in the app bundles, 12 sitemap `lastmod`); outliers 0
+unreviewed / 0 stale, overlaps 0 suspicious (sliver classes unchanged),
+1,043 tests pass. Not deployed.
+
+**Open on the pinned records**
+
+- cevennes — Massegros Causses Gorges (48094) is in the aire "pour la partie
+  correspondant au territoire de la commune déléguée Les Vignes" only. Not
+  drawn (`not_drawn` in the pin): IGN AdminExpress communes have no polygon
+  for a commune déléguée. Le Rozier + Saint-Pierre-des-Tripiers are a
+  detached lobe for that reason. A Les Vignes polygon (AdminExpress
+  `COMMUNE_ASSOCIEE_OU_DELEGUEE`, Licence Ouverte) would close it.
+
+**Candidates from the same diff (cahier names a commune the CSV lacks;
+verify each against the cahier in force before pinning — the probe reads
+prose, so exclusion lists, vinification zones and merged communes show up
+as false candidates):**
+
+- thezac-perricard — Mauroux, Sérignac, Saux (Lot; Saux is now a commune
+  déléguée of Porte-du-Quercy). The cahier in the build is a **PNOCDC
+  draft** (`extranet.inao.gouv.fr/fichier/PNOCDCIGPThezac-Perricard.pdf`);
+  CSV rows of 2012 are the six Lot-et-Garonne communes. Pin once the
+  amended cahier is published in the BO.
+- duche-d-uzes (AOC, `aires-csv`) — 10 Gard communes the cahier (COG 2024,
+  BO Agri MAASA stamp) lists and the AOC CSV lacks: Argilliers, Collias,
+  Domessargues, Euzet, Mauressargues, Montagnac, Quissac,
+  Saint-Hippolyte-de-Caton, Saint-Just-et-Vacquières, Vers-Pont-du-Gard.
+- collines-rhodaniennes — Ambonil, Bourg-de-Péage (cahier BO Agri 11
+  December 2025; CSV rows of 6 December 2024).
+- lorraine — Houdemont, Neuves-Maisons (cahier COG 2020; CSV rows of 28
+  July 2025 are *newer* — check which side is current).
+- pays-de-brive — Astaillac, Saint-Viance, Segonzac, Ussac (cahier BO 15
+  October 2020; CSV rows of 5 September 2025 are newer — likely a cahier the
+  build has not picked up; register-drift check).
+- haute-vallee-de-l-aude — Cassaignes (the cahier lists cadastral sections
+  for some communes; partial).
+- urfe — Perreux, Saint-Martin-d'Estréaux, Sail-les-Bains (PNOCDC draft in
+  the build).
+- ardeche — Vallées-d'Antraigues-Asperjoc (2019 commune nouvelle; the CSV
+  keeps the pre-merger codes — vintage drift, not an amendment).
+- ile-de-france (18 communes), comtes-rhodaniens (14) and the spirit / cider
+  GIs (Calvados, Pommeau, eaux-de-vie de cidre) — not read yet.
+- NOT gaps: alpilles (the 29-commune list is the vinification zone, the 19
+  CSV communes are the grape zone), franche-comte (the Jura list is the
+  exclusion of the AOC communes).
+
+### Visitor flags of 2026-10-03 (`feedback_report.py --range all`: 12 flags, 5 retracted, 1 note)
+
+**muscadet-coteaux-de-la-loire — name (fr, footprint view at z8.4, simple mode) — ❓ no defect found.**
+The string on screen is the regulator's in every source the build holds:
+SIQO row id_appellation 98 / id_denomination_geo 212 "Muscadet Coteaux de la
+Loire" (both product rows — Vin tranquille 15239 and Vin sur lie 15240 — on
+one denomination, so no sub-denomination), the cahier in the build (sections
+I, III, X, XII all write « Muscadet Coteaux de la Loire », no hyphen, no
+"des"), INAO product page 15239, the EU register `PDO-FR-A0495`
+(`register_name` identical, matched on the full name). The fr card renders
+the same name in the h1, the title ("Muscadet Coteaux de la Loire, carte du
+vignoble — Val de Loire"), the sidebar and the summary; the only other names
+on the card are the grape pill "Melon" (cahier "melon B", VIVC prime MELON, no
+bracket) and the region "Val de Loire". Geometry is the INAO parcellaire for
+id_app 98, bbox −1.525 / 47.212 / −0.994 / 47.427 — Carquefou and Thouaré in
+the west, Ligné and Mésanger in the north, Saint-Florent-le-Vieil in the east,
+the 22 aire communes of the aires CSV (14 Loire-Atlantique, 8 Maine-et-Loire)
+— and the 2026-09-29 outlier / overlap audits were clean. Not reproducible
+from the flag alone; candidates if it recurs: the 1936 decree's historical
+form "Muscadet des Coteaux de la Loire", a hyphenated spelling, or a visitor
+who expected "Melon de Bourgogne" on the pill. The cahier in the build is
+the 2019 arrêté (`homologated_at` 2019-10-16) while `latest_known_pdf` is a
+2025-11-26 publication — a register-drift re-source candidate, unrelated to
+the name.
+
+**bolgheri-sassicaia — grapes (en, zone view at z9.6 and z7.7; flagged twice, retracted once; note "Cabernet-Frank") — ✅ fixed, mechanism-wide.**
+The card listed Cabernet Sauvignon alone while its own terroir fact named
+the Cabernet Franc the Marchese planted in the 1940s. The MASAF disciplinare
+(Art. 2) reads "Cabernet Sauvignon: almeno l'80 %; possono concorrere altri
+vitigni con uve a bacca rossa … riportati nell'allegato 1", and the PDF ends
+with "Allegato 1 – Elenco vitigni complementari idonei alla produzione del
+vino a DOC Bolgheri Sassicaia" — 49 red varieties, Cabernet Franc tenth.
+Stage 02f read an in-PDF annex only when Article 2 named no variety (the
+Toscano-IGT case), so every DOC that names its principal and hands the
+complement to the annex lost the complement. Fix in
+[scripts/_lib/it/masaf.py](scripts/_lib/it/masaf.py) `grapes_with_annex`
+(CLAUDE.md, MASAF stage 02f, "in-PDF variety annex"): wider anchor
+(Allegato / Elenco headings, bounded at the next Allegato or Articolo),
+cell-wise rows for the register-table, two-column and "(N)" layouts, and
+the reading decided by Article 2's wording — complement → `accessory`,
+"da uno o più vitigni … allegato 1" → roster → `principal`, no "allegato"
+in Article 2 → annex ignored (Roero). Stage 04's non-stub backfill adds the
+annex `accessory` entries to a documento-unico record without any and
+records the MASAF provenance. Corpus sweep (`/tmp/owm-annex-dryrun2.log`,
+58 annex records re-extracted, `it-masaf-disciplinare-v4`): 36 stubs gain
+an accessory roster (Sassicaia 1 + 46; the Tuscan DOCs 25–80 each — the
+regulator attaches the whole regional register for "altri vitigni idonei"),
+11 documento-unico records gain one through the backfill (Chianti Classico
+1 + 37, Chianti 3 + 80, Rosso di Montepulciano 1 + 82, Torgiano Rosso
+Riserva, Montefalco, Vin Santo di Montepulciano, Castelfranco Emilia, delle
+Venezie, Riviera del Garda Classico; Maremma Toscana and Torgiano had an
+empty documento-unico roster and take the whole sidecar), 8 rosters are
+promoted from the few names Article 2 singles out to the annex (Terre
+Siciliane 2 → 56, Calabria 1 → 35, Basilicata 2 → 53, Isola dei Nuraghi
+5 → 69, Alpi Retiche 5 → 74, Vigneti delle Dolomiti 19 → 57, Monferrato
+10 → 43 — its bianco and rosso are "uno o più vitigni" of the Piedmont
+list — and Mitterberg, whose documento unico already carries 40), and the
+three full-roster IGTs recover "Refosco dal Peduncolo rosso" (the wine-type
+stripper took its "rosso"; the name as written is now tried first).
+Tests: `tests/test_it_parser.py` (Sassicaia excerpt + a synthetic
+register-table fixture: complement, roster, bounded list, no-reference).
+Post-build (2026-10-04 02:38 → 03:37, `/tmp/owm-stage04-2026-10-04b.log`,
+shared with the concurrent FR re-extraction / Montpeyroux work of the other
+session): Sassicaia 1 + 46, Chianti Classico 1 + 37, Calabria 35, Terre
+Siciliane 56; `[grapes]` FLAGGED=0 / INHERIT=0, 0 stale geometry overrides,
+`audit_empty_grapes --strict` and `audit_gi_terms --strict` exit 0. An
+earlier build of the same night (02:09) had read `saumur.json` while stage
+02 was rewriting it and shipped Saumur with no grapes — a concurrent
+stage-02 run and a stage-04 build must not overlap, the same rule as two
+stage-02 runs. Not deployed.
+
+Side findings of the sweep, not acted on:
+
+- **`riminese` / `albana` are two slugs on one VIVC passport** (#224 Albana
+  bianca): the Corsican Riminèse pin was moved from 10117 to 224 on
+  2026-09-20, after the MASAF sidecars were written. The matcher's
+  VIVC-synonym layer now sends "Albana di Romagna" (Colli d'Imola) and
+  "Ribona" (Colli Maceratesi; VIVC lists RIBONA under Albana bianca) to
+  `riminese` where the 2026-09-20 sidecars had `albana`; the pill reads
+  "Albana di Romagna (Albana Bianca)", correct for the reader, but the grape
+  facet splits one variety over two slugs (30 FR cahiers on `riminese`).
+  Fold decision for a lexicon pass. Same drift on alto-adige ("Portoghese").
+  The three sidecars were rewritten in this pass (driver bug, no build
+  effect for the two documento-unico records).
+- **Unresolved annex names** now in
+  `raw/it/extraction-unknowns-masaf.json` for the grape-colour pass:
+  Catanese Nero, Lucignola, Merlese, Minnella Bianca, Orisi (Terre
+  Siciliane); Bellagna, Bussanello, Erbamat, Grappello Ruberti, Incrocio
+  Terzi N.1 (Alpi Retiche); Bianchetta Trevigiana, Casetta (Vigneti delle
+  Dolomiti); Maceratino, Malbo Gentile (Esino); Centesimino, Cornacchia,
+  Ervi, Famoso, Festasio, Lambrusco Benetti, Lambrusco Oliva, Pelagos,
+  Perla dei Vivi (Castelfranco Emilia). The queue file was rewritten by the
+  per-slug driver and holds this run's 1,619 candidates only; a full
+  `02f --all --include-nonstub` sweep restores the corpus-wide queue.
+- Lexicon quirks the annex exposes (pre-existing): "Prugnolo Gentile" →
+  `nielluccio` beside "Sangiovese" → `sangiovese` (two pills for one
+  variety on Sassicaia's card); "Mazzese" → `ciliegiolo`.
 
 ### Simple-mode polygons carry open water, and the panel does not say the shape is the commune — 🟡 disclosure + footprint on branch `feat/zoom-lod` (2026-09-23), water mask still open
 
@@ -610,6 +866,33 @@ Detail tables below preserved as reference. Workflow notes:
 `not-single-document` (5 — URL exists but template not parseable): Chozas Carrascal, El Vicario, Rosalejo, Tharsys, Urbezo
 
 `no-documento-unico-anchor` (✅ resolved — flag was stale): Toro + Ribera del Guadiana both anchor-match cleanly against `DOC_UNICO_ANCHOR_RE` in [scripts/es/02_extract_pliegos.py:212](scripts/es/02_extract_pliegos.py#L212) (re-verified 2026-05-14). Toro extracts 7 principal grapes; Ribera del Guadiana extracts polygon (`figshare-pdo`). RDG's "0 principal grapes" trace is a separate role-routing issue — its older `ti-grseq-1` template puts grapes at section 7 (not 6) with non-standard numbering, so the grape parser misses them. See `ES role-routing coverage` in code follow-ups.
+
+### Geometry — commune-list parser residue after the 2026-09-24 fixes — ✅ guarded 2026-09-25
+
+The 2026-09-24 fixes (Quiroga-Bibei's lower-case article, the 74 compound
+municipio names, the 11 Pallars mergers) were verified against the whole
+corpus; the independent check found three latent gaps with **no record
+affected today**. All three are guarded since 2026-09-25 (`merge_compound_
+municipios` refuses a bare-article piece; `_LOWER_ARTICLE_RE` accepts
+`los` / `las`; the resolver's `_reread_out_of_context` splits a compound
+whose pieces bind inside the established provinces while the compound
+does not — and, the same rule, re-reads "Los Corrales" as Huesca's
+"Loscorrales", the one real defect the outlier audit surfaced: Ribera del
+Gállego-Cinco Villas drew Sevilla's Los Corrales, 636 km away). Tests in
+`tests/test_es_commune_matching.py` (2026-09-25 block). The original notes:
+
+- `merge_compound_municipios` fuses "Vielha e Mijaran, Les y Bossòst" into
+  one token because the normaliser strips a trailing article the way GISCO
+  writes "Borges del Camp, Les" — `Les` (Val d'Aran, INE 25125) is the only
+  municipio whose whole name is an article. Refuse a merge when a piece
+  normalises to an empty string or a bare article.
+- `_LOWER_ARTICLE_RE` (subzona.py) accepts a / o / as / os / el / la / els /
+  les / es / sa / l' but not the Castilian plurals `los` / `las`, which the
+  resolver's normaliser does strip; a pliego writing "los Villares" in lower
+  case is still dropped.
+- "Toril y Masegoso" (Teruel) has both halves as live municipios elsewhere
+  (Cáceres, Albacete); two such names listed side by side in one list would
+  fuse — no pliego lists those provinces together.
 
 ### Geometry — official MAPA zones harvested 🟢 (2026-05-22)
 
@@ -1225,6 +1508,63 @@ still render `region="Italia"` (was 353 of 408).
 [scripts/audit_it_regions.py](scripts/audit_it_regions.py) cross-checks every
 regione against the polygon. (The research prompt formerly at
 `tmp/it-regione-research-prompt.md` is gone with the tmp/ cleanup.)
+
+### Geometry — comune-list parser residue after the 2026-09-24 whole-province fix — ✅ fixed 2026-09-25
+
+- ❌ **Island names are not expanded (found 2026-09-25 by the overlap audit).**
+  Epomeo IGT delimits "l'intero territorio amministrativo dei comuni
+  ricadenti nell'isola d'Ischia in provincia di Napoli" and is drawn as the
+  whole province of Napoli (`gisco-provincia-union`); Pompeiano IGT is the
+  province "esclusi quelli ricadenti nell'isola d'Ischia" and keeps Ischia.
+  Fix: a small island → comuni table in `scripts/_lib/it/comune.py`
+  ("isola d'Ischia" → Barano d'Ischia, Casamicciola Terme, Forio, Ischia,
+  Lacco Ameno, Serrara Fontana; "isola d'Elba" is already a comune list in
+  the Elba DOC) applied both as an inclusion and inside an exclusion
+  clause. Until then the two Terre del Volturno pairs are whitelisted in
+  `geometry_overlap_overrides.json` as the regulator's own IGT overlap.
+
+`parse_geo_area` now keeps a whole province named beside a comune list as a
+member (Rubicone 10 → 85 comuni, Daunia 3 → 64, Murgia 6 → 47;
+`gisco-comune-provincia-union`). The three gaps below were fixed on
+2026-09-25 together with two the outlier audit exposed — **Valle Belice**
+drawn as the provinces of Agrigento + Palermo (Pantelleria, Lampedusa,
+Ustica included) because one unresolvable three-word name ("Santa
+Margherita Belice", ISTAT "… di Belice") burnt four misses and closed the
+comune bucket, and the list not resuming after "in provincia di Agrigento
+e Contessa Entellina". Exclusions subtract only whole units (a partial
+marker in the clause — isole amministrative, fondi valle, area interna al
+GRA, la parte — keeps everything; "esclusivamente" is not an exclusion; a
+bracketed clause ends at its ")"); a bare "Provincia di X:" header opens
+the list; an unresolved multi-word name is one miss; "art." / "n." do not
+end the winemaking lookback; connector-less and j → i folds recover
+"Concordia sul Secchia", "Santa Teresa di Gallura", "Gioiosa Jonica". 129
+of 524 parses changed, 16 build-affected (Valle Belice 125 → 4 comuni,
+Casauria 46 → 17, Roccamonfina 104 → 25, Tharros 87 → 78, Emilia-Romagna
+IGT 120 → 77, Locride 13 → 22, Terre del Volturno 2 → 78, Provincia di
+Nuoro 52 → 96 …); an Explore agent read the 16 texts against the new
+lists: 15 better, 1 same-with-a-caveat (Arghillà's frazione "Archi"
+matches Archi CH in the parse and is dropped by the regione filter),
+none worse. Still missing there, recall not regressions: "Carpaneto P.no"
+(abbreviated Piacentino), "Gallo" for Gallo Matese, "Baia Latina" /
+"Cancello Arnone" (dropped "e"/"ed"), "Giugliano" for Giugliano in
+Campania, Pecorara (merged into Alta Val Tidone, no GISCO row); Colline
+del Genovesato is drawn from the comuni its boundary prose names (the
+Tigullio coast comuni it never lists are still missing). Tests in
+`tests/test_it_parser.py` (2026-09-25 block). The original notes:
+
+- An **excluded** province is promoted: "ad esclusione dell'intero territorio
+  della provincia di Ravenna" → member. Stop the quantifier lookback at
+  esclus- / eccett- / ad eccezione. Related, pre-existing: exclusions are read
+  as inclusions everywhere in this parser (Marsala "esclusi i comuni di
+  Pantelleria, Favignana ed Alcamo", Rimini "ad esclusione dei comuni di") —
+  both records are Bétard-resolved today, so nothing shows.
+- The "territorio provinciale" branch has no winemaking-clause guard, and an
+  "art." token ends the guard's lookback window early (only Costa Toscana uses
+  the form, and it is geoportal-resolved).
+- A comune list after a bare "provincia di X:" header with no `comuni`
+  keyword is parsed into the province bucket and lost (Costa Toscana, Carso,
+  Asolo Prosecco, Alta Langa shapes) — Costa Toscana therefore resolves as
+  five whole provinces when the geoportal does not win.
 
 ### IT geometry — regional-geoportal zone harvest 🟢 in progress
 
@@ -2134,6 +2474,105 @@ per GI directly from `ec.europa.eu` — a cleaner, WAF-free, licence-clear
 (© EU) source than scraping national regulator sites. The attachment id is
 on each GI's eAmbrosia detail page under Documents. Candidate to generalise
 into stage 00/01 for any country whose national specs are hard to fetch.
+
+### Geometry — the area-units layer (2026-09-24) — 🟡 residue listed
+
+Since 2026-09-24 the resolver reads the ΥΠΑΑΤ spec's delimitation prose
+(`scripts/_lib/gr/commune.py` `parse_area_units`, `scripts/_lib/gr/geometry.py`
+`units_union`; CLAUDE.md "GR geometry resolution chain"). After the second
+pass of the same day (the single-town records, the former επαρχίες, the
+whole-prefecture texts): **60 PGIs** draw a GISCO LAU union (`how:
+area-units`), **14** a curated prefix pin (`_GR_PGI_PREFIX`), 33 PDOs stay on
+Bétard, **40 PGIs stay at NUTS level** — 31 by the spec's own NUTS line and
+9 by the curated NUTS pin. Every GR record now carries a real region facet
+(a LAU-union record reads it from the NUTS unit the spec cites, else from
+the NUTS-3 units its polygon lies in — 43 records had fallen to "Ελλάδα"
+when the first pass moved them off the NUTS step). Every flipped record was reviewed by independent
+agents against the spec text and the GISCO table (packets under the session
+scratchpad); the pin file `scripts/_lib/gr/commune_overrides.json` carries
+57 record pins in 28 records plus the `eparchies` table (Θηβών, Μεγάρων,
+Χαλκίδας, Καρυστίας — each from the el.wikipedia eparchy article and the
+δήμος articles, refuted twice; the 1991 ΕΣΥΕ census settled the one
+community, Μετόχι Διρφύων, that the Kymi unit carries for Χαλκίδας but not
+Καρυστίας). What is left for a curator:
+
+- **Source defect — `retsina-koropiou`**: the ΥΠΑΑΤ τεχνικός φάκελος of
+  Ρετσίνα Κορωπίου pastes Ρετσίνα Καρύστου's delimitation ("τέως επαρχίας
+  Καρυστίας" — southern Euboea, 60 km from Koropi). An empty pin keyed
+  "επαρχία Καρυστίας" keeps the record on the curated NUTS pin (all of
+  Αττική). The honest polygon is Δ.Κ. Κρωπίας (EL_49040000, 114 km²) — pin it
+  only once a public text says so (Π.Δ. 514/1979, ΦΕΚ 157/Α, defines the
+  zone; not fetched: et.gr is a JS gate).
+- **Named units the commune layer does not carry (drawn without them,
+  disclosed on the card as "not drawn")**: `gerania` — "όρους Γεράνεια" is
+  the mountain, not a unit (the two Megara communities are drawn);
+  `playies-egialias` — "Γουμένισσας (Βρυσαρίου)" is an alias in brackets,
+  nothing missing; `playies-paikou` — Δ.Δ. Γερακώνας has no GISCO row (a
+  settlement inside the Goumenissa unit, already drawn);
+  `retsina-mesogion-attikis` — Σταυρού: no Attic community of that name in
+  LAU 2024 (a locality of Παλλήνη / Γέρακας; EL_49090101 Γέρακα would be the
+  container, not pinned); `tegea` — Δεμιρίου (the review could not confirm a
+  rename to Λιθοβούνια; left out) and "Τεγέας" (the umbrella phrase);
+  `playies-pentelikou` — Κουκουνάρι, Σταματοβούνι (unlocated vertices of
+  the boundary line, see below). All harmless; pin only with a public
+  source.
+- **Approximate by design — `playies-pentelikou`**: the spec traces the
+  boundary as a line through named places ("Δροσιά- Άνοιξη- Άγιος Στέφανος-
+  Λίμνη Μαραθώνα – Αγ. Γεώργιος Βρανά – Κουκουνάρι – Σταματοβούνι –
+  Διόνυσος – Δροσιά"); the record draws the polygon those places outline
+  (`scripts/_lib/gr/landmarks.json`, six vertices from Wikidata items —
+  village centre points, the reservoir's centre for Λίμνη Μαραθώνα, the
+  village Βρανάς for its church; 34 km²), so the enclosed slopes with
+  Σταμάτα and Ροδόπολη are inside. Two vertices are not located by any
+  licence-clear gazetteer (Κουκουνάρι, a locality, and Σταματοβούνι, the
+  hill above Σταμάτα — neither in Wikidata nor the GeoNames GR dump cached
+  under `raw/geonames/`): the line runs straight from Βρανάς to Διόνυσος,
+  which under-draws the south-eastern bulge, and the card lists both as not
+  drawn. To finish it: add their coordinates to `landmarks.json` from a
+  public source (GeoNames once added, or the map attached to ΥΑ
+  443785/22.12.1993, ΦΕΚ 946/Β) and rebuild. Vertex precision is the
+  settlement centre, not the decree's line through it.
+- **Umbrella PGIs still at region level — `ipiros`, `sterea-ellada`,
+  `peloponnisos`** ("όλες τις περιοχές της Ηπείρου για τις οποίες έχουν
+  αναγνωρισθεί οίνοι ΠΓΕ και ΠΟΠ …"): the text is a cross-reference — the
+  union of the member GIs' zones — not the whole region. The honest polygon
+  is a region-union of the member records (the SI / HU PGI pattern) once a
+  member table is curated per umbrella; today the NUTS-2 region is drawn.
+  `thessalia`, `thraki`, `makedonia`, `kriti` use similar wording but were
+  read as whole-region by two reviews (their sentences add "που
+  περιγράφονται επακριβώς", i.e. every unit is already recognised).
+- **Whole-prefecture texts whose NUTS-3 unit pairs two prefectures** are
+  now prefix pins (Αργολίδα EL_41, Αρκαδία EL_40, Καρδίτσα EL_23, Κοζάνη
+  EL_14, Λακωνία EL_43, Μεσσηνία EL_44, Θάσος EL_0401, Ικαρία EL_5401, the
+  island of Euboea for `retsina-evias`); `mantzavinata` ("Διοικητικής
+  περιοχής καταγωγής Κεφαλλονιάς") stays on EL623 Ιθάκη-Κεφαλληνία — the
+  review read "administrative area" as the 1996 prefecture, which held
+  Ithaca. A future spec naming Πρέβεζα, Άρτα, Τρίκαλα, Σάμος or Λήμνος alone
+  needs the same pin (the pairs are EL541, EL611, EL412, EL411).
+- **Accepted whole-unit precision, worth knowing**: `anavyssos` draws all of
+  Δήμος Σαρωνικού for "στα νότια του Δήμου Σαρωνικού" (plus the Keratea unit
+  for "the western side of Λαυρεωτική"); `klimenti` is one community (the
+  spec's own section Γ: Δ.Δ. Κλημεντίου, 700–1000 m); `elassona` is the nine
+  Δ.Δ. its section Γ lists, not the Kapodistrian unit; `lilantio-pedio` draws
+  Δ.Κ. Χαλκιδέων whole for the locality Δοκός; `ilion` draws Δ.Κ. Ιλίου
+  (8 km²) for the toponym «Πύργος Βασιλίσσης»; `metaxaton` draws Δ.Κ.
+  Μεταξάτων for "Μοναστήρια Μεταξάτων"; `retsina-karistou` draws Skyros,
+  which the former eparchy held; every altitude band (">200 m") is drawn as
+  the whole unit. `paggeo` = the five former δήμοι = today's Δήμος Παγγαίου
+  (EL_0503).
+- **Review method to reuse**: the scratch probe resolves all 147 records in
+  memory against the current build and diffs GISCO id sets; each flipped
+  record gets a packet (text + matched rows + unmatched names) that an Explore
+  agent reviews against `gisco-el-lau.json` (one row per line, grep by stem)
+  and a second agent tries to refute per proposal; a completeness screen over
+  the records still at NUTS level (six readers, a refuter per positive) found
+  the whole-prefecture and eparchy cases above. Former δήμοι whose seat has
+  another name are identified from the el.wikipedia article of the former unit
+  (seat + community list matched one-to-one against the prefix's rows); a
+  former επαρχία from the eparchy article plus each δήμος article, with the
+  1991 ΕΣΥΕ census as the tie-breaker. Never pin from memory; a pin only for
+  the container of a list widens the record (Δαφνουσίων, Δερβενοχωρίων were
+  removed for that reason).
 
 ### Grape lexicon — GR natives needing aliases (recall gap)
 
@@ -3508,12 +3947,700 @@ Full report: [docs/register-drift-2026-09-20.md](docs/register-drift-2026-09-20.
 | Country | Item | Action |
 |---|---|---|
 | FR | Cité de Carcassonne (877), Coteaux de Narbonne (881) — IGPs cancelled (arrêté 31-03-2025; Reg. (EU) 2025/2538 / 2025/2536) | ✅ kept and marked *Cancelled* via `scripts/_lib/cancelled_gis.json` (2026-09-20) |
-| FR | 22 appellations with a newer homologation arrêté on INAO (Beaujolais 05-08-2026, Mâcon 07-08-2026, Meursault / Bordeaux supérieur 04-06-2026, Coteaux du Giennois / Côte de Nuits-Villages / Côtes de Toul / Entre-deux-Mers / L'Etoile / Marc d'Alsace 02-09-2026, Blagny / Coteaux varois / Crémant de Loire / Moselle / Muscat de Frontignan / Pineau des Charentes / Rosé de Loire / Saint-Bris / Vinsobres 08-06-2026, Viré-Clessé 27-07-2026, Côtes de Provence 27-04-2026, Coteaux de l'Auxois 20-09-2022) | re-run stage 01 → 02 → 02d/02e → 04 once BO Agri answers (connection reset today) |
-| FR | Crémant de Bordeaux (31) — INAO now links the 2021 arrêté, we hold 25-11-2025 | verify which is in force |
+| FR | 22 appellations with a newer homologation arrêté on INAO (Beaujolais 05-08-2026, Mâcon 07-08-2026, Meursault / Bordeaux supérieur 04-06-2026, Coteaux du Giennois / Côte de Nuits-Villages / Côtes de Toul / Entre-deux-Mers / L'Etoile / Marc d'Alsace 02-09-2026, Blagny / Coteaux varois / Crémant de Loire / Moselle / Muscat de Frontignan / Pineau des Charentes / Rosé de Loire / Saint-Bris / Vinsobres 08-06-2026, Viré-Clessé 27-07-2026, Côtes de Provence 27-04-2026, Coteaux de l'Auxois 20-09-2022) | ✅ 2026-10-01 stage 01 through a French VPN (BO Agri is geo-fenced — see CLAUDE.md): 38 fetched / 407 cached / 7 register / 14 missed; 24 canonical cahiers replaced (the 22 minus Muscat de Frontignan, whose page now links nothing newer, plus Languedoc 11-08-2026 and Bandol 11-08-2026) + 4 pinned in `manual_overrides.json` because the product page lags INAO's own Textes JO index (Crémant de Bordeaux 04-06-2026, Mâcon 07-08-2026, Côte de Nuits-Villages and L'Etoile 02-09-2026; L'Etoile's `prefer_cahier` register pin released). Stage 02 re-extracted the 28 parents + 142 DGCs (0 stubs); 02d/02e chain run `cahiers-2026-10-01` (358 facts, gate 335 supported / 23 rewritten / 0 dropped / 2 moved, audit `--strict` 0, $3.51; the gate batch sat 7.7 h in Anthropic's queue) + `cahiers-2026-10-01b` for Muscat de Frontignan; stage 03 regenerated |
+| FR | Crémant de Bordeaux (31) — INAO now links the 2021 arrêté, we hold 25-11-2025 | ✅ neither: the arrêté du 4 juin 2026 (JORF 10-06-2026) is in force — INAO's Textes JO index lists it, the product page still links 2021; pinned 2026-10-01 |
 | FR | 11 in PNO (Bordeaux, Chinon, Clos de Vougeot, Cognac, Coteaux d'Aix, Grés de Montpellier, Ladoix, Muscat de Lunel, Premières Côtes de Bordeaux, Périgord, Saumur) + Alsace | re-check after the opposition period |
+| FR | Marc d'Alsace (1091) — the 02-09-2026 cahier is an eau-de-vie template (sections A / B / C, "1. Description des facteurs du lien au terroir"); the FR section parser extracts no lien and no grapes from it | ✅ 2026-10-04 — INAO's 2026 eau-de-vie template ("Chapitre Ier : Conditions de production et lien à l'origine", Arabic "N. - Title" sections; the A / B / C were the Chapitre III control-plan rows the EU letter-template branch took): `is_spiritueux_2026_template` branch in stage 02, `kind: EDV`, aire 53 Haut-Rhin + 64 Bas-Rhin communes, lien 5.9 KB (section 5), grape gewurztraminer Rs from "4.1° Matière première" (grapes are parsed for a grape-derived spirit only). The 2026-10-01 refresh had also renamed the record `marc-d-alsace` (the manifest re-read SIQO's `appellation` column) — the registered name *Marc d'Alsace Gewurztraminer* (SIQO `produit`, INAO product 13046, PGI-FR-01836, cahier §2) is pinned in `siqo_supplements.json` `name_overrides`, stage 02 takes names from the referentiel, slug and URL restored. 02d/02e chain run `marc-d-alsace-2026-10-04` (the old 3 facts came from the 2009 décret text). Expect Cognac / Armagnac / Calvados republications in the same template |
+| FR | Limoux (251), Savigny-lès-Beaune (231), Floc de Gascogne (319) — never had a manifest cahier (rescued from sibling bundles); the register tier bound their own `CDC_*.pdf` on 2026-10-01, lien byte-identical to the rescue | ✅ no action |
 | FR | stage 01 regexes miss `boagri/rectificatif-…` and `legifrance.gouv.fr/eli/…` links | ✅ fixed 2026-09-20 (`BOAGRI_RECTIFICATIF_RE`, `LEGIFRANCE_ELI_RE`; a page with only those links keeps its prior cahier) |
 | IT | Salemi (PGI-IT-A0807) cancelled Reg. (EU) 2026/1043 | ✅ in `cancelled_gis.json` (marked, not dropped); the record is a no-geometry stub, so it is not in the blob until it gets a polygon |
 | NL | Ambt Delden (PDO-NL-02169) cancelled Reg. (EU) 2026/1068 | ✅ in `cancelled_gis.json` (kept and marked) |
 | HU | Mura / Murai (PDO-HU-02817) registered Reg. (EU) 2026/1792, single doc C/2026/1833 | ✅ added 2026-09-20 (Balaton; `gisco-commune-union` 8/8; 12 facts) |
 | ES/HU/IT/RO/SI/DE/GR | 38 GIs with a new OJ C / OJ L publication after our fetch (list in the report) | re-fetch 01 → 02 for those slugs |
 | all | earlier cancellations (pre-2023) are not in `cancelled_gis.json` — out of scope for now | ❌ open |
+
+## France — INAO parcellaire release 2026-09-28 (checked 2026-09-30) — ✅ adopted 2026-10-04
+
+data.gouv.fr: only the parcellaire moved (2026-05-11 → 2026-09-28, sha1
+`e671f920…`, 11,773 → 11,751 rows, 357 → 356 `app` values); SIQO CSV
+(2025-12-31) and both aires CSVs (2025-10-09) are byte-identical to `raw/`.
+Adopted 2026-10-04: `raw/inao/parcellaire.zip` + `raw/manifest.json` now name
+the 2026-09-28 resource (sha256 `82cb533d…`), the shapefile sits beside the
+2026-05-11 one under `raw/inao/parcellaire/` (`resolve_shapefile` takes the
+newest), the 2026-05-05 URL is gone from data.gouv.fr (404 — the dataset keeps
+the latest resource only, which is why dropped rows have to be checked in).
+All 11 rows of `inao-shapefile-patch.csv` match exactly once in the new
+release. Rows the release dropped and nothing retires are carried forward
+from the 2026-05-11 extract — `scripts/_lib/parcellaire_carry_forward.json`,
+see CLAUDE.md « Rows carried forward from an earlier release »; the gap audit
+and `tests/test_parcellaire_carry_forward.py` turn STALE the day the rows
+return. Re-check each weekly export.
+
+| Change in the layer | Verified cause | Action |
+|---|---|---|
+| Languedoc Montpeyroux (id_denom 1313) removed — Arboras, Montpeyroux, 9.6 km² | **AOC Montpeyroux recognised**: arrêté du 11 août 2026 (NOR AGRT2607509A, JORF 15-08-2026, INAO show_texte 8608, product 23354, red only; national transitional protection, EU application not yet on eAmbrosia). Draft cahier (PNO June 2025): Arboras, Montpeyroux, Lagamas, Saint-Jean-de-Fos. Its parcels are not in the layer yet | ✅ 2026-10-04 `montpeyroux` parent added through `scripts/_lib/fr/siqo_supplements.json` (provisional id `p23354`; stage 01 fetched the cahier through a French VPN; stage 02 extracts 4 principal + 3 accessory grapes, 4-commune aire, 7.6 KB lien; region pinned LANGUEDOC; register absence pinned); the old DGC rows of id_denom 1313 stay the only parcels until INAO ships the new aire parcellaire. Cahier fetched 2026-10-01 (BO Agri `2128d40f-f2c2-436a-8d1c-cd993626aa30`, sha `a6c640d1…`, 10 pp.: red only; aire Arboras, Montpeyroux, Lagamas, Saint-Jean-de-Fos; principals grenache N, mourvèdre N, syrah N, carignan N; accessories cinsaut N, counoise N, morrastel N); until INAO ships the parcels, keep the 2026-05-11 rows of id_denom 1313 as an approximation (the arrêté's art. 2 lists DGC parcels not retained in the new aire parcellaire, and the draft aire adds two communes) |
+| — | **Languedoc re-homologated the same day** (arrêté du 11 août 2026, NOR AGRT2607507A, abrogates the arrêté of 18-11-2024; show_texte 8607, BO Agri `ec0fa131-4766-401d-9f09-aa0f942d6504`, fetched 2026-10-01 sha `f3344ab2…`). **Section II lists nine DGCs — Montpeyroux is dropped**; it survives only in the commune list and a stale sentence of the Saint-Saturnin lien | ✅ 2026-10-04 `languedoc-montpeyroux` kept and marked through the new `scripts/_lib/promoted_gis.json` (green *Promoted* badge + dated line linking the successor, the arrêté and the new cahier); when the SIQO export drops row 1313, the stage-02 drop guard refuses the run until a `retained` supplement row keeps it |
+| Saint-Sardos (id_app 686) removed — 23 communes, 36.4 km² | **no legal act**: nothing in JORF 11-05 → 30-09-2026 (DILA dumps swept), nothing new in INAO's Textes JO, eAmbrosia PDO-FR-A0408 `registered`; product pages 8380 / 8381 still serve (updated 17-06-2026) but INAO's product search returns nothing for "Sardos". Upstream data state, not a withdrawal | ✅ 2026-10-04 carried forward: the 23 rows of the 2026-05-11 release are a checked-in extract (`parcellaire_carry_forward/saint-sardos-2026-05-11.geojson.gz`, INAO's coordinates unchanged) appended by `build_aoc_polygons` and the coverage index; `geom_source` stays `parcellaire`, the card says "Parcel delimitation from the INAO release of 2026-05-11; the release of 2026-09-28 carries no rows for this denomination". Still 2026-09-28 on data.gouv.fr on 2026-10-04; drop the entry when the rows return (the audit says STALE) |
+| Côtes de Provence la Londe (id_denom 1839) added — 4 communes, 33.4 km², `insee` null (`insee2011` filled) | cahier of 27-04-2026 (show_texte 8412, already in the newer-arrêté list); product records re-created 13-05-2026 (25202–25204) | ✅ 2026-10-04 `load_coverage` reads a code only from a string field (the null `insee` is a float NaN and had become a commune "nan"), and splits the few two-code fields ("49078,49115"); the record's four codes come from `insee2011` (83019, 83047, 83069, 83071) |
+| Blaye cluster (Bordeaux, Bordeaux supérieur, Crémant de Bordeaux, Côtes de Bordeaux + Blaye) ~20 communes, +8 to +17 ha; Languedoc 34 communes, −6.9 ha; Val-de-Livenne's two Blaye rows merged; Vinsobres CVI + `1B540S`; nomcom typo `SAINT-CHRISTOLY-DE-BLAYEE` | routine re-digitising | footprint cache invalidates for those records only |
+
+## France — stage 02 homologation dates and the 2024 Saumur layout (2026-10-04)
+
+| Finding | Fix |
+|---|---|
+| 266 of 467 parents had no `source.homologated_at`: the date regex required "par le décret / par l'arrêté" (150 cahiers say "par arrêté"), missed "du 1er …" and INAO's own typo "homologué pa l'arrêté" (Montpeyroux), and never looked at the BO Agri cover line above the title the splitter cuts at | ✅ `homologation_date(segment, before)` — 583 → 1,479 dated records, none lost; `tests/test_fr_cahier_parser.py` |
+| Saumur (110) was served the superseded 2019 cahier through the rescue: its own PDF is the arrêté du 12 janvier 2024, whose headings carry no numeral (pdftotext drops the list numbering), so the Roman splitter found nothing. Dating the index exposed it (the 2024 segment won and the record became a stub) | ✅ `extract_unnumbered_sections` (≥ 6 canonical titles on whole lines); Saumur + Saumur Puy-Notre-Dame now read the 2024 cahier (lien 14,937 chars, Chenin / Cabernet franc principal + 8 accessory). The aire table leak ("Doué-en-Anjou (pour le seul territoire … Vins tranquilles blancs et Fontaine …)", duplicates per wine type) ✅ 2026-10-04: `strip_table_label_column` + per-département dedupe (266 cahiers carry the table header; corpus-wide 412 leaked label tokens → 0 and 9,213 duplicate commune tokens → 0; Saumur 114 → 54 distinct aire communes, proximity 209 → 95; both the 2019 and 2024 layouts); the page-break header fold rejoined lists cut by a page (the 51 Alsace grands crus' proximity zone 45 → 79) |
+| Saint-Joseph (284) rescued from the 2011 décret bundle while a 2024 cahier (`8b76129f…`, arrêté du 4 juillet 2024) was on disk undated | ✅ follows from the dates — now the 2024 text |
+| Marc d'Alsace (1091) eau-de-vie template — see the drift section | ✅ 2026-10-04 (drift section) |
+| `montpeyroux` drew the DGC aire "Languedoc Montpeyroux" (2 communes) because `aires._resolve_key` bound a record name sitting inside a longer CSV label | ✅ 2026-10-04 the reverse-substring step now needs the record to be an alias part of the label (Pouilly); Montpeyroux resolves from its cahier's 4 communes (`communes`). Side effect, swept over 467 parents: IGP **Côtes du Lot** now binds to IGP CSV aire "Lot" (IDA 2043, 340 communes, all département 46) instead of the 6 out-of-département communes the cahier text yielded (the parser missed "le département du Lot"); the cahier's 6 extra communes (Lot-et-Garonne: Fumel, Montayral; Tarn-et-Garonne: 4) are not in the CSV row → ✅ 2026-10-04 **no pin**: read, the six are the *zone de proximité immédiate* (a vinification derogation) and they are **cantons**, not communes — "cantons limitrophes … dans le département du Lot-et-Garonne : Fumel et Tournon-d'Agenais ; dans le département du Tarn-et-Garonne : Lauzerte, Molières, Montaigu-de-Quercy et Montpezat-de-Quercy"; the aire is "le département du Lot", exactly the CSV row. The extractor had read the proximity list as the aire: stage 02 now routes the proximity sentence to `aire_proximite_immediate` and records the whole département as `aire_departements` (29 FR records — Gard, Aude, Drôme, Isère, Pays d'Oc, Méditerranée's ten …; some forty IGPs had carried their neighbours' communes as their own aire). The wiki page says "Lot — l'ensemble du département" |
+| `rerun_terroir_facts.py --scoped-02d` dropped a scoped slug that had no facts cache yet (Montpeyroux: logged "will be extracted", never passed to 02d) | ✅ fixed 2026-10-04 — the country is read from the extracted record |
+
+Orphan rows (null `signe` / `app`) in the aires-géographiques shapefile of the
+same date: Cité de Carcassonne, Coteaux de Narbonne, Saint-Sardos, Languedoc
+Montpeyroux, Alsace grand cru, the two Pouilly "complété par une dénomination
+de climat" rows, Pays d'Auge Cambremer, Pintadeau de la Drôme.
+
+## Cross-country — commune-union homonym guard (2026-09-23) — ✅ audited, 1 pin open
+
+Raised by the ΠΓΕ Άγιο Όρος geometry report (visitor mail, 2026-09-23). One
+wrong bbox turned out to sit on top of three separate defects: a soft facet
+used as geometry, a commune union with no homonym guard, and a detached-part
+detector that could not see large outliers.
+
+### GR — the reported record (`scripts/_lib/gr/`, `tests/test_gr_parser.py`)
+
+| Defect | Effect |
+|---|---|
+| `nuts_region` accepted the `region` facet as a geometry candidate | a soft text-scanned label became a 42,000 km² polygon (Άγιο Όρος drawn as Στερεά Ελλάδα, ~93 km south of the peninsula) |
+| the GR region scan read the *terroir narrative* | a passing "…η Αττική" in a comparison sentence set the facet; now geo-area + name only, the IT `derive_regione` rule |
+| `_REGION_MARKER_RE` listed bare `του` / `της` / `στην` first | swallowed any genitive place name, Mount Athos included, and shadowed the `περιφερειακή ενότητα` / `νομός` branches into dead code |
+| `_LAU_TIER_PREFIX_RE` did not know `Ψευδοδημοτική Κοινότητα` | all **68** Greek self-governing communities were unreachable by name in the GISCO index |
+| a curated `slug → [NUTS_ID]` pin ranked *below* the commune heuristic | the Τύρναβος and Πλαγιές Παϊκού pins were silently dead |
+| `_TOPIKI_BELONGS_RE` kept the δήμος over the named community | premise ("GISCO community polygons aggregate up to the δήμος") is the opposite of how the layer is built — 6,142 EL rows against 332 δήμοι. Folded into `_SUBUNIT_OF_DIMOS_RE`, which keeps the sub-unit |
+
+Άγιο Όρος now resolves through the commune list to Άγιο Όρος + Ουρανούπολη =
+**358.8 km²** at community precision. It deliberately carries **no** NUTS pin,
+so a future parser regression surfaces as `stub-no-geometry` rather than a
+plausible-looking coarse polygon.
+
+### The same unguarded union, per country
+
+| Country | Live exposure | Outcome |
+|---|---|---|
+| RO | 13 records | ❌ **was the worst** — 11 of 13 inflated, several to the full width of the country. Fixed with a județ mask, below |
+| CH | 35 records | ✅ already canton-filtered; the filter was waived for be/vs/fr/gr as "bilingual cantons may straddle", which confuses language with territory. Waiver removed — the one genuine cross-canton area (Vully FR+VD) is curated in `PER_AOC_COMMUNE_LISTS`, which bypasses the filter. Dropped the BE règlement's German common noun "Messen" → the Solothurn commune |
+| HU | 8 records | ✅ 0 ambiguous names in the corpus; guard added anyway (verified byte-identical geometry) |
+| BG | 0 records | ✅ defensive fallback only; guard added |
+| GB | 0 records | ✅ one geometry per name — cannot over-union |
+| CZ | — | ✅ already masked by the per-podoblast Bétard polygon |
+
+### RO — the județ mask
+
+Romanian commune names repeat heavily: `Izvoarele` is 5 communes, `Fântânele`
+7, `Ștefan cel Mare` 6. `commune_union` took every homonym, so *Colinele
+Dobrogei* — a Black Sea appellation — ran from 21.35°E to 29.02°E, and
+*Dealurile Vrancei* spanned 43.75°N to 48.2°N. The specs name their județe
+(`judeţul X`, or `jud. X` inline in the ONVPV caiete), and Romania's 41 județe
++ Bucharest ARE the NUTS-3 units, so the GISCO NUTS-3 layer is the boundary
+set. `parse_judet_list` harvests them and every matched commune is held to
+them; with no declared județ, an ambiguous name contributes nothing. The mask
+can only remove area, never add it.
+
+| record | before | after |
+|---|---:|---:|
+| Colinele Dobrogei | 7,730 km², 21.35–29.02°E | **5,111 km², 27.86–29.02°E** |
+| Dealurile Vrancei | 6,012 km², 43.75–48.2°N | **1,315 km², 45.38–46.12°N** |
+| Dealurile Munteniei | 8,267 km² | **3,236 km²** |
+| Dealurile Olteniei | 4,193 km² | **1,072 km²** |
+| Dealurile Transilvaniei | 14,898 km² | **8,576 km²** |
+| Terasele Dunării | 3,087 km² | **1,802 km²** |
+| Jidvei | 567 km² | **349 km²** |
+
+**✅ `dealurile-moldovei` — resolved 2026-09-24, no pin needed.** Its document
+DOES declare six counties — Iaşi, Galaţi, Vaslui, Neamţ, Bacău, Botoşani — but
+as section headers (`1. Judeţul Iaşi`, `1.1 Judeţul Galaţi`, …) that the
+mangled PDF→HTML numbering turned into sub-sections, so they landed in
+`section_titles` and never in any body text the harvester read.
+`judet_source_text` now feeds the titles to `parse_judet_list` as well:
+26,835 → 11,205 km², 26.22–28.26°E — the Moldavian region.
+
+**✅ RO commune-parser recall — 2026-09-24.** A 13-agent diagnosis of every
+name that failed to match (with an adversarially-checked synthesis) found the
+misses were parser rules, not data: unstripped `Com.` / `Com` / `Loc.` /
+`localităţile` / `sat` / `sate` / `cartierele` lead-ins (139 names), glued
+`ComunaX` from lost spaces, descriptor tails (`- sat X`, bare `satele`, `oraşul
+X cu …`, `Com. X - X`), an unanchored tail cut that emptied whole chunks
+(`localităţile componente Mediaş`), county-seat / numeric / 2-letter names
+rejected before lookup (Municipiul Iaşi, 23 August, Ip), eight spelling drifts
+(Isacea → Isaccea, Năieni → Năeni, …, aliased on the spec side only — never
+fuzzy), the cedilla `şi` the splitter did not know, typographic dashes deleted
+by the ASCII fold, and PDF footers. All landed in `scripts/_lib/ro/commune.py`
++ `geometry.py`, each pinned in `tests/test_ro_parser.py`. The structural
+change: **section-scoped counties** — `parse_commune_list_scoped` returns
+(name, [județe]) pairs from the county header each name sits under, stage 02 /
+02f store them as `geo_communes_scoped`, and `commune_union` masks each name
+to its own county (record-wide mask as fallback). Griviţa is a commune in both
+Galaţi and Vaslui and Dealurile Moldovei lists it under each: record-wide that
+was an ambiguity, scoped it is two matches.
+
+| | before | after |
+|---|---:|---:|
+| matched communes, 13 records | 556 | **719** |
+| Dealurile Olteniei | 20 | **119** |
+| Dealurile Moldovei | 168 | **204** (26.51–28.26°E, the Moldavian region; six counties from its section titles) |
+| ambiguous names | 48 | **0** |
+
+Still ~1,000 "unmatched" names per the diagnosis are **villages (sate)**, which
+GISCO has no polygon for — an explained category, not a miss. Deferred, with
+the reasons: village-role tagging with an adjacency guard (medium risk, ~0
+polygons gained, needs the INS SIRUTA sat→comună gazetteer to be done
+honestly); the restricted line-wrap join (cleanup only). **One per-record
+exclusion is open**: `dealurile-zarandului` delimits only "Curtici (satul
+Dorobanţi)" — Dorobanţi (RO_12912) is its own LAU and already matched, yet the
+whole Oraş Curtici (72.6 km²) is added; a resolver rule ("X (satul Y)" with Y
+an in-county LAU bordering X → use Y) or a reviewed stage-04 exclusion. Also
+noted: stage 02f stamps `extracted_at` with the clock, so a no-op re-run
+rewrites all 14 sidecars (pre-existing; the scripts contract says a no-op
+should be byte-stable).
+
+### The detector that should have caught all of this
+
+`audit_geometry_outliers.py` built its "main body" by AREA RANK — the largest
+parts until they held 95% of the total — and exempted every part in that set
+from the test. A large *detached* part could therefore be absorbed into the
+body and never checked. Saale-Unstrut's Werderaner Wachtelberg (117 km²,
+87 km out) was precisely the part that tipped the accumulator past 95%: the
+audit reported nothing for it, and its own whitelist entry read as stale. The
+body is now built by area rank but refuses to absorb a part isolated from
+every other part (one indexed STRtree pass). Pinned by
+`tests/test_geometry_outliers.py`.
+
+Effect: whitelist entries all match again (0 stale, Saale-Unstrut and the two
+Welsh entries back to ACCEPTED). The newly-visible findings were triaged on
+2026-09-24 — 21 records, one Explore agent each reading the finding from the
+audit file, every verdict adversarially refuted by a second agent (20 of 21
+upheld; the one refutation corrected a proposed fix, not the classification):
+
+| outcome | records | what |
+|---|---:|---|
+| whitelisted (legitimate, source-cited) | 9 | Württemberg + Landwein Neckar + Schwäbischer Landwein (the Bodensee outpost, BLE spec §4/§7.1); Rheingau + Rheingauer Landwein (Felsberg, BLE spec §3); Viile Timişului (Podgoria Teremia, OJ C 90/2021); Marc d'Alsace Gewurztraminer + Alsace lieu-dit (the Wissembourg communes, INAO cahier + aires CSV); Μοσχάτος Κεφαλληνίας (Πόρος, Β.Δ. 386/1971) |
+| clipped (Bétard cross-attribution) | 1 | Hrvatsko primorje — Skradin (184 km²) lies in the MPS spec of Dalmatinska zagora, not Hrvatsko primorje |
+| upstream parser / table fix | 11 | PT: freguesia lists inside parentheses read as concelhos (Duriense → Pombal, Leiria) and an exclusion clause read as an inclusion (Beira Atlântico); IT: `S. Arcangelo di Romagna` bound to Sant'Arcangelo (PZ) by a prefix fallback; BG: Оряховица (Stara Zagora) listed under the northern PGI; DE: Taubertäler Landwein mapped to the whole Württemberg PDO; ES ×6: a first-word fallback accepted as "unambiguous" with no province check (Salinillas de Buradón → Burgos, Alcocer de Planes → Guadalajara, San Pedro de Muro → San Sadurniño), parroquia lists leaking past a case-sensitive `Así como`, hyphen and `/` normalisation, a subzona paragraph bleed (Torrevieja) |
+
+After the RO county scoping and the nine whitelists, **unreviewed 100 → 88**;
+after the eleven upstream fixes below and the final rebuild, **70**, and after the
+SIGPAC-Jaén + Galician-parroquia build later that day **69**, unchanged by the
+polígono-footprint build that followed (20 accepted, 11 confirmed clips, 0
+pending, 0 stale; none of the 21 triaged records remains; Sierra Sur de Jaén
+not flagged). Overlap audit likewise unchanged at 491 / 3 accepted, no Sierra
+Sur pair.
+Terasele Dunării was then whitelisted too (its seven parts are the listed
+Danube communes, OJ C/2026/893 §6 — Zimnicea, Greaca, …, Însurăţei).
+
+### The eleven upstream fixes (2026-09-24) — implemented and measured per country
+
+Each was implemented by one agent against the verified note, with a
+regression test that fails on the old code, and a corpus-wide probe of every
+record of that country (parsed sets + resolved parts before/after). Stage 04
+was not run by the agents; the effect was confirmed on the final rebuild.
+
+| country | change | corpus effect | caveats left, with the reason |
+|---|---|---|---|
+| **PT** (`scripts/_lib/pt/commune_list.py`, `geometry.py`) | parenthetical freguesia lists stripped innermost-first before the split; the honorific `D.` no longer ends a capture (case-sensitive guard); an exception clause (`com/à exceção de …`, `exceto`, `excluindo`) routes its list to `excluded_concelhos`, which the distrito expansion leaves out member-wise; enumerated `a) O distrito de X` forms now match | Duriense 3 parts / 4,683 km² → 1 / 5,513 (Pombal-Leiria gone; Mirandela, Torre de Moncorvo, Vila Flor recovered); Beira Atlântico 4 / 3,229 → 1 / 6,747 (Aveiro + Coimbra distritos in, the six excluded concelhos out); Terras da Beira 3 → 9 concelhos; Lisboa −Azambuja, Tejo −Ourém (both excluded by their own text); 5 records lose only freguesia tokens that never matched | ❌ pre-existing, out of the findings' scope, each per the record's own text: **terras-da-beira** misses all of distrito Castelo Branco ("todas as freguesias de todos os concelhos do distrito de" — no distrito regex knows that form); **transmontano** resolves 2 of ~24 concelhos (`;`-separated concelhos with `;` inside the parentheticals end the capture); **lisboa** loses Porto de Mós to `_strip_freguesia_tail`; **minho / vinho-verde** drop "a freguesia de Ossela, do município de Oliveira de Azeméis" before the v1 freguesia-parent rule runs. The paren-aware terminator the note suggested was tried and rejected — it lost Moura from Alentejo |
+| **IT** (`scripts/_lib/it/comune.py`, one stage-04 call) | fused ISTAT hagionyms indexed under their `san`-split form (84 names, zero clashes); a match is rejected when the text runs on through a name connector (di/del/della/sul/in/… — not `e`, the list conjunction); `resolve()` takes the record's regione and drops cross-regione homonyms; glued `Jonico,San` commas split; three disciplinare spellings aliased (Castelguelfo, Ozzano Emilia, Terre del Sole) | Bianco del Sillaro 20 → 37 comuni, 5 → 2 parts (Sant'Arcangelo PZ out, Santarcangelo di Romagna RN in, the 14 Forlì-Cesena comuni the Castrocaro miss had cut off back); Rubicone +2; 9 further records improve in the resolver only (their build geometry comes from a zone layer or Bétard) | 🟡 **friuli-grave**: the resolver now yields Udine + Pordenone whole-province instead of one wrong Trentino comune — not live (build uses Bétard), but the comune list itself is unparsed because the text says "territorio comunale di:", a keyword the parser does not know. The "in provincia di X" clause was not wired in: the regione filter settles every ISTAT cross-regione homonym pair (7 probed), so it would be unexercised code |
+| **ES** (`scripts/_lib/es/geometry.py`, `commune_list.py`, `subzona.py`) | a first-word fallback hit is a guess, never "unambiguous": it no longer votes for the province set and is accepted only inside the provinces the exact matches established, and for a multi-word name only when the common prefix reaches past the head word (two words after san/santa/villa/val/puebla), the GISCO name is a whole-word prefix of the pliego's longer form, or the particle-stripped words agree; `/` bilingual GISCO names split before the character pass (they never matched exactly before), `-` is a word separator, curly / acute apostrophes and Catalan ` i ` folded; the abbreviation case of the class docstring ("Albelda" → Albelda de Iregua) actually implemented; parroquia enumerations stripped with their holder, `así como` ends a list case-insensitively, `- <muni>: las parroquias de …` lines keep the muni; the last subzona's capture stops at a sentence boundary (full ES stage 02 re-run: 4 records changed, only `subzona_communes`) | 29 of 78 commune-resolved records change, every name traced to its pliego token; all six flagged parts gone — Valle del Miño-Ourense 16 parts / 1,370 km² → 1 / 726 (exactly its 14 municipios), Norte de Almería one polygon of 1,145 km² (Vélez-Blanco + Vélez-Rubio recovered), Betanzos 3 → 1 part, Barbanza 8 named municipios, Rioja Alavesa +Oyón-Oion, El Comtat ends at Cocentaina; Villaviciosa de Córdoba's only polygon had been Os de Balaguer (Lleida). Montsant + Priorat wkb-identical | 🟡 whole-municipio proxies the new rules drop, each per the pliego's own wording — a curator call whether the polygon or its absence is the better proxy: ~~**Padrón**~~ (Barbanza e Iria — resolved: drawn as its two named parishes, Iria Flavia + Padrón, 12.3 km², from the IET parroquia layer), **Martos** (Sierra Sur de Jaén: numbered polígonos only; Alcaudete was never bound), **Caudete** (Valencia-Clariano: registered parcels only). ❌ **Kripan** (Rioja Alavesa) still unmatched — the pliego writes Cripán, GISCO Kripan, and an alias would not rest on the record's text. **rio-negro "San Andrés"** left unmatched rather than tie-broken between two Guadalajara San Andrés. **monterrei-ladera-de-monterrei** briefly fell to the parent polygon (its three former municipios were all parish-holder phrases) — resolved the same day by the IET parroquia layer: it is now `iet-parroquia-union` of Vilardevós + 25 named parishes, 466.8 km² |
+| **BG** (`geometry.py`, `region.py`) | PDO-BG-A1344 Оряховица moved from the Дунавска равнина PGI to Тракийска низина; region facet likewise; membership tables asserted to partition the PDOs | Дунавска равнина 6 → 5 parts (−1,076 km² at 42.41 °N); Тракийска низина unchanged (the polygon was already inside its body) | 🟡 Bétard's 1,076 km² polygon for Оряховица looks like a whole obshtina where the ИАЛВ spec (§3) names four village land areas in област Стара Загора — precision, out of scope |
+| **DE** (`geometry.py`) | Taubertäler Landwein no longer a union of the Württemberg PDO; `DE_LANDWEIN_AREA` transcribed from the BLE spec §4.1/§4.2 (13 Main-Tauber-Kreis Gemeinden + Bieberehren, Röttingen, Tauberrettersheim, Rothenburg o.d.T., Adelshofen for Tauberzell); `_DE_KREIS_AGS` gains 08128 / 09679 / 09571; `_de_norm` strips the Bavarian `, St` / `, GKSt` / `, M` | 2 parts / 10,757 km² (the whole Württemberg PDO incl. the Bodensee outpost) → 1 part / 1,243 km², the Tauber valley; Württemberg, Landwein Neckar and Schwäbischer Landwein unchanged | ❌ §4.1 lists 37 **Gemarkungen** flat, unbound to a Gemeinde; only the 13 named Gemeinden were transcribed. If a Gemarkung lies in one of the 5 Main-Tauber communes the spec does not name (Ahorn, Assamstadt, Freudenberg, Igersheim, Wittighausen), that commune is missing — no regulator source binds Gemarkung → Gemeinde, so none was asserted. The region facet: **decided 2026-09-24** — `REGIONS` gains "Baden-Württemberg" for a Landwein whose BLE area spans two Anbaugebiete of one Bundesland (Taubertäler = Baden + Württemberg Gemeinden, §4.1/§4.2), and Schwäbischer Landwein moves Baden → Württemberg (its §4 area is the Württemberg Anbaugebiet plus the Bodensee outpost); the rule is written into `scripts/_lib/de/region.py` and pinned by `test_landwein_region_facet_follows_the_anbaugebiet_or_bundesland_rule` |
+
+
+
+### DE — re-extraction after the region relabel surfaced three lexicon defects (2026-09-24) — ✅ fixed
+
+Re-running `de/02_extract_pliegos.py` for the Taubertäler / Schwäbischer
+region relabel changed the grape rosters of 16 records, so every changed
+surface was traced to its source line and checked against VIVC live:
+
+| surface (DE regulator text) | bound before | bound now | why |
+|---|---|---|---|
+| `Roter Riesling` (16 records; BLE sidecars of Nahe, Pfalz, Franken too) | `gewurztraminer` (EU documents) / `roter-veltliner` (fuzzy 100 on Roter Veltliner's VIVC synonym "RIESLING ROTER") | **`roter-riesling`**, new slug — VIVC #10076 RIESLING ROT, berry colour rouge, Germany; colour `rose` like Roter Elbling (vinified white) | a distinct registered variety, not a Riesling spelling; the exact alias now beats the synonym |
+| `Lämmerschwanz` (Franken) | `juhfark` (fuzzy) | `juhfark`, pinned in `GRAPE_ALIAS` | VIVC lists LAEMMERSCHWANZ under four primes (JUHFARK #5852, CSOMORIKA #3281, HARSLEVELUE #5314, RABO DE OVELHA #16956) — the re-extraction had drifted to `csomor`; de.wikipedia "Juhfark (deutsch: Lämmerschwanz)" settles the German usage |
+| `Gm 6414-39` (Nahe, Nahegauer Landwein) | `ehrenbreitsteiner` | unbound (raw candidate) | VIVC #4726 GEISENHEIM 6414-39 is its own accession, not Ehrenbreitsteiner (#4725) — an anonymous breeder code, per the DE rule |
+| `Roesler` (Pfalz, Pfälzer Landwein, Württemberg) | `riesling` (fuzzy) | `roesler` (VIVC #15438, Klosterneuburg red crossing) | lexicon catch-up from the AT pass |
+| `Roter Veltliner` (8 records) | unbound | `roter-veltliner` (VIVC #12931) | lexicon catch-up from the GB pass |
+
+`02g --only roter-riesling` resolved the passport (`exact-cultivar`). Its
+only Wikipedia article is German: the en fetch had landed on the Riesling
+article through a VIVC synonym, so `en` is pinned `null` in
+`raw/wikipedia/grape_overrides.json` and the four locales are translated
+from de. The translator then crashed on German (`LOCALE_NAME` had seven
+languages), and three older cards were never read at all — Blauer
+Wildbacher and Rathay (de) and Kraljevina (sl) had no tooltip in any
+locale. `de` / `sl` now close the source chain (after every language
+already used, so no cached translation moves; 16 pairs translated), and
+the tooltip gained `wiki_lang_de` / `_sl` / `_it` — 230 Italian-sourced
+tooltips read "Wikipedia IT" before. `tests/test_grape_translate_sources.py`
+pins both tables. Not done, a design call: the corpus hands the chain
+country codes (`at`, `si`, `ch`), so an Austrian or Slovene variety still
+prefers an English article over its own-language one; mapping them would
+re-translate 13 cached tooltips from a different source. Everything else in the 46 DE
+records is byte-identical to the pre-relabel snapshot. Lesson recorded: a
+VIVC synonym in the vocabulary can outscore a real variety name that the
+lexicon does not know — after adding a variety for one country, re-extract
+the countries whose rosters name its near-homonyms.
+
+### Code review of the 2026-09-24 changes — 23 findings, adversarially verified
+
+Five Explore reviewers read the uncommitted diff by area; a second agent per
+area tried to refute each finding by reproducing it. 22 confirmed, 1
+plausible (es-5, a fetch-convention remark), 0 refuted.
+
+**Greece — the region facet (gr-bg-hu-region-1).** Taking the terroir
+narrative out of the GR region fill (the Athos fix) left 102 of 147 GR
+records on the generic "Ελλάδα". The live site shows why the scan had to go:
+against the live facet it was wrong for 19 records (all 15 retsinas under
+Κρήτη, Achaia under Θράκη, Ilia and Zakynthos under the wrong islands,
+Nea Mesimvria under Θράκη) and right for 15. Stage 04 now takes the PGI
+region from the NUTS unit its geometry resolved to — the unit the spec cites
+("GR232 Αχαΐα") or a curated pin — through `region_for_nuts_ids` in
+`scripts/_lib/gr/region.py`, after the curated map and the geo-area / name
+scan. The nine facet values are Greece's geographic regions, which cut across
+the administrative ones (el.wikipedia "Γεωγραφικά διαμερίσματα της
+Ελλάδας": Attica, Euboea, Aitoloakarnania → Στερεά Ελλάδα; Achaia, Ilia →
+Πελοπόννησος; Drama, Kavala → Μακεδονία; Kythira → Ιόνια Νησιά); units that
+straddle two (EL307, EL51, EL63) resolve to nothing rather than a guess.
+
+**Greece — commune parser (gr-2 … gr-6).** The δήμος-name sweep was compiled
+IGNORECASE, so its capital anchor matched anything and ate the next list item
+("… του Δήμου Τυρνάβου και Δελερίων" lost Δελερίων); names are now
+case-sensitive with all-caps tails allowed, the tier words stay
+case-insensitive through `(?i:…)`. A sub-unit of two or three words ("Αγίου
+Παύλου", "Νίκου Καζαντζάκη") now drops its δήμος too; the genitive plural is
+spelled out (κοινοτήτων — the accent moves); plural «Τοπικές Κοινότητες»,
+the pre-Kallikratis «δημοτικό διαμέρισμα» and «καθώς και» are separators; a
+trailing "της Λάρισας" qualifier is stripped at match time, only when the
+bare head is itself a community. On the nine GR records with EU-OJ area
+text, three parses changed, all gains (Tyrnavos +2 communities). The
+Epanomi pin to all of Θεσσαλονίκη (EL522, 3,689 km²) is gone: its single
+document names one community (79.5 km²), now drawn at that precision, with a
+curated Μακεδονία facet. The Thrace PGI is pinned to Evros + Xanthi + Rodopi:
+its spec says "όλες τις περιοχές της Θράκης" but cites GR11 "Ανατολική
+Μακεδονία, Θράκη", which drew Drama and Kavala too.
+
+**Independent check of the agent fixes (2026-09-24, second model).** The
+Romanian fix (ro-1 … ro-6) passed its checker on the corpus (46 records,
+719 communes matched, ambiguity 0, no geometry change) with three edge
+cases outside the corpus; two are now guarded — a county header that runs
+on into prose ("în judeţul Iaşi pe raza comunei Bohotin judeţul Vaslui, …")
+no longer swallows the next marker, and "Com. Lungeşti - Lungeşti - satele
+…" keeps the seat-village cut — and the third (two county lists joined by
+"şi din" / "respectiv") is recorded below. The Italian fix passed (Alto
+Livenza 8 → 14 comuni, Garda 27 → 43, Vallagarina 3 → 21, Colli di Luni
+12 → 15; all 522 records otherwise identical); its checker notes that a
+comune written with a regional qualifier ("Lugo di Romagna") is kept only
+when the comune listed just before it shares the province, and that an
+appellation with exactly one comune in a second regione would still lose
+it — no record has that shape today. The Spanish fix passed (12 records
+rebind; on the map only the subzonas Ribeira Sacra Quiroga-Bibei and
+Costers del Segre Pallars change) with two notes: the new "así como los
+términos municipales de …" fold would also fold a partial-municipio clause
+("… el término municipal de Rialp en su parte situada …") if one ever
+appeared, and three synthetic rows in `tests/test_es_commune_matching.py`
+carry INE codes that are not the real ones (harmless, like older rows).
+
+**Second-model check of the Greek changes (2026-09-24).** Four read-only
+verifiers re-derived them: the region table against the cited el.wikipedia
+article (every mapping quoted; the three straddling units EL307 / EL51 /
+EL63 rightly unmapped), the Thrace and Macedonia pins against the texts on
+file, Epanomi's community against GISCO, the parser over all 292 area
+texts, the search-box change under node, the Spanish fetch code with
+synthetic province-05 and manifest cases. Corrections applied: EL515
+"Θάσος, Καβάλα" straddles two regions by the same article (Thasos is an
+Aegean island), so it is unmapped and its three PGIs curated — Θάσος →
+Νησιά Αιγαίου, Καβάλα and Παγγαίο → Μακεδονία; the umbrella Μακεδονία PGI
+is curated too. The prose word "όρια" had cost ΠΓΕ Αγορά its community
+Αγοράς ("στα διοικητικά όρια των οικισμών Αγοράς …"): the limits phrase
+is now a list separator when a list noun follows. "Βλαχάτων" (Ρομπόλα) is
+aliased to GISCO's "Βλαχάτων Εικοσιμίας". Units that straddle only by an
+island (the Sporades in EL613, Samothrace in EL511, Skyros in EL642) stay
+mapped to their mainland region, and the rule is written next to the
+table. Two verifier notes left as they are: picking a spirit from the
+search box fires "Kind Toggled spirits" even when the toggle was already
+on (pre-existing), and a non-zip body served for the Galician parish zip
+now stops ES stage 00 instead of being cached (arguably right).
+
+**Bulgaria (gr-bg-hu-region-7).** Оряховица's facet still read Дунавска
+равнина because stage 04 prefers the stored stage-02 region; BG stage 02 re-run,
+now Тракийска низина. The re-extraction moved one grape: «Гергана» had
+fuzzy-bound to glera and then vitovska-grganja; it is its own Bulgarian white
+(VIVC #23144, verified live), now in the lexicon and pinned in
+`raw/vivc/slug_overrides.json` (the Cyrillic query misses).
+
+Open, with the evidence:
+
+- ✅ **Μακεδονία PGI** (`PGI-GR-A1616`) was drawn from EL51 + EL52 + EL53,
+  and EL51 carries Evros, Xanthi and Rodopi. The first write-up said no
+  spec was on file; wrong — its EU single document (OJ C/2026/2625, the
+  Reg. 2024/1143 template) is cached, and section 9 lists thirteen
+  regional units, all Macedonian (Γρεβενών, Δράμας, Θεσσαλονίκης, Ημαθίας,
+  Καβάλας, Φλώρινας, Καστοριάς, Κοζάνης, Πέλλας, Σερρών, Πιερίας,
+  Χαλκιδικής, Κιλκίς in part). The GR parser had dropped that section: its
+  title is genitive ("Συνοπτικός καθορισμός της οριοθετημένης γεωγραφικής
+  περιοχής") and no keyword matched it, while section 3 "Χώρα στην οποία
+  ανήκει η οριοθετημένη γεωγραφική περιοχή" (body: "Ελλάδα") matched the
+  nominative one and became the record's area — the Greek twin of the RO
+  "Țara căreia îi aparține" decoy. Fixed 2026-09-24 in
+  `scripts/_lib/gr/eniaio_engrafo.py` (genitive keywords added, the decoy
+  blocklisted; the eight older GR documents parse unchanged), and the pin
+  is now EL514 + EL515 + EL52 + EL53 (EL515 also carries Thasos; the
+  document's per-unit altitude bands are not drawn). Re-extract GR and
+  rebuild to land it.
+- ❌ **Sithonia PGI** is drawn as all of Χαλκιδική (EL527) although its spec
+  delimits "την χερσόνησο της Σιθωνίας"; the overlap with Άγιο Όρος is no
+  longer whitelisted. Community precision needs the peninsula's community
+  list (δήμος Σιθωνίας), which the spec does not enumerate.
+- ✅ **Outlier audit (resolved 2026-09-25: 57 unreviewed → 0).** Every
+  detached part was reviewed against its source and whitelisted with the
+  citation in `scripts/_lib/geometry_outlier_overrides.json` (54 new
+  entries; see CLAUDE.md "Geometry-outlier overrides" for the rule per
+  provenance), except four that were defects and were fixed upstream:
+  Calvados Domfrontais bound to the whole Calvados aire (SIQO's
+  "Domfontais" + the aires-CSV substring fallback → near-exact step in
+  `_lib/aires.py`), Ribera del Gállego-Cinco Villas' "Los Corrales" bound
+  to Sevilla (ES resolver re-read), Valle Belice drawn as two provinces (IT
+  parser), and — not a defect after all — Πλαγιές Αίνου's "mainland" parts,
+  which are the Echinades islets that GISCO carries under Δ.Κ. Αγίας
+  Ευφημίας (Δήμος Πυλαρέων, Kefalonia). Bükk's part 92 km east is Barabás,
+  a Bükk település per the HU termékleírás; Znojmo's is Kojetice, in the
+  Znojemská list of Vyhláška 254/2010. The original 2026-09-24 finding:
+  41 findings are new after the detector rewrite, 15 are
+  gone (69 → 95 unreviewed on the same build; geometry unchanged). The
+  body is now the largest 25 km-cluster and a smaller detached cluster is
+  reported whole, so every genuine second lobe under 20 % of the area
+  now shows: the Yonne lobe of the six Bourgogne regionals, the northern
+  Rhône, Wissembourg for Alsace and Crémant d'Alsace, Corsica for
+  Méditerranée (its cahier names Corse-du-Sud and Haute-Corse), Skyros for
+  the eight Euboea PGIs, the Balearic islands, Brandenburger Landwein's
+  scattered Gemeinden, the Czech Bohemian lobes, Savoie, Moselle, Sable de
+  Camargue, Loire, Provence, Calvados / Pommeau / Île-de-France commune
+  unions — about 40 records to whitelist with their source. One new finding
+  is real: **Los Palacios** (ES) draws Villafranca in Navarra, 636 km away,
+  a homonym leak of "Los Palacios y Villafranca". The 15 that vanished
+  chain to the body island by island (Champagne's Montgueux, the Aeolian,
+  Sporades and Dalmatian islands, the Breton coast); Salina's whole-Messina
+  province polygon is among them and stays wrong (recorded under IT). The
+  welsh-wine / welsh-regional-wine whitelist entries are unused now (The
+  Skerries chain to Anglesey) and may be dropped.
+- ❌ **Two Romanian county lists joined by a connective** ("Localităţi din
+  judeţul Galaţi şi din judeţul Vaslui: …", "Judeţul Galaţi, respectiv
+  judeţul Vaslui: …") open two sections, the first empty, so every name is
+  scoped to the second county and the first county's communes drop as
+  outside. Not in the corpus today; the old code scoped them to the first
+  county only, also wrong. Fix: merge a header's counties into the next
+  header when no name sits between them.
+- ❌ **National-spec area texts are not parsed for communes.** Avdira names
+  "τις κοινότητες Αβδήρων, Μάνδρας, Μυροδάτου και Μαγγάνων … του Ν. Ξάνθης";
+  Ismaros names its δημοτικά διαμερίσματα. Both draw a whole NUTS-3 unit
+  today. Parsing the national-spec geo area in GR 02f would give community
+  precision to these, now that the parser handles the national-spec idioms.
+
+### Build of 2026-09-24 19:55 — what changed, what the verifiers found (5 Explore agents)
+
+Re-extracted RO (EU documents + ONVPV caiete) and GR, rebuilt, re-audited.
+Against the previous build 108 records changed: 104 GR (102 regions, the
+Epanomi / Μακεδονία / Θράκη geometries), 2 ES subzonas (Pallars drops
+Palau d'Anglesola and Sant Martí de Riucorb; Quiroga-Bibei binds A Pobra
+do Brollón), 2 BG (Оряховица's facet, Гергана). Romania: county scoping on
+five records, no geometry change, 42 județ masks loaded. Audits on the new
+build: outliers 11 confirmed / 0 stale / 18 accepted / 93 unreviewed;
+overlaps 488 suspicious / 2 accepted (the Sithonia pair is suspicious by
+design); empty-grapes strict passes; GI terms strict passes; the
+vineyard-envelope strict audit fails on the pre-existing containment /
+bridging residues. Every expectation held except the items below, all
+pre-existing and now visible because the Greek facet and the detector are
+no longer hiding them:
+
+- ❌ **GR: PGIs drawn as whole NUTS units far beyond their text.** Sixteen
+  Attica PGIs (Ίλιον, Ανάβυσσος, Γεράνεια, Μαρκόπουλο, Παλλήνη, Σπάτα,
+  Πλαγιές Πεντελικού, the retsinas …) draw all of EL30 including Kythira,
+  3,826 km²; the text of Ίλιον is one toponym, that of Πλαγιές Πάρνηθας
+  three Boeotian communities plus Αφιδνών. Seven Euboea PGIs draw all of
+  EL642 including Skyros; Πλαγιές Κιθαιρώνα draws all of Στερεά Ελλάδα
+  (15,574 km²) for two communities. Kos = all Dodecanese, Kissamos = all
+  Chania, Lesvos includes Lemnos, Zakynthos includes the Strofades, Kriti
+  includes Gavdos. Fix upstream: parse the national-spec area text for
+  communities (the parser now handles its idioms) and fall through to NUTS
+  only when nothing resolves; the NUTS pins in `scripts/_lib/gr/nuts.py`
+  then become last resorts.
+- ❌ **GR Αιγαίο Πέλαγος draws only the South Aegean.** Its spec cites "GR42
+  Νότιο Αιγαίο, GR41 Βόρειο Αιγαίο"; the name resolver keeps one. Pin
+  `aegeo-pelagos` to `["EL41", "EL42"]` (source: its own spec on file).
+- ❌ **GR Σιθωνία** is all of Chalkidiki (EL527) for a text that says "την
+  χερσόνησο της Σιθωνίας"; needs the peninsula's community list.
+- ❌ **GR Patras PDOs carry Bétard homonym parts**: Μοσχάτος Ρίου Πάτρας has
+  Πλάτανος of Aigialeia instead of Πλατάνι of Rio; Μοσχάτο Πατρών has Άγιος
+  Νικόλαος of Kalavryta; Μαυροδάφνη Πατρών both. Clip-override candidates
+  (`scripts/_lib/geometry_outlier_overrides.json`, verify against the gpkg).
+- ❌ **GR Θράκη** is flagged for Samothrace (EL511 carries the island); the
+  spec delimits "όλες τις περιοχές της Θράκης" by regional unit. Whitelist
+  with that citation, or subtract the island — a curator call.
+- ❌ **GR Μακεδονία's panel summary reads "«Μακεδονία» Ελλάδα"**: the summary
+  builder joins sections 1 and 3, and in the 2024/1143 template section 3
+  is the country. Not rendered today (the record has 11 facts); fix the
+  builder to skip the country section for that template.
+- ❌ **ES Ribeira Sacra Quiroga-Bibei is still missing Pobra de Trives**: the
+  pliego writes "a Pobra de Trives" with a lower-case Galician article and
+  the subzona tokenizer rejects a token starting lower-case. Six of seven
+  municipios bound. Fix in `scripts/_lib/es/subzona.py` `_is_commune_token`.
+- ❌ **ES Costers del Segre Pallars: 10 of 21 names unmatched** — historical
+  municipios merged into Tremp, Isona i Conca Dellà, Gavet de la Conca …;
+  needs a merged-municipio alias table with the merger decree as source.
+- ❌ **ES Los Palacios** draws Villafranca (Navarra): "Los Palacios y
+  Villafranca" is split on " y ". Keep a compound name whole when the
+  joined form is itself a GISCO key.
+- ❌ **IT Rubicone** is drawn from its ten Bologna comuni only: the geo-area
+  also says "l'intero territorio amministrativo delle province di
+  Forlì-Cesena, Ravenna e Rimini", and `parse_geo_area` drops the province
+  list whenever a comune list is present. Pre-existing; union both.
+- ❌ **Blauer Wildbacher has no VIVC link**: the 02g query "Wildbacher"
+  missed its only candidate, BLAUER WILDBACHER #13234 (in the cached
+  search). Pin in `raw/vivc/slug_overrides.json` after a live passport
+  check. **Гергана** has a VIVC link but no Wikipedia card yet
+  (`02b_fetch_grape_lexicon.py --only gergana`).
+- ✅ The `welsh-wine` / `welsh-regional-wine` outlier whitelist entries no
+  longer match anything (The Skerries chain to Anglesey); dropped — the
+  file carries no such keys on 2026-09-25.
+
+### Stage-03 markdown pages stale since May (found 2026-09-24) — ❌ open, pre-existing
+
+`wiki/<slug>.md` + `wiki/_index.json` are older than their stage-02 records
+in 14 countries (ES 185/185, GR 147/147, DE 46/46, RO 46/46, CH 75/75, …;
+e.g. `wiki/mosel.md` 2026-05-24, `_index.json` 2026-09-20). Nothing
+deployed or rendered reads them (deploy skips `_index.json`; the map reads
+raw/ + wiki/data/), so the site is unaffected, but a fresh 00→04 run would
+regenerate them and the "reproducible" rule says it should. Fix: run every
+`scripts/<cc>/03_generate_wiki.py` after FR `03_generate_wiki.py` (check
+first that FR's run does not rewrite `_index.json` without the other
+countries' entries).
+
+### Region facet — the terroir-narrative scan, corpus-wide (2026-09-24) — ✅ closed
+
+The Athos facet defect (a passing "…η Αττική" in the lien) was one instance of
+a pattern: **10** stage-02 scripts (be / bg / cy / cz / de / hr / hu / ro / si /
+sk) and **9** stage-04 region fills passed `link_to_terroir` into the region
+scan. Measured before removing it: across all 267 records of those countries
+the facet is identical with and without the narrative — every one is covered
+by its curated `_REGION_BY_FILE_NUMBER` — so the scan was dead weight, but the
+same latent class. All 19 call sites now read geo-area + name only (the IT
+`derive_regione` rule); `tests/test_region_scan_wiring.py` fails if any
+country passes the narrative back in.
+
+### ES stage 02 `--only` rewrites `_index.json` from the selection alone — ❌ open
+
+Found 2026-09-24 while re-extracting for the commune fixes: `raw/es/pliegos-
+extracted/_index.json` held a single key (`getariako-txakolina`) left by an
+earlier `--only` run, and the full run restored all 149. The FR stage 02 had
+the same footgun (fixed 2026-09-11 by merging the selected entries into the
+existing index); ES's `--only` still writes the index wholesale. Until it is
+fixed, re-extract ES only with a full run, and check the index key count
+afterwards.
+
+### Geometry-overlap audit — 493 unreviewed slivers, whitelist was empty — ✅ reviewed 2026-09-25
+
+**Verified on the rebuilt map (2026-09-25, after the parser / resolver /
+radius fixes):** `audit_geometry_outliers.py --strict` → 23 confirmed
+clips, 0 stale, 75 accepted, **0 unreviewed**; `audit_geometry_overlaps.py
+--strict` → 77 border, 224 tier, 106 generalisation, 86 source-drawn, 28
+accepted, **0 suspicious** (two pairs joined the whitelist after the
+rebuild: Terre del Volturno, now drawn from its 78 comuni, against the
+whole-province Pompeiano and Epomeo IGTs); `audit_empty_grapes.py
+--strict` and `audit_gi_terms.py --strict` unchanged and green.
+
+**Resolution (2026-09-25).** On the 2026-09-25 07:20 build the audit listed
+520 slivers. Classified (the audit now does this itself, every class listed
+in full — see CLAUDE.md "Geometry-overlap audit"): 77 BORDER (two national
+layers along a state border, all ≤ 0.24 km wide), 226 TIER (a PGI / IGP or
+a spirit-drink GI over a PDO / AOC), 107 GENERALISATION (same tier, thin,
+two geometry sources), 86 SOURCE-DRAWN (both polygons from a geoportal /
+MAPA / parcellaire / Bétard layer — Tuscany's and Veneto's DOCs, Bétard's
+padded municipalities), 24 SUSPICIOUS. The 24 were checked commune by
+commune against the INAO aires-communes CSV: in every French pair the
+shared communes are listed in BOTH appellations' rows (Beaujolais and the
+Bourgogne regionals share the eight Mâconnais–Beaujolais communes; Cheverny
+/ Touraine share Monthou-sur-Bièvre; Béarn / Floc de Gascogne share Viella
+and Maumusson-Laguian; Agenais / Côtes du Lot both list Fumel; the Aude and
+Hérault DGC pairs share one commune each), the Blaye / Bourg band is INAO
+parcels against an INAO commune list, and the three Greek pairs are LAU
+1:1M vs NUTS 1:3M bands. All 24 whitelisted with that evidence
+(`scripts/_lib/geometry_overlap_overrides.json`); `--strict` passes. The
+original entry:
+
+First strict run of `audit_geometry_overlaps.py` on record (2026-09-24, after
+the outlier work): **493 suspicious slivers (87 cross-country, 406
+same-country), 0 accepted** — the whitelist had never been populated, so
+`--strict` has always failed. The visible cross-country ones are 1 km²,
+0.0 km-wide border slivers between differently-generalised national layers
+(CH/IT, SK/AT, AT/SI, FR/IT); a review pass is needed before `--strict` means
+anything. Of the records changed this session only four appear: Άγιο Όρος ×3
+(Ouranoupoli inside the Χαλκιδική / Σιθωνία / Μακεδονία NUTS PGIs — genuine
+nesting per its own text, whitelisted with the OJ citation, the first entries
+in that file), Duriense ↔ Castilla y León / Arribes (3 km² Douro-border
+slivers, CAOP vs GISCO), Norte de Almería ↔ Bullas (1.9 km²), Bianco del
+Sillaro ↔ Colli Bolognesi (1.6 km², GISCO comune vs geoportal zone) — all
+generalisation-class, left with the backlog. After the Galician parroquia
+layer (later the same day): **491**, with two new same-country pairs that
+read as genuine shared ground, not artefacts — Valle del Miño-Ourense ↔
+Ribeira Sacra (30.5 km², 8 % of Valle del Miño: its named parishes of
+Nogueira de Ramuín sit inside Ribeira Sacra's MAPA zone) and Barbanza e Iria
+↔ Rías Baixas (13.2 km²: the two Padrón parishes Barbanza now draws lie in
+Rías Baixas' Ribeira do Ulla subzona, whose pliego also names Padrón).
+Whitelist candidates once a curator confirms both pliegos.
+
+### Vineyard-envelope audit `--strict` fails on the feat/zoom-lod footprints — 🟡 radius fixed 2026-09-25, containment residues open
+
+**Resolution (2026-09-25).** The 78 bridging records are the small ones:
+790 of the 1,259 footprint records are under 1 km² (442 under 0.05 km²),
+and a 250 m closing of a climat that size laps onto the neighbouring
+climat by construction. The radius now scales with the record —
+`r = clamp(0.25·√area, 30 m, 250 m)` (`vineyard_envelope.adaptive_radius`;
+0.05 km² → 56 m, 0.25 km² → 125 m, ≥ 1 km² → 250 m) — the record carries
+`geom_lod_radius_m` and the card prints it; the 250 m cache entries stay
+valid (454 records keep 250 m, 805 get 30–249 m). **After the rebuild
+(audit of 2026-09-25):** inflation median 1.08× / p90 1.46× / max 2.43×
+(was 1.07 / 1.48 / 3+); bridging > 5 % fell from 78 to 31 and the worst
+from 65 % (Les Gaudichots) to 20 % (Pouilly-Fuissé premier cru, 60 climats
+interleaved with the Mâcon village parcels). Of the 31, twenty are
+micro-climats bridging under 5 ha — the closing of a concave polygon fills
+a corner of the next climat, under four pixels at the last footprint zoom
+— and the audit now ignores a bridge under `--bridge-min-km2` (0.05 km²)
+and treats sibling DGCs like parent / children (Grés de Montpellier over
+the other Languedoc DGCs is the parent's ground). What is left — **11 records
+on the final run** (`--strict`: 0 missing, 0 orphan, 0 bbox, 8 containment,
+11 bridge; JSON at /tmp/owm-envelopes-final.json when written) — is a
+short list of records whose "neighbour" legitimately shares their communes —
+Pouilly-Fuissé (and its premier cru / climat records) over the Mâcon
+village AOCs of the same communes, Saint-Véran over Mâcon-Prissé,
+Saint-Bris over Bourgogne Côtes d'Auxerre, La Clape over Corbières,
+Ladoix / Corton-Charlemagne over Aloxe-Corton, Grés de Montpellier over
+the Languedoc DGCs (not siblings in SIQO: Grés de Montpellier carries its
+own id_appellation, so the sibling rule cannot see them) — an overlap the
+50 % umbrella rule does not see because the neighbour covers only part of
+the record; an accepted-bridges table with sources would close it, or a
+"covers ≥ 25 % of the record" umbrella rule. **The 8 containment residues
+are diagnosed, not fixed:** anjou, cabernet-d-anjou, rose-d-anjou,
+rose-de-loire, muscadet, languedoc, cotes-du-rhone, cotes-de-provence —
+each 0.0011–0.0017 km² in 11–69 slivers of 33–923 m², every one just past
+the 39 m tolerance at a single vertex (`scratchpad` diagnosis, 2026-09-25):
+the topology-preserving 30 m simplify plus the 8.5 m erosion sagitta
+overshoot by a few metres where the closing's boundary turns sharply. Sub-
+50 m on eight regional unions of 100–2,000 km²; grow the tolerance by a
+documented 10 m or accept the check as informative — not a geometry
+defect a reader could see. The original entry:
+
+First strict run on record (2026-09-24, 55 min): parity 0/0, bbox 0, but
+**8 containment residues** — parcels outside the footprint by ~0.001 km²
+against the 39 m tolerance, all on the large regional AOCs (Anjou, Cabernet
+d'Anjou, Côtes de Provence, Côtes du Rhône, Languedoc, Muscadet, …) — and
+**78 records bridging > 5 %** of their footprint onto a neighbour's parcels,
+almost all Burgundy premier-cru climats of 0.01–0.1 km² where a 250 m closing
+inevitably laps onto the adjoining climat (Les Gaudichots 65 % onto La Tâche,
+Hautes Mourottes 47 %, Pouilly-Fuissé 1er cru 20 % onto the Mâcon villages).
+Inflation: median 1.07×, p90 1.48×, 3 above 3× (Volnay Le Village, Chassagne
+1er cru, one more). Every build of 2026-09-24 served all 1,259 footprints from
+the cache (computed = 0), so this is the state the branch shipped with on
+2026-09-23, untouched by the geometry work of these two days. Decide whether
+the residues are a tolerance question (bump the 39 m for the regional unions)
+and whether micro-climat bridging needs a smaller radius or an accepted list;
+`--bridge-max` is the knob.
+
+### Sierra Sur de Jaén — SIGPAC parcels wired; polígono footprints — ✅ decided 2026-09-24
+
+The pliego includes "las zonas de sierra" of Alcaudete (polígonos catastrales
+1–12, 18–29) and Martos (33–42) beside six whole municipios. The parcel
+mechanism now covers it: FEGA's national SIGPAC download
+(sigpac-hubcloud.es, CC BY 4.0, quoted in `scripts/_lib/es/sigpac_fega_urls.json`
+and `raw/es/sigpac/manifest-fega-23.json`; the 456 MB Jaén zip is sha-pinned,
+a 51 MB two-municipio extract is what the loader reads), the inclusion
+parser accepts "polígonos catastrales actuales del N al N", and the loader
+maps the FEGA schema onto the Catalan one (Priorat + Montsant byte-identical).
+The parser finds all 24 + 10 polígonos. **But SIGPAC 2026 records no `VI`
+recinto in any listed polígono of Alcaudete (9,863 ha, olive groves and
+pasture) and 0.14 ha in Martos (polígonos 36, 40, 41).** With Priorat's
+vineyard-only semantics the map therefore draws four tiny plots for Martos
+and nothing for Alcaudete. The alternative is the listed polígonos' full
+footprints (≈ 98.6 km² + 33.1 km²), which is what the pliego delimits and
+how every whole municipio on the ES map is drawn (administrative area, not
+vineyard); it needs a loader-level polígono footprint (union of every recinto
+of the polígono, any use — the extract already keeps every use) and a
+per-record switch so Priorat / Montsant keep their parcel semantics.
+**Decided (Boris): footprint** — the polígono is the delimited area, a plot
+planted inside it qualifies. Implemented as `SIGPAC_INCLUSION_SEMANTICS`
+(default `footprint`; Priorat + Montsant pinned `vineyard`, byte-identical):
+Sierra Sur 730.9 → **861.8 km², one polygon** (Alcaudete 24/24 polígonos
+98.7 km², Martos 10/10 33.2 km²), disclosed in the panel. **Decided the same
+day: the same reading for the two anchors** — Priorat 150.9 → 167.1 km²
+(354 parts → 1; Falset 13.4 km² of polígonos vs 1.5 of vines) and Montsant
+297.8 → 317.8 km² (373 → 1; Falset 18/18). No record is pinned to the
+vineyard reading any more. Also newly visible in Montsant's
+panel line: Garcia (0/5) and Tivissa (0/9) — their polígonos are in the
+Ribera d'Ebre comarca, which stage 00 does not fetch (`SIGPAC_COMARCA_CODIS`
+= Priorat only); a one-line catalogue addition. And the Catalan SIGPAC
+manifest records only "© Generalitat de Catalunya / DARP, SIGPAC. Free reuse
+with attribution" — no licence name or URL, so the panel links the portal
+without a licence label; pin the licence when a curator confirms it.
+
+Side effects of the same change, both improvements: `_resolve_es_sigpac`
+now requires at least one SIGPAC hit before labelling a result parcel-precise,
+which moved **Arribes** (48-commune union, Almaraz de Duero's polígonos never
+resolved — Zamora not fetched) and **Tarragona** (81-commune union, a junk
+"Los municipios de" anchor) from a mislabelled `sigpac-hybrid-pliego` onto
+their official MAPA zone. Campo de Borja (Mallén, Fréscano) and Rueda
+(Órbita, Palacios de Goda) now parse their polígono inclusions and would
+resolve at parcel precision once Zaragoza / Ávila are fetched — same
+one-line addition to the FEGA catalogue. A fresh checkout's stage 00 now
+downloads 456 MB for Jaén; the per-municipio extract is what ships.
+
+### Galician parroquias — layer added 2026-09-24; residue
+
+The IET Mapa de Parroquias de Galicia now refines the six Galician
+parish-delimited records (see CLAUDE.md, ES chain). Left open: **Ourense
+city** — the pliego of Valle del Miño-Ourense names Cabeza de Vaca, Santiago
+das Caldas and Tras do Hospital, which the IET layer does not carry (folded
+into the city parish "Ourense"); confirm with the IET before pinning. The
+seven spelling pins in `scripts/_lib/es/parroquia_overrides.json`
+(Sarandóns/Sarandós, Vilacoba/Vilacova, San Martiño/San Martín de Suarna, A
+Pobra/A Proba de Navia, Castrelo/Castrelos de Abaixo and de Cima, San Tomé →
+San Tomé das Olas, Oza dos Ríos → Oza-Cesuras) rest on name equivalence
+recorded in each `_note`. The two Monterrei subzonas read their parish
+block out of the parent section text the sub-record still carries; a
+stage-02 change that dropped it would silently return them to the
+comma-split union (the stage-04 log line would show it). Licence: the
+publisher's aviso legal (Decreto 14/2017, "compatible con CC-BY 4.0 INT")
+is cited as governing over the 2015 non-commercial PDF bundled in the zip
+and the abertos CC BY-SA listing — a curator may want to confirm with the
+IET.
+
+Added 2026-09-27 (Monterrei boundary flag, see the visitor-feedback triage
+section): a MAPA zone drawn at whole-municipio resolution whose pliego names
+parishes is now redrawn from the IET parishes (Monterrei, 674 → 640 km²).
+Two Galician DOs stay on their whole-municipio MAPA zone, each for a reason
+the redraw cannot fix by itself:
+
+- **Ribeiro** (564 km², 14 whole municipios) — the pliego names parishes of
+  O Carballiño (3) and Boborás (5) and the parish of Alongos, but also
+  *lugares* below the parish tier: Santa Cruz de Arrabaldo and Untes
+  (Ourense), Puga, A Eirexa de Puga, O Olivar, Feá and Celeirón (Toén), A
+  Touza (San Amaro). Drawing the parishes alone would keep Ourense and San
+  Amaro whole and shrink Toén to Alongos, dropping the parishes of Puga and
+  Feá. Needs a locality → parish gazetteer (the Xunta's *Nomenclátor de
+  Galicia* lists lugar → parroquia → concello) so a lugar is drawn as its
+  parish and reported as a proxy, the way the Greek resolver draws a
+  τοπωνύμιο as its community (`geom_units_proxied`). Until then the card
+  says "official MAPA zone" for five municipios drawn whole.
+- **Ribeira Sacra** (2,524 km², 45 whole municipios) — the pliego says the
+  five subzonas comprise "parte de los términos municipales" and names no
+  part; the real zone is the valley slopes. Nothing in the public text can
+  narrow it; a Xunta / consejo regulador delimitation layer would.
+
+The MAPA layer (`raw/es/mapa-zonas/`, fetched 2026-05-22) predates the
+2025 Monterrei amendment; where it is whole-municipio, a re-fetch would not
+help — the pliego, not the layer, carries the parishes.

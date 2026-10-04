@@ -1,0 +1,267 @@
+{
+ "__doc__": "Exonyms of the non-Latin-script region labels (GR / CY / BG), used only where the page speaks the UI language to a search engine or a crawler: the <title>, the meta description, og:title and the JSON-LD containedInPlace. The card, the facet tree and the sidebar keep the native label (search-alias decision of 2026-09-25). Each form is the conventional exonym in that language; `qid` cites the Wikidata item the region is identified with, `labels` records that item's en/fr/es/nl labels as fetched on 2026-09-26, and `note` says why a form departs from the label (a district item where the wine district is named by its city, Western Thrace for Θράκη, the EU register's own transcription for a Bulgarian PGI). Two Bulgarian regions have no Wikidata item.",
+ "__license__": "Wikidata, CC0 1.0 (labels); forms are conventional names",
+ "Ήπειρος": {
+  "country": "gr",
+  "en": "Epirus",
+  "es": "Epiro",
+  "fr": "Épire",
+  "labels": {
+   "en": "Epiros",
+   "fr": "Épire"
+  },
+  "nl": "Epirus",
+  "qid": "Q19543299",
+  "source": "https://www.wikidata.org/wiki/Q19543299"
+ },
+ "Θεσσαλία": {
+  "country": "gr",
+  "en": "Thessaly",
+  "es": "Tesalia",
+  "fr": "Thessalie",
+  "labels": {
+   "en": "Thessaly",
+   "es": "Tesalia",
+   "fr": "Thessalie",
+   "nl": "Thessalië"
+  },
+  "nl": "Thessalië",
+  "qid": "Q166919",
+  "source": "https://www.wikidata.org/wiki/Q166919"
+ },
+ "Θράκη": {
+  "country": "gr",
+  "en": "Thrace",
+  "es": "Tracia",
+  "fr": "Thrace",
+  "labels": {
+   "en": "Thrace",
+   "es": "Tracia Occidental",
+   "fr": "Thrace occidentale",
+   "nl": "West-Thracië"
+  },
+  "nl": "Thracië",
+  "note": "the item is Western Thrace (Θράκη as the Greek region); the wine zone's plain exonym is used",
+  "qid": "Q1192701",
+  "source": "https://www.wikidata.org/wiki/Q1192701"
+ },
+ "Ιόνια Νησιά": {
+  "country": "gr",
+  "en": "Ionian Islands",
+  "es": "Islas Jónicas",
+  "fr": "Îles Ioniennes",
+  "labels": {
+   "en": "Ionian Islands",
+   "es": "Islas Jónicas",
+   "fr": "îles Ioniennes",
+   "nl": "Ionische Eilanden"
+  },
+  "nl": "Ionische Eilanden",
+  "note": "fr: the item's label is lower-cased (îles Ioniennes); the title form is capitalised",
+  "qid": "Q170295",
+  "source": "https://www.wikidata.org/wiki/Q170295"
+ },
+ "Κρήτη": {
+  "country": "gr",
+  "en": "Crete",
+  "es": "Creta",
+  "fr": "Crète",
+  "labels": {
+   "en": "Crete",
+   "es": "Creta",
+   "fr": "Crète",
+   "nl": "Kreta"
+  },
+  "nl": "Kreta",
+  "qid": "Q34374",
+  "source": "https://www.wikidata.org/wiki/Q34374"
+ },
+ "Λάρνακα": {
+  "country": "cy",
+  "en": "Larnaca",
+  "es": "Lárnaca",
+  "fr": "Larnaca",
+  "labels": {
+   "en": "Larnaca District",
+   "es": "Lárnaca",
+   "fr": "district de Lárnaca",
+   "nl": "Larnaca"
+  },
+  "nl": "Larnaca",
+  "note": "the item is the district; the wine district is named by its city, as the EU register does",
+  "qid": "Q59153",
+  "source": "https://www.wikidata.org/wiki/Q59153"
+ },
+ "Λεμεσός": {
+  "country": "cy",
+  "en": "Limassol",
+  "es": "Limasol",
+  "fr": "Limassol",
+  "labels": {
+   "en": "Limassol District",
+   "es": "Limasol",
+   "fr": "district de Limassol",
+   "nl": "Limassol"
+  },
+  "nl": "Limassol",
+  "note": "the item is the district; the wine district is named by its city, as the EU register does",
+  "qid": "Q59150",
+  "source": "https://www.wikidata.org/wiki/Q59150"
+ },
+ "Λευκωσία": {
+  "country": "cy",
+  "en": "Nicosia",
+  "es": "Nicosia",
+  "fr": "Nicosie",
+  "labels": {
+   "en": "Nicosia District",
+   "es": "distrito de Nicosia",
+   "fr": "district de Nicosie",
+   "nl": "Nicosia"
+  },
+  "nl": "Nicosia",
+  "note": "the item is the district; the wine district is named by its city, as the EU register does",
+  "qid": "Q59147",
+  "source": "https://www.wikidata.org/wiki/Q59147"
+ },
+ "Μακεδονία": {
+  "country": "gr",
+  "en": "Macedonia",
+  "es": "Macedonia",
+  "fr": "Macédoine",
+  "labels": {
+   "en": "Macedonia",
+   "es": "Macedonia",
+   "fr": "Macédoine grecque",
+   "nl": "Macedonië"
+  },
+  "nl": "Macedonië",
+  "qid": "Q81734",
+  "source": "https://www.wikidata.org/wiki/Q81734"
+ },
+ "Νησιά Αιγαίου": {
+  "country": "gr",
+  "en": "Aegean Islands",
+  "es": "Islas del Egeo",
+  "fr": "Îles de la mer Égée",
+  "labels": {
+   "en": "Aegean Islands"
+  },
+  "nl": "Egeïsche Eilanden",
+  "qid": "Q19543318",
+  "source": "https://www.wikidata.org/wiki/Q19543318"
+ },
+ "Πάφος": {
+  "country": "cy",
+  "en": "Paphos",
+  "es": "Pafos",
+  "fr": "Paphos",
+  "labels": {
+   "en": "Paphos District",
+   "es": "Pafos",
+   "fr": "district de Paphos",
+   "nl": "Paphos"
+  },
+  "nl": "Paphos",
+  "note": "the item is the district; the wine district is named by its city, as the EU register does",
+  "qid": "Q59133",
+  "source": "https://www.wikidata.org/wiki/Q59133"
+ },
+ "Πελοπόννησος": {
+  "country": "gr",
+  "en": "Peloponnese",
+  "es": "Peloponeso",
+  "fr": "Péloponnèse",
+  "labels": {
+   "en": "Peloponnese",
+   "es": "Peloponeso",
+   "fr": "Péloponnèse",
+   "nl": "Peloponnesos"
+  },
+  "nl": "Peloponnesos",
+  "qid": "Q78967",
+  "source": "https://www.wikidata.org/wiki/Q78967"
+ },
+ "Στερεά Ελλάδα": {
+  "country": "gr",
+  "en": "Central Greece",
+  "es": "Grecia Central",
+  "fr": "Grèce centrale",
+  "labels": {
+   "en": "Central Greece",
+   "es": "Grecia Central (región)",
+   "fr": "Grèce centrale",
+   "nl": "Centrall Griekenland"
+  },
+  "nl": "Centraal-Griekenland",
+  "note": "nl: the item's label carries a typo (Centrall); the standard form is used",
+  "qid": "Q190600",
+  "source": "https://www.wikidata.org/wiki/Q190600"
+ },
+ "Долината на Струма": {
+  "country": "bg",
+  "en": "Struma Valley",
+  "es": "Valle del Struma",
+  "fr": "Vallée de la Strouma",
+  "labels": {},
+  "nl": "Strumavallei",
+  "note": "no Wikidata item for the wine region; the form transcribes the register name (the Struma valley)",
+  "qid": null,
+  "source": null
+ },
+ "Дунавска равнина": {
+  "country": "bg",
+  "en": "Danubian Plain",
+  "es": "Llanura danubiana",
+  "fr": "Plaine du Danube",
+  "labels": {
+   "en": "Danubian Plain",
+   "es": "Llanura danubiana"
+  },
+  "nl": "Donauvlakte",
+  "qid": "Q1241026",
+  "source": "https://www.wikidata.org/wiki/Q1241026"
+ },
+ "Розова долина": {
+  "country": "bg",
+  "en": "Rose Valley",
+  "es": "Valle de las Rosas",
+  "fr": "Vallée des Roses",
+  "labels": {
+   "en": "Rose Valley",
+   "es": "Valle de las Rosas",
+   "fr": "vallée des roses",
+   "nl": "Rose Valley"
+  },
+  "nl": "Rozenvallei",
+  "note": "nl: the item carries the English form as its nl label; the Dutch exonym is used",
+  "qid": "Q768480",
+  "source": "https://www.wikidata.org/wiki/Q768480"
+ },
+ "Тракийска низина": {
+  "country": "bg",
+  "en": "Thracian Lowlands",
+  "es": "Llanura de Tracia",
+  "fr": "Plaine de Thrace",
+  "labels": {
+   "en": "Upper Thracian Plain",
+   "es": "Llanura tracia superior",
+   "nl": "Thracische vlakte"
+  },
+  "nl": "Thracische Laagvlakte",
+  "note": "en: the EU register's own transcription of the PGI name (Thracian Lowlands); the item's label is Upper Thracian Plain",
+  "qid": "Q1091567",
+  "source": "https://www.wikidata.org/wiki/Q1091567"
+ },
+ "Черноморски район": {
+  "country": "bg",
+  "en": "Black Sea Region",
+  "es": "Región del Mar Negro",
+  "fr": "Région de la mer Noire",
+  "labels": {},
+  "nl": "Zwarte Zeeregio",
+  "note": "no Wikidata item for the wine region; the form transcribes the register name (the Black Sea region)",
+  "qid": null,
+  "source": null
+ }
+}

@@ -31,6 +31,24 @@ def _backfill_it_nonstub_from_masaf(record: dict, sidecar: dict) -> bool:
     if sidecar.get("grapes") and not (g.get("principal") or g.get("accessory")):
         record["grapes"] = sidecar["grapes"]
         filled = True
+    elif not g.get("accessory"):
+        # The documento unico names the principal varieties only; the
+        # complement a DOC's article 2 hands to "allegato 1" lives in the
+        # disciplinare's annex (Chianti Classico: Sangiovese + 49).
+        have = set(g.get("principal") or [])
+        annex = [
+            d for d in (sidecar.get("grapes") or {}).get("details") or []
+            if d.get("role") == "accessory"
+            and d.get("source") == "masaf-disciplinare-allegato"
+            and d.get("slug") not in have
+        ]
+        if annex:
+            record["grapes"] = {
+                **g,
+                "accessory": [d["slug"] for d in annex],
+                "details": list(g.get("details") or []) + annex,
+            }
+            filled = True
     if sidecar.get("menzioni") and not record.get("menzioni"):
         record["menzioni"] = sidecar["menzioni"]
         filled = True
@@ -93,15 +111,6 @@ def augment_it_records_with_masaf(records: list[dict]) -> int:
         except (ValueError, OSError):
             continue
 
-        # Non-stub records carry canonical EUR-Lex documento-unico data —
-        # only BACKFILL fields the documento unico left empty (some OJ
-        # docs omit the area or variety list), never overwrite. Stubs get
-        # the full merge below.
-        if not record.get("stub"):
-            if _backfill_it_nonstub_from_masaf(record, sidecar):
-                augmented += 1
-            continue
-
         # Build the provenance block (also cached for the AOC-blob phase).
         src = sidecar.get("source") or {}
         match_info = sidecar.get("match") or {}
@@ -119,6 +128,19 @@ def augment_it_records_with_masaf(records: list[dict]) -> int:
             "override_url": src.get("url") or "",
             "override_source_org": src.get("source_org") or "",
         }
+
+        # Non-stub records carry canonical EUR-Lex documento-unico data —
+        # only BACKFILL fields the documento unico left empty (some OJ
+        # docs omit the area or variety list) or the annex complement,
+        # never overwrite; a record that took anything from the
+        # disciplinare carries its provenance. Stubs get the full merge
+        # below.
+        if not record.get("stub"):
+            if _backfill_it_nonstub_from_masaf(record, sidecar):
+                record["masaf"] = provenance
+                _IT_MASAF_BY_SLUG[slug] = provenance
+                augmented += 1
+            continue
 
         # Merge augmented fields onto the record. Replace rather than
         # union — the record was a stub so there's nothing to lose.

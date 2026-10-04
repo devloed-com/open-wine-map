@@ -260,14 +260,20 @@ class PTPolygonIndex:
         }
 
     def union_distritos(
-        self, distrito_names: Iterable[str]
+        self, distrito_names: Iterable[str], exclude: Iterable[str] = ()
     ) -> tuple[BaseGeometry | None, dict[str, int]]:
         """Union every CAOP município that lives in one of the named
         distritos. Used for the "Todos os municípios dos distritos de
         X e Y" pattern (Vinho Verde: Braga + Viana do Castelo).
-        Returns the same (geom, stats) shape as `union_concelhos`."""
+        `exclude` names the concelhos an exception clause carves out of
+        the distrito ("O distrito de Aveiro, com exceção dos municípios
+        de Arouca, …" — Beira Atlântico); they are left out member-wise
+        rather than differenced geometrically, so no sliver survives.
+        Returns the same (geom, stats) shape as `union_concelhos`, plus
+        `excluded`."""
+        excluded_norms = {_normalise_concelho(n) for n in exclude if n}
         geoms: list[BaseGeometry] = []
-        matched = unmatched = 0
+        matched = unmatched = excluded = 0
         for name in distrito_names:
             if not name:
                 continue
@@ -277,11 +283,15 @@ class PTPolygonIndex:
                 unmatched += 1
                 continue
             for c in concelhos:
+                if c.norm in excluded_norms:
+                    excluded += 1
+                    continue
                 geoms.append(c.geom)
                 matched += 1
+        stats = {"matched": matched, "unmatched": unmatched, "excluded": excluded}
         if not geoms:
-            return None, {"matched": matched, "unmatched": unmatched}
-        return unary_union(geoms), {"matched": matched, "unmatched": unmatched}
+            return None, stats
+        return unary_union(geoms), stats
 
     def union_from_parsed(
         self, parsed: dict
@@ -289,9 +299,12 @@ class PTPolygonIndex:
         """Combine `union_concelhos` + `union_distritos` into one call.
         Takes the dict returned by `commune_list.parse_commune_list`.
         Expands `macro_regions` tokens (`acores` / `madeira`) into
-        their constituent ilhas via `PT_MACRO_REGIONS`."""
+        their constituent ilhas via `PT_MACRO_REGIONS`; the parsed
+        `excluded_concelhos` are left out of the distrito expansion
+        only — an explicitly enumerated concelho is never dropped."""
         geoms: list[BaseGeometry] = []
         stats = {"concelhos_matched": 0, "concelhos_unmatched": 0,
+                 "concelhos_excluded": 0,
                  "distritos_matched": 0, "distritos_unmatched": 0}
         macro_distritos: list[str] = []
         for token in parsed.get("macro_regions") or []:
@@ -304,9 +317,12 @@ class PTPolygonIndex:
             if g is not None and not g.is_empty:
                 geoms.append(g)
         if all_distritos:
-            g, s = self.union_distritos(all_distritos)
+            g, s = self.union_distritos(
+                all_distritos, exclude=parsed.get("excluded_concelhos") or []
+            )
             stats["distritos_matched"] = s["matched"]
             stats["distritos_unmatched"] = s["unmatched"]
+            stats["concelhos_excluded"] = s["excluded"]
             if g is not None and not g.is_empty:
                 geoms.append(g)
         if not geoms:
