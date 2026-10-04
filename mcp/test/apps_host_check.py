@@ -83,6 +83,8 @@ def tool_result(slugs: list[str], site: str) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--shots", type=Path, default=None)
+    ap.add_argument("--live", metavar="MCP_URL", default=None,
+                    help="render the view resource as served by this endpoint (its own tiles + CSP)")
     args = ap.parse_args()
     host_js = subprocess.run(
         ["npx", "esbuild", "test/apps-host/host.js", "--bundle", "--format=iife", "--platform=browser"],
@@ -95,6 +97,12 @@ def main() -> int:
               "labels": {"open": "Open ↗", "nothing": "none", "waiting": "waiting", "appellations": "appellations"}}
     view_html = view_tpl.replace("__OWM_VIEW_CONFIG__", json.dumps(config))
     domains = [tile_origin, CARTO]
+    if args.live:
+        live = json.loads(subprocess.run(["node", "test/read_view.js", args.live], cwd=MCP,
+                                         capture_output=True, text=True, check=True).stdout)
+        view_html = live["text"]
+        tile_origin = live["csp"]["connectDomains"][0]
+        domains = live["csp"]["connectDomains"]
     csps = {"spec": reference_csp(domains, domains, False), "claude": reference_csp(domains, domains, True)}
 
     class ViewHandler(http.server.BaseHTTPRequestHandler):

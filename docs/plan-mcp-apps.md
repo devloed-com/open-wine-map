@@ -1,7 +1,35 @@
 # Plan — the map inside the chat (MCP Apps)
 
-Status: proposed, 2026-10-04. Builds on the live MCP server
-(docs/plan-mcp-server.md). Nothing implemented.
+Status (2026-10-04): phase 0 done locally and on the spike; waiting for a
+live check in Claude. Builds on the live MCP server (docs/plan-mcp-server.md).
+
+Decisions (Boris, 2026-10-04): option B (widget); CARTO basemap; `show_on_map`
+as its own tool with a strong hint (tool description + server instructions);
+personal use first (no ChatGPT directory review yet).
+
+## Phase 0 results
+
+- `show_on_map` + view live on the spike (`owm-mcp-spike`, id 94565,
+  https://owm-mcp-spike.bunny.run/mcp; script variables TILE_ORIGIN = the
+  spike, TILE_PROXY=1, CARTO_KEY). Edge bundle 1.8 MB, view 1.46 MB.
+- `mcp/test/apps_host_check.py`: a local MCP Apps host (the SDK's AppBridge,
+  view on its own origin under the spec's reference CSP). With a Claude-like
+  `worker-src 'self' blob:` the view draws the appellations (light and dark);
+  with the spec's literal CSP it draws only the basemap — the browser refuses
+  "Creating a worker from 'blob:…'" under `script-src`. So the widget depends
+  on hosts allowing blob: workers, as Claude documents; the fallback (option A)
+  stays relevant for a host that does not. `--live URL` renders the view as a
+  deployed endpoint serves it: same result against the spike.
+- The CARTO key worked from a foreign origin (localhost); the real sandbox
+  origin is the open question for the Claude check.
+- Bunny: a standalone script runs after the cache by default and then does
+  not see the client's `Range` header (the proxy answered 200 with the whole
+  41 MB file). The spike's pull zone runs the script before the cache
+  (`EdgeScriptExecutionPhase: 2`), after which Range is passed through (206).
+  Production will not proxy: the tiles get CORS from the site's own CDN
+  (phase 1). The proxy responses are `no-store` so the CDN never caches a 206.
+- Harness lesson: a host must connect its bridge before the view loads — the
+  view sends `ui/initialize` as its script runs, before the iframe's `load`.
 
 ## Goal
 
