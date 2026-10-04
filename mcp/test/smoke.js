@@ -13,7 +13,8 @@ export const MODES = {
 export async function smoke(url, mode, calls) {
   const opts = MODES[mode] ? { versionNegotiation: MODES[mode] } : {};
   const client = new Client({ name: 'owm-smoke', version: '0' }, opts);
-  const transport = new StreamableHTTPClientTransport(new URL(url));
+  // X-OWM-Smoke: the edge script does not count test traffic as `MCP Tool` events.
+  const transport = new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { 'X-OWM-Smoke': '1' } } });
   const t0 = performance.now();
   await client.connect(transport);
   const connectMs = performance.now() - t0;

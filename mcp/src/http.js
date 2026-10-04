@@ -7,7 +7,7 @@ const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   'Access-Control-Allow-Headers':
-    'Content-Type, Accept, MCP-Protocol-Version, Mcp-Session-Id, Mcp-Method, Mcp-Name, Last-Event-ID',
+    'Content-Type, Accept, MCP-Protocol-Version, Mcp-Session-Id, Mcp-Method, Mcp-Name, Last-Event-ID, X-OWM-Smoke',
   'Access-Control-Expose-Headers': 'MCP-Protocol-Version, Mcp-Session-Id',
   'Access-Control-Max-Age': '86400',
 };

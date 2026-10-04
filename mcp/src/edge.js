@@ -16,7 +16,7 @@ const plausibleDomain = env('PLAUSIBLE_DOMAIN') || 'openwinemap.com';
 // `MCP Tool` {tool, locale}: tool arguments are never sent (the same rule as
 // the page's `WebMCP Tool` event). Sent after the response, without blocking.
 function trackToolCall(request) {
-  if (!plausibleHost) return undefined;
+  if (!plausibleHost || request.headers.get('X-OWM-Smoke')) return undefined;
   return (tool, locale) => {
     const send = fetch(`${plausibleHost}/api/event`, {
       method: 'POST',
