@@ -37,7 +37,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from _lib.fr import siqo
+from _lib.fr import shared_cahier, siqo
 from _lib.fr.naming import candidate_keys, normalize_name
 from _lib.grape_entity import (
     flush_unknowns_queue,
@@ -1814,7 +1814,24 @@ def load_siqo_categories() -> dict[str, list[str]]:
         cat = (row.get("categorie") or "").strip()
         if id_app and cat:
             out[id_app].add(cat)
+        if id_app:
+            out[id_app].update(_produit_mention_categories(row.get("produit") or ""))
     return {k: sorted(v) for k, v in out.items()}
+
+
+# The `categorie` column files some mention products under "Vin tranquille"
+# while the product's own name carries the mention ("Alsace grand cru
+# Kaefferkopf vendanges tardives Gewurztraminer", "Monbazillac sélection de
+# grains nobles"), so the style was lost; the name is the regulator's word.
+_PRODUIT_MENTION_CATEGORIES = (
+    (re.compile(r"\bvendanges\s+tardives\b", re.IGNORECASE), "Vin de vendanges tardives"),
+    (re.compile(r"\bs[ée]lection\s+de\s+grains\s+nobles\b", re.IGNORECASE),
+     "Vin de sélection de grains nobles"),
+)
+
+
+def _produit_mention_categories(produit: str) -> set[str]:
+    return {cat for rx, cat in _PRODUIT_MENTION_CATEGORIES if rx.search(produit)}
 
 
 def dropped_denominations(
@@ -2082,8 +2099,22 @@ def main() -> int:
             }
             record["styles"] = []
         else:
-            v_text = encepagement_block(roles.get("encepagement") or "")
-            iii_text = roles.get("couleur") or ""
+            # A cahier shared by several appellations (the 51 Alsace grands
+            # crus, Anjou / Cabernet d'Anjou / Rosé d'Anjou, the two Pouilly)
+            # singles appellations out in sections III and V; read only the
+            # clauses that apply to this record (no-op for any other cahier).
+            covered = shared_cahier.covered_names(
+                roles.get("nom") or (record.get("sections") or {}).get("I", "")
+            )
+            iii_text = shared_cahier.own_text(roles.get("couleur") or "", meta["name"], covered)
+            mention_text = " ".join(
+                v for v in (record.get("sections") or {}).values() if isinstance(v, str)
+            )
+            record["styles"] = parse_styles(iii_text, record["categories"], mention_text)
+            v_text = shared_cahier.own_encepagement(
+                encepagement_block(roles.get("encepagement") or ""),
+                meta["name"], covered, record["styles"],
+            )
             grapes = parse_grapes(v_text)
             record["grapes"] = {
                 "principal": [t["slug"] for t in grapes["principal"]],
@@ -2091,10 +2122,6 @@ def main() -> int:
                 "observation": [t["slug"] for t in grapes["observation"]],
                 "details": grapes["all"],
             }
-            mention_text = " ".join(
-                v for v in (record.get("sections") or {}).values() if isinstance(v, str)
-            )
-            record["styles"] = parse_styles(iii_text, record["categories"], mention_text)
 
         # The parent record is everything we just built. Find its SIQO row to
         # carry id_denomination_geo through, then emit one JSON per

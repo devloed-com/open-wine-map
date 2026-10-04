@@ -556,6 +556,23 @@ d'Alsace items of the same day:
   ("Département de l'Hérault\nAutignac, …" had read "Hérault Autignac"), a
   sub-item "b) Pour la dénomination …" ends a list, and a list token that
   runs into a sentence keeps its first sentence.
+- **A shared cahier is read per appellation** (`shared_cahier.own_text` /
+  `own_encepagement`, [scripts/_lib/fr/shared_cahier.py](scripts/_lib/fr/shared_cahier.py),
+  2026-10-04): where section I declares several appellations, the colour
+  (section III) and the roster (section V 1°) are read from the units that
+  name the record — a lettered clause, a table row block opening on its
+  « name », a sentence — else from the general units that name no other
+  appellation; "à l'exception de « X »" excepts X, a "X ou Y" register name
+  answers to either alias, and "pour les vins rouges / rosés" items drop
+  when the record's own colour lacks them. Before, every Alsace grand cru
+  carried Pinot noir, red, Sylvaner, Chasselas and Pinot blanc (a grape
+  filter returned all 51; found through the MCP server); now red is Hengst,
+  Kirchberg de Barr and Vorbourg only, Sylvaner Zotzenberg only, the
+  accessories Altenberg de Bergheim's and Kaefferkopf's. The same rule split
+  Anjou / Cabernet d'Anjou / Rosé d'Anjou and Pouilly-Fumé (Sauvignon) /
+  Pouilly-sur-Loire (Chasselas). A SIQO product named "… vendanges tardives
+  …" / "… sélection de grains nobles …" adds that category even when its
+  `categorie` column says "Vin tranquille" (Kaefferkopf had lost VT / SGN).
 - **The record name follows the referentiel, not the fetch cache.** Stage
   02 overlays each manifest entry's `name` with the `appellation` the
   referentiel gives through `siqo.siqo_rows()` (`[name]` log line per
