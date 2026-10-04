@@ -26,8 +26,13 @@ export async function wikiFetch(url) {
   }
 }
 
+const VIEW = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist/view.html');
+
 export async function startServer() {
-  const app = createApp({ dataOrigin: DATA_ORIGIN, fetchImpl: wikiFetch });
+  const view = existsSync(VIEW)
+    ? { html: await readFile(VIEW, 'utf8'), tileOrigin: DATA_ORIGIN, cartoKey: 'test-key' }
+    : undefined;
+  const app = createApp({ dataOrigin: DATA_ORIGIN, fetchImpl: wikiFetch, view });
   const server = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const c of req) chunks.push(c);

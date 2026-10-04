@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Wine Map</title>
+<style>/*__OWM_MAPLIBRE_CSS__*/</style>
+<style>
+  :root { color-scheme: light; --fg: #222; --bg: #fff; --muted: #666; --card: rgba(255,255,255,0.94); --border: #ddd; }
+  html.dark { color-scheme: dark; --fg: #eee; --bg: #1c1c1c; --muted: #aaa; --card: rgba(32,32,32,0.94); --border: #444; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+    font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #wrap { position: relative; height: 420px; }
+  html.fullscreen #wrap { height: 100vh; }
+  #map { position: absolute; inset: 0; }
+  #bar { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; gap: 6px; align-items: center; pointer-events: none; }
+  #title { pointer-events: auto; background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; max-width: 70%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #bar .spacer { flex: 1; }
+  #bar button { pointer-events: auto; background: var(--card); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; cursor: pointer; font: inherit; }
+  #status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+  .maplibregl-popup-content { background: var(--card); color: var(--fg); border-radius: 6px; padding: 8px 10px; }
+  .maplibregl-popup-tip { display: none; }
+  .popup-name { font-weight: 600; }
+  .popup-meta { color: var(--muted); margin: 2px 0 6px; }
+  .popup-open { background: none; border: none; padding: 0; color: #934050; text-decoration: underline; cursor: pointer; font: inherit; }
+  html.dark .popup-open { color: #e08a9a; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="map"></div>
+  <div id="status">Loading the map…</div>
+  <div id="bar">
+    <span id="title" hidden></span>
+    <span class="spacer"></span>
+    <button id="open-site" type="button" hidden>Open Wine Map ↗</button>
+    <button id="fullscreen" type="button" hidden>⤢</button>
+  </div>
+</div>
+<script id="owm-config" type="application/json">__OWM_VIEW_CONFIG__</script>
+<script>/*__OWM_VIEW_JS__*/</script>
+</body>
+</html>

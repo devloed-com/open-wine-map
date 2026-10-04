@@ -28,7 +28,21 @@ const INSTRUCTIONS = [
   'values — and get_appellation for one appellation\'s grapes, styles, terroir facts and sources.',
   'When quoting terroir facts, cite the specification URL, and Wikipedia (CC BY-SA 4.0) where a fact says so.',
   'Every result carries the appellation\'s page on www.openwinemap.com.',
+  'Whenever your answer names specific appellations, call show_on_map with their slugs so the user sees them',
+  'on the map, and give the map link of each.',
 ].join(' ');
+
+// The MCP Apps view (view/ → dist/view.html): the map shown by show_on_map.
+export const VIEW_URI = 'ui://open-wine-map/map';
+const VIEW_MIME = 'text/html;profile=mcp-app';
+const CARTO = 'https://*.basemaps.cartocdn.com';
+const SLUG_PATTERN = '^[a-z0-9-]{1,120}$';
+const VIEW_LABELS = {
+  open: 'Open on Open Wine Map ↗',
+  nothing: 'No appellation to show.',
+  waiting: 'Waiting for the appellations…',
+  appellations: 'appellations',
+};
 
 const LOCALE_PROP = {
   type: 'string',
@@ -70,12 +84,89 @@ export function createTools({ dataOrigin, fetchImpl = fetch, store }) {
   };
 }
 
-function buildServer(tools, onToolCall) {
+// show_on_map: the appellations' briefs plus kind and bounding box (what the
+// view needs to draw and frame them), and Markdown map links as the text every
+// host shows — hosts without MCP Apps, or the model, get the links.
+async function showOnMap(entry, { slugs }, locale, siteOrigin) {
+  const known = [...new Set(slugs)].filter(s => entry.aocs[s]);
+  const unknown = slugs.filter(s => !entry.aocs[s]);
+  if (!known.length) throw new QueryError('unknown appellation slug(s): ' + unknown.join(', '));
+  const appellations = known.map(slug => {
+    const r = entry.aocs[slug];
+    return { ...entry.core.brief(slug), kind: r.kind || null, bbox: r.bbox_villages || r.bbox || null };
+  });
+  const boxes = appellations.map(a => a.bbox).filter(Boolean);
+  const bbox = boxes.length ? [
+    Math.min(...boxes.map(b => b[0])), Math.min(...boxes.map(b => b[1])),
+    Math.max(...boxes.map(b => b[2])), Math.max(...boxes.map(b => b[3])),
+  ] : null;
+  const mapUrl = appellations.length === 1 ? appellations[0].url : `${siteOrigin}${locale === 'en' ? '/' : `/${locale}/`}`;
+  return { appellations, bbox, map_url: mapUrl, unknown };
+}
+
+function showOnMapText(out) {
+  const lines = out.appellations.map(a => `- [${a.name}](${a.url}) — ${[a.classification, a.region, a.country_name].filter(Boolean).join(' · ')}`);
+  if (out.unknown.length) lines.push(`(not found: ${out.unknown.join(', ')})`);
+  return `Shown on the map (Open Wine Map):\n${lines.join('\n')}`;
+}
+
+function viewResource(view) {
+  const config = { tileOrigin: view.tileOrigin, cartoKey: view.cartoKey || '', labels: VIEW_LABELS };
+  const html = view.html.replace('__OWM_VIEW_CONFIG__', () => JSON.stringify(config).replace(/</g, '\\u003c'));
+  const domains = [view.tileOrigin, CARTO];
+  return {
+    uri: VIEW_URI,
+    mimeType: VIEW_MIME,
+    text: html,
+    _meta: { ui: { csp: { connectDomains: domains, resourceDomains: domains }, prefersBorder: true } },
+  };
+}
+
+function buildServer(tools, onToolCall, view, siteOrigin) {
   const server = new McpServer(SERVER_INFO, {
     jsonSchemaValidator: validator,
-    capabilities: { tools: { listChanged: false } },
+    capabilities: { tools: { listChanged: false }, resources: { listChanged: false } },
     instructions: INSTRUCTIONS,
   });
+  if (view && view.html) {
+    server.registerResource('map', VIEW_URI, {
+      title: 'Open Wine Map',
+      description: 'Interactive map of wine appellations (shown by show_on_map).',
+      mimeType: VIEW_MIME,
+    }, async () => ({ contents: [viewResource(view)] }));
+    server.registerTool('show_on_map', {
+      title: 'Show on the map',
+      description: 'Show wine appellations on an interactive map in the conversation — their real boundaries, framed and highlighted. '
+        + 'Call it whenever your answer names specific appellations (after search_appellations, filter_appellations or get_appellation), '
+        + 'with their slugs; up to 200 at once.',
+      inputSchema: fromJsonSchema({
+        type: 'object',
+        properties: {
+          slugs: { type: 'array', items: { type: 'string', pattern: SLUG_PATTERN }, minItems: 1, maxItems: 200, description: 'Appellation slugs from the other tools\' results.' },
+          locale: LOCALE_PROP,
+        },
+        required: ['slugs'],
+      }, validator),
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      _meta: { ui: { resourceUri: VIEW_URI } },
+    }, async (args) => {
+      const { locale = 'en', slugs } = args || {};
+      if (onToolCall) onToolCall('show_on_map', locale);
+      let entry;
+      try {
+        entry = await tools.contexts.get(locale);
+      } catch {
+        return fail('The appellation data is temporarily unavailable; try again shortly.');
+      }
+      try {
+        const out = await showOnMap(entry, { slugs }, locale, siteOrigin);
+        return { content: [{ type: 'text', text: showOnMapText(out) }], structuredContent: out };
+      } catch (e) {
+        if (e instanceof QueryError) return fail(e.message);
+        throw e;
+      }
+    });
+  }
   for (const [name, def] of Object.entries(TOOL_DEFS)) {
     server.registerTool(name, {
       description: def.description,
@@ -103,10 +194,12 @@ function buildServer(tools, onToolCall) {
 
 // onToolCallFor(request) → (tool, locale) => void | undefined: the analytics
 // hook, built from the HTTP request the SDK hands each per-request server.
-export function createHandler({ dataOrigin, fetchImpl = fetch, onToolCallFor, store }) {
+// view: { html, tileOrigin, cartoKey } — the MCP Apps map; omitted → no
+// show_on_map tool (the data tools are unaffected).
+export function createHandler({ dataOrigin, fetchImpl = fetch, onToolCallFor, store, view }) {
   const tools = createTools({ dataOrigin, fetchImpl, store });
   const hook = ctx => (onToolCallFor && ctx && ctx.requestInfo ? onToolCallFor(ctx.requestInfo) : undefined);
-  return createMcpHandler(ctx => buildServer(tools, hook(ctx)), {
+  return createMcpHandler(ctx => buildServer(tools, hook(ctx), view, dataOrigin), {
     legacy: 'stateless',
     responseMode: 'json',
     maxRequestBodySize: 64 * 1024,

@@ -8,7 +8,7 @@ let srv;
 before(async () => { if (!skip) srv = await startServer(); });
 after(async () => { if (srv) await srv.close(); });
 
-const TOOLS = ['filter_appellations', 'get_appellation', 'list_facets', 'search_appellations'];
+const TOOLS = ['filter_appellations', 'get_appellation', 'list_facets', 'search_appellations', 'show_on_map'];
 
 for (const mode of Object.keys(MODES)) {
   test(`connects and answers every tool (${mode})`, { skip }, async () => {
@@ -55,4 +55,30 @@ test('GET is 405 and other paths are 404, with CORS', { skip }, async () => {
   assert.equal(other.status, 404);
   const pre = await fetch(srv.url, { method: 'OPTIONS' });
   assert.equal(pre.status, 204);
+});
+
+test('show_on_map: briefs with bbox, union bbox, map links, UI resource', { skip }, async () => {
+  const { Client, StreamableHTTPClientTransport } = await import('@modelcontextprotocol/client');
+  const client = new Client({ name: 't', version: '0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
+  await client.connect(new StreamableHTTPClientTransport(new URL(srv.url)));
+  try {
+    const tool = (await client.listTools()).tools.find(t => t.name === 'show_on_map');
+    assert.equal(tool._meta.ui.resourceUri, 'ui://open-wine-map/map');
+    const res = await client.callTool({ name: 'show_on_map', arguments: { slugs: ['priorat', 'montsant', 'nope'] } });
+    const out = res.structuredContent;
+    assert.deepEqual(out.appellations.map(a => a.slug), ['priorat', 'montsant']);
+    assert.deepEqual(out.unknown, ['nope']);
+    assert.equal(out.bbox.length, 4);
+    assert.ok(out.appellations.every(a => a.bbox && a.kind && a.url));
+    assert.match(res.content[0].text, /\[Priorat\]\(https:\/\/data\.test\/en\/priorat\)/);
+    const read = await client.readResource({ uri: 'ui://open-wine-map/map' });
+    const c = read.contents[0];
+    assert.equal(c.mimeType, 'text/html;profile=mcp-app');
+    assert.deepEqual(c._meta.ui.csp.connectDomains, ['https://data.test', 'https://*.basemaps.cartocdn.com']);
+    assert.ok(c.text.includes('"tileOrigin":"https://data.test"') && !c.text.includes('__OWM_VIEW_CONFIG__'));
+    const bad = await client.callTool({ name: 'show_on_map', arguments: { slugs: ['nope'] } });
+    assert.equal(bad.isError, true);
+  } finally {
+    await client.close();
+  }
 });
