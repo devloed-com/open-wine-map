@@ -1,4 +1,8 @@
 
+  // The shared query core (scripts/_lib/assets/query_core.mjs), inlined here
+  // at build time: search, filter and record shaping, identical to the MCP
+  // server's. Instantiated as QC once the build tables below are defined.
+  __OWM_query_core__
   const AOCS = (window.__OWM_DATA && window.__OWM_DATA.aocs) || {};
   // The server-rendered #ssr-content card is hidden pre-paint by the `js`
   // class (see the head script). Every path on which the live panel cannot
@@ -45,10 +49,6 @@
   // in its sub-line (a Wikidata or gettext label, never an alias or a
   // derived romanisation). The displayed label stays native either way.
   const REGION_SEARCH_TERMS = __OWM_region_search_terms_json__;
-  function regionSearchForms(region) {
-    const t = REGION_SEARCH_TERMS[region];
-    return t ? t.forms : [];
-  }
   // Classification facet (aging / Prädikat / selection tiers) — a facet parallel
   // to styles; same tree/descendants/labels/synonym shape.
   const FACET_CLASS_TREE = __OWM_class_tree_json__;
@@ -110,15 +110,6 @@
   // auxerrois]). Sorted by global usage; the row's `.name` span includes
   // every synonym so the per-facet search input matches any spelling.
   const GRAPE_SYNONYMS = __OWM_grape_synonyms_json__;
-  function expandGrapeSet(set) {
-    if (!set || !set.size) return set;
-    const out = new Set(set);
-    for (const slug of set) {
-      const sibs = VIVC_SIBLINGS[slug];
-      if (sibs) for (const s of sibs) out.add(s);
-    }
-    return out;
-  }
   function grapeSynonymsHtml(canonSlug) {
     const syns = GRAPE_SYNONYMS[canonSlug];
     if (!syns || !syns.length) return '';
@@ -190,6 +181,29 @@
   const LANG = "__OWM_lang_attr__";
   const SOURCE_TYPE = "__OWM_source_type__";
 
+  const QC = createQueryCore({
+    locale: LANG,
+    siteOrigin: window.location.origin,
+    slugBase: '/' + LANG + '/',
+    aocs: AOCS,
+    grapesInfo: GRAPES_INFO,
+    grapeSearchIndex: GRAPE_SEARCH_INDEX,
+    vivcSiblings: VIVC_SIBLINGS,
+    styleDescendants: STYLE_DESCENDANTS,
+    styleLabels: STYLE_LABELS,
+    simpleStyleLabels: SIMPLE_STYLE_LABELS,
+    simpleStyleBuckets: SIMPLE_STYLE_BUCKETS,
+    regionLabels: REGION_LABELS,
+    regionSearchTerms: REGION_SEARCH_TERMS,
+    countryLabels: COUNTRY_LABELS,
+    termLabels: TERM_LABELS,
+    labels: LABELS,
+  });
+  const {
+    searchScore, searchableText, regionSearchForms, expandGrapeSet,
+    grapeName, regionLabel, countryLabel,
+  } = QC;
+
   // Plausible custom-event helper. The page's inline snippet always defines
   // `window.plausible` (a queue stub until the tracker script arrives), so
   // when the tracker never loads — ad-blocker, offline preview, a host with
@@ -210,31 +224,6 @@
   // recorded, and the user should get the e-mail fallback instead of "thanks".
   function trackerLoaded() {
     try { return !!(window.plausible && window.plausible.l); } catch (e) { return false; }
-  }
-
-  // Title-case the first letter of each word (after start, whitespace,
-  // hyphen, or apostrophe). Wikipedia grape titles aren't uniformly
-  // cased (FR uses "Cabernet sauvignon" sentence case while EN uses
-  // "Cabernet Sauvignon" title case), and the slug fallback is pure
-  // lowercase — normalising here makes pills and filter entries
-  // consistent regardless of source.
-  function toTitleCase(s) {
-    return s.replace(/(?:^|[\s\-'(])\p{L}/gu, c => c.toUpperCase());
-  }
-
-  function grapeName(slug) {
-    const info = GRAPES_INFO[slug];
-    const raw = (info && info.name) ? info.name : slug.replace(/-/g, ' ');
-    return toTitleCase(raw);
-  }
-
-  function regionLabel(region) {
-    if (!region) return LABELS.meta_no_region;
-    return REGION_LABELS[region] || region;
-  }
-
-  function countryLabel(cc) {
-    return COUNTRY_LABELS[cc] || cc || '';
   }
 
   function oneCountryChip(countryCode) {
@@ -277,53 +266,6 @@
       .replace(/[^a-z0-9]/gi, '')
       .toLowerCase();
     return norm(canon) === norm(cahier);
-  }
-
-  // Both sides of every search comparison go through this: diacritics
-  // stripped, lower-cased, and every run of punctuation or whitespace folded
-  // to one space, so "aloxe corton" finds Aloxe-Corton and "d alba" finds
-  // d'Alba (727 records were unfindable by their own full name before the
-  // fold, 2026-09-25).
-  function searchNormalize(s) {
-    return (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '')
-      .toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-  }
-
-  // The forms a record can be found by: the regulator's own name, the EU /
-  // official Latin transcription (`name_latin`, the bracket on screen) and
-  // the search-only `search_forms` stage 04 derives from the name (ELOT 743
-  // and unidecode for Greek, unidecode for Bulgarian — _lib/romanise.py).
-  // Derived forms are never displayed: what is on screen stays the
-  // regulator's string; they only make "agio oros" or "targovishte" match.
-  // Each form is matched on its own, so a query never spans two forms.
-  function searchForms(rec) {
-    if (!rec) return [];
-    if (!rec._sf) {
-      const raw = [rec.name || '', rec.name_latin || ''].concat(rec.search_forms || []);
-      const seen = new Set();
-      rec._sf = [];
-      for (const f of raw.map(searchNormalize)) {
-        if (f && !seen.has(f)) { seen.add(f); rec._sf.push(f); }
-      }
-    }
-    return rec._sf;
-  }
-
-  // Best match of a normalised query against a record's forms: prefix 100,
-  // substring 80, no match -1.
-  function searchScore(rec, nq) {
-    let best = -1;
-    for (const f of searchForms(rec)) {
-      const s = f.startsWith(nq) ? 100 : (f.includes(nq) ? 80 : -1);
-      if (s > best) best = s;
-    }
-    return best;
-  }
-
-  // The tree row's data-name: the forms joined by a newline, which no
-  // normalised query contains, so a substring test on it is a per-form test.
-  function searchableText(rec) {
-    return searchForms(rec).join('\n');
   }
 
   // The toggles that currently hide a record from the map, 'igp' and/or
@@ -803,12 +745,6 @@
       }
     }
     el.textContent = fmt(LABELS.count_filtered, { n: n, total: total });
-  }
-
-  function setIntersects(set, arr) {
-    if (!arr) return false;
-    for (const v of arr) if (set.has(v)) return true;
-    return false;
   }
 
   function buildFacet(containerId, items, store, format, extraFormat) {
@@ -3409,226 +3345,42 @@ __OWM_source_block__
   // ---- WebMCP (document.modelContext) --------------------------------------
   // The map is a WebGL canvas and the panel is client-rendered, so a browser
   // agent cannot read either. WebMCP (W3C Web Machine Learning CG draft;
-  // Chrome 146+ behind a flag, `navigator.modelContext` before the July 2026
-  // draft) lets the page hand it typed, read-only tools over the records it
-  // already holds, plus one tool that opens a panel. A no-op where the API is
-  // absent. Results carry the canonical page URL and the same attribution the
-  // panel shows: an agent quoting a terroir fact must be able to cite it.
+  // Chrome origin trial 149–162, token in the page head) lets the page hand it
+  // typed, read-only tools over the records it already holds, plus one tool
+  // that opens a panel. A no-op where the API is absent. The tools themselves
+  // live in the query core (TOOL_DEFS + createQueryCore), shared with the
+  // remote MCP server (mcp/), so both surfaces answer identically. Results
+  // carry the canonical page URL and the same attribution the panel shows: an
+  // agent quoting a terroir fact must be able to cite it.
   (function registerWebMcpTools() {
     const mc = document.modelContext || navigator.modelContext;
     if (!mc || typeof mc.registerTool !== 'function' || !window.__OWM_DATA) return;
-    const PAGE_ORIGIN = window.location.origin;
-    const asContent = obj => ({ content: [{ type: 'text', text: JSON.stringify(obj) }] });
+    const asContent = obj => ({ content: [{ type: 'text', text: JSON.stringify(obj) }], structuredContent: obj });
     const fail = msg => ({ content: [{ type: 'text', text: msg }], isError: true });
-    const capInt = (v, dflt, max) => Math.max(1, Math.min(max, parseInt(v, 10) || dflt));
 
-    function brief(slug) {
-      const r = AOCS[slug];
-      const out = {
-        slug: slug,
-        name: r.name,
-        country: r.country || 'fr',
-        country_name: countryLabel(r.country || 'fr'),
-        region: r.region ? regionLabel(r.region) : null,
-        classification: r.class_label || r.kind || null,
-        url: PAGE_ORIGIN + SLUG_BASE + encodeURIComponent(slug),
-      };
-      if (r.name_latin) out.name_latin = r.name_latin;
-      if (r.is_sub_denomination) out.is_sub_denomination = true;
-      if (r.is_wine === false) out.is_wine = false;
-      if (r.cancelled) out.cancelled = r.cancelled;
-      if (r.promoted) out.promoted = r.promoted;
-      return out;
-    }
-
-    // A grape given by name or slug → every slug of its VIVC variety.
-    function grapeSlugsFor(q) {
-      const nq = searchNormalize(q);
-      if (!nq) return null;
-      const hits = new Set();
-      for (const e of _GRAPE_INDEX_NORM) {
-        if (searchNormalize(e.entry.slug) === nq || e.labelN === nq || e.aliasesN.includes(nq)) hits.add(e.entry.slug);
-      }
-      if (!hits.size) for (const slug in GRAPES_INFO) {
-        const info = GRAPES_INFO[slug] || {};
-        if (searchNormalize(slug) === nq || searchNormalize(info.name) === nq) hits.add(slug);
-      }
-      if (!hits.size) for (const k in AOCS) {
-        for (const s of AOCS[k].grapes_all || []) if (searchNormalize(s) === nq) hits.add(s);
-      }
-      return hits.size ? expandGrapeSet(hits) : new Set();
-    }
-
-    // A style given by slug or by its label in this locale → the style and
-    // every style under it in the taxonomy.
-    function styleSlugsFor(q) {
-      const nq = searchNormalize(q);
-      if (!nq) return null;
-      const keys = new Set(Object.keys(STYLE_DESCENDANTS).concat(Object.keys(STYLE_LABELS), Object.keys(SIMPLE_STYLE_BUCKETS)));
-      for (const s of keys) {
-        if (searchNormalize(s) === nq || searchNormalize(STYLE_LABELS[s]) === nq || searchNormalize(SIMPLE_STYLE_LABELS[s]) === nq) {
-          return new Set([s].concat(STYLE_DESCENDANTS[s] || [], SIMPLE_STYLE_BUCKETS[s] || []));
-        }
-      }
-      return new Set();
-    }
-
-    function register(tool) {
-      const run = tool.execute;
-      tool.execute = async input => {
-        track('WebMCP Tool', { tool: tool.name, locale: LANG });
-        try { return await run(input || {}); } catch (e) { return fail(String(e && e.message || e)); }
-      };
-      try { mc.registerTool(tool); } catch (e) { console.warn('WebMCP: could not register ' + tool.name, e); }
-    }
-
-    register({
-      name: 'search_appellations',
-      description: 'Find European wine appellations (PDO/PGI, AOC, DOC, DO, …) by name, including romanised forms of Greek and Bulgarian names. Returns slug, official name, country, region, classification and the page URL.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          query: { type: 'string', description: 'Appellation name or part of it, e.g. "Priorat", "Chablis", "naoussa".' },
-          country: { type: 'string', description: 'Optional ISO 3166-1 alpha-2 code, lower-case (fr, es, it, pt, de, at, gr, gb, …).' },
-          limit: { type: 'integer', description: 'Maximum results (default 20, max 100).' },
+    function register(name, def, run) {
+      const tool = Object.assign({ name: name }, def, {
+        execute: async input => {
+          track('WebMCP Tool', { tool: name, locale: LANG });
+          try { return asContent(await run(input || {})); } catch (e) { return fail(String(e && e.message || e)); }
         },
-        required: ['query'],
-      },
-      annotations: { readOnlyHint: true },
-      execute: async ({ query, country, limit }) => {
-        const nq = searchNormalize(query);
-        if (!nq) return fail('query is empty');
-        const cc = (country || '').toLowerCase();
-        const hits = [];
-        for (const slug in AOCS) {
-          const r = AOCS[slug];
-          if (cc && (r.country || 'fr') !== cc && !(r.country_aliases || []).includes(cc)) continue;
-          const score = searchScore(r, nq);
-          if (score < 0) continue;
-          hits.push({ slug, score, sub: r.is_sub_denomination ? 1 : 0, name: r.name || slug });
-        }
-        hits.sort((a, b) => b.score - a.score || a.sub - b.sub || a.name.localeCompare(b.name));
-        const n = capInt(limit, 20, 100);
-        return asContent({ total: hits.length, results: hits.slice(0, n).map(h => brief(h.slug)) });
-      },
-    });
+      });
+      try { mc.registerTool(tool); } catch (e) { console.warn('WebMCP: could not register ' + name, e); }
+    }
 
-    register({
-      name: 'filter_appellations',
-      description: 'List wine appellations matching structured criteria: country, region, wine style, grape variety, legal scheme or traditional term. All criteria are optional and combined with AND.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          country: { type: 'string', description: 'ISO 3166-1 alpha-2 code, lower-case.' },
-          region: { type: 'string', description: 'Wine region as shown on the map, e.g. "Bourgogne", "Catalunya", "Mosel".' },
-          style: { type: 'string', description: 'Wine style slug or label, e.g. "red", "white", "rose", "sparkling", "sweet", "fortified", "vin-jaune".' },
-          grape: { type: 'string', description: 'Grape variety name or slug, e.g. "Garnacha", "pinot-noir". Synonyms of the same VIVC variety are included.' },
-          main_grape_only: { type: 'boolean', description: 'Only match the grape among the principal varieties (default false).' },
-          scheme: { type: 'string', description: 'Legal scheme (pdo, pgi, spirit-gi, uk-pdo, uk-pgi, none) or traditional term (aoc, docg, doc, igt, doca, doq, dac, …).' },
-          include_sub_denominations: { type: 'boolean', description: 'Include sub-denominations (DGCs, subzonas, sottozone, crus); default false.' },
-          include_spirits: { type: 'boolean', description: 'Include spirit-drink and cider GIs; default false.' },
-          limit: { type: 'integer', description: 'Maximum results (default 50, max 200).' },
-        },
-      },
-      annotations: { readOnlyHint: true },
-      execute: async (a) => {
-        const cc = (a.country || '').toLowerCase();
-        // A criterion that was given but normalises to nothing ("!!") is an
-        // error, never silently dropped from the AND.
-        const nRegion = searchNormalize(a.region);
-        if (a.region && !nRegion) return fail('unknown region: ' + a.region);
-        const styles = a.style ? styleSlugsFor(a.style) : null;
-        if (a.style && !(styles && styles.size)) return fail('unknown style: ' + a.style);
-        const grapes = a.grape ? grapeSlugsFor(a.grape) : null;
-        if (a.grape && !(grapes && grapes.size)) return fail('unknown grape: ' + a.grape);
-        const term = searchNormalize(a.scheme).replace(/ /g, '-');
-        if (a.scheme && !term) return fail('unknown scheme: ' + a.scheme);
-        const out = [];
-        for (const slug in AOCS) {
-          const r = AOCS[slug];
-          if (!a.include_sub_denominations && r.is_sub_denomination) continue;
-          if (!a.include_spirits && r.is_wine === false) continue;
-          if (cc && (r.country || 'fr') !== cc && !(r.country_aliases || []).includes(cc)) continue;
-          if (nRegion && searchNormalize(r.region) !== nRegion && searchNormalize(regionLabel(r.region)) !== nRegion
-              && !regionSearchForms(r.region).some(f => searchNormalize(f) === nRegion)) continue;
-          if (styles && !setIntersects(styles, r.styles || [])) continue;
-          if (grapes && !setIntersects(grapes, (a.main_grape_only ? r.grapes_principal : r.grapes_all) || [])) continue;
-          if (term) {
-            const segs = (r.class_key || '').split(';').filter(Boolean);
-            if (!segs.some(s => s === term || s.split(':').pop() === term)) continue;
-          }
-          out.push(slug);
-        }
-        out.sort((x, y) => (AOCS[x].name || x).localeCompare(AOCS[y].name || y));
-        const n = capInt(a.limit, 50, 200);
-        return asContent({ total: out.length, results: out.slice(0, n).map(brief) });
-      },
+    register('search_appellations', TOOL_DEFS.search_appellations, a => QC.search(a));
+    register('filter_appellations', TOOL_DEFS.filter_appellations, a => QC.filter(a));
+    register('get_appellation', TOOL_DEFS.get_appellation, async ({ slug }) => {
+      if (!AOCS[slug]) throw new QueryError('unknown appellation slug: ' + slug);
+      const complete = await hydratePanel(slug);
+      return QC.full(slug, AOCS[slug], complete);
     });
-
-    register({
-      name: 'get_appellation',
-      description: 'Full record of one wine appellation by slug: grape varieties (principal / accessory), wine styles, terroir facts with their provenance, source documents and the attribution to give when quoting it.',
-      inputSchema: {
-        type: 'object',
-        properties: { slug: { type: 'string', description: 'Appellation slug, as returned by search_appellations.' } },
-        required: ['slug'],
-      },
-      annotations: { readOnlyHint: true },
-      execute: async ({ slug }) => {
-        if (!AOCS[slug]) return fail('unknown appellation slug: ' + slug);
-        const complete = await hydratePanel(slug);
-        const r = AOCS[slug];
-        const out = brief(slug);
-        if (!complete) {
-          out.detail_unavailable = 'The detail data (terroir facts, sources, attribution) could not be loaded; '
-            + 'this record is partial. Call get_appellation again to retry.';
-        }
-        if (r.parent_slug && AOCS[r.parent_slug]) out.parent = brief(r.parent_slug);
-        out.styles = (r.styles || []).map(s => STYLE_LABELS[s] || s);
-        out.grapes = {
-          principal: (r.grapes_principal || []).map(grapeName),
-          accessory: (r.grapes_accessory || []).map(grapeName),
-        };
-        const tf = r.terroir_facts;
-        if (tf && tf.facts && tf.facts.length) {
-          out.terroir_facts = tf.facts.map(f => ({
-            text: f.bullet,
-            section: FACTS_SUB_LABELS[f.subsection] || f.subsection,
-            source: f.provenance === 'wiki' ? 'wikipedia' : 'specification',
-          }));
-          out.terroir_facts_attribution = {
-            specification_url: tf.cahier_source_pdf_url || null,
-            wikipedia_url: tf.wiki_source_url || null,
-            wikipedia_licence: tf.facts.some(f => f.provenance === 'wiki') ? 'CC BY-SA 4.0' : null,
-            note: 'Extracted from the regulator specification (and Wikipedia where marked), machine-translated outside the source language.',
-          };
-        } else if (r.summary) {
-          out.summary = r.summary;
-          if (r.summary_translation) out.summary_note = 'Machine translated from the regulator specification.';
-        }
-        const src = {};
-        for (const [k, v] of Object.entries(r.sources || {})) {
-          if (typeof v === 'string' && /^https?:\/\//.test(v)) src[k] = v;
-        }
-        if ((r.sources || {}).file_number) out.eu_file_number = r.sources.file_number;
-        out.sources = src;
-        if (r.note) out.note = r.note;
-        out.geometry_source = r.geom_source || null;
-        return asContent(out);
-      },
-    });
-
-    register({
-      name: 'show_appellation',
+    register('list_facets', TOOL_DEFS.list_facets, () => QC.facets());
+    register('show_appellation', {
       description: 'Open an appellation on the map: shows its detail panel and frames its area. Use after search_appellations when the user wants to see it.',
-      inputSchema: {
-        type: 'object',
-        properties: { slug: { type: 'string', description: 'Appellation slug.' } },
-        required: ['slug'],
-      },
-      execute: async ({ slug }) => {
-        if (!openAppellation(slug, 'webmcp', null)) return fail('unknown appellation slug: ' + slug);
-        return asContent({ shown: brief(slug) });
-      },
+      inputSchema: TOOL_DEFS.get_appellation.inputSchema,
+    }, ({ slug }) => {
+      if (!openAppellation(slug, 'webmcp', null)) throw new QueryError('unknown appellation slug: ' + slug);
+      return { shown: QC.brief(slug) };
     });
   })();
