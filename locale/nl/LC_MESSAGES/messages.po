@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  open-wine-map\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-04 16:11+0200\n"
+"POT-Creation-Date: 2026-10-04 16:41+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: nl\n"
@@ -1225,19 +1225,27 @@ msgstr "Blader door de volledige lijst van appellaties: {browse_link}."
 msgid "Données mises à jour le {date}."
 msgstr "Gegevens bijgewerkt op {date}."
 
-#: scripts/_lib/map_template.py:495
+#: scripts/_lib/map_template.py:496
+#, python-brace-format
+msgid ""
+"Votre navigateur parle déjà {webmcp} ? Chaque page de la carte lui "
+"propose les mêmes outils. Sinon, aucune importance : c'est le serveur MCP"
+" ci-dessus que votre assistant IA sait utiliser."
+msgstr "Spreekt je browser al {webmcp}? Elke pagina van de kaart biedt hem dezelfde zoekfuncties aan. Zegt dat je niets, geen probleem: de MCP-server hierboven is degene die je AI-assistent kan gebruiken."
+
+#: scripts/_lib/map_template.py:500
 msgid "Copier"
 msgstr "Kopiëren"
 
-#: scripts/_lib/map_template.py:496
+#: scripts/_lib/map_template.py:501
 msgid "Copié"
 msgstr "Gekopieerd"
 
-#: scripts/_lib/map_template.py:497
+#: scripts/_lib/map_template.py:502
 msgid "Copier l'adresse du serveur MCP"
 msgstr "Het adres van de MCP-server kopiëren"
 
-#: scripts/_lib/map_template.py:499
+#: scripts/_lib/map_template.py:504
 #, python-brace-format
 msgid ""
 "Les assistants IA peuvent interroger les appellations avec les mêmes "
@@ -1248,179 +1256,179 @@ msgstr ""
 " als de kaart, via de MCP-server {mcp_link} (zonder authenticatie; voeg "
 "hem toe als eigen connector)."
 
-#: scripts/_lib/map_template.py:520
+#: scripts/_lib/map_template.py:525
 msgid "BOURGOGNE"
 msgstr "Bourgogne"
 
-#: scripts/_lib/map_template.py:521
+#: scripts/_lib/map_template.py:526
 msgid "BEAUJOLAIS"
 msgstr "Beaujolais"
 
-#: scripts/_lib/map_template.py:522
+#: scripts/_lib/map_template.py:527
 msgid "JURA"
 msgstr "Jura"
 
-#: scripts/_lib/map_template.py:523
+#: scripts/_lib/map_template.py:528
 msgid "SAVOIE"
 msgstr "Savoie"
 
-#: scripts/_lib/map_template.py:524
+#: scripts/_lib/map_template.py:529
 msgid "BUGEY"
 msgstr "Bugey"
 
-#: scripts/_lib/map_template.py:525
+#: scripts/_lib/map_template.py:530
 msgid "ALSACE"
 msgstr "Elzas"
 
-#: scripts/_lib/map_template.py:526
+#: scripts/_lib/map_template.py:531
 msgid "LORRAINE"
 msgstr "Lotharingen"
 
-#: scripts/_lib/map_template.py:527
+#: scripts/_lib/map_template.py:532
 msgid "VAL DE LOIRE"
 msgstr "Loirestreek"
 
-#: scripts/_lib/map_template.py:528
+#: scripts/_lib/map_template.py:533
 msgid "BORDEAUX"
 msgstr "Bordeaux"
 
-#: scripts/_lib/map_template.py:529
+#: scripts/_lib/map_template.py:534
 msgid "SUD-OUEST"
 msgstr "Zuidwest-Frankrijk"
 
-#: scripts/_lib/map_template.py:530
+#: scripts/_lib/map_template.py:535
 msgid "VALLEE DU RHÔNE"
 msgstr "Rhônestreek"
 
-#: scripts/_lib/map_template.py:531
+#: scripts/_lib/map_template.py:536
 msgid "LANGUEDOC"
 msgstr "Languedoc"
 
-#: scripts/_lib/map_template.py:532
+#: scripts/_lib/map_template.py:537
 msgid "ROUSSILLON"
 msgstr "Roussillon"
 
-#: scripts/_lib/map_template.py:533
+#: scripts/_lib/map_template.py:538
 msgid "PROVENCE"
 msgstr "Provence"
 
-#: scripts/_lib/map_template.py:534
+#: scripts/_lib/map_template.py:539
 msgid "CORSE"
 msgstr "Corsica"
 
-#: scripts/_lib/map_template.py:535
+#: scripts/_lib/map_template.py:540
 msgid "CHAMPAGNE"
 msgstr "Champagne"
 
-#: scripts/_lib/map_template.py:536
+#: scripts/_lib/map_template.py:541
 msgid "ILE-DE-FRANCE"
 msgstr "Île-de-France"
 
-#: scripts/_lib/map_template.py:537
+#: scripts/_lib/map_template.py:542
 msgid "NORMANDIE"
 msgstr "Normandië"
 
-#: scripts/_lib/map_template.py:538
+#: scripts/_lib/map_template.py:543
 msgid "BRETAGNE"
 msgstr "Bretagne"
 
-#: scripts/_lib/map_template.py:539
+#: scripts/_lib/map_template.py:544
 msgid "MAINE"
 msgstr "Maine"
 
-#: scripts/_lib/map_template.py:540
+#: scripts/_lib/map_template.py:545
 msgid "COGNAC"
 msgstr "Cognac"
 
-#: scripts/_lib/map_template.py:541
+#: scripts/_lib/map_template.py:546
 msgid "ARMAGNAC"
 msgstr "Armagnac"
 
-#: scripts/_lib/map_template.py:542
+#: scripts/_lib/map_template.py:547
 msgid "RHUM"
 msgstr "Rum"
 
-#: scripts/_lib/map_template.py:582
+#: scripts/_lib/map_template.py:587
 msgid "France"
 msgstr "Frankrijk"
 
-#: scripts/_lib/map_template.py:583
+#: scripts/_lib/map_template.py:588
 msgid "Espagne"
 msgstr "Spanje"
 
-#: scripts/_lib/map_template.py:584
+#: scripts/_lib/map_template.py:589
 msgid "Portugal"
 msgstr "Portugal"
 
-#: scripts/_lib/map_template.py:585
+#: scripts/_lib/map_template.py:590
 msgid "Italie"
 msgstr "Italië"
 
-#: scripts/_lib/map_template.py:586
+#: scripts/_lib/map_template.py:591
 msgid "Autriche"
 msgstr "Oostenrijk"
 
-#: scripts/_lib/map_template.py:587
+#: scripts/_lib/map_template.py:592
 msgid "Slovénie"
 msgstr "Slovenië"
 
-#: scripts/_lib/map_template.py:588
+#: scripts/_lib/map_template.py:593
 msgid "Croatie"
 msgstr "Kroatië"
 
-#: scripts/_lib/map_template.py:589
+#: scripts/_lib/map_template.py:594
 msgid "Hongrie"
 msgstr "Hongarije"
 
-#: scripts/_lib/map_template.py:590
+#: scripts/_lib/map_template.py:595
 msgid "Roumanie"
 msgstr "Roemenië"
 
-#: scripts/_lib/map_template.py:591
+#: scripts/_lib/map_template.py:596
 msgid "Bulgarie"
 msgstr "Bulgarije"
 
-#: scripts/_lib/map_template.py:592
+#: scripts/_lib/map_template.py:597
 msgid "Grèce"
 msgstr "Griekenland"
 
-#: scripts/_lib/map_template.py:593
+#: scripts/_lib/map_template.py:598
 msgid "Allemagne"
 msgstr "Duitsland"
 
-#: scripts/_lib/map_template.py:594
+#: scripts/_lib/map_template.py:599
 msgid "Slovaquie"
 msgstr "Slowakije"
 
-#: scripts/_lib/map_template.py:595
+#: scripts/_lib/map_template.py:600
 msgid "Suisse"
 msgstr "Zwitserland"
 
-#: scripts/_lib/map_template.py:596
+#: scripts/_lib/map_template.py:601
 msgid "Tchéquie"
 msgstr "Tsjechië"
 
-#: scripts/_lib/map_template.py:597
+#: scripts/_lib/map_template.py:602
 msgid "Luxembourg"
 msgstr "Luxemburg"
 
-#: scripts/_lib/map_template.py:598
+#: scripts/_lib/map_template.py:603
 msgid "Belgique"
 msgstr "België"
 
-#: scripts/_lib/map_template.py:599
+#: scripts/_lib/map_template.py:604
 msgid "Pays-Bas"
 msgstr "Nederland"
 
-#: scripts/_lib/map_template.py:600
+#: scripts/_lib/map_template.py:605
 msgid "Malte"
 msgstr "Malta"
 
-#: scripts/_lib/map_template.py:601
+#: scripts/_lib/map_template.py:606
 msgid "Chypre"
 msgstr "Cyprus"
 
-#: scripts/_lib/map_template.py:602
+#: scripts/_lib/map_template.py:607
 msgid "Royaume-Uni"
 msgstr "Verenigd Koninkrijk"
 

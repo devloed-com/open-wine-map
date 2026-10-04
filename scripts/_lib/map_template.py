@@ -492,6 +492,11 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Parcourir la liste complète des appellations : {browse_link}."
         ),
         "about_updated_html": _("Données mises à jour le {date}."),
+        "about_webmcp_html": _(
+            "Votre navigateur parle déjà {webmcp} ? Chaque page de la carte lui propose les "
+            "mêmes outils. Sinon, aucune importance : c'est le serveur MCP ci-dessus que votre "
+            "assistant IA sait utiliser."
+        ),
         "copy_label": _("Copier"),
         "copied_label": _("Copié"),
         "copy_mcp_aria": _("Copier l'adresse du serveur MCP"),
@@ -778,6 +783,9 @@ def _build_about_dialog(
         f'aria-label="{esc(labels["copy_mcp_aria"])}">{esc(labels["copy_label"])}</button></span>'
     )
     paragraphs.append(labels["about_mcp_html"].format(mcp_link=mcp_copy))
+    paragraphs.append(labels["about_webmcp_html"].format(
+        webmcp=_ext_link("https://developer.chrome.com/docs/ai/webmcp", "WebMCP")
+    ))
     paragraphs.append(
         labels["about_privacy_html"].format(plausible=_ext_link(_PLAUSIBLE_POLICY_URL, "Plausible"))
     )
