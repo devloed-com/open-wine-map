@@ -77,7 +77,53 @@ def tool_result(slugs: list[str], site: str) -> dict:
                     "bbox": r.get("bbox_villages") or r.get("bbox")})
     bb = [b["bbox"] for b in out]
     union = [min(b[0] for b in bb), min(b[1] for b in bb), max(b[2] for b in bb), max(b[3] for b in bb)]
-    return {"appellations": out, "bbox": union, "map_url": out[0]["url"], "unknown": []}
+    map_url = out[0]["url"] if len(out) == 1 else f"{site}/?aocs={','.join(slugs)}"
+    return {"appellations": out, "bbox": union, "map_url": map_url, "unknown": []}
+
+
+def interactions(page, frame, features_before: int, shots: Path | None) -> bool:
+    """The legend list: open with one row per appellation; hovering a row
+    lights it; the colour square hides an appellation (fewer features, site link drops
+    it); a row click pins it and points the site button at its page."""
+    problems = []
+    rows = frame.locator("#rows .row")
+    if frame.evaluate("document.getElementById('list').hidden") or rows.count() != 2:
+        problems.append(f"list hidden or {rows.count()} rows")
+    frame.locator("#rows .row").nth(0).hover()
+    if "lit" not in (rows.nth(0).get_attribute("class") or ""):
+        problems.append("hover did not light the row")
+    page.mouse.move(0, 0)
+    second = rows.nth(1).get_attribute("data-slug")
+    rows.nth(1).locator(".swatch").click()
+    page.wait_for_timeout(1500)
+    if shots:
+        page.screenshot(path=str(shots / "view-claude-light-hidden.png"))
+    after = frame.evaluate("window.__owmView.features()")
+    if not (0 < after < features_before):
+        problems.append(f"toggle: features {features_before} -> {after}")
+    frame.locator("#open-site").click()
+    page.wait_for_timeout(300)
+    opened = [m for m in page.evaluate("window.__hostLog") if m.startswith("openLink")]
+    if not opened or "aocs=" in opened[-1] or second in opened[-1]:
+        problems.append(f"site link with one hidden: {opened[-1:]}")
+    rows.nth(1).locator(".swatch").click()
+    rows.nth(1).locator(".row-text").click()
+    page.wait_for_timeout(1200)
+    name = frame.evaluate("document.querySelector('#rows .row.pinned .row-name')?.textContent")
+    button = frame.evaluate("document.getElementById('open-site').textContent")
+    if not name or not button.startswith(name):
+        problems.append(f"pin: row={name!r} button={button!r}")
+    if shots:
+        page.screenshot(path=str(shots / "view-claude-light-pinned.png"))
+    frame.locator("#show-all").click()
+    page.wait_for_timeout(800)
+    frame.locator("#open-site").click()
+    page.wait_for_timeout(300)
+    opened = [m for m in page.evaluate("window.__hostLog") if m.startswith("openLink")]
+    if "aocs=" not in opened[-1]:
+        problems.append(f"show all: site link {opened[-1]}")
+    print("    interactions:", "ok" if not problems else "; ".join(problems))
+    return not problems
 
 
 def main() -> int:
@@ -94,7 +140,8 @@ def main() -> int:
     tile_origin = f"http://127.0.0.1:{tiles.server_address[1]}"
     view_tpl = (MCP / "dist/view.html").read_text(encoding="utf-8")
     config = {"tileOrigin": tile_origin, "cartoKey": os.environ.get("CARTO_BASEMAP_KEY", ""),
-              "labels": {"open": "Open ↗", "nothing": "none", "waiting": "waiting", "appellations": "appellations"}}
+              "labels": {"open": "Open ↗", "site": "Open Wine Map ↗", "zoom": "zoom", "show": "show", "hide": "hide",
+                         "show_all": "Show all", "nothing": "none", "waiting": "waiting", "appellations": "appellations"}}
     view_html = view_tpl.replace("__OWM_VIEW_CONFIG__", json.dumps(config))
     domains = [tile_origin, CARTO]
     if args.live:
@@ -158,6 +205,8 @@ def main() -> int:
                 if args.shots:
                     args.shots.mkdir(parents=True, exist_ok=True)
                     page.screenshot(path=str(args.shots / f"view-{policy}-{theme}.png"))
+                if drew and expect_map and theme == "light" and not interactions(page, frame, features, args.shots):
+                    ok = False
                 if drew != expect_map:
                     ok = False
                     print(f"    UNEXPECTED: drew={drew}, expected {expect_map}")

@@ -1,7 +1,9 @@
 # Plan — the map inside the chat (MCP Apps)
 
-Status (2026-10-04): phase 0 done locally and on the spike; waiting for a
-live check in Claude. Builds on the live MCP server (docs/plan-mcp-server.md).
+Status (2026-10-04): phase 0 done locally and on the spike, checked live in
+Claude by Boris ("mcp server worked"); his two follow-ups landed the same day
+(see "After the first live check"). Builds on the live MCP server
+(docs/plan-mcp-server.md).
 
 Decisions (Boris, 2026-10-04): option B (widget); CARTO basemap; `show_on_map`
 as its own tool with a strong hint (tool description + server instructions);
@@ -30,6 +32,26 @@ personal use first (no ChatGPT directory review yet).
   (phase 1). The proxy responses are `no-store` so the CDN never caches a 206.
 - Harness lesson: a host must connect its bridge before the view loads — the
   view sends `ui/initialize` as its script runs, before the iframe's `load`.
+
+## After the first live check
+
+Boris, 2026-10-04: the site link opened the bare homepage, not the same
+selection; and with two appellations it was not clear which polygon was which.
+
+- **Same selection on the site**: `/?aocs=a,b,c` (any locale home, ≤ 50 slugs)
+  opens the set as one panel stack, highlights all of it and frames the map on
+  it (app.js, the landing IIFE). `show_on_map` links a set that way (a single
+  appellation keeps its entity page; more than 50 fall back to the homepage)
+  and its text result adds an "All of them on the map" line. Needs a site
+  deploy before it works from production.
+- **Which is which**: up to 10 appellations get their own colour (Tableau 10),
+  more fall back to the kind colours. The title ("2 appellations ▾") opens a
+  legend list — open by default for a multi-appellation result. Hovering a row
+  or a polygon lights it and dims the others; clicking a row (or a polygon)
+  zooms to it and turns the site button into "<name> ↗"; the colour square
+  hides / shows it (a hidden one never dims the rest, and drops out of the
+  site link); "Show all" resets. `apps_host_check.py` exercises the list,
+  hover, hide, pin and the links. Dark mode also styles MapLibre's controls.
 
 ## Goal
 

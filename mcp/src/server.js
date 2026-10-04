@@ -39,10 +39,18 @@ const CARTO = 'https://*.basemaps.cartocdn.com';
 const SLUG_PATTERN = '^[a-z0-9-]{1,120}$';
 const VIEW_LABELS = {
   open: 'Open on Open Wine Map ↗',
+  site: 'Open Wine Map ↗',
+  zoom: 'Zoom to this appellation',
+  show: 'Show',
+  hide: 'Hide',
+  show_all: 'Show all',
   nothing: 'No appellation to show.',
   waiting: 'Waiting for the appellations…',
   appellations: 'appellations',
 };
+// The site opens a set of appellations from /?aocs=a,b,c (panel stack, map
+// framed on all); longer sets link the homepage.
+const MAX_LINKED_SET = 50;
 
 const LOCALE_PROP = {
   type: 'string',
@@ -100,12 +108,16 @@ async function showOnMap(entry, { slugs }, locale, siteOrigin) {
     Math.min(...boxes.map(b => b[0])), Math.min(...boxes.map(b => b[1])),
     Math.max(...boxes.map(b => b[2])), Math.max(...boxes.map(b => b[3])),
   ] : null;
-  const mapUrl = appellations.length === 1 ? appellations[0].url : `${siteOrigin}${locale === 'en' ? '/' : `/${locale}/`}`;
+  const home = `${siteOrigin}${locale === 'en' ? '/' : `/${locale}/`}`;
+  const mapUrl = appellations.length === 1
+    ? appellations[0].url
+    : appellations.length <= MAX_LINKED_SET ? `${home}?aocs=${known.join(',')}` : home;
   return { appellations, bbox, map_url: mapUrl, unknown };
 }
 
 function showOnMapText(out) {
   const lines = out.appellations.map(a => `- [${a.name}](${a.url}) — ${[a.classification, a.region, a.country_name].filter(Boolean).join(' · ')}`);
+  if (out.appellations.length > 1) lines.push(`\nAll of them on the map: ${out.map_url}`);
   if (out.unknown.length) lines.push(`(not found: ${out.unknown.join(', ')})`);
   return `Shown on the map (Open Wine Map):\n${lines.join('\n')}`;
 }

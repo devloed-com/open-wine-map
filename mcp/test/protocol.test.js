@@ -71,6 +71,11 @@ test('show_on_map: briefs with bbox, union bbox, map links, UI resource', { skip
     assert.equal(out.bbox.length, 4);
     assert.ok(out.appellations.every(a => a.bbox && a.kind && a.url));
     assert.match(res.content[0].text, /\[Priorat\]\(https:\/\/data\.test\/en\/priorat\)/);
+    assert.equal(out.map_url, 'https://data.test/?aocs=priorat,montsant');
+    assert.ok(res.content[0].text.includes('All of them on the map: https://data.test/?aocs=priorat,montsant'));
+    const one = await client.callTool({ name: 'show_on_map', arguments: { slugs: ['priorat'], locale: 'fr' } });
+    assert.equal(one.structuredContent.map_url, 'https://data.test/fr/priorat');
+    assert.ok(!one.content[0].text.includes('All of them'));
     const read = await client.readResource({ uri: 'ui://open-wine-map/map' });
     const c = read.contents[0];
     assert.equal(c.mimeType, 'text/html;profile=mcp-app');
