@@ -49,8 +49,8 @@ const VIEW_LABELS = {
   appellations: 'appellations',
 };
 // The site opens a set of appellations from /?aocs=a,b,c (panel stack, map
-// framed on all); longer sets link the homepage.
-const MAX_LINKED_SET = 50;
+// framed on all), up to the tool's own 200 slugs (≤ 10 KB of URL; the CDN
+// takes 16 KB).
 
 const LOCALE_PROP = {
   type: 'string',
@@ -109,9 +109,7 @@ async function showOnMap(entry, { slugs }, locale, siteOrigin) {
     Math.max(...boxes.map(b => b[2])), Math.max(...boxes.map(b => b[3])),
   ] : null;
   const home = `${siteOrigin}${locale === 'en' ? '/' : `/${locale}/`}`;
-  const mapUrl = appellations.length === 1
-    ? appellations[0].url
-    : appellations.length <= MAX_LINKED_SET ? `${home}?aocs=${known.join(',')}` : home;
+  const mapUrl = appellations.length === 1 ? appellations[0].url : `${home}?aocs=${known.join(',')}`;
   return { appellations, bbox, map_url: mapUrl, tiles: tilePaths(entry.tiles), unknown };
 }
 

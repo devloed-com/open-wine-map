@@ -3081,14 +3081,15 @@
       }
       return;
     }
-    // A set shared as ?aocs=a,b,c (the MCP server's show_on_map links one):
+    // A set shared as ?aocs=a,b,c (the MCP server's show_on_map links one,
+    // up to its 200 slugs):
     // the whole set in the panel stack, all of it highlighted, the map framed
     // on all of it. The URL keeps the query until the reader opens something
     // else (setAocPath drops it), so the view stays shareable.
     let setSlugs = [];
     try {
       const q = new URLSearchParams(window.location.search).get('aocs');
-      if (q) setSlugs = [...new Set(q.split(','))].filter(s => AOCS[s]).slice(0, 50);
+      if (q) setSlugs = [...new Set(q.split(','))].filter(s => AOCS[s]).slice(0, 200);
     } catch (e) {}
     if (setSlugs.length) {
       lastStackKey = setSlugs.slice().sort().join('|');

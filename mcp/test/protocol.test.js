@@ -75,6 +75,12 @@ test('show_on_map: briefs with bbox, union bbox, map links, UI resource', { skip
     assert.match(out.tiles.overview, /^\/map-data\/appellations-overview\.pmtiles\?v=[0-9a-f]{8}$/);
     assert.match(out.tiles.detail, /^\/map-data\/appellations\.pmtiles\?v=[0-9a-f]{8}$/);
     assert.ok(res.content[0].text.includes('All of them on the map: https://data.test/?aocs=priorat,montsant'));
+    // A set over 50 (the 51 Alsace grands crus) still links the set, not the homepage.
+    const crus = (await client.callTool({ name: 'search_appellations', arguments: { query: 'Alsace grand cru', limit: 60 } }))
+      .structuredContent.results.map(r => r.slug).filter(s => s.startsWith('alsace-grand-cru-'));
+    assert.ok(crus.length > 50, `only ${crus.length} grands crus found`);
+    const many = await client.callTool({ name: 'show_on_map', arguments: { slugs: crus } });
+    assert.equal(many.structuredContent.map_url, `https://data.test/?aocs=${crus.join(',')}`);
     const one = await client.callTool({ name: 'show_on_map', arguments: { slugs: ['priorat'], locale: 'fr' } });
     assert.equal(one.structuredContent.map_url, 'https://data.test/fr/priorat');
     assert.ok(!one.content[0].text.includes('All of them'));

@@ -58,10 +58,12 @@ personal use first (no ChatGPT directory review yet).
 Boris, 2026-10-04: the site link opened the bare homepage, not the same
 selection; and with two appellations it was not clear which polygon was which.
 
-- **Same selection on the site**: `/?aocs=a,b,c` (any locale home, ≤ 50 slugs)
+- **Same selection on the site**: `/?aocs=a,b,c` (any locale home, ≤ 200 slugs)
   opens the set as one panel stack, highlights all of it and frames the map on
   it (app.js, the landing IIFE). `show_on_map` links a set that way (a single
-  appellation keeps its entity page; more than 50 fall back to the homepage)
+  appellation keeps its entity page; the cap was 50 until the 51 Alsace grands
+  crus fell back to the homepage — 200 is the tool's own maximum, ≤ 10 KB of
+  URL, and the CDN takes 16 KB)
   and its text result adds an "All of them on the map" line. Needs a site
   deploy before it works from production.
 - **Which is which**: up to 10 appellations get their own colour (Tableau 10),

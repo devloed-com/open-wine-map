@@ -6299,7 +6299,7 @@ instance — change search semantics in the core, never in app.js.
   appellations each has its own colour and a legend list: hover a row or a
   polygon to light it, click a row to zoom to it (the site button then opens
   its page), the colour square hides it. Its text result and the view's site
-  button link the set as **`/?aocs=a,b,c`** (any locale home, ≤ 50 slugs):
+  button link the set as **`/?aocs=a,b,c`** (any locale home, ≤ 200 slugs):
   app.js opens that stack in the panel, highlights all of it and frames the
   map on it; the query stays in the URL until the reader opens something else.
   Host check: `.venv/bin/python mcp/test/apps_host_check.py [--shots DIR]
