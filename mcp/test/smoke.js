@@ -44,9 +44,28 @@ export const SMOKE_CALLS = [
   ['list_facets', {}],
 ];
 
+// Poll until the endpoint reports `version` (a just-published release can
+// take a moment to replace the isolates still serving the previous one).
+export async function waitForVersion(url, version, timeoutMs = 120000) {
+  const until = Date.now() + timeoutMs;
+  let seen;
+  while (Date.now() < until) {
+    try {
+      const r = await smoke(url, 'modern', []);
+      seen = r.server && r.server.version;
+      if (seen === version) return seen;
+    } catch (e) {
+      seen = String((e && e.message) || e);
+    }
+    await new Promise(res => setTimeout(res, 3000));
+  }
+  throw new Error(`${url} still reports ${seen}, expected ${version}`);
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const url = process.argv[2];
-  if (!url) throw new Error('usage: node test/smoke.js <mcp-url>');
+  const [url, expect] = [process.argv[2], process.argv.indexOf('--expect-version')];
+  if (!url) throw new Error('usage: node test/smoke.js <mcp-url> [--expect-version V]');
+  if (expect > 0) console.log(JSON.stringify({ version: await waitForVersion(url, process.argv[expect + 1]) }));
   for (const mode of Object.keys(MODES)) {
     try {
       const r = await smoke(url, mode, SMOKE_CALLS);
@@ -60,6 +79,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       }));
     } catch (e) {
       console.log(JSON.stringify({ mode, error: String((e && e.message) || e) }));
+      process.exitCode = 1;
     }
   }
 }

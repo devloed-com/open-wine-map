@@ -8,10 +8,16 @@ import { CfWorkerJsonSchemaValidator } from '@modelcontextprotocol/server/valida
 import { TOOL_DEFS, QueryError } from '../../scripts/_lib/assets/query_core.mjs';
 import { LOCALES, createContextStore } from './context.js';
 
+// OWM_BUILD is the release's git SHA, injected by esbuild (--define) at
+// deploy time; the smoke test waits until the endpoint reports it, so a
+// freshly published release is what gets tested, not a lingering isolate.
+/* global OWM_BUILD */
+const BUILD = typeof OWM_BUILD === 'undefined' ? 'dev' : OWM_BUILD;
+
 export const SERVER_INFO = {
   name: 'open-wine-map',
   title: 'Open Wine Map',
-  version: '1.0.0',
+  version: `1.0.0+${BUILD}`,
   websiteUrl: 'https://www.openwinemap.com/',
 };
 

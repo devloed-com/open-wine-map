@@ -51,11 +51,14 @@ def api(method: str, path: str, key: str, **kw) -> requests.Response:
     return r
 
 
-def build() -> None:
+def build(note: str) -> None:
+    """Bundle mcp/ with the release note (git SHA) stamped in as OWM_BUILD:
+    the server reports it as its version, which the smoke test waits for."""
     if not (MCP_DIR / "node_modules").exists():
         subprocess.run(["npm", "ci"], cwd=MCP_DIR, check=True)
     (MCP_DIR / "dist").mkdir(exist_ok=True)
-    subprocess.run(["npm", "run", "build"], cwd=MCP_DIR, check=True)
+    subprocess.run(["npm", "run", "build", "--", f"--define:OWM_BUILD={json.dumps(note)}"],
+                   cwd=MCP_DIR, check=True)
 
 
 def git_note() -> str:
@@ -76,7 +79,7 @@ def hostnames(info: dict) -> list[str]:
 
 
 def cmd_create(key: str, name: str) -> None:
-    build()
+    build(git_note())
     body = {
         "Name": name,
         "Code": BUNDLE.read_text(encoding="utf-8"),
@@ -92,18 +95,21 @@ def cmd_create(key: str, name: str) -> None:
                       "LinkedPullZones": info.get("LinkedPullZones")}, indent=1))
 
 
-def cmd_deploy(key: str, script_id: str, no_build: bool) -> None:
+def cmd_deploy(key: str, script_id: str, no_build: bool, smoke_url: str | None) -> None:
+    note = git_note()
     if not no_build:
-        build()
+        build(note)
     code = BUNDLE.read_text(encoding="utf-8")
     api("POST", f"/compute/script/{script_id}/code", key, json={"Code": code})
-    note = git_note()
     api("POST", f"/compute/script/{script_id}/publish", key, json={"Note": note})
-    info = script_info(key, script_id)
-    hosts = hostnames(info)
+    hosts = hostnames(script_info(key, script_id))
     print(f"published {len(code.encode()):,} bytes as release '{note}' → {hosts}", file=sys.stderr)
-    if hosts:
-        subprocess.run(["node", "test/smoke.js", f"https://{hosts[0]}/mcp"], cwd=MCP_DIR, check=False)
+    url = smoke_url or (f"https://{hosts[0]}/mcp" if hosts else None)
+    if url:
+        expect = [] if no_build else ["--expect-version", f"1.0.0+{note}"]
+        r = subprocess.run(["node", "test/smoke.js", url, *expect], cwd=MCP_DIR, check=False)
+        if r.returncode:
+            sys.exit("smoke test failed")
 
 
 def linked_pullzone(key: str, script_id: str) -> dict:
@@ -161,6 +167,8 @@ def main() -> int:
         p.add_argument("--script-id", default=os.environ.get("BUNNY_MCP_SCRIPT_ID"))
         if name == "deploy":
             p.add_argument("--no-build", action="store_true")
+            p.add_argument("--smoke-url", default="https://mcp.openwinemap.com/mcp",
+                           help="endpoint to smoke-test after publishing")
         if name == "hostname":
             p.add_argument("host")
         if name == "vars":
@@ -175,7 +183,7 @@ def main() -> int:
     if not args.script_id:
         sys.exit("pass --script-id or set BUNNY_MCP_SCRIPT_ID")
     if args.cmd == "deploy":
-        cmd_deploy(key, args.script_id, args.no_build)
+        cmd_deploy(key, args.script_id, args.no_build, args.smoke_url)
     elif args.cmd == "info":
         info = script_info(key, args.script_id)
         info.pop("DeploymentKey", None)
