@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Wine Map</title>
+<style>/*__OWM_MAPLIBRE_CSS__*/</style>
+<style>
+  :root { color-scheme: light; --fg: #222; --bg: #fff; --muted: #666; --card: rgba(255,255,255,0.94); --border: #ddd; }
+  html.dark { color-scheme: dark; --fg: #eee; --bg: #1c1c1c; --muted: #aaa; --card: rgba(32,32,32,0.94); --border: #444; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+    font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #wrap { position: relative; height: 420px; }
+  html.fullscreen #wrap { height: 100vh; }
+  #map { position: absolute; inset: 0; }
+  #bar { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; gap: 6px; align-items: center; pointer-events: none; }
+  #title { pointer-events: auto; background: var(--card); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; max-width: 60%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: inherit; cursor: pointer; }
+  #list { position: absolute; top: 40px; left: 8px; width: min(300px, calc(100% - 16px)); max-height: calc(100% - 56px); display: flex; flex-direction: column;
+    background: var(--card); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+  #list[hidden] { display: none; }
+  #list .head { display: flex; justify-content: flex-end; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+  #list .head button { background: none; border: none; color: var(--muted); cursor: pointer; font: inherit; text-decoration: underline; }
+  #rows { overflow-y: auto; }
+  #rows .row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-left: 3px solid transparent; }
+  #rows .row.lit { background: rgba(127,127,127,0.12); }
+  #rows .row.pinned { border-left-color: var(--fg); }
+  #rows .row.off .row-text { opacity: 0.45; }
+  #rows .swatch { flex: none; width: 18px; height: 18px; padding: 0; border-radius: 4px; border: 2px solid var(--c); background: var(--c);
+    font: 700 12px/14px system-ui, sans-serif; text-align: center; cursor: pointer; }
+  #rows .swatch[aria-pressed="false"] { background: transparent; }
+  #rows .swatch:focus-visible, #rows .row-text:focus-visible, #title:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  #rows .row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; background: none; border: none; padding: 0;
+    color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+  #rows .row-name { font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #rows .row-meta { color: var(--muted); font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #bar .spacer { flex: 1; }
+  #bar button { pointer-events: auto; background: var(--card); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; cursor: pointer; font: inherit; }
+  #status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+  .maplibregl-popup-content { background: var(--card); color: var(--fg); border-radius: 6px; padding: 8px 10px; }
+  .maplibregl-popup-tip { display: none; }
+  .popup-name { font-weight: 600; }
+  .popup-meta { color: var(--muted); margin: 2px 0 6px; }
+  .popup-open { background: none; border: none; padding: 0; color: #934050; text-decoration: underline; cursor: pointer; font: inherit; }
+  html.dark .popup-open { color: #e08a9a; }
+  html.dark .maplibregl-ctrl-attrib, html.dark .maplibregl-ctrl-group { background: var(--card); color: var(--fg); }
+  html.dark .maplibregl-ctrl-attrib a { color: var(--fg); }
+  html.dark .maplibregl-ctrl-attrib-button, html.dark .maplibregl-ctrl-group .maplibregl-ctrl-icon { filter: invert(1); }
+  html.dark .maplibregl-ctrl-group button + button { border-top-color: var(--border); }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="map"></div>
+  <div id="status">Loading the map…</div>
+  <div id="bar">
+    <button id="title" type="button" aria-expanded="false" aria-controls="list" hidden></button>
+    <span class="spacer"></span>
+    <button id="open-site" type="button" hidden>Open Wine Map ↗</button>
+    <button id="fullscreen" type="button" hidden>⤢</button>
+  </div>
+  <div id="list" hidden>
+    <div class="head"><button id="show-all" type="button">Show all</button></div>
+    <div id="rows"></div>
+  </div>
+</div>
+<script id="owm-config" type="application/json">__OWM_VIEW_CONFIG__</script>
+<script>/*__OWM_VIEW_JS__*/</script>
+</body>
+</html>

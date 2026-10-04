@@ -32,4 +32,20 @@ jobs:
         with:
           node-version: "20"
       - name: ESLint (map app JS)
-        run: npx --yes eslint@9 scripts/_lib/assets/app.js
+        run: npx --yes eslint@9 scripts/_lib/assets/app.js scripts/_lib/assets/query_core.mjs
+
+  mcp:
+    # The remote MCP server (mcp/, a Bunny Edge Script): the bundle must build
+    # and the tests pass. Tests that need a stage-04 build (wiki/) skip here.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: mkdir -p dist && npm run build
+      - run: npm test

@@ -492,6 +492,19 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Parcourir la liste complète des appellations : {browse_link}."
         ),
         "about_updated_html": _("Données mises à jour le {date}."),
+        "about_webmcp_html": _(
+            "Votre navigateur parle déjà {webmcp} ? Chaque page de la carte lui propose les "
+            "mêmes outils. Sinon, aucune importance : c'est le serveur MCP ci-dessus que votre "
+            "assistant IA sait utiliser."
+        ),
+        "copy_label": _("Copier"),
+        "copied_label": _("Copié"),
+        "copy_mcp_aria": _("Copier l'adresse du serveur MCP"),
+        "about_mcp_html": _(
+            "Les assistants IA peuvent interroger les appellations avec les mêmes outils "
+            "de recherche que la carte, via le serveur MCP {mcp_link} (sans "
+            "authentification ; à ajouter comme connecteur personnalisé)."
+        ),
     }
 
 
@@ -673,6 +686,9 @@ _BASSIN_COLOURS: dict[str, str] = {
 
 
 _SITE_BASE_URL = "https://www.openwinemap.com"
+# The remote MCP server (mcp/, a Bunny Edge Script): advertised in the About
+# dialog and llms.txt.
+MCP_ENDPOINT_URL = "https://mcp.openwinemap.com/mcp"
 _OG_LOCALES = {"fr": "fr_FR", "en": "en_US", "es": "es_ES", "nl": "nl_NL"}
 _GITHUB_URL = "https://github.com/devloed-com/open-wine-map"
 _GITHUB_NEW_ISSUE_URL = _GITHUB_URL + "/issues/new"
@@ -759,6 +775,17 @@ def _build_about_dialog(
     if browse_path:
         browse_link = f'<a href="{browse_path}">{esc(labels["browse_all_label"])}</a>'
         paragraphs.append(labels["about_browse_html"].format(browse_link=browse_link))
+    # The address in a code box with a copy button (app.js: button[data-copy]):
+    # it is meant to be pasted into an AI assistant's connector settings.
+    mcp_copy = (
+        f'<span class="copy-field"><code>{esc(MCP_ENDPOINT_URL)}</code>'
+        f'<button type="button" class="copy-btn" data-copy="{esc(MCP_ENDPOINT_URL)}" '
+        f'aria-label="{esc(labels["copy_mcp_aria"])}">{esc(labels["copy_label"])}</button></span>'
+    )
+    paragraphs.append(labels["about_mcp_html"].format(mcp_link=mcp_copy))
+    paragraphs.append(labels["about_webmcp_html"].format(
+        webmcp=_ext_link("https://developer.chrome.com/docs/ai/webmcp", "WebMCP")
+    ))
     paragraphs.append(
         labels["about_privacy_html"].format(plausible=_ext_link(_PLAUSIBLE_POLICY_URL, "Plausible"))
     )
@@ -2048,6 +2075,21 @@ def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) ->
 # localityRank / renderActiveFilters→grapeName / the map-click geom_source
 # guard — MUST be listed here, or the sidebar/map silently breaks. 04_build_
 # maps.py imports this to emit the complement as the per-slug panel JSON.
+# The remote MCP server's query context (/data/mcp/<locale>.json): the keys
+# the shared query core reads. Bump QUERY_CONTEXT_FORMAT on an incompatible
+# change; the edge script accepts the formats it knows.
+QUERY_CONTEXT_FORMAT = 1
+QUERY_CONTEXT_KEYS = frozenset({
+    "format_version", "locale", "aocs", "grapes_info", "grape_search_index",
+    "vivc_siblings", "style_descendants", "style_labels", "simple_style_labels",
+    "simple_style_buckets", "region_labels", "region_search_terms",
+    "country_labels", "term_labels", "labels", "tiles",
+})
+QUERY_CONTEXT_LABELS = (
+    "meta_no_region", "facts_sub_facteurs_naturels", "facts_sub_facteurs_humains",
+    "facts_sub_produit", "facts_sub_interactions",
+)
+
 STARTUP_AOCS_FIELDS = frozenset({
     "name", "name_latin", "kind", "region", "country", "is_wine",
     # Search-only romanisations of a Greek / Cyrillic name (_lib/romanise.py):
@@ -2411,7 +2453,41 @@ def render(
         carto_key_json=json.dumps(carto_basemap_key()),
         carto_keys_json=json.dumps(carto_basemap_keys(), sort_keys=True),
         lod_json=json.dumps(lod or {}, sort_keys=True),
+        query_core=_QUERY_CORE_INLINE,
     )
+
+    # The query context for the remote MCP server (mcp/): the tables the
+    # shared query core (assets/query_core.mjs) reads, as one JSON per locale at
+    # a stable path (/data/mcp/<locale>.json) the edge script can find. The
+    # app gets the same tables inline; keep the two in step (see
+    # QUERY_CONTEXT_KEYS and tests/test_mcp_query_context.py).
+    query_context = {
+        "format_version": QUERY_CONTEXT_FORMAT,
+        "locale": locale,
+        "aocs": startup_aocs,
+        "grapes_info": {
+            slug: {"name": info["name"]}
+            for slug, info in sorted((grapes_info or {}).items())
+            if isinstance(info, dict) and info.get("name")
+        },
+        "grape_search_index": grape_search_index,
+        "vivc_siblings": vivc_siblings,
+        "style_descendants": style_descendants,
+        "style_labels": style_labels,
+        "simple_style_labels": simple_style_labels,
+        "simple_style_buckets": simple_style_buckets,
+        "region_labels": region_labels,
+        "region_search_terms": region_search_terms or {},
+        "country_labels": country_labels,
+        "term_labels": term_labels,
+        "labels": {k: labels[k] for k in QUERY_CONTEXT_LABELS},
+        # The map's own tile URLs with their content fingerprint (?v=): the
+        # MCP map view reads them so its 30-day-cached range requests change
+        # URL exactly when a tile file changes, as the site's do.
+        "tiles": {"detail": layer_url, "overview": overview_layer_url},
+    }
+    assert set(query_context) == QUERY_CONTEXT_KEYS, set(query_context) ^ QUERY_CONTEXT_KEYS
+    query_bytes = json.dumps(query_context, ensure_ascii=False, sort_keys=True).encode("utf-8")
 
     style_body = _STYLE_CSS.replace("{{", "{").replace("}}", "}")
     style_bytes = style_body.encode("utf-8")
@@ -2572,6 +2648,7 @@ def render(
         "data": (data_filename, data_bytes),
         "style": (style_filename, style_bytes),
         "app": (app_filename, app_bytes),
+        "query": (f"{locale}.json", query_bytes),
     }
     return html, assets, n_index, n_fold
 
@@ -3001,6 +3078,14 @@ _TEMPLATE = """<!doctype html>
   .feedback-copied.visible {{ opacity:1; transform:translateY(0) }}
   #about-dialog {{ width:520px; max-width:calc(100vw - 32px); padding:0; border:1px solid #ccc; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:#fff; color:#222 }}
   #about-dialog::backdrop {{ background:rgba(0,0,0,0.45) }}
+  #about-dialog .copy-field {{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin:2px 0 }}
+  #about-dialog .copy-field code {{ user-select:all; background:#f3f3f3; border:1px solid #ddd; border-radius:4px; padding:2px 6px; font-size:12px; word-break:break-all }}
+  #about-dialog .copy-btn {{ font:inherit; font-size:12px; padding:2px 10px; border:1px solid #bbb; border-radius:4px; background:#fff; color:#222; cursor:pointer }}
+  #about-dialog .copy-btn:hover {{ background:#f3f3f3 }}
+  #about-dialog .copy-btn.copied {{ border-color:#2e7d32; color:#2e7d32 }}
+  html.theme-dark #about-dialog .copy-field code {{ background:#2a2a2a; border-color:#444; color:#eee }}
+  html.theme-dark #about-dialog .copy-btn {{ background:#2a2a2a; border-color:#555; color:#eee }}
+  html.theme-dark #about-dialog .copy-btn.copied {{ border-color:#66bb6a; color:#66bb6a }}
   #about-dialog .close {{ position:absolute; top:10px; right:10px; background:#eee; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:#666 }}
   #about-dialog .close:hover {{ background:#ddd; color:#000 }}
   #about-dialog .about-body {{ padding:24px 28px; line-height:1.55 }}
@@ -3326,6 +3411,24 @@ _APP_JS_SOURCE = (Path(__file__).resolve().parent / "assets" / "app.js").read_te
     encoding="utf-8"
 )
 _OWM_TOKEN_RE = re.compile(r"__OWM_(\w+?)__")
+
+
+def _load_query_core_inline() -> str:
+    """assets/query_core.mjs as a classic-script fragment for app.js: the ES
+    module's `export ` keywords dropped (app.js is not a module). The same file
+    is bundled, unchanged, into the MCP server (mcp/), which is what keeps the
+    page's WebMCP tools and the server answering identically."""
+    src = (Path(__file__).resolve().parent / "assets" / "query_core.mjs").read_text(
+        encoding="utf-8"
+    )
+    out, n = re.subn(r"^export ", "", src, flags=re.M)
+    if not n or re.search(r"^\s*(?:import|export)\b", out, flags=re.M) or "__OWM_" in out:
+        raise AssertionError("query_core.mjs must be a flat ES module: top-level `export` "
+                             "declarations only, no imports, no build tokens")
+    return out
+
+
+_QUERY_CORE_INLINE = _load_query_core_inline()
 
 
 def _render_app_js(kwargs: dict[str, str]) -> str:

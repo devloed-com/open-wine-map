@@ -6245,19 +6245,65 @@ expected storage zone. Full runbook, the .env layout and the reason beta is
 blocked at robots.txt rather than with a noindex header (it would leak into
 production through the cross-host canonical): [docs/deploy.md](docs/deploy.md).
 
-## WebMCP tools
+## WebMCP tools and the MCP server
 
-The end of [scripts/_lib/assets/app.js](scripts/_lib/assets/app.js) registers
-four read-mostly WebMCP tools (`search_appellations`, `filter_appellations`,
-`get_appellation`, `show_appellation`) through `document.modelContext`, only
-where the browser exposes the API. Chrome ships it as an origin trial
-(Chrome 149–162, ends 2027-03-30): the token lives in the repo-root `.env` as
-`WEBMCP_ORIGIN_TRIAL_TOKEN` (registered for https://openwinemap.com with
-subdomain matching, so www and beta share it) and stage 04 emits it as
-`<meta http-equiv="origin-trial">` straight after `<meta charset>` on every map
-page (`_origin_trial_meta` in map_template.py). Chrome reissues the token on
-renewal — swap the `.env` value and rebuild. Unset ⇒ no tag. Calls are counted
-as the `WebMCP Tool` Plausible event (see docs/analytics.md).
+The map answers agents through two surfaces built on **one query core**,
+[scripts/_lib/assets/query_core.mjs](scripts/_lib/assets/query_core.mjs): a
+dependency-free ES module (search normalisation and scoring, grape / style /
+region / scheme resolution, `search`, `filter`, `full`, `facets`, and the shared
+`TOOL_DEFS` schemas). Stage 04 inlines it into app.js at the `__OWM_query_core__`
+token (`export ` stripped; `_load_query_core_inline` refuses imports or build
+tokens), and the app's omnisearch, tree filter and label helpers (`grapeName`,
+`regionLabel`, `countryLabel`, `expandGrapeSet`, …) are aliases of the `QC`
+instance — change search semantics in the core, never in app.js.
+
+- **WebMCP** (end of app.js): `search_appellations`, `filter_appellations`,
+  `get_appellation`, `list_facets` (adapters over `QC`) plus `show_appellation`
+  (opens the panel), registered through `document.modelContext` only where the
+  browser exposes it. Chrome ships it as an origin trial (Chrome 149–162, ends
+  2027-03-30): the token lives in the repo-root `.env` as
+  `WEBMCP_ORIGIN_TRIAL_TOKEN` (registered for https://openwinemap.com with
+  subdomain matching, so www and beta share it) and stage 04 emits it as
+  `<meta http-equiv="origin-trial">` straight after `<meta charset>` on every
+  map page (`_origin_trial_meta`). Chrome reissues the token on renewal — swap
+  the `.env` value and rebuild. Counted as the `WebMCP Tool` Plausible event.
+- **Remote MCP server** ([mcp/](mcp/), https://mcp.openwinemap.com/mcp): a
+  Bunny standalone Edge Script built on `@modelcontextprotocol/server`
+  (`createMcpHandler`, stateless; serves protocol 2026-07-28 natively and
+  2025-era clients through the SDK's stateless fallback). Same four read tools
+  plus a `locale` argument (en / fr / es / nl). Data: stage 04 writes
+  `wiki/data/mcp/<locale>.json` — the startup records plus the core's lookup
+  tables (`QUERY_CONTEXT_KEYS` / `QUERY_CONTEXT_FORMAT` in map_template.py,
+  pinned against `mcp/src/context.js` by `tests/test_mcp_query_context.py`);
+  the script caches it per isolate and revalidates by ETag every 5 min, and
+  `get_appellation` fetches the panel JSON `/data/d/<locale>/<slug>.json`.
+  Counted server-side as the `MCP Tool` Plausible event. Build / deploy:
+  `.venv/bin/python scripts/deploy_mcp.py deploy` (esbuild bundle → Bunny
+  compute API → publish with the git SHA → smoke test in all three protocol
+  modes); the site deploy (`deploy.sh`) must go first when the context format
+  changes. Tests: `npm test` in mcp/ (core anchors, protocol conformance per
+  mode, context store), `.venv/bin/python mcp/test/parity_webmcp.py` (the page's
+  WebMCP tools and the server answer the same calls identically, headless
+  Chromium). Plan, decisions and spike results:
+  [docs/plan-mcp-server.md](docs/plan-mcp-server.md).
+- **The map inside the chat** (MCP Apps): a fifth tool, `show_on_map`
+  {slugs}, carries `_meta.ui.resourceUri` → `ui://open-wine-map/map`, a
+  self-contained MapLibre view ([mcp/view/](mcp/view/), built into
+  `dist/view.html` by `npm run build:view`) that draws the requested
+  appellations straight from the site's pmtiles (`TILE_ORIGIN`, default the
+  site; Bunny already answers them cross-origin, `Range` preflight included)
+  over the CARTO basemap (`CARTO_KEY` script variable). The tile URLs carry the
+  site's own `?v=` content fingerprint, handed over in the query context's
+  `tiles` key and the tool result — the files are browser-cached for 30 days,
+  so a deploy must change the URL. With ≤ 10
+  appellations each has its own colour and a legend list: hover a row or a
+  polygon to light it, click a row to zoom to it (the site button then opens
+  its page), the colour square hides it. Its text result and the view's site
+  button link the set as **`/?aocs=a,b,c`** (any locale home, ≤ 200 slugs):
+  app.js opens that stack in the panel, highlights all of it and frames the
+  map on it; the query stays in the URL until the reader opens something else.
+  Host check: `.venv/bin/python mcp/test/apps_host_check.py [--shots DIR]
+  [--live MCP_URL]`. Plan and phases: [docs/plan-mcp-apps.md](docs/plan-mcp-apps.md).
 
 ## Analytics
 

@@ -169,6 +169,7 @@ from _lib.lieu_dit import LieuDitIndex
 from _lib.lu.geometry import LUPolygonIndex
 from _lib.lu.region import derive_region as derive_lu_region
 from _lib.map_template import (
+    MCP_ENDPOINT_URL,
     STARTUP_AOCS_FIELDS,
     build_country_labels,
     build_labels,
@@ -4641,6 +4642,14 @@ def emit_html(
             if _old.name != app_filename:
                 _old.unlink()
         (assets_dir / app_filename).write_bytes(app_bytes)
+        # The remote MCP server's query context: stable path, not hashed (the
+        # edge script fetches it by name and revalidates with its ETag).
+        query_filename, query_bytes = assets["query"]
+        query_path = data_dir / "mcp" / query_filename
+        query_path.parent.mkdir(parents=True, exist_ok=True)
+        if not query_path.exists() or query_path.read_bytes() != query_bytes:
+            query_path.write_bytes(query_bytes)
+        print(f"[mcp] {query_path.relative_to(WIKI)}: {len(query_bytes):,} bytes", file=sys.stderr)
         # Per-slug panel payload — the heavy detail the map loads lazily on
         # panel open (summary, terroir facts, sources, grape display-names,
         # dűlők, menzioni, notes, …). One small JSON per slug per locale at
@@ -4943,6 +4952,20 @@ def _write_llms_txt(entity_entries: list[tuple[str, str, str]]) -> None:
     lines.append(f"- [Source code (GitHub)]({GITHUB_URL})")
     lines.append(f"- [Sitemap]({SITE_BASE_URL}/sitemap.xml)")
     lines.append("")
+    lines += [
+        "## For AI agents",
+        "",
+        f"- [MCP server]({MCP_ENDPOINT_URL}): a remote MCP server (Streamable HTTP, "
+        "no authentication) with the tools search_appellations, filter_appellations, "
+        "get_appellation and list_facets, in en / fr / es / nl, and show_on_map, which "
+        "draws the appellations on an interactive map in clients that support MCP Apps. "
+        "Add it as a custom connector.",
+        "- Every map page registers the same search tools as WebMCP tools "
+        "(document.modelContext; Chrome origin trial).",
+        "- Per-appellation pages (below) are server-rendered: grapes, styles, terroir "
+        "facts and links to the regulator's specification.",
+        "",
+    ]
 
     by_country: dict[str, list[tuple[str, str]]] = {}
     for slug, name, country in entity_entries:

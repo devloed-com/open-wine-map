@@ -18,6 +18,18 @@ const owmTokens = Object.fromEntries(
   [...new Set(appJs.match(/__OWM_\w+?__/g) || [])].map((t) => [t, "readonly"]),
 );
 
+// query_core.mjs is inlined at the `__OWM_query_core__` token; its top-level
+// declarations are app.js globals.
+const queryCoreGlobals = {
+  createQueryCore: "readonly",
+  TOOL_DEFS: "readonly",
+  QueryError: "readonly",
+  searchNormalize: "readonly",
+  toTitleCase: "readonly",
+  setIntersects: "readonly",
+  schemeKey: "readonly",
+};
+
 const browserGlobals = {
   window: "readonly",
   document: "readonly",
@@ -44,11 +56,23 @@ const browserGlobals = {
 
 module.exports = [
   {
+    files: ["scripts/_lib/assets/query_core.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: { Intl: "readonly" },
+    },
+    rules: {
+      "no-undef": "error",
+      "no-unused-vars": ["warn", { caughtErrors: "none", argsIgnorePattern: "^_" }],
+    },
+  },
+  {
     files: ["scripts/_lib/assets/app.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",
-      globals: { ...browserGlobals, ...owmTokens },
+      globals: { ...browserGlobals, ...owmTokens, ...queryCoreGlobals },
     },
     rules: {
       "no-undef": "error",

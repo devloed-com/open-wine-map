@@ -1,0 +1,23 @@
+{
+  "name": "owm-mcp",
+  "private": true,
+  "type": "module",
+  "description": "Remote MCP server for Open Wine Map (Bunny Edge Script). See docs/plan-mcp-server.md.",
+  "scripts": {
+    "build": "node scripts/build-view.mjs && esbuild src/edge.js --bundle --format=esm --platform=browser --target=es2022 --external:node:* --loader:.html=text --minify --legal-comments=none --metafile=dist/meta.json --outfile=dist/edge.js",
+    "test": "node --test test/*.test.js",
+    "build:view": "node scripts/build-view.mjs"
+  },
+  "dependencies": {
+    "@bunny.net/edgescript-sdk": "0.13.0",
+    "@cfworker/json-schema": "4.1.1",
+    "@modelcontextprotocol/ext-apps": "2.0.3",
+    "@modelcontextprotocol/server": "2.3.0",
+    "maplibre-gl": "4.7.1",
+    "pmtiles": "3.2.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.3.0",
+    "esbuild": "0.28.2"
+  }
+}
