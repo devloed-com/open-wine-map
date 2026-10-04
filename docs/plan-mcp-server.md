@@ -1,7 +1,6 @@
 # Plan — a remote MCP server for Open Wine Map
 
-Status (2026-10-04): phases 0–3 and the code of 4–5 done on branch
-`feat/mcp-server` (from `origin/main` a619b99), not yet committed or deployed.
+Status (2026-10-04): live. Branch `feat/mcp-server` (from `origin/main` a619b99).
 
 | phase | state |
 |---|---|
@@ -9,8 +8,8 @@ Status (2026-10-04): phases 0–3 and the code of 4–5 done on branch
 | 1 shared query core | done — `scripts/_lib/assets/query_core.mjs`, inlined into app.js; WebMCP is an adapter; `list_facets` added; schemas hardened; country-qualified schemes (`it:docg`) now match (they never did) |
 | 2 query context | done — `wiki/data/mcp/<locale>.json`, 3.7 MB each; contract test |
 | 3 server + tests | done — `mcp/`; 14 node tests, parity 0 differences (page WebMCP vs server, 3 locales), headless UI check clean, full pytest green |
-| 4 deploy | `scripts/deploy_mcp.py` ready; waiting: site deploy (ships the data + new app.js), production script `owm-mcp`, hostname, DNS, SSL |
-| 5 discovery | About dialog sentence (4 locales) + `llms.txt` "For AI agents" section + docs done; registry entry and Le Chat live test pending |
+| 4 deploy | done — site deployed (snapshot `snapshots/openwinemap-deployed-20261004T134415Z`); script `owm-mcp` (id 94571, `BUNNY_MCP_SCRIPT_ID`) at https://mcp.openwinemap.com/mcp — CNAME in the Bunny DNS zone, free certificate, Force SSL; variables DATA_ORIGIN / PLAUSIBLE_HOST / PLAUSIBLE_DOMAIN. Smoke (all three modes) green against the live data. The deploy smoke waits for the release's SHA (`1.0.0+<sha>`): right after a publish, isolates of the previous release still answer |
+| 5 discovery | About dialog sentence (4 locales) + `llms.txt` "For AI agents" section + docs live; open: `MCP Tool` goal in Plausible (the 48 events of 2026-10-04 are all deploy-window test traffic), Le Chat live test, MCP Registry entry, delete spike `owm-mcp-spike` (id 94565) |
 
 ## Why
 
