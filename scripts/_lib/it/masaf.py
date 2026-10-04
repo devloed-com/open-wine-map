@@ -39,6 +39,8 @@ from typing import Iterable
 
 from rapidfuzz import fuzz
 
+from _lib.it.documento_unico import scan_styles
+
 # Filename markers that should be stripped before slugifying — these
 # are doc-type qualifiers MASAF embeds inconsistently.
 _JUNK_RE = re.compile(
@@ -405,9 +407,14 @@ _GRAPE_LINE_DROP = (
 # Connective terminators are word-bounded (`per\b`, `al\b`, …) so they
 # stop the variety capture only at a real word break — a bare `al`
 # alternative would otherwise truncate "Erb·al·uce" → "Erb".
+# "uve del vitigno Pignolo prodotte nella zona" / "dall'uva Marzemino
+# gentile prodotta in vigneti" (the single-variety sottozona annexes of
+# Friuli Colli Orientali and Trentino): a participle closes the name, and
+# "uva" introduces it as "vitigno" does — a capital must still follow.
 _VITIGNO_RE = re.compile(
-    r"\b(?:vitign[oi]|variet[aà])\s+([A-ZÀÈÉÌÒÙ][\w\sàèéìòù'’\-/.]+?)"
+    r"\b(?:vitign[oi]|variet[aà]|uv[ae])\s+([A-ZÀÈÉÌÒÙ][\w\sàèéìòù'’\-/.]+?)"
     r"(?=\s*(?:per\b|al\b|dal\b|nel\b|nella\b|in\b|con\b|che\b|"
+    r"prodott[aeio]\b|coltivat[aeio]\b|provenient[ei]\b|present[ei]\b|"
     r"almeno\b|minimo\b|massimo\b|fino\b|sino\b|circa\b|"
     r";|,|:|\(|\.|\bn\.|\bb\.|\bg\.|\brs\.|\brg\.|\brb\.|$))",
     re.U,
@@ -501,7 +508,8 @@ _PERCENT_TAIL_RE = re.compile(
     r"\s*[:\-]?\s*"
     r"(?:(?:dal?|dall['’]|d[ae]ll[ae]|degli|agli|al|all['’]|alla|"
     r"fino\s+a[dl]?|sino\s+a[dl]?|per|circa|almeno|minimo|massimo|"
-    r"da\s+0\s+a|un\s+massimo\s+di|l['’])\s*|\d+(?:[.,]\d+)?\s*)*"
+    r"da\s+0\s+a|un\s+(?:minimo|massimo)(?:\s+d(?:i|el|ell['’]|ella))?|l['’])\s*"
+    r"|\d+(?:[.,]\d+)?\s*)*"
     r"\d+(?:[.,]\d+)?\s*%.*$",
     re.I,
 )
@@ -711,7 +719,8 @@ def looks_letter_spaced(text: str) -> bool:
     return letters >= 40 and len(tokens) / letters > LETTER_SPACED_DENSITY
 
 
-def parse_grapes_with(matcher, article2_body: str, wine_name: str = "") -> dict:
+def parse_grapes_with(matcher, article2_body: str, wine_name: str = "",
+                      other_names: tuple[str, ...] = ()) -> dict:
     """Apply `matcher(phrase) -> MatchResult | None` to each candidate
     in `article2_body`. Returns {principal: [...], accessory: [],
     observation: [], details: [...]}. MASAF disciplinari don't carry
@@ -729,14 +738,18 @@ def parse_grapes_with(matcher, article2_body: str, wine_name: str = "") -> dict:
     enough to be a real name: a 5-letter Italian function word
     ("nella") or a colour-glossed region phrase otherwise fuzzy-matches
     an unrelated variety. After the vocab additions almost every true
-    variety resolves exact, so the low-confidence fuzzy band is noise."""
+    variety resolves exact, so the low-confidence fuzzy band is noise.
+
+    `other_names` restate the record too — a sottozona annex names its
+    sottozona in article 2 ("Barbera d'Asti" superiore "Tinella", and
+    "Tinella" fuzzy-matches Grenache)."""
     out = {
         "principal": [],
         "accessory": [],
         "observation": [],
         "details": [],
     }
-    name_key = _loose_key(wine_name)
+    name_keys = {k for k in (_loose_key(n) for n in (wine_name, *other_names)) if k}
     hits: list = []  # first MatchResult per slug, in order
     from_name: dict[str, bool] = {}  # slug → matched ONLY from phrases restating the wine name
     for phrase in article2_candidate_phrases(article2_body):
@@ -747,7 +760,7 @@ def parse_grapes_with(matcher, article2_body: str, wine_name: str = "") -> dict:
             score = int(hit.method.split(":")[1])
             if score < 90 or len(re.sub(r"[\W\d_]", "", phrase)) < 7:
                 continue
-        restates_name = bool(name_key) and _loose_key(phrase) == name_key
+        restates_name = _loose_key(phrase) in name_keys
         if hit.slug not in from_name:
             hits.append(hit)
             from_name[hit.slug] = restates_name
@@ -931,6 +944,10 @@ def grapes_with_annex(matcher, article2_body: str, raw_text: str, wine_name: str
     grapes = parse_grapes_with(matcher, article2_body, wine_name)
     if not grapes["principal"]:
         return parse_annex_grapes_with(matcher, raw_text)
+    return _with_variety_annex(matcher, grapes, article2_body, raw_text)
+
+
+def _with_variety_annex(matcher, grapes: dict, article2_body: str, raw_text: str) -> dict:
     if not _ART2_ANNEX_REF_RE.search(article2_body or ""):
         return grapes
     role = "principal" if _ART2_ROSTER_RE.search(article2_body) else "accessory"
@@ -942,6 +959,53 @@ def grapes_with_annex(matcher, article2_body: str, raw_text: str, wine_name: str
         grapes[role].append(d["slug"])
         grapes["details"].append(d)
     return grapes
+
+
+# A sottozona annex ("ALLEGATO 5 SOTTOZONA «TAGGIA»", Trentino's "ALLEGATO 2
+# DISCIPLINARE SOTTOZONA «ISERA» O «D'ISERA»") restarts at Art. 1 with its
+# own production rules. Its title names the sottozona(e) after the last
+# "sottozona" — earlier text can be the previous annex's tail (Barbera
+# d'Asti's Colli Astiani title opens on Tinella's labelling rule).
+_SOTTOZONA_WORD_RE = re.compile(r"\bsottozon[ae]\b", re.I)
+_QUOTED_NAME_RE = re.compile(
+    r"\s*[“\"«]\s*([^”\"»“«]+?)\s*[”\"»“]\s*(?:,|\be\b|\bo\b)?", re.I
+)
+# Some annexes renumber: Riviera Ligure di Ponente's Art. 2 is the zone.
+_ART2_VARIETY_RE = re.compile(r"ampelograf|vitign", re.I)
+
+
+def annex_sottozona_names(title: str) -> list[str]:
+    """Sottozona names an annex title declares: the quoted list after its
+    last "sottozona" ("«MONTEBALDO», «LA ROCCA», «SOMMACAMPAGNA»", "«ISERA»
+    O «D'ISERA»"), else the bare words ("sottozona Colline del Crati")."""
+    marks = list(_SOTTOZONA_WORD_RE.finditer(title or ""))
+    if not marks:
+        return []
+    rest = title[marks[-1].end():]
+    names: list[str] = []
+    pos = 0
+    while (m := _QUOTED_NAME_RE.match(rest, pos)) and m.end() > pos:
+        names.append(m.group(1).strip())
+        pos = m.end()
+    if names:
+        return names
+    bare = rest.strip(" .:;-–")
+    return [bare] if bare and len(bare.split()) <= 6 else []
+
+
+def annex_grapes(matcher, article2_body: str, raw_text: str, wine_name: str,
+                 sottozona_names: list[str]) -> dict | None:
+    """A sottozona annex's own roster, read like the parent's article 2;
+    None when its article 2 is not a variety article or names no variety —
+    the sottozona then keeps the parent's roster (the PDF's variety list is
+    never the whole roster of a sottozona)."""
+    if not _ART2_VARIETY_RE.search(article2_body or ""):
+        return None
+    others = tuple(sottozona_names) + tuple(f"{wine_name} {n}" for n in sottozona_names)
+    grapes = parse_grapes_with(matcher, article2_body, wine_name, others)
+    if not grapes["principal"]:
+        return None
+    return _with_variety_annex(matcher, grapes, article2_body, raw_text)
 
 
 def derive_summary(article1_body: str, max_chars: int = 600) -> str:
@@ -1073,3 +1137,40 @@ def pick_terroir_article(
 
     # Step 3: established canonical fallback.
     return 9, derive_terroir(articles.get(9, ""), max_chars=max_chars)
+
+
+def annex_entry(annex: dict, raw_text: str, wine_name: str, matcher) -> dict:
+    """A sidecar annex: its title, the sottozona names it declares, its
+    articles 1 / 2 / 3 / 8 / 9 and — when it has a variety article of its
+    own — its roster, plus its styles when it has an organoleptic article
+    (found by its opening; annexes renumber, and one without, Asti's
+    Strevi, defers to the parent's disciplinare and keeps the parent's)."""
+    articles = annex.get("articles") or {}
+    names = annex_sottozona_names(annex.get("title") or "")
+    entry = {
+        "title": annex.get("title") or "",
+        "sottozone": names,
+        "article_bodies": {
+            str(n): body for n, body in sorted(articles.items())
+            if n in (1, 2, 3, 8, 9) and body
+        },
+    }
+    if not names:
+        return entry
+    grapes = annex_grapes(matcher, articles.get(2, ""), raw_text, wine_name, names)
+    if grapes:
+        entry["grapes"] = grapes
+        consumo = next((b for _, b in sorted(articles.items()) if _is_consumo_article(b)), "")
+        if consumo:
+            entry["styles"] = scan_styles(" ".join((articles.get(1, ""), consumo)))
+    return entry
+
+
+# "Caratteristiche al consumo", "Caratteristiche del vino al consumo",
+# Barbera d'Asti's "Caratteristiche dei al consumo", or untitled "I vini …
+# all'atto dell'immissione al consumo, devono rispondere alle seguenti
+# caratteristiche" (Friuli Colli Orientali) — read in the article's opening
+# lines, where Art. 1 can also say "immesso al consumo".
+def _is_consumo_article(body: str) -> bool:
+    head = body[:300]
+    return bool(re.search(r"\bal\s+consumo\b", head, re.I) and re.search(r"caratteristic", head, re.I))

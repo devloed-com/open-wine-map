@@ -75,9 +75,12 @@ from _lib.ch.per_aoc_carving import (  # noqa: E402
 )
 from _lib.ch.region import region_for_canton  # noqa: E402
 from _lib.ch.reglement import (  # noqa: E402
+    colour_blocks,
     extract_communes,
     extract_plaintext,
     extract_varieties,
+    grand_cru_block,
+    list_varieties,
     summary_paragraph,
 )
 from _lib.grape_entity import (  # noqa: E402
@@ -190,6 +193,11 @@ def _build_canton_extracts(commune_idx: CHCommuneIndex,
         out[canton] = {
             "text": text,
             "varieties": varieties,
+            "grand_cru_varieties": list_varieties(grand_cru_block(text), match_variety),
+            "colour_varieties": {
+                c: list_varieties(block, match_variety)
+                for c, block in colour_blocks(text).items()
+            },
             "communes": communes,
             "per_aoc_communes": per_aoc_communes,
             "summary": summary,
@@ -238,6 +246,9 @@ def _parent_slug_for(entry, parents_by_canton):
     return (slugify(parent.name), parent.name)
 
 
+_COLOUR_TIER = {"bianco": "white", "rosso": "red", "rosato": "rose"}
+
+
 def _build_record(entry, parents_by_canton, canton_data, ofag_source):
     """Build one stage-02 JSON record for an OFAG entry."""
     slug = slugify(entry.name)
@@ -253,6 +264,18 @@ def _build_record(entry, parents_by_canton, canton_data, ofag_source):
         sources.append(extract["source"])
 
     grapes = (extract.get("varieties") if extract else []) or []
+    styles: list[str] = []
+    by_colour = (extract.get("colour_varieties") if extract else {}) or {}
+    if by_colour.get("red") and by_colour.get("white"):
+        # Ticino art. 23 splits the DOC roster by grape colour and art. 20
+        # reserves «Rosso - Bianco - Rosato del Ticino» to blends of one
+        # colour: each tier takes its colour's list, the DOC both.
+        tier = _COLOUR_TIER.get(entry.name.split()[0].lower())
+        if tier:
+            styles = [tier]
+            grapes = by_colour["white" if tier == "white" else "red"]
+        else:
+            grapes = by_colour["red"] + by_colour["white"]
     # Per-AOC carving (multi-AOC cantons VD/BE/FR): if the canton's
     # extract has a per-AOC commune list for this slug, that wins over
     # the canton-wide commune list. Sub-AOCs WITHOUT a specific carved
@@ -295,6 +318,7 @@ def _build_record(entry, parents_by_canton, canton_data, ofag_source):
             "link_to_terroir": "",
         },
         "grapes": {"details": grapes},
+        **({"styles": styles} if styles else {}),
         "geo_communes": communes,
         "n_grapes": len(grapes),
         "n_communes": len(communes),
@@ -350,6 +374,12 @@ def main() -> int:
     # an empty list rendered as "no grapes" (audit_empty_grapes INHERIT).
     valais_record = next((r for r in records if r["slug"] == "valais-wallis"), None)
     inherited_grapes = copy.deepcopy((valais_record or {}).get("grapes") or {"details": []})
+    # OVV art. 88 reserves the appellation Grand Cru to fifteen varieties,
+    # narrower than the Valais AOC list; a communal règlement may narrow it
+    # again (not in the corpus).
+    gc_varieties = vs_extract.get("grand_cru_varieties") or []
+    if len(gc_varieties) >= 5:
+        inherited_grapes = {"details": copy.deepcopy(gc_varieties)}
     inherited_varieties = ((valais_record or {}).get("section_roles") or {}).get("varieties", "")
     if valais_parent is not None:
         for gc in VS_GRAND_CRU:

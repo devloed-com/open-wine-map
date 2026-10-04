@@ -65,6 +65,7 @@ from _lib.grape_entity import (  # noqa: E402
 from _lib.it.documento_unico import scan_styles  # noqa: E402
 from _lib.it.masaf import (  # noqa: E402
     PdfRecord,
+    annex_entry,
     build_pdf_index,
     cap_at_sentence,
     derive_geo_area,
@@ -93,7 +94,7 @@ OJ_PAGES_MANIFEST = OJ_PAGES_DIR / "manifest.json"
 
 OVERRIDES_PATH = BUNDLES_DIR.parent / "manual_overrides.json"
 
-PARSER_VERSION = "it-masaf-disciplinare-v4"
+PARSER_VERSION = "it-masaf-disciplinare-v5"
 # Panel length of the Art. 9 terroir text; the extractor reads the full body.
 TERROIR_BRIEF_CHARS = 4000
 
@@ -259,6 +260,13 @@ def collapse_whitespace(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def _annex_entry(wine: dict, annex: dict, raw_text: str) -> dict:
+    set_pliego_context(wine["slug"])
+    entry = annex_entry(annex, raw_text, wine.get("name", ""), match_variety)
+    set_pliego_context(None)
+    return entry
+
+
 def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
                  match_info: dict, comune_map: dict, raw_text: str = "",
                  annexes: list[dict] | None = None) -> dict:
@@ -342,18 +350,12 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
         # Per-sottozona sub-disciplinari appended to the parent's PDF
         # (ALLEGATO N — SOTTOZONA «…»), each with its own Art. 1 / 3 / 9:
         # kept as chapters so a sottozona can be grounded on its own text
-        # rather than on the parent's (the Alsace `terroir_chapters` idea).
-        # Never merged into the parent's fields above.
-        "annexes": [
-            {
-                "title": a.get("title") or "",
-                "article_bodies": {
-                    str(n): body for n, body in sorted((a.get("articles") or {}).items())
-                    if n in (1, 2, 3, 8, 9) and body
-                },
-            }
-            for a in (annexes or [])
-        ],
+        # rather than on the parent's (the Alsace `terroir_chapters` idea),
+        # with the sottozona names the title declares and, when the annex
+        # has a variety article of its own, its roster and styles (stage 04
+        # gives them to the sottozona record). Never merged into the
+        # parent's fields above.
+        "annexes": [_annex_entry(wine, a, raw_text) for a in (annexes or [])],
         "source": pdf_meta,
         "match": match_info,
     }

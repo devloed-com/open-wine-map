@@ -7,6 +7,9 @@ provenance cache + sidecar dir live in `_shared` so the writer here and the
 from __future__ import annotations
 
 import json
+import re
+
+from _lib.terroir_chapters import fold
 
 from ._shared import _ES_NATIONAL_PLIEGO_BY_SLUG, NATIONAL_PLIEGOS_ES
 
@@ -34,7 +37,12 @@ def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
         slug = record.get("slug")
         if not slug:
             continue
-        sidecar_path = NATIONAL_PLIEGOS_ES / f"{slug}.json"
+        # A subzona is a part of its DO: the DO's national pliego is its
+        # pliego too (Rioja Alta lacked the Malvasía the Rioja pliego adds).
+        pliego_slug = (
+            record.get("parent_slug") if record.get("is_sub_denomination") else slug
+        ) or slug
+        sidecar_path = NATIONAL_PLIEGOS_ES / f"{pliego_slug}.json"
         if not sidecar_path.exists():
             continue
         sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
@@ -52,6 +60,7 @@ def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
             }
             record["national_pliego"] = nat_provenance
             _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
+            _apply_subzona_principals(record, sidecar)
             continue
         grapes = dict(record.get("grapes") or {})
         principal = list(grapes.get("principal") or [])
@@ -82,6 +91,44 @@ def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
         }
         record["national_pliego"] = nat_provenance
         _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
+        _apply_subzona_principals(record, sidecar)
         if added:
             augmented += 1
     return augmented
+
+
+# Vinos de Madrid's pliego names each subzona's principal varieties after
+# the DO's list ("Principales Subzona de Arganda — Blancas: Malvar. — Tintas:
+# Tinto Fino (Tempranillo)."); the rest of the DO's roster stays allowed.
+_PRINCIPALES = re.compile(
+    r"Principales\s+Subzona\s+de\s+([^\n]+?)\s*\n(.*?)(?=Principales\s+Subzona|\Z)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _apply_subzona_principals(record: dict, sidecar: dict) -> None:
+    if not record.get("is_sub_denomination"):
+        return
+    want = fold(record.get("name") or "")
+    for m in _PRINCIPALES.finditer(sidecar.get("section_text") or ""):
+        if fold(m.group(1)) != want:
+            continue
+        from _lib.grape_entity import match_variety
+        named: set[str] = set()
+        for n in re.split(r"[,;\n()]|\s+y\s+|:", m.group(2)):
+            n = n.strip(" .-")
+            hit = match_variety(n) if n and fold(n) not in ("blancas", "tintas") else None
+            if hit is not None and not hit.method.startswith("fuzzy"):
+                named.add(hit.slug)
+        grapes = record.get("grapes") or {}
+        details = grapes.get("details") or []
+        roster = list(grapes.get("principal") or []) + list(grapes.get("accessory") or [])
+        principal = [s for s in roster if s in named]
+        if not principal:
+            return
+        grapes["principal"] = [s for s in roster if s in principal]
+        grapes["accessory"] = [s for s in roster if s not in principal]
+        for d in details:
+            d["role"] = "principal" if d.get("slug") in principal else "accessory"
+        record["grapes"] = grapes
+        return

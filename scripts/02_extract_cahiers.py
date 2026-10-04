@@ -37,7 +37,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from _lib.fr import siqo
+from _lib.fr import dgc_rules, shared_cahier, siqo
 from _lib.fr.naming import candidate_keys, normalize_name
 from _lib.grape_entity import (
     flush_unknowns_queue,
@@ -1524,6 +1524,52 @@ def _emit_dgc_stub(id_app: str, parent_denom: dict, parent_slug: str, dgc: dict,
     return record
 
 
+_DGC_COLOURS = frozenset({"white", "red", "rose"})
+
+
+def _apply_dgc_rules(dgc: dict, parent: dict, dgc_names: list[str]) -> None:
+    """Give a DGC the colours and roster its parent's cahier states for it
+    (`dgc_rules`): its own section III rule when one names it — else the
+    parent's styles —, its own section V rows or clauses when they name it,
+    else the parent's roster without the clauses of a colour the DGC is not
+    allowed. A DGC its cahier never singles out keeps the parent's fields."""
+    roles = parent.get("section_roles") or {}
+    covered_dgc = set().union(*(dgc_rules.dgc_keys(n, parent["name"]) for n in dgc_names))
+    covered = covered_dgc | {dgc_rules.key(a) for a in shared_cahier.aliases(parent["name"])}
+    want = dgc_rules.dgc_keys(dgc["name"], parent["name"])
+    own_iii = dgc_rules.dgc_text(roles.get("couleur") or "", want, covered,
+                                 dgc_rules.RESERVATION)
+    applied: dict[str, str] = {}
+    if own_iii is not None:
+        mention_text = " ".join(
+            v for v in (parent.get("sections") or {}).values() if isinstance(v, str)
+        )
+        dgc["styles"] = parse_styles(own_iii, dgc["categories"], mention_text)
+        applied["types"] = "own"
+    v_text = encepagement_block(roles.get("encepagement") or "")
+    cut = shared_cahier._PROPORTION.search(v_text, 1)
+    if cut:
+        v_text = v_text[: cut.start()]
+    own_v = dgc_rules.dgc_text(v_text, want, covered)
+    how = "own"
+    colours = set(dgc["styles"]) & _DGC_COLOURS
+    if own_v is None and colours and not (set(parent["styles"]) & _DGC_COLOURS) <= colours:
+        own_v = dgc_rules.drop_colours(v_text, colours, covered_dgc)
+        how = "colour"
+    if own_v is not None:
+        grapes = parse_grapes(dgc_rules.strip_names(own_v))
+        if grapes["principal"]:
+            dgc["grapes"] = {
+                "principal": [t["slug"] for t in grapes["principal"]],
+                "accessory": [t["slug"] for t in grapes["accessory"]],
+                "observation": [t["slug"] for t in grapes["observation"]],
+                "details": grapes["all"],
+            }
+            applied["encepagement"] = how
+    if applied:
+        dgc["dgc_rules"] = applied
+
+
 def emit_stub_records(
     siqo_denoms: dict[str, list[dict]],
     siqo_categories: dict[str, list[str]],
@@ -1814,7 +1860,24 @@ def load_siqo_categories() -> dict[str, list[str]]:
         cat = (row.get("categorie") or "").strip()
         if id_app and cat:
             out[id_app].add(cat)
+        if id_app:
+            out[id_app].update(_produit_mention_categories(row.get("produit") or ""))
     return {k: sorted(v) for k, v in out.items()}
+
+
+# The `categorie` column files some mention products under "Vin tranquille"
+# while the product's own name carries the mention ("Alsace grand cru
+# Kaefferkopf vendanges tardives Gewurztraminer", "Monbazillac sélection de
+# grains nobles"), so the style was lost; the name is the regulator's word.
+_PRODUIT_MENTION_CATEGORIES = (
+    (re.compile(r"\bvendanges\s+tardives\b", re.IGNORECASE), "Vin de vendanges tardives"),
+    (re.compile(r"\bs[ée]lection\s+de\s+grains\s+nobles\b", re.IGNORECASE),
+     "Vin de sélection de grains nobles"),
+)
+
+
+def _produit_mention_categories(produit: str) -> set[str]:
+    return {cat for rx, cat in _PRODUIT_MENTION_CATEGORIES if rx.search(produit)}
 
 
 def dropped_denominations(
@@ -2082,8 +2145,22 @@ def main() -> int:
             }
             record["styles"] = []
         else:
-            v_text = encepagement_block(roles.get("encepagement") or "")
-            iii_text = roles.get("couleur") or ""
+            # A cahier shared by several appellations (the 51 Alsace grands
+            # crus, Anjou / Cabernet d'Anjou / Rosé d'Anjou, the two Pouilly)
+            # singles appellations out in sections III and V; read only the
+            # clauses that apply to this record (no-op for any other cahier).
+            covered = shared_cahier.covered_names(
+                roles.get("nom") or (record.get("sections") or {}).get("I", "")
+            )
+            iii_text = shared_cahier.own_text(roles.get("couleur") or "", meta["name"], covered)
+            mention_text = " ".join(
+                v for v in (record.get("sections") or {}).values() if isinstance(v, str)
+            )
+            record["styles"] = parse_styles(iii_text, record["categories"], mention_text)
+            v_text = shared_cahier.own_encepagement(
+                encepagement_block(roles.get("encepagement") or ""),
+                meta["name"], covered, record["styles"],
+            )
             grapes = parse_grapes(v_text)
             record["grapes"] = {
                 "principal": [t["slug"] for t in grapes["principal"]],
@@ -2091,10 +2168,6 @@ def main() -> int:
                 "observation": [t["slug"] for t in grapes["observation"]],
                 "details": grapes["all"],
             }
-            mention_text = " ".join(
-                v for v in (record.get("sections") or {}).values() if isinstance(v, str)
-            )
-            record["styles"] = parse_styles(iii_text, record["categories"], mention_text)
 
         # The parent record is everything we just built. Find its SIQO row to
         # carry id_denomination_geo through, then emit one JSON per
@@ -2148,6 +2221,10 @@ def main() -> int:
         parent_id_denom = (
             parent_denom["id_denomination_geo"] if parent_denom else None
         )
+        dgc_names = [
+            d["denomination"] for d in denoms
+            if not (parent_id_denom and d["id_denomination_geo"] == parent_id_denom)
+        ]
         for d in denoms:
             if parent_id_denom and d["id_denomination_geo"] == parent_id_denom:
                 continue
@@ -2166,6 +2243,8 @@ def main() -> int:
             dgc_record["parent_name"] = record["name"]
             dgc_categories = d["categories"] or record["categories"]
             dgc_record["categories"] = dgc_categories
+            if record["kind"] != "EDV":
+                _apply_dgc_rules(dgc_record, record, dgc_names)
 
             dgc_path = OUT_DIR / f"{dgc_slug}.json"
             dgc_path.write_text(json.dumps(dgc_record, ensure_ascii=False, indent=2), encoding="utf-8")

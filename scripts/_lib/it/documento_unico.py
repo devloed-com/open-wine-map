@@ -141,6 +141,10 @@ COLOUR_BY_KEYWORD = {
     "rosato": "rose",
     "rosati": "rose",
     "rose": "rose",
+    # Garda's word for rosé (Bardolino, Riviera del Garda, Valtènesi).
+    # "Cerasuolo" is not mapped: rosé in Abruzzo, red in Vittoria.
+    "chiaretto": "rose",
+    "chiaretti": "rose",
 }
 
 

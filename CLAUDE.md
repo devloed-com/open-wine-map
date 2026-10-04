@@ -394,9 +394,30 @@ parent denomination (where `denomination == appellation`) gets the canonical
 slug; each sub-denomination gets `slug(denomination)` and carries
 `is_sub_denomination=true` plus `parent_id_appellation`, `parent_slug`,
 `parent_name`. Sub-denominations share the parent's cahier text — INAO
-publishes one cahier des charges per appellation, and sub-sections inside
-it are not parsed in v1, so sub-denomination records inherit `sections` /
-`aire` / `grapes` / `styles` from the parent.
+publishes one cahier des charges per appellation — and inherit `sections`
+/ `aire` from the parent. Their `styles` and `grapes` are the parent's
+unless the cahier singles the DGC out ([scripts/_lib/fr/dgc_rules.py](scripts/_lib/fr/dgc_rules.py),
+`_apply_dgc_rules` in stage 02, 2026-10-04): a section III reservation rule
+naming it ("La dénomination géographique complémentaire « Puy-Notre-Dame »
+est réservée aux vins tranquilles rouges", or its row of the colour table)
+sets its colours with the DGC's own SIQO categories; its section V rows or
+clauses set its roster — a two-column `pdftotext -layout` table is read by
+column, a centred or full-width heading scoping the rows below it, a left
+label pairing with the value block it overlaps (a name wrapped over two
+lines, a value printed above its label); and a DGC section V does not name
+keeps the parent's roster minus the clauses / rows of a colour it is not
+allowed (Côtes de Bordeaux Cadillac drops "b)- Les vins blancs"). In prose
+only a reservation sentence counts (an IGP's description "Pour l'unité
+géographique « Coteaux du Grésivaudan », les vins blancs présentent …" is
+not a rule), "hormis / sauf / à l'exception de « X »" excepts X, and a
+clause ending "… la liste suivante :" takes the list after it (Var
+Correns). The record carries `dgc_rules` ({types, encepagement} → own /
+colour) where it applied. First run: 78 of 1,074 DGCs changed — Touraine
+Oisly is white Sauvignon, Saumur Puy-Notre-Dame red Cabernet franc, the
+Languedoc and Côtes du Rhône Villages red-only DGCs lost white and rosé,
+Mâcon Fuissé / Loché / Vinzelles white Chardonnay. Known residue: a grape
+both accessory in one colour row and principal in another takes the first
+role read (Fiefs Vendéens Vix's rosé Gamay).
 
 Stage 04 resolves sub-denomination geometry by `id_denomination_geo`
 against the INAO parcellaire shapefile (the shapefile carries `id_denom`
@@ -556,6 +577,23 @@ d'Alsace items of the same day:
   ("Département de l'Hérault\nAutignac, …" had read "Hérault Autignac"), a
   sub-item "b) Pour la dénomination …" ends a list, and a list token that
   runs into a sentence keeps its first sentence.
+- **A shared cahier is read per appellation** (`shared_cahier.own_text` /
+  `own_encepagement`, [scripts/_lib/fr/shared_cahier.py](scripts/_lib/fr/shared_cahier.py),
+  2026-10-04): where section I declares several appellations, the colour
+  (section III) and the roster (section V 1°) are read from the units that
+  name the record — a lettered clause, a table row block opening on its
+  « name », a sentence — else from the general units that name no other
+  appellation; "à l'exception de « X »" excepts X, a "X ou Y" register name
+  answers to either alias, and "pour les vins rouges / rosés" items drop
+  when the record's own colour lacks them. Before, every Alsace grand cru
+  carried Pinot noir, red, Sylvaner, Chasselas and Pinot blanc (a grape
+  filter returned all 51; found through the MCP server); now red is Hengst,
+  Kirchberg de Barr and Vorbourg only, Sylvaner Zotzenberg only, the
+  accessories Altenberg de Bergheim's and Kaefferkopf's. The same rule split
+  Anjou / Cabernet d'Anjou / Rosé d'Anjou and Pouilly-Fumé (Sauvignon) /
+  Pouilly-sur-Loire (Chasselas). A SIQO product named "… vendanges tardives
+  …" / "… sélection de grains nobles …" adds that category even when its
+  `categorie` column says "Vin tranquille" (Kaefferkopf had lost VT / SGN).
 - **The record name follows the referentiel, not the fetch cache.** Stage
   02 overlays each manifest entry's `name` with the `appellation` the
   referentiel gives through `siqo.siqo_rows()` (`[name]` log line per
@@ -1414,6 +1452,15 @@ augmentation is in-memory only (the on-disk doc-único record stays
 immutable) and propagates via a slug-keyed cache into
 `_sources_for()`. The map panel renders a "Pliego de condiciones
 (national, PDF)" source link with the count of pliego-added varieties.
+A subzona reads its DO's pliego (2026-10-04: Rioja Alta had lacked the
+Malvasía the Rioja pliego adds), and where the pliego names a subzona's
+principal varieties — Vinos de Madrid's "Principales Subzona de Arganda —
+Blancas: Malvar. — Tintas: Tinto Fino (Tempranillo)." — those are its
+principal grapes and the rest of the DO's roster its accessory
+(`_apply_subzona_principals`). Rías Baixas' ≥ 70 % rules for its white
+subzona labels (a three-column table) are not read yet; the other
+subzonas (Rioja, Ribeira Sacra, Monterrei, Costers del Segre, Alicante,
+Valencia) are named only for their area and terroir.
 
 Re-runnable per slug or in sweep mode:
 ```
@@ -1655,8 +1702,14 @@ sub-regiões exist in regulatory documents but aren't in the caderno
 text. Sub-região records carry `is_sub_denomination=true`,
 `parent_slug`, `parent_id_eambrosia`, `parent_name` (same data
 model as FR DGCs and ES subzonas) and share the parent's
-`file_number` / sections / grapes (parent inherited at the
-rendering layer).
+`file_number` / sections. Their grapes are the parent's unless the
+caderno's grapes section has a table under "Sub-região de X"
+(`subregion_grapes` in stage 02, 2026-10-04): Vinho Verde's "os vinhos …
+com indicação de sub-região devem ser exclusivamente obtidos a partir das
+castas enumeradas nos quadros seguintes" — Monção e Melgaço is seven
+varieties with Alvarinho, not the DOC's 46; a two-word row whose words
+both resolve is a name and its lost-";" synonym ("Vinhão Sousão"). The
+other cadernos name their sub-regiões for area and terroir only.
 
 | Script | Reads | Writes |
 |---|---|---|
@@ -1852,8 +1905,22 @@ Italy has two layers of sub-denomination granularity:
   live in the **MASAF disciplinare Article 1** — `synthesize_it_
   sottozone_records()` in stage 04 runs the detector over the cached
   sidecar `article_bodies` and appends a child record per sottozona,
-  inheriting the parent's grapes/styles/terroir; geometry resolves via
-  `parent-appellation`. v1 yield: **38 sottozone across 10 DOPs**
+  inheriting the parent's grapes/styles/terroir — except where the PDF
+  binds the sottozona's own sub-disciplinare (2026-10-04, parser v5): 02f
+  records each annex's `sottozone` (the quoted names after the title's
+  last "sottozona"), its Article 2 roster when that article is a variety
+  article (`masaf.annex_grapes`; the sottozona's own name never reads as
+  a grape — "Tinella" had fuzzy-matched Grenache) and its styles when it
+  has an organoleptic article (found by its opening, annexes renumber);
+  stage 04 gives them to the sottozona the annex names
+  (`sottozona_rules` on the record). 42 of 78 sottozone have an annex
+  and 37 take its roster — Pignolo di Rosazzo is Pignolo, Romagna Cesena
+  Sangiovese, Valtènesi Groppello first; Riviera Ligure di Ponente's five
+  annexes carry no variety article and keep the parent's, as does the
+  detector's merged "Schioppettino di Prepotto» «Savorgnano" record. Annex sottozone with no record yet
+  (Montepulciano d'Abruzzo's 9, Trentino's 5, …) are not emitted — some
+  are DOCGs or cancelled IGTs now. `chiaretto` reads as rosé.
+  Geometry resolves via `parent-appellation`. v1 yield: **38 sottozone across 10 DOPs**
   (Chianti 7, Vin Santo del Chianti 7, Valtellina Superiore 5, Bardolino
   3, Costa d'Amalfi 3, Cannonau di Sardegna 3, Penisola Sorrentina 3,
   Cinque Terre, Lambrusco Mantovano, Lago di Caldaro).
@@ -4015,9 +4082,18 @@ CH-specific notes:
   - **TI**: skipped — the 3 colour-tier sub-DOCs share the canton-
     wide production area; per-AOC carving adds nothing.
 
-  Per-AOC variety carving (VD's Lavaux-only Chasselas split, GE's
-  per-premier-cru annex) is still deferred — would need per-region
-  Art. 18 / Art. 14 parsing for each variety/yield rule.
+  Per-AOC varieties (2026-10-04): the TI regolamento's art. 23 splits the
+  DOC roster by grape colour ("a) per le uve rosse: … b) per le uve
+  bianche: …") and art. 20 reserves «Rosso - Bianco - Rosato del Ticino»
+  to blends of one colour, so each tier takes its colour's list and an
+  explicit style (`colour_blocks` + `list_varieties` in
+  `_lib/ch/reglement.py`); the DOC Ticino takes both lists (the
+  whole-document scan had added Alphonse Lavallée, Léon Millot and
+  Plantet from the list of varieties barred from blending). The VS
+  Grands Crus take OVV art. 88's list (`grand_cru_block`). The other
+  règlements carry no per-sub-AOC variety rule: GE has one annex for every
+  AOC Genève wine, VD's Dézaley / Calamin Grand cru have must weights for
+  whites, Gamay and other reds, BE / SZ / FR use one cantonal list.
 - Sub-denomination model: tier "régionale" and "locale" entries are
   tagged `is_sub_denomination=true` with `parent_slug` = the same
   canton's "cantonale" AOC slug (when one exists). Orphan régionale
@@ -4048,7 +4124,11 @@ CH-specific notes:
   | Savièse | Savièse Grand Cru | n/a | to-verify |
   | Visperterminen | Visperterminen Grand Cru | n/a | to-verify |
 
-  Each entry resolves to a single-commune polygon via
+  Their roster is OVV art. 88's ("L'appellation Grand Cru est réservée aux
+  cépages suivants": ten whites, five reds — Amigne, Humagne blanc, Rèze,
+  Cornalin du Valais and Humagne rouge are not in the grape lexicon yet,
+  pending a VIVC pass), not the Valais AOC list; a communal règlement may
+  narrow it again. Each entry resolves to a single-commune polygon via
   swissBOUNDARIES3D `BFS_NUMMER`. Per OVV Art. 86, each commune
   homologates its own communal Grand Cru règlement — the OVV itself
   does NOT enumerate them, so the roster requires external research

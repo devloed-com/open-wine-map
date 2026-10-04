@@ -262,6 +262,7 @@ GRAPE_ALIAS = {
     # Pinot family — split from pinot-noir umbrella
     "pinot-bianco": "pinot-blanc",
     "pinot-grigio": "pinot-gris",  # Italian name
+    "sauvignon-grigio": "sauvignon-gris",  # Italian name (Ticino art. 23)
     "pinot-nero": "pinot-noir",
     "pignola": "pignola-valtellinese",
     "pignola-valtellinese": "pignola-valtellinese",
