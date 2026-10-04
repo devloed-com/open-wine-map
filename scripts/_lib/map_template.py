@@ -492,6 +492,9 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Parcourir la liste complète des appellations : {browse_link}."
         ),
         "about_updated_html": _("Données mises à jour le {date}."),
+        "copy_label": _("Copier"),
+        "copied_label": _("Copié"),
+        "copy_mcp_aria": _("Copier l'adresse du serveur MCP"),
         "about_mcp_html": _(
             "Les assistants IA peuvent interroger les appellations avec les mêmes outils "
             "de recherche que la carte, via le serveur MCP {mcp_link} (sans "
@@ -767,9 +770,14 @@ def _build_about_dialog(
     if browse_path:
         browse_link = f'<a href="{browse_path}">{esc(labels["browse_all_label"])}</a>'
         paragraphs.append(labels["about_browse_html"].format(browse_link=browse_link))
-    paragraphs.append(labels["about_mcp_html"].format(
-        mcp_link=f"<code>{esc(MCP_ENDPOINT_URL)}</code>"
-    ))
+    # The address in a code box with a copy button (app.js: button[data-copy]):
+    # it is meant to be pasted into an AI assistant's connector settings.
+    mcp_copy = (
+        f'<span class="copy-field"><code>{esc(MCP_ENDPOINT_URL)}</code>'
+        f'<button type="button" class="copy-btn" data-copy="{esc(MCP_ENDPOINT_URL)}" '
+        f'aria-label="{esc(labels["copy_mcp_aria"])}">{esc(labels["copy_label"])}</button></span>'
+    )
+    paragraphs.append(labels["about_mcp_html"].format(mcp_link=mcp_copy))
     paragraphs.append(
         labels["about_privacy_html"].format(plausible=_ext_link(_PLAUSIBLE_POLICY_URL, "Plausible"))
     )
@@ -3058,6 +3066,14 @@ _TEMPLATE = """<!doctype html>
   .feedback-copied.visible {{ opacity:1; transform:translateY(0) }}
   #about-dialog {{ width:520px; max-width:calc(100vw - 32px); padding:0; border:1px solid #ccc; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:#fff; color:#222 }}
   #about-dialog::backdrop {{ background:rgba(0,0,0,0.45) }}
+  #about-dialog .copy-field {{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin:2px 0 }}
+  #about-dialog .copy-field code {{ user-select:all; background:#f3f3f3; border:1px solid #ddd; border-radius:4px; padding:2px 6px; font-size:12px; word-break:break-all }}
+  #about-dialog .copy-btn {{ font:inherit; font-size:12px; padding:2px 10px; border:1px solid #bbb; border-radius:4px; background:#fff; color:#222; cursor:pointer }}
+  #about-dialog .copy-btn:hover {{ background:#f3f3f3 }}
+  #about-dialog .copy-btn.copied {{ border-color:#2e7d32; color:#2e7d32 }}
+  html.theme-dark #about-dialog .copy-field code {{ background:#2a2a2a; border-color:#444; color:#eee }}
+  html.theme-dark #about-dialog .copy-btn {{ background:#2a2a2a; border-color:#555; color:#eee }}
+  html.theme-dark #about-dialog .copy-btn.copied {{ border-color:#66bb6a; color:#66bb6a }}
   #about-dialog .close {{ position:absolute; top:10px; right:10px; background:#eee; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:#666 }}
   #about-dialog .close:hover {{ background:#ddd; color:#000 }}
   #about-dialog .about-body {{ padding:24px 28px; line-height:1.55 }}

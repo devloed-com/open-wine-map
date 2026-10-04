@@ -3342,6 +3342,35 @@ __OWM_source_block__
     updateStatus();
   });
 
+  // Copy-to-clipboard buttons (the About dialog's MCP server address). Falls
+  // back to selecting the address when the clipboard API is unavailable.
+  document.addEventListener('click', e => {
+    const btn = e.target.closest && e.target.closest('button[data-copy]');
+    if (!btn) return;
+    const code = btn.parentElement && btn.parentElement.querySelector('code');
+    const selectCode = () => {
+      if (!code) return;
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    };
+    const done = () => {
+      if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+      btn.textContent = LABELS.copied_label;
+      btn.classList.add('copied');
+      clearTimeout(btn._copyTimer);
+      btn._copyTimer = setTimeout(() => { btn.textContent = btn.dataset.label; btn.classList.remove('copied'); }, 1600);
+    };
+    track('MCP Address Copied', { locale: LANG });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(btn.dataset.copy).then(done, selectCode);
+    } else {
+      selectCode();
+    }
+  });
+
   // ---- WebMCP (document.modelContext) --------------------------------------
   // The map is a WebGL canvas and the panel is client-rendered, so a browser
   // agent cannot read either. WebMCP (W3C Web Machine Learning CG draft;
