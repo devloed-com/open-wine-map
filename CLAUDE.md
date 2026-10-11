@@ -357,7 +357,7 @@ details and "Hard rules" for invariants that apply to every country.
   [scripts/audit_terroir_facts_llm.py](scripts/audit_terroir_facts_llm.py)
   grades a sample of records' rendered EN bullets against the full source
   with an adversarial verifier on a *different* model
-  (`claude-opus-5`, vs the sonnet-4-6 extractor / gate) and reports the
+  (Opus — `STAGE_DEFAULTS["audit"]` — vs the Sonnet extractor) and reports the
   reader-misled share with a Wilson interval; `--from-backup <run>`
   grades the same records' pre-run state and `--compare A B` prints the
   paired before / after. Run it after every scoped re-run; the review's
@@ -5667,16 +5667,33 @@ entries and never resubmits an already-processed one — and pass 2 matches
 answers by content, not call order (runs are single-threaded all the
 same).
 
-Default models are **per stage** (`providers.STAGE_DEFAULTS`, decided
-2026-09-14 after the paired experiments in
-[docs/review-terroir-facts-2026-09-12.md](docs/review-terroir-facts-2026-09-12.md)):
-02d extraction `claude-sonnet-5` with thinking off; the gate
-(`02d_verify`) and the LLM audit `claude-opus-5` with adaptive thinking;
-02e and the back-check `claude-sonnet-5` (switched 2026-09-16 for new
-runs only — the corpus was not re-translated; `effective_thinking` sends
-`disabled` so the JSON budget is not spent on thinking); 02c
-`claude-sonnet-4-6` (human round-trip in practice); mistral
-`mistral-medium-latest`. Used by `--batch` and by synchronous `--provider`
+Default models are **per stage** (`providers.STAGE_DEFAULTS`; the split
+decided 2026-09-14 after the paired experiments in
+[docs/review-terroir-facts-2026-09-12.md](docs/review-terroir-facts-2026-09-12.md),
+always the newest model of each family since 2026-10-09 unless a run
+names another): 02d extraction `claude-sonnet-5-5` with thinking off; the
+gate (`02d_verify`) and the LLM audit `claude-opus-5-5` with adaptive
+thinking at effort `high` (Opus 5.5 defaults to `medium`; Opus 5, on
+which the gate was calibrated, defaulted to `high` — `_EFFORT_PINS`);
+the back-check `claude-opus-5-5` too (2026-10-09: a corpus-wide Sonnet 5.5
+back-check changed 20 % of the NL / FR / ES bullets and a blind judge
+found ~17 % of its edits worse; on those bullets Opus left 22 of 30 alone
+and fixed the French agreement errors Sonnet missed, at 3.3× the cost —
+the Sonnet run was rolled back, `MAX_TOKENS` raised to 16,000 because
+Opus always thinks); 02e and 02c `claude-sonnet-5-5`. Bumping a default
+re-runs nothing: the corpus keeps the model that wrote each cache (its
+`translator` / `model` field) — 1,515 of the 1,617 NL caches are
+Sonnet 4.6's. Mistral `mistral-medium-latest`. Before any job a default
+is checked against the account's model list
+([scripts/_lib/model_check.py](scripts/_lib/model_check.py), Models API
+`GET /v1/models`, cached in `raw/cache/anthropic-models.json` for a day):
+when its family (sonnet / opus / haiku / fable) has a newer model the run
+stops before submitting anything and says what to bump — never a silent
+switch, because a new model can change the request surface (Sonnet 5.5's
+400 on `disabled` thinking). An explicit `--model` is not checked (a
+deliberate older model, or resuming an in-flight batch); an unreachable
+API warns and runs on a stale cache or unchecked; `OWM_SKIP_MODEL_CHECK=1`
+turns it off (the test suite sets it). Used by `--batch` and by synchronous `--provider`
 runs alike (`batch.default_model(provider, stage)` /
 `default_thinking()`, `providers.make_provider(..., stage=)`); override
 per run with `--model` / `--thinking`, or `OWM_BATCH_THINKING` for an
@@ -5684,9 +5701,13 @@ experiment. `tests/test_stage_defaults.py` pins the configuration. API
 keys are read from the environment or a repo-root `.env`. The Claude 5
 family runs adaptive thinking when `thinking` is omitted and every
 stage's `max_tokens` is sized for the JSON reply alone, so
-`providers.effective_thinking` sends `disabled` for a Claude 5 model on a
-stage that sets no mode (2026-09-15: Sonnet 5 on 02e had 64 % of its
-replies truncated by thinking and rejected).
+`providers.effective_thinking` turns thinking off for a Claude 5 model on
+a stage that sets no mode (2026-09-15: Sonnet 5 on 02e had 64 % of its
+replies truncated by thinking and rejected) — spelled per model: `disabled`
+(Sonnet 5, Opus 5), `between_tools` (Sonnet 5.5, which answers `disabled`
+with a 400), and no thinking field with effort `low` on the models that
+always think (Opus 5.5, Fable). No server-side refusal fallback is sent:
+the Batch API rejects the parameter.
 
 **Prompt caching** ([scripts/_lib/prompt_cache.py](scripts/_lib/prompt_cache.py),
 Anthropic only; Mistral / Ollama get the flat text). Text sent more than

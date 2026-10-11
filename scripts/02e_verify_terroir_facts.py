@@ -59,7 +59,8 @@ from _lib.terroir_feedback import append_history, load_feedback  # noqa: E402
 MANIFEST = TERROIR / "manifest-backcheck.json"
 REPORT_DIR = ROOT / "tmp" / "terroir-facts-review"
 BATCH_SIDECAR = ROOT / "raw" / ".batch" / "02e-verify.json"
-MAX_TOKENS = 4000
+# Opus always thinks; its thinking shares this budget with the JSON reply.
+MAX_TOKENS = 16000
 
 
 def log(msg: str) -> None:

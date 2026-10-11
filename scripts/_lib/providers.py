@@ -24,46 +24,85 @@ import os
 
 import requests
 
+from _lib.model_check import ensure_latest
 from _lib.prompt_cache import system_text
 
-DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"
+DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5-5"
 
-# Per-stage Anthropic defaults — the configuration decided 2026-09-14 after
-# the paired experiments in docs/review-terroir-facts-2026-09-12.md:
-#   02d extraction  Sonnet 5, thinking off — equal per-bullet reliability to
-#                   Sonnet 4.6, 31 % more grounded facts, a third cheaper per
-#                   token; the stages' max_tokens were sized for text only.
-#   gate            Opus 5 with adaptive thinking — the independent Opus-5
-#                   grader caught residuals a Sonnet gate had passed.
-#   llm-audit       Opus 5, adaptive (unchanged).
-#   02e / back-check stay on Sonnet 4.6 (translation was not re-tested).
-# `thinking` is None (send nothing), "disabled" or "adaptive"; the batch
-# library and AnthropicProvider both honour it. OWM_BATCH_THINKING overrides.
+# Per-stage Anthropic defaults — the newest model of each family (Boris,
+# 2026-10-09: latest version unless a run names another). The split is the
+# one decided 2026-09-14 after the paired experiments in
+# docs/review-terroir-facts-2026-09-12.md:
+#   02d extraction  Sonnet, thinking off — the stages' max_tokens were sized
+#                   for the JSON reply alone.
+#   gate            Opus with adaptive thinking — an independent Opus grader
+#                   caught residuals a Sonnet gate had passed.
+#   llm-audit       Opus, adaptive.
+#   02e / 02c       Sonnet, no mode (→ thinking off, see below).
+#   back-check      Opus with adaptive thinking (2026-10-09): on the bullets
+#                   Sonnet 5.5 made worse, Opus left 22 of 30 alone and made
+#                   none of the same edits; it fixed the 5 French agreement
+#                   errors Sonnet left (Fable-judged: errors old 5 / Sonnet 4
+#                   / Opus 0), at 3.3x the cost ($0.017 per record, batch).
+# 2026-10-09: Sonnet 4.6 had written 1,515 of the 1,617 NL translation caches
+# and 40 of the 42 de/het errors (3.0 per 1,000 bullets against 1.0 for
+# Sonnet 5). `thinking` is None (send nothing), "disabled" or "adaptive";
+# the batch library and AnthropicProvider both honour it through
+# `effective_thinking` / `effective_effort`. OWM_BATCH_THINKING overrides.
 STAGE_DEFAULTS: dict[str, tuple[str, str | None]] = {
-    "02d": ("claude-sonnet-5", "disabled"),
-    "gate": ("claude-opus-5", "adaptive"),
-    "audit": ("claude-opus-5", "adaptive"),
-    "02e": ("claude-sonnet-5", None),
-    "backcheck": ("claude-sonnet-5", None),
-    "02c": ("claude-sonnet-4-6", None),
+    "02d": ("claude-sonnet-5-5", "disabled"),
+    "gate": ("claude-opus-5-5", "adaptive"),
+    "audit": ("claude-opus-5-5", "adaptive"),
+    "02e": ("claude-sonnet-5-5", None),
+    "backcheck": ("claude-opus-5-5", "adaptive"),
+    "02c": ("claude-sonnet-5-5", None),
 }
 
 
 _CLAUDE5_PREFIXES = ("claude-sonnet-5", "claude-opus-5", "claude-fable-5", "claude-mythos-5")
+# Sonnet 5.5 answers `{"type": "disabled"}` with a 400; its lowest setting is
+# "between_tools" (no extended thinking; accepted at effort high or below).
+_BETWEEN_TOOLS_PREFIXES = ("claude-sonnet-5-5",)
+# Thinking cannot be turned off at all: "disabled" is a 400 at every effort.
+_ALWAYS_THINKING_PREFIXES = ("claude-opus-5-5", "claude-fable-5", "claude-mythos-5")
+# Opus 5.5 defaults to effort "medium" where Opus 5 defaulted to "high"; the
+# gate and the audit were calibrated on the latter.
+_EFFORT_PINS = {"claude-opus-5-5": "high"}
+
+
+def _starts(model: str, prefixes: tuple[str, ...]) -> bool:
+    return any((model or "").startswith(px) for px in prefixes)
+
+
+def _wanted_thinking(model: str, thinking: str | None) -> str | None:
+    if thinking in ("disabled", "adaptive"):
+        return thinking
+    return "disabled" if _starts(model, _CLAUDE5_PREFIXES) else None
 
 
 def effective_thinking(model: str, thinking: str | None) -> str | None:
     """The thinking mode to send. The Claude 5 family runs adaptive thinking
     when the parameter is omitted (the 4.x models do not), and every stage's
     max_tokens budget is sized for the JSON reply alone — on a stage that
-    sets no mode, a Claude 5 model therefore gets "disabled" explicitly
-    (2026-09-15: Sonnet 5 on 02e spent the 2,000-token budget on thinking
-    and 64 % of the replies came back truncated and were rejected)."""
-    if thinking in ("disabled", "adaptive"):
-        return thinking
-    if any((model or "").startswith(px) for px in _CLAUDE5_PREFIXES):
-        return "disabled"
-    return None
+    sets no mode, a Claude 5 model is therefore asked to think as little as
+    it can (2026-09-15: Sonnet 5 on 02e spent the 2,000-token budget on
+    thinking and 64 % of the replies came back truncated and were rejected).
+    "Off" is "disabled", "between_tools" on Sonnet 5.5, and nothing (with
+    effort "low", `effective_effort`) on a model that always thinks."""
+    want = _wanted_thinking(model, thinking)
+    if want == "disabled":
+        if _starts(model, _BETWEEN_TOOLS_PREFIXES):
+            return "between_tools"
+        if _starts(model, _ALWAYS_THINKING_PREFIXES):
+            return None
+    return want
+
+
+def effective_effort(model: str, thinking: str | None) -> str | None:
+    """`output_config.effort` to send, or None for the model's default."""
+    if _wanted_thinking(model, thinking) == "disabled" and _starts(model, _ALWAYS_THINKING_PREFIXES):
+        return "low"
+    return _EFFORT_PINS.get(model)
 
 
 def stage_default(stage: str | None) -> tuple[str, str | None]:
@@ -108,6 +147,9 @@ class AnthropicProvider:
         mode = effective_thinking(self.model, self.thinking)
         if mode:
             params["thinking"] = {"type": mode}
+        effort = effective_effort(self.model, self.thinking)
+        if effort:
+            params["output_config"] = {"effort": effort}
         msg = self.client.messages.create(**params)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
 
@@ -196,6 +238,8 @@ def make_provider(
     `model` / `thinking` wins."""
     if provider == "anthropic":
         default_model, default_thinking = stage_default(stage)
+        if not model:
+            ensure_latest(default_model, stage=stage)
         model_id = model or default_model
         return AnthropicProvider(model_id, thinking=thinking or default_thinking), model_id
     if provider == "mistral":

@@ -24,8 +24,8 @@ Providers
 ---------
 
 `anthropic` — calls the Anthropic Messages API. Requires
-`ANTHROPIC_API_KEY` in the environment. Default model: claude-haiku-4-5
-(fast and accurate for short paragraphs at low cost).
+`ANTHROPIC_API_KEY` in the environment. Default model:
+`providers.STAGE_DEFAULTS["02c"]`.
 
 `mistral` — calls the Mistral Chat Completions API. Requires
 `MISTRAL_API_KEY` in the environment. Default model: mistral-large-latest.

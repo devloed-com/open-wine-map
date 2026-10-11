@@ -1,7 +1,8 @@
-"""The decided model configuration (2026-09-14): Sonnet 5 extractor with
-thinking off, Opus 5 gate / audit with adaptive thinking, Sonnet 4.6 for
-translation and the back-check — and that every stage script asks for its
-own stage default rather than the generic one."""
+"""The decided model configuration (2026-09-14, newest models since
+2026-10-09): Sonnet 5.5 extractor with thinking off, Opus 5.5 gate / audit /
+back-check with adaptive thinking, Sonnet 5.5 for translation — and
+that every stage script asks for its own stage default rather than the
+generic one."""
 from __future__ import annotations
 
 import re
@@ -13,13 +14,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_stage_defaults_are_the_decided_configuration():
-    assert providers.stage_default("02d") == ("claude-sonnet-5", "disabled")
-    assert providers.stage_default("gate") == ("claude-opus-5", "adaptive")
-    assert providers.stage_default("audit") == ("claude-opus-5", "adaptive")
-    assert providers.stage_default("02e") == ("claude-sonnet-5", None)
-    assert providers.stage_default("backcheck") == ("claude-sonnet-5", None)
+    assert providers.stage_default("02d") == ("claude-sonnet-5-5", "disabled")
+    assert providers.stage_default("gate") == ("claude-opus-5-5", "adaptive")
+    assert providers.stage_default("audit") == ("claude-opus-5-5", "adaptive")
+    assert providers.stage_default("02e") == ("claude-sonnet-5-5", None)
+    assert providers.stage_default("backcheck") == ("claude-opus-5-5", "adaptive")
+    assert providers.stage_default("02c") == ("claude-sonnet-5-5", None)
     assert providers.stage_default(None) == (providers.DEFAULT_ANTHROPIC_MODEL, None)
-    assert batch.default_model("anthropic", "02d") == "claude-sonnet-5"
+    assert batch.default_model("anthropic", "02d") == "claude-sonnet-5-5"
     assert batch.default_thinking("anthropic", "gate") == "adaptive"
     assert batch.default_model("mistral", "02d") == "mistral-medium-latest"
     assert batch.default_thinking("mistral", "gate") is None
@@ -71,3 +73,31 @@ def test_claude5_models_get_thinking_disabled_when_the_stage_sets_no_mode(monkey
     assert batch._anthropic_params("claude-sonnet-5", r, None)["thinking"] == {"type": "disabled"}
     assert "thinking" not in batch._anthropic_params("claude-sonnet-4-6", r, None)
     assert batch._anthropic_params("claude-opus-5", r, "adaptive")["thinking"] == {"type": "adaptive"}
+
+
+def test_every_default_model_is_priced():
+    for model, _ in providers.STAGE_DEFAULTS.values():
+        assert model in batch.BATCH_PRICES_USD_PER_M, model
+    assert providers.DEFAULT_ANTHROPIC_MODEL in batch.BATCH_PRICES_USD_PER_M
+
+
+def test_thinking_off_is_spelled_the_way_each_model_accepts_it(monkeypatch):
+    # Sonnet 5.5 rejects "disabled" (400) and takes "between_tools"; Opus 5.5
+    # and Fable always think, so "off" there is no thinking field + effort low.
+    monkeypatch.delenv("OWM_BATCH_THINKING", raising=False)
+    r = {"custom_id": "x", "system": "s", "user": "u", "max_tokens": 10}
+    p = batch._anthropic_params("claude-sonnet-5-5", r, "disabled")
+    assert p["thinking"] == {"type": "between_tools"} and "output_config" not in p
+    assert batch._anthropic_params("claude-sonnet-5-5", r, None)["thinking"] == {"type": "between_tools"}
+    assert batch._anthropic_params("claude-sonnet-5", r, None)["thinking"] == {"type": "disabled"}
+    for model in ("claude-opus-5-5", "claude-fable-5-1"):
+        p = batch._anthropic_params(model, r, "disabled")
+        assert "thinking" not in p and p["output_config"] == {"effort": "low"}, model
+
+
+def test_opus_5_5_keeps_the_effort_the_gate_was_calibrated_on(monkeypatch):
+    monkeypatch.delenv("OWM_BATCH_THINKING", raising=False)
+    r = {"custom_id": "x", "system": "s", "user": "u", "max_tokens": 10}
+    p = batch._anthropic_params("claude-opus-5-5", r, "adaptive")
+    assert p["thinking"] == {"type": "adaptive"} and p["output_config"] == {"effort": "high"}
+    assert "output_config" not in batch._anthropic_params("claude-opus-5", r, "adaptive")

@@ -46,8 +46,9 @@ from pathlib import Path
 import requests
 
 from _lib.env import load_dotenv
+from _lib.model_check import ensure_latest
 from _lib.prompt_cache import system_text
-from _lib.providers import effective_thinking, stage_default
+from _lib.providers import effective_effort, effective_thinking, stage_default
 
 
 def _load_dotenv() -> None:
@@ -60,14 +61,17 @@ def _load_dotenv() -> None:
 POLL_INTERVAL_S = 20
 MISTRAL_BASE = "https://api.mistral.ai/v1"
 _KIND = {"anthropic": "anthropic-api", "mistral": "mistral-api"}
-_DEFAULT_MODEL = {"anthropic": "claude-sonnet-4-6", "mistral": "mistral-medium-latest"}
+_DEFAULT_MODEL = {"anthropic": "claude-sonnet-5-5", "mistral": "mistral-medium-latest"}
 
 
 def default_model(provider: str, stage: str | None = None) -> str:
     """The batch-default model id for a provider (overridable with --model);
-    for anthropic the per-stage default from `providers.STAGE_DEFAULTS`."""
+    for anthropic the per-stage default from `providers.STAGE_DEFAULTS`,
+    refused when a newer model of its family exists (`model_check`)."""
     if provider == "anthropic":
-        return stage_default(stage)[0]
+        model = stage_default(stage)[0]
+        ensure_latest(model, stage=stage)
+        return model
     return _DEFAULT_MODEL.get(provider, "")
 
 
@@ -173,10 +177,12 @@ class ReplayProvider:
 # BATCH_DISCOUNT of it. Cache reads bill at 10 % of input, cache writes at
 # 125 %. Unknown model → tokens are still summed, cost is None.
 BATCH_PRICES_USD_PER_M: dict[str, tuple[float, float]] = {
+    "claude-opus-5-5": (4.0, 20.0),
     "claude-opus-5": (5.0, 25.0),
     "claude-opus-4-8": (5.0, 25.0),
     "claude-opus-4-7": (5.0, 25.0),
     "claude-opus-4-6": (5.0, 25.0),
+    "claude-sonnet-5-5": (2.0, 10.0),
     "claude-sonnet-5": (2.0, 10.0),
     "claude-sonnet-4-6": (3.0, 15.0),
     "claude-haiku-4-5": (1.0, 5.0),
@@ -275,9 +281,13 @@ def _anthropic_params(model: str, r: dict, thinking: str | None) -> dict:
     # sized for text only: each stage passes its `STAGE_DEFAULTS` mode
     # ("disabled" for 02d, "adaptive" for the gate); `OWM_BATCH_THINKING`
     # overrides for an experiment.
-    mode = effective_thinking(model, os.environ.get("OWM_BATCH_THINKING") or thinking)
+    requested = os.environ.get("OWM_BATCH_THINKING") or thinking
+    mode = effective_thinking(model, requested)
     if mode:
         params["thinking"] = {"type": mode}
+    effort = effective_effort(model, requested)
+    if effort:
+        params["output_config"] = {"effort": effort}
     return params
 
 
