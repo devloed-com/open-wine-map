@@ -1029,6 +1029,9 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
     ),
     "link_to_terroir": (
         "vínculo", "vinculo", "descripción del (de los) vínculo",
+        # Andalusian national-format pliegos: "VINCULACIÓN CON EL MEDIO
+        # GEOGRÁFICO" (Norte de Almería, Laujar-Alpujarra, Cádiz).
+        "vinculación", "vinculacion",
     ),
     "additional_conditions": (
         "condiciones complementarias", "otros requisitos aplicables",
@@ -1037,6 +1040,26 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "requisitos legales aplicables", "embotellado", "etiquetado",
     ),
 }
+
+
+# A pdftotext page number left between a heading and its first sub-heading
+# ("G. VINCULACIÓN CON EL MEDIO GEOGRÁFICO / -3- / G.1 …") is not a body.
+_PAGE_MARKER_LINE_RE = re.compile(r"^\s*-\s*\d{1,3}\s*-\s*$", re.M)
+
+# Sub-section titles of the link section in pliegos whose parent heading
+# pdftotext lost ("g.1 Información detallada de la zona geográfica …",
+# "7.3 Relación entre las características de la zona geográfica y la
+# calidad …" — Dominio de Valdepusa, Mondéjar).
+_TERROIR_CHILD_TITLES = (
+    "información detallada de la zona geográfica",
+    "informacion detallada de la zona geografica",
+    "relación entre las características de la zona geográfica",
+    "relacion entre las caracteristicas de la zona geografica",
+)
+
+
+def _has_body(text: str) -> bool:
+    return bool(_PAGE_MARKER_LINE_RE.sub("", text).strip())
 
 
 def _gather_subsections(sections: dict[str, str], parent_num: str) -> str:
@@ -1091,7 +1114,11 @@ def _match_section_body(
     keywords: tuple[str, ...],
     exclude_amendments: bool,
     title_blocklist: tuple[str, ...] = (),
+    with_children: bool = False,
 ) -> str | None:
+    """`with_children` appends the numbered sub-sections to a parent that has
+    a body of its own (Cádiz: "G. VINCULACIÓN …" opens with a paragraph on
+    reputation, the natural and human factors follow as G.1 / G.2)."""
     for num, title in titles.items():
         if exclude_amendments and _is_amendment_title(title):
             continue
@@ -1101,8 +1128,12 @@ def _match_section_body(
         if not any(kw in tlow for kw in keywords):
             continue
         body = sections.get(num, "")
-        if not body.strip():
+        if not _has_body(body):
             body = _gather_subsections(sections, num)
+        elif with_children:
+            children = _gather_subsections(sections, num)
+            if children:
+                body = f"{body}\n{children}"
         return body
     return None
 
@@ -1134,9 +1165,17 @@ def route_sections(sections: dict[str, str], titles: dict[str, str]) -> dict[str
             sections, titles, keywords,
             exclude_amendments=(role == "grape_varieties"),
             title_blocklist=_GEO_AREA_TITLE_BLOCKLIST if role == "geo_area" else (),
+            with_children=(role == "link_to_terroir"),
         )
         if body is not None:
             routed[role] = body
+    if "link_to_terroir" not in routed:
+        for num, title in titles.items():
+            if "." in num and any(k in title.lower() for k in _TERROIR_CHILD_TITLES):
+                body = _gather_subsections(sections, num.rsplit(".", 1)[0])
+                if body:
+                    routed["link_to_terroir"] = body
+                break
     if "grape_varieties" not in routed:
         body = _match_section_body(
             sections, titles, _GRAPE_COLOUR_FALLBACK_KEYWORDS,

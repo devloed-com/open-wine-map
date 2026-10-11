@@ -167,6 +167,65 @@ def _save_response(
     return html_cache, "html"
 
 
+def _url_oj_key(url: str) -> tuple[int, ...] | None:
+    """The OJ C publication an EUR-Lex URL points at: (year, number) for the
+    act-by-act series (ELI, `OJ:C_YYYYNNNNN`), (year, issue, page) for the
+    issue series before it (`OJ.C_.YYYY.III.01.PPPP`)."""
+    m = re.search(r"/eli/c/(\d{4})/(\d+)/oj", url, re.I) or re.search(r"OJ:C_(\d{4})(\d{5})", url)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    m = re.search(r"OJ\.C_\.(\d{4})\.(\d{3})\.01\.(\d{4})", url)
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
+
+
+def _page_oj_key(html: str) -> tuple[int, ...] | None:
+    """The OJ C publication a cached EUR-Lex page declares itself to be — its
+    ELI metadata, else the Formex file name in its <title>
+    (`C_2020217ES.01002101.xml`, `C_202300287ES.000101.fmx.xml`)."""
+    m = re.search(r'<meta about="http://data\.europa\.eu/eli/C/(\d{4})/(\d+)/oj"', html)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    m = re.search(r"<title>\s*C_(\d{4})(\d{5})ES\.0001", html)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    m = re.search(r"<title>\s*C_(\d{4})(\d{3})ES\.01(\d{4})01\.xml", html)
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
+
+
+def reconstruct_entry(w: dict, override: dict | None, cache: Path) -> dict | None:
+    """Manifest entry for a cached page that has none. A scoped --refresh
+    used to discard the whole manifest (2026-05: 147 of 149 entries lost, and
+    with them every Spanish card's link to its pliego). The URL is the one a
+    fetch would use; an EUR-Lex page must name the same OJ C publication as
+    that URL, else no entry is written."""
+    if override and override.get("url"):
+        url = override["url"]
+    else:
+        base = first_http_publication(w["publications"])
+        url = to_spanish(base) if base else None
+    if not url:
+        return None
+    if cache.suffix == ".html":
+        page = _page_oj_key(cache.read_text(encoding="utf-8", errors="replace"))
+        want = _url_oj_key(url)
+        if page and want and page != want:
+            print(f"[skip] {w['slug']}: cached page is OJ C {page}, URL names {want}",
+                  file=sys.stderr)
+            return None
+    stat = cache.stat()
+    return {
+        "status": "ok",
+        "source_url": url,
+        "final_url": url,
+        "format": cache.suffix.lstrip("."),
+        "bytes": stat.st_size,
+        "from_override": bool(override and override.get("url")),
+        "fetched_at": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(
+            timespec="seconds"),
+        "reconstructed": True,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--refresh", action="store_true", help="re-fetch even if cached")
@@ -204,26 +263,34 @@ def main() -> int:
         "Accept-Language": "es",
     })
 
+    # Kept on --refresh too: a refreshed slug overwrites its own entry, and a
+    # scoped refresh must not drop everyone else's.
     manifest: dict[str, dict] = {}
-    if MANIFEST_PATH.exists() and not args.refresh:
+    if MANIFEST_PATH.exists():
         try:
             manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8")).get("by_slug", {})
         except (ValueError, OSError):
             manifest = {}
 
-    n_ok = n_cached = n_no_pub = n_bad = n_override = 0
+    n_ok = n_cached = n_no_pub = n_bad = n_override = n_rebuilt = 0
     for w in tqdm(wines, desc="oj-pages", leave=False):
         slug = w["slug"]
+        override = overrides.get(slug) or overrides.get(w["giIdentifier"])
         # Cache may be either HTML (EUR-Lex single-document) or PDF (MAPA /
         # euskadi.eus override). Either format counts as cached.
         html_cache = OUT_DIR / f"{slug}.html"
         pdf_cache = OUT_DIR / f"{slug}.pdf"
         if (html_cache.exists() or pdf_cache.exists()) and not args.refresh:
             n_cached += 1
+            if manifest.get(slug, {}).get("status") != "ok":
+                entry = reconstruct_entry(
+                    w, override, pdf_cache if pdf_cache.exists() else html_cache)
+                if entry:
+                    manifest[slug] = entry
+                    n_rebuilt += 1
             continue
 
         # 1) explicit override
-        override = overrides.get(slug) or overrides.get(w["giIdentifier"])
         source_url: str | None
         if override and override.get("url"):
             source_url = override["url"]
@@ -283,6 +350,7 @@ def main() -> int:
         "counts": {
             "ok": n_ok,
             "cached": n_cached,
+            "reconstructed": n_rebuilt,
             "override": n_override,
             "no_publication": n_no_pub,
             "fetch_error_or_not_single_document": n_bad,
@@ -290,7 +358,7 @@ def main() -> int:
         "by_slug": manifest,
     }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     print(
-        f"[done] ok={n_ok} cached={n_cached} override={n_override} "
+        f"[done] ok={n_ok} cached={n_cached} reconstructed={n_rebuilt} override={n_override} "
         f"no-pub={n_no_pub} bad={n_bad} → {OUT_DIR.relative_to(ROOT)}",
         file=sys.stderr,
     )

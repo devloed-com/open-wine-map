@@ -3723,15 +3723,21 @@ def _sources_for(record: dict) -> dict:
         # SIGPAC polígono inclusions (_resolve_es_sigpac): which reading drew
         # them and the publication's attribution, for the panel line.
         sig = _ES_SIGPAC_BY_SLUG.get(record.get("slug", ""), {})
+        # A record read from a national-format pliego PDF (the MAPA / regional
+        # URL stage 01 took from manual_overrides.json) has no EUR-Lex single
+        # document: its source is the pliego, linked and labelled as such.
+        # No 02f sidecar exists for these records.
+        own_pdf = (src.get("filename") or "").endswith(".pdf")
+        own_url = src.get("final_url") or src.get("source_url") or ""
         return {
             "country": "es",
-            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
-            "eu_oj_publication_url": src.get("source_url") or "",
+            "eur_lex_url": "" if own_pdf else own_url,
+            "eu_oj_publication_url": "" if own_pdf else (src.get("source_url") or ""),
             "filename": src.get("filename") or "",
             "fetched_at": src.get("fetched_at") or "",
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
-            "national_pliego_url": nat.get("url", ""),
+            "national_pliego_url": nat.get("url", "") or (own_url if own_pdf else ""),
             "national_pliego_sha256": nat.get("sha256", ""),
             "national_pliego_fetched_at": nat.get("fetched_at", ""),
             "national_pliego_added_slugs": nat.get("added_slugs") or [],
