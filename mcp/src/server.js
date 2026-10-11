@@ -1,8 +1,9 @@
 // Open Wine Map MCP server: a stateless, web-standard request handler.
 // Runtime-agnostic (Bunny Edge Scripting in production, Node in tests): the
 // entry point supplies `dataOrigin` and, optionally, a `fetch` and an
-// `onToolCall` hook (analytics). The tools are the query core's TOOL_DEFS —
-// the same definitions and code the map page registers as WebMCP tools.
+// `onToolCall` hook (analytics; see callProps). The tools are the query core's
+// TOOL_DEFS — the same definitions and code the map page registers as WebMCP
+// tools.
 import { McpServer, createMcpHandler, fromJsonSchema } from '@modelcontextprotocol/server';
 import { CfWorkerJsonSchemaValidator } from '@modelcontextprotocol/server/validators/cf-worker';
 import { TOOL_DEFS, QueryError } from '../../scripts/_lib/assets/query_core.mjs';
@@ -62,6 +63,26 @@ const LOCALE_PROP = {
 const validator = new CfWorkerJsonSchemaValidator();
 const asResult = obj => ({ content: [{ type: 'text', text: JSON.stringify(obj) }], structuredContent: obj });
 const fail = msg => ({ content: [{ type: 'text', text: msg }], isError: true });
+
+// Analytics props of a call: the appellations it fetched or showed. Catalogue
+// slugs only, and only known ones — never the query text of a search (private,
+// as for the site's search box). `slug` is get_appellation's one appellation;
+// a show_on_map set goes in `slugs` (comma-joined, cut at a slug boundary to
+// Plausible's 2,000-character property limit) with its `count`, so a `slug`
+// breakdown stays one appellation per row.
+const PROP_MAX = 2000;
+export function callProps(name, args, entry) {
+  if (!entry || !args) return {};
+  if (name === 'get_appellation') return entry.aocs[args.slug] ? { slug: args.slug } : {};
+  if (name === 'show_on_map') {
+    const known = [...new Set(args.slugs || [])].filter(s => entry.aocs[s]);
+    if (!known.length) return {};
+    let slugs = known.join(',');
+    if (slugs.length > PROP_MAX) slugs = slugs.slice(0, slugs.lastIndexOf(',', PROP_MAX));
+    return { slugs, count: known.length };
+  }
+  return {};
+}
 
 function withLocale(inputSchema) {
   return { ...inputSchema, properties: { ...inputSchema.properties, locale: LOCALE_PROP } };
@@ -169,13 +190,9 @@ function buildServer(tools, onToolCall, view, siteOrigin) {
       _meta: { ui: { resourceUri: VIEW_URI } },
     }, async (args) => {
       const { locale = 'en', slugs } = args || {};
-      if (onToolCall) onToolCall('show_on_map', locale);
-      let entry;
-      try {
-        entry = await tools.contexts.get(locale);
-      } catch {
-        return fail('The appellation data is temporarily unavailable; try again shortly.');
-      }
+      const entry = await tools.contexts.get(locale).catch(() => null);
+      if (onToolCall) onToolCall('show_on_map', locale, callProps('show_on_map', { slugs }, entry));
+      if (!entry) return fail('The appellation data is temporarily unavailable; try again shortly.');
       try {
         const out = await showOnMap(entry, { slugs }, locale, siteOrigin);
         return { content: [{ type: 'text', text: showOnMapText(out) }], structuredContent: out };
@@ -192,13 +209,9 @@ function buildServer(tools, onToolCall, view, siteOrigin) {
       annotations: def.annotations,
     }, async (args) => {
       const { locale = 'en', ...rest } = args || {};
-      if (onToolCall) onToolCall(name, locale);
-      let entry;
-      try {
-        entry = await tools.contexts.get(locale);
-      } catch {
-        return fail('The appellation data is temporarily unavailable; try again shortly.');
-      }
+      const entry = await tools.contexts.get(locale).catch(() => null);
+      if (onToolCall) onToolCall(name, locale, callProps(name, rest, entry));
+      if (!entry) return fail('The appellation data is temporarily unavailable; try again shortly.');
       try {
         return asResult(await tools[name](rest, entry, locale));
       } catch (e) {
@@ -210,7 +223,7 @@ function buildServer(tools, onToolCall, view, siteOrigin) {
   return server;
 }
 
-// onToolCallFor(request) → (tool, locale) => void | undefined: the analytics
+// onToolCallFor(request) → (tool, locale, props) => void | undefined: the analytics
 // hook, built from the HTTP request the SDK hands each per-request server.
 // view: { html, tileOrigin, cartoKey } — the MCP Apps map; omitted → no
 // show_on_map tool (the data tools are unaffected).

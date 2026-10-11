@@ -28,11 +28,13 @@ export async function wikiFetch(url) {
 
 const VIEW = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist/view.html');
 
-export async function startServer() {
+// opts.onToolCallFor: the analytics hook (see src/edge.js), for tests that
+// check what a tool call reports.
+export async function startServer(opts = {}) {
   const view = existsSync(VIEW)
     ? { html: await readFile(VIEW, 'utf8'), tileOrigin: DATA_ORIGIN, cartoKey: 'test-key' }
     : undefined;
-  const app = createApp({ dataOrigin: DATA_ORIGIN, fetchImpl: wikiFetch, view });
+  const app = createApp({ dataOrigin: DATA_ORIGIN, fetchImpl: wikiFetch, view, onToolCallFor: opts.onToolCallFor });
   const server = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const c of req) chunks.push(c);

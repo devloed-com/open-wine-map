@@ -3422,10 +3422,15 @@ __OWM_source_block__
     const asContent = obj => ({ content: [{ type: 'text', text: JSON.stringify(obj) }], structuredContent: obj });
     const fail = msg => ({ content: [{ type: 'text', text: msg }], isError: true });
 
-    function register(name, def, run) {
+    // The `WebMCP Tool` event names the appellation a call fetched or opened
+    // (a known slug only, as the MCP server's `MCP Tool`); a search's query
+    // text is never sent.
+    const slugProp = input => (input && AOCS[input.slug] ? { slug: input.slug } : {});
+
+    function register(name, def, run, props) {
       const tool = Object.assign({ name: name }, def, {
         execute: async input => {
-          track('WebMCP Tool', { tool: name, locale: LANG });
+          track('WebMCP Tool', Object.assign({ tool: name, locale: LANG }, props ? props(input) : {}));
           try { return asContent(await run(input || {})); } catch (e) { return fail(String(e && e.message || e)); }
         },
       });
@@ -3438,7 +3443,7 @@ __OWM_source_block__
       if (!AOCS[slug]) throw new QueryError('unknown appellation slug: ' + slug);
       const complete = await hydratePanel(slug);
       return QC.full(slug, AOCS[slug], complete);
-    });
+    }, slugProp);
     register('list_facets', TOOL_DEFS.list_facets, () => QC.facets());
     register('show_appellation', {
       description: 'Open an appellation on the map: shows its detail panel and frames its area. Use after search_appellations when the user wants to see it.',
@@ -3446,5 +3451,5 @@ __OWM_source_block__
     }, ({ slug }) => {
       if (!openAppellation(slug, 'webmcp', null)) throw new QueryError('unknown appellation slug: ' + slug);
       return { shown: QC.brief(slug) };
-    });
+    }, slugProp);
   })();
