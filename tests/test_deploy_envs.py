@@ -151,3 +151,47 @@ def test_interprofession_fallback_by_region_then_comite():
     # An explicit null is verified none; by_slug beats the region.
     assert m.resolve("quincy", "", "VAL DE LOIRE", data)["url"] == "q"
     assert m.resolve("cotes-du-forez", "", "VAL DE LOIRE", data) is None
+
+
+def test_replication_probes_are_the_last_stable_url_uploads():
+    deploy = _load("deploy")
+    uploaded = [
+        "assets/app.en.0123456789.js",   # content-hashed: never stale
+        "data/aocs.en.abcdef0123.js",
+        "map-data/appellations.pmtiles",  # not a text probe
+        "en/a/index.html",
+        "data/d/en/a.json",
+        "data/d/en/b.json",
+        "fr/b/index.html",
+        "data/d/fr/kos.json",
+        "big.json",
+    ]
+    sizes = {rel: 1000 for rel in uploaded}
+    sizes["big.json"] = 5_000_000
+    probes = deploy.pick_probes(uploaded, sizes, n_last=2, n_spread=2)
+    assert probes[-2:] == ["fr/b/index.html", "data/d/fr/kos.json"]
+    assert set(probes) <= {"en/a/index.html", "data/d/en/a.json", "data/d/en/b.json",
+                           "fr/b/index.html", "data/d/fr/kos.json"}
+    assert deploy.pick_probes(uploaded[:3], sizes) == []
+
+
+def test_settle_purges_and_refetches_until_fresh():
+    deploy = _load("deploy")
+    fetches = {"a": 0, "b": 0}
+    purged: list[str] = []
+
+    def is_fresh(rel):
+        fetches[rel] += 1
+        return rel == "a" or fetches[rel] >= 3   # b is stale for two rounds
+
+    left = deploy.settle(["a", "b"], is_fresh, purged.append, timeout_s=3600,
+                         interval_s=0, sleep=lambda s: None)
+    assert left == []
+    assert purged == ["a", "b", "b", "b"]   # a stops being purged once fresh
+
+
+def test_settle_gives_up_at_the_timeout():
+    deploy = _load("deploy")
+    left = deploy.settle(["a"], lambda rel: False, lambda rel: None, timeout_s=0,
+                         interval_s=60, sleep=lambda s: None)
+    assert left == ["a"]

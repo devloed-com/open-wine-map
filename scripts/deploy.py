@@ -54,10 +54,12 @@ import hashlib
 import json
 import os
 import pathlib
+import random
 import re
 import sys
 import threading
 import time
+import urllib.parse
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -217,6 +219,96 @@ def delete(session: requests.Session, host: str, zone: str, rel: str) -> None:
     r = session.delete(url, timeout=60)
     if r.status_code not in (200, 404):
         raise SystemExit(f"DELETE {rel} → {r.status_code} {r.text[:200]}")
+
+
+# Storage replication. The zone's primary is DE, replicated to UK / ES / NY /
+# LA / SG, and the pull zone pulls through one origin shield (Paris), so every
+# edge sees what the shield fetches — on 2026-10-11 that was the UK replicas
+# (UK-317 / 384 / 689 / 965), which served the previous copy of each file for
+# ~40 minutes after its upload. A purge in that window lets the shield
+# re-cache the stale copy of every stable-URL file (data/d/<lang>/*.json, the
+# HTML pages) for the pull zone's 30-day max-age; a content-hashed bundle is a
+# new path and is never affected. So before purging, the deploy probes a few
+# just-uploaded stable-URL files through the CDN — purge that URL, fetch it,
+# compare its sha256 with the upload — until they match; after the zone purge
+# it checks a random sample and settles any straggler the same way.
+_HASHED_PATH_RE = re.compile(r"\.[0-9a-f]{10}\.(?:js|css)$")
+_PROBE_SUFFIXES = (".html", ".json", ".txt", ".xml")
+_PROBE_MAX_BYTES = 2_000_000
+_REPLICATION_INTERVAL_S = 60
+
+
+def is_probe_candidate(rel: str, size: int) -> bool:
+    """A small stable-URL text file — what a lagging replica can leave stale."""
+    return (
+        rel.endswith(_PROBE_SUFFIXES)
+        and not _HASHED_PATH_RE.search(rel)
+        and size <= _PROBE_MAX_BYTES
+    )
+
+
+def pick_probes(uploaded: list[str], sizes: dict[str, int],
+                n_last: int = 4, n_spread: int = 4) -> list[str]:
+    """The last stable-URL files to finish uploading (replication follows the
+    upload order) plus a few spread over the rest of the run."""
+    stable = [rel for rel in uploaded if is_probe_candidate(rel, sizes.get(rel, 0))]
+    last = stable[-n_last:]
+    rest = stable[:-n_last] if len(stable) > n_last else []
+    step = max(1, len(rest) // n_spread) if rest else 1
+    spread = rest[::step][:n_spread]
+    return list(dict.fromkeys(spread + last))
+
+
+def cdn_is_fresh(session: requests.Session, site_host: str, rel: str, expected: str) -> bool:
+    try:
+        r = session.get(f"https://{site_host}/{rel}",
+                        headers={"Accept-Encoding": "identity"}, timeout=60)
+    except requests.RequestException:
+        return False
+    return r.status_code == 200 and hashlib.sha256(r.content).hexdigest() == expected
+
+
+def purge_url(api_key: str, site_host: str, rel: str) -> None:
+    url = urllib.parse.quote(f"https://{site_host}/{rel}", safe="")
+    try:
+        r = requests.post(f"https://api.bunny.net/purge?url={url}&async=false",
+                          headers={"AccessKey": api_key}, timeout=60)
+    except requests.RequestException as exc:
+        print(f"  warn: purge {rel}: {exc}", file=sys.stderr)
+        return
+    if r.status_code not in (200, 204):
+        print(f"  warn: purge {rel} → {r.status_code} {r.text[:120]}", file=sys.stderr)
+
+
+def settle(rels: list[str], is_fresh, purge, timeout_s: float,
+           interval_s: float = _REPLICATION_INTERVAL_S, sleep=time.sleep) -> list[str]:
+    """Purge and refetch `rels` until the CDN serves the uploaded bytes or the
+    timeout passes. Returns the files still stale."""
+    pending = list(rels)
+    deadline = time.monotonic() + timeout_s
+    attempt = 0
+    while pending:
+        attempt += 1
+        for rel in pending:
+            purge(rel)
+        sleep(3)
+        pending = [rel for rel in pending if not is_fresh(rel)]
+        print(f"  replication: attempt {attempt}: {len(rels) - len(pending)}/{len(rels)} "
+              f"probe files fresh", file=sys.stderr)
+        if not pending or time.monotonic() + interval_s > deadline:
+            break
+        sleep(interval_s)
+    return pending
+
+
+def purge_zone(api_key: str, pullzone: str) -> None:
+    r = requests.post(
+        f"https://api.bunny.net/pullzone/{pullzone}/purgeCache",
+        headers={"AccessKey": api_key},
+        timeout=60,
+    )
+    if r.status_code not in (200, 204):
+        sys.exit(f"purgeCache → {r.status_code} {r.text[:200]}")
 
 
 # The apex → www 301 is a Bunny edge rule (dashboard config, NOT in this repo).
@@ -737,6 +829,14 @@ def main() -> int:
                            "uploads nothing")
     park.add_argument("--unpark", action="store_true",
                       help="disable the park redirect so the environment serves its own files")
+    ap.add_argument("--replication-timeout", type=float, default=90, metavar="MIN",
+                    help="minutes to wait for the storage replicas to serve the upload before "
+                         "the cache purge (default: 90)")
+    ap.add_argument("--verify-sample", type=int, default=60, metavar="N",
+                    help="uploaded stable-URL files checked through the CDN after the purge "
+                         "(default: 60)")
+    ap.add_argument("--no-replication-wait", action="store_true",
+                    help="purge right after the upload, without probing the replicas")
     args = ap.parse_args()
     env = _ENVS[args.env]
     sfx = env["suffix"]
@@ -754,10 +854,7 @@ def main() -> int:
         print(f"checking pull zone {pullzone} ...", file=sys.stderr)
         verify_pullzone(api_key, pullzone, env["host"], zone)
         set_parked(api_key, pullzone, env["park_to"], enabled=args.park)
-        r = requests.post(f"https://api.bunny.net/pullzone/{pullzone}/purgeCache",
-                          headers={"AccessKey": api_key}, timeout=60)
-        if r.status_code not in (200, 204):
-            sys.exit(f"purgeCache → {r.status_code} {r.text[:200]}")
+        purge_zone(api_key, pullzone)
         if args.park:
             time.sleep(5)
             check_park_redirect(env["host"], env["park_to"])
@@ -818,6 +915,7 @@ def main() -> int:
     to_delete = sorted(rel for rel in remote if rel not in local)
     print(f"diff: upload {len(to_upload)}, delete {len(to_delete)}", file=sys.stderr)
 
+    uploaded: list[str] = []
     if to_upload:
         with cf.ThreadPoolExecutor(max_workers=workers) as ex:
             futures = {
@@ -827,6 +925,7 @@ def main() -> int:
             for i, fut in enumerate(cf.as_completed(futures), 1):
                 rel = futures[fut]
                 fut.result()
+                uploaded.append(rel)
                 print(f"  [{i}/{len(to_upload)}] PUT {rel}", file=sys.stderr)
 
     if to_delete:
@@ -837,14 +936,43 @@ def main() -> int:
                 fut.result()
                 print(f"  [{i}/{len(to_delete)}] DEL {rel}", file=sys.stderr)
 
+    sizes = {rel: len(overrides[rel]) if rel in overrides else (root / rel).stat().st_size
+             for rel in uploaded}
+    site = requests.Session()
+    site.headers["User-Agent"] = "owm-deploy (winemap@devloed.com)"
+
+    def is_fresh(rel: str) -> bool:
+        return cdn_is_fresh(site, env["host"], rel, local[rel])
+
+    def purge_one(rel: str) -> None:
+        purge_url(api_key, env["host"], rel)
+
+    probes = [] if args.no_replication_wait else pick_probes(uploaded, sizes)
+    still_stale: list[str] = []
+    if probes:
+        print(f"waiting for storage replication ({len(probes)} probe files, up to "
+              f"{args.replication_timeout:g} min) ...", file=sys.stderr)
+        late = settle(probes, is_fresh, purge_one, args.replication_timeout * 60)
+        if late:
+            print(f"  warn: {len(late)} probe file(s) still stale after "
+                  f"{args.replication_timeout:g} min — purging anyway: {', '.join(late)}",
+                  file=sys.stderr)
+
     print("purging cache ...", file=sys.stderr)
-    r = requests.post(
-        f"https://api.bunny.net/pullzone/{pullzone}/purgeCache",
-        headers={"AccessKey": api_key},
-        timeout=60,
-    )
-    if r.status_code not in (200, 204):
-        sys.exit(f"purgeCache → {r.status_code} {r.text[:200]}")
+    purge_zone(api_key, pullzone)
+
+    if probes and args.verify_sample > 0:
+        candidates = [rel for rel in uploaded if is_probe_candidate(rel, sizes[rel])]
+        sample = random.Random(len(uploaded)).sample(
+            candidates, min(args.verify_sample, len(candidates)))
+        with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+            stale = [rel for rel, ok in zip(sample, ex.map(is_fresh, sample)) if not ok]
+        print(f"  CDN check: {len(sample) - len(stale)}/{len(sample)} sampled files match the "
+              f"upload", file=sys.stderr)
+        if stale:
+            still_stale = settle(stale, is_fresh, purge_one, args.replication_timeout * 60)
+            print("purging cache again ...", file=sys.stderr)
+            purge_zone(api_key, pullzone)
 
     if not env["indexable"]:
         print(f"indexnow: skipped ({args.env} is not indexable)", file=sys.stderr)
@@ -878,6 +1006,11 @@ def main() -> int:
     ensure_custom_404(api_key, zone)
     if env["apex"]:
         check_apex_redirect()
+    if still_stale:
+        print(f"\ndeployed, but {len(still_stale)} sampled file(s) were still stale at the CDN: "
+              f"{', '.join(still_stale[:10])} — purge again once the replicas catch up "
+              f"(POST https://api.bunny.net/pullzone/{pullzone}/purgeCache).", file=sys.stderr)
+        return 3
     print(f"\ndeployed. https://{env['host']}/", file=sys.stderr)
     return 0
 
