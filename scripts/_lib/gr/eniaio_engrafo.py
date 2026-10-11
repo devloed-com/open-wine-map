@@ -285,4 +285,14 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\bβοτρύτης\b", re.I), "grains-nobles"),
     (re.compile(r"\bγλυκ(?:ύς|είς)\s+οίν(?:ος|οι)\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bξηρ(?:ός|οί)\s+οίν(?:ος|οι)\b", re.I), "dry"),
+    # Rosé under its legal name in the ΥΠΑΑΤ specs: a wine type headed
+    # "Οίνος Ερυθρωπός ξηρός" / "Γ. ΟΙΝΟΣ ΕΡΥΘΡΩΠΟΣ" / "Ο ερυθρωπός ξηρός
+    # οίνος". Only the masculine form beside οίνος / οίνοι names a type: the
+    # feminine "ερυθρωπές αποχρώσεις" (Πάρος, an aged red's hue) does not,
+    # nor the CY specs' "για λευκούς και ερυθρωπούς οίνους" alcohol rule.
+    (re.compile(
+        r"\b[οo][ιί]ν(?:ος|οι)\b(?:\W+\w+){0,4}?\W+ερυθρωπ(?:[οό]ς|[οό][ιί])\b"
+        r"|\bερυθρωπ(?:[οό]ς|[οό][ιί])\b(?:\W+\w+){0,3}?\W+[οo][ιί]ν(?:ος|οι)\b",
+        re.I,
+    ), "rose"),
 )
