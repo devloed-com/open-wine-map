@@ -816,6 +816,165 @@ Side findings of the sweep, not acted on:
   `nielluccio` beside "Sangiovese" → `sangiovese` (two pills for one
   variety on Sassicaia's card); "Mazzese" → `ciliegiolo`.
 
+### Visitor flags of 2026-10-05 (`feedback_report.py --range 2026-10-05,2026-10-05`: 2 flags, 1 note)
+
+**norte-de-almeria — other (es, zone view at z8, simple mode) — ✅ the card's defects fixed, two of them corpus-wide.**
+No note, so the aspect is unknown; the es card had four visible defects:
+the header read "España · Vino de la Tierra (IGP) · España"; no link to the
+pliego (Sources held eAmbrosia and the Junta only); no terroir facts, so the
+fallback summary opened "- Categoría de producto vitícola: vino. Tipos de
+vinos."; and the MAPA PDF writes "Vélez Banco" (the geometry already binds
+Vélez-Blanco, 4/4 municipios). Causes and fixes:
+- **No pliego link on 183 of 185 ES cards.** `raw/es/oj-pages/manifest.json`
+  had held 2 entries since 2026-05-10: `--refresh` reset the manifest before
+  a scoped (`--only tharsys --only urbezo`) run, and later runs counted the
+  other 147 pages as cached without writing them back, so stage 02 wrote
+  empty `source` URLs. Stage 01 now keeps the manifest on `--refresh` and
+  rebuilds a cached page's missing entry offline (`reconstruct_entry`: the
+  override URL for a PDF, the eAmbrosia publication for an EUR-Lex page,
+  which must name the same OJ C publication — 47 checked by ELI, 39 by the
+  Formex name in `<title>`, 0 mismatches). Only ES was affected; every other
+  country's manifest matches its cache.
+- **A MAPA / regional PDF pliego was labelled "Specification (EUR-Lex,
+  single document)"** (Tharsys, Urbezo — the two records that kept a URL).
+  Stage 04 `_sources_for` puts a PDF pliego's URL in `national_pliego_url`
+  (label "National pliego de condiciones (PDF)", attribution "MAPA, pliego
+  de condiciones"); ES stage 03 writes "Pliego de condiciones (PDF)". 63
+  records (62 mapa.gob.es, 1 euskadi.eus).
+- **Link section never routed in 5 pliegos**: "VINCULACIÓN CON EL MEDIO
+  GEOGRÁFICO" missed the "vínculo" keyword (Norte de Almería, Laujar-
+  Alpujarra, Cádiz); a parent holding only a page number ("-3-") never took
+  its G.1 / G.2; Dominio de Valdepusa (g.1–g.3) and Mondéjar (7.1–7.3) lost
+  the parent heading. Valle del Miño-Ourense also gains its 7.2 "Datos del
+  producto" and 7.3 "Interacción causal", which the parent's own body had
+  shut out (6,942 → 9,888 characters).
+- **Region "España" on 19 single-CCAA records** (+ Dehesa Peñalba as
+  "Madrid", from a 1751 "Provincia de Madrid" in its terroir history).
+  `derive_ccaa` reads the longest known name after the lead-in ("Comunidad
+  Autónoma de Castilla y León" had been cut at "y"), counts a bracketed
+  province after a municipio ("Huete (Cuenca)"), and lets the area text
+  decide before the link text: 6 resolved plus Dehesa Peñalba; the 13 whose area lists
+  municipios only are pinned in `CCAA_OVERRIDES` with their evidence. Cava
+  and Castilla stay multi-region.
+- **Done 2026-10-05, deployed:** the 02d chain for the 6 records (run
+  `2026-10-05T141027`, rollback-able): 54 facts, gate 50 supported / 4
+  rewritten / 0 dropped, back-check fixed 9 translations, LLM audit 0 / 54
+  misleading. Open: one Mondéjar EN bullet renders "sedimentos limo
+  arcillosos" (silty-clay) as "clay-loam sediments" (audit: defective, not
+  misleading). ES stage 02 also applied the subzona parser change of
+  c0ce456 for the first time: Alicante La Marina Alta's list gains a stray
+  item "las Entidades de Ámbito Territorial Menor al Municipio de Llosa de
+  Camacho" (no polygon impact; Llosa de Camacho is in Alcalalí, already
+  listed).
+
+**colli-dell-etruria-centrale — name (en, zone view at z8.1, advanced mode; note "Colli dell'Etruria Centrale is IGT not DOC") — ❌ no defect, the card is right.**
+The card reads "DOC (PDO)" (title "Colli dell'Etruria Centrale wine map —
+DOC (PDO) · Toscana, Italy"), and every source says DOC: the MASAF *Elenco
+alfabetico Vini DOP* (agg. 18.03.2026 — still the file MASAF links on
+2026-10-05, same 478.57 KB) row 106 "Colli dell'Etruria Centrale DOP DOC
+PDO-IT-A1384 TOSCANA"; the disciplinare's Art. 1.1 "La denominazione di
+origine controllata «Colli dell'Etruria Centrale»"; the live EU register
+`PDO-IT-A1384` (EUGI00000006877) — "Protected Designation of Origin (PDO)",
+status Registered, version 1, producer group Consorzio Vino Chianti. The
+2026 EUR-Lex hit that surfaced while checking, Reg. (EU) 2026/573, cancels
+the PGI *Colli del Sangro* (one of the seven Abruzzo IGTs, already in
+`CANCELLED_GIS`), not this DOC. Likely cause: the name reads like a Tuscan
+IGT ("Colli della Toscana Centrale" *is* an IGT, MASAF Elenco IGP row 24, PGI-IT-A1436) — a
+near-homonym, not an error on the card. Nothing to change.
+
+### Visitor flags of 2026-10-09 (`feedback_report.py --range 2026-10-05,2026-10-10`: 2 new flags, 1 retracted, no note)
+
+**corton-charlemagne — grapes (en, footprint at z5.7, simple mode, raised inside a stack: 0 focus opens) — ❌ no defect, the card is right.**
+The card shows Chardonnay (principal) and Pinot Blanc (accessory), exactly
+the cahier's section V: "cépage principal : chardonnay B ; cépage
+accessoire : pinot blanc B", with "La proportion du cépage pinot blanc B est
+inférieure ou égale à 10 %". The cahier is the décret 2011-1380 of
+25 October 2011. INAO's product page 7715 was updated 6 October 2026, but
+`show_texte/2809` still serves the same BO Agri document
+(b0de3df4-…), so the build is not stale. The usual belief is "100 %
+Chardonnay", or the chip was pressed on the wrong card of a z5.7 Burgundy
+stack. Nothing to change. A minor style point, not the flagged aspect: the
+1937 fact has `both` provenance and keeps fr.wikipedia's lower-case
+"corton et charlemagne" ("corton and charlemagne" in EN).
+
+**irouleguy — boundary (fr, footprint at z9.6, simple mode) — flagged and retracted within the hour; ❌ no defect found.**
+`audit_vineyard_envelopes.py --only irouleguy`: every parcel is inside the
+footprint, the bbox is within the parcels' bbox plus the radius, inflation is
+1.69× (13.0 → 22.0 km², 158 parts), and 0 km² bridges onto another
+appellation. `audit_parcellaire_gaps.py --only irouleguy`: 0 aire communes
+without a parcel row. Nothing to change.
+
+### Visitor flag of 2026-10-10 (`feedback_report.py --range 2026-10-09,2026-10-11`: 1 new flag, no note)
+
+**kos — grapes (fr, zone view at z8.7, simple mode, raised inside a stack) — ✅ roster right, labels wrong on 841 cards; fixed in stage 04.**
+The roster is the spec's (ΠΓΕ Κως, eAmbrosia attachment 3990, §
+"ΕΠΙΤΡΕΠΟΜΕΝΕΣ ΟΙΝΟΠΟΙΗΣΙΜΕΣ ΠΟΙΚΙΛΙΕΣ"): white Αθήρι, Ασύρτικο, Μαλαγουζιά,
+Sauvignon Blanc and Chardonnay; red and rosé Cabernet Sauvignon, Cinsaut,
+Grenache rouge, Mourvedre, Tempranillo, Merlot and Syrah. The pills were
+wrong, though: "Αθήρι Β", "Μαλαγουζιά Β" (with the colour code),
+"Cabernet- Sauvignon", "Mourvèdre (Monastrell)". The panel payload's
+`grape_names` was empty, so the client fell back to the corpus-wide
+spelling. Cause: `emit_html` read `grapes.details` from the **on-disk**
+record, and a national-spec augmentation (IT MASAF, GR ΥΠΑΑΤ, BG IAVV, CY,
+CZ, DE BLE, ES pliego, HR / SI / RO / HU / SK) or a synthesized IT
+sottozona exists only in memory. 15,872 pills on 841 of 2,898 cards with
+grapes (IT 498, GR 138, BG 51, ES 42, DE 22, HR 16, HU 16, RO 14, SI 14,
+CZ 13, CY 11, SK 6) showed the fallback, 9,938 of them a different
+spelling from the record's own: HU "Kékfrankos" read "Frankovka", HR
+"Graševina" read "Riesling Italico B.", BG "Шардоне" read "chardonnay".
+Stage 04 now snapshots each record's details where main() derives its
+grapes (`_GRAPE_DETAILS_BY_SLUG`), and the panel phase reads the snapshot.
+A name a spec prints in capitals ("CABERNET SAUVIGNON", "ΞΥΝΙΣΤΕΡΙ" — 1,062
+pills, MASAF annexes and the GR / CY .doc specs) takes the corpus's own
+mixed-case spelling of the same name, else its lower case
+(`scripts/_lib/grape_labels.py`, `tests/test_grape_labels.py`). A Greek
+name with no such spelling keeps its capitals, because Greek capitals omit
+the tonos, so lower-casing gives "σοβινιον" on Pafos. Its Latin bracket is
+transliterated from the lower case and titled: "ΟΦΘΑΛΜΟ (Ophthalmo)", not
+"OPhThALMO". `clean_name` strips the extraction debris the record spellings
+carried on 68 cards. That covers MASAF symbol-font guillemets ("«Chardonnay»"
+as private-use glyphs) and bullets, the GR .doc scan's "Μανδηλαριά σε",
+"Moscato bianco e", list punctuation ("Würzer;", "Roussanne,") and a DE page
+header ("Seite 6 von 10 -7- Domina"). The trailing conjunctions are a closed
+list, so "Rayon d'Or" keeps its "or". The pill bracket (app.js `renderAocCard`, content_block `_grape_pill`) now
+prefers the record's own `grape_names_latin` over the corpus-wide
+`name_latin`, which transliterated another record's spelling ("Αθήρι
+(Atheri B)" → "Αθήρι (Atheri)").
+Colour-code suffixes ("Merlot N") stay as the regulator writes them, as
+they already did on 2,914 pills.
+
+**✅ Same card — Greek rosé added to 69 records.** The spec's "Γ. ΟΙΝΟΣ
+ΕΡΥΘΡΩΠΟΣ" (dry / semi-dry / semi-sweet) is a rosé, but the colour table in
+`scripts/_lib/gr/eniaio_engrafo.py` knew only "ροζέ". A `STYLE_MARKERS`
+entry now reads the legal term: the masculine ερυθρωπός / ερυθρωποί within
+four words of οίνος / οίνοι, matching "Οίνος Ερυθρωπός ξηρός",
+"Ο ερυθρωπός ξηρός οίνος" and "Oίνος" with a Latin O. Not matched:
+Πάρος / Θαψανά's "ερυθρωπές αποχρώσεις" (the hue of an aged red) and the CY
+specs' "για λευκούς και ερυθρωπούς οίνους". That CY phrase is an alcohol
+rule, and the CY descriptions analyse red and white wines only, so no CY
+record changes. GR 02f gave rosé to 66 sidecars, including 14 retsinas
+(their "Β. ΟΙΝΟΣ ΕΡΥΘΡΩΠΟΣ" — kokkineli); GR 02 gave it to Εύβοια,
+Μακεδονία and Τύρναβος. No style was removed.
+
+**Open — a fresh GR 02f run drifts the grapes of 14 sidecars (not
+applied).** The sidecars date from 2026-08-21. Lexicon changes since then
+make a re-run add `giro-negre` from the Greek word "Για" (Malvasia
+Handakas, Malvasia Paros, Malvasia Sitia, Moschato Rodou, Nemea) and
+`ritino` from "Ρετσίνα" (Retsina Attikis, Retsina Halkidas Evias, Retsina
+Markopoulou Attikis). Next to these false positives are fixes: Mavrothiriko
+is no longer `crujidera`, and Δαφνί, Πλυτό, Αυγουστιάτης and Σέφκα now
+resolve. Two need checking: "Begleri" → `thrapsathiri` and "Tsardana" moving
+off `romeiko`. On 2026-10-11 only the rosé styles were carried into the
+sidecars; their grapes stayed as extracted on 08-21. Ban "για" / "ρετσίνα"
+as surfaces (`_BANNED_SURFACES` in `grape_entity.py`), verify the other
+four, then re-run.
+
+**Open — exposed by the new labels.** Pafos (CY) reads "Moschato Samou"
+under the `muscat-ottonel` slug. Moschato Samou is Muscat blanc à petits
+grains, so this is a matcher fold, now visible in the VIVC bracket. GR
+specs name semi-dry and semi-sweet types (ημίξηρος / ημίγλυκος), but no
+`STYLE_MARKERS` entry maps them to `semi-dry` / `semi-sweet`.
+
 ### Simple-mode polygons carry open water, and the panel does not say the shape is the commune — 🟡 disclosure + footprint on branch `feat/zoom-lod` (2026-09-23), water mask still open
 
 - **Branch `feat/zoom-lod` (2026-09-23, not merged):** zoom now picks the geometry instead of the mode — below z12 the 1,259 French parcel-level records draw a generalised vineyard footprint (250 m morphological closing of the INAO parcellaire, `scripts/_lib/vineyard_envelope.py`; median 1.3× the parcels vs 5–8× for the commune union), from z12 the parcels; the commune union is no longer drawn for them, which removes the water for the 32 records whose twin is parcellaire (Saint-Estèphe 26 % estuary → 0). Every card now says what the polygon is: the zoom-reactive footprint line, a "réunion des {n} communes, plans d'eau compris" line for plain `aires-csv` / `dgc-village-override` / `communes` records (the 97 water records that no envelope can reach — every IGP, Champagne), and a zone-source line for the other countries (geoportal / MAPA / Bétard / administrative union). `Feedback *` and `Appellation Viewed` carry `lod` + `zoom`. Audit: `scripts/audit_vineyard_envelopes.py` (`--water` measures BD TOPO water, rivers included, inside the footprint's added area).
