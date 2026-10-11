@@ -6,7 +6,8 @@ bullet that still carries non-Latin script or one of the common-noun leaks
 the 2026-09-11 review catalogued in docs/plan-terroir-facts-quality.md —
 soils, climates, harvest categories, site words and scheme abbreviations
 that the old per-country "Preserve … verbatim" prompt lists told the model
-to keep. Prints a per-country × per-locale count table to stderr and
+to keep — and, in NL, an article that does not agree with its noun ("Het
+wijngaard", `_lib.nl_articles`). Prints a per-country × per-locale count table to stderr and
 writes a JSON report with the flagged rows plus, per country, the exact
 `02e … --batch --provider anthropic --refresh --only …` command that
 re-translates them.
@@ -32,6 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib.exonyms import exonym_hits, gi_forms_from_names  # noqa: E402
+from _lib.nl_articles import article_hits  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 CACHE_ROOT = ROOT / "raw" / "translations" / "terroir-facts"
@@ -115,6 +117,8 @@ def _reasons(bullet: str, lang: str, *, raw: bool) -> list[str]:
         if not raw and (tok.lower() in native or tok in _PROPER_NOUN_TOKENS):
             continue
         reasons.append(f"leak:{tok}")
+    if lang == "nl":
+        reasons.extend(f"article:{hit}" for hit in article_hits(bullet))
     return reasons
 
 

@@ -25,6 +25,7 @@ import re
 
 from _lib import llm_json
 from _lib.exonyms import exonym_hits
+from _lib.nl_articles import article_hits
 from _lib.terroir_dedupe import _numbers
 from _lib.terroir_feedback import _clip, _safe
 from _lib.terroir_normalize import normalize_bullet
@@ -32,6 +33,7 @@ from _lib.terroir_prompts import appellation_context
 
 BACKCHECK_VERSION = "backcheck-v2"
 FIX_MAX_CHARS = 360
+FIX_MAX_GROWTH = 1.15
 
 _LANG_NAME = {
     "en": "English", "fr": "French", "es": "Spanish", "nl": "Dutch", "de": "German", "it": "Italian",
@@ -40,7 +42,7 @@ _LANG_NAME = {
 }
 
 WATCH_LIST = (
-    "climat (Burgundian named site — keep 'climat', never 'climate')",
+    "climat (Burgundian named site — keep 'climat', never 'climate' / NL 'klimaat')",
     "tirage (the bottling for the second fermentation — never 'disgorgement', which is dégorgement)",
     "generoso / vino generoso (a fortified wine — never 'generous')",
     "Lehm (loam — not clay, which is Ton)",
@@ -54,6 +56,7 @@ WATCH_LIST = (
     "Rodopi / Родопи → Rhodopes (EN, FR) / Rhodopen (NL) / Ródope (ES); Stara Planina stays 'Stara Planina' (a one-time gloss '(Balkan Mountains)' is fine); Bayern → Bavaria / Baviera / Bavière / Beieren",
     "Dutch common noun is 'appellatie(s)', not the French 'appellation(s)' (only the registered term 'appellation d'origine contrôlée / protégée' stays French)",
     "a river valley in Dutch is 'de X-vallei' or 'het X-dal' (Marnevallei, het Marnedal) — a blend such as 'Marnedallei' or 'Audedallei' is not a word and must be fixed",
+    "Dutch de / het must agree with the noun (de wijngaard, de gemeente, de aanplant, de bodem; het wijngebied, het productiegebied, het perceel, het landschap, het bekken, het terras, het graniet) — 'het wijngaard' is wrong; fix the article and every pronoun or adjective that refers to the noun",
 )
 
 SYSTEM = """You are the back-checker for Open Wine Map's machine-translated terroir facts. Each record's bullets were extracted in the source language from a wine regulator's specification and then translated into the target language. You receive both versions side by side; the SOURCE bullet is authoritative. Your job is to find every place where the translation changed the meaning, and to give the corrected translation.
@@ -64,7 +67,8 @@ Flag a bullet ("fix") when the translation:
 - names the wrong entity: a grape, place, formation, wind, institution or person rendered as a different one, a name back-formed from an adjective ("the Caiata area" for caiatino, which means "of Caiazzo"), an appellation name translated instead of kept;
 - uses a false friend or calque from this watch-list, or otherwise gives a wine term a wrong sense: {watch_list};
 - leaves a common noun (a generic soil, rock, climate, harvest or wine-law term) untranslated in the source language, or keeps a source-form geographic name that has an established target-language exonym (named formations, named winds, appellation names and grape names stay verbatim — those are correct);
-- garbles grammar so the sentence no longer says what the source says.
+- garbles grammar so the sentence no longer says what the source says;
+- has an agreement error in the target language, even though the meaning is intact: an article or determiner of the wrong gender or number, an adjective, past participle or pronoun that does not agree with its noun — a translation often copies the source noun's gender ("het wijngaard" for le vignoble, "una aroma" for un arôme). Fix only the words that disagree.
 Do NOT flag: a legitimate simplification; a different but equivalent number format; a synonym in register; a sentence that is merely awkward but faithful. When in doubt, "ok".
 
 For a "fix", give "fix": the full corrected bullet in the target language, faithful to the SOURCE bullet, one complete sentence ending with a period, without adding content. Keep the source's proper nouns exactly; transliterate Greek and Cyrillic to the EU-official Latin form. A "fix" verdict MUST carry a non-empty "fix" — if you cannot write the corrected sentence, answer "ok" and put your concern in "issue".
@@ -118,6 +122,10 @@ def build_user_message(
     for i, (sf, tf) in enumerate(zip(source_facts, translated)):
         hits = exonym_hits(tf.get("bullet") or "", target_lang, gi_forms=gi_forms)
         flag = f"\nDETECTOR: source-form place name(s) still present: {', '.join(hits)}" if hits else ""
+        if target_lang == "nl":
+            wrong = article_hits(tf.get("bullet") or "")
+            if wrong:
+                flag += f"\nDETECTOR: article does not agree with its noun: {', '.join(wrong)}"
         lines.append(
             f"#{i} [{sf.get('subsection') or ''}]\n"
             f"SOURCE ({src_name}): {sf.get('bullet') or ''}\n"
@@ -212,7 +220,10 @@ def fix_ok(source_bullet: str, current: str, fix: str) -> str | None:
         return "unchanged"
     if "→" in fx:
         return "arrow"
-    if len(fx) > FIX_MAX_CHARS or len(fx) < 15:
+    # A long source sentence has a long translation: the cap is relative to
+    # the bullet being corrected (an article fix to a 499-character bullet
+    # was refused as too long on 2026-10-09), FIX_MAX_CHARS its floor.
+    if len(fx) > max(FIX_MAX_CHARS, int(len(current or "") * FIX_MAX_GROWTH)) or len(fx) < 15:
         return "length"
     new_nums = _numbers(fx) - _numbers(source_bullet) - _numbers(current)
     if new_nums:

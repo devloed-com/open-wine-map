@@ -130,6 +130,24 @@ _LATIN_SCRIPT = (
     "Latin slugs are the reference spellings."
 )
 
+# A translation copies the source noun's gender onto the target noun: FR "le
+# vignoble" came out as NL "Het wijngaard" (42 bullets), FR "un arôme" as ES
+# "una aroma … marcada", IT "il versante" as FR "les versantes". An Opus
+# copy-edit of 400 sampled bullets per locale (2026-10-09) found agreement
+# errors in 2.8 % of NL, 1.3 % of FR and 0.8 % of ES bullets, all but one
+# written by Sonnet 4.6. English has no grammatical gender, so no rule there.
+_AGREEMENT_EXAMPLES = {
+    "nl": "\"de wijngaard\" for le vignoble / el viñedo, \"het gebergte\", \"een kwalitatieve wijngaard\", "
+          "\"het kristallijne basement\"",
+    "fr": "\"au fruit frais\", \"les versants\" for i versanti, \"les Géorgiques latines\"",
+    "es": "\"el aroma\" for l'arôme / la fragranza, \"una espaldera\", \"la vertiente\", \"la era mesozoica\"",
+}
+_AGREEMENT = (
+    "- Grammatical agreement follows TARGET, never the source: give every TARGET noun its own gender "
+    "and number, and make its article, determiner, adjectives, participles and pronouns agree with it "
+    "— not with the gender of the source noun it translates (EXAMPLES)."
+)
+
 _STYLE = (
     "- Drop regulatory colour-code suffixes after grape names (N / B / G / Rs / Rg): write "
     "\"Pinot noir\", never \"Pinot noir N\".\n"
@@ -160,6 +178,8 @@ def translation_rules(source_lang: str, target_lang: str, *, proper_nouns: str) 
     ]
     if source_lang in _NON_LATIN_SOURCES:
         lines.append(_LATIN_SCRIPT)
+    if target_lang in _AGREEMENT_EXAMPLES:
+        lines.append(_AGREEMENT.replace("TARGET", target).replace("EXAMPLES", _AGREEMENT_EXAMPLES[target_lang]))
     lines.append(_STYLE)
     return "\n".join(lines)
 

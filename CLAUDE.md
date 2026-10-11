@@ -347,8 +347,14 @@ details and "Hard rules" for invariants that apply to every country.
   (generoso → generous, tirage → disgorgement, Burgundian climat →
   climate, Lehm → clay, Pintes → Pinot, Немски ризлинг ↔
   Welschriesling), untranslated common nouns, missing exonyms
-  (`exonyms.exonym_hits` feeds the model its hits) — and applies the
-  corrected translation under the same guards; every checked bullet
+  (`exonyms.exonym_hits` feeds the model its hits), and in NL an article
+  that does not agree with its noun ("Het wijngaard" for *le vignoble* —
+  the article copies the source noun's gender; 42 bullets in 36 records on
+  2026-10-09; [scripts/_lib/nl_articles.py](scripts/_lib/nl_articles.py)
+  feeds the model its hits and `detect_untranslated_terroir_facts.py`
+  lists them as `article:`) — and applies the corrected translation under
+  the same guards (a fix may be up to 115 % of the bullet it replaces,
+  360 characters at least); every checked bullet
   carries `check`, the cache a `backcheck` block keyed on both shas. The
   glossary ([scripts/_lib/translation_glossary.py](scripts/_lib/translation_glossary.py))
   and the exonym table carry the same terms so 02e gets them right
