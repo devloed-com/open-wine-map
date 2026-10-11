@@ -2424,11 +2424,12 @@
       // transliteration of the cahier spelling for non-Latin scripts
       // (Cyrillic / Greek native varieties that VIVC hasn't catalogued)
       // so pills still surface a readable Latin form alongside the
-      // native one. Per-record `grape_names_latin` covers slugs that
-      // never make it into GRAPES_INFO (no Wikipedia + no VIVC).
+      // native one. The record's own `grape_names_latin` transliterates the
+      // spelling this pill shows, so it comes before the corpus-wide form,
+      // which transliterates another record's ("Αθήρι Β" → "Atheri B").
       const canon = (info && info.canonical_name)
-        || (info && info.name_latin)
         || (r.grape_names_latin && r.grape_names_latin[g])
+        || (info && info.name_latin)
         || '';
       const labelInner = canon && !canonicalEqualsCahier(canon, cahierName)
         ? `${escapeHtml(cahierName)} <span class="canon">(${escapeHtml(canon)})</span>`

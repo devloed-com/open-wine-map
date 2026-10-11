@@ -679,8 +679,8 @@ def _grape_pill(g: str, cls: str, rec: dict, ctx: RenderCtx) -> str:
     cahier_name = to_title_case((rec.get("grape_names") or {}).get(g) or grape_name(g, ctx))
     canon = (
         (info.get("canonical_name") if info else "")
-        or (info.get("name_latin") if info else "")
         or (rec.get("grape_names_latin") or {}).get(g)
+        or (info.get("name_latin") if info else "")
         or ""
     )
     if canon and not canonical_equals_cahier(canon, cahier_name):

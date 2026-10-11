@@ -147,6 +147,7 @@ from _lib.grape_display_overrides import (
 )
 from _lib.grape_gaps import classify as classify_grape_gaps
 from _lib.grape_gaps import summary_line as grape_gaps_line
+from _lib.grape_labels import clean_name, fold_capitals, latin_label, mixed_case_spellings
 from _lib.hr.geometry import HRPolygonIndex
 from _lib.hr.region import derive_region as derive_hr_region
 from _lib.hu.geometry import HUPolygonIndex
@@ -347,6 +348,10 @@ _IT_MENZIONI_BY_SLUG: dict[str, list] = {}
 # derived and read in emit_html() by the interprofession fallback
 # (appellation_urls.resolve keys the cider body on the comité).
 _FR_COMITE_BY_SLUG: dict[str, str] = {}
+# Slug → the record's `grapes.details` as main() built its feature (after the
+# national-spec augmentations and the IT sottozona synthesis, which the
+# on-disk record never sees), read by emit_html() for the pill spellings.
+_GRAPE_DETAILS_BY_SLUG: dict[str, list] = {}
 
 
 
@@ -2597,6 +2602,7 @@ def main() -> int:
         bbox = [float(minx), float(miny), float(maxx), float(maxy)]
         grapes = record.get("grapes") or {}
         principal, accessory, observation = _grape_role_lists(grapes)
+        _GRAPE_DETAILS_BY_SLUG[record["slug"]] = list(grapes.get("details") or [])
         all_grapes = sorted(set(principal) | set(accessory) | set(observation))
         styles = _canonical_styles(record.get("styles") or [])
         # Augment with unambiguous special-style mentions in the prose
@@ -4108,6 +4114,10 @@ def emit_html(
         except (ValueError, OSError) as exc:
             print(f"[warn] wikidata qids-by-slug.json: {exc}", file=sys.stderr)
 
+    # The corpus's mixed-case spelling per (grape, name) — restores a name a
+    # specification prints in capitals ("ΞΥΝΙΣΤΕΡΙ" → "Ξυνιστέρι").
+    grape_spellings = mixed_case_spellings(_GRAPE_DETAILS_BY_SLUG.values())
+
     for feat in features:
         p = feat["properties"]
         slug = p["slug"]
@@ -4201,40 +4211,48 @@ def emit_html(
                 or (country == "cz" and slug in _CZ_NATIONAL_SPEC_BY_SLUG)
             )
             is_stub = stub_raw and not has_augmented_source
-            # Per-appellation cahier spelling per slug — drives the pill
-            # label so the rendered name matches what the regulator
-            # actually published (PT Douro shows "Aragonez", ES Rioja
-            # shows "Tempranillo", FR Bandol shows "mourvèdre"), with
-            # the VIVC canonical name added in brackets when distinct.
-            # Carry the record's spelling UNCONDITIONALLY. A previous
-            # `s_name.lower() != s_slug` guard dropped it whenever the name
-            # already matched its slug ("Optima" -> optima), on the
-            # assumption the client could re-derive it. It cannot: the
-            # client falls back to GRAPES_INFO[slug].name, which is the
-            # most frequent spelling ACROSS THE WHOLE CORPUS and is often
-            # another language's — so English "Optima" rendered as Germany's
-            # "Optima 113", German "Müller Thurgau" as Hungarian
-            # "Rizlingszilváni", Spanish "godello" as Portuguese "Gouveio"
-            # (1,047 substantive cases across 10 countries). `grape_names`
-            # rides the lazily-fetched panel payload, not the startup
-            # bundle, so carrying every name costs ~70 bytes per panel file.
-            for d in (rec.get("grapes") or {}).get("details") or []:
-                s_slug = d.get("slug")
-                s_name = (d.get("name") or "").strip()
-                if s_slug and s_name:
-                    grape_names[s_slug] = s_name
-                    latin = _latin_form_or_empty(s_name)
-                    if latin:
-                        grape_names_latin[s_slug] = latin
-            # A verbatim cahier surface that is itself a source defect (a
-            # fused candidate) is relabelled per record, never corpus-wide.
-            for s_slug, s_name in display_name_overrides(
-                GRAPE_DISPLAY_OVERRIDES, slug, parent_slug_for_facts, set(grape_names)
-            ).items():
+        # Per-appellation cahier spelling per slug — drives the pill
+        # label so the rendered name matches what the regulator
+        # actually published (PT Douro shows "Aragonez", ES Rioja
+        # shows "Tempranillo", FR Bandol shows "mourvèdre"), with
+        # the VIVC canonical name added in brackets when distinct.
+        # Carry the record's spelling UNCONDITIONALLY. A previous
+        # `s_name.lower() != s_slug` guard dropped it whenever the name
+        # already matched its slug ("Optima" -> optima), on the
+        # assumption the client could re-derive it. It cannot: the
+        # client falls back to GRAPES_INFO[slug].name, which is the
+        # most frequent spelling ACROSS THE WHOLE CORPUS and is often
+        # another language's — so English "Optima" rendered as Germany's
+        # "Optima 113", German "Müller Thurgau" as Hungarian
+        # "Rizlingszilváni", Spanish "godello" as Portuguese "Gouveio"
+        # (1,047 substantive cases across 10 countries). `grape_names`
+        # rides the lazily-fetched panel payload, not the startup
+        # bundle, so carrying every name costs ~70 bytes per panel file.
+        # The details come from the in-memory record main() built the
+        # feature from: a national-spec augmentation (IT MASAF, GR ΥΠΑΑΤ,
+        # BG IAVV, …) and a synthesized IT sottozona exist only there, and
+        # reading the on-disk record left 15,872 pills on 841 cards with the
+        # corpus-wide fallback (ΠΓΕ Κως: "Αθήρι Β", "Cabernet- Sauvignon").
+        details = _GRAPE_DETAILS_BY_SLUG.get(slug)
+        if details is None and ext_path.exists():
+            details = (rec.get("grapes") or {}).get("details") or []
+        for d in details or []:
+            s_slug = d.get("slug")
+            s_name = fold_capitals(clean_name(d.get("name") or ""), s_slug, grape_spellings)
+            if s_slug and s_name:
                 grape_names[s_slug] = s_name
-                latin = _latin_form_or_empty(s_name)
+                latin = latin_label(s_name, _latin_form_or_empty)
                 if latin:
                     grape_names_latin[s_slug] = latin
+        # A verbatim cahier surface that is itself a source defect (a
+        # fused candidate) is relabelled per record, never corpus-wide.
+        for s_slug, s_name in display_name_overrides(
+            GRAPE_DISPLAY_OVERRIDES, slug, parent_slug_for_facts, set(grape_names)
+        ).items():
+            grape_names[s_slug] = s_name
+            latin = _latin_form_or_empty(s_name)
+            if latin:
+                grape_names_latin[s_slug] = latin
         syndicate = resolve_appellation_url(
             slug, parent_slug_for_facts, p.get("region", "") or "", appellation_urls,
             comite=_FR_COMITE_BY_SLUG.get(slug, ""), is_wine=p.get("is_wine", "1") == "1",
