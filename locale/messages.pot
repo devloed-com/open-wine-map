@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-17 14:47+0200\n"
+"POT-Creation-Date: 2026-10-17 14:59+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -136,8 +136,7 @@ msgstr ""
 msgid "Cépages accessoires"
 msgstr ""
 
-#: scripts/_lib/map_template.py:85 scripts/_lib/map_template.py:326
-#: scripts/_lib/map_template.py:490
+#: scripts/_lib/map_template.py:85 scripts/_lib/map_template.py:490
 msgid "Cépages"
 msgstr ""
 
@@ -680,28 +679,20 @@ msgstr ""
 msgid "Registre des IG du Royaume-Uni"
 msgstr ""
 
-#: scripts/_lib/map_template.py:323
+#: scripts/_lib/map_template.py:325
 msgid "Légende couleurs"
 msgstr ""
 
-#: scripts/_lib/map_template.py:324
-msgid "Bassin viticole"
-msgstr ""
-
-#: scripts/_lib/map_template.py:325
+#: scripts/_lib/map_template.py:326
 msgid "Plus l'aire est petite, plus la teinte est dense."
 msgstr ""
 
-#: scripts/_lib/map_template.py:327
-msgid "principal — variété de la cuvée"
-msgstr ""
-
 #: scripts/_lib/map_template.py:328
-msgid "accessoire — assemblage limité"
+msgid "Zoom avant"
 msgstr ""
 
 #: scripts/_lib/map_template.py:329
-msgid "intérêt — observation/conservation"
+msgid "Zoom arrière"
 msgstr ""
 
 #: scripts/_lib/map_template.py:331

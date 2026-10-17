@@ -43,3 +43,29 @@ def test_tokens_match_the_paint_colours() -> None:
     src = inspect.getsource(mt._build_source_block).lower()
     assert _token("--c-accent") in src
     assert _token("--c-pgi") in src
+
+
+def _source_block() -> str:
+    return mt._build_source_block(
+        layer_url="/map-data/appellations.pmtiles",
+        overview_layer_url="/map-data/appellations-overview.pmtiles",
+        source_type="pmtiles", area_q1=1.0, area_q3=100.0, lod=None,
+    )
+
+
+def test_source_block_has_hover_state_under_the_selection() -> None:
+    block = _source_block()
+    assert "['feature-state', 'hover']" in block
+    assert "['feature-state', 'selected']" in block
+    # Every fill layer carries both: the selection override comes first.
+    for layer in ("'appellations-fill'", "'appellations-fill-overview'"):
+        i = block.index(layer)
+        chunk = block[i: block.index("map.addLayer", i + 1) if "map.addLayer" in block[i + 1:] else len(block)]
+        assert "['feature-state', 'selected'], false], 0.60, ['boolean', ['feature-state', 'hover']" in chunk, layer
+
+
+def test_non_wine_records_take_the_spirits_colour() -> None:
+    block = _source_block()
+    assert "['==', ['get', 'is_wine'], '0'], '#a07530'" in block
+    assert block.index("'is_wine'") < block.index("['get', 'kind'], 'IGP'")
+    assert _token("--c-spirit") == "#a07530"

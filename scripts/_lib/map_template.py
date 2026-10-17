@@ -320,13 +320,13 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_ofag_repertoire": _("Répertoire suisse des AOC (OFAG/BLW)"),
         "src_gov_uk_spec": _("Cahier des charges (GOV.UK, PDF)"),
         "src_gov_uk_register": _("Registre des IG du Royaume-Uni"),
+        # The legend rides the map (app.js `legendControl`): one swatch per fill
+        # colour with its scheme word beside it; the long forms are the tooltips.
         "legend_h": _("Légende couleurs"),
-        "legend_bassin_h": _("Bassin viticole"),
         "legend_area_hint": _("Plus l'aire est petite, plus la teinte est dense."),
-        "legend_grapes_h": _("Cépages"),
-        "legend_principal": _("principal — variété de la cuvée"),
-        "legend_accessory": _("accessoire — assemblage limité"),
-        "legend_observation": _("intérêt — observation/conservation"),
+        # Accessible names of MapLibre's zoom buttons (constructor `locale`).
+        "ctrl_zoom_in": _("Zoom avant"),
+        "ctrl_zoom_out": _("Zoom arrière"),
         "pt_role_disclaimer": _(
             "Le régulateur portugais (IVV) n'établit pas de distinction principal/accessoire — "
             "toutes les castas autorisées sont listées ensemble dans le caderno de especificações."
@@ -955,6 +955,9 @@ def _build_source_block(
     assert 10 < fade0 < fade1 <= z_over_max, (fade0, fade1, z_over_max)
     assert z_detail_min <= fade0, (z_detail_min, fade0)
     sel = "['boolean', ['feature-state', 'selected'], false]"
+    # Hover (pointer devices, app.js setHover): brighter than the area ramp,
+    # never past 0.75, always under the selection's own override.
+    hov = "['boolean', ['feature-state', 'hover'], false]"
 
     def ramp(small: float, large: float) -> str:
         return (
@@ -966,7 +969,8 @@ def _build_source_block(
     # DGCs / climats read on top of their parent; large ones translucent so the
     # overview isn't flooded by regional fills).
     def fill_op(small: float) -> str:
-        return f"['case', {sel}, 0.60, {ramp(small, 0.20)}]"
+        base = ramp(small, 0.20)
+        return f"['case', {sel}, 0.60, {hov}, ['min', 0.75, ['+', 0.2, {base}]], {base}]"
 
     # At the continental overview a footprint is a few pixels across and a
     # region stacks five to ten of them (regional AOC, village AOCs, crus);
@@ -977,10 +981,11 @@ def _build_source_block(
     is_env = "['==', ['get', 'geom_source'], 'parcellaire-envelope']"
 
     def fill_op_over(small: float, env_scale: float) -> str:
-        return (
-            f"['case', {sel}, 0.60, ['case', {is_env}, "
-            f"['*', {env_scale}, {ramp(small, 0.20)}], {ramp(small, 0.20)}]]"
+        base = (
+            f"['case', {is_env}, ['*', {env_scale}, {ramp(small, 0.20)}], "
+            f"{ramp(small, 0.20)}]"
         )
+        return f"['case', {sel}, 0.60, {hov}, ['min', 0.75, ['+', 0.2, {base}]], {base}]"
 
     # Outline — constant ink. `frag` is perimeter/area in m⁻¹, so
     # frag × width_px × m_per_px is the stroke area per fill area; capping that
@@ -999,8 +1004,9 @@ def _build_source_block(
     def width(z: float, small: float, large: float, w_min: float | None = None) -> str:
         base = ramp(small, large)
         if w_min is None:
-            return f"['case', {sel}, 2.5, {base}]"
-        return f"['case', {sel}, 2.5, ['min', {base}, {ink(z, w_min)}]]"
+            return f"['case', {sel}, 2.5, {hov}, ['+', 0.8, {base}], {base}]"
+        clamped = f"['min', {base}, {ink(z, w_min)}]"
+        return f"['case', {sel}, 2.5, {hov}, ['+', 0.8, {clamped}], {clamped}]"
 
     # Below the detail zoom a sub-half-pixel stroke still renders as a
     # hairline, so the shredded shapes that survive generalisation (a
@@ -1054,6 +1060,10 @@ def _build_source_block(
     fill_color = (
         "        'fill-color': [\n"
         "          'case',\n"
+        # Non-wine GIs (eaux-de-vie, ciders, spirit IGs; is_wine is the MVT
+        # string '0' / '1') take the spirits colour the legend shows while
+        # they are on — tested first, a cider PGI is not a wine PGI.
+        "          ['==', ['get', 'is_wine'], '0'], '#a07530',\n"
         "          ['==', ['get', 'kind'], 'IGP'], '#6e7546',\n"
         "          '#934050'\n"
         "        ],\n"
@@ -3120,19 +3130,6 @@ _TEMPLATE = """<!doctype html>
   #grape-tooltip .fr-marker {{ font-size:10px; color:var(--n-400) }}
   #sidebar-toggle {{ display:none; position:fixed; top:8px; right:8px; z-index:30; width:44px; height:44px; background:var(--n-900); color:var(--n-100); border:1px solid var(--n-700); border-radius:4px; font-size:18px; cursor:pointer; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.2) }}
   #sidebar-toggle:hover {{ background:var(--n-800) }}
-  #legend {{ border-top:1px solid var(--n-800) }}
-  #legend > summary {{ padding:8px 16px; color:var(--n-300); font-size:11px; text-transform:uppercase; letter-spacing:0.06em }}
-  #legend .legend-body {{ padding:4px 16px 12px; font-size:11.5px; color:var(--n-300); line-height:1.5 }}
-  #legend .swatch-row {{ display:flex; align-items:center; gap:6px; margin:3px 0 }}
-  #legend .sw {{ display:inline-block; width:14px; height:14px; border-radius:3px; flex:0 0 14px; border:1px solid rgba(255,255,255,0.1) }}
-  #legend .sw.aoc {{ background:var(--c-accent) }}
-  #legend .sw.igp {{ background:var(--c-pgi) }}
-  #legend .sw.principal {{ background:#e8eef5 }}
-  #legend .sw.accessory {{ background:#f0f0f0 }}
-  #legend .sw.observation {{ background:#fff8d8 }}
-  #legend .legend-h {{ color:var(--n-400); font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; margin-top:8px }}
-  #legend .legend-h:first-child {{ margin-top:0 }}
-  #legend .hint {{ color:var(--n-400); font-style:italic; margin-top:4px }}
   @media (max-width: 768px) {{
     #app {{ flex-direction:column }}
     #sidebar-toggle {{ display:flex }}
@@ -3146,6 +3143,8 @@ _TEMPLATE = """<!doctype html>
     .facet input[type=checkbox] {{ width:18px; height:18px }}
     .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
     .facet .tree-toggle {{ min-width:44px; min-height:40px; font-size:18px }}
+    /* Pinch zooms on a phone; the buttons would only crowd the corner. */
+    .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {{ display:none }}
     /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */
     .omni-input {{ font-size:16px }}
   }}
@@ -3205,6 +3204,27 @@ _TEMPLATE = """<!doctype html>
   #about-dialog button:focus-visible,
   #about-dialog a:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:2px; border-radius:3px }}
   .maplibregl-popup-content a:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:2px }}
+  /* Map chrome (app.js): the hover label that follows the cursor, the legend
+     chip above the scale, and MapLibre's controls in both themes. Bottom-corner
+     controls stack (later ones above): zoom above the attribution, the legend
+     above the scale. */
+  .maplibregl-ctrl-bottom-left .maplibregl-ctrl, .maplibregl-ctrl-bottom-right .maplibregl-ctrl {{ clear:both }}
+  .owm-hover {{ pointer-events:none }}
+  .owm-hover .maplibregl-popup-content {{ padding:4px 9px !important; font-size:12px; font-weight:600; color:var(--n-850); background:rgba(255,255,255,0.95); box-shadow:0 1px 4px rgba(0,0,0,0.3); border-radius:4px; white-space:nowrap }}
+  .owm-hover .maplibregl-popup-tip {{ display:none }}
+  .owm-legend {{ display:flex; gap:10px; align-items:center; padding:4px 8px; background:rgba(255,255,255,0.92); border-radius:4px; box-shadow:0 0 0 2px rgba(0,0,0,0.1); font-size:11px; color:var(--n-850); pointer-events:auto }}
+  .owm-legend .legend-item {{ display:inline-flex; align-items:center; gap:5px }}
+  .owm-legend .sw {{ width:12px; height:12px; border-radius:3px; border:1px solid rgba(0,0,0,0.15); flex:0 0 12px }}
+  .owm-legend .sw.aoc {{ background:var(--c-accent) }}
+  .owm-legend .sw.igp {{ background:var(--c-pgi) }}
+  .owm-legend .sw.spirit {{ background:var(--c-spirit) }}
+  html.theme-dark .maplibregl-ctrl-attrib, html.theme-dark .maplibregl-ctrl-group {{ background:var(--n-dark-panel); color:var(--n-dark-text) }}
+  html.theme-dark .maplibregl-ctrl-attrib a {{ color:var(--n-dark-text) }}
+  html.theme-dark .maplibregl-ctrl-attrib-button, html.theme-dark .maplibregl-ctrl-group .maplibregl-ctrl-icon {{ filter:invert(1) }}
+  html.theme-dark .maplibregl-ctrl-group button + button {{ border-top-color:var(--n-700) }}
+  html.theme-dark .maplibregl-ctrl-scale {{ background:rgba(28,28,30,0.7); color:var(--n-dark-text); border-color:var(--n-dark-text) }}
+  html.theme-dark .owm-legend {{ background:rgba(28,28,30,0.92); color:var(--n-dark-text); box-shadow:0 0 0 2px rgba(255,255,255,0.12) }}
+  html.theme-dark .owm-hover .maplibregl-popup-content {{ background:rgba(28,28,30,0.95); color:var(--n-dark-text) }}
   /* Skip-to-map link: off-screen until focused, so keyboard users can bypass
      the filter sidebar and jump straight to the map. */
   .skip-link {{ position:absolute; left:8px; top:-48px; z-index:60; background:var(--c-accent); color:var(--n-0);
@@ -3414,20 +3434,6 @@ _LAB_ACTIVE = """
 
 
 _LAB_LEGEND_FOOTER = """
-    <details id="legend" open>
-      <summary>{labels[legend_h]}</summary>
-      <div class="legend-body">
-        <div class="legend-h">{labels[legend_bassin_h]}</div>
-        <div class="swatch-row"><span class="sw aoc"></span><span>{labels[legend_origin]}</span></div>
-        <div class="swatch-row"><span class="sw igp"></span><span>{labels[legend_gi]}</span></div>
-        <div class="hint">{labels[legend_area_hint]}</div>
-        <div class="legend-h">{labels[legend_grapes_h]}</div>
-        <div class="swatch-row"><span class="sw principal"></span><span>{labels[legend_principal]}</span></div>
-        <div class="swatch-row"><span class="sw accessory"></span><span>{labels[legend_accessory]}</span></div>
-        <div class="swatch-row"><span class="sw observation"></span><span>{labels[legend_observation]}</span></div>
-      </div>
-    </details>
-
     <div id="sidebar-footer">
       {sidebar_disclaimer_html}
       <div id="sidebar-footer-links">

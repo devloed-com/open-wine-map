@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  open-wine-map\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-17 14:47+0200\n"
+"POT-Creation-Date: 2026-10-17 14:59+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: nl\n"
@@ -136,8 +136,7 @@ msgstr "Hoofddruivenrassen"
 msgid "Cépages accessoires"
 msgstr "Aanvullende druivenrassen"
 
-#: scripts/_lib/map_template.py:85 scripts/_lib/map_template.py:326
-#: scripts/_lib/map_template.py:490
+#: scripts/_lib/map_template.py:85 scripts/_lib/map_template.py:490
 msgid "Cépages"
 msgstr "Druivenrassen"
 
@@ -752,29 +751,21 @@ msgstr "Productdossier (GOV.UK, PDF)"
 msgid "Registre des IG du Royaume-Uni"
 msgstr "Register van geografische aanduidingen (VK)"
 
-#: scripts/_lib/map_template.py:323
+#: scripts/_lib/map_template.py:325
 msgid "Légende couleurs"
 msgstr "Legende"
 
-#: scripts/_lib/map_template.py:324
-msgid "Bassin viticole"
-msgstr "Wijnstreek"
-
-#: scripts/_lib/map_template.py:325
+#: scripts/_lib/map_template.py:326
 msgid "Plus l'aire est petite, plus la teinte est dense."
 msgstr "Hoe kleiner het gebied, hoe dichter de tint."
 
-#: scripts/_lib/map_template.py:327
-msgid "principal — variété de la cuvée"
-msgstr "hoofdras — variëteit van de cuvée"
-
 #: scripts/_lib/map_template.py:328
-msgid "accessoire — assemblage limité"
-msgstr "bijras — beperkte assemblage"
+msgid "Zoom avant"
+msgstr "Inzoomen"
 
 #: scripts/_lib/map_template.py:329
-msgid "intérêt — observation/conservation"
-msgstr "interesse — observatie/behoud"
+msgid "Zoom arrière"
+msgstr "Uitzoomen"
 
 #: scripts/_lib/map_template.py:331
 msgid ""
@@ -2037,4 +2028,16 @@ msgstr "palo cortado"
 
 #~ msgid "Avancée"
 #~ msgstr "Geavanceerd"
+
+#~ msgid "Bassin viticole"
+#~ msgstr "Wijnstreek"
+
+#~ msgid "principal — variété de la cuvée"
+#~ msgstr "hoofdras — variëteit van de cuvée"
+
+#~ msgid "accessoire — assemblage limité"
+#~ msgstr "bijras — beperkte assemblage"
+
+#~ msgid "intérêt — observation/conservation"
+#~ msgstr "interesse — observatie/behoud"
 

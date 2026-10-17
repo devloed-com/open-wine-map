@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  open-wine-map\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-17 14:47+0200\n"
+"POT-Creation-Date: 2026-10-17 14:59+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: es\n"
@@ -136,8 +136,7 @@ msgstr "Variedades principales"
 msgid "Cépages accessoires"
 msgstr "Variedades complementarias"
 
-#: scripts/_lib/map_template.py:85 scripts/_lib/map_template.py:326
-#: scripts/_lib/map_template.py:490
+#: scripts/_lib/map_template.py:85 scripts/_lib/map_template.py:490
 msgid "Cépages"
 msgstr "Variedades de uva"
 
@@ -750,29 +749,21 @@ msgstr "Pliego de condiciones (GOV.UK, PDF)"
 msgid "Registre des IG du Royaume-Uni"
 msgstr "Registro de IG del Reino Unido"
 
-#: scripts/_lib/map_template.py:323
+#: scripts/_lib/map_template.py:325
 msgid "Légende couleurs"
 msgstr "Leyenda de colores"
 
-#: scripts/_lib/map_template.py:324
-msgid "Bassin viticole"
-msgstr "Cuenca vitícola"
-
-#: scripts/_lib/map_template.py:325
+#: scripts/_lib/map_template.py:326
 msgid "Plus l'aire est petite, plus la teinte est dense."
 msgstr "Cuanto menor es el área, más densa es la tonalidad."
 
-#: scripts/_lib/map_template.py:327
-msgid "principal — variété de la cuvée"
-msgstr "principal — variedad de la mezcla"
-
 #: scripts/_lib/map_template.py:328
-msgid "accessoire — assemblage limité"
-msgstr "accesoria — mezcla limitada"
+msgid "Zoom avant"
+msgstr "Acercar"
 
 #: scripts/_lib/map_template.py:329
-msgid "intérêt — observation/conservation"
-msgstr "de interés — observación/conservación"
+msgid "Zoom arrière"
+msgstr "Alejar"
 
 #: scripts/_lib/map_template.py:331
 msgid ""
@@ -2044,4 +2035,16 @@ msgstr "palo cortado"
 
 #~ msgid "Avancée"
 #~ msgstr "Avanzada"
+
+#~ msgid "Bassin viticole"
+#~ msgstr "Cuenca vitícola"
+
+#~ msgid "principal — variété de la cuvée"
+#~ msgstr "principal — variedad de la mezcla"
+
+#~ msgid "accessoire — assemblage limité"
+#~ msgstr "accesoria — mezcla limitada"
+
+#~ msgid "intérêt — observation/conservation"
+#~ msgstr "de interés — observación/conservación"
 

@@ -373,7 +373,9 @@
     // start at z3) so zooming out to a continental overview never drops into
     // an empty, polygon-less void. maxZoom 14 is defensive (tiles max at z12;
     // MapLibre overzooms cleanly above that).
-    center: [2.6, 46.5], zoom: 5.4, minZoom: 3, maxZoom: 14, hash: true
+    center: [2.6, 46.5], zoom: 5.4, minZoom: 3, maxZoom: 14, hash: true,
+    // Accessible names of the zoom buttons, in the page's locale.
+    locale: { 'NavigationControl.ZoomIn': LABELS.ctrl_zoom_in, 'NavigationControl.ZoomOut': LABELS.ctrl_zoom_out }
   }); }
 
   // ----- theme switch (light / dark / system) -----
@@ -580,6 +582,35 @@
     if (gates.includes('spirit')) showSpirits = true;
   }
 
+  // Map chrome. Zoom buttons (no compass: the map never rotates) above the
+  // attribution; a metric scale bottom-left and, above it, the legend — each
+  // fill colour with its scheme beside it (never colour alone), the spirits
+  // colour only while spirits are shown. Later bottom-corner controls stack
+  // above earlier ones. Pinch is the zoom affordance on phones: the CSS
+  // hides the buttons there.
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'bottom-right');
+  map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+  const legendControl = {
+    onAdd() {
+      this._el = document.createElement('div');
+      this._el.className = 'maplibregl-ctrl owm-legend';
+      this._el.setAttribute('role', 'group');
+      this._el.setAttribute('aria-label', LABELS.legend_h);
+      this._el.title = LABELS.legend_area_hint;
+      this.refresh();
+      return this._el;
+    },
+    onRemove() { if (this._el) this._el.remove(); },
+    refresh() {
+      if (!this._el) return;
+      const item = (cls, text, title) => `<span class="legend-item" title="${escapeAttr(title)}"><span class="sw ${cls}" aria-hidden="true"></span>${escapeHtml(text)}</span>`;
+      this._el.innerHTML = item('aoc', LABELS.scheme_pdo, LABELS.legend_origin)
+        + item('igp', LABELS.scheme_pgi, LABELS.legend_gi)
+        + (showSpirits ? item('spirit', LABELS.scheme_spirit_gi, LABELS.scheme_spirit_gi) : '');
+    },
+  };
+  map.addControl(legendControl, 'bottom-left');
+
   const filters = {
     q: '',
     styles: new Set(),
@@ -618,6 +649,7 @@
     refreshFacetBadges();
     refreshFacetAvailabilityDebounced();
     renderActiveFilters();
+    legendControl.refresh();
     if (opts && opts.fit) fitToFiltered();
   }
 
@@ -3228,23 +3260,82 @@
   });
 
   // ----- map interactions -----
+  // One hit test for hover and click: a 4-pixel box around the point —
+  // vineyard polygons (grand-cru climats, narrow premier-cru slivers) are
+  // often sub-pixel thin at typical zoom, so a point-only test misses them —
+  // over both fill layers (inside the crossfade band a record is present in
+  // both sources: the same slug twice, deduped here). DGCs that share another
+  // AOC's polygon (geom_source = parent-appellation / sibling-dgc) are
+  // dropped: the geometry was inherited, they have no distinct shape to point
+  // at, and they would clutter the stack with siblings nobody meant. Sorted
+  // by localityRank, so the first slug is the card a click puts in front.
+  function hitSlugsAt(point) {
+    const r = 4;
+    const bbox = [[point.x - r, point.y - r], [point.x + r, point.y + r]];
+    const features = map.queryRenderedFeatures(bbox, {
+      layers: ['appellations-fill', 'appellations-fill-overview'],
+    });
+    const seen = new Set();
+    const slugs = [];
+    for (const f of features) {
+      const s = f.properties.slug;
+      if (!s || seen.has(s)) continue;
+      seen.add(s);
+      const rec = AOCS[s];
+      const src = rec && rec.geom_source;
+      if (src === 'parent-appellation' || src === 'sibling-dgc') continue;
+      slugs.push(s);
+    }
+    slugs.sort((a, b) => localityRank(a) - localityRank(b));
+    return slugs;
+  }
+
+  // Hover, pointer devices only: the polygon under the cursor brightens on
+  // both sources (feature-state `hover`, see the source block) and a label
+  // follows the cursor with the name and "+N" for the rest of the stack a
+  // click would open. Touch never hovers, so nothing is wired there; the
+  // label is decorative for assistive tech (aria-hidden) — a click opens the
+  // card, and the sidebar list is the keyboard path to a record.
+  const HOVER_MQ = window.matchMedia('(hover: hover) and (pointer: fine)');
   let hoveredSlug = null;
+  let hoverRaf = 0;
+  const hoverTip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'owm-hover', offset: 14 });
+  hoverTip.trackPointer();
+  function setHoverState(slug, on) {
+    for (const source of ['appellations', 'appellations-overview']) {
+      const opts = { source: source, id: slug };
+      if (SOURCE_TYPE === 'pmtiles') opts.sourceLayer = 'appellations';
+      try { map.setFeatureState(opts, { hover: on }); } catch (e) {}
+    }
+  }
+  function hoverText(slug, extra) {
+    const r = AOCS[slug];
+    return (r && r.name ? r.name : slug) + (extra > 0 ? ` · +${extra}` : '');
+  }
+  function setHover(slug, extra) {
+    if (slug && slug === hoveredSlug) { hoverTip.setText(hoverText(slug, extra)); return; }
+    if (hoveredSlug) setHoverState(hoveredSlug, false);
+    hoveredSlug = slug;
+    if (!slug) { hoverTip.remove(); map.getCanvas().style.cursor = ''; return; }
+    setHoverState(slug, true);
+    map.getCanvas().style.cursor = 'pointer';
+    hoverTip.setText(hoverText(slug, extra)).addTo(map);
+    const el = hoverTip.getElement();
+    if (el) el.setAttribute('aria-hidden', 'true');
+  }
 
   map.on('load', () => {
 __OWM_source_block__
-    for (const id of ['appellations-fill', 'appellations-outline',
-                      'appellations-fill-overview', 'appellations-outline-overview']) {
-      map.on('mousemove', id, e => {
-        if (!e.features.length) return;
-        map.getCanvas().style.cursor = 'pointer';
-        const f = e.features[0];
-        const slug = f.properties.slug;
-        if (slug !== hoveredSlug) hoveredSlug = slug;
+    if (HOVER_MQ.matches) {
+      map.on('mousemove', e => {
+        if (hoverRaf) return;
+        hoverRaf = window.requestAnimationFrame(() => {
+          hoverRaf = 0;
+          const slugs = hitSlugsAt(e.point);
+          setHover(slugs[0] || null, slugs.length - 1);
+        });
       });
-      map.on('mouseleave', id, () => {
-        map.getCanvas().style.cursor = '';
-        hoveredSlug = null;
-      });
+      map.on('mouseout', () => setHover(null, 0));
     }
 
     // Single map-level click handler. Per-layer click handlers fired multiple
@@ -3253,33 +3344,7 @@ __OWM_source_block__
     // testing once at the click point gives one deterministic feature set,
     // and an empty hit becomes "click outside → deselect".
     map.on('click', e => {
-      // 4-pixel bbox around the click — vineyard polygons (grand-cru
-      // climats, narrow premier-cru slivers) are often sub-pixel thin at
-      // typical zoom; a point-only hit-test misses them.
-      const r = 4;
-      const bbox = [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
-      // Both fill layers: inside the crossfade band a record is present in
-      // both sources (the same slug twice — deduped below).
-      const features = map.queryRenderedFeatures(bbox, {
-        layers: ['appellations-fill', 'appellations-fill-overview'],
-      });
-      if (!features.length) { closePanel(false); return; }
-      // Dedupe by slug, and drop DGCs that share another AOC's polygon
-      // (geom_source = parent-appellation / sibling-dgc). They're returned
-      // because the underlying geometry was inherited, but they have no
-      // distinct shape to click on — selecting one gold-outlines the whole
-      // parent and clutters the panel stack with siblings nobody pointed at.
-      const seen = new Set();
-      const slugs = [];
-      for (const f of features) {
-        const s = f.properties.slug;
-        if (!s || seen.has(s)) continue;
-        seen.add(s);
-        const rec = AOCS[s];
-        const src = rec && rec.geom_source;
-        if (src === 'parent-appellation' || src === 'sibling-dgc') continue;
-        slugs.push(s);
-      }
+      const slugs = hitSlugsAt(e.point);
       if (!slugs.length) { closePanel(false); return; }
       const key = slugs.slice().sort().join('|');
       let via = 'map';

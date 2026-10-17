@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  open-wine-map\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-17 14:47+0200\n"
+"POT-Creation-Date: 2026-10-17 14:59+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -136,8 +136,7 @@ msgstr "Principal grape varieties"
 msgid "Cépages accessoires"
 msgstr "Accessory grape varieties"
 
-#: scripts/_lib/map_template.py:85 scripts/_lib/map_template.py:326
-#: scripts/_lib/map_template.py:490
+#: scripts/_lib/map_template.py:85 scripts/_lib/map_template.py:490
 msgid "Cépages"
 msgstr "Grape varieties"
 
@@ -746,29 +745,21 @@ msgstr "Product specification (GOV.UK, PDF)"
 msgid "Registre des IG du Royaume-Uni"
 msgstr "UK GI register"
 
-#: scripts/_lib/map_template.py:323
+#: scripts/_lib/map_template.py:325
 msgid "Légende couleurs"
 msgstr "Colour legend"
 
-#: scripts/_lib/map_template.py:324
-msgid "Bassin viticole"
-msgstr "Wine basin"
-
-#: scripts/_lib/map_template.py:325
+#: scripts/_lib/map_template.py:326
 msgid "Plus l'aire est petite, plus la teinte est dense."
 msgstr "Smaller area = denser fill."
 
-#: scripts/_lib/map_template.py:327
-msgid "principal — variété de la cuvée"
-msgstr "principal — main variety"
-
 #: scripts/_lib/map_template.py:328
-msgid "accessoire — assemblage limité"
-msgstr "accessory — limited blending"
+msgid "Zoom avant"
+msgstr "Zoom in"
 
 #: scripts/_lib/map_template.py:329
-msgid "intérêt — observation/conservation"
-msgstr "of interest — observation / conservation"
+msgid "Zoom arrière"
+msgstr "Zoom out"
 
 #: scripts/_lib/map_template.py:331
 msgid ""
@@ -2022,4 +2013,16 @@ msgstr "palo cortado"
 
 #~ msgid "Avancée"
 #~ msgstr "Advanced"
+
+#~ msgid "Bassin viticole"
+#~ msgstr "Wine basin"
+
+#~ msgid "principal — variété de la cuvée"
+#~ msgstr "principal — main variety"
+
+#~ msgid "accessoire — assemblage limité"
+#~ msgstr "accessory — limited blending"
+
+#~ msgid "intérêt — observation/conservation"
+#~ msgstr "of interest — observation / conservation"
 
