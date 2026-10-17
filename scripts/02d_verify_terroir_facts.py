@@ -32,7 +32,7 @@ or source sha changed since (a 02d re-run, a post-pass). `--refresh`
 re-gates everything selected; `--dry-run` grades and writes the report
 only (with `--sample N` this is the cheap LLM audit of R9).
 
-Providers: anthropic — default `claude-opus-5` with adaptive thinking
+Providers: anthropic — default: the newest Opus with adaptive thinking
 (`providers.STAGE_DEFAULTS["gate"]`; `--model` / `--thinking` override) /
 mistral / ollama; `--batch` submits every selected record as one
 Batch-API job (resumable via raw/.batch/02d-verify.json).

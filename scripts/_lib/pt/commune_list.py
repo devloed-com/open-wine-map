@@ -136,10 +136,12 @@ _TAIL_STOPS = re.compile(
 # Any candidate containing one of these phrases is discarded — Alentejo's
 # area section is mostly boundary prose ("Estremoz até à ribeira da Fonte
 # Boa") which would otherwise admit "Estremoz" plus a long noise tail.
+# Lower case only: the same words are capitalised inside five município
+# names (Ribeira de Pena, Ribeira Brava, Ribeira Grande, Albufeira,
+# Pampilhosa da Serra), and Vinho Verde had lost Ribeira de Pena.
 _NOISE_WORDS = re.compile(
     r"\b(?:at[ée]|ribeira|limite|estrada|serra|barragem|junta|caminho|"
     r"prossegue|segue|continua|ponto|cruzamento|altitude|albufeira)\b",
-    re.IGNORECASE,
 )
 
 # Single-letter spacing artefact: "a b r a n g e", "f r e g u e s i a".

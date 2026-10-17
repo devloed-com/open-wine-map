@@ -514,6 +514,51 @@
   try { viewMode = localStorage.getItem('view_mode') || 'simple'; } catch (e) {}
   if (viewMode !== 'advanced') viewMode = 'simple';
 
+  // Deep-link an appellation as a real path segment: /<lang>/<slug> for every
+  // locale, EN included (/en/<slug>) — so one CDN rewrite covers all four. EN's
+  // *home* stays at / (HOME_BASE); only its deep-links live under /en/. The slug
+  // rides the path; the camera stays in MapLibre's hash, so the two never
+  // collide. replaceState keeps it out of the back-button history.
+  // Static-host caveat: in-session navigation is pure client-side (no reload),
+  // but a fresh load / shared link of /<lang>/<slug> needs the server to serve
+  // the locale index for that path — scripts/serve.py locally, a CDN rewrite in
+  // prod. A legacy ?aoc= query is still read on load (and upgraded to a path).
+  const SLUG_BASE = '/' + LANG + '/';
+  const HOME_BASE = (LANG === 'en') ? '/' : SLUG_BASE;
+  function slugFromPath() {
+    let p = window.location.pathname || '/';
+    p = (p.indexOf(SLUG_BASE) === 0) ? p.slice(SLUG_BASE.length) : p.replace(/^\//, '');
+    p = p.replace(/\/+$/, '').split('/')[0];
+    try { p = decodeURIComponent(p); } catch (e) {}
+    return p || null;
+  }
+  function setAocPath(slug) {
+    try {
+      const path = slug ? SLUG_BASE + encodeURIComponent(slug) : HOME_BASE;
+      history.replaceState(history.state, '', path + window.location.hash);
+    } catch (e) {}
+  }
+
+  // What the page URL asks to open on load, read once before anything
+  // rewrites it: an appellation's own page (/<lang>/<slug>, or a legacy
+  // ?aoc=), else a set shared as ?aocs=a,b,c (the MCP server's show_on_map
+  // links one, up to 200 slugs). Only slugs the bundle carries.
+  function landingRequest() {
+    let slug = slugFromPath();
+    if (!(slug && AOCS[slug])) {
+      slug = null;
+      try { const q = new URLSearchParams(window.location.search).get('aoc'); if (q && AOCS[q]) slug = q; } catch (e) {}
+    }
+    if (slug) return { slugs: [slug], set: false };
+    let setSlugs = [];
+    try {
+      const q = new URLSearchParams(window.location.search).get('aocs');
+      if (q) setSlugs = [...new Set(q.split(','))].filter(s => AOCS[s]).slice(0, 200);
+    } catch (e) {}
+    return { slugs: setSlugs, set: true };
+  }
+  const LANDING = landingRequest();
+
   let showIgp = false;
   try { showIgp = localStorage.getItem('show_igp') === '1'; } catch (e) {}
 
@@ -523,6 +568,18 @@
   // Spirits toggle is Advanced-only; in Simple mode spirits are always
   // hidden regardless of the persisted preference.
   function spiritsVisible() { return viewMode === 'advanced' && showSpirits; }
+
+  // A visitor who lands on an appellation's page — a search result, a shared
+  // link, an MCP map link — asked for it: turn on every toggle that would keep
+  // it off the map, so the map draws what the panel shows (a PGI landing used
+  // to frame an empty map; a cider PGI is behind the spirits gate too). For
+  // this page view only — a passive landing does not rewrite a returning
+  // visitor's saved preference — and untracked, the pageview records it.
+  for (const s of LANDING.slugs) {
+    const gates = hiddenGates(AOCS[s]);
+    if (gates.includes('igp')) showIgp = true;
+    if (gates.includes('spirit')) { viewMode = 'advanced'; showSpirits = true; }
+  }
 
   const filters = {
     q: '',
@@ -1970,6 +2027,11 @@
         : escapeHtml(sources.parroquias_licence || '');
       links.push(`<li><a href="${escapeAttr(sources.parroquias_url)}" target="_blank" rel="noopener">${LABELS.src_parroquias}</a> — ${escapeHtml(sources.parroquias_attribution || '')} · ${licence}</li>`);
     }
+    if (sources.area_act_url) {
+      // the national act a PT sub-região is drawn from (subregiao_areas.py)
+      const detail = sources.area_act_detail ? ' — ' + escapeHtml(sources.area_act_detail) : '';
+      links.push(`<li><a href="${escapeAttr(sources.area_act_url)}" target="_blank" rel="noopener">${LABELS.src_area_act}</a>${detail}</li>`);
+    }
     if (sources.id_eambrosia) {
       const eambrosiaUrl = `https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/details/${encodeURIComponent(sources.id_eambrosia)}`;
       const fileNum = sources.file_number ? ' — ' + LABELS.src_eambrosia_id + ' ' + escapeHtml(sources.file_number) : '';
@@ -1978,6 +2040,11 @@
     if (sources.cantonal_reglement_url) {
       const lab = sources.cantonal_reglement_label ? ' — ' + escapeHtml(sources.cantonal_reglement_label) : '';
       links.push(`<li><a href="${escapeAttr(sources.cantonal_reglement_url)}" target="_blank" rel="noopener">${LABELS.src_cantonal_reglement}</a>${lab}</li>`);
+    }
+    if (sources.cantonal_roster_url) {
+      const lab = sources.cantonal_roster_label ? ' — ' + escapeHtml(sources.cantonal_roster_label) : '';
+      const via = sources.cantonal_roster_applied_by ? ' · ' + escapeHtml(sources.cantonal_roster_applied_by) : '';
+      links.push(`<li><a href="${escapeAttr(sources.cantonal_roster_url)}" target="_blank" rel="noopener">${LABELS.src_cantonal_reglement}</a>${lab}${via}</li>`);
     }
     if (sources.gov_uk_spec_url) {
       const fmtTail = sources.spec_format ? ' — ' + escapeHtml(String(sources.spec_format).toUpperCase()) : '';
@@ -2286,6 +2353,13 @@
     if (gs === 'mapa-zone') return escapeHtml(LABELS.geom_src_mapa);
     if (gs === 'figshare-pdo' || gs === 'figshare-pdo-alias') return escapeHtml(LABELS.geom_src_betard);
     if (gs === 'region-pdo-union') return escapeHtml(LABELS.geom_src_pdo_union);
+    const sources = r.sources || {};
+    if (gs.startsWith('caop-') && sources.area_act_url) {
+      // A Portuguese sub-região drawn from the national act's table, which
+      // the card cites (scripts/_lib/pt/subregiao_areas.py).
+      const act = `<a href="${escapeAttr(sources.area_act_url)}" target="_blank" rel="noopener">${escapeHtml(sources.area_act_label || '')}</a>`;
+      return fmt(LABELS.geom_src_national_act, { act: act });
+    }
     if (/^(gisco-|caop-|swissboundaries-|ons-)/.test(gs) || gs === 'nuts2-province' || gs === 'geometry-research-municipios') return escapeHtml(LABELS.geom_src_admin_union);
     return '';
   }
@@ -2344,20 +2418,20 @@
     return out;
   }
 
+  // Entries that carry their own commas ("Alte, Querença (Loulé)") are
+  // separated by semicolons. Mirrors _join_units in content_block.py.
+  function joinUnits(list) {
+    const items = list.map(n => escapeHtml(String(n)));
+    return items.join(items.some(n => n.includes(', ')) ? '; ' : ', ');
+  }
+
   function unitsLine(r) {
     let out = '';
-    const unmatched = r.geom_units_unmatched || [];
-    if (unmatched.length) {
-      out += `<div class="approx-line">${fmt(LABELS.geom_units_unmatched, { names: unmatched.map(n => escapeHtml(String(n))).join(', ') })}</div>`;
-    }
-    const proxied = r.geom_units_proxied || [];
-    if (proxied.length) {
-      out += `<div class="approx-line">${fmt(LABELS.geom_units_proxied, { names: proxied.map(n => escapeHtml(String(n))).join(', ') })}</div>`;
-    }
-    for (const key of ['geom_units_boundary', 'geom_units_boundary_units']) {
-      const boundary = r[key] || [];
-      if (boundary.length) {
-        out += `<div class="approx-line">${fmt(LABELS[key], { names: boundary.map(n => escapeHtml(String(n))).join(', ') })}</div>`;
+    for (const key of ['geom_units_unmatched', 'geom_units_proxied', 'geom_units_partial',
+      'geom_units_boundary', 'geom_units_boundary_units']) {
+      const list = r[key] || [];
+      if (list.length) {
+        out += `<div class="approx-line">${fmt(LABELS[key], { names: joinUnits(list) })}</div>`;
       }
     }
     return out;
@@ -2424,11 +2498,12 @@
       // transliteration of the cahier spelling for non-Latin scripts
       // (Cyrillic / Greek native varieties that VIVC hasn't catalogued)
       // so pills still surface a readable Latin form alongside the
-      // native one. Per-record `grape_names_latin` covers slugs that
-      // never make it into GRAPES_INFO (no Wikipedia + no VIVC).
+      // native one. The record's own `grape_names_latin` transliterates the
+      // spelling this pill shows, so it comes before the corpus-wide form,
+      // which transliterates another record's ("Αθήρι Β" → "Atheri B").
       const canon = (info && info.canonical_name)
-        || (info && info.name_latin)
         || (r.grape_names_latin && r.grape_names_latin[g])
+        || (info && info.name_latin)
         || '';
       const labelInner = canon && !canonicalEqualsCahier(canon, cahierName)
         ? `${escapeHtml(cahierName)} <span class="canon">(${escapeHtml(canon)})</span>`
@@ -3004,31 +3079,6 @@
     } catch (e) {}
   }
 
-  // Deep-link an appellation as a real path segment: /<lang>/<slug> for every
-  // locale, EN included (/en/<slug>) — so one CDN rewrite covers all four. EN's
-  // *home* stays at / (HOME_BASE); only its deep-links live under /en/. The slug
-  // rides the path; the camera stays in MapLibre's hash, so the two never
-  // collide. replaceState keeps it out of the back-button history.
-  // Static-host caveat: in-session navigation is pure client-side (no reload),
-  // but a fresh load / shared link of /<lang>/<slug> needs the server to serve
-  // the locale index for that path — scripts/serve.py locally, a CDN rewrite in
-  // prod. A legacy ?aoc= query is still read on load (and upgraded to a path).
-  const SLUG_BASE = '/' + LANG + '/';
-  const HOME_BASE = (LANG === 'en') ? '/' : SLUG_BASE;
-  function slugFromPath() {
-    let p = window.location.pathname || '/';
-    p = (p.indexOf(SLUG_BASE) === 0) ? p.slice(SLUG_BASE.length) : p.replace(/^\//, '');
-    p = p.replace(/\/+$/, '').split('/')[0];
-    try { p = decodeURIComponent(p); } catch (e) {}
-    return p || null;
-  }
-  function setAocPath(slug) {
-    try {
-      const path = slug ? SLUG_BASE + encodeURIComponent(slug) : HOME_BASE;
-      history.replaceState(history.state, '', path + window.location.hash);
-    } catch (e) {}
-  }
-
   // Single close path: clears selection + stack state + URL param, and returns
   // focus to the panel's trigger when asked (WCAG 2.4.3). Map clicks pass
   // returnFocus=false — the user's intent already moved to the map.
@@ -3062,11 +3112,8 @@
     // whose record the bundle does not carry, the card is shown instead.
     // No-op on the homepage (no article).
     var _ssr = document.getElementById('ssr-content');
-    let urlSlug = slugFromPath();
-    if (!(urlSlug && AOCS[urlSlug])) {
-      try { const q = new URLSearchParams(window.location.search).get('aoc'); if (q && AOCS[q]) urlSlug = q; } catch (e) {}
-    }
-    if (urlSlug && AOCS[urlSlug]) {
+    if (LANDING.slugs.length && !LANDING.set) {
+      const urlSlug = LANDING.slugs[0];
       lastStackKey = urlSlug;
       stackFocusIndex = 0;
       renderPanelStack([urlSlug], 0, undefined, 'landing');
@@ -3081,16 +3128,11 @@
       }
       return;
     }
-    // A set shared as ?aocs=a,b,c (the MCP server's show_on_map links one,
-    // up to its 200 slugs):
-    // the whole set in the panel stack, all of it highlighted, the map framed
-    // on all of it. The URL keeps the query until the reader opens something
-    // else (setAocPath drops it), so the view stays shareable.
-    let setSlugs = [];
-    try {
-      const q = new URLSearchParams(window.location.search).get('aocs');
-      if (q) setSlugs = [...new Set(q.split(','))].filter(s => AOCS[s]).slice(0, 200);
-    } catch (e) {}
+    // A shared ?aocs= set: the whole set in the panel stack, all of it
+    // highlighted, the map framed on all of it. The URL keeps the query until
+    // the reader opens something else (setAocPath drops it), so the view stays
+    // shareable.
+    const setSlugs = LANDING.set ? LANDING.slugs : [];
     if (setSlugs.length) {
       lastStackKey = setSlugs.slice().sort().join('|');
       stackFocusIndex = 0;
@@ -3421,10 +3463,15 @@ __OWM_source_block__
     const asContent = obj => ({ content: [{ type: 'text', text: JSON.stringify(obj) }], structuredContent: obj });
     const fail = msg => ({ content: [{ type: 'text', text: msg }], isError: true });
 
-    function register(name, def, run) {
+    // The `WebMCP Tool` event names the appellation a call fetched or opened
+    // (a known slug only, as the MCP server's `MCP Tool`); a search's query
+    // text is never sent.
+    const slugProp = input => (input && AOCS[input.slug] ? { slug: input.slug } : {});
+
+    function register(name, def, run, props) {
       const tool = Object.assign({ name: name }, def, {
         execute: async input => {
-          track('WebMCP Tool', { tool: name, locale: LANG });
+          track('WebMCP Tool', Object.assign({ tool: name, locale: LANG }, props ? props(input) : {}));
           try { return asContent(await run(input || {})); } catch (e) { return fail(String(e && e.message || e)); }
         },
       });
@@ -3437,7 +3484,7 @@ __OWM_source_block__
       if (!AOCS[slug]) throw new QueryError('unknown appellation slug: ' + slug);
       const complete = await hydratePanel(slug);
       return QC.full(slug, AOCS[slug], complete);
-    });
+    }, slugProp);
     register('list_facets', TOOL_DEFS.list_facets, () => QC.facets());
     register('show_appellation', {
       description: 'Open an appellation on the map: shows its detail panel and frames its area. Use after search_appellations when the user wants to see it.',
@@ -3445,5 +3492,5 @@ __OWM_source_block__
     }, ({ slug }) => {
       if (!openAppellation(slug, 'webmcp', null)) throw new QueryError('unknown appellation slug: ' + slug);
       return { shown: QC.brief(slug) };
-    });
+    }, slugProp);
   })();

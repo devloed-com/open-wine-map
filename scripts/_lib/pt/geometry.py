@@ -33,22 +33,37 @@ import geopandas as gpd
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 
+from .freguesias import (
+    AreaResolution,
+    Freguesia,
+    _Gazetteer,
+    fkey,
+    resolve_area_units,
+    unit_keys,
+)
+
 # Macro-region expansions: when the caderno declares the production
-# area as the whole autonomous region (Açores or Madeira) rather than
-# enumerating concelhos, expand the token into the constituent ilhas.
-# The names below match the `_concelhos_by_distrito` bare-name keys
-# (CAOP `distrito_ilha` stripped of "Ilha de/do/da"). Coverage:
-#   - Açores: 7 ilhas → 16 municipios (Grupo Central + Oriental; the
-#     Grupo Ocidental's Corvo + Flores are wine-free and not in the
-#     CAOP gpkg we ship).
-#   - Madeira: 2 ilhas → 11 municipios (RAM).
+# area as a whole archipelago rather than enumerating concelhos, expand
+# the token into the constituent ilhas. The names below match the
+# `_concelhos_by_distrito` bare-name keys (CAOP `distrito_ilha` stripped
+# of "Ilha de/do/da"). Coverage:
+#   - Açores: "todas as ilhas do Arquipélago dos Açores" — 9 ilhas → 19
+#     municípios (the western group, Flores + Corvo, is the second gpkg
+#     of the CAOP RAA zip; until 2026-10-13 only the central + eastern one
+#     was extracted, and the IG lacked two islands).
+#   - Madeira: the Região Demarcada da Madeira, "abrangendo as ilhas da
+#     Madeira e do Porto Santo" — 2 ilhas → 11 municípios; CAOP files the
+#     uninhabited Desertas and Selvagens under Santa Cruz and Funchal, so
+#     the parts more than `ISLAND_KEEP_M` off the two islands are dropped.
 PT_MACRO_REGIONS: dict[str, list[str]] = {
     "acores": [
         "Santa Maria", "São Miguel", "Terceira", "Graciosa",
-        "São Jorge", "Pico", "Faial",
+        "São Jorge", "Pico", "Faial", "Flores", "Corvo",
     ],
     "madeira": ["Madeira", "Porto Santo"],
 }
+# The macro tokens whose islands are drawn without the outlying ones.
+MACRO_ISLANDS_ONLY = frozenset({"madeira"})
 
 
 def _normalise_concelho(s: str) -> str:
@@ -64,8 +79,20 @@ def _normalise_concelho(s: str) -> str:
     return s
 
 
+_CONNECTORS = frozenset({"de", "do", "da", "dos", "das", "e"})
+
+
+def _loose_concelho(s: str) -> str:
+    """`_normalise_concelho` with the connectors dropped — the fallback
+    key for a caderno that writes "Póvoa do Varzim" where CAOP has
+    "Póvoa de Varzim" (Vinho Verde). No two CAOP 2025 municípios share
+    this key; the index refuses a key that would be ambiguous."""
+    words = _normalise_concelho(s).replace("-", " ").split()
+    return " ".join(w for w in words if w not in _CONNECTORS)
+
+
 class _Concelho:
-    __slots__ = ("geom", "name", "norm", "distrito")
+    __slots__ = ("geom", "name", "norm", "distrito", "freguesias")
 
     def __init__(
         self, geom: BaseGeometry, name: str, norm: str, distrito: str
@@ -74,6 +101,7 @@ class _Concelho:
         self.name = name
         self.norm = norm
         self.distrito = distrito
+        self.freguesias: list[Freguesia] = []
 
 
 class PTPolygonIndex:
@@ -97,8 +125,13 @@ class PTPolygonIndex:
         self._pdo_polygons: dict[str, BaseGeometry] = {}
         # norm → list of concelho candidates
         self._concelho_by_norm: dict[str, list[_Concelho]] = {}
+        # connector-free key → CAOP names carrying it (a spelling fallback)
+        self._names_by_loose: dict[str, set[str]] = {}
         # normalised distrito name → list of concelhos in that distrito
         self._concelhos_by_distrito: dict[str, list[_Concelho]] = {}
+        # "município|distrito_ilha" → concelho (the freguesia layer's join key)
+        self._concelho_by_key: dict[str, _Concelho] = {}
+        self._gazetteers: dict[int, _Gazetteer] = {}
 
         if figshare_gpkg.exists():
             gdf = gpd.read_file(figshare_gpkg)
@@ -144,21 +177,101 @@ class PTPolygonIndex:
                     continue
                 norm = _normalise_concelho(name)
                 c = _Concelho(geom=geom, name=name, norm=norm, distrito=distrito)
+                self._concelho_by_key[f"{name}|{distrito}"] = c
                 self._concelho_by_norm.setdefault(norm, []).append(c)
+                self._names_by_loose.setdefault(_loose_concelho(name), set()).add(name)
                 if distrito:
                     dnorm = _normalise_concelho(distrito)
                     self._concelhos_by_distrito.setdefault(dnorm, []).append(c)
                     # Açores / Madeira distrito_ilha rows are prefixed
-                    # with "Ilha de" / "Ilha do" / "Ilha da" — and a
-                    # bare "Ilha " for "Ilha Terceira" (no preposition).
+                    # with "Ilha de" / "Ilha do" / "Ilha da" / "Ilha das"
+                    # (Flores) — and a bare "Ilha " for "Ilha Terceira".
                     # Index a bare-name variant too so cadernos can say
                     # "Pico" / "Terceira" and still match.
                     bare = re.sub(
-                        r"^ilha\s+(?:de\s+|do\s+|da\s+)?", "", dnorm,
+                        r"^ilha\s+(?:de\s+|do\s+|da\s+|dos\s+|das\s+)?", "", dnorm,
                         flags=re.IGNORECASE,
                     )
                     if bare and bare != dnorm:
                         self._concelhos_by_distrito.setdefault(bare, []).append(c)
+            self._load_freguesias(gpkg, layers, target_crs)
+
+    def _load_freguesias(self, gpkg: Path, layers: list[str], target_crs: str) -> None:
+        """Attach the gpkg's freguesia polygons to their município (joined
+        on município + distrito/ilha, the two layers' shared attributes)."""
+        layer = next((n for n in layers if n and "freguesias" in n.lower()), None)
+        if layer is None:
+            return
+        gdf = gpd.read_file(gpkg, layer=layer)
+        if gdf.empty:
+            return
+        if gdf.crs is None or gdf.crs.to_string() != target_crs:
+            gdf = gdf.to_crs(target_crs)
+        for row in gdf.itertuples(index=False):
+            c = self._concelho_by_key.get(f"{row.municipio}|{row.distrito_ilha}")
+            if c is None or row.geometry is None or row.geometry.is_empty:
+                continue
+            parts, keys = unit_keys(row.freguesia, row.designacao_simplificada)
+            c.freguesias.append(Freguesia(
+                code=str(row.dtmnfr), name=row.freguesia,
+                short=row.designacao_simplificada or row.freguesia,
+                concelho=c.name, distrito=c.distrito, geom=row.geometry,
+                parts=parts, keys=keys,
+            ))
+
+    @property
+    def n_freguesias(self) -> int:
+        return sum(len(c.freguesias) for c in self._concelho_by_key.values())
+
+    def gazetteer(self, c: _Concelho) -> _Gazetteer:
+        g = self._gazetteers.get(id(c))
+        if g is None:
+            g = self._gazetteers[id(c)] = _Gazetteer(c.freguesias)
+        return g
+
+    def reset_gazetteers(self) -> None:
+        self._gazetteers.clear()
+
+    def concelho_by_key(self, key: str) -> _Concelho | None:
+        return self._concelho_by_key.get(key)
+
+    def find_freguesia(self, concelho: str, caop_name: str) -> Freguesia | None:
+        want = fkey(caop_name)
+        for c in self.concelho_candidates(concelho):
+            for f in c.freguesias:
+                if want in (fkey(f.name), fkey(f.short)):
+                    return f
+        return None
+
+    def concelho_candidates_ranked(self, name: str) -> list[tuple[int, _Concelho]]:
+        """`_candidates` (rank 0), then — for a name the caderno shortens —
+        the municípios whose name it opens (rank 1: "Santa Cruz" → Santa
+        Cruz da Graciosa, "São Roque" → São Roque do Pico, "Reguengos" →
+        Reguengos de Monsaraz)."""
+        out = [(0, c) for c in self._candidates(name)]
+        norm = _normalise_concelho(name)
+        if norm:
+            for key, cs in self._concelho_by_norm.items():
+                if key != norm and key.startswith(norm + " "):
+                    out.extend((1, c) for c in cs)
+        return out
+
+    def concelho_candidates(self, name: str) -> list[_Concelho]:
+        return [c for _, c in self.concelho_candidates_ranked(name)]
+
+    def concelhos_in_distrito(self, name: str) -> list[_Concelho]:
+        return list(self._concelhos_by_distrito.get(_normalise_concelho(name), []))
+
+    @staticmethod
+    def macro_distritos(token: str) -> list[str]:
+        return list(PT_MACRO_REGIONS.get(token, []))
+
+    macro_islands_only = MACRO_ISLANDS_ONLY
+
+    def resolve_area_units(self, parsed: dict, slug: str = "") -> AreaResolution:
+        """Freguesia-precision geometry for `area_units.parse_area_units`
+        output — see `freguesias.resolve_area_units`."""
+        return resolve_area_units(self, parsed, slug)
 
     @property
     def n_pdo_polygons(self) -> int:
@@ -174,6 +287,19 @@ class PTPolygonIndex:
     @property
     def n_distritos(self) -> int:
         return len(self._concelhos_by_distrito)
+
+    def _candidates(self, name: str) -> list[_Concelho]:
+        """Exact normalised match; else the one CAOP município whose
+        connector-free key is the name's (logged, never silent)."""
+        exact = self._concelho_by_norm.get(_normalise_concelho(name))
+        if exact:
+            return list(exact)
+        names = self._names_by_loose.get(_loose_concelho(name), set())
+        if len(names) != 1:
+            return []
+        (caop_name,) = names
+        print(f"  [pt-geom] spelling fold '{name}' → {caop_name}", file=sys.stderr)
+        return list(self._concelho_by_norm.get(_normalise_concelho(caop_name), []))
 
     def union_concelhos(
         self, concelho_names: Iterable[str]
@@ -198,9 +324,7 @@ class PTPolygonIndex:
         `ambiguous_resolved` counts.
         """
         per: list[tuple[str, list[_Concelho]]] = [
-            (n, list(self._concelho_by_norm.get(_normalise_concelho(n), [])))
-            for n in concelho_names
-            if n and n.strip()
+            (n, self._candidates(n)) for n in concelho_names if n and n.strip()
         ]
         expected_distritos = {
             _normalise_concelho(cands[0].distrito)

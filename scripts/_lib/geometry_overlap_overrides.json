@@ -251,6 +251,41 @@
       ],
       "reason": "Terre del Volturno IGT is drawn from the 78 comuni its MASAF disciplinare Art. 3 enumerates (raw/it/masaf-disciplinari-extracted/terre-del-volturno.json), which include comuni of the province of Napoli beside those of Caserta; epomeo is drawn as the whole province of Napoli (a resolver fallback — its disciplinare names the comuni of the isola d'Ischia, which the parser does not expand; queued in CURATOR_TODO). Two GISCO unions sharing the province's comuni: the 13 km² band is the regulator's own overlap of two IGTs, not a comune assigned in error.",
       "reviewed": "2026-09-25"
+    },
+    {
+      "pair": [
+        "douro",
+        "tras-os-montes"
+      ],
+      "reason": "Carvalhais and the União das freguesias de Avantos e Romeu (Mirandela), split between the two DOs by their own texts: the Douro / Porto caderno (Douro Superior) includes 'as propriedades que foram de D. Maria Angélica de Sousa Pinto Barroso, na freguesia de Frechas, e as da Sociedade Clemente Meneres, nas freguesias de Avantos, Carvalhais, Frechas e Romeu, do concelho de Mirandela'; the Trás-os-Montes caderno (sub-região Valpaços) includes 'Avantos (excluindo as propriedades da Sociedade Clemente Meneres); … Carvalhais (excluindo as propriedades da Sociedade Clemente Meneres)'. CAOP 2025 has no sub-freguesia layer, so both draw the parishes whole and both cards list them as included only in part (2026-10-13)."
+    },
+    {
+      "pair": [
+        "porto",
+        "tras-os-montes"
+      ],
+      "reason": "Carvalhais and the União das freguesias de Avantos e Romeu (Mirandela), split between the two DOs by their own texts: the Douro / Porto caderno (Douro Superior) includes 'as propriedades que foram de D. Maria Angélica de Sousa Pinto Barroso, na freguesia de Frechas, e as da Sociedade Clemente Meneres, nas freguesias de Avantos, Carvalhais, Frechas e Romeu, do concelho de Mirandela'; the Trás-os-Montes caderno (sub-região Valpaços) includes 'Avantos (excluindo as propriedades da Sociedade Clemente Meneres); … Carvalhais (excluindo as propriedades da Sociedade Clemente Meneres)'. CAOP 2025 has no sub-freguesia layer, so both draw the parishes whole and both cards list them as included only in part (2026-10-13)."
+    },
+    {
+      "pair": [
+        "tavora-varosa",
+        "douro-cima-corgo"
+      ],
+      "reason": "União das freguesias de Vilarouco e Pereiros (São João da Pesqueira) and União das freguesias de Paradela e Granjinha (Tabuaço): the Douro / Porto caderno (Cima Corgo) names the former freguesias Vilarouco and Granjinha, the Távora-Varosa caderno 'Pereiros da União de Freguesias de Vilarouco e Pereiros' and 'Paradela da União das Freguesias de Paradela e Granjinha'. Each text takes the other former parish of the same 2013 union (Lei n.º 11-A/2013); CAOP 2025 carries the union only, so both draw it whole and both cards list it as drawn for the parish they name (2026-10-13)."
+    },
+    {
+      "pair": [
+        "tavora-varosa",
+        "porto-cima-corgo"
+      ],
+      "reason": "União das freguesias de Vilarouco e Pereiros (São João da Pesqueira) and União das freguesias de Paradela e Granjinha (Tabuaço): the Douro / Porto caderno (Cima Corgo) names the former freguesias Vilarouco and Granjinha, the Távora-Varosa caderno 'Pereiros da União de Freguesias de Vilarouco e Pereiros' and 'Paradela da União das Freguesias de Paradela e Granjinha'. Each text takes the other former parish of the same 2013 union (Lei n.º 11-A/2013); CAOP 2025 carries the union only, so both draw it whole and both cards list it as drawn for the parish they name (2026-10-13)."
+    },
+    {
+      "pair": [
+        "beira-atlantico",
+        "terras-do-dao"
+      ],
+      "reason": "Cedrim and Couto de Esteves (Sever do Vouga), in both IGP texts: Beira Atlântico takes 'O distrito de Aveiro, com exceção dos municípios de Arouca, Castelo de Paiva e Vale de Cambra e, do município de Oliveira de Azeméis, a freguesia de Ossela', which keeps all of Sever do Vouga; Terras do Dão takes 'no município de Sever do Vouga e da União de Freguesias de Cedrim e Paradela, apenas a freguesia de Cedrim' and, for its sub-região Terras de Lafões, 'no município de Sever do Vouga, a freguesia Couto de Esteves e da União de Freguesias de Cedrim e Paradela, apenas a freguesia de Cedrim' (2026-10-13)."
     }
   ]
 }

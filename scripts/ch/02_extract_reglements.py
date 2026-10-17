@@ -65,7 +65,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib.ch.canton import canton_name, source_lang_for_canton  # noqa: E402
+from _lib.ch.canton import CANTON_CAPITAL, canton_name, source_lang_for_canton  # noqa: E402
 from _lib.ch.geometry import CHCommuneIndex  # noqa: E402
 from _lib.ch.ofag_register import slugify  # noqa: E402
 from _lib.ch.per_aoc_carving import (  # noqa: E402
@@ -75,6 +75,7 @@ from _lib.ch.per_aoc_carving import (  # noqa: E402
 )
 from _lib.ch.region import region_for_canton  # noqa: E402
 from _lib.ch.reglement import (  # noqa: E402
+    annex_roster_block,
     colour_blocks,
     extract_communes,
     extract_plaintext,
@@ -82,6 +83,7 @@ from _lib.ch.reglement import (  # noqa: E402
     grand_cru_block,
     list_varieties,
     summary_paragraph,
+    table_varieties,
 )
 from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue,
@@ -100,6 +102,18 @@ OUT_DIR = ROOT / "raw" / "ch" / "dokumente-extracted"
 OUT_INDEX = OUT_DIR / "_index.json"
 OUT_MANIFEST = ROOT / "raw" / "ch" / "dokumente-extracted-manifest.json"
 UNKNOWNS = ROOT / "raw" / "ch" / "extraction-unknowns.json"
+
+# A canton whose AOC is governed by another canton's wine ordinance takes
+# that ordinance's roster, cited by the act that makes it apply. BL's
+# Verordnung über den Pflanzenbau (SGS 516.31) names «AOC Basel-Stadt» and
+# «AOC Solothurn» itself (§ 11 Abs. 2) and lists their varieties in its
+# Anhang 1 (§ 16 Abs. 1).
+ROSTER_BY_REFERENCE: dict[str, tuple[str, str]] = {
+    "bs": ("bl", "SG 911.200 § 1 lit. b: «Es gelten im Kanton Basel-Stadt insbesondere die "
+                 "Bestimmungen des Kantons Basel-Landschaft betreffend … die Ursprungsbezeichnungen»"),
+    "so": ("bl", "BGS 516.34 § 1 Abs. 2: «Es gelten im Kanton Solothurn die Bestimmungen der "
+                 "Verordnung über den Pflanzenbau des Kantons Basel-Landschaft, Kapitel C. Weinbau»"),
+}
 
 
 def _load_reglement_manifest() -> dict:
@@ -140,7 +154,9 @@ def _build_canton_extracts(commune_idx: CHCommuneIndex,
         set_pliego_context(f"ch::{canton}::reglement")
         text = extract_plaintext(path)
         lang = entry.get("lang") or source_lang_for_canton(canton)
-        varieties = extract_varieties(text, lang, match_variety, commune_idx)
+        annex = annex_roster_block(text)
+        varieties = (table_varieties(annex, match_variety) if annex
+                     else extract_varieties(text, lang, match_variety, commune_idx))
         communes = extract_communes(text, lang, commune_idx)
         # Restrict commune hits to the canton itself (the règlement's
         # area-of-application). A canton's règlement that name-drops
@@ -156,6 +172,15 @@ def _build_canton_extracts(commune_idx: CHCommuneIndex,
         # one genuine cross-canton area (Vully, FR + VD) is curated in
         # PER_AOC_COMMUNE_LISTS, which bypasses this filter below.
         communes = [c for c in communes if c.get("canton") == canton]
+        # A cantonal AOC covers the canton's vineyards; a scan that finds
+        # the seat of government alone found the title or the signature
+        # ("Kanton Zürich", "Delémont, le …"). Nine AOCs were drawn as their
+        # capital town, Zürich without the Weinland, Basel-Stadt without
+        # Riehen. Stage 04 draws the canton instead.
+        if len(communes) == 1 and communes[0].get("name") == CANTON_CAPITAL.get(canton):
+            print(f"[02-ch] {canton}: lone match is the capital "
+                  f"{communes[0]['name']} — no commune list", file=sys.stderr)
+            communes = []
         summary = summary_paragraph(text)
 
         # Per-AOC carving (multi-AOC cantons VD/BE/FR). Returns
@@ -264,6 +289,12 @@ def _build_record(entry, parents_by_canton, canton_data, ofag_source):
         sources.append(extract["source"])
 
     grapes = (extract.get("varieties") if extract else []) or []
+    ref_canton, applied_by = ROSTER_BY_REFERENCE.get(primary_canton, ("", ""))
+    ref = canton_data.get(ref_canton)
+    if not grapes and ref and ref.get("varieties"):
+        grapes = ref["varieties"]
+        sources.append({**ref["source"], "kind": "cantonal-reglement-roster",
+                        "applied_by": applied_by})
     styles: list[str] = []
     by_colour = (extract.get("colour_varieties") if extract else {}) or {}
     if by_colour.get("red") and by_colour.get("white"):

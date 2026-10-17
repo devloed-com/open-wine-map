@@ -172,14 +172,22 @@ def render_record(record: dict) -> str:
             "",
         ]
 
+    src_url = src.get("final_url") or src.get("source_url") or ""
+    if (src.get("filename") or "").endswith(".pdf"):
+        # A national-format pliego (MAPA / regional PDF), not the EU single document.
+        src_line = f"- Pliego de condiciones (PDF): <{src_url}>"
+        licence = "_Texto del pliego: pliego de condiciones publicado por la administración española._"
+    else:
+        src_line = f"- EUR-Lex (DOCUMENTO ÚNICO): <{src_url}>"
+        licence = "_Texto del pliego: © Unión Europea / EUR-Lex. Reutilización con atribución._"
     body += [
         f"## {SECTION_LABELS['sources']}",
         "",
-        f"- EUR-Lex (DOCUMENTO ÚNICO): <{src.get('final_url') or src.get('source_url') or ''}>",
+        src_line,
         f"- eAmbrosia GI register: <https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/details/{record.get('id_eambrosia') or ''}>",
         f"- File number: `{record.get('file_number') or ''}`",
         "",
-        "_Texto del pliego: © Unión Europea / EUR-Lex. Reutilización con atribución._",
+        licence,
         "",
     ]
     return "\n".join(fm + body)

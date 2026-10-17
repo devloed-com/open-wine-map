@@ -1,0 +1,106 @@
+{
+  "_doc": "Curator pins for the PT freguesia resolver (scripts/_lib/pt/freguesias.py). `unions`: a DGT CAOP 2025 freguesia whose name lists none of the former freguesias it merged (a 2013 union renamed since) — `former` gives them as the act writes them, so a caderno naming the pre-2013 parishes binds to it and a union the text names only in part is disclosed. `names`: a name a caderno writes that the matcher cannot reach, bound to one CAOP unit (`part` = the union part it stands for). Every pin cites the public act; a pin whose unit CAOP no longer carries, or already names its parts, is reported STALE by stage 04.",
+  "unions": [
+    {
+      "concelho": "Vila Real",
+      "caop": "Vila Real",
+      "former": [
+        "Vila Real (Nossa Senhora da Conceição)",
+        "Vila Real (São Pedro)",
+        "Vila Real (São Dinis)"
+      ],
+      "act": "Lei n.º 11-A/2013, de 28 de janeiro, Anexo I (Município de Vila Real, p. 552-(136)): União das Freguesias de Vila Real (Nossa Senhora da Conceição, São Pedro e São Dinis); renamed «Freguesia de Vila Real» by Lei n.º 50/2015, de 8 de junho",
+      "source": "https://files.diariodarepublica.pt/1s/2013/01/01901/0000200147.pdf",
+      "source_rename": "https://files.diariodarepublica.pt/1s/2015/06/11000/0363803643.pdf",
+      "verified": "2026-10-13"
+    },
+    {
+      "concelho": "Viseu",
+      "caop": "Viseu",
+      "former": [
+        "Viseu (Coração de Jesus)",
+        "Viseu (Santa Maria de Viseu)",
+        "Viseu (São José)"
+      ],
+      "act": "Lei n.º 11-A/2013, de 28 de janeiro, Anexo I (Município de Viseu, p. 552-(141)): União das Freguesias de Viseu; renamed «Viseu» by Lei n.º 17/2015, de 24 de fevereiro",
+      "source": "https://files.diariodarepublica.pt/1s/2013/01/01901/0000200147.pdf",
+      "source_rename": "https://files.diariodarepublica.pt/gratuitos/1s/2015/02/03800.pdf",
+      "verified": "2026-10-13"
+    },
+    {
+      "concelho": "Viseu",
+      "caop": "Coutos de Viseu",
+      "former": [
+        "Couto de Baixo",
+        "Couto de Cima"
+      ],
+      "act": "Lei n.º 11-A/2013, de 28 de janeiro, Anexo I (Município de Viseu, p. 552-(141)): União das Freguesias de Couto de Baixo e Couto de Cima; renamed «Coutos de Viseu» by Lei n.º 47/2015, de 5 de junho",
+      "source": "https://files.diariodarepublica.pt/1s/2013/01/01901/0000200147.pdf",
+      "source_rename": "https://files.diariodarepublica.pt/1s/2015/06/10900/0362303630.pdf",
+      "verified": "2026-10-13"
+    },
+    {
+      "concelho": "Lagos",
+      "caop": "São Gonçalo de Lagos",
+      "former": [
+        "Lagos (São Sebastião)",
+        "Lagos (Santa Maria)"
+      ],
+      "act": "Lei n.º 11-A/2013, de 28 de janeiro, Anexo I (Município de Lagos, p. 552-(59)): União das Freguesias de Lagos (São Sebastião e Santa Maria); renamed «São Gonçalo de Lagos» by Lei n.º 108/2015, de 26 de agosto",
+      "source": "https://files.diariodarepublica.pt/1s/2013/01/01901/0000200147.pdf",
+      "source_rename": "https://files.diariodarepublica.pt/1s/2015/08/16600/0633606369.pdf",
+      "verified": "2026-10-13"
+    },
+    {
+      "concelho": "Armamar",
+      "caop": "Armamar",
+      "former": [
+        "Armamar",
+        "Coura",
+        "Tões"
+      ],
+      "act": "Lei n.º 11-A/2013, de 28 de janeiro, Anexo I (Município de Armamar, p. 552-(18)): Tões, Armamar and Coura aggregated into the freguesia «Armamar»; not changed by Lei n.º 25-A/2025",
+      "source": "https://files.diariodarepublica.pt/1s/2013/01/01901/0000200147.pdf",
+      "verified": "2026-10-13",
+      "source_unchanged": "https://files.diariodarepublica.pt/1s/2025/03/05102/0000200014.pdf"
+    }
+  ],
+  "names": [
+    {
+      "concelho": "Santa Cruz da Graciosa",
+      "name": "Praia",
+      "caop": "São Mateus",
+      "act": "Decreto Legislativo Regional n.º 13/96/A: «A freguesia da Praia (São Mateus), do município de Santa Cruz da Graciosa, passa a designar-se freguesia de São Mateus»",
+      "source": "https://files.diariodarepublica.pt/1s/1996/07/155a00/17561757.pdf",
+      "verified": "2026-10-13"
+    },
+    {
+      "concelho": "Torres Vedras",
+      "name": "São Miguel",
+      "caop": "Santa Maria, São Pedro e Matacães",
+      "part": "Santa Maria",
+      "act": "Lei n.º 11-A/2013, de 28 de janeiro, Anexo I (Município de Torres Vedras, p. 552-(122)): «Torres Vedras (Santa Maria do Castelo e São Miguel)» was one freguesia, aggregated with Torres Vedras (São Pedro e Santiago) and Matacães; the union renamed «Santa Maria, São Pedro e Matacães» by Lei n.º 88/2015, de 10 de agosto",
+      "source": "https://files.diariodarepublica.pt/1s/2013/01/01901/0000200147.pdf",
+      "source_rename": "https://files.diariodarepublica.pt/gratuitos/1s/2015/08/15400.pdf",
+      "verified": "2026-10-13"
+    },
+    {
+      "concelho": "Torres Vedras",
+      "name": "São Mamede",
+      "caop": "Ventosa",
+      "act": "Lei n.º 11-A/2013, de 28 de janeiro, Anexo I (Município de Torres Vedras): VENTOSA kept as it was; the Torres Vedras municipal archive: «Ventosa é o nome correto e oficial, embora seja mais conhecida como freguesia de São Mamede da Ventosa»",
+      "source": "https://catalogo.cm-tvedras.pt/index.php/junta-de-freguesia-de-sao-mamede-da-ventosa;isad?sf_culture=pt",
+      "verified": "2026-10-13",
+      "source_act": "https://files.diariodarepublica.pt/1s/2013/01/01901/0000200147.pdf"
+    },
+    {
+      "concelho": "Sobral de Monte Agraço",
+      "name": "São Salvador",
+      "caop": "Sobral de Monte Agraço",
+      "act": "Lei n.º 11-A/2013, de 28 de janeiro, Anexo I (Município de Sobral de Monte Agraço): three freguesias, none aggregated — Santo Quintino, Sapataria, Sobral de Monte Agraço; «São Salvador (do Mundo)» is the parish church's name of the Sobral de Monte Agraço freguesia",
+      "source": "https://repositorio.ulisboa.pt/server/api/core/bitstreams/e9c05a9d-c027-4c4f-a7c4-1bb0140e0915/content",
+      "verified": "2026-10-13",
+      "source_act": "https://files.diariodarepublica.pt/1s/2013/01/01901/0000200147.pdf"
+    }
+  ]
+}

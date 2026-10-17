@@ -35,7 +35,7 @@ async function proxyTiles(request, url, opts, fetchImpl) {
   return withHeaders(upstream, { ...CORS, 'Cache-Control': 'no-store' });
 }
 
-// opts: { dataOrigin, fetchImpl?, onToolCallFor?(request) → (tool, locale) => void,
+// opts: { dataOrigin, fetchImpl?, onToolCallFor?(request) → (tool, locale, props) => void,
 //         view?: { html, tileOrigin, cartoKey }, tileProxy?: boolean }
 export function createApp(opts) {
   const fetchImpl = opts.fetchImpl || fetch;

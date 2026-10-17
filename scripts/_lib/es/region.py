@@ -16,6 +16,7 @@ language the pliego happened to be written in).
 from __future__ import annotations
 
 import re
+import unicodedata
 
 # Canonical Spanish CCAA names. Co-official-language variants normalise
 # to these (Cataluña ≡ Catalunya ≡ Catalonia; País Vasco ≡ Euskadi
@@ -74,13 +75,10 @@ for canonical in CCAA_NAMES:
 CCAA_ALIASES["la rioja"] = "La Rioja"
 
 
-def _normalise(s: str) -> str:
-    return re.sub(r"\s+", " ", s).strip().lower()
-
-
-# Patterns for the "Comunidad Autónoma de X" lead-in. The CCAA name
-# follows; we capture up to the next punctuation / linebreak. Multiple
-# language variants because pliegos may be in any co-official language.
+# Lead-ins to a CCAA name. Multiple language variants because pliegos may
+# be in any co-official language. The name itself is read by
+# `_name_at` — the longest known name the text continues with — so
+# "Comunidad Autónoma de Castilla y León" is not cut at its "y".
 _CCAA_LEADIN_RE = re.compile(
     r"(?:"
     r"Comunidad\s+Autónoma\s+(?:de(?:\s+la|\s+los|\s+las)?\s+|del\s+|de\s+)?"
@@ -88,25 +86,27 @@ _CCAA_LEADIN_RE = re.compile(
     r"|C\.\s*A\.?\s+de\s+|CCAA\s+(?:de\s+)?"
     r"|Principado\s+de\s+|Comunidad\s+Foral\s+de\s+"
     r"|Comunitat\s+Foral\s+de\s+|Región\s+de\s+|Regió\s+de\s+"
-    r")"
-    r"(?P<ccaa>[A-ZÁÉÍÓÚÑÜa-záéíóúñü' \-]{3,40}?)"
-    r"(?=[,.;:\n)]|\s+(?:y|e|o|hasta|en|con|que)\b)",
+    r")",
     re.IGNORECASE,
 )
 
 
-def _resolve_alias(raw: str) -> str | None:
-    """Map a captured CCAA candidate to a canonical name. Returns None
-    when no match can be made — caller can then try the next mention or
-    the fallback."""
-    n = _normalise(raw)
-    if n in CCAA_ALIASES:
-        return CCAA_ALIASES[n]
-    # Strip trailing connectors that the regex might have included
-    n = re.sub(r"\s+(y|e|o)\s.*$", "", n)
-    if n in CCAA_ALIASES:
-        return CCAA_ALIASES[n]
-    return None
+def _fold(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s.replace("\u2019", "'"))
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", s).strip().lower()
+
+
+def _name_at(text: str, start: int, table: dict[str, str]) -> str | None:
+    """The value of the longest `table` key (folded) that the text continues
+    with at `start`, ending on a word boundary."""
+    window = _fold(text[start:start + 60])
+    best = ""
+    for key in table:
+        if (len(key) > len(best) and window.startswith(key)
+                and (len(window) == len(key) or not window[len(key)].isalnum())):
+            best = key
+    return table[best] if best else None
 
 
 # Hand-curated fallback for wines whose pliego text doesn't yield a
@@ -197,6 +197,24 @@ CCAA_OVERRIDES: dict[str, str] = {
     "ayles": "Aragón",
     # Navarra (pliego just says "Navarra" without "Comunidad")
     "navarra": "Navarra",
+    # Pliegos whose area names municipios only (2026-10-05, after a visitor
+    # flag on Norte de Almería; each carried the "España" placeholder).
+    # Andalusian IGPs: the pliego's labelling clause names "la Comunidad
+    # Autónoma «Andalucía», unidad geográfica mayor que abarca completamente"
+    # the zone; Cádiz is the Junta de Andalucía's own IGP for the province.
+    "cadiz": "Andalucía",
+    "cumbres-del-guadalfeo": "Andalucía",
+    "desierto-de-almeria": "Andalucía",
+    "laujar-alpujarra": "Andalucía",
+    "sierras-de-las-estancias-y-los-filabres": "Andalucía",
+    "el-vicario": "Castilla-La Mancha",   # parcels of Ciudad Real (province column)
+    "illes-balears": "Baleares",          # every island of the archipelago
+    "serra-de-tramuntana-costa-nord": "Baleares",  # 18 municipios of Mallorca
+    "pago-de-otazu": "Navarra",           # Cuenca de Pamplona, Merindad of the capital
+    "ribera-del-guadiana": "Extremadura",  # subzonas of Badajoz and Cáceres
+    "somontano": "Aragón",                # municipios of Huesca
+    "terra-alta": "Cataluña",             # "situada en el sur de Cataluña"
+    "valle-del-cinca": "Aragón",          # Decreto 37/2001 del Gobierno de Aragón
 }
 
 
@@ -331,23 +349,26 @@ PROVINCE_TO_CCAA: dict[str, str] = {
     "Gipuzkoa": "País Vasco", "Guipúzcoa": "País Vasco",
 }
 
-# Pattern for "Provincia de X" / "PROVINCIA DE X:" / "provincia(s) de X y Y".
-# Captures one province name, fairly conservatively.
-_PROVINCE_LEADIN_RE = re.compile(
-    r"(?:provincia|província)s?\s+de\s+"
-    r"(?P<prov>[A-ZÁÉÍÓÚÑÜa-záéíóúñü' \-]{3,30}?)"
-    r"(?=[,.;:\n)]|\s+(?:y|e|o|hasta|en|con|que|según|con\s+sus)\b)",
-    re.IGNORECASE,
-)
+# "Provincia de X" / "PROVINCIA DE X:" / "provincia(s) de X y Y" — the
+# province is read by `_name_at`. A province in brackets after a municipio
+# ("término municipal de Huete (Cuenca)", "Anchuras (Ciudad Real) y
+# Sevilleja de la Jara (Toledo)") is the other common form.
+_PROVINCE_LEADIN_RE = re.compile(r"(?:provincia|província)s?\s+de\s+", re.IGNORECASE)
+_BRACKETED_RE = re.compile(r"\(([^()\n]{3,40})\)")
+_CCAA_BY_FOLD = {_fold(k): v for k, v in CCAA_ALIASES.items()}
+_PROVINCE_BY_FOLD = {_fold(k): v for k, v in PROVINCE_TO_CCAA.items()}
 
 
-def _province_to_ccaa(prov_raw: str) -> str | None:
-    n = prov_raw.strip().rstrip(".,:;").strip()
-    # First pass: exact match (case-insensitive but accent-sensitive)
-    for k, v in PROVINCE_TO_CCAA.items():
-        if k.lower() == n.lower():
-            return v
-    return None
+def _province_votes(body: str) -> list[str]:
+    votes = [
+        ccaa for m in _PROVINCE_LEADIN_RE.finditer(body)
+        if (ccaa := _name_at(body, m.end(), _PROVINCE_BY_FOLD))
+    ]
+    votes += [
+        _PROVINCE_BY_FOLD[key] for m in _BRACKETED_RE.finditer(body)
+        if (key := _fold(m.group(1))) in _PROVINCE_BY_FOLD
+    ]
+    return votes
 
 
 def derive_ccaa(record: dict) -> str:
@@ -370,24 +391,20 @@ def derive_ccaa(record: dict) -> str:
         if not body:
             continue
         for m in _CCAA_LEADIN_RE.finditer(body):
-            resolved = _resolve_alias(m.group("ccaa"))
+            resolved = _name_at(body, m.end(), _CCAA_BY_FOLD)
             if resolved:
                 return resolved
 
     # Province-name fallback. Counts the CCAAs voted-for by each province
     # mention; the most-voted CCAA wins. This handles cross-province DOPs
     # (e.g. Ribera del Duero spans Burgos + Soria + Valladolid +
-    # Segovia — all in Castilla y León).
+    # Segovia — all in Castilla y León). The area text decides; the link
+    # text only when the area names no province — it tells history and
+    # neighbours (Dehesa Peñalba's "Provincia de Madrid" of 1751).
     from collections import Counter
-    ccaa_votes: Counter[str] = Counter()
     for body in haystack_parts:
-        if not body:
-            continue
-        for m in _PROVINCE_LEADIN_RE.finditer(body):
-            ccaa = _province_to_ccaa(m.group("prov"))
-            if ccaa:
-                ccaa_votes[ccaa] += 1
-    if ccaa_votes:
-        return ccaa_votes.most_common(1)[0][0]
+        ccaa_votes = Counter(_province_votes(body))
+        if ccaa_votes:
+            return ccaa_votes.most_common(1)[0][0]
 
     return "España"

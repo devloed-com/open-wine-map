@@ -34,11 +34,12 @@ NATIONAL_SPECS_CZ = ROOT / "raw" / "cz" / "national-specs"
 # Slug-keyed provenance caches. Populated by the per-country augmenter named
 # in each comment; read by _sources_for() / the panel-blob phase in stage 04.
 _ES_NATIONAL_PLIEGO_BY_SLUG: dict[str, dict] = {}
-# Greek geometry disclosure, written by the GR branch of stage 04's geometry
-# loop (scripts/_lib/gr/geometry.py `resolve` stats) and read by the
+# Unit-resolver geometry disclosure, written by the GR and PT branches of
+# stage 04's geometry loop (scripts/_lib/gr/geometry.py `resolve` stats,
+# scripts/_lib/pt/freguesias.py `AreaResolution`) and read by the
 # panel-blob phase: {slug: {"geom_nuts_ids": [...], "geom_units_unmatched":
-# [...], "geom_units_proxied": [...]}}.
-_GR_GEOM_DISCLOSURE_BY_SLUG: dict[str, dict] = {}
+# [...], "geom_units_proxied": [...], "geom_units_partial": [...]}}.
+_GEOM_UNITS_DISCLOSURE_BY_SLUG: dict[str, dict] = {}
 # slug → closing radius (m) of its low-zoom footprint, own or inherited
 # (vineyard_envelope.adaptive_radius); filled by the stage-04 geometry loop,
 # read by the panel-record builder, which sees only the tile properties.
@@ -46,6 +47,11 @@ _LOD_RADIUS_BY_SLUG: dict[str, int] = {}
 # INAO parcellaire gaps a curator pin filled (scripts/_lib/parcellaire_gaps.py):
 # the record's `geom_parcel_fill` / `geom_parcel_gaps` panel-payload fields.
 _PARCEL_FILL_BY_SLUG: dict[str, dict] = {}
+# PT sub-regiões drawn from a national act's table rather than the caderno
+# (scripts/_lib/pt/subregiao_areas.py): the act the card cites, written by the
+# PT branch of stage 04's geometry loop, read by _sources_for() as the
+# record's `area_act_*` source fields.
+_PT_AREA_ACT_BY_SLUG: dict[str, dict] = {}
 
 
 # Slug-keyed cache of MASAF disciplinare provenance + augmented payload,

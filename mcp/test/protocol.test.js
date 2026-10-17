@@ -2,6 +2,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startServer, haveBuild } from './local.js';
 import { smoke, MODES, SMOKE_CALLS } from './smoke.js';
+import { callProps } from '../src/server.js';
 
 const skip = haveBuild() ? false : 'no wiki/ build (run scripts/04_build_maps.py)';
 let srv;
@@ -45,6 +46,48 @@ test('arguments outside the schema are rejected', { skip }, async () => {
     ['search_appellations', { query: 'x', locale: 'de' }],
   ]);
   for (const res of r.results) assert.equal(res.isError, true);
+});
+
+test('analytics: the appellations a call fetched or showed, never query text', { skip }, async () => {
+  const calls = [];
+  const local = await startServer({ onToolCallFor: () => (tool, locale, props) => calls.push({ tool, locale, ...props }) });
+  try {
+    const r = await smoke(local.url, 'modern', [
+      ['search_appellations', { query: 'priorat' }],
+      ['get_appellation', { slug: 'priorat', locale: 'fr' }],
+      ['get_appellation', { slug: 'no-such-slug' }],
+      ['filter_appellations', { country: 'es' }],
+    ]);
+    assert.equal(r.results.length, 4);
+    assert.deepEqual(calls, [
+      { tool: 'search_appellations', locale: 'en' },
+      { tool: 'get_appellation', locale: 'fr', slug: 'priorat' },
+      { tool: 'get_appellation', locale: 'en' },
+      { tool: 'filter_appellations', locale: 'en' },
+    ]);
+    calls.length = 0;
+    const { Client, StreamableHTTPClientTransport } = await import('@modelcontextprotocol/client');
+    const client = new Client({ name: 't', version: '0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
+    await client.connect(new StreamableHTTPClientTransport(new URL(local.url)));
+    try {
+      await client.callTool({ name: 'show_on_map', arguments: { slugs: ['priorat', 'montsant', 'nope', 'priorat'] } });
+      assert.deepEqual(calls, [{ tool: 'show_on_map', locale: 'en', slugs: 'priorat,montsant', count: 2 }]);
+    } finally {
+      await client.close();
+    }
+  } finally {
+    await local.close();
+  }
+});
+
+test('analytics: a large show_on_map set is cut at a slug boundary', () => {
+  const slugs = Array.from({ length: 200 }, (_, i) => `appellation-number-${String(i).padStart(3, '0')}`);
+  const entry = { aocs: Object.fromEntries(slugs.map(s => [s, {}])) };
+  const p = callProps('show_on_map', { slugs }, entry);
+  assert.equal(p.count, 200);
+  assert.ok(p.slugs.length <= 2000);
+  assert.ok(p.slugs.split(',').every(s => entry.aocs[s]));
+  assert.deepEqual(callProps('get_appellation', { slug: 'x' }, null), {});
 });
 
 test('GET is 405 and other paths are 404, with CORS', { skip }, async () => {

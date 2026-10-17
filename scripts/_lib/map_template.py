@@ -211,10 +211,19 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Aire approchée — réunion des unités administratives nommées dans "
             "le document (limites Eurostat GISCO ou cadastre national)."
         ),
+        # A Portuguese sub-região the caderno names but does not delimit,
+        # drawn from the national act's table ({act}: the act, linked) —
+        # scripts/_lib/pt/subregiao_areas.py, the record's `area_act_*`
+        # source fields.
+        "geom_src_national_act": _(
+            "Aire : les municipalités et freguesias que {act} énumère pour "
+            "cette sous-région, tracées d'après les limites CAOP 2025 (DGT)."
+        ),
         # Named units the commune layer does not carry, and localities drawn
         # as the unit that holds them (Greek area-units resolver,
-        # scripts/_lib/gr/geometry.py) — the record's `geom_units_unmatched`
-        # / `geom_units_proxied` panel-payload fields.
+        # scripts/_lib/gr/geometry.py; Portuguese freguesias,
+        # scripts/_lib/pt/freguesias.py) — the record's
+        # `geom_units_unmatched` / `geom_units_proxied` panel-payload fields.
         "geom_units_unmatched": _(
             "Nommé(s) dans le document mais absent(s) de la couche communale, "
             "donc non tracé(s) : {names}."
@@ -222,6 +231,13 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "geom_units_proxied": _(
             "Localité(s) sans polygone propre, tracée(s) par l'unité "
             "administrative qui les contient : {names}."
+        ),
+        # Portuguese freguesias the text includes only in part ("parte das
+        # freguesias de …", "(lugares de …)", an altitude limit), drawn
+        # whole — the record's `geom_units_partial` panel-payload field.
+        "geom_units_partial": _(
+            "Unité(s) administrative(s) que le document n'inclut qu'en partie, "
+            "tracée(s) en entier : {names}."
         ),
         "geom_units_boundary": _(
             "Aire approchée : le document délimite la zone par une ligne "
@@ -300,6 +316,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_chzo_spec": _("Spécification du produit (IGP, PDF)"),
         "src_regional_register": _("Registre régional des cépages (PDF)"),
         "src_parroquias": _("Mapa de Parroquias de Galicia (IET, Xunta de Galicia)"),
+        "src_area_act": _("Délimitation des sous-régions (Diário da República, PDF)"),
         "src_eambrosia": _("Registre eAmbrosia (UE)"),
         "src_eambrosia_id": _("Numéro de dossier"),
         "src_cantonal_reglement": _("Règlement cantonal sur la vigne et le vin"),
@@ -408,16 +425,39 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "porte sa propre ligne d'attribution dans le panneau."
         ),
         "about_made_by_html": _("Réalisé avec ♡ par {devloed}."),
-        "about_data_html": _(
-            "Sources : INAO ({inao}) pour les cahiers des charges et les aires "
-            "parcellaires françaises, IGN ({ign}) pour les contours des communes "
-            "françaises, le registre des indications géographiques de l'UE, les "
-            "régulateurs nationaux, Eurostat GISCO et Bétard 2022 pour les autres pays, "
-            "OpenStreetMap et CARTO pour le fond de carte, Wikipedia ({wikipedia}) pour "
-            "quelques compléments narratifs (CC BY-SA 4.0), et VIVC ({vivc}), le Vitis "
-            "International Variety Catalogue du Julius Kühn-Institut, pour les noms "
-            "canoniques et numéros de cépage (citation Röckel et al.). Tout extrait "
-            "Wikipedia est signalé sur place. Détails et licences dans le {readme}."
+        # About-dialog section headings and the source list (one item per kind
+        # of source; the README carries the full table with licences).
+        "about_sources_h": _("Sources"),
+        "about_method_h": _("Comment la carte est faite"),
+        "about_ai_h": _("Pour les assistants IA"),
+        "about_privacy_h": _("Vie privée"),
+        "about_contrib_h": _("Contribuer et suivre"),
+        "about_src_france_html": _(
+            "France : cahiers des charges et délimitations parcellaires de "
+            "l'{inao}, contours des communes de l'{ign}."
+        ),
+        "about_src_other_html": _(
+            "Autres pays : le registre des indications géographiques de l'UE "
+            "({eambrosia}) et les cahiers des charges publiés par chaque régulateur "
+            "national ; contours tirés des couches officielles nationales et "
+            "régionales, d'{gisco} et de Bétard 2022."
+        ),
+        "about_src_grapes_html": _(
+            "Cépages : {vivc}, le Vitis International Variety Catalogue du Julius "
+            "Kühn-Institut (Röckel et al.), pour les noms canoniques et les numéros "
+            "de variété."
+        ),
+        "about_src_wikipedia_html": _(
+            "Compléments narratifs : {wikipedia} (CC BY-SA 4.0), signalés partout "
+            "où ils apparaissent."
+        ),
+        "about_src_basemap_html": _("Fond de carte : {osm} et {carto}."),
+        "about_src_readme_html": _(
+            "Liste complète des sources et des licences dans le {readme}."
+        ),
+        "about_report_html": _(
+            "Une erreur ? Chaque fiche se termine par « {report} » : un clic "
+            "suffit, sans compte."
         ),
         "about_lod_html": _(
             "Niveau de détail : en dessous du zoom {zoom}, les appellations "
@@ -430,7 +470,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         ),
         "about_contrib_html": _("Suggestions et pull requests bienvenues sur {github}."),
         "about_privacy_html": _(
-            "Vie privée : la fréquentation est mesurée avec une instance {plausible} "
+            "La fréquentation est mesurée avec une instance {plausible} "
             "auto-hébergée, qui reçoit aussi les signalements faits depuis les fiches. "
             "Aucune donnée personnelle n'est traitée et aucun visiteur n'est suivi "
             "individuellement : pas de cookies, pas d'identifiant persistant, aucune "
@@ -469,7 +509,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "envoyez plutôt un {email}."
         ),
         "about_roadmap_html": _(
-            "{c} pays européens cartographiés ({n} appellations : {parents} appellations "
+            "{c} pays européens cartographiés ({n} fiches : {parents} appellations "
             "et {subs} dénominations rattachées). Des itérations supplémentaires "
             "affineront la qualité des données et étendront la couverture au-delà de "
             "l'UE, de la Suisse et du Royaume-Uni."
@@ -708,8 +748,12 @@ _BLUESKY_SVG = (
 )
 _INAO_URL = "https://www.inao.gouv.fr/"
 _IGN_URL = "https://www.ign.fr/"
-_WIKIPEDIA_URL = "https://fr.wikipedia.org/"
+_WIKIPEDIA_URL = "https://www.wikipedia.org/"
 _VIVC_URL = "https://www.vivc.de/"
+_EAMBROSIA_URL = "https://ec.europa.eu/geographical-indications-register/"
+_GISCO_URL = "https://ec.europa.eu/eurostat/web/gisco"
+_OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright"
+_CARTO_ATTRIBUTION_URL = "https://carto.com/attributions"
 _FEEDBACK_USER = "winemap+feedback"
 _FEEDBACK_DOMAIN = "devloed.com"
 
@@ -743,38 +787,52 @@ def _build_about_dialog(
     locale: str = "en",
     lod: dict | None = None,
 ) -> str:
-    devloed = _ext_link(_DEVLOED_URL, "devloed.com")
-    github = _ext_link(_GITHUB_URL, "GitHub")
-    inao = _ext_link(_INAO_URL, "INAO")
-    ign = _ext_link(_IGN_URL, "IGN")
-    wikipedia = _ext_link(_WIKIPEDIA_URL, "fr.wikipedia.org")
-    vivc = _ext_link(_VIVC_URL, "vivc.de")
-    readme = _ext_link(_GITHUB_URL + "#public-data-sources", "README")
+    """The About dialog: what the map is and how big it is, then one titled
+    section each for the sources, how the map is made, AI assistants, privacy
+    and contributing. Section titles are <h3> under the dialog's <h2>."""
     counts = {
         k: format_decimal(v, locale=locale) for k, v in (corpus_counts or {}).items()
     }
     roadmap = labels["about_roadmap_html"]
     if counts:
         roadmap = roadmap.format(**counts)
-    paragraphs = [
-        labels["about_lead_html"],
-        labels["about_data_html"].format(
-            inao=inao, ign=ign, wikipedia=wikipedia, vivc=vivc, readme=readme
-        ),
-        *(
-            [labels["about_lod_html"].format(
-                zoom=lod["overview_max_zoom"], radius=lod["radius_m"]
-            )]
-            if lod
-            else []
-        ),
-        labels["about_llm_html"],
-        roadmap,
-        labels["about_contrib_html"].format(github=github),
-    ]
+    meta = []
     if browse_path:
         browse_link = f'<a href="{browse_path}">{esc(labels["browse_all_label"])}</a>'
-        paragraphs.append(labels["about_browse_html"].format(browse_link=browse_link))
+        meta.append(labels["about_browse_html"].format(browse_link=browse_link))
+    if data_updated_html:
+        meta.append(f'<span class="data-updated">{data_updated_html}</span>')
+    intro = [f"<p>{labels['about_lead_html']}</p>", f"<p>{roadmap}</p>"]
+    if meta:
+        intro.append(f'<p class="about-meta">{" ".join(meta)}</p>')
+
+    sources = [
+        labels["about_src_france_html"].format(
+            inao=_ext_link(_INAO_URL, "INAO"), ign=_ext_link(_IGN_URL, "IGN")
+        ),
+        labels["about_src_other_html"].format(
+            eambrosia=_ext_link(_EAMBROSIA_URL, "eAmbrosia"),
+            gisco=_ext_link(_GISCO_URL, "Eurostat GISCO"),
+        ),
+        labels["about_src_grapes_html"].format(vivc=_ext_link(_VIVC_URL, "VIVC")),
+        labels["about_src_wikipedia_html"].format(
+            wikipedia=_ext_link(_WIKIPEDIA_URL, "Wikipedia")
+        ),
+        labels["about_src_basemap_html"].format(
+            osm=_ext_link(_OSM_COPYRIGHT_URL, "OpenStreetMap"),
+            carto=_ext_link(_CARTO_ATTRIBUTION_URL, "CARTO"),
+        ),
+    ]
+    readme = _ext_link(_GITHUB_URL + "#public-data-sources", "README")
+    sources_list = "<ul>" + "".join(f"<li>{s}</li>" for s in sources) + "</ul>"
+
+    method = []
+    if lod:
+        method.append(labels["about_lod_html"].format(
+            zoom=lod["overview_max_zoom"], radius=lod["radius_m"]
+        ))
+    method.append(labels["about_llm_html"])
+
     # The address in a code box with a copy button (app.js: button[data-copy]):
     # it is meant to be pasted into an AI assistant's connector settings.
     mcp_copy = (
@@ -782,23 +840,46 @@ def _build_about_dialog(
         f'<button type="button" class="copy-btn" data-copy="{esc(MCP_ENDPOINT_URL)}" '
         f'aria-label="{esc(labels["copy_mcp_aria"])}">{esc(labels["copy_label"])}</button></span>'
     )
-    paragraphs.append(labels["about_mcp_html"].format(mcp_link=mcp_copy))
-    paragraphs.append(labels["about_webmcp_html"].format(
-        webmcp=_ext_link("https://developer.chrome.com/docs/ai/webmcp", "WebMCP")
-    ))
-    paragraphs.append(
+    ai = [
+        labels["about_mcp_html"].format(mcp_link=mcp_copy),
+        labels["about_webmcp_html"].format(
+            webmcp=_ext_link("https://developer.chrome.com/docs/ai/webmcp", "WebMCP")
+        ),
+    ]
+
+    privacy = [
         labels["about_privacy_html"].format(plausible=_ext_link(_PLAUSIBLE_POLICY_URL, "Plausible"))
-    )
+    ]
+
     # Butterfly + "Bluesky" are the link; rel="me": the site vouches for the account.
     bluesky = (
         f'<a class="bsky" href="{_BLUESKY_URL}" target="_blank" rel="me noopener">'
         f'{_BLUESKY_SVG}Bluesky</a>'
     )
-    paragraphs.append(labels["about_follow_html"].format(bluesky=bluesky))
-    paragraphs.append(labels["about_made_by_html"].format(devloed=devloed))
-    body = "\n      ".join(f"<p>{p}</p>" for p in paragraphs)
-    if data_updated_html:
-        body += f'\n      <p class="data-updated">{data_updated_html}</p>'
+    contrib = [
+        labels["about_report_html"].format(report=esc(labels["feedback_h"]))
+        + " " + labels["about_contrib_html"].format(github=_ext_link(_GITHUB_URL, "GitHub")),
+        labels["about_follow_html"].format(bluesky=bluesky),
+    ]
+
+    def section(heading_key: str, paragraphs: list[str], lead_html: str = "") -> str:
+        inner = lead_html + "".join(f"<p>{p}</p>" for p in paragraphs)
+        return f"<section><h3>{labels[heading_key]}</h3>{inner}</section>"
+
+    credit = labels["about_made_by_html"].format(devloed=_ext_link(_DEVLOED_URL, "devloed.com"))
+    body = "\n      ".join([
+        *intro,
+        section(
+            "about_sources_h",
+            [labels["about_src_readme_html"].format(readme=readme)],
+            lead_html=sources_list,
+        ),
+        section("about_method_h", method),
+        section("about_ai_h", ai),
+        section("about_privacy_h", privacy),
+        section("about_contrib_h", contrib),
+        f'<p class="about-credit">{credit}</p>',
+    ])
     return (
         f'<dialog id="about-dialog" aria-labelledby="about-dialog-h">\n'
         f'  <button class="close" type="button" aria-label="{labels["close_aria"]}">×</button>\n'
@@ -1412,7 +1493,7 @@ _SOURCE_DOC_KEYS = (
     "eur_lex_url", "eu_oj_publication_url", "national_pliego_url",
     "national_spec_url", "specifikacija_url", "specifikacija_final_url",
     "ble_produktspezifikation_url", "masaf_override_url", "ivv_caderno_url",
-    "cahier_url", "chzo_spec_url",
+    "cahier_url", "chzo_spec_url", "area_act_url",
 )
 
 
@@ -3089,8 +3170,14 @@ _TEMPLATE = """<!doctype html>
   #about-dialog .close {{ position:absolute; top:10px; right:10px; background:#eee; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:#666 }}
   #about-dialog .close:hover {{ background:#ddd; color:#000 }}
   #about-dialog .about-body {{ padding:24px 28px; line-height:1.55 }}
-  #about-dialog h1 {{ font-size:20px; margin:0 0 14px; padding-bottom:8px; border-bottom:2px solid #934050 }}
+  #about-dialog h2 {{ font-size:20px; margin:0 0 14px; padding:0 32px 8px 0; border-bottom:2px solid #934050 }}
+  #about-dialog h3 {{ font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:#934050; margin:20px 0 6px }}
   #about-dialog p {{ margin:0 0 10px }}
+  #about-dialog ul {{ margin:0 0 10px; padding-left:18px }}
+  #about-dialog li {{ margin:0 0 4px }}
+  #about-dialog .about-meta {{ font-size:13px; color:#666 }}
+  #about-dialog .data-updated {{ white-space:nowrap }}
+  #about-dialog .about-credit {{ margin:20px 0 0; padding-top:10px; border-top:1px solid #eee; font-size:13px; color:#666 }}
   #about-dialog a {{ color:#934050 }}
   #about-dialog a.bsky {{ white-space:nowrap }}
   #about-dialog .bsky-logo {{ width:1.05em; height:1.05em; vertical-align:-0.16em; margin-right:0.3em; fill:#1185fe }}
@@ -3175,7 +3262,8 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel details.dulok > summary, html.theme-dark #panel details.dulok .dulo-tel {{ color:#d8b86a }}
   html.theme-dark #panel details.dulok .dulo-row {{ border-top-color:#333 }}
   html.theme-dark #about-dialog {{ background:#1c1c1e; color:#e3e3e3; border-color:#444 }}
-  html.theme-dark #about-dialog h1 {{ color:#d98b97; border-bottom-color:#5a2a33 }}
+  html.theme-dark #about-dialog h2, html.theme-dark #about-dialog h3 {{ color:#d98b97; border-bottom-color:#5a2a33 }}
+  html.theme-dark #about-dialog .about-meta, html.theme-dark #about-dialog .about-credit {{ color:#aaa; border-top-color:#333 }}
   html.theme-dark #grape-tooltip {{ background:#1c1c1e; color:#e3e3e3; border-color:#444; box-shadow:0 4px 16px rgba(0,0,0,0.5) }}
   html.theme-dark #grape-tooltip .note {{ color:#bbb }}
   html.theme-dark #grape-tooltip .thumb {{ background:#333 }}

@@ -41,6 +41,39 @@ live host for the expected 301 + `Location` after applying the rule (edge rules
 take up to ~60 s to propagate; a warning there is not a failure). Parking is
 per environment (`park_to` in `_ENVS`); production cannot be parked.
 
+## Waiting for storage replication before the purge (since 2026-10-11)
+
+The storage zone's primary region is DE. It is replicated to UK / ES / NY /
+LA / SG, and the pull zone fetches through one origin shield (Paris), so
+every edge serves what the shield pulls. On 2026-10-11 the shield pulled
+from the UK replicas (UK-317 / 384 / 689 / 965), which served the previous
+copy of each file for about 40 minutes after its upload. The purge at the
+end of the deploy therefore let the shield re-cache stale copies of
+stable-URL files (`data/d/<lang>/*.json`, the HTML pages) for the zone's
+30-day max-age. In a sample of 80 uploaded files, 2 were stale, the Kos
+panel data among them. A content-hashed bundle is a new path and is never
+affected.
+
+`deploy.py` now waits for the replicas between the upload and the purge:
+
+1. **Probe.** It takes up to eight just-uploaded stable-URL text files as
+   probes (`pick_probes`): the last ones to finish uploading plus a few spread
+   over the run. It purges each probe's URL, fetches it through the CDN with
+   `Accept-Encoding: identity` and compares the sha256 with the upload. It
+   repeats every 60 s until every probe matches or `--replication-timeout`
+   passes (default 90 min). After a timeout it warns and purges anyway.
+2. **Purge.** It purges the zone.
+3. **Sample.** It fetches a random `--verify-sample` (default 60) of the
+   uploaded stable-URL files through the CDN. It settles any stale one the
+   same way and purges again. If any is still stale it says so, names the
+   files and exits 3 once the IndexNow and config steps have run. The upload
+   is done at that point; purge again once the replicas catch up.
+
+IndexNow is submitted after these steps, so a crawler is never sent to a
+stale copy. `--no-replication-wait` restores the old purge-at-once
+behaviour. A deploy that uploads only hashed bundles has no probe, so it
+skips the wait.
+
 ## IndexNow: content changes only
 
 A rebuild that renames a content-hashed asset (`app.<locale>.<hash>.js`,

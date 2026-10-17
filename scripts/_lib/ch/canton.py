@@ -60,6 +60,20 @@ CANTON_BFS_ID: dict[str, int] = {c[0]: c[2] for c in CANTONS}
 CANTON_SOURCE_LANG: dict[str, str] = {c[0]: c[3] for c in CANTONS}
 CANTON_ALT_LANGS: dict[str, tuple[str, ...]] = {c[0]: c[4] for c in CANTONS}
 
+# Seat of government (Hauptort / chef-lieu), as swissBOUNDARIES3D names the
+# commune. A règlement names it in its title, preamble or signature line
+# ("Kanton Zürich", "Delémont, le …"), so a canton-wide commune scan that
+# finds it alone has found the signature, not the AOC's area.
+CANTON_CAPITAL: dict[str, str] = {
+    "ag": "Aarau", "ai": "Appenzell", "ar": "Herisau", "be": "Bern",
+    "bl": "Liestal", "bs": "Basel", "fr": "Fribourg", "ge": "Genève",
+    "gl": "Glarus", "gr": "Chur", "ju": "Delémont", "lu": "Luzern",
+    "ne": "Neuchâtel", "nw": "Stans", "ow": "Sarnen", "sg": "St. Gallen",
+    "sh": "Schaffhausen", "so": "Solothurn", "sz": "Schwyz", "tg": "Frauenfeld",
+    "ti": "Bellinzona", "ur": "Altdorf (UR)", "vd": "Lausanne", "vs": "Sion",
+    "zg": "Zug", "zh": "Zürich",
+}
+
 # Reverse: BFS id → canton code (for joining swissBOUNDARIES3D `KANTONSNUMMER`).
 CANTON_CODE_BY_BFS: dict[int, str] = {c[2]: c[0] for c in CANTONS}
 

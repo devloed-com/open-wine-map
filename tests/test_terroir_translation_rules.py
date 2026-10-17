@@ -96,3 +96,11 @@ def test_fr_base_script_builds_through_the_shared_helper():
     assert out.endswith(glossary_for("en"))
     args = mod._build_argparser().parse_args(["--only", "chablis"])
     assert args.only == ["chablis"]
+
+
+def test_gendered_targets_get_the_agreement_rule_and_english_does_not():
+    for target, example in (("nl", "de wijngaard"), ("fr", "au fruit frais"), ("es", "el aroma")):
+        rules = translation_rules("it", target, proper_nouns="")
+        assert "Grammatical agreement follows" in rules and example in rules, target
+        assert "{" not in rules and "}" not in rules
+    assert "Grammatical agreement" not in translation_rules("fr", "en", proper_nouns="")

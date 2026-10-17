@@ -17,11 +17,12 @@ const dataOrigin = env('DATA_ORIGIN') || 'https://www.openwinemap.com';
 const plausibleHost = env('PLAUSIBLE_HOST');
 const plausibleDomain = env('PLAUSIBLE_DOMAIN') || 'openwinemap.com';
 
-// `MCP Tool` {tool, locale}: tool arguments are never sent (the same rule as
-// the page's `WebMCP Tool` event). Sent after the response, without blocking.
+// `MCP Tool` {tool, locale, slug | slugs + count}: the appellations a call
+// fetched or showed (server.js callProps); a search's query text is never sent
+// (the same rule as the page's `WebMCP Tool` event). Sent without blocking.
 function trackToolCall(request) {
   if (!plausibleHost || request.headers.get('X-OWM-Smoke')) return undefined;
-  return (tool, locale) => {
+  return (tool, locale, extra = {}) => {
     const send = fetch(`${plausibleHost}/api/event`, {
       method: 'POST',
       headers: {
@@ -33,7 +34,7 @@ function trackToolCall(request) {
         name: 'MCP Tool',
         url: new URL(request.url).origin + '/mcp',
         domain: plausibleDomain,
-        props: { tool, locale },
+        props: { tool, locale, ...extra },
       }),
     }).catch(() => {});
     try { Bunny.v1.waitUntil(send); } catch { /* not on Bunny */ }

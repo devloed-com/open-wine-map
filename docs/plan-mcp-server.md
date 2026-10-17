@@ -220,7 +220,10 @@ scripts/deploy_mcp.py               build → set code → publish
    the record can be added through the Bunny API with the script setup.
 2. Shared query core.
 3. `list_facets`: yes, in both WebMCP and MCP.
-4. Server-side `MCP Tool` analytics event: yes, tool + locale only.
+4. Server-side `MCP Tool` analytics event: yes, tool + locale only. Revised
+   2026-10-05: the slugs a call fetched or showed are sent too (`slug` /
+   `slugs` + `count`) — catalogue ids, like `Appellation Viewed.slug`; a
+   search's query text still never is.
 5. Phase 0's throw-away script: created through the Bunny API.
 
 ## SDK findings (phase 0)

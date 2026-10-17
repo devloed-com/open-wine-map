@@ -41,6 +41,9 @@ language. Prefer the LEFT term over the RIGHT:
 - "polyfenolen" NOT "polyphenolen" — Dutch spells with f.
 - "tanninerijk" or "rijk aan tannines" NOT "tannisch" — tannic; "tannisch" is a French borrowing not idiomatic in NL wine writing.
 - "bottelen" or "flesrijping" NOT "flessenwijze" — for FR "mise en bouteille / élevage en bouteille" / ES "embotellado / crianza en botella".
+- "het wijngebied" (the vineyard area as a whole) or "de wijngaard" / "de wijngaarden" (planted plots) NOT "het wijngaard" — for FR "le vignoble", ES "el viñedo", IT "il vigneto"; "wijngaard" is a de-word, so its pronouns and adjectives follow it ("de wijngaard, die …").
+- Mind the article of every noun: de gemeente, de aanplant, de bodem, de ondergrond; het productiegebied, het perceel, het landschap, het bekken, het terras, het graniet, het druivenras.
+- "climat" (kept) NOT "klimaat" — for the Burgundian FR "climat", a named, delimited vineyard site (de climat La Romanée); "klimaat" only for climate in the weather sense.
 - Render Spanish-pliego header transliterations like "Vinnen", "Vitwijnen", "Wijndruivenproduct" simply as "Wijnen"."""
 
 

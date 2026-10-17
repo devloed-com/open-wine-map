@@ -501,3 +501,59 @@ def list_varieties(block: str, match_fn) -> list[dict]:
             continue
         out[hit.slug] = {"slug": hit.slug, "name": hit.name, "colour": hit.colour}
     return list(out.values())
+
+
+# Basel-Landschaft keeps its AOC roster in a two-column annex ("Anhang 1 –
+# Zugelassene Rebsorten", § 16 Abs. 1 of SGS 516.31), which also governs AOC
+# Basel-Stadt and AOC Solothurn. The whole-document scan read the annex and
+# the altitude rule of § 5 alike ("frühe Sorten mit Reifezeit bis und mit
+# Riesling-Silvaner" gave a Sylvaner the annex does not list), so the annex,
+# when there is one, is the roster. A cell is one variety with its synonyms
+# ("Heida, Savagnin blanc", "Blauburgunder / Pinot Noir"), a breeder code
+# ("Cabertin, VB 91-26-17") or a placeholder ("Versuchssorten rot").
+_ROSTER_ANNEX = re.compile(
+    r"^\s*Anhang\s+\d+\s*[–-]\s*Zugelassene\s+Rebsorten\s*$(.*?)(?=^\s*Anhang\s+\d+\s*[–-]|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+_TABLE_CELL = re.compile(r"\S+(?: \S+)*")
+_CELL_NAMES = re.compile(r"\s*[/,]\s*")
+_BREEDER_CODE = re.compile(r"^[A-Z]{1,5}[\s-]*\d[\d\s.-]*$")
+_ROSTER_PLACEHOLDERS = ("versuchssorten", "interspezifische")
+
+
+def annex_roster_block(text: str) -> str:
+    m = _ROSTER_ANNEX.search(text or "")
+    return m.group(1) if m else ""
+
+
+def table_varieties(block: str, match_fn) -> list[dict]:
+    """The varieties of a roster table, one per cell: a cell's first name
+    that matches exactly or near-exactly; synonyms, breeder codes and
+    bracketed glosses only help it match."""
+    rows = [[(m.start(), m.group(0)) for m in _TABLE_CELL.finditer(line)]
+            for line in (block or "").splitlines()
+            if not re.search(r"Gilt ab|Stand \d|Die f[üu]r die Weinherstellung", line)]
+    # The table is alphabetical down each column: read the left column,
+    # then the right one (a cell starting at or past the gutter).
+    seconds = [row[1][0] for row in rows if len(row) > 1]
+    gutter = min(seconds) if seconds else 10**6
+    cells = ([c for row in rows for pos, c in row if pos < gutter]
+             + [c for row in rows for pos, c in row if pos >= gutter])
+    out: dict[str, dict] = {}
+    for cell in cells:
+        cell = re.sub(r"\([^)]*\)", " ", cell).strip()
+        if not cell or cell.lower().startswith(_ROSTER_PLACEHOLDERS):
+            continue
+        for part in _CELL_NAMES.split(cell):
+            part = part.strip(" .:-")
+            if not part or _BREEDER_CODE.match(part):
+                continue
+            hit = match_fn(part)
+            if hit is None or (hit.method.startswith("fuzzy")
+                               and int(hit.method.split(":")[1]) < _CH_FUZZY_FLOOR):
+                continue
+            if hit.slug not in out:
+                out[hit.slug] = {"slug": hit.slug, "name": part, "colour": hit.colour,
+                                 "role": "principal"}
+            break
+    return list(out.values())

@@ -6,10 +6,10 @@ readers see; `--lang` for another) against the source-language bullet,
 the grounding quotes, the full regulator text stage 02d graded against
 (`_lib/terroir_sources`) and the Wikipedia hints, and asks: would a
 reader of this bullet believe something the sources do not support?
-One request per record; the default grader is `claude-opus-5` — a
-different, stronger model than the stage-02d extractor and the
-claim-support gate (claude-sonnet-4-6), so the measure is independent
-of the machinery it measures.
+One request per record; the default grader is the newest Opus
+(`providers.STAGE_DEFAULTS["audit"]`) — a different, stronger model than
+the stage-02d extractor (Sonnet), so the measure is independent of the
+machinery it measures.
 
 Paired before / after: `--from-backup RUN` grades the same records as
 they were BEFORE a re-run (the snapshot under

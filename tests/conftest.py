@@ -26,6 +26,13 @@ FIXTURES = Path(__file__).parent / "fixtures"
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 
+@pytest.fixture(autouse=True)
+def _no_model_check(monkeypatch):
+    """No Models-API call from the suite: `model_check.ensure_latest` is
+    exercised with an injected fetcher in tests/test_model_check.py."""
+    monkeypatch.setenv("OWM_SKIP_MODEL_CHECK", "1")
+
+
 @pytest.fixture
 def fixture_text():
     def _load(name: str) -> str:

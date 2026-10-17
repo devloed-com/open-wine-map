@@ -23,7 +23,8 @@ wiki-only bullets.
 
 Providers:
   anthropic  Anthropic Messages API (recommended for production).
-             Requires ANTHROPIC_API_KEY. Default model: claude-haiku-4-5.
+             Requires ANTHROPIC_API_KEY. Default model: the stage's
+             entry in providers.STAGE_DEFAULTS.
   mistral    Mistral Chat Completions API. Requires MISTRAL_API_KEY.
              Default model: mistral-large-latest.
   ollama     Local Ollama HTTP API (recommended for offline / forks).

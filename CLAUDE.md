@@ -347,8 +347,14 @@ details and "Hard rules" for invariants that apply to every country.
   (generoso → generous, tirage → disgorgement, Burgundian climat →
   climate, Lehm → clay, Pintes → Pinot, Немски ризлинг ↔
   Welschriesling), untranslated common nouns, missing exonyms
-  (`exonyms.exonym_hits` feeds the model its hits) — and applies the
-  corrected translation under the same guards; every checked bullet
+  (`exonyms.exonym_hits` feeds the model its hits), and in NL an article
+  that does not agree with its noun ("Het wijngaard" for *le vignoble* —
+  the article copies the source noun's gender; 42 bullets in 36 records on
+  2026-10-09; [scripts/_lib/nl_articles.py](scripts/_lib/nl_articles.py)
+  feeds the model its hits and `detect_untranslated_terroir_facts.py`
+  lists them as `article:`) — and applies the corrected translation under
+  the same guards (a fix may be up to 115 % of the bullet it replaces,
+  360 characters at least); every checked bullet
   carries `check`, the cache a `backcheck` block keyed on both shas. The
   glossary ([scripts/_lib/translation_glossary.py](scripts/_lib/translation_glossary.py))
   and the exonym table carry the same terms so 02e gets them right
@@ -357,7 +363,7 @@ details and "Hard rules" for invariants that apply to every country.
   [scripts/audit_terroir_facts_llm.py](scripts/audit_terroir_facts_llm.py)
   grades a sample of records' rendered EN bullets against the full source
   with an adversarial verifier on a *different* model
-  (`claude-opus-5`, vs the sonnet-4-6 extractor / gate) and reports the
+  (Opus — `STAGE_DEFAULTS["audit"]` — vs the Sonnet extractor) and reports the
   reader-misled share with a Wilson interval; `--from-backup <run>`
   grades the same records' pre-run state and `--compare A B` prints the
   paired before / after. Run it after every scoped re-run; the review's
@@ -1713,7 +1719,7 @@ other cadernos name their sub-regiões for area and terroir only.
 
 | Script | Reads | Writes |
 |---|---|---|
-| pt/00_fetch_data.py | (network) | raw/pt/eambrosia/index.json, raw/pt/ivv/cadernos-index.json, raw/pt/caop/CAOP_{Continente,RAA,RAM}_2025.gpkg |
+| pt/00_fetch_data.py | (network) + scripts/_lib/pt/subregiao_areas.json | raw/pt/eambrosia/index.json, raw/pt/ivv/cadernos-index.json, raw/pt/caop/CAOP_{Continente,RAA,RAM}_2025.gpkg, raw/pt/dre/*.pdf + manifest-*.json (the acts that delimit sub-regiões) |
 | pt/01_fetch_cadernos.py | raw/pt/eambrosia/index.json + raw/pt/ivv/cadernos-index.json + raw/pt/ivv/cadernos/manual_overrides.json | raw/pt/ivv/cadernos/*.pdf + manifest.json |
 | pt/02_extract_cadernos.py | raw/pt/ivv/cadernos/*.pdf | raw/pt/cadernos-extracted/*.json + _index.json (parents + sub-regiões + stubs) |
 | pt/02d_extract_terroir_facts.py | raw/pt/cadernos-extracted/*.json + raw/wikipedia/aocs/pt/ | raw/terroir-facts/*.json (country="pt") + manifest-pt.json |
@@ -1761,36 +1767,140 @@ Per PT record, in priority order (each step records the chosen
 source in `geom_source` so the panel can attribute correctly):
 
 1. **`stub-no-geometry`** — stubs (no caderno) short-circuit.
-2. **`parent-appellation`** — sub-regiões inherit the parent's
-   polygon. Honest attribution: precision is parent-level, not
-   sub-região-level. v2 follow-up will refine via CAOP município
-   commune lists when the caderno enumerates them per-sub-região.
-3. **`caop-concelho-union`** — parse the caderno's "Área Delimitada"
-   section ([scripts/_lib/pt/commune_list.py](scripts/_lib/pt/commune_list.py))
-   for an enumerated concelho list, a whole-distrito declaration, a
-   bullet-list of concelhos, a bare "Distrito de X." sentence, or a
-   whole-archipelago phrase (Arquipélago dos Açores / Região
-   Autónoma da Madeira); union the matching DGT CAOP 2025 município
-   polygons via `PTPolygonIndex.union_from_parsed`. Threshold: at
-   least 2 concelho matches or 1 distrito expansion. Município-level
-   precision — finer than Bétard's whole-município padding for
-   polygons that don't share district boundaries with neighbours.
-   Hit rate: 23 / 30 PT DOPs + 14 / 14 PT IGPs.
+2. **Sub-regiões** — a sub-região the caderno delimits by its own units
+   is drawn from them, at the same bar as a parent (step 3): Douro's and
+   Porto's Baixo Corgo / Cima Corgo / Douro Superior, Trás-os-Montes'
+   Chaves / Planalto Mirandês / Valpaços, Do Tejo's six, Alentejo's
+   Vidigueira. One the caderno names but does not delimit is drawn from
+   the national act that does, transcribed in the checked-in
+   [scripts/_lib/pt/subregiao_areas.json](scripts/_lib/pt/subregiao_areas.json)
+   ([scripts/_lib/pt/subregiao_areas.py](scripts/_lib/pt/subregiao_areas.py),
+   2026-10-13): Vinho Verde's caderno lists its nine sub-regiões and gives
+   each a grape table, but its area section delimits the DO only — the
+   sub-regiões are Portaria n.º 668/2010, Artigo 3.º n.º 1 and Anexo I
+   ("Área geográfica de produção com indicação de sub-região"), as
+   republished by Portaria n.º 152/2015: whole municípios, and freguesias
+   where one is shared (Cinfães between Baião and Paiva, Vizela between Ave
+   and Sousa, Valongo's Campo e Sobrado in Sousa, Resende without Barrô).
+   The table rows are the act's as printed (a row without freguesias is
+   "(*) Todo o concelho"; the Baião table's "São João." / "Fontoura." is
+   one freguesia, `printed_as`), drawn through the same resolver as step 3;
+   the card cites the act (`geom_src_national_act`, a Sources entry
+   `src_area_act`; the record's `area_act_*` source fields), and stage 00
+   fetches the PDF into `raw/pt/dre/` against its pinned sha256. The entry
+   lists every act read for its effect on the table (`reviewed_acts`: the
+   two rectifications and Portaria 333/2016 touch yields and labelling,
+   Avisos 7945/2022, 14002/2024/2 and 21430/2026/2 are IVV specifications,
+   none changes Artigo 3.º n.º 1 or Anexo I); a caderno whose legal
+   reference (9.8 b) cites an act not listed — read in any citation form
+   (`cited_acts`: plural and list forms, a number without "n.º", a
+   two-digit year) — makes the entry STALE on the `[pt-geom]` line
+   and fails `tests/test_pt_subregiao_areas.py`, which also checks every
+   name as an entry of its own sub-região's table in the PDF (read column
+   by column, entry and "(*)" counts equal), that Artigo 3.º's prose draws the same units as
+   the table (the republication's "Santa Eulália em de Santo Adrião" read
+   as the 2010 "e de"), and that the nine lie inside the DO without
+   overlapping: 7,083 km² of its 8,398 — the rest is Caminha, Paredes de
+   Coura, Valença, Vila Nova de Cerveira, Gondomar, Maia, Matosinhos, most
+   of Valongo, Arouca, Vale de Cambra and Ossela, in no sub-região. A
+   sub-região whose section is boundary prose (the other seven of
+   Alentejo's — `prose_cut_subregions`) inherits the parent's polygon as
+   **`parent-appellation`**. The record's `name` is the section header
+   ("Baixo Corgo", "Granja/Amareleja").
+3. **`caop-freguesia-union` / `caop-concelho-union`** — the caderno's
+   "Área geográfica delimitada" read clause by clause
+   ([scripts/_lib/pt/area_units.py](scripts/_lib/pt/area_units.py)) and
+   drawn from DGT CAOP 2025 at freguesia precision
+   ([scripts/_lib/pt/freguesias.py](scripts/_lib/pt/freguesias.py),
+   `PTPolygonIndex.resolve_area_units`; 2026-10-13, after a Vinho Verde
+   boundary flag). A município named whole is drawn as its CAOP polygon,
+   minus the freguesias its clause excludes ("Resende, com exceção da
+   freguesia de Barrô", "Figueira de Castelo Rodrigo (excluída a
+   freguesia de Escalhão)", "O distrito de Aveiro, com exceção dos
+   municípios de … e, do município de Oliveira de Azeméis, a freguesia
+   de Ossela"); a município the text restricts to freguesias ("Loulé
+   (freguesias de …)", "Do concelho de Cascais, as freguesias de …", "as
+   freguesias de …, do concelho de Vila Real", "• Armamar: …") is drawn
+   as those freguesias; a distrito named as a member ("todos os
+   concelhos dos distritos de …", "Todas as freguesias de todos os
+   concelhos do distrito de …", "O distrito de X") whole. The area is the
+   union of every clause, sub-região sections included (a sub-região
+   lies inside its appellation; Terras do Dão's Couto de Esteves is
+   named only there), and an exclusion removes units from its own clause
+   only. Boundary prose — a clause from its first lower-case boundary
+   word on ("limite", "estrada", "ribeira", "segue", "linha",
+   "confinante", …) and Carcavelos' "Os limites da região são os
+   seguintes:" — names landmarks, never members. CAOP's 3,259
+   freguesias carry the 2013 Uniões (Lei n.º 11-A/2013); a name is
+   matched inside its município against each unit's CAOP name, its
+   former freguesias ("Travassô e Óis da Ribeira" → Óis da Ribeira;
+   "Lamego (Almacave e Sé)" → Sé) and every run of them — a
+   "Town (Saint)" unit also as "Saint de Town" ("Vizela (São Paio)" is
+   the Portaria's "São Paio de Vizela") — then with the
+   connectors or the spaces dropped, a whole-word prefix / suffix
+   ("Santa Catarina" → Santa Catarina da Fonte do Bispo, "Rua" → Vila da
+   Rua), a one-letter typo ("Frechos", "Argeriz", "Alvar") and the
+   checked-in [scripts/_lib/pt/freguesia_overrides.json](scripts/_lib/pt/freguesia_overrides.json)
+   (`unions`: a renamed union whose name lists no parts — Vila Real,
+   Viseu, Coutos de Viseu, São Gonçalo de Lagos, Armamar — with its
+   former freguesias; `names`: Graciosa's "Praia" = São Mateus, Torres
+   Vedras' "São Miguel" / "São Mamede", Sobral's "São Salvador"; each
+   cites the act in the Diário da República; a pin CAOP no longer
+   carries, or whose unit already names its parts, prints STALE). A name
+   written "União das freguesias de A e B" is that union while CAOP carries
+   it, else its former freguesias — CAOP 2025 re-created some (Valongo's
+   Campo and Sobrado, Vizela's Tagilde and São Paio), and read whole the
+   name matched one part by suffix and lost the other; an exclusion so
+   named gathers its parts per unit, so a union whose every part it names
+   goes whole. A name
+   none of these reaches is reported, never guessed; a container written
+   short ("Santa Cruz", "São Roque", "Lajes") is the município in which
+   the clause's freguesias resolve, an exact name before a longer one
+   ("Paredes" ≠ Paredes de Coura). What the card says (`_units_line` /
+   `unitsLine`, panel fields): a freguesia the text includes only in part
+   ("parte das freguesias de", "(parte)", "lugares de", "as Quintas …",
+   "as propriedades …", an altitude limit, "excluindo as propriedades
+   …") is drawn whole and listed under `geom_units_partial`; a former
+   freguesia whose União holds parishes the text does not name draws the
+   union, listed under `geom_units_proxied`; a name the layer does not
+   carry under `geom_units_unmatched`. A município the record draws
+   entirely keeps its município polygon; `caop-concelho-union` when no
+   município is drawn in part. Accepted when the unmatched names are no
+   more than the units drawn.
 4. **`figshare-pdo`** — exact `file_number` (`PDO-PT-Axxxx`) →
    `PDOid` match against Bétard 2022 EU_PDO.gpkg (reuses
    `raw/es/figshare/EU_PDO.gpkg`; the dataset covers all EU PDOs).
-   Fallback for DOPs whose caderno area text is too sparse for the
-   CAOP parser. Hit rate: 7 / 30 PT DOPs.
+   Used for a DOP with sub-regiões delimited only by boundary prose
+   (`prose_subregions`: Alentejo's Borba, Moura, Redondo, Reguengos —
+   the units the text names would leave them out, and Bétard's polygon
+   covers Évora, Borba, Redondo and Reguengos de Monsaraz whole), and as
+   the fallback when the clause reader takes no unit from a text.
+5. **`caop-concelho-union`** (legacy) — the município-level reading
+   ([scripts/_lib/pt/commune_list.py](scripts/_lib/pt/commune_list.py),
+   `union_from_parsed`) for a text the clause reader takes nothing from;
+   logged "no unit read at freguesia level". Not hit on the current
+   corpus.
 
 Macro-region tokens (`acores` / `madeira`) emitted by the parser
 expand into the constituent ilhas via `PT_MACRO_REGIONS` in
-[scripts/_lib/pt/geometry.py](scripts/_lib/pt/geometry.py) (Açores =
-7 ilhas / 16 municipios; Madeira = 2 ilhas / 11 municipios).
+[scripts/_lib/pt/geometry.py](scripts/_lib/pt/geometry.py): Açores =
+"todas as ilhas do Arquipélago dos Açores", 9 ilhas / 19 municípios (the
+western group, Flores + Corvo, is the second gpkg of the CAOP RAA zip;
+stage 00 extracts every gpkg of a zip since 2026-10-13 — the IG had
+lacked both islands); Madeira = the Região Demarcada "abrangendo as
+ilhas da Madeira e do Porto Santo", 2 ilhas / 11 municípios, the parts
+more than 10 km offshore dropped (`MACRO_ISLANDS_ONLY`, `ISLAND_KEEP_M`:
+CAOP files the uninhabited Desertas and Selvagens under Santa Cruz and
+Funchal; the three Madeira records had drawn them).
 
 Bétard 2022 + CAOP 2025 are CC-licensed and re-distributable with
 attribution. CAOP 2025 (Continente + RAA + RAM) is fetched once in
 stage 00 and cached at `raw/pt/caop/`. Re-runnable: stage 04 reads
-the cached gpkg on every run.
+the cached gpkg on every run. CAOP 2012.1, the last map before the 2013
+mergers, would draw a former freguesia exactly instead of its União, but
+DGT states no licence for the historical versions — not used.
+`tests/test_pt_area_units.py` pins the parser and the resolver,
+`tests/test_pt_subregiao_areas.py` the act tables of step 2.
 
 ### Curator workflow for PT wines without an IVV match
 
@@ -4057,6 +4167,28 @@ CH-specific notes:
   Mostgewicht / annex form the scan doesn't yet recover — a known
   recall gap, not a regression (their prior non-zero counts were
   entirely prose/place false positives now removed).
+  **Roster annex and rosters by reference (2026-10-13, visitor flag on
+  Basel-Stadt).** Basel-Landschaft's Verordnung über den Pflanzenbau
+  (SGS 516.31) keeps its AOC roster in a two-column "Anhang 1 –
+  Zugelassene Rebsorten" (§ 16 Abs. 1); `annex_roster_block` /
+  `table_varieties` in `_lib/ch/reglement.py` read that table down each
+  column, one variety per cell (a cell's synonyms, breeder codes and
+  bracketed glosses only help it match; "Versuchssorten" / "Interspezifische"
+  are placeholders), instead of the whole-document scan, which had read
+  the § 5 altitude rule's "bis und mit Riesling-Silvaner" as a Sylvaner.
+  The same ordinance names «AOC Basel-Stadt» and «AOC Solothurn» (§ 11
+  Abs. 2), and both cantons apply it by agreement (BS SG 911.200 § 1 lit. b
+  "… die Ursprungsbezeichnungen"; SO BGS 516.34 § 1 Abs. 2 "… Kapitel C.
+  Weinbau"), so `ROSTER_BY_REFERENCE` in `ch/02_extract_reglements.py`
+  gives them BL's roster with a `cantonal-reglement-roster` source that
+  carries the applying clause; the panel lists it as a second règlement
+  row (`cantonal_roster_*`). Before, both cards showed no grape and the
+  empty-grapes audit had pinned them REVIEWED. AI / AR / GL / TG delegate
+  their roster to a separate act (Standeskommission, Regierungsrat,
+  Fachstelle list) that is not fetched — the remaining recall gap. VIVC
+  lists HEIDA and PAÏEN on both Savagnin blanc and Gewürztraminer; the
+  Swiss texts mean Savagnin blanc (Valais OVV "Savagnin blanc (Païen ou
+  Heida)"), pinned in `GRAPE_ALIAS`.
 - For the 5 multi-AOC cantons (VD has 10 AOCs, GE has 23, TI has 4,
   BE has 3, FR has 2), the canton-wide règlement body is the v1
   default for variety lists. Per-AOC commune-list carving (Phase 2.5)
@@ -4236,10 +4368,14 @@ Per CH record, in priority order (`geom_source` records the choice):
 3. **`swissboundaries-commune-union`** — parse the canton règlement
    for commune mentions (via `CHCommuneIndex.scan_text`) and union
    the matching swissBOUNDARIES3D Gemeinde polygons by BFS_NUMMER.
-   Hit rate: VD (100), TG (50), SG (48), SH (16), BE (10), NE (5),
-   FR (3), several cantons with 1 (just the seat-of-government
-   commune named in the preamble — geometry is downgraded to
-   canton-union by step 4).
+   Hit rate: VD (100), TG (50), SG (48), SH (16), BE (9), NE (5),
+   FR (1). A cantonal AOC whose scan finds only the seat of government
+   (`CANTON_CAPITAL` in `_lib/ch/canton.py` — the title or signature
+   line, "Kanton Zürich", "Delémont, le …") gets no commune list and
+   falls to step 4: until 2026-10-13 nine AOCs (AI, BS, GL, JU, LU, SO,
+   SZ, ZG, ZH) were drawn as their capital town — Zürich without the
+   Weinland, Basel-Stadt without Riehen — though this paragraph already
+   said they were not.
 4. **`swissboundaries-canton-union`** — for whole-canton AOCs (the
    bulk of the smaller German-CH cantons + canton-level umbrellas):
    union every Gemeinde whose `KANTONSNUMMER == BFS canton id`. The
@@ -5667,16 +5803,33 @@ entries and never resubmits an already-processed one — and pass 2 matches
 answers by content, not call order (runs are single-threaded all the
 same).
 
-Default models are **per stage** (`providers.STAGE_DEFAULTS`, decided
-2026-09-14 after the paired experiments in
-[docs/review-terroir-facts-2026-09-12.md](docs/review-terroir-facts-2026-09-12.md)):
-02d extraction `claude-sonnet-5` with thinking off; the gate
-(`02d_verify`) and the LLM audit `claude-opus-5` with adaptive thinking;
-02e and the back-check `claude-sonnet-5` (switched 2026-09-16 for new
-runs only — the corpus was not re-translated; `effective_thinking` sends
-`disabled` so the JSON budget is not spent on thinking); 02c
-`claude-sonnet-4-6` (human round-trip in practice); mistral
-`mistral-medium-latest`. Used by `--batch` and by synchronous `--provider`
+Default models are **per stage** (`providers.STAGE_DEFAULTS`; the split
+decided 2026-09-14 after the paired experiments in
+[docs/review-terroir-facts-2026-09-12.md](docs/review-terroir-facts-2026-09-12.md),
+always the newest model of each family since 2026-10-09 unless a run
+names another): 02d extraction `claude-sonnet-5-5` with thinking off; the
+gate (`02d_verify`) and the LLM audit `claude-opus-5-5` with adaptive
+thinking at effort `high` (Opus 5.5 defaults to `medium`; Opus 5, on
+which the gate was calibrated, defaulted to `high` — `_EFFORT_PINS`);
+the back-check `claude-opus-5-5` too (2026-10-09: a corpus-wide Sonnet 5.5
+back-check changed 20 % of the NL / FR / ES bullets and a blind judge
+found ~17 % of its edits worse; on those bullets Opus left 22 of 30 alone
+and fixed the French agreement errors Sonnet missed, at 3.3× the cost —
+the Sonnet run was rolled back, `MAX_TOKENS` raised to 16,000 because
+Opus always thinks); 02e and 02c `claude-sonnet-5-5`. Bumping a default
+re-runs nothing: the corpus keeps the model that wrote each cache (its
+`translator` / `model` field) — 1,515 of the 1,617 NL caches are
+Sonnet 4.6's. Mistral `mistral-medium-latest`. Before any job a default
+is checked against the account's model list
+([scripts/_lib/model_check.py](scripts/_lib/model_check.py), Models API
+`GET /v1/models`, cached in `raw/cache/anthropic-models.json` for a day):
+when its family (sonnet / opus / haiku / fable) has a newer model the run
+stops before submitting anything and says what to bump — never a silent
+switch, because a new model can change the request surface (Sonnet 5.5's
+400 on `disabled` thinking). An explicit `--model` is not checked (a
+deliberate older model, or resuming an in-flight batch); an unreachable
+API warns and runs on a stale cache or unchecked; `OWM_SKIP_MODEL_CHECK=1`
+turns it off (the test suite sets it). Used by `--batch` and by synchronous `--provider`
 runs alike (`batch.default_model(provider, stage)` /
 `default_thinking()`, `providers.make_provider(..., stage=)`); override
 per run with `--model` / `--thinking`, or `OWM_BATCH_THINKING` for an
@@ -5684,9 +5837,13 @@ experiment. `tests/test_stage_defaults.py` pins the configuration. API
 keys are read from the environment or a repo-root `.env`. The Claude 5
 family runs adaptive thinking when `thinking` is omitted and every
 stage's `max_tokens` is sized for the JSON reply alone, so
-`providers.effective_thinking` sends `disabled` for a Claude 5 model on a
-stage that sets no mode (2026-09-15: Sonnet 5 on 02e had 64 % of its
-replies truncated by thinking and rejected).
+`providers.effective_thinking` turns thinking off for a Claude 5 model on
+a stage that sets no mode (2026-09-15: Sonnet 5 on 02e had 64 % of its
+replies truncated by thinking and rejected) — spelled per model: `disabled`
+(Sonnet 5, Opus 5), `between_tools` (Sonnet 5.5, which answers `disabled`
+with a 400), and no thinking field with effort `low` on the models that
+always think (Opus 5.5, Fable). No server-side refusal fallback is sent:
+the Batch API rejects the parameter.
 
 **Prompt caching** ([scripts/_lib/prompt_cache.py](scripts/_lib/prompt_cache.py),
 Anthropic only; Mistral / Ollama get the flat text). Text sent more than
