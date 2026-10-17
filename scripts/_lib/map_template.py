@@ -3382,6 +3382,7 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark .pill.style.style--vin-jaune {{ background:#2f2914; color:#e7d186 }}
   html.theme-dark .pill.style.style--vin-de-paille {{ background:#2f2614; color:#e7c987 }}
   html.theme-dark .pill.grape {{ background:#202d3b; color:#aecbe8 }}
+  html.theme-dark .pill.grape .canon {{ color:inherit }}
   html.theme-dark a.pill.grape:hover {{ background:#2a3a4c }}
   html.theme-dark .pill.grape.accessory {{ background:#2a2a2c; color:#aeaeae }}
   html.theme-dark a.pill.grape.accessory:hover {{ background:#343437 }}
