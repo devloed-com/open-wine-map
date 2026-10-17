@@ -215,6 +215,7 @@ from _lib.si.geometry import SIPolygonIndex
 from _lib.si.region import derive_region as derive_si_region
 from _lib.sk.geometry import SKPolygonIndex
 from _lib.sk.region import derive_region as derive_sk_region
+from _lib.style_taxonomy import FACET_BUCKET_ORDER
 from _lib.style_taxonomy import (
     all_slugs as _taxonomy_all_slugs,
 )
@@ -689,7 +690,7 @@ def _geojson_bounds(g: dict) -> tuple[float, float, float, float]:
     return minx, miny, maxx, maxy
 
 
-# Villages (simple-mode) polygon vs parcellaire bbox ratio above which a
+# Villages (overview) polygon vs parcellaire bbox ratio above which a
 # cahier-text commune union is treated as an extraction artefact and
 # narrowed to parcel-bearing communes. Corpus median is ~2x; legitimate
 # single-commune aires around tiny crus reach ~1000x but never pass the
@@ -2609,7 +2610,7 @@ def main() -> int:
             # Guard: a cahier-text aire that dwarfs the parcellaire polygon is
             # an extraction artefact (an aire de proximité list read as the
             # aire — Pouilly-Loché's 2024 cahier drew the AOC across all of
-            # Burgundy in simple mode), not a production area. Narrow the
+            # Burgundy at the overview zooms), not a production area. Narrow the
             # text-derived communes to those holding parcels, exactly as the
             # aires-CSV path does, and say so loudly. Dormant for correct
             # records: a single-commune aire around a tiny cru never trips
@@ -2753,8 +2754,8 @@ def main() -> int:
         # "Vin" (Vin tranquille, Vin mousseux, Vin de liqueur, Vin doux
         # naturel) is a wine. Spirits (Eaux-de-vie, Rhum, Calvados,
         # Pommeau, etc.) and ciders fall outside that set. The map hides
-        # non-wine appellations by default — see `showSpirits` in the
-        # template for the toggle.
+        # non-wine appellations by default — the "Include spirits" checkbox
+        # in the sidebar's scope row (`showSpirits` in app.js) shows them.
         # ES + PT + IT + AT + SI records have no `categorie` — every entry
         # is filtered to productType=WINE upstream in stage 00, so they're
         # all wines.
@@ -4184,7 +4185,6 @@ def emit_html(
     gi_class_counts: dict[str, int] = {}
     gi_term_display: dict[str, tuple[str, str]] = {}
     grapes_all_counts: dict[str, int] = {}
-    simple_style_counts: dict[str, int] = {}
     # `bbox_villages` on the startup record = the bbox of what is drawn below
     # the detail zoom (the footprint / zone), read by localityRank.
     village_bbox_by_slug: dict[str, list[float]] = {}
@@ -4482,8 +4482,6 @@ def emit_html(
         }
         for s in styles:
             style_counts[s] = style_counts.get(s, 0) + 1
-        for s in simple_styles:
-            simple_style_counts[s] = simple_style_counts.get(s, 0) + 1
         for s in principal:
             principal_counts[s] = principal_counts.get(s, 0) + 1
         for s in accessory:
@@ -4525,21 +4523,14 @@ def emit_html(
     else:
         area_q1, area_q3 = 0.0, 1.0
 
-    # Simple-mode style facet uses the 6-bucket order white/rose/red/
-    # sparkling/sweet/other, regardless of frequency, so chips read like a
-    # canonical wine-style legend.
-    simple_style_order = ["white", "rose", "red", "sparkling", "sweet", "oxidative", "other"]
-    facet_styles_simple = [
-        (s, simple_style_counts.get(s, 0)) for s in simple_style_order
-        if simple_style_counts.get(s, 0) > 0
-    ]
-
-    # Advanced-mode style facet is a taxonomy-driven tree. Per node we emit
+    # The style facet is the taxonomy tree: depth-0 rows in FACET_BUCKET_ORDER
+    # (white / rosé / red / sparkling / sweet / oxidative / other, so the top
+    # rows read like a wine-style legend), sub-styles folded by the UI. Per node we emit
     # `(slug, parent, depth, count)` in declared DFS order; `count` aggregates
     # the slug itself plus every descendant, so checking a parent reflects
     # what selecting the whole subtree would yield. Nodes with zero aggregate
     # count drop out (along with their entire subtree, by definition).
-    taxonomy_order = _taxonomy_dfs_order()
+    taxonomy_order = _taxonomy_dfs_order(roots=FACET_BUCKET_ORDER)
     descendant_sets = {slug: _taxonomy_descendants(slug) for slug, _, _ in taxonomy_order}
     panel_only = set(_taxonomy_all_slugs()) - {s for s, _, _ in taxonomy_order}
     for slug, dset in descendant_sets.items():
@@ -4593,7 +4584,6 @@ def emit_html(
         style_descendants=style_descendants,
         facet_class_tree=facet_class_tree,
         class_descendants=class_descendants,
-        facet_styles_simple=facet_styles_simple,
         facet_regions=sort_facet(region_counts),
         region_search_terms=region_search_terms_for(region_counts),
         facet_term_tree=facet_term_tree,

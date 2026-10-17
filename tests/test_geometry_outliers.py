@@ -183,26 +183,24 @@ def _js_function(src: str, name: str) -> str:
 
 
 def _pick_from_omnisearch(app_js: str, rec: dict) -> dict:
-    """Run app.js's own pickOmni on one record from the default state (simple
-    mode, IGPs and spirits off) and return the gates' state afterwards."""
+    """Run app.js's own pickOmni on one record from the default state (IGPs
+    and spirits off) and return the gates' state afterwards."""
     fns = "\n".join(_js_function(app_js, n)
-                    for n in ("spiritsVisible", "hiddenGates", "hiddenBy", "pickOmni",
-                              "openAppellation"))
+                    for n in ("hiddenGates", "hiddenBy", "pickOmni", "openAppellation"))
     prog = f"""
-let showIgp = false, showSpirits = false, viewMode = 'simple';
+let showIgp = false, showSpirits = false;
 const LANG = 'en', LOD = {{ overview_max_zoom: 11.9 }}, map = {{}};
 const AOCS = {{ rec: {json.dumps(rec)} }};
 const events = [];
-const track = (name, props) => events.push([name, props.kind || props.mode || props.slug]);
+const track = (name, props) => events.push([name, props.kind || props.slug]);
 const localStorage = {{ setItem: () => {{}} }};
 const document = {{ getElementById: () => null }};
 let lastPanelTrigger = null, lastStackKey = null, stackFocusIndex = 0;
-const applyFilter = () => {{}}, applyMode = () => {{}}, buildAppellationFacet = () => {{}};
+const applyFilter = () => {{}}, buildAppellationFacet = () => {{}};
 const renderPanelStack = () => {{}}, fitBbox = () => null;
 {fns}
 pickOmni('appellation', 'rec');
-console.log(JSON.stringify({{ hidden: hiddenBy(AOCS.rec), showIgp, showSpirits, viewMode,
-  events }}));
+console.log(JSON.stringify({{ hidden: hiddenBy(AOCS.rec), showIgp, showSpirits, events }}));
 """
     out = subprocess.run([NODE, "-"], input=prog, capture_output=True, text=True, check=True)
     return json.loads(out.stdout)
@@ -225,7 +223,9 @@ def test_picking_a_hidden_record_turns_on_every_gate_that_hides_it(rec, igp, spi
     after = _pick_from_omnisearch(app_js, rec)
     assert after["hidden"] == ""
     assert after["showIgp"] is igp
-    assert (after["viewMode"] == "advanced" and after["showSpirits"]) is spirits
+    assert after["showSpirits"] is spirits
+    # The Simple / Advanced view mode is gone: a spirit pick flips only its own gate.
+    assert "View Mode Switched" not in {e[0] for e in after["events"]}
     toggled = [e[1] for e in after["events"] if e[0] == "Kind Toggled"]
     assert toggled == [k for k, on in (("igp", igp), ("spirits", spirits)) if on]
 

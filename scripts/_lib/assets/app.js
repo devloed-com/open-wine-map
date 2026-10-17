@@ -24,7 +24,6 @@
   const INITIAL_CAMERA_HASH = window.location.hash || '';
   const FACET_STYLES_TREE = __OWM_styles_tree_json__;
   const STYLE_DESCENDANTS = __OWM_style_descendants_json__;
-  const FACET_STYLES_SIMPLE = __OWM_styles_simple_json__;
   // Level of detail (scripts/_lib/vineyard_envelope.py): below
   // LOD.overview_max_zoom the map draws the generalised vineyard footprint of
   // a French parcel-level record (its 250 m closing), from LOD.detail_min_zoom
@@ -38,6 +37,10 @@
   const STYLE_LABELS = __OWM_style_labels_json__;
   const SIMPLE_STYLE_LABELS = __OWM_simple_style_labels_json__;
   const SIMPLE_STYLE_BUCKETS = __OWM_simple_style_buckets_json__;
+  // Labels for the style facet tree: its depth-0 rows are the seven buckets
+  // and keep the wording of the former bucket chips ("sweet / dessert");
+  // deeper nodes keep the taxonomy's own labels.
+  const FACET_STYLE_LABELS = Object.assign({}, STYLE_LABELS, SIMPLE_STYLE_LABELS);
   // {canonical style slug -> [searchable synonym terms]} — wine-style analogue
   // of GRAPE_SYNONYMS; makes a style findable by a local name in the omnisearch
   // (typing "fondillon" surfaces the rancio style → its appellations).
@@ -273,7 +276,7 @@
   function hiddenGates(rec) {
     const gates = [];
     if (!showIgp && (rec.kind || 'AOC') === 'IGP') gates.push('igp');
-    if (!spiritsVisible() && rec.is_wine === false) gates.push('spirit');
+    if (!showSpirits && rec.is_wine === false) gates.push('spirit');
     return gates;
   }
 
@@ -510,9 +513,9 @@
   }
   document.querySelectorAll('a.feedback-mail').forEach(a => armFeedbackMail(a, '', ''));
 
-  let viewMode = 'simple';
-  try { viewMode = localStorage.getItem('view_mode') || 'simple'; } catch (e) {}
-  if (viewMode !== 'advanced') viewMode = 'simple';
+  // The Simple / Advanced view mode is gone (2026-10): one sidebar for
+  // everyone. Drop the key it persisted so nothing stale lingers in storage.
+  try { localStorage.removeItem('view_mode'); } catch (e) {}
 
   // Deep-link an appellation as a real path segment: /<lang>/<slug> for every
   // locale, EN included (/en/<slug>) — so one CDN rewrite covers all four. EN's
@@ -565,10 +568,6 @@
   let showSpirits = false;
   try { showSpirits = localStorage.getItem('show_spirits') === '1'; } catch (e) {}
 
-  // Spirits toggle is Advanced-only; in Simple mode spirits are always
-  // hidden regardless of the persisted preference.
-  function spiritsVisible() { return viewMode === 'advanced' && showSpirits; }
-
   // A visitor who lands on an appellation's page — a search result, a shared
   // link, an MCP map link — asked for it: turn on every toggle that would keep
   // it off the map, so the map draws what the panel shows (a PGI landing used
@@ -578,17 +577,14 @@
   for (const s of LANDING.slugs) {
     const gates = hiddenGates(AOCS[s]);
     if (gates.includes('igp')) showIgp = true;
-    if (gates.includes('spirit')) { viewMode = 'advanced'; showSpirits = true; }
+    if (gates.includes('spirit')) showSpirits = true;
   }
 
   const filters = {
     q: '',
     styles: new Set(),
-    stylesSimple: new Set(),
     classifications: new Set(),
     appellationType: new Set(),
-    principal: new Set(),
-    accessory: new Set(),
     grapesAll: new Set(),
     appellations: new Set(),
     // When true, the grape filter matches grapes_principal instead of grapes_all
@@ -632,16 +628,13 @@
     if (!chip) return;
     const kind = chip.dataset.kind;
     const key = chip.dataset.key;
-    if (kind === 'styleSimple') filters.stylesSimple.delete(key);
-    else if (kind === 'style') filters.styles.delete(key);
+    if (kind === 'style') filters.styles.delete(key);
     else if (kind === 'classification') filters.classifications.delete(key);
     else if (kind === 'appellationType') filters.appellationType.delete(key);
     else if (kind === 'grapeAll') {
       filters.grapesAll.delete(key);
       if (!filters.grapesAll.size) filters.mainGrapeOnly = false;
     }
-    else if (kind === 'principal') filters.principal.delete(key);
-    else if (kind === 'accessory') filters.accessory.delete(key);
     else if (kind === 'appellation') filters.appellations.delete(key);
     // Region chips are country-scoped (the name alone is ambiguous — Tokaj is
     // both Hungarian and Slovak), so the country rides along on the chip.
@@ -675,7 +668,6 @@
     // chip tray and is rendered from `filters.grapesAll`).
     const sets = {
       'facet-styles': filters.styles,
-      'facet-styles-simple': filters.stylesSimple,
       'facet-classification': filters.classifications,
       'facet-appellation-type': filters.appellationType,
     };
@@ -685,6 +677,7 @@
       el.querySelectorAll('input[type=checkbox]').forEach(inp => {
         inp.checked = set.has(inp.dataset.key);
       });
+      revealCheckedTreeRows(el);
     }
   }
 
@@ -772,7 +765,8 @@
     for (const slug in AOCS) if (matchesClient(AOCS[slug], slug)) n++;
     // When the filter excludes every visible record but matches one or
     // more hidden IGPs, surface a one-click reveal so the user understands
-    // *why* the camera didn't move. Same idea for hidden spirits.
+    // *why* the camera didn't move. (No spirits counterpart: the spirits
+    // checkbox sits in the scope row right under this line.)
     if (n === 0) {
       let nHiddenIgp = 0;
       if (!showIgp) {
@@ -804,36 +798,46 @@
     el.textContent = fmt(LABELS.count_filtered, { n: n, total: total });
   }
 
-  function buildFacet(containerId, items, store, format, extraFormat) {
-    const el = document.getElementById(containerId);
-    const html = items.map(([key, count]) => {
-      const safeKey = String(key).replace(/"/g, '&quot;');
-      const label = format ? format(key) : key;
-      const extra = extraFormat ? extraFormat(key) : '';
-      return `<label><input type="checkbox" data-key="${safeKey}"><span class="name">${label}${extra}</span><span class="count">${count}</span></label>`;
-    }).join('');
-    el.innerHTML = html;
-    el.addEventListener('change', e => {
-      if (e.target.tagName !== 'INPUT') return;
-      const k = e.target.dataset.key;
-      if (e.target.checked) store.add(k); else store.delete(k);
-      if (e.target.checked) {
-        track('Filter Applied', { facet: containerId.replace(/^facet-/, ''), value: k, locale: LANG });
-      }
-      applyFilter({ fit: true });
+  // A tree facet (styles, classification, appellation type): one row per
+  // node in stage 04's DFS order, a subtree folded behind a chevron. The
+  // checkbox's <label> and the chevron <button> are siblings inside the row
+  // (a button is a labelable element: nested in the label it would take the
+  // row's name as its own), so a screen reader hears two controls — "white,
+  // checkbox" and "white, button, collapsed". The subtree is a hidden
+  // sibling wrapper, so a collapsed branch leaves the accessibility tree.
+  function setTreeOpen(wrap, open) {
+    wrap.hidden = !open;
+    const row = wrap.previousElementSibling;
+    const btn = row && row.querySelector('.tree-toggle');
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  // Open every branch holding a checked row (an omnisearch pick of a deep
+  // node, a chip-tray sync), so a tick is never hidden behind a chevron.
+  function revealCheckedTreeRows(el) {
+    el.querySelectorAll('.tree-children input[type=checkbox]:checked').forEach(inp => {
+      for (let w = inp.closest('.tree-children'); w; w = w.parentElement && w.parentElement.closest('.tree-children')) setTreeOpen(w, true);
     });
   }
-
-  function buildTreeFacet(containerId, tree, store, labels, descendants, facetName) {
+  function buildTreeFacet(containerId, tree, store, labels, facetName) {
     const el = document.getElementById(containerId);
     if (!el) return;  // defensive null-guard
-    const html = tree.map(node => {
-      const safeKey = String(node.slug).replace(/"/g, '&quot;');
+    let html = '';
+    const open = [];  // depths of the subtree wrappers still open
+    tree.forEach((node, i) => {
+      while (open.length && open[open.length - 1] >= node.depth) { html += '</div>'; open.pop(); }
+      const safeKey = escapeAttr(String(node.slug));
       const label = labels[node.slug] || node.slug;
-      const hasChildren = (descendants[node.slug] || []).length > 1;
-      const cls = `tree-row${ hasChildren ? ' tree-row-parent' : '' }`;
-      return `<label class="${cls}" data-depth="${node.depth}"><input type="checkbox" data-key="${safeKey}"><span class="name">${label}</span><span class="count">${node.count}</span></label>`;
-    }).join('');
+      const next = tree[i + 1];
+      // Children that render: zero-count nodes are already dropped upstream.
+      const hasChildren = !!next && next.depth > node.depth;
+      const subId = `${containerId}-sub-${safeKey}`;
+      html += `<div class="tree-row${hasChildren ? ' tree-row-parent' : ''}" data-depth="${node.depth}">`
+        + `<label><input type="checkbox" data-key="${safeKey}"><span class="name">${label}</span><span class="count">${node.count}</span></label>`
+        + (hasChildren ? `<button type="button" class="tree-toggle" aria-expanded="false" aria-controls="${subId}" aria-label="${escapeAttr(label)}">›</button>` : '')
+        + '</div>';
+      if (hasChildren) { html += `<div class="tree-children" id="${subId}" hidden>`; open.push(node.depth); }
+    });
+    while (open.length) { html += '</div>'; open.pop(); }
     el.innerHTML = html;
     el.addEventListener('change', e => {
       if (e.target.tagName !== 'INPUT') return;
@@ -843,6 +847,12 @@
         track('Filter Applied', { facet: facetName, value: k, locale: LANG });
       }
       applyFilter({ fit: true });
+    });
+    el.addEventListener('click', e => {
+      const btn = e.target.closest('.tree-toggle');
+      if (!btn) return;
+      const wrap = document.getElementById(btn.getAttribute('aria-controls'));
+      if (wrap) setTreeOpen(wrap, wrap.hidden);
     });
   }
 
@@ -870,10 +880,9 @@
     return false;
   }
 
-  buildTreeFacet('facet-styles', FACET_STYLES_TREE, filters.styles, STYLE_LABELS, STYLE_DESCENDANTS, 'styles');
-  buildTreeFacet('facet-classification', FACET_CLASS_TREE, filters.classifications, CLASS_LABELS, CLASS_DESCENDANTS, 'classification');
-  buildTreeFacet('facet-appellation-type', FACET_TERM_TREE, filters.appellationType, TERM_LABELS, TERM_DESCENDANTS, 'appellation-type');
-  buildFacet('facet-styles-simple', FACET_STYLES_SIMPLE, filters.stylesSimple, k => SIMPLE_STYLE_LABELS[k] || k);
+  buildTreeFacet('facet-styles', FACET_STYLES_TREE, filters.styles, FACET_STYLE_LABELS, 'styles');
+  buildTreeFacet('facet-classification', FACET_CLASS_TREE, filters.classifications, CLASS_LABELS, 'classification');
+  buildTreeFacet('facet-appellation-type', FACET_TERM_TREE, filters.appellationType, TERM_LABELS, 'appellation-type');
 
   // Country → region → list of slugs, computed once. The tree re-renders on
   // spirits-toggle (entries appear/disappear), but the grouping itself is
@@ -931,7 +940,7 @@
   function visibleSlugsInRegion(country, region) {
     const regions = COUNTRY_TREE.get(country);
     const all = (regions && regions.get(region)) || [];
-    if (spiritsVisible()) return all;
+    if (showSpirits) return all;
     return all.filter(s => AOCS[s].is_wine !== false);
   }
 
@@ -1008,7 +1017,9 @@
           const nameHtml = nameWithLatin(rec);
           const checked = filters.appellations.has(slug) ? ' checked' : '';
           const openLbl = escapeAttr(fmt(LABELS.open_appellation_aria, { name: rec.name || slug }));
-          return `<label data-slug="${safeSlug}" data-name="${escapeAttr(searchableText(rec))}"><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span>${cancelledBadge(rec, true)}${promotedBadge(rec, true)}<button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></label>`;
+          // The checkbox's <label> and the → button are siblings in the row
+          // (a button nested in the label would take the row's name as its own).
+          return `<div class="aoc-row" data-slug="${safeSlug}" data-name="${escapeAttr(searchableText(rec))}"><label><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span>${cancelledBadge(rec, true)}${promotedBadge(rec, true)}</label><button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></div>`;
         }).join('');
         let parentCount = 0;
         for (const s of slugs) if (!AOCS[s].is_sub_denomination) parentCount++;
@@ -1039,7 +1050,7 @@
   }
 
   // Single delegated listener — buildAppellationFacet may run multiple
-  // times (mode swap, spirits toggle), so the handler stays on the
+  // times (spirits toggle), so the handler stays on the
   // container instead of being re-attached each time.
   document.getElementById('facet-appellations')?.addEventListener('change', e => {
     const el = document.getElementById('facet-appellations');
@@ -1092,18 +1103,18 @@
   // on a name/button click; stopPropagation keeps it off document-level handlers.
   document.getElementById('facet-appellations')?.addEventListener('click', e => {
     const btn = e.target.closest('.open-aoc');
-    const label = e.target.closest('label[data-slug]');
+    const row = e.target.closest('.aoc-row[data-slug]');
     // Open on the → button, or on the name text — but never on the checkbox
     // (or blank row padding), which stays a pure filter toggle.
-    const onName = !btn && label && e.target.closest('.name');
+    const onName = !btn && row && e.target.closest('.name');
     if (!btn && !onName) return;
     e.preventDefault();
     e.stopPropagation();
-    const slug = (btn || label).dataset.slug;
+    const slug = (btn || row).dataset.slug;
     if (!AOCS[slug]) return;
     // Return focus on close to the row's → button (the only focusable element
     // in the row) whether the open came from the button or the name (WCAG 2.4.3).
-    lastPanelTrigger = btn || (label && label.querySelector('.open-aoc')) || null;
+    lastPanelTrigger = btn || (row && row.querySelector('.open-aoc')) || null;
     lastStackKey = slug;
     stackFocusIndex = 0;
     renderPanelStack([slug], 0, undefined, 'facet');
@@ -1168,7 +1179,7 @@
           // A query that names the region ("macedonia", "burgundy",
           // "bourgogne") keeps every row of the group.
           const regionHit = !!nq && regionSearchHit(group.dataset.region, nq);
-          group.querySelectorAll('label').forEach(lbl => {
+          group.querySelectorAll('.aoc-row').forEach(lbl => {
             const match = !nq || regionHit || lbl.dataset.name.includes(nq);
             lbl.style.display = match ? '' : 'none';
             if (match) visible++;
@@ -1192,44 +1203,6 @@
 
   buildAppellationFacet();
 
-  function applyMode() {
-    document.documentElement.classList.toggle('mode-simple', viewMode === 'simple');
-    document.documentElement.classList.toggle('mode-advanced', viewMode === 'advanced');
-    document.querySelectorAll('#mode-toggle .mode-btn').forEach(b => {
-      const on = b.dataset.mode === viewMode;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
-    });
-    document.querySelectorAll('#sidebar [data-modes]').forEach(el => {
-      const modes = el.dataset.modes.split(/\s+/);
-      el.classList.toggle('mode-hidden', !modes.includes(viewMode));
-    });
-    // The geometry is no longer the mode's business: zoom decides between the
-    // overview and detail sources (see the source block). The mode only
-    // gates the sidebar (facet depth, spirits).
-    // The appellation tree's contents depend on spiritsVisible(), which
-    // depends on viewMode — rebuild on every mode switch (optional-chain the
-    // children check defensively).
-    if (document.getElementById('facet-appellations')?.children.length) {
-      buildAppellationFacet();
-    }
-  }
-
-  document.querySelectorAll('#mode-toggle .mode-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      const next = b.dataset.mode;
-      if (next === viewMode) return;
-      viewMode = next;
-      try { localStorage.setItem('view_mode', viewMode); } catch (e) {}
-      track('View Mode Switched', { mode: viewMode, locale: LANG });
-      applyMode();
-      // Don't re-fit on a mode switch — preserve the current camera. (Was
-      // `{fit:true}`: simple fits tight bbox_villages, advanced fits wider full
-      // bbox, so toggling with a filter active jarringly zoomed the map out.)
-      applyFilter();
-    });
-  });
-
   const igpEl = document.getElementById('show-igp');
   igpEl.checked = showIgp;
   igpEl.addEventListener('change', e => {
@@ -1250,52 +1223,13 @@
     applyFilter({ fit: true });
   });
 
-  // The merged Appellation facet hosts the appellation search; typing in
-  // it auto-expands the section if collapsed, since otherwise the tree
-  // updates would be invisible to the user.
-  const qInput = document.getElementById('q');
-  // Debounced search analytics: fire once after the user stops typing.
-  // We send result_count / had_match / query_len only — never the raw
-  // string, since search boxes attract typos, names, and assorted junk.
-  let searchTrackTimer = null;
-  if (qInput) qInput.addEventListener('input', e => {
-    filters.q = e.target.value.trim();
-    refreshFacetVisibility('facet-appellations', filters.q);
-    const det = qInput.closest('details');
-    if (filters.q && det && !det.open) det.open = true;
-    if (searchTrackTimer) clearTimeout(searchTrackTimer);
-    if (filters.q) {
-      searchTrackTimer = setTimeout(() => {
-        const nq = searchNormalize(filters.q);
-        let n = 0;
-        for (const slug in AOCS) {
-          if (searchableText(AOCS[slug]).includes(nq)) n++;
-        }
-        track('Search Used', {
-          result_count: String(n),
-          had_match: n > 0 ? 'true' : 'false',
-          query_len: String(filters.q.length),
-          locale: LANG,
-        });
-      }, 1000);
-    }
-  });
-
-  // Per-facet search inputs (cépages). They filter only the visible
-  // checkboxes in their target facet; they do not affect the map filter.
-  document.querySelectorAll('.facet-search[data-facet]').forEach(input => {
-    input.addEventListener('input', e => {
-      refreshFacetVisibility(input.dataset.facet, e.target.value.trim());
-    });
-  });
-
   document.getElementById('reset').addEventListener('click', () => {
     track('Filters Reset', { locale: LANG });
     filters.q = '';
-    filters.styles.clear(); filters.stylesSimple.clear();
+    filters.styles.clear();
     filters.classifications.clear();
     filters.appellationType.clear();
-    filters.principal.clear(); filters.accessory.clear(); filters.grapesAll.clear();
+    filters.grapesAll.clear();
     filters.appellations.clear();
     filters.mainGrapeOnly = false;
     const _omni = document.getElementById('omni');
@@ -1310,11 +1244,7 @@
       c.checked = false;
       c.indeterminate = false;
     });
-    document.querySelectorAll('.facet-search').forEach(i => { i.value = ''; });
     refreshFacetVisibility('facet-appellations', '');
-    refreshFacetVisibility('facet-grapes-all', '');
-    refreshFacetVisibility('facet-principal', '');
-    refreshFacetVisibility('facet-accessory', '');
     applyFilter();
   });
 
@@ -1327,21 +1257,17 @@
   function activeGrapeField() {
     return filters.mainGrapeOnly ? 'grapes_principal' : 'grapes_all';
   }
-  // Union of the quick-chip buckets (stylesSimple, expanded to fine slugs) and
-  // any advanced-tree picks (filters.styles), so style filtering is identical
-  // regardless of view mode (simple chips + advanced-tree picks combined).
+  // Tree picks expanded to the leaf slugs records carry. A depth-0 pick is
+  // the whole bucket, the bucket slug included (records carry 'red' /
+  // 'white' / … directly, so the seven top rows filter as labelled).
   function activeStyleFineSet() {
-    const out = new Set();
-    for (const b of filters.stylesSimple) for (const s of (SIMPLE_STYLE_BUCKETS[b] || [])) out.add(s);
-    const fine = expandStyles(filters.styles);
-    if (fine) for (const s of fine) out.add(s);
-    return out;
+    return expandStyles(filters.styles) || new Set();
   }
 
   function buildFilterExpr() {
     const parts = ['all'];
     if (!showIgp) parts.push(['!=', ['get', 'kind'], 'IGP']);
-    if (!spiritsVisible()) parts.push(['==', ['get', 'is_wine'], '1']);
+    if (!showSpirits) parts.push(['==', ['get', 'is_wine'], '1']);
     function inField(field, set) {
       if (!set || !set.size) return null;
       const tests = [];
@@ -1366,7 +1292,7 @@
 
   function matchesClient(rec, slug, opts) {
     if (!(opts && opts.ignoreIgpGate) && !showIgp && (rec.kind || 'AOC') === 'IGP') return false;
-    if (!spiritsVisible() && rec.is_wine === false) return false;
+    if (!showSpirits && rec.is_wine === false) return false;
     const styleSet = activeStyleFineSet();
     if (styleSet.size && !setIntersects(styleSet, rec.styles || [])) return false;
     const classSet = expandClass(filters.classifications);
@@ -1379,8 +1305,8 @@
 
   function matchesExceptFacets(rec, slug, except) {
     if (!showIgp && (rec.kind || 'AOC') === 'IGP') return false;
-    if (!spiritsVisible() && rec.is_wine === false) return false;
-    if (!except.has('styles') && !except.has('stylesSimple')) {
+    if (!showSpirits && rec.is_wine === false) return false;
+    if (!except.has('styles')) {
       const styleSet = activeStyleFineSet();
       if (styleSet.size && !setIntersects(styleSet, rec.styles || [])) return false;
     }
@@ -1398,8 +1324,7 @@
     const el = document.getElementById('active-filters-chips');
     if (!el) return;
     const chips = [];
-    for (const k of filters.stylesSimple) chips.push({ kind: 'styleSimple', key: k, label: SIMPLE_STYLE_LABELS[k] || k });
-    for (const k of filters.styles) chips.push({ kind: 'style', key: k, label: STYLE_LABELS[k] || k });
+    for (const k of filters.styles) chips.push({ kind: 'style', key: k, label: FACET_STYLE_LABELS[k] || k });
     for (const k of filters.classifications) chips.push({ kind: 'classification', key: k, label: CLASS_LABELS[k] || k });
     for (const k of filters.appellationType) chips.push({ kind: 'appellationType', key: k, label: TERM_LABELS[k] || k });
     for (const k of filters.grapesAll) chips.push({ kind: 'grapeAll', key: k, label: grapeName(k) });
@@ -1449,25 +1374,12 @@
     }).join('');
   }
 
-  function regionsSelectedCount() {
-    let n = 0;
-    for (const [cc, regions] of COUNTRY_TREE) {
-      for (const region of regions.keys()) {
-        const st = triState(visibleSlugsInRegion(cc, region));
-        if (st === 'checked' || st === 'indeterminate') n++;
-      }
-    }
-    return n;
-  }
-
   function refreshFacetBadges() {
     const map_ = {
-      styles: filters.stylesSimple.size + filters.styles.size,
+      styles: filters.styles.size,
       classification: filters.classifications.size,
       'appellation-type': filters.appellationType.size,
-      grapes: filters.grapesAll.size,
       appellations: filters.appellations.size,
-      regions: regionsSelectedCount(),
     };
     document.querySelectorAll('#sidebar > details[data-facet]').forEach(det => {
       const badge = det.querySelector(':scope > summary .facet-badge');
@@ -1478,22 +1390,6 @@
   }
 
   function refreshFacetAvailability() {
-    const sEl = document.getElementById('facet-styles-simple');
-    if (sEl) {
-      const except = new Set(['stylesSimple']);
-      const counts = new Map();
-      for (const slug in AOCS) {
-        const rec = AOCS[slug];
-        if (!matchesExceptFacets(rec, slug, except)) continue;
-        for (const v of (rec.styles_simple || [])) counts.set(v, (counts.get(v) || 0) + 1);
-      }
-      sEl.querySelectorAll('label').forEach(lbl => {
-        const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
-        const n = counts.get(inp.dataset.key) || 0;
-        const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
-        lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
-      });
-    }
     const treeEl = document.getElementById('facet-styles');
     if (treeEl) {
       const except = new Set(['styles']);
@@ -1508,7 +1404,7 @@
           for (let i = 0; i < ds.length; i++) { if (recStyleSet.has(ds[i])) { treeCounts.set(node, (treeCounts.get(node) || 0) + 1); break; } }
         }
       }
-      treeEl.querySelectorAll('label').forEach(lbl => {
+      treeEl.querySelectorAll('.tree-row').forEach(lbl => {
         const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
         const n = treeCounts.get(inp.dataset.key) || 0;
         const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
@@ -1529,7 +1425,7 @@
           for (let i = 0; i < ds.length; i++) { if (recClassSet.has(ds[i])) { classCounts.set(node, (classCounts.get(node) || 0) + 1); break; } }
         }
       }
-      classEl.querySelectorAll('label').forEach(lbl => {
+      classEl.querySelectorAll('.tree-row').forEach(lbl => {
         const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
         const n = classCounts.get(inp.dataset.key) || 0;
         const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
@@ -1548,7 +1444,7 @@
           if (matchesTermSet(rec, new Set(TERM_DESCENDANTS[node]))) termCounts.set(node, (termCounts.get(node) || 0) + 1);
         }
       }
-      termEl.querySelectorAll('label').forEach(lbl => {
+      termEl.querySelectorAll('.tree-row').forEach(lbl => {
         const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
         const n = termCounts.get(inp.dataset.key) || 0;
         const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
@@ -1564,7 +1460,7 @@
         countryGroup.querySelectorAll('.region-group').forEach(group => {
           let visible = 0;
           let visibleParents = 0;
-          group.querySelectorAll('label').forEach(lbl => {
+          group.querySelectorAll('.aoc-row').forEach(lbl => {
             const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
             const slug = inp.dataset.key; const rec = AOCS[slug];
             const reachable = rec ? matchesExceptFacets(rec, slug, except) : false;
@@ -1604,15 +1500,13 @@
       aliases, aliasesN: aliases.map(searchNormalize), echo,
     };
   });
-  // Index the FULL style taxonomy (the 6 buckets + interior groups + distinctive
-  // leaves like rancio / vin jaune / fino / oloroso), not just the 6 simple
-  // buckets, so detailed styles are findable in the omnisearch. Depth-0 tree
-  // nodes ARE the simple buckets (same slugs); deeper nodes are the details.
-  const _SIMPLE_STYLE_KEYS = new Set(FACET_STYLES_SIMPLE.map(([b]) => b));
+  // Index the full style taxonomy — the seven buckets (the facet's depth-0
+  // rows) plus the interior groups and the distinctive leaves (rancio, vin
+  // jaune, fino, oloroso) — so detailed styles are findable in the omnisearch.
   const _STYLE_INDEX = FACET_STYLES_TREE.map(node => ({
     key: node.slug, count: node.count,
-    label: STYLE_LABELS[node.slug] || node.slug,
-    labelN: searchNormalize(STYLE_LABELS[node.slug] || node.slug),
+    label: FACET_STYLE_LABELS[node.slug] || node.slug,
+    labelN: searchNormalize(FACET_STYLE_LABELS[node.slug] || node.slug),
     aliasesN: (STYLE_SEARCH_TERMS[node.slug] || []).map(searchNormalize),
   }));
   const _CLASS_INDEX = FACET_CLASS_TREE.map(node => ({
@@ -1734,11 +1628,9 @@
       track('Omnisearch Result Picked', { type: 'region', locale: LANG });
       applyFilter({ fit: true });
     } else if (type === 'style') {
-      // Route to the matching surface: the 6 coarse buckets drive the simple
-      // chips; detailed taxonomy nodes (rancio, vin jaune, …) drive the advanced
-      // style tree. Both render as removable active-filter chips either way.
-      if (_SIMPLE_STYLE_KEYS.has(key)) filters.stylesSimple.add(key);
-      else filters.styles.add(key);
+      // A bucket or a deeper node lands in filters.styles alike;
+      // refreshSidebarCheckedState ticks the row and opens the branches above it.
+      filters.styles.add(key);
       refreshSidebarCheckedState();
       track('Omnisearch Result Picked', { type: 'style', locale: LANG });
       applyFilter({ fit: true });
@@ -1769,15 +1661,8 @@
       track('Kind Toggled', { kind: 'igp', enabled: 'true', locale: LANG, via: via });
     }
     if (gates.includes('spirit')) {
-      // Spirits are gated by the advanced mode AND their own toggle; flip
-      // both the way their handlers do, so the tree and map agree with the
-      // panel about to open.
-      if (viewMode !== 'advanced') {
-        viewMode = 'advanced';
-        try { localStorage.setItem('view_mode', viewMode); } catch (err) {}
-        track('View Mode Switched', { mode: viewMode, locale: LANG, via: via });
-        applyMode();
-      }
+      // Flip the spirits checkbox the way its handler does, so the tree and
+      // the map agree with the panel about to open.
       showSpirits = true;
       const spiritsEl = document.getElementById('show-spirits');
       if (spiritsEl) spiritsEl.checked = true;
@@ -1809,7 +1694,7 @@
     // The omnisearch ALSO live-filters the appellation tree below (in addition
     // to the open-panel dropdown), reusing the tree filter + auto-collapse.
     function syncTreeFilter(q) {
-      filters.q = q;  // persist across mode/spirits rebuilds (buildAppellationFacet reads it)
+      filters.q = q;  // persist across spirits-toggle rebuilds (buildAppellationFacet reads it)
       refreshFacetVisibility('facet-appellations', q);
       if (q) {
         const treeEl = document.getElementById('facet-appellations');
@@ -2700,7 +2585,7 @@
       // retraction next to it and net the two when reading.
       chip.setAttribute('aria-pressed', 'false');
       rememberFeedback(slug, aspect, false);
-      track('Feedback Retracted', { slug: slug, aspect: aspect, view_mode: viewMode, lod: lodBand(r), zoom: zoomStr(), locale: LANG });
+      track('Feedback Retracted', { slug: slug, aspect: aspect, lod: lodBand(r), zoom: zoomStr(), locale: LANG });
       const left = pressedAspects(row);
       const status = box.querySelector('.fb-status');
       if (left.length && status && box.querySelector('textarea.fb-note')) {
@@ -2716,7 +2601,7 @@
       rememberFeedback(slug, aspect, true);
       track('Feedback Flagged', {
         slug: slug, aspect: aspect, country: r.country || '', kind: r.kind || '',
-        geom_source: r.geom_source || '', view_mode: viewMode, lod: lodBand(r), zoom: zoomStr(),
+        geom_source: r.geom_source || '', lod: lodBand(r), zoom: zoomStr(),
         via: via, locale: LANG,
       });
     }
@@ -2740,7 +2625,7 @@
     const note = ta ? ta.value.replace(/\s+/g, ' ').trim().slice(0, FEEDBACK_NOTE_MAX) : '';
     // `aspect` is the pressed set joined with '+', so one note about two
     // things reads `boundary+grapes` in the breakdown rather than only the last tap.
-    if (note) track('Feedback Note', { slug: slug, aspect: aspects.join('+') || 'other', note: note, view_mode: viewMode, lod: lodBand(AOCS[slug]), zoom: zoomStr(), locale: LANG });
+    if (note) track('Feedback Note', { slug: slug, aspect: aspects.join('+') || 'other', note: note, lod: lodBand(AOCS[slug]), zoom: zoomStr(), locale: LANG });
     box.innerHTML = `<span class="fb-status" role="status">${note ? escapeHtml(LABELS.feedback_sent) : fmt(LABELS.feedback_noted_html, { aspect: aspectsHtml(aspects) })}</span>`;
   }
 
@@ -2751,7 +2636,7 @@
   }
 
   function localityRank(slug) {
-    // Sort key: bounding-box area of the rendered geometry, mode-aware.
+    // Sort key: bounding-box area of the geometry drawn at this zoom.
     // Bbox area penalises spread-out multipolygons (parent cuvée
     // covering every premier-cru fragment in a region) so a localised
     // climat outranks a scattered parent even when the parent's total
@@ -3096,7 +2981,7 @@
     setAocPath(null);
     if (returnFocus && wasOpen) {
       const target = (lastPanelTrigger && document.contains(lastPanelTrigger))
-        ? lastPanelTrigger : document.getElementById('q');
+        ? lastPanelTrigger : document.getElementById('omni');
       if (target) { try { target.focus(); } catch (e) {} }
     }
     lastPanelTrigger = null;
@@ -3413,7 +3298,6 @@ __OWM_source_block__
     // before sources existed. Safe no-op when nothing is selected.
     for (const s of selectedSlugs) setSelectedState(s, true);
 
-    applyMode();
     applyFilter();
     updateStatus();
   });

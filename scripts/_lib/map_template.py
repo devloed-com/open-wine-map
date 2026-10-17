@@ -96,9 +96,6 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "facet_scheme_uk_pgi": _("IGP (régime britannique)"),
         "facet_scheme_none": _("AOC (Suisse)"),
         "gi_term_source_label": _("Source"),
-        "view_mode_h": _("Vue"),
-        "view_mode_simple": _("Simple"),
-        "view_mode_advanced": _("Avancée"),
         "theme_h": _("Thème"),
         "theme_light": _("Clair"),
         "theme_dark": _("Sombre"),
@@ -2205,7 +2202,6 @@ def render(
     aocs: dict,
     facet_styles_tree: list[dict],
     style_descendants: dict[str, list[str]],
-    facet_styles_simple: list[tuple[str, int]],
     facet_class_tree: list[dict],
     class_descendants: dict[str, list[str]],
     facet_regions: list[tuple[str, int]],
@@ -2500,7 +2496,6 @@ def render(
         source_type=source_type,
         styles_tree_json=json.dumps(facet_styles_tree, ensure_ascii=False),
         style_descendants_json=json.dumps(style_descendants, ensure_ascii=False),
-        styles_simple_json=json.dumps(facet_styles_simple, ensure_ascii=False),
         class_tree_json=json.dumps(facet_class_tree, ensure_ascii=False),
         class_descendants_json=json.dumps(class_descendants, ensure_ascii=False),
         class_labels_json=json.dumps(class_labels, ensure_ascii=False),
@@ -2808,12 +2803,6 @@ _TEMPLATE = """<!doctype html>
     }}
   }})();
   (function () {{
-    // Set the initial view-mode class on <html> before paint so the
-    // advanced-only sidebar sections don't flash visible while the main
-    // bundle is still parsing.
-    var mode = 'simple';
-    try {{ if (localStorage.getItem('view_mode') === 'advanced') mode = 'advanced'; }} catch (e) {{}}
-    document.documentElement.classList.add('mode-' + mode);
     // Mark JS available before paint so the server-rendered #ssr-content card
     // can be hidden via CSS (rule below). The app swaps it for the live panel,
     // so JS users skip the brief boot flash; non-JS visitors and non-rendering
@@ -2886,29 +2875,12 @@ _TEMPLATE = """<!doctype html>
   #lang-switcher a {{ color:#888; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; text-decoration:none; padding:3px 8px; border-radius:3px }}
   #lang-switcher a:hover {{ color:#fff }}
   #lang-switcher a.active {{ color:#fff8e8; background:#2a2a2a; font-weight:700 }}
-  #mode-toggle {{ display:flex; gap:0; padding:8px 16px; border-bottom:1px solid #333 }}
-  #mode-toggle .mode-btn {{ flex:1; background:#222; color:#888; border:1px solid #444; padding:6px 8px; cursor:pointer; font-size:12px; letter-spacing:0.04em }}
-  #mode-toggle .mode-btn:first-child {{ border-radius:3px 0 0 3px }}
-  #mode-toggle .mode-btn:last-child {{ border-radius:0 3px 3px 0; border-left:none }}
-  #mode-toggle .mode-btn:hover {{ color:#fff }}
-  #mode-toggle .mode-btn.active {{ background:#934050; color:#fff; border-color:#934050 }}
   #theme-toggle {{ display:flex; gap:0; padding:6px 16px 8px }}
   #theme-toggle .theme-btn {{ flex:1; background:#222; color:#888; border:1px solid #444; border-left:none; padding:5px 8px; cursor:pointer; font-size:13px; line-height:1.2 }}
   #theme-toggle .theme-btn:first-child {{ border-left:1px solid #444; border-radius:3px 0 0 3px }}
   #theme-toggle .theme-btn:last-child {{ border-radius:0 3px 3px 0 }}
   #theme-toggle .theme-btn:hover {{ color:#fff }}
   #theme-toggle .theme-btn.active {{ background:#934050; color:#fff; border-color:#934050 }}
-  #sidebar [data-modes="simple"].mode-hidden, #sidebar [data-modes="advanced"].mode-hidden {{ display:none }}
-  html.mode-simple #sidebar [data-modes="advanced"] {{ display:none }}
-  html.mode-advanced #sidebar [data-modes="simple"] {{ display:none }}
-  #igp-toggle {{ padding:8px 16px; border-top:1px solid #2a2a2a }}
-  #igp-toggle label {{ display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12.5px; color:#ddd }}
-  #igp-toggle label:hover {{ color:#fff }}
-  #igp-toggle input {{ accent-color:#6e7546 }}
-  #spirits-toggle {{ padding:6px 16px 10px }}
-  #spirits-toggle label {{ display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12.5px; color:#ddd }}
-  #spirits-toggle label:hover {{ color:#fff }}
-  #spirits-toggle input {{ accent-color:#a07530 }}
   #active-filters {{ display:flex; align-items:center; gap:6px; padding:8px 12px 4px; min-height:0 }}
   #active-filters:has(#active-filters-chips:empty) {{ padding-bottom:0 }}
   #active-filters-chips {{ display:flex; flex-wrap:wrap; gap:4px; flex:1 }}
@@ -2926,8 +2898,6 @@ _TEMPLATE = """<!doctype html>
   #active-filters #reset {{ background:transparent; color:#888; border:none; padding:2px 6px; cursor:pointer; font-size:11px; text-decoration:underline; flex:0 0 auto }}
   #active-filters #reset:hover {{ color:#fff }}
   #active-filters-chips:empty + #reset {{ display:none }}
-  .facet-search {{ width:calc(100% - 32px); margin:4px 16px 6px; padding:5px 8px; box-sizing:border-box; background:#1f1f1f; color:#eee; border:1px solid #3a3a3a; border-radius:3px; font-size:12px }}
-  .facet-search:focus {{ outline:none; border-color:#934050 }}
   #sidebar > details > summary .facet-badge {{ display:inline-block; margin-left:6px; padding:1px 6px; background:#934050; color:#fff; border-radius:8px; font-size:10px; font-weight:600 }}
   #sidebar > details > summary .facet-badge:empty {{ display:none }}
   #sidebar > details > summary {{ display:flex; align-items:center }}
@@ -2938,7 +2908,13 @@ _TEMPLATE = """<!doctype html>
   .facet .country-group-wrap > .country-select:checked, .facet .country-group-wrap > .country-select:indeterminate {{ accent-color:#934050 }}
   .facet .region-group-wrap > .region-group, .facet .country-group-wrap > .country-group {{ flex:1 1 auto; min-width:0 }}
   .facet .region-group > summary, .facet .country-group > summary {{ display:flex; align-items:center; gap:6px }}
-  #status {{ padding:8px 16px; font-size:11px; color:#aaa; background:#222; border-bottom:1px solid #333 }}
+  /* The count and the two scope toggles that explain it read as one band. */
+  #status {{ padding:8px 16px 4px; font-size:11px; color:#aaa; background:#222 }}
+  #scope {{ display:flex; flex-wrap:wrap; gap:2px 14px; padding:0 16px 8px; background:#222; border-bottom:1px solid #333 }}
+  #scope label {{ display:inline-flex; align-items:center; gap:5px; cursor:pointer; font-size:11.5px; color:#ccc; min-height:24px }}
+  #scope label:hover {{ color:#fff }}
+  #scope #show-igp {{ accent-color:#6e7546 }}
+  #scope #show-spirits {{ accent-color:#a07530 }}
   #status .hint-action {{ background:none; border:0; padding:0; margin-left:6px; color:#9ac4ff; font:inherit; cursor:pointer; text-decoration:underline }}
   #status .hint-action:hover {{ color:#cfe0ff }}
   details {{ margin:0 }}
@@ -2953,22 +2929,35 @@ _TEMPLATE = """<!doctype html>
   .facet .name {{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
   /* The appellation name opens its detail panel (the checkbox is the filter) —
      underline on name-hover signals the "go to this one" link affordance. */
-  .facet label[data-slug] > .name:hover {{ text-decoration:underline; text-decoration-color:#a8c08a; text-underline-offset:2px }}
+  .facet .aoc-row .name:hover {{ text-decoration:underline; text-decoration-color:#a8c08a; text-underline-offset:2px }}
+  /* A row is a flex line: the checkbox's label (name + count) and, beside it,
+     a sibling button — the → that opens the panel, or a tree chevron. */
+  .facet .aoc-row, .facet .tree-row {{ display:flex; align-items:center; gap:6px; padding:2px 0 }}
+  .facet .aoc-row > label, .facet .tree-row > label {{ flex:1 1 auto; min-width:0; padding:0; color:inherit; font-weight:inherit }}
+  .facet .aoc-row, .facet .tree-row {{ color:#ddd }}
+  .facet .aoc-row:hover, .facet .tree-row:hover {{ color:#fff }}
   .facet .count {{ color:#666; font-size:11px; margin-left:4px }}
   .facet .count .sub-count {{ opacity:0.65; margin-left:3px }}
   .facet .syns {{ color:#888; font-size:11px; font-weight:normal }}
   /* Keyboard/SR path to open an appellation panel (the WebGL polygons aren't
      DOM-reachable). Subtle until the row is hovered or the button is focused. */
   .facet .open-aoc {{ flex:0 0 auto; margin-left:auto; background:none; border:none; color:#8a8a8a; cursor:pointer; font-size:14px; line-height:1; padding:0 4px; border-radius:3px; opacity:0.55; transition:opacity 0.12s ease, color 0.12s ease, background 0.12s ease }}
-  .facet label:hover .open-aoc {{ opacity:1; color:#cfa }}
+  .facet .aoc-row:hover .open-aoc {{ opacity:1; color:#cfa }}
   .facet .open-aoc:hover {{ color:#fff; background:#333 }}
   .facet .open-aoc:focus-visible {{ opacity:1 }}
-  .facet label.facet-unavailable {{ display:none }}
+  .facet .aoc-row.facet-unavailable, .facet .tree-row.facet-unavailable {{ display:none }}
   .facet .region-group-wrap.facet-unavailable, .facet .country-group-wrap.facet-unavailable {{ display:none }}
   .facet .tree-row[data-depth="0"] {{ padding-left:0 }}
   .facet .tree-row[data-depth="1"] {{ padding-left:14px }}
   .facet .tree-row[data-depth="2"] {{ padding-left:28px }}
-  .facet .tree-row-parent {{ font-weight:600; color:#eee }}
+  .facet .tree-row-parent, .facet .tree-row[data-depth="0"] {{ font-weight:600; color:#eee }}
+  /* The chevron folding a subtree: rotates when open; the subtree is the
+     hidden sibling wrapper after the row. */
+  .facet .tree-toggle {{ flex:0 0 auto; background:none; border:none; color:#8a8a8a; cursor:pointer; font-size:15px; line-height:1; padding:0 6px; border-radius:3px; transition:transform 0.12s ease, color 0.12s ease, background 0.12s ease }}
+  .facet .tree-toggle:hover {{ color:#fff; background:#333 }}
+  .facet .tree-toggle[aria-expanded="true"] {{ transform:rotate(90deg) }}
+  .facet .tree-row:not(.tree-row-parent) {{ padding-right:27px }}
+  .facet .tree-children[hidden] {{ display:none }}
   .facet .tree-row[data-depth="0"]:not(:first-child) {{ margin-top:4px }}
   .facet .tree-row[data-depth="2"] .name {{ color:#bbb }}
   /* Mixed case here too. The FR bassin labels are the join key's own
@@ -2997,9 +2986,6 @@ _TEMPLATE = """<!doctype html>
      the summary's weight carry most of the hierarchy anyway. */
   .facet .country-group .country-items {{ padding-left:8px }}
   .facet .empty {{ color:#666; font-size:11px; font-style:italic; padding:4px 0 }}
-  #actions {{ position:sticky; bottom:0; background:#1a1a1a; padding:10px 16px; border-top:1px solid #333; display:flex; gap:8px }}
-  #actions button {{ flex:1; padding:6px; background:#333; color:#eee; border:1px solid #555; border-radius:3px; cursor:pointer; font-size:12px }}
-  #actions button:hover {{ background:#444 }}
   #map {{ flex:1; height:100%; min-width:0 }}
   #panel {{ width:0; flex:0 0 0; background:#fff; border-left:1px solid #ddd; overflow-y:auto; transition:flex-basis 0.18s ease, width 0.18s ease }}
   #panel.open {{ width:440px; flex-basis:440px }}
@@ -3144,7 +3130,7 @@ _TEMPLATE = """<!doctype html>
     #panel .stack-focus {{ width:36px; height:36px; font-size:16px }}
     .facet input[type=checkbox] {{ width:18px; height:18px }}
     .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
-    #actions button {{ min-height:36px }}
+    .facet .tree-toggle {{ min-width:44px; min-height:40px; font-size:18px }}
     /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */
     .omni-input {{ font-size:16px }}
   }}
@@ -3391,6 +3377,10 @@ _LAB_HEAD_TOP = """<aside id="sidebar" data-nosnippet aria-label="{labels[sideba
       <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_dark]}" title="{labels[theme_dark]}">☾</button>
     </div>
     <div id="status" role="status" aria-live="polite" aria-atomic="true">{labels[loading]}</div>
+    <div id="scope" role="group" aria-label="{labels[facet_kind_h]}">
+      <label><input type="checkbox" id="show-igp"> <span class="name">{labels[show_igp_label]}</span></label>
+      <label><input type="checkbox" id="show-spirits"> <span class="name">{labels[show_spirits_label]}</span></label>
+    </div>
 
     <div id="omnisearch" role="search">
       <input type="text" id="omni" class="omni-input" placeholder="{labels[omnisearch_placeholder]}" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="omni-suggestions" aria-label="{labels[search_h]}">
@@ -3437,32 +3427,26 @@ _LAB_LEGEND_FOOTER = """
 
 
 # The production sidebar — "Search + Browse rail" (promoted from lab variant D):
-# a unified omnisearch bar (appellations + grapes + regions + styles; the
-# appellation tree below live-filters as you type) over the mode-gated style
-# tree, a browsable grape chip list ("main grape only" toggle inside it), and the
-# region/appellation tree. Built from the shared head/active/legend-footer pieces.
+# the count with its two scope toggles (PGIs, spirits), a unified omnisearch
+# bar (appellations + grapes + regions + styles; the appellation tree below
+# live-filters as you type), the style taxonomy tree (its seven buckets as
+# the top rows, sub-styles folded behind a chevron), the collapsed
+# classification and appellation-type trees, and the country → region →
+# appellation tree. One sidebar for everyone since 2026-10: the Simple /
+# Advanced toggle that used to swap the style facet and hide the other two
+# trees is gone. Built from the shared head/active/legend-footer pieces.
 _SIDEBAR = _LAB_HEAD_TOP + _LAB_ACTIVE + """
-    <div id="mode-toggle" role="group" aria-label="{labels[view_mode_h]}">
-      <button type="button" data-mode="simple" class="mode-btn active" aria-pressed="true">{labels[view_mode_simple]}</button>
-      <button type="button" data-mode="advanced" class="mode-btn" aria-pressed="false">{labels[view_mode_advanced]}</button>
-    </div>
-
-    <details open data-modes="simple" data-facet="styles">
-      <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
-      <div class="facet" id="facet-styles-simple"></div>
-    </details>
-
-    <details open data-modes="advanced" data-facet="styles">
+    <details open data-facet="styles">
       <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
       <div class="facet" id="facet-styles"></div>
     </details>
 
-    <details data-modes="advanced" data-facet="classification">
+    <details data-facet="classification">
       <summary><span class="facet-label">{labels[facet_classification_h]}</span><span class="facet-badge"></span></summary>
       <div class="facet" id="facet-classification"></div>
     </details>
 
-    <details data-modes="advanced" data-facet="appellation-type">
+    <details data-facet="appellation-type">
       <summary><span class="facet-label">{labels[facet_appellation_type_h]}</span><span class="facet-badge"></span></summary>
       <div class="facet" id="facet-appellation-type"></div>
     </details>
@@ -3471,14 +3455,6 @@ _SIDEBAR = _LAB_HEAD_TOP + _LAB_ACTIVE + """
       <summary><span class="facet-label">{labels[facet_appellations_h]}</span><span class="facet-badge"></span></summary>
       <div class="facet facet-appellations" id="facet-appellations"></div>
     </details>
-
-    <div id="igp-toggle">
-      <label><input type="checkbox" id="show-igp"> <span class="name">{labels[show_igp_label]}</span></label>
-    </div>
-
-    <div id="spirits-toggle" data-modes="advanced">
-      <label><input type="checkbox" id="show-spirits"> <span class="name">{labels[show_spirits_label]}</span></label>
-    </div>
 """ + _LAB_LEGEND_FOOTER
 
 

@@ -5939,7 +5939,8 @@ matches the record's, that no `class_label` is empty, and reports the
 per-country distribution against the rosters. Run it after every stage-04
 build (`--strict` in CI).
 
-The facet is its own two-level tree ("Appellation type", advanced mode):
+The facet is its own two-level tree ("Appellation type", a collapsed
+section of the sidebar):
 scheme rows over flag + term rows, built with `buildTreeFacet` over
 `class_key`; counts are parents-only and wines-only, so DOCG = the roster
 count, not roster + sottozone.
@@ -6147,8 +6148,8 @@ visibility toggle. See [scripts/_lib/vendor/README.md](scripts/_lib/vendor/READM
 
 ## Zoom-dependent level of detail (vineyard footprints)
 
-Zoom, not the Simple/Advanced toggle, decides which geometry the map
-draws (branch `feat/zoom-lod`, 2026-09-23). Two vector sources, one
+Zoom decides which geometry the map draws (branch `feat/zoom-lod`,
+2026-09-23; until then a Simple / Advanced toggle did). Two vector sources, one
 `source-layer` (`appellations`) and one `promoteId: 'slug'` each, built by
 `_build_source_block` in
 [scripts/_lib/map_template.py](scripts/_lib/map_template.py); the constants
@@ -6175,8 +6176,8 @@ never disagree about the zoom bands:
   lieux-dits — draws the same polygon in both sources.
 - **`appellations`** (`appellations.pmtiles`, tippecanoe z11–z12 with
   `--no-tiny-polygon-reduction-at-maximum-zoom`, layers `minzoom: 11`,
-  overzoomed to the client's maxZoom 14): the parcels, exactly as the old
-  advanced mode.
+  overzoomed to the client's maxZoom 14): the parcels, exactly as the
+  Advanced mode of the former toggle drew them.
 - **Crossfade z11.0 → z11.9**: both sources drawn with complementary
   `fill-opacity` / `line-opacity`; the selection halos fade with their
   fills and sit above both fills (layer order: fill-overview, fill,
@@ -6252,11 +6253,30 @@ never disagree about the zoom bands:
   Note` and `Appellation Viewed` carry `lod` (`footprint` / `parcels` /
   `zone` — the band boundary is `footprint_max_zoom` = 11.9, where the
   overview layers stop) and `zoom` — see [docs/analytics.md](docs/analytics.md).
-- **The toggle** no longer swaps layers; it still gates spirits and the
-  expert facets and keeps its `view_mode` key (to be simplified to one
-  mode — next step). `bbox_villages` on the startup record is now the
-  overview feature's bbox; `drawnBbox` / `fitBbox` in app.js replace the
-  mode-keyed reads.
+- **The Simple / Advanced toggle is gone (2026-10-17): one sidebar.** After
+  the LOD change it only swapped the style facet (7 bucket chips vs the
+  taxonomy tree), hid the Classification and Appellation type trees and
+  gated spirits; 6.5 % of visitors ever touched it (Plausible, 90 days). Now
+  the style facet is the taxonomy tree alone — depth-0 rows in
+  `FACET_BUCKET_ORDER` (white, rosé, red, sparkling, sweet / dessert,
+  oxidative, other; `BUCKETS` keeps the membership order the MCP context
+  keys on), sub-styles folded behind a chevron (`buildTreeFacet`: the
+  checkbox's label and the chevron button are siblings in a `.tree-row`,
+  the subtree a hidden sibling `.tree-children` wrapper;
+  `revealCheckedTreeRows` opens the branches above a ticked row). That also
+  fixed a bug the chips had carried: their expansion table
+  (`bucket_descendants`) drops the bucket slug itself, so the white and
+  rosé chips filtered nothing and "red" matched only clairet / primeur; the
+  tree path (`STYLE_DESCENDANTS`, self included) matches the records that
+  carry the bucket slug. Classification and Appellation type are collapsed
+  sections, always present. Spirits are gated by the `show_spirits`
+  checkbox alone, in the `#scope` row (with "Show PGIs") right under the
+  count; `localStorage.view_mode` is removed on load; `Feedback *` no longer
+  carry `view_mode` (`lod` + `zoom` say what was on screen) and `View Mode
+  Switched` is retired. The appellation tree's → button moved out of the
+  row's label for the same accessibility reason (`.aoc-row`).
+  `bbox_villages` on the startup record is the overview feature's bbox;
+  `drawnBbox` / `fitBbox` in app.js read it by zoom.
 - **Audit.** [scripts/audit_vineyard_envelopes.py](scripts/audit_vineyard_envelopes.py):
   parity, containment (within `containment_tolerance_m`, the polygonal
   buffer's corner shave plus the simplify), bbox, inflation, and

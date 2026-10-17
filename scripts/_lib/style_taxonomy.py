@@ -1,15 +1,15 @@
 """Canonical wine-style taxonomy shared by FR + ES pipelines.
 
 The tree is a directed forest: every slug has at most one parent. Buckets
-(red, white, rose, sparkling, sweet, other) are the six top-level nodes
-the simple-mode facet exposes. Internal groups (fortified, late-harvest,
+(red, white, rose, sparkling, sweet, oxidative, other) are the seven
+top-level nodes, the style facet's depth-0 rows. Internal groups (fortified, late-harvest,
 raisin-wine, oxidative, generoso) collect siblings whose membership is
 shared semantics; they're selectable as filters and expand to all
 descendants. Leaves are the fine-grained tags that records actually
 carry.
 
 `panel_only` is an available leaf flag: a panel_only leaf shows as a
-chip on the AOC panel but is kept out of the advanced facet tree and
+chip on the AOC panel but is kept out of the facet tree and
 the omnisearch index. No leaf currently uses it — the Sherry sub-styles
 (fino / manzanilla / amontillado / oloroso / palo-cortado) under
 `generoso` are first-class facetable + searchable leaves, so a user can
@@ -22,7 +22,7 @@ country.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from unidecode import unidecode
@@ -151,7 +151,7 @@ def parent(slug: str) -> str | None:
 
 def children(slug: str) -> list[str]:
     """Primary-parent children only — the single-position tree used by the
-    advanced-mode facet DFS. A multi-membership node appears here once, under
+    facet tree's DFS. A multi-membership node appears here once, under
     its canonical `parent` (see `_filter_children` for the filtering view)."""
     return [n.slug for n in _NODES_RAW if n.parent == slug]
 
@@ -179,8 +179,14 @@ def descendants(slug: str, *, include_self: bool = True) -> set[str]:
     return out
 
 
-# Top-level buckets — simple-mode facet entries.
+# Top-level buckets, in membership order (`simple_buckets`, `bucket_descendants`
+# and the MCP query context key on it).
 BUCKETS: tuple[str, ...] = ("red", "white", "rose", "sparkling", "sweet", "oxidative", "other")
+# The order the sidebar's style facet lists the buckets in — white, rosé,
+# red, sparkling, sweet, oxidative, other — so the top rows read like a
+# wine-style legend rather than by frequency. Same members as BUCKETS.
+FACET_BUCKET_ORDER: tuple[str, ...] = ("white", "rose", "red", "sparkling", "sweet", "oxidative", "other")
+assert set(FACET_BUCKET_ORDER) == set(BUCKETS)
 
 
 def simple_bucket(slug: str) -> str:
@@ -221,16 +227,17 @@ def simple_buckets(slug: str) -> set[str]:
 
 
 def bucket_descendants() -> dict[str, list[str]]:
-    """`{bucket: [every leaf-or-group reachable below it]}` — feeds the JS-side
-    expansion map for simple-mode filtering."""
+    """`{bucket: [every leaf-or-group reachable below it]}` — the bucket
+    expansion map of the MCP query core (`simple_style_buckets`)."""
     return {b: sorted(descendants(b) - {b}) for b in BUCKETS}
 
 
 def taxonomy_dfs_order(
-    *, exclude_panel_only: bool = True,
+    *, exclude_panel_only: bool = True, roots: Sequence[str] = BUCKETS,
 ) -> list[tuple[str, str | None, int]]:
     """`(slug, parent, depth)` tuples in declared DFS order, roots in
-    `BUCKETS` order. Feeds the advanced-mode tree facet."""
+    `roots` order (`BUCKETS` by default; the sidebar's style facet passes
+    `FACET_BUCKET_ORDER`). Feeds the tree facet."""
     out: list[tuple[str, str | None, int]] = []
 
     def visit(slug: str, depth: int) -> None:
@@ -241,7 +248,7 @@ def taxonomy_dfs_order(
         for c in children(slug):
             visit(c, depth + 1)
 
-    for b in BUCKETS:
+    for b in roots:
         visit(b, 0)
     return out
 
@@ -350,7 +357,7 @@ def _msgid_anchors_for_babel(_: Callable[[str], str]) -> tuple[str, ...]:
 
 
 def build_simple_style_labels(_: Callable[[str], str]) -> dict[str, str]:
-    """Top-bucket labels for simple mode. msgids parallel `build_style_labels`
+    """Top-bucket labels. msgids parallel `build_style_labels`
     but are pulled from the shared LABELS catalog so existing translations
     keep working — see scripts/_lib/map_template.build_labels keys
     `style_simple_*`."""
