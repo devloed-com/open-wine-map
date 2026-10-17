@@ -343,6 +343,9 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         # The phone sheet's handle (app.js setSheetExpanded).
         "sheet_expand_aria": _("Agrandir la fiche"),
         "sheet_collapse_aria": _("Réduire la fiche"),
+        # The status line's "show in the list" action when a facet filter has
+        # more matches than the tree auto-opens (app.js updateStatus).
+        "status_show_matches": _("voir dans la liste"),
         "pt_role_disclaimer": _(
             "Le régulateur portugais (IVV) n'établit pas de distinction principal/accessoire — "
             "toutes les castas autorisées sont listées ensemble dans le caderno de especificações."
@@ -2874,6 +2877,8 @@ _TEMPLATE = """<!doctype html>
     --n-dark-panel:#1c1c1e; --n-dark-text:#e3e3e3;
     --note-bg:#fbf3df; --note-ink:#7a5a1a; --note-rule:#d6b35a;
     --note-bg-dark:#322b18; --note-ink-dark:#e6cf86; --note-rule-dark:#6a5a2a;
+    /* Type scale for the chrome's small text (headings stay literal). */
+    --fs-2xs:10px; --fs-xs:11px; --fs-sm:12.5px; --fs-md:13px;
   }}
   html, body {{ margin:0; padding:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14px }}
   /* Hide the server-rendered card once JS is available (class set pre-paint):
@@ -2882,7 +2887,7 @@ _TEMPLATE = """<!doctype html>
   html.js #ssr-content, html.js .entity-nav {{ display:none }}
   /* No-JS / crawler cross-link nav (browse + parent + children). Hidden once
      the map boots; it exists to feed internal links into the link graph. */
-  .entity-nav {{ padding:12px 16px; font-size:13px; line-height:1.7; border-top:1px solid var(--n-100); background:#fafafa; color:var(--n-750) }}
+  .entity-nav {{ padding:12px 16px; font-size:var(--fs-md); line-height:1.7; border-top:1px solid var(--n-100); background:#fafafa; color:var(--n-750) }}
   .entity-nav a {{ color:var(--c-accent) }}
   .entity-nav .entity-nav-parent, .entity-nav .entity-nav-children {{ display:block; margin-top:4px; color:var(--n-600) }}
   #app {{ display:flex; height:100vh; height:100dvh }}
@@ -2894,36 +2899,36 @@ _TEMPLATE = """<!doctype html>
   #sidebar {{ width:300px; flex:0 0 300px; background:var(--n-900); color:var(--n-100); overflow-y:auto; border-right:1px solid var(--n-750) }}
   #sidebar .brand-title {{ font-size:15px; padding:14px 16px 4px; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px }}
   #sidebar .brand-title .brand-mark {{ width:18px; height:18px; flex:0 0 18px; display:inline-block }}
-  #sidebar .subtitle {{ font-size:11px; color:var(--n-400); padding:0 16px 10px; border-bottom:1px solid var(--n-750) }}
-  #sidebar h2 {{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--n-400); padding:14px 16px 4px; margin:0 }}
+  #sidebar .subtitle {{ font-size:var(--fs-xs); color:var(--n-400); padding:0 16px 10px; border-bottom:1px solid var(--n-750) }}
+  #sidebar h2 {{ font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.08em; color:var(--n-400); padding:14px 16px 4px; margin:0 }}
   /* The omnisearch input owns its own layout (`.omni-input`); the catch-all
      rule below is for any other text input in the sidebar. */
-  #sidebar input[type=text]:not(.omni-input) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:var(--n-850); color:var(--n-100); border:1px solid var(--n-700); border-radius:3px; font-size:13px }}
+  #sidebar input[type=text]:not(.omni-input) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:var(--n-850); color:var(--n-100); border:1px solid var(--n-700); border-radius:3px; font-size:var(--fs-md) }}
   #sidebar input[type=text]:focus {{ outline:none; border-color:var(--c-accent) }}
   #sidebar input[type=text]:focus-visible {{ outline:2px solid var(--c-cream); outline-offset:1px; border-color:var(--c-accent) }}
   /* Search-UX lab variants (a/b/c): unified omnisearch box + grouped dropdown
      + the "main grape only" sub-option. Inert on canonical pages (no markup). */
   .visually-hidden {{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }}
   #omnisearch {{ position:relative; padding:8px 16px; border-bottom:1px solid var(--n-750) }}
-  .omni-input {{ width:100%; box-sizing:border-box; padding:8px 10px; background:var(--n-850); color:var(--n-100); border:1px solid var(--n-700); border-radius:4px; font-size:13.5px }}
+  .omni-input {{ width:100%; box-sizing:border-box; padding:8px 10px; background:var(--n-850); color:var(--n-100); border:1px solid var(--n-700); border-radius:4px; font-size:var(--fs-md) }}
   .omni-suggestions {{ position:absolute; left:16px; right:16px; top:calc(100% - 2px); z-index:60; max-height:min(60vh, 360px); overflow-y:auto; background:var(--n-900); border:1px solid #3a3a3a; border-radius:3px; box-shadow:0 6px 16px rgba(0,0,0,0.45) }}
   .omni-suggestions[hidden] {{ display:none }}
-  .omni-group-header {{ position:sticky; top:0; padding:4px 8px; background:#202020; color:#a0a0a0; font-size:9.5px; text-transform:uppercase; letter-spacing:0.09em }}
-  .omni-suggestions .suggestion {{ display:flex; align-items:center; gap:6px; padding:6px 8px; cursor:pointer; font-size:12.5px; color:var(--n-200); border-bottom:1px solid var(--n-800) }}
+  .omni-group-header {{ position:sticky; top:0; padding:4px 8px; background:#202020; color:#a0a0a0; font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:0.09em }}
+  .omni-suggestions .suggestion {{ display:flex; align-items:center; gap:6px; padding:6px 8px; cursor:pointer; font-size:var(--fs-sm); color:var(--n-200); border-bottom:1px solid var(--n-800) }}
   .omni-suggestions .suggestion:last-child {{ border-bottom:none }}
   .omni-suggestions .suggestion.active, .omni-suggestions .suggestion:hover {{ background:#2a1f25 }}
   .omni-suggestions .suggestion .name {{ flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
-  .omni-suggestions .suggestion .sub {{ color:#999; font-style:italic; font-size:11px; flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
-  .omni-suggestions .suggestion .count {{ margin-left:auto; color:#9a9a9a; font-size:11px; font-variant-numeric:tabular-nums; flex:0 0 auto }}
+  .omni-suggestions .suggestion .sub {{ color:#999; font-style:italic; font-size:var(--fs-xs); flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
+  .omni-suggestions .suggestion .count {{ margin-left:auto; color:#9a9a9a; font-size:var(--fs-xs); font-variant-numeric:tabular-nums; flex:0 0 auto }}
   /* No-match feedback row (variant fix: the dropdown used to silently hide). */
-  .omni-empty {{ padding:10px 12px; color:#9a9a9a; font-size:12.5px; font-style:italic }}
+  .omni-empty {{ padding:10px 12px; color:#9a9a9a; font-size:var(--fs-sm); font-style:italic }}
   /* "Main grape only" relocated inside the Grapes facet (variant c). */
   #lang-switcher {{ display:flex; gap:2px; padding:6px 12px 8px; border-bottom:1px solid var(--n-750) }}
-  #lang-switcher a {{ color:var(--n-400); font-size:11px; text-transform:uppercase; letter-spacing:0.08em; text-decoration:none; padding:3px 8px; border-radius:3px }}
+  #lang-switcher a {{ color:var(--n-400); font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.08em; text-decoration:none; padding:3px 8px; border-radius:3px }}
   #lang-switcher a:hover {{ color:var(--n-0) }}
   #lang-switcher a.active {{ color:var(--c-cream); background:var(--n-800); font-weight:700 }}
   #theme-toggle {{ display:flex; gap:0; padding:6px 16px 8px }}
-  #theme-toggle .theme-btn {{ flex:1; background:var(--n-850); color:var(--n-400); border:1px solid var(--n-700); border-left:none; padding:5px 8px; cursor:pointer; font-size:13px; line-height:1.2 }}
+  #theme-toggle .theme-btn {{ flex:1; background:var(--n-850); color:var(--n-400); border:1px solid var(--n-700); border-left:none; padding:5px 8px; cursor:pointer; font-size:var(--fs-md); line-height:1.2 }}
   #theme-toggle .theme-btn:first-child {{ border-left:1px solid var(--n-700); border-radius:3px 0 0 3px }}
   #theme-toggle .theme-btn:last-child {{ border-radius:0 3px 3px 0 }}
   #theme-toggle .theme-btn:hover {{ color:var(--n-0) }}
@@ -2932,7 +2937,7 @@ _TEMPLATE = """<!doctype html>
   #active-filters:has(#active-filters-chips:empty) {{ padding-bottom:0 }}
   #active-filters-chips {{ display:flex; flex-wrap:wrap; gap:4px; flex:1 }}
   #active-filters-chips:empty {{ display:none }}
-  .filter-chip {{ display:inline-flex; align-items:center; gap:4px; padding:2px 4px 2px 8px; background:var(--n-800); color:var(--n-100); border:1px solid var(--n-700); border-radius:11px; font-size:11px; line-height:1.3 }}
+  .filter-chip {{ display:inline-flex; align-items:center; gap:4px; padding:2px 4px 2px 8px; background:var(--n-800); color:var(--n-100); border:1px solid var(--n-700); border-radius:11px; font-size:var(--fs-xs); line-height:1.3 }}
   .filter-chip.region-chip {{ border-color:var(--c-accent); box-shadow:inset 0 0 0 1px var(--c-accent); font-weight:600 }}
   .filter-chip button {{ background:none; border:none; color:var(--n-400); cursor:pointer; padding:0 4px; font-size:14px; line-height:1; border-radius:50% }}
   .filter-chip button:hover {{ color:var(--n-0); background:var(--n-700) }}
@@ -2942,10 +2947,10 @@ _TEMPLATE = """<!doctype html>
   .filter-chip.toggle-chip:hover {{ background:#332028 }}
   .filter-chip.toggle-chip input {{ accent-color:var(--c-accent); margin:0; width:12px; height:12px }}
   .filter-chip.toggle-chip:has(input:checked) {{ background:#3a2730; color:var(--n-0) }}
-  #active-filters #reset {{ background:transparent; color:var(--n-400); border:none; padding:2px 6px; cursor:pointer; font-size:11px; text-decoration:underline; flex:0 0 auto }}
+  #active-filters #reset {{ background:transparent; color:var(--n-400); border:none; padding:2px 6px; cursor:pointer; font-size:var(--fs-xs); text-decoration:underline; flex:0 0 auto }}
   #active-filters #reset:hover {{ color:var(--n-0) }}
   #active-filters-chips:empty + #reset {{ display:none }}
-  #sidebar > details > summary .facet-badge {{ display:inline-block; margin-left:6px; padding:1px 6px; background:var(--c-accent); color:var(--n-0); border-radius:8px; font-size:10px; font-weight:600 }}
+  #sidebar > details > summary .facet-badge {{ display:inline-block; margin-left:6px; padding:1px 6px; background:var(--c-accent); color:var(--n-0); border-radius:8px; font-size:var(--fs-2xs); font-weight:600 }}
   #sidebar > details > summary .facet-badge:empty {{ display:none }}
   #sidebar > details > summary {{ display:flex; align-items:center }}
   #sidebar > details > summary .facet-label {{ flex:1 }}
@@ -2956,21 +2961,21 @@ _TEMPLATE = """<!doctype html>
   .facet .region-group-wrap > .region-group, .facet .country-group-wrap > .country-group {{ flex:1 1 auto; min-width:0 }}
   .facet .region-group > summary, .facet .country-group > summary {{ display:flex; align-items:center; gap:6px }}
   /* The count and the two scope toggles that explain it read as one band. */
-  #status {{ padding:8px 16px 4px; font-size:11px; color:#aaa; background:var(--n-850) }}
+  #status {{ padding:8px 16px 4px; font-size:var(--fs-xs); color:#aaa; background:var(--n-850) }}
   #scope {{ display:flex; flex-wrap:wrap; gap:2px 14px; padding:0 16px 8px; background:var(--n-850); border-bottom:1px solid var(--n-750) }}
-  #scope label {{ display:inline-flex; align-items:center; gap:5px; cursor:pointer; font-size:11.5px; color:#ccc; min-height:24px }}
+  #scope label {{ display:inline-flex; align-items:center; gap:5px; cursor:pointer; font-size:var(--fs-xs); color:#ccc; min-height:24px }}
   #scope label:hover {{ color:var(--n-0) }}
   #scope #show-igp {{ accent-color:var(--c-pgi) }}
   #scope #show-spirits {{ accent-color:var(--c-spirit) }}
   #status .hint-action {{ background:none; border:0; padding:0; margin-left:6px; color:#9ac4ff; font:inherit; cursor:pointer; text-decoration:underline }}
   #status .hint-action:hover {{ color:#cfe0ff }}
   details {{ margin:0 }}
-  summary {{ cursor:pointer; padding:8px 16px; color:var(--n-300); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; user-select:none; border-top:1px solid var(--n-800) }}
+  summary {{ cursor:pointer; padding:8px 16px; color:var(--n-300); font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.06em; user-select:none; border-top:1px solid var(--n-800) }}
   summary:hover {{ color:var(--n-0) }}
   summary::-webkit-details-marker {{ color:var(--n-500) }}
   .facet {{ max-height:240px; overflow-y:auto; padding:0 16px 8px }}
   .facet.facet-appellations {{ max-height:340px }}
-  .facet label {{ display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; font-size:12.5px; color:var(--n-200) }}
+  .facet label {{ display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; font-size:var(--fs-sm); color:var(--n-200) }}
   .facet label:hover {{ color:var(--n-0) }}
   .facet input[type=checkbox] {{ accent-color:#c0392b; flex:0 0 auto }}
   .facet .name {{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
@@ -2983,9 +2988,9 @@ _TEMPLATE = """<!doctype html>
   .facet .aoc-row > label, .facet .tree-row > label {{ flex:1 1 auto; min-width:0; padding:0; color:inherit; font-weight:inherit }}
   .facet .aoc-row, .facet .tree-row {{ color:var(--n-200) }}
   .facet .aoc-row:hover, .facet .tree-row:hover {{ color:var(--n-0) }}
-  .facet .count {{ color:var(--n-500); font-size:11px; margin-left:4px }}
+  .facet .count {{ color:var(--n-500); font-size:var(--fs-xs); margin-left:4px }}
   .facet .count .sub-count {{ opacity:0.65; margin-left:3px }}
-  .facet .syns {{ color:var(--n-400); font-size:11px; font-weight:normal }}
+  .facet .syns {{ color:var(--n-400); font-size:var(--fs-xs); font-weight:normal }}
   /* Keyboard/SR path to open an appellation panel (the WebGL polygons aren't
      DOM-reachable). Subtle until the row is hovered or the button is focused. */
   .facet .open-aoc {{ flex:0 0 auto; margin-left:auto; background:none; border:none; color:#8a8a8a; cursor:pointer; font-size:14px; line-height:1; padding:0 4px; border-radius:3px; opacity:0.55; transition:opacity 0.12s ease, color 0.12s ease, background 0.12s ease }}
@@ -3011,7 +3016,7 @@ _TEMPLATE = """<!doctype html>
      ALL-CAPS form only until the catalog translates them — every locale
      including fr now carries the proper name, so the transform that used
      to hide that inconsistency is gone. */
-  .facet .region-group > summary {{ padding:4px 0; border-top:none; font-size:11px; color:#9a9a9a; text-transform:none; letter-spacing:0.01em; display:flex; align-items:center; gap:6px }}
+  .facet .region-group > summary {{ padding:4px 0; border-top:none; font-size:var(--fs-xs); color:#9a9a9a; text-transform:none; letter-spacing:0.01em; display:flex; align-items:center; gap:6px }}
   .facet .region-group > summary:hover {{ color:var(--n-200) }}
   .facet .region-group > summary .name {{ flex:1 }}
   .facet .region-group > summary .count {{ color:var(--n-600) }}
@@ -3023,16 +3028,16 @@ _TEMPLATE = """<!doctype html>
      tree levels more clearly than size alone. The region rows keep the
      uppercase — it normalises INAO's ALL-CAPS bassin names against the
      mixed-case regions every other country stores. */
-  .facet .country-group > summary {{ padding:5px 0; border-top:none; font-size:12px; font-weight:600; color:#c9c9c9; text-transform:none; letter-spacing:0.01em }}
+  .facet .country-group > summary {{ padding:5px 0; border-top:none; font-size:var(--fs-sm); font-weight:600; color:#c9c9c9; text-transform:none; letter-spacing:0.01em }}
   .facet .country-group > summary:hover {{ color:var(--n-0) }}
   .facet .country-group > summary .name {{ flex:1 }}
-  .facet .country-group > summary .country-flag {{ flex:0 0 auto; font-size:12px; line-height:1; letter-spacing:normal }}
+  .facet .country-group > summary .country-flag {{ flex:0 0 auto; font-size:var(--fs-sm); line-height:1; letter-spacing:normal }}
   .facet .country-group > summary .count {{ color:var(--n-500); font-weight:400 }}
   /* Two levels of indent cost the appellation name ~10px of the ellipsis
      budget, so each step is 8px rather than 10 — the disclosure marker and
      the summary's weight carry most of the hierarchy anyway. */
   .facet .country-group .country-items {{ padding-left:8px }}
-  .facet .empty {{ color:var(--n-500); font-size:11px; font-style:italic; padding:4px 0 }}
+  .facet .empty {{ color:var(--n-500); font-size:var(--fs-xs); font-style:italic; padding:4px 0 }}
   #map {{ flex:1; height:100%; min-width:0 }}
   #panel {{ width:0; flex:0 0 0; background:var(--n-0); border-left:1px solid var(--n-200); overflow-y:auto; transition:flex-basis 0.18s ease, width 0.18s ease }}
   #panel.open {{ width:440px; flex-basis:440px }}
@@ -3040,40 +3045,40 @@ _TEMPLATE = """<!doctype html>
   #panel .close:hover {{ background:var(--n-200); color:#000 }}
   #panel .body {{ padding:16px 24px 40px; line-height:1.55; color:var(--n-850) }}
   #panel .body h1 {{ font-size:22px; margin:8px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--c-accent) }}
-  #panel .body h2 {{ font-size:13px; text-transform:uppercase; letter-spacing:0.04em; color:var(--c-accent); margin:18px 0 6px }}
+  #panel .body h2 {{ font-size:var(--fs-md); text-transform:uppercase; letter-spacing:0.04em; color:var(--c-accent); margin:18px 0 6px }}
   #panel .body p {{ margin:0 0 8px }}
-  #panel .meta {{ color:var(--n-500); font-size:12px; margin-bottom:8px }}
+  #panel .meta {{ color:var(--n-500); font-size:var(--fs-sm); margin-bottom:8px }}
   #panel .meta .gi-scheme {{ opacity:.78; white-space:nowrap }}
   .gi-term.has-info, .gi-scheme.has-info {{ cursor:help; text-decoration:underline dotted; text-underline-offset:2px }}
   .gi-term abbr, .gi-scheme abbr {{ text-decoration:inherit }}
   #panel .meta .meta-country {{ display:inline-flex; align-items:center; gap:5px; color:var(--n-700) }}
-  #panel .meta .country-flag {{ font-size:13px; line-height:1 }}
+  #panel .meta .country-flag {{ font-size:var(--fs-md); line-height:1 }}
   #panel .meta .country-name {{ font-weight:600 }}
-  #panel .translation-attr {{ font-size:11.5px; color:var(--n-500); font-style:italic; margin:0 0 8px }}
+  #panel .translation-attr {{ font-size:var(--fs-xs); color:var(--n-500); font-style:italic; margin:0 0 8px }}
   #panel .translation-attr a {{ color:var(--n-400) }}
-  #panel .stack-header {{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--n-400); margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid var(--n-100); display:flex; align-items:center; gap:6px }}
-  #panel .stack-pos {{ font-size:10.5px; padding:1px 7px; background:#efe7d8; color:#5a4a2a; border-radius:9px; font-variant-numeric:tabular-nums; letter-spacing:0; text-transform:none; cursor:default }}
-  #panel .approx-line, #panel .facts-inherited {{ font-size:11.5px; color:var(--note-ink); background:var(--note-bg); border-left:2px solid var(--note-rule); padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
+  #panel .stack-header {{ font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.06em; color:var(--n-400); margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid var(--n-100); display:flex; align-items:center; gap:6px }}
+  #panel .stack-pos {{ font-size:var(--fs-2xs); padding:1px 7px; background:#efe7d8; color:#5a4a2a; border-radius:9px; font-variant-numeric:tabular-nums; letter-spacing:0; text-transform:none; cursor:default }}
+  #panel .approx-line, #panel .facts-inherited {{ font-size:var(--fs-xs); color:var(--note-ink); background:var(--note-bg); border-left:2px solid var(--note-rule); padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
   #panel .approx-line a.parent-link, #panel .facts-inherited a.parent-link {{ color:var(--note-ink); text-decoration:underline }}
-  #panel .role-disclaimer {{ font-size:11px; color:var(--n-400); font-style:italic; margin:2px 0 8px; line-height:1.35 }}
-  .cancelled-badge {{ display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:#8a2323; background:#fbe6e6; border:1px solid #e0a3a3; border-radius:3px; padding:0 5px; margin-left:6px; vertical-align:middle; line-height:16px }}
-  .cancelled-badge.sm {{ font-size:9.5px; line-height:14px; padding:0 4px; margin-left:4px }}
-  #panel .cancelled-line {{ font-size:11.5px; color:#8a2323; background:#fbe6e6; border-left:2px solid #c85a5a; padding:6px 9px; margin:6px 0 8px; border-radius:2px; line-height:1.45 }}
+  #panel .role-disclaimer {{ font-size:var(--fs-xs); color:var(--n-400); font-style:italic; margin:2px 0 8px; line-height:1.35 }}
+  .cancelled-badge {{ display:inline-block; font-size:var(--fs-2xs); font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:#8a2323; background:#fbe6e6; border:1px solid #e0a3a3; border-radius:3px; padding:0 5px; margin-left:6px; vertical-align:middle; line-height:16px }}
+  .cancelled-badge.sm {{ font-size:var(--fs-2xs); line-height:14px; padding:0 4px; margin-left:4px }}
+  #panel .cancelled-line {{ font-size:var(--fs-xs); color:#8a2323; background:#fbe6e6; border-left:2px solid #c85a5a; padding:6px 9px; margin:6px 0 8px; border-radius:2px; line-height:1.45 }}
   #panel .cancelled-line a {{ color:#8a2323; text-decoration:underline }}
-  .promoted-badge {{ display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:#1f5e3a; background:#e3f3e8; border:1px solid #9cc9ab; border-radius:3px; padding:0 5px; margin-left:6px; vertical-align:middle; line-height:16px }}
-  .promoted-badge.sm {{ font-size:9.5px; line-height:14px; padding:0 4px; margin-left:4px }}
-  #panel .promoted-line {{ font-size:11.5px; color:#1f5e3a; background:#e3f3e8; border-left:2px solid #4f9a6b; padding:6px 9px; margin:6px 0 8px; border-radius:2px; line-height:1.45 }}
+  .promoted-badge {{ display:inline-block; font-size:var(--fs-2xs); font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:#1f5e3a; background:#e3f3e8; border:1px solid #9cc9ab; border-radius:3px; padding:0 5px; margin-left:6px; vertical-align:middle; line-height:16px }}
+  .promoted-badge.sm {{ font-size:var(--fs-2xs); line-height:14px; padding:0 4px; margin-left:4px }}
+  #panel .promoted-line {{ font-size:var(--fs-xs); color:#1f5e3a; background:#e3f3e8; border-left:2px solid #4f9a6b; padding:6px 9px; margin:6px 0 8px; border-radius:2px; line-height:1.45 }}
   #panel .promoted-line a {{ color:#1f5e3a; text-decoration:underline }}
-  #panel .appellation-note {{ font-size:11.5px; color:#33506b; background:#eef3f8; border-left:2px solid #6f93b5; padding:6px 9px; margin:8px 0; border-radius:2px; line-height:1.45 }}
+  #panel .appellation-note {{ font-size:var(--fs-xs); color:#33506b; background:#eef3f8; border-left:2px solid #6f93b5; padding:6px 9px; margin:8px 0; border-radius:2px; line-height:1.45 }}
   #panel .appellation-note .note-srcs {{ margin-top:4px }}
   #panel .appellation-note a {{ color:#33506b; text-decoration:underline }}
-  #panel details.dulok {{ margin:8px 0; font-size:11.5px; color:var(--n-700) }}
+  #panel details.dulok {{ margin:8px 0; font-size:var(--fs-xs); color:var(--n-700) }}
   #panel details.dulok > summary {{ cursor:pointer; font-weight:600; color:#5a4a2a; padding:2px 0; list-style:revert }}
   #panel details.dulok[open] > summary {{ margin-bottom:4px }}
   #panel details.dulok .dulo-row {{ padding:2px 0; line-height:1.4; border-top:1px solid #f0ece2 }}
   #panel details.dulok .dulo-tel {{ font-weight:600; color:var(--note-ink) }}
   #panel details.menzioni .menzioni-chips {{ display:flex; flex-wrap:wrap; gap:4px; margin-top:4px }}
-  #panel details.menzioni .pill.menzione {{ background:#f3eee2; color:#5a4a2a; border:1px solid #e4dcc8; font-size:11px; padding:1px 7px; border-radius:10px }}
+  #panel details.menzioni .pill.menzione {{ background:#f3eee2; color:#5a4a2a; border:1px solid #e4dcc8; font-size:var(--fs-xs); padding:1px 7px; border-radius:10px }}
   #panel .appellation-note .note-srcs a {{ margin-right:10px; white-space:nowrap }}
   #panel .aoc-card + .aoc-card {{ margin-top:24px; padding-top:20px; border-top:1px dashed #ccc }}
   #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid var(--c-accent) }}
@@ -3081,26 +3086,26 @@ _TEMPLATE = """<!doctype html>
      appellation to the front (see the panel click handler in app.js); the ↑
      button in its title is the keyboard path. */
   /* A stack: the focus card in full, the rest as rows (stackRows in app.js). */
-  #panel .stack-hint {{ font-size:11.5px; color:var(--n-500); margin:0 0 10px }}
+  #panel .stack-hint {{ font-size:var(--fs-xs); color:var(--n-500); margin:0 0 10px }}
   #panel .stack-others-h {{ margin-top:22px }}
   #panel .stack-list {{ list-style:none; margin:0 0 12px; padding:0 }}
   #panel .stack-row {{ display:flex; flex-direction:column; align-items:flex-start; gap:1px; width:100%; padding:7px 10px; margin:0 0 4px; background:none; border:1px solid var(--n-200); border-radius:6px; cursor:pointer; font:inherit; color:var(--n-850); text-align:left }}
   #panel .stack-row:hover, #panel .stack-row:focus-visible {{ border-color:var(--c-accent); background:#fbf6f7 }}
-  #panel .stack-row .name {{ font-weight:600; font-size:13.5px }}
-  #panel .stack-row .sub {{ font-size:11.5px; color:var(--n-500) }}
+  #panel .stack-row .name {{ font-weight:600; font-size:var(--fs-md) }}
+  #panel .stack-row .sub {{ font-size:var(--fs-xs); color:var(--n-500) }}
   /* The boundary notes, folded below the content; the sidebar's global
      uppercase `summary` rule is undone here. */
   #panel .boundary-notes {{ margin:12px 0 4px }}
-  #panel .boundary-notes > summary {{ cursor:pointer; padding:4px 8px; font-size:11.5px; color:var(--note-ink); background:var(--note-bg); border-left:2px solid var(--note-rule); border-top:none; border-radius:2px; text-transform:none; letter-spacing:0; user-select:auto }}
+  #panel .boundary-notes > summary {{ cursor:pointer; padding:4px 8px; font-size:var(--fs-xs); color:var(--note-ink); background:var(--note-bg); border-left:2px solid var(--note-rule); border-top:none; border-radius:2px; text-transform:none; letter-spacing:0; user-select:auto }}
   #panel .boundary-notes > summary:hover {{ color:var(--note-ink); filter:brightness(0.97) }}
   #panel .boundary-notes > summary .sub {{ font-style:italic }}
   #panel .boundary-notes[open] > summary {{ margin-bottom:4px }}
   #panel .boundary-notes .approx-line {{ margin:4px 0 }}
   /* Related appellations: a parent's sub-denominations and the scope links. */
-  #panel .subappellations {{ margin:0 0 6px; padding-left:18px; font-size:13px; line-height:1.5 }}
-  #panel .subappellations .sub-kind {{ color:var(--n-500); font-size:11px; margin-left:4px }}
-  #panel .subappellations-more > summary {{ cursor:pointer; padding:2px 0; font-size:12px; color:var(--c-accent); text-transform:none; letter-spacing:0; border-top:none }}
-  #panel .related-links {{ font-size:12.5px; margin:10px 0 0 }}
+  #panel .subappellations {{ margin:0 0 6px; padding-left:18px; font-size:var(--fs-md); line-height:1.5 }}
+  #panel .subappellations .sub-kind {{ color:var(--n-500); font-size:var(--fs-xs); margin-left:4px }}
+  #panel .subappellations-more > summary {{ cursor:pointer; padding:2px 0; font-size:var(--fs-sm); color:var(--c-accent); text-transform:none; letter-spacing:0; border-top:none }}
+  #panel .related-links {{ font-size:var(--fs-sm); margin:10px 0 0 }}
   /* First-open skeleton: real title shows from startup data; the body shimmers
      until the lazy panel-detail JSON lands (Phase 3 data-bundle diet). */
   #panel .aoc-skeleton .skel {{ display:block; border-radius:4px; height:13px; margin:9px 0;
@@ -3111,34 +3116,34 @@ _TEMPLATE = """<!doctype html>
   #panel .aoc-skeleton .skel-line.short {{ width:68% }}
   @keyframes skel-shimmer {{ 0% {{ background-position:100% 0 }} 100% {{ background-position:0 0 }} }}
   @media (prefers-reduced-motion: reduce) {{ #panel .aoc-skeleton .skel {{ animation:none }} }}
-  #panel .sources {{ margin:4px 0 0; padding-left:18px; font-size:12.5px; color:#3a3a3a }}
+  #panel .sources {{ margin:4px 0 0; padding-left:18px; font-size:var(--fs-sm); color:#3a3a3a }}
   #panel .sources li {{ margin:3px 0 }}
-  #panel .sources code {{ font-size:11px; color:var(--n-400) }}
-  #panel .card-feedback {{ margin:18px 0 2px; padding-top:12px; border-top:1px solid #e3ddd4; font-size:13px; line-height:1.6; color:var(--n-850) }}
+  #panel .sources code {{ font-size:var(--fs-xs); color:var(--n-400) }}
+  #panel .card-feedback {{ margin:18px 0 2px; padding-top:12px; border-top:1px solid #e3ddd4; font-size:var(--fs-md); line-height:1.6; color:var(--n-850) }}
   #panel .card-feedback h2 {{ margin:0 0 4px }}
-  #panel .card-feedback .fb-prompt {{ display:block; margin:0 0 6px; font-size:12.5px; color:var(--n-600) }}
-  #panel .fb-chip {{ display:inline-block; padding:3px 11px; margin:2px 6px 4px 0; border:1px solid #c9bfb2; border-radius:12px; background:var(--n-0); color:var(--n-750); font:inherit; font-size:12px; line-height:1.5; cursor:pointer }}
+  #panel .card-feedback .fb-prompt {{ display:block; margin:0 0 6px; font-size:var(--fs-sm); color:var(--n-600) }}
+  #panel .fb-chip {{ display:inline-block; padding:3px 11px; margin:2px 6px 4px 0; border:1px solid #c9bfb2; border-radius:12px; background:var(--n-0); color:var(--n-750); font:inherit; font-size:var(--fs-sm); line-height:1.5; cursor:pointer }}
   #panel .fb-chip:hover {{ background:#f0ebe3; color:var(--n-850) }}
   #panel .fb-chip:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:1px }}
   #panel .fb-chip[aria-pressed="true"] {{ background:var(--c-accent); border-color:var(--c-accent); color:var(--n-0) }}
   #panel .fb-more {{ margin-top:6px }}
-  #panel .fb-more textarea {{ display:block; width:100%; box-sizing:border-box; min-height:54px; margin:5px 0; padding:6px 8px; border:1px solid #d9d3ca; border-radius:4px; background:var(--n-0); color:var(--n-850); font:inherit; font-size:12px; line-height:1.4; resize:vertical }}
+  #panel .fb-more textarea {{ display:block; width:100%; box-sizing:border-box; min-height:54px; margin:5px 0; padding:6px 8px; border:1px solid #d9d3ca; border-radius:4px; background:var(--n-0); color:var(--n-850); font:inherit; font-size:var(--fs-sm); line-height:1.4; resize:vertical }}
   #panel .fb-more textarea:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:0 }}
-  #panel .fb-send {{ padding:3px 12px; border:1px solid var(--c-accent); border-radius:4px; background:var(--c-accent); color:var(--n-0); font:inherit; font-size:11.5px; cursor:pointer }}
+  #panel .fb-send {{ padding:3px 12px; border:1px solid var(--c-accent); border-radius:4px; background:var(--c-accent); color:var(--n-0); font:inherit; font-size:var(--fs-xs); cursor:pointer }}
   #panel .fb-send:hover {{ background:var(--c-accent-hover) }}
   #panel .fb-send:disabled {{ opacity:.5; cursor:default }}
   #panel .fb-status {{ color:#5a6b3a; font-weight:600 }}
   #panel .fb-more .fb-aspect {{ color:var(--c-accent); font-weight:600 }}
   #panel .fb-more a {{ color:var(--c-accent); text-decoration:underline; text-underline-offset:2px }}
-  #panel .facts-sub-h {{ font-size:11px; font-weight:600; color:var(--n-600); margin:8px 0 2px; text-transform:none; letter-spacing:0 }}
-  #panel ul.facts {{ margin:0 0 6px; padding-left:18px; font-size:13px; color:var(--n-850) }}
+  #panel .facts-sub-h {{ font-size:var(--fs-xs); font-weight:600; color:var(--n-600); margin:8px 0 2px; text-transform:none; letter-spacing:0 }}
+  #panel ul.facts {{ margin:0 0 6px; padding-left:18px; font-size:var(--fs-md); color:var(--n-850) }}
   #panel ul.facts li {{ margin:2px 0 }}
-  #panel ul.facts .wiki-attr {{ font-size:11px; color:var(--n-500); font-style:italic }}
+  #panel ul.facts .wiki-attr {{ font-size:var(--fs-xs); color:var(--n-500); font-style:italic }}
   #panel ul.facts .wiki-attr a {{ color:var(--n-400) }}
-  #panel blockquote.facts-verbatim {{ margin:4px 0 6px; padding:6px 10px; border-left:3px solid var(--n-200); background:#f9f7f4; font-size:13px; color:var(--n-750); font-style:italic; white-space:pre-wrap }}
-  #panel .verbatim-badge {{ display:inline-block; margin-left:8px; padding:1px 8px; background:#fff5e5; color:#a05a00; border:1px solid #f0d8a8; border-radius:9px; font-size:10.5px; font-weight:600; font-style:normal; vertical-align:middle }}
+  #panel blockquote.facts-verbatim {{ margin:4px 0 6px; padding:6px 10px; border-left:3px solid var(--n-200); background:#f9f7f4; font-size:var(--fs-md); color:var(--n-750); font-style:italic; white-space:pre-wrap }}
+  #panel .verbatim-badge {{ display:inline-block; margin-left:8px; padding:1px 8px; background:#fff5e5; color:#a05a00; border:1px solid #f0d8a8; border-radius:9px; font-size:var(--fs-2xs); font-weight:600; font-style:normal; vertical-align:middle }}
   #panel .pills {{ margin:0 0 4px }}
-  .pill {{ display:inline-block; padding:2px 8px; margin:2px 4px 2px 0; background:var(--n-100); border-radius:10px; font-size:11px; color:var(--n-750); text-decoration:none }}
+  .pill {{ display:inline-block; padding:2px 8px; margin:2px 4px 2px 0; background:var(--n-100); border-radius:10px; font-size:var(--fs-xs); color:var(--n-750); text-decoration:none }}
   .pill.style {{ background:#fdebe5; color:var(--c-accent) }}
   .pill.style.style--red, .pill.style.style--clairet, .pill.style.style--primeur {{ background:#f3d6d6; color:#7a1620 }}
   .pill.style.style--white, .pill.style.style--dry, .pill.style.style--tranquille {{ background:#f6efd1; color:#5a4a10 }}
@@ -3162,8 +3167,8 @@ _TEMPLATE = """<!doctype html>
   a.pill.style:hover {{ text-decoration:underline; opacity:0.85 }}
   .pill.style.has-info {{ border-bottom:1px dotted currentColor; padding-bottom:1px }}
   a.pill.style.has-info {{ cursor:pointer }}
-  .fr-marker {{ display:inline-block; margin-left:4px; font-size:10px; color:#999; font-style:italic; vertical-align:baseline }}
-  #grape-tooltip .fr-marker {{ font-size:10px; color:var(--n-400) }}
+  .fr-marker {{ display:inline-block; margin-left:4px; font-size:var(--fs-2xs); color:#999; font-style:italic; vertical-align:baseline }}
+  #grape-tooltip .fr-marker {{ font-size:var(--fs-2xs); color:var(--n-400) }}
   /* Tablet (769–1024px): the open panel overlays the map's right edge instead
      of pushing it — 300 + 440 px of chrome left an iPad an 80 px map. */
   @media (min-width: 769px) and (max-width: 1024px) {{
@@ -3205,20 +3210,20 @@ _TEMPLATE = """<!doctype html>
     /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */
     .omni-input {{ font-size:16px }}
   }}
-  #sidebar-footer {{ padding:12px 16px 16px; margin-top:8px; border-top:1px solid var(--n-800); font-size:11px; color:var(--n-400); text-align:center }}
+  #sidebar-footer {{ padding:12px 16px 16px; margin-top:8px; border-top:1px solid var(--n-800); font-size:var(--fs-xs); color:var(--n-400); text-align:center }}
   #sidebar-footer a {{ color:var(--n-400); text-decoration:none }}
   #sidebar-footer a:hover {{ color:var(--n-0); text-decoration:underline }}
   #sidebar-footer .sep {{ margin:0 6px; color:var(--n-700) }}
-  #sidebar-disclaimer {{ padding:0 4px 10px; margin-bottom:10px; border-bottom:1px solid var(--n-850); font-size:11px; line-height:1.5; color:var(--n-400) }}
+  #sidebar-disclaimer {{ padding:0 4px 10px; margin-bottom:10px; border-bottom:1px solid var(--n-850); font-size:var(--fs-xs); line-height:1.5; color:var(--n-400) }}
   #sidebar-disclaimer a {{ color:#aaa; text-decoration:underline; text-underline-offset:2px }}
   #sidebar-disclaimer a:hover {{ color:var(--n-0) }}
-  .feedback-copied {{ display:inline-block; margin-left:6px; padding:2px 6px; border-radius:3px; background:var(--c-accent); color:var(--n-0); font-size:10.5px; opacity:0; transform:translateY(-1px); transition:opacity 180ms ease, transform 180ms ease; pointer-events:none }}
+  .feedback-copied {{ display:inline-block; margin-left:6px; padding:2px 6px; border-radius:3px; background:var(--c-accent); color:var(--n-0); font-size:var(--fs-2xs); opacity:0; transform:translateY(-1px); transition:opacity 180ms ease, transform 180ms ease; pointer-events:none }}
   .feedback-copied.visible {{ opacity:1; transform:translateY(0) }}
   #about-dialog {{ width:520px; max-width:calc(100vw - 32px); padding:0; border:1px solid #ccc; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:var(--n-0); color:var(--n-850) }}
   #about-dialog::backdrop {{ background:rgba(0,0,0,0.45) }}
   #about-dialog .copy-field {{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin:2px 0 }}
-  #about-dialog .copy-field code {{ user-select:all; background:#f3f3f3; border:1px solid var(--n-200); border-radius:4px; padding:2px 6px; font-size:12px; word-break:break-all }}
-  #about-dialog .copy-btn {{ font:inherit; font-size:12px; padding:2px 10px; border:1px solid var(--n-300); border-radius:4px; background:var(--n-0); color:var(--n-850); cursor:pointer }}
+  #about-dialog .copy-field code {{ user-select:all; background:#f3f3f3; border:1px solid var(--n-200); border-radius:4px; padding:2px 6px; font-size:var(--fs-sm); word-break:break-all }}
+  #about-dialog .copy-btn {{ font:inherit; font-size:var(--fs-sm); padding:2px 10px; border:1px solid var(--n-300); border-radius:4px; background:var(--n-0); color:var(--n-850); cursor:pointer }}
   #about-dialog .copy-btn:hover {{ background:#f3f3f3 }}
   #about-dialog .copy-btn.copied {{ border-color:#2e7d32; color:#2e7d32 }}
   html.theme-dark #about-dialog .copy-field code {{ background:var(--n-800); border-color:var(--n-700); color:var(--n-100) }}
@@ -3228,27 +3233,27 @@ _TEMPLATE = """<!doctype html>
   #about-dialog .close:hover {{ background:var(--n-200); color:#000 }}
   #about-dialog .about-body {{ padding:24px 28px; line-height:1.55 }}
   #about-dialog h2 {{ font-size:20px; margin:0 0 14px; padding:0 32px 8px 0; border-bottom:2px solid var(--c-accent) }}
-  #about-dialog h3 {{ font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:var(--c-accent); margin:20px 0 6px }}
+  #about-dialog h3 {{ font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:0.05em; color:var(--c-accent); margin:20px 0 6px }}
   #about-dialog p {{ margin:0 0 10px }}
   #about-dialog ul {{ margin:0 0 10px; padding-left:18px }}
   #about-dialog li {{ margin:0 0 4px }}
-  #about-dialog .about-meta {{ font-size:13px; color:var(--n-500) }}
+  #about-dialog .about-meta {{ font-size:var(--fs-md); color:var(--n-500) }}
   #about-dialog .data-updated {{ white-space:nowrap }}
-  #about-dialog .about-credit {{ margin:20px 0 0; padding-top:10px; border-top:1px solid var(--n-100); font-size:13px; color:var(--n-500) }}
+  #about-dialog .about-credit {{ margin:20px 0 0; padding-top:10px; border-top:1px solid var(--n-100); font-size:var(--fs-md); color:var(--n-500) }}
   #about-dialog a {{ color:var(--c-accent) }}
   #about-dialog a.bsky {{ white-space:nowrap }}
   #about-dialog .bsky-logo {{ width:1.05em; height:1.05em; vertical-align:-0.16em; margin-right:0.3em; fill:#1185fe }}
-  #grape-tooltip {{ position:fixed; max-width:340px; background:var(--n-0); color:var(--n-850); border:1px solid var(--n-200); border-radius:4px; padding:10px 12px; font-size:12px; line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:1000; display:none }}
+  #grape-tooltip {{ position:fixed; max-width:340px; background:var(--n-0); color:var(--n-850); border:1px solid var(--n-200); border-radius:4px; padding:10px 12px; font-size:var(--fs-sm); line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:1000; display:none }}
   #grape-tooltip .ext {{ margin:0 0 6px }}
   #grape-tooltip .note {{ margin:0 0 6px; font-style:italic; color:var(--n-600) }}
   #grape-tooltip .thumb {{ float:right; width:96px; height:auto; margin:0 0 6px 10px; border-radius:3px; background:#f3f3f3 }}
-  #grape-tooltip .src {{ color:var(--n-400); font-size:10.5px; clear:both }}
+  #grape-tooltip .src {{ color:var(--n-400); font-size:var(--fs-2xs); clear:both }}
   #grape-tooltip .src a {{ color:var(--n-400) }}
   #panel .body a {{ color:var(--c-accent) }}
   .maplibregl-popup {{ max-width:320px !important }}
-  .maplibregl-popup-content {{ font-size:13px; padding:10px 12px !important }}
+  .maplibregl-popup-content {{ font-size:var(--fs-md); padding:10px 12px !important }}
   .maplibregl-popup-content h3 {{ margin:0 0 4px; font-size:14px; color:var(--c-accent) }}
-  .maplibregl-popup-content .meta {{ color:#777; font-size:11px }}
+  .maplibregl-popup-content .meta {{ color:#777; font-size:var(--fs-xs) }}
   /* Visible focus indicators (WCAG 2.4.7). Light outline on the dark sidebar,
      burgundy outline on the light panel/dialog. */
   #sidebar a:focus-visible,
@@ -3267,9 +3272,9 @@ _TEMPLATE = """<!doctype html>
      above the scale. */
   .maplibregl-ctrl-bottom-left .maplibregl-ctrl, .maplibregl-ctrl-bottom-right .maplibregl-ctrl {{ clear:both }}
   .owm-hover {{ pointer-events:none }}
-  .owm-hover .maplibregl-popup-content {{ padding:4px 9px !important; font-size:12px; font-weight:600; color:var(--n-850); background:rgba(255,255,255,0.95); box-shadow:0 1px 4px rgba(0,0,0,0.3); border-radius:4px; white-space:nowrap }}
+  .owm-hover .maplibregl-popup-content {{ padding:4px 9px !important; font-size:var(--fs-sm); font-weight:600; color:var(--n-850); background:rgba(255,255,255,0.95); box-shadow:0 1px 4px rgba(0,0,0,0.3); border-radius:4px; white-space:nowrap }}
   .owm-hover .maplibregl-popup-tip {{ display:none }}
-  .owm-legend {{ display:flex; gap:10px; align-items:center; padding:4px 8px; background:rgba(255,255,255,0.92); border-radius:4px; box-shadow:0 0 0 2px rgba(0,0,0,0.1); font-size:11px; color:var(--n-850); pointer-events:auto }}
+  .owm-legend {{ display:flex; gap:10px; align-items:center; padding:4px 8px; background:rgba(255,255,255,0.92); border-radius:4px; box-shadow:0 0 0 2px rgba(0,0,0,0.1); font-size:var(--fs-xs); color:var(--n-850); pointer-events:auto }}
   .owm-legend .legend-item {{ display:inline-flex; align-items:center; gap:5px }}
   .owm-legend .sw {{ width:12px; height:12px; border-radius:3px; border:1px solid rgba(0,0,0,0.15); flex:0 0 12px }}
   .owm-legend .sw.aoc {{ background:var(--c-accent) }}
@@ -3285,7 +3290,7 @@ _TEMPLATE = """<!doctype html>
   /* Skip-to-map link: off-screen until focused, so keyboard users can bypass
      the filter sidebar and jump straight to the map. */
   .skip-link {{ position:absolute; left:8px; top:-48px; z-index:60; background:var(--c-accent); color:var(--n-0);
-               padding:8px 14px; border-radius:0 0 4px 4px; font-size:13px; text-decoration:none;
+               padding:8px 14px; border-radius:0 0 4px 4px; font-size:var(--fs-md); text-decoration:none;
                transition:top 0.15s ease }}
   .skip-link:focus {{ top:0 }}
   /* Respect the OS "reduce motion" setting (WCAG 2.3.3): neutralise the

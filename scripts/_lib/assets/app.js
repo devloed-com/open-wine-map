@@ -816,13 +816,51 @@
     return tpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] != null ? vars[k] : '');
   }
 
+  // Filter feedback: a style / grape / classification / type filter leaves its
+  // matches inside collapsed tree groups. Up to 25 matches open the groups
+  // that hold them — tagged, and closed again when the filter clears (the
+  // search's autoOpened pattern with its own flag, so the two never fight);
+  // above that the status line offers "show in the list".
+  const AUTO_OPEN_MAX = 25;
+  function facetFilterActive() {
+    return !!(filters.styles.size || filters.classifications.size || filters.appellationType.size || filters.grapesAll.size)
+      && !filters.appellations.size && !filters.q;
+  }
+  function openGroupsWithMatches() {
+    const el = document.getElementById('facet-appellations');
+    if (!el) return;
+    const open = g => { if (g && !g.open) { g.open = true; g.dataset.autoOpenedF = '1'; } };
+    for (const [cc, regions] of COUNTRY_TREE) {
+      let countryHit = false;
+      for (const region of regions.keys()) {
+        if (!visibleSlugsInRegion(cc, region).some(s => matchesClient(AOCS[s], s))) continue;
+        countryHit = true;
+        open(el.querySelector(`.region-group[data-country="${CSS.escape(cc)}"][data-region="${CSS.escape(region)}"]`));
+      }
+      if (countryHit) open(el.querySelector(`.country-group[data-country="${CSS.escape(cc)}"]`));
+    }
+  }
+  function closeAutoOpenedGroups() {
+    document.querySelectorAll('#facet-appellations details[data-auto-opened-f]').forEach(g => {
+      g.open = false;
+      delete g.dataset.autoOpenedF;
+    });
+  }
+
   function updateStatus() {
     const el = document.getElementById('status');
     const total = Object.keys(AOCS).length;
     const expr = buildFilterExpr();
-    if (!expr) { el.textContent = fmt(LABELS.count_total, { n: total }); return; }
+    if (!expr) { closeAutoOpenedGroups(); el.textContent = fmt(LABELS.count_total, { n: total }); return; }
     let n = 0;
     for (const slug in AOCS) if (matchesClient(AOCS[slug], slug)) n++;
+    let listHint = false;
+    if (facetFilterActive()) {
+      if (n > 0 && n <= AUTO_OPEN_MAX) openGroupsWithMatches();
+      else if (n > AUTO_OPEN_MAX) listHint = true;
+    } else {
+      closeAutoOpenedGroups();
+    }
     // When the filter excludes every visible record but matches one or
     // more hidden IGPs, surface a one-click reveal so the user understands
     // *why* the camera didn't move. (No spirits counterpart: the spirits
@@ -856,6 +894,20 @@
       }
     }
     el.textContent = fmt(LABELS.count_filtered, { n: n, total: total });
+    if (listHint) {
+      el.appendChild(document.createTextNode(' · '));
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'hint-action';
+      btn.textContent = LABELS.status_show_matches;
+      btn.addEventListener('click', () => {
+        openGroupsWithMatches();
+        const tree = document.getElementById('facet-appellations');
+        const det = tree && tree.closest('details');
+        if (det) { det.open = true; det.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+      });
+      el.appendChild(btn);
+    }
   }
 
   // A tree facet (styles, classification, appellation type): one row per
