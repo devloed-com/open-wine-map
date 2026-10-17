@@ -6291,6 +6291,89 @@ never disagree about the zoom bands:
   the golden comparator does not see geometry (only the four app bundles
   go red on a tileset change, through the `?v=` fingerprint).
 
+## Map chrome and panel (the 2026-10-17 UX pass)
+
+One sidebar, one set of affordances, the same on every page. What the map
+page is made of since 2026-10-17 (branch `feat/unified-sidebar`), with the
+code that owns each piece:
+
+- **Sidebar** (`_LAB_HEAD_TOP` / `_SIDEBAR` in map_template.py): brand →
+  language → theme → the count with its **scope row** (`#scope`: "Show
+  PGIs", "Include spirits" — both always visible; spirits default off) →
+  omnisearch → active-filter chips → **Wine style** (the taxonomy tree,
+  depth-0 rows in `FACET_BUCKET_ORDER`, sub-styles behind a chevron) →
+  Classification and Appellation type (collapsed) → the country → region →
+  appellation tree → footer. The legend left the sidebar for the map. A
+  tree row is a `.tree-row` / `.aoc-row` div holding the checkbox's `<label>`
+  and, as a **sibling**, the chevron or the → open button — never a button
+  inside a label (a button is a labelable element and would take the row's
+  name as its own). `buildTreeFacet` folds each subtree into a hidden
+  sibling `.tree-children` wrapper (`aria-controls` / `aria-expanded` on the
+  chevron); `revealCheckedTreeRows` opens the branches above a ticked row. A
+  facet filter with ≤ 25 matches opens the tree groups that hold them
+  (`openGroupsWithMatches`, tagged `data-auto-opened-f`, closed again when
+  the filter clears); above that the status line offers "show in the list".
+- **Map chrome** (app.js after the landing gate; CSS "Map chrome" block):
+  MapLibre `NavigationControl` (no compass; accessible names from
+  `ctrl_zoom_in` / `ctrl_zoom_out` through the Map `locale` option; hidden
+  ≤ 768px) above the attribution, a metric `ScaleControl` bottom-left and
+  above it the **legend chip** (`legendControl`): a swatch and the scheme
+  word for the PDO and PGI fills and, while spirits are shown, the spirits
+  colour — non-wine GIs paint `#a07530` (`is_wine` tested before the PGI
+  kind in `_build_source_block`). Bottom-corner controls stack, later ones
+  above (`insertBefore(firstChild)`), with `clear:both` so they never sit
+  side by side.
+- **Hover** (pointer devices only, `(hover: hover) and (pointer: fine)`):
+  `hitSlugsAt(point)` — the click's 4 px box over both fill layers, deduped,
+  `parent-appellation` / `sibling-dgc` inheritors dropped, sorted by
+  `localityRank` — serves hover and click alike; the polygon under the
+  cursor takes feature-state `hover` (brighter fill, +0.8 px outline, always
+  under the selection override) on both sources and a pointer-tracking
+  label (`maplibregl.Popup.trackPointer`, `aria-hidden`) names it with "+N"
+  for the rest of the stack a click would open. Hovering a stack row lights
+  its polygon without the label.
+- **Card** (`renderAocCard`, mirrored by `render_content_block`): name →
+  meta → cancelled / promoted lines → "sub-denomination of" → stub line →
+  styles → grapes → terroir facts XOR summary → dűlők / menzioni → note →
+  **boundary notes** (`<details class="boundary-notes">`: the amber
+  provenance lines and the zoom-reactive footprint line, folded; the summary
+  says "· approximate area" for a shape that stands in for the delimitation
+  — `isApproxGeom` / `_APPROX_GEOM_SOURCES`) → **related appellations** (a
+  parent's sub-denominations under the regulator's own heading,
+  `SUBDENOM_HEADINGS`, from the `children` list stage 04 writes into the
+  parent's panel payload — parents only, never a startup field; 12 rows then
+  "and N more"; and "All appellations in <region> · <country>", the tree's
+  region / country filter — the SSR card renders the country link as a real
+  href to the browse index's `#c-<cc>` section) → provenance line → sources →
+  "Report a mistake". A **stack** renders the focus card in full and the rest
+  as rows (`stackRows`: name · classification · region; a click brings it to
+  the front, `via: stack-pick`) under a visible hint; only the focus record's
+  payload is fetched.
+- **Phones (≤ 768px)**: a bar (`#mobile-bar`: brand link, search, menu — the
+  first screen is no longer a bare map) over the map; the sidebar is a
+  drawer with a scrim (`setDrawer` owns `#sidebar.open`, the scrim and the
+  buttons' `aria-expanded`; focus moves into the drawer on open and back to
+  the opener on close; Esc closes the drawer before the sheet; opening a
+  record from the tree, the search or a related link closes it); a record
+  opens as a **45 % sheet** with a handle (`setSheetExpanded`, 92 % when
+  expanded; a scroll expands it; `closePanel` resets); `fitPadding` pads
+  every camera fit for the sheet and the bar; `100dvh`,
+  `env(safe-area-inset-*)`, `viewport-fit=cover`. **Tablets (769–1024px)**:
+  the open panel overlays the map's right edge instead of pushing it.
+  `html.booted` (two frames after start) gates the panel / drawer
+  transitions, so an entity landing paints its panel open.
+- **Design tokens** (`:root` at the top of the style block): one accent
+  (`--c-accent`; the former `#7A1F2B` / `#7a1f3a` are gone), `--c-pgi`,
+  `--c-spirit`, `--c-cream`, a neutral lightness scale `--n-0 … --n-900`,
+  the dark panel pair, the amber note colours and four small text sizes
+  (`--fs-2xs … --fs-md`). `tests/test_map_chrome.py` keeps `--c-accent` /
+  `--c-pgi` / `--c-spirit` in step with the paint and pins the hover state,
+  the viewport meta and the phone chrome; `tests/test_sidebar_unified.py`
+  pins the sidebar.
+- **Analytics**: `Drawer Opened {via: menu | search}`, `Sheet Expanded
+  {slug, via: handle | scroll}`, `Filter Applied` from a related link carries
+  `via: panel-link` — see [docs/analytics.md](docs/analytics.md).
+
 ## Structured data (JSON-LD) on entity pages
 
 Each **indexable** per-appellation entity page (`/<lang>/<slug>`) carries a
