@@ -2990,7 +2990,7 @@ _TEMPLATE = """<!doctype html>
   .facet .aoc-row:hover, .facet .tree-row:hover {{ color:var(--n-0) }}
   /* Counts at AA contrast on the dark sidebar (#888 on #1a1a1a ≈ 5.2:1). */
   .facet .count {{ color:var(--n-400); font-size:var(--fs-xs); margin-left:4px }}
-  .facet .count .sub-count {{ opacity:0.9; margin-left:3px }}
+  .facet .count .sub-count {{ margin-left:3px }}
   .facet .syns {{ color:var(--n-400); font-size:var(--fs-xs); font-weight:normal }}
   /* Keyboard/SR path to open an appellation panel (the WebGL polygons aren't
      DOM-reachable). Subtle until the row is hovered or the button is focused. */
