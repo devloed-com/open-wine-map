@@ -2988,8 +2988,9 @@ _TEMPLATE = """<!doctype html>
   .facet .aoc-row > label, .facet .tree-row > label {{ flex:1 1 auto; min-width:0; padding:0; color:inherit; font-weight:inherit }}
   .facet .aoc-row, .facet .tree-row {{ color:var(--n-200) }}
   .facet .aoc-row:hover, .facet .tree-row:hover {{ color:var(--n-0) }}
-  .facet .count {{ color:var(--n-500); font-size:var(--fs-xs); margin-left:4px }}
-  .facet .count .sub-count {{ opacity:0.65; margin-left:3px }}
+  /* Counts at AA contrast on the dark sidebar (#888 on #1a1a1a ≈ 5.2:1). */
+  .facet .count {{ color:var(--n-400); font-size:var(--fs-xs); margin-left:4px }}
+  .facet .count .sub-count {{ opacity:0.9; margin-left:3px }}
   .facet .syns {{ color:var(--n-400); font-size:var(--fs-xs); font-weight:normal }}
   /* Keyboard/SR path to open an appellation panel (the WebGL polygons aren't
      DOM-reachable). Subtle until the row is hovered or the button is focused. */
@@ -3019,7 +3020,7 @@ _TEMPLATE = """<!doctype html>
   .facet .region-group > summary {{ padding:4px 0; border-top:none; font-size:var(--fs-xs); color:#9a9a9a; text-transform:none; letter-spacing:0.01em; display:flex; align-items:center; gap:6px }}
   .facet .region-group > summary:hover {{ color:var(--n-200) }}
   .facet .region-group > summary .name {{ flex:1 }}
-  .facet .region-group > summary .count {{ color:var(--n-600) }}
+  .facet .region-group > summary .count {{ color:var(--n-400) }}
   .facet .region-group .region-items {{ padding-left:8px }}
   /* Country level sits above the regions: brighter and heavier, with the
      flag as the scanning anchor. Regions keep their dimmer, smaller row. */
@@ -3032,7 +3033,7 @@ _TEMPLATE = """<!doctype html>
   .facet .country-group > summary:hover {{ color:var(--n-0) }}
   .facet .country-group > summary .name {{ flex:1 }}
   .facet .country-group > summary .country-flag {{ flex:0 0 auto; font-size:var(--fs-sm); line-height:1; letter-spacing:normal }}
-  .facet .country-group > summary .count {{ color:var(--n-500); font-weight:400 }}
+  .facet .country-group > summary .count {{ color:var(--n-400); font-weight:400 }}
   /* Two levels of indent cost the appellation name ~10px of the ellipsis
      budget, so each step is 8px rather than 10 — the disclosure marker and
      the summary's weight carry most of the hierarchy anyway. */
@@ -3048,7 +3049,7 @@ _TEMPLATE = """<!doctype html>
   #panel .body h2 {{ font-size:var(--fs-md); text-transform:uppercase; letter-spacing:0.04em; color:var(--c-accent); margin:18px 0 6px }}
   #panel .body p {{ margin:0 0 8px }}
   #panel .meta {{ color:var(--n-500); font-size:var(--fs-sm); margin-bottom:8px }}
-  #panel .meta .gi-scheme {{ opacity:.78; white-space:nowrap }}
+  #panel .meta .gi-scheme {{ white-space:nowrap }}
   .gi-term.has-info, .gi-scheme.has-info {{ cursor:help; text-decoration:underline dotted; text-underline-offset:2px }}
   .gi-term abbr, .gi-scheme abbr {{ text-decoration:inherit }}
   #panel .meta .meta-country {{ display:inline-flex; align-items:center; gap:5px; color:var(--n-700) }}
@@ -3160,7 +3161,8 @@ _TEMPLATE = """<!doctype html>
   .pill.grape.observation {{ background:#fff8d8; color:#7a5a00 }}
   a.pill.grape.observation:hover {{ background:#f5ecc0 }}
   a.pill.grape.has-info {{ border-bottom:1px dotted currentColor; padding-bottom:1px }}
-  .pill.grape .canon {{ opacity:0.65; font-weight:normal; font-size:0.9em }}
+  .pill.grape .canon {{ color:#4a5668; font-weight:normal; font-size:0.9em }}
+  .pill.grape.accessory .canon, .pill.grape.observation .canon {{ color:inherit }}
   h1 .latin, .facet label .latin {{ opacity:0.55; font-weight:normal; font-size:0.85em; margin-left:0.25em }}
   .pill.style {{ cursor:default }}
   a.pill.style {{ text-decoration:none }}
@@ -3184,9 +3186,10 @@ _TEMPLATE = """<!doctype html>
     #mobile-bar .brand-mark {{ width:18px; height:18px; flex:0 0 18px }}
     #mobile-bar button {{ flex:0 0 44px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:none; color:var(--n-100); border:none; border-radius:4px; font-size:18px; cursor:pointer }}
     #mobile-bar button:hover, #mobile-bar button[aria-expanded="true"] {{ background:var(--n-800) }}
-    #sidebar {{ position:fixed; top:0; left:0; width:280px; height:100vh; height:100dvh; padding-bottom:env(safe-area-inset-bottom, 0px); box-sizing:border-box; flex:0 0 auto; transform:translateX(-100%); transition:transform 0.18s ease; z-index:25; box-shadow:2px 0 12px rgba(0,0,0,0.25) }}
+    /* The drawer opens under the bar, which stays usable (its menu button closes it). */
+    #sidebar {{ position:fixed; top:calc(44px + env(safe-area-inset-top, 0px)); left:0; width:280px; height:calc(100vh - 44px); height:calc(100dvh - 44px - env(safe-area-inset-top, 0px)); padding-bottom:env(safe-area-inset-bottom, 0px); box-sizing:border-box; flex:0 0 auto; transform:translateX(-100%); transition:transform 0.18s ease; z-index:25; box-shadow:2px 0 12px rgba(0,0,0,0.25) }}
     #sidebar.open {{ transform:translateX(0) }}
-    #scrim {{ display:block; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:24 }}
+    #scrim {{ display:block; position:fixed; inset:0; top:calc(44px + env(safe-area-inset-top, 0px)); background:rgba(0,0,0,0.4); z-index:24 }}
     #scrim[hidden] {{ display:none }}
     #map {{ flex:1; height:auto; min-height:0; min-width:0 }}
     /* The sheet: 45 % peek, 92 % expanded, above the home indicator. */
@@ -3498,7 +3501,7 @@ _LAB_HEAD_TOP = """<aside id="sidebar" data-nosnippet tabindex="-1" aria-label="
 
 
 _LAB_ACTIVE = """
-    <div id="active-filters" aria-label="{labels[active_filters_aria]}">
+    <div id="active-filters" role="group" aria-label="{labels[active_filters_aria]}">
       <div id="active-filters-chips"></div>
       <button id="reset" type="button">{labels[reset]}</button>
     </div>
