@@ -3322,7 +3322,7 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel .close:hover, html.theme-dark #about-dialog .close:hover {{ background:var(--n-700); color:var(--n-0) }}
   html.theme-dark #panel .meta {{ color:#9a9a9a }}
   html.theme-dark #panel .meta .meta-country {{ color:#cfcfcf }}
-  html.theme-dark #panel .stack-header {{ border-bottom-color:var(--n-750) }}
+  html.theme-dark #panel .stack-header {{ color:var(--n-300); border-bottom-color:var(--n-750) }}
   html.theme-dark #panel .aoc-card + .aoc-card {{ border-top-color:var(--n-700) }}
   html.theme-dark #panel .sheet-handle {{ background:var(--n-dark-panel) }}
   html.theme-dark #panel .sheet-handle .grip {{ background:var(--n-600) }}
