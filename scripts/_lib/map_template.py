@@ -3057,7 +3057,7 @@ _TEMPLATE = """<!doctype html>
   #panel .meta .country-name {{ font-weight:600 }}
   #panel .translation-attr {{ font-size:var(--fs-xs); color:var(--n-500); font-style:italic; margin:0 0 8px }}
   #panel .translation-attr a {{ color:var(--n-400) }}
-  #panel .stack-header {{ font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.06em; color:var(--n-400); margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid var(--n-100); display:flex; align-items:center; gap:6px }}
+  #panel .stack-header {{ font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.06em; color:var(--n-500); margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid var(--n-100); display:flex; align-items:center; gap:6px }}
   #panel .stack-pos {{ font-size:var(--fs-2xs); padding:1px 7px; background:#efe7d8; color:#5a4a2a; border-radius:9px; font-variant-numeric:tabular-nums; letter-spacing:0; text-transform:none; cursor:default }}
   #panel .approx-line, #panel .facts-inherited {{ font-size:var(--fs-xs); color:var(--note-ink); background:var(--note-bg); border-left:2px solid var(--note-rule); padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
   #panel .approx-line a.parent-link, #panel .facts-inherited a.parent-link {{ color:var(--note-ink); text-decoration:underline }}
