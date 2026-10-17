@@ -21,7 +21,13 @@ from pathlib import Path
 
 from babel.numbers import format_decimal
 
-from _lib.content_block import RenderCtx, esc, render_content_block, to_title_case
+from _lib.content_block import (
+    SUBDENOM_HEADINGS,
+    RenderCtx,
+    esc,
+    render_content_block,
+    to_title_case,
+)
 from _lib.env import (
     carto_basemap_key,
     carto_basemap_keys,
@@ -294,11 +300,18 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         ),
         "geom_sigpac_whole": _("S'y ajoutent, en totalité, les communes {whole}."),
         "stack_header": _("{n} appellations à ce point"),
-        "stack_cycle_hint": _(
-            "Cliquer à nouveau sur la carte pour parcourir les autres, "
-            "ou sur une fiche pour l'afficher en premier"
+        # The rest of a stack is a list of rows under the focus card; the hint
+        # is visible text, not a tooltip.
+        "stack_cycle_hint_rows": _(
+            "Cliquez à nouveau sur la carte pour passer à la suivante, "
+            "ou choisissez un nom ci-dessous."
         ),
-        "stack_focus_title": _("Afficher cette appellation en premier"),
+        "stack_others_h": _("Aussi à ce point"),
+        # The folded boundary notes below the facts (how the polygon was
+        # drawn), and the related-appellations links.
+        "boundary_notes_h": _("À propos du contour"),
+        "related_all_in": _("Toutes les appellations de {name}"),
+        "related_more": _("et {n} autres"),
         "src_cahier": _("Cahier des charges (BO Agri, PDF)"),
         "src_cahier_eu_register": _("Cahier des charges (registre GI de l'UE, PDF)"),
         "src_homologated": _("homologué"),
@@ -2105,7 +2118,7 @@ def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) ->
             for name, slug, kind in entries
         )
         sections.append(
-            '<section class="browse-country">\n'
+            f'<section class="browse-country" id="c-{esc(cc)}">\n'
             f"<h2>{heading}</h2>\n"
             f'<ul class="browse-list">\n{items}\n</ul>\n'
             "</section>"
@@ -2522,6 +2535,7 @@ def render(
         simple_style_labels_json=json.dumps(simple_style_labels, ensure_ascii=False),
         simple_style_buckets_json=json.dumps(simple_style_buckets, ensure_ascii=False),
         labels_json=json.dumps(labels, ensure_ascii=False),
+        subdenom_headings_json=json.dumps(SUBDENOM_HEADINGS, ensure_ascii=False),
         grape_search_index_json=json.dumps(grape_search_index, ensure_ascii=False),
         vivc_siblings_json=json.dumps(vivc_siblings, ensure_ascii=False, sort_keys=True),
         slug_to_canonical_json=json.dumps(slug_to_canonical, ensure_ascii=False, sort_keys=True),
@@ -2651,7 +2665,7 @@ def render(
             country_labels=country_labels, country_flag_emoji=_COUNTRY_FLAG_EMOJI,
             grapes_info=grapes_info or {}, styles_info=styles_info or {},
             style_labels=style_labels, github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
-            terms_info=terms_info or {}, lod=lod or {},
+            terms_info=terms_info or {}, lod=lod or {}, browse_path=browse_path,
         )
         entity_about_html = _build_about_dialog(
             labels, browse_path=browse_path, corpus_counts=corpus_counts, locale=locale, lod=lod
@@ -3058,13 +3072,27 @@ _TEMPLATE = """<!doctype html>
   /* Stacked overlap: a subordinate card is a click target that brings its
      appellation to the front (see the panel click handler in app.js); the ↑
      button in its title is the keyboard path. */
-  #panel .aoc-card.subordinate {{ cursor:pointer }}
-  #panel .aoc-card.subordinate .card-feedback {{ cursor:auto }}
-  #panel .aoc-card.subordinate h1 {{ font-size:16px; color:var(--n-700); border-bottom-color:#ccc; display:flex; align-items:center; justify-content:space-between; gap:8px }}
-  #panel .aoc-card.subordinate:hover h1 {{ color:var(--n-850); border-bottom-color:var(--c-accent) }}
-  #panel .stack-focus {{ flex:0 0 auto; width:24px; height:24px; padding:0; border:1px solid #ccc; border-radius:50%; background:none; color:var(--n-500); font:inherit; font-size:13px; line-height:1; cursor:pointer; transition:background 0.12s ease, color 0.12s ease, border-color 0.12s ease }}
-  #panel .aoc-card.subordinate:hover .stack-focus, #panel .stack-focus:focus-visible {{ border-color:var(--c-accent); color:var(--c-accent) }}
-  #panel .stack-focus:hover {{ background:var(--c-accent); border-color:var(--c-accent); color:var(--n-0) }}
+  /* A stack: the focus card in full, the rest as rows (stackRows in app.js). */
+  #panel .stack-hint {{ font-size:11.5px; color:var(--n-500); margin:0 0 10px }}
+  #panel .stack-others-h {{ margin-top:22px }}
+  #panel .stack-list {{ list-style:none; margin:0 0 12px; padding:0 }}
+  #panel .stack-row {{ display:flex; flex-direction:column; align-items:flex-start; gap:1px; width:100%; padding:7px 10px; margin:0 0 4px; background:none; border:1px solid var(--n-200); border-radius:6px; cursor:pointer; font:inherit; color:var(--n-850); text-align:left }}
+  #panel .stack-row:hover, #panel .stack-row:focus-visible {{ border-color:var(--c-accent); background:#fbf6f7 }}
+  #panel .stack-row .name {{ font-weight:600; font-size:13.5px }}
+  #panel .stack-row .sub {{ font-size:11.5px; color:var(--n-500) }}
+  /* The boundary notes, folded below the content; the sidebar's global
+     uppercase `summary` rule is undone here. */
+  #panel .boundary-notes {{ margin:12px 0 4px }}
+  #panel .boundary-notes > summary {{ cursor:pointer; padding:4px 8px; font-size:11.5px; color:var(--note-ink); background:var(--note-bg); border-left:2px solid var(--note-rule); border-top:none; border-radius:2px; text-transform:none; letter-spacing:0; user-select:auto }}
+  #panel .boundary-notes > summary:hover {{ color:var(--note-ink); filter:brightness(0.97) }}
+  #panel .boundary-notes > summary .sub {{ font-style:italic }}
+  #panel .boundary-notes[open] > summary {{ margin-bottom:4px }}
+  #panel .boundary-notes .approx-line {{ margin:4px 0 }}
+  /* Related appellations: a parent's sub-denominations and the scope links. */
+  #panel .subappellations {{ margin:0 0 6px; padding-left:18px; font-size:13px; line-height:1.5 }}
+  #panel .subappellations .sub-kind {{ color:var(--n-500); font-size:11px; margin-left:4px }}
+  #panel .subappellations-more > summary {{ cursor:pointer; padding:2px 0; font-size:12px; color:var(--c-accent); text-transform:none; letter-spacing:0; border-top:none }}
+  #panel .related-links {{ font-size:12.5px; margin:10px 0 0 }}
   /* First-open skeleton: real title shows from startup data; the body shimmers
      until the lazy panel-detail JSON lands (Phase 3 data-bundle diet). */
   #panel .aoc-skeleton .skel {{ display:block; border-radius:4px; height:13px; margin:9px 0;
@@ -3139,7 +3167,7 @@ _TEMPLATE = """<!doctype html>
     #panel {{ position:fixed; bottom:0; left:0; right:0; width:auto; height:0; flex:none; max-height:75vh; transition:height 0.18s ease; border-left:none; border-top:1px solid var(--n-200); z-index:20 }}
     #panel.open {{ width:auto; height:75vh; flex-basis:auto }}
     #panel .close {{ width:44px; height:44px; font-size:20px }}
-    #panel .stack-focus {{ width:36px; height:36px; font-size:16px }}
+    #panel .stack-row {{ min-height:44px }}
     .facet input[type=checkbox] {{ width:18px; height:18px }}
     .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
     .facet .tree-toggle {{ min-width:44px; min-height:40px; font-size:18px }}
@@ -3259,10 +3287,12 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel .meta .meta-country {{ color:#cfcfcf }}
   html.theme-dark #panel .stack-header {{ border-bottom-color:var(--n-750) }}
   html.theme-dark #panel .aoc-card + .aoc-card {{ border-top-color:var(--n-700) }}
-  html.theme-dark #panel .aoc-card.subordinate h1 {{ color:var(--n-300); border-bottom-color:var(--n-700) }}
-  html.theme-dark #panel .aoc-card.subordinate:hover h1 {{ color:var(--n-100); border-bottom-color:var(--c-accent-ink-dark) }}
-  html.theme-dark #panel .stack-focus {{ border-color:var(--n-600); color:var(--n-300) }}
-  html.theme-dark #panel .aoc-card.subordinate:hover .stack-focus, html.theme-dark #panel .stack-focus:focus-visible {{ border-color:var(--c-accent-ink-dark); color:var(--c-accent-ink-dark) }}
+  html.theme-dark #panel .stack-row {{ border-color:var(--n-700); color:var(--n-dark-text) }}
+  html.theme-dark #panel .stack-row:hover, html.theme-dark #panel .stack-row:focus-visible {{ background:#2a2024; border-color:var(--c-accent-ink-dark) }}
+  html.theme-dark #panel .stack-row .sub, html.theme-dark #panel .stack-hint, html.theme-dark #panel .subappellations .sub-kind {{ color:var(--n-300) }}
+  html.theme-dark #panel .boundary-notes > summary {{ color:var(--note-ink-dark); background:var(--note-bg-dark); border-left-color:var(--note-rule-dark) }}
+  html.theme-dark #panel .boundary-notes > summary:hover {{ color:var(--note-ink-dark) }}
+  html.theme-dark #panel .subappellations-more > summary {{ color:var(--c-accent-ink-dark) }}
   html.theme-dark #panel .stack-focus:hover {{ background:var(--c-accent-ink-dark); border-color:var(--c-accent-ink-dark); color:var(--n-dark-panel) }}
   html.theme-dark #panel .aoc-skeleton .skel {{ background:linear-gradient(90deg,#2b2b2b 25%,#363636 37%,#2b2b2b 63%); background-size:400% 100% }}
   html.theme-dark #panel .sources, html.theme-dark #panel .facts-sub-h {{ color:var(--n-300) }}

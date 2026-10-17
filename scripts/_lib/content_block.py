@@ -103,6 +103,9 @@ class RenderCtx:
     # Level-of-detail config (scripts/_lib/vineyard_envelope.py lod_config):
     # which records draw a generalised footprint below the detail zoom.
     lod: dict = field(default_factory=dict)
+    # The locale's browse-index page (``/<lang>/appellations/``); the related
+    # block links its country section. Empty = no link.
+    browse_path: str = ""
 
 
 # ---------------------------------------------------------------- primitives
@@ -1078,6 +1081,47 @@ def _approx_line(rec: dict, ctx: RenderCtx) -> str:
     return out
 
 
+# Geometry sources whose polygon stands in for the delimitation rather than
+# being it — a commune or administrative union, an inherited polygon, a
+# whole-municipality zone. Mirrors isApproxGeom in app.js.
+_APPROX_GEOM_SOURCES = frozenset({
+    "sibling-dgc", "parent-appellation", "aires-csv-dgc", "pdo-plan-parcel-hull-approx",
+    "aires-csv", "dgc-village-override", "communes", "figshare-pdo", "figshare-pdo-alias",
+    "region-pdo-union", "nuts2-province", "geometry-research-municipios",
+})
+_APPROX_GEOM_PREFIXES = ("gisco-", "caop-", "swissboundaries-")
+
+
+def _is_approx_geom(gs: str | None) -> bool:
+    return bool(gs) and (gs in _APPROX_GEOM_SOURCES or gs.startswith(_APPROX_GEOM_PREFIXES))
+
+
+def _boundary_notes(rec: dict, ctx: RenderCtx) -> str:
+    """The provenance lines of the polygon, folded under one summary below the
+    content (mirrors boundaryNotes in app.js). The summary says "approximate"
+    when the shape is not the delimitation itself."""
+    lines = _approx_line(rec, ctx)
+    if not lines:
+        return ""
+    lab = ctx.labels
+    sub = (f' <span class="sub">· {esc(lab["meta_geom_approx"])}</span>'
+           if _is_approx_geom(rec.get("geom_source")) else "")
+    return (f'<details class="boundary-notes"><summary>{esc(lab["boundary_notes_h"])}{sub}</summary>'
+            f'{lines}</details>')
+
+
+def _related_links(rec: dict, ctx: RenderCtx) -> str:
+    """"All appellations in <country>" as a real link to the browse index's
+    country section (the live card adds the region link, which filters the
+    map and has no page of its own)."""
+    cc = rec.get("country") or ""
+    if not cc or not ctx.browse_path:
+        return ""
+    name = ctx.country_labels.get(cc) or cc
+    text = fmt(ctx.labels["related_all_in"], {"name": esc(name)})
+    return f'<p class="related-links"><a href="{esc(ctx.browse_path)}#c-{esc(cc)}">{text}</a></p>'
+
+
 # ---------------------------------------------------------------- entry point
 
 def _section(heading: str, pills: str) -> str:
@@ -1159,7 +1203,7 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
         if rec.get("is_sub_denomination") and rec.get("parent_slug")
         else ""
     )
-    approx_line = _approx_line(rec, ctx)
+    boundary = _boundary_notes(rec, ctx)
     stub_line = (
         f'<div class="approx-line">{fmt(lab["stub_message"], {"doc": "<em>" + esc(STUB_DOC_NAMES.get(country, STUB_DOC_NAMES["fr"])) + "</em>"})} '
         f'<a class="stub-help" href="{esc(ctx.github_new_issue_url)}" target="_blank" rel="noopener">'
@@ -1205,7 +1249,7 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
     inner = (
         f"<h1>{name_with_latin(rec)}</h1>"
         f'<div class="meta">{country_seg}{classification_html(rec, ctx) or esc(rec.get("kind") or "")}{cancelled_badge_html(rec, ctx)}{promoted_badge_html(rec, ctx)}{region_seg}{meta_tail}</div>'
-        f"{cancelled_line_html(rec, ctx)}{promoted_line_html(rec, ctx)}{dgc_line}{approx_line}{stub_line}"
+        f"{cancelled_line_html(rec, ctx)}{promoted_line_html(rec, ctx)}{dgc_line}{stub_line}"
         f"{_section(lab['panel_styles_h'], style_chips)}"
         f"{_section(lab['facet_principal_h'], principal)}"
         f"{pt_role_disclaimer}"
@@ -1213,7 +1257,9 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
         f"{_section(lab['panel_observation_h'], observation)}"
         f"{facts_block or summary}"
         f"{note_block}"
+        f"{boundary}"
         f"{render_subappellations(children, ctx, country)}"
+        f"{_related_links(rec, ctx)}"
         f"{provenance}"
         f"{render_sources(rec.get('sources'), ctx)}"
     )

@@ -4613,6 +4613,11 @@ def emit_html(
             children_by_parent.setdefault(_p, []).append(_slug)
     for _kids in children_by_parent.values():
         _kids.sort(key=lambda s: (aocs[s].get("name") or s).casefold())
+    # The live card lists a parent's sub-denominations too (renderRelated in
+    # app.js): the list rides the panel payload — not a startup field, and
+    # only parents carry the key, so no other payload changes.
+    for _p, _kids in children_by_parent.items():
+        aocs[_p]["children"] = list(_kids)
 
     # Inherited-terroir transparency: annotate the payload with the record
     # the facts were loaded from (disclosure line in both renderers) and

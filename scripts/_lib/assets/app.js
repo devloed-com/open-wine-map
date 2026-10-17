@@ -67,6 +67,8 @@
   const TERM_LABELS = __OWM_term_labels_json__;
   const TERMS_INFO = __OWM_terms_info_json__;
   const LABELS = __OWM_labels_json__;
+  // Per-country regulator term for a sub-denomination (content_block.SUBDENOM_HEADINGS).
+  const SUBDENOM_HEADINGS = __OWM_subdenom_headings_json__;
   // Default document title (the locale homepage title). The tab title tracks
   // the open appellation so it doesn't get stuck on whichever entity page the
   // user landed on / first opened; reset to this when the panel closes.
@@ -2372,21 +2374,60 @@
     return `<div class="approx-line">${line}</div>`;
   }
 
-  // Card title. A subordinate card (a stacked overlap's non-focus record)
-  // carries the "bring to the front" button: the keyboard / screen-reader
-  // path for what a click anywhere on that card also does (panel click
-  // handler below). The focus card has no button — it is already in front.
-  function cardTitle(slug, r, isPrimary) {
-    const name = `<span class="h1-name">${nameWithLatin(r)}</span>`;
-    if (isPrimary) return name;
-    const t = escapeAttr(LABELS.stack_focus_title);
-    return name + `<button type="button" class="stack-focus" data-slug="${escapeAttr(slug)}" aria-label="${t}" title="${t}">↑</button>`;
-  }
-  function cardTitleAttr(isPrimary) {
-    return isPrimary ? '' : ` title="${escapeAttr(LABELS.stack_focus_title)}"`;
+  function cardTitle(r) {
+    return `<span class="h1-name">${nameWithLatin(r)}</span>`;
   }
 
-  function renderAocCard(slug, isPrimary) {
+  // Geometry sources whose polygon stands in for the delimitation rather
+  // than being it — a commune or administrative union, an inherited polygon,
+  // a whole-municipality zone. Mirrored by _APPROX_GEOM_SOURCES in
+  // scripts/_lib/content_block.py.
+  function isApproxGeom(gs) {
+    if (!gs) return false;
+    if (['sibling-dgc', 'parent-appellation', 'aires-csv-dgc', 'pdo-plan-parcel-hull-approx',
+      'aires-csv', 'dgc-village-override', 'communes', 'figshare-pdo', 'figshare-pdo-alias',
+      'region-pdo-union', 'nuts2-province', 'geometry-research-municipios'].includes(gs)) return true;
+    return /^(gisco-|caop-|swissboundaries-)/.test(gs);
+  }
+  // The boundary notes — how the polygon was drawn, the zoom-reactive
+  // footprint line — folded below the content: a reader sees name, styles,
+  // grapes and terroir first and opens the provenance when they want it. The
+  // summary says "approximate" for a shape that is not the delimitation
+  // itself. Mirrored by _boundary_notes in content_block.py.
+  function boundaryNotes(lines, r) {
+    if (!lines) return '';
+    const sub = isApproxGeom(r.geom_source) ? ` <span class="sub">· ${escapeHtml(LABELS.meta_geom_approx)}</span>` : '';
+    return `<details class="boundary-notes"><summary>${escapeHtml(LABELS.boundary_notes_h)}${sub}</summary>${lines}</details>`;
+  }
+  // Related appellations: a parent's sub-denominations (the panel payload
+  // carries `children` for parents only; names come from the startup
+  // record) and "all appellations in <region> / <country>" — the same filter
+  // as ticking the tree's region / country checkbox. The SSR card renders
+  // the children and the country link too (render_subappellations /
+  // _related_links in content_block.py).
+  function renderRelated(r) {
+    const kids = (r.children || []).filter(k => AOCS[k]);
+    let out = '';
+    if (kids.length) {
+      const heading = SUBDENOM_HEADINGS[r.country] || LABELS.entity_nav_children;
+      const row = k => {
+        const kr = AOCS[k];
+        const kind = kr.class_label ? ` <span class="sub-kind">${escapeHtml(kr.class_label)}</span>` : '';
+        return `<li><a class="parent-link" data-slug="${escapeAttr(k)}" href="${escapeAttr(SLUG_BASE + encodeURIComponent(k))}">${nameWithLatin(kr)}</a>${kind}</li>`;
+      };
+      const rest = kids.slice(12);
+      out += `<h2>${escapeHtml(heading)}</h2><ul class="subappellations">${kids.slice(0, 12).map(row).join('')}</ul>`;
+      if (rest.length) out += `<details class="subappellations-more"><summary>${escapeHtml(fmt(LABELS.related_more, { n: rest.length }))}</summary><ul class="subappellations">${rest.map(row).join('')}</ul></details>`;
+    }
+    const links = [];
+    const cc = r.country || '';
+    if (r.region) links.push(`<a href="#" class="scope-link" data-scope="region" data-country="${escapeAttr(cc)}" data-region="${escapeAttr(r.region)}">${escapeHtml(fmt(LABELS.related_all_in, { name: regionLabel(r.region) }))}</a>`);
+    if (cc) links.push(`<a href="#" class="scope-link" data-scope="country" data-country="${escapeAttr(cc)}">${escapeHtml(fmt(LABELS.related_all_in, { name: countryLabel(cc) }))}</a>`);
+    if (links.length) out += `<p class="related-links">${links.join(' · ')}</p>`;
+    return out;
+  }
+
+  function renderAocCard(slug) {
     const r = AOCS[slug];
     if (!r) return '';
     const styleChips = (r.styles || []).map(s => {
@@ -2438,7 +2479,6 @@
     const ptRoleDisclaimer = (r.country === 'pt' && principal)
       ? `<div class="role-disclaimer">${escapeHtml(LABELS.pt_role_disclaimer)}</div>`
       : '';
-    const klass = isPrimary ? 'aoc-card' : 'aoc-card subordinate';
     let metaTail = '';
     if (r.geom_source === 'aires-csv' || r.geom_source === 'dgc-village-override') {
       metaTail = ' · ' + fmt(LABELS.meta_communes_inao, { n: r.communes_matched || 0 });
@@ -2508,14 +2548,14 @@
             : ''
         }</div>`
       : '';
+    const boundaryBlock = boundaryNotes(approxLine + lodLine, r);
+    const relatedBlock = renderRelated(r);
     return `
-      <div class="${klass}" data-slug="${escapeAttr(slug)}">
-        <h1${cardTitleAttr(isPrimary)}>${cardTitle(slug, r, isPrimary)}</h1>
+      <div class="aoc-card" data-slug="${escapeAttr(slug)}">
+        <h1>${cardTitle(r)}</h1>
         <div class="meta">${countrySeg}${renderClassification(r)}${cancelledBadge(r)}${promotedBadge(r)}${regionSeg}${metaTail}</div>
         ${cancelledLine(r)}${promotedLine(r)}
         ${dgcLine}
-        ${approxLine}
-        ${lodLine}
         ${stubLine}
         ${styleChips ? '<h2>' + LABELS.panel_styles_h + '</h2><div class="pills">' + styleChips + '</div>' : ''}
         ${principal ? '<h2>' + LABELS.facet_principal_h + '</h2><div class="pills">' + principal + '</div>' : ''}
@@ -2526,6 +2566,8 @@
         ${dulokBlock}
         ${menzioniBlock}
         ${noteBlock}
+        ${boundaryBlock}
+        ${relatedBlock}
         ${(!factsBlock && !r.summary) ? provenanceLine(r) : ''}
         ${renderSources(slug, r.sources)}
         ${renderFeedback(slug)}
@@ -2849,16 +2891,30 @@
 
   // Skeleton shown for the brief first-open fetch: the real title comes from
   // startup fields (instant), the body shimmers until the detail JSON lands.
-  function skeletonCard(slug, isPrimary) {
+  function skeletonCard(slug) {
     const r = AOCS[slug] || {};
-    const klass = isPrimary ? 'aoc-card' : 'aoc-card subordinate';
-    return `<div class="${klass} aoc-skeleton" aria-busy="true" data-slug="${escapeAttr(slug)}">`
-      + `<h1${cardTitleAttr(isPrimary)}>${cardTitle(slug, r, isPrimary)}</h1>`
+    return `<div class="aoc-card aoc-skeleton" aria-busy="true" data-slug="${escapeAttr(slug)}">`
+      + `<h1>${cardTitle(r)}</h1>`
       + `<div class="meta"><span class="skel skel-meta"></span></div>`
       + `<div class="skel skel-h"></div>`
       + `<div class="skel skel-line"></div><div class="skel skel-line"></div>`
       + `<div class="skel skel-line short"></div>`
       + `</div>`;
+  }
+
+  // The rest of a stack as a list — name · classification · region — one
+  // button per row: a click brings that record to the front (the keyboard
+  // and screen-reader path to what re-clicking the map does) and, on a
+  // pointer device, hovering a row lights its polygon. Only the focus
+  // record's detail is fetched (a 200-slug ?aocs= set used to fetch 200).
+  function stackRows(slugs) {
+    if (!slugs.length) return '';
+    const rows = slugs.map(s => {
+      const r = AOCS[s];
+      const sub = [r.class_label || r.kind || '', r.region ? regionLabel(r.region) : ''].filter(Boolean).join(' · ');
+      return `<li><button type="button" class="stack-row" data-slug="${escapeAttr(s)}"><span class="name">${nameWithLatin(r)}</span>${sub ? `<span class="sub">${escapeHtml(sub)}</span>` : ''}</button></li>`;
+    }).join('');
+    return `<h2 class="stack-others-h">${escapeHtml(LABELS.stack_others_h)}</h2><ul class="stack-list">${rows}</ul>`;
   }
 
   function renderPanelStack(slugs, focusIndex, doTrack, via) {
@@ -2878,15 +2934,19 @@
       // A shared ?aocs= set is a list, not the polygons under one map point:
       // a plain count, and no "click again to cycle" hint (a card pick keeps it).
       const isSet = currentStackIsSet;
-      const posTitle = isSet ? '' : ` title="${escapeAttr(LABELS.stack_cycle_hint)}"`;
-      const pos = `<span class="stack-pos"${posTitle}>${focus + 1} / ${sorted.length}</span>`;
+      const pos = `<span class="stack-pos">${focus + 1} / ${sorted.length}</span>`;
       header = `<div class="stack-header"><span>${fmt(isSet ? LABELS.count_total : LABELS.stack_header, { n: sorted.length })}</span>${pos}</div>`;
     }
     // A generation token cancels a stale fetch's render when the user opens or
     // cycles to a different stack before this one's detail arrives.
+    // The rest of the stack as rows under the focus card, and a visible hint
+    // (a shared ?aocs= set is a list, not the polygons under a point: no hint).
+    const hint = (sorted.length > 1 && !currentStackIsSet)
+      ? `<p class="stack-hint">${escapeHtml(LABELS.stack_cycle_hint_rows)}</p>` : '';
+    const rows = stackRows(ordered.slice(1));
     const myGen = ++panelGen;
     const renderFull = () => {
-      panelBody.innerHTML = header + ordered.map((s, i) => renderAocCard(s, i === 0)).join('');
+      panelBody.innerHTML = header + hint + renderAocCard(ordered[0]) + rows;
     };
     panel.classList.add('open');
     document.title = docTitleFor(ordered[0]);
@@ -2932,12 +2992,12 @@
     }
     // Cached opens render synchronously (no skeleton flash); first opens show
     // the skeleton, fetch the stack's detail, then swap in the full cards.
-    if (ordered.every(s => AOCS[s] && AOCS[s]._hydrated)) {
+    if (AOCS[ordered[0]] && AOCS[ordered[0]]._hydrated) {
       renderFull();
       return;
     }
-    panelBody.innerHTML = header + ordered.map((s, i) => skeletonCard(s, i === 0)).join('');
-    ensurePanelData(ordered).then(() => { if (myGen === panelGen) renderFull(); });
+    panelBody.innerHTML = header + hint + skeletonCard(ordered[0]) + rows;
+    ensurePanelData([ordered[0]]).then(() => { if (myGen === panelGen) renderFull(); });
   }
 
   function escapeHtml(s) {
@@ -3230,6 +3290,24 @@
       if (fb.classList.contains('stub-help')) row.scrollIntoView({ block: 'nearest' });
       return;
     }
+    // "All appellations in <region> / <country>": the same filter as the
+    // tree's region / country checkbox (bulk select, tri-states, fit).
+    const sc = e.target.closest('a.scope-link');
+    if (sc) {
+      e.preventDefault();
+      const cc = sc.dataset.country || '';
+      const region = sc.dataset.region || '';
+      const slugs = sc.dataset.scope === 'region' ? visibleSlugsInRegion(cc, region) : visibleSlugsInCountry(cc);
+      setSlugSelection(slugs, true);
+      const appEl = document.getElementById('facet-appellations');
+      if (appEl) appEl.querySelectorAll('input[type=checkbox]').forEach(inp => {
+        if (inp.dataset.key) inp.checked = filters.appellations.has(inp.dataset.key);
+      });
+      refreshTreeTriStates();
+      track('Filter Applied', { facet: sc.dataset.scope, value: (sc.dataset.scope === 'region' ? region : cc) || '(none)', locale: LANG, via: 'panel-link' });
+      applyFilter({ fit: true });
+      return;
+    }
     const a = e.target.closest('a.parent-link');
     if (a) {
       e.preventDefault();
@@ -3242,21 +3320,23 @@
       }
       return;
     }
-    // A stacked overlap: a click on a subordinate card — its ↑ button, or
-    // any spot of the card that is not itself interactive — brings that
-    // appellation to the front. Links, pills, buttons, collapsibles and the
-    // feedback row keep their own behaviour, and so does selecting text.
-    // `#panel` carries tabindex, so the interactive test is scoped to the card.
-    const card = e.target.closest('.aoc-card.subordinate[data-slug]');
-    if (!card) return;
-    if (!e.target.closest('.stack-focus')) {
-      const interactive = e.target.closest('a, button, input, textarea, select, summary, .pill[tabindex], .card-feedback');
-      if (interactive && card.contains(interactive)) return;
-      const sel = window.getSelection ? String(window.getSelection()) : '';
-      if (sel) return;
-    }
+    // A stacked overlap: a row of the stack list brings that record to the front.
+    const row = e.target.closest('.stack-row[data-slug]');
+    if (!row) return;
     e.preventDefault();
-    focusStackSlug(card.dataset.slug);
+    focusStackSlug(row.dataset.slug);
+  });
+  // Hovering a stack row lights its polygon (pointer devices; no label —
+  // the pointer is over the panel, not the map).
+  panelBody.addEventListener('mouseover', e => {
+    if (!HOVER_MQ.matches) return;
+    const row = e.target.closest('.stack-row[data-slug]');
+    if (row) setHover(row.dataset.slug, 0, false);
+  });
+  panelBody.addEventListener('mouseout', e => {
+    if (!HOVER_MQ.matches) return;
+    const row = e.target.closest('.stack-row[data-slug]');
+    if (row && !(e.relatedTarget && row.contains(e.relatedTarget))) setHover(null, 0);
   });
 
   // ----- map interactions -----
@@ -3312,12 +3392,13 @@
     const r = AOCS[slug];
     return (r && r.name ? r.name : slug) + (extra > 0 ? ` · +${extra}` : '');
   }
-  function setHover(slug, extra) {
-    if (slug && slug === hoveredSlug) { hoverTip.setText(hoverText(slug, extra)); return; }
+  function setHover(slug, extra, label = true) {
+    if (slug && slug === hoveredSlug && label) { hoverTip.setText(hoverText(slug, extra)); return; }
     if (hoveredSlug) setHoverState(hoveredSlug, false);
     hoveredSlug = slug;
     if (!slug) { hoverTip.remove(); map.getCanvas().style.cursor = ''; return; }
     setHoverState(slug, true);
+    if (!label) { hoverTip.remove(); return; }
     map.getCanvas().style.cursor = 'pointer';
     hoverTip.setText(hoverText(slug, extra)).addTo(map);
     const el = hoverTip.getElement();
