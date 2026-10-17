@@ -448,12 +448,36 @@
     });
   }
 
-  // Mobile sidebar toggle.
+  // The phone drawer (the sidebar off-canvas, ≤768px): one owner of its open
+  // state, the scrim behind it and the bar buttons' aria-expanded. Opening
+  // from the search button puts focus in the search box, from the menu
+  // button in the drawer itself (no keyboard pop); closing returns focus to
+  // the button that opened it (WCAG 2.4.3).
   const sidebarEl = document.getElementById('sidebar');
   const sidebarToggle = document.getElementById('sidebar-toggle');
-  if (sidebarToggle) {
-    sidebarToggle.addEventListener('click', () => sidebarEl.classList.toggle('open'));
+  const mobileSearch = document.getElementById('mobile-search');
+  const scrim = document.getElementById('scrim');
+  let drawerOpener = null;
+  function isMobile() { return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches); }
+  function drawerOpen() { return sidebarEl.classList.contains('open'); }
+  function setDrawer(open, via, opener) {
+    const was = drawerOpen();
+    sidebarEl.classList.toggle('open', open);
+    if (scrim) scrim.hidden = !open;
+    for (const b of [sidebarToggle, mobileSearch]) if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open && !was) {
+      drawerOpener = opener || null;
+      track('Drawer Opened', { via: via || 'menu', locale: LANG });
+      const target = via === 'search' ? document.getElementById('omni') : sidebarEl;
+      if (target) { try { target.focus({ preventScroll: true }); } catch (e) {} }
+    } else if (!open && was) {
+      if (drawerOpener && document.contains(drawerOpener)) { try { drawerOpener.focus({ preventScroll: true }); } catch (e) {} }
+      drawerOpener = null;
+    }
   }
+  if (sidebarToggle) sidebarToggle.addEventListener('click', () => setDrawer(!drawerOpen(), 'menu', sidebarToggle));
+  if (mobileSearch) mobileSearch.addEventListener('click', () => setDrawer(true, 'search', mobileSearch));
+  if (scrim) scrim.addEventListener('click', () => setDrawer(false));
 
   // About dialog. Native <dialog>; backdrop click closes.
   const aboutDialog = document.getElementById('about-dialog');
@@ -532,6 +556,8 @@
   // prod. A legacy ?aoc= query is still read on load (and upgraded to a path).
   const SLUG_BASE = '/' + LANG + '/';
   const HOME_BASE = (LANG === 'en') ? '/' : SLUG_BASE;
+  const mobileBrand = document.querySelector('#mobile-bar .mobile-brand');
+  if (mobileBrand) mobileBrand.setAttribute('href', HOME_BASE);
   function slugFromPath() {
     let p = window.location.pathname || '/';
     p = (p.indexOf(SLUG_BASE) === 0) ? p.slice(SLUG_BASE.length) : p.replace(/^\//, '');
@@ -783,7 +809,7 @@
     }
     if (!any) return;
     if (minX >= maxX || minY >= maxY) return;
-    map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 40, maxZoom: 10, duration: 500 });
+    map.fitBounds([[minX, minY], [maxX, maxY]], { padding: fitPadding(40), maxZoom: 10, duration: 500 });
   }
 
   function fmt(tpl, vars) {
@@ -1152,12 +1178,14 @@
     lastStackKey = slug;
     stackFocusIndex = 0;
     renderPanelStack([slug], 0, undefined, 'facet');
+    // On a phone the drawer would cover the sheet and the map it framed.
+    if (isMobile()) setDrawer(false);
     track('Appellation Opened', { slug: slug, via: 'facet', locale: LANG });
     const b = fitBbox(AOCS[slug]);
     if (b && typeof map.fitBounds === 'function') {
       // maxZoom = LOD.overview_max_zoom: "show me this appellation" lands on
       // its parcels, not on the half-faded footprint at the crossfade.
-      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: LOD.overview_max_zoom, duration: 500 });
+      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(40), maxZoom: LOD.overview_max_zoom, duration: 500 });
     }
   });
 
@@ -1709,9 +1737,10 @@
     lastStackKey = key;
     stackFocusIndex = 0;
     renderPanelStack([key], 0, undefined, via);
+    if (isMobile()) setDrawer(false);
     track('Appellation Opened', { slug: key, via: via, locale: LANG });
     const b = fitBbox(AOCS[key]);
-    if (b && map && typeof map.fitBounds === 'function') map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: LOD.overview_max_zoom, duration: 500 });
+    if (b && map && typeof map.fitBounds === 'function') map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(40), maxZoom: LOD.overview_max_zoom, duration: 500 });
     return true;
   }
 
@@ -1845,9 +1874,7 @@
       syncTreeFilter('');  // emptying the box clears the tree filter
       // On mobile, an appellation pick flies the map but the drawer would stay
       // open covering it — close it so the result is visible.
-      if (wasAppellation && window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
-        const sb = document.getElementById('sidebar'); if (sb) sb.classList.remove('open');
-      }
+      if (wasAppellation && isMobile()) setDrawer(false);
       hideDrop();
       if (!wasAppellation) input.focus();
     }
@@ -1898,8 +1925,40 @@
   }
 
   buildOmnisearch();
+
+  // Boot-time layout: the panel and the drawer animate only after the first
+  // frames, so an entity landing paints its panel open from the start
+  // instead of sliding it in (the sheet's slide was most of the mobile CLS).
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => document.documentElement.classList.add('booted')));
   // ----- detail panel -----
   const panel = document.getElementById('panel');
+  // The phone sheet: a record opens at a peek height (name, meta, styles in
+  // view, the polygon still on screen) and expands on the handle or as soon
+  // as the reader scrolls it; closing resets. Desktop never has the class.
+  const sheetHandle = panel.querySelector('.sheet-handle');
+  function setSheetExpanded(on, via) {
+    const was = panel.classList.contains('expanded');
+    panel.classList.toggle('expanded', on);
+    if (sheetHandle) {
+      sheetHandle.setAttribute('aria-expanded', on ? 'true' : 'false');
+      sheetHandle.setAttribute('aria-label', on ? LABELS.sheet_collapse_aria : LABELS.sheet_expand_aria);
+    }
+    if (on && !was && via) track('Sheet Expanded', { slug: currentStack[0] || '', via: via, locale: LANG });
+  }
+  if (sheetHandle) sheetHandle.addEventListener('click', () => setSheetExpanded(!panel.classList.contains('expanded'), 'handle'));
+  panel.addEventListener('scroll', () => {
+    if (isMobile() && panel.scrollTop > 0 && panel.classList.contains('open') && !panel.classList.contains('expanded')) setSheetExpanded(true, 'scroll');
+  }, { passive: true });
+  // Camera padding for a fit: desktop keeps the literal (40, or 60 for a
+  // landing); on a phone the sheet covers 45 % of the viewport and the bar
+  // the top, on a tablet the open panel overlays the right edge — the fit
+  // keeps the shape clear of them.
+  function fitPadding(base) {
+    const w = window.innerWidth, h = window.innerHeight;
+    if (w <= 768) return { top: base + 44, left: 24, right: 24, bottom: Math.round(h * 0.45) + 24 };
+    if (w <= 1024 && panel.classList.contains('open')) return { top: base, left: base, bottom: base, right: Math.min(420, Math.round(w * 0.55)) + 24 };
+    return base;
+  }
   const panelBody = document.getElementById('panel-body');
 
   function renderSources(slug, sources) {
@@ -3065,6 +3124,7 @@
     // the body after the panel has been closed.
     panelGen++;
     panel.classList.remove('open');
+    setSheetExpanded(false);
     document.title = DEFAULT_TITLE;
     setSelection([]);
     lastStackKey = '';
@@ -3101,7 +3161,7 @@
       // the default camera into location.hash by now.
       if (!INITIAL_CAMERA_HASH) {
         const b = fitBbox(AOCS[urlSlug]);
-        if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, maxZoom: LOD.overview_max_zoom, duration: 0 }));
+        if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(60), maxZoom: LOD.overview_max_zoom, duration: 0 }));
       }
       return;
     }
@@ -3123,7 +3183,7 @@
             Math.min(...boxes.map(x => x[0])), Math.min(...boxes.map(x => x[1])),
             Math.max(...boxes.map(x => x[2])), Math.max(...boxes.map(x => x[3])),
           ];
-          map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, maxZoom: LOD.overview_max_zoom, duration: 0 }));
+          map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(60), maxZoom: LOD.overview_max_zoom, duration: 0 }));
         }
       }
       return;
@@ -3147,6 +3207,7 @@
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (aboutDialog && aboutDialog.open) return;
+    if (drawerOpen()) { e.stopPropagation(); setDrawer(false); return; }
     if (panel.classList.contains('open')) { e.stopPropagation(); closePanel(true); }
   });
 
@@ -3305,6 +3366,7 @@
       });
       refreshTreeTriStates();
       track('Filter Applied', { facet: sc.dataset.scope, value: (sc.dataset.scope === 'region' ? region : cc) || '(none)', locale: LANG, via: 'panel-link' });
+      if (isMobile()) setDrawer(false);
       applyFilter({ fit: true });
       return;
     }

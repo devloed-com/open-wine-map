@@ -69,3 +69,19 @@ def test_non_wine_records_take_the_spirits_colour() -> None:
     assert "['==', ['get', 'is_wine'], '0'], '#a07530'" in block
     assert block.index("'is_wine'") < block.index("['get', 'kind'], 'IGP'")
     assert _token("--c-spirit") == "#a07530"
+
+
+def test_viewport_fit_cover_and_phone_chrome() -> None:
+    assert 'viewport-fit=cover' in mt._PAGE_TEMPLATE
+    # The phone bar is not a second heading: the sidebar's {brand_tag} owns <h1>.
+    bar = mt._PAGE_TEMPLATE[mt._PAGE_TEMPLATE.index('<header id="mobile-bar">'):]
+    bar = bar[: bar.index("</header>")]
+    assert "<h1" not in bar and "{brand_tag}" not in bar
+    for needle in ('id="mobile-search"', 'id="sidebar-toggle"', 'aria-controls="sidebar"', 'aria-expanded="false"'):
+        assert needle in bar, needle
+    assert '<div id="scrim" hidden aria-hidden="true"></div>' in mt._PAGE_TEMPLATE
+    assert 'class="sheet-handle"' in mt._PAGE_TEMPLATE
+    css = CSS.replace("{{", "{").replace("}}", "}")
+    assert "#mobile-bar, #scrim, #panel .sheet-handle { display:none }" in css
+    assert "@media (min-width: 769px) and (max-width: 1024px)" in css
+    assert "100dvh" in css and "env(safe-area-inset-bottom" in css

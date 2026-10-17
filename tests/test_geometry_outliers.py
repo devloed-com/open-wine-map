@@ -197,6 +197,7 @@ const localStorage = {{ setItem: () => {{}} }};
 const document = {{ getElementById: () => null }};
 let lastPanelTrigger = null, lastStackKey = null, stackFocusIndex = 0;
 const applyFilter = () => {{}}, buildAppellationFacet = () => {{}};
+const isMobile = () => false, setDrawer = () => {{}};
 const renderPanelStack = () => {{}}, fitBbox = () => null;
 {fns}
 pickOmni('appellation', 'rec');

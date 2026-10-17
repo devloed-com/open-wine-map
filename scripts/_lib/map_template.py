@@ -340,6 +340,9 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         # Accessible names of MapLibre's zoom buttons (constructor `locale`).
         "ctrl_zoom_in": _("Zoom avant"),
         "ctrl_zoom_out": _("Zoom arrière"),
+        # The phone sheet's handle (app.js setSheetExpanded).
+        "sheet_expand_aria": _("Agrandir la fiche"),
+        "sheet_collapse_aria": _("Réduire la fiche"),
         "pt_role_disclaimer": _(
             "Le régulateur portugais (IVV) n'établit pas de distinction principal/accessoire — "
             "toutes les castas autorisées sont listées ensemble dans le caderno de especificações."
@@ -2057,7 +2060,7 @@ _BROWSE_TEMPLATE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <title>{page_title}</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="{meta_description}">
 <meta name="theme-color" content="#7A1F2B">
 <link rel="canonical" href="{canonical_url}">
@@ -2765,7 +2768,7 @@ _TEMPLATE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 {origin_trial_meta}<title>{page_title}</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="{meta_description}">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 {robots_meta}<meta name="theme-color" content="#7A1F2B" media="(prefers-color-scheme: light)">
@@ -2882,7 +2885,12 @@ _TEMPLATE = """<!doctype html>
   .entity-nav {{ padding:12px 16px; font-size:13px; line-height:1.7; border-top:1px solid var(--n-100); background:#fafafa; color:var(--n-750) }}
   .entity-nav a {{ color:var(--c-accent) }}
   .entity-nav .entity-nav-parent, .entity-nav .entity-nav-children {{ display:block; margin-top:4px; color:var(--n-600) }}
-  #app {{ display:flex; height:100vh }}
+  #app {{ display:flex; height:100vh; height:100dvh }}
+  /* Phone chrome (the bar, the scrim, the sheet handle) exists only ≤768px. */
+  #mobile-bar, #scrim, #panel .sheet-handle {{ display:none }}
+  /* Boot: no slide-in for a panel or drawer that is open from the first
+     frame (an entity landing); app.js adds `booted` after two frames. */
+  html:not(.booted) #panel, html:not(.booted) #sidebar {{ transition:none }}
   #sidebar {{ width:300px; flex:0 0 300px; background:var(--n-900); color:var(--n-100); overflow-y:auto; border-right:1px solid var(--n-750) }}
   #sidebar .brand-title {{ font-size:15px; padding:14px 16px 4px; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px }}
   #sidebar .brand-title .brand-mark {{ width:18px; height:18px; flex:0 0 18px; display:inline-block }}
@@ -3156,17 +3164,38 @@ _TEMPLATE = """<!doctype html>
   a.pill.style.has-info {{ cursor:pointer }}
   .fr-marker {{ display:inline-block; margin-left:4px; font-size:10px; color:#999; font-style:italic; vertical-align:baseline }}
   #grape-tooltip .fr-marker {{ font-size:10px; color:var(--n-400) }}
-  #sidebar-toggle {{ display:none; position:fixed; top:8px; right:8px; z-index:30; width:44px; height:44px; background:var(--n-900); color:var(--n-100); border:1px solid var(--n-700); border-radius:4px; font-size:18px; cursor:pointer; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.2) }}
-  #sidebar-toggle:hover {{ background:var(--n-800) }}
+  /* Tablet (769–1024px): the open panel overlays the map's right edge instead
+     of pushing it — 300 + 440 px of chrome left an iPad an 80 px map. */
+  @media (min-width: 769px) and (max-width: 1024px) {{
+    #app {{ position:relative }}
+    #panel {{ position:absolute; top:0; right:0; bottom:0; width:0; flex:0 0 0; z-index:20; box-shadow:-4px 0 16px rgba(0,0,0,0.18) }}
+    #panel.open {{ width:min(420px, 55vw); flex-basis:0 }}
+  }}
   @media (max-width: 768px) {{
     #app {{ flex-direction:column }}
-    #sidebar-toggle {{ display:flex }}
-    #sidebar {{ position:fixed; top:0; left:0; width:280px; height:100vh; flex:0 0 auto; transform:translateX(-100%); transition:transform 0.18s ease; z-index:25; box-shadow:2px 0 12px rgba(0,0,0,0.25) }}
+    /* The bar: brand, search, menu — so the first screen is not a bare map. */
+    #mobile-bar {{ display:flex; align-items:center; gap:4px; flex:0 0 auto; min-height:44px; padding:env(safe-area-inset-top, 0px) 6px 0 12px; background:var(--n-900); color:var(--n-100); border-bottom:1px solid var(--n-750); z-index:30 }}
+    #mobile-bar .mobile-brand {{ flex:1; display:flex; align-items:center; gap:8px; min-width:0; color:var(--n-100); text-decoration:none; font-weight:600; font-size:15px; letter-spacing:0.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }}
+    #mobile-bar .brand-mark {{ width:18px; height:18px; flex:0 0 18px }}
+    #mobile-bar button {{ flex:0 0 44px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:none; color:var(--n-100); border:none; border-radius:4px; font-size:18px; cursor:pointer }}
+    #mobile-bar button:hover, #mobile-bar button[aria-expanded="true"] {{ background:var(--n-800) }}
+    #sidebar {{ position:fixed; top:0; left:0; width:280px; height:100vh; height:100dvh; padding-bottom:env(safe-area-inset-bottom, 0px); box-sizing:border-box; flex:0 0 auto; transform:translateX(-100%); transition:transform 0.18s ease; z-index:25; box-shadow:2px 0 12px rgba(0,0,0,0.25) }}
     #sidebar.open {{ transform:translateX(0) }}
-    #map {{ flex:1; height:100vh; min-width:0 }}
-    #panel {{ position:fixed; bottom:0; left:0; right:0; width:auto; height:0; flex:none; max-height:75vh; transition:height 0.18s ease; border-left:none; border-top:1px solid var(--n-200); z-index:20 }}
-    #panel.open {{ width:auto; height:75vh; flex-basis:auto }}
-    #panel .close {{ width:44px; height:44px; font-size:20px }}
+    #scrim {{ display:block; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:24 }}
+    #scrim[hidden] {{ display:none }}
+    #map {{ flex:1; height:auto; min-height:0; min-width:0 }}
+    /* The sheet: 45 % peek, 92 % expanded, above the home indicator. */
+    #panel {{ position:fixed; bottom:0; left:0; right:0; width:auto; height:0; flex:none; max-height:92vh; max-height:92dvh; transition:height 0.18s ease; border-left:none; border-top:1px solid var(--n-200); border-radius:12px 12px 0 0; box-shadow:0 -4px 16px rgba(0,0,0,0.15); z-index:20 }}
+    #panel.open {{ width:auto; height:45vh; height:45dvh; flex-basis:auto }}
+    #panel.open.expanded {{ height:92vh; height:92dvh }}
+    #panel .sheet-handle {{ display:flex; position:sticky; top:0; width:100%; height:28px; align-items:center; justify-content:center; background:var(--n-0); border:none; border-radius:12px 12px 0 0; cursor:pointer; z-index:3 }}
+    #panel .sheet-handle .grip {{ width:40px; height:4px; border-radius:2px; background:var(--n-300) }}
+    #panel .sheet-handle:focus-visible .grip {{ background:var(--c-accent) }}
+    #panel .body {{ padding-bottom:calc(40px + env(safe-area-inset-bottom, 0px)) }}
+    #panel .close {{ width:44px; height:44px; font-size:20px; top:28px }}
+    /* The legend and the scale rise above the peeked sheet, and leave while it is expanded. */
+    #app:has(#panel.open) .maplibregl-ctrl-bottom-left {{ bottom:45vh; bottom:45dvh }}
+    #app:has(#panel.open.expanded) .maplibregl-ctrl-bottom-left {{ display:none }}
     #panel .stack-row {{ min-height:44px }}
     .facet input[type=checkbox] {{ width:18px; height:18px }}
     .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
@@ -3287,6 +3316,8 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel .meta .meta-country {{ color:#cfcfcf }}
   html.theme-dark #panel .stack-header {{ border-bottom-color:var(--n-750) }}
   html.theme-dark #panel .aoc-card + .aoc-card {{ border-top-color:var(--n-700) }}
+  html.theme-dark #panel .sheet-handle {{ background:var(--n-dark-panel) }}
+  html.theme-dark #panel .sheet-handle .grip {{ background:var(--n-600) }}
   html.theme-dark #panel .stack-row {{ border-color:var(--n-700); color:var(--n-dark-text) }}
   html.theme-dark #panel .stack-row:hover, html.theme-dark #panel .stack-row:focus-visible {{ background:#2a2024; border-color:var(--c-accent-ink-dark) }}
   html.theme-dark #panel .stack-row .sub, html.theme-dark #panel .stack-hint, html.theme-dark #panel .subappellations .sub-kind {{ color:var(--n-300) }}
@@ -3375,12 +3406,18 @@ _TEMPLATE = """<!doctype html>
 <a class="skip-link" href="#map">{labels[skip_to_map]}</a>
 <div id="app">{ssr_content}
   %%SIDEBAR%%
+  <div id="scrim" hidden aria-hidden="true"></div>
 
-  <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}">☰</button>
+  <header id="mobile-bar">
+    <a class="mobile-brand" href="/"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</a>
+    <button id="mobile-search" type="button" aria-label="{labels[search_h]}" aria-controls="sidebar" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+    <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}" aria-controls="sidebar" aria-expanded="false">☰</button>
+  </header>
 
   <main id="map" tabindex="-1" aria-label="{labels[map_aria]}"></main>
 
   <div id="panel" tabindex="-1" role="dialog" aria-modal="false" aria-label="{labels[panel_aria]}">
+    <button class="sheet-handle" type="button" aria-label="{labels[sheet_expand_aria]}" aria-expanded="false"><span class="grip" aria-hidden="true"></span></button>
     <button class="close" type="button" aria-label="{labels[close_aria]}">×</button>
     <div class="body" id="panel-body"></div>
   </div>
@@ -3432,7 +3469,7 @@ _PAGE_TEMPLATE, _STYLE_CSS = _split_template(_TEMPLATE)
 #                        aria-live region announcing result counts / no-match)
 #   _LAB_ACTIVE          the active-filters chip tray + reset
 #   _LAB_LEGEND_FOOTER   legend + footer (closes the <aside>)
-_LAB_HEAD_TOP = """<aside id="sidebar" data-nosnippet aria-label="{labels[sidebar_aria]}">
+_LAB_HEAD_TOP = """<aside id="sidebar" data-nosnippet tabindex="-1" aria-label="{labels[sidebar_aria]}">
     <{brand_tag} class="brand-title"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</{brand_tag}>
     <div class="subtitle">{labels[subtitle]}</div>
     {lang_switcher_html}
