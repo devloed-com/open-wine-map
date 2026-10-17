@@ -456,6 +456,13 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
             f'{lab["src_parroquias"]}</a> — {esc(sources.get("parroquias_attribution") or "")}'
             f" · {licence}</li>"
         )
+    if sources.get("area_act_url"):
+        # the national act a PT sub-região is drawn from (subregiao_areas.py)
+        detail = f' — {esc(sources["area_act_detail"])}' if sources.get("area_act_detail") else ""
+        links.append(
+            f'<li><a href="{esc(sources["area_act_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_area_act"]}</a>{detail}</li>'
+        )
     if sources.get("id_eambrosia"):
         from urllib.parse import quote
 
@@ -882,6 +889,13 @@ def _geom_source_line(rec: dict, lab: dict) -> str:
         return esc(lab["geom_src_betard"])
     if gs == "region-pdo-union":
         return esc(lab["geom_src_pdo_union"])
+    sources = rec.get("sources") or {}
+    if gs.startswith("caop-") and sources.get("area_act_url"):
+        act = (
+            f'<a href="{esc(sources["area_act_url"])}" target="_blank" rel="noopener">'
+            f'{esc(sources.get("area_act_label") or "")}</a>'
+        )
+        return fmt(lab["geom_src_national_act"], {"act": act})
     if gs.startswith(_ADMIN_UNION_PREFIXES) or gs in ("nuts2-province", "geometry-research-municipios"):
         return esc(lab["geom_src_admin_union"])
     return ""
@@ -951,24 +965,26 @@ def _sigpac_line(rec: dict, lab: dict) -> str:
     return f'<div class="approx-line">{line}</div>'
 
 
+def _join_units(names: list) -> str:
+    """Entries that carry their own commas ("Alte, Querença (Loulé)") are
+    separated by semicolons. Mirrors ``joinUnits`` in app.js."""
+    items = [esc(str(n)) for n in names]
+    return ("; " if any(", " in n for n in items) else ", ").join(items)
+
+
 def _units_line(rec: dict, lab: dict) -> str:
-    """What the area text named that the commune layer does not carry (not
-    drawn), and the localities drawn as their container — the Greek
-    area-units resolver's disclosure. Mirrors ``unitsLine`` in app.js."""
+    """The unit resolvers' disclosure (Greek area units, Portuguese
+    freguesias): what the area text named that the layer does not carry
+    (not drawn), the localities drawn as the unit that holds them, the
+    units drawn whole that the text includes only in part, and a boundary
+    drawn through named places. Mirrors ``unitsLine`` in app.js."""
     out = ""
-    unmatched = rec.get("geom_units_unmatched") or []
-    if unmatched:
-        names = ", ".join(esc(str(n)) for n in unmatched)
-        out += f'<div class="approx-line">{fmt(lab["geom_units_unmatched"], {"names": names})}</div>'
-    proxied = rec.get("geom_units_proxied") or []
-    if proxied:
-        names = ", ".join(esc(str(n)) for n in proxied)
-        out += f'<div class="approx-line">{fmt(lab["geom_units_proxied"], {"names": names})}</div>'
-    for key in ("geom_units_boundary", "geom_units_boundary_units"):
-        boundary = rec.get(key) or []
-        if boundary:
-            names = ", ".join(esc(str(n)) for n in boundary)
-            out += f'<div class="approx-line">{fmt(lab[key], {"names": names})}</div>'
+    for key in ("geom_units_unmatched", "geom_units_proxied", "geom_units_partial",
+                "geom_units_boundary", "geom_units_boundary_units"):
+        names = rec.get(key) or []
+        if names:
+            out += (f'<div class="approx-line">'
+                    f'{fmt(lab[key], {"names": _join_units(names)})}</div>')
     return out
 
 

@@ -1,0 +1,191 @@
+{
+  "_doc": "PT sub-regiões a caderno names but does not delimit, transcribed from the national act that does (scripts/_lib/pt/subregiao_areas.py). Keyed by the parent appellation's slug. `rows` is the act's table as printed: a row without `freguesias` is \"(*) Todo o concelho\"; a name the print splits or misspells is given as the act means it, with the printed form in `printed_as`. `reviewed_acts` lists every act read for its effect on the table — the act itself, its amendments and rectifications, and the notices issued under it; a caderno whose legal reference cites an act not listed here makes the entry STALE. `file` / `sha256` / `pages` name the PDF stage 00 fetches into raw/pt/dre/ and the pages of the table, against which tests/test_pt_subregiao_areas.py checks every name.",
+  "vinho-verde": {
+    "act": "Portaria n.º 668/2010, de 11 de agosto — Artigo 3.º n.º 1 (Sub-regiões produtoras) and Anexo I («Área geográfica de produção com indicação de sub-região»)",
+    "act_label": "Portaria n.º 668/2010, anexo I",
+    "act_detail": "Portaria n.º 668/2010, anexo I, republicada pela Portaria n.º 152/2015",
+    "url": "https://files.diariodarepublica.pt/1s/2015/05/10100/0313603145.pdf",
+    "dr_reference": "Portaria n.º 152/2015, de 26 de maio — Diário da República, 1.ª série, n.º 101, pp. 3136–3145; the republished Anexo I on pp. 3142–3143",
+    "file": "portaria-152-2015.pdf",
+    "sha256": "99efbdb8f0cf7a07e70234c262c22a79ba2f9809e7309a90c45cb18f807c9a95",
+    "pages": [7, 8],
+    "note": "The table is transcribed, not Artigo 3.º n.º 1: it writes the freguesias as they stand after the 2013 reform (\"Vizela (Santo Adrião)\", the Uniões of Cinfães, Resende, Vizela and Valongo), and the republished Artigo 3.º n.º 1 b) carries a typo (\"Santa Eulália em de Santo Adrião de Vizela\"). Both statements of the law draw the same CAOP units. The caderno (PDO-PT-A1545-AM01, January 2024) names the nine sub-regiões in 1.1 and gives each a grape table; its area section delimits the DO only, and the one map Anexo I carries shows the DO, not the sub-regiões.",
+    "verified": "2026-10-13",
+    "reviewed_acts": [
+      {
+        "act": "Portaria n.º 668/2010, de 11 de agosto",
+        "url": "https://files.diariodarepublica.pt/1s/2010/08/15500/0334103349.pdf",
+        "effect": "The act: Artigo 3.º n.º 1 delimits the nine sub-regiões by município and freguesia; Anexo I tabulates them (\"Área geográfica de produção com indicação de sub-região\"). Sousa did not yet include Valongo."
+      },
+      {
+        "act": "Portaria n.º 949/2010, de 22 de setembro",
+        "url": "https://files.diariodarepublica.pt/1s/2010/09/18500/0416204163.pdf",
+        "effect": "Artigo 3.º replaces the Anexo I table of the Sub-região de Baião (Cinfães and Resende by freguesia); also amends Artigos 8.º, 11.º, 13.º, 17.º and 21.º and adds 1.º-A and 21.º-A. Superseded by the republications."
+      },
+      {
+        "act": "Portaria n.º 216/2014, de 17 de outubro",
+        "url": "https://files.diariodarepublica.pt/1s/2014/10/20100/0528405296.pdf",
+        "effect": "Amends Artigo 3.º n.º 1 i): Sousa gains \"no município de Valongo a União das freguesias de campo e sobrado\"; its Artigo 3.º rewrites cells of Anexo I (the freguesias after the 2013 reform); republishes the Portaria. Superseded by the 2015 republication."
+      },
+      {
+        "act": "Declaração de Retificação n.º 47/2014, de 13 de novembro",
+        "url": "https://files.diariodarepublica.pt/1s/2014/11/22000/0586105861.pdf",
+        "effect": "One rectification, of Artigo 8.º n.º 2 (yield: \"há menos de cinco anos\" → \"há mais de cinco anos\"). Neither Artigo 3.º nor Anexo I."
+      },
+      {
+        "act": "Portaria n.º 152/2015, de 26 de maio",
+        "url": "https://files.diariodarepublica.pt/1s/2015/05/10100/0313603145.pdf",
+        "effect": "Amends Artigos 3.º (adds n.º 3, the Alvarinho labelling rule; n.º 1 unchanged), 8.º, 9.º, 12.º and 20.º, and republishes the Portaria with Anexo I — the text transcribed here."
+      },
+      {
+        "act": "Declaração de Retificação n.º 27/2015, de 12 de junho",
+        "url": "https://files.diariodarepublica.pt/1s/2015/06/11300/0374403744.pdf",
+        "effect": "One rectification, of the republished Artigo 8.º n.º 2 (yield). Neither Artigo 3.º nor Anexo I; the \"em de\" typo of Artigo 3.º n.º 1 b) and the split \"São João. / Fontoura.\" of the Baião table stand."
+      },
+      {
+        "act": "Portaria n.º 333/2016, de 23 de dezembro",
+        "url": "https://files.diariodarepublica.pt/1s/2016/12/24500/0478204783.pdf",
+        "effect": "Amends Artigos 12.º (minimum natural alcohol) and 20.º (adds n.º 7, the mention \"Origem do Alvarinho\") only; no annex, no republication."
+      },
+      {
+        "act": "Aviso n.º 7945/2022, de 19 de abril",
+        "url": "https://files.diariodarepublica.pt/2s/2022/04/076000000/0007800078.pdf",
+        "effect": "IVV specifications under Portaria n.º 142/2021: yield, containers, labelling (a sub-região with its vintage), the município name, and Anexo II grapes (Aragonez, Tinta-Barroca; Padeiro for the sub-região do Lima). Names Artigos 8.º, 19.º and 20.º and Anexo II; neither Artigo 2.º, 3.º nor Anexo I."
+      },
+      {
+        "act": "Aviso n.º 14002/2024/2, de 8 de julho",
+        "url": "https://files.diariodarepublica.pt/2s/2024/07/130000000/0008900089.pdf",
+        "effect": "IVV specifications on containers: glass above 5 L allowed, metal up to 0,25 L, the glass-only 75 cl rule dropped for wines with a sub-região, variety or quality term (Artigo 19.º n.ºs 6 and 7, Aviso n.º 7945/2022). No delimitation."
+      },
+      {
+        "act": "Aviso n.º 21430/2026/2, de 31 de agosto",
+        "url": "https://files.diariodarepublica.pt/2s/2026/08/168000000/0025900260.pdf",
+        "effect": "IVV specifications: the vintage beside a sub-região becomes optional, sub-região wines take the DO's minimum alcohol, organoleptic rules for low-intervention wines, three IGP Minho grapes. No delimitation."
+      }
+    ],
+    "subregioes": {
+      "vinho-verde-amarante": {
+        "name": "Amarante",
+        "rows": [
+          {"distrito": "Porto", "concelho": "Amarante"},
+          {"distrito": "Porto", "concelho": "Marco de Canaveses"}
+        ]
+      },
+      "vinho-verde-ave": {
+        "name": "Ave",
+        "rows": [
+          {"distrito": "Braga", "concelho": "Fafe"},
+          {"distrito": "Braga", "concelho": "Guimarães"},
+          {"distrito": "Braga", "concelho": "Póvoa de Lanhoso"},
+          {"distrito": "Braga", "concelho": "Vieira do Minho"},
+          {"distrito": "Braga", "concelho": "Vila Nova de Famalicão"},
+          {"distrito": "Braga", "concelho": "Vizela", "freguesias": [
+            "Ínfias",
+            "União das freguesias de Caldas de Vizela (São Miguel e São João)",
+            "União das freguesias de Tagilde e São Paio de Vizela"
+          ]},
+          {"distrito": "Porto", "concelho": "Póvoa de Varzim"},
+          {"distrito": "Porto", "concelho": "Santo Tirso"},
+          {"distrito": "Porto", "concelho": "Trofa"},
+          {"distrito": "Porto", "concelho": "Vila do Conde"}
+        ]
+      },
+      "vinho-verde-baiao": {
+        "name": "Baião",
+        "rows": [
+          {"distrito": "Porto", "concelho": "Baião"},
+          {"distrito": "Viseu", "concelho": "Cinfães", "freguesias": [
+            "União das freguesias de Alhões, Bustelo, Gralheira e Ramires",
+            "Cinfães",
+            "Espadanedo",
+            "Ferreiros de Tendais",
+            "Fornelos",
+            "Moimenta",
+            "Nespereira",
+            "Oliveira do Douro",
+            "Santiago de Piães",
+            "São Cristóvão de Nogueira",
+            "Tarouquela",
+            "Tendais"
+          ]},
+          {"distrito": "Viseu", "concelho": "Resende", "freguesias": [
+            "União das freguesias de Anreade e São Romão de Aregos",
+            "União das freguesias de Felgueiras e Feirão",
+            "União das freguesias de Freigil e Miomães",
+            "União das freguesias de Ovadas e Panchorra",
+            "Cárquere",
+            "Paus",
+            "Resende",
+            "São Cipriano",
+            "São João de Fontoura",
+            "São Martinho de Mouros"
+          ]}
+        ],
+        "printed_as": {
+          "São João de Fontoura": ["São João", "Fontoura"]
+        },
+        "printed_note": "The Baião table prints \"São João.\" and \"Fontoura.\" as two entries; Resende has neither freguesia, and the DO table of the same annex (p. 3142) lists its one freguesia \"São João de Fontoura.\" — ten Resende freguesias, Barrô excluded, in both tables."
+      },
+      "vinho-verde-basto": {
+        "name": "Basto",
+        "rows": [
+          {"distrito": "Braga", "concelho": "Cabeceiras de Basto"},
+          {"distrito": "Braga", "concelho": "Celorico de Basto"},
+          {"distrito": "Vila Real", "concelho": "Mondim de Basto"},
+          {"distrito": "Vila Real", "concelho": "Ribeira de Pena"}
+        ]
+      },
+      "vinho-verde-cavado": {
+        "name": "Cávado",
+        "rows": [
+          {"distrito": "Braga", "concelho": "Amares"},
+          {"distrito": "Braga", "concelho": "Barcelos"},
+          {"distrito": "Braga", "concelho": "Braga"},
+          {"distrito": "Braga", "concelho": "Esposende"},
+          {"distrito": "Braga", "concelho": "Terras de Bouro"},
+          {"distrito": "Braga", "concelho": "Vila Verde"}
+        ]
+      },
+      "vinho-verde-lima": {
+        "name": "Lima",
+        "rows": [
+          {"distrito": "Viana do Castelo", "concelho": "Arcos de Valdevez"},
+          {"distrito": "Viana do Castelo", "concelho": "Ponte da Barca"},
+          {"distrito": "Viana do Castelo", "concelho": "Ponte de Lima"},
+          {"distrito": "Viana do Castelo", "concelho": "Viana do Castelo"}
+        ]
+      },
+      "vinho-verde-moncao-e-melgaco": {
+        "name": "Monção e Melgaço",
+        "rows": [
+          {"distrito": "Viana do Castelo", "concelho": "Melgaço"},
+          {"distrito": "Viana do Castelo", "concelho": "Monção"}
+        ]
+      },
+      "vinho-verde-paiva": {
+        "name": "Paiva",
+        "rows": [
+          {"distrito": "Aveiro", "concelho": "Castelo de Paiva"},
+          {"distrito": "Viseu", "concelho": "Cinfães", "freguesias": ["Souselo", "Travanca"]}
+        ]
+      },
+      "vinho-verde-sousa": {
+        "name": "Sousa",
+        "rows": [
+          {"distrito": "Braga", "concelho": "Vizela", "freguesias": [
+            "Santa Eulália",
+            "Vizela (Santo Adrião)"
+          ]},
+          {"distrito": "Porto", "concelho": "Felgueiras"},
+          {"distrito": "Porto", "concelho": "Lousada"},
+          {"distrito": "Porto", "concelho": "Paços de Ferreira"},
+          {"distrito": "Porto", "concelho": "Paredes"},
+          {"distrito": "Porto", "concelho": "Penafiel"},
+          {"distrito": "Porto", "concelho": "Valongo", "freguesias": [
+            "União das freguesias de Campo e Sobrado"
+          ]}
+        ]
+      }
+    }
+  }
+}

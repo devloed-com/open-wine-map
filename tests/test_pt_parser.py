@@ -54,7 +54,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from _lib.pt.caderno_sections import extract_sections  # noqa: E402
 from _lib.pt.commune_list import parse_commune_list  # noqa: E402
-from _lib.pt.geometry import PTPolygonIndex, _Concelho  # noqa: E402
+from _lib.pt.geometry import (  # noqa: E402
+    PTPolygonIndex,
+    _Concelho,
+    _loose_concelho,
+    _normalise_concelho,
+)
 from _lib.pt.subregiao import (  # noqa: E402
     detect_pattern_a,
     detect_pattern_b,
@@ -378,6 +383,24 @@ def test_commune_list_rejects_boundary_prose():
         assert "estrada" not in c.lower()
 
 
+def test_commune_list_keeps_municipios_named_like_noise_words():
+    """The noise words are prose common nouns; capitalised inside a
+    município name they are the name. Vinho Verde's "(d) … os municípios
+    de Mondim de Basto e Ribeira de Pena" had lost Ribeira de Pena (visitor
+    boundary flag 2026-10-13), Lagoa its Albufeira."""
+    vinho_verde = (
+        "d) Do distrito de Vila Real, os municípios de Mondim de Basto e "
+        "Ribeira de Pena;"
+    )
+    assert parse_commune_list(vinho_verde)["concelhos"] == [
+        "Mondim de Basto", "Ribeira de Pena",
+    ]
+    lagoa = "abrange os concelho de Albufeira, Lagoa e Loulé."
+    assert "Albufeira" in parse_commune_list(lagoa)["concelhos"]
+    beira = "os municípios de Arganil, Pampilhosa da Serra e Tábua."
+    assert "Pampilhosa da Serra" in parse_commune_list(beira)["concelhos"]
+
+
 def test_commune_list_parenthetical_freguesias_are_not_concelhos():
     """Duriense-shaped list: every concelho head carries its freguesias in
     parentheses, and one parenthetical holds an abbreviation period ("D.
@@ -483,3 +506,24 @@ def test_geometry_excluded_concelhos_leave_the_distrito_expansion():
          "macro_regions": []}
     )
     assert geom2.area == 2.0
+
+
+def test_geometry_folds_connector_spelling_to_the_one_caop_name():
+    """Vinho Verde's caderno writes "Póvoa do Varzim"; CAOP has "Póvoa de
+    Varzim". The connector-free key binds it when exactly one município
+    carries that key — the coast north of Vila do Conde had been a notch
+    (visitor boundary flag 2026-10-13). A key two municípios share binds
+    nothing."""
+    from shapely.geometry import box
+
+    idx = PTPolygonIndex(Path("/nonexistent/EU_PDO.gpkg"), [])
+    for i, name in enumerate(("Póvoa de Varzim", "Vila do Conde", "Vila de Conde")):
+        c = _Concelho(geom=box(i, 0, i + 1, 1), name=name,
+                      norm=_normalise_concelho(name), distrito="Porto")
+        idx._concelho_by_norm.setdefault(c.norm, []).append(c)
+        idx._names_by_loose.setdefault(_loose_concelho(name), set()).add(name)
+    geom, stats = idx.union_concelhos(["Póvoa do Varzim"])
+    assert stats["matched"] == 1
+    assert geom.centroid.x == 0.5
+    _, stats = idx.union_concelhos(["Vila da Conde"])
+    assert stats == {"matched": 0, "unmatched": 1, "ambiguous_resolved": 0}

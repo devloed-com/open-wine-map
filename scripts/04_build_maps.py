@@ -55,7 +55,7 @@ from _lib.augment._shared import (
     _CZ_NATIONAL_SPEC_BY_SLUG,
     _DE_PRODUKTSPEZIFIKATION_BY_SLUG,
     _ES_NATIONAL_PLIEGO_BY_SLUG,
-    _GR_GEOM_DISCLOSURE_BY_SLUG,
+    _GEOM_UNITS_DISCLOSURE_BY_SLUG,
     _GR_NATIONAL_SPEC_BY_SLUG,
     _HR_SPECIFIKACIJA_BY_SLUG,
     _HU_NATIONAL_SPEC_BY_SLUG,
@@ -63,6 +63,7 @@ from _lib.augment._shared import (
     _IT_REGISTER_BY_SLUG,
     _LOD_RADIUS_BY_SLUG,
     _PARCEL_FILL_BY_SLUG,
+    _PT_AREA_ACT_BY_SLUG,
     _RO_NATIONAL_SPEC_BY_SLUG,
     _SI_SPECIFIKACIJA_BY_SLUG,
     _SK_NATIONAL_SPEC_BY_SLUG,
@@ -192,9 +193,18 @@ from _lib.parcellaire_gaps import (
 from _lib.parcellaire_gaps import (
     load_coverage as load_parcel_coverage,
 )
+from _lib.pt.area_units import parse_area_units as parse_pt_area_units
 from _lib.pt.commune_list import parse_commune_list as parse_pt_commune_list
+from _lib.pt.freguesias import apply_overrides as apply_pt_freguesia_overrides
+from _lib.pt.freguesias import fkey as pt_fkey
+from _lib.pt.freguesias import load_overrides as load_pt_freguesia_overrides
 from _lib.pt.geometry import PTPolygonIndex
 from _lib.pt.region import derive_region as derive_pt_region
+from _lib.pt.subregiao_areas import entry_for as pt_subregiao_entry
+from _lib.pt.subregiao_areas import load_table as load_pt_subregiao_areas
+from _lib.pt.subregiao_areas import outside_km2 as pt_subregiao_outside_km2
+from _lib.pt.subregiao_areas import pieces_for as pt_subregiao_pieces
+from _lib.pt.subregiao_areas import unreviewed_acts as pt_unreviewed_acts
 from _lib.region_search_terms import region_search_terms_for
 from _lib.ro.commune import judet_source_text as ro_judet_source_text
 from _lib.ro.commune import parse_judet_list as parse_ro_judet_list
@@ -1227,9 +1237,17 @@ def main() -> int:
     )
     print(
         f"[load] PT polygons: {pt_polygons.n_pdo_polygons} Figshare PT-PDOs / "
-        f"{pt_polygons.n_concelhos} CAOP concelhos",
+        f"{pt_polygons.n_concelhos} CAOP concelhos / {pt_polygons.n_freguesias} freguesias",
         file=sys.stderr,
     )
+    # Pinned former freguesias of the renamed 2013 unions and the spellings
+    # the matcher cannot reach (scripts/_lib/pt/freguesia_overrides.json).
+    for warning in apply_pt_freguesia_overrides(pt_polygons, load_pt_freguesia_overrides()):
+        print(f"  [pt-geom] STALE {warning}", file=sys.stderr)
+    # Sub-regiões a caderno names but does not delimit, transcribed from the
+    # national act's table (scripts/_lib/pt/subregiao_areas.json).
+    pt_subregiao_areas = load_pt_subregiao_areas()
+    pt_subregiao_checked: set[str] = set()
     pt_hits: Counter[str] = Counter()
 
     # IT polygon index: Bétard 2022 (re-uses ES Figshare gpkg, which
@@ -1714,44 +1732,149 @@ def main() -> int:
             if record.get("stub"):
                 geom_source = "stub-no-geometry"
             elif is_sub_denomination:
-                # Sub-regiões inherit the parent's polygon — they share
-                # the parent's Bétard file_number, but `parent-appellation`
-                # is the more honest attribution (the polygon's precision
-                # is parent-level, not sub-região-level).
+                # A sub-região the caderno delimits by its own units (Douro's
+                # Baixo Corgo, Trás-os-Montes' Chaves, Do Tejo's Almeirim) is
+                # drawn from them, at the same bar as a parent; one the caderno
+                # names but does not delimit, from the national act's table
+                # where one is transcribed (Vinho Verde's nine: Portaria n.º
+                # 668/2010, Anexo I — scripts/_lib/pt/subregiao_areas.json);
+                # one delimited by boundary prose (most of Alentejo's)
+                # inherits the parent's polygon — `parent-appellation`, the
+                # honest attribution of a parent-level precision.
                 parent_slug = record.get("parent_slug") or ""
+                parsed_units = parse_pt_area_units(
+                    (record.get("sections") or {}).get("area", ""))
+                label = pt_fkey(record.get("name") or "")
+                sub_pieces = [q for q in parsed_units["pieces"]
+                              if q.subregion and pt_fkey(q.subregion) == label]
+                sub_res = None
+                act_found = pt_subregiao_entry(pt_subregiao_areas, record["slug"])
+                if sub_pieces and label not in {
+                        pt_fkey(x) for x in parsed_units["prose_cut_subregions"]}:
+                    sub_res = pt_polygons.resolve_area_units(
+                        {"pieces": sub_pieces}, slug=record["slug"])
+                    if act_found is not None:
+                        print(f"  [pt-geom] STALE {record['slug']}: the caderno now delimits "
+                              "the sub-região — its act table is not used", file=sys.stderr)
+                        act_found = None
+                elif act_found is not None:
+                    act, act_sub = act_found
+                    if parent_slug not in pt_subregiao_checked:
+                        pt_subregiao_checked.add(parent_slug)
+                        unreviewed = pt_unreviewed_acts(record, act)
+                        if unreviewed is None:
+                            print(f"  [pt-geom] {parent_slug}: no legal reference in the "
+                                  "caderno — sub-região act chain not checked", file=sys.stderr)
+                        elif unreviewed:
+                            print(f"  [pt-geom] STALE {parent_slug}: the caderno cites "
+                                  f"{', '.join(unreviewed)}, not reviewed for the sub-região "
+                                  "table — re-verify scripts/_lib/pt/subregiao_areas.json",
+                                  file=sys.stderr)
+                    sub_res = pt_polygons.resolve_area_units(
+                        {"pieces": pt_subregiao_pieces(act_sub)}, slug=record["slug"])
+                    for name in sub_res.unmatched:
+                        print(f"  [pt-geom] {record['slug']}: act table name not located, "
+                              f"not drawn: {name}", file=sys.stderr)
                 parent_geom = parent_geom_by_slug.get(parent_slug)
-                if parent_geom is not None:
+                if sub_res is not None and sub_res.geom is not None \
+                        and not sub_res.geom.is_empty \
+                        and len(sub_res.unmatched) <= sub_res.n_units:
+                    geom = sub_res.geom
+                    geom_source = sub_res.source
+                    stats = {"matched": sub_res.n_units, "unmatched": len(sub_res.unmatched)}
+                    if act_found is not None:
+                        act = act_found[0]
+                        _PT_AREA_ACT_BY_SLUG[record["slug"]] = {
+                            "area_act_label": act["act_label"],
+                            "area_act_url": act["url"],
+                            "area_act_detail": act["act_detail"],
+                        }
+                        if parent_geom is not None:
+                            outside = pt_subregiao_outside_km2(geom, parent_geom)
+                            if outside > 0.5:
+                                print(f"  [pt-geom] {record['slug']}: {outside:.1f} km² of the "
+                                      f"act's sub-região lie outside {parent_slug}",
+                                      file=sys.stderr)
+                    disclosure = {}
+                    if sub_res.unmatched:
+                        disclosure["geom_units_unmatched"] = list(sub_res.unmatched)
+                    if sub_res.proxied:
+                        disclosure["geom_units_proxied"] = list(sub_res.proxied)
+                    if sub_res.partial:
+                        disclosure["geom_units_partial"] = list(sub_res.partial)
+                    if disclosure:
+                        _GEOM_UNITS_DISCLOSURE_BY_SLUG[record["slug"]] = disclosure
+                elif parent_geom is not None:
                     geom = parent_geom
                     geom_source = "parent-appellation"
                     stats = {"matched": -1, "unmatched": 0}
             else:
-                # 1) CAOP commune-list union (preferred — município-level
-                #    precision avoids Bétard's whole-município padding
-                #    that causes adjacent-DOP polygons to overlap on the
-                #    boundary).
+                # 1) CAOP 2025 freguesia union read from the caderno's area
+                #    section (_lib/pt/area_units.py → _lib/pt/freguesias.py):
+                #    whole municípios as their polygon, a município the text
+                #    restricts to some freguesias as those freguesias, an
+                #    excluded freguesia left out.
                 area_text = (record.get("sections") or {}).get("area", "")
-                parsed = parse_pt_commune_list(area_text)
-                caop_geom, caop_stats = pt_polygons.union_from_parsed(parsed)
-                cm = caop_stats["concelhos_matched"]
-                dm = caop_stats["distritos_matched"]
-                # Threshold: accept CAOP when at least 2 concelho matches
-                # or 1 distrito expansion. Single-concelho caches (Pico
-                # caderno mentions "São Roque" only — but São Roque do
-                # Pico didn't match) fall through to Bétard.
-                if caop_geom is not None and not caop_geom.is_empty and (
-                    cm >= 2 or dm >= 1
+                parsed_units = parse_pt_area_units(area_text)
+                resolution = pt_polygons.resolve_area_units(parsed_units, slug=record["slug"])
+                fig = pt_polygons.figshare_polygon(record.get("file_number") or "")
+                if parsed_units["prose_subregions"] and fig is not None and not fig.is_empty:
+                    # 2) Sub-regiões delimited by boundary prose (roads,
+                    #    rivers, the edges of units) cannot be drawn from
+                    #    units, and the units the text does name would
+                    #    leave them out (Alentejo's Borba, Moura, Redondo,
+                    #    Reguengos): Bétard 2022's polygon covers them all.
+                    geom = fig
+                    geom_source = "figshare-pdo"
+                    stats = {"matched": -1, "unmatched": 0}
+                    print(
+                        f"  [pt-geom] {record['slug']}: boundary-prose sub-regiões "
+                        f"({', '.join(parsed_units['prose_subregions'])}) — drawn from "
+                        "Bétard 2022",
+                        file=sys.stderr,
+                    )
+                elif resolution.geom is not None and not resolution.geom.is_empty and (
+                    len(resolution.unmatched) <= resolution.n_units
                 ):
-                    geom = caop_geom
-                    geom_source = "caop-concelho-union"
-                    stats = {"matched": cm + dm, "unmatched": (
-                        caop_stats["concelhos_unmatched"]
-                        + caop_stats["distritos_unmatched"]
-                    )}
+                    geom = resolution.geom
+                    geom_source = resolution.source
+                    stats = {"matched": resolution.n_units,
+                             "unmatched": len(resolution.unmatched)}
+                    # Panel-payload fields (the card's `_units_line` /
+                    # `unitsLine`): names the layer does not carry, former
+                    # freguesias drawn as their União, units the text
+                    # includes only in part.
+                    disclosure = {}
+                    if resolution.unmatched:
+                        disclosure["geom_units_unmatched"] = list(resolution.unmatched)
+                    if resolution.proxied:
+                        disclosure["geom_units_proxied"] = list(resolution.proxied)
+                    if resolution.partial:
+                        disclosure["geom_units_partial"] = list(resolution.partial)
+                    if disclosure:
+                        _GEOM_UNITS_DISCLOSURE_BY_SLUG[record["slug"]] = disclosure
+                    for name in resolution.exclusions_unresolved:
+                        print(f"  [pt-geom] {record['slug']}: exclusion not located, "
+                              f"still drawn: {name}", file=sys.stderr)
                 else:
-                    # 2) Bétard 2022 PDO polygon (covers all 30 PT DOPs
-                    #    but not IGPs; coarser precision than CAOP).
-                    fig = pt_polygons.figshare_polygon(record.get("file_number") or "")
-                    if fig is not None and not fig.is_empty:
+                    # 3) The concelho-level reading, for a text the clause
+                    #    parser takes no unit from; then Bétard 2022.
+                    parsed = parse_pt_commune_list(area_text)
+                    caop_geom, caop_stats = pt_polygons.union_from_parsed(parsed)
+                    cm = caop_stats["concelhos_matched"]
+                    dm = caop_stats["distritos_matched"]
+                    if caop_geom is not None and not caop_geom.is_empty and (
+                        cm >= 2 or dm >= 1
+                    ):
+                        print(f"  [pt-geom] {record['slug']}: no unit read at freguesia "
+                              "level — concelho-level reading", file=sys.stderr)
+                        geom = caop_geom
+                        geom_source = "caop-concelho-union"
+                        stats = {"matched": cm + dm, "unmatched": (
+                            caop_stats["concelhos_unmatched"]
+                            + caop_stats["distritos_unmatched"]
+                        )}
+                    elif fig is not None and not fig.is_empty:
                         geom = fig
                         geom_source = "figshare-pdo"
                         stats = {"matched": -1, "unmatched": 0}
@@ -2045,7 +2168,7 @@ def main() -> int:
                 # the panel-blob phase re-reads records from disk, so this
                 # rides the module-level slug cache like the other countries'
                 # provenance
-                _GR_GEOM_DISCLOSURE_BY_SLUG[record["slug"]] = disclosure
+                _GEOM_UNITS_DISCLOSURE_BY_SLUG[record["slug"]] = disclosure
             if not stats.get("nuts_ids") and geom is not None and not geom.is_empty:
                 # a record drawn from LAU units carries no NUTS id: the
                 # region facet reads the unit the spec cites, else the units
@@ -3285,6 +3408,9 @@ def _sources_for(record: dict) -> dict:
             "fetched_at": src.get("fetched_at") or "",
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
+            # a sub-região drawn from the national act's table (Vinho Verde's
+            # nine): the act the card cites — only on those records
+            **_PT_AREA_ACT_BY_SLUG.get(record.get("slug") or "", {}),
         }
     if record.get("country") == "it":
         # MASAF disciplinare provenance, if the stage 02f sidecar
@@ -3645,6 +3771,8 @@ def _sources_for(record: dict) -> dict:
                      if s.get("kind") == "ofag-repertoire"), {})
         reglement = next((s for s in sources_list
                           if s.get("kind") == "cantonal-reglement"), {})
+        roster = next((s for s in sources_list
+                       if s.get("kind") == "cantonal-reglement-roster"), {})
         return {
             "country": "ch",
             "canton": record.get("canton") or "",
@@ -3658,6 +3786,10 @@ def _sources_for(record: dict) -> dict:
             "cantonal_reglement_label": reglement.get("label", ""),
             "cantonal_reglement_sha256": reglement.get("sha256", ""),
             "cantonal_reglement_license": reglement.get("license", ""),
+            # Another canton's ordinance whose roster applies here (BS, SO → BL).
+            "cantonal_roster_url": roster.get("url", ""),
+            "cantonal_roster_label": roster.get("label", ""),
+            "cantonal_roster_applied_by": roster.get("applied_by", ""),
         }
     if record.get("country") == "be":
         # Belgium: EU-OJ ENIG DOCUMENT (Flemish) or DOCUMENT UNIQUE
@@ -4294,22 +4426,30 @@ def emit_html(
             "geom_lod_radius_m": _LOD_RADIUS_BY_SLUG.get(slug),
             # Only a record with a parcellaire gap fill carries the two keys.
             **(_PARCEL_FILL_BY_SLUG.get(slug) or {}),
-            # Greek resolver disclosure (panel payload, not the tile props):
+            # GR / PT unit-resolver disclosure (panel payload, not the tile props):
             # the NUTS ids a NUTS-union record was drawn from, what the text
             # named that the commune layer does not carry, and the
             # localities drawn as their container.
-            "geom_nuts_ids": list(_GR_GEOM_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_nuts_ids") or []),
+            "geom_nuts_ids": list(_GEOM_UNITS_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_nuts_ids") or []),
             "geom_units_unmatched": list(
-                _GR_GEOM_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_unmatched") or []
+                _GEOM_UNITS_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_unmatched") or []
             ),
             "geom_units_proxied": list(
-                _GR_GEOM_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_proxied") or []
+                _GEOM_UNITS_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_proxied") or []
+            ),
+            # PT: freguesias drawn whole that the text includes only in part —
+            # only on the records that have some, so no other payload changes
+            **(
+                {"geom_units_partial": list(
+                    _GEOM_UNITS_DISCLOSURE_BY_SLUG[slug]["geom_units_partial"])}
+                if _GEOM_UNITS_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_partial")
+                else {}
             ),
             "geom_units_boundary": list(
-                _GR_GEOM_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_boundary") or []
+                _GEOM_UNITS_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_boundary") or []
             ),
             "geom_units_boundary_units": list(
-                _GR_GEOM_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_boundary_units") or []
+                _GEOM_UNITS_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_boundary_units") or []
             ),
             "cadastre_lieu_dit": p.get("cadastre_lieu_dit", "") or "",
             "cadastre_commune": p.get("cadastre_commune", "") or "",

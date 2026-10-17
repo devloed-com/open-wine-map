@@ -84,6 +84,7 @@ def render_record(record: dict) -> str:
 
     ofag = _resolve_source(record, "ofag-repertoire")
     reglement = _resolve_source(record, "cantonal-reglement")
+    roster = _resolve_source(record, "cantonal-reglement-roster")
 
     fm = [
         "---",
@@ -113,6 +114,7 @@ def render_record(record: dict) -> str:
         f"  ofag_repertoire: {ofag.get('url', '')}",
         f"  cantonal_reglement: {reglement.get('url', '')}",
         f"  cantonal_reglement_shelf: {reglement.get('shelf', '')}",
+        *([f"  cantonal_roster: {roster['url']}"] if roster.get("url") else []),
         "---",
         "",
         f"# {name}",
@@ -144,6 +146,11 @@ def render_record(record: dict) -> str:
             f"- {reglement.get('label', 'Cantonal règlement')}: "
             f"<{reglement.get('url', '')}> "
             f"({reglement.get('shelf', '')})",
+        ]
+    if roster.get("url"):
+        body += [
+            f"- {roster.get('label', '')}: <{roster['url']}> ({roster.get('shelf', '')}) — "
+            f"{roster.get('applied_by', '')}",
         ]
     body += ["", ]
     return "\n".join(fm + body)

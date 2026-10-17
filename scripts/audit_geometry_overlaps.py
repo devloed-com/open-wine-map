@@ -80,6 +80,7 @@ import sys
 from pathlib import Path
 
 from pyproj import Transformer
+from shapely import make_valid
 from shapely.geometry import shape
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import transform as shp_transform
@@ -273,6 +274,10 @@ def main() -> int:
             geom = shp_transform(_to_3035, shape(g))
             if args.simplify_m > 0:
                 geom = geom.simplify(args.simplify_m)
+            if not geom.is_valid:
+                # A 100 m simplify can fold a parcellaire part onto itself
+                # (Côtes de Bordeaux Blaye after the 2026-09-28 release).
+                geom = make_valid(geom)
         except Exception:  # noqa: BLE001 — skip an unparseable geometry
             continue
         if geom.is_empty or geom.area <= 0:

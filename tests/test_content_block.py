@@ -37,6 +37,7 @@ _LABELS = {
     "geom_src_betard": "Approx area — Bétard 2022 polygon, municipality resolution.",
     "geom_src_pdo_union": "Approx area — union of the member PDO polygons.",
     "geom_src_admin_union": "Approx area — union of the named administrative units.",
+    "geom_src_national_act": "Area: the units {act} lists for this sub-region, on CAOP 2025.",
     "stub_message": "No {doc} found yet.",
     "stub_help_label": "help us find it",
     "panel_styles_h": "Styles",
@@ -69,6 +70,7 @@ _LABELS = {
     "src_national_spec": "National spec",
     "src_chzo_spec": "CHZO spec",
     "src_regional_register": "Regional register",
+    "src_area_act": "Sub-region delimitation (Diário da República, PDF)",
     "src_eambrosia": "eAmbrosia",
     "src_eambrosia_id": "file",
     "src_syndicate": "Producer body",
@@ -455,3 +457,25 @@ def test_zone_source_lines_for_other_countries() -> None:
 def test_pdo_plan_line() -> None:
     html = _render(_geom_rec(country="gb", geom_source="pdo-plan-parcel-hull-approx"))
     assert "reconstructed from the plan" in html
+
+
+def test_pt_subregion_drawn_from_its_act_cites_it() -> None:
+    """A PT sub-região drawn from the national act's table (Vinho Verde's
+    nine, scripts/_lib/pt/subregiao_areas.py): the area line names the act,
+    linked, in place of the generic administrative-union line, and Sources
+    lists it. Mirrors geomSourceLine / renderSources in app.js."""
+    act = {"area_act_url": "https://files.diariodarepublica.pt/1s/x.pdf",
+           "area_act_label": "Portaria n.º 668/2010, anexo I",
+           "area_act_detail": "Portaria n.º 668/2010, anexo I, republicada pela Portaria n.º 152/2015"}
+    html = _render(_geom_rec(country="pt", geom_source="caop-freguesia-union", sources=act))
+    line = html.split('approx-line">')[1].split("</div>")[0]
+    assert line == ('Area: the units <a href="https://files.diariodarepublica.pt/1s/x.pdf" '
+                    'target="_blank" rel="noopener">Portaria n.º 668/2010, anexo I</a> lists '
+                    "for this sub-region, on CAOP 2025.")
+    assert ('<li><a href="https://files.diariodarepublica.pt/1s/x.pdf" target="_blank" '
+            'rel="noopener">Sub-region delimitation (Diário da República, PDF)</a> — '
+            "Portaria n.º 668/2010, anexo I, republicada pela Portaria n.º 152/2015</li>") in html
+    # a caop record without an act keeps the generic line and no act source
+    html = _render(_geom_rec(country="pt", geom_source="caop-concelho-union"))
+    assert "union of the named administrative units" in html
+    assert "Sub-region delimitation" not in html

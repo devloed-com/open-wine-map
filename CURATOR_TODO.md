@@ -975,6 +975,191 @@ grains, so this is a matcher fold, now visible in the VIVC bracket. GR
 specs name semi-dry and semi-sweet types (ημίξηρος / ημίγλυκος), but no
 `STYLE_MARKERS` entry maps them to `semi-dry` / `semi-sweet`.
 
+### Visitor flags of 2026-10-11 → 2026-10-13 (`feedback_report.py --range 2026-10-09,2026-10-13`: 2 new flags, 1 retracted, no note)
+
+**pineau-des-charentes — facts (en, zone view at z5.9, advanced mode) — flagged and retracted within the hour; ❌ no defect found.**
+All 11 facts carry the gate's `supported` verdict (gate-v2). Each quote is
+verbatim from the 2026 cahier: four départements, the Jurassic / Cretaceous
+split on the Rochefort–Cognac line, 13 °C and 2,100 hours of sun, the
+late-16th-century legend, the décret of 12 October 1945. Nothing to change.
+
+**basel-stadt — grapes (en, zone view at z11.5, advanced mode) — ✅ fixed: the card had no variety at all.**
+The empty-grapes audit had pinned the record REVIEWED ("BS defers to BL; no
+own variety list"), and Solothurn the same way. But the agreement that defers
+is explicit: SG 911.200 § 1 lit. b, "Es gelten im Kanton Basel-Stadt
+insbesondere die Bestimmungen des Kantons Basel-Landschaft betreffend … die
+Ursprungsbezeichnungen", and BGS 516.34 § 1 Abs. 2 for Solothurn. BL's
+Verordnung über den Pflanzenbau (SGS 516.31) itself names «AOC Basel-Stadt»
+and «AOC Solothurn» (§ 11 Abs. 2) and lists their varieties in Anhang 1
+(§ 16 Abs. 1). Both records now carry that roster (67 varieties) with a
+second règlement row citing the applying clause, and the two overrides are
+gone. BL's own roster is now read from the Anhang 1 table instead of the
+whole ordinance: a Sylvaner from the § 5 altitude rule ("bis und mit
+Riesling-Silvaner") is gone, Diolinoir ("Diolynoir") is new. Heida / Païen
+are pinned to Savagnin blanc: VIVC lists both names on Gewürztraminer too.
+
+**✅ Same card — nine cantonal AOCs drawn as their capital town.**
+Basel-Stadt's polygon was the city of Basel, without Riehen, where the
+canton's vineyards are. The CH stage 02 commune scan finds the seat of
+government in a règlement's title or signature line ("Kanton Zürich",
+"Delémont, le …"), and CLAUDE.md said step 4 downgraded such a match to the
+canton, but no code did. Affected: Appenzell Innerrhoden, Basel-Stadt,
+Glarus, Jura, Luzern, Schwyz, Solothurn, Zug and Zürich (the city, without
+the Weinland). A lone capital match now gives no commune list, so the
+canton is drawn (`CANTON_CAPITAL` in `_lib/ch/canton.py`). Zürichsee
+(régionale, parent Schwyz) inherits the Schwyz canton instead of the town;
+it still lacks the Zürich shore.
+
+**Open — CH, found on the way.**
+- AG keeps its roster in an annex too ("Anhang 1 … Zugelassene Rebsorten
+  für AOC-Weine (§ 15 Abs. 1)": a numbered, colour-split two-column table
+  with wrapped cells, ~118 entries). The AG card still comes from the
+  whole-document scan (94). A reader for that layout would replace it.
+- AI, AR, GL and TG delegate the roster to a separate act: Standeskommission
+  (AI Art. 9), Regierungsrat (AR Art. 7, GL Art. 9), Fachstelle list (TG
+  § 37). Fetch those lists.
+- BL Anhang 1 names the matcher does not know: Baco noir, Charmont,
+  Chardoris, Muscat bleu, Réselle, Roter Milan, Sauvignon Soyhières,
+  Cabertin (fuzzy 88 → Pinot noir, refused). Research colour + VIVC, then
+  add to the lexicon.
+- Bern's cantonal AOC is drawn from 9 scanned communes, including the city
+  of Bern, and misses the Thunersee communes. Neuchâtel's has 5, without
+  Milvignes (Auvernier) or La Grande Béroche. Check both against their
+  règlements.
+- Zürichsee (ZH + SZ shores) draws the Schwyz canton; a commune list from
+  the ZH / SZ texts would draw the lake.
+
+**Open — the overlap audit had been crashing since the 2026-10-04 parcellaire
+release; it runs again, and one finding waits.** Its 100 m simplify folded a
+Côtes de Bordeaux Blaye part onto itself (GEOS "side location conflict"); the
+simplified shape is now repaired with `make_valid` before the pairwise pass.
+SUSPICIOUS: Côtes du Lot × Périgord, 29.8 km², ~0.5 km wide (+ Rocamadour).
+The shared commune is Salviac (46297): both IGP rows of the INAO
+igp-aires-communes CSV list it (Côtes du Lot "Lot", 340 communes since the
+2026-10-04 rebinding; Périgord, 560). Same evidence standard as the other
+whitelisted IGP pairs: verify against both cahiers, then whitelist
+`cotes-du-lot+perigord` (and the Rocamadour pair). Drop the stale
+`agenais+cotes-du-lot` entry (Fumel): Côtes du Lot is no longer drawn from
+the cahier's out-of-département communes.
+
+### Visitor flag of 2026-10-13 (`feedback_report.py --range 2026-10-08,2026-10-13`: 1 new flag, no note)
+
+**vinho-verde — boundary (es, zone view at z9.2, simple mode) — ✅ fixed: two whole concelhos of the caderno's own list were not drawn.**
+- **Ribeira de Pena** (217.5 km², the eastern edge of Basto): "d) Do
+  distrito de Vila Real, os municípios de Mondim de Basto e Ribeira de
+  Pena". The PT parser's `_NOISE_WORDS` (boundary prose: "até à ribeira da
+  Fonte Boa") rejected any token containing "ribeira", "albufeira" or
+  "serra", including five município names (Ribeira de Pena, Ribeira Brava,
+  Ribeira Grande, Albufeira, Pampilhosa da Serra). The filter is now
+  lower-case only. That change also recovers Ribeira de Pena for IGP Minho,
+  and **Albufeira** (140.7 km², named first in its text) for DOP Lagoa,
+  which had a hole between Silves and Loulé.
+- **Póvoa de Varzim** (82 km² of coast between Vila do Conde and
+  Esposende): the caderno spells it "Póvoa do Varzim", so the exact
+  normalised match missed. `PTPolygonIndex` now falls back to a
+  connector-free key (de / do / da / dos / das / e dropped). The key binds
+  only when one CAOP município carries it; no two of the 304 do. The
+  fallback is logged as `[pt-geom] spelling fold`. Across the corpus only
+  this token binds through it.
+
+Result: Vinho Verde 8,091 → 8,390 km², now identical to IGP Minho (same
+area text); Minho 8,173 → 8,390; Lagoa 1,532 → 1,673. Tests:
+`test_commune_list_keeps_municipios_named_like_noise_words`,
+`test_geometry_folds_connector_spelling_to_the_one_caop_name`.
+
+**PT freguesia precision — ✅ done 2026-10-13 (the residue on this card and others).**
+Every PT area text is now read clause by clause (`scripts/_lib/pt/area_units.py`)
+and drawn from the CAOP 2025 freguesia layer (`scripts/_lib/pt/freguesias.py`):
+a município the text restricts to freguesias is drawn as those freguesias, an
+excluded freguesia is left out, a sub-região the text enumerates gets its own
+polygon. Method: an independent transcription of all 44 area texts (12 agents,
+1,246 units, every quote checked verbatim) against which the parser was
+diffed until only representational differences remained, then an adversarial
+per-record check of the drawing (59 records, 31 agents; 24 findings confirmed
+and fixed, the 15 affected records re-checked). Evidence:
+`tmp/pt-freguesia-2026-10-13/` (annotations, evidence/, verification.json,
+pin-research.json).
+- On this card: Vinho Verde / Minho 8,390 → 8,398 km² — Ossela drawn, Barrô
+  out of Resende; the 123 km² Minho × Douro overlap is gone (Douro now draws
+  Barrô alone). Lagoa 1,673 → 1,248 km² (Loulé and Silves as their listed
+  freguesias).
+- Defects of the município reading fixed on the way: Alentejano 1,754 →
+  23,740 km² ("todos os concelhos dos distritos de Beja, Évora e Portalegre"
+  had been read as the Évora and Portalegre concelhos); Transmontano 619 →
+  9,188 km² (`;`-separated concelhos); Terras da Beira 4,062 → 10,552 km²
+  (distrito Castelo Branco); Lisboa regains Porto de Mós; Do Tejo regains
+  Alcanena, Entroncamento, Vila Nova da Barquinha, Ferreira do Zêzere;
+  Trás-os-Montes regains Mogadouro and Vimioso; Dão draws Viseu's listed
+  freguesias, not the whole concelho; Açores gains Flores and Corvo (the
+  western-group gpkg of the CAOP RAA zip had never been extracted; 2,165 →
+  2,323 km²); Madeira / Madeirense / Terras Madeirenses no longer draw the
+  Desertas and Selvagens ("abrangendo as ilhas da Madeira e do Porto
+  Santo"; 801 → 785 km²).
+- Douro / Porto / Duriense 5,513 → 2,692 km² (Bétard 2022: 2,692); Dão,
+  Óbidos, Encostas d'Aire, Arruda, Bucelas, Biscoitos, Graciosa, Torres
+  Vedras now equal Bétard to the km² (an independent digitisation), Trás-os-
+  Montes 3,545 = Bétard. Sub-regiões drawn from their own units: Douro's and
+  Porto's three, Trás-os-Montes' three, Do Tejo's six, Alentejo's Vidigueira.
+- Alentejo: four of its eight sub-regiões (Borba, Moura, Redondo, Reguengos)
+  are boundary prose, so the DOP is now Bétard 2022's polygon (9,129 km²,
+  covering Évora, Borba, Redondo and Reguengos de Monsaraz whole), not the
+  5,201 km² concelho reading that missed them and drew Montemor-o-Novo and
+  Sousel whole. Its other sub-regiões inherit it.
+- Pins (`scripts/_lib/pt/freguesia_overrides.json`, each from the Diário da
+  República, each re-checked by a second agent): the renamed 2013 unions
+  Vila Real, Viseu, Coutos de Viseu, São Gonçalo de Lagos, Armamar; Graciosa
+  "Praia" = São Mateus; Torres Vedras "São Miguel", "São Mamede"; Sobral
+  "São Salvador".
+
+Residue, by kind — each disclosed on the card, none guessed:
+- **Unions drawn for one former parish** (`geom_units_proxied`, e.g. Bairrada's
+  Óis da Ribeira → União … Travassô e Óis da Ribeira; Douro's Armamar →
+  Armamar + Coura + Tões). CAOP 2012.1 (DGT, last map before the 2013
+  mergers, `Cont_AAd_CAOP20121.zip` on dgterritorio.gov.pt) would draw them
+  exactly, but DGT states no licence for the historical versions: ask DGT
+  (the 2025 files are CC BY 4.0) before using it.
+- **Parishes included in part** (`geom_units_partial`: "parte das freguesias",
+  lugares, quintas, propriedades, prédios rústicos): drawn whole. No public
+  sub-freguesia layer.
+- **Altitude limits** (Pico and Biscoitos ≤ 100 m, Graciosa ≤ 150 m; Alentejo
+  Portalegre > 700 m excluded): not applied — a DEM clip is the later step the
+  2026-09-23 sweep lists.
+- **Alentejo's prose sub-regiões** (boundary prose) inherit the parent
+  polygon. Whether Alentejo's national act carries a unit table for them the
+  way Vinho Verde's does is not checked.
+- ✅ **Vinho Verde's nine sub-regiões** (2026-10-13): the caderno names them
+  but does not delimit them; drawn from Portaria n.º 668/2010, Anexo I, as
+  republished by Portaria n.º 152/2015
+  (`scripts/_lib/pt/subregiao_areas.json`, fetched into `raw/pt/dre/`). The
+  table was transcribed three times (mine, an independent text reading, an
+  independent page-image reading; identical), every name is checked against
+  the PDF, and Artigo 3.º's prose draws the same units. The acts were read
+  for their effect on the table: Declarações de Retificação 47/2014 and
+  27/2015 correct Artigo 8.º n.º 2 only, Portaria 333/2016 amends Artigos
+  12.º and 20.º only, Avisos 7945/2022, 14002/2024/2 and 21430/2026/2 are
+  IVV specifications that change neither (no later act found: DR
+  consolidated text, DR legal-analysis links, DR full-text search). The
+  nine draw 7,083 km² of the DO's 8,398, no overlap; an adversarial check
+  of every row against the act found nothing, a code review found four
+  weaknesses in the new code (an exclusion by union name, the citation
+  reader's forms, the legal reference's end, a name test that could not
+  fail), all fixed with tests. Two resolver fixes came with it: a "União das
+  freguesias de A e B" name is drawn as its parts once CAOP 2025 has
+  re-created them (Campo e Sobrado), and "São Paio de Vizela" reaches CAOP's
+  "Vizela (São Paio)". All 60 earlier PT records resolve unchanged.
+  Source defects kept as printed: the Baião table's "São João." /
+  "Fontoura." (one freguesia, São João de Fontoura), Artigo 3.º n.º 1 b)'s
+  "Santa Eulália em de Santo Adrião", "Terras do Bouro" in the DO table.
+- **IGP Minho grapes** — Aviso n.º 21430/2026/2 (DR 2.ª série, 31 August
+  2026) adds Moscatel Galego Branco, Encruzado and Tinta Francisca to the
+  IGP's Anexo II (Portaria n.º 379/2012); the record, from the IVV caderno,
+  has none of them. Check whether IVV has republished the IGP Minho caderno;
+  if not, decide whether the Aviso is a source the grape list may read.
+- Tavira's "Santa Marta" (no such parish) binds by the one-letter rule to
+  Tavira (Santa Maria e Santiago), already drawn for Santiago — no area effect.
+- The Porto caderno fixes its limits at the 1921 boundaries (Decreto 7934);
+  CAOP 2025's are drawn.
+
 ### Simple-mode polygons carry open water, and the panel does not say the shape is the commune — 🟡 disclosure + footprint on branch `feat/zoom-lod` (2026-09-23), water mask still open
 
 - **Branch `feat/zoom-lod` (2026-09-23, not merged):** zoom now picks the geometry instead of the mode — below z12 the 1,259 French parcel-level records draw a generalised vineyard footprint (250 m morphological closing of the INAO parcellaire, `scripts/_lib/vineyard_envelope.py`; median 1.3× the parcels vs 5–8× for the commune union), from z12 the parcels; the commune union is no longer drawn for them, which removes the water for the 32 records whose twin is parcellaire (Saint-Estèphe 26 % estuary → 0). Every card now says what the polygon is: the zoom-reactive footprint line, a "réunion des {n} communes, plans d'eau compris" line for plain `aires-csv` / `dgc-village-override` / `communes` records (the 97 water records that no envelope can reach — every IGP, Champagne), and a zone-source line for the other countries (geoportal / MAPA / Bétard / administrative union). `Feedback *` and `Appellation Viewed` carry `lod` + `zoom`. Audit: `scripts/audit_vineyard_envelopes.py` (`--water` measures BD TOPO water, rivers included, inside the footprint's added area).
@@ -4305,7 +4490,7 @@ was not run by the agents; the effect was confirmed on the final rebuild.
 
 | country | change | corpus effect | caveats left, with the reason |
 |---|---|---|---|
-| **PT** (`scripts/_lib/pt/commune_list.py`, `geometry.py`) | parenthetical freguesia lists stripped innermost-first before the split; the honorific `D.` no longer ends a capture (case-sensitive guard); an exception clause (`com/à exceção de …`, `exceto`, `excluindo`) routes its list to `excluded_concelhos`, which the distrito expansion leaves out member-wise; enumerated `a) O distrito de X` forms now match | Duriense 3 parts / 4,683 km² → 1 / 5,513 (Pombal-Leiria gone; Mirandela, Torre de Moncorvo, Vila Flor recovered); Beira Atlântico 4 / 3,229 → 1 / 6,747 (Aveiro + Coimbra distritos in, the six excluded concelhos out); Terras da Beira 3 → 9 concelhos; Lisboa −Azambuja, Tejo −Ourém (both excluded by their own text); 5 records lose only freguesia tokens that never matched | ❌ pre-existing, out of the findings' scope, each per the record's own text: **terras-da-beira** misses all of distrito Castelo Branco ("todas as freguesias de todos os concelhos do distrito de" — no distrito regex knows that form); **transmontano** resolves 2 of ~24 concelhos (`;`-separated concelhos with `;` inside the parentheticals end the capture); **lisboa** loses Porto de Mós to `_strip_freguesia_tail`; **minho / vinho-verde** drop "a freguesia de Ossela, do município de Oliveira de Azeméis" before the v1 freguesia-parent rule runs. The paren-aware terminator the note suggested was tried and rejected — it lost Moura from Alentejo |
+| **PT** (`scripts/_lib/pt/commune_list.py`, `geometry.py`) | parenthetical freguesia lists stripped innermost-first before the split; the honorific `D.` no longer ends a capture (case-sensitive guard); an exception clause (`com/à exceção de …`, `exceto`, `excluindo`) routes its list to `excluded_concelhos`, which the distrito expansion leaves out member-wise; enumerated `a) O distrito de X` forms now match | Duriense 3 parts / 4,683 km² → 1 / 5,513 (Pombal-Leiria gone; Mirandela, Torre de Moncorvo, Vila Flor recovered); Beira Atlântico 4 / 3,229 → 1 / 6,747 (Aveiro + Coimbra distritos in, the six excluded concelhos out); Terras da Beira 3 → 9 concelhos; Lisboa −Azambuja, Tejo −Ourém (both excluded by their own text); 5 records lose only freguesia tokens that never matched | ❌ pre-existing, out of the findings' scope, each per the record's own text: **terras-da-beira** misses all of distrito Castelo Branco ("todas as freguesias de todos os concelhos do distrito de" — no distrito regex knows that form); **transmontano** resolves 2 of ~24 concelhos (`;`-separated concelhos with `;` inside the parentheticals end the capture); **lisboa** loses Porto de Mós to `_strip_freguesia_tail`; **minho / vinho-verde** drop "a freguesia de Ossela, do município de Oliveira de Azeméis" before the v1 freguesia-parent rule runs. The paren-aware terminator the note suggested was tried and rejected — it lost Moura from Alentejo. ✅ 2026-10-13: all four fixed by the clause-level freguesia reader (`scripts/_lib/pt/area_units.py`; see the Vinho Verde flag of 2026-10-13) |
 | **IT** (`scripts/_lib/it/comune.py`, one stage-04 call) | fused ISTAT hagionyms indexed under their `san`-split form (84 names, zero clashes); a match is rejected when the text runs on through a name connector (di/del/della/sul/in/… — not `e`, the list conjunction); `resolve()` takes the record's regione and drops cross-regione homonyms; glued `Jonico,San` commas split; three disciplinare spellings aliased (Castelguelfo, Ozzano Emilia, Terre del Sole) | Bianco del Sillaro 20 → 37 comuni, 5 → 2 parts (Sant'Arcangelo PZ out, Santarcangelo di Romagna RN in, the 14 Forlì-Cesena comuni the Castrocaro miss had cut off back); Rubicone +2; 9 further records improve in the resolver only (their build geometry comes from a zone layer or Bétard) | 🟡 **friuli-grave**: the resolver now yields Udine + Pordenone whole-province instead of one wrong Trentino comune — not live (build uses Bétard), but the comune list itself is unparsed because the text says "territorio comunale di:", a keyword the parser does not know. The "in provincia di X" clause was not wired in: the regione filter settles every ISTAT cross-regione homonym pair (7 probed), so it would be unexercised code |
 | **ES** (`scripts/_lib/es/geometry.py`, `commune_list.py`, `subzona.py`) | a first-word fallback hit is a guess, never "unambiguous": it no longer votes for the province set and is accepted only inside the provinces the exact matches established, and for a multi-word name only when the common prefix reaches past the head word (two words after san/santa/villa/val/puebla), the GISCO name is a whole-word prefix of the pliego's longer form, or the particle-stripped words agree; `/` bilingual GISCO names split before the character pass (they never matched exactly before), `-` is a word separator, curly / acute apostrophes and Catalan ` i ` folded; the abbreviation case of the class docstring ("Albelda" → Albelda de Iregua) actually implemented; parroquia enumerations stripped with their holder, `así como` ends a list case-insensitively, `- <muni>: las parroquias de …` lines keep the muni; the last subzona's capture stops at a sentence boundary (full ES stage 02 re-run: 4 records changed, only `subzona_communes`) | 29 of 78 commune-resolved records change, every name traced to its pliego token; all six flagged parts gone — Valle del Miño-Ourense 16 parts / 1,370 km² → 1 / 726 (exactly its 14 municipios), Norte de Almería one polygon of 1,145 km² (Vélez-Blanco + Vélez-Rubio recovered), Betanzos 3 → 1 part, Barbanza 8 named municipios, Rioja Alavesa +Oyón-Oion, El Comtat ends at Cocentaina; Villaviciosa de Córdoba's only polygon had been Os de Balaguer (Lleida). Montsant + Priorat wkb-identical | 🟡 whole-municipio proxies the new rules drop, each per the pliego's own wording — a curator call whether the polygon or its absence is the better proxy: ~~**Padrón**~~ (Barbanza e Iria — resolved: drawn as its two named parishes, Iria Flavia + Padrón, 12.3 km², from the IET parroquia layer), **Martos** (Sierra Sur de Jaén: numbered polígonos only; Alcaudete was never bound), **Caudete** (Valencia-Clariano: registered parcels only). ❌ **Kripan** (Rioja Alavesa) still unmatched — the pliego writes Cripán, GISCO Kripan, and an alias would not rest on the record's text. **rio-negro "San Andrés"** left unmatched rather than tie-broken between two Guadalajara San Andrés. **monterrei-ladera-de-monterrei** briefly fell to the parent polygon (its three former municipios were all parish-holder phrases) — resolved the same day by the IET parroquia layer: it is now `iet-parroquia-union` of Vilardevós + 25 named parishes, 466.8 km² |
 | **BG** (`geometry.py`, `region.py`) | PDO-BG-A1344 Оряховица moved from the Дунавска равнина PGI to Тракийска низина; region facet likewise; membership tables asserted to partition the PDOs | Дунавска равнина 6 → 5 parts (−1,076 km² at 42.41 °N); Тракийска низина unchanged (the polygon was already inside its body) | 🟡 Bétard's 1,076 km² polygon for Оряховица looks like a whole obshtina where the ИАЛВ spec (§3) names four village land areas in област Стара Загора — precision, out of scope |

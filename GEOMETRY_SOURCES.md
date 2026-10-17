@@ -28,7 +28,7 @@ Active tiers per country as of today:
 | AT | ✓ (fallback) | **GISCO LAU + Statistik Austria registry** (commune-union from Einziges Dokument text) | — |
 | ES | ✓ (fallback) | **MAPA national wine-zone layer** | SIGPAC parcels (Priorat comarca only); IET parroquias (Galicia, sub-municipal) |
 | IT | ✓ (fallback) | **5 regional geoportals** (Piemonte/Veneto/Lazio/Lombardia/Toscana) | — |
-| PT | ✓ (DOPs fallback) | **DGT CAOP 2025 município-union** parsed from caderno "Área Delimitada" | — |
+| PT | ✓ (DOPs fallback; Alentejo) | **DGT CAOP 2025 freguesia / município union** parsed from caderno "Área Delimitada" (2026-10-13) | — |
 | SI | ✓ (DOPs); PGI = region-union of member-PDO Bétard polygons | none yet | — |
 
 What follows lists every source consulted per country, including the ones
@@ -193,8 +193,21 @@ against DGT CAOP) **has shipped** — Tier A for PT is now the
 `caop-concelho-union` step in stage 04, parsing each caderno's "Área
 Delimitada" section and unioning the named CAOP municípios. All 14 PT
 IGPs that previously had no polygon are now mapped (município
-precision). The rest of this section remains as the negative record
-for revisit if a wine-specific layer ever appears.
+precision). Updated 2026-10-13: the same text is now read at freguesia
+precision (`caop-freguesia-union`, scripts/_lib/pt/area_units.py +
+freguesias.py): a município the caderno restricts to some freguesias is
+drawn as those freguesias, an excluded freguesia is left out, and a
+sub-região the text enumerates gets its own polygon. Former freguesias
+merged into a 2013 União are drawn as the union (disclosed); CAOP 2012.1
+(DGT, last pre-merger map) would draw them exactly but carries no stated
+licence. Also 2026-10-13: a sub-região the caderno names but does not
+delimit is drawn from the national act's unit table on the same CAOP
+layer — Vinho Verde's nine from Portaria n.º 668/2010, Anexo I, as
+republished by Portaria n.º 152/2015 (Diário da República; official texts
+are not protected by copyright, CDADC art. 8.º n.º 1 with art. 3.º n.º 1
+c)); the annex's only map shows the whole DO, not the sub-regiões. The
+rest of this section remains as the negative record for revisit if a
+wine-specific layer ever appears.
 
 Sources checked:
 

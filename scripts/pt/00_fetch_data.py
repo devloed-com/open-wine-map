@@ -71,6 +71,12 @@ CAOP_REGIONS = {
 CAOP_LICENSE = (
     "© DGT / Direção-Geral do Território. CAOP 2025 — CC-BY-4.0."
 )
+DRE_OUT_DIR = ROOT / "raw" / "pt" / "dre"
+DRE_LICENSE = (
+    "Diário da República (INCM) — official text of a regulation; the texts of laws "
+    "and regulations are not protected by copyright (Código do Direito de Autor e "
+    "dos Direitos Conexos, art. 8.º n.º 1 with art. 3.º n.º 1 c))."
+)
 
 EAMBROSIA_LIST_URL = (
     "https://webgate.ec.europa.eu/eambrosia-api/api/v1/geographical-indications"
@@ -300,24 +306,24 @@ def fetch_caop() -> None:
             extra_manifest={"license": CAOP_LICENSE, "region": region},
         )
         with zipfile.ZipFile(zip_path) as zf:
-            gpkg_inner = next(
-                (n for n in zf.namelist() if n.lower().endswith(".gpkg")),
-                None,
-            )
-            if gpkg_inner is None:
+            # every gpkg: the Açores zip carries the western group (Flores,
+            # Corvo) in a second file beside the central + eastern one
+            gpkg_inners = [n for n in zf.namelist() if n.lower().endswith(".gpkg")]
+            if not gpkg_inners:
                 print(f"[caop/{region}] no .gpkg inside zip", file=sys.stderr)
                 continue
-            gpkg_path = CAOP_OUT_DIR / Path(gpkg_inner).name
-            if not gpkg_path.exists():
-                with zf.open(gpkg_inner) as src, open(gpkg_path, "wb") as dst:
-                    dst.write(src.read())
-                print(
-                    f"[caop/{region}] extracted → {gpkg_path.relative_to(ROOT)}",
-                    file=sys.stderr,
-                )
+            for gpkg_inner in gpkg_inners:
+                gpkg_path = CAOP_OUT_DIR / Path(gpkg_inner).name
+                if not gpkg_path.exists():
+                    with zf.open(gpkg_inner) as src, open(gpkg_path, "wb") as dst:
+                        dst.write(src.read())
+                    print(
+                        f"[caop/{region}] extracted → {gpkg_path.relative_to(ROOT)}",
+                        file=sys.stderr,
+                    )
         summary[region] = {
             "zip": zip_path.name,
-            "gpkg": Path(gpkg_inner).name if gpkg_inner else "",
+            "gpkg": [Path(n).name for n in gpkg_inners],
         }
     CAOP_MANIFEST_PATH.write_text(
         json.dumps(
@@ -335,6 +341,34 @@ def fetch_caop() -> None:
         ),
         encoding="utf-8",
     )
+
+
+def fetch_dre_acts() -> None:
+    """The Diário da República PDFs whose tables delimit sub-regiões a
+    caderno names but does not delimit (scripts/_lib/pt/subregiao_areas.json:
+    Portaria n.º 668/2010, Anexo I, as republished by Portaria n.º 152/2015).
+    A file whose sha256 differs from the pin is reported: a DR publication
+    does not change, so another document is being served at that URL."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from _lib.pt.subregiao_areas import load_table
+
+    for parent, entry in load_table().items():
+        out_path = DRE_OUT_DIR / entry["file"]
+        _fetch_binary_with_manifest(
+            label=f"dre/{parent}",
+            url=entry["url"],
+            out_path=out_path,
+            manifest_path=DRE_OUT_DIR / f"manifest-{out_path.stem}.json",
+            extra_manifest={"license": DRE_LICENSE, "act": entry["act_detail"]},
+        )
+        sha = hashlib.sha256(out_path.read_bytes()).hexdigest()
+        if entry.get("sha256") and sha != entry["sha256"]:
+            print(
+                f"[dre/{parent}] sha256 {sha[:12]}… differs from the pinned "
+                f"{entry['sha256'][:12]}… — re-verify the transcription in "
+                "scripts/_lib/pt/subregiao_areas.json",
+                file=sys.stderr,
+            )
 
 
 def main() -> int:
@@ -411,6 +445,9 @@ def main() -> int:
 
     # 3. CAOP 2025 GPKGs (Continente + RAA + RAM)
     fetch_caop()
+
+    # 4. National acts that delimit sub-regiões a caderno does not
+    fetch_dre_acts()
 
     return 0
 

@@ -1433,6 +1433,12 @@ GRAPE_ALIAS = {
     "gouais-blanc": "heunisch",
     "gwass": "heunisch",
     "diolinoir": "diolinoir",                      # Agroscope CH red (Rouge de Diolly × Pinot noir)
+    "diolynoir": "diolinoir",                      # BL SGS 516.31 Anhang 1 spelling
+    # VIVC lists HEIDA and PAÏEN on both SAVAGNIN BLANC (#17636) and
+    # GEWUERZTRAMINER (#12609); the Swiss texts mean the first — Valais OVV
+    # "Savagnin blanc (Païen ou Heida)", BL Anhang 1 "Heida, Savagnin blanc".
+    "heida": "savagnin",
+    "paien": "savagnin",
     "carminoir": "carminoir",                      # Agroscope CH red (Pinot noir × Cabernet Sauvignon)
     "divico": "divico",                            # Agroscope CH red (Gamaret × Bronner, fungus-resistant)
     "bondola": "bondola",                          # Ticino native red

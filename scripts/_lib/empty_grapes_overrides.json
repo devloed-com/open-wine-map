@@ -12,10 +12,6 @@
     "reason": "Cantonal règlement defers to the federal OVin and catalogues no variety locally.",
     "source": "CLAUDE.md, CH-specific notes (AI/AR/BS/NW/SZ/UR)"
   },
-  "basel-stadt": {
-    "reason": "BS defers to BL through an inter-cantonal Vereinbarung; no own variety list.",
-    "source": "CLAUDE.md, CH-specific notes (AI/AR/BS/NW/SZ/UR)"
-  },
   "nidwalden": {
     "reason": "Cantonal règlement defers to the federal OVin and catalogues no variety locally.",
     "source": "CLAUDE.md, CH-specific notes (AI/AR/BS/NW/SZ/UR)"
@@ -42,10 +38,6 @@
   },
   "schaffhausen": {
     "reason": "Weinverordnung 817.402 § 12 Rebsorten: 'Das kantonale Sortenverzeichnis wird vom Landwirtschaftsamt geführt' — Anhang 1 holds only Prädikat definitions.",
-    "source": "cantonal règlement, verified 2026-09-20 (CURATOR_TODO, empty-grape audit)"
-  },
-  "solothurn": {
-    "reason": "Vereinbarung SO–BL 516.34 § 1 Abs. 2: SO applies the Basel-Landschaft Pflanzenbau-Verordnung Kapitel C Weinbau (BL's Anhang 1 roster is extracted on basel-landschaft).",
     "source": "cantonal règlement, verified 2026-09-20 (CURATOR_TODO, empty-grape audit)"
   },
   "thurgau": {

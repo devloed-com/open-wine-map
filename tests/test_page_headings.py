@@ -36,3 +36,17 @@ def test_about_dialog_title_is_h2_not_h1() -> None:
     html = _build_about_dialog(defaultdict(str, {"about_h": "About Open Wine Map"}))
     assert '<h2 id="about-dialog-h"' in html
     assert "<h1" not in html
+
+
+def test_about_dialog_sections_are_h3_under_the_title() -> None:
+    labels = defaultdict(str, {
+        "about_h": "About Open Wine Map",
+        "about_sources_h": "Sources", "about_method_h": "How the map is made",
+        "about_ai_h": "For AI assistants", "about_privacy_h": "Privacy",
+        "about_contrib_h": "Contribute and follow",
+    })
+    html = _build_about_dialog(labels)
+    for heading in ("Sources", "How the map is made", "For AI assistants", "Privacy",
+                    "Contribute and follow"):
+        assert f"<section><h3>{heading}</h3>" in html
+    assert html.index('<h2 id="about-dialog-h"') < html.index("<h3>")
