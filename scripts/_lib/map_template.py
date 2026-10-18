@@ -3182,6 +3182,11 @@ _TEMPLATE = """<!doctype html>
   }}
   @media (max-width: 768px) {{
     #app {{ flex-direction:column }}
+    /* The bar carries the brand; the drawer's own brand block (the page's
+       <h1> on the home and fold pages) stays in the DOM for assistive tech
+       and crawlers, out of sight — it would repeat the bar 50px below it. */
+    #sidebar .brand-title, #sidebar .subtitle {{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }}
+    #lang-switcher {{ padding-top:10px }}
     /* The bar: brand, search, menu — so the first screen is not a bare map. */
     #mobile-bar {{ display:flex; align-items:center; gap:4px; flex:0 0 auto; min-height:44px; padding:env(safe-area-inset-top, 0px) 6px 0 12px; background:var(--n-900); color:var(--n-100); border-bottom:1px solid var(--n-750); z-index:30 }}
     #mobile-bar .mobile-brand {{ flex:1; display:flex; align-items:center; gap:8px; min-width:0; color:var(--n-100); text-decoration:none; font-weight:600; font-size:15px; letter-spacing:0.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }}

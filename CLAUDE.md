@@ -6357,7 +6357,9 @@ code that owns each piece:
   payload is fetched.
 - **Phones (≤ 768px)**: a bar (`#mobile-bar`: brand link, search, menu — the
   first screen is no longer a bare map) over the map; the sidebar is a
-  drawer with a scrim (`setDrawer` owns `#sidebar.open`, the scrim and the
+  drawer with a scrim — its own brand block (`.brand-title` + `.subtitle`,
+  the page `<h1>` on the home and fold pages) is visually hidden there, not
+  removed, since the bar already names the site 50 px above it (2026-10-18) (`setDrawer` owns `#sidebar.open`, the scrim and the
   buttons' `aria-expanded`; focus moves into the drawer on open and back to
   the opener on close; Esc closes the drawer before the sheet; opening a
   record from the tree, the search or a related link closes it); a record

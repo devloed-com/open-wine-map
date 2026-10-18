@@ -95,4 +95,8 @@ def test_tree_rows_share_one_height_and_one_chevron_slot() -> None:
     phone = css[css.index("@media (max-width: 768px)"):]
     assert ".facet .tree-row { min-height:44px }" in phone
     assert ".facet, .facet.facet-appellations { max-height:none }" in phone
+    # The drawer's brand block is hidden visually on phones, never removed: it
+    # is the page <h1> on the home and fold pages.
+    assert "#sidebar .brand-title, #sidebar .subtitle { position:absolute; width:1px; height:1px;" in phone
+    assert "#sidebar .brand-title { display:none" not in phone
     assert re.search(r"\.facet \.tree-toggle, \.facet \.tree-toggle-spacer \{ flex-basis:44px; width:44px; height:44px", phone)
