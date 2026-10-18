@@ -929,6 +929,10 @@
     el.querySelectorAll('.tree-children input[type=checkbox]:checked').forEach(inp => {
       for (let w = inp.closest('.tree-children'); w; w = w.parentElement && w.parentElement.closest('.tree-children')) setTreeOpen(w, true);
     });
+    // The section itself starts collapsed (only the appellation tree opens by
+    // default): a tick that arrived through the search or a chip is shown.
+    const section = el.closest('details');
+    if (section && !section.open && el.querySelector('input[type=checkbox]:checked')) section.open = true;
   }
   function buildTreeFacet(containerId, tree, store, labels, facetName) {
     const el = document.getElementById(containerId);
@@ -3382,6 +3386,37 @@
   panel.addEventListener('focusin', showPillTip);
   panel.addEventListener('mouseout', hidePillTip);
   panel.addEventListener('focusout', hidePillTip);
+  // The scope row's ⓘ buttons reuse the scheme tooltip (the PGI and spirit-
+  // drink GI definitions with their regulator sources). A tap toggles it:
+  // iOS Safari gives a tapped button no focus, so focusin alone would leave
+  // touch readers out; a tap elsewhere closes it.
+  const scopeRow = document.getElementById('scope');
+  if (scopeRow) {
+    // A touch tap is a burst of synthetic mouse events — mouseover, click,
+    // then mouseout. Only the click counts for touch: a tap toggles the hint,
+    // and the mouseout that follows it never closes what the tap just opened.
+    let hintShownAt = 0, touchTapAt = 0;
+    const touching = () => Date.now() - touchTapAt < 700;
+    const showHint = e => { if (e.type === 'mouseover' && touching()) return; showPillTip(e); hintShownAt = Date.now(); };
+    const hideHint = e => { if (touching()) return; hidePillTip(e); };
+    scopeRow.addEventListener('pointerdown', e => { if (e.pointerType === 'touch' && e.target.closest('.scope-hint')) touchTapAt = Date.now(); });
+    scopeRow.addEventListener('mouseover', showHint);
+    scopeRow.addEventListener('focusin', showHint);
+    scopeRow.addEventListener('mouseout', hideHint);
+    scopeRow.addEventListener('focusout', hideHint);
+    scopeRow.addEventListener('click', e => {
+      const btn = e.target.closest('.scope-hint');
+      if (!btn) return;
+      const open = grapeTip.style.display === 'block' && describedPill === btn;
+      if (open && Date.now() - hintShownAt > 400) { cancelGrapeTipClose(); hideGrapeTip(); } else showHint(e);
+    });
+    scopeRow.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && grapeTip.style.display === 'block') { e.stopPropagation(); cancelGrapeTipClose(); hideGrapeTip(); }
+    });
+    document.addEventListener('click', e => {
+      if (describedPill && describedPill.classList.contains('scope-hint') && !e.target.closest('.scope-hint, #grape-tooltip')) { cancelGrapeTipClose(); hideGrapeTip(); }
+    });
+  }
   panel.addEventListener('keydown', e => {
     if (e.key === 'Escape' && grapeTip.style.display === 'block') {
       // Esc dismisses the innermost layer first: kill the tooltip and stop the

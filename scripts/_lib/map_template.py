@@ -84,6 +84,8 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "open_appellation_aria": _("Ouvrir la fiche de {name}"),
         "open_appellation_title": _("Ouvrir la fiche"),
         "show_spirits_label": _("Inclure les spiritueux"),
+        "scope_hint_pgi": _("Qu'est-ce qu'une IGP ?"),
+        "scope_hint_spirits": _("Qu'est-ce qu'une IG de spiritueux ?"),
         "facet_styles_h": _("Style de vin"),
         "facet_classification_h": _("Classement"),
         "facet_principal_h": _("Cépages principaux"),
@@ -2965,6 +2967,11 @@ _TEMPLATE = """<!doctype html>
   #scope {{ display:flex; flex-wrap:wrap; gap:2px 14px; padding:0 16px 8px; background:var(--n-850); border-bottom:1px solid var(--n-750) }}
   #scope label {{ display:inline-flex; align-items:center; gap:5px; cursor:pointer; font-size:var(--fs-xs); color:#ccc; min-height:24px }}
   #scope label:hover {{ color:var(--n-0) }}
+  #scope .scope-item {{ display:inline-flex; align-items:center; gap:4px }}
+  /* The ⓘ opens the scheme definition the card's pills carry (hover, focus,
+     or a tap); a 24 px target on phones, 20 px beside the desktop checkbox. */
+  #scope .scope-hint {{ display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; padding:0; border:1px solid var(--n-500); border-radius:50%; background:none; color:var(--n-400); font:italic 600 11px/1 Georgia, "Times New Roman", serif; cursor:help; text-decoration:none }}
+  #scope .scope-hint:hover, #scope .scope-hint:focus-visible {{ color:var(--n-0); border-color:var(--n-200) }}
   #scope #show-igp {{ accent-color:var(--c-pgi) }}
   #scope #show-spirits {{ accent-color:var(--c-spirit) }}
   #status .hint-action {{ background:none; border:0; padding:0; margin-left:6px; color:#9ac4ff; font:inherit; cursor:pointer; text-decoration:underline }}
@@ -3006,14 +3013,15 @@ _TEMPLATE = """<!doctype html>
   .facet .tree-row-parent, .facet .tree-row[data-depth="0"] {{ font-weight:600; color:var(--n-100) }}
   /* The chevron folding a subtree: rotates when open; the subtree is the
      hidden sibling wrapper after the row. */
-  .facet .tree-toggle, .facet .tree-toggle-spacer {{ flex:0 0 28px; width:28px; height:26px }}
+  .facet .tree-toggle, .facet .tree-toggle-spacer {{ flex:0 0 28px; width:28px; height:24px }}
   .facet .tree-toggle {{ display:inline-flex; align-items:center; justify-content:center; background:none; border:none; color:#8a8a8a; cursor:pointer; font-size:15px; line-height:1; padding:0; border-radius:3px; transition:transform 0.12s ease, color 0.12s ease, background 0.12s ease }}
   .facet .tree-toggle:hover {{ color:var(--n-0); background:var(--n-750) }}
   .facet .tree-toggle[aria-expanded="true"] {{ transform:rotate(90deg) }}
-  /* Every row is the chevron's height, with or without one. */
-  .facet .tree-row {{ min-height:26px }}
+  /* Every row is the chevron's height, with or without one — the country
+     rows' rhythm (≈ 28 px), so the three trees and the appellation list read
+     as one list. */
+  .facet .tree-row {{ min-height:24px }}
   .facet .tree-children[hidden] {{ display:none }}
-  .facet .tree-row[data-depth="0"]:not(:first-child) {{ margin-top:2px }}
   .facet .tree-row[data-depth="2"] .name {{ color:var(--n-300) }}
   /* Mixed case here too. The FR bassin labels are the join key's own
      ALL-CAPS form only until the catalog translates them — every locale
@@ -3216,10 +3224,11 @@ _TEMPLATE = """<!doctype html>
     .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
     /* The drawer is the one scroll surface: no facet scrolls inside a box of its own. */
     .facet, .facet.facet-appellations {{ max-height:none }}
-    .facet .tree-row {{ min-height:44px }}
-    .facet .tree-toggle, .facet .tree-toggle-spacer {{ flex-basis:44px; width:44px; height:44px }}
-    .facet .tree-toggle {{ font-size:18px }}
-    .facet .tree-row[data-depth="0"]:not(:first-child) {{ margin-top:0 }}
+    /* The same rhythm as the country rows below; the chevron keeps a
+       36 × 24 px target, the WCAG AA minimum. */
+    .facet .tree-toggle, .facet .tree-toggle-spacer {{ flex-basis:36px; width:36px }}
+    .facet .tree-toggle {{ font-size:16px }}
+    #scope .scope-hint {{ width:24px; height:24px; font-size:12px }}
     /* Pinch zooms on a phone; the buttons would only crowd the corner. */
     .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {{ display:none }}
     /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */
@@ -3501,8 +3510,8 @@ _LAB_HEAD_TOP = """<aside id="sidebar" data-nosnippet tabindex="-1" aria-label="
     </div>
     <div id="status" role="status" aria-live="polite" aria-atomic="true">{labels[loading]}</div>
     <div id="scope" role="group" aria-label="{labels[facet_kind_h]}">
-      <label><input type="checkbox" id="show-igp"> <span class="name">{labels[show_igp_label]}</span></label>
-      <label><input type="checkbox" id="show-spirits"> <span class="name">{labels[show_spirits_label]}</span></label>
+      <span class="scope-item"><label><input type="checkbox" id="show-igp"> <span class="name">{labels[show_igp_label]}</span></label><button type="button" class="scope-hint gi-scheme has-info" data-key="pgi" aria-label="{labels[scope_hint_pgi]}">i</button></span>
+      <span class="scope-item"><label><input type="checkbox" id="show-spirits"> <span class="name">{labels[show_spirits_label]}</span></label><button type="button" class="scope-hint gi-scheme has-info" data-key="spirit-gi" aria-label="{labels[scope_hint_spirits]}">i</button></span>
     </div>
 
     <div id="omnisearch" role="search">
@@ -3545,7 +3554,7 @@ _LAB_LEGEND_FOOTER = """
 # Advanced toggle that used to swap the style facet and hide the other two
 # trees is gone. Built from the shared head/active/legend-footer pieces.
 _SIDEBAR = _LAB_HEAD_TOP + _LAB_ACTIVE + """
-    <details open data-facet="styles">
+    <details data-facet="styles">
       <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
       <div class="facet" id="facet-styles"></div>
     </details>

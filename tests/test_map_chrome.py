@@ -90,13 +90,18 @@ def test_viewport_fit_cover_and_phone_chrome() -> None:
 def test_tree_rows_share_one_height_and_one_chevron_slot() -> None:
     css = CSS.replace("{{", "{").replace("}}", "}")
     assert "padding-right:27px" not in css
-    assert re.search(r"\.facet \.tree-toggle, \.facet \.tree-toggle-spacer \{ flex:0 0 28px; width:28px", css)
-    assert ".facet .tree-row { min-height:26px }" in css
+    assert re.search(r"\.facet \.tree-toggle, \.facet \.tree-toggle-spacer \{ flex:0 0 28px; width:28px; height:24px", css)
+    assert ".facet .tree-row { min-height:24px }" in css
     phone = css[css.index("@media (max-width: 768px)"):]
-    assert ".facet .tree-row { min-height:44px }" in phone
+    # Phones keep the desktop row height — the country rows' rhythm (a 44 px
+    # row read as padding) — and widen the chevron slot to a 36 × 26 px target,
+    # above the 24 px WCAG AA minimum.
+    assert ".facet .tree-row { min-height:44px }" not in phone
     assert ".facet, .facet.facet-appellations { max-height:none }" in phone
+    assert "#scope .scope-hint { width:24px; height:24px" in phone
+    assert "#scope .scope-hint { display:inline-flex" in css
     # The drawer's brand block is hidden visually on phones, never removed: it
     # is the page <h1> on the home and fold pages.
     assert "#sidebar .brand-title, #sidebar .subtitle { position:absolute; width:1px; height:1px;" in phone
     assert "#sidebar .brand-title { display:none" not in phone
-    assert re.search(r"\.facet \.tree-toggle, \.facet \.tree-toggle-spacer \{ flex-basis:44px; width:44px; height:44px", phone)
+    assert re.search(r"\.facet \.tree-toggle, \.facet \.tree-toggle-spacer \{ flex-basis:36px; width:36px \}", phone)

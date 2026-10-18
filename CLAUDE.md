@@ -6301,13 +6301,21 @@ code that owns each piece:
   language → theme → the count with its **scope row** (`#scope`: "Show
   PGIs", "Include spirits" — both always visible; spirits default off; a
   scope toggle redraws in place and never moves the camera — only a facet
-  pick fits the map to its matches, 2026-10-18) →
+  pick fits the map to its matches; each toggle carries an ⓘ
+  (`.scope-hint`, `data-key` pgi / spirit-gi) that opens the scheme
+  definition of the card's pills — `TERMS_INFO`, the same tooltip element —
+  by hover, focus or a tap; touch drives it through the click alone, a tap
+  toggles it, because a tap is a burst of synthetic mouse events whose
+  trailing mouseout would close what the tap opened, 2026-10-18) →
   omnisearch → active-filter chips → **Wine style** (the taxonomy tree,
   depth-0 rows in `FACET_BUCKET_ORDER`, sub-styles behind a chevron; a row
   without children ends in a `.tree-toggle-spacer` of the chevron's width —
   28 px, 44 px on phones — and every row is the chevron's height, so the
   counts sit in one column at every breakpoint; on phones no facet scrolls
-  inside a box of its own — the drawer is the one scroll surface) →
+  inside a box of its own — the drawer is the one scroll surface; the
+  section starts collapsed, like Classification and Appellation type — only
+  the appellation tree is open by default, and `revealCheckedTreeRows`
+  opens a section whose tree holds a tick, 2026-10-18) →
   Classification and Appellation type (collapsed) → the country → region →
   appellation tree → footer. The legend left the sidebar for the map. A
   tree row is a `.tree-row` / `.aoc-row` div holding the checkbox's `<label>`

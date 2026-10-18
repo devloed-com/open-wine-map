@@ -94,3 +94,29 @@ def test_tree_rows_without_children_carry_a_chevron_spacer() -> None:
     # chevron's width — a button, or an inert spacer (feedback 2026-10-18: the
     # 27px padding only matched the desktop chevron; phones draw it 44px).
     assert '<span class="tree-toggle-spacer" aria-hidden="true"></span>' in APP_JS
+
+
+def test_only_the_appellation_tree_starts_open() -> None:
+    # Boris 2026-10-18: by default only the appellation tree is expanded; the
+    # three facet trees start collapsed. A tick that reaches a collapsed tree
+    # through the search opens its section (revealCheckedTreeRows).
+    assert '<details open data-facet="appellations">' in _SIDEBAR
+    assert _SIDEBAR.count("<details open") == 1
+    assert '<details data-facet="styles">' in _SIDEBAR
+    assert "section.open = true" in APP_JS
+
+
+def test_scope_toggles_carry_a_scheme_hint() -> None:
+    # Not every reader knows a PGI from a PDO: an ⓘ after each scope toggle
+    # opens the scheme definition the card's pills already carry (TERMS_INFO
+    # keys pgi / spirit-gi), by hover, focus or a tap.
+    assert 'class="scope-hint gi-scheme has-info" data-key="pgi"' in _LAB_HEAD_TOP
+    assert 'class="scope-hint gi-scheme has-info" data-key="spirit-gi"' in _LAB_HEAD_TOP
+    assert "scopeRow.addEventListener('click'" in APP_JS
+    assert "scopeRow.addEventListener('focusin', showHint)" in APP_JS
+    # Touch drives the hint through the click alone: a tap is a burst of
+    # synthetic mouse events (mouseover, click, mouseout), and the trailing
+    # mouseout would otherwise close what the tap just opened.
+    assert "e.pointerType === 'touch' && e.target.closest('.scope-hint')" in APP_JS
+    assert "if (e.type === 'mouseover' && touching()) return;" in APP_JS
+
