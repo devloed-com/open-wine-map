@@ -121,6 +121,15 @@ def test_tree_rows_without_children_carry_a_chevron_spacer() -> None:
     assert '<span class="tree-toggle-spacer" aria-hidden="true"></span>' in APP_JS
 
 
+def test_appellation_type_tree_is_withheld_but_dormant() -> None:
+    # Boris 2026-10-18: drop the appellation-type facet for now (to come back
+    # with the AVAs). Only the markup is gone; the builder keeps its null-guard.
+    assert 'data-facet="appellation-type"' not in _SIDEBAR
+    assert 'id="facet-appellation-type"' not in _SIDEBAR
+    assert "buildTreeFacet('facet-appellation-type', FACET_TERM_TREE, filters.appellationType, TERM_LABELS, 'appellation-type');" in APP_JS
+    assert "if (!el) return;  // defensive null-guard" in APP_JS
+
+
 def test_only_the_appellation_tree_starts_open() -> None:
     # Boris 2026-10-18: by default only the appellation tree is expanded; the
     # three facet trees start collapsed. A tick that reaches a collapsed tree
@@ -164,6 +173,13 @@ def test_language_and_theme_live_in_the_settings_control() -> None:
     for mode, label in (("light", "theme_light"), ("system", "theme_system"), ("dark", "theme_dark")):
         assert f'data-theme-mode="{mode}"' in _LAB_LEGEND_FOOTER
         assert "{labels[" + label + "]}</button>" in _LAB_LEGEND_FOOTER
+    # SVG icons, never the ☀ ◐ ☾ glyphs (emoji on some platforms), on equal cells.
+    assert _LAB_LEGEND_FOOTER.count('<span class="ico"><svg viewBox="0 0 24 24"') == 3
+    for glyph in ("☀", "◐", "☾"):
+        assert glyph not in _LAB_LEGEND_FOOTER, glyph
+    css = _TEMPLATE.replace("{{", "{").replace("}}", "}")
+    assert "#theme-toggle .theme-btn { flex:1 1 0; min-width:0;" in css
+    assert "#sidebar > * { flex:0 0 auto }" in css
     assert "map.addControl(settingsControl, 'top-right');" in APP_JS
     assert "function homeSettings()" in APP_JS and "bar.insertBefore(btn, sidebarToggle || null);" in APP_JS
     assert "menu.classList.add('placed'); this._el.appendChild(menu);" in APP_JS

@@ -5969,8 +5969,9 @@ matches the record's, that no `class_label` is empty, and reports the
 per-country distribution against the rosters. Run it after every stage-04
 build (`--strict` in CI).
 
-The facet is its own two-level tree ("Appellation type", a collapsed
-section of the sidebar):
+The facet is its own two-level tree ("Appellation type" — withheld from the
+sidebar since 2026-10-18, its `<details>` the only thing removed; the tree
+code is dormant, to return with the AVAs):
 scheme rows over flag + term rows, built with `buildTreeFacet` over
 `class_key`; counts are parents-only and wines-only, so DOCG = the roster
 count, not roster + sottozone.
@@ -6353,8 +6354,12 @@ code that owns each piece:
   section starts collapsed, like Classification and Appellation type — only
   the appellation tree is open by default, and `revealCheckedTreeRows`
   opens a section whose tree holds a tick, 2026-10-18) →
-  Classification and Appellation type (collapsed) → the country → region →
-  appellation tree → footer (the disclaimer + the two links), which also
+  Classification (collapsed; the Appellation type tree is withheld from the
+  sidebar since 2026-10-18 — Boris: drop it for now, it may come back when
+  AVAs etc. are introduced; its markup is the only thing removed, the
+  builder, data tokens and chip handling stay dormant behind null-guards) →
+  the country → region → appellation tree → footer (the disclaimer + the
+  two links), which also
   holds the server-rendered `#config-menu` (language + theme) that app.js
   lifts into the ⚙ control — a no-JS visitor keeps the language links there.
   The sidebar is a flex column: on desktop the open appellation `<details>`

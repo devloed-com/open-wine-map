@@ -2937,6 +2937,10 @@ _TEMPLATE = """<!doctype html>
      frame (an entity landing); app.js adds `booted` after two frames. */
   html:not(.booted) #panel, html:not(.booted) #sidebar {{ transition:none }}
   #sidebar {{ width:300px; flex:0 0 300px; background:var(--side-bg); color:var(--side-text); overflow-y:auto; border-right:1px solid var(--side-border); display:flex; flex-direction:column }}
+  /* No child of the column ever shrinks below its content (the chip tray
+     once did, spilling its chip onto the header below); the open
+     appellation tree is the one flexing child, by its own rule. */
+  #sidebar > * {{ flex:0 0 auto }}
   /* The head: the brand and, on desktop, the button that folds the sidebar to
      a rail (feedback 2026-10-18: "sidebar collapsable on desktop as well"). */
   .sidebar-head {{ display:flex; align-items:center; gap:8px; padding:12px 8px 2px 16px }}
@@ -3003,14 +3007,21 @@ _TEMPLATE = """<!doctype html>
   /* The theme switch keeps its three states (light / system / dark), now
      with their words beside the icons — the icon alone read as a mystery. */
   #theme-toggle {{ display:flex; gap:0; padding:4px 14px 8px }}
-  #theme-toggle .theme-btn {{ flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; background:var(--side-bg-2); color:var(--side-text-2); border:1px solid var(--side-border-2); border-left:none; padding:7px 6px; cursor:pointer; font-size:var(--fs-sm); line-height:1.2; white-space:nowrap }}
+  /* Three equal cells (basis 0), an SVG icon beside each word — the ☀ ◐ ☾
+     glyphs rendered as emoji or text by platform and sized each cell to
+     its label (feedback 2026-10-18). */
+  #theme-toggle .theme-btn {{ flex:1 1 0; min-width:0; display:inline-flex; align-items:center; justify-content:center; gap:5px; background:var(--side-bg-2); color:var(--side-text-2); border:1px solid var(--side-border-2); border-left:none; padding:8px 4px; cursor:pointer; font-size:var(--fs-sm); line-height:1; white-space:nowrap }}
   #theme-toggle .theme-btn:first-child {{ border-left:1px solid var(--side-border-2); border-radius:4px 0 0 4px }}
   #theme-toggle .theme-btn:last-child {{ border-radius:0 4px 4px 0 }}
   #theme-toggle .theme-btn:hover {{ color:var(--side-text) }}
   #theme-toggle .theme-btn.active {{ background:var(--c-accent); color:var(--n-0); border-color:var(--c-accent) }}
-  #theme-toggle .theme-btn .ico {{ font-size:13px }}
-  #active-filters {{ display:flex; align-items:center; gap:6px; padding:8px 12px 4px; min-height:0 }}
-  #active-filters:has(#active-filters-chips:empty) {{ padding-bottom:0 }}
+  #theme-toggle .theme-btn .ico {{ display:inline-flex; width:14px; height:14px; flex:0 0 14px }}
+  #theme-toggle .theme-btn .ico svg {{ width:14px; height:14px }}
+  /* The chip tray shares the sidebar's 16 px gutter and breathes above the
+     next header (feedback 2026-10-18: the chip overhung the content edge
+     and sat on the border below). */
+  #active-filters {{ display:flex; align-items:flex-start; gap:8px; padding:10px 16px; border-bottom:1px solid var(--side-border) }}
+  #active-filters:has(#active-filters-chips:empty) {{ display:none }}
   #active-filters-chips {{ display:flex; flex-wrap:wrap; gap:4px; flex:1 }}
   #active-filters-chips:empty {{ display:none }}
   .filter-chip {{ display:inline-flex; align-items:center; gap:4px; padding:2px 4px 2px 8px; background:var(--side-bg-3); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:11px; font-size:var(--fs-xs); line-height:1.3 }}
@@ -3023,7 +3034,7 @@ _TEMPLATE = """<!doctype html>
   .filter-chip.toggle-chip:hover {{ background:var(--side-chip-on) }}
   .filter-chip.toggle-chip input {{ accent-color:var(--c-accent); margin:0; width:12px; height:12px }}
   .filter-chip.toggle-chip:has(input:checked) {{ background:var(--side-chip-on); color:var(--side-text) }}
-  #active-filters #reset {{ background:transparent; color:var(--side-text-3); border:none; padding:2px 6px; cursor:pointer; font-size:var(--fs-xs); text-decoration:underline; flex:0 0 auto }}
+  #active-filters #reset {{ background:transparent; color:var(--side-text-3); border:none; padding:3px 0 3px 6px; cursor:pointer; font-size:var(--fs-xs); text-decoration:underline; flex:0 0 auto; line-height:1.3 }}
   #active-filters #reset:hover {{ color:var(--side-text) }}
   #active-filters-chips:empty + #reset {{ display:none }}
   #sidebar > details > summary .facet-badge {{ display:inline-block; margin-left:6px; padding:1px 6px; background:var(--c-accent); color:var(--n-0); border-radius:8px; font-size:var(--fs-2xs); font-weight:600 }}
@@ -3308,6 +3319,10 @@ _TEMPLATE = """<!doctype html>
     .owm-legend .scope-hint {{ width:24px; height:24px; font-size:12px }}
     /* Pinch zooms on a phone; the buttons would only crowd the corner. */
     .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {{ display:none }}
+    /* Chips at the drawer's text size, the × a 24 px target. */
+    .filter-chip {{ font-size:var(--fs-sm); padding:4px 6px 4px 10px }}
+    .filter-chip button {{ font-size:18px; padding:0 6px; min-width:24px; min-height:24px }}
+    #active-filters #reset {{ font-size:var(--fs-sm); padding-top:6px }}
     /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */
     .omni-input {{ font-size:16px }}
   }}
@@ -3403,6 +3418,8 @@ _TEMPLATE = """<!doctype html>
     #mobile-bar .owm-settings-btn svg {{ width:20px; height:20px; fill:currentColor }}
     #config-menu.in-bar {{ position:fixed; top:calc(44px + env(safe-area-inset-top, 0px)); right:6px; min-width:220px; background:var(--side-bg); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:5 }}
     #config-menu.in-bar[hidden] {{ display:none }}
+    #theme-toggle .theme-btn {{ font-size:var(--fs-md); padding:10px 4px }}
+    #lang-switcher a {{ padding:10px 10px; font-size:15px }}
   }}
   html.theme-dark .maplibregl-ctrl-attrib, html.theme-dark .maplibregl-ctrl-group {{ background:var(--n-dark-panel); color:var(--n-dark-text) }}
   html.theme-dark .maplibregl-ctrl-attrib a {{ color:var(--n-dark-text) }}
@@ -3643,9 +3660,9 @@ _LAB_LEGEND_FOOTER = """
       <div class="config-section"><div class="config-h">{labels[lang_switcher_aria]}</div>{lang_switcher_html}</div>
       <div class="config-section"><div class="config-h" id="theme-h">{labels[theme_h]}</div>
         <div id="theme-toggle" role="group" aria-labelledby="theme-h">
-          <button type="button" data-theme-mode="light" class="theme-btn" aria-pressed="false"><span class="ico" aria-hidden="true">☀</span>{labels[theme_light]}</button>
-          <button type="button" data-theme-mode="system" class="theme-btn active" aria-pressed="true"><span class="ico" aria-hidden="true">◐</span>{labels[theme_system]}</button>
-          <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false"><span class="ico" aria-hidden="true">☾</span>{labels[theme_dark]}</button>
+          <button type="button" data-theme-mode="light" class="theme-btn" aria-pressed="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>{labels[theme_light]}</button>
+          <button type="button" data-theme-mode="system" class="theme-btn active" aria-pressed="true"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/></svg></span>{labels[theme_system]}</button>
+          <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span>{labels[theme_dark]}</button>
         </div>
       </div>
     </div>
@@ -3671,7 +3688,13 @@ _LAB_LEGEND_FOOTER = """
 # classification and appellation-type trees, and the country → region →
 # appellation tree. One sidebar for everyone since 2026-10: the Simple /
 # Advanced toggle that used to swap the style facet and hide the other two
-# trees is gone. Built from the shared head/active/legend-footer pieces.
+# trees is gone. The appellation-type tree (scheme → traditional term) is
+# withheld from the sidebar since 2026-10-18 (Boris: "drop it for now, we
+# might resurrect it when AVAs etc. are introduced") — the markup is the
+# only thing removed; buildTreeFacet('facet-appellation-type', …), the
+# facet's data tokens and the chip handling are dormant behind their
+# null-guards, so adding the <details> back is the whole resurrection.
+# Built from the shared head/active/legend-footer pieces.
 _SIDEBAR = _LAB_HEAD_TOP + _LAB_ACTIVE + """
     <details data-facet="styles">
       <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
@@ -3681,11 +3704,6 @@ _SIDEBAR = _LAB_HEAD_TOP + _LAB_ACTIVE + """
     <details data-facet="classification">
       <summary><span class="facet-label">{labels[facet_classification_h]}</span><span class="facet-badge"></span></summary>
       <div class="facet" id="facet-classification"></div>
-    </details>
-
-    <details data-facet="appellation-type">
-      <summary><span class="facet-label">{labels[facet_appellation_type_h]}</span><span class="facet-badge"></span></summary>
-      <div class="facet" id="facet-appellation-type"></div>
     </details>
 
     <details open data-facet="appellations">
