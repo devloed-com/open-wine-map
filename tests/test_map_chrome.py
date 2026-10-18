@@ -105,6 +105,14 @@ def test_tree_rows_share_one_height_and_one_chevron_slot() -> None:
     # above the 24 px WCAG AA minimum.
     assert ".facet .tree-row { min-height:44px }" not in phone
     assert ".facet, .facet.facet-appellations { max-height:none }" in phone
+    # Desktop: the appellation tree flexes to the sidebar's remaining height and
+    # the footer sits at the bottom (feedback 2026-10-18); phones keep the drawer
+    # as the one scroll surface.
+    assert '#sidebar > details[data-facet="appellations"][open] { flex:1 1 auto; min-height:190px; overflow-y:auto }' in css
+    assert '#sidebar > details[data-facet="appellations"] > summary { position:sticky; top:0;' in css
+    assert ".facet.facet-appellations { max-height:none; overflow:visible }" in css
+    assert "#sidebar-footer { flex:0 0 auto; margin-top:auto;" in css
+    assert '#sidebar > details[data-facet="appellations"][open] { flex:0 0 auto; min-height:0; overflow:visible }' in phone
     assert ".owm-legend .scope-hint { width:24px; height:24px" in phone
     assert ".owm-legend .scope-hint { display:inline-flex" in css
     # The ⚙ button grows to a 44 px target on phones; that rule must follow the

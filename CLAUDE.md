@@ -6348,9 +6348,16 @@ code that owns each piece:
   the appellation tree is open by default, and `revealCheckedTreeRows`
   opens a section whose tree holds a tick, 2026-10-18) →
   Classification and Appellation type (collapsed) → the country → region →
-  appellation tree → footer, which also holds the server-rendered
-  `#config-menu` (language + theme) that app.js lifts into the ⚙ control —
-  a no-JS visitor keeps the language links there. Countries and regions
+  appellation tree → footer (the disclaimer + the two links), which also
+  holds the server-rendered `#config-menu` (language + theme) that app.js
+  lifts into the ⚙ control — a no-JS visitor keeps the language links there.
+  The sidebar is a flex column: on desktop the open appellation `<details>`
+  takes every pixel left (`flex:1 1 auto`, at least 190 px) and is its own
+  scroll box with a sticky summary — its content sits in the element's
+  shadow slot, out of reach of a flex rule on the inner `.facet` — so the
+  footer sits at the bottom whatever the list's length (feedback
+  2026-10-18: it floated mid-sidebar under a 340 px list); on phones the
+  drawer stays the one scroll surface. Countries and regions
   sort **alphabetically** in the page's language (`COUNTRY_TREE`; by size
   until 2026-10-18, the "no region" bucket still last). The legend left the
   sidebar for the map. **Sub-denominations nest under their parent's row**

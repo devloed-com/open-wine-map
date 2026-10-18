@@ -2936,7 +2936,7 @@ _TEMPLATE = """<!doctype html>
   /* Boot: no slide-in for a panel or drawer that is open from the first
      frame (an entity landing); app.js adds `booted` after two frames. */
   html:not(.booted) #panel, html:not(.booted) #sidebar {{ transition:none }}
-  #sidebar {{ width:300px; flex:0 0 300px; background:var(--side-bg); color:var(--side-text); overflow-y:auto; border-right:1px solid var(--side-border) }}
+  #sidebar {{ width:300px; flex:0 0 300px; background:var(--side-bg); color:var(--side-text); overflow-y:auto; border-right:1px solid var(--side-border); display:flex; flex-direction:column }}
   /* The head: the brand and, on desktop, the button that folds the sidebar to
      a rail (feedback 2026-10-18: "sidebar collapsable on desktop as well"). */
   .sidebar-head {{ display:flex; align-items:center; gap:8px; padding:12px 8px 2px 16px }}
@@ -3039,7 +3039,16 @@ _TEMPLATE = """<!doctype html>
   summary:hover {{ color:var(--side-text) }}
   summary::-webkit-details-marker {{ color:var(--side-text-3) }}
   .facet {{ max-height:240px; overflow-y:auto; padding:0 16px 8px }}
-  .facet.facet-appellations {{ max-height:340px }}
+  /* The appellation tree takes every pixel the sidebar has left and scrolls
+     inside it; the footer sits at the bottom whatever the list's length
+     (feedback 2026-10-18: it floated mid-sidebar after a 340 px list).
+     The other facets keep their 240 px box. */
+  /* The <details> itself is the scroll box (its content sits in a shadow
+     slot, out of reach of flex), its summary sticky at the top. */
+  #sidebar > details[data-facet="appellations"] {{ min-height:0 }}
+  #sidebar > details[data-facet="appellations"][open] {{ flex:1 1 auto; min-height:190px; overflow-y:auto }}
+  #sidebar > details[data-facet="appellations"] > summary {{ position:sticky; top:0; background:var(--side-bg); z-index:1 }}
+  .facet.facet-appellations {{ max-height:none; overflow:visible }}
   .facet label {{ display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; font-size:var(--fs-sm); color:var(--side-text) }}
   .facet input[type=checkbox] {{ accent-color:var(--c-accent); flex:0 0 auto }}
   .facet .name {{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
@@ -3284,6 +3293,7 @@ _TEMPLATE = """<!doctype html>
     .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
     /* The drawer is the one scroll surface: no facet scrolls inside a box of its own. */
     .facet, .facet.facet-appellations {{ max-height:none }}
+    #sidebar > details[data-facet="appellations"][open] {{ flex:0 0 auto; min-height:0; overflow:visible }}
     /* The same rhythm as the country rows below; the chevron keeps a
        36 × 24 px target, the WCAG AA minimum. */
     .facet .tree-toggle, .facet .tree-toggle-spacer {{ flex-basis:36px; width:36px }}
@@ -3295,7 +3305,7 @@ _TEMPLATE = """<!doctype html>
     /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */
     .omni-input {{ font-size:16px }}
   }}
-  #sidebar-footer {{ padding:12px 16px 16px; margin-top:8px; border-top:1px solid var(--side-border); font-size:var(--fs-xs); color:var(--side-text-3); text-align:center }}
+  #sidebar-footer {{ flex:0 0 auto; margin-top:auto; padding:12px 16px 16px; border-top:1px solid var(--side-border); font-size:var(--fs-xs); color:var(--side-text-3); text-align:center }}
   #sidebar-footer a {{ color:var(--side-text-3); text-decoration:none }}
   #sidebar-footer a:hover {{ color:var(--side-text); text-decoration:underline }}
   #sidebar-footer .sep {{ margin:0 6px; color:var(--side-border-2) }}
