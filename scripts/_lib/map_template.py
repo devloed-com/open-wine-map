@@ -2973,7 +2973,12 @@ _TEMPLATE = """<!doctype html>
   #omni-clear {{ position:absolute; right:6px; top:50%; transform:translateY(-50%); width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; background:none; border:none; border-radius:50%; color:var(--side-text-3); font-size:20px; line-height:1; cursor:pointer; padding:0 }}
   #omni-clear:hover {{ background:var(--side-bg-3); color:var(--side-text) }}
   #omni-clear[hidden] {{ display:none }}
-  .omni-suggestions {{ position:absolute; left:16px; right:16px; top:calc(100% - 4px); z-index:60; max-height:min(60vh, 360px); overflow-y:auto; background:var(--side-bg); border:1px solid var(--side-border-2); border-radius:6px; box-shadow:0 8px 24px rgba(0,0,0,0.18) }}
+  /* The results are in the flow, not a popup: while the box holds text
+     they replace the filters below (`#sidebar.searching`) and scroll with
+     the sidebar — the dropdown that sat half over the tree read as a
+     layout error (feedback 2026-10-18). */
+  .omni-suggestions {{ position:static; margin:8px -16px -8px; background:var(--side-bg); border:0; border-top:1px solid var(--side-border) }}
+  #sidebar.searching > details, #sidebar.searching #active-filters, #sidebar.searching #status {{ display:none }}
   .omni-suggestions[hidden] {{ display:none }}
   .omni-group-header {{ position:sticky; top:0; padding:4px 8px; background:var(--side-bg-2); color:var(--side-text-3); font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:0.09em }}
   .omni-suggestions .suggestion {{ display:flex; align-items:center; gap:6px; padding:6px 8px; cursor:pointer; font-size:var(--fs-sm); color:var(--side-text); border-bottom:1px solid var(--side-border) }}
@@ -3268,8 +3273,9 @@ _TEMPLATE = """<!doctype html>
     #mobile-bar {{ display:flex; align-items:center; gap:4px; flex:0 0 auto; min-height:44px; padding:env(safe-area-inset-top, 0px) 6px 0 12px; background:var(--side-bg); color:var(--side-text); border-bottom:1px solid var(--side-border); z-index:30 }}
     #mobile-bar .mobile-brand {{ flex:1; display:flex; align-items:center; gap:8px; min-width:0; color:var(--side-text); text-decoration:none; font-weight:600; font-size:15px; letter-spacing:0.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }}
     #mobile-bar .brand-mark {{ width:18px; height:18px; flex:0 0 18px }}
-    #mobile-bar button {{ flex:0 0 44px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:none; color:var(--side-text); border:none; border-radius:4px; font-size:18px; cursor:pointer }}
-    #mobile-bar button:hover, #mobile-bar button[aria-expanded="true"] {{ background:var(--side-bg-3) }}
+    /* Direct children only: the ⚙ menu homed into the bar carries its own buttons. */
+    #mobile-bar > button {{ flex:0 0 44px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:none; color:var(--side-text); border:none; border-radius:4px; font-size:18px; cursor:pointer }}
+    #mobile-bar > button:hover, #mobile-bar > button[aria-expanded="true"] {{ background:var(--side-bg-3) }}
     /* The drawer opens under the bar, which stays usable (its menu button closes it). */
     #sidebar {{ position:fixed; top:calc(44px + env(safe-area-inset-top, 0px)); left:0; width:280px; height:calc(100vh - 44px); height:calc(100dvh - 44px - env(safe-area-inset-top, 0px)); padding-bottom:env(safe-area-inset-bottom, 0px); box-sizing:border-box; flex:0 0 auto; transform:translateX(-100%); transition:transform 0.18s ease; z-index:25; box-shadow:2px 0 12px rgba(0,0,0,0.25) }}
     #sidebar.open {{ transform:translateX(0) }}
@@ -3390,8 +3396,13 @@ _TEMPLATE = """<!doctype html>
   .owm-settings .owm-settings-btn svg {{ width:20px; height:20px; fill:currentColor }}
   #config-menu.placed {{ position:absolute; right:0; top:42px; min-width:220px; background:var(--side-bg); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:5 }}
   #config-menu.placed[hidden] {{ display:none }}
+  /* On a phone the ⚙ sits in the bar (app.js homeSettings) and the map's
+     control is empty; the menu drops from the bar's right end. */
   @media (max-width: 768px) {{
-    .owm-settings .owm-settings-btn {{ width:44px !important; height:44px !important }}
+    .maplibregl-ctrl-top-right .owm-settings {{ display:none }}
+    #mobile-bar .owm-settings-btn svg {{ width:20px; height:20px; fill:currentColor }}
+    #config-menu.in-bar {{ position:fixed; top:calc(44px + env(safe-area-inset-top, 0px)); right:6px; min-width:220px; background:var(--side-bg); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:5 }}
+    #config-menu.in-bar[hidden] {{ display:none }}
   }}
   html.theme-dark .maplibregl-ctrl-attrib, html.theme-dark .maplibregl-ctrl-group {{ background:var(--n-dark-panel); color:var(--n-dark-text) }}
   html.theme-dark .maplibregl-ctrl-attrib a {{ color:var(--n-dark-text) }}
@@ -3533,7 +3544,6 @@ _TEMPLATE = """<!doctype html>
 
   <header id="mobile-bar">
     <a class="mobile-brand" href="/"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</a>
-    <button id="mobile-search" type="button" aria-label="{labels[search_h]}" aria-controls="sidebar" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
     <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}" aria-controls="sidebar" aria-expanded="false">☰</button>
   </header>
 

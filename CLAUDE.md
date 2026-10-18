@@ -6336,8 +6336,14 @@ code that owns each piece:
   before first paint from `localStorage.sidebar_collapsed`, desktop only —
   the phone media query ignores it; `setSidebarCollapsed`) → the
   **omnisearch first** (a taller field with a magnifier and a × clear
-  button; Esc backs out one step at a time: the list, then the text with
-  the tree filter it holds, then the key reaches the drawer / panel) →
+  button; its results are **not a popup**: while the box holds text they
+  replace the filters below it — `#sidebar.searching` hides the facets,
+  the count and the chips, the list sits in the flow and scrolls with the
+  sidebar, 25 appellations and 6 of each other group — because the
+  dropdown that sat half over the tree read as a layout error to the
+  2026-10-18 testers; an empty box shows the filters again, there are no
+  seeds for an empty query, and Esc or the × clears the text and the tree
+  filter with it, an empty box letting the key reach the drawer / panel) →
   the count → active-filter chips → **Wine style** (the taxonomy tree,
   depth-0 rows in `FACET_BUCKET_ORDER`, sub-styles behind a chevron; a row
   without children ends in a `.tree-toggle-spacer` of the chevron's width —
@@ -6435,10 +6441,14 @@ code that owns each piece:
   as rows (`stackRows`: name · classification · region; a click brings it to
   the front, `via: stack-pick`) under a visible hint; only the focus record's
   payload is fetched.
-- **Phones (≤ 768px)**: a bar (`#mobile-bar`: brand link, search, menu — the
-  first screen is no longer a bare map) over the map, the ⚙ control and the
-  legend pills on the map as on desktop (the ⚙ a 44 px target there; the
-  sidebar's fold button and rail do not exist on phones); the sidebar is a
+- **Phones (≤ 768px)**: a bar (`#mobile-bar`: brand link, ⚙, ☰ — the first
+  screen is no longer a bare map) over the map; the ⚙ and its menu are
+  homed into the bar by `homeSettings` (re-homed when the viewport crosses
+  768 px) and the map's control is hidden there — a control floating under
+  the bar looked misplaced — and the bar's search button went on 2026-10-18
+  because it opened the drawer the ☰ opens, the search being the drawer's
+  first row anyway; the legend pills stay on the map; the sidebar's fold
+  button and rail do not exist on phones; the sidebar is a
   drawer with a scrim — its own brand block (`.brand-title` + `.subtitle`,
   the page `<h1>` on the home and fold pages) is visually hidden there, not
   removed, since the bar already names the site 50 px above it (2026-10-18) (`setDrawer` owns `#sidebar.open`, the scrim and the

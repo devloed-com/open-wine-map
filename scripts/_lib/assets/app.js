@@ -493,7 +493,6 @@
   // the button that opened it (WCAG 2.4.3).
   const sidebarEl = document.getElementById('sidebar');
   const sidebarToggle = document.getElementById('sidebar-toggle');
-  const mobileSearch = document.getElementById('mobile-search');
   const scrim = document.getElementById('scrim');
   let drawerOpener = null;
   function isMobile() { return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches); }
@@ -502,7 +501,7 @@
     const was = drawerOpen();
     sidebarEl.classList.toggle('open', open);
     if (scrim) scrim.hidden = !open;
-    for (const b of [sidebarToggle, mobileSearch]) if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (sidebarToggle) sidebarToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (open && !was) {
       drawerOpener = opener || null;
       track('Drawer Opened', { via: via || 'menu', locale: LANG });
@@ -514,7 +513,6 @@
     }
   }
   if (sidebarToggle) sidebarToggle.addEventListener('click', () => setDrawer(!drawerOpen(), 'menu', sidebarToggle));
-  if (mobileSearch) mobileSearch.addEventListener('click', () => setDrawer(true, 'search', mobileSearch));
   if (scrim) scrim.addEventListener('click', () => setDrawer(false));
 
   // The desktop sidebar folds to a rail (feedback 2026-10-18): the state is
@@ -769,8 +767,27 @@
     },
   };
   map.addControl(settingsControl, 'top-right');
+  // On a phone the ⚙ and its menu live in the bar beside the ☰ (feedback
+  // 2026-10-18: a control floating under the bar looked misplaced); on
+  // desktop in the map control. Re-homed when the viewport crosses 768 px.
+  function homeSettings() {
+    const menu = settingsControl._menu, btn = settingsControl._btn, bar = document.getElementById('mobile-bar');
+    if (!menu || !btn) return;
+    if (isMobile() && bar) {
+      bar.insertBefore(btn, sidebarToggle || null);
+      bar.appendChild(menu);
+      menu.classList.add('in-bar');
+    } else {
+      settingsControl._el.appendChild(btn);
+      settingsControl._el.appendChild(menu);
+      menu.classList.remove('in-bar');
+    }
+  }
+  homeSettings();
+  const MOBILE_MQ = window.matchMedia('(max-width: 768px)');
+  if (MOBILE_MQ.addEventListener) MOBILE_MQ.addEventListener('change', homeSettings);
   document.addEventListener('click', e => {
-    if (settingsControl.isOpen() && !e.target.closest('.owm-settings')) settingsControl.setOpen(false, false);
+    if (settingsControl.isOpen() && !e.target.closest('#config-menu, #settings-toggle')) settingsControl.setOpen(false, false);
   });
 
   const filters = {
@@ -2061,40 +2078,12 @@
       }
       return html;
     }
-    function showDrop(html) { drop.innerHTML = html; drop.hidden = false; input.setAttribute('aria-expanded', 'true'); }
+    function showDrop(html) { drop.innerHTML = html; drop.hidden = false; input.setAttribute('aria-expanded', 'true'); setSearching(true); }
     function hideDrop() {
       drop.hidden = true; drop.innerHTML = ''; items = []; activeIdx = -1;
-      input.setAttribute('aria-expanded', 'false'); clearActiveDescendant();
+      input.setAttribute('aria-expanded', 'false'); clearActiveDescendant(); setSearching(false);
     }
 
-    // Empty-query state: seed the dropdown with popular grapes / styles /
-    // regions so a user can discover the taxonomy without knowing a name
-    // (appellations are excluded — there is no meaningful "popular" few).
-    function renderSeeds() {
-      const role = filters.mainGrapeOnly ? 'principal' : 'all';
-      const ck = filters.mainGrapeOnly ? 'count_principal' : 'count';
-      // Over-fetch then sort by the active scope's count so "popular grapes"
-      // reflects principal usage when "main grape only" is on (the shared index
-      // is ordered by total count; re-sorting here keeps the canonical facet,
-      // which also uses the empty-query branch, untouched).
-      const grapes = rankGrapeSuggestions('', role, 30)
-        .sort((a, b) => (b.entry[ck] || 0) - (a.entry[ck] || 0))
-        .slice(0, 5)
-        .map(s => ({
-          type: 'grape', key: s.entry.slug, name: toTitleCase(s.entry.label), sub: '',
-          count: s.entry[ck] || 0,
-        }));
-      const styles = _STYLE_INDEX.slice().sort((a, b) => b.count - a.count).slice(0, 5)
-        .map(s => ({ type: 'style', key: s.key, name: s.label, sub: '', count: s.count }));
-      const regions = _REGION_INDEX.slice().sort((a, b) => b.count - a.count).slice(0, 5)
-        .map(r => ({ type: 'region', key: r.region, name: r.label, sub: '', count: r.count }));
-      const html = paintGroups({ grapes, styles, regions }, ['grapes', 'styles', 'regions']);
-      if (!items.length) { hideDrop(); return; }
-      showDrop(html);
-      activeIdx = -1;  // passive: Enter on an empty box does nothing
-      clearActiveDescendant();
-      setLive('');
-    }
     function renderNoResults(q) {
       items = []; activeIdx = -1;
       const msg = fmt(LABELS.omni_no_results, { q });
@@ -2102,11 +2091,18 @@
       clearActiveDescendant();
       setLive(msg);
     }
+    // The results are not a popup: while the box holds text they replace the
+    // filters below it (`#sidebar.searching` hides the facets, the count and
+    // the chips), on desktop and phone alike — the dropdown used to sit half
+    // over the tree and read as a layout error (feedback 2026-10-18). An
+    // empty box shows the filters again; no seeds for an empty query.
+    function setSearching(on) { sidebarEl.classList.toggle('searching', on); }
     function renderDrop(q) {
-      // A query of only punctuation or spaces folds to nothing: seeds, as
-      // for an empty box (the tree filter already treats it that way).
-      if (!searchNormalize(q)) { renderSeeds(); return; }
-      const res = rankAllSuggestions(q, 5);
+      // A query of only punctuation or spaces folds to nothing, as an empty box.
+      if (!searchNormalize(q)) { hideDrop(); return; }
+      // More appellations than a popup could hold; the other groups stay short.
+      const res = rankAllSuggestions(q, 25);
+      for (const g of ['grapes', 'regions', 'styles', 'classifications']) res[g] = (res[g] || []).slice(0, 6);
       const html = paintGroups(res, ['appellations', 'grapes', 'regions', 'styles', 'classifications']);
       if (!items.length) { renderNoResults(q); return; }
       showDrop(html);
@@ -2174,8 +2170,8 @@
         });
       }, 1000);
     });
+    // No blur handler: the results are part of the page, not a popup to dismiss.
     input.addEventListener('focus', () => renderDrop(input.value.trim()));
-    input.addEventListener('blur', () => setTimeout(hideDrop, 120));
     input.addEventListener('keydown', e => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -2187,11 +2183,10 @@
       } else if (e.key === 'Enter') {
         if (!drop.hidden && activeIdx >= 0) { e.preventDefault(); choose(activeIdx); }
       } else if (e.key === 'Escape') {
-        // Esc backs out one step at a time (feedback 2026-10-18: "get out of
-        // search is not obvious"): the list, then the text with the tree
-        // filter it holds; an empty box lets the key reach the drawer / panel.
-        if (!drop.hidden) { e.stopPropagation(); hideDrop(); }
-        else if (input.value) { e.stopPropagation(); clearSearch('escape'); }
+        // Esc clears the text — the results and the tree filter go with it
+        // and the filters return (feedback 2026-10-18: "get out of search is
+        // not obvious"); an empty box lets the key reach the drawer / panel.
+        if (input.value) { e.stopPropagation(); clearSearch('escape'); }
       }
     });
     function clearSearch(via) {

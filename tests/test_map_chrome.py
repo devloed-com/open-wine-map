@@ -84,8 +84,11 @@ def test_viewport_fit_cover_and_phone_chrome() -> None:
     bar = mt._PAGE_TEMPLATE[mt._PAGE_TEMPLATE.index('<header id="mobile-bar">'):]
     bar = bar[: bar.index("</header>")]
     assert "<h1" not in bar and "{brand_tag}" not in bar
-    for needle in ('id="mobile-search"', 'id="sidebar-toggle"', 'aria-controls="sidebar"', 'aria-expanded="false"'):
+    for needle in ('id="sidebar-toggle"', 'aria-controls="sidebar"', 'aria-expanded="false"'):
         assert needle in bar, needle
+    # The bar's search button went (it only opened the drawer the ☰ opens);
+    # the ⚙ is homed into the bar by app.js (homeSettings) on phones.
+    assert 'id="mobile-search"' not in bar
     assert '<div id="scrim" hidden aria-hidden="true"></div>' in mt._PAGE_TEMPLATE
     assert 'class="sheet-handle"' in mt._PAGE_TEMPLATE
     css = CSS.replace("{{", "{").replace("}}", "}")
@@ -115,9 +118,9 @@ def test_tree_rows_share_one_height_and_one_chevron_slot() -> None:
     assert '#sidebar > details[data-facet="appellations"][open] { flex:0 0 auto; min-height:0; overflow:visible }' in phone
     assert ".owm-legend .scope-hint { width:24px; height:24px" in phone
     assert ".owm-legend .scope-hint { display:inline-flex" in css
-    # The ⚙ button grows to a 44 px target on phones; that rule must follow the
-    # desktop one in the sheet or the desktop size wins.
-    assert css.index(".owm-settings .owm-settings-btn { width:36px") < css.index(".owm-settings .owm-settings-btn { width:44px")
+    # On phones the map's ⚙ control is empty and hidden; the bar hosts the button.
+    assert ".maplibregl-ctrl-top-right .owm-settings { display:none }" in phone
+    assert "#config-menu.in-bar { position:fixed;" in phone
     # The drawer's brand block is hidden visually on phones, never removed: it
     # is the page <h1> on the home and fold pages.
     assert "#sidebar .brand-title, #sidebar .subtitle { position:absolute; width:1px; height:1px;" in phone

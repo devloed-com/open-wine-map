@@ -57,6 +57,13 @@ def test_search_comes_first_and_the_scope_row_is_gone() -> None:
     assert 'id="omni-clear"' in _LAB_HEAD_TOP and 'hidden>×</button>' in _LAB_HEAD_TOP
     assert 'id="scope"' not in _SIDEBAR and 'id="show-igp"' not in _SIDEBAR
     assert "clearSearch('button')" in APP_JS and "clearSearch('escape')" in APP_JS
+    # The results are not a popup: while the box holds text they replace the
+    # filters (the dropdown over the tree read as a layout error).
+    assert "function setSearching(on) { sidebarEl.classList.toggle('searching', on); }" in APP_JS
+    assert "renderSeeds" not in APP_JS and "setTimeout(hideDrop" not in APP_JS
+    css = _TEMPLATE.replace("{{", "{").replace("}}", "}")
+    assert ".omni-suggestions { position:static;" in css
+    assert "#sidebar.searching > details, #sidebar.searching #active-filters, #sidebar.searching #status { display:none }" in css
 
 
 def test_app_js_reads_no_view_mode() -> None:
@@ -158,6 +165,7 @@ def test_language_and_theme_live_in_the_settings_control() -> None:
         assert f'data-theme-mode="{mode}"' in _LAB_LEGEND_FOOTER
         assert "{labels[" + label + "]}</button>" in _LAB_LEGEND_FOOTER
     assert "map.addControl(settingsControl, 'top-right');" in APP_JS
+    assert "function homeSettings()" in APP_JS and "bar.insertBefore(btn, sidebarToggle || null);" in APP_JS
     assert "menu.classList.add('placed'); this._el.appendChild(menu);" in APP_JS
     assert "if (settingsControl.isOpen()) { e.stopPropagation(); settingsControl.setOpen(false, true); return; }" in APP_JS
     html = _lang_switcher("en", "Language")
