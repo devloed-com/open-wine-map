@@ -1367,7 +1367,37 @@ touches many records still wants a full run.
 | audit_empty_grapes.py | wiki/data/aocs.en.*.js + wiki/data/d/en/*.json + scripts/_lib/empty_grapes_overrides.json | (stdout — FLAGGED / INHERIT / REVIEWED / STUB / NON-WINE buckets; `--strict`, `--json PATH`) |
 | audit_parcellaire_gaps.py | raw/inao/parcellaire/*.shp (attribute table, cached to raw/cache/parcellaire-coverage/) + scripts/_lib/parcellaire_carry_forward.json (+ its extracts) + raw/inao/aoc-aop-aires-communes.csv + raw/ign/communes.geojson + raw/inao/cahier-extracted/*.json + scripts/_lib/parcellaire_gap_fills.json | (stdout — aire communes without a parcel row per parcellaire record, classed; gap-fill pins and carried-forward rows APPLIED / STALE; `--strict`, `--json PATH`) |
 | extract_parcellaire_carry_forward.py | raw/inao/parcellaire/<release>_delim-parcellaire-aoc-shp.shp | scripts/_lib/parcellaire_carry_forward/<label>-<release>.geojson.gz (rows of one appellation or denomination, unchanged) |
-| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/{en,fr,es,nl}/<slug>/index.html (per-appellation entity pages), wiki/{en,fr,es,nl}/appellations/index.html (browse-index hub linking every indexable slug, grouped by country — fixes the entity-page link-graph orphan problem), wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (4 home + 4 browse + 1,638 index slugs × 4 locales), wiki/llms.txt (AI-crawler index), wiki/404.html |
+| 04_build_maps.py (`--shell-only`: re-emit from raw/cache/stage04-shell-snapshot.pkl) | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/{en,fr,es,nl}/<slug>/index.html (per-appellation entity pages), wiki/{en,fr,es,nl}/appellations/index.html (browse-index hub linking every indexable slug, grouped by country — fixes the entity-page link-graph orphan problem), wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (4 home + 4 browse + 1,638 index slugs × 4 locales), wiki/llms.txt (AI-crawler index), wiki/404.html |
+
+### Stage 04 `--shell-only`
+
+A template, JS, CSS or catalog change re-renders every page (hashed asset
+names, and every page embeds the sidebar server-side), but nothing the page
+emitter *consumes* has changed. The emitter reads the two feature lists —
+their properties only; the geometry is tiled, never rendered into a page —
+and 23 runtime caches that main() fills while loading, augmenting and
+resolving the records (`_shell_state()` in 04: the three local
+`*_BY_SLUG` dicts, the eighteen of `_lib/augment/_shared.py` and the two
+ES provenance dicts of `_lib/geom_chain.py` — the first shell-only run
+lost the Galician records' IET attribution without those). Every
+full build pickles exactly those at the emit boundary
+([scripts/_lib/shell_snapshot.py](scripts/_lib/shell_snapshot.py) →
+`raw/cache/stage04-shell-snapshot.pkl`, a raw cache), and
+`04_build_maps.py --shell-only` restores them in place (the augmenters,
+`_sources_for()` and the emitter hold the same dict objects) and calls the
+emitter — pages, bundles, panel JSON, MCP context, sitemap, llms.txt, 404,
+robots — skipping the minutes the full build spends producing identical
+inputs. The tile fingerprints (`?v=`) are recomputed from the pmtiles on
+disk. The snapshot is valid for the shell files (`SHELL_PATHS`:
+map_template.py, content_block.py, assets/, vendor/, i18n.py, gi_terms.py
+and the curated JSON tables the emitter reads; the locale catalogs are
+compiled by the emitter itself); the flag warns, file by file, when any
+other file under `scripts/` or an extracted-corpus `_index.json` is newer
+than the snapshot — a change to a record or its geometry needs a full
+build. Without a snapshot the flag exits 2. `tests/test_shell_snapshot.py`
+pins the round trip, the in-place restore, the staleness check and the
+wiring; the proof of equivalence is the golden comparator: a shell-only run
+after a full build must produce byte-identical output.
 
 ## Spain pipeline (`scripts/es/`)
 

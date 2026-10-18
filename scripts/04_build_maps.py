@@ -10,9 +10,14 @@ single feature. Write the resulting FeatureCollection to
 homepage; the map is the front door) plus `wiki/<lang>/index.html` for
 `lang ∈ {fr, es, nl}`, rendering them with MapLibre + the PMTiles protocol.
 
-Re-runnable: outputs are overwritten; intermediate results (per-appellation
-geometry sha) could be cached, but the full pass takes <1 minute on a
-modern machine and isn't worth memoising for now.
+Re-runnable: outputs are overwritten. A full pass takes minutes, most of
+them loading, augmenting and resolving the records; `--shell-only` skips
+that and re-emits the pages, bundles, panel JSON, sitemap and the rest from
+the snapshot of the emitter's inputs the last full build left under
+raw/cache/ — the right run for a change to the template, app.js, the CSS or
+a locale catalog. Anything that changes a record or its geometry still
+needs a full build (the flag warns when such a file is newer than the
+snapshot).
 """
 
 from __future__ import annotations
@@ -23,6 +28,7 @@ import hashlib
 import json
 import math
 import os
+import pickle
 import re
 import shutil
 import subprocess
@@ -211,6 +217,7 @@ from _lib.ro.commune import parse_judet_list as parse_ro_judet_list
 from _lib.ro.geometry import ROPolygonIndex
 from _lib.ro.region import derive_region as derive_ro_region
 from _lib.romanise import fold_confusables, search_forms
+from _lib.shell_snapshot import load_snapshot, restore_state, stale_inputs, write_snapshot
 from _lib.si.geometry import SIPolygonIndex
 from _lib.si.region import derive_region as derive_si_region
 from _lib.sk.geometry import SKPolygonIndex
@@ -304,6 +311,8 @@ PMTILES_OUT = MAP_DATA / "appellations.pmtiles"
 # tileset takes over from LOD_DETAIL_MIN_ZOOM (crossfade in between).
 GEOJSON_OVERVIEW_OUT = MAP_DATA / "appellations-overview.geojson"
 PMTILES_OVERVIEW_OUT = MAP_DATA / "appellations-overview.pmtiles"
+# The emitter's inputs as of the last full build, for --shell-only.
+SHELL_SNAPSHOT = ROOT / "raw" / "cache" / "stage04-shell-snapshot.pkl"
 # Commune-level polygons (aires-CSV / cahier commune unions). No longer tiled:
 # written for scripts/audit_geometry_overlaps.py, whose sliver heuristic is
 # calibrated on commune borders.
@@ -750,6 +759,12 @@ def main() -> int:
 
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--no-tippecanoe", action="store_true", help="skip pmtiles generation (geojson only)")
+    ap.add_argument(
+        "--shell-only", action="store_true",
+        help="re-emit the pages, bundles and sitemap from the last full build's snapshot of the "
+        "emitter's inputs (raw/cache/stage04-shell-snapshot.pkl) — for template / JS / CSS / "
+        "catalog changes; a record or geometry change needs a full build",
+    )
     ap.add_argument("--no-parcellaire", action="store_true", help="skip parcellaire shapefile (commune unions only)")
     ap.add_argument(
         "--rebuild-parcellaire", action="store_true",
@@ -760,6 +775,8 @@ def main() -> int:
         help="ignore raw/translations/summaries/<lang>/ and render every locale with the FR summary + (français) marker",
     )
     args = ap.parse_args()
+    if args.shell_only:
+        return _shell_only(args)
 
     commune_idx, insee_idx, insee_name_idx = load_commune_index(COMMUNES_GEOJSON)
     print(
@@ -3300,13 +3317,7 @@ def main() -> int:
         # template/metadata changes propagate. Use the existing pmtiles
         # if it's on disk, otherwise fall back to the geojson source.
         if PMTILES_OUT.exists() and PMTILES_OVERVIEW_OUT.exists():
-            emit_html(
-                features, overview_features,
-                layer_url=_fingerprint("/map-data/appellations.pmtiles", PMTILES_OUT),
-                overview_layer_url=_fingerprint("/map-data/appellations-overview.pmtiles", PMTILES_OVERVIEW_OUT),
-                source_type="pmtiles",
-                use_translations=not args.no_translations,
-            )
+            _emit(features, overview_features, source_type="pmtiles", use_translations=not args.no_translations)
         else:
             print(
                 "warn: --no-tippecanoe but wiki/map-data/appellations{,-overview}.pmtiles "
@@ -3315,24 +3326,12 @@ def main() -> int:
                 "deploy.py does not upload. Run a full build once.",
                 file=sys.stderr,
             )
-            emit_html(
-                features, overview_features,
-                layer_url=_fingerprint("/map-data/appellations.geojson", GEOJSON_OUT),
-                overview_layer_url=_fingerprint("/map-data/appellations-overview.geojson", GEOJSON_OVERVIEW_OUT),
-                source_type="geojson",
-                use_translations=not args.no_translations,
-            )
+            _emit(features, overview_features, source_type="geojson", use_translations=not args.no_translations)
         return 0
 
     if shutil.which("tippecanoe") is None:
         print("warn: tippecanoe not on PATH (brew install tippecanoe) — skipping pmtiles", file=sys.stderr)
-        emit_html(
-            features, overview_features,
-            layer_url=_fingerprint("/map-data/appellations.geojson", GEOJSON_OUT),
-            overview_layer_url=_fingerprint("/map-data/appellations-overview.geojson", GEOJSON_OVERVIEW_OUT),
-            source_type="geojson",
-            use_translations=not args.no_translations,
-        )
+        _emit(features, overview_features, source_type="geojson", use_translations=not args.no_translations)
         return 0
 
     # Two tilesets, one zoom band each (scripts/_lib/vineyard_envelope.py
@@ -3383,12 +3382,121 @@ def main() -> int:
             file=sys.stderr,
         )
 
+    _emit(features, overview_features, source_type="pmtiles", use_translations=not args.no_translations)
+    return 0
+
+
+def _layer_urls(source_type: str) -> tuple[str, str]:
+    if source_type == "pmtiles":
+        return (
+            _fingerprint("/map-data/appellations.pmtiles", PMTILES_OUT),
+            _fingerprint("/map-data/appellations-overview.pmtiles", PMTILES_OVERVIEW_OUT),
+        )
+    return (
+        _fingerprint("/map-data/appellations.geojson", GEOJSON_OUT),
+        _fingerprint("/map-data/appellations-overview.geojson", GEOJSON_OVERVIEW_OUT),
+    )
+
+
+def _shell_state() -> dict[str, dict]:
+    """The runtime caches emit_html reads besides its arguments — filled while
+    main() loads, augments and resolves the records. Snapshotted for
+    --shell-only and restored in place: the augmenters, _sources_for() and the
+    emitter all hold these same dict objects."""
+    return {
+        "_IT_MENZIONI_BY_SLUG": _IT_MENZIONI_BY_SLUG,
+        "_FR_COMITE_BY_SLUG": _FR_COMITE_BY_SLUG,
+        "_GRAPE_DETAILS_BY_SLUG": _GRAPE_DETAILS_BY_SLUG,
+        # geom_chain's provenance of the ES parish / SIGPAC resolvers, read by
+        # _sources_for() — the first shell-only run lost the Galician records'
+        # IET attribution without these two.
+        "_ES_PARROQUIAS_BY_SLUG": _ES_PARROQUIAS_BY_SLUG,
+        "_ES_SIGPAC_BY_SLUG": _ES_SIGPAC_BY_SLUG,
+        "_BG_NATIONAL_SPEC_BY_SLUG": _BG_NATIONAL_SPEC_BY_SLUG,
+        "_CY_NATIONAL_SPEC_BY_SLUG": _CY_NATIONAL_SPEC_BY_SLUG,
+        "_CZ_CHZO_BY_SLUG": _CZ_CHZO_BY_SLUG,
+        "_CZ_NATIONAL_SPEC_BY_SLUG": _CZ_NATIONAL_SPEC_BY_SLUG,
+        "_DE_PRODUKTSPEZIFIKATION_BY_SLUG": _DE_PRODUKTSPEZIFIKATION_BY_SLUG,
+        "_ES_NATIONAL_PLIEGO_BY_SLUG": _ES_NATIONAL_PLIEGO_BY_SLUG,
+        "_GEOM_UNITS_DISCLOSURE_BY_SLUG": _GEOM_UNITS_DISCLOSURE_BY_SLUG,
+        "_GR_NATIONAL_SPEC_BY_SLUG": _GR_NATIONAL_SPEC_BY_SLUG,
+        "_HR_SPECIFIKACIJA_BY_SLUG": _HR_SPECIFIKACIJA_BY_SLUG,
+        "_HU_NATIONAL_SPEC_BY_SLUG": _HU_NATIONAL_SPEC_BY_SLUG,
+        "_IT_MASAF_BY_SLUG": _IT_MASAF_BY_SLUG,
+        "_IT_REGISTER_BY_SLUG": _IT_REGISTER_BY_SLUG,
+        "_LOD_RADIUS_BY_SLUG": _LOD_RADIUS_BY_SLUG,
+        "_PARCEL_FILL_BY_SLUG": _PARCEL_FILL_BY_SLUG,
+        "_PT_AREA_ACT_BY_SLUG": _PT_AREA_ACT_BY_SLUG,
+        "_RO_NATIONAL_SPEC_BY_SLUG": _RO_NATIONAL_SPEC_BY_SLUG,
+        "_SI_SPECIFIKACIJA_BY_SLUG": _SI_SPECIFIKACIJA_BY_SLUG,
+        "_SK_NATIONAL_SPEC_BY_SLUG": _SK_NATIONAL_SPEC_BY_SLUG,
+    }
+
+
+def _emit(
+    features: list[dict],
+    overview_features: list[dict],
+    *,
+    source_type: str,
+    use_translations: bool,
+    snapshot: bool = True,
+) -> None:
+    """Snapshot the emitter's inputs (for --shell-only), then emit."""
+    if snapshot:
+        try:
+            size = write_snapshot(
+                SHELL_SNAPSHOT, features=features, overview_features=overview_features,
+                source_type=source_type, use_translations=use_translations, state=_shell_state(),
+            )
+            print(
+                f"[shell] snapshot {SHELL_SNAPSHOT.relative_to(ROOT)} ({size // (1 << 20)} MB) — "
+                "a template / JS / CSS / catalog change re-emits with --shell-only",
+                file=sys.stderr,
+            )
+        except (OSError, pickle.PicklingError) as exc:
+            print(f"[shell] warn: snapshot not written: {exc}", file=sys.stderr)
+    layer_url, overview_layer_url = _layer_urls(source_type)
     emit_html(
         features, overview_features,
-        layer_url=_fingerprint("/map-data/appellations.pmtiles", PMTILES_OUT),
-        overview_layer_url=_fingerprint("/map-data/appellations-overview.pmtiles", PMTILES_OVERVIEW_OUT),
-        source_type="pmtiles",
-        use_translations=not args.no_translations,
+        layer_url=layer_url, overview_layer_url=overview_layer_url,
+        source_type=source_type, use_translations=use_translations,
+    )
+
+
+def _shell_only(args) -> int:
+    try:
+        snap = load_snapshot(SHELL_SNAPSHOT)
+    except FileNotFoundError:
+        print(
+            f"error: --shell-only needs {SHELL_SNAPSHOT.relative_to(ROOT)}, written by a full "
+            "build — run scripts/04_build_maps.py once without the flag",
+            file=sys.stderr,
+        )
+        return 2
+    except (ValueError, pickle.UnpicklingError, EOFError) as exc:
+        print(f"error: unusable snapshot ({exc}) — run a full build", file=sys.stderr)
+        return 2
+    stale = stale_inputs(SHELL_SNAPSHOT, ROOT)
+    for rel in stale[:12]:
+        print(f"[shell-only] warn: {rel} is newer than the snapshot", file=sys.stderr)
+    if stale:
+        print(
+            f"[shell-only] warn: {len(stale)} file(s) the snapshot predates — if any of them "
+            "changes a record or its geometry, run a full build",
+            file=sys.stderr,
+        )
+    missing = restore_state(snap["state"], _shell_state())
+    for name in missing:
+        print(f"[shell-only] warn: snapshot carries no {name} — emitting with it empty", file=sys.stderr)
+    print(
+        f"[shell-only] re-emitting from the snapshot of {snap['created_at']} "
+        f"({len(snap['features'])} features, {snap['source_type']} sources)",
+        file=sys.stderr,
+    )
+    _emit(
+        snap["features"], snap["overview_features"],
+        source_type=snap["source_type"], use_translations=not args.no_translations,
+        snapshot=False,
     )
     return 0
 
