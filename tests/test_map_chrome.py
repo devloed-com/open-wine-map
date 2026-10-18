@@ -24,11 +24,18 @@ def _token(name: str) -> str:
 
 def test_root_tokens_exist_and_are_used() -> None:
     assert ":root {" in CSS
-    for name in ("--c-accent", "--c-pgi", "--c-spirit", "--c-cream", "--n-0", "--n-900",
-                 "--n-dark-panel", "--note-bg"):
+    for name in ("--c-accent", "--c-pgi", "--c-spirit", "--c-cream", "--n-0", "--n-850",
+                 "--n-dark-panel", "--note-bg", "--side-bg", "--side-text", "--side-text-3"):
         _token(name)
         assert f"var({name})" in CSS, name
     assert CSS.count("var(--") > 100
+    # The sidebar's palette is light by default and redefined for dark mode
+    # (feedback 2026-10-18: light mode had left the menu dark).
+    dark = CSS[CSS.index("html.theme-dark {{"):]
+    dark = dark[: dark.index("}}")]
+    for name in ("--side-bg:#1a1a1a", "--side-text:#eee", "--side-focus:var(--c-cream)"):
+        assert name in dark, name
+    assert "--side-bg:#fff" in CSS[CSS.index(":root {{"):CSS.index("html.theme-dark {{")]
 
 
 def test_one_accent_colour() -> None:
@@ -98,8 +105,11 @@ def test_tree_rows_share_one_height_and_one_chevron_slot() -> None:
     # above the 24 px WCAG AA minimum.
     assert ".facet .tree-row { min-height:44px }" not in phone
     assert ".facet, .facet.facet-appellations { max-height:none }" in phone
-    assert "#scope .scope-hint { width:24px; height:24px" in phone
-    assert "#scope .scope-hint { display:inline-flex" in css
+    assert ".owm-legend .scope-hint { width:24px; height:24px" in phone
+    assert ".owm-legend .scope-hint { display:inline-flex" in css
+    # The ⚙ button grows to a 44 px target on phones; that rule must follow the
+    # desktop one in the sheet or the desktop size wins.
+    assert css.index(".owm-settings .owm-settings-btn { width:36px") < css.index(".owm-settings .owm-settings-btn { width:44px")
     # The drawer's brand block is hidden visually on phones, never removed: it
     # is the page <h1> on the home and fold pages.
     assert "#sidebar .brand-title, #sidebar .subtitle { position:absolute; width:1px; height:1px;" in phone

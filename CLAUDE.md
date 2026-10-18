@@ -6300,8 +6300,9 @@ never disagree about the zoom bands:
   tree path (`STYLE_DESCENDANTS`, self included) matches the records that
   carry the bucket slug. Classification and Appellation type are collapsed
   sections, always present. Spirits are gated by the `show_spirits`
-  checkbox alone, in the `#scope` row (with "Show PGIs") right under the
-  count; `localStorage.view_mode` is removed on load; `Feedback *` no longer
+  checkbox alone — since 2026-10-18 the Spirits legend pill on the map
+  (2026-10-17 → 10-18: the sidebar's `#scope` row); `localStorage.view_mode`
+  is removed on load; `Feedback *` no longer
   carry `view_mode` (`lod` + `zoom` say what was on screen) and `View Mode
   Switched` is retired. The appellation tree's → button moved out of the
   row's label for the same accessibility reason (`.aoc-row`).
@@ -6327,17 +6328,17 @@ One sidebar, one set of affordances, the same on every page. What the map
 page is made of since 2026-10-17 (branch `feat/unified-sidebar`), with the
 code that owns each piece:
 
-- **Sidebar** (`_LAB_HEAD_TOP` / `_SIDEBAR` in map_template.py): brand →
-  language → theme → the count with its **scope row** (`#scope`: "Show
-  PGIs", "Include spirits" — both always visible; spirits default off; a
-  scope toggle redraws in place and never moves the camera — only a facet
-  pick fits the map to its matches; each toggle carries an ⓘ
-  (`.scope-hint`, `data-key` pgi / spirit-gi) that opens the scheme
-  definition of the card's pills — `TERMS_INFO`, the same tooltip element —
-  by hover, focus or a tap; touch drives it through the click alone, a tap
-  toggles it, because a tap is a burst of synthetic mouse events whose
-  trailing mouseout would close what the tap opened, 2026-10-18) →
-  omnisearch → active-filter chips → **Wine style** (the taxonomy tree,
+- **Sidebar** (`_LAB_HEAD_TOP` / `_SIDEBAR` in map_template.py; reshaped by
+  the 2026-10-18 review, see the Miro mockups in the memory of that
+  session): the **head** — brand + the ‹ button that folds the sidebar to
+  a 48 px **rail** (`#sidebar-rail`: pin, a magnifier that unfolds with
+  the search focused, ›; the state is `html.sidebar-collapsed`, restored
+  before first paint from `localStorage.sidebar_collapsed`, desktop only —
+  the phone media query ignores it; `setSidebarCollapsed`) → the
+  **omnisearch first** (a taller field with a magnifier and a × clear
+  button; Esc backs out one step at a time: the list, then the text with
+  the tree filter it holds, then the key reaches the drawer / panel) →
+  the count → active-filter chips → **Wine style** (the taxonomy tree,
   depth-0 rows in `FACET_BUCKET_ORDER`, sub-styles behind a chevron; a row
   without children ends in a `.tree-toggle-spacer` of the chevron's width —
   28 px, 44 px on phones — and every row is the chevron's height, so the
@@ -6347,26 +6348,60 @@ code that owns each piece:
   the appellation tree is open by default, and `revealCheckedTreeRows`
   opens a section whose tree holds a tick, 2026-10-18) →
   Classification and Appellation type (collapsed) → the country → region →
-  appellation tree → footer. The legend left the sidebar for the map. A
-  tree row is a `.tree-row` / `.aoc-row` div holding the checkbox's `<label>`
-  and, as a **sibling**, the chevron or the → open button — never a button
-  inside a label (a button is a labelable element and would take the row's
-  name as its own). `buildTreeFacet` folds each subtree into a hidden
-  sibling `.tree-children` wrapper (`aria-controls` / `aria-expanded` on the
+  appellation tree → footer, which also holds the server-rendered
+  `#config-menu` (language + theme) that app.js lifts into the ⚙ control —
+  a no-JS visitor keeps the language links there. Countries and regions
+  sort **alphabetically** in the page's language (`COUNTRY_TREE`; by size
+  until 2026-10-18, the "no region" bucket still last). The legend left the
+  sidebar for the map. **Sub-denominations nest under their parent's row**
+  behind a chevron, their label the parent's name cut from the front
+  (`childLabel`: "Aloxe-Corton premier cru Les Vercots" → "premier cru Les
+  Vercots"; a name that does not start with the parent's, or carries a
+  Latin bracket, stays whole; `parent_slug` is a startup field for it), and
+  an appellation name **wraps** instead of truncating — fifteen Aloxe rows
+  had read "Aloxe-Corton premier …". The tree filter opens a fold whose
+  child matches (`data-auto-opened-q`, closed when the query clears), and a
+  facet filter keeps a parent row for a reachable child (its own colour or
+  roster). A tree row is a `.tree-row` / `.aoc-row` div holding the
+  checkbox's `<label>` and, as **siblings**, the chevron (or an inert
+  spacer) and the → open button — never a button inside a label (a button
+  is a labelable element and would take the row's name as its own).
+  `buildTreeFacet` folds each subtree into a hidden sibling
+  `.tree-children` wrapper (`aria-controls` / `aria-expanded` on the
   chevron); `revealCheckedTreeRows` opens the branches above a ticked row. A
   facet filter with ≤ 25 matches opens the tree groups that hold them
   (`openGroupsWithMatches`, tagged `data-auto-opened-f`, closed again when
   the filter clears); above that the status line offers "show in the list".
 - **Map chrome** (app.js after the landing gate; CSS "Map chrome" block):
-  MapLibre `NavigationControl` (no compass; accessible names from
-  `ctrl_zoom_in` / `ctrl_zoom_out` through the Map `locale` option; hidden
-  ≤ 768px) above the attribution, a metric `ScaleControl` bottom-left and
-  above it the **legend chip** (`legendControl`): a swatch and the scheme
-  word for the PDO and PGI fills and, while spirits are shown, the spirits
-  colour — non-wine GIs paint `#a07530` (`is_wine` tested before the PGI
-  kind in `_build_source_block`). Bottom-corner controls stack, later ones
-  above (`insertBefore(firstChild)`), with `clear:both` so they never sit
-  side by side.
+  the **start view fits the corpus** (`bounds: corpusBounds()` — every
+  record's bbox except the Atlantic islands west of 12° W, which would push
+  the continent into a corner; a URL hash still wins, MapLibre applies
+  `bounds` only when it is empty; until 2026-10-18 a fixed France view at
+  z5.4, "too zoomed in"), and **no card is reopened** on the next visit
+  (the `selected_slugs` restore reopened Penedès for whoever came after;
+  the key is removed on load). MapLibre `NavigationControl` (no compass;
+  accessible names from `ctrl_zoom_in` / `ctrl_zoom_out` through the Map
+  `locale` option; hidden ≤ 768px) above the attribution, a metric
+  `ScaleControl` bottom-left and above it the **legend pills**
+  (`legendControl`): one pill per scheme — PDO, PGI, Spirits — each a
+  checkbox (`#show-pdo` / `#show-igp` / `#show-spirits`; PDO on, the
+  other two off by default, remembered per browser; a toggle redraws in
+  place and never moves the camera — only a facet pick fits the map) and
+  an ⓘ (`.scope-hint`, `data-key` pdo / pgi / spirit-gi) that opens the
+  scheme definition of the card's pills — `TERMS_INFO`, the same tooltip
+  element — by hover, focus or a tap (touch drives it through the click
+  alone, because a tap is a burst of synthetic mouse events whose trailing
+  mouseout would close what the tap opened). Filled while the scheme is
+  drawn, outlined while hidden; the spirits pill takes dark ink — white
+  fails AA on `#a07530`, the colour non-wine GIs paint (`is_wine` tested
+  before the PGI kind in `_build_source_block`). Hiding PDOs is a third
+  gate beside PGIs and spirits (`showPdo`, `isPdoRec`: filter expression,
+  client matcher, landing gate, `openAppellation`). The **⚙ control**
+  top-right (`settingsControl`) holds the languages by their own names and
+  the light / system / dark switch with its words; Esc closes it first,
+  a click elsewhere closes it without stealing focus. Bottom-corner
+  controls stack, later ones above (`insertBefore(firstChild)`), with
+  `clear:both` so they never sit side by side.
 - **Hover** (pointer devices only, `(hover: hover) and (pointer: fine)`):
   `hitSlugsAt(point)` — the click's 4 px box over both fill layers, deduped,
   `parent-appellation` / `sibling-dgc` inheritors dropped, sorted by
@@ -6394,7 +6429,9 @@ code that owns each piece:
   the front, `via: stack-pick`) under a visible hint; only the focus record's
   payload is fetched.
 - **Phones (≤ 768px)**: a bar (`#mobile-bar`: brand link, search, menu — the
-  first screen is no longer a bare map) over the map; the sidebar is a
+  first screen is no longer a bare map) over the map, the ⚙ control and the
+  legend pills on the map as on desktop (the ⚙ a 44 px target there; the
+  sidebar's fold button and rail do not exist on phones); the sidebar is a
   drawer with a scrim — its own brand block (`.brand-title` + `.subtitle`,
   the page `<h1>` on the home and fold pages) is visually hidden there, not
   removed, since the bar already names the site 50 px above it (2026-10-18) (`setDrawer` owns `#sidebar.open`, the scrim and the
@@ -6411,14 +6448,23 @@ code that owns each piece:
 - **Design tokens** (`:root` at the top of the style block): one accent
   (`--c-accent`; the former `#7A1F2B` / `#7a1f3a` are gone), `--c-pgi`,
   `--c-spirit`, `--c-cream`, a neutral lightness scale `--n-0 … --n-900`,
-  the dark panel pair, the amber note colours and four small text sizes
-  (`--fs-2xs … --fs-md`). `tests/test_map_chrome.py` keeps `--c-accent` /
+  the dark panel pair, the amber note colours, four small text sizes
+  (`--fs-2xs … --fs-md`) and the **sidebar palette by role** (`--side-bg`,
+  `--side-bg-2…4`, `--side-border(-2)`, `--side-text(-2, -3)`,
+  `--side-input-bg`, `--side-focus`, `--side-link`, `--side-chip-on`,
+  `--side-accent-ink`): light by default and redefined under
+  `html.theme-dark`, so the sidebar, the phone bar and the ⚙ menu follow
+  the theme (feedback 2026-10-18: light mode had left the menu dark; write
+  sidebar CSS with these, never with `--n-*`). `tests/test_map_chrome.py` keeps `--c-accent` /
   `--c-pgi` / `--c-spirit` in step with the paint and pins the hover state,
   the viewport meta and the phone chrome; `tests/test_sidebar_unified.py`
   pins the sidebar.
 - **Analytics**: `Drawer Opened {via: menu | search}`, `Sheet Expanded
   {slug, via: handle | scroll}`, `Filter Applied` from a related link carries
-  `via: panel-link` — see [docs/analytics.md](docs/analytics.md).
+  `via: panel-link`; since 2026-10-18 `Kind Toggled` also carries `kind:
+  pdo`, and `Settings Opened`, `Sidebar Toggled {state, via}` and `Search
+  Cleared {via: button | escape}` are new — see
+  [docs/analytics.md](docs/analytics.md).
 
 ## Structured data (JSON-LD) on entity pages
 

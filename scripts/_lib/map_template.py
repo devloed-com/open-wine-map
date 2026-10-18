@@ -86,6 +86,16 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "show_spirits_label": _("Inclure les spiritueux"),
         "scope_hint_pgi": _("Qu'est-ce qu'une IGP ?"),
         "scope_hint_spirits": _("Qu'est-ce qu'une IG de spiritueux ?"),
+        "scope_hint_pdo": _("Qu'est-ce qu'une AOP ?"),
+        "show_pdo_label": _("Afficher les AOP"),
+        "legend_spirits_label": _("Spiritueux"),
+        "omni_hidden_pdo": _("AOP masquée · s'affiche à la sélection"),
+        # The ⚙ control on the map (language + theme) and the desktop
+        # sidebar's fold / unfold buttons (app.js settingsControl, setSidebarCollapsed).
+        "settings_h": _("Paramètres"),
+        "sidebar_collapse_aria": _("Replier le panneau"),
+        "sidebar_expand_aria": _("Déplier le panneau"),
+        "search_clear_aria": _("Effacer la recherche"),
         "facet_styles_h": _("Style de vin"),
         "facet_classification_h": _("Classement"),
         "facet_principal_h": _("Cépages principaux"),
@@ -910,6 +920,9 @@ def _build_about_dialog(
 
 
 _LOCALES_DISPLAY = (("fr", "FR"), ("en", "EN"), ("es", "ES"), ("nl", "NL"))
+# The ⚙ menu lists the languages by their own names (the browse page keeps
+# the two-letter codes of _LOCALES_DISPLAY in its compact nav).
+_LOCALE_NAMES = {"fr": "Français", "en": "English", "es": "Español", "nl": "Nederlands"}
 
 
 def _lang_switcher(active: str, aria_label: str, slug: str | None = None) -> str:
@@ -929,7 +942,7 @@ def _lang_switcher(active: str, aria_label: str, slug: str | None = None) -> str
         current_attr = ' aria-current="page"' if is_active else ""
         parts.append(
             f'<a href="{path}" data-href="{path}" data-lang="{code}" '
-            f'class="lang{cls}"{current_attr}>{label}</a>'
+            f'class="lang{cls}"{current_attr}>{_LOCALE_NAMES.get(code, label)}</a>'
         )
     return f'<nav id="lang-switcher" aria-label="{aria_label}">' + "".join(parts) + "</nav>"
 
@@ -2212,8 +2225,9 @@ STARTUP_AOCS_FIELDS = frozenset({
     "grapes_principal", "grapes_accessory", "grapes_all",
     "bbox", "bbox_villages", "geom_source",
     # buildAppellationFacet splits each region's count into appellations
-    # vs complementary geographic designations.
-    "is_sub_denomination",
+    # vs complementary geographic designations, and nests each
+    # sub-denomination under its parent's row (2026-10-18).
+    "is_sub_denomination", "parent_slug",
     # The appellation tree nests region groups under a country group, and
     # lists a cross-border appellation under every country it spans.
     "country_aliases",
@@ -2862,6 +2876,14 @@ _TEMPLATE = """<!doctype html>
       && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     if (dark) document.documentElement.classList.add('theme-dark');
   }})();
+  (function () {{
+    // The desktop sidebar's folded state is restored before first paint so it
+    // never slides shut after showing open (desktop only — the phone media
+    // query ignores the class).
+    var c = null;
+    try {{ c = localStorage.getItem('sidebar_collapsed'); }} catch (e) {{}}
+    if (c === '1') document.documentElement.classList.add('sidebar-collapsed');
+  }})();
 </script>
 <link rel="stylesheet" href="/assets/vendor/maplibre-gl-4.7.1.css">
 <style>
@@ -2881,6 +2903,22 @@ _TEMPLATE = """<!doctype html>
     --note-bg-dark:#322b18; --note-ink-dark:#e6cf86; --note-rule-dark:#6a5a2a;
     /* Type scale for the chrome's small text (headings stay literal). */
     --fs-2xs:10px; --fs-xs:11px; --fs-sm:12.5px; --fs-md:13px;
+    /* The sidebar, the phone bar and the ⚙ menu by role — light here, dark
+       under html.theme-dark below (feedback 2026-10-18: light mode had left
+       the menu dark). Text tokens hold AA against their backgrounds:
+       --side-text-3 is the dimmest used for words. */
+    --side-bg:#fff; --side-bg-2:#f5f5f6; --side-bg-3:#ebebed; --side-bg-4:#dedee1;
+    --side-border:#e4e4e7; --side-border-2:#cfcfd4;
+    --side-text:#1f1f22; --side-text-2:#4b4b50; --side-text-3:#6b6b70;
+    --side-input-bg:#fff; --side-focus:var(--c-accent); --side-link:#3b5fa8;
+    --side-chip-on:#f3e6ea; --side-accent-ink:var(--c-accent);
+  }}
+  html.theme-dark {{
+    --side-bg:#1a1a1a; --side-bg-2:#222; --side-bg-3:#2a2a2a; --side-bg-4:#333;
+    --side-border:#333; --side-border-2:#444;
+    --side-text:#eee; --side-text-2:#ccc; --side-text-3:#9a9a9a;
+    --side-input-bg:#222; --side-focus:var(--c-cream); --side-link:#9ac4ff;
+    --side-chip-on:#3a2730; --side-accent-ink:var(--c-accent-ink-dark);
   }}
   html, body {{ margin:0; padding:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14px }}
   /* Hide the server-rendered card once JS is available (class set pre-paint):
@@ -2898,59 +2936,90 @@ _TEMPLATE = """<!doctype html>
   /* Boot: no slide-in for a panel or drawer that is open from the first
      frame (an entity landing); app.js adds `booted` after two frames. */
   html:not(.booted) #panel, html:not(.booted) #sidebar {{ transition:none }}
-  #sidebar {{ width:300px; flex:0 0 300px; background:var(--n-900); color:var(--n-100); overflow-y:auto; border-right:1px solid var(--n-750) }}
-  #sidebar .brand-title {{ font-size:15px; padding:14px 16px 4px; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px }}
+  #sidebar {{ width:300px; flex:0 0 300px; background:var(--side-bg); color:var(--side-text); overflow-y:auto; border-right:1px solid var(--side-border) }}
+  /* The head: the brand and, on desktop, the button that folds the sidebar to
+     a rail (feedback 2026-10-18: "sidebar collapsable on desktop as well"). */
+  .sidebar-head {{ display:flex; align-items:center; gap:8px; padding:12px 8px 2px 16px }}
+  #sidebar .brand-title {{ flex:1; font-size:15px; padding:0; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px; min-width:0 }}
   #sidebar .brand-title .brand-mark {{ width:18px; height:18px; flex:0 0 18px; display:inline-block }}
-  #sidebar .subtitle {{ font-size:var(--fs-xs); color:var(--n-400); padding:0 16px 10px; border-bottom:1px solid var(--n-750) }}
-  #sidebar h2 {{ font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.08em; color:var(--n-400); padding:14px 16px 4px; margin:0 }}
-  /* The omnisearch input owns its own layout (`.omni-input`); the catch-all
-     rule below is for any other text input in the sidebar. */
-  #sidebar input[type=text]:not(.omni-input) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:var(--n-850); color:var(--n-100); border:1px solid var(--n-700); border-radius:3px; font-size:var(--fs-md) }}
+  #sidebar-collapse {{ flex:0 0 32px; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; background:none; border:none; border-radius:4px; color:var(--side-text-3); font-size:22px; line-height:1; cursor:pointer }}
+  #sidebar-collapse:hover {{ background:var(--side-bg-3); color:var(--side-text) }}
+  #sidebar .subtitle {{ font-size:var(--fs-xs); color:var(--side-text-3); padding:0 16px 10px; border-bottom:1px solid var(--side-border) }}
+  #sidebar h2 {{ font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.08em; color:var(--side-text-3); padding:14px 16px 4px; margin:0 }}
+  /* Folded: a 48 px rail with the search and the expand button; the rest of
+     the sidebar leaves the layout (and the accessibility tree) until it is
+     unfolded. The state is a class on <html>, restored before first paint. */
+  #sidebar-rail {{ display:none }}
+  @media (min-width: 769px) {{
+    html.sidebar-collapsed #sidebar {{ width:48px; flex-basis:48px; overflow:hidden }}
+    html.sidebar-collapsed #sidebar > :not(#sidebar-rail) {{ display:none }}
+    html.sidebar-collapsed #sidebar-rail {{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 0 }}
+  }}
+  #sidebar-rail .brand-mark {{ width:20px; height:20px; margin-bottom:6px }}
+  #sidebar-rail button {{ width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; background:none; border:none; border-radius:6px; color:var(--side-text-2); cursor:pointer; font-size:22px; line-height:1; padding:0 }}
+  #sidebar-rail button svg {{ width:18px; height:18px }}
+  #sidebar-rail button:hover {{ background:var(--side-bg-3); color:var(--side-text) }}
+  #sidebar input[type=text]:not(.omni-input) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:var(--side-input-bg); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:3px; font-size:var(--fs-md) }}
   #sidebar input[type=text]:focus {{ outline:none; border-color:var(--c-accent) }}
-  #sidebar input[type=text]:focus-visible {{ outline:2px solid var(--c-cream); outline-offset:1px; border-color:var(--c-accent) }}
-  /* Search-UX lab variants (a/b/c): unified omnisearch box + grouped dropdown
-     + the "main grape only" sub-option. Inert on canonical pages (no markup). */
+  #sidebar input[type=text]:focus-visible {{ outline:2px solid var(--side-focus); outline-offset:1px; border-color:var(--c-accent) }}
   .visually-hidden {{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }}
-  #omnisearch {{ position:relative; padding:8px 16px; border-bottom:1px solid var(--n-750) }}
-  .omni-input {{ width:100%; box-sizing:border-box; padding:8px 10px; background:var(--n-850); color:var(--n-100); border:1px solid var(--n-700); border-radius:4px; font-size:var(--fs-md) }}
-  .omni-suggestions {{ position:absolute; left:16px; right:16px; top:calc(100% - 2px); z-index:60; max-height:min(60vh, 360px); overflow-y:auto; background:var(--n-900); border:1px solid #3a3a3a; border-radius:3px; box-shadow:0 6px 16px rgba(0,0,0,0.45) }}
+  /* Search first (feedback 2026-10-18: "search more prominent"): a taller
+     field with a magnifier, and a clear button once it holds text. */
+  #omnisearch {{ position:relative; padding:10px 16px 8px }}
+  #omnisearch .omni-box {{ position:relative }}
+  #omnisearch .omni-icon {{ position:absolute; left:11px; top:50%; transform:translateY(-50%); width:18px; height:18px; color:var(--side-text-3); pointer-events:none }}
+  .omni-input {{ width:100%; box-sizing:border-box; padding:11px 36px 11px 38px; background:var(--side-input-bg); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:6px; font-size:15px }}
+  .omni-input::placeholder {{ color:var(--side-text-3) }}
+  #omni-clear {{ position:absolute; right:6px; top:50%; transform:translateY(-50%); width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; background:none; border:none; border-radius:50%; color:var(--side-text-3); font-size:20px; line-height:1; cursor:pointer; padding:0 }}
+  #omni-clear:hover {{ background:var(--side-bg-3); color:var(--side-text) }}
+  #omni-clear[hidden] {{ display:none }}
+  .omni-suggestions {{ position:absolute; left:16px; right:16px; top:calc(100% - 4px); z-index:60; max-height:min(60vh, 360px); overflow-y:auto; background:var(--side-bg); border:1px solid var(--side-border-2); border-radius:6px; box-shadow:0 8px 24px rgba(0,0,0,0.18) }}
   .omni-suggestions[hidden] {{ display:none }}
-  .omni-group-header {{ position:sticky; top:0; padding:4px 8px; background:#202020; color:#a0a0a0; font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:0.09em }}
-  .omni-suggestions .suggestion {{ display:flex; align-items:center; gap:6px; padding:6px 8px; cursor:pointer; font-size:var(--fs-sm); color:var(--n-200); border-bottom:1px solid var(--n-800) }}
+  .omni-group-header {{ position:sticky; top:0; padding:4px 8px; background:var(--side-bg-2); color:var(--side-text-3); font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:0.09em }}
+  .omni-suggestions .suggestion {{ display:flex; align-items:center; gap:6px; padding:6px 8px; cursor:pointer; font-size:var(--fs-sm); color:var(--side-text); border-bottom:1px solid var(--side-border) }}
   .omni-suggestions .suggestion:last-child {{ border-bottom:none }}
-  .omni-suggestions .suggestion.active, .omni-suggestions .suggestion:hover {{ background:#2a1f25 }}
-  .omni-suggestions .suggestion .name {{ flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
-  .omni-suggestions .suggestion .sub {{ color:#999; font-style:italic; font-size:var(--fs-xs); flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
-  .omni-suggestions .suggestion .count {{ margin-left:auto; color:#9a9a9a; font-size:var(--fs-xs); font-variant-numeric:tabular-nums; flex:0 0 auto }}
-  /* No-match feedback row (variant fix: the dropdown used to silently hide). */
-  .omni-empty {{ padding:10px 12px; color:#9a9a9a; font-size:var(--fs-sm); font-style:italic }}
-  /* "Main grape only" relocated inside the Grapes facet (variant c). */
-  #lang-switcher {{ display:flex; gap:2px; padding:6px 12px 8px; border-bottom:1px solid var(--n-750) }}
-  #lang-switcher a {{ color:var(--n-400); font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.08em; text-decoration:none; padding:3px 8px; border-radius:3px }}
-  #lang-switcher a:hover {{ color:var(--n-0) }}
-  #lang-switcher a.active {{ color:var(--c-cream); background:var(--n-800); font-weight:700 }}
-  #theme-toggle {{ display:flex; gap:0; padding:6px 16px 8px }}
-  #theme-toggle .theme-btn {{ flex:1; background:var(--n-850); color:var(--n-400); border:1px solid var(--n-700); border-left:none; padding:5px 8px; cursor:pointer; font-size:var(--fs-md); line-height:1.2 }}
-  #theme-toggle .theme-btn:first-child {{ border-left:1px solid var(--n-700); border-radius:3px 0 0 3px }}
-  #theme-toggle .theme-btn:last-child {{ border-radius:0 3px 3px 0 }}
-  #theme-toggle .theme-btn:hover {{ color:var(--n-0) }}
+  .omni-suggestions .suggestion.active, .omni-suggestions .suggestion:hover {{ background:var(--side-chip-on) }}
+  /* A suggestion's name wraps rather than truncates — the same fifteen
+     "Aloxe-Corton premier …" rows the tree showed (feedback 2026-10-18). */
+  .omni-suggestions .suggestion .name {{ flex:1 1 auto; min-width:0; line-height:1.3 }}
+  .omni-suggestions .suggestion .sub {{ color:var(--side-text-3); font-style:italic; font-size:var(--fs-xs); flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
+  .omni-suggestions .suggestion .count {{ margin-left:auto; color:var(--side-text-3); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; flex:0 0 auto }}
+  .omni-empty {{ padding:10px 12px; color:var(--side-text-3); font-size:var(--fs-sm); font-style:italic }}
+  /* Language and theme live in the ⚙ menu on the map (feedback 2026-10-18:
+     "move to config"); app.js moves this block into that control. Without
+     JS it stays in the sidebar footer, its language links still crawlable. */
+  html.js #config-menu:not(.placed) {{ display:none }}
+  #config-menu {{ padding:8px 0 }}
+  #config-menu .config-h {{ font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:0.08em; color:var(--side-text-3); padding:6px 14px 2px }}
+  #lang-switcher {{ display:flex; flex-direction:column; padding:0 6px 6px }}
+  #lang-switcher a {{ color:var(--side-text); font-size:var(--fs-md); text-decoration:none; padding:7px 10px; border-radius:4px }}
+  #lang-switcher a:hover {{ background:var(--side-bg-3) }}
+  #lang-switcher a.active {{ background:var(--side-chip-on); color:var(--side-accent-ink); font-weight:600 }}
+  /* The theme switch keeps its three states (light / system / dark), now
+     with their words beside the icons — the icon alone read as a mystery. */
+  #theme-toggle {{ display:flex; gap:0; padding:4px 14px 8px }}
+  #theme-toggle .theme-btn {{ flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; background:var(--side-bg-2); color:var(--side-text-2); border:1px solid var(--side-border-2); border-left:none; padding:7px 6px; cursor:pointer; font-size:var(--fs-sm); line-height:1.2; white-space:nowrap }}
+  #theme-toggle .theme-btn:first-child {{ border-left:1px solid var(--side-border-2); border-radius:4px 0 0 4px }}
+  #theme-toggle .theme-btn:last-child {{ border-radius:0 4px 4px 0 }}
+  #theme-toggle .theme-btn:hover {{ color:var(--side-text) }}
   #theme-toggle .theme-btn.active {{ background:var(--c-accent); color:var(--n-0); border-color:var(--c-accent) }}
+  #theme-toggle .theme-btn .ico {{ font-size:13px }}
   #active-filters {{ display:flex; align-items:center; gap:6px; padding:8px 12px 4px; min-height:0 }}
   #active-filters:has(#active-filters-chips:empty) {{ padding-bottom:0 }}
   #active-filters-chips {{ display:flex; flex-wrap:wrap; gap:4px; flex:1 }}
   #active-filters-chips:empty {{ display:none }}
-  .filter-chip {{ display:inline-flex; align-items:center; gap:4px; padding:2px 4px 2px 8px; background:var(--n-800); color:var(--n-100); border:1px solid var(--n-700); border-radius:11px; font-size:var(--fs-xs); line-height:1.3 }}
+  .filter-chip {{ display:inline-flex; align-items:center; gap:4px; padding:2px 4px 2px 8px; background:var(--side-bg-3); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:11px; font-size:var(--fs-xs); line-height:1.3 }}
   .filter-chip.region-chip {{ border-color:var(--c-accent); box-shadow:inset 0 0 0 1px var(--c-accent); font-weight:600 }}
-  .filter-chip button {{ background:none; border:none; color:var(--n-400); cursor:pointer; padding:0 4px; font-size:14px; line-height:1; border-radius:50% }}
-  .filter-chip button:hover {{ color:var(--n-0); background:var(--n-700) }}
+  .filter-chip button {{ background:none; border:none; color:var(--side-text-3); cursor:pointer; padding:0 4px; font-size:14px; line-height:1; border-radius:50% }}
+  .filter-chip button:hover {{ color:var(--side-text); background:var(--side-bg-4) }}
   /* The "main grape only" scope, rendered as a chip-shaped checkbox right
      after the grape chips it refines. */
   .filter-chip.toggle-chip {{ padding:2px 9px 2px 6px; cursor:pointer; border-color:var(--c-accent); gap:5px }}
-  .filter-chip.toggle-chip:hover {{ background:#332028 }}
+  .filter-chip.toggle-chip:hover {{ background:var(--side-chip-on) }}
   .filter-chip.toggle-chip input {{ accent-color:var(--c-accent); margin:0; width:12px; height:12px }}
-  .filter-chip.toggle-chip:has(input:checked) {{ background:#3a2730; color:var(--n-0) }}
-  #active-filters #reset {{ background:transparent; color:var(--n-400); border:none; padding:2px 6px; cursor:pointer; font-size:var(--fs-xs); text-decoration:underline; flex:0 0 auto }}
-  #active-filters #reset:hover {{ color:var(--n-0) }}
+  .filter-chip.toggle-chip:has(input:checked) {{ background:var(--side-chip-on); color:var(--side-text) }}
+  #active-filters #reset {{ background:transparent; color:var(--side-text-3); border:none; padding:2px 6px; cursor:pointer; font-size:var(--fs-xs); text-decoration:underline; flex:0 0 auto }}
+  #active-filters #reset:hover {{ color:var(--side-text) }}
   #active-filters-chips:empty + #reset {{ display:none }}
   #sidebar > details > summary .facet-badge {{ display:inline-block; margin-left:6px; padding:1px 6px; background:var(--c-accent); color:var(--n-0); border-radius:8px; font-size:var(--fs-2xs); font-weight:600 }}
   #sidebar > details > summary .facet-badge:empty {{ display:none }}
@@ -2962,93 +3031,83 @@ _TEMPLATE = """<!doctype html>
   .facet .country-group-wrap > .country-select:checked, .facet .country-group-wrap > .country-select:indeterminate {{ accent-color:var(--c-accent) }}
   .facet .region-group-wrap > .region-group, .facet .country-group-wrap > .country-group {{ flex:1 1 auto; min-width:0 }}
   .facet .region-group > summary, .facet .country-group > summary {{ display:flex; align-items:center; gap:6px }}
-  /* The count and the two scope toggles that explain it read as one band. */
-  #status {{ padding:8px 16px 4px; font-size:var(--fs-xs); color:#aaa; background:var(--n-850) }}
-  #scope {{ display:flex; flex-wrap:wrap; gap:2px 14px; padding:0 16px 8px; background:var(--n-850); border-bottom:1px solid var(--n-750) }}
-  #scope label {{ display:inline-flex; align-items:center; gap:5px; cursor:pointer; font-size:var(--fs-xs); color:#ccc; min-height:24px }}
-  #scope label:hover {{ color:var(--n-0) }}
-  #scope .scope-item {{ display:inline-flex; align-items:center; gap:4px }}
-  /* The ⓘ opens the scheme definition the card's pills carry (hover, focus,
-     or a tap); a 24 px target on phones, 20 px beside the desktop checkbox. */
-  #scope .scope-hint {{ display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; padding:0; border:1px solid var(--n-500); border-radius:50%; background:none; color:var(--n-400); font:italic 600 11px/1 Georgia, "Times New Roman", serif; cursor:help; text-decoration:none }}
-  #scope .scope-hint:hover, #scope .scope-hint:focus-visible {{ color:var(--n-0); border-color:var(--n-200) }}
-  #scope #show-igp {{ accent-color:var(--c-pgi) }}
-  #scope #show-spirits {{ accent-color:var(--c-spirit) }}
-  #status .hint-action {{ background:none; border:0; padding:0; margin-left:6px; color:#9ac4ff; font:inherit; cursor:pointer; text-decoration:underline }}
-  #status .hint-action:hover {{ color:#cfe0ff }}
+  #status {{ padding:6px 16px 8px; font-size:var(--fs-xs); color:var(--side-text-3); border-bottom:1px solid var(--side-border) }}
+  #status .hint-action {{ background:none; border:0; padding:0; margin-left:6px; color:var(--side-link); font:inherit; cursor:pointer; text-decoration:underline }}
+  #status .hint-action:hover {{ filter:brightness(0.85) }}
   details {{ margin:0 }}
-  summary {{ cursor:pointer; padding:8px 16px; color:var(--n-300); font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.06em; user-select:none; border-top:1px solid var(--n-800) }}
-  summary:hover {{ color:var(--n-0) }}
-  summary::-webkit-details-marker {{ color:var(--n-500) }}
+  summary {{ cursor:pointer; padding:8px 16px; color:var(--side-text-2); font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.06em; user-select:none; border-top:1px solid var(--side-border) }}
+  summary:hover {{ color:var(--side-text) }}
+  summary::-webkit-details-marker {{ color:var(--side-text-3) }}
   .facet {{ max-height:240px; overflow-y:auto; padding:0 16px 8px }}
   .facet.facet-appellations {{ max-height:340px }}
-  .facet label {{ display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; font-size:var(--fs-sm); color:var(--n-200) }}
-  .facet label:hover {{ color:var(--n-0) }}
-  .facet input[type=checkbox] {{ accent-color:#c0392b; flex:0 0 auto }}
+  .facet label {{ display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; font-size:var(--fs-sm); color:var(--side-text) }}
+  .facet input[type=checkbox] {{ accent-color:var(--c-accent); flex:0 0 auto }}
   .facet .name {{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
-  /* The appellation name opens its detail panel (the checkbox is the filter) —
-     underline on name-hover signals the "go to this one" link affordance. */
-  .facet .aoc-row .name:hover {{ text-decoration:underline; text-decoration-color:#a8c08a; text-underline-offset:2px }}
+  /* An appellation name wraps rather than truncates (feedback 2026-10-18:
+     fifteen Aloxe-Corton rows read the same after the ellipsis). The name
+     opens its detail panel (the checkbox is the filter) — underline on
+     name-hover signals the "go to this one" link affordance. */
+  .facet .aoc-row .name {{ white-space:normal; overflow:visible; text-overflow:clip; line-height:1.3 }}
+  .facet .aoc-row .name:hover {{ text-decoration:underline; text-decoration-color:var(--c-accent); text-underline-offset:2px }}
   /* A row is a flex line: the checkbox's label (name + count) and, beside it,
      a sibling button — the → that opens the panel, or a tree chevron. */
-  .facet .aoc-row, .facet .tree-row {{ display:flex; align-items:center; gap:6px; padding:2px 0 }}
+  .facet .aoc-row, .facet .tree-row {{ display:flex; align-items:center; gap:6px; padding:2px 0; color:var(--side-text) }}
   .facet .aoc-row > label, .facet .tree-row > label {{ flex:1 1 auto; min-width:0; padding:0; color:inherit; font-weight:inherit }}
-  .facet .aoc-row, .facet .tree-row {{ color:var(--n-200) }}
-  .facet .aoc-row:hover, .facet .tree-row:hover {{ color:var(--n-0) }}
-  /* Counts at AA contrast on the dark sidebar (#888 on #1a1a1a ≈ 5.2:1). */
-  .facet .count {{ color:var(--n-400); font-size:var(--fs-xs); margin-left:4px }}
+  .facet .count {{ color:var(--side-text-3); font-size:var(--fs-xs); margin-left:4px }}
   .facet .count .sub-count {{ margin-left:3px }}
-  .facet .syns {{ color:var(--n-400); font-size:var(--fs-xs); font-weight:normal }}
+  .facet .syns {{ color:var(--side-text-3); font-size:var(--fs-xs); font-weight:normal }}
   /* Keyboard/SR path to open an appellation panel (the WebGL polygons aren't
      DOM-reachable). Subtle until the row is hovered or the button is focused. */
-  .facet .open-aoc {{ flex:0 0 auto; margin-left:auto; background:none; border:none; color:#8a8a8a; cursor:pointer; font-size:14px; line-height:1; padding:0 4px; border-radius:3px; opacity:0.55; transition:opacity 0.12s ease, color 0.12s ease, background 0.12s ease }}
-  .facet .aoc-row:hover .open-aoc {{ opacity:1; color:#cfa }}
-  .facet .open-aoc:hover {{ color:var(--n-0); background:var(--n-750) }}
+  .facet .open-aoc {{ flex:0 0 auto; margin-left:auto; background:none; border:none; color:var(--side-text-3); cursor:pointer; font-size:14px; line-height:1; padding:0 4px; border-radius:3px; opacity:0.55; transition:opacity 0.12s ease, color 0.12s ease, background 0.12s ease }}
+  .facet .aoc-row:hover .open-aoc {{ opacity:1; color:var(--side-accent-ink) }}
+  .facet .open-aoc:hover {{ color:var(--side-text); background:var(--side-bg-3) }}
   .facet .open-aoc:focus-visible {{ opacity:1 }}
   .facet .aoc-row.facet-unavailable, .facet .tree-row.facet-unavailable {{ display:none }}
   .facet .region-group-wrap.facet-unavailable, .facet .country-group-wrap.facet-unavailable {{ display:none }}
   .facet .tree-row[data-depth="0"] {{ padding-left:0 }}
   .facet .tree-row[data-depth="1"] {{ padding-left:14px }}
   .facet .tree-row[data-depth="2"] {{ padding-left:28px }}
-  .facet .tree-row-parent, .facet .tree-row[data-depth="0"] {{ font-weight:600; color:var(--n-100) }}
+  .facet .tree-row-parent, .facet .tree-row[data-depth="0"] {{ font-weight:600; color:var(--side-text) }}
   /* The chevron folding a subtree: rotates when open; the subtree is the
      hidden sibling wrapper after the row. */
   .facet .tree-toggle, .facet .tree-toggle-spacer {{ flex:0 0 28px; width:28px; height:24px }}
-  .facet .tree-toggle {{ display:inline-flex; align-items:center; justify-content:center; background:none; border:none; color:#8a8a8a; cursor:pointer; font-size:15px; line-height:1; padding:0; border-radius:3px; transition:transform 0.12s ease, color 0.12s ease, background 0.12s ease }}
-  .facet .tree-toggle:hover {{ color:var(--n-0); background:var(--n-750) }}
+  .facet .tree-toggle {{ display:inline-flex; align-items:center; justify-content:center; background:none; border:none; color:var(--side-text-3); cursor:pointer; font-size:15px; line-height:1; padding:0; border-radius:3px; transition:transform 0.12s ease, color 0.12s ease }}
+  .facet .tree-toggle:hover {{ color:var(--side-text); background:var(--side-bg-3) }}
   .facet .tree-toggle[aria-expanded="true"] {{ transform:rotate(90deg) }}
   /* Every row is the chevron's height, with or without one — the country
      rows' rhythm (≈ 28 px), so the three trees and the appellation list read
      as one list. */
   .facet .tree-row {{ min-height:24px }}
   .facet .tree-children[hidden] {{ display:none }}
-  .facet .tree-row[data-depth="2"] .name {{ color:var(--n-300) }}
+  .facet .tree-row[data-depth="2"] .name {{ color:var(--side-text-2) }}
+  /* Sub-denominations sit under their appellation behind a chevron, the
+     parent's name stripped from theirs (childLabel in app.js). The chevron
+     slot is narrower here: two tree levels already indent the row. */
+  .facet-appellations .tree-toggle, .facet-appellations .tree-toggle-spacer {{ flex-basis:18px; width:18px }}
+  .facet-appellations .tree-toggle {{ font-size:14px }}
+  .facet .aoc-row[data-depth="1"] {{ padding-left:18px }}
+  .facet .aoc-row[data-depth="1"] .name {{ color:var(--side-text-2) }}
   /* Mixed case here too. The FR bassin labels are the join key's own
      ALL-CAPS form only until the catalog translates them — every locale
      including fr now carries the proper name, so the transform that used
      to hide that inconsistency is gone. */
-  .facet .region-group > summary {{ padding:4px 0; border-top:none; font-size:var(--fs-xs); color:#9a9a9a; text-transform:none; letter-spacing:0.01em; display:flex; align-items:center; gap:6px }}
-  .facet .region-group > summary:hover {{ color:var(--n-200) }}
+  .facet .region-group > summary {{ padding:4px 0; border-top:none; font-size:var(--fs-xs); color:var(--side-text-2); text-transform:none; letter-spacing:0.01em; display:flex; align-items:center; gap:6px }}
+  .facet .region-group > summary:hover {{ color:var(--side-text) }}
   .facet .region-group > summary .name {{ flex:1 }}
-  .facet .region-group > summary .count {{ color:var(--n-400) }}
+  .facet .region-group > summary .count {{ color:var(--side-text-3) }}
   .facet .region-group .region-items {{ padding-left:8px }}
   /* Country level sits above the regions: brighter and heavier, with the
      flag as the scanning anchor. Regions keep their dimmer, smaller row. */
-  /* Mixed case, against the sidebar's global uppercase `summary` rule: a
-     country name reads better next to its flag, and it separates the two
-     tree levels more clearly than size alone. The region rows keep the
-     uppercase — it normalises INAO's ALL-CAPS bassin names against the
-     mixed-case regions every other country stores. */
-  .facet .country-group > summary {{ padding:5px 0; border-top:none; font-size:var(--fs-sm); font-weight:600; color:#c9c9c9; text-transform:none; letter-spacing:0.01em }}
-  .facet .country-group > summary:hover {{ color:var(--n-0) }}
+  .facet .country-group > summary {{ padding:5px 0; border-top:none; font-size:var(--fs-sm); font-weight:600; color:var(--side-text); text-transform:none; letter-spacing:0.01em }}
+  .facet .country-group > summary:hover {{ color:var(--side-accent-ink) }}
   .facet .country-group > summary .name {{ flex:1 }}
   .facet .country-group > summary .country-flag {{ flex:0 0 auto; font-size:var(--fs-sm); line-height:1; letter-spacing:normal }}
-  .facet .country-group > summary .count {{ color:var(--n-400); font-weight:400 }}
-  /* Two levels of indent cost the appellation name ~10px of the ellipsis
-     budget, so each step is 8px rather than 10 — the disclosure marker and
-     the summary's weight carry most of the hierarchy anyway. */
+  .facet .country-group > summary .count {{ color:var(--side-text-3); font-weight:400 }}
+  /* Two levels of indent cost the appellation name ~10px of width, so each
+     step is 8px rather than 10 — the disclosure marker and the summary's
+     weight carry most of the hierarchy anyway. */
   .facet .country-group .country-items {{ padding-left:8px }}
-  .facet .empty {{ color:var(--n-500); font-size:var(--fs-xs); font-style:italic; padding:4px 0 }}
+  .facet .empty {{ color:var(--side-text-3); font-size:var(--fs-xs); font-style:italic; padding:4px 0 }}
   #map {{ flex:1; height:100%; min-width:0 }}
   #panel {{ width:0; flex:0 0 0; background:var(--n-0); border-left:1px solid var(--n-200); overflow-y:auto; transition:flex-basis 0.18s ease, width 0.18s ease }}
   #panel.open {{ width:440px; flex-basis:440px }}
@@ -3194,13 +3253,14 @@ _TEMPLATE = """<!doctype html>
        <h1> on the home and fold pages) stays in the DOM for assistive tech
        and crawlers, out of sight — it would repeat the bar 50px below it. */
     #sidebar .brand-title, #sidebar .subtitle {{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }}
-    #lang-switcher {{ padding-top:10px }}
+    .sidebar-head {{ padding:0 }}
+    #sidebar-collapse {{ display:none }}
     /* The bar: brand, search, menu — so the first screen is not a bare map. */
-    #mobile-bar {{ display:flex; align-items:center; gap:4px; flex:0 0 auto; min-height:44px; padding:env(safe-area-inset-top, 0px) 6px 0 12px; background:var(--n-900); color:var(--n-100); border-bottom:1px solid var(--n-750); z-index:30 }}
-    #mobile-bar .mobile-brand {{ flex:1; display:flex; align-items:center; gap:8px; min-width:0; color:var(--n-100); text-decoration:none; font-weight:600; font-size:15px; letter-spacing:0.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }}
+    #mobile-bar {{ display:flex; align-items:center; gap:4px; flex:0 0 auto; min-height:44px; padding:env(safe-area-inset-top, 0px) 6px 0 12px; background:var(--side-bg); color:var(--side-text); border-bottom:1px solid var(--side-border); z-index:30 }}
+    #mobile-bar .mobile-brand {{ flex:1; display:flex; align-items:center; gap:8px; min-width:0; color:var(--side-text); text-decoration:none; font-weight:600; font-size:15px; letter-spacing:0.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }}
     #mobile-bar .brand-mark {{ width:18px; height:18px; flex:0 0 18px }}
-    #mobile-bar button {{ flex:0 0 44px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:none; color:var(--n-100); border:none; border-radius:4px; font-size:18px; cursor:pointer }}
-    #mobile-bar button:hover, #mobile-bar button[aria-expanded="true"] {{ background:var(--n-800) }}
+    #mobile-bar button {{ flex:0 0 44px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:none; color:var(--side-text); border:none; border-radius:4px; font-size:18px; cursor:pointer }}
+    #mobile-bar button:hover, #mobile-bar button[aria-expanded="true"] {{ background:var(--side-bg-3) }}
     /* The drawer opens under the bar, which stays usable (its menu button closes it). */
     #sidebar {{ position:fixed; top:calc(44px + env(safe-area-inset-top, 0px)); left:0; width:280px; height:calc(100vh - 44px); height:calc(100dvh - 44px - env(safe-area-inset-top, 0px)); padding-bottom:env(safe-area-inset-bottom, 0px); box-sizing:border-box; flex:0 0 auto; transform:translateX(-100%); transition:transform 0.18s ease; z-index:25; box-shadow:2px 0 12px rgba(0,0,0,0.25) }}
     #sidebar.open {{ transform:translateX(0) }}
@@ -3228,19 +3288,20 @@ _TEMPLATE = """<!doctype html>
        36 × 24 px target, the WCAG AA minimum. */
     .facet .tree-toggle, .facet .tree-toggle-spacer {{ flex-basis:36px; width:36px }}
     .facet .tree-toggle {{ font-size:16px }}
-    #scope .scope-hint {{ width:24px; height:24px; font-size:12px }}
+    .facet-appellations .tree-toggle, .facet-appellations .tree-toggle-spacer {{ flex-basis:26px; width:26px }}
+    .owm-legend .scope-hint {{ width:24px; height:24px; font-size:12px }}
     /* Pinch zooms on a phone; the buttons would only crowd the corner. */
     .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {{ display:none }}
     /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */
     .omni-input {{ font-size:16px }}
   }}
-  #sidebar-footer {{ padding:12px 16px 16px; margin-top:8px; border-top:1px solid var(--n-800); font-size:var(--fs-xs); color:var(--n-400); text-align:center }}
-  #sidebar-footer a {{ color:var(--n-400); text-decoration:none }}
-  #sidebar-footer a:hover {{ color:var(--n-0); text-decoration:underline }}
-  #sidebar-footer .sep {{ margin:0 6px; color:var(--n-700) }}
-  #sidebar-disclaimer {{ padding:0 4px 10px; margin-bottom:10px; border-bottom:1px solid var(--n-850); font-size:var(--fs-xs); line-height:1.5; color:var(--n-400) }}
-  #sidebar-disclaimer a {{ color:#aaa; text-decoration:underline; text-underline-offset:2px }}
-  #sidebar-disclaimer a:hover {{ color:var(--n-0) }}
+  #sidebar-footer {{ padding:12px 16px 16px; margin-top:8px; border-top:1px solid var(--side-border); font-size:var(--fs-xs); color:var(--side-text-3); text-align:center }}
+  #sidebar-footer a {{ color:var(--side-text-3); text-decoration:none }}
+  #sidebar-footer a:hover {{ color:var(--side-text); text-decoration:underline }}
+  #sidebar-footer .sep {{ margin:0 6px; color:var(--side-border-2) }}
+  #sidebar-disclaimer {{ padding:0 4px 10px; margin-bottom:10px; border-bottom:1px solid var(--side-border); font-size:var(--fs-xs); line-height:1.5; color:var(--side-text-3) }}
+  #sidebar-disclaimer a {{ color:var(--side-text-2); text-decoration:underline; text-underline-offset:2px }}
+  #sidebar-disclaimer a:hover {{ color:var(--side-text) }}
   .feedback-copied {{ display:inline-block; margin-left:6px; padding:2px 6px; border-radius:3px; background:var(--c-accent); color:var(--n-0); font-size:var(--fs-2xs); opacity:0; transform:translateY(-1px); transition:opacity 180ms ease, transform 180ms ease; pointer-events:none }}
   .feedback-copied.visible {{ opacity:1; transform:translateY(0) }}
   #about-dialog {{ width:520px; max-width:calc(100vw - 32px); padding:0; border:1px solid #ccc; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:var(--n-0); color:var(--n-850) }}
@@ -3284,7 +3345,8 @@ _TEMPLATE = """<!doctype html>
   #sidebar button:focus-visible,
   #sidebar summary:focus-visible,
   #sidebar input[type=checkbox]:focus-visible,
-  #sidebar-toggle:focus-visible {{ outline:2px solid var(--c-cream); outline-offset:2px; border-radius:3px }}
+  #sidebar button:focus-visible,
+  #sidebar-toggle:focus-visible {{ outline:2px solid var(--side-focus); outline-offset:2px; border-radius:3px }}
   #panel button:focus-visible,
   #panel a:focus-visible,
   #about-dialog button:focus-visible,
@@ -3298,18 +3360,39 @@ _TEMPLATE = """<!doctype html>
   .owm-hover {{ pointer-events:none }}
   .owm-hover .maplibregl-popup-content {{ padding:4px 9px !important; font-size:var(--fs-sm); font-weight:600; color:var(--n-850); background:rgba(255,255,255,0.95); box-shadow:0 1px 4px rgba(0,0,0,0.3); border-radius:4px; white-space:nowrap }}
   .owm-hover .maplibregl-popup-tip {{ display:none }}
-  .owm-legend {{ display:flex; gap:10px; align-items:center; padding:4px 8px; background:rgba(255,255,255,0.92); border-radius:4px; box-shadow:0 0 0 2px rgba(0,0,0,0.1); font-size:var(--fs-xs); color:var(--n-850); pointer-events:auto }}
-  .owm-legend .legend-item {{ display:inline-flex; align-items:center; gap:5px }}
-  .owm-legend .sw {{ width:12px; height:12px; border-radius:3px; border:1px solid rgba(0,0,0,0.15); flex:0 0 12px }}
-  .owm-legend .sw.aoc {{ background:var(--c-accent) }}
-  .owm-legend .sw.igp {{ background:var(--c-pgi) }}
-  .owm-legend .sw.spirit {{ background:var(--c-spirit) }}
+  /* The legend is the scope control (feedback 2026-10-18: the mockups put
+     the PDO / PGI toggles on the map as pills, each with its ⓘ): one pill
+     per fill colour, filled while that scheme is drawn, outlined while it
+     is hidden. The spirits pill takes dark ink — white fails AA on #a07530. */
+  .owm-legend {{ display:flex; gap:6px; align-items:center; padding:4px; background:rgba(255,255,255,0.92); border-radius:20px; box-shadow:0 0 0 2px rgba(0,0,0,0.1); font-size:var(--fs-xs); color:var(--n-850); pointer-events:auto }}
+  .owm-legend .legend-pill {{ --pill-c:var(--c-accent); --pill-ink:var(--n-0); display:inline-flex; align-items:center; border-radius:14px; border:1px solid var(--pill-c); background:var(--n-0); color:var(--pill-c); padding:0 3px 0 0 }}
+  .owm-legend .legend-pill.igp {{ --pill-c:var(--c-pgi) }}
+  .owm-legend .legend-pill.spirit {{ --pill-c:var(--c-spirit); --pill-ink:#1f1f22; color:#7a5720 }}
+  .owm-legend .legend-pill.on {{ background:var(--pill-c); color:var(--pill-ink) }}
+  .owm-legend .legend-pill label {{ display:inline-flex; align-items:center; gap:6px; padding:4px 4px 4px 8px; cursor:pointer; font-weight:600; letter-spacing:0.02em }}
+  .owm-legend .legend-pill input {{ margin:0; width:14px; height:14px; accent-color:var(--pill-c); cursor:pointer }}
+  .owm-legend .legend-pill.on input {{ accent-color:var(--pill-ink) }}
+  .owm-legend .scope-hint {{ display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; padding:0; border:1px solid currentColor; border-radius:50%; background:none; color:inherit; font:italic 600 11px/1 Georgia, "Times New Roman", serif; cursor:help; opacity:0.85 }}
+  .owm-legend .scope-hint:hover, .owm-legend .scope-hint:focus-visible {{ opacity:1; background:rgba(255,255,255,0.25) }}
+  /* The ⚙ control (top-right): language and theme in one popover. */
+  .owm-settings {{ position:relative }}
+  .owm-settings .owm-settings-btn {{ width:36px !important; height:36px !important; display:flex; align-items:center; justify-content:center; color:var(--n-850) }}
+  .owm-settings .owm-settings-btn svg {{ width:20px; height:20px; fill:currentColor }}
+  #config-menu.placed {{ position:absolute; right:0; top:42px; min-width:220px; background:var(--side-bg); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:5 }}
+  #config-menu.placed[hidden] {{ display:none }}
+  @media (max-width: 768px) {{
+    .owm-settings .owm-settings-btn {{ width:44px !important; height:44px !important }}
+  }}
   html.theme-dark .maplibregl-ctrl-attrib, html.theme-dark .maplibregl-ctrl-group {{ background:var(--n-dark-panel); color:var(--n-dark-text) }}
   html.theme-dark .maplibregl-ctrl-attrib a {{ color:var(--n-dark-text) }}
   html.theme-dark .maplibregl-ctrl-attrib-button, html.theme-dark .maplibregl-ctrl-group .maplibregl-ctrl-icon {{ filter:invert(1) }}
   html.theme-dark .maplibregl-ctrl-group button + button {{ border-top-color:var(--n-700) }}
   html.theme-dark .maplibregl-ctrl-scale {{ background:rgba(28,28,30,0.7); color:var(--n-dark-text); border-color:var(--n-dark-text) }}
   html.theme-dark .owm-legend {{ background:rgba(28,28,30,0.92); color:var(--n-dark-text); box-shadow:0 0 0 2px rgba(255,255,255,0.12) }}
+  html.theme-dark .owm-legend .legend-pill {{ background:var(--n-dark-panel) }}
+  html.theme-dark .owm-legend .legend-pill:not(.on) {{ color:var(--n-dark-text) }}
+  html.theme-dark .owm-legend .legend-pill.on {{ background:var(--pill-c) }}
+  html.theme-dark .owm-settings .owm-settings-btn {{ color:var(--n-dark-text) }}
   html.theme-dark .owm-hover .maplibregl-popup-content {{ background:rgba(28,28,30,0.95); color:var(--n-dark-text) }}
   /* Skip-to-map link: off-screen until focused, so keyboard users can bypass
      the filter sidebar and jump straight to the map. */
@@ -3326,9 +3409,9 @@ _TEMPLATE = """<!doctype html>
   /* Dark mode. Gated on the `html.theme-dark` class (NOT a media query) so the
      manual light/dark/system toggle works: a pre-paint inline script adds the
      class for system-dark OR a manual dark choice, and removing it forces light
-     even on a dark OS — no light-mode reset rules needed. The sidebar is already
-     dark; this flips the detail panel, about dialog, grape tooltip and map
-     popup. Polygon fill tints are unchanged (map layers, not CSS); the basemap
+     even on a dark OS — no light-mode reset rules needed. The sidebar follows
+     the --side-* tokens above; this flips the detail panel, about dialog,
+     grape tooltip and map popup. Polygon fill tints are unchanged (map layers, not CSS); the basemap
      swaps live via setLayoutProperty (see the dual basemap sources below). */
   html.theme-dark #panel {{ background:var(--n-dark-panel); border-left-color:var(--n-750) }}
   html.theme-dark #panel .body {{ color:var(--n-dark-text) }}
@@ -3495,30 +3578,35 @@ _PAGE_TEMPLATE, _STYLE_CSS = _split_template(_TEMPLATE)
 
 # Production sidebar, split into composable pieces (the `_LAB_` prefix is
 # historical — these were the shared chrome of the lab search variants):
-#   _LAB_HEAD_TOP        brand → theme → status → omnisearch (+ a visually-hidden
-#                        aria-live region announcing result counts / no-match)
+#   _LAB_HEAD_TOP        rail (folded state) → brand + fold button → omnisearch (+ a
+#                        visually-hidden aria-live region announcing result counts /
+#                        no-match) → status. Language + theme moved to the
+#                        config menu block of the footer (app.js lifts it into
+#                        the ⚙ map control); the PDO / PGI / spirits scope
+#                        toggles are the legend pills on the map.
 #   _LAB_ACTIVE          the active-filters chip tray + reset
 #   _LAB_LEGEND_FOOTER   legend + footer (closes the <aside>)
 _LAB_HEAD_TOP = """<aside id="sidebar" data-nosnippet tabindex="-1" aria-label="{labels[sidebar_aria]}">
-    <{brand_tag} class="brand-title"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</{brand_tag}>
+    <div id="sidebar-rail">
+      <img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="20" height="20">
+      <button type="button" id="rail-search" aria-label="{labels[search_h]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+      <button type="button" id="rail-expand" aria-label="{labels[sidebar_expand_aria]}" aria-controls="sidebar" aria-expanded="false">›</button>
+    </div>
+    <div class="sidebar-head">
+      <{brand_tag} class="brand-title"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</{brand_tag}>
+      <button type="button" id="sidebar-collapse" aria-label="{labels[sidebar_collapse_aria]}" aria-controls="sidebar" aria-expanded="true">‹</button>
+    </div>
     <div class="subtitle">{labels[subtitle]}</div>
-    {lang_switcher_html}
-    <div id="theme-toggle" role="group" aria-label="{labels[theme_h]}">
-      <button type="button" data-theme-mode="light" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_light]}" title="{labels[theme_light]}">☀</button>
-      <button type="button" data-theme-mode="system" class="theme-btn active" aria-pressed="true" aria-label="{labels[theme_system]}" title="{labels[theme_system]}">◐</button>
-      <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_dark]}" title="{labels[theme_dark]}">☾</button>
-    </div>
-    <div id="status" role="status" aria-live="polite" aria-atomic="true">{labels[loading]}</div>
-    <div id="scope" role="group" aria-label="{labels[facet_kind_h]}">
-      <span class="scope-item"><label><input type="checkbox" id="show-igp"> <span class="name">{labels[show_igp_label]}</span></label><button type="button" class="scope-hint gi-scheme has-info" data-key="pgi" aria-label="{labels[scope_hint_pgi]}">i</button></span>
-      <span class="scope-item"><label><input type="checkbox" id="show-spirits"> <span class="name">{labels[show_spirits_label]}</span></label><button type="button" class="scope-hint gi-scheme has-info" data-key="spirit-gi" aria-label="{labels[scope_hint_spirits]}">i</button></span>
-    </div>
-
     <div id="omnisearch" role="search">
-      <input type="text" id="omni" class="omni-input" placeholder="{labels[omnisearch_placeholder]}" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="omni-suggestions" aria-label="{labels[search_h]}">
+      <div class="omni-box">
+        <svg class="omni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="text" id="omni" class="omni-input" placeholder="{labels[omnisearch_placeholder]}" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="omni-suggestions" aria-label="{labels[search_h]}">
+        <button type="button" id="omni-clear" aria-label="{labels[search_clear_aria]}" hidden>×</button>
+      </div>
       <div id="omni-suggestions" class="omni-suggestions" role="listbox" hidden></div>
       <span id="omni-live" class="visually-hidden" role="status" aria-live="polite"></span>
     </div>
+    <div id="status" role="status" aria-live="polite" aria-atomic="true">{labels[loading]}</div>
 """
 
 
@@ -3531,6 +3619,16 @@ _LAB_ACTIVE = """
 
 
 _LAB_LEGEND_FOOTER = """
+    <div id="config-menu" role="group" aria-label="{labels[settings_h]}">
+      <div class="config-section"><div class="config-h">{labels[lang_switcher_aria]}</div>{lang_switcher_html}</div>
+      <div class="config-section"><div class="config-h" id="theme-h">{labels[theme_h]}</div>
+        <div id="theme-toggle" role="group" aria-labelledby="theme-h">
+          <button type="button" data-theme-mode="light" class="theme-btn" aria-pressed="false"><span class="ico" aria-hidden="true">☀</span>{labels[theme_light]}</button>
+          <button type="button" data-theme-mode="system" class="theme-btn active" aria-pressed="true"><span class="ico" aria-hidden="true">◐</span>{labels[theme_system]}</button>
+          <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false"><span class="ico" aria-hidden="true">☾</span>{labels[theme_dark]}</button>
+        </div>
+      </div>
+    </div>
     <div id="sidebar-footer">
       {sidebar_disclaimer_html}
       <div id="sidebar-footer-links">
@@ -3545,9 +3643,10 @@ _LAB_LEGEND_FOOTER = """
 
 
 # The production sidebar — "Search + Browse rail" (promoted from lab variant D):
-# the count with its two scope toggles (PGIs, spirits), a unified omnisearch
-# bar (appellations + grapes + regions + styles; the appellation tree below
-# live-filters as you type), the style taxonomy tree (its seven buckets as
+# the brand with its fold button (desktop folds to a rail), a unified
+# omnisearch bar first (appellations + grapes + regions + styles; the
+# appellation tree below live-filters as you type; a clear button), the
+# count, the style taxonomy tree (its seven buckets as
 # the top rows, sub-styles folded behind a chevron), the collapsed
 # classification and appellation-type trees, and the country → region →
 # appellation tree. One sidebar for everyone since 2026-10: the Simple /

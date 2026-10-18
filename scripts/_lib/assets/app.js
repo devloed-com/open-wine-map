@@ -273,12 +273,13 @@
     return norm(canon) === norm(cahier);
   }
 
-  // The toggles that currently hide a record from the map, 'igp' and/or
-  // 'spirit' (a cider PGI is behind both).
+  // The toggles that currently hide a record from the map: 'igp', 'spirit'
+  // (a cider PGI is behind both) and 'pdo'.
   function hiddenGates(rec) {
     const gates = [];
     if (!showIgp && (rec.kind || 'AOC') === 'IGP') gates.push('igp');
     if (!showSpirits && rec.is_wine === false) gates.push('spirit');
+    if (!showPdo && isPdoRec(rec)) gates.push('pdo');
     return gates;
   }
 
@@ -298,6 +299,22 @@
     const latin = latinBracket(rec);
     if (!latin) return native;
     return native + ' <span class="latin">(' + escapeHtml(latin) + ')</span>';
+  }
+  // A sub-denomination's row under its parent shows what distinguishes it:
+  // the parent's name is cut from the front ("Aloxe-Corton premier cru Les
+  // Vercots" → "premier cru Les Vercots"; feedback 2026-10-18: fifteen rows
+  // read the same after the ellipsis). A name that does not start with the
+  // parent's, or one carrying a Latin bracket, is shown whole.
+  const CHILD_SEP_RE = /^[\s\-–—'’:,]+/;
+  function childLabel(rec, parentRec) {
+    const name = (rec && rec.name) || '';
+    const pn = (parentRec && parentRec.name) || '';
+    if (!pn || latinBracket(rec) || name.length <= pn.length + 1) return nameWithLatin(rec);
+    if (name.slice(0, pn.length).toLowerCase() !== pn.toLowerCase()) return nameWithLatin(rec);
+    const rest = name.slice(pn.length);
+    if (!CHILD_SEP_RE.test(rest)) return nameWithLatin(rec);
+    const shown = rest.replace(CHILD_SEP_RE, '');
+    return shown ? escapeHtml(shown) : nameWithLatin(rec);
   }
 
   // Does the query name the region itself: its displayed label, its native
@@ -351,6 +368,27 @@
   }
   const basemapAttribution = '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
   const initialDark = effectiveTheme() === 'dark';
+  // The start view fits the corpus (feedback 2026-10-18: the fixed France
+  // view was "too zoomed in"; on a phone it showed the middle of France).
+  // Its mainland extent: the Atlantic islands — the Azores, Madeira, the
+  // Canaries, every record west of 12° W — would push the continent into a
+  // corner, so they are left out of the fit, not off the map. A URL hash
+  // still wins: MapLibre applies `bounds` only when the hash is empty.
+  function corpusBounds() {
+    let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+    for (const slug in AOCS) {
+      const b = AOCS[slug].bbox || AOCS[slug].bbox_villages;
+      if (!b || b[2] < -12) continue;
+      if (b[0] < w) w = b[0];
+      if (b[1] < s) s = b[1];
+      if (b[2] > e) e = b[2];
+      if (b[3] > n) n = b[3];
+    }
+    return w < e ? [[w, s], [e, n]] : [[-10, 36], [30, 52]];
+  }
+  function startPadding() {
+    return window.innerWidth <= 768 ? { top: 16, bottom: 16, left: 12, right: 12 } : 32;
+  }
   let map;
   try {
     map = buildMap();
@@ -375,7 +413,7 @@
     // start at z3) so zooming out to a continental overview never drops into
     // an empty, polygon-less void. maxZoom 14 is defensive (tiles max at z12;
     // MapLibre overzooms cleanly above that).
-    center: [2.6, 46.5], zoom: 5.4, minZoom: 3, maxZoom: 14, hash: true,
+    bounds: corpusBounds(), fitBoundsOptions: { padding: startPadding() }, minZoom: 3, maxZoom: 14, hash: true,
     // Accessible names of the zoom buttons, in the page's locale.
     locale: { 'NavigationControl.ZoomIn': LABELS.ctrl_zoom_in, 'NavigationControl.ZoomOut': LABELS.ctrl_zoom_out }
   }); }
@@ -479,6 +517,28 @@
   if (mobileSearch) mobileSearch.addEventListener('click', () => setDrawer(true, 'search', mobileSearch));
   if (scrim) scrim.addEventListener('click', () => setDrawer(false));
 
+  // The desktop sidebar folds to a rail (feedback 2026-10-18): the state is
+  // a class on <html>, restored before first paint by the head script, and
+  // a localStorage preference; the rail's search button unfolds it with the
+  // search focused. MapLibre's own ResizeObserver resizes the canvas.
+  const collapseBtn = document.getElementById('sidebar-collapse');
+  const railSearch = document.getElementById('rail-search');
+  const railExpand = document.getElementById('rail-expand');
+  function sidebarCollapsed() { return document.documentElement.classList.contains('sidebar-collapsed'); }
+  function setSidebarCollapsed(on, via, focusSearch) {
+    const was = sidebarCollapsed();
+    document.documentElement.classList.toggle('sidebar-collapsed', on);
+    try { localStorage.setItem('sidebar_collapsed', on ? '1' : '0'); } catch (e) {}
+    for (const b of [collapseBtn, railExpand]) if (b) b.setAttribute('aria-expanded', on ? 'false' : 'true');
+    if (on !== was) track('Sidebar Toggled', { state: on ? 'collapsed' : 'expanded', via: via || 'button', locale: LANG });
+    const target = on ? railExpand : (focusSearch ? document.getElementById('omni') : collapseBtn);
+    if (target) { try { target.focus({ preventScroll: true }); } catch (e) {} }
+  }
+  for (const b of [collapseBtn, railExpand]) if (b) b.setAttribute('aria-expanded', sidebarCollapsed() ? 'false' : 'true');
+  if (collapseBtn) collapseBtn.addEventListener('click', () => setSidebarCollapsed(true, 'button'));
+  if (railExpand) railExpand.addEventListener('click', () => setSidebarCollapsed(false, 'rail'));
+  if (railSearch) railSearch.addEventListener('click', () => setSidebarCollapsed(false, 'rail-search', true));
+
   // About dialog. Native <dialog>; backdrop click closes.
   const aboutDialog = document.getElementById('about-dialog');
   const aboutLink = document.getElementById('about-link');
@@ -544,6 +604,10 @@
   // The Simple / Advanced view mode is gone (2026-10): one sidebar for
   // everyone. Drop the key it persisted so nothing stale lingers in storage.
   try { localStorage.removeItem('view_mode'); } catch (e) {}
+  // The last open card used to be reopened on the next visit (dropped
+  // 2026-10-18: a tester found Penedès open, left by the browser's previous
+  // user); the stored value goes with it.
+  try { localStorage.removeItem('selected_slugs'); } catch (e) {}
 
   // Deep-link an appellation as a real path segment: /<lang>/<slug> for every
   // locale, EN included (/en/<slug>) — so one CDN rewrite covers all four. EN's
@@ -598,6 +662,12 @@
   let showSpirits = false;
   try { showSpirits = localStorage.getItem('show_spirits') === '1'; } catch (e) {}
 
+  // PDOs can be hidden too (feedback 2026-10-18: the legend pills are the
+  // scope control, one per scheme), on by default.
+  let showPdo = true;
+  try { showPdo = localStorage.getItem('show_pdo') !== '0'; } catch (e) {}
+  const isPdoRec = rec => rec.is_wine !== false && (rec.kind || 'AOC') !== 'IGP';
+
   // A visitor who lands on an appellation's page — a search result, a shared
   // link, an MCP map link — asked for it: turn on every toggle that would keep
   // it off the map, so the map draws what the panel shows (a PGI landing used
@@ -608,6 +678,7 @@
     const gates = hiddenGates(AOCS[s]);
     if (gates.includes('igp')) showIgp = true;
     if (gates.includes('spirit')) showSpirits = true;
+    if (gates.includes('pdo')) showPdo = true;
   }
 
   // Map chrome. Zoom buttons (no compass: the map never rotates) above the
@@ -618,26 +689,89 @@
   // hides the buttons there.
   map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'bottom-right');
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+  // The legend is the scope control (feedback 2026-10-18, the review's
+  // mockups): one pill per fill colour — PDO, PGI, spirits — each a
+  // checkbox that draws or hides the scheme and an ⓘ that opens its
+  // definition (the card pills' tooltip). Built once; refresh() syncs the
+  // checked state so a toggle never loses its focus to a re-render. The
+  // change handlers live with the other scope handlers below.
   const legendControl = {
     onAdd() {
       this._el = document.createElement('div');
       this._el.className = 'maplibregl-ctrl owm-legend';
       this._el.setAttribute('role', 'group');
       this._el.setAttribute('aria-label', LABELS.legend_h);
-      this._el.title = LABELS.legend_area_hint;
+      const pill = (cls, id, text, aria, hintKey, hintLabel) => `<span class="legend-pill ${cls}"><label><input type="checkbox" id="${id}" aria-label="${escapeAttr(aria)}"><span class="txt">${escapeHtml(text)}</span></label><button type="button" class="scope-hint gi-scheme has-info" data-key="${hintKey}" aria-label="${escapeAttr(hintLabel)}">i</button></span>`;
+      this._el.innerHTML = pill('aoc', 'show-pdo', LABELS.scheme_pdo, LABELS.show_pdo_label, 'pdo', LABELS.scope_hint_pdo)
+        + pill('igp', 'show-igp', LABELS.scheme_pgi, LABELS.show_igp_label, 'pgi', LABELS.scope_hint_pgi)
+        + pill('spirit', 'show-spirits', LABELS.legend_spirits_label, LABELS.show_spirits_label, 'spirit-gi', LABELS.scope_hint_spirits);
       this.refresh();
       return this._el;
     },
     onRemove() { if (this._el) this._el.remove(); },
     refresh() {
       if (!this._el) return;
-      const item = (cls, text, title) => `<span class="legend-item" title="${escapeAttr(title)}"><span class="sw ${cls}" aria-hidden="true"></span>${escapeHtml(text)}</span>`;
-      this._el.innerHTML = item('aoc', LABELS.scheme_pdo, LABELS.legend_origin)
-        + item('igp', LABELS.scheme_pgi, LABELS.legend_gi)
-        + (showSpirits ? item('spirit', LABELS.scheme_spirit_gi, LABELS.scheme_spirit_gi) : '');
+      const sync = (id, on) => {
+        const inp = this._el.querySelector('#' + id);
+        if (!inp) return;
+        inp.checked = on;
+        inp.closest('.legend-pill').classList.toggle('on', on);
+      };
+      sync('show-pdo', showPdo);
+      sync('show-igp', showIgp);
+      sync('show-spirits', showSpirits);
     },
   };
   map.addControl(legendControl, 'bottom-left');
+
+  // The ⚙ control (top-right): language and theme in one popover, lifted
+  // out of the sidebar (feedback 2026-10-18: "move to config"; the three-
+  // state theme switch now carries its words). The block is server-rendered
+  // in the sidebar footer, where it stays for a no-JS visitor.
+  const settingsControl = {
+    onAdd() {
+      this._el = document.createElement('div');
+      this._el.className = 'maplibregl-ctrl maplibregl-ctrl-group owm-settings';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'settings-toggle';
+      btn.className = 'owm-settings-btn';
+      btn.setAttribute('aria-label', LABELS.settings_h);
+      btn.title = LABELS.settings_h;
+      btn.setAttribute('aria-haspopup', 'true');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.setAttribute('aria-controls', 'config-menu');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg>';
+      this._el.appendChild(btn);
+      const menu = document.getElementById('config-menu');
+      if (menu) { menu.hidden = true; menu.classList.add('placed'); this._el.appendChild(menu); }
+      this._btn = btn;
+      this._menu = menu;
+      btn.addEventListener('click', () => this.setOpen(!this.isOpen(), true));
+      return this._el;
+    },
+    onRemove() { if (this._el) this._el.remove(); },
+    isOpen() { return !!(this._menu && !this._menu.hidden); },
+    // `refocus`: the button takes focus back when the menu closes from the
+    // keyboard or its own button, never when a click elsewhere closed it.
+    setOpen(open, refocus) {
+      if (!this._menu) return;
+      const was = this.isOpen();
+      this._menu.hidden = !open;
+      this._btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open && !was) {
+        track('Settings Opened', { locale: LANG });
+        const first = this._menu.querySelector('a, button');
+        if (first) { try { first.focus({ preventScroll: true }); } catch (e) {} }
+      } else if (!open && was && refocus) {
+        try { this._btn.focus({ preventScroll: true }); } catch (e) {}
+      }
+    },
+  };
+  map.addControl(settingsControl, 'top-right');
+  document.addEventListener('click', e => {
+    if (settingsControl.isOpen() && !e.target.closest('.owm-settings')) settingsControl.setOpen(false, false);
+  });
 
   const filters = {
     q: '',
@@ -1030,22 +1164,17 @@
       push(rec.country || '', region, slug);
       for (const alias of rec.country_aliases || []) push(alias, region, slug);
     }
-    function total(regions) {
-      let n = 0;
-      for (const arr of regions.values()) n += arr.length;
-      return n;
-    }
-    // Countries by corpus weight (the ordering every other facet uses), then
-    // by localized name. Regions the same within their country, except the
-    // "no region" residue bucket, pinned last however big it is.
+    // Countries and regions alphabetically, in the page's language (feedback
+    // 2026-10-18: ordered by size — France, Italy, Spain, Greece … — the
+    // list read as no order at all), except the "no region" residue bucket,
+    // pinned last.
     const ordered = new Map();
     const countries = [...byCountry.entries()].sort((a, b) =>
-      total(b[1]) - total(a[1]) || countryLabel(a[0]).localeCompare(countryLabel(b[0]), 'fr'));
+      countryLabel(a[0]).localeCompare(countryLabel(b[0]), LANG));
     for (const [cc, regions] of countries) {
       const sorted = new Map([...regions.entries()].sort((a, b) =>
         (a[0] === '' ? 1 : 0) - (b[0] === '' ? 1 : 0) ||
-        b[1].length - a[1].length ||
-        regionLabel(a[0]).localeCompare(regionLabel(b[0]), 'fr')));
+        regionLabel(a[0]).localeCompare(regionLabel(b[0]), LANG)));
       for (const arr of sorted.values()) {
         arr.sort((a, b) => AOCS[a].name.localeCompare(AOCS[b].name, 'fr'));
       }
@@ -1128,15 +1257,38 @@
       for (const region of regions.keys()) {
         const slugs = visibleSlugsInRegion(cc, region);
         if (!slugs.length) continue;
-        const items = slugs.map(slug => {
+        // Sub-denominations nest under their parent's row, folded behind a
+        // chevron, the parent's name cut from theirs (childLabel). A child
+        // whose parent is not in this group — a hidden spirit, another
+        // region — stays a top-level row under its full name.
+        const inGroup = new Set(slugs);
+        const kids = new Map();
+        const top = [];
+        for (const slug of slugs) {
+          const p = AOCS[slug].is_sub_denomination ? AOCS[slug].parent_slug : null;
+          if (p && p !== slug && inGroup.has(p)) { if (!kids.has(p)) kids.set(p, []); kids.get(p).push(slug); }
+          else top.push(slug);
+        }
+        const row = (slug, depth, parentRec, subId) => {
           const safeSlug = escapeAttr(slug);
           const rec = AOCS[slug];
-          const nameHtml = nameWithLatin(rec);
+          const nameHtml = parentRec ? childLabel(rec, parentRec) : nameWithLatin(rec);
           const checked = filters.appellations.has(slug) ? ' checked' : '';
           const openLbl = escapeAttr(fmt(LABELS.open_appellation_aria, { name: rec.name || slug }));
-          // The checkbox's <label> and the → button are siblings in the row
-          // (a button nested in the label would take the row's name as its own).
-          return `<div class="aoc-row" data-slug="${safeSlug}" data-name="${escapeAttr(searchableText(rec))}"><label><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span>${cancelledBadge(rec, true)}${promotedBadge(rec, true)}</label><button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></div>`;
+          // The chevron, the checkbox's <label> and the → button are siblings
+          // in the row (a button nested in the label would take the row's
+          // name as its own).
+          const fold = subId
+            ? `<button type="button" class="tree-toggle" aria-expanded="false" aria-controls="${subId}" aria-label="${escapeAttr(rec.name || slug)}">›</button>`
+            : '<span class="tree-toggle-spacer" aria-hidden="true"></span>';
+          return `<div class="aoc-row" data-slug="${safeSlug}" data-depth="${depth}" data-name="${escapeAttr(searchableText(rec))}">${fold}<label><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span>${cancelledBadge(rec, true)}${promotedBadge(rec, true)}</label><button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></div>`;
+        };
+        const items = top.map(slug => {
+          const children = kids.get(slug);
+          if (!children) return row(slug, 0, null, '');
+          const subId = `fa-sub-${escapeAttr(cc)}-${escapeAttr(slug)}`;
+          return row(slug, 0, null, subId)
+            + `<div class="tree-children" id="${subId}" hidden>${children.map(c => row(c, 1, AOCS[slug], '')).join('')}</div>`;
         }).join('');
         let parentCount = 0;
         for (const s of slugs) if (!AOCS[s].is_sub_denomination) parentCount++;
@@ -1219,6 +1371,13 @@
   // here. preventDefault stops the wrapping <label> from toggling that checkbox
   // on a name/button click; stopPropagation keeps it off document-level handlers.
   document.getElementById('facet-appellations')?.addEventListener('click', e => {
+    // The chevron folds a parent's sub-denominations (the style trees' pattern).
+    const fold = e.target.closest('.tree-toggle');
+    if (fold) {
+      const wrap = document.getElementById(fold.getAttribute('aria-controls'));
+      if (wrap) setTreeOpen(wrap, wrap.hidden);
+      return;
+    }
     const btn = e.target.closest('.open-aoc');
     const row = e.target.closest('.aoc-row[data-slug]');
     // Open on the → button, or on the name text — but never on the checkbox
@@ -1298,8 +1457,18 @@
           // A query that names the region ("macedonia", "burgundy",
           // "bourgogne") keeps every row of the group.
           const regionHit = !!nq && regionSearchHit(group.dataset.region, nq);
+          const rowMatch = lbl => !nq || regionHit || lbl.dataset.name.includes(nq);
           group.querySelectorAll('.aoc-row').forEach(lbl => {
-            const match = !nq || regionHit || lbl.dataset.name.includes(nq);
+            let match = rowMatch(lbl);
+            // A parent stays when one of its folded sub-denominations matches,
+            // and that fold opens for the query (closed again when it clears).
+            const wrap = lbl.nextElementSibling;
+            if (wrap && wrap.classList.contains('tree-children')) {
+              const childHit = [...wrap.querySelectorAll('.aoc-row')].some(rowMatch);
+              match = match || childHit;
+              if (nq && childHit && wrap.hidden) { setTreeOpen(wrap, true); wrap.dataset.autoOpenedQ = '1'; }
+              else if (!nq && wrap.dataset.autoOpenedQ) { setTreeOpen(wrap, false); delete wrap.dataset.autoOpenedQ; }
+            }
             lbl.style.display = match ? '' : 'none';
             if (match) visible++;
           });
@@ -1321,6 +1490,18 @@
   }
 
   buildAppellationFacet();
+
+  // The legend pills' checkboxes (legendControl above): a scope toggle
+  // widens or narrows what is drawn where the reader already looks; it
+  // never moves the camera.
+  const pdoEl = document.getElementById('show-pdo');
+  pdoEl.checked = showPdo;
+  pdoEl.addEventListener('change', e => {
+    showPdo = e.target.checked;
+    try { localStorage.setItem('show_pdo', showPdo ? '1' : '0'); } catch (err) {}
+    track('Kind Toggled', { kind: 'pdo', enabled: showPdo ? 'true' : 'false', locale: LANG });
+    applyFilter();
+  });
 
   const igpEl = document.getElementById('show-igp');
   igpEl.checked = showIgp;
@@ -1356,6 +1537,7 @@
     const _omni = document.getElementById('omni');
     if (_omni) {
       _omni.value = '';
+      const _oc = document.getElementById('omni-clear'); if (_oc) _oc.hidden = true;
       _omni.setAttribute('aria-expanded', 'false');
       _omni.removeAttribute('aria-activedescendant');
       const _od = document.getElementById('omni-suggestions'); if (_od) { _od.hidden = true; _od.innerHTML = ''; }
@@ -1389,6 +1571,7 @@
     const parts = ['all'];
     if (!showIgp) parts.push(['!=', ['get', 'kind'], 'IGP']);
     if (!showSpirits) parts.push(['==', ['get', 'is_wine'], '1']);
+    if (!showPdo) parts.push(['any', ['==', ['get', 'is_wine'], '0'], ['==', ['get', 'kind'], 'IGP']]);
     function inField(field, set) {
       if (!set || !set.size) return null;
       const tests = [];
@@ -1414,6 +1597,7 @@
   function matchesClient(rec, slug, opts) {
     if (!(opts && opts.ignoreIgpGate) && !showIgp && (rec.kind || 'AOC') === 'IGP') return false;
     if (!showSpirits && rec.is_wine === false) return false;
+    if (!showPdo && isPdoRec(rec)) return false;
     const styleSet = activeStyleFineSet();
     if (styleSet.size && !setIntersects(styleSet, rec.styles || [])) return false;
     const classSet = expandClass(filters.classifications);
@@ -1427,6 +1611,7 @@
   function matchesExceptFacets(rec, slug, except) {
     if (!showIgp && (rec.kind || 'AOC') === 'IGP') return false;
     if (!showSpirits && rec.is_wine === false) return false;
+    if (!showPdo && isPdoRec(rec)) return false;
     if (!except.has('styles')) {
       const styleSet = activeStyleFineSet();
       if (styleSet.size && !setIntersects(styleSet, rec.styles || [])) return false;
@@ -1581,13 +1766,26 @@
         countryGroup.querySelectorAll('.region-group').forEach(group => {
           let visible = 0;
           let visibleParents = 0;
+          const reachableRow = lbl => {
+            const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return false;
+            const slug = inp.dataset.key; const rec = AOCS[slug];
+            return (rec ? matchesExceptFacets(rec, slug, except) : false) || inp.checked;
+          };
           group.querySelectorAll('.aoc-row').forEach(lbl => {
             const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
-            const slug = inp.dataset.key; const rec = AOCS[slug];
-            const reachable = rec ? matchesExceptFacets(rec, slug, except) : false;
-            const hide = !reachable && !inp.checked;
-            lbl.classList.toggle('facet-unavailable', hide);
-            if (!hide) {
+            const rec = AOCS[inp.dataset.key];
+            let keep = reachableRow(lbl);
+            // A parent the filter excludes stays for a sub-denomination it
+            // keeps (a DGC with its own colour or roster), its fold opened
+            // so that row is reachable.
+            const wrap = lbl.nextElementSibling;
+            if (!keep && wrap && wrap.classList.contains('tree-children')
+                && [...wrap.querySelectorAll('.aoc-row')].some(reachableRow)) {
+              keep = true;
+              if (wrap.hidden) setTreeOpen(wrap, true);
+            }
+            lbl.classList.toggle('facet-unavailable', !keep);
+            if (keep) {
               visible++;
               if (!(rec && rec.is_sub_denomination)) visibleParents++;
             }
@@ -1791,6 +1989,13 @@
       track('Kind Toggled', { kind: 'spirits', enabled: 'true', locale: LANG, via: via });
       buildAppellationFacet();
     }
+    if (gates.includes('pdo')) {
+      showPdo = true;
+      const pdoEl = document.getElementById('show-pdo');
+      if (pdoEl) pdoEl.checked = true;
+      try { localStorage.setItem('show_pdo', '1'); } catch (err) {}
+      track('Kind Toggled', { kind: 'pdo', enabled: 'true', locale: LANG, via: via });
+    }
     if (gates.length) applyFilter();
     lastPanelTrigger = trigger || null;
     lastStackKey = key;
@@ -1813,6 +2018,8 @@
       classifications: LABELS.facet_classification_h,
     };
     const live = document.getElementById('omni-live');
+    const clearBtn = document.getElementById('omni-clear');
+    const syncClear = () => { if (clearBtn) clearBtn.hidden = !input.value; };
     // The omnisearch ALSO live-filters the appellation tree below (in addition
     // to the open-panel dropdown), reusing the tree filter + auto-collapse.
     function syncTreeFilter(q) {
@@ -1836,7 +2043,7 @@
       const count = (it.count != null) ? `<span class="count">${it.count}</span>` : '';
       const badge = it.type === 'appellation' ? cancelledBadge(AOCS[it.key], true) + promotedBadge(AOCS[it.key], true) : '';
       const hidden = it.hidden
-        ? ` <span class="sub hidden-hint">${escapeHtml(it.hidden === 'igp' ? LABELS.omni_hidden_igp : LABELS.omni_hidden_spirit)}</span>`
+        ? ` <span class="sub hidden-hint">${escapeHtml(it.hidden === 'igp' ? LABELS.omni_hidden_igp : it.hidden === 'pdo' ? LABELS.omni_hidden_pdo : LABELS.omni_hidden_spirit)}</span>`
         : '';
       return `<div class="suggestion" id="omni-opt-${idx}" role="option" aria-selected="false" data-idx="${idx}" data-type="${escapeAttr(it.type)}" data-key="${escapeAttr(it.key)}"><span class="name">${escapeHtml(it.name)}</span>${badge}${sub}${hidden}${count}</div>`;
     }
@@ -1930,6 +2137,7 @@
       const wasAppellation = it.type === 'appellation';
       pickOmni(it.type, it.key);
       input.value = '';
+      syncClear();
       syncTreeFilter('');  // emptying the box clears the tree filter
       // On mobile, an appellation pick flies the map but the drawer would stay
       // open covering it — close it so the result is visible.
@@ -1949,6 +2157,7 @@
     });
     input.addEventListener('input', () => {
       const q = input.value.trim();
+      syncClear();
       renderDrop(q);
       syncTreeFilter(q);
       if (trackTimer) clearTimeout(trackTimer);
@@ -1978,9 +2187,21 @@
       } else if (e.key === 'Enter') {
         if (!drop.hidden && activeIdx >= 0) { e.preventDefault(); choose(activeIdx); }
       } else if (e.key === 'Escape') {
-        hideDrop();
+        // Esc backs out one step at a time (feedback 2026-10-18: "get out of
+        // search is not obvious"): the list, then the text with the tree
+        // filter it holds; an empty box lets the key reach the drawer / panel.
+        if (!drop.hidden) { e.stopPropagation(); hideDrop(); }
+        else if (input.value) { e.stopPropagation(); clearSearch('escape'); }
       }
     });
+    function clearSearch(via) {
+      input.value = '';
+      syncClear();
+      syncTreeFilter('');
+      hideDrop();
+      track('Search Cleared', { via: via, locale: LANG });
+    }
+    if (clearBtn) clearBtn.addEventListener('click', () => { clearSearch('button'); input.focus(); });
   }
 
   buildOmnisearch();
@@ -3168,10 +3389,6 @@
     for (const s of selectedSlugs) setSelectedState(s, false);
     selectedSlugs = slugs.slice();
     for (const s of selectedSlugs) setSelectedState(s, true);
-    try {
-      if (selectedSlugs.length) localStorage.setItem('selected_slugs', JSON.stringify(selectedSlugs));
-      else localStorage.removeItem('selected_slugs');
-    } catch (e) {}
   }
 
   // Single close path: clears selection + stack state + URL param, and returns
@@ -3198,10 +3415,11 @@
     lastPanelTrigger = null;
   }
 
-  // Restore an open detail panel: a shared /<lang>/<slug> path (or a legacy
-  // ?aoc= query) wins over the localStorage restore; otherwise reopen whatever
-  // was last open. Both run before map.on('load') — the setFeatureState
-  // highlight throws are swallowed and re-applied at the end of map.on('load').
+  // Open what the URL asks for: a shared /<lang>/<slug> path (or a legacy
+  // ?aoc= query), else a ?aocs= set — and nothing else: the last card is no
+  // longer reopened on the next visit (2026-10-18). Runs before
+  // map.on('load') — the setFeatureState highlight throws are swallowed and
+  // re-applied at the end of map.on('load').
   (function () {
     // The no-JS / crawler SSR fallback article is dropped only once the
     // interactive panel has actually replaced it (below); on an entity page
@@ -3247,16 +3465,7 @@
       }
       return;
     }
-    if (_ssr) { showSsrFallback(); return; }
-    let saved = null;
-    try { saved = localStorage.getItem('selected_slugs'); } catch (e) {}
-    if (!saved) return;
-    let slugs;
-    try { slugs = JSON.parse(saved); } catch (e) { return; }
-    if (!Array.isArray(slugs) || !slugs.length) return;
-    const valid = slugs.filter(s => AOCS[s]);
-    if (!valid.length) return;
-    renderPanelStack(valid, 0, false);
+    if (_ssr) showSsrFallback();
   })();
 
   document.querySelector('#panel .close').addEventListener('click', () => closePanel(true));
@@ -3266,6 +3475,7 @@
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (aboutDialog && aboutDialog.open) return;
+    if (settingsControl.isOpen()) { e.stopPropagation(); settingsControl.setOpen(false, true); return; }
     if (drawerOpen()) { e.stopPropagation(); setDrawer(false); return; }
     if (panel.classList.contains('open')) { e.stopPropagation(); closePanel(true); }
   });
@@ -3386,11 +3596,11 @@
   panel.addEventListener('focusin', showPillTip);
   panel.addEventListener('mouseout', hidePillTip);
   panel.addEventListener('focusout', hidePillTip);
-  // The scope row's ⓘ buttons reuse the scheme tooltip (the PGI and spirit-
-  // drink GI definitions with their regulator sources). A tap toggles it:
-  // iOS Safari gives a tapped button no focus, so focusin alone would leave
-  // touch readers out; a tap elsewhere closes it.
-  const scopeRow = document.getElementById('scope');
+  // The legend pills' ⓘ buttons reuse the scheme tooltip (the PDO, PGI and
+  // spirit-drink GI definitions with their regulator sources). A tap toggles
+  // it: iOS Safari gives a tapped button no focus, so focusin alone would
+  // leave touch readers out; a tap elsewhere closes it.
+  const scopeRow = legendControl._el || null;
   if (scopeRow) {
     // A touch tap is a burst of synthetic mouse events — mouseover, click,
     // then mouseout. Only the click counts for touch: a tap toggles the hint,
