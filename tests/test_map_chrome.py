@@ -85,3 +85,14 @@ def test_viewport_fit_cover_and_phone_chrome() -> None:
     assert "#mobile-bar, #scrim, #panel .sheet-handle { display:none }" in css
     assert "@media (min-width: 769px) and (max-width: 1024px)" in css
     assert "100dvh" in css and "env(safe-area-inset-bottom" in css
+
+
+def test_tree_rows_share_one_height_and_one_chevron_slot() -> None:
+    css = CSS.replace("{{", "{").replace("}}", "}")
+    assert "padding-right:27px" not in css
+    assert re.search(r"\.facet \.tree-toggle, \.facet \.tree-toggle-spacer \{ flex:0 0 28px; width:28px", css)
+    assert ".facet .tree-row { min-height:26px }" in css
+    phone = css[css.index("@media (max-width: 768px)"):]
+    assert ".facet .tree-row { min-height:44px }" in phone
+    assert ".facet, .facet.facet-appellations { max-height:none }" in phone
+    assert re.search(r"\.facet \.tree-toggle, \.facet \.tree-toggle-spacer \{ flex-basis:44px; width:44px; height:44px", phone)

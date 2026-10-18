@@ -75,3 +75,22 @@ def test_bucket_expansion_includes_the_bucket_itself() -> None:
     dm = descendants_map()
     for b in BUCKETS:
         assert b in dm[b], b
+
+
+def test_scope_toggles_never_move_the_camera() -> None:
+    # Showing PGIs or spirits widens what is drawn where the reader already
+    # looks (feedback 2026-10-18: "toggling shouldn't move the area the map is
+    # showing"); only a facet pick fits the map to its matches.
+    for var in ("showIgp", "showSpirits"):
+        start = APP_JS.index(f"{var} = e.target.checked;")
+        handler = APP_JS[start:APP_JS.index("\n  });", start)]
+        assert "track('Kind Toggled'" in handler, var
+        assert "applyFilter();" in handler, var
+        assert "fit: true" not in handler, var
+
+
+def test_tree_rows_without_children_carry_a_chevron_spacer() -> None:
+    # The count column lines up because every row ends in a slot of the
+    # chevron's width — a button, or an inert spacer (feedback 2026-10-18: the
+    # 27px padding only matched the desktop chevron; phones draw it 44px).
+    assert '<span class="tree-toggle-spacer" aria-hidden="true"></span>' in APP_JS

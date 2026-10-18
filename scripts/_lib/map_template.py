@@ -3006,12 +3006,14 @@ _TEMPLATE = """<!doctype html>
   .facet .tree-row-parent, .facet .tree-row[data-depth="0"] {{ font-weight:600; color:var(--n-100) }}
   /* The chevron folding a subtree: rotates when open; the subtree is the
      hidden sibling wrapper after the row. */
-  .facet .tree-toggle {{ flex:0 0 auto; background:none; border:none; color:#8a8a8a; cursor:pointer; font-size:15px; line-height:1; padding:0 6px; border-radius:3px; transition:transform 0.12s ease, color 0.12s ease, background 0.12s ease }}
+  .facet .tree-toggle, .facet .tree-toggle-spacer {{ flex:0 0 28px; width:28px; height:26px }}
+  .facet .tree-toggle {{ display:inline-flex; align-items:center; justify-content:center; background:none; border:none; color:#8a8a8a; cursor:pointer; font-size:15px; line-height:1; padding:0; border-radius:3px; transition:transform 0.12s ease, color 0.12s ease, background 0.12s ease }}
   .facet .tree-toggle:hover {{ color:var(--n-0); background:var(--n-750) }}
   .facet .tree-toggle[aria-expanded="true"] {{ transform:rotate(90deg) }}
-  .facet .tree-row:not(.tree-row-parent) {{ padding-right:27px }}
+  /* Every row is the chevron's height, with or without one. */
+  .facet .tree-row {{ min-height:26px }}
   .facet .tree-children[hidden] {{ display:none }}
-  .facet .tree-row[data-depth="0"]:not(:first-child) {{ margin-top:4px }}
+  .facet .tree-row[data-depth="0"]:not(:first-child) {{ margin-top:2px }}
   .facet .tree-row[data-depth="2"] .name {{ color:var(--n-300) }}
   /* Mixed case here too. The FR bassin labels are the join key's own
      ALL-CAPS form only until the catalog translates them — every locale
@@ -3207,7 +3209,12 @@ _TEMPLATE = """<!doctype html>
     #panel .stack-row {{ min-height:44px }}
     .facet input[type=checkbox] {{ width:18px; height:18px }}
     .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
-    .facet .tree-toggle {{ min-width:44px; min-height:40px; font-size:18px }}
+    /* The drawer is the one scroll surface: no facet scrolls inside a box of its own. */
+    .facet, .facet.facet-appellations {{ max-height:none }}
+    .facet .tree-row {{ min-height:44px }}
+    .facet .tree-toggle, .facet .tree-toggle-spacer {{ flex-basis:44px; width:44px; height:44px }}
+    .facet .tree-toggle {{ font-size:18px }}
+    .facet .tree-row[data-depth="0"]:not(:first-child) {{ margin-top:0 }}
     /* Pinch zooms on a phone; the buttons would only crowd the corner. */
     .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {{ display:none }}
     /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */

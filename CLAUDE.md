@@ -6299,9 +6299,15 @@ code that owns each piece:
 
 - **Sidebar** (`_LAB_HEAD_TOP` / `_SIDEBAR` in map_template.py): brand →
   language → theme → the count with its **scope row** (`#scope`: "Show
-  PGIs", "Include spirits" — both always visible; spirits default off) →
+  PGIs", "Include spirits" — both always visible; spirits default off; a
+  scope toggle redraws in place and never moves the camera — only a facet
+  pick fits the map to its matches, 2026-10-18) →
   omnisearch → active-filter chips → **Wine style** (the taxonomy tree,
-  depth-0 rows in `FACET_BUCKET_ORDER`, sub-styles behind a chevron) →
+  depth-0 rows in `FACET_BUCKET_ORDER`, sub-styles behind a chevron; a row
+  without children ends in a `.tree-toggle-spacer` of the chevron's width —
+  28 px, 44 px on phones — and every row is the chevron's height, so the
+  counts sit in one column at every breakpoint; on phones no facet scrolls
+  inside a box of its own — the drawer is the one scroll surface) →
   Classification and Appellation type (collapsed) → the country → region →
   appellation tree → footer. The legend left the sidebar for the map. A
   tree row is a `.tree-row` / `.aoc-row` div holding the checkbox's `<label>`

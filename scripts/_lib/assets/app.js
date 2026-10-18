@@ -945,7 +945,8 @@
       const subId = `${containerId}-sub-${safeKey}`;
       html += `<div class="tree-row${hasChildren ? ' tree-row-parent' : ''}" data-depth="${node.depth}">`
         + `<label><input type="checkbox" data-key="${safeKey}"><span class="name">${label}</span><span class="count">${node.count}</span></label>`
-        + (hasChildren ? `<button type="button" class="tree-toggle" aria-expanded="false" aria-controls="${subId}" aria-label="${escapeAttr(label)}">›</button>` : '')
+        + (hasChildren ? `<button type="button" class="tree-toggle" aria-expanded="false" aria-controls="${subId}" aria-label="${escapeAttr(label)}">›</button>`
+                       : '<span class="tree-toggle-spacer" aria-hidden="true"></span>')
         + '</div>';
       if (hasChildren) { html += `<div class="tree-children" id="${subId}" hidden>`; open.push(node.depth); }
     });
@@ -1323,7 +1324,9 @@
     showIgp = e.target.checked;
     try { localStorage.setItem('show_igp', showIgp ? '1' : '0'); } catch (err) {}
     track('Kind Toggled', { kind: 'igp', enabled: showIgp ? 'true' : 'false', locale: LANG });
-    applyFilter({ fit: true });
+    // A scope toggle widens or narrows what is drawn where the reader already
+    // looks; it never moves the camera.
+    applyFilter();
   });
 
   const spiritsEl = document.getElementById('show-spirits');
@@ -1334,7 +1337,7 @@
     track('Kind Toggled', { kind: 'spirits', enabled: showSpirits ? 'true' : 'false', locale: LANG });
     // Spirit AOCs join/leave the appellation tree; rebuild + reapply.
     buildAppellationFacet();
-    applyFilter({ fit: true });
+    applyFilter();
   });
 
   document.getElementById('reset').addEventListener('click', () => {
