@@ -1367,7 +1367,37 @@ touches many records still wants a full run.
 | audit_empty_grapes.py | wiki/data/aocs.en.*.js + wiki/data/d/en/*.json + scripts/_lib/empty_grapes_overrides.json | (stdout — FLAGGED / INHERIT / REVIEWED / STUB / NON-WINE buckets; `--strict`, `--json PATH`) |
 | audit_parcellaire_gaps.py | raw/inao/parcellaire/*.shp (attribute table, cached to raw/cache/parcellaire-coverage/) + scripts/_lib/parcellaire_carry_forward.json (+ its extracts) + raw/inao/aoc-aop-aires-communes.csv + raw/ign/communes.geojson + raw/inao/cahier-extracted/*.json + scripts/_lib/parcellaire_gap_fills.json | (stdout — aire communes without a parcel row per parcellaire record, classed; gap-fill pins and carried-forward rows APPLIED / STALE; `--strict`, `--json PATH`) |
 | extract_parcellaire_carry_forward.py | raw/inao/parcellaire/<release>_delim-parcellaire-aoc-shp.shp | scripts/_lib/parcellaire_carry_forward/<label>-<release>.geojson.gz (rows of one appellation or denomination, unchanged) |
-| 04_build_maps.py | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/{en,fr,es,nl}/<slug>/index.html (per-appellation entity pages), wiki/{en,fr,es,nl}/appellations/index.html (browse-index hub linking every indexable slug, grouped by country — fixes the entity-page link-graph orphan problem), wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (4 home + 4 browse + 1,638 index slugs × 4 locales), wiki/llms.txt (AI-crawler index), wiki/404.html |
+| 04_build_maps.py (`--shell-only`: re-emit from raw/cache/stage04-shell-snapshot.pkl) | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/{en,fr,es,nl}/<slug>/index.html (per-appellation entity pages), wiki/{en,fr,es,nl}/appellations/index.html (browse-index hub linking every indexable slug, grouped by country — fixes the entity-page link-graph orphan problem), wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (4 home + 4 browse + 1,638 index slugs × 4 locales), wiki/llms.txt (AI-crawler index), wiki/404.html |
+
+### Stage 04 `--shell-only`
+
+A template, JS, CSS or catalog change re-renders every page (hashed asset
+names, and every page embeds the sidebar server-side), but nothing the page
+emitter *consumes* has changed. The emitter reads the two feature lists —
+their properties only; the geometry is tiled, never rendered into a page —
+and 23 runtime caches that main() fills while loading, augmenting and
+resolving the records (`_shell_state()` in 04: the three local
+`*_BY_SLUG` dicts, the eighteen of `_lib/augment/_shared.py` and the two
+ES provenance dicts of `_lib/geom_chain.py` — the first shell-only run
+lost the Galician records' IET attribution without those). Every
+full build pickles exactly those at the emit boundary
+([scripts/_lib/shell_snapshot.py](scripts/_lib/shell_snapshot.py) →
+`raw/cache/stage04-shell-snapshot.pkl`, a raw cache), and
+`04_build_maps.py --shell-only` restores them in place (the augmenters,
+`_sources_for()` and the emitter hold the same dict objects) and calls the
+emitter — pages, bundles, panel JSON, MCP context, sitemap, llms.txt, 404,
+robots — skipping the minutes the full build spends producing identical
+inputs. The tile fingerprints (`?v=`) are recomputed from the pmtiles on
+disk. The snapshot is valid for the shell files (`SHELL_PATHS`:
+map_template.py, content_block.py, assets/, vendor/, i18n.py, gi_terms.py
+and the curated JSON tables the emitter reads; the locale catalogs are
+compiled by the emitter itself); the flag warns, file by file, when any
+other file under `scripts/` or an extracted-corpus `_index.json` is newer
+than the snapshot — a change to a record or its geometry needs a full
+build. Without a snapshot the flag exits 2. `tests/test_shell_snapshot.py`
+pins the round trip, the in-place restore, the staleness check and the
+wiring; the proof of equivalence is the golden comparator: a shell-only run
+after a full build must produce byte-identical output.
 
 ## Spain pipeline (`scripts/es/`)
 
@@ -5939,7 +5969,9 @@ matches the record's, that no `class_label` is empty, and reports the
 per-country distribution against the rosters. Run it after every stage-04
 build (`--strict` in CI).
 
-The facet is its own two-level tree ("Appellation type", advanced mode):
+The facet is its own two-level tree ("Appellation type" — withheld from the
+sidebar since 2026-10-18, its `<details>` the only thing removed; the tree
+code is dormant, to return with the AVAs):
 scheme rows over flag + term rows, built with `buildTreeFacet` over
 `class_key`; counts are parents-only and wines-only, so DOCG = the roster
 count, not roster + sottozone.
@@ -6147,8 +6179,8 @@ visibility toggle. See [scripts/_lib/vendor/README.md](scripts/_lib/vendor/READM
 
 ## Zoom-dependent level of detail (vineyard footprints)
 
-Zoom, not the Simple/Advanced toggle, decides which geometry the map
-draws (branch `feat/zoom-lod`, 2026-09-23). Two vector sources, one
+Zoom decides which geometry the map draws (branch `feat/zoom-lod`,
+2026-09-23; until then a Simple / Advanced toggle did). Two vector sources, one
 `source-layer` (`appellations`) and one `promoteId: 'slug'` each, built by
 `_build_source_block` in
 [scripts/_lib/map_template.py](scripts/_lib/map_template.py); the constants
@@ -6175,8 +6207,8 @@ never disagree about the zoom bands:
   lieux-dits — draws the same polygon in both sources.
 - **`appellations`** (`appellations.pmtiles`, tippecanoe z11–z12 with
   `--no-tiny-polygon-reduction-at-maximum-zoom`, layers `minzoom: 11`,
-  overzoomed to the client's maxZoom 14): the parcels, exactly as the old
-  advanced mode.
+  overzoomed to the client's maxZoom 14): the parcels, exactly as the
+  Advanced mode of the former toggle drew them.
 - **Crossfade z11.0 → z11.9**: both sources drawn with complementary
   `fill-opacity` / `line-opacity`; the selection halos fade with their
   fills and sit above both fills (layer order: fill-overview, fill,
@@ -6252,11 +6284,31 @@ never disagree about the zoom bands:
   Note` and `Appellation Viewed` carry `lod` (`footprint` / `parcels` /
   `zone` — the band boundary is `footprint_max_zoom` = 11.9, where the
   overview layers stop) and `zoom` — see [docs/analytics.md](docs/analytics.md).
-- **The toggle** no longer swaps layers; it still gates spirits and the
-  expert facets and keeps its `view_mode` key (to be simplified to one
-  mode — next step). `bbox_villages` on the startup record is now the
-  overview feature's bbox; `drawnBbox` / `fitBbox` in app.js replace the
-  mode-keyed reads.
+- **The Simple / Advanced toggle is gone (2026-10-17): one sidebar.** After
+  the LOD change it only swapped the style facet (7 bucket chips vs the
+  taxonomy tree), hid the Classification and Appellation type trees and
+  gated spirits; 6.5 % of visitors ever touched it (Plausible, 90 days). Now
+  the style facet is the taxonomy tree alone — depth-0 rows in
+  `FACET_BUCKET_ORDER` (white, rosé, red, sparkling, sweet / dessert,
+  oxidative, other; `BUCKETS` keeps the membership order the MCP context
+  keys on), sub-styles folded behind a chevron (`buildTreeFacet`: the
+  checkbox's label and the chevron button are siblings in a `.tree-row`,
+  the subtree a hidden sibling `.tree-children` wrapper;
+  `revealCheckedTreeRows` opens the branches above a ticked row). That also
+  fixed a bug the chips had carried: their expansion table
+  (`bucket_descendants`) drops the bucket slug itself, so the white and
+  rosé chips filtered nothing and "red" matched only clairet / primeur; the
+  tree path (`STYLE_DESCENDANTS`, self included) matches the records that
+  carry the bucket slug. Classification and Appellation type are collapsed
+  sections, always present. Spirits are gated by the `show_spirits`
+  checkbox alone — since 2026-10-18 the Spirits legend pill on the map
+  (2026-10-17 → 10-18: the sidebar's `#scope` row); `localStorage.view_mode`
+  is removed on load; `Feedback *` no longer
+  carry `view_mode` (`lod` + `zoom` say what was on screen) and `View Mode
+  Switched` is retired. The appellation tree's → button moved out of the
+  row's label for the same accessibility reason (`.aoc-row`).
+  `bbox_villages` on the startup record is the overview feature's bbox;
+  `drawnBbox` / `fitBbox` in app.js read it by zoom.
 - **Audit.** [scripts/audit_vineyard_envelopes.py](scripts/audit_vineyard_envelopes.py):
   parity, containment (within `containment_tolerance_m`, the polygonal
   buffer's corner shave plus the simplify), bbox, inflation, and
@@ -6270,6 +6322,176 @@ never disagree about the zoom bands:
   Run it with `--strict` after any stage-04 build that touches geometry;
   the golden comparator does not see geometry (only the four app bundles
   go red on a tileset change, through the `?v=` fingerprint).
+
+## Map chrome and panel (the 2026-10-17 UX pass)
+
+One sidebar, one set of affordances, the same on every page. What the map
+page is made of since 2026-10-17 (branch `feat/unified-sidebar`), with the
+code that owns each piece:
+
+- **Sidebar** (`_LAB_HEAD_TOP` / `_SIDEBAR` in map_template.py; reshaped by
+  the 2026-10-18 review, see the Miro mockups in the memory of that
+  session): the **head** — brand + the ‹ button that folds the sidebar to
+  a 48 px **rail** (`#sidebar-rail`: pin, a magnifier that unfolds with
+  the search focused, ›; the state is `html.sidebar-collapsed`, restored
+  before first paint from `localStorage.sidebar_collapsed`, desktop only —
+  the phone media query ignores it; `setSidebarCollapsed`) → the
+  **omnisearch first** (a taller field with a magnifier and a × clear
+  button; its results are **not a popup**: while the box holds text they
+  replace the filters below it — `#sidebar.searching` hides the facets,
+  the count and the chips, the list sits in the flow and scrolls with the
+  sidebar, 25 appellations and 6 of each other group — because the
+  dropdown that sat half over the tree read as a layout error to the
+  2026-10-18 testers; an empty box shows the filters again, there are no
+  seeds for an empty query, and Esc or the × clears the text and the tree
+  filter with it, an empty box letting the key reach the drawer / panel) →
+  the count → active-filter chips → **Wine style** (the taxonomy tree,
+  depth-0 rows in `FACET_BUCKET_ORDER`, sub-styles behind a chevron; a row
+  without children ends in a `.tree-toggle-spacer` of the chevron's width —
+  28 px, 44 px on phones — and every row is the chevron's height, so the
+  counts sit in one column at every breakpoint; on phones no facet scrolls
+  inside a box of its own — the drawer is the one scroll surface; the
+  section starts collapsed, like Classification and Appellation type — only
+  the appellation tree is open by default, and `revealCheckedTreeRows`
+  opens a section whose tree holds a tick, 2026-10-18) →
+  Classification (collapsed; the Appellation type tree is withheld from the
+  sidebar since 2026-10-18 — Boris: drop it for now, it may come back when
+  AVAs etc. are introduced; its markup is the only thing removed, the
+  builder, data tokens and chip handling stay dormant behind null-guards) →
+  the country → region → appellation tree → footer (the disclaimer + the
+  two links), which also
+  holds the server-rendered `#config-menu` (language + theme) that app.js
+  lifts into the ⚙ control — a no-JS visitor keeps the language links there.
+  The theme switch is one row beside its heading: three icon-only buttons
+  (sun / monitor / moon — the convention; the half-circle read as nothing),
+  each with the word as `aria-label` and `title`, the pressed one filled
+  with the accent (2026-10-19: the words had made the cells cramped).
+  The sidebar is a flex column: on desktop the open appellation `<details>`
+  takes every pixel left (`flex:1 1 auto`, at least 190 px) and is its own
+  scroll box with a sticky summary — its content sits in the element's
+  shadow slot, out of reach of a flex rule on the inner `.facet` — so the
+  footer sits at the bottom whatever the list's length (feedback
+  2026-10-18: it floated mid-sidebar under a 340 px list); on phones the
+  drawer stays the one scroll surface. Countries and regions
+  sort **alphabetically** in the page's language (`COUNTRY_TREE`; by size
+  until 2026-10-18, the "no region" bucket still last). The legend left the
+  sidebar for the map. **Sub-denominations nest under their parent's row**
+  behind a chevron, their label the parent's name cut from the front
+  (`childLabel`: "Aloxe-Corton premier cru Les Vercots" → "premier cru Les
+  Vercots"; a name that does not start with the parent's, or carries a
+  Latin bracket, stays whole; `parent_slug` is a startup field for it), and
+  an appellation name **wraps** instead of truncating — fifteen Aloxe rows
+  had read "Aloxe-Corton premier …". The tree filter opens a fold whose
+  child matches (`data-auto-opened-q`, closed when the query clears), and a
+  facet filter keeps a parent row for a reachable child (its own colour or
+  roster). A tree row is a `.tree-row` / `.aoc-row` div holding the
+  checkbox's `<label>` and, as **siblings**, the chevron (or an inert
+  spacer) and the → open button — never a button inside a label (a button
+  is a labelable element and would take the row's name as its own).
+  `buildTreeFacet` folds each subtree into a hidden sibling
+  `.tree-children` wrapper (`aria-controls` / `aria-expanded` on the
+  chevron); `revealCheckedTreeRows` opens the branches above a ticked row. A
+  facet filter with ≤ 25 matches opens the tree groups that hold them
+  (`openGroupsWithMatches`, tagged `data-auto-opened-f`, closed again when
+  the filter clears); above that the status line offers "show in the list".
+- **Map chrome** (app.js after the landing gate; CSS "Map chrome" block):
+  the **start view fits the corpus** (`bounds: corpusBounds()` — every
+  record's bbox except the Atlantic islands west of 12° W, which would push
+  the continent into a corner; a URL hash still wins, MapLibre applies
+  `bounds` only when it is empty; until 2026-10-18 a fixed France view at
+  z5.4, "too zoomed in"), and **no card is reopened** on the next visit
+  (the `selected_slugs` restore reopened Penedès for whoever came after;
+  the key is removed on load). MapLibre `NavigationControl` (no compass;
+  accessible names from `ctrl_zoom_in` / `ctrl_zoom_out` through the Map
+  `locale` option; hidden ≤ 768px) above the attribution, a metric
+  `ScaleControl` bottom-left and above it the **legend pills**
+  (`legendControl`): one pill per scheme — PDO, PGI, Spirits — each a
+  checkbox (`#show-pdo` / `#show-igp` / `#show-spirits`; PDO on, the
+  other two off by default, remembered per browser; a toggle redraws in
+  place and never moves the camera — only a facet pick fits the map) and
+  an ⓘ (`.scope-hint`, `data-key` pdo / pgi / spirit-gi) that opens the
+  scheme definition of the card's pills — `TERMS_INFO`, the same tooltip
+  element — by hover, focus or a tap (touch drives it through the click
+  alone, because a tap is a burst of synthetic mouse events whose trailing
+  mouseout would close what the tap opened). Filled while the scheme is
+  drawn, outlined while hidden; the spirits pill takes dark ink — white
+  fails AA on `#a07530`, the colour non-wine GIs paint (`is_wine` tested
+  before the PGI kind in `_build_source_block`). Hiding PDOs is a third
+  gate beside PGIs and spirits (`showPdo`, `isPdoRec`: filter expression,
+  client matcher, landing gate, `openAppellation`). The **⚙ control**
+  top-right (`settingsControl`) holds the languages by their own names and
+  the light / system / dark switch as icon-only buttons (sun / monitor /
+  moon, the word as accessible name + hover hint); Esc closes it first,
+  a click elsewhere closes it without stealing focus. Bottom-corner
+  controls stack, later ones above (`insertBefore(firstChild)`), with
+  `clear:both` so they never sit side by side.
+- **Hover** (pointer devices only, `(hover: hover) and (pointer: fine)`):
+  `hitSlugsAt(point)` — the click's 4 px box over both fill layers, deduped,
+  `parent-appellation` / `sibling-dgc` inheritors dropped, sorted by
+  `localityRank` — serves hover and click alike; the polygon under the
+  cursor takes feature-state `hover` (brighter fill, +0.8 px outline, always
+  under the selection override) on both sources and a pointer-tracking
+  label (`maplibregl.Popup.trackPointer`, `aria-hidden`) names it with "+N"
+  for the rest of the stack a click would open. Hovering a stack row lights
+  its polygon without the label.
+- **Card** (`renderAocCard`, mirrored by `render_content_block`): name →
+  meta → cancelled / promoted lines → "sub-denomination of" → stub line →
+  styles → grapes → terroir facts XOR summary → dűlők / menzioni → note →
+  **boundary notes** (`<details class="boundary-notes">`: the amber
+  provenance lines and the zoom-reactive footprint line, folded; the summary
+  says "· approximate area" for a shape that stands in for the delimitation
+  — `isApproxGeom` / `_APPROX_GEOM_SOURCES`) → **related appellations** (a
+  parent's sub-denominations under the regulator's own heading,
+  `SUBDENOM_HEADINGS`, from the `children` list stage 04 writes into the
+  parent's panel payload — parents only, never a startup field; 12 rows then
+  "and N more"; and "All appellations in <region> · <country>", the tree's
+  region / country filter — the SSR card renders the country link as a real
+  href to the browse index's `#c-<cc>` section) → provenance line → sources →
+  "Report a mistake". A **stack** renders the focus card in full and the rest
+  as rows (`stackRows`: name · classification · region; a click brings it to
+  the front, `via: stack-pick`) under a visible hint; only the focus record's
+  payload is fetched.
+- **Phones (≤ 768px)**: a bar (`#mobile-bar`: brand link, ⚙, ☰ — the first
+  screen is no longer a bare map) over the map; the ⚙ and its menu are
+  homed into the bar by `homeSettings` (re-homed when the viewport crosses
+  768 px) and the map's control is hidden there — a control floating under
+  the bar looked misplaced — and the bar's search button went on 2026-10-18
+  because it opened the drawer the ☰ opens, the search being the drawer's
+  first row anyway; the legend pills stay on the map; the sidebar's fold
+  button and rail do not exist on phones; the sidebar is a
+  drawer with a scrim — its own brand block (`.brand-title` + `.subtitle`,
+  the page `<h1>` on the home and fold pages) is visually hidden there, not
+  removed, since the bar already names the site 50 px above it (2026-10-18) (`setDrawer` owns `#sidebar.open`, the scrim and the
+  buttons' `aria-expanded`; focus moves into the drawer on open and back to
+  the opener on close; Esc closes the drawer before the sheet; opening a
+  record from the tree, the search or a related link closes it); a record
+  opens as a **45 % sheet** with a handle (`setSheetExpanded`, 92 % when
+  expanded; a scroll expands it; `closePanel` resets); `fitPadding` pads
+  every camera fit for the sheet and the bar; `100dvh`,
+  `env(safe-area-inset-*)`, `viewport-fit=cover`. **Tablets (769–1024px)**:
+  the open panel overlays the map's right edge instead of pushing it.
+  `html.booted` (two frames after start) gates the panel / drawer
+  transitions, so an entity landing paints its panel open.
+- **Design tokens** (`:root` at the top of the style block): one accent
+  (`--c-accent`; the former `#7A1F2B` / `#7a1f3a` are gone), `--c-pgi`,
+  `--c-spirit`, `--c-cream`, a neutral lightness scale `--n-0 … --n-900`,
+  the dark panel pair, the amber note colours, four small text sizes
+  (`--fs-2xs … --fs-md`) and the **sidebar palette by role** (`--side-bg`,
+  `--side-bg-2…4`, `--side-border(-2)`, `--side-text(-2, -3)`,
+  `--side-input-bg`, `--side-focus`, `--side-link`, `--side-chip-on`,
+  `--side-accent-ink`): light by default and redefined under
+  `html.theme-dark`, so the sidebar, the phone bar and the ⚙ menu follow
+  the theme (feedback 2026-10-18: light mode had left the menu dark; write
+  sidebar CSS with these, never with `--n-*`). `tests/test_map_chrome.py` keeps `--c-accent` /
+  `--c-pgi` / `--c-spirit` in step with the paint and pins the hover state,
+  the viewport meta and the phone chrome; `tests/test_sidebar_unified.py`
+  pins the sidebar.
+- **Analytics**: `Drawer Opened {via: menu | search}`, `Sheet Expanded
+  {slug, via: handle | scroll}`, `Filter Applied` from a related link carries
+  `via: panel-link`; since 2026-10-18 `Kind Toggled` also carries `kind:
+  pdo`, and `Settings Opened`, `Sidebar Toggled {state, via}` and `Search
+  Cleared {via: button | escape}` are new — see
+  [docs/analytics.md](docs/analytics.md).
 
 ## Structured data (JSON-LD) on entity pages
 
@@ -6461,10 +6683,16 @@ static link layer (all in [scripts/_lib/map_template.py](scripts/_lib/map_templa
   (resolve storage zone by name, set `Custom404FilePath=/404.html`). Apex→www
   301 stays a manual dashboard rule (smoke-checked by `check_apex_redirect`).
   IndexNow receives only pages whose *content* changed: every page is
-  fingerprinted with its hashed asset references normalised and compared with
-  the previous deploy's set in `tmp/deploy/indexnow-fingerprints-<env>.json`,
-  so an asset-hash rebuild no longer pings all ~11.6k pages (Bing's "IndexNow
-  batch mode" warning); and only under the page's own canonical URL
+  fingerprinted on its content — title, description / robots / Open Graph
+  metas, canonical and hreflang links, JSON-LD, the server-rendered card and
+  the entity nav, hashed asset references normalised; never the sidebar,
+  the panel skeleton, the viewport meta or the scripts (2026-10-19, `page_content`
+  in deploy.py) — and compared with the previous deploy's set in
+  `tmp/deploy/indexnow-fingerprints-<env>.json`, so an asset-hash rebuild or
+  a UI release no longer pings all ~11.6k pages (Bing's "IndexNow batch mode"
+  warning; `--indexnow-baseline SITE_DIR` re-records the set from a snapshot
+  after a change to the scope, `--no-indexnow` skips the submission once);
+  and only under the page's own canonical URL
   (`public_url`: `/` for the EN home, `/<lang>/` and `/<lang>/appellations/`
   with the slash, `/<lang>/<slug>` without), never a `noindex` fold page
   (`indexnow_urls` reads the head) — before 2026-09-26 the deploy had pushed

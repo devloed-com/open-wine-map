@@ -95,6 +95,65 @@ def test_indexnow_skips_pages_changed_only_by_an_asset_hash(tmp_path):
     assert "assets/app.en.abcdefabcd.js" not in rels
 
 
+def _entity_page(shell: str, card: str, title: str = "Santenay") -> str:
+    return (
+        f"<!doctype html><html><head><title>{title}</title>"
+        '<meta name="description" content="d"><link rel="canonical" href="https://x/en/santenay">'
+        '<script src="/assets/app.en.0123456789.js"></script>'
+        '<script type="application/ld+json">{"@type":"Place"}</script></head>'
+        f'<body><div id="app"><article id="ssr-content" class="aoc-card">{card}</article>'
+        '<nav class="entity-nav"><a href="/en/appellations/">All</a></nav>'
+        f'<aside id="sidebar">{shell}</aside><div id="panel"></div></div><script>app()</script>'
+        "</body></html>"
+    )
+
+
+def test_indexnow_fingerprint_covers_the_content_not_the_shell(tmp_path):
+    deploy = _load("deploy")
+    rel = "en/santenay/index.html"
+    page = tmp_path / rel
+    page.parent.mkdir(parents=True)
+
+    def fp(text):
+        page.write_text(text)
+        return deploy.fingerprint_pages(tmp_path, [rel])[rel]
+
+    base = fp(_entity_page("<p>sidebar v1</p>", "<h1>Santenay</h1>"))
+    # The shell changes with every UI release; the page's content does not.
+    assert fp(_entity_page("<p>sidebar v2</p>", "<h1>Santenay</h1>")) == base
+    # Nor do the viewport / theme-color metas (viewport-fit=cover, 2026-10).
+    assert fp(_entity_page("<p>sidebar v2</p>", "<h1>Santenay</h1>").replace(
+        "<head>", '<head><meta name="viewport" content="width=device-width, viewport-fit=cover">'
+        '<meta name="theme-color" content="#fff">')) == base
+    # The card, the head's metadata and the entity nav are the content.
+    assert fp(_entity_page("<p>sidebar v2</p>", "<h1>Santenay AOC</h1>")) != base
+    assert fp(_entity_page("<p>sidebar v2</p>", "<h1>Santenay</h1>", title="Santenay map")) != base
+    assert fp(_entity_page("<p>sidebar v2</p>", "<h1>Santenay</h1>").replace(
+        '<nav class="entity-nav"><a href="/en/appellations/">All</a></nav>',
+        '<nav class="entity-nav"><a href="/en/appellations/">All</a><a href="/en/x">x</a></nav>')) != base
+    # A page without a server-rendered card — the home page — is its shell.
+    home = tmp_path / "index.html"
+    home.write_text("<html><head><title>Map</title></head><body><aside id=\"sidebar\">v1</aside></body></html>")
+    h1 = deploy.fingerprint_pages(tmp_path, ["index.html"])["index.html"]
+    home.write_text("<html><head><title>Map</title></head><body><aside id=\"sidebar\">v2</aside></body></html>")
+    assert deploy.fingerprint_pages(tmp_path, ["index.html"])["index.html"] != h1
+
+
+def test_indexnow_baseline_records_a_site_trees_fingerprints(tmp_path):
+    deploy = _load("deploy")
+    site = tmp_path / "site"
+    (site / "en" / "santenay").mkdir(parents=True)
+    (site / "en" / "santenay" / "index.html").write_text(_entity_page("s", "<h1>Santenay</h1>"))
+    (site / "index.html").write_text("<html><head><title>Map</title></head><body>x</body></html>")
+    (site / "assets").mkdir()
+    (site / "assets" / "app.en.0123456789.js").write_text("app()")
+    out = tmp_path / "tmp" / "deploy" / "indexnow-fingerprints-prod.json"
+    assert deploy.write_indexnow_baseline(site, out) == 2
+    saved = deploy.load_fingerprints(out)
+    assert set(saved) == {"en/santenay/index.html", "index.html"}
+    assert saved == deploy.fingerprint_pages(site, ["en/santenay/index.html", "index.html"])
+
+
 def test_indexnow_urls_are_the_pages_own_canonicals(tmp_path):
     deploy = _load("deploy")
     base = "https://www.openwinemap.com"

@@ -356,14 +356,58 @@ _INDEXNOW_KEY_RE = re.compile(r"^[0-9a-f]{32}$")
 # A hashed asset reference inside a page: /assets/app.en.0123456789.js — the
 # same normalisation compare_build_output.py applies.
 _ASSET_REF_RE = re.compile(r"(\.)[0-9a-f]{10}(\.(?:js|css))")
+# The parts of a page a search engine reads: the head's metadata (title,
+# description, robots, Open Graph / Twitter cards, canonical, hreflang
+# alternates), the JSON-LD, the server-rendered card and the entity nav. Not
+# the shell around them — the sidebar every page embeds, the panel skeleton,
+# the viewport and theme-color metas, the scripts and styles — which changes
+# with every UI release while the page's content does not (2026-10-19: the
+# unified-sidebar release would otherwise have pinged all ~6.6k indexable
+# pages for a sidebar nobody searches; its viewport-fit=cover alone touched
+# every head).
+_CONTENT_HEAD_RE = re.compile(
+    r"<title>.*?</title>"
+    r'|<meta\s+(?:name="(?:description|robots|twitter:[^"]*)"|property="og:[^"]*")[^>]*>'
+    r'|<link\s+rel="(?:canonical|alternate)"[^>]*>'
+    r'|<script type="application/ld\+json">.*?</script>',
+    re.S,
+)
+_CONTENT_BODY_RE = re.compile(
+    r'<article id="ssr-content".*?</article>|<nav class="entity-nav".*?</nav>', re.S
+)
+
+
+def page_content(text: str) -> str:
+    """What IndexNow is told about: the content parts of an entity page; a page
+    without a server-rendered card (the home pages, the browse index) whole,
+    its shell included — there the shell IS the content."""
+    body = _CONTENT_BODY_RE.findall(text)
+    if not any(part.startswith('<article id="ssr-content"') for part in body):
+        return text
+    head_end = text.find("</head>")
+    head = text[:head_end] if head_end > 0 else ""
+    return "\n".join([*_CONTENT_HEAD_RE.findall(head), *body])
 
 
 def page_fingerprint(path: pathlib.Path) -> str:
-    """sha256 of a page with its content-hashed asset references normalised,
-    so a page that changed ONLY because a bundle was renamed fingerprints the
-    same as before."""
+    """sha256 of a page's content with its content-hashed asset references
+    normalised, so a page that changed ONLY in its shell, or because a bundle
+    was renamed, fingerprints the same as before."""
     text = path.read_text(encoding="utf-8", errors="replace")
-    return hashlib.sha256(_ASSET_REF_RE.sub(r"\1HASH\2", text).encode("utf-8")).hexdigest()
+    content = _ASSET_REF_RE.sub(r"\1HASH\2", page_content(text))
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def write_indexnow_baseline(site: pathlib.Path, fp_path: pathlib.Path) -> int:
+    """Record the fingerprints of the pages under `site` (an extracted
+    snapshot's site/ tree, or wiki/) as the previous deploy's, so the next
+    deploy compares content with content. Needed once after a change to what
+    `page_content` covers: the file on disk holds fingerprints of the old
+    scope, against which every page would look changed."""
+    rels = sorted(str(p.relative_to(site)) for p in site.rglob("index.html"))
+    fingerprints = fingerprint_pages(site, rels)
+    save_fingerprints(fp_path, fingerprints)
+    return len(fingerprints)
 
 
 def fingerprint_pages(root: pathlib.Path, rels) -> dict[str, str]:
@@ -835,9 +879,26 @@ def main() -> int:
     ap.add_argument("--verify-sample", type=int, default=60, metavar="N",
                     help="uploaded stable-URL files checked through the CDN after the purge "
                          "(default: 60)")
+    ap.add_argument("--no-indexnow", action="store_true",
+                    help="upload and purge, but tell IndexNow nothing (the fingerprints are "
+                         "still recorded, so the next deploy submits only what changes after "
+                         "this one)")
+    ap.add_argument("--indexnow-baseline", metavar="SITE_DIR",
+                    help="write this environment's IndexNow fingerprints from the pages under "
+                         "SITE_DIR (an extracted snapshot's site/ tree) and exit — once, after a "
+                         "change to what the fingerprint covers")
     ap.add_argument("--no-replication-wait", action="store_true",
                     help="purge right after the upload, without probing the replicas")
     args = ap.parse_args()
+    if args.indexnow_baseline:
+        site = pathlib.Path(args.indexnow_baseline)
+        if not site.is_dir():
+            sys.exit(f"--indexnow-baseline: {site} is not a directory")
+        fp_path = pathlib.Path(__file__).resolve().parent.parent / "tmp" / "deploy" / \
+            f"indexnow-fingerprints-{args.env}.json"
+        n = write_indexnow_baseline(site, fp_path)
+        print(f"indexnow baseline: {n} pages from {site} → {fp_path}", file=sys.stderr)
+        return 0
     env = _ENVS[args.env]
     sfx = env["suffix"]
 
@@ -976,6 +1037,11 @@ def main() -> int:
 
     if not env["indexable"]:
         print(f"indexnow: skipped ({args.env} is not indexable)", file=sys.stderr)
+    elif args.no_indexnow:
+        fp_path = root.parent / "tmp" / "deploy" / f"indexnow-fingerprints-{args.env}.json"
+        save_fingerprints(fp_path, fingerprint_pages(root, local))
+        print(f"indexnow: skipped (--no-indexnow); fingerprints recorded at {fp_path}",
+              file=sys.stderr)
     else:
         print("notifying IndexNow of changed pages ...", file=sys.stderr)
         keyinfo = find_indexnow_key(root)

@@ -21,7 +21,13 @@ from pathlib import Path
 
 from babel.numbers import format_decimal
 
-from _lib.content_block import RenderCtx, esc, render_content_block, to_title_case
+from _lib.content_block import (
+    SUBDENOM_HEADINGS,
+    RenderCtx,
+    esc,
+    render_content_block,
+    to_title_case,
+)
 from _lib.env import (
     carto_basemap_key,
     carto_basemap_keys,
@@ -78,6 +84,18 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "open_appellation_aria": _("Ouvrir la fiche de {name}"),
         "open_appellation_title": _("Ouvrir la fiche"),
         "show_spirits_label": _("Inclure les spiritueux"),
+        "scope_hint_pgi": _("Qu'est-ce qu'une IGP ?"),
+        "scope_hint_spirits": _("Qu'est-ce qu'une IG de spiritueux ?"),
+        "scope_hint_pdo": _("Qu'est-ce qu'une AOP ?"),
+        "show_pdo_label": _("Afficher les AOP"),
+        "legend_spirits_label": _("Spiritueux"),
+        "omni_hidden_pdo": _("AOP masquée · s'affiche à la sélection"),
+        # The ⚙ control on the map (language + theme) and the desktop
+        # sidebar's fold / unfold buttons (app.js settingsControl, setSidebarCollapsed).
+        "settings_h": _("Paramètres"),
+        "sidebar_collapse_aria": _("Replier le panneau"),
+        "sidebar_expand_aria": _("Déplier le panneau"),
+        "search_clear_aria": _("Effacer la recherche"),
         "facet_styles_h": _("Style de vin"),
         "facet_classification_h": _("Classement"),
         "facet_principal_h": _("Cépages principaux"),
@@ -96,9 +114,6 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "facet_scheme_uk_pgi": _("IGP (régime britannique)"),
         "facet_scheme_none": _("AOC (Suisse)"),
         "gi_term_source_label": _("Source"),
-        "view_mode_h": _("Vue"),
-        "view_mode_simple": _("Simple"),
-        "view_mode_advanced": _("Avancée"),
         "theme_h": _("Thème"),
         "theme_light": _("Clair"),
         "theme_dark": _("Sombre"),
@@ -297,11 +312,18 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         ),
         "geom_sigpac_whole": _("S'y ajoutent, en totalité, les communes {whole}."),
         "stack_header": _("{n} appellations à ce point"),
-        "stack_cycle_hint": _(
-            "Cliquer à nouveau sur la carte pour parcourir les autres, "
-            "ou sur une fiche pour l'afficher en premier"
+        # The rest of a stack is a list of rows under the focus card; the hint
+        # is visible text, not a tooltip.
+        "stack_cycle_hint_rows": _(
+            "Cliquez à nouveau sur la carte pour passer à la suivante, "
+            "ou choisissez un nom ci-dessous."
         ),
-        "stack_focus_title": _("Afficher cette appellation en premier"),
+        "stack_others_h": _("Aussi à ce point"),
+        # The folded boundary notes below the facts (how the polygon was
+        # drawn), and the related-appellations links.
+        "boundary_notes_h": _("À propos du contour"),
+        "related_all_in": _("Toutes les appellations de {name}"),
+        "related_more": _("et {n} autres"),
         "src_cahier": _("Cahier des charges (BO Agri, PDF)"),
         "src_cahier_eu_register": _("Cahier des charges (registre GI de l'UE, PDF)"),
         "src_homologated": _("homologué"),
@@ -323,13 +345,19 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_ofag_repertoire": _("Répertoire suisse des AOC (OFAG/BLW)"),
         "src_gov_uk_spec": _("Cahier des charges (GOV.UK, PDF)"),
         "src_gov_uk_register": _("Registre des IG du Royaume-Uni"),
+        # The legend rides the map (app.js `legendControl`): one swatch per fill
+        # colour with its scheme word beside it; the long forms are the tooltips.
         "legend_h": _("Légende couleurs"),
-        "legend_bassin_h": _("Bassin viticole"),
         "legend_area_hint": _("Plus l'aire est petite, plus la teinte est dense."),
-        "legend_grapes_h": _("Cépages"),
-        "legend_principal": _("principal — variété de la cuvée"),
-        "legend_accessory": _("accessoire — assemblage limité"),
-        "legend_observation": _("intérêt — observation/conservation"),
+        # Accessible names of MapLibre's zoom buttons (constructor `locale`).
+        "ctrl_zoom_in": _("Zoom avant"),
+        "ctrl_zoom_out": _("Zoom arrière"),
+        # The phone sheet's handle (app.js setSheetExpanded).
+        "sheet_expand_aria": _("Agrandir la fiche"),
+        "sheet_collapse_aria": _("Réduire la fiche"),
+        # The status line's "show in the list" action when a facet filter has
+        # more matches than the tree auto-opens (app.js updateStatus).
+        "status_show_matches": _("voir dans la liste"),
         "pt_role_disclaimer": _(
             "Le régulateur portugais (IVV) n'établit pas de distinction principal/accessoire — "
             "toutes les castas autorisées sont listées ensemble dans le caderno de especificações."
@@ -892,6 +920,9 @@ def _build_about_dialog(
 
 
 _LOCALES_DISPLAY = (("fr", "FR"), ("en", "EN"), ("es", "ES"), ("nl", "NL"))
+# The ⚙ menu lists the languages by their own names (the browse page keeps
+# the two-letter codes of _LOCALES_DISPLAY in its compact nav).
+_LOCALE_NAMES = {"fr": "Français", "en": "English", "es": "Español", "nl": "Nederlands"}
 
 
 def _lang_switcher(active: str, aria_label: str, slug: str | None = None) -> str:
@@ -911,19 +942,9 @@ def _lang_switcher(active: str, aria_label: str, slug: str | None = None) -> str
         current_attr = ' aria-current="page"' if is_active else ""
         parts.append(
             f'<a href="{path}" data-href="{path}" data-lang="{code}" '
-            f'class="lang{cls}"{current_attr}>{label}</a>'
+            f'class="lang{cls}"{current_attr}>{_LOCALE_NAMES.get(code, label)}</a>'
         )
     return f'<nav id="lang-switcher" aria-label="{aria_label}">' + "".join(parts) + "</nav>"
-
-
-def _bassin_match_expr() -> str:
-    """MapLibre `match` expression mapping `region` → fill colour. Default
-    is fully transparent so AOCs with empty `comite_regional` get no underlay."""
-    parts = ["['match', ['get', 'region']"]
-    for region, colour in _BASSIN_COLOURS.items():
-        parts.append(f"        '{region}', '{colour}'")
-    parts.append("        'rgba(0,0,0,0)']")
-    return ",\n".join(parts)
 
 
 def _build_source_block(
@@ -958,6 +979,9 @@ def _build_source_block(
     assert 10 < fade0 < fade1 <= z_over_max, (fade0, fade1, z_over_max)
     assert z_detail_min <= fade0, (z_detail_min, fade0)
     sel = "['boolean', ['feature-state', 'selected'], false]"
+    # Hover (pointer devices, app.js setHover): brighter than the area ramp,
+    # never past 0.75, always under the selection's own override.
+    hov = "['boolean', ['feature-state', 'hover'], false]"
 
     def ramp(small: float, large: float) -> str:
         return (
@@ -969,7 +993,8 @@ def _build_source_block(
     # DGCs / climats read on top of their parent; large ones translucent so the
     # overview isn't flooded by regional fills).
     def fill_op(small: float) -> str:
-        return f"['case', {sel}, 0.60, {ramp(small, 0.20)}]"
+        base = ramp(small, 0.20)
+        return f"['case', {sel}, 0.60, {hov}, ['min', 0.75, ['+', 0.2, {base}]], {base}]"
 
     # At the continental overview a footprint is a few pixels across and a
     # region stacks five to ten of them (regional AOC, village AOCs, crus);
@@ -980,10 +1005,11 @@ def _build_source_block(
     is_env = "['==', ['get', 'geom_source'], 'parcellaire-envelope']"
 
     def fill_op_over(small: float, env_scale: float) -> str:
-        return (
-            f"['case', {sel}, 0.60, ['case', {is_env}, "
-            f"['*', {env_scale}, {ramp(small, 0.20)}], {ramp(small, 0.20)}]]"
+        base = (
+            f"['case', {is_env}, ['*', {env_scale}, {ramp(small, 0.20)}], "
+            f"{ramp(small, 0.20)}]"
         )
+        return f"['case', {sel}, 0.60, {hov}, ['min', 0.75, ['+', 0.2, {base}]], {base}]"
 
     # Outline — constant ink. `frag` is perimeter/area in m⁻¹, so
     # frag × width_px × m_per_px is the stroke area per fill area; capping that
@@ -1002,8 +1028,9 @@ def _build_source_block(
     def width(z: float, small: float, large: float, w_min: float | None = None) -> str:
         base = ramp(small, large)
         if w_min is None:
-            return f"['case', {sel}, 2.5, {base}]"
-        return f"['case', {sel}, 2.5, ['min', {base}, {ink(z, w_min)}]]"
+            return f"['case', {sel}, 2.5, {hov}, ['+', 0.8, {base}], {base}]"
+        clamped = f"['min', {base}, {ink(z, w_min)}]"
+        return f"['case', {sel}, 2.5, {hov}, ['+', 0.8, {clamped}], {clamped}]"
 
     # Below the detail zoom a sub-half-pixel stroke still renders as a
     # hairline, so the shredded shapes that survive generalisation (a
@@ -1057,6 +1084,10 @@ def _build_source_block(
     fill_color = (
         "        'fill-color': [\n"
         "          'case',\n"
+        # Non-wine GIs (eaux-de-vie, ciders, spirit IGs; is_wine is the MVT
+        # string '0' / '1') take the spirits colour the legend shows while
+        # they are on — tested first, a cider PGI is not a wine PGI.
+        "          ['==', ['get', 'is_wine'], '0'], '#a07530',\n"
         "          ['==', ['get', 'kind'], 'IGP'], '#6e7546',\n"
         "          '#934050'\n"
         "        ],\n"
@@ -2037,7 +2068,7 @@ _BROWSE_TEMPLATE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <title>{page_title}</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="{meta_description}">
 <meta name="theme-color" content="#7A1F2B">
 <link rel="canonical" href="{canonical_url}">
@@ -2098,7 +2129,7 @@ def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) ->
             for name, slug, kind in entries
         )
         sections.append(
-            '<section class="browse-country">\n'
+            f'<section class="browse-country" id="c-{esc(cc)}">\n'
             f"<h2>{heading}</h2>\n"
             f'<ul class="browse-list">\n{items}\n</ul>\n'
             "</section>"
@@ -2184,8 +2215,9 @@ STARTUP_AOCS_FIELDS = frozenset({
     "grapes_principal", "grapes_accessory", "grapes_all",
     "bbox", "bbox_villages", "geom_source",
     # buildAppellationFacet splits each region's count into appellations
-    # vs complementary geographic designations.
-    "is_sub_denomination",
+    # vs complementary geographic designations, and nests each
+    # sub-denomination under its parent's row (2026-10-18).
+    "is_sub_denomination", "parent_slug",
     # The appellation tree nests region groups under a country group, and
     # lists a cross-border appellation under every country it spans.
     "country_aliases",
@@ -2205,7 +2237,6 @@ def render(
     aocs: dict,
     facet_styles_tree: list[dict],
     style_descendants: dict[str, list[str]],
-    facet_styles_simple: list[tuple[str, int]],
     facet_class_tree: list[dict],
     class_descendants: dict[str, list[str]],
     facet_regions: list[tuple[str, int]],
@@ -2273,8 +2304,8 @@ def render(
     }
     from .style_taxonomy import bucket_descendants, style_search_terms
     simple_style_buckets = bucket_descendants()
-    # {canonical style slug -> [searchable synonym terms]} — the wine-style
-    # analogue of grape_synonyms; lets the omnisearch find a style by a local
+    # {canonical style slug -> [searchable synonym terms]}: lets the
+    # omnisearch find a style by a local
     # name (fondillón → rancio, eiswein → icewine, vinsanto → vin-santo).
     style_search_index = style_search_terms()
     # Classification facet (aging / Prädikat / selection tiers): group labels are
@@ -2341,17 +2372,11 @@ def render(
         return min(members, key=lambda s: (-slug_total_counts.get(s, 0), s))
 
     slug_to_canonical: dict[str, str] = {}
-    grape_synonyms: dict[str, list[str]] = {}
     for members in vivc_groups.values():
         used = [m for m in members if slug_total_counts.get(m, 0) > 0]
         if len(used) < 2:
             continue
         canon = _pick_canonical(used)
-        others = [
-            m for m in sorted(used, key=lambda s: (-slug_total_counts.get(s, 0), s))
-            if m != canon
-        ]
-        grape_synonyms[canon] = others
         for m in used:
             slug_to_canonical[m] = canon
 
@@ -2381,15 +2406,6 @@ def render(
             out[cc] = rank
         return out
 
-    def _merged_facet(field: str) -> list[tuple[str, int]]:
-        counts: dict[str, int] = {}
-        for _slug, rec in (aocs or {}).items():
-            canons = {slug_to_canonical.get(s, s) for s in rec.get(field) or []}
-            for c in canons:
-                counts[c] = counts.get(c, 0) + 1
-        return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
-
-    facet_principal_merged = _merged_facet("grapes_principal")
     # Per-country grape rank for the meta descriptions (_entity_grape_names):
     # the number of the country's records carrying the grape as principal —
     # so an unmentioned Rioja roster opens with Tempranillo, Garnacha and
@@ -2410,9 +2426,6 @@ def render(
         if regional and regional.get("__n__", 0) >= 5:
             return regional
         return grape_rank_by_country.get(cc)
-    facet_accessory_merged = _merged_facet("grapes_accessory")
-    facet_grapes_all_merged = _merged_facet("grapes_all")
-
     grape_search_index = _build_grape_search_index(
         grapes_info=grapes_info or {},
         aocs=aocs or {},
@@ -2500,14 +2513,10 @@ def render(
         source_type=source_type,
         styles_tree_json=json.dumps(facet_styles_tree, ensure_ascii=False),
         style_descendants_json=json.dumps(style_descendants, ensure_ascii=False),
-        styles_simple_json=json.dumps(facet_styles_simple, ensure_ascii=False),
         class_tree_json=json.dumps(facet_class_tree, ensure_ascii=False),
         class_descendants_json=json.dumps(class_descendants, ensure_ascii=False),
         class_labels_json=json.dumps(class_labels, ensure_ascii=False),
         class_search_terms_json=json.dumps(class_search_index, ensure_ascii=False, sort_keys=True),
-        principal_json=json.dumps(facet_principal_merged, ensure_ascii=False),
-        accessory_json=json.dumps(facet_accessory_merged, ensure_ascii=False),
-        grapes_all_json=json.dumps(facet_grapes_all_merged, ensure_ascii=False),
         regions_json=json.dumps(facet_regions, ensure_ascii=False),
         term_tree_json=json.dumps(facet_term_tree or [], ensure_ascii=False),
         term_descendants_json=json.dumps(term_descendants or {}, ensure_ascii=False),
@@ -2517,10 +2526,9 @@ def render(
         simple_style_labels_json=json.dumps(simple_style_labels, ensure_ascii=False),
         simple_style_buckets_json=json.dumps(simple_style_buckets, ensure_ascii=False),
         labels_json=json.dumps(labels, ensure_ascii=False),
+        subdenom_headings_json=json.dumps(SUBDENOM_HEADINGS, ensure_ascii=False),
         grape_search_index_json=json.dumps(grape_search_index, ensure_ascii=False),
         vivc_siblings_json=json.dumps(vivc_siblings, ensure_ascii=False, sort_keys=True),
-        slug_to_canonical_json=json.dumps(slug_to_canonical, ensure_ascii=False, sort_keys=True),
-        grape_synonyms_json=json.dumps(grape_synonyms, ensure_ascii=False, sort_keys=True),
         style_search_terms_json=json.dumps(style_search_index, ensure_ascii=False, sort_keys=True),
         styles_info_json=json.dumps(styles_info or {}, ensure_ascii=False),
         region_labels_json=json.dumps(region_labels, ensure_ascii=False),
@@ -2646,7 +2654,7 @@ def render(
             country_labels=country_labels, country_flag_emoji=_COUNTRY_FLAG_EMOJI,
             grapes_info=grapes_info or {}, styles_info=styles_info or {},
             style_labels=style_labels, github_new_issue_url=_GITHUB_NEW_ISSUE_URL,
-            terms_info=terms_info or {}, lod=lod or {},
+            terms_info=terms_info or {}, lod=lod or {}, browse_path=browse_path,
         )
         entity_about_html = _build_about_dialog(
             labels, browse_path=browse_path, corpus_counts=corpus_counts, locale=locale, lod=lod
@@ -2746,7 +2754,7 @@ _TEMPLATE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 {origin_trial_meta}<title>{page_title}</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="{meta_description}">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 {robots_meta}<meta name="theme-color" content="#7A1F2B" media="(prefers-color-scheme: light)">
@@ -2808,12 +2816,6 @@ _TEMPLATE = """<!doctype html>
     }}
   }})();
   (function () {{
-    // Set the initial view-mode class on <html> before paint so the
-    // advanced-only sidebar sections don't flash visible while the main
-    // bundle is still parsing.
-    var mode = 'simple';
-    try {{ if (localStorage.getItem('view_mode') === 'advanced') mode = 'advanced'; }} catch (e) {{}}
-    document.documentElement.classList.add('mode-' + mode);
     // Mark JS available before paint so the server-rendered #ssr-content card
     // can be hidden via CSS (rule below). The app swaps it for the live panel,
     // so JS users skip the brief boot flash; non-JS visitors and non-rendering
@@ -2841,9 +2843,50 @@ _TEMPLATE = """<!doctype html>
       && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     if (dark) document.documentElement.classList.add('theme-dark');
   }})();
+  (function () {{
+    // The desktop sidebar's folded state is restored before first paint so it
+    // never slides shut after showing open (desktop only — the phone media
+    // query ignores the class).
+    var c = null;
+    try {{ c = localStorage.getItem('sidebar_collapsed'); }} catch (e) {{}}
+    if (c === '1') document.documentElement.classList.add('sidebar-collapsed');
+  }})();
 </script>
 <link rel="stylesheet" href="/assets/vendor/maplibre-gl-4.7.1.css">
 <style>
+  /* Design tokens (2026-10): the palette the sidebar, panel and map chrome
+     share. Neutrals are a lightness scale (--n-0 white … --n-900 near-black)
+     so a token is truthful on a dark sidebar and a light panel alike; the
+     named colours are the roles the paint and the legend key on — keep
+     --c-accent / --c-pgi / --c-spirit in step with _build_source_block. The
+     three former burgundies (#934050 / #7A1F2B / #7a1f3a) are one accent now. */
+  :root {{
+    --c-accent:#934050; --c-accent-hover:#8d2a48; --c-accent-ink-dark:#d98b97; --c-accent-rule-dark:#5a2a33;
+    --c-pgi:#6e7546; --c-spirit:#a07530; --c-cream:#fff8e8;
+    --n-0:#fff; --n-100:#eee; --n-200:#ddd; --n-300:#bbb; --n-400:#888; --n-500:#666; --n-600:#555;
+    --n-700:#444; --n-750:#333; --n-800:#2a2a2a; --n-850:#222; --n-900:#1a1a1a;
+    --n-dark-panel:#1c1c1e; --n-dark-text:#e3e3e3;
+    --note-bg:#fbf3df; --note-ink:#7a5a1a; --note-rule:#d6b35a;
+    --note-bg-dark:#322b18; --note-ink-dark:#e6cf86; --note-rule-dark:#6a5a2a;
+    /* Type scale for the chrome's small text (headings stay literal). */
+    --fs-2xs:10px; --fs-xs:11px; --fs-sm:12.5px; --fs-md:13px;
+    /* The sidebar, the phone bar and the ⚙ menu by role — light here, dark
+       under html.theme-dark below (feedback 2026-10-18: light mode had left
+       the menu dark). Text tokens hold AA against their backgrounds:
+       --side-text-3 is the dimmest used for words. */
+    --side-bg:#fff; --side-bg-2:#f5f5f6; --side-bg-3:#ebebed; --side-bg-4:#dedee1;
+    --side-border:#e4e4e7; --side-border-2:#cfcfd4;
+    --side-text:#1f1f22; --side-text-2:#4b4b50; --side-text-3:#6b6b70;
+    --side-input-bg:#fff; --side-focus:var(--c-accent); --side-link:#3b5fa8;
+    --side-chip-on:#f3e6ea; --side-accent-ink:var(--c-accent);
+  }}
+  html.theme-dark {{
+    --side-bg:#1a1a1a; --side-bg-2:#222; --side-bg-3:#2a2a2a; --side-bg-4:#333;
+    --side-border:#333; --side-border-2:#444;
+    --side-text:#eee; --side-text-2:#ccc; --side-text-3:#9a9a9a;
+    --side-input-bg:#222; --side-focus:var(--c-cream); --side-link:#9ac4ff;
+    --side-chip-on:#3a2730; --side-accent-ink:var(--c-accent-ink-dark);
+  }}
   html, body {{ margin:0; padding:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14px }}
   /* Hide the server-rendered card once JS is available (class set pre-paint):
      the app swaps it for the live panel, so JS users skip the boot-time flash;
@@ -2851,209 +2894,283 @@ _TEMPLATE = """<!doctype html>
   html.js #ssr-content, html.js .entity-nav {{ display:none }}
   /* No-JS / crawler cross-link nav (browse + parent + children). Hidden once
      the map boots; it exists to feed internal links into the link graph. */
-  .entity-nav {{ padding:12px 16px; font-size:13px; line-height:1.7; border-top:1px solid #eee; background:#fafafa; color:#333 }}
-  .entity-nav a {{ color:#7A1F2B }}
-  .entity-nav .entity-nav-parent, .entity-nav .entity-nav-children {{ display:block; margin-top:4px; color:#555 }}
-  #app {{ display:flex; height:100vh }}
-  #sidebar {{ width:300px; flex:0 0 300px; background:#1a1a1a; color:#eee; overflow-y:auto; border-right:1px solid #333 }}
-  #sidebar .brand-title {{ font-size:15px; padding:14px 16px 4px; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px }}
+  .entity-nav {{ padding:12px 16px; font-size:var(--fs-md); line-height:1.7; border-top:1px solid var(--n-100); background:#fafafa; color:var(--n-750) }}
+  .entity-nav a {{ color:var(--c-accent) }}
+  .entity-nav .entity-nav-parent, .entity-nav .entity-nav-children {{ display:block; margin-top:4px; color:var(--n-600) }}
+  #app {{ display:flex; height:100vh; height:100dvh }}
+  /* Phone chrome (the bar, the scrim, the sheet handle) exists only ≤768px. */
+  #mobile-bar, #scrim, #panel .sheet-handle {{ display:none }}
+  /* Boot: no slide-in for a panel or drawer that is open from the first
+     frame (an entity landing); app.js adds `booted` after two frames. */
+  html:not(.booted) #panel, html:not(.booted) #sidebar {{ transition:none }}
+  #sidebar {{ width:300px; flex:0 0 300px; background:var(--side-bg); color:var(--side-text); overflow-y:auto; border-right:1px solid var(--side-border); display:flex; flex-direction:column }}
+  /* No child of the column ever shrinks below its content (the chip tray
+     once did, spilling its chip onto the header below); the open
+     appellation tree is the one flexing child, by its own rule. */
+  #sidebar > * {{ flex:0 0 auto }}
+  /* The head: the brand and, on desktop, the button that folds the sidebar to
+     a rail (feedback 2026-10-18: "sidebar collapsable on desktop as well"). */
+  .sidebar-head {{ display:flex; align-items:center; gap:8px; padding:12px 8px 2px 16px }}
+  #sidebar .brand-title {{ flex:1; font-size:15px; padding:0; margin:0; font-weight:600; letter-spacing:0.02em; display:flex; align-items:center; gap:8px; min-width:0 }}
   #sidebar .brand-title .brand-mark {{ width:18px; height:18px; flex:0 0 18px; display:inline-block }}
-  #sidebar .subtitle {{ font-size:11px; color:#888; padding:0 16px 10px; border-bottom:1px solid #333 }}
-  #sidebar h2 {{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:#888; padding:14px 16px 4px; margin:0 }}
-  /* The omnisearch input owns its own layout (`.omni-input`); the catch-all
-     rule below is for any other text input in the sidebar. */
-  #sidebar input[type=text]:not(.omni-input) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; border-radius:3px; font-size:13px }}
-  #sidebar input[type=text]:focus {{ outline:none; border-color:#934050 }}
-  #sidebar input[type=text]:focus-visible {{ outline:2px solid #fff8e8; outline-offset:1px; border-color:#934050 }}
-  /* Search-UX lab variants (a/b/c): unified omnisearch box + grouped dropdown
-     + the "main grape only" sub-option. Inert on canonical pages (no markup). */
+  #sidebar-collapse {{ flex:0 0 32px; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; background:none; border:none; border-radius:4px; color:var(--side-text-3); font-size:22px; line-height:1; cursor:pointer }}
+  #sidebar-collapse:hover {{ background:var(--side-bg-3); color:var(--side-text) }}
+  #sidebar .subtitle {{ font-size:var(--fs-xs); color:var(--side-text-3); padding:0 16px 10px; border-bottom:1px solid var(--side-border) }}
+  #sidebar h2 {{ font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.08em; color:var(--side-text-3); padding:14px 16px 4px; margin:0 }}
+  /* Folded: a 48 px rail with the search and the expand button; the rest of
+     the sidebar leaves the layout (and the accessibility tree) until it is
+     unfolded. The state is a class on <html>, restored before first paint. */
+  #sidebar-rail {{ display:none }}
+  @media (min-width: 769px) {{
+    html.sidebar-collapsed #sidebar {{ width:48px; flex-basis:48px; overflow:hidden }}
+    html.sidebar-collapsed #sidebar > :not(#sidebar-rail) {{ display:none }}
+    html.sidebar-collapsed #sidebar-rail {{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 0 }}
+  }}
+  #sidebar-rail .brand-mark {{ width:20px; height:20px; margin-bottom:6px }}
+  #sidebar-rail button {{ width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; background:none; border:none; border-radius:6px; color:var(--side-text-2); cursor:pointer; font-size:22px; line-height:1; padding:0 }}
+  #sidebar-rail button svg {{ width:18px; height:18px }}
+  #sidebar-rail button:hover {{ background:var(--side-bg-3); color:var(--side-text) }}
+  #sidebar input[type=text]:not(.omni-input) {{ width:calc(100% - 32px); margin:0 16px 8px; padding:7px 9px; box-sizing:border-box; background:var(--side-input-bg); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:3px; font-size:var(--fs-md) }}
+  #sidebar input[type=text]:focus {{ outline:none; border-color:var(--c-accent) }}
+  #sidebar input[type=text]:focus-visible {{ outline:2px solid var(--side-focus); outline-offset:1px; border-color:var(--c-accent) }}
   .visually-hidden {{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }}
-  #omnisearch {{ position:relative; padding:8px 16px; border-bottom:1px solid #333 }}
-  .omni-input {{ width:100%; box-sizing:border-box; padding:8px 10px; background:#222; color:#eee; border:1px solid #444; border-radius:4px; font-size:13.5px }}
-  .omni-suggestions {{ position:absolute; left:16px; right:16px; top:calc(100% - 2px); z-index:60; max-height:min(60vh, 360px); overflow-y:auto; background:#1a1a1a; border:1px solid #3a3a3a; border-radius:3px; box-shadow:0 6px 16px rgba(0,0,0,0.45) }}
+  /* Search first (feedback 2026-10-18: "search more prominent"): a taller
+     field with a magnifier, and a clear button once it holds text. */
+  #omnisearch {{ position:relative; padding:10px 16px 8px }}
+  #omnisearch .omni-box {{ position:relative }}
+  #omnisearch .omni-icon {{ position:absolute; left:11px; top:50%; transform:translateY(-50%); width:18px; height:18px; color:var(--side-text-3); pointer-events:none }}
+  .omni-input {{ width:100%; box-sizing:border-box; padding:11px 36px 11px 38px; background:var(--side-input-bg); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:6px; font-size:15px }}
+  .omni-input::placeholder {{ color:var(--side-text-3) }}
+  #omni-clear {{ position:absolute; right:6px; top:50%; transform:translateY(-50%); width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; background:none; border:none; border-radius:50%; color:var(--side-text-3); font-size:20px; line-height:1; cursor:pointer; padding:0 }}
+  #omni-clear:hover {{ background:var(--side-bg-3); color:var(--side-text) }}
+  #omni-clear[hidden] {{ display:none }}
+  /* The results are in the flow, not a popup: while the box holds text
+     they replace the filters below (`#sidebar.searching`) and scroll with
+     the sidebar — the dropdown that sat half over the tree read as a
+     layout error (feedback 2026-10-18). */
+  .omni-suggestions {{ position:static; margin:8px -16px -8px; background:var(--side-bg); border:0; border-top:1px solid var(--side-border) }}
+  #sidebar.searching > details, #sidebar.searching #active-filters, #sidebar.searching #status {{ display:none }}
   .omni-suggestions[hidden] {{ display:none }}
-  .omni-group-header {{ position:sticky; top:0; padding:4px 8px; background:#202020; color:#a0a0a0; font-size:9.5px; text-transform:uppercase; letter-spacing:0.09em }}
-  .omni-suggestions .suggestion {{ display:flex; align-items:center; gap:6px; padding:6px 8px; cursor:pointer; font-size:12.5px; color:#ddd; border-bottom:1px solid #2a2a2a }}
+  .omni-group-header {{ position:sticky; top:0; padding:4px 8px; background:var(--side-bg-2); color:var(--side-text-3); font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:0.09em }}
+  .omni-suggestions .suggestion {{ display:flex; align-items:center; gap:6px; padding:6px 8px; cursor:pointer; font-size:var(--fs-sm); color:var(--side-text); border-bottom:1px solid var(--side-border) }}
   .omni-suggestions .suggestion:last-child {{ border-bottom:none }}
-  .omni-suggestions .suggestion.active, .omni-suggestions .suggestion:hover {{ background:#2a1f25 }}
-  .omni-suggestions .suggestion .name {{ flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
-  .omni-suggestions .suggestion .sub {{ color:#999; font-style:italic; font-size:11px; flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
-  .omni-suggestions .suggestion .count {{ margin-left:auto; color:#9a9a9a; font-size:11px; font-variant-numeric:tabular-nums; flex:0 0 auto }}
-  /* No-match feedback row (variant fix: the dropdown used to silently hide). */
-  .omni-empty {{ padding:10px 12px; color:#9a9a9a; font-size:12.5px; font-style:italic }}
-  /* "Main grape only" relocated inside the Grapes facet (variant c). */
-  #lang-switcher {{ display:flex; gap:2px; padding:6px 12px 8px; border-bottom:1px solid #333 }}
-  #lang-switcher a {{ color:#888; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; text-decoration:none; padding:3px 8px; border-radius:3px }}
-  #lang-switcher a:hover {{ color:#fff }}
-  #lang-switcher a.active {{ color:#fff8e8; background:#2a2a2a; font-weight:700 }}
-  #mode-toggle {{ display:flex; gap:0; padding:8px 16px; border-bottom:1px solid #333 }}
-  #mode-toggle .mode-btn {{ flex:1; background:#222; color:#888; border:1px solid #444; padding:6px 8px; cursor:pointer; font-size:12px; letter-spacing:0.04em }}
-  #mode-toggle .mode-btn:first-child {{ border-radius:3px 0 0 3px }}
-  #mode-toggle .mode-btn:last-child {{ border-radius:0 3px 3px 0; border-left:none }}
-  #mode-toggle .mode-btn:hover {{ color:#fff }}
-  #mode-toggle .mode-btn.active {{ background:#934050; color:#fff; border-color:#934050 }}
-  #theme-toggle {{ display:flex; gap:0; padding:6px 16px 8px }}
-  #theme-toggle .theme-btn {{ flex:1; background:#222; color:#888; border:1px solid #444; border-left:none; padding:5px 8px; cursor:pointer; font-size:13px; line-height:1.2 }}
-  #theme-toggle .theme-btn:first-child {{ border-left:1px solid #444; border-radius:3px 0 0 3px }}
-  #theme-toggle .theme-btn:last-child {{ border-radius:0 3px 3px 0 }}
-  #theme-toggle .theme-btn:hover {{ color:#fff }}
-  #theme-toggle .theme-btn.active {{ background:#934050; color:#fff; border-color:#934050 }}
-  #sidebar [data-modes="simple"].mode-hidden, #sidebar [data-modes="advanced"].mode-hidden {{ display:none }}
-  html.mode-simple #sidebar [data-modes="advanced"] {{ display:none }}
-  html.mode-advanced #sidebar [data-modes="simple"] {{ display:none }}
-  #igp-toggle {{ padding:8px 16px; border-top:1px solid #2a2a2a }}
-  #igp-toggle label {{ display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12.5px; color:#ddd }}
-  #igp-toggle label:hover {{ color:#fff }}
-  #igp-toggle input {{ accent-color:#6e7546 }}
-  #spirits-toggle {{ padding:6px 16px 10px }}
-  #spirits-toggle label {{ display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12.5px; color:#ddd }}
-  #spirits-toggle label:hover {{ color:#fff }}
-  #spirits-toggle input {{ accent-color:#a07530 }}
-  #active-filters {{ display:flex; align-items:center; gap:6px; padding:8px 12px 4px; min-height:0 }}
-  #active-filters:has(#active-filters-chips:empty) {{ padding-bottom:0 }}
+  .omni-suggestions .suggestion.active, .omni-suggestions .suggestion:hover {{ background:var(--side-chip-on) }}
+  /* A suggestion's name wraps rather than truncates — the same fifteen
+     "Aloxe-Corton premier …" rows the tree showed (feedback 2026-10-18). */
+  .omni-suggestions .suggestion .name {{ flex:1 1 auto; min-width:0; line-height:1.3 }}
+  .omni-suggestions .suggestion .sub {{ color:var(--side-text-3); font-style:italic; font-size:var(--fs-xs); flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
+  .omni-suggestions .suggestion .count {{ margin-left:auto; color:var(--side-text-3); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; flex:0 0 auto }}
+  .omni-empty {{ padding:10px 12px; color:var(--side-text-3); font-size:var(--fs-sm); font-style:italic }}
+  /* Language and theme live in the ⚙ menu on the map (feedback 2026-10-18:
+     "move to config"); app.js moves this block into that control. Without
+     JS it stays in the sidebar footer, its language links still crawlable. */
+  html.js #config-menu:not(.placed) {{ display:none }}
+  #config-menu {{ padding:8px 0 }}
+  #config-menu .config-h {{ font-size:var(--fs-2xs); text-transform:uppercase; letter-spacing:0.08em; color:var(--side-text-3); padding:6px 14px 2px }}
+  #lang-switcher {{ display:flex; flex-direction:column; padding:0 6px 6px }}
+  #lang-switcher a {{ color:var(--side-text); font-size:var(--fs-md); text-decoration:none; padding:7px 10px; border-radius:4px }}
+  #lang-switcher a:hover {{ background:var(--side-bg-3) }}
+  #lang-switcher a.active {{ background:var(--side-chip-on); color:var(--side-accent-ink); font-weight:600 }}
+  /* Theme: one row — the heading left, three icon-only buttons (sun /
+     monitor / moon, the convention) right; the word is each button's
+     accessible name and hover hint (feedback 2026-10-19: the words made
+     the cells cramped). */
+  .config-row {{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:2px 14px 6px 0 }}
+  .config-row .config-h {{ padding:0 14px }}
+  #theme-toggle {{ display:inline-flex; gap:0; flex:0 0 auto }}
+  /* Three equal cells (basis 0), an SVG icon beside each word — the ☀ ◐ ☾
+     glyphs rendered as emoji or text by platform and sized each cell to
+     its label (feedback 2026-10-18). */
+  #theme-toggle .theme-btn {{ display:inline-flex; align-items:center; justify-content:center; width:36px; height:30px; background:var(--side-bg-2); color:var(--side-text-2); border:1px solid var(--side-border-2); border-left:none; padding:0; cursor:pointer }}
+  #theme-toggle .theme-btn:first-child {{ border-left:1px solid var(--side-border-2); border-radius:4px 0 0 4px }}
+  #theme-toggle .theme-btn:last-child {{ border-radius:0 4px 4px 0 }}
+  #theme-toggle .theme-btn:hover {{ color:var(--side-text) }}
+  #theme-toggle .theme-btn.active {{ background:var(--c-accent); color:var(--n-0); border-color:var(--c-accent) }}
+  #theme-toggle .theme-btn svg {{ width:16px; height:16px }}
+  /* The chip tray shares the sidebar's 16 px gutter and breathes above the
+     next header (feedback 2026-10-18: the chip overhung the content edge
+     and sat on the border below). */
+  #active-filters {{ display:flex; align-items:flex-start; gap:8px; padding:10px 16px; border-bottom:1px solid var(--side-border) }}
+  #active-filters:has(#active-filters-chips:empty) {{ display:none }}
   #active-filters-chips {{ display:flex; flex-wrap:wrap; gap:4px; flex:1 }}
   #active-filters-chips:empty {{ display:none }}
-  .filter-chip {{ display:inline-flex; align-items:center; gap:4px; padding:2px 4px 2px 8px; background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:11px; font-size:11px; line-height:1.3 }}
-  .filter-chip.region-chip {{ border-color:#934050; box-shadow:inset 0 0 0 1px #934050; font-weight:600 }}
-  .filter-chip button {{ background:none; border:none; color:#888; cursor:pointer; padding:0 4px; font-size:14px; line-height:1; border-radius:50% }}
-  .filter-chip button:hover {{ color:#fff; background:#444 }}
+  .filter-chip {{ display:inline-flex; align-items:center; gap:4px; padding:2px 4px 2px 8px; background:var(--side-bg-3); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:11px; font-size:var(--fs-xs); line-height:1.3 }}
+  .filter-chip.region-chip {{ border-color:var(--c-accent); box-shadow:inset 0 0 0 1px var(--c-accent); font-weight:600 }}
+  .filter-chip button {{ background:none; border:none; color:var(--side-text-3); cursor:pointer; padding:0 4px; font-size:14px; line-height:1; border-radius:50% }}
+  .filter-chip button:hover {{ color:var(--side-text); background:var(--side-bg-4) }}
   /* The "main grape only" scope, rendered as a chip-shaped checkbox right
      after the grape chips it refines. */
-  .filter-chip.toggle-chip {{ padding:2px 9px 2px 6px; cursor:pointer; border-color:#934050; gap:5px }}
-  .filter-chip.toggle-chip:hover {{ background:#332028 }}
-  .filter-chip.toggle-chip input {{ accent-color:#934050; margin:0; width:12px; height:12px }}
-  .filter-chip.toggle-chip:has(input:checked) {{ background:#3a2730; color:#fff }}
-  #active-filters #reset {{ background:transparent; color:#888; border:none; padding:2px 6px; cursor:pointer; font-size:11px; text-decoration:underline; flex:0 0 auto }}
-  #active-filters #reset:hover {{ color:#fff }}
+  .filter-chip.toggle-chip {{ padding:2px 9px 2px 6px; cursor:pointer; border-color:var(--c-accent); gap:5px }}
+  .filter-chip.toggle-chip:hover {{ background:var(--side-chip-on) }}
+  .filter-chip.toggle-chip input {{ accent-color:var(--c-accent); margin:0; width:12px; height:12px }}
+  .filter-chip.toggle-chip:has(input:checked) {{ background:var(--side-chip-on); color:var(--side-text) }}
+  #active-filters #reset {{ background:transparent; color:var(--side-text-3); border:none; padding:3px 0 3px 6px; cursor:pointer; font-size:var(--fs-xs); text-decoration:underline; flex:0 0 auto; line-height:1.3 }}
+  #active-filters #reset:hover {{ color:var(--side-text) }}
   #active-filters-chips:empty + #reset {{ display:none }}
-  .facet-search {{ width:calc(100% - 32px); margin:4px 16px 6px; padding:5px 8px; box-sizing:border-box; background:#1f1f1f; color:#eee; border:1px solid #3a3a3a; border-radius:3px; font-size:12px }}
-  .facet-search:focus {{ outline:none; border-color:#934050 }}
-  #sidebar > details > summary .facet-badge {{ display:inline-block; margin-left:6px; padding:1px 6px; background:#934050; color:#fff; border-radius:8px; font-size:10px; font-weight:600 }}
+  #sidebar > details > summary .facet-badge {{ display:inline-block; margin-left:6px; padding:1px 6px; background:var(--c-accent); color:var(--n-0); border-radius:8px; font-size:var(--fs-2xs); font-weight:600 }}
   #sidebar > details > summary .facet-badge:empty {{ display:none }}
   #sidebar > details > summary {{ display:flex; align-items:center }}
   #sidebar > details > summary .facet-label {{ flex:1 }}
   .facet .region-group-wrap, .facet .country-group-wrap {{ display:flex; align-items:flex-start; gap:6px; margin:2px 0 }}
-  .facet .region-group-wrap > .region-select, .facet .country-group-wrap > .country-select {{ accent-color:#934050; cursor:pointer; flex:0 0 auto; margin-top:6px }}
+  .facet .region-group-wrap > .region-select, .facet .country-group-wrap > .country-select {{ accent-color:var(--c-accent); cursor:pointer; flex:0 0 auto; margin-top:6px }}
   .facet .region-group-wrap > .region-select:checked, .facet .region-group-wrap > .region-select:indeterminate,
-  .facet .country-group-wrap > .country-select:checked, .facet .country-group-wrap > .country-select:indeterminate {{ accent-color:#934050 }}
+  .facet .country-group-wrap > .country-select:checked, .facet .country-group-wrap > .country-select:indeterminate {{ accent-color:var(--c-accent) }}
   .facet .region-group-wrap > .region-group, .facet .country-group-wrap > .country-group {{ flex:1 1 auto; min-width:0 }}
   .facet .region-group > summary, .facet .country-group > summary {{ display:flex; align-items:center; gap:6px }}
-  #status {{ padding:8px 16px; font-size:11px; color:#aaa; background:#222; border-bottom:1px solid #333 }}
-  #status .hint-action {{ background:none; border:0; padding:0; margin-left:6px; color:#9ac4ff; font:inherit; cursor:pointer; text-decoration:underline }}
-  #status .hint-action:hover {{ color:#cfe0ff }}
+  #status {{ padding:6px 16px 8px; font-size:var(--fs-xs); color:var(--side-text-3); border-bottom:1px solid var(--side-border) }}
+  #status .hint-action {{ background:none; border:0; padding:0; margin-left:6px; color:var(--side-link); font:inherit; cursor:pointer; text-decoration:underline }}
+  #status .hint-action:hover {{ filter:brightness(0.85) }}
   details {{ margin:0 }}
-  summary {{ cursor:pointer; padding:8px 16px; color:#bbb; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; user-select:none; border-top:1px solid #2a2a2a }}
-  summary:hover {{ color:#fff }}
-  summary::-webkit-details-marker {{ color:#666 }}
+  summary {{ cursor:pointer; padding:8px 16px; color:var(--side-text-2); font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.06em; user-select:none; border-top:1px solid var(--side-border) }}
+  summary:hover {{ color:var(--side-text) }}
+  summary::-webkit-details-marker {{ color:var(--side-text-3) }}
   .facet {{ max-height:240px; overflow-y:auto; padding:0 16px 8px }}
-  .facet.facet-appellations {{ max-height:340px }}
-  .facet label {{ display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; font-size:12.5px; color:#ddd }}
-  .facet label:hover {{ color:#fff }}
-  .facet input[type=checkbox] {{ accent-color:#c0392b; flex:0 0 auto }}
+  /* The appellation tree takes every pixel the sidebar has left and scrolls
+     inside it; the footer sits at the bottom whatever the list's length
+     (feedback 2026-10-18: it floated mid-sidebar after a 340 px list).
+     The other facets keep their 240 px box. */
+  /* The <details> itself is the scroll box (its content sits in a shadow
+     slot, out of reach of flex), its summary sticky at the top. */
+  #sidebar > details[data-facet="appellations"] {{ min-height:0 }}
+  #sidebar > details[data-facet="appellations"][open] {{ flex:1 1 auto; min-height:190px; overflow-y:auto }}
+  #sidebar > details[data-facet="appellations"] > summary {{ position:sticky; top:0; background:var(--side-bg); z-index:1 }}
+  .facet.facet-appellations {{ max-height:none; overflow:visible }}
+  .facet label {{ display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; font-size:var(--fs-sm); color:var(--side-text) }}
+  .facet input[type=checkbox] {{ accent-color:var(--c-accent); flex:0 0 auto }}
   .facet .name {{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }}
-  /* The appellation name opens its detail panel (the checkbox is the filter) —
-     underline on name-hover signals the "go to this one" link affordance. */
-  .facet label[data-slug] > .name:hover {{ text-decoration:underline; text-decoration-color:#a8c08a; text-underline-offset:2px }}
-  .facet .count {{ color:#666; font-size:11px; margin-left:4px }}
-  .facet .count .sub-count {{ opacity:0.65; margin-left:3px }}
-  .facet .syns {{ color:#888; font-size:11px; font-weight:normal }}
+  /* An appellation name wraps rather than truncates (feedback 2026-10-18:
+     fifteen Aloxe-Corton rows read the same after the ellipsis). The name
+     opens its detail panel (the checkbox is the filter) — underline on
+     name-hover signals the "go to this one" link affordance. */
+  .facet .aoc-row .name {{ white-space:normal; overflow:visible; text-overflow:clip; line-height:1.3 }}
+  .facet .aoc-row .name:hover {{ text-decoration:underline; text-decoration-color:var(--c-accent); text-underline-offset:2px }}
+  /* A row is a flex line: the checkbox's label (name + count) and, beside it,
+     a sibling button — the → that opens the panel, or a tree chevron. */
+  .facet .aoc-row, .facet .tree-row {{ display:flex; align-items:center; gap:6px; padding:2px 0; color:var(--side-text) }}
+  .facet .aoc-row > label, .facet .tree-row > label {{ flex:1 1 auto; min-width:0; padding:0; color:inherit; font-weight:inherit }}
+  .facet .count {{ color:var(--side-text-3); font-size:var(--fs-xs); margin-left:4px }}
+  .facet .count .sub-count {{ margin-left:3px }}
+  .facet .syns {{ color:var(--side-text-3); font-size:var(--fs-xs); font-weight:normal }}
   /* Keyboard/SR path to open an appellation panel (the WebGL polygons aren't
      DOM-reachable). Subtle until the row is hovered or the button is focused. */
-  .facet .open-aoc {{ flex:0 0 auto; margin-left:auto; background:none; border:none; color:#8a8a8a; cursor:pointer; font-size:14px; line-height:1; padding:0 4px; border-radius:3px; opacity:0.55; transition:opacity 0.12s ease, color 0.12s ease, background 0.12s ease }}
-  .facet label:hover .open-aoc {{ opacity:1; color:#cfa }}
-  .facet .open-aoc:hover {{ color:#fff; background:#333 }}
+  .facet .open-aoc {{ flex:0 0 auto; margin-left:auto; background:none; border:none; color:var(--side-text-3); cursor:pointer; font-size:14px; line-height:1; padding:0 4px; border-radius:3px; opacity:0.55; transition:opacity 0.12s ease, color 0.12s ease, background 0.12s ease }}
+  .facet .aoc-row:hover .open-aoc {{ opacity:1; color:var(--side-accent-ink) }}
+  .facet .open-aoc:hover {{ color:var(--side-text); background:var(--side-bg-3) }}
   .facet .open-aoc:focus-visible {{ opacity:1 }}
-  .facet label.facet-unavailable {{ display:none }}
+  .facet .aoc-row.facet-unavailable, .facet .tree-row.facet-unavailable {{ display:none }}
   .facet .region-group-wrap.facet-unavailable, .facet .country-group-wrap.facet-unavailable {{ display:none }}
   .facet .tree-row[data-depth="0"] {{ padding-left:0 }}
   .facet .tree-row[data-depth="1"] {{ padding-left:14px }}
   .facet .tree-row[data-depth="2"] {{ padding-left:28px }}
-  .facet .tree-row-parent {{ font-weight:600; color:#eee }}
-  .facet .tree-row[data-depth="0"]:not(:first-child) {{ margin-top:4px }}
-  .facet .tree-row[data-depth="2"] .name {{ color:#bbb }}
+  .facet .tree-row-parent, .facet .tree-row[data-depth="0"] {{ font-weight:600; color:var(--side-text) }}
+  /* The chevron folding a subtree: rotates when open; the subtree is the
+     hidden sibling wrapper after the row. */
+  .facet .tree-toggle, .facet .tree-toggle-spacer {{ flex:0 0 28px; width:28px; height:24px }}
+  .facet .tree-toggle {{ display:inline-flex; align-items:center; justify-content:center; background:none; border:none; color:var(--side-text-3); cursor:pointer; font-size:15px; line-height:1; padding:0; border-radius:3px; transition:transform 0.12s ease, color 0.12s ease }}
+  .facet .tree-toggle:hover {{ color:var(--side-text); background:var(--side-bg-3) }}
+  .facet .tree-toggle[aria-expanded="true"] {{ transform:rotate(90deg) }}
+  /* Every row is the chevron's height, with or without one — the country
+     rows' rhythm (≈ 28 px), so the three trees and the appellation list read
+     as one list. */
+  .facet .tree-row {{ min-height:24px }}
+  .facet .tree-children[hidden] {{ display:none }}
+  .facet .tree-row[data-depth="2"] .name {{ color:var(--side-text-2) }}
+  /* Sub-denominations sit under their appellation behind a chevron, the
+     parent's name stripped from theirs (childLabel in app.js). The chevron
+     slot is narrower here: two tree levels already indent the row. */
+  .facet-appellations .tree-toggle, .facet-appellations .tree-toggle-spacer {{ flex-basis:18px; width:18px }}
+  .facet-appellations .tree-toggle {{ font-size:14px }}
+  .facet .aoc-row[data-depth="1"] {{ padding-left:18px }}
+  .facet .aoc-row[data-depth="1"] .name {{ color:var(--side-text-2) }}
   /* Mixed case here too. The FR bassin labels are the join key's own
      ALL-CAPS form only until the catalog translates them — every locale
      including fr now carries the proper name, so the transform that used
      to hide that inconsistency is gone. */
-  .facet .region-group > summary {{ padding:4px 0; border-top:none; font-size:11px; color:#9a9a9a; text-transform:none; letter-spacing:0.01em; display:flex; align-items:center; gap:6px }}
-  .facet .region-group > summary:hover {{ color:#ddd }}
+  .facet .region-group > summary {{ padding:4px 0; border-top:none; font-size:var(--fs-xs); color:var(--side-text-2); text-transform:none; letter-spacing:0.01em; display:flex; align-items:center; gap:6px }}
+  .facet .region-group > summary:hover {{ color:var(--side-text) }}
   .facet .region-group > summary .name {{ flex:1 }}
-  .facet .region-group > summary .count {{ color:#555 }}
+  .facet .region-group > summary .count {{ color:var(--side-text-3) }}
   .facet .region-group .region-items {{ padding-left:8px }}
   /* Country level sits above the regions: brighter and heavier, with the
      flag as the scanning anchor. Regions keep their dimmer, smaller row. */
-  /* Mixed case, against the sidebar's global uppercase `summary` rule: a
-     country name reads better next to its flag, and it separates the two
-     tree levels more clearly than size alone. The region rows keep the
-     uppercase — it normalises INAO's ALL-CAPS bassin names against the
-     mixed-case regions every other country stores. */
-  .facet .country-group > summary {{ padding:5px 0; border-top:none; font-size:12px; font-weight:600; color:#c9c9c9; text-transform:none; letter-spacing:0.01em }}
-  .facet .country-group > summary:hover {{ color:#fff }}
+  .facet .country-group > summary {{ padding:5px 0; border-top:none; font-size:var(--fs-sm); font-weight:600; color:var(--side-text); text-transform:none; letter-spacing:0.01em }}
+  .facet .country-group > summary:hover {{ color:var(--side-accent-ink) }}
   .facet .country-group > summary .name {{ flex:1 }}
-  .facet .country-group > summary .country-flag {{ flex:0 0 auto; font-size:12px; line-height:1; letter-spacing:normal }}
-  .facet .country-group > summary .count {{ color:#666; font-weight:400 }}
-  /* Two levels of indent cost the appellation name ~10px of the ellipsis
-     budget, so each step is 8px rather than 10 — the disclosure marker and
-     the summary's weight carry most of the hierarchy anyway. */
+  .facet .country-group > summary .country-flag {{ flex:0 0 auto; font-size:var(--fs-sm); line-height:1; letter-spacing:normal }}
+  .facet .country-group > summary .count {{ color:var(--side-text-3); font-weight:400 }}
+  /* Two levels of indent cost the appellation name ~10px of width, so each
+     step is 8px rather than 10 — the disclosure marker and the summary's
+     weight carry most of the hierarchy anyway. */
   .facet .country-group .country-items {{ padding-left:8px }}
-  .facet .empty {{ color:#666; font-size:11px; font-style:italic; padding:4px 0 }}
-  #actions {{ position:sticky; bottom:0; background:#1a1a1a; padding:10px 16px; border-top:1px solid #333; display:flex; gap:8px }}
-  #actions button {{ flex:1; padding:6px; background:#333; color:#eee; border:1px solid #555; border-radius:3px; cursor:pointer; font-size:12px }}
-  #actions button:hover {{ background:#444 }}
+  .facet .empty {{ color:var(--side-text-3); font-size:var(--fs-xs); font-style:italic; padding:4px 0 }}
   #map {{ flex:1; height:100%; min-width:0 }}
-  #panel {{ width:0; flex:0 0 0; background:#fff; border-left:1px solid #ddd; overflow-y:auto; transition:flex-basis 0.18s ease, width 0.18s ease }}
+  #panel {{ width:0; flex:0 0 0; background:var(--n-0); border-left:1px solid var(--n-200); overflow-y:auto; transition:flex-basis 0.18s ease, width 0.18s ease }}
   #panel.open {{ width:440px; flex-basis:440px }}
-  #panel .close {{ position:sticky; top:0; float:right; margin:8px 12px; background:#eee; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:#666; z-index:2 }}
-  #panel .close:hover {{ background:#ddd; color:#000 }}
-  #panel .body {{ padding:16px 24px 40px; line-height:1.55; color:#222 }}
-  #panel .body h1 {{ font-size:22px; margin:8px 0 10px; padding-bottom:6px; border-bottom:2px solid #934050 }}
-  #panel .body h2 {{ font-size:13px; text-transform:uppercase; letter-spacing:0.04em; color:#934050; margin:18px 0 6px }}
+  #panel .close {{ position:sticky; top:0; float:right; margin:8px 12px; background:var(--n-100); border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:var(--n-500); z-index:2 }}
+  #panel .close:hover {{ background:var(--n-200); color:#000 }}
+  #panel .body {{ padding:16px 24px 40px; line-height:1.55; color:var(--n-850) }}
+  #panel .body h1 {{ font-size:22px; margin:8px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--c-accent) }}
+  #panel .body h2 {{ font-size:var(--fs-md); text-transform:uppercase; letter-spacing:0.04em; color:var(--c-accent); margin:18px 0 6px }}
   #panel .body p {{ margin:0 0 8px }}
-  #panel .meta {{ color:#666; font-size:12px; margin-bottom:8px }}
-  #panel .meta .gi-scheme {{ opacity:.78; white-space:nowrap }}
+  #panel .meta {{ color:var(--n-500); font-size:var(--fs-sm); margin-bottom:8px }}
+  #panel .meta .gi-scheme {{ white-space:nowrap }}
   .gi-term.has-info, .gi-scheme.has-info {{ cursor:help; text-decoration:underline dotted; text-underline-offset:2px }}
   .gi-term abbr, .gi-scheme abbr {{ text-decoration:inherit }}
-  #panel .meta .meta-country {{ display:inline-flex; align-items:center; gap:5px; color:#444 }}
-  #panel .meta .country-flag {{ font-size:13px; line-height:1 }}
+  #panel .meta .meta-country {{ display:inline-flex; align-items:center; gap:5px; color:var(--n-700) }}
+  #panel .meta .country-flag {{ font-size:var(--fs-md); line-height:1 }}
   #panel .meta .country-name {{ font-weight:600 }}
-  #panel .translation-attr {{ font-size:11.5px; color:#666; font-style:italic; margin:0 0 8px }}
-  #panel .translation-attr a {{ color:#888 }}
-  #panel .stack-header {{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#888; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:6px }}
-  #panel .stack-pos {{ font-size:10.5px; padding:1px 7px; background:#efe7d8; color:#5a4a2a; border-radius:9px; font-variant-numeric:tabular-nums; letter-spacing:0; text-transform:none; cursor:default }}
-  #panel .approx-line, #panel .facts-inherited {{ font-size:11.5px; color:#7a5a1a; background:#fbf3df; border-left:2px solid #d6b35a; padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
-  #panel .approx-line a.parent-link, #panel .facts-inherited a.parent-link {{ color:#7a5a1a; text-decoration:underline }}
-  #panel .role-disclaimer {{ font-size:11px; color:#888; font-style:italic; margin:2px 0 8px; line-height:1.35 }}
-  .cancelled-badge {{ display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:#8a2323; background:#fbe6e6; border:1px solid #e0a3a3; border-radius:3px; padding:0 5px; margin-left:6px; vertical-align:middle; line-height:16px }}
-  .cancelled-badge.sm {{ font-size:9.5px; line-height:14px; padding:0 4px; margin-left:4px }}
-  #panel .cancelled-line {{ font-size:11.5px; color:#8a2323; background:#fbe6e6; border-left:2px solid #c85a5a; padding:6px 9px; margin:6px 0 8px; border-radius:2px; line-height:1.45 }}
+  #panel .translation-attr {{ font-size:var(--fs-xs); color:var(--n-500); font-style:italic; margin:0 0 8px }}
+  #panel .translation-attr a {{ color:var(--n-400) }}
+  #panel .stack-header {{ font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:0.06em; color:var(--n-500); margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid var(--n-100); display:flex; align-items:center; gap:6px }}
+  #panel .stack-pos {{ font-size:var(--fs-2xs); padding:1px 7px; background:#efe7d8; color:#5a4a2a; border-radius:9px; font-variant-numeric:tabular-nums; letter-spacing:0; text-transform:none; cursor:default }}
+  #panel .approx-line, #panel .facts-inherited {{ font-size:var(--fs-xs); color:var(--note-ink); background:var(--note-bg); border-left:2px solid var(--note-rule); padding:4px 8px; margin:4px 0 8px; border-radius:2px }}
+  #panel .approx-line a.parent-link, #panel .facts-inherited a.parent-link {{ color:var(--note-ink); text-decoration:underline }}
+  #panel .role-disclaimer {{ font-size:var(--fs-xs); color:var(--n-400); font-style:italic; margin:2px 0 8px; line-height:1.35 }}
+  .cancelled-badge {{ display:inline-block; font-size:var(--fs-2xs); font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:#8a2323; background:#fbe6e6; border:1px solid #e0a3a3; border-radius:3px; padding:0 5px; margin-left:6px; vertical-align:middle; line-height:16px }}
+  .cancelled-badge.sm {{ font-size:var(--fs-2xs); line-height:14px; padding:0 4px; margin-left:4px }}
+  #panel .cancelled-line {{ font-size:var(--fs-xs); color:#8a2323; background:#fbe6e6; border-left:2px solid #c85a5a; padding:6px 9px; margin:6px 0 8px; border-radius:2px; line-height:1.45 }}
   #panel .cancelled-line a {{ color:#8a2323; text-decoration:underline }}
-  .promoted-badge {{ display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:#1f5e3a; background:#e3f3e8; border:1px solid #9cc9ab; border-radius:3px; padding:0 5px; margin-left:6px; vertical-align:middle; line-height:16px }}
-  .promoted-badge.sm {{ font-size:9.5px; line-height:14px; padding:0 4px; margin-left:4px }}
-  #panel .promoted-line {{ font-size:11.5px; color:#1f5e3a; background:#e3f3e8; border-left:2px solid #4f9a6b; padding:6px 9px; margin:6px 0 8px; border-radius:2px; line-height:1.45 }}
+  .promoted-badge {{ display:inline-block; font-size:var(--fs-2xs); font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:#1f5e3a; background:#e3f3e8; border:1px solid #9cc9ab; border-radius:3px; padding:0 5px; margin-left:6px; vertical-align:middle; line-height:16px }}
+  .promoted-badge.sm {{ font-size:var(--fs-2xs); line-height:14px; padding:0 4px; margin-left:4px }}
+  #panel .promoted-line {{ font-size:var(--fs-xs); color:#1f5e3a; background:#e3f3e8; border-left:2px solid #4f9a6b; padding:6px 9px; margin:6px 0 8px; border-radius:2px; line-height:1.45 }}
   #panel .promoted-line a {{ color:#1f5e3a; text-decoration:underline }}
-  #panel .appellation-note {{ font-size:11.5px; color:#33506b; background:#eef3f8; border-left:2px solid #6f93b5; padding:6px 9px; margin:8px 0; border-radius:2px; line-height:1.45 }}
+  #panel .appellation-note {{ font-size:var(--fs-xs); color:#33506b; background:#eef3f8; border-left:2px solid #6f93b5; padding:6px 9px; margin:8px 0; border-radius:2px; line-height:1.45 }}
   #panel .appellation-note .note-srcs {{ margin-top:4px }}
   #panel .appellation-note a {{ color:#33506b; text-decoration:underline }}
-  #panel details.dulok {{ margin:8px 0; font-size:11.5px; color:#444 }}
+  #panel details.dulok {{ margin:8px 0; font-size:var(--fs-xs); color:var(--n-700) }}
   #panel details.dulok > summary {{ cursor:pointer; font-weight:600; color:#5a4a2a; padding:2px 0; list-style:revert }}
   #panel details.dulok[open] > summary {{ margin-bottom:4px }}
   #panel details.dulok .dulo-row {{ padding:2px 0; line-height:1.4; border-top:1px solid #f0ece2 }}
-  #panel details.dulok .dulo-tel {{ font-weight:600; color:#7a5a1a }}
+  #panel details.dulok .dulo-tel {{ font-weight:600; color:var(--note-ink) }}
   #panel details.menzioni .menzioni-chips {{ display:flex; flex-wrap:wrap; gap:4px; margin-top:4px }}
-  #panel details.menzioni .pill.menzione {{ background:#f3eee2; color:#5a4a2a; border:1px solid #e4dcc8; font-size:11px; padding:1px 7px; border-radius:10px }}
+  #panel details.menzioni .pill.menzione {{ background:#f3eee2; color:#5a4a2a; border:1px solid #e4dcc8; font-size:var(--fs-xs); padding:1px 7px; border-radius:10px }}
   #panel .appellation-note .note-srcs a {{ margin-right:10px; white-space:nowrap }}
   #panel .aoc-card + .aoc-card {{ margin-top:24px; padding-top:20px; border-top:1px dashed #ccc }}
-  #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid #934050 }}
+  #panel .aoc-card h1 {{ font-size:18px; margin:0 0 6px; padding-bottom:4px; border-bottom:2px solid var(--c-accent) }}
   /* Stacked overlap: a subordinate card is a click target that brings its
      appellation to the front (see the panel click handler in app.js); the ↑
      button in its title is the keyboard path. */
-  #panel .aoc-card.subordinate {{ cursor:pointer }}
-  #panel .aoc-card.subordinate .card-feedback {{ cursor:auto }}
-  #panel .aoc-card.subordinate h1 {{ font-size:16px; color:#444; border-bottom-color:#ccc; display:flex; align-items:center; justify-content:space-between; gap:8px }}
-  #panel .aoc-card.subordinate:hover h1 {{ color:#222; border-bottom-color:#934050 }}
-  #panel .stack-focus {{ flex:0 0 auto; width:24px; height:24px; padding:0; border:1px solid #ccc; border-radius:50%; background:none; color:#666; font:inherit; font-size:13px; line-height:1; cursor:pointer; transition:background 0.12s ease, color 0.12s ease, border-color 0.12s ease }}
-  #panel .aoc-card.subordinate:hover .stack-focus, #panel .stack-focus:focus-visible {{ border-color:#934050; color:#934050 }}
-  #panel .stack-focus:hover {{ background:#934050; border-color:#934050; color:#fff }}
+  /* A stack: the focus card in full, the rest as rows (stackRows in app.js). */
+  #panel .stack-hint {{ font-size:var(--fs-xs); color:var(--n-500); margin:0 0 10px }}
+  #panel .stack-others-h {{ margin-top:22px }}
+  #panel .stack-list {{ list-style:none; margin:0 0 12px; padding:0 }}
+  #panel .stack-row {{ display:flex; flex-direction:column; align-items:flex-start; gap:1px; width:100%; padding:7px 10px; margin:0 0 4px; background:none; border:1px solid var(--n-200); border-radius:6px; cursor:pointer; font:inherit; color:var(--n-850); text-align:left }}
+  #panel .stack-row:hover, #panel .stack-row:focus-visible {{ border-color:var(--c-accent); background:#fbf6f7 }}
+  #panel .stack-row .name {{ font-weight:600; font-size:var(--fs-md) }}
+  #panel .stack-row .sub {{ font-size:var(--fs-xs); color:var(--n-500) }}
+  /* The boundary notes, folded below the content; the sidebar's global
+     uppercase `summary` rule is undone here. */
+  #panel .boundary-notes {{ margin:12px 0 4px }}
+  #panel .boundary-notes > summary {{ cursor:pointer; padding:4px 8px; font-size:var(--fs-xs); color:var(--note-ink); background:var(--note-bg); border-left:2px solid var(--note-rule); border-top:none; border-radius:2px; text-transform:none; letter-spacing:0; user-select:auto }}
+  #panel .boundary-notes > summary:hover {{ color:var(--note-ink); filter:brightness(0.97) }}
+  #panel .boundary-notes > summary .sub {{ font-style:italic }}
+  #panel .boundary-notes[open] > summary {{ margin-bottom:4px }}
+  #panel .boundary-notes .approx-line {{ margin:4px 0 }}
+  /* Related appellations: a parent's sub-denominations and the scope links. */
+  #panel .subappellations {{ margin:0 0 6px; padding-left:18px; font-size:var(--fs-md); line-height:1.5 }}
+  #panel .subappellations .sub-kind {{ color:var(--n-500); font-size:var(--fs-xs); margin-left:4px }}
+  #panel .subappellations-more > summary {{ cursor:pointer; padding:2px 0; font-size:var(--fs-sm); color:var(--c-accent); text-transform:none; letter-spacing:0; border-top:none }}
+  #panel .related-links {{ font-size:var(--fs-sm); margin:10px 0 0 }}
   /* First-open skeleton: real title shows from startup data; the body shimmers
      until the lazy panel-detail JSON lands (Phase 3 data-bundle diet). */
   #panel .aoc-skeleton .skel {{ display:block; border-radius:4px; height:13px; margin:9px 0;
@@ -3064,35 +3181,35 @@ _TEMPLATE = """<!doctype html>
   #panel .aoc-skeleton .skel-line.short {{ width:68% }}
   @keyframes skel-shimmer {{ 0% {{ background-position:100% 0 }} 100% {{ background-position:0 0 }} }}
   @media (prefers-reduced-motion: reduce) {{ #panel .aoc-skeleton .skel {{ animation:none }} }}
-  #panel .sources {{ margin:4px 0 0; padding-left:18px; font-size:12.5px; color:#3a3a3a }}
+  #panel .sources {{ margin:4px 0 0; padding-left:18px; font-size:var(--fs-sm); color:#3a3a3a }}
   #panel .sources li {{ margin:3px 0 }}
-  #panel .sources code {{ font-size:11px; color:#888 }}
-  #panel .card-feedback {{ margin:18px 0 2px; padding-top:12px; border-top:1px solid #e3ddd4; font-size:13px; line-height:1.6; color:#222 }}
+  #panel .sources code {{ font-size:var(--fs-xs); color:var(--n-400) }}
+  #panel .card-feedback {{ margin:18px 0 2px; padding-top:12px; border-top:1px solid #e3ddd4; font-size:var(--fs-md); line-height:1.6; color:var(--n-850) }}
   #panel .card-feedback h2 {{ margin:0 0 4px }}
-  #panel .card-feedback .fb-prompt {{ display:block; margin:0 0 6px; font-size:12.5px; color:#555 }}
-  #panel .fb-chip {{ display:inline-block; padding:3px 11px; margin:2px 6px 4px 0; border:1px solid #c9bfb2; border-radius:12px; background:#fff; color:#333; font:inherit; font-size:12px; line-height:1.5; cursor:pointer }}
-  #panel .fb-chip:hover {{ background:#f0ebe3; color:#222 }}
-  #panel .fb-chip:focus-visible {{ outline:2px solid #7a1f3a; outline-offset:1px }}
-  #panel .fb-chip[aria-pressed="true"] {{ background:#7a1f3a; border-color:#7a1f3a; color:#fff }}
+  #panel .card-feedback .fb-prompt {{ display:block; margin:0 0 6px; font-size:var(--fs-sm); color:var(--n-600) }}
+  #panel .fb-chip {{ display:inline-block; padding:3px 11px; margin:2px 6px 4px 0; border:1px solid #c9bfb2; border-radius:12px; background:var(--n-0); color:var(--n-750); font:inherit; font-size:var(--fs-sm); line-height:1.5; cursor:pointer }}
+  #panel .fb-chip:hover {{ background:#f0ebe3; color:var(--n-850) }}
+  #panel .fb-chip:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:1px }}
+  #panel .fb-chip[aria-pressed="true"] {{ background:var(--c-accent); border-color:var(--c-accent); color:var(--n-0) }}
   #panel .fb-more {{ margin-top:6px }}
-  #panel .fb-more textarea {{ display:block; width:100%; box-sizing:border-box; min-height:54px; margin:5px 0; padding:6px 8px; border:1px solid #d9d3ca; border-radius:4px; background:#fff; color:#222; font:inherit; font-size:12px; line-height:1.4; resize:vertical }}
-  #panel .fb-more textarea:focus-visible {{ outline:2px solid #7a1f3a; outline-offset:0 }}
-  #panel .fb-send {{ padding:3px 12px; border:1px solid #7a1f3a; border-radius:4px; background:#7a1f3a; color:#fff; font:inherit; font-size:11.5px; cursor:pointer }}
-  #panel .fb-send:hover {{ background:#8d2a48 }}
+  #panel .fb-more textarea {{ display:block; width:100%; box-sizing:border-box; min-height:54px; margin:5px 0; padding:6px 8px; border:1px solid #d9d3ca; border-radius:4px; background:var(--n-0); color:var(--n-850); font:inherit; font-size:var(--fs-sm); line-height:1.4; resize:vertical }}
+  #panel .fb-more textarea:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:0 }}
+  #panel .fb-send {{ padding:3px 12px; border:1px solid var(--c-accent); border-radius:4px; background:var(--c-accent); color:var(--n-0); font:inherit; font-size:var(--fs-xs); cursor:pointer }}
+  #panel .fb-send:hover {{ background:var(--c-accent-hover) }}
   #panel .fb-send:disabled {{ opacity:.5; cursor:default }}
   #panel .fb-status {{ color:#5a6b3a; font-weight:600 }}
-  #panel .fb-more .fb-aspect {{ color:#7a1f3a; font-weight:600 }}
-  #panel .fb-more a {{ color:#7a1f3a; text-decoration:underline; text-underline-offset:2px }}
-  #panel .facts-sub-h {{ font-size:11px; font-weight:600; color:#555; margin:8px 0 2px; text-transform:none; letter-spacing:0 }}
-  #panel ul.facts {{ margin:0 0 6px; padding-left:18px; font-size:13px; color:#222 }}
+  #panel .fb-more .fb-aspect {{ color:var(--c-accent); font-weight:600 }}
+  #panel .fb-more a {{ color:var(--c-accent); text-decoration:underline; text-underline-offset:2px }}
+  #panel .facts-sub-h {{ font-size:var(--fs-xs); font-weight:600; color:var(--n-600); margin:8px 0 2px; text-transform:none; letter-spacing:0 }}
+  #panel ul.facts {{ margin:0 0 6px; padding-left:18px; font-size:var(--fs-md); color:var(--n-850) }}
   #panel ul.facts li {{ margin:2px 0 }}
-  #panel ul.facts .wiki-attr {{ font-size:11px; color:#666; font-style:italic }}
-  #panel ul.facts .wiki-attr a {{ color:#888 }}
-  #panel blockquote.facts-verbatim {{ margin:4px 0 6px; padding:6px 10px; border-left:3px solid #ddd; background:#f9f7f4; font-size:13px; color:#333; font-style:italic; white-space:pre-wrap }}
-  #panel .verbatim-badge {{ display:inline-block; margin-left:8px; padding:1px 8px; background:#fff5e5; color:#a05a00; border:1px solid #f0d8a8; border-radius:9px; font-size:10.5px; font-weight:600; font-style:normal; vertical-align:middle }}
+  #panel ul.facts .wiki-attr {{ font-size:var(--fs-xs); color:var(--n-500); font-style:italic }}
+  #panel ul.facts .wiki-attr a {{ color:var(--n-400) }}
+  #panel blockquote.facts-verbatim {{ margin:4px 0 6px; padding:6px 10px; border-left:3px solid var(--n-200); background:#f9f7f4; font-size:var(--fs-md); color:var(--n-750); font-style:italic; white-space:pre-wrap }}
+  #panel .verbatim-badge {{ display:inline-block; margin-left:8px; padding:1px 8px; background:#fff5e5; color:#a05a00; border:1px solid #f0d8a8; border-radius:9px; font-size:var(--fs-2xs); font-weight:600; font-style:normal; vertical-align:middle }}
   #panel .pills {{ margin:0 0 4px }}
-  .pill {{ display:inline-block; padding:2px 8px; margin:2px 4px 2px 0; background:#eee; border-radius:10px; font-size:11px; color:#333; text-decoration:none }}
-  .pill.style {{ background:#fdebe5; color:#934050 }}
+  .pill {{ display:inline-block; padding:2px 8px; margin:2px 4px 2px 0; background:var(--n-100); border-radius:10px; font-size:var(--fs-xs); color:var(--n-750); text-decoration:none }}
+  .pill.style {{ background:#fdebe5; color:var(--c-accent) }}
   .pill.style.style--red, .pill.style.style--clairet, .pill.style.style--primeur {{ background:#f3d6d6; color:#7a1620 }}
   .pill.style.style--white, .pill.style.style--dry, .pill.style.style--tranquille {{ background:#f6efd1; color:#5a4a10 }}
   .pill.style.style--rose {{ background:#fbdce5; color:#7a3050 }}
@@ -3103,111 +3220,193 @@ _TEMPLATE = """<!doctype html>
   .pill.style.style--vin-de-paille {{ background:#f9e4b8; color:#684a08 }}
   .pill.grape {{ background:#e8eef5; color:#234 }}
   a.pill.grape:hover {{ background:#d4dff0; text-decoration:underline }}
-  .pill.grape.accessory {{ background:#f0f0f0; color:#666 }}
+  .pill.grape.accessory {{ background:#f0f0f0; color:var(--n-500) }}
   a.pill.grape.accessory:hover {{ background:#e0e0e0 }}
   .pill.grape.observation {{ background:#fff8d8; color:#7a5a00 }}
   a.pill.grape.observation:hover {{ background:#f5ecc0 }}
   a.pill.grape.has-info {{ border-bottom:1px dotted currentColor; padding-bottom:1px }}
-  .pill.grape .canon {{ opacity:0.65; font-weight:normal; font-size:0.9em }}
+  .pill.grape .canon {{ color:#4a5668; font-weight:normal; font-size:0.9em }}
+  .pill.grape.accessory .canon, .pill.grape.observation .canon {{ color:inherit }}
   h1 .latin, .facet label .latin {{ opacity:0.55; font-weight:normal; font-size:0.85em; margin-left:0.25em }}
   .pill.style {{ cursor:default }}
   a.pill.style {{ text-decoration:none }}
   a.pill.style:hover {{ text-decoration:underline; opacity:0.85 }}
   .pill.style.has-info {{ border-bottom:1px dotted currentColor; padding-bottom:1px }}
   a.pill.style.has-info {{ cursor:pointer }}
-  .fr-marker {{ display:inline-block; margin-left:4px; font-size:10px; color:#999; font-style:italic; vertical-align:baseline }}
-  #grape-tooltip .fr-marker {{ font-size:10px; color:#888 }}
-  #sidebar-toggle {{ display:none; position:fixed; top:8px; right:8px; z-index:30; width:44px; height:44px; background:#1a1a1a; color:#eee; border:1px solid #444; border-radius:4px; font-size:18px; cursor:pointer; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.2) }}
-  #sidebar-toggle:hover {{ background:#2a2a2a }}
-  #legend {{ border-top:1px solid #2a2a2a }}
-  #legend > summary {{ padding:8px 16px; color:#bbb; font-size:11px; text-transform:uppercase; letter-spacing:0.06em }}
-  #legend .legend-body {{ padding:4px 16px 12px; font-size:11.5px; color:#bbb; line-height:1.5 }}
-  #legend .swatch-row {{ display:flex; align-items:center; gap:6px; margin:3px 0 }}
-  #legend .sw {{ display:inline-block; width:14px; height:14px; border-radius:3px; flex:0 0 14px; border:1px solid rgba(255,255,255,0.1) }}
-  #legend .sw.aoc {{ background:#934050 }}
-  #legend .sw.igp {{ background:#6e7546 }}
-  #legend .sw.principal {{ background:#e8eef5 }}
-  #legend .sw.accessory {{ background:#f0f0f0 }}
-  #legend .sw.observation {{ background:#fff8d8 }}
-  #legend .legend-h {{ color:#888; font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; margin-top:8px }}
-  #legend .legend-h:first-child {{ margin-top:0 }}
-  #legend .hint {{ color:#888; font-style:italic; margin-top:4px }}
+  .fr-marker {{ display:inline-block; margin-left:4px; font-size:var(--fs-2xs); color:#999; font-style:italic; vertical-align:baseline }}
+  #grape-tooltip .fr-marker {{ font-size:var(--fs-2xs); color:var(--n-400) }}
+  /* Tablet (769–1024px): the open panel overlays the map's right edge instead
+     of pushing it — 300 + 440 px of chrome left an iPad an 80 px map. */
+  @media (min-width: 769px) and (max-width: 1024px) {{
+    #app {{ position:relative }}
+    #panel {{ position:absolute; top:0; right:0; bottom:0; width:0; flex:0 0 0; z-index:20; box-shadow:-4px 0 16px rgba(0,0,0,0.18) }}
+    #panel.open {{ width:min(420px, 55vw); flex-basis:0 }}
+  }}
   @media (max-width: 768px) {{
     #app {{ flex-direction:column }}
-    #sidebar-toggle {{ display:flex }}
-    #sidebar {{ position:fixed; top:0; left:0; width:280px; height:100vh; flex:0 0 auto; transform:translateX(-100%); transition:transform 0.18s ease; z-index:25; box-shadow:2px 0 12px rgba(0,0,0,0.25) }}
+    /* The bar carries the brand; the drawer's own brand block (the page's
+       <h1> on the home and fold pages) stays in the DOM for assistive tech
+       and crawlers, out of sight — it would repeat the bar 50px below it. */
+    #sidebar .brand-title, #sidebar .subtitle {{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }}
+    .sidebar-head {{ padding:0 }}
+    #sidebar-collapse {{ display:none }}
+    /* The bar: brand, search, menu — so the first screen is not a bare map. */
+    #mobile-bar {{ display:flex; align-items:center; gap:4px; flex:0 0 auto; min-height:44px; padding:env(safe-area-inset-top, 0px) 6px 0 12px; background:var(--side-bg); color:var(--side-text); border-bottom:1px solid var(--side-border); z-index:30 }}
+    #mobile-bar .mobile-brand {{ flex:1; display:flex; align-items:center; gap:8px; min-width:0; color:var(--side-text); text-decoration:none; font-weight:600; font-size:15px; letter-spacing:0.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }}
+    #mobile-bar .brand-mark {{ width:18px; height:18px; flex:0 0 18px }}
+    /* Direct children only: the ⚙ menu homed into the bar carries its own buttons. */
+    #mobile-bar > button {{ flex:0 0 44px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:none; color:var(--side-text); border:none; border-radius:4px; font-size:18px; cursor:pointer }}
+    #mobile-bar > button:hover, #mobile-bar > button[aria-expanded="true"] {{ background:var(--side-bg-3) }}
+    /* The drawer opens under the bar, which stays usable (its menu button closes it). */
+    #sidebar {{ position:fixed; top:calc(44px + env(safe-area-inset-top, 0px)); left:0; width:280px; height:calc(100vh - 44px); height:calc(100dvh - 44px - env(safe-area-inset-top, 0px)); padding-bottom:env(safe-area-inset-bottom, 0px); box-sizing:border-box; flex:0 0 auto; transform:translateX(-100%); transition:transform 0.18s ease; z-index:25; box-shadow:2px 0 12px rgba(0,0,0,0.25) }}
     #sidebar.open {{ transform:translateX(0) }}
-    #map {{ flex:1; height:100vh; min-width:0 }}
-    #panel {{ position:fixed; bottom:0; left:0; right:0; width:auto; height:0; flex:none; max-height:75vh; transition:height 0.18s ease; border-left:none; border-top:1px solid #ddd; z-index:20 }}
-    #panel.open {{ width:auto; height:75vh; flex-basis:auto }}
-    #panel .close {{ width:44px; height:44px; font-size:20px }}
-    #panel .stack-focus {{ width:36px; height:36px; font-size:16px }}
+    #scrim {{ display:block; position:fixed; inset:0; top:calc(44px + env(safe-area-inset-top, 0px)); background:rgba(0,0,0,0.4); z-index:24 }}
+    #scrim[hidden] {{ display:none }}
+    #map {{ flex:1; height:auto; min-height:0; min-width:0 }}
+    /* The sheet: 45 % peek, 92 % expanded, above the home indicator. */
+    #panel {{ position:fixed; bottom:0; left:0; right:0; width:auto; height:0; flex:none; max-height:92vh; max-height:92dvh; transition:height 0.18s ease; border-left:none; border-top:1px solid var(--n-200); border-radius:12px 12px 0 0; box-shadow:0 -4px 16px rgba(0,0,0,0.15); z-index:20 }}
+    #panel.open {{ width:auto; height:45vh; height:45dvh; flex-basis:auto }}
+    #panel.open.expanded {{ height:92vh; height:92dvh }}
+    #panel .sheet-handle {{ display:flex; position:sticky; top:0; width:100%; height:28px; align-items:center; justify-content:center; background:var(--n-0); border:none; border-radius:12px 12px 0 0; cursor:pointer; z-index:3 }}
+    #panel .sheet-handle .grip {{ width:40px; height:4px; border-radius:2px; background:var(--n-300) }}
+    #panel .sheet-handle:focus-visible .grip {{ background:var(--c-accent) }}
+    #panel .body {{ padding-bottom:calc(40px + env(safe-area-inset-bottom, 0px)) }}
+    #panel .close {{ width:44px; height:44px; font-size:20px; top:28px }}
+    /* The legend and the scale rise above the peeked sheet, and leave while it is expanded. */
+    #app:has(#panel.open) .maplibregl-ctrl-bottom-left {{ bottom:45vh; bottom:45dvh }}
+    #app:has(#panel.open.expanded) .maplibregl-ctrl-bottom-left {{ display:none }}
+    #panel .stack-row {{ min-height:44px }}
     .facet input[type=checkbox] {{ width:18px; height:18px }}
     .facet .open-aoc {{ opacity:1; padding:6px 10px; font-size:18px }}
-    #actions button {{ min-height:36px }}
+    /* The drawer is the one scroll surface: no facet scrolls inside a box of its own. */
+    .facet, .facet.facet-appellations {{ max-height:none }}
+    #sidebar > details[data-facet="appellations"][open] {{ flex:0 0 auto; min-height:0; overflow:visible }}
+    /* The same rhythm as the country rows below; the chevron keeps a
+       36 × 24 px target, the WCAG AA minimum. */
+    .facet .tree-toggle, .facet .tree-toggle-spacer {{ flex-basis:36px; width:36px }}
+    .facet .tree-toggle {{ font-size:16px }}
+    .facet-appellations .tree-toggle, .facet-appellations .tree-toggle-spacer {{ flex-basis:26px; width:26px }}
+    .owm-legend .scope-hint {{ width:24px; height:24px; font-size:12px }}
+    /* Pinch zooms on a phone; the buttons would only crowd the corner. */
+    .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {{ display:none }}
+    /* Chips at the drawer's text size, the × a 24 px target. */
+    .filter-chip {{ font-size:var(--fs-sm); padding:4px 6px 4px 10px }}
+    .filter-chip button {{ font-size:18px; padding:0 6px; min-width:24px; min-height:24px }}
+    #active-filters #reset {{ font-size:var(--fs-sm); padding-top:6px }}
     /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */
     .omni-input {{ font-size:16px }}
   }}
-  #sidebar-footer {{ padding:12px 16px 16px; margin-top:8px; border-top:1px solid #2a2a2a; font-size:11px; color:#888; text-align:center }}
-  #sidebar-footer a {{ color:#888; text-decoration:none }}
-  #sidebar-footer a:hover {{ color:#fff; text-decoration:underline }}
-  #sidebar-footer .sep {{ margin:0 6px; color:#444 }}
-  #sidebar-disclaimer {{ padding:0 4px 10px; margin-bottom:10px; border-bottom:1px solid #222; font-size:11px; line-height:1.5; color:#888 }}
-  #sidebar-disclaimer a {{ color:#aaa; text-decoration:underline; text-underline-offset:2px }}
-  #sidebar-disclaimer a:hover {{ color:#fff }}
-  .feedback-copied {{ display:inline-block; margin-left:6px; padding:2px 6px; border-radius:3px; background:#7a1f3a; color:#fff; font-size:10.5px; opacity:0; transform:translateY(-1px); transition:opacity 180ms ease, transform 180ms ease; pointer-events:none }}
+  #sidebar-footer {{ flex:0 0 auto; margin-top:auto; padding:12px 16px 16px; border-top:1px solid var(--side-border); font-size:var(--fs-xs); color:var(--side-text-3); text-align:center }}
+  #sidebar-footer a {{ color:var(--side-text-3); text-decoration:none }}
+  #sidebar-footer a:hover {{ color:var(--side-text); text-decoration:underline }}
+  #sidebar-footer .sep {{ margin:0 6px; color:var(--side-border-2) }}
+  #sidebar-disclaimer {{ padding:0 4px 10px; margin-bottom:10px; border-bottom:1px solid var(--side-border); font-size:var(--fs-xs); line-height:1.5; color:var(--side-text-3) }}
+  #sidebar-disclaimer a {{ color:var(--side-text-2); text-decoration:underline; text-underline-offset:2px }}
+  #sidebar-disclaimer a:hover {{ color:var(--side-text) }}
+  .feedback-copied {{ display:inline-block; margin-left:6px; padding:2px 6px; border-radius:3px; background:var(--c-accent); color:var(--n-0); font-size:var(--fs-2xs); opacity:0; transform:translateY(-1px); transition:opacity 180ms ease, transform 180ms ease; pointer-events:none }}
   .feedback-copied.visible {{ opacity:1; transform:translateY(0) }}
-  #about-dialog {{ width:520px; max-width:calc(100vw - 32px); padding:0; border:1px solid #ccc; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:#fff; color:#222 }}
+  #about-dialog {{ width:520px; max-width:calc(100vw - 32px); padding:0; border:1px solid #ccc; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:var(--n-0); color:var(--n-850) }}
   #about-dialog::backdrop {{ background:rgba(0,0,0,0.45) }}
   #about-dialog .copy-field {{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin:2px 0 }}
-  #about-dialog .copy-field code {{ user-select:all; background:#f3f3f3; border:1px solid #ddd; border-radius:4px; padding:2px 6px; font-size:12px; word-break:break-all }}
-  #about-dialog .copy-btn {{ font:inherit; font-size:12px; padding:2px 10px; border:1px solid #bbb; border-radius:4px; background:#fff; color:#222; cursor:pointer }}
+  #about-dialog .copy-field code {{ user-select:all; background:#f3f3f3; border:1px solid var(--n-200); border-radius:4px; padding:2px 6px; font-size:var(--fs-sm); word-break:break-all }}
+  #about-dialog .copy-btn {{ font:inherit; font-size:var(--fs-sm); padding:2px 10px; border:1px solid var(--n-300); border-radius:4px; background:var(--n-0); color:var(--n-850); cursor:pointer }}
   #about-dialog .copy-btn:hover {{ background:#f3f3f3 }}
   #about-dialog .copy-btn.copied {{ border-color:#2e7d32; color:#2e7d32 }}
-  html.theme-dark #about-dialog .copy-field code {{ background:#2a2a2a; border-color:#444; color:#eee }}
-  html.theme-dark #about-dialog .copy-btn {{ background:#2a2a2a; border-color:#555; color:#eee }}
+  html.theme-dark #about-dialog .copy-field code {{ background:var(--n-800); border-color:var(--n-700); color:var(--n-100) }}
+  html.theme-dark #about-dialog .copy-btn {{ background:var(--n-800); border-color:var(--n-600); color:var(--n-100) }}
   html.theme-dark #about-dialog .copy-btn.copied {{ border-color:#66bb6a; color:#66bb6a }}
-  #about-dialog .close {{ position:absolute; top:10px; right:10px; background:#eee; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:#666 }}
-  #about-dialog .close:hover {{ background:#ddd; color:#000 }}
+  #about-dialog .close {{ position:absolute; top:10px; right:10px; background:var(--n-100); border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:var(--n-500) }}
+  #about-dialog .close:hover {{ background:var(--n-200); color:#000 }}
   #about-dialog .about-body {{ padding:24px 28px; line-height:1.55 }}
-  #about-dialog h2 {{ font-size:20px; margin:0 0 14px; padding:0 32px 8px 0; border-bottom:2px solid #934050 }}
-  #about-dialog h3 {{ font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:#934050; margin:20px 0 6px }}
+  #about-dialog h2 {{ font-size:20px; margin:0 0 14px; padding:0 32px 8px 0; border-bottom:2px solid var(--c-accent) }}
+  #about-dialog h3 {{ font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:0.05em; color:var(--c-accent); margin:20px 0 6px }}
   #about-dialog p {{ margin:0 0 10px }}
   #about-dialog ul {{ margin:0 0 10px; padding-left:18px }}
   #about-dialog li {{ margin:0 0 4px }}
-  #about-dialog .about-meta {{ font-size:13px; color:#666 }}
+  #about-dialog .about-meta {{ font-size:var(--fs-md); color:var(--n-500) }}
   #about-dialog .data-updated {{ white-space:nowrap }}
-  #about-dialog .about-credit {{ margin:20px 0 0; padding-top:10px; border-top:1px solid #eee; font-size:13px; color:#666 }}
-  #about-dialog a {{ color:#934050 }}
+  #about-dialog .about-credit {{ margin:20px 0 0; padding-top:10px; border-top:1px solid var(--n-100); font-size:var(--fs-md); color:var(--n-500) }}
+  #about-dialog a {{ color:var(--c-accent) }}
   #about-dialog a.bsky {{ white-space:nowrap }}
   #about-dialog .bsky-logo {{ width:1.05em; height:1.05em; vertical-align:-0.16em; margin-right:0.3em; fill:#1185fe }}
-  #grape-tooltip {{ position:fixed; max-width:340px; background:#fff; color:#222; border:1px solid #ddd; border-radius:4px; padding:10px 12px; font-size:12px; line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:1000; display:none }}
+  #grape-tooltip {{ position:fixed; max-width:340px; background:var(--n-0); color:var(--n-850); border:1px solid var(--n-200); border-radius:4px; padding:10px 12px; font-size:var(--fs-sm); line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:1000; display:none }}
   #grape-tooltip .ext {{ margin:0 0 6px }}
-  #grape-tooltip .note {{ margin:0 0 6px; font-style:italic; color:#555 }}
+  #grape-tooltip .note {{ margin:0 0 6px; font-style:italic; color:var(--n-600) }}
   #grape-tooltip .thumb {{ float:right; width:96px; height:auto; margin:0 0 6px 10px; border-radius:3px; background:#f3f3f3 }}
-  #grape-tooltip .src {{ color:#888; font-size:10.5px; clear:both }}
-  #grape-tooltip .src a {{ color:#888 }}
-  #panel .body a {{ color:#934050 }}
+  #grape-tooltip .src {{ color:var(--n-400); font-size:var(--fs-2xs); clear:both }}
+  #grape-tooltip .src a {{ color:var(--n-400) }}
+  #panel .body a {{ color:var(--c-accent) }}
   .maplibregl-popup {{ max-width:320px !important }}
-  .maplibregl-popup-content {{ font-size:13px; padding:10px 12px !important }}
-  .maplibregl-popup-content h3 {{ margin:0 0 4px; font-size:14px; color:#934050 }}
-  .maplibregl-popup-content .meta {{ color:#777; font-size:11px }}
+  .maplibregl-popup-content {{ font-size:var(--fs-md); padding:10px 12px !important }}
+  .maplibregl-popup-content h3 {{ margin:0 0 4px; font-size:14px; color:var(--c-accent) }}
+  .maplibregl-popup-content .meta {{ color:#777; font-size:var(--fs-xs) }}
   /* Visible focus indicators (WCAG 2.4.7). Light outline on the dark sidebar,
      burgundy outline on the light panel/dialog. */
   #sidebar a:focus-visible,
   #sidebar button:focus-visible,
   #sidebar summary:focus-visible,
   #sidebar input[type=checkbox]:focus-visible,
-  #sidebar-toggle:focus-visible {{ outline:2px solid #fff8e8; outline-offset:2px; border-radius:3px }}
+  #sidebar button:focus-visible,
+  #sidebar-toggle:focus-visible {{ outline:2px solid var(--side-focus); outline-offset:2px; border-radius:3px }}
   #panel button:focus-visible,
   #panel a:focus-visible,
   #about-dialog button:focus-visible,
-  #about-dialog a:focus-visible {{ outline:2px solid #934050; outline-offset:2px; border-radius:3px }}
-  .maplibregl-popup-content a:focus-visible {{ outline:2px solid #934050; outline-offset:2px }}
+  #about-dialog a:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:2px; border-radius:3px }}
+  .maplibregl-popup-content a:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:2px }}
+  /* Map chrome (app.js): the hover label that follows the cursor, the legend
+     chip above the scale, and MapLibre's controls in both themes. Bottom-corner
+     controls stack (later ones above): zoom above the attribution, the legend
+     above the scale. */
+  .maplibregl-ctrl-bottom-left .maplibregl-ctrl, .maplibregl-ctrl-bottom-right .maplibregl-ctrl {{ clear:both }}
+  .owm-hover {{ pointer-events:none }}
+  .owm-hover .maplibregl-popup-content {{ padding:4px 9px !important; font-size:var(--fs-sm); font-weight:600; color:var(--n-850); background:rgba(255,255,255,0.95); box-shadow:0 1px 4px rgba(0,0,0,0.3); border-radius:4px; white-space:nowrap }}
+  .owm-hover .maplibregl-popup-tip {{ display:none }}
+  /* The legend is the scope control (feedback 2026-10-18: the mockups put
+     the PDO / PGI toggles on the map as pills, each with its ⓘ): one pill
+     per fill colour, filled while that scheme is drawn, outlined while it
+     is hidden. The spirits pill takes dark ink — white fails AA on #a07530. */
+  .owm-legend {{ display:flex; gap:6px; align-items:center; padding:4px; background:rgba(255,255,255,0.92); border-radius:20px; box-shadow:0 0 0 2px rgba(0,0,0,0.1); font-size:var(--fs-xs); color:var(--n-850); pointer-events:auto }}
+  .owm-legend .legend-pill {{ --pill-c:var(--c-accent); --pill-ink:var(--n-0); display:inline-flex; align-items:center; border-radius:14px; border:1px solid var(--pill-c); background:var(--n-0); color:var(--pill-c); padding:0 3px 0 0 }}
+  .owm-legend .legend-pill.igp {{ --pill-c:var(--c-pgi) }}
+  .owm-legend .legend-pill.spirit {{ --pill-c:var(--c-spirit); --pill-ink:#1f1f22; color:#7a5720 }}
+  .owm-legend .legend-pill.on {{ background:var(--pill-c); color:var(--pill-ink) }}
+  .owm-legend .legend-pill label {{ display:inline-flex; align-items:center; gap:6px; padding:4px 4px 4px 8px; cursor:pointer; font-weight:600; letter-spacing:0.02em }}
+  .owm-legend .legend-pill input {{ margin:0; width:14px; height:14px; accent-color:var(--pill-c); cursor:pointer }}
+  .owm-legend .legend-pill.on input {{ accent-color:var(--pill-ink) }}
+  .owm-legend .scope-hint {{ display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; padding:0; border:1px solid currentColor; border-radius:50%; background:none; color:inherit; font:italic 600 11px/1 Georgia, "Times New Roman", serif; cursor:help; opacity:0.85 }}
+  .owm-legend .scope-hint:hover, .owm-legend .scope-hint:focus-visible {{ opacity:1; background:rgba(255,255,255,0.25) }}
+  /* The ⚙ control (top-right): language and theme in one popover. */
+  .owm-settings {{ position:relative }}
+  .owm-settings .owm-settings-btn {{ width:36px !important; height:36px !important; display:flex; align-items:center; justify-content:center; color:var(--n-850) }}
+  .owm-settings .owm-settings-btn svg {{ width:20px; height:20px; fill:currentColor }}
+  #config-menu.placed {{ position:absolute; right:0; top:42px; min-width:220px; background:var(--side-bg); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:5 }}
+  #config-menu.placed[hidden] {{ display:none }}
+  /* On a phone the ⚙ sits in the bar (app.js homeSettings) and the map's
+     control is empty; the menu drops from the bar's right end. */
+  @media (max-width: 768px) {{
+    .maplibregl-ctrl-top-right .owm-settings {{ display:none }}
+    #mobile-bar .owm-settings-btn svg {{ width:20px; height:20px; fill:currentColor }}
+    #config-menu.in-bar {{ position:fixed; top:calc(44px + env(safe-area-inset-top, 0px)); right:6px; min-width:220px; background:var(--side-bg); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:5 }}
+    #config-menu.in-bar[hidden] {{ display:none }}
+    #theme-toggle .theme-btn {{ width:44px; height:36px }}
+    #theme-toggle .theme-btn svg {{ width:18px; height:18px }}
+    #lang-switcher a {{ padding:10px 10px; font-size:15px }}
+  }}
+  html.theme-dark .maplibregl-ctrl-attrib, html.theme-dark .maplibregl-ctrl-group {{ background:var(--n-dark-panel); color:var(--n-dark-text) }}
+  html.theme-dark .maplibregl-ctrl-attrib a {{ color:var(--n-dark-text) }}
+  html.theme-dark .maplibregl-ctrl-attrib-button, html.theme-dark .maplibregl-ctrl-group .maplibregl-ctrl-icon {{ filter:invert(1) }}
+  html.theme-dark .maplibregl-ctrl-group button + button {{ border-top-color:var(--n-700) }}
+  html.theme-dark .maplibregl-ctrl-scale {{ background:rgba(28,28,30,0.7); color:var(--n-dark-text); border-color:var(--n-dark-text) }}
+  html.theme-dark .owm-legend {{ background:rgba(28,28,30,0.92); color:var(--n-dark-text); box-shadow:0 0 0 2px rgba(255,255,255,0.12) }}
+  html.theme-dark .owm-legend .legend-pill {{ background:var(--n-dark-panel) }}
+  html.theme-dark .owm-legend .legend-pill:not(.on) {{ color:var(--n-dark-text) }}
+  html.theme-dark .owm-legend .legend-pill.on {{ background:var(--pill-c) }}
+  html.theme-dark .owm-settings .owm-settings-btn {{ color:var(--n-dark-text) }}
+  html.theme-dark .owm-hover .maplibregl-popup-content {{ background:rgba(28,28,30,0.95); color:var(--n-dark-text) }}
   /* Skip-to-map link: off-screen until focused, so keyboard users can bypass
      the filter sidebar and jump straight to the map. */
-  .skip-link {{ position:absolute; left:8px; top:-48px; z-index:60; background:#7A1F2B; color:#fff;
-               padding:8px 14px; border-radius:0 0 4px 4px; font-size:13px; text-decoration:none;
+  .skip-link {{ position:absolute; left:8px; top:-48px; z-index:60; background:var(--c-accent); color:var(--n-0);
+               padding:8px 14px; border-radius:0 0 4px 4px; font-size:var(--fs-md); text-decoration:none;
                transition:top 0.15s ease }}
   .skip-link:focus {{ top:0 }}
   /* Respect the OS "reduce motion" setting (WCAG 2.3.3): neutralise the
@@ -3219,37 +3418,41 @@ _TEMPLATE = """<!doctype html>
   /* Dark mode. Gated on the `html.theme-dark` class (NOT a media query) so the
      manual light/dark/system toggle works: a pre-paint inline script adds the
      class for system-dark OR a manual dark choice, and removing it forces light
-     even on a dark OS — no light-mode reset rules needed. The sidebar is already
-     dark; this flips the detail panel, about dialog, grape tooltip and map
-     popup. Polygon fill tints are unchanged (map layers, not CSS); the basemap
+     even on a dark OS — no light-mode reset rules needed. The sidebar follows
+     the --side-* tokens above; this flips the detail panel, about dialog,
+     grape tooltip and map popup. Polygon fill tints are unchanged (map layers, not CSS); the basemap
      swaps live via setLayoutProperty (see the dual basemap sources below). */
-  html.theme-dark #panel {{ background:#1c1c1e; border-left-color:#333 }}
-  html.theme-dark #panel .body {{ color:#e3e3e3 }}
-  html.theme-dark #panel .body h1, html.theme-dark #panel .body h2 {{ color:#d98b97; border-bottom-color:#5a2a33 }}
+  html.theme-dark #panel {{ background:var(--n-dark-panel); border-left-color:var(--n-750) }}
+  html.theme-dark #panel .body {{ color:var(--n-dark-text) }}
+  html.theme-dark #panel .body h1, html.theme-dark #panel .body h2 {{ color:var(--c-accent-ink-dark); border-bottom-color:var(--c-accent-rule-dark) }}
   html.theme-dark #panel .body a, html.theme-dark #panel .translation-attr a,
-  html.theme-dark #about-dialog a, html.theme-dark #grape-tooltip a, html.theme-dark #grape-tooltip .src a {{ color:#d98b97 }}
+  html.theme-dark #about-dialog a, html.theme-dark #grape-tooltip a, html.theme-dark #grape-tooltip .src a {{ color:var(--c-accent-ink-dark) }}
   /* Focus ring must keep ≥3:1 against the dark surface (WCAG 1.4.11/2.4.11):
-     the burgundy #934050 ring drops to ~2:1 on #1c1c1e, so brighten it. */
+     the burgundy var(--c-accent) ring drops to ~2:1 on var(--n-dark-panel), so brighten it. */
   html.theme-dark #panel button:focus-visible, html.theme-dark #panel a:focus-visible,
-  html.theme-dark #about-dialog button:focus-visible, html.theme-dark #about-dialog a:focus-visible {{ outline-color:#d98b97 }}
-  html.theme-dark #panel .close, html.theme-dark #about-dialog .close {{ background:#333; color:#bbb }}
-  html.theme-dark #panel .close:hover, html.theme-dark #about-dialog .close:hover {{ background:#444; color:#fff }}
+  html.theme-dark #about-dialog button:focus-visible, html.theme-dark #about-dialog a:focus-visible {{ outline-color:var(--c-accent-ink-dark) }}
+  html.theme-dark #panel .close, html.theme-dark #about-dialog .close {{ background:var(--n-750); color:var(--n-300) }}
+  html.theme-dark #panel .close:hover, html.theme-dark #about-dialog .close:hover {{ background:var(--n-700); color:var(--n-0) }}
   html.theme-dark #panel .meta {{ color:#9a9a9a }}
   html.theme-dark #panel .meta .meta-country {{ color:#cfcfcf }}
-  html.theme-dark #panel .stack-header {{ border-bottom-color:#333 }}
-  html.theme-dark #panel .aoc-card + .aoc-card {{ border-top-color:#444 }}
-  html.theme-dark #panel .aoc-card.subordinate h1 {{ color:#bbb; border-bottom-color:#444 }}
-  html.theme-dark #panel .aoc-card.subordinate:hover h1 {{ color:#eee; border-bottom-color:#d98b97 }}
-  html.theme-dark #panel .stack-focus {{ border-color:#555; color:#bbb }}
-  html.theme-dark #panel .aoc-card.subordinate:hover .stack-focus, html.theme-dark #panel .stack-focus:focus-visible {{ border-color:#d98b97; color:#d98b97 }}
-  html.theme-dark #panel .stack-focus:hover {{ background:#d98b97; border-color:#d98b97; color:#1c1c1e }}
+  html.theme-dark #panel .stack-header {{ color:var(--n-300); border-bottom-color:var(--n-750) }}
+  html.theme-dark #panel .aoc-card + .aoc-card {{ border-top-color:var(--n-700) }}
+  html.theme-dark #panel .sheet-handle {{ background:var(--n-dark-panel) }}
+  html.theme-dark #panel .sheet-handle .grip {{ background:var(--n-600) }}
+  html.theme-dark #panel .stack-row {{ border-color:var(--n-700); color:var(--n-dark-text) }}
+  html.theme-dark #panel .stack-row:hover, html.theme-dark #panel .stack-row:focus-visible {{ background:#2a2024; border-color:var(--c-accent-ink-dark) }}
+  html.theme-dark #panel .stack-row .sub, html.theme-dark #panel .stack-hint, html.theme-dark #panel .subappellations .sub-kind {{ color:var(--n-300) }}
+  html.theme-dark #panel .boundary-notes > summary {{ color:var(--note-ink-dark); background:var(--note-bg-dark); border-left-color:var(--note-rule-dark) }}
+  html.theme-dark #panel .boundary-notes > summary:hover {{ color:var(--note-ink-dark) }}
+  html.theme-dark #panel .subappellations-more > summary {{ color:var(--c-accent-ink-dark) }}
+  html.theme-dark #panel .stack-focus:hover {{ background:var(--c-accent-ink-dark); border-color:var(--c-accent-ink-dark); color:var(--n-dark-panel) }}
   html.theme-dark #panel .aoc-skeleton .skel {{ background:linear-gradient(90deg,#2b2b2b 25%,#363636 37%,#2b2b2b 63%); background-size:400% 100% }}
-  html.theme-dark #panel .sources, html.theme-dark #panel .facts-sub-h {{ color:#bbb }}
+  html.theme-dark #panel .sources, html.theme-dark #panel .facts-sub-h {{ color:var(--n-300) }}
   html.theme-dark #panel ul.facts {{ color:#e0e0e0 }}
   html.theme-dark #panel .translation-attr, html.theme-dark #panel ul.facts .wiki-attr {{ color:#a3a3a3 }}
-  html.theme-dark #panel blockquote.facts-verbatim {{ background:#262320; color:#dcdcdc; border-left-color:#555 }}
-  html.theme-dark #panel .approx-line, html.theme-dark #panel .facts-inherited {{ background:#322b18; color:#e6cf86; border-left-color:#6a5a2a }}
-  html.theme-dark #panel .approx-line a.parent-link, html.theme-dark #panel .facts-inherited a.parent-link {{ color:#e6cf86 }}
+  html.theme-dark #panel blockquote.facts-verbatim {{ background:#262320; color:#dcdcdc; border-left-color:var(--n-600) }}
+  html.theme-dark #panel .approx-line, html.theme-dark #panel .facts-inherited {{ background:var(--note-bg-dark); color:var(--note-ink-dark); border-left-color:var(--note-rule-dark) }}
+  html.theme-dark #panel .approx-line a.parent-link, html.theme-dark #panel .facts-inherited a.parent-link {{ color:var(--note-ink-dark) }}
   html.theme-dark .cancelled-badge {{ color:#f0a8a8; background:#3a1d1d; border-color:#7a3a3a }}
   html.theme-dark #panel .cancelled-line {{ background:#3a1d1d; color:#f0b4b4; border-left-color:#8a4444 }}
   html.theme-dark #panel .cancelled-line a {{ color:#f0b4b4 }}
@@ -3260,25 +3463,25 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel .appellation-note a {{ color:#aecbe6 }}
   html.theme-dark #panel details.dulok {{ color:#ccc }}
   html.theme-dark #panel details.dulok > summary, html.theme-dark #panel details.dulok .dulo-tel {{ color:#d8b86a }}
-  html.theme-dark #panel details.dulok .dulo-row {{ border-top-color:#333 }}
-  html.theme-dark #about-dialog {{ background:#1c1c1e; color:#e3e3e3; border-color:#444 }}
-  html.theme-dark #about-dialog h2, html.theme-dark #about-dialog h3 {{ color:#d98b97; border-bottom-color:#5a2a33 }}
-  html.theme-dark #about-dialog .about-meta, html.theme-dark #about-dialog .about-credit {{ color:#aaa; border-top-color:#333 }}
-  html.theme-dark #grape-tooltip {{ background:#1c1c1e; color:#e3e3e3; border-color:#444; box-shadow:0 4px 16px rgba(0,0,0,0.5) }}
-  html.theme-dark #grape-tooltip .note {{ color:#bbb }}
-  html.theme-dark #grape-tooltip .thumb {{ background:#333 }}
-  html.theme-dark .maplibregl-popup-content {{ background:#1c1c1e; color:#e3e3e3 }}
-  html.theme-dark .maplibregl-popup-content h3 {{ color:#d98b97 }}
+  html.theme-dark #panel details.dulok .dulo-row {{ border-top-color:var(--n-750) }}
+  html.theme-dark #about-dialog {{ background:var(--n-dark-panel); color:var(--n-dark-text); border-color:var(--n-700) }}
+  html.theme-dark #about-dialog h2, html.theme-dark #about-dialog h3 {{ color:var(--c-accent-ink-dark); border-bottom-color:var(--c-accent-rule-dark) }}
+  html.theme-dark #about-dialog .about-meta, html.theme-dark #about-dialog .about-credit {{ color:#aaa; border-top-color:var(--n-750) }}
+  html.theme-dark #grape-tooltip {{ background:var(--n-dark-panel); color:var(--n-dark-text); border-color:var(--n-700); box-shadow:0 4px 16px rgba(0,0,0,0.5) }}
+  html.theme-dark #grape-tooltip .note {{ color:var(--n-300) }}
+  html.theme-dark #grape-tooltip .thumb {{ background:var(--n-750) }}
+  html.theme-dark .maplibregl-popup-content {{ background:var(--n-dark-panel); color:var(--n-dark-text) }}
+  html.theme-dark .maplibregl-popup-content h3 {{ color:var(--c-accent-ink-dark) }}
   html.theme-dark .maplibregl-popup-content .meta {{ color:#aaa }}
   html.theme-dark .maplibregl-popup-close-button {{ color:#aaa }}
   html.theme-dark .maplibregl-popup-anchor-top .maplibregl-popup-tip,
   html.theme-dark .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
-  html.theme-dark .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {{ border-bottom-color:#1c1c1e }}
+  html.theme-dark .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {{ border-bottom-color:var(--n-dark-panel) }}
   html.theme-dark .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
   html.theme-dark .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
-  html.theme-dark .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {{ border-top-color:#1c1c1e }}
-  html.theme-dark .maplibregl-popup-anchor-left .maplibregl-popup-tip {{ border-right-color:#1c1c1e }}
-  html.theme-dark .maplibregl-popup-anchor-right .maplibregl-popup-tip {{ border-left-color:#1c1c1e }}
+  html.theme-dark .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {{ border-top-color:var(--n-dark-panel) }}
+  html.theme-dark .maplibregl-popup-anchor-left .maplibregl-popup-tip {{ border-right-color:var(--n-dark-panel) }}
+  html.theme-dark .maplibregl-popup-anchor-right .maplibregl-popup-tip {{ border-left-color:var(--n-dark-panel) }}
   /* Pills: the light pastel chips glow on the dark panel — re-tint to dark,
      muted, hue-preserving backgrounds with light text so they read calmly. */
   html.theme-dark .pill {{ background:#2d2d30; color:#d6d6d6 }}
@@ -3292,18 +3495,19 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark .pill.style.style--vin-jaune {{ background:#2f2914; color:#e7d186 }}
   html.theme-dark .pill.style.style--vin-de-paille {{ background:#2f2614; color:#e7c987 }}
   html.theme-dark .pill.grape {{ background:#202d3b; color:#aecbe8 }}
+  html.theme-dark .pill.grape .canon {{ color:inherit }}
   html.theme-dark a.pill.grape:hover {{ background:#2a3a4c }}
   html.theme-dark .pill.grape.accessory {{ background:#2a2a2c; color:#aeaeae }}
   html.theme-dark a.pill.grape.accessory:hover {{ background:#343437 }}
   html.theme-dark .pill.grape.observation {{ background:#2e2a14; color:#e0cb84 }}
   html.theme-dark a.pill.grape.observation:hover {{ background:#383218 }}
   html.theme-dark #panel .stack-pos {{ background:#2e2a1c; color:#d8c79a }}
-  html.theme-dark #panel .card-feedback {{ border-top-color:#3a3a3d; color:#e3e3e3 }}
+  html.theme-dark #panel .card-feedback {{ border-top-color:#3a3a3d; color:var(--n-dark-text) }}
   html.theme-dark #panel .card-feedback .fb-prompt {{ color:#b5b5b5 }}
   html.theme-dark #panel .fb-chip {{ background:#232325; border-color:#4a4a4e; color:#d0d0d0 }}
-  html.theme-dark #panel .fb-chip:hover {{ background:#343437; color:#eee }}
-  html.theme-dark #panel .fb-chip[aria-pressed="true"] {{ background:#8d2a48; border-color:#8d2a48; color:#fff }}
-  html.theme-dark #panel .fb-more textarea {{ background:#1e1e20; border-color:#444; color:#ddd }}
+  html.theme-dark #panel .fb-chip:hover {{ background:#343437; color:var(--n-100) }}
+  html.theme-dark #panel .fb-chip[aria-pressed="true"] {{ background:var(--c-accent-hover); border-color:var(--c-accent-hover); color:var(--n-0) }}
+  html.theme-dark #panel .fb-more textarea {{ background:#1e1e20; border-color:var(--n-700); color:var(--n-200) }}
   html.theme-dark #panel .fb-status {{ color:#a7c48a }}
   html.theme-dark #panel .fb-more .fb-aspect {{ color:#e6a0b6 }}
   html.theme-dark #panel .fb-more a {{ color:#e6a0b6 }}
@@ -3324,12 +3528,17 @@ _TEMPLATE = """<!doctype html>
 <a class="skip-link" href="#map">{labels[skip_to_map]}</a>
 <div id="app">{ssr_content}
   %%SIDEBAR%%
+  <div id="scrim" hidden aria-hidden="true"></div>
 
-  <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}">☰</button>
+  <header id="mobile-bar">
+    <a class="mobile-brand" href="/"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</a>
+    <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}" aria-controls="sidebar" aria-expanded="false">☰</button>
+  </header>
 
   <main id="map" tabindex="-1" aria-label="{labels[map_aria]}"></main>
 
   <div id="panel" tabindex="-1" role="dialog" aria-modal="false" aria-label="{labels[panel_aria]}">
+    <button class="sheet-handle" type="button" aria-label="{labels[sheet_expand_aria]}" aria-expanded="false"><span class="grip" aria-hidden="true"></span></button>
     <button class="close" type="button" aria-label="{labels[close_aria]}">×</button>
     <div class="body" id="panel-body"></div>
   </div>
@@ -3377,31 +3586,40 @@ _PAGE_TEMPLATE, _STYLE_CSS = _split_template(_TEMPLATE)
 
 # Production sidebar, split into composable pieces (the `_LAB_` prefix is
 # historical — these were the shared chrome of the lab search variants):
-#   _LAB_HEAD_TOP        brand → theme → status → omnisearch (+ a visually-hidden
-#                        aria-live region announcing result counts / no-match)
+#   _LAB_HEAD_TOP        rail (folded state) → brand + fold button → omnisearch (+ a
+#                        visually-hidden aria-live region announcing result counts /
+#                        no-match) → status. Language + theme moved to the
+#                        config menu block of the footer (app.js lifts it into
+#                        the ⚙ map control); the PDO / PGI / spirits scope
+#                        toggles are the legend pills on the map.
 #   _LAB_ACTIVE          the active-filters chip tray + reset
 #   _LAB_LEGEND_FOOTER   legend + footer (closes the <aside>)
-_LAB_HEAD_TOP = """<aside id="sidebar" data-nosnippet aria-label="{labels[sidebar_aria]}">
-    <{brand_tag} class="brand-title"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</{brand_tag}>
-    <div class="subtitle">{labels[subtitle]}</div>
-    {lang_switcher_html}
-    <div id="theme-toggle" role="group" aria-label="{labels[theme_h]}">
-      <button type="button" data-theme-mode="light" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_light]}" title="{labels[theme_light]}">☀</button>
-      <button type="button" data-theme-mode="system" class="theme-btn active" aria-pressed="true" aria-label="{labels[theme_system]}" title="{labels[theme_system]}">◐</button>
-      <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_dark]}" title="{labels[theme_dark]}">☾</button>
+_LAB_HEAD_TOP = """<aside id="sidebar" data-nosnippet tabindex="-1" aria-label="{labels[sidebar_aria]}">
+    <div id="sidebar-rail">
+      <img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="20" height="20">
+      <button type="button" id="rail-search" aria-label="{labels[search_h]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+      <button type="button" id="rail-expand" aria-label="{labels[sidebar_expand_aria]}" aria-controls="sidebar" aria-expanded="false">›</button>
     </div>
-    <div id="status" role="status" aria-live="polite" aria-atomic="true">{labels[loading]}</div>
-
+    <div class="sidebar-head">
+      <{brand_tag} class="brand-title"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</{brand_tag}>
+      <button type="button" id="sidebar-collapse" aria-label="{labels[sidebar_collapse_aria]}" aria-controls="sidebar" aria-expanded="true">‹</button>
+    </div>
+    <div class="subtitle">{labels[subtitle]}</div>
     <div id="omnisearch" role="search">
-      <input type="text" id="omni" class="omni-input" placeholder="{labels[omnisearch_placeholder]}" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="omni-suggestions" aria-label="{labels[search_h]}">
+      <div class="omni-box">
+        <svg class="omni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="text" id="omni" class="omni-input" placeholder="{labels[omnisearch_placeholder]}" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="omni-suggestions" aria-label="{labels[search_h]}">
+        <button type="button" id="omni-clear" aria-label="{labels[search_clear_aria]}" hidden>×</button>
+      </div>
       <div id="omni-suggestions" class="omni-suggestions" role="listbox" hidden></div>
       <span id="omni-live" class="visually-hidden" role="status" aria-live="polite"></span>
     </div>
+    <div id="status" role="status" aria-live="polite" aria-atomic="true">{labels[loading]}</div>
 """
 
 
 _LAB_ACTIVE = """
-    <div id="active-filters" aria-label="{labels[active_filters_aria]}">
+    <div id="active-filters" role="group" aria-label="{labels[active_filters_aria]}">
       <div id="active-filters-chips"></div>
       <button id="reset" type="button">{labels[reset]}</button>
     </div>
@@ -3409,20 +3627,16 @@ _LAB_ACTIVE = """
 
 
 _LAB_LEGEND_FOOTER = """
-    <details id="legend" open>
-      <summary>{labels[legend_h]}</summary>
-      <div class="legend-body">
-        <div class="legend-h">{labels[legend_bassin_h]}</div>
-        <div class="swatch-row"><span class="sw aoc"></span><span>{labels[legend_origin]}</span></div>
-        <div class="swatch-row"><span class="sw igp"></span><span>{labels[legend_gi]}</span></div>
-        <div class="hint">{labels[legend_area_hint]}</div>
-        <div class="legend-h">{labels[legend_grapes_h]}</div>
-        <div class="swatch-row"><span class="sw principal"></span><span>{labels[legend_principal]}</span></div>
-        <div class="swatch-row"><span class="sw accessory"></span><span>{labels[legend_accessory]}</span></div>
-        <div class="swatch-row"><span class="sw observation"></span><span>{labels[legend_observation]}</span></div>
+    <div id="config-menu" role="group" aria-label="{labels[settings_h]}">
+      <div class="config-section"><div class="config-h">{labels[lang_switcher_aria]}</div>{lang_switcher_html}</div>
+      <div class="config-section config-row"><div class="config-h" id="theme-h">{labels[theme_h]}</div>
+        <div id="theme-toggle" role="group" aria-labelledby="theme-h">
+          <button type="button" data-theme-mode="light" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_light]}" title="{labels[theme_light]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+          <button type="button" data-theme-mode="system" class="theme-btn active" aria-pressed="true" aria-label="{labels[theme_system]}" title="{labels[theme_system]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
+          <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_dark]}" title="{labels[theme_dark]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
+        </div>
       </div>
-    </details>
-
+    </div>
     <div id="sidebar-footer">
       {sidebar_disclaimer_html}
       <div id="sidebar-footer-links">
@@ -3437,48 +3651,36 @@ _LAB_LEGEND_FOOTER = """
 
 
 # The production sidebar — "Search + Browse rail" (promoted from lab variant D):
-# a unified omnisearch bar (appellations + grapes + regions + styles; the
-# appellation tree below live-filters as you type) over the mode-gated style
-# tree, a browsable grape chip list ("main grape only" toggle inside it), and the
-# region/appellation tree. Built from the shared head/active/legend-footer pieces.
+# the brand with its fold button (desktop folds to a rail), a unified
+# omnisearch bar first (appellations + grapes + regions + styles; the
+# appellation tree below live-filters as you type; a clear button), the
+# count, the style taxonomy tree (its seven buckets as
+# the top rows, sub-styles folded behind a chevron), the collapsed
+# classification and appellation-type trees, and the country → region →
+# appellation tree. One sidebar for everyone since 2026-10: the Simple /
+# Advanced toggle that used to swap the style facet and hide the other two
+# trees is gone. The appellation-type tree (scheme → traditional term) is
+# withheld from the sidebar since 2026-10-18 (Boris: "drop it for now, we
+# might resurrect it when AVAs etc. are introduced") — the markup is the
+# only thing removed; buildTreeFacet('facet-appellation-type', …), the
+# facet's data tokens and the chip handling are dormant behind their
+# null-guards, so adding the <details> back is the whole resurrection.
+# Built from the shared head/active/legend-footer pieces.
 _SIDEBAR = _LAB_HEAD_TOP + _LAB_ACTIVE + """
-    <div id="mode-toggle" role="group" aria-label="{labels[view_mode_h]}">
-      <button type="button" data-mode="simple" class="mode-btn active" aria-pressed="true">{labels[view_mode_simple]}</button>
-      <button type="button" data-mode="advanced" class="mode-btn" aria-pressed="false">{labels[view_mode_advanced]}</button>
-    </div>
-
-    <details open data-modes="simple" data-facet="styles">
-      <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
-      <div class="facet" id="facet-styles-simple"></div>
-    </details>
-
-    <details open data-modes="advanced" data-facet="styles">
+    <details data-facet="styles">
       <summary><span class="facet-label">{labels[facet_styles_h]}</span><span class="facet-badge"></span></summary>
       <div class="facet" id="facet-styles"></div>
     </details>
 
-    <details data-modes="advanced" data-facet="classification">
+    <details data-facet="classification">
       <summary><span class="facet-label">{labels[facet_classification_h]}</span><span class="facet-badge"></span></summary>
       <div class="facet" id="facet-classification"></div>
-    </details>
-
-    <details data-modes="advanced" data-facet="appellation-type">
-      <summary><span class="facet-label">{labels[facet_appellation_type_h]}</span><span class="facet-badge"></span></summary>
-      <div class="facet" id="facet-appellation-type"></div>
     </details>
 
     <details open data-facet="appellations">
       <summary><span class="facet-label">{labels[facet_appellations_h]}</span><span class="facet-badge"></span></summary>
       <div class="facet facet-appellations" id="facet-appellations"></div>
     </details>
-
-    <div id="igp-toggle">
-      <label><input type="checkbox" id="show-igp"> <span class="name">{labels[show_igp_label]}</span></label>
-    </div>
-
-    <div id="spirits-toggle" data-modes="advanced">
-      <label><input type="checkbox" id="show-spirits"> <span class="name">{labels[show_spirits_label]}</span></label>
-    </div>
 """ + _LAB_LEGEND_FOOTER
 
 

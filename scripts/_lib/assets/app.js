@@ -24,22 +24,22 @@
   const INITIAL_CAMERA_HASH = window.location.hash || '';
   const FACET_STYLES_TREE = __OWM_styles_tree_json__;
   const STYLE_DESCENDANTS = __OWM_style_descendants_json__;
-  const FACET_STYLES_SIMPLE = __OWM_styles_simple_json__;
   // Level of detail (scripts/_lib/vineyard_envelope.py): below
   // LOD.overview_max_zoom the map draws the generalised vineyard footprint of
   // a French parcel-level record (its 250 m closing), from LOD.detail_min_zoom
   // the INAO parcels; every other record keeps one polygon at every zoom.
   const LOD = __OWM_lod_json__;
   const LOD_SOURCES = new Set(LOD.sources || []);
-  const FACET_PRINCIPAL = __OWM_principal_json__;
-  const FACET_ACCESSORY = __OWM_accessory_json__;
-  const FACET_GRAPES_ALL = __OWM_grapes_all_json__;
   const FACET_REGIONS = __OWM_regions_json__;
   const STYLE_LABELS = __OWM_style_labels_json__;
   const SIMPLE_STYLE_LABELS = __OWM_simple_style_labels_json__;
   const SIMPLE_STYLE_BUCKETS = __OWM_simple_style_buckets_json__;
-  // {canonical style slug -> [searchable synonym terms]} — wine-style analogue
-  // of GRAPE_SYNONYMS; makes a style findable by a local name in the omnisearch
+  // Labels for the style facet tree: its depth-0 rows are the seven buckets
+  // and keep the wording of the former bucket chips ("sweet / dessert");
+  // deeper nodes keep the taxonomy's own labels.
+  const FACET_STYLE_LABELS = Object.assign({}, STYLE_LABELS, SIMPLE_STYLE_LABELS);
+  // {canonical style slug -> [searchable synonym terms]}: makes a style
+  // findable by a local name in the omnisearch
   // (typing "fondillon" surfaces the rancio style → its appellations).
   const STYLE_SEARCH_TERMS = __OWM_style_search_terms_json__;
   // {region facet key -> {forms, labels}} (_lib/region_search_terms.py):
@@ -64,6 +64,8 @@
   const TERM_LABELS = __OWM_term_labels_json__;
   const TERMS_INFO = __OWM_terms_info_json__;
   const LABELS = __OWM_labels_json__;
+  // Per-country regulator term for a sub-denomination (content_block.SUBDENOM_HEADINGS).
+  const SUBDENOM_HEADINGS = __OWM_subdenom_headings_json__;
   // Default document title (the locale homepage title). The tab title tracks
   // the open appellation so it doesn't get stuck on whichever entity page the
   // user landed on / first opened; reset to this when the panel closes.
@@ -101,22 +103,6 @@
   // sees the regulator's terminology) — the expansion happens only in
   // the filter predicate.
   const VIVC_SIBLINGS = __OWM_vivc_siblings_json__;
-  // Per-locale canonical row label: each member of a VIVC group maps to
-  // the single canonical slug under which the facet renders. Cross-narrow
-  // counts roll up via this map so a record using "malbec" increments the
-  // canonical "cot" row.
-  const SLUG_TO_CANONICAL = __OWM_slug_to_canonical_json__;
-  // Synonyms shown inline on each canonical row (e.g. Côt → [malbec,
-  // auxerrois]). Sorted by global usage; the row's `.name` span includes
-  // every synonym so the per-facet search input matches any spelling.
-  const GRAPE_SYNONYMS = __OWM_grape_synonyms_json__;
-  function grapeSynonymsHtml(canonSlug) {
-    const syns = GRAPE_SYNONYMS[canonSlug];
-    if (!syns || !syns.length) return '';
-    const labels = syns.map(s => grapeName(s)).join(', ');
-    return ` <span class="syns">(${labels})</span>`;
-  }
-
   // -------------------------- grape chip filter --------------------------
   //
   // Replaces the long-list checkbox facet for grapes with a typeahead +
@@ -268,12 +254,13 @@
     return norm(canon) === norm(cahier);
   }
 
-  // The toggles that currently hide a record from the map, 'igp' and/or
-  // 'spirit' (a cider PGI is behind both).
+  // The toggles that currently hide a record from the map: 'igp', 'spirit'
+  // (a cider PGI is behind both) and 'pdo'.
   function hiddenGates(rec) {
     const gates = [];
     if (!showIgp && (rec.kind || 'AOC') === 'IGP') gates.push('igp');
-    if (!spiritsVisible() && rec.is_wine === false) gates.push('spirit');
+    if (!showSpirits && rec.is_wine === false) gates.push('spirit');
+    if (!showPdo && isPdoRec(rec)) gates.push('pdo');
     return gates;
   }
 
@@ -293,6 +280,22 @@
     const latin = latinBracket(rec);
     if (!latin) return native;
     return native + ' <span class="latin">(' + escapeHtml(latin) + ')</span>';
+  }
+  // A sub-denomination's row under its parent shows what distinguishes it:
+  // the parent's name is cut from the front ("Aloxe-Corton premier cru Les
+  // Vercots" → "premier cru Les Vercots"; feedback 2026-10-18: fifteen rows
+  // read the same after the ellipsis). A name that does not start with the
+  // parent's, or one carrying a Latin bracket, is shown whole.
+  const CHILD_SEP_RE = /^[\s\-–—'’:,]+/;
+  function childLabel(rec, parentRec) {
+    const name = (rec && rec.name) || '';
+    const pn = (parentRec && parentRec.name) || '';
+    if (!pn || latinBracket(rec) || name.length <= pn.length + 1) return nameWithLatin(rec);
+    if (name.slice(0, pn.length).toLowerCase() !== pn.toLowerCase()) return nameWithLatin(rec);
+    const rest = name.slice(pn.length);
+    if (!CHILD_SEP_RE.test(rest)) return nameWithLatin(rec);
+    const shown = rest.replace(CHILD_SEP_RE, '');
+    return shown ? escapeHtml(shown) : nameWithLatin(rec);
   }
 
   // Does the query name the region itself: its displayed label, its native
@@ -346,6 +349,27 @@
   }
   const basemapAttribution = '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
   const initialDark = effectiveTheme() === 'dark';
+  // The start view fits the corpus (feedback 2026-10-18: the fixed France
+  // view was "too zoomed in"; on a phone it showed the middle of France).
+  // Its mainland extent: the Atlantic islands — the Azores, Madeira, the
+  // Canaries, every record west of 12° W — would push the continent into a
+  // corner, so they are left out of the fit, not off the map. A URL hash
+  // still wins: MapLibre applies `bounds` only when the hash is empty.
+  function corpusBounds() {
+    let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+    for (const slug in AOCS) {
+      const b = AOCS[slug].bbox || AOCS[slug].bbox_villages;
+      if (!b || b[2] < -12) continue;
+      if (b[0] < w) w = b[0];
+      if (b[1] < s) s = b[1];
+      if (b[2] > e) e = b[2];
+      if (b[3] > n) n = b[3];
+    }
+    return w < e ? [[w, s], [e, n]] : [[-10, 36], [30, 52]];
+  }
+  function startPadding() {
+    return window.innerWidth <= 768 ? { top: 16, bottom: 16, left: 12, right: 12 } : 32;
+  }
   let map;
   try {
     map = buildMap();
@@ -370,7 +394,9 @@
     // start at z3) so zooming out to a continental overview never drops into
     // an empty, polygon-less void. maxZoom 14 is defensive (tiles max at z12;
     // MapLibre overzooms cleanly above that).
-    center: [2.6, 46.5], zoom: 5.4, minZoom: 3, maxZoom: 14, hash: true
+    bounds: corpusBounds(), fitBoundsOptions: { padding: startPadding() }, minZoom: 3, maxZoom: 14, hash: true,
+    // Accessible names of the zoom buttons, in the page's locale.
+    locale: { 'NavigationControl.ZoomIn': LABELS.ctrl_zoom_in, 'NavigationControl.ZoomOut': LABELS.ctrl_zoom_out }
   }); }
 
   // ----- theme switch (light / dark / system) -----
@@ -441,12 +467,55 @@
     });
   }
 
-  // Mobile sidebar toggle.
+  // The phone drawer (the sidebar off-canvas, ≤768px): one owner of its open
+  // state, the scrim behind it and the ☰ button's aria-expanded. Opening it
+  // puts focus in the drawer itself (no keyboard pop); closing returns focus
+  // to the button that opened it (WCAG 2.4.3).
   const sidebarEl = document.getElementById('sidebar');
   const sidebarToggle = document.getElementById('sidebar-toggle');
-  if (sidebarToggle) {
-    sidebarToggle.addEventListener('click', () => sidebarEl.classList.toggle('open'));
+  const scrim = document.getElementById('scrim');
+  let drawerOpener = null;
+  function isMobile() { return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches); }
+  function drawerOpen() { return sidebarEl.classList.contains('open'); }
+  function setDrawer(open, via, opener) {
+    const was = drawerOpen();
+    sidebarEl.classList.toggle('open', open);
+    if (scrim) scrim.hidden = !open;
+    if (sidebarToggle) sidebarToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open && !was) {
+      drawerOpener = opener || null;
+      track('Drawer Opened', { via: via || 'menu', locale: LANG });
+      const target = via === 'search' ? document.getElementById('omni') : sidebarEl;
+      if (target) { try { target.focus({ preventScroll: true }); } catch (e) {} }
+    } else if (!open && was) {
+      if (drawerOpener && document.contains(drawerOpener)) { try { drawerOpener.focus({ preventScroll: true }); } catch (e) {} }
+      drawerOpener = null;
+    }
   }
+  if (sidebarToggle) sidebarToggle.addEventListener('click', () => setDrawer(!drawerOpen(), 'menu', sidebarToggle));
+  if (scrim) scrim.addEventListener('click', () => setDrawer(false));
+
+  // The desktop sidebar folds to a rail (feedback 2026-10-18): the state is
+  // a class on <html>, restored before first paint by the head script, and
+  // a localStorage preference; the rail's search button unfolds it with the
+  // search focused. MapLibre's own ResizeObserver resizes the canvas.
+  const collapseBtn = document.getElementById('sidebar-collapse');
+  const railSearch = document.getElementById('rail-search');
+  const railExpand = document.getElementById('rail-expand');
+  function sidebarCollapsed() { return document.documentElement.classList.contains('sidebar-collapsed'); }
+  function setSidebarCollapsed(on, via, focusSearch) {
+    const was = sidebarCollapsed();
+    document.documentElement.classList.toggle('sidebar-collapsed', on);
+    try { localStorage.setItem('sidebar_collapsed', on ? '1' : '0'); } catch (e) {}
+    for (const b of [collapseBtn, railExpand]) if (b) b.setAttribute('aria-expanded', on ? 'false' : 'true');
+    if (on !== was) track('Sidebar Toggled', { state: on ? 'collapsed' : 'expanded', via: via || 'button', locale: LANG });
+    const target = on ? railExpand : (focusSearch ? document.getElementById('omni') : collapseBtn);
+    if (target) { try { target.focus({ preventScroll: true }); } catch (e) {} }
+  }
+  for (const b of [collapseBtn, railExpand]) if (b) b.setAttribute('aria-expanded', sidebarCollapsed() ? 'false' : 'true');
+  if (collapseBtn) collapseBtn.addEventListener('click', () => setSidebarCollapsed(true, 'button'));
+  if (railExpand) railExpand.addEventListener('click', () => setSidebarCollapsed(false, 'rail'));
+  if (railSearch) railSearch.addEventListener('click', () => setSidebarCollapsed(false, 'rail-search', true));
 
   // About dialog. Native <dialog>; backdrop click closes.
   const aboutDialog = document.getElementById('about-dialog');
@@ -510,9 +579,13 @@
   }
   document.querySelectorAll('a.feedback-mail').forEach(a => armFeedbackMail(a, '', ''));
 
-  let viewMode = 'simple';
-  try { viewMode = localStorage.getItem('view_mode') || 'simple'; } catch (e) {}
-  if (viewMode !== 'advanced') viewMode = 'simple';
+  // The Simple / Advanced view mode is gone (2026-10): one sidebar for
+  // everyone. Drop the key it persisted so nothing stale lingers in storage.
+  try { localStorage.removeItem('view_mode'); } catch (e) {}
+  // The last open card used to be reopened on the next visit (dropped
+  // 2026-10-18: a tester found Penedès open, left by the browser's previous
+  // user); the stored value goes with it.
+  try { localStorage.removeItem('selected_slugs'); } catch (e) {}
 
   // Deep-link an appellation as a real path segment: /<lang>/<slug> for every
   // locale, EN included (/en/<slug>) — so one CDN rewrite covers all four. EN's
@@ -525,6 +598,8 @@
   // prod. A legacy ?aoc= query is still read on load (and upgraded to a path).
   const SLUG_BASE = '/' + LANG + '/';
   const HOME_BASE = (LANG === 'en') ? '/' : SLUG_BASE;
+  const mobileBrand = document.querySelector('#mobile-bar .mobile-brand');
+  if (mobileBrand) mobileBrand.setAttribute('href', HOME_BASE);
   function slugFromPath() {
     let p = window.location.pathname || '/';
     p = (p.indexOf(SLUG_BASE) === 0) ? p.slice(SLUG_BASE.length) : p.replace(/^\//, '');
@@ -565,9 +640,11 @@
   let showSpirits = false;
   try { showSpirits = localStorage.getItem('show_spirits') === '1'; } catch (e) {}
 
-  // Spirits toggle is Advanced-only; in Simple mode spirits are always
-  // hidden regardless of the persisted preference.
-  function spiritsVisible() { return viewMode === 'advanced' && showSpirits; }
+  // PDOs can be hidden too (feedback 2026-10-18: the legend pills are the
+  // scope control, one per scheme), on by default.
+  let showPdo = true;
+  try { showPdo = localStorage.getItem('show_pdo') !== '0'; } catch (e) {}
+  const isPdoRec = rec => rec.is_wine !== false && (rec.kind || 'AOC') !== 'IGP';
 
   // A visitor who lands on an appellation's page — a search result, a shared
   // link, an MCP map link — asked for it: turn on every toggle that would keep
@@ -578,17 +655,126 @@
   for (const s of LANDING.slugs) {
     const gates = hiddenGates(AOCS[s]);
     if (gates.includes('igp')) showIgp = true;
-    if (gates.includes('spirit')) { viewMode = 'advanced'; showSpirits = true; }
+    if (gates.includes('spirit')) showSpirits = true;
+    if (gates.includes('pdo')) showPdo = true;
   }
+
+  // Map chrome. Zoom buttons (no compass: the map never rotates) above the
+  // attribution; a metric scale bottom-left and, above it, the legend — each
+  // fill colour with its scheme beside it (never colour alone), the spirits
+  // colour only while spirits are shown. Later bottom-corner controls stack
+  // above earlier ones. Pinch is the zoom affordance on phones: the CSS
+  // hides the buttons there.
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), 'bottom-right');
+  map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+  // The legend is the scope control (feedback 2026-10-18, the review's
+  // mockups): one pill per fill colour — PDO, PGI, spirits — each a
+  // checkbox that draws or hides the scheme and an ⓘ that opens its
+  // definition (the card pills' tooltip). Built once; refresh() syncs the
+  // checked state so a toggle never loses its focus to a re-render. The
+  // change handlers live with the other scope handlers below.
+  const legendControl = {
+    onAdd() {
+      this._el = document.createElement('div');
+      this._el.className = 'maplibregl-ctrl owm-legend';
+      this._el.setAttribute('role', 'group');
+      this._el.setAttribute('aria-label', LABELS.legend_h);
+      const pill = (cls, id, text, aria, hintKey, hintLabel) => `<span class="legend-pill ${cls}"><label><input type="checkbox" id="${id}" aria-label="${escapeAttr(aria)}"><span class="txt">${escapeHtml(text)}</span></label><button type="button" class="scope-hint gi-scheme has-info" data-key="${hintKey}" aria-label="${escapeAttr(hintLabel)}">i</button></span>`;
+      this._el.innerHTML = pill('aoc', 'show-pdo', LABELS.scheme_pdo, LABELS.show_pdo_label, 'pdo', LABELS.scope_hint_pdo)
+        + pill('igp', 'show-igp', LABELS.scheme_pgi, LABELS.show_igp_label, 'pgi', LABELS.scope_hint_pgi)
+        + pill('spirit', 'show-spirits', LABELS.legend_spirits_label, LABELS.show_spirits_label, 'spirit-gi', LABELS.scope_hint_spirits);
+      this.refresh();
+      return this._el;
+    },
+    onRemove() { if (this._el) this._el.remove(); },
+    refresh() {
+      if (!this._el) return;
+      const sync = (id, on) => {
+        const inp = this._el.querySelector('#' + id);
+        if (!inp) return;
+        inp.checked = on;
+        inp.closest('.legend-pill').classList.toggle('on', on);
+      };
+      sync('show-pdo', showPdo);
+      sync('show-igp', showIgp);
+      sync('show-spirits', showSpirits);
+    },
+  };
+  map.addControl(legendControl, 'bottom-left');
+
+  // The ⚙ control (top-right): language and theme in one popover, lifted
+  // out of the sidebar (feedback 2026-10-18: "move to config"; the three-
+  // state theme switch now carries its words). The block is server-rendered
+  // in the sidebar footer, where it stays for a no-JS visitor.
+  const settingsControl = {
+    onAdd() {
+      this._el = document.createElement('div');
+      this._el.className = 'maplibregl-ctrl maplibregl-ctrl-group owm-settings';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'settings-toggle';
+      btn.className = 'owm-settings-btn';
+      btn.setAttribute('aria-label', LABELS.settings_h);
+      btn.title = LABELS.settings_h;
+      btn.setAttribute('aria-haspopup', 'true');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.setAttribute('aria-controls', 'config-menu');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg>';
+      this._el.appendChild(btn);
+      const menu = document.getElementById('config-menu');
+      if (menu) { menu.hidden = true; menu.classList.add('placed'); this._el.appendChild(menu); }
+      this._btn = btn;
+      this._menu = menu;
+      btn.addEventListener('click', () => this.setOpen(!this.isOpen(), true));
+      return this._el;
+    },
+    onRemove() { if (this._el) this._el.remove(); },
+    isOpen() { return !!(this._menu && !this._menu.hidden); },
+    // `refocus`: the button takes focus back when the menu closes from the
+    // keyboard or its own button, never when a click elsewhere closed it.
+    setOpen(open, refocus) {
+      if (!this._menu) return;
+      const was = this.isOpen();
+      this._menu.hidden = !open;
+      this._btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open && !was) {
+        track('Settings Opened', { locale: LANG });
+        const first = this._menu.querySelector('a, button');
+        if (first) { try { first.focus({ preventScroll: true }); } catch (e) {} }
+      } else if (!open && was && refocus) {
+        try { this._btn.focus({ preventScroll: true }); } catch (e) {}
+      }
+    },
+  };
+  map.addControl(settingsControl, 'top-right');
+  // On a phone the ⚙ and its menu live in the bar beside the ☰ (feedback
+  // 2026-10-18: a control floating under the bar looked misplaced); on
+  // desktop in the map control. Re-homed when the viewport crosses 768 px.
+  function homeSettings() {
+    const menu = settingsControl._menu, btn = settingsControl._btn, bar = document.getElementById('mobile-bar');
+    if (!menu || !btn) return;
+    if (isMobile() && bar) {
+      bar.insertBefore(btn, sidebarToggle || null);
+      bar.appendChild(menu);
+      menu.classList.add('in-bar');
+    } else {
+      settingsControl._el.appendChild(btn);
+      settingsControl._el.appendChild(menu);
+      menu.classList.remove('in-bar');
+    }
+  }
+  homeSettings();
+  const MOBILE_MQ = window.matchMedia('(max-width: 768px)');
+  if (MOBILE_MQ.addEventListener) MOBILE_MQ.addEventListener('change', homeSettings);
+  document.addEventListener('click', e => {
+    if (settingsControl.isOpen() && !e.target.closest('#config-menu, #settings-toggle')) settingsControl.setOpen(false, false);
+  });
 
   const filters = {
     q: '',
     styles: new Set(),
-    stylesSimple: new Set(),
     classifications: new Set(),
     appellationType: new Set(),
-    principal: new Set(),
-    accessory: new Set(),
     grapesAll: new Set(),
     appellations: new Set(),
     // When true, the grape filter matches grapes_principal instead of grapes_all
@@ -622,6 +808,7 @@
     refreshFacetBadges();
     refreshFacetAvailabilityDebounced();
     renderActiveFilters();
+    legendControl.refresh();
     if (opts && opts.fit) fitToFiltered();
   }
 
@@ -632,16 +819,13 @@
     if (!chip) return;
     const kind = chip.dataset.kind;
     const key = chip.dataset.key;
-    if (kind === 'styleSimple') filters.stylesSimple.delete(key);
-    else if (kind === 'style') filters.styles.delete(key);
+    if (kind === 'style') filters.styles.delete(key);
     else if (kind === 'classification') filters.classifications.delete(key);
     else if (kind === 'appellationType') filters.appellationType.delete(key);
     else if (kind === 'grapeAll') {
       filters.grapesAll.delete(key);
       if (!filters.grapesAll.size) filters.mainGrapeOnly = false;
     }
-    else if (kind === 'principal') filters.principal.delete(key);
-    else if (kind === 'accessory') filters.accessory.delete(key);
     else if (kind === 'appellation') filters.appellations.delete(key);
     // Region chips are country-scoped (the name alone is ambiguous — Tokaj is
     // both Hungarian and Slovak), so the country rides along on the chip.
@@ -675,7 +859,6 @@
     // chip tray and is rendered from `filters.grapesAll`).
     const sets = {
       'facet-styles': filters.styles,
-      'facet-styles-simple': filters.stylesSimple,
       'facet-classification': filters.classifications,
       'facet-appellation-type': filters.appellationType,
     };
@@ -685,6 +868,7 @@
       el.querySelectorAll('input[type=checkbox]').forEach(inp => {
         inp.checked = set.has(inp.dataset.key);
       });
+      revealCheckedTreeRows(el);
     }
   }
 
@@ -756,23 +940,62 @@
     }
     if (!any) return;
     if (minX >= maxX || minY >= maxY) return;
-    map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 40, maxZoom: 10, duration: 500 });
+    map.fitBounds([[minX, minY], [maxX, maxY]], { padding: fitPadding(40), maxZoom: 10, duration: 500 });
   }
 
   function fmt(tpl, vars) {
     return tpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] != null ? vars[k] : '');
   }
 
+  // Filter feedback: a style / grape / classification / type filter leaves its
+  // matches inside collapsed tree groups. Up to 25 matches open the groups
+  // that hold them — tagged, and closed again when the filter clears (the
+  // search's autoOpened pattern with its own flag, so the two never fight);
+  // above that the status line offers "show in the list".
+  const AUTO_OPEN_MAX = 25;
+  function facetFilterActive() {
+    return !!(filters.styles.size || filters.classifications.size || filters.appellationType.size || filters.grapesAll.size)
+      && !filters.appellations.size && !filters.q;
+  }
+  function openGroupsWithMatches() {
+    const el = document.getElementById('facet-appellations');
+    if (!el) return;
+    const open = g => { if (g && !g.open) { g.open = true; g.dataset.autoOpenedF = '1'; } };
+    for (const [cc, regions] of COUNTRY_TREE) {
+      let countryHit = false;
+      for (const region of regions.keys()) {
+        if (!visibleSlugsInRegion(cc, region).some(s => matchesClient(AOCS[s], s))) continue;
+        countryHit = true;
+        open(el.querySelector(`.region-group[data-country="${CSS.escape(cc)}"][data-region="${CSS.escape(region)}"]`));
+      }
+      if (countryHit) open(el.querySelector(`.country-group[data-country="${CSS.escape(cc)}"]`));
+    }
+  }
+  function closeAutoOpenedGroups() {
+    document.querySelectorAll('#facet-appellations details[data-auto-opened-f]').forEach(g => {
+      g.open = false;
+      delete g.dataset.autoOpenedF;
+    });
+  }
+
   function updateStatus() {
     const el = document.getElementById('status');
     const total = Object.keys(AOCS).length;
     const expr = buildFilterExpr();
-    if (!expr) { el.textContent = fmt(LABELS.count_total, { n: total }); return; }
+    if (!expr) { closeAutoOpenedGroups(); el.textContent = fmt(LABELS.count_total, { n: total }); return; }
     let n = 0;
     for (const slug in AOCS) if (matchesClient(AOCS[slug], slug)) n++;
+    let listHint = false;
+    if (facetFilterActive()) {
+      if (n > 0 && n <= AUTO_OPEN_MAX) openGroupsWithMatches();
+      else if (n > AUTO_OPEN_MAX) listHint = true;
+    } else {
+      closeAutoOpenedGroups();
+    }
     // When the filter excludes every visible record but matches one or
     // more hidden IGPs, surface a one-click reveal so the user understands
-    // *why* the camera didn't move. Same idea for hidden spirits.
+    // *why* the camera didn't move. (No spirits counterpart: the Spirits
+    // legend pill on the map is that switch.)
     if (n === 0) {
       let nHiddenIgp = 0;
       if (!showIgp) {
@@ -802,38 +1025,67 @@
       }
     }
     el.textContent = fmt(LABELS.count_filtered, { n: n, total: total });
+    if (listHint) {
+      el.appendChild(document.createTextNode(' · '));
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'hint-action';
+      btn.textContent = LABELS.status_show_matches;
+      btn.addEventListener('click', () => {
+        openGroupsWithMatches();
+        const tree = document.getElementById('facet-appellations');
+        const det = tree && tree.closest('details');
+        if (det) { det.open = true; det.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+      });
+      el.appendChild(btn);
+    }
   }
 
-  function buildFacet(containerId, items, store, format, extraFormat) {
-    const el = document.getElementById(containerId);
-    const html = items.map(([key, count]) => {
-      const safeKey = String(key).replace(/"/g, '&quot;');
-      const label = format ? format(key) : key;
-      const extra = extraFormat ? extraFormat(key) : '';
-      return `<label><input type="checkbox" data-key="${safeKey}"><span class="name">${label}${extra}</span><span class="count">${count}</span></label>`;
-    }).join('');
-    el.innerHTML = html;
-    el.addEventListener('change', e => {
-      if (e.target.tagName !== 'INPUT') return;
-      const k = e.target.dataset.key;
-      if (e.target.checked) store.add(k); else store.delete(k);
-      if (e.target.checked) {
-        track('Filter Applied', { facet: containerId.replace(/^facet-/, ''), value: k, locale: LANG });
-      }
-      applyFilter({ fit: true });
+  // A tree facet (styles, classification, appellation type): one row per
+  // node in stage 04's DFS order, a subtree folded behind a chevron. The
+  // checkbox's <label> and the chevron <button> are siblings inside the row
+  // (a button is a labelable element: nested in the label it would take the
+  // row's name as its own), so a screen reader hears two controls — "white,
+  // checkbox" and "white, button, collapsed". The subtree is a hidden
+  // sibling wrapper, so a collapsed branch leaves the accessibility tree.
+  function setTreeOpen(wrap, open) {
+    wrap.hidden = !open;
+    const row = wrap.previousElementSibling;
+    const btn = row && row.querySelector('.tree-toggle');
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  // Open every branch holding a checked row (an omnisearch pick of a deep
+  // node, a chip-tray sync), so a tick is never hidden behind a chevron.
+  function revealCheckedTreeRows(el) {
+    el.querySelectorAll('.tree-children input[type=checkbox]:checked').forEach(inp => {
+      for (let w = inp.closest('.tree-children'); w; w = w.parentElement && w.parentElement.closest('.tree-children')) setTreeOpen(w, true);
     });
+    // The section itself starts collapsed (only the appellation tree opens by
+    // default): a tick that arrived through the search or a chip is shown.
+    const section = el.closest('details');
+    if (section && !section.open && el.querySelector('input[type=checkbox]:checked')) section.open = true;
   }
-
-  function buildTreeFacet(containerId, tree, store, labels, descendants, facetName) {
+  function buildTreeFacet(containerId, tree, store, labels, facetName) {
     const el = document.getElementById(containerId);
     if (!el) return;  // defensive null-guard
-    const html = tree.map(node => {
-      const safeKey = String(node.slug).replace(/"/g, '&quot;');
+    let html = '';
+    const open = [];  // depths of the subtree wrappers still open
+    tree.forEach((node, i) => {
+      while (open.length && open[open.length - 1] >= node.depth) { html += '</div>'; open.pop(); }
+      const safeKey = escapeAttr(String(node.slug));
       const label = labels[node.slug] || node.slug;
-      const hasChildren = (descendants[node.slug] || []).length > 1;
-      const cls = `tree-row${ hasChildren ? ' tree-row-parent' : '' }`;
-      return `<label class="${cls}" data-depth="${node.depth}"><input type="checkbox" data-key="${safeKey}"><span class="name">${label}</span><span class="count">${node.count}</span></label>`;
-    }).join('');
+      const next = tree[i + 1];
+      // Children that render: zero-count nodes are already dropped upstream.
+      const hasChildren = !!next && next.depth > node.depth;
+      const subId = `${containerId}-sub-${safeKey}`;
+      html += `<div class="tree-row${hasChildren ? ' tree-row-parent' : ''}" data-depth="${node.depth}">`
+        + `<label><input type="checkbox" data-key="${safeKey}"><span class="name">${label}</span><span class="count">${node.count}</span></label>`
+        + (hasChildren ? `<button type="button" class="tree-toggle" aria-expanded="false" aria-controls="${subId}" aria-label="${escapeAttr(label)}">›</button>`
+                       : '<span class="tree-toggle-spacer" aria-hidden="true"></span>')
+        + '</div>';
+      if (hasChildren) { html += `<div class="tree-children" id="${subId}" hidden>`; open.push(node.depth); }
+    });
+    while (open.length) { html += '</div>'; open.pop(); }
     el.innerHTML = html;
     el.addEventListener('change', e => {
       if (e.target.tagName !== 'INPUT') return;
@@ -843,6 +1095,12 @@
         track('Filter Applied', { facet: facetName, value: k, locale: LANG });
       }
       applyFilter({ fit: true });
+    });
+    el.addEventListener('click', e => {
+      const btn = e.target.closest('.tree-toggle');
+      if (!btn) return;
+      const wrap = document.getElementById(btn.getAttribute('aria-controls'));
+      if (wrap) setTreeOpen(wrap, wrap.hidden);
     });
   }
 
@@ -870,10 +1128,9 @@
     return false;
   }
 
-  buildTreeFacet('facet-styles', FACET_STYLES_TREE, filters.styles, STYLE_LABELS, STYLE_DESCENDANTS, 'styles');
-  buildTreeFacet('facet-classification', FACET_CLASS_TREE, filters.classifications, CLASS_LABELS, CLASS_DESCENDANTS, 'classification');
-  buildTreeFacet('facet-appellation-type', FACET_TERM_TREE, filters.appellationType, TERM_LABELS, TERM_DESCENDANTS, 'appellation-type');
-  buildFacet('facet-styles-simple', FACET_STYLES_SIMPLE, filters.stylesSimple, k => SIMPLE_STYLE_LABELS[k] || k);
+  buildTreeFacet('facet-styles', FACET_STYLES_TREE, filters.styles, FACET_STYLE_LABELS, 'styles');
+  buildTreeFacet('facet-classification', FACET_CLASS_TREE, filters.classifications, CLASS_LABELS, 'classification');
+  buildTreeFacet('facet-appellation-type', FACET_TERM_TREE, filters.appellationType, TERM_LABELS, 'appellation-type');
 
   // Country → region → list of slugs, computed once. The tree re-renders on
   // spirits-toggle (entries appear/disappear), but the grouping itself is
@@ -904,22 +1161,17 @@
       push(rec.country || '', region, slug);
       for (const alias of rec.country_aliases || []) push(alias, region, slug);
     }
-    function total(regions) {
-      let n = 0;
-      for (const arr of regions.values()) n += arr.length;
-      return n;
-    }
-    // Countries by corpus weight (the ordering every other facet uses), then
-    // by localized name. Regions the same within their country, except the
-    // "no region" residue bucket, pinned last however big it is.
+    // Countries and regions alphabetically, in the page's language (feedback
+    // 2026-10-18: ordered by size — France, Italy, Spain, Greece … — the
+    // list read as no order at all), except the "no region" residue bucket,
+    // pinned last.
     const ordered = new Map();
     const countries = [...byCountry.entries()].sort((a, b) =>
-      total(b[1]) - total(a[1]) || countryLabel(a[0]).localeCompare(countryLabel(b[0]), 'fr'));
+      countryLabel(a[0]).localeCompare(countryLabel(b[0]), LANG));
     for (const [cc, regions] of countries) {
       const sorted = new Map([...regions.entries()].sort((a, b) =>
         (a[0] === '' ? 1 : 0) - (b[0] === '' ? 1 : 0) ||
-        b[1].length - a[1].length ||
-        regionLabel(a[0]).localeCompare(regionLabel(b[0]), 'fr')));
+        regionLabel(a[0]).localeCompare(regionLabel(b[0]), LANG)));
       for (const arr of sorted.values()) {
         arr.sort((a, b) => AOCS[a].name.localeCompare(AOCS[b].name, 'fr'));
       }
@@ -931,7 +1183,7 @@
   function visibleSlugsInRegion(country, region) {
     const regions = COUNTRY_TREE.get(country);
     const all = (regions && regions.get(region)) || [];
-    if (spiritsVisible()) return all;
+    if (showSpirits) return all;
     return all.filter(s => AOCS[s].is_wine !== false);
   }
 
@@ -1002,13 +1254,38 @@
       for (const region of regions.keys()) {
         const slugs = visibleSlugsInRegion(cc, region);
         if (!slugs.length) continue;
-        const items = slugs.map(slug => {
+        // Sub-denominations nest under their parent's row, folded behind a
+        // chevron, the parent's name cut from theirs (childLabel). A child
+        // whose parent is not in this group — a hidden spirit, another
+        // region — stays a top-level row under its full name.
+        const inGroup = new Set(slugs);
+        const kids = new Map();
+        const top = [];
+        for (const slug of slugs) {
+          const p = AOCS[slug].is_sub_denomination ? AOCS[slug].parent_slug : null;
+          if (p && p !== slug && inGroup.has(p)) { if (!kids.has(p)) kids.set(p, []); kids.get(p).push(slug); }
+          else top.push(slug);
+        }
+        const row = (slug, depth, parentRec, subId) => {
           const safeSlug = escapeAttr(slug);
           const rec = AOCS[slug];
-          const nameHtml = nameWithLatin(rec);
+          const nameHtml = parentRec ? childLabel(rec, parentRec) : nameWithLatin(rec);
           const checked = filters.appellations.has(slug) ? ' checked' : '';
           const openLbl = escapeAttr(fmt(LABELS.open_appellation_aria, { name: rec.name || slug }));
-          return `<label data-slug="${safeSlug}" data-name="${escapeAttr(searchableText(rec))}"><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span>${cancelledBadge(rec, true)}${promotedBadge(rec, true)}<button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></label>`;
+          // The chevron, the checkbox's <label> and the → button are siblings
+          // in the row (a button nested in the label would take the row's
+          // name as its own).
+          const fold = subId
+            ? `<button type="button" class="tree-toggle" aria-expanded="false" aria-controls="${subId}" aria-label="${escapeAttr(rec.name || slug)}">›</button>`
+            : '<span class="tree-toggle-spacer" aria-hidden="true"></span>';
+          return `<div class="aoc-row" data-slug="${safeSlug}" data-depth="${depth}" data-name="${escapeAttr(searchableText(rec))}">${fold}<label><input type="checkbox" data-key="${safeSlug}"${checked}><span class="name">${nameHtml}</span>${cancelledBadge(rec, true)}${promotedBadge(rec, true)}</label><button type="button" class="open-aoc" data-slug="${safeSlug}" aria-label="${openLbl}" title="${escapeAttr(LABELS.open_appellation_title)}">→</button></div>`;
+        };
+        const items = top.map(slug => {
+          const children = kids.get(slug);
+          if (!children) return row(slug, 0, null, '');
+          const subId = `fa-sub-${escapeAttr(cc)}-${escapeAttr(slug)}`;
+          return row(slug, 0, null, subId)
+            + `<div class="tree-children" id="${subId}" hidden>${children.map(c => row(c, 1, AOCS[slug], '')).join('')}</div>`;
         }).join('');
         let parentCount = 0;
         for (const s of slugs) if (!AOCS[s].is_sub_denomination) parentCount++;
@@ -1039,7 +1316,7 @@
   }
 
   // Single delegated listener — buildAppellationFacet may run multiple
-  // times (mode swap, spirits toggle), so the handler stays on the
+  // times (spirits toggle), so the handler stays on the
   // container instead of being re-attached each time.
   document.getElementById('facet-appellations')?.addEventListener('change', e => {
     const el = document.getElementById('facet-appellations');
@@ -1085,34 +1362,43 @@
   //   • the `→` open button — the keyboard/SR path (the WebGL polygons aren't
   //     DOM-reachable, so this is the only non-mouse way in), AND
   //   • clicking the appellation NAME — the expected "show me this one" gesture,
-  //     matching a map click and the search dropdown.
+  //     matching a map click and a search result.
   // The leading checkbox stays a multi-select FILTER: a click landing on the
   // input itself toggles it and is handled by the `change` listener, so we bail
   // here. preventDefault stops the wrapping <label> from toggling that checkbox
   // on a name/button click; stopPropagation keeps it off document-level handlers.
   document.getElementById('facet-appellations')?.addEventListener('click', e => {
+    // The chevron folds a parent's sub-denominations (the style trees' pattern).
+    const fold = e.target.closest('.tree-toggle');
+    if (fold) {
+      const wrap = document.getElementById(fold.getAttribute('aria-controls'));
+      if (wrap) setTreeOpen(wrap, wrap.hidden);
+      return;
+    }
     const btn = e.target.closest('.open-aoc');
-    const label = e.target.closest('label[data-slug]');
+    const row = e.target.closest('.aoc-row[data-slug]');
     // Open on the → button, or on the name text — but never on the checkbox
     // (or blank row padding), which stays a pure filter toggle.
-    const onName = !btn && label && e.target.closest('.name');
+    const onName = !btn && row && e.target.closest('.name');
     if (!btn && !onName) return;
     e.preventDefault();
     e.stopPropagation();
-    const slug = (btn || label).dataset.slug;
+    const slug = (btn || row).dataset.slug;
     if (!AOCS[slug]) return;
     // Return focus on close to the row's → button (the only focusable element
     // in the row) whether the open came from the button or the name (WCAG 2.4.3).
-    lastPanelTrigger = btn || (label && label.querySelector('.open-aoc')) || null;
+    lastPanelTrigger = btn || (row && row.querySelector('.open-aoc')) || null;
     lastStackKey = slug;
     stackFocusIndex = 0;
     renderPanelStack([slug], 0, undefined, 'facet');
+    // On a phone the drawer would cover the sheet and the map it framed.
+    if (isMobile()) setDrawer(false);
     track('Appellation Opened', { slug: slug, via: 'facet', locale: LANG });
     const b = fitBbox(AOCS[slug]);
     if (b && typeof map.fitBounds === 'function') {
       // maxZoom = LOD.overview_max_zoom: "show me this appellation" lands on
       // its parcels, not on the half-faded footprint at the crossfade.
-      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: LOD.overview_max_zoom, duration: 500 });
+      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(40), maxZoom: LOD.overview_max_zoom, duration: 500 });
     }
   });
 
@@ -1168,8 +1454,18 @@
           // A query that names the region ("macedonia", "burgundy",
           // "bourgogne") keeps every row of the group.
           const regionHit = !!nq && regionSearchHit(group.dataset.region, nq);
-          group.querySelectorAll('label').forEach(lbl => {
-            const match = !nq || regionHit || lbl.dataset.name.includes(nq);
+          const rowMatch = lbl => !nq || regionHit || lbl.dataset.name.includes(nq);
+          group.querySelectorAll('.aoc-row').forEach(lbl => {
+            let match = rowMatch(lbl);
+            // A parent stays when one of its folded sub-denominations matches,
+            // and that fold opens for the query (closed again when it clears).
+            const wrap = lbl.nextElementSibling;
+            if (wrap && wrap.classList.contains('tree-children')) {
+              const childHit = [...wrap.querySelectorAll('.aoc-row')].some(rowMatch);
+              match = match || childHit;
+              if (nq && childHit && wrap.hidden) { setTreeOpen(wrap, true); wrap.dataset.autoOpenedQ = '1'; }
+              else if (!nq && wrap.dataset.autoOpenedQ) { setTreeOpen(wrap, false); delete wrap.dataset.autoOpenedQ; }
+            }
             lbl.style.display = match ? '' : 'none';
             if (match) visible++;
           });
@@ -1192,42 +1488,16 @@
 
   buildAppellationFacet();
 
-  function applyMode() {
-    document.documentElement.classList.toggle('mode-simple', viewMode === 'simple');
-    document.documentElement.classList.toggle('mode-advanced', viewMode === 'advanced');
-    document.querySelectorAll('#mode-toggle .mode-btn').forEach(b => {
-      const on = b.dataset.mode === viewMode;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
-    });
-    document.querySelectorAll('#sidebar [data-modes]').forEach(el => {
-      const modes = el.dataset.modes.split(/\s+/);
-      el.classList.toggle('mode-hidden', !modes.includes(viewMode));
-    });
-    // The geometry is no longer the mode's business: zoom decides between the
-    // overview and detail sources (see the source block). The mode only
-    // gates the sidebar (facet depth, spirits).
-    // The appellation tree's contents depend on spiritsVisible(), which
-    // depends on viewMode — rebuild on every mode switch (optional-chain the
-    // children check defensively).
-    if (document.getElementById('facet-appellations')?.children.length) {
-      buildAppellationFacet();
-    }
-  }
-
-  document.querySelectorAll('#mode-toggle .mode-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      const next = b.dataset.mode;
-      if (next === viewMode) return;
-      viewMode = next;
-      try { localStorage.setItem('view_mode', viewMode); } catch (e) {}
-      track('View Mode Switched', { mode: viewMode, locale: LANG });
-      applyMode();
-      // Don't re-fit on a mode switch — preserve the current camera. (Was
-      // `{fit:true}`: simple fits tight bbox_villages, advanced fits wider full
-      // bbox, so toggling with a filter active jarringly zoomed the map out.)
-      applyFilter();
-    });
+  // The legend pills' checkboxes (legendControl above): a scope toggle
+  // widens or narrows what is drawn where the reader already looks; it
+  // never moves the camera.
+  const pdoEl = document.getElementById('show-pdo');
+  pdoEl.checked = showPdo;
+  pdoEl.addEventListener('change', e => {
+    showPdo = e.target.checked;
+    try { localStorage.setItem('show_pdo', showPdo ? '1' : '0'); } catch (err) {}
+    track('Kind Toggled', { kind: 'pdo', enabled: showPdo ? 'true' : 'false', locale: LANG });
+    applyFilter();
   });
 
   const igpEl = document.getElementById('show-igp');
@@ -1236,7 +1506,9 @@
     showIgp = e.target.checked;
     try { localStorage.setItem('show_igp', showIgp ? '1' : '0'); } catch (err) {}
     track('Kind Toggled', { kind: 'igp', enabled: showIgp ? 'true' : 'false', locale: LANG });
-    applyFilter({ fit: true });
+    // A scope toggle widens or narrows what is drawn where the reader already
+    // looks; it never moves the camera.
+    applyFilter();
   });
 
   const spiritsEl = document.getElementById('show-spirits');
@@ -1247,60 +1519,22 @@
     track('Kind Toggled', { kind: 'spirits', enabled: showSpirits ? 'true' : 'false', locale: LANG });
     // Spirit AOCs join/leave the appellation tree; rebuild + reapply.
     buildAppellationFacet();
-    applyFilter({ fit: true });
-  });
-
-  // The merged Appellation facet hosts the appellation search; typing in
-  // it auto-expands the section if collapsed, since otherwise the tree
-  // updates would be invisible to the user.
-  const qInput = document.getElementById('q');
-  // Debounced search analytics: fire once after the user stops typing.
-  // We send result_count / had_match / query_len only — never the raw
-  // string, since search boxes attract typos, names, and assorted junk.
-  let searchTrackTimer = null;
-  if (qInput) qInput.addEventListener('input', e => {
-    filters.q = e.target.value.trim();
-    refreshFacetVisibility('facet-appellations', filters.q);
-    const det = qInput.closest('details');
-    if (filters.q && det && !det.open) det.open = true;
-    if (searchTrackTimer) clearTimeout(searchTrackTimer);
-    if (filters.q) {
-      searchTrackTimer = setTimeout(() => {
-        const nq = searchNormalize(filters.q);
-        let n = 0;
-        for (const slug in AOCS) {
-          if (searchableText(AOCS[slug]).includes(nq)) n++;
-        }
-        track('Search Used', {
-          result_count: String(n),
-          had_match: n > 0 ? 'true' : 'false',
-          query_len: String(filters.q.length),
-          locale: LANG,
-        });
-      }, 1000);
-    }
-  });
-
-  // Per-facet search inputs (cépages). They filter only the visible
-  // checkboxes in their target facet; they do not affect the map filter.
-  document.querySelectorAll('.facet-search[data-facet]').forEach(input => {
-    input.addEventListener('input', e => {
-      refreshFacetVisibility(input.dataset.facet, e.target.value.trim());
-    });
+    applyFilter();
   });
 
   document.getElementById('reset').addEventListener('click', () => {
     track('Filters Reset', { locale: LANG });
     filters.q = '';
-    filters.styles.clear(); filters.stylesSimple.clear();
+    filters.styles.clear();
     filters.classifications.clear();
     filters.appellationType.clear();
-    filters.principal.clear(); filters.accessory.clear(); filters.grapesAll.clear();
+    filters.grapesAll.clear();
     filters.appellations.clear();
     filters.mainGrapeOnly = false;
     const _omni = document.getElementById('omni');
     if (_omni) {
       _omni.value = '';
+      const _oc = document.getElementById('omni-clear'); if (_oc) _oc.hidden = true;
       _omni.setAttribute('aria-expanded', 'false');
       _omni.removeAttribute('aria-activedescendant');
       const _od = document.getElementById('omni-suggestions'); if (_od) { _od.hidden = true; _od.innerHTML = ''; }
@@ -1310,11 +1544,7 @@
       c.checked = false;
       c.indeterminate = false;
     });
-    document.querySelectorAll('.facet-search').forEach(i => { i.value = ''; });
     refreshFacetVisibility('facet-appellations', '');
-    refreshFacetVisibility('facet-grapes-all', '');
-    refreshFacetVisibility('facet-principal', '');
-    refreshFacetVisibility('facet-accessory', '');
     applyFilter();
   });
 
@@ -1327,21 +1557,18 @@
   function activeGrapeField() {
     return filters.mainGrapeOnly ? 'grapes_principal' : 'grapes_all';
   }
-  // Union of the quick-chip buckets (stylesSimple, expanded to fine slugs) and
-  // any advanced-tree picks (filters.styles), so style filtering is identical
-  // regardless of view mode (simple chips + advanced-tree picks combined).
+  // Tree picks expanded to the leaf slugs records carry. A depth-0 pick is
+  // the whole bucket, the bucket slug included (records carry 'red' /
+  // 'white' / … directly, so the seven top rows filter as labelled).
   function activeStyleFineSet() {
-    const out = new Set();
-    for (const b of filters.stylesSimple) for (const s of (SIMPLE_STYLE_BUCKETS[b] || [])) out.add(s);
-    const fine = expandStyles(filters.styles);
-    if (fine) for (const s of fine) out.add(s);
-    return out;
+    return expandStyles(filters.styles) || new Set();
   }
 
   function buildFilterExpr() {
     const parts = ['all'];
     if (!showIgp) parts.push(['!=', ['get', 'kind'], 'IGP']);
-    if (!spiritsVisible()) parts.push(['==', ['get', 'is_wine'], '1']);
+    if (!showSpirits) parts.push(['==', ['get', 'is_wine'], '1']);
+    if (!showPdo) parts.push(['any', ['==', ['get', 'is_wine'], '0'], ['==', ['get', 'kind'], 'IGP']]);
     function inField(field, set) {
       if (!set || !set.size) return null;
       const tests = [];
@@ -1366,7 +1593,8 @@
 
   function matchesClient(rec, slug, opts) {
     if (!(opts && opts.ignoreIgpGate) && !showIgp && (rec.kind || 'AOC') === 'IGP') return false;
-    if (!spiritsVisible() && rec.is_wine === false) return false;
+    if (!showSpirits && rec.is_wine === false) return false;
+    if (!showPdo && isPdoRec(rec)) return false;
     const styleSet = activeStyleFineSet();
     if (styleSet.size && !setIntersects(styleSet, rec.styles || [])) return false;
     const classSet = expandClass(filters.classifications);
@@ -1379,8 +1607,9 @@
 
   function matchesExceptFacets(rec, slug, except) {
     if (!showIgp && (rec.kind || 'AOC') === 'IGP') return false;
-    if (!spiritsVisible() && rec.is_wine === false) return false;
-    if (!except.has('styles') && !except.has('stylesSimple')) {
+    if (!showSpirits && rec.is_wine === false) return false;
+    if (!showPdo && isPdoRec(rec)) return false;
+    if (!except.has('styles')) {
       const styleSet = activeStyleFineSet();
       if (styleSet.size && !setIntersects(styleSet, rec.styles || [])) return false;
     }
@@ -1398,8 +1627,7 @@
     const el = document.getElementById('active-filters-chips');
     if (!el) return;
     const chips = [];
-    for (const k of filters.stylesSimple) chips.push({ kind: 'styleSimple', key: k, label: SIMPLE_STYLE_LABELS[k] || k });
-    for (const k of filters.styles) chips.push({ kind: 'style', key: k, label: STYLE_LABELS[k] || k });
+    for (const k of filters.styles) chips.push({ kind: 'style', key: k, label: FACET_STYLE_LABELS[k] || k });
     for (const k of filters.classifications) chips.push({ kind: 'classification', key: k, label: CLASS_LABELS[k] || k });
     for (const k of filters.appellationType) chips.push({ kind: 'appellationType', key: k, label: TERM_LABELS[k] || k });
     for (const k of filters.grapesAll) chips.push({ kind: 'grapeAll', key: k, label: grapeName(k) });
@@ -1449,25 +1677,12 @@
     }).join('');
   }
 
-  function regionsSelectedCount() {
-    let n = 0;
-    for (const [cc, regions] of COUNTRY_TREE) {
-      for (const region of regions.keys()) {
-        const st = triState(visibleSlugsInRegion(cc, region));
-        if (st === 'checked' || st === 'indeterminate') n++;
-      }
-    }
-    return n;
-  }
-
   function refreshFacetBadges() {
     const map_ = {
-      styles: filters.stylesSimple.size + filters.styles.size,
+      styles: filters.styles.size,
       classification: filters.classifications.size,
       'appellation-type': filters.appellationType.size,
-      grapes: filters.grapesAll.size,
       appellations: filters.appellations.size,
-      regions: regionsSelectedCount(),
     };
     document.querySelectorAll('#sidebar > details[data-facet]').forEach(det => {
       const badge = det.querySelector(':scope > summary .facet-badge');
@@ -1478,22 +1693,6 @@
   }
 
   function refreshFacetAvailability() {
-    const sEl = document.getElementById('facet-styles-simple');
-    if (sEl) {
-      const except = new Set(['stylesSimple']);
-      const counts = new Map();
-      for (const slug in AOCS) {
-        const rec = AOCS[slug];
-        if (!matchesExceptFacets(rec, slug, except)) continue;
-        for (const v of (rec.styles_simple || [])) counts.set(v, (counts.get(v) || 0) + 1);
-      }
-      sEl.querySelectorAll('label').forEach(lbl => {
-        const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
-        const n = counts.get(inp.dataset.key) || 0;
-        const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
-        lbl.classList.toggle('facet-unavailable', n === 0 && !inp.checked);
-      });
-    }
     const treeEl = document.getElementById('facet-styles');
     if (treeEl) {
       const except = new Set(['styles']);
@@ -1508,7 +1707,7 @@
           for (let i = 0; i < ds.length; i++) { if (recStyleSet.has(ds[i])) { treeCounts.set(node, (treeCounts.get(node) || 0) + 1); break; } }
         }
       }
-      treeEl.querySelectorAll('label').forEach(lbl => {
+      treeEl.querySelectorAll('.tree-row').forEach(lbl => {
         const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
         const n = treeCounts.get(inp.dataset.key) || 0;
         const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
@@ -1529,7 +1728,7 @@
           for (let i = 0; i < ds.length; i++) { if (recClassSet.has(ds[i])) { classCounts.set(node, (classCounts.get(node) || 0) + 1); break; } }
         }
       }
-      classEl.querySelectorAll('label').forEach(lbl => {
+      classEl.querySelectorAll('.tree-row').forEach(lbl => {
         const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
         const n = classCounts.get(inp.dataset.key) || 0;
         const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
@@ -1548,7 +1747,7 @@
           if (matchesTermSet(rec, new Set(TERM_DESCENDANTS[node]))) termCounts.set(node, (termCounts.get(node) || 0) + 1);
         }
       }
-      termEl.querySelectorAll('label').forEach(lbl => {
+      termEl.querySelectorAll('.tree-row').forEach(lbl => {
         const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
         const n = termCounts.get(inp.dataset.key) || 0;
         const c = lbl.querySelector('.count'); if (c) c.textContent = String(n);
@@ -1564,13 +1763,26 @@
         countryGroup.querySelectorAll('.region-group').forEach(group => {
           let visible = 0;
           let visibleParents = 0;
-          group.querySelectorAll('label').forEach(lbl => {
-            const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
+          const reachableRow = lbl => {
+            const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return false;
             const slug = inp.dataset.key; const rec = AOCS[slug];
-            const reachable = rec ? matchesExceptFacets(rec, slug, except) : false;
-            const hide = !reachable && !inp.checked;
-            lbl.classList.toggle('facet-unavailable', hide);
-            if (!hide) {
+            return (rec ? matchesExceptFacets(rec, slug, except) : false) || inp.checked;
+          };
+          group.querySelectorAll('.aoc-row').forEach(lbl => {
+            const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return;
+            const rec = AOCS[inp.dataset.key];
+            let keep = reachableRow(lbl);
+            // A parent the filter excludes stays for a sub-denomination it
+            // keeps (a DGC with its own colour or roster), its fold opened
+            // so that row is reachable.
+            const wrap = lbl.nextElementSibling;
+            if (!keep && wrap && wrap.classList.contains('tree-children')
+                && [...wrap.querySelectorAll('.aoc-row')].some(reachableRow)) {
+              keep = true;
+              if (wrap.hidden) setTreeOpen(wrap, true);
+            }
+            lbl.classList.toggle('facet-unavailable', !keep);
+            if (keep) {
               visible++;
               if (!(rec && rec.is_sub_denomination)) visibleParents++;
             }
@@ -1604,15 +1816,13 @@
       aliases, aliasesN: aliases.map(searchNormalize), echo,
     };
   });
-  // Index the FULL style taxonomy (the 6 buckets + interior groups + distinctive
-  // leaves like rancio / vin jaune / fino / oloroso), not just the 6 simple
-  // buckets, so detailed styles are findable in the omnisearch. Depth-0 tree
-  // nodes ARE the simple buckets (same slugs); deeper nodes are the details.
-  const _SIMPLE_STYLE_KEYS = new Set(FACET_STYLES_SIMPLE.map(([b]) => b));
+  // Index the full style taxonomy — the seven buckets (the facet's depth-0
+  // rows) plus the interior groups and the distinctive leaves (rancio, vin
+  // jaune, fino, oloroso) — so detailed styles are findable in the omnisearch.
   const _STYLE_INDEX = FACET_STYLES_TREE.map(node => ({
     key: node.slug, count: node.count,
-    label: STYLE_LABELS[node.slug] || node.slug,
-    labelN: searchNormalize(STYLE_LABELS[node.slug] || node.slug),
+    label: FACET_STYLE_LABELS[node.slug] || node.slug,
+    labelN: searchNormalize(FACET_STYLE_LABELS[node.slug] || node.slug),
     aliasesN: (STYLE_SEARCH_TERMS[node.slug] || []).map(searchNormalize),
   }));
   const _CLASS_INDEX = FACET_CLASS_TREE.map(node => ({
@@ -1626,7 +1836,7 @@
     const nq = searchNormalize(query || '');
     if (!nq) return { appellations: [], grapes: [], regions: [], styles: [], classifications: [] };
     // Search/count grapes against the active scope: when "main grape only" is
-    // on, the map filters grapes_principal, so the dropdown surfaces principal-
+    // on, the map filters grapes_principal, so the results surface principal-
     // relevant grapes and shows their principal count (was always total count).
     const grapeRole = filters.mainGrapeOnly ? 'principal' : 'all';
     const grapes = rankGrapeSuggestions(query, grapeRole, perGroup).map(s => ({
@@ -1734,11 +1944,9 @@
       track('Omnisearch Result Picked', { type: 'region', locale: LANG });
       applyFilter({ fit: true });
     } else if (type === 'style') {
-      // Route to the matching surface: the 6 coarse buckets drive the simple
-      // chips; detailed taxonomy nodes (rancio, vin jaune, …) drive the advanced
-      // style tree. Both render as removable active-filter chips either way.
-      if (_SIMPLE_STYLE_KEYS.has(key)) filters.stylesSimple.add(key);
-      else filters.styles.add(key);
+      // A bucket or a deeper node lands in filters.styles alike;
+      // refreshSidebarCheckedState ticks the row and opens the branches above it.
+      filters.styles.add(key);
       refreshSidebarCheckedState();
       track('Omnisearch Result Picked', { type: 'style', locale: LANG });
       applyFilter({ fit: true });
@@ -1769,15 +1977,8 @@
       track('Kind Toggled', { kind: 'igp', enabled: 'true', locale: LANG, via: via });
     }
     if (gates.includes('spirit')) {
-      // Spirits are gated by the advanced mode AND their own toggle; flip
-      // both the way their handlers do, so the tree and map agree with the
-      // panel about to open.
-      if (viewMode !== 'advanced') {
-        viewMode = 'advanced';
-        try { localStorage.setItem('view_mode', viewMode); } catch (err) {}
-        track('View Mode Switched', { mode: viewMode, locale: LANG, via: via });
-        applyMode();
-      }
+      // Flip the spirits checkbox the way its handler does, so the tree and
+      // the map agree with the panel about to open.
       showSpirits = true;
       const spiritsEl = document.getElementById('show-spirits');
       if (spiritsEl) spiritsEl.checked = true;
@@ -1785,14 +1986,22 @@
       track('Kind Toggled', { kind: 'spirits', enabled: 'true', locale: LANG, via: via });
       buildAppellationFacet();
     }
+    if (gates.includes('pdo')) {
+      showPdo = true;
+      const pdoEl = document.getElementById('show-pdo');
+      if (pdoEl) pdoEl.checked = true;
+      try { localStorage.setItem('show_pdo', '1'); } catch (err) {}
+      track('Kind Toggled', { kind: 'pdo', enabled: 'true', locale: LANG, via: via });
+    }
     if (gates.length) applyFilter();
     lastPanelTrigger = trigger || null;
     lastStackKey = key;
     stackFocusIndex = 0;
     renderPanelStack([key], 0, undefined, via);
+    if (isMobile()) setDrawer(false);
     track('Appellation Opened', { slug: key, via: via, locale: LANG });
     const b = fitBbox(AOCS[key]);
-    if (b && map && typeof map.fitBounds === 'function') map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, maxZoom: LOD.overview_max_zoom, duration: 500 });
+    if (b && map && typeof map.fitBounds === 'function') map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(40), maxZoom: LOD.overview_max_zoom, duration: 500 });
     return true;
   }
 
@@ -1806,10 +2015,12 @@
       classifications: LABELS.facet_classification_h,
     };
     const live = document.getElementById('omni-live');
+    const clearBtn = document.getElementById('omni-clear');
+    const syncClear = () => { if (clearBtn) clearBtn.hidden = !input.value; };
     // The omnisearch ALSO live-filters the appellation tree below (in addition
-    // to the open-panel dropdown), reusing the tree filter + auto-collapse.
+    // to the results list), reusing the tree filter + auto-collapse.
     function syncTreeFilter(q) {
-      filters.q = q;  // persist across mode/spirits rebuilds (buildAppellationFacet reads it)
+      filters.q = q;  // persist across spirits-toggle rebuilds (buildAppellationFacet reads it)
       refreshFacetVisibility('facet-appellations', q);
       if (q) {
         const treeEl = document.getElementById('facet-appellations');
@@ -1829,7 +2040,7 @@
       const count = (it.count != null) ? `<span class="count">${it.count}</span>` : '';
       const badge = it.type === 'appellation' ? cancelledBadge(AOCS[it.key], true) + promotedBadge(AOCS[it.key], true) : '';
       const hidden = it.hidden
-        ? ` <span class="sub hidden-hint">${escapeHtml(it.hidden === 'igp' ? LABELS.omni_hidden_igp : LABELS.omni_hidden_spirit)}</span>`
+        ? ` <span class="sub hidden-hint">${escapeHtml(it.hidden === 'igp' ? LABELS.omni_hidden_igp : it.hidden === 'pdo' ? LABELS.omni_hidden_pdo : LABELS.omni_hidden_spirit)}</span>`
         : '';
       return `<div class="suggestion" id="omni-opt-${idx}" role="option" aria-selected="false" data-idx="${idx}" data-type="${escapeAttr(it.type)}" data-key="${escapeAttr(it.key)}"><span class="name">${escapeHtml(it.name)}</span>${badge}${sub}${hidden}${count}</div>`;
     }
@@ -1847,40 +2058,12 @@
       }
       return html;
     }
-    function showDrop(html) { drop.innerHTML = html; drop.hidden = false; input.setAttribute('aria-expanded', 'true'); }
+    function showDrop(html) { drop.innerHTML = html; drop.hidden = false; input.setAttribute('aria-expanded', 'true'); setSearching(true); }
     function hideDrop() {
       drop.hidden = true; drop.innerHTML = ''; items = []; activeIdx = -1;
-      input.setAttribute('aria-expanded', 'false'); clearActiveDescendant();
+      input.setAttribute('aria-expanded', 'false'); clearActiveDescendant(); setSearching(false);
     }
 
-    // Empty-query state: seed the dropdown with popular grapes / styles /
-    // regions so a user can discover the taxonomy without knowing a name
-    // (appellations are excluded — there is no meaningful "popular" few).
-    function renderSeeds() {
-      const role = filters.mainGrapeOnly ? 'principal' : 'all';
-      const ck = filters.mainGrapeOnly ? 'count_principal' : 'count';
-      // Over-fetch then sort by the active scope's count so "popular grapes"
-      // reflects principal usage when "main grape only" is on (the shared index
-      // is ordered by total count; re-sorting here keeps the canonical facet,
-      // which also uses the empty-query branch, untouched).
-      const grapes = rankGrapeSuggestions('', role, 30)
-        .sort((a, b) => (b.entry[ck] || 0) - (a.entry[ck] || 0))
-        .slice(0, 5)
-        .map(s => ({
-          type: 'grape', key: s.entry.slug, name: toTitleCase(s.entry.label), sub: '',
-          count: s.entry[ck] || 0,
-        }));
-      const styles = _STYLE_INDEX.slice().sort((a, b) => b.count - a.count).slice(0, 5)
-        .map(s => ({ type: 'style', key: s.key, name: s.label, sub: '', count: s.count }));
-      const regions = _REGION_INDEX.slice().sort((a, b) => b.count - a.count).slice(0, 5)
-        .map(r => ({ type: 'region', key: r.region, name: r.label, sub: '', count: r.count }));
-      const html = paintGroups({ grapes, styles, regions }, ['grapes', 'styles', 'regions']);
-      if (!items.length) { hideDrop(); return; }
-      showDrop(html);
-      activeIdx = -1;  // passive: Enter on an empty box does nothing
-      clearActiveDescendant();
-      setLive('');
-    }
     function renderNoResults(q) {
       items = []; activeIdx = -1;
       const msg = fmt(LABELS.omni_no_results, { q });
@@ -1888,11 +2071,18 @@
       clearActiveDescendant();
       setLive(msg);
     }
+    // The results are not a popup: while the box holds text they replace the
+    // filters below it (`#sidebar.searching` hides the facets, the count and
+    // the chips), on desktop and phone alike — the dropdown used to sit half
+    // over the tree and read as a layout error (feedback 2026-10-18). An
+    // empty box shows the filters again; no seeds for an empty query.
+    function setSearching(on) { sidebarEl.classList.toggle('searching', on); }
     function renderDrop(q) {
-      // A query of only punctuation or spaces folds to nothing: seeds, as
-      // for an empty box (the tree filter already treats it that way).
-      if (!searchNormalize(q)) { renderSeeds(); return; }
-      const res = rankAllSuggestions(q, 5);
+      // A query of only punctuation or spaces folds to nothing, as an empty box.
+      if (!searchNormalize(q)) { hideDrop(); return; }
+      // More appellations than a popup could hold; the other groups stay short.
+      const res = rankAllSuggestions(q, 25);
+      for (const g of ['grapes', 'regions', 'styles', 'classifications']) res[g] = (res[g] || []).slice(0, 6);
       const html = paintGroups(res, ['appellations', 'grapes', 'regions', 'styles', 'classifications']);
       if (!items.length) { renderNoResults(q); return; }
       showDrop(html);
@@ -1923,12 +2113,11 @@
       const wasAppellation = it.type === 'appellation';
       pickOmni(it.type, it.key);
       input.value = '';
+      syncClear();
       syncTreeFilter('');  // emptying the box clears the tree filter
       // On mobile, an appellation pick flies the map but the drawer would stay
       // open covering it — close it so the result is visible.
-      if (wasAppellation && window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
-        const sb = document.getElementById('sidebar'); if (sb) sb.classList.remove('open');
-      }
+      if (wasAppellation && isMobile()) setDrawer(false);
       hideDrop();
       if (!wasAppellation) input.focus();
     }
@@ -1944,6 +2133,7 @@
     });
     input.addEventListener('input', () => {
       const q = input.value.trim();
+      syncClear();
       renderDrop(q);
       syncTreeFilter(q);
       if (trackTimer) clearTimeout(trackTimer);
@@ -1960,8 +2150,8 @@
         });
       }, 1000);
     });
+    // No blur handler: the results are part of the page, not a popup to dismiss.
     input.addEventListener('focus', () => renderDrop(input.value.trim()));
-    input.addEventListener('blur', () => setTimeout(hideDrop, 120));
     input.addEventListener('keydown', e => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -1973,14 +2163,57 @@
       } else if (e.key === 'Enter') {
         if (!drop.hidden && activeIdx >= 0) { e.preventDefault(); choose(activeIdx); }
       } else if (e.key === 'Escape') {
-        hideDrop();
+        // Esc clears the text — the results and the tree filter go with it
+        // and the filters return (feedback 2026-10-18: "get out of search is
+        // not obvious"); an empty box lets the key reach the drawer / panel.
+        if (input.value) { e.stopPropagation(); clearSearch('escape'); }
       }
     });
+    function clearSearch(via) {
+      input.value = '';
+      syncClear();
+      syncTreeFilter('');
+      hideDrop();
+      track('Search Cleared', { via: via, locale: LANG });
+    }
+    if (clearBtn) clearBtn.addEventListener('click', () => { clearSearch('button'); input.focus(); });
   }
 
   buildOmnisearch();
+
+  // Boot-time layout: the panel and the drawer animate only after the first
+  // frames, so an entity landing paints its panel open from the start
+  // instead of sliding it in (the sheet's slide was most of the mobile CLS).
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => document.documentElement.classList.add('booted')));
   // ----- detail panel -----
   const panel = document.getElementById('panel');
+  // The phone sheet: a record opens at a peek height (name, meta, styles in
+  // view, the polygon still on screen) and expands on the handle or as soon
+  // as the reader scrolls it; closing resets. Desktop never has the class.
+  const sheetHandle = panel.querySelector('.sheet-handle');
+  function setSheetExpanded(on, via) {
+    const was = panel.classList.contains('expanded');
+    panel.classList.toggle('expanded', on);
+    if (sheetHandle) {
+      sheetHandle.setAttribute('aria-expanded', on ? 'true' : 'false');
+      sheetHandle.setAttribute('aria-label', on ? LABELS.sheet_collapse_aria : LABELS.sheet_expand_aria);
+    }
+    if (on && !was && via) track('Sheet Expanded', { slug: currentStack[0] || '', via: via, locale: LANG });
+  }
+  if (sheetHandle) sheetHandle.addEventListener('click', () => setSheetExpanded(!panel.classList.contains('expanded'), 'handle'));
+  panel.addEventListener('scroll', () => {
+    if (isMobile() && panel.scrollTop > 0 && panel.classList.contains('open') && !panel.classList.contains('expanded')) setSheetExpanded(true, 'scroll');
+  }, { passive: true });
+  // Camera padding for a fit: desktop keeps the literal (40, or 60 for a
+  // landing); on a phone the sheet covers 45 % of the viewport and the bar
+  // the top, on a tablet the open panel overlays the right edge — the fit
+  // keeps the shape clear of them.
+  function fitPadding(base) {
+    const w = window.innerWidth, h = window.innerHeight;
+    if (w <= 768) return { top: base + 44, left: 24, right: 24, bottom: Math.round(h * 0.45) + 24 };
+    if (w <= 1024 && panel.classList.contains('open')) return { top: base, left: base, bottom: base, right: Math.min(420, Math.round(w * 0.55)) + 24 };
+    return base;
+  }
   const panelBody = document.getElementById('panel-body');
 
   function renderSources(slug, sources) {
@@ -2066,12 +2299,6 @@
 
   function escapeAttr(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  function frMarker() {
-    return LANG === 'fr'
-      ? ''
-      : ` <span class="fr-marker" title="${escapeAttr(LABELS.fr_marker_aria)}">${escapeHtml(LABELS.fr_marker)}</span>`;
   }
 
   function srcMarker(country) {
@@ -2455,21 +2682,60 @@
     return `<div class="approx-line">${line}</div>`;
   }
 
-  // Card title. A subordinate card (a stacked overlap's non-focus record)
-  // carries the "bring to the front" button: the keyboard / screen-reader
-  // path for what a click anywhere on that card also does (panel click
-  // handler below). The focus card has no button — it is already in front.
-  function cardTitle(slug, r, isPrimary) {
-    const name = `<span class="h1-name">${nameWithLatin(r)}</span>`;
-    if (isPrimary) return name;
-    const t = escapeAttr(LABELS.stack_focus_title);
-    return name + `<button type="button" class="stack-focus" data-slug="${escapeAttr(slug)}" aria-label="${t}" title="${t}">↑</button>`;
-  }
-  function cardTitleAttr(isPrimary) {
-    return isPrimary ? '' : ` title="${escapeAttr(LABELS.stack_focus_title)}"`;
+  function cardTitle(r) {
+    return `<span class="h1-name">${nameWithLatin(r)}</span>`;
   }
 
-  function renderAocCard(slug, isPrimary) {
+  // Geometry sources whose polygon stands in for the delimitation rather
+  // than being it — a commune or administrative union, an inherited polygon,
+  // a whole-municipality zone. Mirrored by _APPROX_GEOM_SOURCES in
+  // scripts/_lib/content_block.py.
+  function isApproxGeom(gs) {
+    if (!gs) return false;
+    if (['sibling-dgc', 'parent-appellation', 'aires-csv-dgc', 'pdo-plan-parcel-hull-approx',
+      'aires-csv', 'dgc-village-override', 'communes', 'figshare-pdo', 'figshare-pdo-alias',
+      'region-pdo-union', 'nuts2-province', 'geometry-research-municipios'].includes(gs)) return true;
+    return /^(gisco-|caop-|swissboundaries-)/.test(gs);
+  }
+  // The boundary notes — how the polygon was drawn, the zoom-reactive
+  // footprint line — folded below the content: a reader sees name, styles,
+  // grapes and terroir first and opens the provenance when they want it. The
+  // summary says "approximate" for a shape that is not the delimitation
+  // itself. Mirrored by _boundary_notes in content_block.py.
+  function boundaryNotes(lines, r) {
+    if (!lines) return '';
+    const sub = isApproxGeom(r.geom_source) ? ` <span class="sub">· ${escapeHtml(LABELS.meta_geom_approx)}</span>` : '';
+    return `<details class="boundary-notes"><summary>${escapeHtml(LABELS.boundary_notes_h)}${sub}</summary>${lines}</details>`;
+  }
+  // Related appellations: a parent's sub-denominations (the panel payload
+  // carries `children` for parents only; names come from the startup
+  // record) and "all appellations in <region> / <country>" — the same filter
+  // as ticking the tree's region / country checkbox. The SSR card renders
+  // the children and the country link too (render_subappellations /
+  // _related_links in content_block.py).
+  function renderRelated(r) {
+    const kids = (r.children || []).filter(k => AOCS[k]);
+    let out = '';
+    if (kids.length) {
+      const heading = SUBDENOM_HEADINGS[r.country] || LABELS.entity_nav_children;
+      const row = k => {
+        const kr = AOCS[k];
+        const kind = kr.class_label ? ` <span class="sub-kind">${escapeHtml(kr.class_label)}</span>` : '';
+        return `<li><a class="parent-link" data-slug="${escapeAttr(k)}" href="${escapeAttr(SLUG_BASE + encodeURIComponent(k))}">${nameWithLatin(kr)}</a>${kind}</li>`;
+      };
+      const rest = kids.slice(12);
+      out += `<h2>${escapeHtml(heading)}</h2><ul class="subappellations">${kids.slice(0, 12).map(row).join('')}</ul>`;
+      if (rest.length) out += `<details class="subappellations-more"><summary>${escapeHtml(fmt(LABELS.related_more, { n: rest.length }))}</summary><ul class="subappellations">${rest.map(row).join('')}</ul></details>`;
+    }
+    const links = [];
+    const cc = r.country || '';
+    if (r.region) links.push(`<a href="#" class="scope-link" data-scope="region" data-country="${escapeAttr(cc)}" data-region="${escapeAttr(r.region)}">${escapeHtml(fmt(LABELS.related_all_in, { name: regionLabel(r.region) }))}</a>`);
+    if (cc) links.push(`<a href="#" class="scope-link" data-scope="country" data-country="${escapeAttr(cc)}">${escapeHtml(fmt(LABELS.related_all_in, { name: countryLabel(cc) }))}</a>`);
+    if (links.length) out += `<p class="related-links">${links.join(' · ')}</p>`;
+    return out;
+  }
+
+  function renderAocCard(slug) {
     const r = AOCS[slug];
     if (!r) return '';
     const styleChips = (r.styles || []).map(s => {
@@ -2521,7 +2787,6 @@
     const ptRoleDisclaimer = (r.country === 'pt' && principal)
       ? `<div class="role-disclaimer">${escapeHtml(LABELS.pt_role_disclaimer)}</div>`
       : '';
-    const klass = isPrimary ? 'aoc-card' : 'aoc-card subordinate';
     let metaTail = '';
     if (r.geom_source === 'aires-csv' || r.geom_source === 'dgc-village-override') {
       metaTail = ' · ' + fmt(LABELS.meta_communes_inao, { n: r.communes_matched || 0 });
@@ -2591,14 +2856,14 @@
             : ''
         }</div>`
       : '';
+    const boundaryBlock = boundaryNotes(approxLine + lodLine, r);
+    const relatedBlock = renderRelated(r);
     return `
-      <div class="${klass}" data-slug="${escapeAttr(slug)}">
-        <h1${cardTitleAttr(isPrimary)}>${cardTitle(slug, r, isPrimary)}</h1>
+      <div class="aoc-card" data-slug="${escapeAttr(slug)}">
+        <h1>${cardTitle(r)}</h1>
         <div class="meta">${countrySeg}${renderClassification(r)}${cancelledBadge(r)}${promotedBadge(r)}${regionSeg}${metaTail}</div>
         ${cancelledLine(r)}${promotedLine(r)}
         ${dgcLine}
-        ${approxLine}
-        ${lodLine}
         ${stubLine}
         ${styleChips ? '<h2>' + LABELS.panel_styles_h + '</h2><div class="pills">' + styleChips + '</div>' : ''}
         ${principal ? '<h2>' + LABELS.facet_principal_h + '</h2><div class="pills">' + principal + '</div>' : ''}
@@ -2609,6 +2874,8 @@
         ${dulokBlock}
         ${menzioniBlock}
         ${noteBlock}
+        ${boundaryBlock}
+        ${relatedBlock}
         ${(!factsBlock && !r.summary) ? provenanceLine(r) : ''}
         ${renderSources(slug, r.sources)}
         ${renderFeedback(slug)}
@@ -2700,7 +2967,7 @@
       // retraction next to it and net the two when reading.
       chip.setAttribute('aria-pressed', 'false');
       rememberFeedback(slug, aspect, false);
-      track('Feedback Retracted', { slug: slug, aspect: aspect, view_mode: viewMode, lod: lodBand(r), zoom: zoomStr(), locale: LANG });
+      track('Feedback Retracted', { slug: slug, aspect: aspect, lod: lodBand(r), zoom: zoomStr(), locale: LANG });
       const left = pressedAspects(row);
       const status = box.querySelector('.fb-status');
       if (left.length && status && box.querySelector('textarea.fb-note')) {
@@ -2716,7 +2983,7 @@
       rememberFeedback(slug, aspect, true);
       track('Feedback Flagged', {
         slug: slug, aspect: aspect, country: r.country || '', kind: r.kind || '',
-        geom_source: r.geom_source || '', view_mode: viewMode, lod: lodBand(r), zoom: zoomStr(),
+        geom_source: r.geom_source || '', lod: lodBand(r), zoom: zoomStr(),
         via: via, locale: LANG,
       });
     }
@@ -2740,7 +3007,7 @@
     const note = ta ? ta.value.replace(/\s+/g, ' ').trim().slice(0, FEEDBACK_NOTE_MAX) : '';
     // `aspect` is the pressed set joined with '+', so one note about two
     // things reads `boundary+grapes` in the breakdown rather than only the last tap.
-    if (note) track('Feedback Note', { slug: slug, aspect: aspects.join('+') || 'other', note: note, view_mode: viewMode, lod: lodBand(AOCS[slug]), zoom: zoomStr(), locale: LANG });
+    if (note) track('Feedback Note', { slug: slug, aspect: aspects.join('+') || 'other', note: note, lod: lodBand(AOCS[slug]), zoom: zoomStr(), locale: LANG });
     box.innerHTML = `<span class="fb-status" role="status">${note ? escapeHtml(LABELS.feedback_sent) : fmt(LABELS.feedback_noted_html, { aspect: aspectsHtml(aspects) })}</span>`;
   }
 
@@ -2751,7 +3018,7 @@
   }
 
   function localityRank(slug) {
-    // Sort key: bounding-box area of the rendered geometry, mode-aware.
+    // Sort key: bounding-box area of the geometry drawn at this zoom.
     // Bbox area penalises spread-out multipolygons (parent cuvée
     // covering every premier-cru fragment in a region) so a localised
     // climat outranks a scattered parent even when the parent's total
@@ -2932,16 +3199,30 @@
 
   // Skeleton shown for the brief first-open fetch: the real title comes from
   // startup fields (instant), the body shimmers until the detail JSON lands.
-  function skeletonCard(slug, isPrimary) {
+  function skeletonCard(slug) {
     const r = AOCS[slug] || {};
-    const klass = isPrimary ? 'aoc-card' : 'aoc-card subordinate';
-    return `<div class="${klass} aoc-skeleton" aria-busy="true" data-slug="${escapeAttr(slug)}">`
-      + `<h1${cardTitleAttr(isPrimary)}>${cardTitle(slug, r, isPrimary)}</h1>`
+    return `<div class="aoc-card aoc-skeleton" aria-busy="true" data-slug="${escapeAttr(slug)}">`
+      + `<h1>${cardTitle(r)}</h1>`
       + `<div class="meta"><span class="skel skel-meta"></span></div>`
       + `<div class="skel skel-h"></div>`
       + `<div class="skel skel-line"></div><div class="skel skel-line"></div>`
       + `<div class="skel skel-line short"></div>`
       + `</div>`;
+  }
+
+  // The rest of a stack as a list — name · classification · region — one
+  // button per row: a click brings that record to the front (the keyboard
+  // and screen-reader path to what re-clicking the map does) and, on a
+  // pointer device, hovering a row lights its polygon. Only the focus
+  // record's detail is fetched (a 200-slug ?aocs= set used to fetch 200).
+  function stackRows(slugs) {
+    if (!slugs.length) return '';
+    const rows = slugs.map(s => {
+      const r = AOCS[s];
+      const sub = [r.class_label || r.kind || '', r.region ? regionLabel(r.region) : ''].filter(Boolean).join(' · ');
+      return `<li><button type="button" class="stack-row" data-slug="${escapeAttr(s)}"><span class="name">${nameWithLatin(r)}</span>${sub ? `<span class="sub">${escapeHtml(sub)}</span>` : ''}</button></li>`;
+    }).join('');
+    return `<h2 class="stack-others-h">${escapeHtml(LABELS.stack_others_h)}</h2><ul class="stack-list">${rows}</ul>`;
   }
 
   function renderPanelStack(slugs, focusIndex, doTrack, via) {
@@ -2961,15 +3242,19 @@
       // A shared ?aocs= set is a list, not the polygons under one map point:
       // a plain count, and no "click again to cycle" hint (a card pick keeps it).
       const isSet = currentStackIsSet;
-      const posTitle = isSet ? '' : ` title="${escapeAttr(LABELS.stack_cycle_hint)}"`;
-      const pos = `<span class="stack-pos"${posTitle}>${focus + 1} / ${sorted.length}</span>`;
+      const pos = `<span class="stack-pos">${focus + 1} / ${sorted.length}</span>`;
       header = `<div class="stack-header"><span>${fmt(isSet ? LABELS.count_total : LABELS.stack_header, { n: sorted.length })}</span>${pos}</div>`;
     }
     // A generation token cancels a stale fetch's render when the user opens or
     // cycles to a different stack before this one's detail arrives.
+    // The rest of the stack as rows under the focus card, and a visible hint
+    // (a shared ?aocs= set is a list, not the polygons under a point: no hint).
+    const hint = (sorted.length > 1 && !currentStackIsSet)
+      ? `<p class="stack-hint">${escapeHtml(LABELS.stack_cycle_hint_rows)}</p>` : '';
+    const rows = stackRows(ordered.slice(1));
     const myGen = ++panelGen;
     const renderFull = () => {
-      panelBody.innerHTML = header + ordered.map((s, i) => renderAocCard(s, i === 0)).join('');
+      panelBody.innerHTML = header + hint + renderAocCard(ordered[0]) + rows;
     };
     panel.classList.add('open');
     document.title = docTitleFor(ordered[0]);
@@ -3015,12 +3300,12 @@
     }
     // Cached opens render synchronously (no skeleton flash); first opens show
     // the skeleton, fetch the stack's detail, then swap in the full cards.
-    if (ordered.every(s => AOCS[s] && AOCS[s]._hydrated)) {
+    if (AOCS[ordered[0]] && AOCS[ordered[0]]._hydrated) {
       renderFull();
       return;
     }
-    panelBody.innerHTML = header + ordered.map((s, i) => skeletonCard(s, i === 0)).join('');
-    ensurePanelData(ordered).then(() => { if (myGen === panelGen) renderFull(); });
+    panelBody.innerHTML = header + hint + skeletonCard(ordered[0]) + rows;
+    ensurePanelData([ordered[0]]).then(() => { if (myGen === panelGen) renderFull(); });
   }
 
   function escapeHtml(s) {
@@ -3073,10 +3358,6 @@
     for (const s of selectedSlugs) setSelectedState(s, false);
     selectedSlugs = slugs.slice();
     for (const s of selectedSlugs) setSelectedState(s, true);
-    try {
-      if (selectedSlugs.length) localStorage.setItem('selected_slugs', JSON.stringify(selectedSlugs));
-      else localStorage.removeItem('selected_slugs');
-    } catch (e) {}
   }
 
   // Single close path: clears selection + stack state + URL param, and returns
@@ -3088,6 +3369,7 @@
     // the body after the panel has been closed.
     panelGen++;
     panel.classList.remove('open');
+    setSheetExpanded(false);
     document.title = DEFAULT_TITLE;
     setSelection([]);
     lastStackKey = '';
@@ -3096,16 +3378,17 @@
     setAocPath(null);
     if (returnFocus && wasOpen) {
       const target = (lastPanelTrigger && document.contains(lastPanelTrigger))
-        ? lastPanelTrigger : document.getElementById('q');
+        ? lastPanelTrigger : document.getElementById('omni');
       if (target) { try { target.focus(); } catch (e) {} }
     }
     lastPanelTrigger = null;
   }
 
-  // Restore an open detail panel: a shared /<lang>/<slug> path (or a legacy
-  // ?aoc= query) wins over the localStorage restore; otherwise reopen whatever
-  // was last open. Both run before map.on('load') — the setFeatureState
-  // highlight throws are swallowed and re-applied at the end of map.on('load').
+  // Open what the URL asks for: a shared /<lang>/<slug> path (or a legacy
+  // ?aoc= query), else a ?aocs= set — and nothing else: the last card is no
+  // longer reopened on the next visit (2026-10-18). Runs before
+  // map.on('load') — the setFeatureState highlight throws are swallowed and
+  // re-applied at the end of map.on('load').
   (function () {
     // The no-JS / crawler SSR fallback article is dropped only once the
     // interactive panel has actually replaced it (below); on an entity page
@@ -3124,7 +3407,7 @@
       // the default camera into location.hash by now.
       if (!INITIAL_CAMERA_HASH) {
         const b = fitBbox(AOCS[urlSlug]);
-        if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, maxZoom: LOD.overview_max_zoom, duration: 0 }));
+        if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(60), maxZoom: LOD.overview_max_zoom, duration: 0 }));
       }
       return;
     }
@@ -3146,21 +3429,12 @@
             Math.min(...boxes.map(x => x[0])), Math.min(...boxes.map(x => x[1])),
             Math.max(...boxes.map(x => x[2])), Math.max(...boxes.map(x => x[3])),
           ];
-          map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, maxZoom: LOD.overview_max_zoom, duration: 0 }));
+          map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(60), maxZoom: LOD.overview_max_zoom, duration: 0 }));
         }
       }
       return;
     }
-    if (_ssr) { showSsrFallback(); return; }
-    let saved = null;
-    try { saved = localStorage.getItem('selected_slugs'); } catch (e) {}
-    if (!saved) return;
-    let slugs;
-    try { slugs = JSON.parse(saved); } catch (e) { return; }
-    if (!Array.isArray(slugs) || !slugs.length) return;
-    const valid = slugs.filter(s => AOCS[s]);
-    if (!valid.length) return;
-    renderPanelStack(valid, 0, false);
+    if (_ssr) showSsrFallback();
   })();
 
   document.querySelector('#panel .close').addEventListener('click', () => closePanel(true));
@@ -3170,6 +3444,8 @@
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (aboutDialog && aboutDialog.open) return;
+    if (settingsControl.isOpen()) { e.stopPropagation(); settingsControl.setOpen(false, true); return; }
+    if (drawerOpen()) { e.stopPropagation(); setDrawer(false); return; }
     if (panel.classList.contains('open')) { e.stopPropagation(); closePanel(true); }
   });
 
@@ -3289,6 +3565,37 @@
   panel.addEventListener('focusin', showPillTip);
   panel.addEventListener('mouseout', hidePillTip);
   panel.addEventListener('focusout', hidePillTip);
+  // The legend pills' ⓘ buttons reuse the scheme tooltip (the PDO, PGI and
+  // spirit-drink GI definitions with their regulator sources). A tap toggles
+  // it: iOS Safari gives a tapped button no focus, so focusin alone would
+  // leave touch readers out; a tap elsewhere closes it.
+  const scopeRow = legendControl._el || null;
+  if (scopeRow) {
+    // A touch tap is a burst of synthetic mouse events — mouseover, click,
+    // then mouseout. Only the click counts for touch: a tap toggles the hint,
+    // and the mouseout that follows it never closes what the tap just opened.
+    let hintShownAt = 0, touchTapAt = 0;
+    const touching = () => Date.now() - touchTapAt < 700;
+    const showHint = e => { if (e.type === 'mouseover' && touching()) return; showPillTip(e); hintShownAt = Date.now(); };
+    const hideHint = e => { if (touching()) return; hidePillTip(e); };
+    scopeRow.addEventListener('pointerdown', e => { if (e.pointerType === 'touch' && e.target.closest('.scope-hint')) touchTapAt = Date.now(); });
+    scopeRow.addEventListener('mouseover', showHint);
+    scopeRow.addEventListener('focusin', showHint);
+    scopeRow.addEventListener('mouseout', hideHint);
+    scopeRow.addEventListener('focusout', hideHint);
+    scopeRow.addEventListener('click', e => {
+      const btn = e.target.closest('.scope-hint');
+      if (!btn) return;
+      const open = grapeTip.style.display === 'block' && describedPill === btn;
+      if (open && Date.now() - hintShownAt > 400) { cancelGrapeTipClose(); hideGrapeTip(); } else showHint(e);
+    });
+    scopeRow.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && grapeTip.style.display === 'block') { e.stopPropagation(); cancelGrapeTipClose(); hideGrapeTip(); }
+    });
+    document.addEventListener('click', e => {
+      if (describedPill && describedPill.classList.contains('scope-hint') && !e.target.closest('.scope-hint, #grape-tooltip')) { cancelGrapeTipClose(); hideGrapeTip(); }
+    });
+  }
   panel.addEventListener('keydown', e => {
     if (e.key === 'Escape' && grapeTip.style.display === 'block') {
       // Esc dismisses the innermost layer first: kill the tooltip and stop the
@@ -3313,6 +3620,25 @@
       if (fb.classList.contains('stub-help')) row.scrollIntoView({ block: 'nearest' });
       return;
     }
+    // "All appellations in <region> / <country>": the same filter as the
+    // tree's region / country checkbox (bulk select, tri-states, fit).
+    const sc = e.target.closest('a.scope-link');
+    if (sc) {
+      e.preventDefault();
+      const cc = sc.dataset.country || '';
+      const region = sc.dataset.region || '';
+      const slugs = sc.dataset.scope === 'region' ? visibleSlugsInRegion(cc, region) : visibleSlugsInCountry(cc);
+      setSlugSelection(slugs, true);
+      const appEl = document.getElementById('facet-appellations');
+      if (appEl) appEl.querySelectorAll('input[type=checkbox]').forEach(inp => {
+        if (inp.dataset.key) inp.checked = filters.appellations.has(inp.dataset.key);
+      });
+      refreshTreeTriStates();
+      track('Filter Applied', { facet: sc.dataset.scope, value: (sc.dataset.scope === 'region' ? region : cc) || '(none)', locale: LANG, via: 'panel-link' });
+      if (isMobile()) setDrawer(false);
+      applyFilter({ fit: true });
+      return;
+    }
     const a = e.target.closest('a.parent-link');
     if (a) {
       e.preventDefault();
@@ -3325,41 +3651,103 @@
       }
       return;
     }
-    // A stacked overlap: a click on a subordinate card — its ↑ button, or
-    // any spot of the card that is not itself interactive — brings that
-    // appellation to the front. Links, pills, buttons, collapsibles and the
-    // feedback row keep their own behaviour, and so does selecting text.
-    // `#panel` carries tabindex, so the interactive test is scoped to the card.
-    const card = e.target.closest('.aoc-card.subordinate[data-slug]');
-    if (!card) return;
-    if (!e.target.closest('.stack-focus')) {
-      const interactive = e.target.closest('a, button, input, textarea, select, summary, .pill[tabindex], .card-feedback');
-      if (interactive && card.contains(interactive)) return;
-      const sel = window.getSelection ? String(window.getSelection()) : '';
-      if (sel) return;
-    }
+    // A stacked overlap: a row of the stack list brings that record to the front.
+    const row = e.target.closest('.stack-row[data-slug]');
+    if (!row) return;
     e.preventDefault();
-    focusStackSlug(card.dataset.slug);
+    focusStackSlug(row.dataset.slug);
+  });
+  // Hovering a stack row lights its polygon (pointer devices; no label —
+  // the pointer is over the panel, not the map).
+  panelBody.addEventListener('mouseover', e => {
+    if (!HOVER_MQ.matches) return;
+    const row = e.target.closest('.stack-row[data-slug]');
+    if (row) setHover(row.dataset.slug, 0, false);
+  });
+  panelBody.addEventListener('mouseout', e => {
+    if (!HOVER_MQ.matches) return;
+    const row = e.target.closest('.stack-row[data-slug]');
+    if (row && !(e.relatedTarget && row.contains(e.relatedTarget))) setHover(null, 0);
   });
 
   // ----- map interactions -----
+  // One hit test for hover and click: a 4-pixel box around the point —
+  // vineyard polygons (grand-cru climats, narrow premier-cru slivers) are
+  // often sub-pixel thin at typical zoom, so a point-only test misses them —
+  // over both fill layers (inside the crossfade band a record is present in
+  // both sources: the same slug twice, deduped here). DGCs that share another
+  // AOC's polygon (geom_source = parent-appellation / sibling-dgc) are
+  // dropped: the geometry was inherited, they have no distinct shape to point
+  // at, and they would clutter the stack with siblings nobody meant. Sorted
+  // by localityRank, so the first slug is the card a click puts in front.
+  function hitSlugsAt(point) {
+    const r = 4;
+    const bbox = [[point.x - r, point.y - r], [point.x + r, point.y + r]];
+    const features = map.queryRenderedFeatures(bbox, {
+      layers: ['appellations-fill', 'appellations-fill-overview'],
+    });
+    const seen = new Set();
+    const slugs = [];
+    for (const f of features) {
+      const s = f.properties.slug;
+      if (!s || seen.has(s)) continue;
+      seen.add(s);
+      const rec = AOCS[s];
+      const src = rec && rec.geom_source;
+      if (src === 'parent-appellation' || src === 'sibling-dgc') continue;
+      slugs.push(s);
+    }
+    slugs.sort((a, b) => localityRank(a) - localityRank(b));
+    return slugs;
+  }
+
+  // Hover, pointer devices only: the polygon under the cursor brightens on
+  // both sources (feature-state `hover`, see the source block) and a label
+  // follows the cursor with the name and "+N" for the rest of the stack a
+  // click would open. Touch never hovers, so nothing is wired there; the
+  // label is decorative for assistive tech (aria-hidden) — a click opens the
+  // card, and the sidebar list is the keyboard path to a record.
+  const HOVER_MQ = window.matchMedia('(hover: hover) and (pointer: fine)');
   let hoveredSlug = null;
+  let hoverRaf = 0;
+  const hoverTip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'owm-hover', offset: 14 });
+  hoverTip.trackPointer();
+  function setHoverState(slug, on) {
+    for (const source of ['appellations', 'appellations-overview']) {
+      const opts = { source: source, id: slug };
+      if (SOURCE_TYPE === 'pmtiles') opts.sourceLayer = 'appellations';
+      try { map.setFeatureState(opts, { hover: on }); } catch (e) {}
+    }
+  }
+  function hoverText(slug, extra) {
+    const r = AOCS[slug];
+    return (r && r.name ? r.name : slug) + (extra > 0 ? ` · +${extra}` : '');
+  }
+  function setHover(slug, extra, label = true) {
+    if (slug && slug === hoveredSlug && label) { hoverTip.setText(hoverText(slug, extra)); return; }
+    if (hoveredSlug) setHoverState(hoveredSlug, false);
+    hoveredSlug = slug;
+    if (!slug) { hoverTip.remove(); map.getCanvas().style.cursor = ''; return; }
+    setHoverState(slug, true);
+    if (!label) { hoverTip.remove(); return; }
+    map.getCanvas().style.cursor = 'pointer';
+    hoverTip.setText(hoverText(slug, extra)).addTo(map);
+    const el = hoverTip.getElement();
+    if (el) el.setAttribute('aria-hidden', 'true');
+  }
 
   map.on('load', () => {
 __OWM_source_block__
-    for (const id of ['appellations-fill', 'appellations-outline',
-                      'appellations-fill-overview', 'appellations-outline-overview']) {
-      map.on('mousemove', id, e => {
-        if (!e.features.length) return;
-        map.getCanvas().style.cursor = 'pointer';
-        const f = e.features[0];
-        const slug = f.properties.slug;
-        if (slug !== hoveredSlug) hoveredSlug = slug;
+    if (HOVER_MQ.matches) {
+      map.on('mousemove', e => {
+        if (hoverRaf) return;
+        hoverRaf = window.requestAnimationFrame(() => {
+          hoverRaf = 0;
+          const slugs = hitSlugsAt(e.point);
+          setHover(slugs[0] || null, slugs.length - 1);
+        });
       });
-      map.on('mouseleave', id, () => {
-        map.getCanvas().style.cursor = '';
-        hoveredSlug = null;
-      });
+      map.on('mouseout', () => setHover(null, 0));
     }
 
     // Single map-level click handler. Per-layer click handlers fired multiple
@@ -3368,33 +3756,7 @@ __OWM_source_block__
     // testing once at the click point gives one deterministic feature set,
     // and an empty hit becomes "click outside → deselect".
     map.on('click', e => {
-      // 4-pixel bbox around the click — vineyard polygons (grand-cru
-      // climats, narrow premier-cru slivers) are often sub-pixel thin at
-      // typical zoom; a point-only hit-test misses them.
-      const r = 4;
-      const bbox = [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
-      // Both fill layers: inside the crossfade band a record is present in
-      // both sources (the same slug twice — deduped below).
-      const features = map.queryRenderedFeatures(bbox, {
-        layers: ['appellations-fill', 'appellations-fill-overview'],
-      });
-      if (!features.length) { closePanel(false); return; }
-      // Dedupe by slug, and drop DGCs that share another AOC's polygon
-      // (geom_source = parent-appellation / sibling-dgc). They're returned
-      // because the underlying geometry was inherited, but they have no
-      // distinct shape to click on — selecting one gold-outlines the whole
-      // parent and clutters the panel stack with siblings nobody pointed at.
-      const seen = new Set();
-      const slugs = [];
-      for (const f of features) {
-        const s = f.properties.slug;
-        if (!s || seen.has(s)) continue;
-        seen.add(s);
-        const rec = AOCS[s];
-        const src = rec && rec.geom_source;
-        if (src === 'parent-appellation' || src === 'sibling-dgc') continue;
-        slugs.push(s);
-      }
+      const slugs = hitSlugsAt(e.point);
       if (!slugs.length) { closePanel(false); return; }
       const key = slugs.slice().sort().join('|');
       let via = 'map';
@@ -3413,7 +3775,6 @@ __OWM_source_block__
     // before sources existed. Safe no-op when nothing is selected.
     for (const s of selectedSlugs) setSelectedState(s, true);
 
-    applyMode();
     applyFilter();
     updateStatus();
   });

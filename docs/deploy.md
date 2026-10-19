@@ -88,6 +88,22 @@ first deploy from a fresh checkout has no fingerprints and submits every
 changed page, then writes the file. The upload itself is still the byte-level
 diff against the storage zone — the filter only narrows the IndexNow list.
 
+Since 2026-10-19 the fingerprint covers a page's **content**, not its shell
+(`page_content`): the title, the description / robots / Open Graph / Twitter
+metas, the canonical and hreflang links, the JSON-LD, the server-rendered
+card (`<article id="ssr-content">`) and the entity nav. The sidebar every
+page embeds, the panel skeleton, the viewport meta, the scripts and styles
+are left out, so a UI release pings nothing (the unified-sidebar release
+would have pinged all ~6.6k indexable pages). A page without a card — the
+home pages, the browse index — is fingerprinted whole. Two flags go with it:
+`--indexnow-baseline SITE_DIR` writes the environment's fingerprint file from
+the pages under SITE_DIR (an extracted snapshot's `site/` tree) and exits —
+run it once after a change to what `page_content` covers, so the next deploy
+compares content with content rather than treating every page as changed;
+`--no-indexnow` uploads and purges but submits nothing, recording the
+fingerprints all the same, for a release whose content change is site-wide
+and already announced by the sitemap.
+
 Each page is submitted under its own canonical URL, the form the sitemap
 carries (`public_url`: `/` for `index.html` and `en/index.html`, `/<lang>/`
 and `/<lang>/appellations/` with the trailing slash, `/<lang>/<slug>` without

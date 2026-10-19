@@ -38,6 +38,9 @@ _LABELS = {
     "geom_src_pdo_union": "Approx area — union of the member PDO polygons.",
     "geom_src_admin_union": "Approx area — union of the named administrative units.",
     "geom_src_national_act": "Area: the units {act} lists for this sub-region, on CAOP 2025.",
+    "boundary_notes_h": "About this boundary",
+    "meta_geom_approx": "approximate area",
+    "related_all_in": "All appellations in {name}",
     "stub_message": "No {doc} found yet.",
     "stub_help_label": "help us find it",
     "panel_styles_h": "Styles",
@@ -479,3 +482,37 @@ def test_pt_subregion_drawn_from_its_act_cites_it() -> None:
     html = _render(_geom_rec(country="pt", geom_source="caop-concelho-union"))
     assert "union of the named administrative units" in html
     assert "Sub-region delimitation" not in html
+
+
+# ---- boundary notes folded below the content, related links (2026-10) ----
+
+def test_boundary_notes_fold_below_the_content_and_name_approximation() -> None:
+    html = _render(_geom_rec(geom_source="aires-csv", communes_matched=12))
+    assert '<details class="boundary-notes"><summary>' in html
+    # below the styles / grapes pills, above the sources
+    assert html.index("boundary-notes") > html.rindex('class="pills"')
+    assert html.index("boundary-notes") < html.index("<h2>Sources") if "<h2>Sources" in html else True
+    summary = html.split('<summary>')[1].split("</summary>")[0]
+    assert "approx" in summary.lower() or "approch" in summary.lower()
+    # the amber line is inside the fold
+    assert html.index('approx-line">') > html.index("boundary-notes")
+
+
+def test_boundary_notes_without_approximation_for_an_official_zone() -> None:
+    html = _render(_geom_rec(country="it", geom_source="geoportal-zone:piemonte"))
+    assert '<details class="boundary-notes">' in html
+    summary = html.split("<summary>")[1].split("</summary>")[0]
+    assert "sub" not in summary
+
+
+def test_boundary_notes_absent_without_lines() -> None:
+    html = _render(_geom_rec(country="es", geom_source="sigpac-hybrid-pliego"))
+    assert "boundary-notes" not in html
+
+
+def test_related_country_link_points_at_the_browse_section() -> None:
+    from dataclasses import replace
+    ctx = replace(_ctx("en"), browse_path="/en/appellations/")
+    html = render_content_block(_geom_rec(), "x", ctx)
+    assert '<p class="related-links"><a href="/en/appellations/#c-fr">' in html
+    assert "related-links" not in _render(_geom_rec())  # no browse path, no link
