@@ -6362,6 +6362,10 @@ code that owns each piece:
   two links), which also
   holds the server-rendered `#config-menu` (language + theme) that app.js
   lifts into the ⚙ control — a no-JS visitor keeps the language links there.
+  The theme switch is one row beside its heading: three icon-only buttons
+  (sun / monitor / moon — the convention; the half-circle read as nothing),
+  each with the word as `aria-label` and `title`, the pressed one filled
+  with the accent (2026-10-19: the words had made the cells cramped).
   The sidebar is a flex column: on desktop the open appellation `<details>`
   takes every pixel left (`flex:1 1 auto`, at least 190 px) and is its own
   scroll box with a sticky summary — its content sits in the element's
@@ -6416,7 +6420,8 @@ code that owns each piece:
   gate beside PGIs and spirits (`showPdo`, `isPdoRec`: filter expression,
   client matcher, landing gate, `openAppellation`). The **⚙ control**
   top-right (`settingsControl`) holds the languages by their own names and
-  the light / system / dark switch with its words; Esc closes it first,
+  the light / system / dark switch as icon-only buttons (sun / monitor /
+  moon, the word as accessible name + hover hint); Esc closes it first,
   a click elsewhere closes it without stealing focus. Bottom-corner
   controls stack, later ones above (`insertBefore(firstChild)`), with
   `clear:both` so they never sit side by side.

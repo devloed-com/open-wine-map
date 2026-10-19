@@ -172,13 +172,21 @@ def test_language_and_theme_live_in_the_settings_control() -> None:
     assert "{lang_switcher_html}" not in _LAB_HEAD_TOP and 'id="theme-toggle"' not in _LAB_HEAD_TOP
     for mode, label in (("light", "theme_light"), ("system", "theme_system"), ("dark", "theme_dark")):
         assert f'data-theme-mode="{mode}"' in _LAB_LEGEND_FOOTER
-        assert "{labels[" + label + "]}</button>" in _LAB_LEGEND_FOOTER
-    # SVG icons, never the ☀ ◐ ☾ glyphs (emoji on some platforms), on equal cells.
-    assert _LAB_LEGEND_FOOTER.count('<span class="ico"><svg viewBox="0 0 24 24"') == 3
+        # Icon-only since 2026-10-19 (the words made the cells cramped): the
+        # word is the accessible name and the hover hint, never visible text.
+        assert "aria-label=\"{labels[" + label + "]}\" title=\"{labels[" + label + "]}\"><svg" in _LAB_LEGEND_FOOTER
+        assert "{labels[" + label + "]}</button>" not in _LAB_LEGEND_FOOTER
+    # Inline SVG icons (sun / monitor / moon — the convention), never the
+    # ☀ ◐ ☾ glyphs (emoji on some platforms); the row sits beside its heading.
+    assert _LAB_LEGEND_FOOTER.count('class="theme-btn') == 3
+    assert '<rect x="3" y="4" width="18" height="13" rx="2"/>' in _LAB_LEGEND_FOOTER
+    assert '<div class="config-section config-row"><div class="config-h" id="theme-h">' in _LAB_LEGEND_FOOTER
     for glyph in ("☀", "◐", "☾"):
         assert glyph not in _LAB_LEGEND_FOOTER, glyph
     css = _TEMPLATE.replace("{{", "{").replace("}}", "}")
-    assert "#theme-toggle .theme-btn { flex:1 1 0; min-width:0;" in css
+    assert ".config-row { display:flex; align-items:center; justify-content:space-between;" in css
+    assert "#theme-toggle .theme-btn { display:inline-flex; align-items:center; justify-content:center; width:36px; height:30px;" in css
+    assert "#theme-toggle .theme-btn { width:44px; height:36px }" in css
     assert "#sidebar > * { flex:0 0 auto }" in css
     assert "map.addControl(settingsControl, 'top-right');" in APP_JS
     assert "function homeSettings()" in APP_JS and "bar.insertBefore(btn, sidebarToggle || null);" in APP_JS

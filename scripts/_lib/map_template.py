@@ -3004,19 +3004,22 @@ _TEMPLATE = """<!doctype html>
   #lang-switcher a {{ color:var(--side-text); font-size:var(--fs-md); text-decoration:none; padding:7px 10px; border-radius:4px }}
   #lang-switcher a:hover {{ background:var(--side-bg-3) }}
   #lang-switcher a.active {{ background:var(--side-chip-on); color:var(--side-accent-ink); font-weight:600 }}
-  /* The theme switch keeps its three states (light / system / dark), now
-     with their words beside the icons — the icon alone read as a mystery. */
-  #theme-toggle {{ display:flex; gap:0; padding:4px 14px 8px }}
+  /* Theme: one row — the heading left, three icon-only buttons (sun /
+     monitor / moon, the convention) right; the word is each button's
+     accessible name and hover hint (feedback 2026-10-19: the words made
+     the cells cramped). */
+  .config-row {{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:2px 14px 6px 0 }}
+  .config-row .config-h {{ padding:0 14px }}
+  #theme-toggle {{ display:inline-flex; gap:0; flex:0 0 auto }}
   /* Three equal cells (basis 0), an SVG icon beside each word — the ☀ ◐ ☾
      glyphs rendered as emoji or text by platform and sized each cell to
      its label (feedback 2026-10-18). */
-  #theme-toggle .theme-btn {{ flex:1 1 0; min-width:0; display:inline-flex; align-items:center; justify-content:center; gap:5px; background:var(--side-bg-2); color:var(--side-text-2); border:1px solid var(--side-border-2); border-left:none; padding:8px 4px; cursor:pointer; font-size:var(--fs-sm); line-height:1; white-space:nowrap }}
+  #theme-toggle .theme-btn {{ display:inline-flex; align-items:center; justify-content:center; width:36px; height:30px; background:var(--side-bg-2); color:var(--side-text-2); border:1px solid var(--side-border-2); border-left:none; padding:0; cursor:pointer }}
   #theme-toggle .theme-btn:first-child {{ border-left:1px solid var(--side-border-2); border-radius:4px 0 0 4px }}
   #theme-toggle .theme-btn:last-child {{ border-radius:0 4px 4px 0 }}
   #theme-toggle .theme-btn:hover {{ color:var(--side-text) }}
   #theme-toggle .theme-btn.active {{ background:var(--c-accent); color:var(--n-0); border-color:var(--c-accent) }}
-  #theme-toggle .theme-btn .ico {{ display:inline-flex; width:14px; height:14px; flex:0 0 14px }}
-  #theme-toggle .theme-btn .ico svg {{ width:14px; height:14px }}
+  #theme-toggle .theme-btn svg {{ width:16px; height:16px }}
   /* The chip tray shares the sidebar's 16 px gutter and breathes above the
      next header (feedback 2026-10-18: the chip overhung the content edge
      and sat on the border below). */
@@ -3418,7 +3421,8 @@ _TEMPLATE = """<!doctype html>
     #mobile-bar .owm-settings-btn svg {{ width:20px; height:20px; fill:currentColor }}
     #config-menu.in-bar {{ position:fixed; top:calc(44px + env(safe-area-inset-top, 0px)); right:6px; min-width:220px; background:var(--side-bg); color:var(--side-text); border:1px solid var(--side-border-2); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:5 }}
     #config-menu.in-bar[hidden] {{ display:none }}
-    #theme-toggle .theme-btn {{ font-size:var(--fs-md); padding:10px 4px }}
+    #theme-toggle .theme-btn {{ width:44px; height:36px }}
+    #theme-toggle .theme-btn svg {{ width:18px; height:18px }}
     #lang-switcher a {{ padding:10px 10px; font-size:15px }}
   }}
   html.theme-dark .maplibregl-ctrl-attrib, html.theme-dark .maplibregl-ctrl-group {{ background:var(--n-dark-panel); color:var(--n-dark-text) }}
@@ -3658,11 +3662,11 @@ _LAB_ACTIVE = """
 _LAB_LEGEND_FOOTER = """
     <div id="config-menu" role="group" aria-label="{labels[settings_h]}">
       <div class="config-section"><div class="config-h">{labels[lang_switcher_aria]}</div>{lang_switcher_html}</div>
-      <div class="config-section"><div class="config-h" id="theme-h">{labels[theme_h]}</div>
+      <div class="config-section config-row"><div class="config-h" id="theme-h">{labels[theme_h]}</div>
         <div id="theme-toggle" role="group" aria-labelledby="theme-h">
-          <button type="button" data-theme-mode="light" class="theme-btn" aria-pressed="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>{labels[theme_light]}</button>
-          <button type="button" data-theme-mode="system" class="theme-btn active" aria-pressed="true"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/></svg></span>{labels[theme_system]}</button>
-          <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span>{labels[theme_dark]}</button>
+          <button type="button" data-theme-mode="light" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_light]}" title="{labels[theme_light]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+          <button type="button" data-theme-mode="system" class="theme-btn active" aria-pressed="true" aria-label="{labels[theme_system]}" title="{labels[theme_system]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
+          <button type="button" data-theme-mode="dark" class="theme-btn" aria-pressed="false" aria-label="{labels[theme_dark]}" title="{labels[theme_dark]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
         </div>
       </div>
     </div>
