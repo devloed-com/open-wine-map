@@ -6683,10 +6683,16 @@ static link layer (all in [scripts/_lib/map_template.py](scripts/_lib/map_templa
   (resolve storage zone by name, set `Custom404FilePath=/404.html`). Apex→www
   301 stays a manual dashboard rule (smoke-checked by `check_apex_redirect`).
   IndexNow receives only pages whose *content* changed: every page is
-  fingerprinted with its hashed asset references normalised and compared with
-  the previous deploy's set in `tmp/deploy/indexnow-fingerprints-<env>.json`,
-  so an asset-hash rebuild no longer pings all ~11.6k pages (Bing's "IndexNow
-  batch mode" warning); and only under the page's own canonical URL
+  fingerprinted on its content — title, description / robots / Open Graph
+  metas, canonical and hreflang links, JSON-LD, the server-rendered card and
+  the entity nav, hashed asset references normalised; never the sidebar,
+  the panel skeleton, the viewport meta or the scripts (2026-10-19, `page_content`
+  in deploy.py) — and compared with the previous deploy's set in
+  `tmp/deploy/indexnow-fingerprints-<env>.json`, so an asset-hash rebuild or
+  a UI release no longer pings all ~11.6k pages (Bing's "IndexNow batch mode"
+  warning; `--indexnow-baseline SITE_DIR` re-records the set from a snapshot
+  after a change to the scope, `--no-indexnow` skips the submission once);
+  and only under the page's own canonical URL
   (`public_url`: `/` for the EN home, `/<lang>/` and `/<lang>/appellations/`
   with the slash, `/<lang>/<slug>` without), never a `noindex` fold page
   (`indexnow_urls` reads the head) — before 2026-09-26 the deploy had pushed

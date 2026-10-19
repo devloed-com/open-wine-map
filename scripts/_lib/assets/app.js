@@ -30,9 +30,6 @@
   // the INAO parcels; every other record keeps one polygon at every zoom.
   const LOD = __OWM_lod_json__;
   const LOD_SOURCES = new Set(LOD.sources || []);
-  const FACET_PRINCIPAL = __OWM_principal_json__;
-  const FACET_ACCESSORY = __OWM_accessory_json__;
-  const FACET_GRAPES_ALL = __OWM_grapes_all_json__;
   const FACET_REGIONS = __OWM_regions_json__;
   const STYLE_LABELS = __OWM_style_labels_json__;
   const SIMPLE_STYLE_LABELS = __OWM_simple_style_labels_json__;
@@ -41,8 +38,8 @@
   // and keep the wording of the former bucket chips ("sweet / dessert");
   // deeper nodes keep the taxonomy's own labels.
   const FACET_STYLE_LABELS = Object.assign({}, STYLE_LABELS, SIMPLE_STYLE_LABELS);
-  // {canonical style slug -> [searchable synonym terms]} — wine-style analogue
-  // of GRAPE_SYNONYMS; makes a style findable by a local name in the omnisearch
+  // {canonical style slug -> [searchable synonym terms]}: makes a style
+  // findable by a local name in the omnisearch
   // (typing "fondillon" surfaces the rancio style → its appellations).
   const STYLE_SEARCH_TERMS = __OWM_style_search_terms_json__;
   // {region facet key -> {forms, labels}} (_lib/region_search_terms.py):
@@ -106,22 +103,6 @@
   // sees the regulator's terminology) — the expansion happens only in
   // the filter predicate.
   const VIVC_SIBLINGS = __OWM_vivc_siblings_json__;
-  // Per-locale canonical row label: each member of a VIVC group maps to
-  // the single canonical slug under which the facet renders. Cross-narrow
-  // counts roll up via this map so a record using "malbec" increments the
-  // canonical "cot" row.
-  const SLUG_TO_CANONICAL = __OWM_slug_to_canonical_json__;
-  // Synonyms shown inline on each canonical row (e.g. Côt → [malbec,
-  // auxerrois]). Sorted by global usage; the row's `.name` span includes
-  // every synonym so the per-facet search input matches any spelling.
-  const GRAPE_SYNONYMS = __OWM_grape_synonyms_json__;
-  function grapeSynonymsHtml(canonSlug) {
-    const syns = GRAPE_SYNONYMS[canonSlug];
-    if (!syns || !syns.length) return '';
-    const labels = syns.map(s => grapeName(s)).join(', ');
-    return ` <span class="syns">(${labels})</span>`;
-  }
-
   // -------------------------- grape chip filter --------------------------
   //
   // Replaces the long-list checkbox facet for grapes with a typeahead +
@@ -487,10 +468,9 @@
   }
 
   // The phone drawer (the sidebar off-canvas, ≤768px): one owner of its open
-  // state, the scrim behind it and the bar buttons' aria-expanded. Opening
-  // from the search button puts focus in the search box, from the menu
-  // button in the drawer itself (no keyboard pop); closing returns focus to
-  // the button that opened it (WCAG 2.4.3).
+  // state, the scrim behind it and the ☰ button's aria-expanded. Opening it
+  // puts focus in the drawer itself (no keyboard pop); closing returns focus
+  // to the button that opened it (WCAG 2.4.3).
   const sidebarEl = document.getElementById('sidebar');
   const sidebarToggle = document.getElementById('sidebar-toggle');
   const scrim = document.getElementById('scrim');
@@ -1014,8 +994,8 @@
     }
     // When the filter excludes every visible record but matches one or
     // more hidden IGPs, surface a one-click reveal so the user understands
-    // *why* the camera didn't move. (No spirits counterpart: the spirits
-    // checkbox sits in the scope row right under this line.)
+    // *why* the camera didn't move. (No spirits counterpart: the Spirits
+    // legend pill on the map is that switch.)
     if (n === 0) {
       let nHiddenIgp = 0;
       if (!showIgp) {
@@ -1382,7 +1362,7 @@
   //   • the `→` open button — the keyboard/SR path (the WebGL polygons aren't
   //     DOM-reachable, so this is the only non-mouse way in), AND
   //   • clicking the appellation NAME — the expected "show me this one" gesture,
-  //     matching a map click and the search dropdown.
+  //     matching a map click and a search result.
   // The leading checkbox stays a multi-select FILTER: a click landing on the
   // input itself toggles it and is handled by the `change` listener, so we bail
   // here. preventDefault stops the wrapping <label> from toggling that checkbox
@@ -1856,7 +1836,7 @@
     const nq = searchNormalize(query || '');
     if (!nq) return { appellations: [], grapes: [], regions: [], styles: [], classifications: [] };
     // Search/count grapes against the active scope: when "main grape only" is
-    // on, the map filters grapes_principal, so the dropdown surfaces principal-
+    // on, the map filters grapes_principal, so the results surface principal-
     // relevant grapes and shows their principal count (was always total count).
     const grapeRole = filters.mainGrapeOnly ? 'principal' : 'all';
     const grapes = rankGrapeSuggestions(query, grapeRole, perGroup).map(s => ({
@@ -2038,7 +2018,7 @@
     const clearBtn = document.getElementById('omni-clear');
     const syncClear = () => { if (clearBtn) clearBtn.hidden = !input.value; };
     // The omnisearch ALSO live-filters the appellation tree below (in addition
-    // to the open-panel dropdown), reusing the tree filter + auto-collapse.
+    // to the results list), reusing the tree filter + auto-collapse.
     function syncTreeFilter(q) {
       filters.q = q;  // persist across spirits-toggle rebuilds (buildAppellationFacet reads it)
       refreshFacetVisibility('facet-appellations', q);
@@ -2319,12 +2299,6 @@
 
   function escapeAttr(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  function frMarker() {
-    return LANG === 'fr'
-      ? ''
-      : ` <span class="fr-marker" title="${escapeAttr(LABELS.fr_marker_aria)}">${escapeHtml(LABELS.fr_marker)}</span>`;
   }
 
   function srcMarker(country) {

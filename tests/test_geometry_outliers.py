@@ -182,13 +182,15 @@ def _js_function(src: str, name: str) -> str:
     raise AssertionError(f"unbalanced braces in app.js function {name}")
 
 
-def _pick_from_omnisearch(app_js: str, rec: dict) -> dict:
-    """Run app.js's own pickOmni on one record from the default state (IGPs
-    and spirits off) and return the gates' state afterwards."""
+def _pick_from_omnisearch(app_js: str, rec: dict, pdo_on: bool = True) -> dict:
+    """Run app.js's own pickOmni on one record from the default state (PDOs
+    on, IGPs and spirits off) and return the gates' state afterwards."""
     fns = "\n".join(_js_function(app_js, n)
                     for n in ("hiddenGates", "hiddenBy", "pickOmni", "openAppellation"))
+    is_pdo_rec = re.search(r"^  const isPdoRec = .*$", app_js, re.M).group(0)
     prog = f"""
-let showIgp = false, showSpirits = false;
+let showIgp = false, showSpirits = false, showPdo = {json.dumps(pdo_on)};
+{is_pdo_rec}
 const LANG = 'en', LOD = {{ overview_max_zoom: 11.9 }}, map = {{}};
 const AOCS = {{ rec: {json.dumps(rec)} }};
 const events = [];
@@ -201,7 +203,7 @@ const isMobile = () => false, setDrawer = () => {{}};
 const renderPanelStack = () => {{}}, fitBbox = () => null;
 {fns}
 pickOmni('appellation', 'rec');
-console.log(JSON.stringify({{ hidden: hiddenBy(AOCS.rec), showIgp, showSpirits, events }}));
+console.log(JSON.stringify({{ hidden: hiddenBy(AOCS.rec), showIgp, showSpirits, showPdo, events }}));
 """
     out = subprocess.run([NODE, "-"], input=prog, capture_output=True, text=True, check=True)
     return json.loads(out.stdout)
@@ -229,6 +231,22 @@ def test_picking_a_hidden_record_turns_on_every_gate_that_hides_it(rec, igp, spi
     assert "View Mode Switched" not in {e[0] for e in after["events"]}
     toggled = [e[1] for e in after["events"] if e[0] == "Kind Toggled"]
     assert toggled == [k for k, on in (("igp", igp), ("spirits", spirits)) if on]
+
+
+@pytest.mark.skipif(NODE is None, reason="node not installed")
+@pytest.mark.parametrize("rec, pdo_after, toggled", [
+    ({"kind": "AOC", "is_wine": True}, True, ["pdo"]),        # hidden by the PDO pill alone
+    ({"kind": "IGP", "is_wine": True}, False, ["igp"]),       # a PGI is no PDO: that gate stays off
+    ({"kind": "AOC", "is_wine": False}, False, ["spirits"]),  # nor is a spirit-drink GI
+])
+def test_picking_a_hidden_pdo_turns_on_the_pdo_gate_only(rec, pdo_after, toggled):
+    """Since 2026-10-18 the PDO legend pill can hide the PDOs too: a pick of a
+    hidden PDO turns that gate on, and only the gates that hide the record."""
+    app_js = (ROOT / "scripts" / "_lib" / "assets" / "app.js").read_text(encoding="utf-8")
+    after = _pick_from_omnisearch(app_js, rec, pdo_on=False)
+    assert after["hidden"] == ""
+    assert after["showPdo"] is pdo_after
+    assert [e[1] for e in after["events"] if e[0] == "Kind Toggled"] == toggled
 
 
 # ---- geometry_outlier_overrides.json: the 2026-09-24 Greek review ---------------

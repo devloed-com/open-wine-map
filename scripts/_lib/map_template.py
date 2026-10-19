@@ -947,16 +947,6 @@ def _lang_switcher(active: str, aria_label: str, slug: str | None = None) -> str
     return f'<nav id="lang-switcher" aria-label="{aria_label}">' + "".join(parts) + "</nav>"
 
 
-def _bassin_match_expr() -> str:
-    """MapLibre `match` expression mapping `region` → fill colour. Default
-    is fully transparent so AOCs with empty `comite_regional` get no underlay."""
-    parts = ["['match', ['get', 'region']"]
-    for region, colour in _BASSIN_COLOURS.items():
-        parts.append(f"        '{region}', '{colour}'")
-    parts.append("        'rgba(0,0,0,0)']")
-    return ",\n".join(parts)
-
-
 def _build_source_block(
     *,
     layer_url: str,
@@ -2314,8 +2304,8 @@ def render(
     }
     from .style_taxonomy import bucket_descendants, style_search_terms
     simple_style_buckets = bucket_descendants()
-    # {canonical style slug -> [searchable synonym terms]} — the wine-style
-    # analogue of grape_synonyms; lets the omnisearch find a style by a local
+    # {canonical style slug -> [searchable synonym terms]}: lets the
+    # omnisearch find a style by a local
     # name (fondillón → rancio, eiswein → icewine, vinsanto → vin-santo).
     style_search_index = style_search_terms()
     # Classification facet (aging / Prädikat / selection tiers): group labels are
@@ -2382,17 +2372,11 @@ def render(
         return min(members, key=lambda s: (-slug_total_counts.get(s, 0), s))
 
     slug_to_canonical: dict[str, str] = {}
-    grape_synonyms: dict[str, list[str]] = {}
     for members in vivc_groups.values():
         used = [m for m in members if slug_total_counts.get(m, 0) > 0]
         if len(used) < 2:
             continue
         canon = _pick_canonical(used)
-        others = [
-            m for m in sorted(used, key=lambda s: (-slug_total_counts.get(s, 0), s))
-            if m != canon
-        ]
-        grape_synonyms[canon] = others
         for m in used:
             slug_to_canonical[m] = canon
 
@@ -2422,15 +2406,6 @@ def render(
             out[cc] = rank
         return out
 
-    def _merged_facet(field: str) -> list[tuple[str, int]]:
-        counts: dict[str, int] = {}
-        for _slug, rec in (aocs or {}).items():
-            canons = {slug_to_canonical.get(s, s) for s in rec.get(field) or []}
-            for c in canons:
-                counts[c] = counts.get(c, 0) + 1
-        return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
-
-    facet_principal_merged = _merged_facet("grapes_principal")
     # Per-country grape rank for the meta descriptions (_entity_grape_names):
     # the number of the country's records carrying the grape as principal —
     # so an unmentioned Rioja roster opens with Tempranillo, Garnacha and
@@ -2451,9 +2426,6 @@ def render(
         if regional and regional.get("__n__", 0) >= 5:
             return regional
         return grape_rank_by_country.get(cc)
-    facet_accessory_merged = _merged_facet("grapes_accessory")
-    facet_grapes_all_merged = _merged_facet("grapes_all")
-
     grape_search_index = _build_grape_search_index(
         grapes_info=grapes_info or {},
         aocs=aocs or {},
@@ -2545,9 +2517,6 @@ def render(
         class_descendants_json=json.dumps(class_descendants, ensure_ascii=False),
         class_labels_json=json.dumps(class_labels, ensure_ascii=False),
         class_search_terms_json=json.dumps(class_search_index, ensure_ascii=False, sort_keys=True),
-        principal_json=json.dumps(facet_principal_merged, ensure_ascii=False),
-        accessory_json=json.dumps(facet_accessory_merged, ensure_ascii=False),
-        grapes_all_json=json.dumps(facet_grapes_all_merged, ensure_ascii=False),
         regions_json=json.dumps(facet_regions, ensure_ascii=False),
         term_tree_json=json.dumps(facet_term_tree or [], ensure_ascii=False),
         term_descendants_json=json.dumps(term_descendants or {}, ensure_ascii=False),
@@ -2560,8 +2529,6 @@ def render(
         subdenom_headings_json=json.dumps(SUBDENOM_HEADINGS, ensure_ascii=False),
         grape_search_index_json=json.dumps(grape_search_index, ensure_ascii=False),
         vivc_siblings_json=json.dumps(vivc_siblings, ensure_ascii=False, sort_keys=True),
-        slug_to_canonical_json=json.dumps(slug_to_canonical, ensure_ascii=False, sort_keys=True),
-        grape_synonyms_json=json.dumps(grape_synonyms, ensure_ascii=False, sort_keys=True),
         style_search_terms_json=json.dumps(style_search_index, ensure_ascii=False, sort_keys=True),
         styles_info_json=json.dumps(styles_info or {}, ensure_ascii=False),
         region_labels_json=json.dumps(region_labels, ensure_ascii=False),
