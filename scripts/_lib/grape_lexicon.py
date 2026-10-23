@@ -1500,9 +1500,12 @@ GRAPE_ALIAS = {
     "jakob-gerhardt-blanc": "jakob-gerhardt-blanc", # German breeding-station crossing
     "cumdeo-blanc": "cumdeo-blanc",                 # interspecific white
     "cumdeo-rouge": "cumdeo-rouge",                 # interspecific red
-    "perle-von-zala": "csabagyongye",              # alternate German name for Csabagyöngye
-    "zala-gyoengye": "csabagyongye",
-    "zala-gyongye": "csabagyongye",
+    # Perle von Zala is Zalagyöngye (VIVC #13374, its official German name),
+    # Csabagyöngye's offspring — not Csabagyöngye; folded there until
+    # 2026-10-23, it put "Csabagyöngye (Zala Gyoengye)" on 15 HU / DE / GB cards
+    "perle-von-zala": "zalagyongye",
+    "zala-gyoengye": "zalagyongye",
+    "zala-gyongye": "zalagyongye",
     "staufer": "staufer",                          # VIVC #11825 STAUFER — Weinsberg
     "hecker": "hecker",                            # Weinsberg crossing
     "allegro": "allegro",                          # Geilweilerhof crossing — separate from Galego Dourado

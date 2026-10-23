@@ -10,12 +10,25 @@ name, the deliberate dulok/menzioni omission, escaping, determinism).
 
 from __future__ import annotations
 
+import json
+import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import pytest
 
-from _lib.content_block import RenderCtx, render_content_block  # noqa: E402
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from _lib.content_block import (  # noqa: E402
+    COUNTED_UNION_SOURCES,
+    RenderCtx,
+    canonical_equals_cahier,
+    counted_units,
+    render_content_block,
+)
 
 # Minimal label catalog — every key content_block.py reads, with fmt
 # placeholders ({n}/{doc}/{source}/{umbrella}/{lieu_dit}/{commune}) where used.
@@ -23,6 +36,8 @@ _LABELS = {
     "meta_no_region": "—",
     "meta_communes": "{n} commune(s)",
     "meta_communes_inao": "{n} communes (INAO)",
+    "meta_parishes": "{n} parish(es)",
+    "geom_parroquias_line": "{n} parishes from {source}: {names}.",
     "dgc_of": "Sub-region of",
     "geom_approx_within": "Approx area — inherited from {umbrella}",
     "geom_approx_parent": "Approx area — parent polygon.",
@@ -157,6 +172,49 @@ def test_canonical_bracket_suppressed_when_same_or_colour_only() -> None:
     out2 = _render({"name": "X", "kind": "DOP", "country": "pt",
                     "grapes_principal": ["touriga-nacional"]})
     assert "(Touriga Nacional)" not in out2
+
+
+# (VIVC prime, document spelling, same name?) — VIVC's German umlaut spelling
+# and MASAF's "N." colour code put 1,288 redundant brackets on the cards until
+# 2026-10-23; a different name keeps its bracket.
+_BRACKET_PAIRS = [
+    ("Gewuerztraminer", "Gewürztraminer", True),
+    ("Gewuerztraminer", "Gewurztraminer", True),
+    ("Gewuerztraminer", "Gewürztraminer Rs", True),
+    ("Harslevelue", "Hárslevelű", True),
+    ("Csaba Gyoengye", "Csabagyöngye", True),
+    ("Zala Gyoengye", "Zala Gyongye", True),
+    ("Blaufraenkisch", "Blaufränkisch", True),
+    ("Cabernet Sauvignon", "Cabernet Sauvignon N.", True),
+    ("Trebbiano Toscano", "Trebbiano Toscano B.", True),
+    ("Negro Amaro Precoce", "Negroamaro Precoce N.", True),
+    ("Chenin Blanc", "Chenin B.", True),
+    ("Merlot Noir", "Merlot", True),
+    ("Tempranillo Tinto", "Aragonez", False),
+    ("Zala Gyoengye", "Perle von Zala", False),
+    ("Cabernet Sauvignon", "Cabertnet Sauvignon", False),
+    ("Cesanese D'Affile", "Cesanese di Affile", False),
+]
+
+
+def test_canonical_bracket_folds_umlaut_spelling_and_the_dotted_colour_code() -> None:
+    for canon, cahier, same in _BRACKET_PAIRS:
+        assert canonical_equals_cahier(canon, cahier) is same, (canon, cahier)
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_canonical_bracket_rule_mirrored_in_app_js() -> None:
+    js = (ROOT / "scripts/_lib/assets/app.js").read_text(encoding="utf-8")
+    start = js.index("  const CANON_COLOR_WORD_RE")
+    end = js.index("return norm(canon) === norm(cahier);", start)
+    func = js[start:js.index("}", end) + 1]
+    prog = func + (
+        "\nconst pairs = " + json.dumps([[c, h] for c, h, _ in _BRACKET_PAIRS]) + ";"
+        "\nprocess.stdout.write(JSON.stringify(pairs.map(([c, h]) => canonicalEqualsCahier(c, h))));"
+    )
+    out = subprocess.run([shutil.which("node"), "-"], input=prog, capture_output=True,
+                         text=True, check=True)
+    assert json.loads(out.stdout) == [same for _c, _h, same in _BRACKET_PAIRS]
 
 
 def test_sub_denomination_line() -> None:
@@ -414,6 +472,59 @@ def test_commune_union_line_names_count_and_water() -> None:
     assert "union of the 1 commune(s)" in html
     html = _render(_geom_rec(geom_source="communes", communes_matched=3))
     assert "union of the 3 commune(s)" in html
+
+
+def _meta(html: str) -> str:
+    return html.split('<div class="meta">')[1].split("</div>")[0]
+
+
+def test_header_count_only_where_the_polygon_is_a_union_of_the_units() -> None:
+    """The header's "N commune(s)" (validators 2026-10-23: 388 zone-drawn
+    cards read "1 commune(s)" — the zone resolver's feature count)."""
+    for gs in ("mapa-zone", "geoportal-zone:piemonte", "gisco-nuts-region",
+               "geoportal-canton:ge", "figshare-pdo", "region-pdo-union",
+               "ivv-commune-vineyard", "parent-appellation", "parcellaire"):
+        assert "commune" not in _meta(_render(_geom_rec(geom_source=gs, communes_matched=1))), gs
+    for gs, n in (("gisco-comune-union", 8), ("caop-freguesia-union", 54),
+                  ("swissboundaries-commune-union", 1), ("gisco-commune-list", 175)):
+        assert _meta(_render(_geom_rec(geom_source=gs, communes_matched=n))).endswith(
+            f" · {n} commune(s)"), gs
+    assert _meta(_render(_geom_rec(geom_source="aires-csv", communes_matched=7))).endswith(
+        " · 7 communes (INAO)")
+    # a DGC's CSV row repeats its parent's communes
+    assert "commune" not in _meta(_render(_geom_rec(geom_source="aires-csv-dgc", communes_matched=47)))
+    assert "commune" not in _meta(_render(_geom_rec(geom_source="gisco-comune-union", communes_matched=-1)))
+
+
+def test_header_adds_the_iet_parishes_beside_the_whole_municipios() -> None:
+    parishes = {"parroquias_matched": [f"Laza: P{i}" for i in range(49)]}
+    meta = _meta(_render(_geom_rec(country="es", geom_source="iet-parroquia-union",
+                                   communes_matched=1, sources=parishes)))
+    assert meta.endswith(" · 1 commune(s) · 49 parish(es)")
+    meta = _meta(_render(_geom_rec(country="es", geom_source="gisco-commune-list",
+                                   communes_matched=0, sources=parishes)))
+    assert meta.endswith(" · 49 parish(es)")
+    assert "commune" not in meta
+    # a zone the parishes did not redraw carries no parish count
+    assert "parish" not in _meta(_render(_geom_rec(country="es", geom_source="mapa-zone",
+                                                   communes_matched=-1, sources=parishes)))
+
+
+def test_counted_units_writes_minus_one_for_a_polygon_that_is_no_union() -> None:
+    assert counted_units("mapa-zone", 1) == -1
+    assert counted_units("geoportal-zone:lombardia+veneto", 2) == -1
+    assert counted_units("gisco-nuts-region", 1) == -1
+    assert counted_units("parent-appellation", 1) == -1
+    assert counted_units("gisco-provincia-union", 404) == 404
+    assert counted_units("aires-csv-dgc", 47) == 47
+    assert counted_units(None, 3) == -1
+
+
+def test_counted_union_sources_mirrored_in_app_js() -> None:
+    js = (ROOT / "scripts/_lib/assets/app.js").read_text(encoding="utf-8")
+    body = re.search(r"const COUNTED_UNION_SOURCES = new Set\(\[(.*?)\]\);", js, re.S)
+    assert body, "COUNTED_UNION_SOURCES not found in app.js"
+    assert set(re.findall(r"'([^']+)'", body.group(1))) == set(COUNTED_UNION_SOURCES)
 
 
 def test_parcellaire_has_no_approx_line_without_lod() -> None:

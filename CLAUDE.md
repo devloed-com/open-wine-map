@@ -78,7 +78,15 @@ details and "Hard rules" for invariants that apply to every country.
     provider trio, manual round-trip flags, and sha-keyed cache
     invalidation. Stage 04 surfaces the translated extract in the
     pill tooltip with the same "Traduit de Wikipédia en &lt;source&gt;"
-    attribution.
+    attribution. `--only SLUG` scopes a run. Source locales beyond the UI
+    four are fetched only for varieties with no fr / en / es / nl article
+    (`02b_fetch_grape_lexicon.py --locales de --only …`) and sit last in
+    `SOURCE_LOCALES`, so no cached translation moves; `hu` joined on
+    2026-10-23 (Zala gyöngye's only article; `wiki.GRAPE_KEYWORDS["hu"]`,
+    label `wiki_lang_hu`) — `grape_overrides.json["hu"]` pins 24 more
+    Hungarian titles that have not been fetched. 02b builds its title
+    candidates from the ASCII slug and Title-Cased VIVC synonyms, capped at
+    20, so an article such as fr "Perle de Csaba" is found only by a pin.
   Cahier text, commune lists, region names, and INAO category codes continue to
   come exclusively from INAO/JORF. Each Wikipedia entry caches `revision`,
   `fetched_at`, `page_url`, and `license`; the UI must render attribution
@@ -1291,6 +1299,32 @@ the record no longer carries is ignored with a STALE warning.
 `tests/test_grape_display_overrides.py` validates the table. Never use it
 to translate or "improve" a real spelling.
 
+The bracket is left out when spelling and prime are the same name after
+`_canon_norm` (content_block.py; `canonicalEqualsCahier` in app.js,
+`tests/test_content_block.py` runs both on the same pairs): diacritics
+dropped, the trailing OIV colour code removed — with the period MASAF writes
+("Cabernet Sauvignon N.") — the VIVC colour word removed, and VIVC's German
+umlaut spelling folded (ue / oe / ae, both sides). Until 2026-10-23 the code
+needed no period and the umlaut was not folded: 1,288 pills read
+"Gewürztraminer (Gewuerztraminer)", "Hárslevelű (Harslevelue)" or
+"Trebbiano Toscano B. (Trebbiano Toscano)". A typo keeps its bracket
+("Cabertnet Sauvignon (Cabernet Sauvignon)"). The fold deletes an "e" after
+any a / o / u, so it also touches every genuine vowel + e sequence (piquepoul,
+jacquère, Jaen, Blauer …): a pair it alone collapses must be an umlaut pair,
+and `audit_grape_identity.py` sweeps the extracted corpus for them (its `fold`
+list, `content_block.fold_only_bracket_class`) — each (prime, spelling) pair
+equal only with the fold is `umlaut` (the spelling's umlaut is the digraph the
+prime writes), `umlaut-sibling` (no umlaut in this spelling, but another
+spelling of the slug carries one — the Iberian "gewurztraminer", GB's
+"Schonburger") or `review` (none does: the fold collapsed something else);
+`--strict` fails on a `review` pair and the release gate runs it
+(`grape-brackets`). First run, 2026-10-23: 18 umlaut, 8 sibling and one
+`review` — MASAF's vitigno scan had read "dal vitigno Brachetto e per il
+restante 3%" as "Brachetto e" (Asti's "Moscato bianco e" likewise), a
+conjunction the fold hid behind "Brachetto"; the scan drops a trailing
+conjunction now (`_TRAILING_CONJUNCTION_RE`), both sidecars re-extracted.
+`tests/test_grape_bracket_fold.py` pins the classes.
+
 **The corpus-wide label is a vote, not the first file read.** The name a
 grape carries outside a record — the filter chip, the omnisearch row, the
 prose lines, the pill of a record without a spelling of its own
@@ -1404,6 +1438,17 @@ one case of four failure modes, swept corpus-wide the same day:
   carries `noir` in `DEFAULT_COLOUR` and reads "Blaufränkisch". `franconia`
   (Friuli) keeps its own slug by an explicit lexicon decision; the
   VIVC-sibling expansion unites the three in the grape filter.
+- **An alias poisons the VIVC record too.** `perle-von-zala`, `zala-gyoengye`
+  and `zala-gyongye` folded into `csabagyongye` ("alternate German name") —
+  Perle von Zala is Zalagyöngye (#13374), Csabagyöngye's offspring — and 02g,
+  which queries VIVC with a corpus surface of the slug, resolved
+  `csabagyongye` through "Perle von Zala" to #13374, so 15 HU / DE / GB pills
+  read "Csabagyöngye (Zala Gyoengye)" and opened the *Pearl of Csaba*
+  tooltip (validators, 2026-10-23). The keys fold into `zalagyongye` and both
+  slugs are pinned on the live passports (#9166, #13374). Before trusting an
+  alias comment, check the target's by-slug `query`; and diff every surface's
+  binding before and after a pin (a new passport's synonyms are claimable:
+  #9166 carries 96).
 - **Wrapped names in the parsers.** The MASAF annex reader rebuilds a register
   row whose name wrapped around its code line, by the name column
   (`_wrapped_rows`: Castelfranco Emilia's "Lambrusco del ⏎ Pellegrino" had
@@ -1423,9 +1468,11 @@ re-extraction ran as snapshot → run → per-record grape diff, one step at a
 time, and every diff was read.
 
 [scripts/audit_grape_identity.py](scripts/audit_grape_identity.py) is the
-repeatable check: the colour-coded names no entry resolves, and every distinct
+repeatable check: the colour-coded names no entry resolves, every distinct
 fuzzy binding in the corpus (most are spellings — "Mourverdre", "Cabertnet
-Sauvignon" — the rest go to CURATOR_TODO). `tests/test_grape_identity_guards.py`
+Sauvignon" — the rest go to CURATOR_TODO), and the brackets the card's umlaut
+fold alone suppresses (`--strict` fails on one no umlaut spelling explains;
+see "Grape pill labels"). `tests/test_grape_identity_guards.py`
 pins the guards. Adding entries changes bindings in other countries, so the
 affected stage 02 / 02f runs are re-extracted with a snapshot and a per-record
 grape diff (the GR 02f drift of 2026-10-11 is why).
@@ -6686,7 +6733,16 @@ code that owns each piece:
   tree tick adds to it (2026-10-21: after "all of Italy" a second "all of
   Piemonte" had changed nothing) — the SSR card renders the country link as
   a real href to the browse index's `#c-<cc>` section) → provenance line →
-  sources → "Report a mistake". **The browser's Back works** (2026-10-21):
+  sources → "Report a mistake". The meta line's **unit count** ("N
+  commune(s)") is printed only where the polygon is the union of the counted
+  units — `COUNTED_UNION_SOURCES` in content_block.py, mirrored in app.js
+  (`tests/test_content_block.py` keeps the two in step); it is an allowlist, so
+  a new geometry source prints no count until it is added. Stage 04 writes
+  `communes_matched` = -1 for every other source (`counted_units`), the GR LAU
+  count from the units drawn (`gisco_ids`), and a Galician record adds its IET
+  parishes ("1 commune(s) · 49 parish(es)"). Until 2026-10-23 a denylist let
+  the zone resolvers' feature count read "1 commune(s)" on 388 zone-, NUTS-
+  and geoportal-drawn cards. **The browser's Back works** (2026-10-21):
   a card opened or closed, a stack cycled and a related link followed are
   `pushState` entries (`setAocPath` / `writeHistory` in app.js), each
   carrying the view it showed — the facet filters and the open stack

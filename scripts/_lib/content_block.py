@@ -164,23 +164,66 @@ def grape_url(slug: str, ctx: RenderCtx) -> str:
 _CANON_COLOR_WORD_RE = re.compile(
     r"\b(tinto|tinta|blanco|blanca|noir|blanc|gris|rouge|ros[eé])\b", re.IGNORECASE
 )
-_CANON_COLOR_LETTER_RE = re.compile(r"\s+(b|n|g|rs|rg)$", re.IGNORECASE)
+# The OIV colour code, with the period MASAF writes ("Cabernet Sauvignon N.").
+_CANON_COLOR_LETTER_RE = re.compile(r"\s+(b|n|g|rs|rg)\.?$", re.IGNORECASE)
 _NON_ALNUM_RE = re.compile(r"[^a-z0-9]", re.IGNORECASE)
+# VIVC writes an umlaut the German way (GEWUERZTRAMINER, HARSLEVELUE, CSABA
+# GYOENGYE): folded on both sides, so "Gewürztraminer" and "Zala Gyongye" are
+# the prime they spell, not another name to bracket.
+_UMLAUT_FOLD_RE = re.compile(r"([aou])e")
+# An umlaut written as VIVC writes it, before the diacritic is stripped: the
+# audit's test that a pair the fold alone collapsed is an umlaut pair.
+_UMLAUT_DIGRAPH = str.maketrans({
+    "ä": "ae", "ö": "oe", "ü": "ue", "ő": "oe", "ű": "ue",
+    "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "Ő": "Oe", "Ű": "Ue",
+})
 
 
-def _canon_norm(s: str) -> str:
+def _canon_base(s: str) -> str:
+    """`_canon_norm` without the umlaut fold."""
     s = unicodedata.normalize("NFKD", s or "")
     s = "".join(c for c in s if not unicodedata.combining(c))  # strip diacritics
     s = _CANON_COLOR_LETTER_RE.sub("", s)
     s = _CANON_COLOR_WORD_RE.sub("", s)
-    s = _NON_ALNUM_RE.sub("", s)
-    return s.lower()
+    return _NON_ALNUM_RE.sub("", s).lower()
+
+
+def _canon_norm(s: str) -> str:
+    return _UMLAUT_FOLD_RE.sub(r"\1", _canon_base(s))
 
 
 def canonical_equals_cahier(canon: str, cahier: str) -> bool:
     """True when the cahier spelling and the VIVC prime name are the same
     variety after light normalisation — suppresses redundant brackets."""
     return _canon_norm(canon) == _canon_norm(cahier)
+
+
+def umlaut_digraph_key(s: str) -> str:
+    """`_canon_base` of the name with each umlaut written as a digraph."""
+    return _canon_base(unicodedata.normalize("NFC", s or "").translate(_UMLAUT_DIGRAPH))
+
+
+def fold_only_bracket_class(canon: str, cahier: str, sibling_spellings=()) -> str | None:
+    """How the umlaut fold decided a (prime, spelling) pair. None when it
+    played no part — the names are equal without it, or not equal with it.
+    "umlaut": the spelling's umlaut is the digraph the prime writes
+    ("Gewürztraminer" / GEWUERZTRAMINER). "umlaut-sibling": the spelling has no
+    umlaut but another corpus spelling of the slug has it (the Iberian
+    "gewurztraminer", GB "Schonburger"). "review": no spelling of the slug
+    carries one — the fold collapsed something that may not be an umlaut.
+    `audit_grape_identity.py` sweeps the corpus with it; its `--strict` fails
+    on a `review` pair."""
+    base_c, base_s = _canon_base(canon), _canon_base(cahier)
+    if base_c == base_s or _canon_norm(canon) != _canon_norm(cahier):
+        return None
+    if umlaut_digraph_key(cahier) == base_c or umlaut_digraph_key(canon) == base_s:
+        return "umlaut"
+    # a sibling vouches only when it carries an umlaut itself: a plain sibling
+    # equal to the prime says nothing about this spelling ("Brachetto e", a
+    # parse artefact the fold hid behind "Brachetto")
+    if any(umlaut_digraph_key(s) == base_c != _canon_base(s) for s in sibling_spellings):
+        return "umlaut-sibling"
+    return "review"
 
 
 def region_label(region: str, ctx: RenderCtx) -> str:
@@ -729,17 +772,48 @@ def _style_chips(rec: dict, ctx: RenderCtx) -> str:
 
 # ---------------------------------------------------------------- meta lines
 
+# Geometry sources whose polygon is the union of the administrative units
+# `communes_matched` counts: INAO's aires-CSV communes, GISCO / swisstopo /
+# CAOP units, a curated INE list, the whole municipios beside the IET
+# parishes. Every other source — a zone layer, a Bétard or NUTS polygon,
+# parcels, a member-PDO union, an inherited polygon, the vineyard parcels of
+# one commune — is not, and stage 04 writes -1 for it (`counted_units`):
+# until 2026-10-23 the zone resolvers' feature count reached the header as
+# "1 commune(s)" on 388 cards (La Palma, 14 municipios). Mirrors
+# COUNTED_UNION_SOURCES in app.js.
+COUNTED_UNION_SOURCES = frozenset({
+    "aires-csv", "aires-csv-dgc", "dgc-village-override", "communes",
+    "geometry-research-municipios", "iet-parroquia-union",
+    "gisco-commune-list", "gisco-commune-union", "gisco-commune-union-subzona",
+    "gisco-commune-union-podoblast", "gisco-comune-union", "gisco-comune-provincia-union",
+    "gisco-provincia-union", "gisco-regione-union", "gisco-province-wide", "gisco-ccaa-wide",
+    "gisco-island-wide", "gisco-bundesland-union", "gisco-district-union",
+    "swissboundaries-commune-union", "caop-concelho-union", "caop-freguesia-union",
+})
+
+
+def counted_units(geom_source: str | None, matched: int) -> int:
+    """The `communes_matched` stage 04 writes: the resolver's unit count where
+    the polygon is the union of those units, else -1."""
+    return matched if geom_source in COUNTED_UNION_SOURCES else -1
+
+
 def _meta_tail(rec: dict, ctx: RenderCtx) -> str:
+    """The header's unit count, printed only where the polygon is the union of
+    the counted units; a French DGC's CSV row repeats its parent's communes, so
+    aires-csv-dgc prints none. A Galician record adds the IET parishes drawn
+    beside its whole municipios. Mirrors metaTail in app.js."""
     gs = rec.get("geom_source")
-    if gs in ("aires-csv", "dgc-village-override"):
-        return " · " + fmt(ctx.labels["meta_communes_inao"], {"n": rec.get("communes_matched") or 0})
     cm = rec.get("communes_matched")
-    if gs not in (
-        "parcellaire", "parcellaire-dgc", "aires-csv-dgc",
-        "cadastre-lieu-dit-dgc", "sibling-dgc", "parent-appellation",
-    ) and cm is not None and cm > 0:
-        return " · " + fmt(ctx.labels["meta_communes"], {"n": cm})
-    return ""
+    out = ""
+    if gs in ("aires-csv", "dgc-village-override"):
+        out = " · " + fmt(ctx.labels["meta_communes_inao"], {"n": cm or 0})
+    elif gs in COUNTED_UNION_SOURCES and gs != "aires-csv-dgc" and cm is not None and cm > 0:
+        out = " · " + fmt(ctx.labels["meta_communes"], {"n": cm})
+    parishes = len((rec.get("sources") or {}).get("parroquias_matched") or [])
+    if parishes and gs in COUNTED_UNION_SOURCES:
+        out += " · " + fmt(ctx.labels["meta_parishes"], {"n": parishes})
+    return out
 
 
 def _cancelled_date(c: dict, ctx: RenderCtx) -> str:

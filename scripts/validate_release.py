@@ -43,6 +43,8 @@ CHECKS: list[dict] = [
      "gate": "no banned / colour-word grape surface binds a variety"},
     {"name": "ambiguous-synonyms", "cmd": [PY, "scripts/audit_ambiguous_synonyms.py", "--strict"], "group": "quick", "timeout": 600,
      "gate": "no unpinned ambiguous grape synonym"},
+    {"name": "grape-brackets", "cmd": [PY, "scripts/audit_grape_identity.py", "--strict"], "group": "quick", "timeout": 600,
+     "gate": "the card's umlaut fold suppresses a bracket only on an umlaut pair (no `review` pair)"},
     {"name": "dup-keys", "cmd": [PY, "scripts/audit_dup_keys.py"], "group": "quick", "timeout": 120,
      "gate": "no silently overriding dict key under scripts/"},
     {"name": "terroir-facts", "cmd": [PY, "scripts/audit_terroir_facts.py", "--strict"], "group": "quick", "timeout": 1200,

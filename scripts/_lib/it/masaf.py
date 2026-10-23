@@ -496,6 +496,9 @@ _BARE_HEAD_EXPANSION = {
 }
 
 
+_TRAILING_CONJUNCTION_RE = re.compile(r"\s+(?:e|ed|o|od|e/o)\s*$", re.I)
+
+
 def _scan_vitigno_phrases(text: str) -> list[str]:
     """Extract everything that follows "vitigno"/"vitigni" up to a
     plausible terminator. Splits compound matches on " e/o ", " e ",
@@ -504,7 +507,10 @@ def _scan_vitigno_phrases(text: str) -> list[str]:
     for m in _VITIGNO_RE.finditer(text):
         body = m.group(1).strip(_TRIM_CHARS)
         for part in re.split(r"\s+e/o\s+|\s+e\s+|\s+o\s+|/", body):
-            p = part.strip(_TRIM_CHARS)
+            # a conjunction the terminator left on the name — "dal vitigno
+            # Brachetto e per il restante 3%" read "Brachetto e" (2026-10-23,
+            # the bracket-fold sweep; Asti's "Moscato bianco e" likewise)
+            p = _TRAILING_CONJUNCTION_RE.sub("", part).strip(_TRIM_CHARS)
             if p:
                 candidates.append(p)
     return candidates

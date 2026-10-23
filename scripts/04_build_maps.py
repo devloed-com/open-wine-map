@@ -101,6 +101,7 @@ from _lib.ch.canton import canton_name as ch_canton_name
 from _lib.ch.geometry import CHCommuneIndex, GESitgIndex
 from _lib.ch.geometry import resolve as ch_resolve_geometry
 from _lib.ch.region import derive_region as derive_ch_region
+from _lib.content_block import counted_units
 from _lib.cy.geometry import CYPolygonIndex
 from _lib.cy.region import derive_region as derive_cy_region
 from _lib.cz.geometry import CZPolygonIndex
@@ -178,9 +179,9 @@ from _lib.lieu_dit import LieuDitIndex
 from _lib.lu.geometry import LUPolygonIndex
 from _lib.lu.region import derive_region as derive_lu_region
 from _lib.map_template import (
+    _THEME_PREPAINT_JS,
     MCP_ENDPOINT_URL,
     STARTUP_AOCS_FIELDS,
-    _THEME_PREPAINT_JS,
     _made_by_html,
     _static_page_css,
     build_country_labels,
@@ -2202,6 +2203,16 @@ def main() -> int:
                 # rides the module-level slug cache like the other countries'
                 # provenance
                 _GEOM_UNITS_DISCLOSURE_BY_SLUG[record["slug"]] = disclosure
+            if geom_source == "gisco-commune-list":
+                # The header counts the LAU units the polygon is the union of;
+                # the resolver's `matched` counts the community names the text
+                # lists, not the δήμοι it expanded or the containers it drew
+                # (Κίσσαμος read 0 for 55 units, Τριφυλία 1 for 77), and a
+                # boundary traced through named places is no union of units.
+                stats = {**stats, "matched": (
+                    -1 if stats.get("landmarks_polygon")
+                    else len(set(stats.get("gisco_ids") or [])) or stats.get("matched", 0)
+                )}
             if not stats.get("nuts_ids") and geom is not None and not geom.is_empty:
                 # a record drawn from LAU units carries no NUTS id: the
                 # region facet reads the unit the spec cites, else the units
@@ -3104,7 +3115,9 @@ def main() -> int:
             "grapes_accessory": _join_set(accessory),
             "grapes_observation": _join_set(observation),
             "grapes_all": _join_set(all_grapes),
-            "communes_matched": stats["matched"],
+            # -1 unless the polygon is the union of the counted units — a
+            # zone resolver's feature count is not a commune count
+            "communes_matched": counted_units(geom_source, stats["matched"]),
             "communes_unmatched": stats["unmatched"],
             "geom_source": geom_source,
             "area": area_deg2,

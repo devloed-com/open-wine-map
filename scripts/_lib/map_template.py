@@ -163,6 +163,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "meta_no_region": _("sans région"),
         "meta_communes_inao": _("{n} commune(s) INAO"),
         "meta_communes": _("{n} commune(s)"),
+        "meta_parishes": _("{n} paroisse(s)"),
         "meta_geom_approx": _("aire approchée"),
         "meta_geom_approx_communal": _("aire approchée (à l'échelle communale)"),
         "geom_approx_within": _(
@@ -425,6 +426,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "wiki_lang_de": _("Wikipédia en allemand"),
         "wiki_lang_sl": _("Wikipédia en slovène"),
         "wiki_lang_bg": _("Wikipédia en bulgare"),
+        "wiki_lang_hu": _("Wikipédia en hongrois"),
         "vivc_link_title": _("Vitis International Variety Catalogue (Julius Kühn-Institut)"),
         "vivc_link_label": _("VIVC #{id}"),
         "translation_attribution": _("Traduction automatique depuis {source}"),

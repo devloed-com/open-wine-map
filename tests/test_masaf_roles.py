@@ -14,15 +14,17 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib.grape_entity import match_variety, set_pliego_context  # noqa: E402
 from _lib.grape_lexicon import DEFAULT_COLOUR, GRAPE_ALIAS  # noqa: E402
 from _lib.it.masaf import (  # noqa: E402
-    CONTEXT_OVERRIDES_PATH, clause_roles, context_pins, exclusion_drops, parse_grapes_with,
+    CONTEXT_OVERRIDES_PATH,
+    clause_roles,
+    context_pins,
+    exclusion_drops,
+    parse_grapes_with,
 )
 
 ORIOLO = """Base ampelografica
@@ -165,3 +167,18 @@ def test_an_exclusion_in_one_type_does_not_drop_a_variety_another_type_is_made_o
             "giallo»; «Friuli Isonzo» Moscato giallo: Moscato giallo minimo 85%.")
     assert exclusion_drops(body, ["Moscato giallo"]) == set()
     assert match_variety("giallo") is None
+
+
+def test_vitigno_scan_drops_a_conjunction_the_terminator_left_on_the_name():
+    """"dal vitigno Brachetto e per il restante 3%" read "Brachetto e" (and Asti's
+    "Moscato bianco e"), a spelling the card's umlaut fold then hid behind
+    "Brachetto" — found by the bracket-fold sweep of 2026-10-23."""
+    from _lib.it.masaf import _scan_vitigno_phrases
+
+    body = ("I vini devono essere ottenuti da uve provenienti da vigneti composti per non meno "
+            "del 97% dal vitigno Brachetto e per il restante 3% provenienti da vitigni idonei.")
+    assert _scan_vitigno_phrases(body) == ["Brachetto"]
+    assert _scan_vitigno_phrases("ottenuti dal vitigno Moscato bianco e per il restante 15% da") == [
+        "Moscato bianco"]
+    # a conjunction between two names still splits them
+    assert _scan_vitigno_phrases("dai vitigni Barbera e Freisa, con") == ["Barbera", "Freisa"]

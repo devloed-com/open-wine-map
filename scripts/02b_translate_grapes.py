@@ -68,7 +68,8 @@ LOCALES = ("fr", "en", "es", "nl")
 # cards were fetched only for varieties with no native fr/en/es/nl article
 # (Blauer Wildbacher, Rathay, Kraljevina, Roter Riesling), so appending them
 # gives those a source without moving any cached translation to another one.
-SOURCE_LOCALES = ("fr", "en", "es", "nl", "pt", "it", "hr", "de", "sl", "bg")
+# `hu` likewise (2026-10-23: Zala gyöngye has a hu.wikipedia article only).
+SOURCE_LOCALES = ("fr", "en", "es", "nl", "pt", "it", "hr", "de", "sl", "bg", "hu")
 
 LOCALE_NAME = {
     "en": "English",
@@ -81,6 +82,7 @@ LOCALE_NAME = {
     "de": "German",
     "sl": "Slovenian",
     "bg": "Bulgarian",
+    "hu": "Hungarian",
 }
 
 
@@ -664,6 +666,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="restrict to a specific target locale (repeatable); default: all 4")
     ap.add_argument("--limit", type=int, default=0,
         help="translate at most N (slug, lang) pairs (0 = all)")
+    ap.add_argument("--only", action="append", default=[],
+        help="exact grape slug to consider (repeatable); every other slug is left alone")
     ap.add_argument("--workers", type=int, default=1,
         help="concurrent (slug, lang) pairs to translate (default 1)")
     ap.add_argument("--refresh", action="store_true",
@@ -675,6 +679,16 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     roundtrip.add_arguments(ap)
     return ap
+
+
+def _restrict_slugs(slugs: list[str], only: list[str]) -> list[str]:
+    """`--only`: keep the named slugs, saying which the corpus lacks."""
+    if not only:
+        return slugs
+    missing = sorted(set(only) - set(slugs))
+    if missing:
+        print(f"[02b-grape-tx] --only slug(s) not in the corpus: {missing}", file=sys.stderr)
+    return [s for s in slugs if s in set(only)]
 
 
 def _handle_manual(slugs: list[str], target_locales: tuple[str, ...], refresh: bool) -> int:
@@ -708,6 +722,7 @@ def main() -> int:
     if not slugs:
         print("error: corpus is empty — run scripts/02_extract_cahiers.py first.", file=sys.stderr)
         return 1
+    slugs = _restrict_slugs(slugs, args.only)
 
     if args.emit_todo:
         return emit_todo_file(

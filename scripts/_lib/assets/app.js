@@ -256,11 +256,13 @@
 
   // True when the per-AOC cahier spelling and the VIVC prime name refer
   // to the same variety after a light normalisation (strip diacritics,
-  // the INAO trailing colour letter, and the VIVC trailing color word).
-  // When equal, we suppress the canonical bracket to avoid pills like
-  // "Touriga Nacional (Touriga Nacional)".
+  // the trailing OIV colour code — "N." as MASAF writes it too — and the
+  // VIVC trailing color word; fold VIVC's German umlaut spelling, ue / oe /
+  // ae). When equal, we suppress the canonical bracket to avoid pills like
+  // "Touriga Nacional (Touriga Nacional)" or "Gewürztraminer
+  // (Gewuerztraminer)". Mirrored by _canon_norm in content_block.py.
   const CANON_COLOR_WORD_RE = /\b(tinto|tinta|blanco|blanca|noir|blanc|gris|rouge|ros[eé])\b/gi;
-  const CANON_COLOR_LETTER_RE = /\s+(b|n|g|rs|rg)$/i;
+  const CANON_COLOR_LETTER_RE = /\s+(b|n|g|rs|rg)\.?$/i;
   function canonicalEqualsCahier(canon, cahier) {
     const norm = s => s
       .normalize('NFKD')
@@ -268,7 +270,8 @@
       .replace(CANON_COLOR_LETTER_RE, '')
       .replace(CANON_COLOR_WORD_RE, '')
       .replace(/[^a-z0-9]/gi, '')
-      .toLowerCase();
+      .toLowerCase()
+      .replace(/([aou])e/g, '$1');
     return norm(canon) === norm(cahier);
   }
 
@@ -2780,6 +2783,19 @@
       'region-pdo-union', 'nuts2-province', 'geometry-research-municipios'].includes(gs)) return true;
     return /^(gisco-|caop-|swissboundaries-)/.test(gs);
   }
+  // Geometry sources whose polygon is the union of the units communes_matched
+  // counts — the only ones whose header prints the count (a zone layer's
+  // feature count read "1 commune(s)" until 2026-10-23). Mirrored by
+  // COUNTED_UNION_SOURCES in scripts/_lib/content_block.py.
+  const COUNTED_UNION_SOURCES = new Set([
+    'aires-csv', 'aires-csv-dgc', 'dgc-village-override', 'communes',
+    'geometry-research-municipios', 'iet-parroquia-union',
+    'gisco-commune-list', 'gisco-commune-union', 'gisco-commune-union-subzona',
+    'gisco-commune-union-podoblast', 'gisco-comune-union', 'gisco-comune-provincia-union',
+    'gisco-provincia-union', 'gisco-regione-union', 'gisco-province-wide', 'gisco-ccaa-wide',
+    'gisco-island-wide', 'gisco-bundesland-union', 'gisco-district-union',
+    'swissboundaries-commune-union', 'caop-concelho-union', 'caop-freguesia-union',
+  ]);
   // The boundary notes — how the polygon was drawn, the zoom-reactive
   // footprint line — folded below the content: a reader sees name, styles,
   // grapes and terroir first and opens the provenance when they want it. The
@@ -2870,16 +2886,22 @@
     const ptRoleDisclaimer = (r.country === 'pt' && principal)
       ? `<div class="role-disclaimer">${escapeHtml(LABELS.pt_role_disclaimer)}</div>`
       : '';
+    // The unit count, only where the polygon is the union of the counted
+    // units; a French DGC's CSV row repeats its parent's communes. A Galician
+    // record adds the IET parishes drawn beside its whole municipios.
+    // Mirrored by _meta_tail in content_block.py.
     let metaTail = '';
     if (r.geom_source === 'aires-csv' || r.geom_source === 'dgc-village-override') {
       metaTail = ' · ' + fmt(LABELS.meta_communes_inao, { n: r.communes_matched || 0 });
     } else if (
-      r.geom_source !== 'parcellaire' && r.geom_source !== 'parcellaire-dgc' &&
-      r.geom_source !== 'aires-csv-dgc' && r.geom_source !== 'cadastre-lieu-dit-dgc' &&
-      r.geom_source !== 'sibling-dgc' && r.geom_source !== 'parent-appellation' &&
+      COUNTED_UNION_SOURCES.has(r.geom_source) && r.geom_source !== 'aires-csv-dgc' &&
       r.communes_matched > 0
     ) {
       metaTail = ' · ' + fmt(LABELS.meta_communes, { n: r.communes_matched });
+    }
+    const parishCount = ((r.sources || {}).parroquias_matched || []).length;
+    if (parishCount && COUNTED_UNION_SOURCES.has(r.geom_source)) {
+      metaTail += ' · ' + fmt(LABELS.meta_parishes, { n: parishCount });
     }
     const region = r.region ? regionLabel(r.region) : '';
     const regionSeg = region ? ` · ${escapeHtml(region)}` : '';
