@@ -83,6 +83,12 @@ _CZ_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
 # Populated by augment_cz_records_with_national_specs().
 _CZ_CHZO_BY_SLUG: dict[str, dict] = {}
 
+# Slug-keyed provenance of the EU-register single document (fiche technique)
+# that supplies a CZ record's roster when its § 6 names the appellation's own
+# varieties rather than the national decree's list (VOC Znojmo, Novosedelské
+# slámové víno). Populated by augment_cz_records_with_national_specs().
+_CZ_FICHE_ROSTER_BY_SLUG: dict[str, dict] = {}
+
 # Slug-keyed cache of SI specifikacija provenance + augmented payload,
 # populated by augment_si_records_with_specifikacija(). Two source
 # patterns feed it (MKGP per-wine .doc, Uradni list RS pravilnik HTML);

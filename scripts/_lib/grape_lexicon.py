@@ -302,6 +302,17 @@ GRAPE_ALIAS = {
     "rossese": "rossese",
     # Greco cluster — Fortana is an Emilian red, totally unrelated
     "fortana": "fortana",
+    "centesimino": "centesimino",
+    # VIVC #22606 synonyms: SAUVIGNON ROSSO, ALICANTE DEL FAENTINO; "Savignon" is
+    # the name the Romagna disciplinare (Art. 9) says the grape first bore.
+    "savignon-rosso": "centesimino",
+    "sauvignon-rosso": "centesimino",
+    # VIVC #22742 NEBBIOLO ROSE — a variety of its own (Valtellina's Chiavennaschino),
+    # not Nebbiolo; "Nebbiolo rosato" stays Grignolino, whose VIVC synonym it is.
+    "nebbiolo-rose": "nebbiolo-rose",
+    "nebbiolo-rosé": "nebbiolo-rose",
+    "chiavennaschino": "nebbiolo-rose",
+    "chiavennasca-piccola": "nebbiolo-rose",
     "greco-bianco": "greco-bianco",
     "greco-nero": "greco-nero",
     # Friulano = Sauvignonasse = Tocai friulano (post-2007 EU rename)
@@ -648,6 +659,7 @@ GRAPE_ALIAS = {
     # Bombino bianco + Trebbiano toscano. Folds to the toscano canonical.
     "trebbiano-bianco": "ugni-blanc",
     "nascetta": "nascetta",
+    "albarossa": "albarossa",
     "vespaiolo": "vespaiolo",
     "ribolla-gialla": "ribolla-gialla",
     "durella": "durella",
@@ -832,7 +844,7 @@ GRAPE_ALIAS = {
     # grains (that one is Sárga muskotály). The old key also carried a
     # diacritic ("mátrai-…"), so it never matched an unidecoded lookup.
     "matrai-muskotaly": "matrai-muskotaly",
-    "korai-piros-veltelini": "fruhroter-veltliner",      # Korai piros veltelíni = Frühroter Veltliner
+    "korai-piros-veltelini": "velteliner-rouge-precoce",      # Korai piros veltelíni = Frühroter Veltliner
     "kovidinka": "kovidinka",                   # Hungarian — Vojvodina cluster
     "dinka-crvena": "kovidinka",
     "goher": "goher",                           # Gohér — heritage Hungarian white (Zemplén, Balaton)
@@ -1281,8 +1293,19 @@ GRAPE_ALIAS = {
     "mueller-thurgau": "muller-thurgau",
     "rivaner": "muller-thurgau",                  # luxembourgish / DE synonym
     "roter-muller-thurgau": "muller-thurgau",     # colour mutation, same cultivar (VIVC #8141)
-    "blauer-limberger": "lemberger",              # VIVC #1459 BLAUFRÄNKISCH — German Lemberger / Limberger
-    "limberger": "lemberger",
+    # VIVC #1459 BLAUFRAENKISCH had two slugs — `blaufrankisch` (HU, HR, SK, CZ,
+    # GB) and `lemberger` (RO, SI, DE, AT, GB, BE, PT, ES; the AT and DE
+    # documents that spell it Blaufränkisch bound here through the VIVC
+    # synonym tier): the GB roster put the variety on one card twice, and
+    # `?grape=blaufrankisch` opened a chip reading "Kékfrankos", the most
+    # frequent spelling of a slug no record spelled as Blaufränkisch
+    # (2026-10-23). One slug, the VIVC prime's. `franconia` (Friuli) keeps
+    # its own slug by the decision above; the VIVC-sibling expansion unites
+    # the filter.
+    "blaufrankisch": "blaufrankisch",
+    "lemberger": "blaufrankisch",
+    "blauer-limberger": "blaufrankisch",          # German Lemberger / Limberger
+    "limberger": "blaufrankisch",
     "blauer-trollinger": "schiava-grossa",         # VIVC #10823 SCHIAVA GROSSA = Vernatsch = Trollinger
     "trollinger": "schiava-grossa",
     "gutedel": "chasselas",                       # German Chasselas
@@ -1545,7 +1568,18 @@ GRAPE_ALIAS = {
     "rulandske-sede": "pinot-gris",
     "rulandske-modre": "pinot-noir",
     "veltlinske-zelene": "gruner-veltliner",
-    "veltlinske-cervene-rane": "fruhroter-veltliner",
+    "veltlinske-cervene-rane": "velteliner-rouge-precoce",
+    # VIVC #16157 VELTLINER FRUEHROT had two slugs — `fruhroter-veltliner` (the CZ
+    # and HU records) and `velteliner-rouge-precoce` (AT, DE, SK and five more):
+    # one cultivar as two pills, the first with a colour and the second without
+    # (2026-10-22). One slug.
+    "fruhroter-veltliner": "velteliner-rouge-precoce",
+    # "Veltlínské červenobílé" (VČB) is listed by the Czech decree beside
+    # "Veltlínské červené rané"; it is VIVC #22521 VELTLINER ROTWEISS, a Roter
+    # Veltliner mutation (raw/vivc/slug_overrides.json, 2026-10-22), not the
+    # Frühroter #16157 whose passport flags the Czech spelling as official —
+    # the fold above had collapsed it into the Frühroter pill on every CZ card.
+    "veltlinske-cervenobile": "veltlinske-cervenobile",
     "muskat-zlty": "muscat-a-petits-grains",
     "muscat-zlty": "muscat-a-petits-grains",
     "pesecka-leanka": "feteasca-alba",             # SK name for HU Leányka (VIVC #6816) — folded to Fetească albă (#4119), distinct from feteasca-regala (#4121)
@@ -1818,6 +1852,243 @@ GRAPE_ALIAS = {
     # the RHS plant register (rhs.org.uk/plants/184101) and by English
     # vineyard sources.
     "gagarin-blue": "gagarin-blue",
+    # 2026-10-22 sweep after the Piemonte (Albarossa) flag: varieties the
+    # regulators list that the lexicon lacked, and names the matcher had bound
+    # to another cultivar by fuzzy score. Every id was resolved on live VIVC
+    # the same day; the colour is the regulator's code where it gives one.
+    "ruche": "ruche",  # VIVC #10318 — Ruchè di Castagnole Monferrato DOCG
+    "timorasso": "timorasso",  # VIVC #12450 — Colli Tortonesi
+    "nosiola": "nosiola",  # VIVC #8606 — Trentino
+    "erbamat": "erbamat",  # VIVC #22363 — Franciacorta; VIVC files Verdealbara under Erbamat
+    "verdealbara": "erbamat",
+    "malbo-gentile": "malbo-gentile",  # VIVC #398
+    "casetta": "casetta",  # VIVC #14977 LAMBRUSCO DEL CASETTA
+    "lambrusco-del-casetta": "casetta",
+    "marzemina-grossa": "marzemina-grossa",  # VIVC #26766 MARZEMINA NERA BASTARDA
+    "marzemina-nera-bastarda": "marzemina-grossa",
+    "pinella": "pinella",  # VIVC #9266 — Veneto Pinella and Vipava Pinela are one passport; both had fuzzy-matched Tempranillo
+    "pinela": "pinella",
+    "tazzelenghe": "tazzelenghe",  # VIVC #12291
+    "recantina": "recantina",  # VIVC #9965
+    "bussanello": "bussanello",  # VIVC #1914
+    "dindarella": "dindarella",  # VIVC #3579
+    "goldtraminer": "goldtraminer",  # VIVC #10081
+    "gosen": "gosen",  # VIVC #10090
+    "grapariol": "grapariol",  # VIVC #23022
+    "incrocio-terzi-1": "incrocio-terzi-1",  # VIVC #12385 TERZI 1
+    "incrocio-terzi-n-1": "incrocio-terzi-1",
+    "terzi-1": "incrocio-terzi-1",
+    "maor": "maor",  # VIVC #7361
+    "sennen": "sennen",  # VIVC #10087
+    "turchetta": "turchetta",  # VIVC #23214
+    "avarengo": "avarengo",  # VIVC #795
+    "averengo": "avarengo",
+    "baratuciat": "baratuciat",  # VIVC #22763
+    "lambrusco-viadanese": "lambrusco-viadanese",  # VIVC #6702 — VIVC files Grappello Ruberti under Lambrusco Viadanese
+    "grappello-ruberti": "lambrusco-viadanese",
+    "merlese": "merlese",  # VIVC #22990
+    "spigamonti": "spigamonti",  # VIVC #695 ASPIRAN BOUSCHET — not the French Aspiran (Rivairenc)
+    "trevisana-nera": "trevisana-nera",  # VIVC #12642
+    "uva-longanesi": "uva-longanesi",  # VIVC #22605
+    "corbina": "corbina",  # VIVC #24567 — had fuzzy-matched Corvina
+    "famoso": "famoso",  # VIVC #9896
+    "bellagna": "bellagna",  # VIVC #24891 — Garda's single document writes Bellagna B.; VIVC records the berry as noir
+    "bosco": "bosco",  # VIVC #1577 — Cinque Terre
+    "cavrara": "cavrara",  # VIVC #24556
+    "cividin": "cividin",  # VIVC #2690 CIVIDIN BIANCO
+    "cividin-bianco": "cividin",
+    "cianorie": "cianorie",  # VIVC #2644
+    "cjanorie": "cianorie",
+    "flavis": "flavis",  # VIVC #4144
+    "forgiarin": "forgiarin",  # VIVC #4202 FORZARIN
+    "forzarin": "forgiarin",
+    "incrocio-manzoni-2-15": "incrocio-manzoni-2-15",  # VIVC #7359 MANZONI 2- 15
+    "manzoni-2-15": "incrocio-manzoni-2-15",
+    "incrocio-manzoni-2-14": "incrocio-manzoni-2-14",  # VIVC #7358 MANZONI 2- 14 — had fuzzy-matched 2-15
+    "manzoni-2-14": "incrocio-manzoni-2-14",
+    "manzoni-moscato": "manzoni-moscato",  # VIVC #22897
+    "manzoni-rosa": "manzoni-rosa",  # VIVC #7357
+    "pedevenda": "pedevenda",  # VIVC #24862
+    "prodest": "prodest",  # VIVC #9720
+    "sciaglin": "sciaglin",  # VIVC #17607
+    "ucelut": "ucelut",  # VIVC #12753
+    "merera": "merera",  # VIVC #1700 BRUGNARA
+    "brugnara": "merera",
+    "mornasca": "mornasca",  # VIVC #23026
+    "moradella": "moradella",  # VIVC #7980
+    "perla-dei-vivi": "perla-dei-vivi",  # VIVC #23031
+    "sgavetta": "sgavetta",  # VIVC #11678
+    "barbera-bianca": "barbera-bianca",  # VIVC #975
+    "cornarea": "cornarea",  # VIVC #2839
+    "lambrusca-di-alessandria": "lambrusca-di-alessandria",  # VIVC #6688
+    "plassa": "plassa",  # VIVC #9545
+    "slarina": "slarina",  # VIVC #2372 CELLERINA
+    "uvalino": "uvalino",  # VIVC #22754
+    "doux-d-henri": "doux-d-henri",  # VIVC #3677
+    "doux-d-henry": "doux-d-henri",
+    "antinello": "antinello",  # VIVC #25771
+    "impigno": "impigno",  # VIVC #5522
+    "marchione": "marchione",  # VIVC #22903
+    "negroamaro-precoce": "negroamaro-precoce",  # VIVC #22314 NEGRO AMARO PRECOCE
+    "negro-amaro-precoce": "negroamaro-precoce",
+    "somarello-rosso": "somarello-rosso",  # VIVC #11914
+    "caprettone": "caprettone",  # VIVC #24554
+    "ruzzese": "ruzzese",  # VIVC #22772
+    "malvasia-di-casorzo": "malvasia-di-casorzo",  # VIVC #7264 — had resolved to the white Malvasia Istriana
+    "malvasia-nera-di-casorzo": "malvasia-di-casorzo",
+    "caloria": "caloria",  # VIVC #2010 — had fuzzy-matched Pelaverga on 39 Tuscan cards
+    "verdiso": "verdiso",  # VIVC #12966 — had fuzzy-matched the Greek Lagorthi
+    "alionza": "alionza",  # VIVC #318 — had fuzzy-matched Pignoletto
+    "maiolina": "maiolina",  # VIVC #22365
+    "paolina": "paolina",  # VIVC #7937 MONTAGNA
+    "forsellina": "forsellina",  # VIVC #4194
+    "forselina": "forsellina",
+    "nigra": "nigra",  # VIVC #8554
+    "trebbianina": "trebbianina",  # VIVC #23038
+    "albana-rosa": "albana-rosa",  # VIVC #26678
+    "durasa": "durasa",  # VIVC #3736 — had fuzzy-matched Duras
+    "prunesta": "prunesta",  # VIVC #9794 — had fuzzy-matched Cinsault
+    "aidani-mavro": "aidani-mavro",  # VIVC #148
+    "asprouda-santorinis": "asprouda-santorinis",  # VIVC #4989 ASPROUDA SANTORINES
+    "asprouda-santorines": "asprouda-santorinis",
+    "chidiriotiko": "chidiriotiko",  # VIVC #23127
+    "chiotiko-krassero": "chiotiko-krassero",  # VIVC #2578
+    "mavrothiriko": "mavrothiriko",  # VIVC #23167
+    "rokaniaris": "rokaniaris",  # VIVC #40263
+    "mouchtaro": "mouchtaro",  # VIVC #8078 MOUCHTOURI
+    "mouchtouri": "mouchtaro",
+    "petroulianos": "petroulianos",  # VIVC #9205
+    "thrapsa": "thrapsa",  # VIVC #12427
+    "sykiotis": "sykiotis",  # VIVC #12120
+    "zalovitiko": "zalovitiko",  # VIVC #13378
+    "volitsa-mavri": "volitsa-mavri",  # VIVC #13157
+    "psilomavro-kalavryton": "psilomavro-kalavryton",  # VIVC #9804 PSILOMAVRO KALAVRITON
+    "psilomavro-kalavriton": "psilomavro-kalavryton",
+    "asprouda-serron": "asprouda-serron",  # VIVC #23109
+    "agrioglykadi": "agrioglykadi",  # VIVC #40095 AGRIOGLYKADA
+    "agrioglykada": "agrioglykadi",
+    "athiri-mavro": "athiri-mavro",  # VIVC #745
+    "flaskassyrtiko": "flaskassyrtiko",  # VIVC #23142
+    "glykadi": "glykadi",  # VIVC #4832 GLYKADA ASPRI
+    "glykada-aspri": "glykadi",
+    "koumari": "koumari",  # VIVC #6450
+    "maloukato": "maloukato",  # VIVC #7251
+    "mavrokorakas": "mavrokorakas",  # VIVC #7529
+    "serifiotiko": "serifiotiko",  # VIVC #11513 — VIVC records the berry as rouge
+    "stavrochiotis": "stavrochiotis",  # VIVC #12002 STAVROCHIOTIKO — the Paros specification writes Stavrochiotis B; VIVC records rouge
+    "stavrochiotiko": "stavrochiotis",
+    "vaftra-aspri": "vaftra-aspri",  # VIVC #40299
+    "vaftra": "vaftra",  # VIVC #12849
+    "voidomatis-aspros": "voidomatis-aspros",  # VIVC #23223
+    "bogialamades": "bogialamades",  # VIVC #4984 BOGHIALAMADES
+    "boghialamades": "bogialamades",
+    "karnachalades": "karnachalades",  # VIVC #9734 PROKUPAC
+    "sideritis": "sideritis",  # VIVC #11780
+    "razaki": "razaki",  # VIVC #122 AFUS ALI
+    "xeromacherouda": "xeromacherouda",  # VIVC #21689
+    "agianniotiko": "agianniotiko",  # VIVC #99
+    "agianiotiko": "agianniotiko",
+    "fokiano": "fokiano",  # VIVC #5210 — had fuzzy-matched Fiano on 7 Greek cards
+    "armeletousa": "fokiano",
+    "armeletoussa": "fokiano",
+    "koiniariko": "koiniariko",  # VIVC #20739 — had fuzzy-matched Koliniatiko
+    "mavroudia": "mavroudia",  # VIVC #23168 — had fuzzy-matched Agiorgitiko
+    "patrino": "patrino",  # VIVC #8979 — had fuzzy-matched Mourisco Branco
+    "omio": "omio",  # VIVC #16122
+    "kypreiko-kokkino": "kypreiko-kokkino",  # VIVC #6598 — VIVC records the berry as rouge
+    "amigne": "amigne",  # VIVC #425 — also the Valais grand cru list (OVV art. 88)
+    "golubok": "golubok",  # VIVC #4888
+    "sauvignon-soyhieres": "sauvignon-soyhieres",  # VIVC #22331 RAVEL BLANC
+    "ravel-blanc": "sauvignon-soyhieres",
+    "sauvignon-nepis": "sauvignon-nepis",  # VIVC #24884
+    "sauvignon-nepsis": "sauvignon-nepis",
+    "moribel": "moribel",  # VIVC #24594
+    "querol": "querol",  # VIVC #24331
+    "moneu": "moneu",  # VIVC #25307
+    "blasius": "blasius",  # VIVC #20959
+    "astra": "astra",  # VIVC #20876
+    "radames": "radames",  # VIVC #23089
+    "mamaia": "mamaia",  # VIVC #21348 — had fuzzy-matched Malvasia aromatica
+    "selena": "selena",  # VIVC #21558 — had fuzzy-matched Osljevina; VIVC records rouge
+    "veritage": "veritage",  # VIVC #27282
+    "pamina": "pamina",  # VIVC #26396 — had fuzzy-matched Listán
+    "satin-noir": "satin-noir",  # VIVC #23826 — had fuzzy-matched Pinot noir
+    "sauvignon-gryn": "sauvignon-gryn",  # VIVC #20449 — had fuzzy-matched Sauvignon gris
+    "baron": "baron",  # VIVC #20010 — had fuzzy-matched Cabernet franc on 21 DE/NL cards
+    "rieslaner": "rieslaner",  # VIVC #10073 — had fuzzy-matched Müller-Thurgau
+    "rotberger": "rotberger",  # VIVC #10230 — had fuzzy-matched Zweigelt
+    "cabernet-carol": "cabernet-carol",  # VIVC #20006 — had fuzzy-matched Cabernet Carbon
+    "fontanara": "fontanara",  # VIVC #4188 — had fuzzy-matched Greco
+    "blauer-silvaner": "blauer-silvaner",  # VIVC #11804 SILVANER BLAU — had fuzzy-matched Pinot noir on 14 cards
+    "silvaner-blau": "blauer-silvaner",
+    "suessschwarz": "suessschwarz",  # VIVC #24940 — had fuzzy-matched Beclan
+    "sussschwarz": "suessschwarz",
+    "agostenga": "agostenga",  # VIVC #107 — Früher Leipziger had fuzzy-matched Caramela
+    "fruher-leipziger": "agostenga",
+    "frueher-leipziger": "agostenga",
+    "jubilaeumsrebe": "jubilaeumsrebe",  # VIVC #5844 — had fuzzy-matched Blaufränkisch
+    "jubilaumsrebe": "jubilaeumsrebe",
+    "cabertin": "cabertin",  # VIVC #22329 — had fuzzy-matched Pinot noir
+    "karmin": "karmin",  # VIVC #5999 — had fuzzy-matched Blaufränkisch
+    "karat": "karat",  # VIVC #5986 — had fuzzy-matched Cinsault on 18 Hungarian cards
+    "pelso": "pelso",  # VIVC #23187 — had fuzzy-matched Trebbiano di Soave
+    "rubinet": "rubinet",  # VIVC #20000 — had fuzzy-matched the white Jacquère on 17 Czech cards
+    "cerason": "cerason",  # VIVC #22821 — had fuzzy-matched Chasselas rose
+    "carignano": "carignan",  # Italy's name for Carignan (Carignano del Sulcis); VIVC keeps it unflagged
+    "psarossyriko": "ladikino",  # VIVC #6624 LADIKINO
+    "majarca": "majarca-alba",  # the Romanian specifications write the bare Majarcă
+    "lladoner-tinto": "grenache",  # VIVC #4461 GARNACHA TINTA (Lladoner)
+    # No alias for a bare "Veltlínske červené": alone it is Roter Veltliner (VIVC
+    # flags the name as the Czech official name of #12931). The five ÚPV specs
+    # list "Veltlínske červené skoré" (Frühroter) with "skoré" wrapped onto the
+    # next line, which the §f reader joins since 2026-10-22; the alias that had
+    # patched the wrap misread the row.
+    "hamburgi": "muscat-de-hambourg",  # Hamburgi muskotály, VIVC #8226 MUSCAT HAMBURG; had fuzzy-matched Schiava grossa
+    "karmener": "carmenere",  # Bulgarian Карменер; had fuzzy-matched Cabernet franc
+    "dorsa": "cabernet-dorsa",  # the Hungarian Sopron list writes Dorsa; had fuzzy-matched Fortana
+    "korona": "korona",  # VIVC #17784 — Juhfark × Irsai Olivér (Bakonyi, Keszthely 1967); the Greek red KORONA is #6421; had fuzzy-matched Ezerjó on Zala
+    # Named members of the Lambrusco and Groppello families: the bare family
+    # slugs had taken one member's VIVC passport (Lambrusco → Marani #6695,
+    # Groppello → di Revò #25971), so a bare "Lambrusco" read as Marani and
+    # "Lambrusco Benetti" / "Groppello di Mocasina" folded into them.
+    "lambrusco-marani": "lambrusco-marani",  # VIVC #6695
+    "lambrusco-benetti": "lambrusco-benetti",  # VIVC #24954
+    "lambrusco-montericco": "lambrusco-montericco",  # VIVC #6697
+    "lambrusco-oliva": "lambrusco-oliva",  # VIVC #6698
+    "lambrusco-del-pellegrino": "lambrusco-del-pellegrino",  # VIVC #6691 LAMBRUSCO DI FIORANO
+    "groppello-di-revo": "groppello-di-revo",  # VIVC #25971
+    "groppello-anaune": "groppello-di-revo",  # VIVC #25971 (Groppello anaune)
+    "groppello-di-mocasina": "groppello-di-mocasina",  # VIVC #5076
+    # The Emilia-Romagna and Marche register tables, whose wrapped rows the
+    # annex reader now rebuilds
+    "ervi": "ervi",  # VIVC #17654 — Barbera × Croatina (Piacenza)
+    "festasio": "festasio",  # VIVC #26676
+    "vernaccia-nera-grossa": "vernaccia-nera-grossa",  # VIVC #22483 PRUGNOLINO MEDIO
+    # Fuzzy bindings to another cultivar (review of the corpus-wide list)
+    "ner-d-ala": "ner-d-ala",  # VIVC #22749 — Monferrato; had fuzzy-matched Nero d'Avola
+    "forcada": "forcada",  # VIVC #27992 — Penedès; had fuzzy-matched Forcallat tinta
+    "silcher": "silcher",  # VIVC #11796 — had fuzzy-matched Blauer Wildbacher (Schilcher)
+    "alegrillo-negro": "alegrillo-negro",  # VIVC #22508 — Rheinhessen BLE list; had fuzzy-matched Tempranillo
+    "moschatela": "moschatela",  # VIVC #8060 MOSCHARDINA (Moschatella) — Ionian PGIs; had fuzzy-matched Malvasia moscata
+    "schwarzblauer-riesling": "schwarzblauer-riesling",  # no VIVC entry — Nahegauer Landwein; had fuzzy-matched Pinot noir
+    "mladen": "mladen",  # no VIVC entry — Czech PGI fiche; had fuzzy-matched Mladenka
+    # Penedès: the pliego prints "Sumoi blanco" and "Sumoitinto" for Sumoll
+    "sumoitinto": "sumoll-tinto",
+    "sumoi-tinto": "sumoll-tinto",
+    "sumoi-blanco": "sumoll-blanco",
+    # Names VIVC also lists under another passport, which the new passports
+    # had handed to it: Lazio's Bellone (#1114; MOSTOSA #8075 lists BELLONE),
+    # the Calabrian Castiglione (#26023; MAGLIOCCO DOLCE lists it), Campania's
+    # white Agostina (VIVC has AGOSTENGA #107 blanc and AGOSTINA #20616 noir
+    # under that name — kept without a bracket), and the register's
+    # "Groppello di S. Stefano", which #5076 Groppello di Mocasina lists.
+    "bellone": "bellone",  # VIVC #1114
+    "castiglione": "castiglione",  # VIVC #26023 — Castiglione di Bova
+    "agostina": "agostina",  # VIVC folds the name under two passports
+    "groppello-di-s-stefano": "groppello-di-santo-stefano",
+    # Ribera del Guadiana writes "Eva o Beba de los Santos": the slug the
+    # corpus already uses for Beba, not a second one for the same passport
+    "beba-de-los-santos": "beba",
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -1929,6 +2200,8 @@ DEFAULT_COLOUR: dict[str, str] = {
     "vernaccia-nera": "noir",
     "rossese": "noir",
     "fortana": "noir",
+    "centesimino": "noir",          # VIVC #22606 CENTESIMINO (Savignôn rosso) — Romagna Centesimino Oriolo
+    "nebbiolo-rose": "noir",        # VIVC #22742 NEBBIOLO ROSE
     "greco-nero": "noir",
     "marzemino": "noir",
     "ciliegiolo": "noir",
@@ -1947,6 +2220,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "avana": "noir",
     "pavana": "noir",
     "franconia": "noir",
+    "blaufrankisch": "noir",           # VIVC #1459 BLAUFRAENKISCH (Lemberger, Kékfrankos, Frankovka, Modra frankinja)
     "piculit-neri": "noir",
     "canina-nera": "noir",
     "fertilia": "noir",
@@ -1978,7 +2252,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "friulano": "blanc",
     "pignoletto": "blanc",
     "gruner-veltliner": "blanc",
-    "fruhroter-veltliner": "gris",   # reddish-grey berries, white wine (= Malvasier); HU Korai piros veltelíni, CZ Veltlínske červené rané
+    "velteliner-rouge-precoce": "gris",   # Frühroter Veltliner: reddish-grey berries, white wine (= Malvasier); HU Korai piros veltelíni, CZ Veltlínské červené rané, SK Veltlínske červené skoré
     "marzemina-bianca": "blanc",
     "minutolo": "blanc",
     "cortese": "blanc",
@@ -2096,6 +2370,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "bianca": "blanc",
     "freisa": "noir",
     "nascetta": "blanc",
+    "albarossa": "noir",
     "vespaiolo": "blanc",
     "ribolla-gialla": "blanc",
     "durella": "blanc",
@@ -2634,6 +2909,174 @@ DEFAULT_COLOUR: dict[str, str] = {
     "vlachiko": "noir",
     "voidomatis": "noir",
     "vossos": "blanc",
+    # 2026-10-22 sweep after the Piemonte (Albarossa) flag: varieties the
+    # regulators list that the lexicon lacked, and names the matcher had bound
+    # to another cultivar by fuzzy score. Every id was resolved on live VIVC
+    # the same day; the colour is the regulator's code where it gives one.
+    "ruche": "noir",  # VIVC #10318
+    "timorasso": "blanc",  # VIVC #12450
+    "nosiola": "blanc",  # VIVC #8606
+    "erbamat": "blanc",  # VIVC #22363
+    "malbo-gentile": "noir",  # VIVC #398
+    "casetta": "noir",  # VIVC #14977
+    "marzemina-grossa": "noir",  # VIVC #26766
+    "pinella": "blanc",  # VIVC #9266
+    "tazzelenghe": "noir",  # VIVC #12291
+    "recantina": "noir",  # VIVC #9965
+    "bussanello": "blanc",  # VIVC #1914
+    "dindarella": "noir",  # VIVC #3579
+    "goldtraminer": "blanc",  # VIVC #10081
+    "gosen": "noir",  # VIVC #10090
+    "grapariol": "blanc",  # VIVC #23022
+    "incrocio-terzi-1": "noir",  # VIVC #12385
+    "maor": "blanc",  # VIVC #7361
+    "sennen": "noir",  # VIVC #10087
+    "turchetta": "noir",  # VIVC #23214
+    "avarengo": "noir",  # VIVC #795
+    "baratuciat": "blanc",  # VIVC #22763
+    "lambrusco-viadanese": "noir",  # VIVC #6702
+    "merlese": "noir",  # VIVC #22990
+    "spigamonti": "noir",  # VIVC #695
+    "trevisana-nera": "noir",  # VIVC #12642
+    "uva-longanesi": "noir",  # VIVC #22605
+    "corbina": "noir",  # VIVC #24567
+    "famoso": "blanc",  # VIVC #9896
+    "bellagna": "blanc",  # VIVC #24891
+    "bosco": "blanc",  # VIVC #1577
+    "cavrara": "noir",  # VIVC #24556
+    "cividin": "blanc",  # VIVC #2690
+    "cianorie": "noir",  # VIVC #2644
+    "flavis": "blanc",  # VIVC #4144
+    "forgiarin": "noir",  # VIVC #4202
+    "incrocio-manzoni-2-15": "noir",  # VIVC #7359
+    "incrocio-manzoni-2-14": "noir",  # VIVC #7358
+    "manzoni-moscato": "noir",  # VIVC #22897
+    "manzoni-rosa": "rose",  # VIVC #7357
+    "pedevenda": "blanc",  # VIVC #24862
+    "prodest": "noir",  # VIVC #9720
+    "sciaglin": "blanc",  # VIVC #17607
+    "ucelut": "blanc",  # VIVC #12753
+    "merera": "noir",  # VIVC #1700
+    "mornasca": "noir",  # VIVC #23026
+    "moradella": "noir",  # VIVC #7980
+    "perla-dei-vivi": "noir",  # VIVC #23031
+    "sgavetta": "noir",  # VIVC #11678
+    "barbera-bianca": "blanc",  # VIVC #975
+    "cornarea": "noir",  # VIVC #2839
+    "lambrusca-di-alessandria": "noir",  # VIVC #6688
+    "plassa": "noir",  # VIVC #9545
+    "slarina": "noir",  # VIVC #2372
+    "uvalino": "noir",  # VIVC #22754
+    "doux-d-henri": "noir",  # VIVC #3677
+    "antinello": "blanc",  # VIVC #25771
+    "impigno": "blanc",  # VIVC #5522
+    "marchione": "blanc",  # VIVC #22903
+    "negroamaro-precoce": "noir",  # VIVC #22314
+    "somarello-rosso": "noir",  # VIVC #11914
+    "caprettone": "blanc",  # VIVC #24554
+    "ruzzese": "blanc",  # VIVC #22772
+    "malvasia-di-casorzo": "noir",  # VIVC #7264
+    "caloria": "noir",  # VIVC #2010
+    "verdiso": "blanc",  # VIVC #12966
+    "alionza": "blanc",  # VIVC #318
+    "maiolina": "noir",  # VIVC #22365
+    "paolina": "blanc",  # VIVC #7937
+    "forsellina": "noir",  # VIVC #4194
+    "nigra": "noir",  # VIVC #8554
+    "trebbianina": "blanc",  # VIVC #23038
+    "albana-rosa": "rose",  # VIVC #26678
+    "durasa": "noir",  # VIVC #3736
+    "prunesta": "noir",  # VIVC #9794
+    "aidani-mavro": "noir",  # VIVC #148
+    "asprouda-santorinis": "blanc",  # VIVC #4989
+    "chidiriotiko": "noir",  # VIVC #23127
+    "chiotiko-krassero": "noir",  # VIVC #2578
+    "mavrothiriko": "noir",  # VIVC #23167
+    "rokaniaris": "blanc",  # VIVC #40263
+    "mouchtaro": "noir",  # VIVC #8078
+    "petroulianos": "blanc",  # VIVC #9205
+    "thrapsa": "noir",  # VIVC #12427
+    "sykiotis": "noir",  # VIVC #12120
+    "zalovitiko": "noir",  # VIVC #13378
+    "volitsa-mavri": "noir",  # VIVC #13157
+    "psilomavro-kalavryton": "noir",  # VIVC #9804
+    "asprouda-serron": "blanc",  # VIVC #23109
+    "agrioglykadi": "blanc",  # VIVC #40095
+    "athiri-mavro": "noir",  # VIVC #745
+    "flaskassyrtiko": "blanc",  # VIVC #23142
+    "glykadi": "blanc",  # VIVC #4832
+    "koumari": "noir",  # VIVC #6450
+    "maloukato": "blanc",  # VIVC #7251
+    "mavrokorakas": "noir",  # VIVC #7529
+    "serifiotiko": "noir",  # VIVC #11513
+    "stavrochiotis": "blanc",  # VIVC #12002
+    "vaftra-aspri": "blanc",  # VIVC #40299
+    "vaftra": "noir",  # VIVC #12849
+    "voidomatis-aspros": "blanc",  # VIVC #23223
+    "bogialamades": "noir",  # VIVC #4984
+    "karnachalades": "noir",  # VIVC #9734
+    "sideritis": "rose",  # VIVC #11780 — the Achaia specifications write "Sideritis Rs"; VIVC records the berry as rouge
+    "razaki": "blanc",  # VIVC #122
+    "xeromacherouda": "blanc",  # VIVC #21689
+    "agianniotiko": "noir",  # VIVC #99
+    "fokiano": "noir",  # VIVC #5210
+    "koiniariko": "noir",  # VIVC #20739
+    "mavroudia": "noir",  # VIVC #23168
+    "patrino": "noir",  # VIVC #8979
+    "omio": "noir",  # VIVC #16122
+    "kypreiko-kokkino": "noir",  # VIVC #6598
+    "amigne": "blanc",  # VIVC #425
+    "golubok": "noir",  # VIVC #4888
+    "sauvignon-soyhieres": "blanc",  # VIVC #22331
+    "sauvignon-nepis": "blanc",  # VIVC #24884
+    "moribel": "noir",  # VIVC #24594
+    "querol": "noir",  # VIVC #24331
+    "moneu": "noir",  # VIVC #25307
+    "blasius": "blanc",  # VIVC #20959
+    "astra": "blanc",  # VIVC #20876
+    "radames": "rose",  # VIVC #23089
+    "mamaia": "noir",  # VIVC #21348
+    "selena": "rose",  # VIVC #21558
+    "veritage": "blanc",  # VIVC #27282
+    "pamina": "blanc",  # VIVC #26396
+    "satin-noir": "noir",  # VIVC #23826
+    "sauvignon-gryn": "blanc",  # VIVC #20449
+    "baron": "noir",  # VIVC #20010
+    "rieslaner": "blanc",  # VIVC #10073
+    "rotberger": "noir",  # VIVC #10230
+    "cabernet-carol": "noir",  # VIVC #20006
+    "fontanara": "blanc",  # VIVC #4188
+    "blauer-silvaner": "noir",  # VIVC #11804
+    "suessschwarz": "noir",  # VIVC #24940
+    "agostenga": "blanc",  # VIVC #107
+    "jubilaeumsrebe": "rose",  # VIVC #5844
+    "cabertin": "noir",  # VIVC #22329
+    "karmin": "noir",  # VIVC #5999
+    "karat": "blanc",  # VIVC #5986
+    "pelso": "blanc",  # VIVC #23187
+    "rubinet": "noir",  # VIVC #20000
+    "cerason": "noir",  # VIVC #22821
+    "majarca-alba": "blanc",  # VIVC #11866 SLANKAMENKA BELA
+    "korona": "blanc",  # VIVC #17784
+    "lambrusco-marani": "noir",  # VIVC #6695
+    "lambrusco-benetti": "noir",  # VIVC #24954
+    "lambrusco-montericco": "noir",  # VIVC #6697
+    "lambrusco-oliva": "noir",  # VIVC #6698
+    "lambrusco-del-pellegrino": "noir",  # VIVC #6691
+    "groppello-di-revo": "noir",  # VIVC #25971
+    "groppello-di-mocasina": "noir",  # VIVC #5076
+    "ervi": "noir",  # VIVC #17654
+    "festasio": "noir",  # VIVC #26676
+    "vernaccia-nera-grossa": "noir",  # VIVC #22483
+    "ner-d-ala": "noir",  # VIVC #22749
+    "forcada": "blanc",  # VIVC #27992
+    "silcher": "blanc",  # VIVC #11796
+    "alegrillo-negro": "noir",  # VIVC #22508
+    "moschatela": "blanc",  # VIVC #8060
+    "schwarzblauer-riesling": "noir",  # the name; no VIVC entry
+    "bellone": "blanc",  # VIVC #1114
+    "castiglione": "noir",  # VIVC #26023
+    "agostina": "blanc",  # Campania register V.B.B.
 }
 
 # Slugs that are pure boilerplate after stop-word filtering and should be

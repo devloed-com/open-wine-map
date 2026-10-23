@@ -36,6 +36,7 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.extract_index import is_partial, write_index  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue,
     match_variety,
@@ -721,23 +722,30 @@ def main() -> int:
             n_subregioes += 1
 
     set_pliego_context(None)
-    INDEX_OUT_PATH.write_text(
-        json.dumps(
-            {
-                "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                "counts": {
-                    "parents": n_parents,
-                    "subregioes": n_subregioes,
-                    "stubs": n_stubs,
-                    "total": n_parents + n_subregioes + n_stubs,
-                },
-                "by_slug": index,
+    by_slug = index
+    if is_partial(args) and INDEX_OUT_PATH.exists():
+        # a partial run merges into the index on disk (extract_index.py)
+        try:
+            prior = json.loads(INDEX_OUT_PATH.read_text(encoding="utf-8")).get("by_slug") or {}
+        except (ValueError, OSError, AttributeError):
+            prior = {}
+        by_slug = {**prior, **index}
+    c_sub = sum(1 for e in by_slug.values() if e.get("is_sub_denomination"))
+    c_stubs = sum(1 for e in by_slug.values() if e.get("stub"))
+    c_parents = len(by_slug) - c_sub - c_stubs
+    write_index(
+        INDEX_OUT_PATH,
+        {
+            "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "counts": {
+                "parents": c_parents,
+                "subregioes": c_sub,
+                "stubs": c_stubs,
+                "total": len(by_slug),
             },
-            ensure_ascii=False,
-            indent=2,
-            sort_keys=True,
-        ),
-        encoding="utf-8",
+            "by_slug": by_slug,
+        },
+        partial=False,
     )
     unknowns_path = ROOT / "raw" / "pt" / "extraction-unknowns.json"
     n_unknowns = flush_unknowns_queue(unknowns_path)

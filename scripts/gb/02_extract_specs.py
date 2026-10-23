@@ -42,6 +42,7 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.extract_index import is_partial, write_index  # noqa: E402
 from _lib.gb.geometry import is_approximate  # noqa: E402
 from _lib.gb.region import derive_region  # noqa: E402
 from _lib.gb.spec import (  # noqa: E402
@@ -281,8 +282,7 @@ def main() -> int:
         }
 
     set_pliego_context(None)
-    INDEX_OUT.write_text(
-        json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    write_index(INDEX_OUT, index, partial=is_partial(args))
     n_unknowns = flush_unknowns_queue(UNKNOWNS_OUT)
     if n_unknowns:
         print(f"[entity] {n_unknowns} unknown variety candidates → "

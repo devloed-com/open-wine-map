@@ -20,12 +20,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from _lib.map_template import (  # noqa: E402
+    _BROWSE_TEMPLATE,
     _LAB_HEAD_TOP,
     _LAB_LEGEND_FOOTER,
     _SIDEBAR,
     _TEMPLATE,
     STARTUP_AOCS_FIELDS,
     _lang_switcher,
+    _made_by_html,
 )
 from _lib.style_taxonomy import (  # noqa: E402
     BUCKETS,
@@ -234,3 +236,31 @@ def test_start_view_fits_the_corpus_and_nothing_is_restored() -> None:
     assert APP_JS.count("'selected_slugs'") == 1
     assert "localStorage.removeItem('selected_slugs')" in APP_JS
     assert "localStorage.getItem('selected_slugs')" not in APP_JS
+
+
+def test_footer_carries_the_makers_credit() -> None:
+    # "Made with ♥ by devloed.com" sits under the About link on every page
+    # (2026-10-20; it had lived only at the foot of the About dialog), the
+    # site a real link and the heart a span that takes the accent colour.
+    foot = _LAB_LEGEND_FOOTER
+    credit_slot = '<p id="sidebar-credit">{sidebar_credit_html}</p>'
+    assert foot.index('id="about-link"') < foot.index(credit_slot) < foot.index("</aside>")
+    from _lib.map_template import build_labels
+
+    html = _made_by_html(build_labels(lambda s: s))
+    assert html == (
+        'Réalisé avec <span class="heart">♥</span> par '
+        '<a href="https://devloed.com" target="_blank" rel="noopener">devloed.com</a>.'
+    )
+    # The browse index, which has no sidebar, carries the same line as its
+    # footer; both page heads name the maker in the author meta.
+    assert '<footer class="browse-footer">{credit_html}</footer>' in _BROWSE_TEMPLATE
+    for template in (_TEMPLATE, _BROWSE_TEMPLATE):
+        assert '<meta name="author" content="devloed.com">' in template
+
+
+def test_phone_bar_button_opens_the_drawer_on_the_search() -> None:
+    # The bar's magnifier (2026-10-21) opens the drawer with the search field
+    # focused — `via: 'search'` is what setDrawer focuses the omni input on.
+    assert "setDrawer(!drawerOpen(), 'search', sidebarToggle)" in APP_JS
+    assert "const target = via === 'search' ? document.getElementById('omni') : sidebarEl;" in APP_JS

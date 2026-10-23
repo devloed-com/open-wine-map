@@ -28,6 +28,11 @@ _GREEK_RE = re.compile(r"[\u0370-\u03ff\u1f00-\u1fff]")
 _PRIVATE_USE_RE = re.compile(r"[\ue000-\uf8ff]")
 _PAGE_HEADER_RE = re.compile(r"^\s*seite\s+\d+\s+von\s+\d+\s*(?:-\s*\d+\s*-)?\s*", re.I)
 _TRAILING_CONJUNCTION_RE = re.compile(r"\s+(?:σε|και|e|ed|und|y|et)$", re.I)
+# A hyphenated name pdftotext broke across a line and the extractor glued
+# with a space ("cabernet- sauvignon" in 28 Hérault IGP records, "Folha -de
+# -Figueira"): the hyphen is the spelling, the space is the line break. A
+# dash spaced on both sides is a separator ("Negro Amaro N - Negroamaro").
+_HYPHEN_GAP_RE = re.compile(r"(?<=\w)-\s+(?=\w)|(?<=\w)\s+-(?=\w)")
 
 
 def _key(name: str) -> str:
@@ -45,6 +50,7 @@ def clean_name(name: str) -> str:
     s = re.sub(r"^[\W_]+", "", s)
     s = re.sub(r"[\s,;:\-–—]+$", "", s)
     s = _TRAILING_CONJUNCTION_RE.sub("", s)
+    s = _HYPHEN_GAP_RE.sub("-", s)
     return re.sub(r"\s+", " ", s).strip()
 
 

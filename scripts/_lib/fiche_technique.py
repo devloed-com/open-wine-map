@@ -45,6 +45,13 @@ _PAGE_NOISE_RE = re.compile(
 # category sub-items are indented further. 6 columns clears every fiche seen
 # (BE sub-items at 7, CZ at 8; top-level at 0-4).
 _TOP_LEVEL_MAX_INDENT = 6
+# Šobes's older CZ template (PDO-CZ-A1089, 2011) indents the single document's
+# first three headers by 11 spaces and the rest sit at the margin, so the
+# 6-space guard never started its chain (2026-10-22). A second pass at this
+# depth is taken only when it extends the shallow chain without changing a
+# header of it: six Greek fiches carry an indented "7. ASSYRTIKO" variety line
+# that the deeper pass would take for section 7.
+_DEEP_MAX_INDENT = 12
 
 
 # Length-preserving accent fold (1:1, so match offsets stay valid on the
@@ -76,6 +83,28 @@ def _is_uppercase_title(title: str) -> bool:
     return upper / len(alpha) >= 0.6
 
 
+def _header_chain(region: str, max_indent: int) -> list[tuple[str, str, int]]:
+    """The monotonic 1→N run of uppercase numbered headers at or above
+    `max_indent`, as (number, title, offset)."""
+    headers: list[tuple[str, str, int]] = []
+    last_top = 0
+    for m in _HEADER_RE.finditer(region):
+        indent, num, title = m.group(1), m.group(2), m.group(3).strip().rstrip(":").strip()
+        if len(indent.expandtabs()) > max_indent:
+            continue  # category sub-item, not a top-level header
+        if not title[:1].isalpha() or not _is_uppercase_title(title):
+            continue  # real section titles are UPPERCASE; per-variety
+            # sub-items ("Muscat Ottonel:", "1. Víno") are Title-/lower-case
+            # and can be shallow-indented (RO), so the indent guard alone
+            # isn't enough — they'd otherwise derail the monotonic chain.
+        n = int(num)
+        if n != last_top + 1:
+            continue
+        last_top = n
+        headers.append((str(n), title, m.start()))
+    return headers
+
+
 def parse_fiche_sections(
     text: str, anchor_terms: tuple[str, ...], end_terms: tuple[str, ...],
 ) -> tuple[dict[str, str], dict[str, str]]:
@@ -91,22 +120,10 @@ def parse_fiche_sections(
     region = _LABEL_NOISE_RE.sub("", region)
     region = _PAGE_NOISE_RE.sub("", region)
 
-    headers: list[tuple[str, str, int]] = []
-    last_top = 0
-    for m in _HEADER_RE.finditer(region):
-        indent, num, title = m.group(1), m.group(2), m.group(3).strip().rstrip(":").strip()
-        if len(indent.expandtabs()) > _TOP_LEVEL_MAX_INDENT:
-            continue  # category sub-item, not a top-level header
-        if not title[:1].isalpha() or not _is_uppercase_title(title):
-            continue  # real section titles are UPPERCASE; per-variety
-            # sub-items ("Muscat Ottonel:", "1. Víno") are Title-/lower-case
-            # and can be shallow-indented (RO), so the indent guard alone
-            # isn't enough — they'd otherwise derail the monotonic chain.
-        n = int(num)
-        if n != last_top + 1:
-            continue
-        last_top = n
-        headers.append((str(n), title, m.start()))
+    headers = _header_chain(region, _TOP_LEVEL_MAX_INDENT)
+    deep = _header_chain(region, _DEEP_MAX_INDENT)
+    if len(deep) > len(headers) and deep[: len(headers)] == headers:
+        headers = deep
     if not headers:
         return {}, {}
 

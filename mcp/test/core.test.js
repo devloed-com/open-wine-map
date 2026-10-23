@@ -107,3 +107,50 @@ test('context store: ETag revalidation, stale copy on failure, one cold load', a
   assert.equal(stale.core.search({ query: 'a' }).total, 1, 'keeps serving the copy it has');
   await assert.rejects(store.get('de'));
 });
+
+test('view in the URL: names, labels and synonyms resolve; the query is canonical', { skip }, () => {
+  const c = core('nl');
+  const v = c.viewFromQuery('?grape=Sankt+Laurent,svatovavrinecke&main=1&style=Rood&region=fr:BOURGOGNE,Piemonte&country=LU&sel=priorat,nope&pgi=1&aocs=montsant');
+  assert.deepEqual(v.grapes, ['sankt-laurent']);
+  assert.equal(v.mainGrapeOnly, true);
+  assert.deepEqual(v.styles, ['red']);
+  assert.deepEqual(v.countries, ['lu']);
+  assert.deepEqual(v.regions, [{ country: 'fr', region: 'BOURGOGNE' }, { country: 'it', region: 'Piemonte' }]);
+  assert.deepEqual(v.appellations, ['priorat']);
+  assert.deepEqual(v.set, ['montsant']);
+  assert.deepEqual(v.gates, { pdo: null, pgi: true, spirits: null });
+  assert.deepEqual(v.unknown, ['sel:nope']);
+  assert.equal(v.shared, true);
+  const q = c.queryFromView(v);
+  assert.equal(q, 'grape=sankt-laurent&main=1&style=red&country=lu&region=fr:BOURGOGNE,it:Piemonte&sel=priorat&aocs=montsant&pgi=1');
+  assert.equal(c.queryFromView(c.viewFromQuery('?' + q)), q);
+  // A grape by its label in another locale or by a synonym is the same key.
+  assert.equal(core('en').grapeKeyFor('Garnacha'), core('en').grapeKeyFor('grenache'));
+  assert.ok(core('en').grapeKeyFor('garnacha'));
+  assert.equal(core('en').styleKeyFor('Sparkling'), core('en').styleKeyFor('sparkling'));
+  assert.deepEqual(core('en').regionKeyFor('Burgundy', 'fr'), [{ country: 'fr', region: 'BOURGOGNE' }]);
+});
+
+test('view in the URL: defaults write nothing; a bare set is not a shared view; embed flags', { skip }, () => {
+  const c = core('en');
+  assert.equal(c.queryFromView(c.viewFromQuery('')), '');
+  assert.equal(c.viewFromQuery('?aocs=priorat').shared, false);
+  assert.equal(c.viewFromQuery('?grape=garnacha').shared, true);
+  assert.equal(c.viewFromQuery('?main=1').mainGrapeOnly, false);
+  const e = c.viewFromQuery('?embed=1&theme=dark&pdo=0');
+  assert.equal(e.embed, true);
+  assert.equal(e.theme, 'dark');
+  assert.deepEqual(e.gates, { pdo: false, pgi: null, spirits: null });
+  assert.equal(c.queryFromView(e), 'pdo=0&embed=1&theme=dark');
+  assert.equal(c.queryFromView({ theme: 'dark', gates: { pdo: true, pgi: false, spirits: false } }), '');
+  assert.deepEqual(c.viewFromQuery('?grape=not-a-grape').unknown, ['grape:not-a-grape']);
+});
+
+test('view in the URL: an area to fit (bbox) is read, validated and written back', { skip }, () => {
+  const c = core('en');
+  assert.deepEqual(c.viewFromQuery('?bbox=15.9,47.6,16.4,48.0').bbox, [15.9, 47.6, 16.4, 48.0]);
+  assert.equal(c.viewFromQuery('?bbox=15.9,47.6,16.4,48.0').shared, false);
+  assert.deepEqual(c.viewFromQuery('?bbox=1,2,3').unknown, ['bbox:1,2,3']);
+  assert.equal(c.viewFromQuery('?bbox=16.4,47.6,15.9,48.0').bbox, null);
+  assert.equal(c.queryFromView({ embed: true, bbox: [15.91234, 47.6, 16.4, 48.0] }), 'embed=1&bbox=15.9123,47.6000,16.4000,48.0000');
+});

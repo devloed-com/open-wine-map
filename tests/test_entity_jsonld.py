@@ -86,6 +86,15 @@ def test_cross_references_resolve_by_id() -> None:
     assert wp["isPartOf"]["@id"] == _node(g, "WebSite")["@id"]
 
 
+def test_website_names_its_publisher() -> None:
+    # The maker's machine-readable credit (2026-10-20): every WebSite node
+    # carries devloed.com as `publisher`, inline (no fifth graph node).
+    site = _node(_graph(_RICH, slug="priorat", locale="es"), "WebSite")
+    assert site["publisher"] == {
+        "@type": "Organization", "name": "devloed.com", "url": "https://devloed.com"
+    }
+
+
 def test_sameas_rich_record_ordered_and_deduped() -> None:
     place = _node(_graph(_RICH, slug="priorat", locale="es"), "AdministrativeArea")
     assert place["sameAs"] == [

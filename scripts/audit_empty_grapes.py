@@ -59,14 +59,17 @@ def load_aocs() -> dict[str, dict]:
     if not m:
         sys.exit(f"error: could not parse {files[-1].name}")
     aocs = json.loads(m.group(1))["aocs"]
-    # parent_slug / is_stub are panel-payload fields, not startup fields
+    # is_stub is a panel-payload field; parent_slug is a startup field since
+    # 2026-10-18 (the sidebar nests sub-denominations) and no longer in the
+    # panel payload, so the startup value wins — overwriting it with the
+    # payload's empty one had flagged Bielersee, Thunersee and Zürichsee
     for slug, rec in aocs.items():
         if rec.get("grapes_principal") or rec.get("grapes_accessory") or rec.get("grapes_all"):
             continue
         p = PANEL_DIR / f"{slug}.json"
         if p.exists():
             panel = json.loads(p.read_text(encoding="utf-8"))
-            rec["parent_slug"] = panel.get("parent_slug") or ""
+            rec["parent_slug"] = rec.get("parent_slug") or panel.get("parent_slug") or ""
             rec["is_stub"] = bool(panel.get("is_stub"))
     return aocs
 

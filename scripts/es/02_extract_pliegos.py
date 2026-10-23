@@ -49,6 +49,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.es.national_pliego import _split_concatenated  # noqa: E402
 from _lib.es.subzona import extract_subzonas  # noqa: E402
+from _lib.extract_index import is_partial, write_index  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue,
     match_variety,
@@ -1423,10 +1424,7 @@ def main() -> int:
                 subzonas_emitted += 1
 
     set_pliego_context(None)
-    INDEX_OUT.write_text(
-        json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True),
-        encoding="utf-8",
-    )
+    write_index(INDEX_OUT, index, partial=is_partial(args))
     unknowns_path = ROOT / "raw" / "es" / "extraction-unknowns.json"
     n_unknowns = flush_unknowns_queue(unknowns_path)
     if n_unknowns:

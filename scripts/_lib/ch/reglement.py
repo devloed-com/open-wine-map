@@ -368,7 +368,7 @@ def extract_varieties(text: str, lang: str, match_fn, commune_index=None) -> lis
     # pill to "Pinot"; the fuller name is the better label.
     for cand in sorted(candidates, key=lambda c: (-len(c), c)):
         # Place-name guard: a Swiss commune is not a grape.
-        if commune_index is not None and commune_index.lookup(cand):
+        if commune_index is not None and commune_index.is_commune_name(cand):
             continue
         # Prose-word collisions that are exact grape aliases out of context.
         if _surface_norm(cand) in _CH_STOP_SURFACES:

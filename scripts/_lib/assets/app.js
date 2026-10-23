@@ -190,6 +190,24 @@
     grapeName, regionLabel, countryLabel,
   } = QC;
 
+  // The view the URL asks for — the query core's reading of the query string
+  // (grape / main / style / class / type / country / region / sel / aocs /
+  // pdo / pgi / spirits / embed / theme; viewFromQuery in query_core.mjs) —
+  // read once, before anything rewrites the URL. The address bar is the
+  // share link: applyFilter and setAocPath write the current view back
+  // (currentUrl), so copying it reproduces what is on screen.
+  const VIEW_QUERY = QC.viewFromQuery(window.location.search);
+  // ?embed=1: the map alone inside another page (the share dialog's iframe).
+  // No sidebar, bar or panel (CSS on html.embed, set pre-paint), no ⚙ and no
+  // share control; a brand badge links to the same view on the site and a
+  // click on the map opens a popup whose rows open the appellation there.
+  const EMBED = VIEW_QUERY.embed;
+  // The link decides the camera when it carries one — a #zoom/lat/lon hash,
+  // or an area to fit (bbox=, what an embed URL carries so an iframe of any
+  // size shows the area that was shared); only then is nothing framed on
+  // load for it.
+  const CAMERA_GIVEN = !!INITIAL_CAMERA_HASH || !!VIEW_QUERY.bbox;
+
   // Plausible custom-event helper. The page's inline snippet always defines
   // `window.plausible` (a queue stub until the tracker script arrives), so
   // when the tracker never loads — ad-blocker, offline preview, a host with
@@ -342,6 +360,7 @@
     });
   }
   function effectiveTheme() {
+    if (EMBED) return VIEW_QUERY.theme === 'dark' ? 'dark' : 'light';
     var t = null;
     try { t = localStorage.getItem('theme'); } catch (e) {}
     if (t === 'light' || t === 'dark') return t;
@@ -431,6 +450,7 @@
     if (window.matchMedia) {
       const mq = window.matchMedia('(prefers-color-scheme: dark)');
       const onChange = function () {
+        if (EMBED) return;
         let cur = null;
         try { cur = localStorage.getItem('theme'); } catch (e) {}
         if (cur === 'light' || cur === 'dark') return;
@@ -468,9 +488,11 @@
   }
 
   // The phone drawer (the sidebar off-canvas, ≤768px): one owner of its open
-  // state, the scrim behind it and the ☰ button's aria-expanded. Opening it
-  // puts focus in the drawer itself (no keyboard pop); closing returns focus
-  // to the button that opened it (WCAG 2.4.3).
+  // state, the scrim behind it and the bar button's aria-expanded. The bar's
+  // magnifier opens it with the search field focused (the drawer is
+  // search-first; 2026-10-21); any other opener puts focus in the drawer
+  // itself (no keyboard pop); closing returns focus to the button that
+  // opened it (WCAG 2.4.3).
   const sidebarEl = document.getElementById('sidebar');
   const sidebarToggle = document.getElementById('sidebar-toggle');
   const scrim = document.getElementById('scrim');
@@ -492,7 +514,7 @@
       drawerOpener = null;
     }
   }
-  if (sidebarToggle) sidebarToggle.addEventListener('click', () => setDrawer(!drawerOpen(), 'menu', sidebarToggle));
+  if (sidebarToggle) sidebarToggle.addEventListener('click', () => setDrawer(!drawerOpen(), 'search', sidebarToggle));
   if (scrim) scrim.addEventListener('click', () => setDrawer(false));
 
   // The desktop sidebar folds to a rail (feedback 2026-10-18): the state is
@@ -518,6 +540,18 @@
   if (railSearch) railSearch.addEventListener('click', () => setSidebarCollapsed(false, 'rail-search', true));
 
   // About dialog. Native <dialog>; backdrop click closes.
+  // The two native dialogs (About, Share): the × and a click on the backdrop
+  // close them; Esc is the browser's.
+  function wireDialog(dialog) {
+    if (!dialog) return;
+    dialog.querySelector('.close').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', e => {
+      const r = dialog.getBoundingClientRect();
+      const inside = e.clientX >= r.left && e.clientX <= r.right
+                  && e.clientY >= r.top  && e.clientY <= r.bottom;
+      if (!inside) dialog.close();
+    });
+  }
   const aboutDialog = document.getElementById('about-dialog');
   const aboutLink = document.getElementById('about-link');
   if (aboutDialog && aboutLink) {
@@ -526,14 +560,10 @@
       if (typeof aboutDialog.showModal === 'function') aboutDialog.showModal();
       else aboutDialog.setAttribute('open', '');
     });
-    aboutDialog.querySelector('.close').addEventListener('click', () => aboutDialog.close());
-    aboutDialog.addEventListener('click', e => {
-      const r = aboutDialog.getBoundingClientRect();
-      const inside = e.clientX >= r.left && e.clientX <= r.right
-                  && e.clientY >= r.top  && e.clientY <= r.bottom;
-      if (!inside) aboutDialog.close();
-    });
+    wireDialog(aboutDialog);
   }
+  const shareDialog = document.getElementById('share-dialog');
+  wireDialog(shareDialog);
 
   // Defeat naive scrapers: the address never appears as a contiguous
   // string in rendered HTML. We arm the anchor's href on first
@@ -591,7 +621,9 @@
   // locale, EN included (/en/<slug>) — so one CDN rewrite covers all four. EN's
   // *home* stays at / (HOME_BASE); only its deep-links live under /en/. The slug
   // rides the path; the camera stays in MapLibre's hash, so the two never
-  // collide. replaceState keeps it out of the back-button history.
+  // collide. A card open or close is a history entry (pushState) so the
+  // browser's Back returns to the previous card — see "browser history" below;
+  // a landing or a same-card rewrite replaces the entry it is on.
   // Static-host caveat: in-session navigation is pure client-side (no reload),
   // but a fresh load / shared link of /<lang>/<slug> needs the server to serve
   // the locale index for that path — scripts/serve.py locally, a CDN rewrite in
@@ -607,11 +639,10 @@
     try { p = decodeURIComponent(p); } catch (e) {}
     return p || null;
   }
-  function setAocPath(slug) {
-    try {
-      const path = slug ? SLUG_BASE + encodeURIComponent(slug) : HOME_BASE;
-      history.replaceState(history.state, '', path + window.location.hash);
-    } catch (e) {}
+  function setAocPath(slug, landing) {
+    const path = slug ? SLUG_BASE + encodeURIComponent(slug) : HOME_BASE;
+    const push = !landing && (slug || null) !== (slugFromPath() || null);
+    writeHistory(push, currentUrl(path));
   }
 
   // What the page URL asks to open on load, read once before anything
@@ -625,12 +656,7 @@
       try { const q = new URLSearchParams(window.location.search).get('aoc'); if (q && AOCS[q]) slug = q; } catch (e) {}
     }
     if (slug) return { slugs: [slug], set: false };
-    let setSlugs = [];
-    try {
-      const q = new URLSearchParams(window.location.search).get('aocs');
-      if (q) setSlugs = [...new Set(q.split(','))].filter(s => AOCS[s]).slice(0, 200);
-    } catch (e) {}
-    return { slugs: setSlugs, set: true };
+    return { slugs: VIEW_QUERY.set.slice(), set: true };
   }
   const LANDING = landingRequest();
 
@@ -645,6 +671,22 @@
   let showPdo = true;
   try { showPdo = localStorage.getItem('show_pdo') !== '0'; } catch (e) {}
   const isPdoRec = rec => rec.is_wine !== false && (rec.kind || 'AOC') !== 'IGP';
+  // A shared view is the same for everyone: when the URL carries one
+  // (VIEW_QUERY.shared — a filter, a selection, a gate or the embed flag;
+  // a bare ?aocs= set is not one) the gates come from the URL, absent
+  // meaning the default, never from this browser's saved preference. A slug
+  // landing below still turns on what its record needs.
+  if (VIEW_QUERY.shared) {
+    showPdo = VIEW_QUERY.gates.pdo !== false;
+    showIgp = VIEW_QUERY.gates.pgi === true;
+    showSpirits = VIEW_QUERY.gates.spirits === true;
+  }
+  // The gates are remembered per browser — except inside an embed, whose
+  // viewer never chose them.
+  function saveGate(key, on) {
+    if (EMBED) return;
+    try { localStorage.setItem(key, on ? '1' : '0'); } catch (e) {}
+  }
 
   // A visitor who lands on an appellation's page — a search result, a shared
   // link, an MCP map link — asked for it: turn on every toggle that would keep
@@ -702,6 +744,28 @@
   };
   map.addControl(legendControl, 'bottom-left');
 
+  // The share control (top-right, above the ⚙): opens the share dialog —
+  // the address bar's link, the OS share sheet, the embed code. On a phone
+  // the button moves into the bar beside the ⚙ (homeSettings).
+  const shareControl = {
+    onAdd() {
+      this._el = document.createElement('div');
+      this._el.className = 'maplibregl-ctrl maplibregl-ctrl-group owm-share';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'share-toggle';
+      btn.className = 'owm-share-btn';
+      btn.setAttribute('aria-label', LABELS.share_h);
+      btn.title = LABELS.share_h;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/></svg>';
+      btn.addEventListener('click', () => openShare('control'));
+      this._el.appendChild(btn);
+      this._btn = btn;
+      return this._el;
+    },
+    onRemove() { if (this._el) this._el.remove(); },
+  };
+
   // The ⚙ control (top-right): language and theme in one popover, lifted
   // out of the sidebar (feedback 2026-10-18: "move to config"; the three-
   // state theme switch now carries its words). The block is server-rendered
@@ -746,21 +810,25 @@
       }
     },
   };
-  map.addControl(settingsControl, 'top-right');
+  if (!EMBED) map.addControl(shareControl, 'top-right');
+  if (!EMBED) map.addControl(settingsControl, 'top-right');
   // On a phone the ⚙ and its menu live in the bar beside the ☰ (feedback
   // 2026-10-18: a control floating under the bar looked misplaced); on
   // desktop in the map control. Re-homed when the viewport crosses 768 px.
   function homeSettings() {
     const menu = settingsControl._menu, btn = settingsControl._btn, bar = document.getElementById('mobile-bar');
     if (!menu || !btn) return;
+    const shareBtn = shareControl._btn;
     if (isMobile() && bar) {
       bar.insertBefore(btn, sidebarToggle || null);
+      if (shareBtn) bar.insertBefore(shareBtn, btn);
       bar.appendChild(menu);
       menu.classList.add('in-bar');
     } else {
       settingsControl._el.appendChild(btn);
       settingsControl._el.appendChild(menu);
       menu.classList.remove('in-bar');
+      if (shareBtn && shareControl._el) shareControl._el.appendChild(shareBtn);
     }
   }
   homeSettings();
@@ -810,6 +878,10 @@
     renderActiveFilters();
     legendControl.refresh();
     if (opts && opts.fit) fitToFiltered();
+    // A filter change rides on the history entry it was made in, so Back
+    // undoes the last navigation and keeps the ticks made before it — and
+    // the address bar shows the view (currentUrl), so it can be copied.
+    writeHistory(false, currentUrl());
   }
 
   document.getElementById('active-filters-chips').addEventListener('click', e => {
@@ -924,7 +996,7 @@
   }
   map.on('zoomend', refreshLodLines);
 
-  function fitToFiltered() {
+  function fitToFiltered(duration) {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     let any = false;
     for (const slug in AOCS) {
@@ -940,7 +1012,7 @@
     }
     if (!any) return;
     if (minX >= maxX || minY >= maxY) return;
-    map.fitBounds([[minX, minY], [maxX, maxY]], { padding: fitPadding(40), maxZoom: 10, duration: 500 });
+    map.fitBounds([[minX, minY], [maxX, maxY]], { padding: fitPadding(40), maxZoom: 10, duration: duration == null ? 500 : duration });
   }
 
   function fmt(tpl, vars) {
@@ -1016,7 +1088,7 @@
           showIgp = true;
           const igpEl = document.getElementById('show-igp');
           if (igpEl) igpEl.checked = true;
-          try { localStorage.setItem('show_igp', '1'); } catch (err) {}
+          saveGate('show_igp', true);
           track('Kind Toggled', { kind: 'igp', enabled: 'true', locale: LANG, via: 'reveal-hint' });
           applyFilter({ fit: true });
         });
@@ -1495,7 +1567,7 @@
   pdoEl.checked = showPdo;
   pdoEl.addEventListener('change', e => {
     showPdo = e.target.checked;
-    try { localStorage.setItem('show_pdo', showPdo ? '1' : '0'); } catch (err) {}
+    saveGate('show_pdo', showPdo);
     track('Kind Toggled', { kind: 'pdo', enabled: showPdo ? 'true' : 'false', locale: LANG });
     applyFilter();
   });
@@ -1504,7 +1576,7 @@
   igpEl.checked = showIgp;
   igpEl.addEventListener('change', e => {
     showIgp = e.target.checked;
-    try { localStorage.setItem('show_igp', showIgp ? '1' : '0'); } catch (err) {}
+    saveGate('show_igp', showIgp);
     track('Kind Toggled', { kind: 'igp', enabled: showIgp ? 'true' : 'false', locale: LANG });
     // A scope toggle widens or narrows what is drawn where the reader already
     // looks; it never moves the camera.
@@ -1515,7 +1587,7 @@
   spiritsEl.checked = showSpirits;
   spiritsEl.addEventListener('change', e => {
     showSpirits = e.target.checked;
-    try { localStorage.setItem('show_spirits', showSpirits ? '1' : '0'); } catch (err) {}
+    saveGate('show_spirits', showSpirits);
     track('Kind Toggled', { kind: 'spirits', enabled: showSpirits ? 'true' : 'false', locale: LANG });
     // Spirit AOCs join/leave the appellation tree; rebuild + reapply.
     buildAppellationFacet();
@@ -1635,37 +1707,19 @@
     // search box gets a "main grape only" checkbox right after it.
     if (filters.grapesAll.size) chips.push({ kind: 'mainGrapeToggle', key: '1', label: LABELS.main_grape_only_label });
     // Collapse a fully-selected subtree into one chip — a whole country first,
-    // else each of its whole regions. The flag prefix disambiguates region
-    // names shared across a border, which the tree does by nesting.
-    const collapsed = new Set();
-    for (const [cc, regions] of COUNTRY_TREE) {
+    // else each of its whole regions (collapsedSelection: the partition the
+    // URL writes as country= / region= / sel=). The flag prefix disambiguates
+    // region names shared across a border, which the tree does by nesting.
+    const sel = collapsedSelection();
+    for (const cc of sel.countries) {
       const flag = COUNTRY_FLAG_EMOJI[cc] || '';
-      const inCountry = visibleSlugsInCountry(cc);
-      if (inCountry.length > 1 && inCountry.every(s => filters.appellations.has(s))) {
-        chips.push({
-          kind: 'country', key: cc, country: cc,
-          label: `${flag} ${countryLabel(cc)}`.trim(),
-        });
-        for (const s of inCountry) collapsed.add(s);
-        continue;
-      }
-      for (const region of regions.keys()) {
-        const slugs = visibleSlugsInRegion(cc, region);
-        if (slugs.length < 2) continue;
-        if (slugs.every(s => filters.appellations.has(s))) {
-          chips.push({
-            kind: 'region', key: region, country: cc,
-            label: `${flag} ${regionLabel(region)}`.trim(),
-          });
-          for (const s of slugs) collapsed.add(s);
-        }
-      }
+      chips.push({ kind: 'country', key: cc, country: cc, label: `${flag} ${countryLabel(cc)}`.trim() });
     }
-    for (const slug of filters.appellations) {
-      if (collapsed.has(slug)) continue;
-      const rec = AOCS[slug];
-      if (rec) chips.push({ kind: 'appellation', key: slug, label: rec.name });
+    for (const r of sel.regions) {
+      const flag = COUNTRY_FLAG_EMOJI[r.country] || '';
+      chips.push({ kind: 'region', key: r.region, country: r.country, label: `${flag} ${regionLabel(r.region)}`.trim() });
     }
+    for (const slug of sel.slugs) chips.push({ kind: 'appellation', key: slug, label: AOCS[slug].name });
     el.innerHTML = chips.map(c => {
       if (c.kind === 'mainGrapeToggle') {
         return `<label class="filter-chip toggle-chip" data-kind="mainGrapeToggle"><input type="checkbox" id="main-grape-only"${filters.mainGrapeOnly ? ' checked' : ''}> <span>${escapeHtml(c.label)}</span></label>`;
@@ -1675,6 +1729,31 @@
       const removeAria = fmt(LABELS.remove_filter_aria, { label: c.label });
       return `<span class="${cls}" data-kind="${escapeAttr(c.kind)}" data-key="${escapeAttr(c.key)}" data-country="${escapeAttr(c.country || '')}"><span>${escapeHtml(c.label)}</span><button type="button" aria-label="${escapeAttr(removeAria)}">×</button></span>`;
     }).join('');
+  }
+
+  // The appellation selection, collapsed: a whole country (every visible
+  // slug of it ticked), else each whole region, then the single slugs left
+  // over. The chip tray and the URL read the same partition.
+  function collapsedSelection() {
+    const countries = [], regions = [], collapsed = new Set();
+    for (const [cc, regs] of COUNTRY_TREE) {
+      const inCountry = visibleSlugsInCountry(cc);
+      if (inCountry.length > 1 && inCountry.every(s => filters.appellations.has(s))) {
+        countries.push(cc);
+        for (const s of inCountry) collapsed.add(s);
+        continue;
+      }
+      for (const region of regs.keys()) {
+        const slugs = visibleSlugsInRegion(cc, region);
+        if (slugs.length < 2) continue;
+        if (slugs.every(s => filters.appellations.has(s))) {
+          regions.push({ country: cc, region: region });
+          for (const s of slugs) collapsed.add(s);
+        }
+      }
+    }
+    const slugs = [...filters.appellations].filter(s => !collapsed.has(s) && AOCS[s]);
+    return { countries: countries, regions: regions, slugs: slugs };
   }
 
   function refreshFacetBadges() {
@@ -1973,7 +2052,7 @@
       showIgp = true;
       const igpEl = document.getElementById('show-igp');
       if (igpEl) igpEl.checked = true;
-      try { localStorage.setItem('show_igp', '1'); } catch (err) {}
+      saveGate('show_igp', true);
       track('Kind Toggled', { kind: 'igp', enabled: 'true', locale: LANG, via: via });
     }
     if (gates.includes('spirit')) {
@@ -1982,7 +2061,7 @@
       showSpirits = true;
       const spiritsEl = document.getElementById('show-spirits');
       if (spiritsEl) spiritsEl.checked = true;
-      try { localStorage.setItem('show_spirits', '1'); } catch (err) {}
+      saveGate('show_spirits', true);
       track('Kind Toggled', { kind: 'spirits', enabled: 'true', locale: LANG, via: via });
       buildAppellationFacet();
     }
@@ -1990,7 +2069,7 @@
       showPdo = true;
       const pdoEl = document.getElementById('show-pdo');
       if (pdoEl) pdoEl.checked = true;
-      try { localStorage.setItem('show_pdo', '1'); } catch (err) {}
+      saveGate('show_pdo', true);
       track('Kind Toggled', { kind: 'pdo', enabled: 'true', locale: LANG, via: via });
     }
     if (gates.length) applyFilter();
@@ -2209,6 +2288,7 @@
   // the top, on a tablet the open panel overlays the right edge — the fit
   // keeps the shape clear of them.
   function fitPadding(base) {
+    if (EMBED) return base;
     const w = window.innerWidth, h = window.innerHeight;
     if (w <= 768) return { top: base + 44, left: 24, right: 24, bottom: Math.round(h * 0.45) + 24 };
     if (w <= 1024 && panel.classList.contains('open')) return { top: base, left: base, bottom: base, right: Math.min(420, Math.round(w * 0.55)) + 24 };
@@ -2243,6 +2323,9 @@
     if (sources.national_spec_url) {
       const org = sources.national_spec_source_org ? ' — ' + escapeHtml(sources.national_spec_source_org) : '';
       links.push(`<li><a href="${escapeAttr(sources.national_spec_url)}" target="_blank" rel="noopener">${LABELS.src_national_spec}</a>${org}</li>`);
+    }
+    if (sources.register_fiche_url) {
+      links.push(`<li><a href="${escapeAttr(sources.register_fiche_url)}" target="_blank" rel="noopener">${LABELS.src_register_fiche}</a></li>`);
     }
     if (sources.chzo_spec_url) {
       const reg = sources.chzo_spec_region ? ' — ' + escapeHtml(sources.chzo_spec_region) : '';
@@ -3259,12 +3342,13 @@
     panel.classList.add('open');
     document.title = docTitleFor(ordered[0]);
     setSelection(ordered.slice(0, 1));
+    currentFocus = ordered[0];
     // Fresh opens only (doTrack !== false): move keyboard focus into the panel
     // (WCAG 2.4.3) and reflect the appellation in the URL so it is shareable.
-    // The localStorage restore passes doTrack === false so it neither steals
-    // focus nor rewrites the URL on every reload / language switch.
+    // A ?aocs= set landing and a Back / Forward restore pass doTrack === false:
+    // the URL is already the one asked for, and neither steals focus.
     if (doTrack !== false) {
-      setAocPath(ordered[0]);
+      setAocPath(ordered[0], via === 'landing');
       if (typeof panel.focus === 'function') panel.focus({ preventScroll: true });
       // The focus card is the first one: a cycle or a card pick must show it,
       // not leave the panel scrolled to wherever the reader was.
@@ -3334,6 +3418,128 @@
   // that card in front — and a map re-click on the spot cycles on from it.
   let currentStack = [];
   let currentStackIsSet = false;
+  // The card in front (ordered[0] of the last render), null while closed.
+  let currentFocus = null;
+
+  // ----- browser history -----
+  // One entry per navigation: a card opened (the path changes), closed, a
+  // stack cycled, a card's "All appellations in …" link followed. Each entry
+  // carries the view it showed — the filters and the open stack — and Back /
+  // Forward restore it, the camera included: the entry's URL keeps the hash
+  // MapLibre last wrote on it, and the restore jumps there (MapLibre's own
+  // hashchange listener is not enough — Chrome fires hashchange on a
+  // traversal only when the path is the same, and a card open changes it).
+  // A filter change made in between (a tree tick) is written onto the entry
+  // it was made in (applyFilter), so Back undoes the last navigation and
+  // keeps the ticks. Nothing is written while an entry is being restored.
+  let historyRestoring = false;
+  function jumpToHash() {
+    const parts = (window.location.hash || '').slice(1).split('/').map(Number);
+    if (parts.length < 3 || parts.slice(0, 3).some(v => isNaN(v))) return;
+    try {
+      map.jumpTo({ center: [parts[2], parts[1]], zoom: parts[0], bearing: parts[3] || 0, pitch: parts[4] || 0 });
+    } catch (e) {}
+  }
+  function filterSnapshot() {
+    return {
+      styles: [...filters.styles],
+      classifications: [...filters.classifications],
+      appellationType: [...filters.appellationType],
+      grapesAll: [...filters.grapesAll],
+      mainGrapeOnly: filters.mainGrapeOnly,
+      appellations: [...filters.appellations],
+    };
+  }
+  function historyState() {
+    return { owm: { filters: filterSnapshot(), stack: currentStack.slice(), focus: currentFocus, set: currentStackIsSet } };
+  }
+  // The address bar is the share link: the current view as the canonical
+  // query (queryFromView — every default omitted, so a plain view has none)
+  // behind the page path, with the camera hash MapLibre keeps up to date.
+  function currentView() {
+    const sel = collapsedSelection();
+    return {
+      grapes: [...filters.grapesAll], mainGrapeOnly: filters.mainGrapeOnly,
+      styles: [...filters.styles], classifications: [...filters.classifications], types: [...filters.appellationType],
+      countries: sel.countries, regions: sel.regions, appellations: sel.slugs,
+      set: currentStackIsSet ? currentStack.slice() : [],
+      gates: { pdo: showPdo, pgi: showIgp, spirits: showSpirits },
+      embed: EMBED, theme: EMBED ? VIEW_QUERY.theme : null,
+    };
+  }
+  function currentUrl(path, view, withHash) {
+    const q = QC.queryFromView(view || currentView());
+    return (path || window.location.pathname) + (q ? '?' + q : '') + (withHash === false ? '' : window.location.hash);
+  }
+  // The same view on the full site: an embed's brand badge and the link
+  // under an embedded map.
+  function siteUrl() {
+    const v = currentView();
+    v.embed = false;
+    v.theme = null;
+    return window.location.origin + currentUrl(null, v);
+  }
+  function writeHistory(push, url) {
+    if (historyRestoring) return;
+    try { history[push ? 'pushState' : 'replaceState'](historyState(), '', url); } catch (e) {}
+  }
+  function syncAppellationCheckboxes() {
+    const appEl = document.getElementById('facet-appellations');
+    if (appEl) appEl.querySelectorAll('input[type=checkbox]').forEach(inp => {
+      if (inp.dataset.key) inp.checked = filters.appellations.has(inp.dataset.key);
+    });
+  }
+  // The facet Sets are mutated in place: the tree builders hold them by
+  // reference (buildTreeFacet's `store`).
+  function restoreFilters(snap) {
+    const fill = (set, arr) => { set.clear(); for (const v of (arr || [])) set.add(v); };
+    fill(filters.styles, snap.styles);
+    fill(filters.classifications, snap.classifications);
+    fill(filters.appellationType, snap.appellationType);
+    fill(filters.grapesAll, snap.grapesAll);
+    fill(filters.appellations, snap.appellations);
+    filters.mainGrapeOnly = !!snap.mainGrapeOnly && filters.grapesAll.size > 0;
+    refreshSidebarCheckedState();
+    syncAppellationCheckboxes();
+    refreshTreeTriStates();
+    applyFilter();
+  }
+  window.addEventListener('popstate', e => {
+    const st = e.state && e.state.owm;
+    if (!st) return;
+    historyRestoring = true;
+    try {
+      jumpToHash();
+      restoreFilters(st.filters || {});
+      const slug = slugFromPath();
+      let stack = (st.stack || []).filter(s => AOCS[s]);
+      const isSet = !!st.set;
+      if (slug && AOCS[slug]) {
+        if (!stack.includes(slug)) stack = [slug];
+        const idx = stack.indexOf(slug);
+        const same = panel.classList.contains('open') && currentFocus === slug
+          && currentStack.join('|') === stack.join('|');
+        lastStackKey = stack.slice().sort().join('|');
+        stackFocusIndex = idx;
+        lastPanelTrigger = null;
+        if (!same) {
+          renderPanelStack(stack, idx, false, isSet ? 'set' : 'history');
+          panel.scrollTop = 0;
+        }
+        if (isSet) setSelection(stack);
+      } else if (isSet && stack.length) {
+        lastStackKey = stack.slice().sort().join('|');
+        stackFocusIndex = 0;
+        lastPanelTrigger = null;
+        renderPanelStack(stack, 0, false, 'set');
+        setSelection(stack);
+      } else {
+        closePanel(false);
+      }
+    } finally {
+      historyRestoring = false;
+    }
+  });
 
   // Bring one record of the open stack to the front: first card, gold
   // outline on the map, URL and title follow. The sidebar's counterpart of
@@ -3375,6 +3581,7 @@
     lastStackKey = '';
     stackFocusIndex = 0;
     currentStack = [];
+    currentFocus = null;
     setAocPath(null);
     if (returnFocus && wasOpen) {
       const target = (lastPanelTrigger && document.contains(lastPanelTrigger))
@@ -3382,6 +3589,40 @@
       if (target) { try { target.focus(); } catch (e) {} }
     }
     lastPanelTrigger = null;
+  }
+
+  // Apply the view the URL asked for (VIEW_QUERY) to the filter model: the
+  // ticks, the chips and the count follow (the map draws it on load), and
+  // the map frames the matches when the link carries no camera and opens no
+  // card — what a reader of "?grape=sankt-laurent" expects to see first.
+  // Unknown values were dropped by viewFromQuery; the facet keys the context
+  // does not carry are checked against the map's own tables here.
+  function applyViewQuery() {
+    const v = VIEW_QUERY;
+    for (const k of v.grapes) filters.grapesAll.add(k);
+    filters.mainGrapeOnly = v.mainGrapeOnly && filters.grapesAll.size > 0;
+    for (const k of v.styles) if (FACET_STYLE_LABELS[k] || STYLE_DESCENDANTS[k]) filters.styles.add(k);
+    for (const k of v.classifications) if (CLASS_LABELS[k] || CLASS_DESCENDANTS[k]) filters.classifications.add(k);
+    for (const k of v.types) if (TERM_LABELS[k] || TERM_DESCENDANTS[k]) filters.appellationType.add(k);
+    for (const cc of v.countries) setSlugSelection(visibleSlugsInCountry(cc), true);
+    for (const r of v.regions) setSlugSelection(visibleSlugsInRegion(r.country, r.region), true);
+    for (const s of v.appellations) filters.appellations.add(s);
+    const any = !!(filters.grapesAll.size || filters.styles.size || filters.classifications.size
+      || filters.appellationType.size || filters.appellations.size);
+    if (!any) return;
+    refreshSidebarCheckedState();
+    syncAppellationCheckboxes();
+    refreshTreeTriStates();
+    if (!CAMERA_GIVEN && !LANDING.slugs.length) map.once('load', () => fitToFiltered(0));
+  }
+  applyViewQuery();
+  // An area given by the link (bbox=w,s,e,n) is fitted to this viewport on
+  // load, whatever its size: a 480 px embed shows the area a 1280 px screen
+  // shared, a little more in one direction when the ratios differ. The hash
+  // wins when both are present (the camera as it was).
+  if (VIEW_QUERY.bbox && !INITIAL_CAMERA_HASH) {
+    const b = VIEW_QUERY.bbox;
+    map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 0, duration: 0 }));
   }
 
   // Open what the URL asks for: a shared /<lang>/<slug> path (or a legacy
@@ -3405,7 +3646,7 @@
       // explicit camera hash (respect a co-shared #zoom/lat/lon). Use the
       // page-entry snapshot, not the live hash — maplibre has already written
       // the default camera into location.hash by now.
-      if (!INITIAL_CAMERA_HASH) {
+      if (!CAMERA_GIVEN) {
         const b = fitBbox(AOCS[urlSlug]);
         if (b) map.once('load', () => map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(60), maxZoom: LOD.overview_max_zoom, duration: 0 }));
       }
@@ -3422,7 +3663,7 @@
       renderPanelStack(setSlugs, 0, false, 'set');
       setSelection(setSlugs);
       if (_ssr) _ssr.remove();
-      if (!INITIAL_CAMERA_HASH) {
+      if (!CAMERA_GIVEN) {
         const boxes = setSlugs.map(s => fitBbox(AOCS[s])).filter(Boolean);
         if (boxes.length) {
           const b = [
@@ -3436,6 +3677,10 @@
     }
     if (_ssr) showSsrFallback();
   })();
+  // The entry the page loaded on carries its view too, so Back can return to
+  // it. Its URL is rewritten in the canonical form (a grape given by name
+  // becomes its slug, a ?aocs= set keeps its query).
+  writeHistory(false, currentUrl());
 
   document.querySelector('#panel .close').addEventListener('click', () => closePanel(true));
 
@@ -3443,7 +3688,7 @@
   // The native About <dialog> owns Esc while open, so defer to it.
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
-    if (aboutDialog && aboutDialog.open) return;
+    if ((aboutDialog && aboutDialog.open) || (shareDialog && shareDialog.open)) return;
     if (settingsControl.isOpen()) { e.stopPropagation(); settingsControl.setOpen(false, true); return; }
     if (drawerOpen()) { e.stopPropagation(); setDrawer(false); return; }
     if (panel.classList.contains('open')) { e.stopPropagation(); closePanel(true); }
@@ -3620,22 +3865,24 @@
       if (fb.classList.contains('stub-help')) row.scrollIntoView({ block: 'nearest' });
       return;
     }
-    // "All appellations in <region> / <country>": the same filter as the
-    // tree's region / country checkbox (bulk select, tri-states, fit).
+    // "All appellations in <region> / <country>": the filter the tree's
+    // region / country checkbox applies (tri-states, fit) — but as a
+    // navigation, not a tick: it REPLACES the appellation selection (a tick
+    // adds to it, so after "all of Italy" a second "all of Piemonte" changed
+    // nothing — 2026-10-21) and is a history entry of its own.
     const sc = e.target.closest('a.scope-link');
     if (sc) {
       e.preventDefault();
       const cc = sc.dataset.country || '';
       const region = sc.dataset.region || '';
       const slugs = sc.dataset.scope === 'region' ? visibleSlugsInRegion(cc, region) : visibleSlugsInCountry(cc);
+      filters.appellations.clear();
       setSlugSelection(slugs, true);
-      const appEl = document.getElementById('facet-appellations');
-      if (appEl) appEl.querySelectorAll('input[type=checkbox]').forEach(inp => {
-        if (inp.dataset.key) inp.checked = filters.appellations.has(inp.dataset.key);
-      });
+      syncAppellationCheckboxes();
       refreshTreeTriStates();
       track('Filter Applied', { facet: sc.dataset.scope, value: (sc.dataset.scope === 'region' ? region : cc) || '(none)', locale: LANG, via: 'panel-link' });
       if (isMobile()) setDrawer(false);
+      writeHistory(true, window.location.href);
       applyFilter({ fit: true });
       return;
     }
@@ -3675,26 +3922,38 @@
   // vineyard polygons (grand-cru climats, narrow premier-cru slivers) are
   // often sub-pixel thin at typical zoom, so a point-only test misses them —
   // over both fill layers (inside the crossfade band a record is present in
-  // both sources: the same slug twice, deduped here). DGCs that share another
-  // AOC's polygon (geom_source = parent-appellation / sibling-dgc) are
-  // dropped: the geometry was inherited, they have no distinct shape to point
-  // at, and they would clutter the stack with siblings nobody meant. Sorted
-  // by localityRank, so the first slug is the card a click puts in front.
+  // both sources: the same slug twice, deduped here). A DGC that shares
+  // another AOC's polygon (geom_source = parent-appellation / sibling-dgc) is
+  // dropped while its donor is painted too: the geometry was inherited, it
+  // has no distinct shape to point at, and it would clutter the stack with
+  // siblings nobody meant. When the donor is filtered out — a sottozona whose
+  // own roster carries a grape its parent lacks (Romagna Oriolo under
+  // ?grape=nebbiolo, 2026-10-22) — the inheritor is the only thing painted
+  // there and must stay, else the polygon can be seen but neither hovered nor
+  // opened. The donor is read from the record, else from the tile feature
+  // (both carry parent_slug / geom_fallback_slug). Sorted by localityRank,
+  // so the first slug is the card a click puts in front.
   function hitSlugsAt(point) {
     const r = 4;
     const bbox = [[point.x - r, point.y - r], [point.x + r, point.y + r]];
     const features = map.queryRenderedFeatures(bbox, {
       layers: ['appellations-fill', 'appellations-fill-overview'],
     });
-    const seen = new Set();
-    const slugs = [];
+    const hit = new Map();
     for (const f of features) {
-      const s = f.properties.slug;
-      if (!s || seen.has(s)) continue;
-      seen.add(s);
+      const p = f.properties || {};
+      const s = p.slug;
+      if (!s || hit.has(s)) continue;
       const rec = AOCS[s];
-      const src = rec && rec.geom_source;
-      if (src === 'parent-appellation' || src === 'sibling-dgc') continue;
+      const src = (rec && rec.geom_source) || p.geom_source;
+      let donor = '';
+      if (src === 'parent-appellation') donor = (rec && rec.parent_slug) || p.parent_slug || '';
+      else if (src === 'sibling-dgc') donor = (rec && rec.geom_fallback_slug) || p.geom_fallback_slug || '';
+      hit.set(s, donor);
+    }
+    const slugs = [];
+    for (const [s, donor] of hit) {
+      if (donor && donor !== s && hit.has(donor)) continue;
       slugs.push(s);
     }
     slugs.sort((a, b) => localityRank(a) - localityRank(b));
@@ -3757,6 +4016,7 @@ __OWM_source_block__
     // and an empty hit becomes "click outside → deselect".
     map.on('click', e => {
       const slugs = hitSlugsAt(e.point);
+      if (EMBED) { showEmbedPopup(e.lngLat, slugs); return; }
       if (!slugs.length) { closePanel(false); return; }
       const key = slugs.slice().sort().join('|');
       let via = 'map';
@@ -3779,16 +4039,18 @@ __OWM_source_block__
     updateStatus();
   });
 
-  // Copy-to-clipboard buttons (the About dialog's MCP server address). Falls
+  // Copy-to-clipboard buttons (the About dialog's MCP server address, the
+  // share dialog's link and embed code — `data-copy-kind` tells them apart). Falls
   // back to selecting the address when the clipboard API is unavailable.
   document.addEventListener('click', e => {
     const btn = e.target.closest && e.target.closest('button[data-copy]');
     if (!btn) return;
-    const code = btn.parentElement && btn.parentElement.querySelector('code');
+    const field = btn.parentElement && btn.parentElement.querySelector('code, textarea');
     const selectCode = () => {
-      if (!code) return;
+      if (!field) return;
+      if (field.tagName === 'TEXTAREA') { field.focus(); field.select(); return; }
       const range = document.createRange();
-      range.selectNodeContents(code);
+      range.selectNodeContents(field);
       const sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
@@ -3800,13 +4062,168 @@ __OWM_source_block__
       clearTimeout(btn._copyTimer);
       btn._copyTimer = setTimeout(() => { btn.textContent = btn.dataset.label; btn.classList.remove('copied'); }, 1600);
     };
-    track('MCP Address Copied', { locale: LANG });
+    if (btn.dataset.copyKind) {
+      const props = { kind: btn.dataset.copyKind, locale: LANG };
+      if (btn.dataset.copyKind === 'embed' && shareState) props.theme = shareState.theme;
+      track('Share Copied', props);
+    }
+    else track('MCP Address Copied', { locale: LANG });
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(btn.dataset.copy).then(done, selectCode);
     } else {
       selectCode();
     }
   });
+
+  // ---- Share: the link, the OS share sheet, the embed code -----------------
+  // The address bar is the link (currentUrl): the dialog shows it, copies it,
+  // hands it to the OS share sheet where there is one, and offers the same
+  // view as an <iframe> (the link plus embed=1) followed by a plain link
+  // under the map — the OpenStreetMap pattern: the reader of the embedding
+  // page can always reach the full map.
+  // What the link shows, for the dialog's first line and the embed's link
+  // text: the open card (and the rest of its stack), else the active filters
+  // with their match count, else the map as shown.
+  function shareSubject() {
+    if (panel.classList.contains('open') && currentFocus && AOCS[currentFocus]) {
+      const name = AOCS[currentFocus].name;
+      const rest = currentStack.length - 1;
+      const label = rest > 0 ? name + ' ' + fmt(LABELS.related_more, { n: rest }) : name;
+      return { label: label, text: label, kind: 'card' };
+    }
+    const parts = [];
+    for (const k of filters.grapesAll) parts.push(grapeName(k));
+    if (filters.grapesAll.size && filters.mainGrapeOnly) parts.push(LABELS.main_grape_only_label);
+    for (const k of filters.styles) parts.push(FACET_STYLE_LABELS[k] || k);
+    for (const k of filters.classifications) parts.push(CLASS_LABELS[k] || k);
+    for (const k of filters.appellationType) parts.push(TERM_LABELS[k] || k);
+    const sel = collapsedSelection();
+    for (const cc of sel.countries) parts.push(countryLabel(cc));
+    for (const r of sel.regions) parts.push(regionLabel(r.region));
+    for (const s of sel.slugs) parts.push(AOCS[s].name);
+    if (!parts.length) return { label: '', text: LABELS.share_view_label, kind: 'view' };
+    let n = 0;
+    for (const slug in AOCS) if (matchesClient(AOCS[slug], slug)) n++;
+    const label = parts.join(' · ');
+    return { label: label, text: label + ' — ' + fmt(LABELS.count_total, { n: n }), kind: 'filters' };
+  }
+  // What the open dialog is sharing: the view, the area on screen, the
+  // map's aspect ratio, the title — the embed snippet is re-rendered from it
+  // when the theme choice changes.
+  let shareState = null;
+  // The embed carries the AREA on screen (bbox=, the map's bounds at share
+  // time), not the camera: an iframe of any size then fits the same area on
+  // load. Its aspect ratio is the map's, clamped — a portrait phone share
+  // would otherwise make a towering embed — so the fit is usually exact. The
+  // theme is the dialog's choice; light writes nothing.
+  function embedSnippet() {
+    const st = shareState;
+    if (!st) return '';
+    const v = Object.assign({}, st.view, { embed: true, theme: st.theme === 'dark' ? 'dark' : null, bbox: st.bbox });
+    const embedUrl = window.location.origin + currentUrl(null, v, false);
+    return '<iframe src="' + escapeAttr(embedUrl) + '" width="100%" height="480" style="border:0;border-radius:8px;aspect-ratio:' + st.ratio.toFixed(2) + ';height:auto" loading="lazy" allowfullscreen title="' + escapeAttr(st.title) + '"></iframe>\n'
+      + '<p><a href="' + escapeAttr(st.url) + '">' + escapeHtml(st.title) + '</a></p>';
+  }
+  function renderEmbedSnippet() {
+    const snippet = embedSnippet();
+    shareDialog.querySelector('#share-embed').value = snippet;
+    shareDialog.querySelector('[data-copy-kind="embed"]').dataset.copy = snippet;
+  }
+  function openShare(via) {
+    if (!shareDialog) return;
+    const subject = shareSubject();
+    const url = window.location.origin + currentUrl();
+    const bounds = map.getBounds();
+    const canvas = map.getCanvas();
+    shareState = {
+      view: currentView(),
+      bbox: [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()],
+      ratio: Math.min(2.4, Math.max(1.2, (canvas.clientWidth || 16) / (canvas.clientHeight || 9))),
+      title: subject.label ? fmt(LABELS.share_on_owm, { what: subject.label }) : 'Open Wine Map',
+      url: url,
+      theme: 'light',
+    };
+    const lightRadio = shareDialog.querySelector('input[name="share-theme"][value="light"]');
+    if (lightRadio) lightRadio.checked = true;
+    shareDialog.querySelector('#share-what').textContent = subject.text;
+    shareDialog.querySelector('#share-url').textContent = url;
+    shareDialog.querySelector('[data-copy-kind="link"]').dataset.copy = url;
+    renderEmbedSnippet();
+    const nat = shareDialog.querySelector('#share-native');
+    if (nat) { nat.hidden = !navigator.share; nat.dataset.url = url; nat.dataset.title = shareState.title; }
+    track('Share Opened', { via: via, what: subject.kind, locale: LANG });
+    if (typeof shareDialog.showModal === 'function') shareDialog.showModal();
+    else shareDialog.setAttribute('open', '');
+  }
+  if (shareDialog) shareDialog.querySelectorAll('input[name="share-theme"]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      if (!shareState || !inp.checked) return;
+      shareState.theme = inp.value === 'dark' ? 'dark' : 'light';
+      renderEmbedSnippet();
+    });
+  });
+  const shareNative = shareDialog && shareDialog.querySelector('#share-native');
+  if (shareNative) shareNative.addEventListener('click', () => {
+    if (!navigator.share) return;
+    navigator.share({ title: shareNative.dataset.title, url: shareNative.dataset.url })
+      .then(() => track('Share Native', { locale: LANG }), () => {});
+  });
+
+  // ---- Embed (?embed=1): the map alone, clicks open the site ---------------
+  function embedHost() {
+    try { return document.referrer ? new URL(document.referrer).hostname : '(none)'; } catch (e) { return '(none)'; }
+  }
+  // The brand badge (top-left, where the sidebar would be): the same view on
+  // the full site, in a new tab. The href is refreshed on click so the gates
+  // and the camera travel as they are then.
+  const brandControl = {
+    onAdd() {
+      this._el = document.createElement('div');
+      this._el.className = 'maplibregl-ctrl owm-brand';
+      const a = document.createElement('a');
+      a.href = siteUrl();
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.title = LABELS.embed_open_label;
+      a.innerHTML = '<img src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="16" height="16"><span>Open Wine Map</span><span class="arrow" aria-hidden="true">↗</span>';
+      a.addEventListener('click', () => { a.href = siteUrl(); track('Embed Link Clicked', { target: 'brand', locale: LANG }); });
+      this._el.appendChild(a);
+      return this._el;
+    },
+    onRemove() { if (this._el) this._el.remove(); },
+  };
+  // A click on the map: the stack under the point as rows, each the
+  // appellation's page on the site in a new tab (the hover label still names
+  // what a click would open); a click on bare map closes it.
+  const embedPopup = EMBED ? new maplibregl.Popup({ closeButton: true, closeOnClick: false, className: 'owm-embed-pop', maxWidth: '300px' }) : null;
+  function showEmbedPopup(lngLat, slugs) {
+    if (!embedPopup) return;
+    if (!slugs.length) { embedPopup.remove(); setSelection([]); return; }
+    const shown = slugs.slice(0, 6);
+    const rows = shown.map(s => {
+      const r = AOCS[s];
+      const meta = [r.class_label || r.kind || '', r.region ? regionLabel(r.region) : '', countryLabel(r.country || 'fr')].filter(Boolean).join(' · ');
+      return '<a href="' + escapeAttr(window.location.origin + SLUG_BASE + encodeURIComponent(s)) + '" target="_blank" rel="noopener" data-slug="' + escapeAttr(s) + '">'
+        + '<span class="n">' + escapeHtml(r.name) + '</span><span class="m">' + escapeHtml(meta) + '</span></a>';
+    }).join('');
+    const more = slugs.length > shown.length ? '<span class="more">' + escapeHtml(fmt(LABELS.related_more, { n: slugs.length - shown.length })) + '</span>' : '';
+    embedPopup.setLngLat(lngLat).setHTML('<div class="rows">' + rows + more + '</div>').addTo(map);
+    setSelection(shown.slice(0, 1));
+  }
+  if (embedPopup) {
+    embedPopup.on('open', () => {
+      const el = embedPopup.getElement();
+      if (el) el.addEventListener('click', e => {
+        const a = e.target.closest('a[data-slug]');
+        if (a) track('Embed Link Clicked', { target: 'appellation', slug: a.dataset.slug, locale: LANG });
+      });
+    });
+    embedPopup.on('close', () => setSelection([]));
+  }
+  if (EMBED) {
+    map.addControl(brandControl, 'top-left');
+    track('Embed Viewed', { host: embedHost(), locale: LANG });
+  }
 
   // ---- WebMCP (document.modelContext) --------------------------------------
   // The map is a WebGL canvas and the panel is client-rendered, so a browser

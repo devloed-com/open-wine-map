@@ -25,8 +25,9 @@ here are short redacted excerpts under tests/fixtures/at_*.html.
 Assertions are on STRUCTURE (routed roles, slug sets, colour split,
 section keys), not full-output snapshots. Several tests pin ACTUAL
 parser behaviour that diverges from the docstring's ideal — the empty
-`colour` field for VIVC-folded varieties (Blaufränkisch→lemberger,
-Weißer Burgunder→pinot-blanc, Weißer Riesling→riesling) and the
+`colour` field for VIVC-folded varieties (Weißer Burgunder→pinot-blanc,
+Weißer Riesling→riesling; Blaufränkisch→blaufrankisch carries noir from
+DEFAULT_COLOUR since the 2026-10-23 fold of `lemberger`) and the
 adjective-vs-noun gap in find_bundesland_in_text. The divergence is
 called out inline at each such test.
 """
@@ -186,8 +187,9 @@ def test_grape_parsing_colour_split_and_synonym_fallback(fixture_text):
       - the colour split is per-match (Chardonnay/Grüner Veltliner →
         blanc, Zweigelt → noir);
       - VIVC-folded names resolve to the canonical slug but carry an EMPTY
-        colour: Blaufränkisch → lemberger (''), Weißer Burgunder →
-        pinot-blanc (''). The empty colour is a divergence from the
+        colour unless DEFAULT_COLOUR names one: Weißer Burgunder →
+        pinot-blanc (''), while Blaufränkisch → blaufrankisch is noir since
+        the fold of `lemberger` (2026-10-23). The empty colour is a divergence from the
         ideal — the slug is correct, the colour just isn't filled for
         these folds — so the style floor at stage 04 backfills it.
       - the synonym-fallback path works: "Weißer Burgunder - Klevner" /
@@ -198,16 +200,17 @@ def test_grape_parsing_colour_split_and_synonym_fallback(fixture_text):
     )
     grapes = extract.parse_grapes(routed["grape_varieties"])
     slugs = set(grapes["principal"])
-    assert {"lemberger", "chardonnay", "gruner-veltliner",
+    assert {"blaufrankisch", "chardonnay", "gruner-veltliner",
             "pinot-blanc", "zweigelt"} == slugs
     by_slug = {d["slug"]: d for d in grapes["details"]}
     # Per-match colours where the lexicon fills them.
     assert by_slug["chardonnay"]["colour"] == "blanc"
     assert by_slug["gruner-veltliner"]["colour"] == "blanc"
     assert by_slug["zweigelt"]["colour"] == "noir"
-    # VIVC folds resolve to the canonical slug but with empty colour.
-    assert by_slug["lemberger"]["name"] == "Blaufränkisch"
-    assert by_slug["lemberger"]["colour"] == ""
+    # VIVC folds resolve to the canonical slug; the colour is DEFAULT_COLOUR's
+    # where it names one (blaufrankisch) and empty where it does not.
+    assert by_slug["blaufrankisch"]["name"] == "Blaufränkisch"
+    assert by_slug["blaufrankisch"]["colour"] == "noir"
     assert by_slug["pinot-blanc"]["name"] == "Weißer Burgunder"
     assert by_slug["pinot-blanc"]["colour"] == ""
     # Three "Weißer Burgunder - …" lines collapse to one pinot-blanc slug.

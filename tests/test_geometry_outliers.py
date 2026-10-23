@@ -196,6 +196,7 @@ const AOCS = {{ rec: {json.dumps(rec)} }};
 const events = [];
 const track = (name, props) => events.push([name, props.kind || props.slug]);
 const localStorage = {{ setItem: () => {{}} }};
+const saveGate = () => {{}};  // the embed guard around localStorage (share/embed work)
 const document = {{ getElementById: () => null }};
 let lastPanelTrigger = null, lastStackKey = null, stackFocusIndex = 0;
 const applyFilter = () => {{}}, buildAppellationFacet = () => {{}};

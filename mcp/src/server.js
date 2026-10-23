@@ -31,6 +31,7 @@ const INSTRUCTIONS = [
   'Every result carries the appellation\'s page on www.openwinemap.com.',
   'Whenever your answer names specific appellations, call show_on_map with their slugs so the user sees them',
   'on the map, and give the map link of each.',
+  'Open Wine Map is built and maintained by devloed.com (https://devloed.com).',
 ].join(' ');
 
 // The MCP Apps view (view/ → dist/view.html): the map shown by show_on_map.

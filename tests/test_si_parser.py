@@ -136,7 +136,7 @@ def test_grape_em_dash_bullet_split_full_principal_set(fixture_text):
     slugs = set(grapes["principal"])
     # Spot the load-bearing members across white + red.
     assert {"chasselas", "pinot-blanc", "chardonnay", "gamay", "kraljevina",
-            "welschriesling", "lemberger", "zametovka", "zweigelt",
+            "welschriesling", "blaufrankisch", "zametovka", "zweigelt",
             "sankt-laurent"} <= slugs
     # 17 distinct varieties recovered from the 17 em-dash bullets.
     assert len(grapes["principal"]) == 17
@@ -148,7 +148,7 @@ def test_grape_name_synonym_hyphen_split_head_resolves(fixture_text):
     """"beli pinot - weissburgunder" splits on the plain hyphen: the HEAD
     ("beli pinot") resolves to pinot-blanc and is kept as the display name;
     the synonym blob ("weissburgunder") is only a fallback. Likewise
-    "modra frankinja - frankinja" -> lemberger via the head."""
+    "modra frankinja - frankinja" -> blaufrankisch via the head."""
     _sections, _titles, routed = _route_html(
         fixture_text("si_enotni_dokument_cvicek.html")
     )
@@ -157,8 +157,8 @@ def test_grape_name_synonym_hyphen_split_head_resolves(fixture_text):
     # Head resolved, synonym dropped from the display name.
     assert by_slug["pinot-blanc"]["name"] == "beli pinot"
     assert "weissburgunder" not in by_slug["pinot-blanc"]["name"].lower()
-    assert by_slug["lemberger"]["name"] == "modra frankinja"
-    assert "frankinja -" not in by_slug["lemberger"]["name"]
+    assert by_slug["blaufrankisch"]["name"] == "modra frankinja"
+    assert "frankinja -" not in by_slug["blaufrankisch"]["name"]
 
 
 def test_grape_typo_chardonay_still_resolves(fixture_text):
@@ -215,7 +215,7 @@ def test_mkgp_grape_colour_split_bele_vs_rdece(fixture_text):
     for slug in ("welschriesling", "pinot-blanc", "chardonnay", "sauvignon"):
         assert by_slug[slug]["colour"] == "blanc", slug
     # Red-bucket members resolve as noir.
-    for slug in ("lemberger", "zametovka", "sankt-laurent"):
+    for slug in ("blaufrankisch", "zametovka", "sankt-laurent"):
         assert by_slug[slug]["colour"] == "noir", slug
     # mkgp has no principal/accessory split -> all principal.
     assert out["grapes"]["accessory"] == []
@@ -278,7 +278,7 @@ def test_regression_pravilnik_2007_priporocene_dovoljene_role_split(fixture_text
     accessory = set(out["grapes"]["accessory"])
     # priporočene -> principal
     assert {"welschriesling", "pinot-blanc", "sauvignon", "pinot-gris",
-            "chardonnay", "muscat-a-petits-grains", "lemberger",
+            "chardonnay", "muscat-a-petits-grains", "blaufrankisch",
             "zametovka"} == principal
     # dovoljene -> accessory
     assert {"sylvaner", "riesling", "bouvier", "kraljevina", "gewurztraminer",

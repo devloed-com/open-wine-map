@@ -164,6 +164,10 @@ def _left_column(line: str) -> str:
     return re.split(r"\s{2,}", s)[0].strip()
 
 
+# A wrapped Odroda name's second line: one or two lower-case Slovak words and
+# nothing else on the line.
+_WRAP_FRAGMENT_RE = re.compile(r"[a-záäčďéíľĺňóôŕšťúýž]+(?: [a-záäčďéíľĺňóôŕšťúýž]+)?")
+
 # A line that is nothing but one or more bucket labels (the vertical
 # `MUŠTOVÉ` / `BIELE` / `MODRÉ` two-line column header), with no variety.
 _BUCKET_LABEL_LINE_RE = re.compile(
@@ -183,13 +187,34 @@ def _parse_grapes(f_body: str) -> dict:
     extraction-unknowns queue without ever becoming a variety."""
     grapes = _build_grapes()
     colour = ""
+    # The row not yet matched: [name, column of the name, colour]. A name
+    # that wraps continues on the next line as a lower-case fragment at the
+    # Odroda column, with nothing in the Synonymum column ("Veltlínske
+    # červené ⏎ skoré", the five modern specs) — read line by line the row
+    # was "Veltlínske červené" (Roter Veltliner), not the Frühroter the
+    # synonyms name (2026-10-22). A synonym list that wraps sits at the
+    # Synonymum column and is still dropped.
+    pending: list | None = None
+
+    def flush() -> None:
+        nonlocal pending
+        if pending:
+            _add(grapes, pending[0], pending[2])
+            pending = None
+
     for line in f_body.splitlines():
         s = line.strip()
         if not s:
+            flush()
+            continue
+        indent = len(line) - len(line.lstrip())
+        if pending and _WRAP_FRAGMENT_RE.fullmatch(s) and abs(indent - pending[1]) <= 1:
+            pending[0] += " " + s
             continue
         if _BUCKET_LABEL_LINE_RE.match(s):
             # A dedicated colour-bucket label line; flip the bucket hint
             # (the lexicon colour still dominates) and skip it.
+            flush()
             if _BUCKET_ROSE_RE.search(s):
                 colour = "rose"
             elif _BUCKET_RED_RE.search(s):
@@ -208,7 +233,10 @@ def _parse_grapes(f_body: str) -> dict:
             continue
         if left.casefold() in ("odroda", "synonymum"):
             continue
-        _add(grapes, left, colour)
+        flush()
+        col = line.find(left)
+        pending = [left, col if col >= 0 else indent, colour]
+    flush()
     return grapes
 
 

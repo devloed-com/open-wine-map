@@ -255,12 +255,45 @@ def _vivc_candidates(slug: str, lang: str) -> list[tuple[str, str]]:
     return out[:VIVC_CANDIDATE_CAP]
 
 
+# A throttled or failing request is not an absent article: before
+# 2026-10-22 any non-200 answer read as "no such title": a run over 159 new
+# slugs drew 429s after two minutes and cached 1,108 of its 1,113 (slug,
+# locale) pairs as `missing` — a negative entry only a VIVC change revalidates
+# (they were deleted). Retry with backoff; then give up on the slug without
+# writing its cache, so the next run tries again.
+_RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
+_RETRIES = 4
+# After this many slugs in a row gave up, the throttle is not going to lift
+# within the run: stop the locale instead of paying the backoff on every
+# remaining slug (159 slugs × the VIVC synonym walk is hours of sleeps).
+_TRANSIENT_ABORT = 3
+
+
+class TransientFetchError(RuntimeError):
+    """Wikipedia kept answering 429 / 5xx (or the connection kept failing)."""
+
+
+def _get_with_backoff(session: requests.Session, url: str) -> requests.Response:
+    for attempt in range(_RETRIES + 1):
+        try:
+            r = session.get(url, timeout=15)
+        except requests.RequestException:
+            r = None
+        if r is not None and r.status_code not in _RETRY_STATUS:
+            return r
+        if attempt == _RETRIES:
+            raise TransientFetchError(f"{url}: {r.status_code if r is not None else 'connection error'}")
+        try:
+            wait = float(r.headers.get("retry-after") or 0) if r is not None else 0.0
+        except ValueError:
+            wait = 0.0
+        time.sleep(max(wait, 2.0 ** attempt))
+    raise TransientFetchError(url)
+
+
 def _try_one(session: requests.Session, lang: str, title: str) -> dict | None:
     url = REST_URL.format(lang=lang, title=title)
-    try:
-        r = session.get(url, timeout=15)
-    except requests.RequestException:
-        return None
+    r = _get_with_backoff(session, url)
     if r.status_code == 200:
         try:
             data = r.json()
@@ -358,6 +391,7 @@ def _fetch_locale(
     lang_dir.mkdir(parents=True, exist_ok=True)
     donors = _build_donor_index(lang_dir)
     ok = miss = err = cached = revalidated = shared = 0
+    transient_run = 0
     for slug in tqdm(slugs, desc=f"wikipedia/{lang}", leave=False):
         cache = lang_dir / f"{slug}.json"
         if cache.exists() and not refresh:
@@ -366,7 +400,18 @@ def _fetch_locale(
                 cached += 1
                 continue
             revalidated += 1
-        result = _resolve_one(session, lang, slug, donors, throttle)
+        try:
+            result = _resolve_one(session, lang, slug, donors, throttle)
+        except TransientFetchError as exc:
+            print(f"[02b/{lang}] {slug}: {exc} — not cached, re-run to retry", file=sys.stderr)
+            err += 1
+            transient_run += 1
+            if transient_run >= _TRANSIENT_ABORT:
+                print(f"[02b/{lang}] {transient_run} slugs in a row throttled — stopping this "
+                      f"locale; re-run later for the rest", file=sys.stderr)
+                break
+            continue
+        transient_run = 0
         cache.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         if result.get("missing"):
             miss += 1

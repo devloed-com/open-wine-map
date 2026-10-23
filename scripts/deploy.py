@@ -599,10 +599,14 @@ _CATCH_ALL_TRIGGER: dict = {
 _SECURITY_HEADERS: list[tuple[str, str]] = [
     ("Strict-Transport-Security", "max-age=31536000"),
     ("X-Content-Type-Options", "nosniff"),
-    ("X-Frame-Options", "SAMEORIGIN"),
     ("Referrer-Policy", "strict-origin-when-cross-origin"),
     ("Permissions-Policy", "geolocation=(), microphone=(), camera=()"),
 ]
+# Headers an earlier deploy set that must go again. X-Frame-Options: SAMEORIGIN
+# (2026-05 → 2026-10-22) forbade every <iframe> of the map; the share dialog
+# now hands out an embed snippet, so any page may frame it — a read-only
+# public map has nothing a click could be hijacked into.
+_RETIRED_HEADERS: tuple[str, ...] = ("X-Frame-Options",)
 
 
 def ensure_security_headers(api_key: str, pullzone: str) -> None:
@@ -624,6 +628,23 @@ def ensure_security_headers(api_key: str, pullzone: str) -> None:
         if rule.get("ActionType") == 5:
             name = (rule.get("ActionParameter1") or "").lower()
             existing[name] = rule
+
+    for header_name in _RETIRED_HEADERS:
+        current = existing.get(header_name.lower())
+        if not current:
+            continue
+        guid = current.get("Guid") or current.get("Id") or ""
+        resp = requests.delete(
+            f"{base}/pullzone/{pullzone}/edgerules/{guid}", headers=headers, timeout=30
+        )
+        if resp.status_code in (200, 204):
+            print(f"  security header {header_name}: retired (edge rule deleted)", file=sys.stderr)
+        else:
+            print(
+                f"  warn: could not delete the {header_name} edge rule → "
+                f"{resp.status_code} {resp.text[:120]}",
+                file=sys.stderr,
+            )
 
     for header_name, header_value in _SECURITY_HEADERS:
         key = header_name.lower()

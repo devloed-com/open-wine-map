@@ -39,11 +39,20 @@ def test_root_tokens_exist_and_are_used() -> None:
 
 
 def test_one_accent_colour() -> None:
-    # The three former burgundies are one token; the browse page keeps its own CSS.
+    # The three former burgundies are one token — on the map and, since
+    # 2026-10-21, on the self-contained pages, which take the map's tokens
+    # (the browse index and the 404 had kept the old accent in their own CSS).
     body = CSS[CSS.index("}", CSS.index(":root {")) :]
+    head = mt._TEMPLATE[: mt._TEMPLATE.index("<style>")]
     for old in ("#7a1f3a", "#7A1F2B", "#7a1f2b"):
         assert old not in body, old
+        assert old not in mt._BROWSE_CSS, old
+        assert old not in mt._static_page_css(), old
+        assert old not in head, old
+        assert old not in mt._BROWSE_TEMPLATE, old
     assert _token("--c-accent") == "#934050"
+    assert f'<meta name="theme-color" content="{_token("--c-accent")}"' in mt._TEMPLATE
+    assert f'<meta name="theme-color" content="{_token("--c-accent")}"' in mt._BROWSE_TEMPLATE
 
 
 def test_tokens_match_the_paint_colours() -> None:
@@ -86,13 +95,20 @@ def test_viewport_fit_cover_and_phone_chrome() -> None:
     assert "<h1" not in bar and "{brand_tag}" not in bar
     for needle in ('id="sidebar-toggle"', 'aria-controls="sidebar"', 'aria-expanded="false"'):
         assert needle in bar, needle
-    # The bar's search button went (it only opened the drawer the ☰ opens);
-    # the ⚙ is homed into the bar by app.js (homeSettings) on phones.
+    # The drawer's button is a magnifier, not a ☰ (2026-10-21: the drawer is
+    # search-first and a burger said "menu"); open, the CSS swaps it to ×.
+    assert "☰" not in bar
+    assert '<svg class="ico-search"' in bar
+    assert '<span class="ico-close" aria-hidden="true">×</span>' in bar
+    # The bar's separate search button went on 2026-10-18 (it opened the same
+    # drawer); the ⚙ is homed into the bar by app.js (homeSettings) on phones.
     assert 'id="mobile-search"' not in bar
     assert '<div id="scrim" hidden aria-hidden="true"></div>' in mt._PAGE_TEMPLATE
     assert 'class="sheet-handle"' in mt._PAGE_TEMPLATE
     css = CSS.replace("{{", "{").replace("}}", "}")
     assert "#mobile-bar, #scrim, #panel .sheet-handle { display:none }" in css
+    assert '#sidebar-toggle[aria-expanded="true"] svg { display:none }' in css
+    assert '#sidebar-toggle[aria-expanded="true"] .ico-close { display:inline }' in css
     assert "@media (min-width: 769px) and (max-width: 1024px)" in css
     assert "100dvh" in css and "env(safe-area-inset-bottom" in css
 
@@ -115,6 +131,14 @@ def test_tree_rows_share_one_height_and_one_chevron_slot() -> None:
     assert '#sidebar > details[data-facet="appellations"] > summary { position:sticky; top:0;' in css
     assert ".facet.facet-appellations { max-height:none; overflow:visible }" in css
     assert "#sidebar-footer { flex:0 0 auto; margin-top:auto;" in css
+    # The maker's credit under the links reads one notch brighter than the
+    # footer, its link and heart in the accent — sidebar tokens, so it follows
+    # the theme (2026-10-20).
+    assert "#sidebar-credit { margin:10px 0 0; font-size:var(--fs-xs); color:var(--side-text-2) }" in css
+    assert "#sidebar-credit .heart { color:var(--side-accent-ink) }" in css
+    assert "#sidebar-footer #sidebar-credit a { color:var(--side-accent-ink); font-weight:600 }" in css
+    assert "#about-dialog .about-credit .heart { color:var(--c-accent) }" in css
+    assert "html.theme-dark #about-dialog .about-credit .heart { color:var(--c-accent-ink-dark) }" in css
     assert '#sidebar > details[data-facet="appellations"][open] { flex:0 0 auto; min-height:0; overflow:visible }' in phone
     assert ".owm-legend .scope-hint { width:24px; height:24px" in phone
     assert ".owm-legend .scope-hint { display:inline-flex" in css
@@ -126,3 +150,22 @@ def test_tree_rows_share_one_height_and_one_chevron_slot() -> None:
     assert "#sidebar .brand-title, #sidebar .subtitle { position:absolute; width:1px; height:1px;" in phone
     assert "#sidebar .brand-title { display:none" not in phone
     assert re.search(r"\.facet \.tree-toggle, \.facet \.tree-toggle-spacer \{ flex-basis:36px; width:36px \}", phone)
+
+
+APP_JS = (Path(__file__).resolve().parents[1] / "scripts/_lib/assets/app.js").read_text()
+
+
+def test_hit_test_keeps_an_inheritor_whose_donor_is_not_painted() -> None:
+    """A sub-denomination that inherits its polygon (parent-appellation /
+    sibling-dgc) is dropped from the hover / click stack only while its donor
+    is painted too. Under a filter the parent fails and the child passes
+    (Romagna Oriolo under ?grape=nebbiolo, 2026-10-22) the child is the only
+    thing painted there: dropping it left a polygon nobody could hover or
+    open. The donor is read from the record, else from the tile feature."""
+    body = APP_JS[APP_JS.index("function hitSlugsAt(point)"):]
+    body = body[: body.index("return slugs;")]
+    assert "donor && donor !== s && hit.has(donor)" in body
+    assert "(rec && rec.parent_slug) || p.parent_slug" in body
+    assert "(rec && rec.geom_fallback_slug) || p.geom_fallback_slug" in body
+    # The unconditional drop is gone.
+    assert "if (src === 'parent-appellation' || src === 'sibling-dgc') continue;" not in body

@@ -39,7 +39,7 @@ Interspezifische rot
 def test_annex_is_read_down_each_column():
     rows = table_varieties(annex_roster_block(ANNEX), match_variety)
     assert [r["slug"] for r in rows] == [
-        "bacchus", "pinot-noir", "diolinoir", "savagnin",
+        "bacchus", "pinot-noir", "cabertin", "diolinoir", "savagnin",
         "kerner", "mara", "muller-thurgau", "sauvignac", "zweigelt",
     ]
 
@@ -53,9 +53,10 @@ def test_annex_cells_keep_the_regulator_spelling():
 
 def test_breeder_codes_and_placeholders_are_not_varieties():
     slugs = {r["slug"] for r in table_varieties(annex_roster_block(ANNEX), match_variety)}
-    # "Cabertin" fuzzy-matches Pinot noir at 88; the floor refuses it.
+    # Cabertin has its own entry (VIVC #22329, 2026-10-22); before, it
+    # fuzzy-matched Pinot noir at 88 and the floor refused it.
     assert "sylvaner" not in slugs
-    assert len(slugs) == 9
+    assert len(slugs) == 10
 
 
 def test_no_annex_without_its_heading():

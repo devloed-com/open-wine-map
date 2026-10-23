@@ -492,6 +492,112 @@ lists afterwards.
 `collioure` (already listed under France) — the only record the gate and
 the LLM audit skip (`no_source`).
 
+## Cross-country — grape identity sweep (2026-10-22) — 🟡 fixed in bulk, residue below
+
+Started from the Piemonte flag (Albarossa missing). 161 VIVC-verified lexicon
+entries (`_resolved_via: curator-2026-10-22`), five names pinned `false`, the
+restated-name guard for MASAF Article 2, the own-name tier, style- and
+place-word bans, the numbered-name and five-letter fuzzy rules, and four parser
+fixes for wrapped names (see CLAUDE.md "Grape identity"). Re-check any time
+with `.venv/bin/python scripts/audit_grape_identity.py`. Left open:
+
+**Names VIVC does not resolve to one passport** (each stays unbound or keeps
+its own slug without a bracket — no grape is better than another cultivar's):
+- `Agostina` (Campania register, white) — VIVC files the name under AGOSTENGA
+  #107 (blanc) and AGOSTINA #20616 (noir); own slug, pinned `false`.
+- `Schwarzblauer Riesling` (ten DE Landwein / Anbaugebiet lists) and `Mladen`
+  (the Czech PGI fiche) — no VIVC entry; own slugs, pinned `false` (they had
+  fuzzy-matched Pinot noir and Mladenka).
+- Bare `Lambrusco` and `Groppello` — family names, pinned `false` (the slugs had
+  carried Marani #6695 and di Revò #25971); bare `Asprouda`, Limnos's
+  `Μοσχάτο` bind nothing.
+- DE `Färbertraube` — four readings on VIVC (Teinturier, Gamay teinturier de
+  Chaudenay, Farbfränkisch, non identified); still bound to the Chaudenay one.
+- DE breeder codes `Gm 324-58`, `We 70-281-36`, `VB 91-26-5` — no VIVC entry
+  under those numbers; the numbered-name rule unbound the old guesses
+  (Hibernal, Cabernet Cubin, Cabaret Noir). Check the BLE text for a typo.
+- DE `Muskat Gutedel` — VIVC #2489 CHASSELAS MUSQUE, but "Chasselas musqué"
+  folds into Chasselas corpus-wide; splitting it changes FR / CH cards. Decide
+  the fold first.
+- GR `Kritiko`, `Mandilaria Aspri`, `Chondromavro Kalavriton`; CY `Cinsault
+  Vrai`; NL `Polo Muscat`; IT `Avanà` (two passports), `Incrocio bianco Fedit
+  51 C.S.G`; ES `Coloraillo` (#17589 blanc / #2780 rouge), `Breval`, `Cariñena
+  roja`; SK `Rosa` (now banned as a bare colour word — confirm against the SK
+  list).
+- ES tokens with parser noise (`Merenzao en tintas`, `La variedad Baboso
+  Blanco`, `Agudelo en blancas`): the variety exists, the national-pliego
+  parser keeps the prose around it.
+
+Resolved in the second and third passes the same day: Zala's `Korona` (#17784,
+Juhfark × Irsai Olivér, bred at Keszthely — it had still fuzzy-matched
+Ezerjó), the Ionian `Moschatela` (#8060 Moschardina), `Pellegrino` (the
+wrapped half of "Lambrusco del Pellegrino"), `Bianca Lunga` (Esino's wrapped
+"Malvasia bianca lunga"), `Menudo` (Ribera del Guadiana's justified "Moscatel
+de Grano Menudo").
+
+Review of the sweep the same evening (session f4, 2026-10-22): the four ids the
+lexicon cited without a pin are pinned and their passports fetched (Nebbiolo
+Rosé #22742, Majarcă albă #11866, Ladikino #6624; Groppello di Santo Stefano
+`false` — VIVC holds the name only under Mocasina #5076); the SK §f reader joins
+a wrapped Odroda name ("Veltlínske červené ⏎ skoré", five cards) and the alias
+that had patched the wrap is gone; `fruhroter-veltliner` folds into
+`velteliner-rouge-precoce` (both VIVC 16157 — CZ fiches and HU re-extracted);
+the bare colour words of every corpus language are banned surfaces (the Majarcă
+passport lists FEHER, and the HU block header "Fehér" had put Majarcă on six
+cards within the hour; Valais' "blanche" had bound Mondeuse blanche — HU 02f
+and CH 02 re-extracted); `de/02f --slug` merges its index; 02b stops a locale
+after three throttled slugs.
+
+Closed the same night (session f5, 2026-10-22):
+- **`Veltlínské červenobílé`** → VIVC #22521 VELTLINER ROTWEISS (ROSE, "Pedigree
+  confirmed by markers: VELTLINER ROT MUTATION"; synonym VELTLINSKE CERVENOBILE
+  cited from Fort & Dohnal 1940 p. 77; Děvín's parent 2). Czech sources:
+  Vyhláška 88/2017 příl. 2 III.6 + příl. 11 (country-wine variety, not in the
+  ÚKZÚZ Státní odrůdová kniha of 15 June 2026); Baránková et al. 2020, Czech J.
+  Genet. Plant Breed. 56:71-78 (the Lednice VČB accession is the Roter Veltliner
+  genotype, not Frühroter's). Pinned, live passport checked; the 24 synonyms
+  move none of 18,478 corpus grape surfaces. Tooltip pinned `null` in all seven
+  02b locales: the synonym walk had bound en "Roter Veltliner" through MUSKATEL
+  CERVENY, which #12931 also lists. VIVC's "Official name in CZECH REPUBLIC" flag
+  for VELTLINSKE CERVENOBILE on #16157 is backed by none of that passport's
+  citations (all print Veltlínské červené rané) — worth reporting to JKI.
+- **Grape tooltips**: 02b had finished every locale for the new slugs (no
+  throttled answer cached; the 171 `error` records are `not_grape_topic`
+  rejections); 42 of the 171 slugs pinned that day have an article in some
+  locale. 02b_translate_grapes filled the remaining 90 items / 103 pairs
+  (Anthropic batch, $0.10). Cerason (CZ roster only, outside 02b's corpus scan)
+  fetched: no article anywhere.
+- **Register-fiche extracts** re-extracted (bg, gr, hr, hu, ro, si, sk), with a
+  role fix in `extract_register_fiches.py`: in the tagged template the tag
+  decides ("** Hárslevelű (MAIN)" had read as accessory in 27 HU records), and
+  an "(OIV)"-tagged variety line is no longer dropped by the stoplist (Crișana
+  +9). CZ fiches re-extracted unchanged; `tests/test_register_fiche_roles.py`.
+
+**Grape tooltips bound to another cultivar's article** (found 2026-10-22, open):
+215 (slug, locale) pairs on 120 slugs hold an article matched through a VIVC
+synonym that another corpus slug with a different VIVC number holds as its own
+(Castelão, Tamarez, Trincadeira branca → "Trincadeira"; Lambrusco Maestri →
+"Aglianico"; Aragonez / Tinta Roriz (fr) → "Malvasia nera di Basilicata";
+Cesanese → "Bombino nero"; Brachet → "Brachetto"); 211 pairs date from earlier
+runs, mostly May. 18 more pairs share a family article no slug owns
+("Malvasia", "Incrocio Manzoni"). Fix proposed, not applied: 02b rejects a
+synonym hit whose title a different-VIVC slug holds as primary / prime, a
+post-pass marks the 215 pairs missing and drops the translations made from
+them, then 02b_translate_grapes and stage 04. List:
+`tmp/grape-tooltip-review/wrong-cultivar-2026-10-22.json` (gitignored).
+
+**Colour: regulator against VIVC** (the regulator's code is on the card):
+Garda `Bellagna B.` / VIVC noir; Paros `Stavrochiotis B` / VIVC rouge;
+`Serifiotiko N`, `Kypreiko Kokkino N`, RO `Selena`, Achaia `Sideritis Rs` / VIVC rouge.
+
+**Rosters by reference**: IGT Bergamasca now reads the Lombardia register beside
+Quistello (its Article 2 refers to the varieties registered for Lombardy and
+the annex is not in the MASAF PDF); it had shown only the Marzemino that
+«Bergamasca» used to bind.
+
+**Valais**: Amigne now resolves (25 CH cards); Humagne blanc / rouge, Rèze and
+Cornalin du Valais still have no entry.
+
 ## Cross-country — records rendering with no grape list (2026-09-20)
 
 `scripts/audit_empty_grapes.py` baseline (stage 04 prints the same one-liner). Fix upstream, then re-run stage 04 → the audit; pin a verified absence in `scripts/_lib/empty_grapes_overrides.json`.
@@ -1159,6 +1265,56 @@ Residue, by kind — each disclosed on the card, none guessed:
   Tavira (Santa Maria e Santiago), already drawn for Santiago — no area effect.
 - The Porto caderno fixes its limits at the 1921 boundaries (Decreto 7934);
   CAOP 2025's are drawn.
+
+### Visitor report of 2026-10-22 (Boris, in chat: nl `?grape=nebbiolo&main=1&pgi=1`, z8.4 near Rimini) — ✅ fixed, residue below
+
+A red polygon between Bologna and Rimini answered neither hover nor click: Romagna
+Oriolo (sottozona, `parent-appellation`) carried Nebbiolo from the annex's
+"spumante rosato o rosè" line (VIVC lists ROSE as a Nebbiolo synonym), and the
+hit test dropped every inheritor whether or not its donor was painted. Fixed:
+the rosé words are banned surfaces, Centesimino (VIVC #22606) is in the lexicon,
+and an inheritor is dropped only while its donor is in the hit set (14 files,
+8 live cards had the false Nebbiolo; 99 inheritors could be painted alone).
+Same day, from the review: MASAF Article 2 clause roles ("può / possono
+inoltre / deve concorrere" and "complementari:" → accessory), a per-record pin
+for a bare family word the disciplinare writes short
+(`scripts/_lib/it/grape_context_overrides.json`: Romagna, Colli di Faenza and
+Colli d'Imola's "Trebbiano" is the "Trebbiano Romagnolo" their article 2 names),
+the Swiss `parent-aoc` spelling folded into `parent-appellation`, Nebbiolo Rosé
+(VIVC #22742) added, "sole / soli / sola" banned (Folle blanche and Molinara
+from "da sole o congiuntamente" on Abruzzo, Aleatico di Puglia, Botticino,
+Squinzano), "giallo" banned (Trebbiano di Soave from "«Moscato giallo»" on
+Friuli Isonzo). Verifying the role flips surfaced one more old defect, fixed
+the same day: a variety named only in an exclusion sat in the roster. The
+scan found 32 rosters with such a name; the rule drops 8 entries in 7 of
+them (Montecucco and Montecucco Sangiovese's Aleatico and Malvasia nera di
+Brindisi, Picolit's Traminer aromatico, Colli Albani's Moscato, Leverano's
+and Salice Salentino's Moscatello selvatico) — a labelling sentence (the
+Sardinian IGTs' "con la specificazione di uno dei vitigni … con l'esclusione
+dei vitigni Cannonau …") and a concession ("per il quale è consentita la
+presenza fino al 3%") are not exclusions, and a name another clause of the
+same article allows (Capalbio's and Maremma Toscana's Moscato bianco) stays.
+
+Open:
+- **Sottozona zones are never drawn** — every IT sottozona inherits its parent's
+  polygon, so under a Centesimino filter the whole Romagna DOC (Bologna → Rimini)
+  reads "Romagna Oriolo" for a zone a few km² wide at Faenza. Of the 74 sottozona
+  annexes, 39 define their zone as a commune list (`ITCommuneIndex` could union
+  them — the IGT resolver) and 35 as a boundary trace in prose (roads, a
+  municipal border: Oriolo, Castellinaldo, Monleale, the Friuli Colli Orientali
+  crus, the nine Montepulciano d'Abruzzo sottozone), which needs the kind of
+  landmark reader the Greek PGIs have, with a road gazetteer. Draw the 39 first.
+- **Do not retry a generic family-word fold.** "X" beside "X Y" in one
+  document was read as "X Y" for an afternoon: it rebound 130 entries —
+  "Alicante" (Grenache) to Alicante Bouschet in 41 Tuscan rosters, "Riesling" to
+  Riesling italico in 21, Colli Tortonesi's Barbera to Barbera bianca, Canaiolo
+  to Canaiolo bianco, Merlot to Merlot Khorus, Refosco to Refosco di Faedis,
+  Cesanese to Cesanese di Affile, Glera to Glera lunga. The pattern means two
+  varieties as often as a shorthand, and VIVC lists bare TREBBIANO under
+  Trebbiano toscano. A bare word changes binding only through a cited pin in
+  `grape_context_overrides.json`. Candidates to read: the Abruzzo / Marche
+  cards where "Trebbiano" may mean the abruzzese, Sardinia's Arborea
+  ("Trebbiano" = sardo?).
 
 ### Simple-mode polygons carry open water, and the panel does not say the shape is the commune — 🟡 disclosure + footprint on branch `feat/zoom-lod` (2026-09-23), water mask still open
 
@@ -3050,6 +3206,18 @@ re-extraction now resolves it (unknowns queue cleared). Note: CZ fiche
 grapes feed only the terroir-text layer, not the map roster, so this is
 queue hygiene + future-proofing, not a visible-pill change.
 
+### Register-fiche § 6 roster for Šobes and Litoměřická — ✅ resolved 2026-10-22
+
+Both fiches are the 2011 technical-file template (§ 6 "Hrozny" in a./b./c.
+blocks, the single document's first headers indented 11 spaces); the fiche
+extractor now reads them (two-pass header chain, "hrozny" routed to the
+grape role, roles + `open_roster` from the blocks). Šobes: 8 main + Pálava,
+closed, and its own § 7 link text (ČHMÚ normals, Dyje-massif soils);
+Litoměřická: 19 main, open to every EU-recognised variety → the decree's
+remainder as accessory. The same chain rule also completes HU Etyek-Buda's
+fiche (sections 3–9 had been cut at the 6-space guard), but no HU stage
+reads the fiches: its card comes from its EU single document. No action.
+
 ### JEDNOTNÝ DOKUMENT — ❌ 0 / 13 extracted
 
 All 13 CZ wines are Art. 107 / Reg. 1308/2013 grandfathered names with
@@ -3608,24 +3776,88 @@ Not introduced by the UK pipeline — GB is simply the first country whose
 *single* variety roster names both spellings, which puts the same grape on
 one panel twice.
 
-**`blaufrankisch` and `lemberger` are both VIVC #1459 BLAUFRAENKISCH.**
-The project's own cache agrees: `raw/vivc/by-slug/blaufrankisch.json` and
-`raw/vivc/by-slug/lemberger.json` both read `vivc_id: 1459`, and each
-lists the other as a synonym. The split is an alias-chain artefact —
-`kekfrankos → blaufrankisch` and `limberger → lemberger` are both
-one-hop, and nothing folds the two heads together.
+**`blaufrankisch` and `lemberger` are both VIVC #1459 BLAUFRAENKISCH — ✅
+folded 2026-10-23.** The project's own cache agreed: `raw/vivc/by-slug/
+blaufrankisch.json` and `raw/vivc/by-slug/lemberger.json` both read
+`vivc_id: 1459`, each listing the other as a synonym. The split was an
+alias-chain artefact — `kekfrankos → blaufrankisch` and `limberger →
+lemberger` were both one-hop, and nothing folded the two heads together;
+the AT and DE spelling "Blaufränkisch" reached `lemberger` through the VIVC
+synonym tier, so no record spelled the slug `blaufrankisch` and the
+corpus-vote label (2026-10-23) read "Kékfrankos" on `?grape=blaufrankisch`
+while the omnisearch row for the same variety read "Lemberger".
 
-Usage across the corpus (229 records, 11 countries):
+Usage before the fold (229 records, 11 countries):
 
 | slug | records | countries |
 |---|---:|---|
 | `blaufrankisch` | 124 | hu 72, hr 24, sk 14, cz 10, gb 4 |
 | `lemberger` | 105 | ro 43, si 21, de 15, at 9, hu 8, gb 4, be 2, pt 2, es 1 |
 
-Folding them is the established policy (commit `a7570f2` "fold
-VIVC-collision slug dupes … unify facet by variety"), but it moves the
-grape facet for 11 countries, so it belongs in its own change with its
-own before/after diff — not in a country addition.
+The fix: `GRAPE_ALIAS` folds `lemberger` / `blauer-limberger` / `limberger`
+into `blaufrankisch` (the VIVC prime's slug, which also gets an explicit
+identity key and `noir` in `DEFAULT_COLOUR`); the de Wikipedia pin moved
+with the slug. ES, PT, AT, BE, CH, DE (02 + 02f), GB, RO (02 + 02f), SI
+(02 + 02f) and the RO / SI register fiches were re-extracted one after
+another with a before / after snapshot; the set-level diff of the 127
+records and sidecars that carried `lemberger` is exactly the swap — 70
+principal and 22 accessory lists, the four GB rosters losing their
+duplicate pill (the spec names "Kekfrankos" and "Blaufrankisch", which had
+bound to the two slugs) — plus the `velteliner-rouge-precoce` colour
+catching up with the 2026-10-22 `DEFAULT_COLOUR` entry on the AT / DE
+records extracted before it. `raw/vivc/by-slug/lemberger.json` stays as an
+inert cache, like `fruhroter-veltliner.json` before it. The corpus-wide
+label is now "Blaufränkisch" (the AT, PT, BE and GB spellings write the
+slug); the per-record pill keeps its own spelling with the bracket
+(Kékfrankos, Frankovka, Modra frankinja, Burgund Mare, Lemberger).
+
+Still split, on purpose: `franconia` (VIVC #1459 too, the Friulian name,
+IT records) keeps its own slug by an explicit lexicon decision and the
+VIVC-sibling expansion unites the three in the grape filter. The same
+sweep (`raw/vivc/by-slug/*.json` grouped by `vivc_id` over the corpus
+slugs) lists some 40 more ids carried by two or more canonical slugs —
+nielluccio / sangiovese, rolle / vermentino, trousseau / bastardo,
+macabeu / subirat, tempranillo / tijonera, the Portuguese synonym pairs —
+most of them regional names kept distinct by the same decision; each is a
+curator call of its own, not a mechanical fold.
+
+**Ghost grape rows (pre-existing, quantified 2026-10-23).** Stage 04's
+`build_grapes_info` ([scripts/_lib/lexicon_loading.py](scripts/_lib/lexicon_loading.py))
+narrows the grape universe to the corpus slugs **or any slug with a
+`raw/vivc/by-slug/<slug>.json`**, so a by-slug file left behind by a slug no
+record carries any more — an alias key that once was a slug (`cabernet`,
+`chardonay`, `alicante`, `alvarinho`), a folded head (`fruhroter-veltliner`,
+`lemberger`) — stays a `grapes_info` entry, a `vivc_siblings` member and a
+`grape_search_index` row with `count: 0` (`_build_grape_search_index`
+dedupes through `slug_to_canonical`, which folds only slugs with records); a
+stale Wikipedia cache gives such a row a proper label, without one it reads
+as the bare slug ("fruhroter veltliner"). 105 zero-count rows in the EN index
+on 2026-10-23, 103 after the `lemberger` and `fruhroter-veltliner` caches were
+deleted (02b and 02g regenerate caches for corpus slugs only; 02g prunes a
+by-slug file only for a slug pinned `false`). Fix candidates, each its own
+change: skip zero-count rows in `_build_grape_search_index` (changes the
+omnisearch rows and the MCP `list_facets` output for 103 names — read the
+list first: a ghost that is a VIVC sibling of a real grape is a duplicate
+row, the rest filter to nothing), restrict the universe to the slugs the
+records carry, or have 02g prune every by-slug file whose slug left the
+corpus.
+
+**Corpus label missing on VIVC-only grape entries (pre-existing, quantified
+2026-10-23).** `build_grapes_info` applies the corpus-vote name
+(`_override_name_with_corpus`) only to an entry built from a native or
+translated Wikipedia card; the third branch — a slug with a VIVC passport
+and no card — emits `{canonical_name, vivc_id, vivc_url}` with no `name`, so
+the chip, the omnisearch row and the MCP `grape_search_index` fall back to
+the bare slug. In the EN build of 2026-10-23: 552 of the 1,358 slugs with
+records have no label; for 117 of them the corpus spelling differs from
+the slug — the accents and particles the regulators write: Floréal (133
+records), velteliner rouge précoce (99), muscat cendré (37), Sélénor (35),
+Côdega do Larinho (30), André (26), Rayon d'or (23), Sauvignon Soyhières
+(23), Pálava (18), Muškát moravský (16), Devín (16), Touriga Fêmea (16),
+Turán (14), Larião (13), … Fix: give the VIVC-only branch the same corpus
+name (one call), then read the 117 changed labels before shipping, as for
+the corpus-vote change (its own change: it moves 117 chip / omnisearch
+labels and the MCP output).
 
 **`csabagyongye` / `zalagyongye` are mis-named.** The slug
 `csabagyongye` is bound to VIVC #13374, whose prime name is **ZALA
@@ -4989,3 +5221,61 @@ the redraw cannot fix by itself:
 The MAPA layer (`raw/es/mapa-zonas/`, fetched 2026-05-22) predates the
 2025 Monterrei amendment; where it is whole-municipio, a re-fetch would not
 help — the pliego, not the layer, carries the parishes.
+
+## Cross-country — validators, first runs (2026-10-23)
+
+The validator skills of [docs/plan-validators.md](docs/plan-validators.md) ran for the first time on 2026-10-23 (`/validate-sources`, `/validate-cards`, `/validate-geometry`); reports under `tmp/validation/`, summary in [docs/review-validators-2026-10-23.md](docs/review-validators-2026-10-23.md). Rows below are what the runs queued; each names the failure mode and what a re-run of the validator should show once fixed.
+
+### `/validate-sources` — corpus-level (eAmbrosia · data.gouv.fr · GOV.UK · GISCO · swisstopo)
+
+| | source | finding | recipe |
+|---|---|---|---|
+| ❌ | INAO parcellaire | data.gouv.fr serves the **2026-10-19** release; the build holds 2026-09-28 (adopted 2026-10-04). | `scripts/00_fetch_data.py` → 04; then `audit_parcellaire_gaps.py --strict` and re-verify `parcellaire_carry_forward.json` (Saint-Sardos, Languedoc Montpeyroux rows back?) and `parcellaire_gap_fills.json` (a pinned commune with a row again is STALE). |
+| ❌ | eAmbrosia HU | **Nivegy-völgy / Nivegy-völgyi (PDO-HU-02816)** is a registered PDO not in `raw/hu/eambrosia/index.json` (was "published for opposition" on 2026-09-20). | `scripts/hu/00_fetch_data.py` → 01 → 02; a `_REGION_BY_FILE_NUMBER` entry (Balaton); geometry is post-Bétard → commune list from the single document → 04. |
+| ❌ | eAmbrosia, 62 GIs | modified or republished after our document fetch — 26 with a **new OJ C single document** (ES Almansa C/2026/3796, Arlanza C/2026/4630, Binissalem C/2026/4121, Condado de Huelva C/2026/4233, Jerez C/2026/4549, Manzanilla C/2026/4513, Manchuela C/2026/3565, Pago de Otazu C/2026/3580, Penedès C/2026/2777, 3 Riberas C/2026/3089; IT Asti C/2026/4239 … ; SI Belokranjec C/2026/3572, Metliška črnina C/2026/3598; GR Τύρναβος C/2026/3788; DE Landwein Main C/2026/4338; RO Drăgășani 2026/1702, Segarcea 2026/2106; the rest date-only), 64 more `IN-OPPOSITION`. Full list: the `eambrosia …` rows of the sources report. | per GI: `scripts/<cc>/01_fetch_pliegos.py --only <slug> --refresh` (01b if WAF) → 02 → 04; a date-only change is usually a register attachment — check before re-fetching. |
+| ✅ | eAmbrosia GONE | Salemi (PGI-IT-A0807) and Ambt Delden (PDO-NL-02169) carry `removedFlag` — both already in `scripts/_lib/cancelled_gis.json`; the counts table annotates them. | none |
+| ✅ | GOV.UK | 6 / 6 registered; The Crouch Valley still `applied-for`. SIQO CSV, aires CSVs, GISCO LAU / NUTS 2024, swissBOUNDARIES 2026-01 current. | none |
+
+### `/validate-sources` — per-record documents (60-record sample, HEAD only)
+
+| | slug | finding | recipe |
+|---|---|---|---|
+| ❌ | `priorat` | INCAVI national pliego URL **404** (`incavi.gencat.cat/.content/005-normativa/plecs-condicions-do-catalanes/…`). | find the current INCAVI PDF, pin it in `raw/es/national-pliegos/manual_overrides.json`, `scripts/es/02f_extract_national_pliegos.py --slug priorat --refresh` → 04. |
+| ❌ | `znojemska` (and every CZ record citing it) | the Sbírka file `aplikace.mv.gov.cz/sbirka-zakonu/ViewFile.aspx?type=c&id=61787` (Vyhláška 88/2017 `national_spec_url`) **404**. | point the card's `national_spec_url` at a live Sbírka / e-Sbírka URL in `scripts/cz/02f_extract_national_specs.py` `SOURCES` → 04. |
+| 🟡 | `dehesa-del-carrizal` | JCCM pliego URL redirects to another host (`pagina.jccm.es` → …) — content unchanged, the manifest should follow. | `02f_extract_national_pliegos.py --slug dehesa-del-carrizal --refresh`. |
+| ⏳ | ES national pliegos on `www.mapa.gob.es` | the host answered the probe with an SSL error from this machine (3 ×, host marked unreachable for the run) — a client-side chain issue or a MAPA change; the deployed PDFs were not checked. | re-run `--country es --deep --only <slug>` from another network before concluding; note the result here. |
+
+Not run yet (network cost, scope it): `--inao` over the FR corpus (the 22 newer arrêtés of 2026-09-20 are still the latest known list), `--deep` corpus-wide, `--reference` Wikipedia.
+
+### `/validate-geometry` — polygon vs text (RO · BG · HU · CH full; FR · AT sample of 260)
+
+Buckets on the four full countries: 71 OK, 9 SUSPECT, 82 NO-TEXT (Bétard-drawn BG / RO stubs whose record carries no delimitation text — the national-spec sidecar's `geo_area_brief` is read when present), 53 NO-UNITS (CH sub-denominations inheriting a canton), 2 ABOVE-COMMUNE. FR sample: 75 OK, 0 SUSPECT, the 153 NO-UNITS are DGCs (their aire is the parent's; only containment is tested for them).
+
+| | slug | finding | failure mode / recipe |
+|---|---|---|---|
+| ❌ | `dunavska-ravnina` (BG PGI) | drawn as the union of its 21 member PDOs (`region-pdo-union`): 40 obshtini covered whole, while the ЕДИНЕН ДОКУМЕНТ names **100** (Тервел, Габрово, Дряново, Севлиево, Летница, Луковит, Троян, … missing). | the PGI's text is a commune list → draw it from GISCO BG obshtini (`gisco-commune-list`, the step 3 fallback of the BG chain) instead of the PDO union; check `trakiiska-nizina` the same way (NO-TEXT here: its record carries no list — read the sidecar). Two unresolved spellings: "Д. Митрополия" (Долна Митрополия), "Вълчидол" (Вълчи дол). |
+| ❌ | `etyek-buda` (HU, Bétard) | Bétard's polygon covers Budapest, Biatorbágy, Aba and Csabdi whole; the single document names them as part-communes ("Pest megye Biatorbágy", "Bicske Csabdi") or not at all. | Bétard whole-municipality padding; a commune-list redraw from the single document would fix it — queue with the HU post-Bétard PDOs (Etyeki Pezsgő, Kőszeg, Füred). |
+| ❌ | `colinele-dobrogei`, `dealurile-moldovei`, `dealurile-munteniei`, `dealurile-olteniei`, `terasele-dunarii` (RO IGPs, `gisco-commune-list`) | named vs drawn differ by 5–30 units each way: e.g. Dealurile Moldovei 178 named / 204 drawn, Oneşti and Comăneşti named but not drawn, Vlădeni / Costeşti / Fântânele drawn but not named. Part of it is the județ-scoped homonym rule of `ROPolygonIndex` against the audit's 25 km rule ("Băneasa ×2 nearby"); part is the parser (villages named — Siminoc, Nazarcea — resolve to nothing; "astfel", "Subdenumirile „DIOSIG”" are prose tokens in `geo_communes`). | run `audit_geometry_vs_text.py --country ro --llm` for the independent read, then compare the three sets (parser, LLM, drawn) per record; fix `_lib/ro/commune.py` for the prose tokens; decide the homonym rule per record. |
+| ❌ | `crisana`, `lechinta` (RO PDOs, Bétard) | Bétard draws Şimleu Silvaniei, Sâniob, Săcueni / Bistriţa, Braniştea, Uriu whole where the text names other units (Boghis, Paleu / Band, Madaraş, Cetate). | Bétard padding vs the single document's list — candidates for the commune-list redraw already used for the 3 post-Bétard RO PDOs. |
+| 🟡 | the LLM read (`--llm`) | not run yet: ES / DE / IT / PT / GR named units are NO-UNITS or disclosure-only without it. | `audit_geometry_vs_text.py --country es --llm` (Opus, cached per text sha; ≈ 150 texts ≈ $5) — the first corpus where the deterministic side has no reader. |
+
+### `/validate-cards` — 40-record stratified sample (Opus 5.5 batch, 20 countries, $2.12)
+
+25 of 40 cards carried a verified misleading finding as reported; 10 of the 66 findings were the validator's (summary exposed when not rendered — fixed; CZ decree roster not in the packet; SI / SK / HU fiche roles — a convention). 56 real defects in 23 cards, in the roster and style layers; the fact layer is at 5 misleading bullets in ≈ 300. Full tables: `tmp/validation/cards-sample40.md`, per-finding rows `cards-sample40-rows.md`.
+
+| | slug(s) | finding | failure mode / recipe |
+|---|---|---|---|
+| ❌ | **15 cards** (HU 8, DE 3, GB 4): `balaton`, `balatonmelleki`, `duna-tisza-kozi`, `dunantuli`, `felso-magyarorszag`, `brandenburger-landwein`, … | "Csabagyöngye (Zala Gyoengye)" — and on 5 HU cards beside a separate "Zalagyöngye" pill; "Perle von Zala" pills link to `csabagyongye`. | `GRAPE_ALIAS`: `perle-von-zala`, `zala-gyoengye`, `zala-gyongye` → `csabagyongye` is wrong (Perle von Zala = Zalagyöngye, a Csabagyöngye offspring); move them to `zalagyongye`. The `csabagyongye` by-slug VIVC record is #13374 ZALA GYOENGYE; `zalagyongye` has none — pin both after a **live** VIVC check (Perle von Csaba's and Zala gyöngye's passports), `02g --only`, re-extract HU / DE / GB with a grape diff. |
+| ❌ | **388 parent cards** (IT geoportal-zone 232, ES mapa-zone 86, GR nuts 38, GR commune-list 14, …): `la-palma`, `colli-altotiberini`, `monterrei`, `bolgheri`, `pella`, … | header reads "1 commune(s)" on zone-, NUTS- and parish-drawn records — La Palma is 14 municipios, Colli Altotiberini 8 comuni. | `communes_matched` is the commune-list parser's count, not the aire's, when the polygon came from a zone; `content_block._meta_tail` (and the JS twin) should print it only for commune-union sources (`gisco-commune-*`, `swissboundaries-commune-union`, `caop-*`, `iet-parroquia-union` with the parish count) and never a 1 a zone polygon did not come from. |
+| ❌ | `drenthe` (and the other NL PGIs sharing the roster) | 7 listed varieties missing: Baco noir, Birstaler Muscat, Excelsior, Melody, Muscat Blue, Palatina, Polo Muscat — all in `raw/nl/extraction-unknowns.json`. | lexicon gaps: colour + VIVC id per entry (`grape-colour-researcher`), `grape_lexicon.py`, re-run `nl/02` with snapshot + grape diff (the roster is shared by the 12 provincie PGIs). Also the Rosé pill: `_GRAPE_COLOUR_TO_STYLE` maps a rose-berried grape to a rosé *style*; the single document names white and red only. |
+| ❌ | `balatonmelleki` (HU termékleírás) | "Irsai (Irsai Oliver)" + "Olivér (Plavaie)" — one variety split in two, the second fuzzy-bound to Plavaie; Kéknyelű dropped (not in the unknowns queue); Cabernet franc in `extraction-unknowns-national.json`. | `_lib/hu` national-spec roster reader: a two-word name split at the space; check what token reaches the matcher for Kéknyelű / Cabernet franc; sweep the other HU termékleírás cards for split names (`audit_grape_identity.py`). |
+| ❌ | `malvasia-handakas-candia` (GR ΥΠΑΑΤ spec) | "Malvasia (Malvasia Dubrovacka)" + bare "Candia" for Malvasia di Candia aromatica; Μονεμβασίας lifted from the history narrative; Μοσχάτο άσπρο and the Malvasia (≤ 15 % together) shown as unrestricted principals. | GR `specifikacija.py` roster scan reaches the narrative — scope it to the §6 list; the bare "Malvasia" → Dubrovačka surface (same as Rioja Alta's) wants a `_BANNED_SURFACES` entry or a per-record pin; read "μέχρι 15 %" as accessory. |
+| ❌ | `larnaka`, `laona-akama` (CY) | styles white-only where the spec sets alcohol minima for ερυθροί and ερυθρωποί; Larnaka lacks Σουλτανίνα; "Moschato Samou" bracketed Muscat Ottonel (Samos muscat is Muscat à petits grains). | CY styles parser: read the colour clauses ("για ερυθρούς … λευκούς και ερυθρωπούς"); lexicon: Σουλτανίνα (Sultanina, VIVC live check), `moschato-samou` → `muscat-blanc-a-petits-grains`; sweep the 11 CY cards for white-only styles. |
+| ❌ | `alentejo-borba` (PT), `bela-krajina` (SI), `vin-de-pays-des-jardins-de-wallonie` (BE), `vychodoslovenska` (SK), `zakynthos` (GR), `la-palma` (ES) | listed categories missing: rosé (all but Zakynthos / La Palma), espumante / licoroso (Alentejo), espumoso / aguja / licor (La Palma), sweet (Bela krajina, Zakynthos). | per-country style parsers read the product-category list of the spec, not only the colour prose; `audit_styles.py` after each. |
+| ❌ | `vlaamse-mousserende-kwaliteitswijn`, `valle-belice`, `dunavska-ravnina` | style extras: White + Red on a sparkling-only PDO (the grape-colour style floor), Sweet on an IGT reserved to bianco / rosso / rosato, Late Harvest where the spec says only "sweet wines". | the style floor should add no colour bucket when the record's only category is sparkling; IT / BG style sources per record. |
+| ❌ | `castilla` (3), `colli-altotiberini` (Cabernet Sauvignon, Merlot), `dealurile-olteniei` (Merlot, Pinot Noir, Burgund Mare), `mediterranee-comte-de-grignan` (Muscat à petits grains Rg), `dunavska-ravnina` (Viognier), `vychodoslovenska` (Rosa) | listed varieties missing from the roster. | ES pliego reader (Coloraillo, Garnacha peluda, Verdoncho); MASAF Art. 1 varietal types; RO yield-table names; the Muscat B / Rg slug collision (one slug cannot carry two colour variants — a `grape_display_overrides` or a second slug); a Latin name inside a Cyrillic list; `_BANNED_SURFACES` drops the Slovak crossing Rosa (a colour word that is a variety, like Bianca / Nero). |
+| ❌ | `monterrei` | "Blanca De Monterrei (Siria)" and "Doña Blanca (Siria)" — two pills, one prime; the parish line names 49 parishes and not the whole municipio Vilardevós the redraw includes; a stale Wikipedia six-municipality bullet. | VIVC live check (is Blanca de Monterrei a Síria synonym, or a cultivar of its own — then the bracket is wrong on one pill); `geom_parroquias_line` should name the whole municipios of the redraw; the bullet → feedback evidence. |
+| 🟡 | `alicante-lalcoia` ×2, `monterrei`, `tokajske-vino-zo-slovenskej-oblasti`, `maltese-islands` | 5 misleading terroir bullets (3 stale Wikipedia-sourced, 1 narrowed attribution, 1 DOK on the IĠT card). | `scripts/build_terroir_feedback.py --evidence tmp/validation/cards-sample40-feedback --review-id cards-2026-10-23T083709`, then `rerun_terroir_facts.py` on the five slugs. |
+| 🟡 | `primorska`, `vychodoslovenska`, `balatonmelleki`, `bela-krajina` | the EU register fiche splits MAIN / OTHER where the national roster has no roles (card: all principal). | a decision, not a defect: read fiche roles for SI / SK / HU as the CZ Znojmo rule does for narrower rosters, or leave the national convention; the judge prompt now says the fiche-only split is `defective`, not misleading. |
+| 🟡 | validator | `moravske`: 4 false findings — the packet carried the 2011 fiche, not Vyhláška 88/2017 (`raw/cz/national-specs/varieties.json`); 16 summary findings on summaries the card never renders. | the decree roster is now a CZ packet document; `card_fields` exposes the summary only without facts (both 2026-10-23). Re-grade `moravske` after the next build. |
+| 🟡 | 81 defective findings | `source-not-cited` 11 (the MASAF disciplinare / national spec behind the roster is absent from the card's Sources — `colli-altotiberini`, `valle-belice`, …), sub-denomination relation notes 6, terroir-fact omissions 11. | read per record in `tmp/validation/cards-sample40.md`; the Sources gap is a `_sources_for()` question for MASAF-augmented non-stubs. |

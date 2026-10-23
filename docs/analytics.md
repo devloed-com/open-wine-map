@@ -60,6 +60,11 @@ option is inert, and a build with no `localhost` entry loads nothing there.
 | `Settings Opened` | `locale` | the ⚙ control top-right of the map opens its menu (language + the light / system / dark switch, moved there from the sidebar on 2026-10-18) |
 | `Sidebar Toggled` | `state` (`collapsed` / `expanded`), `via` (`button` — the ‹ in the sidebar head; `rail` — the › on the folded rail; `rail-search` — the rail's magnifier, which unfolds with the search focused), `locale` | the desktop sidebar folds to a 48 px rail or unfolds (since 2026-10-18; remembered per browser) |
 | `Search Cleared` | `via` (`button` — the × in the field; `escape` — Esc on a box holding text), `locale` | the search text and the tree filter it holds are cleared (since 2026-10-18 — the review found "getting out of search" unclear) |
+| `Share Opened` | `via` (`control` — the share button top-right of the map, in the phone bar on a phone), `what` (`card` — an open card and its stack; `filters` — active filters; `view` — the bare map), `locale` | the share dialog opens (2026-10-22): the address bar's link (the URL carries the view — `viewFromQuery` in query_core.mjs), the OS share sheet, the embed code |
+| `Share Copied` | `kind` (`link` / `embed`), `theme` (`light` / `dark` — embed copies only, the dialog's choice), `locale` | a copy button of the share dialog |
+| `Share Native` | `locale` | the OS share sheet (`navigator.share`) completed |
+| `Embed Viewed` | `host` (the embedding page's hostname from the referrer; `(none)` when withheld), `locale` | an embedded map (`?embed=1`, the share dialog's iframe) loaded. Its pageview lands on the locale home's path (Plausible strips the query), so entry-page counts include embeds — subtract this event's visitors when it matters |
+| `Embed Link Clicked` | `target` (`brand` — the badge top-left; `appellation` — a row of the click popup), `slug` (appellation rows), `locale` | a click-through from an embedded map to the site (a new tab) |
 | `View Mode Switched` | `mode` (`simple` / `advanced`), `via` (`omnisearch` / `webmcp`, optional), `locale` | **retired 2026-10-17** — the Simple / Advanced toggle is gone (one sidebar); the goal can be archived in Plausible, its history stays readable |
 | `Grape Scope Toggled` | `scope` (`main` / `all`), `locale` | the "main grape only" checkbox that appears as a chip next to the grape chips once a grape is picked in the search box (2026-09-23; before that, a permanent checkbox in the Grapes facet). Not persisted: it ends with the last grape chip. |
 | `Omnisearch Used` | `result_count`, `had_match`, `groups` (a/g/r/s/c — appellations / grapes / regions / styles / classifications; `c` and the classification count in `result_count` since the 2026-09-25 build, so a query that matched only a classification — an aging / Prädikat / selection tier — no longer logs `had_match=false`), `query_len`, `locale` | 1 s after typing stops in the omnisearch |
@@ -69,7 +74,7 @@ option is inert, and a build with no `localhost` entry loads nothing there.
 | `MCP Tool` | `tool` (`search_appellations` / `filter_appellations` / `get_appellation` / `list_facets` / `show_on_map`), `locale`; `slug` (`get_appellation`: the appellation fetched), `slugs` + `count` (`show_on_map`: the known slugs shown, comma-joined in call order, cut at a slug boundary to 2,000 characters) — both since 2026-10-05, unknown slugs left out | a client of the remote MCP server (`mcp.openwinemap.com/mcp`, mcp/) called a tool. Sent server-side by the Bunny Edge Script through Plausible's events API (`PLAUSIBLE_HOST` / `PLAUSIBLE_DOMAIN` script variables; unset → nothing sent), with the client's User-Agent and forwarded IP so visitor counting works as for page events. No other argument is sent — a search's query text stays private. Its page URL is `https://mcp.openwinemap.com/mcp`. **Which appellations agents read**: filter `tool` = `get_appellation`, break down by `slug`. `slugs` is one row per *set*; count one appellation's shows with a `contains` filter on it. |
 | `Search Used` | `result_count`, `had_match`, `query_len`, `locale` | the legacy sidebar search (superseded by the omnisearch in June 2026; its dead handler was removed 2026-10-17 — no longer emitted) |
 | `Theme Changed` | `theme` (`light` / `system` / `dark`), `locale` | the theme switch (in the ⚙ menu since 2026-10-18, with its words beside the icons; the sidebar's top before that) |
-| `Drawer Opened` | `via` (`menu`; `search` only until 2026-10-18, when the bar's search button was removed — it opened the same drawer), `locale` | a phone opens the sidebar drawer from the bar's ☰ (since 2026-10-17) — the engagement signal the mobile bounce rate lacked |
+| `Drawer Opened` | `via` (`search` — the bar's magnifier, which opens the drawer with the search field focused, since 2026-10-21; `menu` was the ☰ of 2026-10-17 → 10-21; `search` was also the bar's separate search button until 2026-10-18), `locale` | a phone opens the sidebar drawer from the bar's button (since 2026-10-17) — the engagement signal the mobile bounce rate lacked |
 | `Sheet Expanded` | `slug`, `via` (`handle` / `scroll`), `locale` | a phone's 45 % sheet is expanded, by the handle or by scrolling the card (since 2026-10-17) |
 | `Feedback Flagged` | `slug`, `aspect` (`boundary` / `grapes` / `facts` / `name` / `sources` / `other`), `country`, `kind`, `geom_source`, `view_mode` (`simple` / `advanced` — sent by the 2026-09-22 → 2026-10-17 builds only; absent since the toggle was removed, `lod` + `zoom` say what was on screen), `lod` (`footprint` / `parcels` / `zone` — what was on screen for this record: below the detail zoom a French parcel-level record draws its generalised vineyard footprint, from z12 its parcels, every other record one polygon at every zoom), `zoom` (the map zoom at the tap, one decimal), `via` (`card` / `stub-help`), `locale` | one tap on an aspect chip in the **"Report a mistake" section at the bottom of every appellation card** (2026-09). No account, no form. Pressed chips are remembered per browser (localStorage) so a revisit does not re-fire. A `slug × aspect` breakdown is the curator queue; flags ÷ `Appellation Viewed` is a per-record trust score. |
 | `Feedback Retracted` | `slug`, `aspect`, `view_mode` (historical, see above), `lod`, `zoom`, `locale` | a second tap on a pressed chip un-flags it (a misclick, or a change of mind). A flag cannot be recalled from Plausible, so net the two: flags − retractions per `slug × aspect`. |
@@ -109,12 +114,17 @@ configured for this site" (the Sites API is not enabled on this instance).
 
 ## Reading the numbers — artefacts to keep in mind
 
-- **Pageviews on entity paths are entries only.** Opening an appellation
-  rewrites the URL with `history.replaceState`, which Plausible does not count
-  as a pageview (by design — panel opens are not page loads). `/en/bourgogne`
-  showing 85 visitors and 10 pageviews means 10 landings and 85 people whose
-  panel was on Bourgogne at some point. Use the `Appellation Viewed` slug
-  breakdown, not the Pages report, for what people look at.
+- **Pageviews on entity paths were entries only until 2026-10-21.** Opening
+  an appellation used to rewrite the URL with `history.replaceState`, which
+  Plausible does not count as a pageview: `/en/bourgogne` showing 85 visitors
+  and 10 pageviews meant 10 landings and 85 people whose panel was on
+  Bourgogne at some point. Since the Back button works (2026-10-21) a card
+  open is a `history.pushState`, which the tracker counts as a pageview (a
+  push to the same path — a related-link filter — is deduped, and a
+  Back / Forward restore is counted too), so the Pages report now also
+  carries in-session opens, pageviews per visit rise and the bounce rate on
+  the map home falls from that day. The `Appellation Viewed` slug breakdown
+  stays the per-intent measure (`via`).
 - **Bounce on entity landings was ~0 by construction until 2026-09-11**: the
   page-load open fired `Appellation Viewed`, and any second event ends a
   bounce. From this build on, a landing that only reads the SSR page counts

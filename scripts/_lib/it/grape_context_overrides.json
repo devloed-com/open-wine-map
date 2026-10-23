@@ -1,0 +1,27 @@
+{
+  "_doc": "Per-record binding of a bare variety word the disciplinare writes short, keyed by the MASAF record slug (a sottozona annex reads its parent's entry) -> normalised surface (lower-case, accents folded) -> {slug, reason, source, verified}. The lexicon's bare alias is the convention everywhere else (VIVC lists bare TREBBIANO under Trebbiano toscano); a pin needs the document's own article 2 to name the variety in full. A pin whose slug is not in the lexicon, or whose record has no sidecar, fails tests/test_masaf_roles.py.",
+  "romagna": {
+    "trebbiano": {
+      "slug": "trebbiano-romagnolo",
+      "reason": "Article 2 writes the Romagna Trebbiano wine's variety in full, \"Trebbiano Romagnolo: minimo 85%\", and \"Trebbiano\" for the same variety in the Bianco types and in the Oriolo annex (\"Trebbiano: minimo 70%\"); the bare alias gave Trebbiano toscano, so the parent and the Oriolo card carried Ugni blanc.",
+      "source": "MASAF disciplinare Romagna DOC, Art. 2 and Allegato 9 (sottozona Oriolo) Art. 2",
+      "verified": "2026-10-22"
+    }
+  },
+  "colli-di-faenza": {
+    "trebbiano": {
+      "slug": "trebbiano-romagnolo",
+      "reason": "Article 2: \"Colli di Faenza Trebbiano. Vitigno Trebbiano Romagnolo 100%\" — the bare word is the wine type's name, its variety the Romagnolo.",
+      "source": "MASAF disciplinare Colli di Faenza DOC, Art. 2",
+      "verified": "2026-10-22"
+    }
+  },
+  "colli-d-imola": {
+    "trebbiano": {
+      "slug": "trebbiano-romagnolo",
+      "reason": "Article 2 writes \"Trebbiano (da Trebbiano Romagnolo)\".",
+      "source": "MASAF disciplinare Colli d'Imola DOC, Art. 2",
+      "verified": "2026-10-22"
+    }
+  }
+}

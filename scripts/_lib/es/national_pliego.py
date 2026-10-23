@@ -136,10 +136,37 @@ _COLOUR_LINE_RE = re.compile(
     r"^\s*"
     r"(?:[-•·*]\s*)?"
     r"(?:variedades?\s+)?"
-    r"(tintas?|blancas?|rosadas?|negras?)"
+    r"(tintas?|blancas?|rosadas?|negras?)\b"
     r"\s*:?\s*",
     re.IGNORECASE,
 )
+
+# A wrapped list line can open on the colour word of the name the previous
+# line cut ("… Verdejo, Doña ⏎ Blanca o Cigüente, …", Extremadura; "…
+# Garnacha ⏎ Tinta, Cabernet Franc …", Uclés), and "Negramoll" opens on
+# "Negra". A heading carries a colon, a bullet or "Variedades" lead, a role
+# word, a column gap, or nothing after the colour word.
+_COLOUR_HEADING_LEAD_RE = re.compile(r"^\s*(?:[-•·*]|variedades?\s)", re.IGNORECASE)
+_COLOUR_HEADING_TAIL_RE = re.compile(
+    r"^(?:recomendadas?|autorizadas?|principales?|preferentes?|secundarias?"
+    r"|complementarias?|permitidas?|tradicionales?|accesorias?|minoritarias?"
+    r"|mayoritarias?|y\s+(?:tintas?|blancas?|rosadas?|negras?)\b)",
+    re.IGNORECASE,
+)
+
+
+def _colour_heading(line: str) -> re.Match | None:
+    """The `_COLOUR_LINE_RE` match of `line` when the line is a colour
+    heading, None when it is a list line that opens on a colour word."""
+    m = _COLOUR_LINE_RE.match(line)
+    if m is None:
+        return None
+    head, rest = m.group(0), line[m.end():]
+    if ":" in head or _COLOUR_HEADING_LEAD_RE.match(line) or _COLUMN_GAP_RE.search(head.lstrip()):
+        return m
+    if not rest.strip() or _COLOUR_HEADING_TAIL_RE.match(rest):
+        return m
+    return None
 
 # A bullet-list item — line begins with a bullet glyph. Bullet items are
 # self-contained varieties, not continuations of the prior line.
@@ -478,7 +505,7 @@ def _is_continuation_line(prev: str, is_colour_header: bool, is_bullet_item: boo
     # continuation joins like `…Cabernet\nSauvignon y Merlot.`
     # (Calatayud, where the wrap split a single variety name into
     # two false slugs `cabernet` + `sauvignon`).
-    prev_body = re.sub(r"^\s*[-•·*]?\s*", "", prev)
+    prev_body = _close_justified_gaps(re.sub(r"^\s*[-•·*]?\s*", "", prev))
     if prev_body and _COLUMN_GAP_RE.search(prev_body):
         return False
     return _looks_like_wrap_continuation(prev)
@@ -502,7 +529,7 @@ def _stitch_continuations(text: str) -> str:
             if out and out[-1] != "":
                 out.append("")
             continue
-        is_colour_header = bool(_COLOUR_LINE_RE.match(s))
+        is_colour_header = _colour_heading(s) is not None
         is_bullet_item = bool(_BULLET_ITEM_RE.match(s))
         prev = out[-1].rstrip() if out else ""
         if _is_continuation_line(prev, is_colour_header, is_bullet_item):
@@ -614,16 +641,36 @@ def _process_variety_line(
     if not line or _PAGE_HEADER_RE.search(line):
         return current_colour
     line = _LETTER_BULLET_PREFIX_RE.sub("", line)
-    m_col = _COLOUR_LINE_RE.match(line)
+    m_col = _colour_heading(line)
     if m_col:
         current_colour = _COLOUR_TO_TAG.get(m_col.group(1).lower(), current_colour)
         payload = line[m_col.end():]
     else:
         payload = line
-    for raw_chunk in _COLUMN_GAP_RE.split(payload):
+    for raw_chunk in _COLUMN_GAP_RE.split(_close_justified_gaps(payload)):
         for entry in _entries_from_chunk(raw_chunk, current_colour):
             _emit_entry(entry, seen, details)
     return current_colour
+
+
+# A fully justified line spreads its words ("Moscatel      de   Alejandría,
+# Moscatel     de    Grano ⏎ Menudo", Ribera del Guadiana) and the column
+# split cut the names apart: "Moscatel" alone read as Alexandria and "grano"
+# bound the Portuguese Granho. A gap after a comma or beside a connector word
+# is justification; a column break never sits there (Montsant's "Garnacha
+# blanca      Samsó, mazuela" keeps its split).
+_JUSTIFY_CONNECTORS = frozenset({"de", "del", "la", "las", "los", "el", "y", "o", "e", "i", "u"})
+
+
+def _close_justified_gaps(line: str) -> str:
+    parts = re.split(r"(\s{3,})", line)
+    for i in range(1, len(parts) - 1, 2):
+        left, right = parts[i - 1].rstrip(), parts[i + 1].lstrip()
+        left_word = left.rsplit(None, 1)[-1].lower() if left.split() else ""
+        right_word = right.split(None, 1)[0].lower() if right.split() else ""
+        if left.endswith(",") or left_word in _JUSTIFY_CONNECTORS or right_word in _JUSTIFY_CONNECTORS:
+            parts[i] = " "
+    return "".join(parts)
 
 
 def parse_variety_section(text: str) -> dict:

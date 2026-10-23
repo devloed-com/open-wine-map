@@ -1,0 +1,6 @@
+{
+  "_doc": "Reviewed findings of scripts/audit_geometry_vs_text.py: a record whose polygon legitimately covers units its delimitation text does not name (or lacks units it names), with the public-source reason. Keyed by slug. A whitelisted record reports REVIEWED and re-fires when its named / drawn sets change (the entry pins `missing` and `extra` as reviewed).",
+  "_example": {
+    "slug": {"reason": "why the mismatch is the regulator's own statement", "source": "the public document or layer", "verified": "YYYY-MM-DD", "missing": [], "extra": []}
+  }
+}

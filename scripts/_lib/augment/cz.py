@@ -9,7 +9,72 @@ from __future__ import annotations
 
 import json
 
-from ._shared import _CZ_CHZO_BY_SLUG, _CZ_NATIONAL_SPEC_BY_SLUG, NATIONAL_SPECS_CZ
+from ._shared import (
+    _CZ_CHZO_BY_SLUG,
+    _CZ_FICHE_ROSTER_BY_SLUG,
+    _CZ_NATIONAL_SPEC_BY_SLUG,
+    NATIONAL_SPECS_CZ,
+)
+
+# A single document whose § 6 names far fewer main varieties than the
+# national decree names the appellation's own roster — VOC Znojmo's three
+# (víno originální certifikace, § 27 of Act No. 321/2004 Coll.: the VOC
+# association's rules, not the decree, set its varieties), Novosedelské
+# slámové víno's five, Šobes's eight (plus Pálava under "b."), Litoměřická's
+# nineteen — and the decree's list applies to it only where the fiche says
+# so ("všechny další odrůdy uznané …", the sidecar's `open_roster`: then the
+# decree's remainder is the accessory list). A podoblast fiche reproduces
+# the decree's list of its day (55 of the 67 of 2017) and keeps the current
+# decree's roster. Visitor flag on Znojmo, 2026-10-22: the card listed 67
+# varieties, reds included, for a white VOC.
+FICHE_OWN_ROSTER_MAX_SHARE = 0.5
+
+
+def fiche_roster_is_own(fiche_n: int, national_n: int) -> bool:
+    return 0 < fiche_n < FICHE_OWN_ROSTER_MAX_SHARE * national_n
+
+
+def _fiche_own_roster(slug: str, national_n: int) -> tuple[list[dict], dict, bool] | None:
+    """The register fiche's § 6 roster as grape details (main → principal,
+    the rest → accessory), its provenance and its `open_roster` flag, when
+    it is the appellation's own roster (see FICHE_OWN_ROSTER_MAX_SHARE);
+    None when the fiche has no roster or reproduces the national list."""
+    from _lib.grape_lexicon import DEFAULT_COLOUR  # noqa: E402
+    from _lib.lexicon_loading import _load_vivc_colour_by_slug  # noqa: E402
+    from _lib.register_fiche import load_sidecar  # noqa: E402
+
+    fiche = load_sidecar("cz", slug) or {}
+    vivc_colour = _load_vivc_colour_by_slug()
+    details: list[dict] = []
+    seen: set[str] = set()
+    for d in (fiche.get("grapes") or {}).get("details") or []:
+        s = d.get("slug")
+        if not s or s in seen:
+            continue
+        seen.add(s)
+        # the fiche parser leaves the colour blank for an international variety
+        # (Sauvignon, Riesling) — the same fallback chain as the style floor
+        colour = d.get("colour") or DEFAULT_COLOUR.get(s) or vivc_colour.get(s) or ""
+        details.append({
+            "slug": s,
+            "name": d.get("name") or s,
+            "role": "accessory" if d.get("role") == "accessory" else "principal",
+            "colour": colour,
+            "source": "eambrosia-register-fiche",
+        })
+    n_main = sum(1 for d in details if d["role"] == "principal")
+    if not fiche_roster_is_own(n_main, national_n):
+        return None
+    src = fiche.get("source") or {}
+    prov = {
+        "url": src.get("url") or "",
+        "ref": src.get("ref") or "",
+        "attachment_uri": src.get("attachment_uri") or "",
+        "n_varieties": n_main,
+        "source_org": "eambrosia-register",
+    }
+    return details, prov, bool((fiche.get("grapes") or {}).get("open_roster"))
+
 
 _COLOUR_FROM_CZ_BLOCK: dict[str, str] = {
     "blanc": "blanc",
@@ -48,6 +113,7 @@ def augment_cz_records_with_national_specs(records: list[dict]) -> int:
     """
     _CZ_NATIONAL_SPEC_BY_SLUG.clear()
     _CZ_CHZO_BY_SLUG.clear()
+    _CZ_FICHE_ROSTER_BY_SLUG.clear()
     if not NATIONAL_SPECS_CZ.exists():
         return 0
 
@@ -131,7 +197,13 @@ def augment_cz_records_with_national_specs(records: list[dict]) -> int:
         grapes = dict(record.get("grapes") or {})
         existing_slugs = {d.get("slug") for d in (grapes.get("details") or []) if d.get("slug")}
         new_details = list(grapes.get("details") or [])
-        for d in sidecar_details:
+        own = _fiche_own_roster(slug, len(sidecar_details))
+        roster = own[0] if own is not None else sidecar_details
+        if own is not None and own[2]:
+            # the fiche opens its roster to every variety the law recognises:
+            # the decree's remainder is the accessory list
+            roster = roster + [{**d, "role": "accessory"} for d in sidecar_details]
+        for d in roster:
             if d["slug"] in existing_slugs:
                 continue
             existing_slugs.add(d["slug"])
@@ -188,8 +260,12 @@ def augment_cz_records_with_national_specs(records: list[dict]) -> int:
             }
             record["chzo_spec"] = chzo_prov
             _CZ_CHZO_BY_SLUG[slug] = chzo_prov
-        record["national_spec"] = provenance_base
-        _CZ_NATIONAL_SPEC_BY_SLUG[slug] = provenance_base
+        if own is not None:
+            record["register_fiche_roster"] = own[1]
+            _CZ_FICHE_ROSTER_BY_SLUG[slug] = own[1]
+        else:
+            record["national_spec"] = provenance_base
+            _CZ_NATIONAL_SPEC_BY_SLUG[slug] = provenance_base
         augmented += 1
     return augmented
 

@@ -50,3 +50,19 @@ def test_about_dialog_sections_are_h3_under_the_title() -> None:
                     "Contribute and follow"):
         assert f"<section><h3>{heading}</h3>" in html
     assert html.index('<h2 id="about-dialog-h"') < html.index("<h3>")
+
+
+def test_about_method_section_leads_with_the_code_pipeline() -> None:
+    # "How the map is made" (2026-10-20): first what the code pipeline extracts
+    # from the specifications, then what the language models add, then the
+    # level-of-detail note on how the map draws it — so a reader learns the
+    # data is parsed, not generated, before reading about the models.
+    labels = defaultdict(str, {
+        "about_method_h": "How the map is made",
+        "about_pipeline_html": "PIPELINE PARAGRAPH",
+        "about_lod_html": "LOD {zoom} {radius}",
+        "about_llm_html": "LLM PARAGRAPH",
+    })
+    html = _build_about_dialog(labels, lod={"overview_max_zoom": 11.9, "radius_m": 250})
+    section = html[html.index("<h3>How the map is made</h3>"):html.index("<h3>", html.index("<h3>How the map is made</h3>") + 1)]
+    assert section.index("PIPELINE PARAGRAPH") < section.index("LLM PARAGRAPH") < section.index("LOD 11.9 250")

@@ -110,6 +110,8 @@ def test_earn_interactions_drops_unearned_and_caps():
         ("it", "rese naturalmente basse in quanto le radici affondano nel calcare"),
         ("bg", "букет и вкус, резултат от съчетанието на тръпчивостта на Мавруд"),
         ("hu", "A bazaltsapkák és a Balaton közelsége együttesen garantálják a magas mustfokot."),
+        ("cs", "Barevnost je ovlivněná především slunečním zářením."),   # Znojmo flag 2026-10-22: the participle
+        ("sk", "Charakter vína je ovplyvnený pôdou."),
     ],
 )
 def test_connective_forms_the_smoke_and_the_corpus_samples_missed(lang, text):

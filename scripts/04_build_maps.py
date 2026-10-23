@@ -58,6 +58,7 @@ from _lib.augment._shared import (
     _BG_NATIONAL_SPEC_BY_SLUG,
     _CY_NATIONAL_SPEC_BY_SLUG,
     _CZ_CHZO_BY_SLUG,
+    _CZ_FICHE_ROSTER_BY_SLUG,
     _CZ_NATIONAL_SPEC_BY_SLUG,
     _DE_PRODUKTSPEZIFIKATION_BY_SLUG,
     _ES_NATIONAL_PLIEGO_BY_SLUG,
@@ -179,6 +180,9 @@ from _lib.lu.region import derive_region as derive_lu_region
 from _lib.map_template import (
     MCP_ENDPOINT_URL,
     STARTUP_AOCS_FIELDS,
+    _THEME_PREPAINT_JS,
+    _made_by_html,
+    _static_page_css,
     build_country_labels,
     build_labels,
     seo_display_name,
@@ -568,6 +572,17 @@ def _load_cz_register_fiche_text() -> dict[str, str]:
 
 
 _CZ_REGISTER_FICHE_TEXT: dict[str, str] = _load_cz_register_fiche_text()
+
+
+def _cz_fiche_source_keys(record: dict) -> dict:
+    """The register fiche as the roster's source, for the panel's source
+    block — only where augment/cz.py took the roster from it."""
+    fr = record.get("register_fiche_roster") or _CZ_FICHE_ROSTER_BY_SLUG.get(record.get("slug") or "") or {}
+    return {
+        "register_fiche_url": fr.get("url", ""),
+        "register_fiche_ref": fr.get("ref", ""),
+        "register_fiche_n_varieties": fr.get("n_varieties", 0),
+    }
 
 
 def _aging_tiers_from_text(record: dict) -> set[str]:
@@ -3415,6 +3430,7 @@ def _shell_state() -> dict[str, dict]:
         "_BG_NATIONAL_SPEC_BY_SLUG": _BG_NATIONAL_SPEC_BY_SLUG,
         "_CY_NATIONAL_SPEC_BY_SLUG": _CY_NATIONAL_SPEC_BY_SLUG,
         "_CZ_CHZO_BY_SLUG": _CZ_CHZO_BY_SLUG,
+        "_CZ_FICHE_ROSTER_BY_SLUG": _CZ_FICHE_ROSTER_BY_SLUG,
         "_CZ_NATIONAL_SPEC_BY_SLUG": _CZ_NATIONAL_SPEC_BY_SLUG,
         "_DE_PRODUKTSPEZIFIKATION_BY_SLUG": _DE_PRODUKTSPEZIFIKATION_BY_SLUG,
         "_ES_NATIONAL_PLIEGO_BY_SLUG": _ES_NATIONAL_PLIEGO_BY_SLUG,
@@ -3842,6 +3858,7 @@ def _sources_for(record: dict) -> dict:
             "national_spec_sbirka_castka": ns.get("sbirka_castka", ""),
             "national_spec_sha256": ns.get("sha256", ""),
             "national_spec_n_varieties": ns.get("n_varieties", 0),
+            **_cz_fiche_source_keys(record),
             "chzo_spec_url": chzo.get("url", ""),
             "chzo_spec_title": chzo.get("title", ""),
             "chzo_spec_region": chzo.get("region", ""),
@@ -5046,7 +5063,7 @@ _WEBMANIFEST = {
     "scope": "/",
     "display": "standalone",
     "background_color": "#1a1a1a",
-    "theme_color": "#7A1F2B",
+    "theme_color": "#934050",
     "icons": [
         {"src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png"},
         {"src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png"},
@@ -5208,6 +5225,8 @@ def _write_llms_txt(entity_entries: list[tuple[str, str, str]]) -> None:
         "geodata (IGN, Eurostat GISCO, Bétard 2022). Every fact traces to a "
         "public, licence-clear source.",
         "",
+        "Built and maintained by [devloed.com](https://devloed.com).",
+        "",
         "## Site",
         "",
     ]
@@ -5257,6 +5276,7 @@ def _write_404_page() -> None:
     """Emit wiki/404.html — a self-contained, noindex branded error page. Bunny
     serves it via Custom404FilePath (set by deploy.py). Byte-stable."""
     browse = f"{SITE_BASE_URL}/en/appellations/"
+    credit = _made_by_html(build_labels(load_translations("en").gettext))
     html = (
         "<!doctype html>\n"
         '<html lang="en">\n'
@@ -5265,18 +5285,22 @@ def _write_404_page() -> None:
         "<title>Page not found — Open Wine Map</title>\n"
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         '<meta name="robots" content="noindex">\n'
-        '<meta name="theme-color" content="#7A1F2B">\n'
+        '<meta name="author" content="devloed.com">\n'
+        '<meta name="theme-color" content="#934050" media="(prefers-color-scheme: light)">\n'
+        '<meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">\n'
+        '<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">\n'
+        f"<script>{_THEME_PREPAINT_JS}</script>\n"
         "<style>\n"
+        f"{_static_page_css()}"
         "  body { margin:0; min-height:100vh; display:flex; align-items:center; "
         "justify-content:center; text-align:center; "
         "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; "
-        "color:#222; background:#fafafa; }\n"
+        "color:var(--pg-text); background:var(--pg-bg); }\n"
         "  main { padding:32px 24px; max-width:540px; }\n"
-        "  h1 { font-size:64px; margin:0; color:#7A1F2B; }\n"
-        "  p { font-size:17px; color:#555; line-height:1.5; }\n"
-        "  a { color:#7A1F2B; font-weight:600; }\n"
-        "  @media (prefers-color-scheme: dark) { body { color:#ddd; background:#161616; } "
-        "p { color:#aaa; } a, h1 { color:#e6a3ad; } }\n"
+        "  h1 { font-size:64px; margin:0; color:var(--pg-accent); }\n"
+        "  p { font-size:17px; color:var(--pg-text-2); line-height:1.5; }\n"
+        "  a { color:var(--pg-accent); font-weight:600; }\n"
+        "  .credit { font-size:14px; } .credit .heart { color:var(--pg-accent); }\n"
         "</style>\n"
         "</head>\n"
         "<body>\n"
@@ -5286,6 +5310,7 @@ def _write_404_page() -> None:
         "or never existed.</p>\n"
         f'<p><a href="{SITE_BASE_URL}/">Open the map</a> · '
         f'<a href="{browse}">Browse all appellations</a></p>\n'
+        f'<p class="credit">{credit}</p>\n'
         "</main>\n"
         "</body>\n"
         "</html>\n"

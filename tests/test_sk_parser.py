@@ -357,3 +357,26 @@ def test_prihlaska_ocr_noisy_names_recovered(fixture_text):
     # both feteasca slugs are present (no two-column gutter here).
     assert "feteasca-regala" in slugs
     assert "feteasca-alba" in slugs
+
+
+def test_specifikacija_wrapped_odroda_name_is_joined():
+    """A §f row whose Odroda name wraps onto a lower-case second line at the
+    Odroda column ("Veltlínske červené ⏎ skoré", all five modern specs) is
+    one variety, Frühroter Veltliner; read line by line it was "Veltlínske
+    červené", Roter Veltliner (2026-10-22). A synonym list that wraps sits
+    at the Synonymum column and is still dropped."""
+    body = (
+        "MUŠTOVÉ BIELE\n"
+        "         Tramín červený       Tramín, Tramini, Roter traminer, Gewürtztraminer\n"
+        "         Veltlínske červené   Červená malvázia, Früh rotveltliner\n"
+        "         skoré\n"
+        "         Veltlínske zelené    Zöldveltelini, Grüner Muskateller, Weisser Veltliner,\n"
+        "                              Grüner Veltliner, Zelený veltlín, Veltlín zelený\n"
+    )
+    out = specifikacija._parse_grapes(body)
+    names = {d["name"]: d["slug"] for d in out["details"]}
+    assert names == {
+        "Tramín červený": "gewurztraminer",
+        "Veltlínske červené skoré": "velteliner-rouge-precoce",
+        "Veltlínske zelené": "gruner-veltliner",
+    }

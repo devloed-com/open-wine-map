@@ -425,6 +425,11 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
             f'<li><a href="{esc(sources["national_spec_url"])}" target="_blank" rel="noopener">'
             f'{lab["src_national_spec"]}</a>{org}</li>'
         )
+    if sources.get("register_fiche_url"):
+        links.append(
+            f'<li><a href="{esc(sources["register_fiche_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_register_fiche"]}</a></li>'
+        )
     if sources.get("chzo_spec_url"):
         reg = f' — {esc(sources["chzo_spec_region"])}' if sources.get("chzo_spec_region") else ""
         org = (

@@ -196,12 +196,13 @@ def _load_translated_grape(lang: str, slug: str, max_chars: int = 280) -> dict |
 
 
 def _corpus_grape_names() -> dict[str, str]:
-    """Per-slug regulator spelling from the FR+ES+PT corpus, e.g.
-    `cot → 'cot'`, `malbec → 'malbec'`, `mancin → 'mancin'`. Used as the
-    canonical sidebar / pill label so three different slugs sharing a
-    Wikipedia article (Cot ↔ Malbec via vivc, plus a misattributed
-    Mancin) read as their three distinct cahier names — not three
-    identical "Malbec" rows."""
+    """Per-slug regulator spelling from the corpus (`grape_corpus.pick_label`:
+    the spelling that writes the slug, else the most frequent one, colour
+    codes and line-break hyphens dropped), e.g. `cot → 'cot'`, `malbec →
+    'malbec'`, `mancin → 'mancin'`. Used as the canonical sidebar / pill
+    label so three different slugs sharing a Wikipedia article (Cot ↔
+    Malbec via vivc, plus a misattributed Mancin) read as their three
+    distinct cahier names — not three identical "Malbec" rows."""
     from _lib.grape_corpus import collect_grape_slugs as _c  # noqa: PLC0415
     return {slug: entry["name"] for slug, entry in _c().items() if entry.get("name")}
 

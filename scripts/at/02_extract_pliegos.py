@@ -43,6 +43,7 @@ from _lib.at.einziges_dokument import (  # noqa: E402
     title_has_keyword,
 )
 from _lib.at.region import derive_bundesland  # noqa: E402
+from _lib.extract_index import is_partial, write_index  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue,
     match_variety,
@@ -427,10 +428,7 @@ def main() -> int:
         }
 
     set_pliego_context(None)
-    INDEX_OUT.write_text(
-        json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True),
-        encoding="utf-8",
-    )
+    write_index(INDEX_OUT, index, partial=is_partial(args))
     unknowns_path = ROOT / "raw" / "at" / "extraction-unknowns.json"
     n_unknowns = flush_unknowns_queue(unknowns_path)
     if n_unknowns:

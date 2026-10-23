@@ -32,13 +32,18 @@ slugs), and `extract_articles` carves the pdftotext output into a
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from functools import lru_cache
+from pathlib import Path
 from typing import Iterable
 
 from rapidfuzz import fuzz
 
+from _lib.grape_entity import current_pliego_context, is_curated_surface
+from _lib.grape_lexicon import DEFAULT_COLOUR
 from _lib.it.documento_unico import scan_styles
 
 # Filename markers that should be stripped before slugifying — these
@@ -410,13 +415,15 @@ _GRAPE_LINE_DROP = (
 # "uve del vitigno Pignolo prodotte nella zona" / "dall'uva Marzemino
 # gentile prodotta in vigneti" (the single-variety sottozona annexes of
 # Friuli Colli Orientali and Trentino): a participle closes the name, and
-# "uva" introduces it as "vitigno" does — a capital must still follow.
+# "uva" introduces it as "vitigno" does — a capital must still follow. A dot
+# before a digit is a number's ("Incrocio Manzoni 2.15", Colli di Conegliano,
+# had stopped at "2" and bound the white Manzoni).
 _VITIGNO_RE = re.compile(
     r"\b(?:vitign[oi]|variet[aà]|uv[ae])\s+([A-ZÀÈÉÌÒÙ][\w\sàèéìòù'’\-/.]+?)"
     r"(?=\s*(?:per\b|al\b|dal\b|nel\b|nella\b|in\b|con\b|che\b|"
     r"prodott[aeio]\b|coltivat[aeio]\b|provenient[ei]\b|present[ei]\b|"
     r"almeno\b|minimo\b|massimo\b|fino\b|sino\b|circa\b|"
-    r";|,|:|\(|\.|\bn\.|\bb\.|\bg\.|\brs\.|\brg\.|\brb\.|$))",
+    r";|,|:|\(|\.(?!\d)|\bn\.|\bb\.|\bg\.|\brs\.|\brg\.|\brb\.|$))",
     re.U,
 )
 
@@ -449,6 +456,10 @@ _WRAP_JOIN_RE = re.compile(
 _WRAP_JOIN_PREP_RE = re.compile(
     r"\b(di|del|della|dell[’'])[ \t]*\n[ \t]*(?=[A-ZÀ-ÖØ-Þ])",
 )
+# "Lambrusco a ⏎ foglia frastagliata" (Modena): a name word, the preposition
+# "a", then the name's lower-case rest — "vitigni a ⏎ bacca rossa" is prose
+# and keeps its break.
+_WRAP_JOIN_A_RE = re.compile(r"\b([A-Z][a-zà-ÿ]+) a[ \t]*\n[ \t]*(?=[a-zà-ÿ])")
 
 # A disciplinare defines a group designation with a composition
 # parenthetical: "Cabernet (da Cabernet franc e/o Cabernet Sauvignon e/o
@@ -615,6 +626,7 @@ def article2_candidate_phrases(text: str) -> list[str]:
     # composition-parenthetical rewrite reads across them.
     single = _WRAP_JOIN_RE.sub(r"\1 \2", single)
     single = _WRAP_JOIN_PREP_RE.sub(r"\1 ", single)
+    single = _WRAP_JOIN_A_RE.sub(r"\1 a ", single)
     # Collapse spaces/tabs but KEEP newlines: disciplinari that list one
     # variety per line ("Merlot\nCabernet franc\nRefosco …") rely on the
     # newline as the enumeration separator (_LINE_SPLIT_RE splits on it).
@@ -677,6 +689,27 @@ def _loose_key(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
+def _name_words(s: str) -> tuple[str, ...]:
+    folded = unicodedata.normalize("NFKD", s.lower())
+    folded = "".join(c for c in folded if not unicodedata.combining(c))
+    return tuple(re.findall(r"[a-z0-9]+", folded))
+
+
+def _is_part_of_name(phrase: str, names: tuple[str, ...]) -> bool:
+    """True when `phrase` is a run of whole words of one of `names`
+    ("Valtellina" of «Valtellina Superiore», "Romano" of «Cesanese di
+    Olevano Romano») — a restatement of the appellation, not a roster entry."""
+    words = _name_words(phrase)
+    if not words or max(len(w) for w in words) < 4:
+        return False
+    n = len(words)
+    for name in names:
+        nw = _name_words(name)
+        if any(nw[i:i + n] == words for i in range(len(nw) - n + 1)):
+            return True
+    return False
+
+
 # A disciplinare may write a variety with the OIV berry-colour adjective
 # spelled out after the name ("Catalanesca bianca, minimo 85%") where
 # the lexicon registers the bare name. Only an exact hit on the bare
@@ -719,6 +752,38 @@ def looks_letter_spaced(text: str) -> bool:
     return letters >= 40 and len(tokens) / letters > LETTER_SPACED_DENSITY
 
 
+# A bare word a disciplinare writes short for the variety its own article 2
+# names in full — Romagna's "Trebbiano" for "Trebbiano Romagnolo", which the
+# lexicon's bare alias reads as Trebbiano toscano — is pinned per record in
+# grape_context_overrides.json (see its _doc); a sottozona annex reads its
+# parent's entry because 02f sets the parent's slug as the context. A generic
+# fold ("X" beside "X Y" is "X Y") was tried on 2026-10-22 and rebound
+# Alicante to Alicante Bouschet, Riesling to Riesling italico, Barbera to
+# Barbera bianca, Merlot to Merlot Khorus — two varieties as often as a
+# shorthand — so only a cited pin changes a binding.
+CONTEXT_OVERRIDES_PATH = Path(__file__).with_name("grape_context_overrides.json")
+
+
+@lru_cache(maxsize=1)
+def context_pins() -> dict[str, dict[str, dict]]:
+    try:
+        data = json.loads(CONTEXT_OVERRIDES_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {k: v for k, v in data.items() if not k.startswith("_") and isinstance(v, dict)}
+
+
+def _apply_context_pin(hit, phrase: str):
+    table = context_pins().get(current_pliego_context() or "")
+    if not table:
+        return hit
+    pin = table.get(" ".join(_name_words(phrase)))
+    if not pin or pin.get("slug") in (None, hit.slug):
+        return hit
+    return replace(hit, slug=pin["slug"], colour=DEFAULT_COLOUR.get(pin["slug"], hit.colour) or hit.colour,
+                   method="context-pin")
+
+
 def parse_grapes_with(matcher, article2_body: str, wine_name: str = "",
                       other_names: tuple[str, ...] = ()) -> dict:
     """Apply `matcher(phrase) -> MatchResult | None` to each candidate
@@ -742,46 +807,185 @@ def parse_grapes_with(matcher, article2_body: str, wine_name: str = "",
 
     `other_names` restate the record too — a sottozona annex names its
     sottozona in article 2 ("Barbera d'Asti" superiore "Tinella", and
-    "Tinella" fuzzy-matches Grenache)."""
+    "Tinella" fuzzy-matches Grenache).
+
+    A phrase that restates the appellation's name, wholly or in part, binds
+    a grape only when the lexicon vouches for that name
+    (`is_curated_surface`): VIVC keeps place names as synonyms, so
+    «Valtellina Superiore» had bound Veltliner rot on nine cards, the IGT
+    «Avola» Ribolla gialla (and the bogus grape kept the Sicilian register
+    from filling its empty roster), «Cesanese di Olevano Romano» the
+    Burgundian César through "Romano" (visitor flag on Piemonte, sweep of
+    2026-10-22). A grape first seen in such a phrase takes its label from
+    the genuine phrase that vouches for it — Barolo's pill had read
+    "Barolo"."""
     out = {
         "principal": [],
         "accessory": [],
         "observation": [],
         "details": [],
     }
-    name_keys = {k for k in (_loose_key(n) for n in (wine_name, *other_names)) if k}
+    names = tuple(n for n in (wine_name, *other_names) if n)
+    name_keys = {k for k in (_loose_key(n) for n in names) if k}
     hits: list = []  # first MatchResult per slug, in order
+    at: dict[str, int] = {}  # slug → its position in `hits`
     from_name: dict[str, bool] = {}  # slug → matched ONLY from phrases restating the wine name
     for phrase in article2_candidate_phrases(article2_body):
         hit = matcher(phrase) or _match_with_colour_word(matcher, phrase)
         if hit is None:
             continue
+        hit = _apply_context_pin(hit, phrase)
         if hit.method.startswith("fuzzy"):
             score = int(hit.method.split(":")[1])
             if score < 90 or len(re.sub(r"[\W\d_]", "", phrase)) < 7:
                 continue
         restates_name = _loose_key(phrase) in name_keys
+        if (restates_name or _is_part_of_name(phrase, names)) and not is_curated_surface(phrase):
+            continue
         if hit.slug not in from_name:
+            at[hit.slug] = len(hits)
             hits.append(hit)
             from_name[hit.slug] = restates_name
         elif not restates_name:
             # "Trebbiano d'Abruzzo" (the DOC name) resolves to the grape
             # trebbiano-abruzzese before the roster's own "Trebbiano
-            # abruzzese" does — the later, genuine phrase must vouch for it.
+            # abruzzese" does — the later, genuine phrase must vouch for it,
+            # and its spelling is the label.
+            if from_name[hit.slug]:
+                hits[at[hit.slug]] = hit
             from_name[hit.slug] = False
 
     real = [h for h in hits if not from_name[h.slug]]
     keep = real if real else hits
+    excluded = exclusion_drops(article2_body, [h.name for h in keep])
+    keep = [h for h in keep if h.name not in excluded]
+    roles = clause_roles(article2_body, [h.name for h in keep])
     for hit in keep:
-        out["principal"].append(hit.slug)
+        role = roles.get(hit.name, "principal")
+        out[role].append(hit.slug)
         out["details"].append({
             "slug": hit.slug,
             "name": hit.name,
-            "role": "principal",
+            "role": role,
             "colour": hit.colour,
             "source": "masaf-disciplinare",
         })
     return out
+
+
+# A variety's role is the clause that names it. "Sangiovese: minimo il 95%;
+# possono concorrere altri vitigni a bacca nera …" and Oriolo's "Trebbiano:
+# minimo 70%; può concorrere alla produzione di detto vino il vitigno Albana
+# fino ad un massimo del 30 %" (2026-10-22: Albana was a principal) — a
+# variety named after a clause's *concorrere* marker ("possono / possono
+# inoltre / deve concorrere", "concorrono alla produzione") or its
+# "complementari / accessori:" label is an accessory, one named after a
+# "principali:" label or before any marker is principal. A clause is the text
+# between semicolons, sentence ends and blank lines, never a list bullet: the
+# complement list that follows "i seguenti vitigni:" on its own lines belongs
+# to the clause that opened it. A variety named in several clauses is
+# principal when any of them makes it one (Prosecco's comma 2 restates the
+# complement varieties as base-wine vineyards, so they stay principal), and
+# a disciplinare that phrases its whole roster as "possono concorrere i
+# seguenti vitigni" keeps every variety principal — an all-accessory roster
+# is no split at all.
+_CLAUSE_SPLIT_RE = re.compile(r";|\.\s+(?=[A-ZÀ-Ü(«“\"])|\n\s*\n")
+_ACCESSORY_MARK_RE = re.compile(
+    r"\b(?:pu[òo]|possono|dev[eo]|devono)\s+(?:\w+\s+){0,2}concorrere\b|"
+    r"\bconcorr(?:ono|e)\s+alla\b|"
+    r"\b(?:vitign[oi]\s+)?(?:complementar[ei]|accessor[iea])\s*:",
+    re.I,
+)
+_PRINCIPAL_MARK_RE = re.compile(r"\b(?:vitign[oi]\s+)?principal[ei]\s*:", re.I)
+
+
+# A variety the article names only to exclude it is not in the roster:
+# "Possono concorrere … altri vitigni idonei …, con l'esclusione della Malvasia
+# Nera, Malvasia Nera di Brindisi e Aleatico" (Montecucco), "con esclusione del
+# vitigno Traminer aromatico" (Picolit) — 32 rosters carried such a name on
+# 2026-10-22. Two readings are not exclusions: the sentence that reserves a
+# varietal *label* ("con la specificazione di uno dei vitigni … con l'esclusione
+# dei vitigni Cannonau, Carignano, …" — the Sardinian and Basilicata IGTs, whose
+# blends may hold them) and a concession on the name ("con l'esclusione del
+# Moscato Bianco per il quale è consentita la presenza fino al 3%", Piemonte).
+# "ad eccezione di X" in this corpus excepts X from a limit — X is allowed. A
+# name is dropped only when every mention of it in the article is such an
+# exclusion: Friuli Isonzo's bianco excludes «Moscato giallo», its Moscato giallo
+# type is made of it.
+_EXCLUSION_MARK_RE = re.compile(
+    r"\bcon\s+(?:l[’']\s*)?esclusione\s+(?:d[ei]l?l?[aeio]?|degli|delle|dei|dell[’'])\s*(?:vitign[oi]\s+)?|"
+    r"\bescl[uo]s[oiae]\s+(?:(?:il|i|la|le|lo|gli)\s+)?(?:variet[aà]'?\s+|uve\s+(?:de[il]|dello|della)\s+)?"
+    r"(?:vitign[oi]\s+)?",
+    re.I,
+)
+_LABEL_CLAUSE_RE = re.compile(r"specificazion|indicazion|menzion|designazion|nome\s+del\s+vitigno|etichett", re.I)
+_CONCESSION_RE = re.compile(
+    r"^[^.;]{0,40}?(?:per\s+(?:il|la|i|le)\s+qual[ei]\s+(?:è|e'|sono)\s+(?:consentit|ammess)|"
+    r"che\s+(?:pu[òo]|possono|potr))",
+    re.I,
+)
+
+
+def exclusion_drops(article2_body: str, names: list[str]) -> set[str]:
+    """The names whose every mention in the article sits in an exclusion."""
+    text = re.sub(r"(?<=\w)-\n[^\S\n]*", "", article2_body or "")
+    clauses = [re.sub(r"\s+", " ", c) for c in _CLAUSE_SPLIT_RE.split(text) if c.strip()]
+    spans = []
+    for c in clauses:
+        if _LABEL_CLAUSE_RE.search(c):
+            spans.append([])
+            continue
+        spans.append([(m.end(), len(c)) for m in _EXCLUSION_MARK_RE.finditer(c)])
+    drops: set[str] = set()
+    for name in names:
+        key = re.sub(r"\s+", " ", name).strip()
+        if not key:
+            continue
+        rx = re.compile(r"(?<![\w'’])" + re.escape(key) + r"(?![\w'’])", re.I)
+        mentions = 0
+        excluded = 0
+        for c, sp in zip(clauses, spans):
+            for hit in rx.finditer(c):
+                mentions += 1
+                if any(a <= hit.start() < b for a, b in sp) and not _CONCESSION_RE.search(c[hit.end():]):
+                    excluded += 1
+        if mentions and excluded == mentions:
+            drops.add(name)
+    if len(drops) >= len([n for n in names if n]):
+        return set()
+    return drops
+
+
+def clause_roles(article2_body: str, names: list[str]) -> dict[str, str]:
+    """`name` → "principal" / "accessory" for the names found verbatim in the
+    article, by the marker that precedes each mention inside its clause; a
+    name the article does not carry verbatim (a group expansion, a joined
+    wrap) is left to the default."""
+    text = re.sub(r"(?<=\w)-\n[^\S\n]*", "", article2_body or "")
+    clauses = [re.sub(r"\s+", " ", c) for c in _CLAUSE_SPLIT_RE.split(text) if c.strip()]
+    marks = []
+    for c in clauses:
+        m = sorted(
+            [(x.start(), "accessory") for x in _ACCESSORY_MARK_RE.finditer(c)]
+            + [(x.start(), "principal") for x in _PRINCIPAL_MARK_RE.finditer(c)]
+        )
+        marks.append(m)
+    roles: dict[str, str] = {}
+    for name in names:
+        key = re.sub(r"\s+", " ", name).strip()
+        if not key:
+            continue
+        rx = re.compile(r"(?<![\w'’])" + re.escape(key) + r"(?![\w'’])", re.I)
+        found: list[str] = []
+        for c, m in zip(clauses, marks):
+            for hit in rx.finditer(c):
+                before = [role for pos, role in m if pos < hit.start()]
+                found.append(before[-1] if before else "principal")
+        if found:
+            roles[name] = "principal" if "principal" in found else "accessory"
+    if roles and "principal" not in roles.values() and all(n in roles for n in names):
+        return {}
+    return roles
 
 
 # Variety annexes. Many disciplinari carry a variety list in an in-PDF
@@ -854,16 +1058,92 @@ def _annex_bodies(raw_text: str) -> list[str]:
     return bodies
 
 
+# A register row whose name wraps keeps only the code on its own line: the
+# name sits on the lines above and below it in the name column ("Lambrusco
+# del ⏎ 851   Nero ⏎ Pellegrino N.", Castelfranco Emilia; "MALVASIA BIANCA
+# LUNGA ⏎ 132   MALVASIA*, … ⏎ B.", Esino). Read line by line, the halves
+# fell apart: "Pellegrino" bound Sauvignon, "CANDIA B." the aromatic
+# Candia, and Lambrusco di Sorbara or Malvasia bianca lunga were missing.
+_ANNEX_CELL_RE = re.compile(r"\S+(?: \S+)*")
+_ANNEX_COLOUR_WORD_RE = re.compile(r"(?:Ner[oa]|Bianc[oa]|Ros[aso]|Grigi[oa])", re.I)
+_ANNEX_COLUMN_SLACK = 3
+
+
+def _annex_rows(body: str) -> list[list[tuple[int, str]]]:
+    return [[(m.start(), m.group()) for m in _ANNEX_CELL_RE.finditer(line.replace("\t", "  "))]
+            for line in body.split("\n")]
+
+
+def _is_named_code_row(cells: list[tuple[int, str]]) -> bool:
+    return (len(cells) >= 2 and bool(_ANNEX_BARE_INDEX_RE.fullmatch(cells[0][1]))
+            and bool(_ANNEX_CELL_COLOUR_RE.search(cells[1][1])))
+
+
+def _annex_name_column(rows: list[list[tuple[int, str]]], i: int, reach: int = 40) -> int | None:
+    """The column the variety names start in near row `i`, read off the
+    closest row that carries a code and a colour-coded name — a table can
+    shift its columns from one page to the next (Alpi Retiche: 12, then 6)."""
+    for d in range(1, reach + 1):
+        for j in (i - d, i + d):
+            if 0 <= j < len(rows) and _is_named_code_row(rows[j]):
+                return rows[j][1][0]
+    return None
+
+
+def _name_cell(cells: list[tuple[int, str]], col: int) -> str | None:
+    """The row's cell in the name column, when the row carries no code."""
+    if not cells or _ANNEX_BARE_INDEX_RE.fullmatch(cells[0][1]):
+        return None
+    first = cells[0]
+    return first[1] if abs(first[0] - col) <= _ANNEX_COLUMN_SLACK else None
+
+
+def _wrapped_rows(rows: list[list[tuple[int, str]]]) -> tuple[dict[int, str], set[int]]:
+    """{code row: the name rebuilt from the rows around it} and the rows the
+    names were taken from."""
+    joined: dict[int, str] = {}
+    consumed: set[int] = set()
+    for i, cells in enumerate(rows):
+        if not cells or not _ANNEX_BARE_INDEX_RE.fullmatch(cells[0][1]):
+            continue
+        col = _annex_name_column(rows, i)
+        if col is None:
+            continue
+        rest = cells[1:]
+        if rest and abs(rest[0][0] - col) <= _ANNEX_COLUMN_SLACK \
+                and not _ANNEX_COLOUR_WORD_RE.fullmatch(rest[0][1]):
+            continue
+        parts = []
+        for j in (i - 1, i + 1):
+            if 0 <= j < len(rows) and j not in consumed:
+                cell = _name_cell(rows[j], col)
+                if cell:
+                    parts.append(cell)
+                    consumed.add(j)
+        if parts:
+            joined[i] = " ".join(parts)
+    return joined, consumed
+
+
 def _annex_candidates(body: str):
     """Variety-name cells of an annex body, in reading order. A row is
     split on runs of two or more spaces (the register tables' columns);
     a cell is a candidate when it follows a bare index cell ("14",
     "1."), carries its own index ("10. Cabernet Franc N.") or ends in a
     colour code ("Uva Rara N."). Header cells ("Denominazione varietà"),
-    synonym cells ("LANCELLOTTA") and page numbers never qualify."""
-    for raw_line in body.split("\n"):
+    synonym cells ("LANCELLOTTA") and page numbers never qualify. A code
+    row whose name wrapped onto the rows around it yields the name those
+    rows hold in the name column."""
+    rows = _annex_rows(body)
+    joined, consumed = _wrapped_rows(rows)
+    for i, cells in enumerate(rows):
+        if i in joined:
+            yield joined[i]
+            continue
+        if i in consumed:
+            continue
         pending_index = False
-        for cell in _ANNEX_CELL_SPLIT_RE.split(raw_line.strip()):
+        for _col, cell in cells:
             cell = cell.strip()
             if not cell:
                 continue

@@ -256,6 +256,169 @@ export function createQueryCore(ctx) {
     return (r.country || 'fr') === cc || (r.country_aliases || []).includes(cc);
   }
 
+  // A grape given by name or slug → the canonical search-index slug the map's
+  // grape filter keys on (expandGrapeSet widens it to the VIVC siblings at
+  // predicate time), or null. Exact matches only, label before alias.
+  function grapeKeyFor(q) {
+    const nq = searchNormalize(q);
+    if (!nq) return null;
+    for (const e of grapeIndexNorm) {
+      if (searchNormalize(e.entry.slug) === nq || e.labelN === nq) return e.entry.slug;
+    }
+    for (const e of grapeIndexNorm) if (e.aliasesN.includes(nq)) return e.entry.slug;
+    for (const slug in (ctx.grapesInfo || {})) {
+      const info = ctx.grapesInfo[slug] || {};
+      if (searchNormalize(slug) === nq || searchNormalize(info.name) === nq) return slug;
+    }
+    return null;
+  }
+
+  // A style given by slug or by its label in this locale → the taxonomy node
+  // the style filter keys on, or null.
+  function styleKeyFor(q) {
+    const nq = searchNormalize(q);
+    if (!nq) return null;
+    const desc = ctx.styleDescendants || {};
+    const lab = ctx.styleLabels || {};
+    const simpleLab = ctx.simpleStyleLabels || {};
+    const buckets = ctx.simpleStyleBuckets || {};
+    const keys = new Set(Object.keys(desc).concat(Object.keys(lab), Object.keys(buckets)));
+    for (const s of keys) if (searchNormalize(s) === nq) return s;
+    for (const s of keys) if (searchNormalize(lab[s]) === nq || searchNormalize(simpleLab[s]) === nq) return s;
+    return null;
+  }
+
+  // A region given by its raw key, its label in this locale or a search form
+  // → every (country, raw region) pair carrying it; `cc` narrows to one
+  // country (a cross-border record answers to each country it spans).
+  function regionKeyFor(q, cc) {
+    const nq = searchNormalize(q);
+    if (!nq) return [];
+    const seen = new Set();
+    const out = [];
+    for (const slug in aocs) {
+      const r = aocs[slug];
+      const region = r.region || '';
+      if (!region) continue;
+      if (cc && !inCountry(r, cc)) continue;
+      const country = cc || r.country || 'fr';
+      const key = country + ':' + region;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (searchNormalize(region) === nq || searchNormalize(regionLabel(region)) === nq
+          || regionSearchForms(region).some(f => searchNormalize(f) === nq)) out.push({ country, region });
+    }
+    return out;
+  }
+
+  // ---- The view in the URL -------------------------------------------------
+  // A map view is shareable because the address bar carries it: the query
+  // string names the filters (grape / main / style / class / type), the tree
+  // selection (country / region / sel), a shared set (aocs — the MCP server's
+  // show_on_map links one), the scheme gates when they differ from the
+  // defaults (pdo=0 / pgi=1 / spirits=1), and the embed flags (embed=1,
+  // theme=dark), and the area to frame on load (bbox=w,s,e,n in degrees —
+  // what the share dialog writes into an embed URL in place of the camera
+  // hash, so an iframe of another size fits the same area). Values are
+  // comma-separated and may repeat the key; a grape or style may be given by
+  // name ("Sankt Laurent") or slug, a region as "<cc>:<raw key>" or by its
+  // label. The camera itself stays in the hash.
+  // viewFromQuery reads one (unknown values are listed, never guessed);
+  // queryFromView writes one, omitting every default so a plain view has no
+  // query at all.
+  const VIEW_KEYS = ['grape', 'main', 'style', 'class', 'type', 'country', 'region', 'sel', 'aocs', 'pdo', 'pgi', 'spirits', 'embed', 'theme', 'bbox'];
+  const SHARE_KEYS = ['grape', 'main', 'style', 'class', 'type', 'country', 'region', 'sel', 'pdo', 'pgi', 'spirits', 'embed'];
+
+  function viewFromQuery(search) {
+    const raw = typeof search === 'string' ? search.replace(/^\?/, '') : '';
+    const params = new URLSearchParams(raw);
+    const list = key => {
+      const out = [];
+      for (const v of params.getAll(key)) for (const piece of v.split(',')) {
+        const t = piece.trim();
+        if (t && !out.includes(t)) out.push(t);
+      }
+      return out;
+    };
+    const flag = key => {
+      if (!params.has(key)) return null;
+      const v = (params.get(key) || '').trim().toLowerCase();
+      return v === '1' || v === 'true' || v === 'on' || v === 'yes';
+    };
+    const push = (arr, v) => { if (v && !arr.includes(v)) arr.push(v); };
+    const view = {
+      grapes: [], mainGrapeOnly: false, styles: [], classifications: [], types: [],
+      countries: [], regions: [], appellations: [], set: [],
+      gates: { pdo: null, pgi: null, spirits: null }, embed: false, theme: null, bbox: null,
+      unknown: [], shared: false,
+    };
+    for (const g of list('grape')) { const k = grapeKeyFor(g); if (k) push(view.grapes, k); else view.unknown.push('grape:' + g); }
+    view.mainGrapeOnly = flag('main') === true && view.grapes.length > 0;
+    for (const s of list('style')) { const k = styleKeyFor(s); if (k) push(view.styles, k); else view.unknown.push('style:' + s); }
+    // Classification and appellation-type keys are the map's own facet
+    // tables, which the context does not carry: passed through as given, the
+    // app drops what its tables do not know.
+    for (const c of list('class')) push(view.classifications, c);
+    for (const t of list('type')) push(view.types, t);
+    for (const c of list('country')) {
+      const cc = c.toLowerCase();
+      if ((ctx.countryLabels || {})[cc]) push(view.countries, cc); else view.unknown.push('country:' + c);
+    }
+    for (const r of list('region')) {
+      const m = /^([a-z]{2}):(.+)$/i.exec(r);
+      const hits = regionKeyFor(m ? m[2] : r, m ? m[1].toLowerCase() : '');
+      if (!hits.length) view.unknown.push('region:' + r);
+      for (const h of hits) if (!view.regions.some(x => x.country === h.country && x.region === h.region)) view.regions.push(h);
+    }
+    for (const s of list('sel')) { if (aocs[s]) push(view.appellations, s); else view.unknown.push('sel:' + s); }
+    for (const s of list('aocs')) { if (aocs[s]) push(view.set, s); else view.unknown.push('aocs:' + s); }
+    view.set = view.set.slice(0, 200);
+    view.gates.pdo = flag('pdo');
+    view.gates.pgi = flag('pgi');
+    view.gates.spirits = flag('spirits');
+    view.embed = flag('embed') === true;
+    const theme = (params.get('theme') || '').trim().toLowerCase();
+    view.theme = (theme === 'dark' || theme === 'light') ? theme : null;
+    if (params.has('bbox')) {
+      const b = (params.get('bbox') || '').split(',').map(Number);
+      const ok = b.length === 4 && b.every(Number.isFinite)
+        && b[0] >= -180 && b[2] <= 180 && b[1] >= -90 && b[3] <= 90 && b[0] < b[2] && b[1] < b[3];
+      if (ok) view.bbox = b; else view.unknown.push('bbox:' + params.get('bbox'));
+    }
+    // A URL that carries a view is the same for everyone: the app then reads
+    // the gates from it (absent = the default) instead of this browser's
+    // saved preference. A plain ?aocs= set keeps the pre-existing behaviour.
+    view.shared = SHARE_KEYS.some(k => params.has(k));
+    return view;
+  }
+
+  function queryFromView(view) {
+    const v = view || {};
+    const enc = x => encodeURIComponent(String(x)).replace(/%3A/gi, ':').replace(/%20/g, '+');
+    const parts = [];
+    const add = (key, values) => {
+      const vals = (values || []).filter(x => x !== null && x !== undefined && String(x) !== '');
+      if (vals.length) parts.push(key + '=' + vals.map(enc).join(','));
+    };
+    add('grape', v.grapes);
+    if (v.mainGrapeOnly && v.grapes && v.grapes.length) parts.push('main=1');
+    add('style', v.styles);
+    add('class', v.classifications);
+    add('type', v.types);
+    add('country', v.countries);
+    add('region', (v.regions || []).map(r => r.country + ':' + r.region));
+    add('sel', v.appellations);
+    add('aocs', v.set);
+    const g = v.gates || {};
+    if (g.pdo === false) parts.push('pdo=0');
+    if (g.pgi === true) parts.push('pgi=1');
+    if (g.spirits === true) parts.push('spirits=1');
+    if (v.embed) parts.push('embed=1');
+    if (v.embed && v.theme === 'dark') parts.push('theme=dark');
+    if (v.bbox && v.bbox.length === 4) parts.push('bbox=' + v.bbox.map(x => Number(x).toFixed(4)).join(','));
+    return parts.join('&');
+  }
+
   function search({ query, country, limit } = {}) {
     const nq = searchNormalize(query);
     if (!nq) throw new QueryError('query is empty');
@@ -388,5 +551,6 @@ export function createQueryCore(ctx) {
   return {
     searchForms, searchScore, searchableText, regionSearchForms, expandGrapeSet,
     grapeName, regionLabel, countryLabel, brief, search, filter, full, facets,
+    grapeKeyFor, styleKeyFor, regionKeyFor, viewFromQuery, queryFromView, VIEW_KEYS,
   };
 }

@@ -148,12 +148,12 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "facts_sub_produit": _("Caractéristiques du produit"),
         "facts_sub_interactions": _("Lien terroir / vin"),
         "facts_attribution": _(
-            "Faits dégagés du Lien au terroir par interprétation automatique — voir la {source}."
+            "Faits dégagés du Lien au terroir par interprétation automatique — voir {source}."
         ),
-        "facts_attribution_source_label": _("source"),
+        "facts_attribution_source_label": _("la source"),
         "facts_wiki_marker": _("via Wikipedia · CC BY-SA 4.0"),
         "facts_verbatim_attribution": _(
-            "Citation textuelle du Lien au terroir — voir la {source}."
+            "Citation textuelle du Lien au terroir — voir {source}."
         ),
         "facts_verbatim_to_verify": _("à vérifier — texte source court"),
         "facts_inherited_note": _(
@@ -335,6 +335,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_national_pliego": _("Pliego de condiciones (national, PDF)"),
         "src_national_pliego_added": _("variétés ajoutées"),
         "src_national_spec": _("Cahier des charges national (PDF)"),
+        "src_register_fiche": _("Cahier des charges (registre GI de l'UE, document unique, PDF)"),
         "src_chzo_spec": _("Spécification du produit (IGP, PDF)"),
         "src_regional_register": _("Registre régional des cépages (PDF)"),
         "src_parroquias": _("Mapa de Parroquias de Galicia (IET, Xunta de Galicia)"),
@@ -412,7 +413,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "es_marker_aria": _("Texte source en espagnol"),
         "pt_marker": _("(português)"),
         "pt_marker_aria": _("Texte source en portugais"),
-        "sidebar_toggle_aria": _("Filtres"),
+        "sidebar_toggle_aria": _("Recherche et filtres"),
         "tooltip_translated_from": _("Traduit de {wiki} · CC BY-SA 4.0"),
         "wiki_lang_en": _("Wikipédia en anglais"),
         "wiki_lang_fr": _("Wikipédia en français"),
@@ -448,11 +449,18 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "source par un second modèle Claude, puis traduits ; les extraits Wikipedia "
             "des infobulles de cépages et de styles sont traduits pour l'essentiel par "
             "Mistral, exécuté localement, et pour quelques-uns par Claude ; les résumés "
-            "des cahiers des charges ont été traduits par un traducteur humain, à "
-            "l'exception d'un petit reliquat traduit automatiquement. Chaque élément "
-            "porte sa propre ligne d'attribution dans le panneau."
+            "des cahiers des charges sont traduits automatiquement. Chaque élément porte "
+            "sa propre ligne d'attribution dans le panneau."
         ),
-        "about_made_by_html": _("Réalisé avec ♡ par {devloed}."),
+        "about_pipeline_html": _(
+            "Les données structurées — nom, classement, cépages, styles de vin, aire et contour "
+            "— sont extraites des cahiers des charges par un pipeline de code, sans modèle de "
+            "langage : des analyseurs lisent le document de chaque régulateur, les cépages sont "
+            "rapprochés du catalogue VIVC et les contours sont dessinés à partir des "
+            "délimitations officielles et des limites communales. Le pipeline est public et la "
+            "carte entière se reconstruit à partir des sources."
+        ),
+        "about_made_by_html": _("Réalisé avec {heart} par {devloed}."),
         # About-dialog section headings and the source list (one item per kind
         # of source; the README carries the full table with licences).
         "about_sources_h": _("Sources"),
@@ -567,6 +575,47 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         ),
         "copy_label": _("Copier"),
         "copied_label": _("Copié"),
+        # The share control and dialog (app.js openShare): the link in the
+        # address bar, the OS share sheet, the embed code.
+        "share_h": _("Partager"),
+        "share_dialog_h": _("Partager cette vue"),
+        "share_view_label": _("La carte telle qu'affichée"),
+        "share_link_h": _("Lien"),
+        "share_copy_link_aria": _("Copier le lien"),
+        "share_native_label": _("Partager…"),
+        "share_embed_h": _("Intégrer sur votre site"),
+        "share_embed_intro": _(
+            "Collez ce code dans votre page : la carte reste interactive, et un clic "
+            "sur une appellation l'ouvre sur Open Wine Map."
+        ),
+        "share_copy_embed_aria": _("Copier le code d'intégration"),
+        # The link under an embedded map and the embed's title: "{what}" is
+        # the open card or the active filters.
+        "share_on_owm": _("{what} sur Open Wine Map"),
+        # The brand badge of an embedded map.
+        "embed_open_label": _("Ouvrir sur Open Wine Map"),
+        # The embed's theme choice (light by default — writes nothing).
+        "share_theme_h": _("Thème de la carte intégrée"),
+        # The parameter reference, folded behind an ⓘ (_SHARE_PARAMS).
+        "share_params_summary": _("Paramètres d'URL (utilisateurs avancés)"),
+        "share_params_intro": _(
+            "Chaque paramètre peut s'écrire à la main dans l'adresse de la carte ; "
+            "plusieurs valeurs se séparent par des virgules."
+        ),
+        "share_param_grape": _("Cépage : identifiant, nom ou synonyme VIVC."),
+        "share_param_main": _("Cépage principal uniquement."),
+        "share_param_style": _("Style de vin : identifiant ou libellé."),
+        "share_param_country": _("Pays entier coché."),
+        "share_param_region": _("Région (code pays:clé)."),
+        "share_param_sel": _("Appellations cochées."),
+        "share_param_aocs": _("Ouvre ces appellations : fiche, surbrillance, cadrage."),
+        "share_param_pdo": _("AOP masquées (affichées par défaut)."),
+        "share_param_pgi": _("IGP affichées (masquées par défaut)."),
+        "share_param_spirits": _("Spiritueux affichés (masqués par défaut)."),
+        "share_param_embed": _("Carte seule, à intégrer dans une page."),
+        "share_param_theme": _("Thème sombre de la carte intégrée."),
+        "share_param_bbox": _("Zone à cadrer : ouest,sud,est,nord en degrés."),
+        "share_param_hash": _("Zoom/latitude/longitude ; l'emporte sur bbox."),
         "copy_mcp_aria": _("Copier l'adresse du serveur MCP"),
         "about_mcp_html": _(
             "Les assistants IA peuvent interroger les appellations avec les mêmes outils "
@@ -761,6 +810,8 @@ _OG_LOCALES = {"fr": "fr_FR", "en": "en_US", "es": "es_ES", "nl": "nl_NL"}
 _GITHUB_URL = "https://github.com/devloed-com/open-wine-map"
 _GITHUB_NEW_ISSUE_URL = _GITHUB_URL + "/issues/new"
 _DEVLOED_URL = "https://devloed.com"
+# The maker, as every JSON-LD WebSite node names it (`publisher`).
+_PUBLISHER_JSONLD = {"@type": "Organization", "name": "devloed.com", "url": _DEVLOED_URL}
 _BLUESKY_HANDLE = "openwinemap.com"
 _BLUESKY_URL = f"https://bsky.app/profile/{_BLUESKY_HANDLE}"
 _PLAUSIBLE_POLICY_URL = "https://plausible.io/data-policy"
@@ -803,6 +854,17 @@ def _build_sidebar_disclaimer(labels: dict[str, str]) -> str:
         f'<div id="sidebar-disclaimer">'
         f'{labels["sidebar_disclaimer_html"].format(email=email)}'
         f'</div>'
+    )
+
+
+_HEART_HTML = '<span class="heart">♥</span>'
+
+
+def _made_by_html(labels: dict[str, str]) -> str:
+    """The maker's credit — one string for the sidebar footer and the About
+    dialog; the heart is a span so it takes the accent colour."""
+    return labels["about_made_by_html"].format(
+        heart=_HEART_HTML, devloed=_ext_link(_DEVLOED_URL, "devloed.com")
     )
 
 
@@ -854,12 +916,11 @@ def _build_about_dialog(
     readme = _ext_link(_GITHUB_URL + "#public-data-sources", "README")
     sources_list = "<ul>" + "".join(f"<li>{s}</li>" for s in sources) + "</ul>"
 
-    method = []
+    method = [labels["about_pipeline_html"], labels["about_llm_html"]]
     if lod:
         method.append(labels["about_lod_html"].format(
             zoom=lod["overview_max_zoom"], radius=lod["radius_m"]
         ))
-    method.append(labels["about_llm_html"])
 
     # The address in a code box with a copy button (app.js: button[data-copy]):
     # it is meant to be pasted into an AI assistant's connector settings.
@@ -894,7 +955,7 @@ def _build_about_dialog(
         inner = lead_html + "".join(f"<p>{p}</p>" for p in paragraphs)
         return f"<section><h3>{labels[heading_key]}</h3>{inner}</section>"
 
-    credit = labels["about_made_by_html"].format(devloed=_ext_link(_DEVLOED_URL, "devloed.com"))
+    credit = _made_by_html(labels)
     body = "\n      ".join([
         *intro,
         section(
@@ -919,9 +980,71 @@ def _build_about_dialog(
     )
 
 
+# The parameter reference of the share dialog (advanced users): the code is
+# the grammar of viewFromQuery (query_core.mjs), the label its meaning.
+_SHARE_PARAMS: tuple[tuple[str, str], ...] = (
+    ("grape=sankt-laurent", "share_param_grape"),
+    ("main=1", "share_param_main"),
+    ("style=red", "share_param_style"),
+    ("country=at", "share_param_country"),
+    ("region=fr:BOURGOGNE", "share_param_region"),
+    ("sel=priorat,montsant", "share_param_sel"),
+    ("aocs=priorat,montsant", "share_param_aocs"),
+    ("pdo=0", "share_param_pdo"),
+    ("pgi=1", "share_param_pgi"),
+    ("spirits=1", "share_param_spirits"),
+    ("embed=1", "share_param_embed"),
+    ("theme=dark", "share_param_theme"),
+    ("bbox=14.76,47.06,17.44,48.53", "share_param_bbox"),
+    ("#8/47.80/16.10", "share_param_hash"),
+)
+
+
+def _build_share_dialog(labels: dict) -> str:
+    """The share dialog (app.js openShare fills it on open): the link —
+    the address bar's, which carries the view — with a copy button and, where
+    the browser has one, the OS share sheet; then the embed code, the same
+    view as an <iframe> followed by a plain link under the map."""
+    return (
+        f'<dialog id="share-dialog" aria-labelledby="share-dialog-h">\n'
+        f'  <button class="close" type="button" aria-label="{esc(labels["close_aria"])}">×</button>\n'
+        f'  <div class="about-body">\n'
+        f'    <h2 id="share-dialog-h">{esc(labels["share_dialog_h"])}</h2>\n'
+        f'    <p id="share-what" class="share-what"></p>\n'
+        f'    <h3>{esc(labels["share_link_h"])}</h3>\n'
+        f'    <div class="copy-field"><code id="share-url"></code>'
+        f'<button type="button" class="copy-btn" data-copy="" data-copy-kind="link" '
+        f'aria-label="{esc(labels["share_copy_link_aria"])}">{esc(labels["copy_label"])}</button>'
+        f'<button type="button" class="copy-btn" id="share-native" hidden>'
+        f'{esc(labels["share_native_label"])}</button></div>\n'
+        f'    <h3>{esc(labels["share_embed_h"])}</h3>\n'
+        f'    <p>{esc(labels["share_embed_intro"])}</p>\n'
+        f'    <div class="share-theme" role="group" aria-labelledby="share-theme-h">'
+        f'<span id="share-theme-h">{esc(labels["share_theme_h"])}</span>'
+        f'<label><input type="radio" name="share-theme" value="light" checked> {esc(labels["theme_light"])}</label>'
+        f'<label><input type="radio" name="share-theme" value="dark"> {esc(labels["theme_dark"])}</label></div>\n'
+        f'    <div class="copy-field embed-field"><textarea id="share-embed" readonly rows="5" '
+        f'aria-label="{esc(labels["share_embed_h"])}"></textarea>'
+        f'<button type="button" class="copy-btn" data-copy="" data-copy-kind="embed" '
+        f'aria-label="{esc(labels["share_copy_embed_aria"])}">{esc(labels["copy_label"])}</button></div>\n'
+        f'    <details class="share-params"><summary><span class="info-i" aria-hidden="true">i</span>'
+        f'{esc(labels["share_params_summary"])}</summary>\n'
+        f'      <p>{esc(labels["share_params_intro"])}</p>\n'
+        f'      <dl>\n'
+        + "".join(
+            f'        <dt><code>{esc(code)}</code></dt><dd>{esc(labels[key])}</dd>\n'
+            for code, key in _SHARE_PARAMS
+        )
+        + '      </dl>\n'
+        '    </details>\n'
+        '  </div>\n'
+        '</dialog>'
+    )
+
+
 _LOCALES_DISPLAY = (("fr", "FR"), ("en", "EN"), ("es", "ES"), ("nl", "NL"))
-# The ⚙ menu lists the languages by their own names (the browse page keeps
-# the two-letter codes of _LOCALES_DISPLAY in its compact nav).
+# The ⚙ menu and the browse page's nav list the languages by their own
+# names (the browse page kept the two-letter codes until 2026-10-21).
 _LOCALE_NAMES = {"fr": "Français", "en": "English", "es": "Español", "nl": "Nederlands"}
 
 
@@ -1413,7 +1536,9 @@ def _browse_lang_switcher(active: str, aria_label: str) -> str:
         is_active = code == active
         cls = " active" if is_active else ""
         current_attr = ' aria-current="page"' if is_active else ""
-        parts.append(f'<a href="{path}" class="lang{cls}"{current_attr}>{label}</a>')
+        parts.append(
+            f'<a href="{path}" class="lang{cls}"{current_attr}>{_LOCALE_NAMES.get(code, label)}</a>'
+        )
     return f'<nav class="browse-lang" aria-label="{esc(aria_label)}">' + "".join(parts) + "</nav>"
 
 
@@ -1696,6 +1821,7 @@ def _build_entity_jsonld(
     website = {
         "@type": "WebSite", "@id": website_id, "name": "Open Wine Map",
         "url": f"{_SITE_BASE_URL}/", "inLanguage": locale,
+        "publisher": _PUBLISHER_JSONLD,
     }
     webpage = {
         "@type": "WebPage", "@id": webpage_id, "url": canonical_url, "name": name,
@@ -2033,33 +2159,74 @@ def _entity_nav_html(slug, rec, *, locale, labels, aocs, children_map) -> str:
 # Self-contained CSS for the browse-index page (its own lightweight document,
 # not the map shell). Real braces — injected as a {browse_css} value, never
 # passed through str.format, so no brace doubling.
+# The self-contained pages (the browse index, the 404) share the map's
+# tokens and its theme choice (2026-10-21, after they had kept the pre-October
+# accent and ignored the ⚙ theme): the `:root` block is sliced from the shell's
+# own style block so the two never disagree about a colour, and the pre-paint
+# script below is the map's — `theme` in localStorage ('light' | 'dark'),
+# else the OS — with the resolved class written either way so the CSS can
+# fall back on the OS scheme for a visitor without JS.
+_THEME_PREPAINT_JS = (
+    "(function(){var t=null;try{t=localStorage.getItem('theme');}catch(e){}"
+    "var dark=(t==='dark')||(t!=='light'&&window.matchMedia"
+    "&&window.matchMedia('(prefers-color-scheme: dark)').matches);"
+    "document.documentElement.classList.add(dark?'theme-dark':'theme-light');})();"
+)
+
+# Page roles over the tokens: light, dark by the ⚙ choice, dark by the OS
+# when no choice was written. The values are the About dialog's.
+_PAGE_ROLE_TOKENS_CSS = """\
+:root { --pg-bg:var(--n-0); --pg-text:var(--n-850); --pg-text-2:var(--n-500); --pg-text-3:var(--n-400); --pg-rule:var(--n-100); --pg-accent:var(--c-accent); --pg-accent-rule:var(--c-accent); color-scheme:light }
+html.theme-dark { --pg-bg:var(--n-dark-panel); --pg-text:var(--n-dark-text); --pg-text-2:#aaa; --pg-text-3:var(--n-400); --pg-rule:var(--n-750); --pg-accent:var(--c-accent-ink-dark); --pg-accent-rule:var(--c-accent-rule-dark); color-scheme:dark }
+@media (prefers-color-scheme: dark) {
+  html:not(.theme-light) { --pg-bg:var(--n-dark-panel); --pg-text:var(--n-dark-text); --pg-text-2:#aaa; --pg-text-3:var(--n-400); --pg-rule:var(--n-750); --pg-accent:var(--c-accent-ink-dark); --pg-accent-rule:var(--c-accent-rule-dark); color-scheme:dark }
+}
+"""
+
+
+def _design_tokens_css() -> str:
+    """The map's `:root` design tokens, as the self-contained pages need them:
+    the block of the shell's style sheet with its doubled format braces
+    undone — one source for every colour."""
+    start = _STYLE_CSS.index(":root {{")
+    end = _STYLE_CSS.index("}}", start) + 2
+    return _STYLE_CSS[start:end].replace("{{", "{").replace("}}", "}") + "\n"
+
+
+def _static_page_css() -> str:
+    """Tokens + page roles: what a self-contained page puts first in its
+    style block, before its own component rules."""
+    return _design_tokens_css() + _PAGE_ROLE_TOKENS_CSS
+
+
+# The browse index reads like the About dialog: the accent-underlined title,
+# uppercase accent section headings, the ruled credit line, the sidebar's
+# brand block — on a page-wide, multi-column list, which a 520 px column
+# could not hold. Components on the page roles only.
 _BROWSE_CSS = """
-:root { color-scheme: light dark; }
-* { box-sizing: border-box; }
-body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#222; background:#fafafa; line-height:1.5; }
-a { color:#7A1F2B; }
-.browse-header { background:#7A1F2B; color:#fff; padding:14px 20px; overflow:hidden; }
-.browse-header a { color:#fff; text-decoration:none; }
-.browse-brand { font-size:18px; font-weight:600; display:inline-flex; align-items:center; gap:8px; }
-.browse-brand .brand-mark { filter:brightness(0) invert(1); }
-.browse-lang { float:right; }
-.browse-lang a { margin-left:10px; opacity:0.75; text-decoration:none; }
-.browse-lang a.active { opacity:1; font-weight:700; text-decoration:underline; }
-.browse-main { max-width:1100px; margin:0 auto; padding:24px 20px 64px; }
-.browse-main h1 { font-size:26px; margin:0 0 8px; }
-.browse-intro { color:#555; margin:0 0 8px; }
-.browse-intro a { color:#7A1F2B; }
-.browse-country { margin-top:28px; }
-.browse-country h2 { font-size:18px; margin:0 0 10px; border-bottom:2px solid #eadfe0; padding-bottom:4px; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14px; line-height:1.55; color:var(--pg-text); background:var(--pg-bg); }
+a { color:var(--pg-accent); }
+.browse-header, .browse-main, .browse-footer { max-width:1100px; margin:0 auto; padding-left:20px; padding-right:20px; }
+.browse-header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding-top:16px; padding-bottom:4px; }
+.browse-brand { display:inline-flex; align-items:center; gap:8px; font-size:15px; font-weight:600; letter-spacing:0.02em; color:var(--pg-text); text-decoration:none; }
+.browse-brand .brand-mark { width:18px; height:18px; }
+.browse-lang { margin-left:auto; display:flex; gap:14px; font-size:var(--fs-md); }
+.browse-lang a { color:var(--pg-text-2); text-decoration:none; }
+.browse-lang a:hover { text-decoration:underline; }
+.browse-lang a.active { color:var(--pg-accent); font-weight:600; }
+.browse-main { padding-top:20px; padding-bottom:48px; }
+.browse-main h1 { font-size:20px; margin:0 0 14px; padding:0 0 8px; border-bottom:2px solid var(--pg-accent-rule); }
+.browse-intro { color:var(--pg-text-2); margin:0 0 10px; }
+.browse-country { margin-top:20px; }
+.browse-country h2 { font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:0.05em; color:var(--pg-accent); margin:20px 0 6px; }
 .browse-list { list-style:none; padding:0; margin:0; column-width:250px; column-gap:28px; }
 .browse-list li { break-inside:avoid; padding:2px 0; }
-.browse-list li small { color:#999; }
-@media (prefers-color-scheme: dark) {
-  body { color:#ddd; background:#161616; }
-  a, .browse-intro a, .browse-country h2 { color:#e6a3ad; }
-  .browse-country h2 { border-bottom-color:#333; }
-  .browse-list li small { color:#777; }
-}
+.browse-list li small { color:var(--pg-text-3); font-size:var(--fs-sm); }
+.browse-footer { margin-top:20px; padding-top:10px; padding-bottom:28px; border-top:1px solid var(--pg-rule); font-size:var(--fs-md); color:var(--pg-text-2); }
+.browse-footer .heart { color:var(--pg-accent); }
+.browse-footer a { font-weight:600; text-decoration:none; }
+.browse-footer a:hover { text-decoration:underline; }
 """
 
 
@@ -2070,7 +2237,10 @@ _BROWSE_TEMPLATE = """<!doctype html>
 <title>{page_title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="{meta_description}">
-<meta name="theme-color" content="#7A1F2B">
+<meta name="author" content="devloed.com">
+<meta name="theme-color" content="#934050" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="canonical" href="{canonical_url}">
 {hreflang_block}
 <meta property="og:type" content="website">
@@ -2078,18 +2248,20 @@ _BROWSE_TEMPLATE = """<!doctype html>
 <meta property="og:description" content="{meta_description}">
 <meta property="og:url" content="{canonical_url}">
 {jsonld_html}
+<script>{theme_script}</script>
 <style>{browse_css}</style>
 </head>
 <body>
 <header class="browse-header">
+<a class="browse-brand" href="{home_path}"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</a>
 {lang_switcher_html}
-<a class="browse-brand" href="{home_path}"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18"> Open Wine Map</a>
 </header>
 <main class="browse-main">
 <h1>{h1}</h1>
 <p class="browse-intro">{intro_html}</p>
 {body_html}
 </main>
+<footer class="browse-footer">{credit_html}</footer>
 </body>
 </html>
 """
@@ -2153,6 +2325,7 @@ def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) ->
                     "@type": "WebSite",
                     "name": "Open Wine Map",
                     "url": f"{_SITE_BASE_URL}{home_path}",
+                    "publisher": _PUBLISHER_JSONLD,
                 },
             },
             ensure_ascii=False,
@@ -2168,12 +2341,14 @@ def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) ->
         hreflang_block=_browse_hreflang_block(),
         og_title=esc(labels["browse_title"]),
         jsonld_html=jsonld_html,
-        browse_css=_BROWSE_CSS,
+        browse_css=_static_page_css() + _BROWSE_CSS,
+        theme_script=_THEME_PREPAINT_JS,
         lang_switcher_html=_browse_lang_switcher(locale, labels["browse_aria"]),
         home_path=home_path,
         h1=esc(labels["browse_all_label"]),
         intro_html=intro_html,
         body_html=body_html,
+        credit_html=_made_by_html(labels),
     )
 
 
@@ -2453,6 +2628,7 @@ def render(
         "url": canonical_url,
         "description": labels["meta_description"],
         "inLanguage": locale,
+        "publisher": _PUBLISHER_JSONLD,
     }
     jsonld_html = (
         '<script type="application/ld+json">'
@@ -2600,6 +2776,7 @@ def render(
         og_alt_locales_html=og_alt_locales_html,
         lang_switcher_html=_lang_switcher(locale, labels["lang_switcher_aria"]),
         sidebar_disclaimer_html=_build_sidebar_disclaimer(labels),
+        sidebar_credit_html=_made_by_html(labels),
         browse_path=browse_path,
         plausible_host_json=json.dumps(plausible_host()),
         plausible_sites_json=json.dumps(plausible_sites(), sort_keys=True),
@@ -2607,6 +2784,7 @@ def render(
         aocs_data_src=aocs_data_src,
         style_href=style_href,
         app_src=app_src,
+        share_dialog_html=_build_share_dialog(labels),
     )
 
     _sidebar_html = _render_sidebar()
@@ -2756,8 +2934,9 @@ _TEMPLATE = """<!doctype html>
 {origin_trial_meta}<title>{page_title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="{meta_description}">
+<meta name="author" content="devloed.com">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-{robots_meta}<meta name="theme-color" content="#7A1F2B" media="(prefers-color-scheme: light)">
+{robots_meta}<meta name="theme-color" content="#934050" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
@@ -2788,11 +2967,17 @@ _TEMPLATE = """<!doctype html>
   // browser language is consulted only on the EN root with no prior choice.
   (function () {{
     var here = "{lang_attr}";
+    // An embedded map (?embed=1) stays in the language the embedding page chose.
+    if (/[?&]embed=1(?:&|$)/.test(window.location.search)) return;
     var supported = {{ fr: 1, en: 1, es: 1, nl: 1 }};
     function pathFor(code) {{ return code === 'en' ? '/' : '/' + code + '/'; }}
     function go(code) {{
       if (code === here) return;
       var hash = window.location.hash || '';
+      // The query carries the view (a shared filter, a set, the gates — see
+      // viewFromQuery in query_core.mjs): it survives the redirect as the
+      // hash does. Before 2026-10-22 a saved language dropped it.
+      var search = window.location.search || '';
       // Carry the appellation deep-link (/<lang>/<slug>) across the locale
       // change so a shared link survives an auto-redirect; EN home stays at /.
       var base = '/' + here + '/';
@@ -2800,7 +2985,7 @@ _TEMPLATE = """<!doctype html>
       rest = (rest.indexOf(base) === 0) ? rest.slice(base.length) : rest.replace(/^\\//, '');
       rest = rest.replace(/\\/+$/, '').split('/')[0];
       var dest = rest ? ('/' + code + '/' + rest) : pathFor(code);
-      window.location.replace(dest + hash);
+      window.location.replace(dest + search + hash);
     }}
     var saved = null;
     try {{ saved = localStorage.getItem('lang_choice'); }} catch (e) {{}}
@@ -2834,12 +3019,21 @@ _TEMPLATE = """<!doctype html>
     }});
   }})();
   (function () {{
+    // An embedded map (?embed=1, the share dialog's iframe): the map alone —
+    // the sidebar, the bar and the panel never paint (CSS on html.embed).
+    if (/[?&]embed=1(?:&|$)/.test(window.location.search)) document.documentElement.classList.add('embed');
+  }})();
+  (function () {{
     // Resolve the effective theme before first paint so dark mode never
     // flashes light. `theme` in localStorage is 'light' | 'dark'; absent /
     // 'system' defers to the OS. Mirrors effectiveTheme() in the main bundle.
+    // An embed takes the theme its URL asks for (theme=dark), light otherwise:
+    // its viewer chose neither the theme nor the OS setting of this browser.
+    var embed = document.documentElement.classList.contains('embed');
     var t = null;
-    try {{ t = localStorage.getItem('theme'); }} catch (e) {{}}
-    var dark = (t === 'dark') || (t !== 'light'
+    if (!embed) {{ try {{ t = localStorage.getItem('theme'); }} catch (e) {{}} }}
+    var dark = embed ? /[?&]theme=dark(?:&|$)/.test(window.location.search)
+      : (t === 'dark') || (t !== 'light'
       && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     if (dark) document.documentElement.classList.add('theme-dark');
   }})();
@@ -3250,14 +3444,20 @@ _TEMPLATE = """<!doctype html>
     #sidebar .brand-title, #sidebar .subtitle {{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }}
     .sidebar-head {{ padding:0 }}
     #sidebar-collapse {{ display:none }}
-    /* The bar: brand, search, menu — so the first screen is not a bare map. */
+    /* The bar: brand, ⚙, search — so the first screen is not a bare map. */
     #mobile-bar {{ display:flex; align-items:center; gap:4px; flex:0 0 auto; min-height:44px; padding:env(safe-area-inset-top, 0px) 6px 0 12px; background:var(--side-bg); color:var(--side-text); border-bottom:1px solid var(--side-border); z-index:30 }}
     #mobile-bar .mobile-brand {{ flex:1; display:flex; align-items:center; gap:8px; min-width:0; color:var(--side-text); text-decoration:none; font-weight:600; font-size:15px; letter-spacing:0.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }}
     #mobile-bar .brand-mark {{ width:18px; height:18px; flex:0 0 18px }}
     /* Direct children only: the ⚙ menu homed into the bar carries its own buttons. */
     #mobile-bar > button {{ flex:0 0 44px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:none; color:var(--side-text); border:none; border-radius:4px; font-size:18px; cursor:pointer }}
     #mobile-bar > button:hover, #mobile-bar > button[aria-expanded="true"] {{ background:var(--side-bg-3) }}
-    /* The drawer opens under the bar, which stays usable (its menu button closes it). */
+    /* The drawer is search-first, so its button is a magnifier (feedback 2026-10-21: a ☰
+       said "menu"); while the drawer is open the button reads ×, since it is what closes it. */
+    #sidebar-toggle svg {{ width:20px; height:20px }}
+    #sidebar-toggle .ico-close {{ display:none; font-size:24px; line-height:1 }}
+    #sidebar-toggle[aria-expanded="true"] svg {{ display:none }}
+    #sidebar-toggle[aria-expanded="true"] .ico-close {{ display:inline }}
+    /* The drawer opens under the bar, which stays usable (its search button closes it). */
     #sidebar {{ position:fixed; top:calc(44px + env(safe-area-inset-top, 0px)); left:0; width:280px; height:calc(100vh - 44px); height:calc(100dvh - 44px - env(safe-area-inset-top, 0px)); padding-bottom:env(safe-area-inset-bottom, 0px); box-sizing:border-box; flex:0 0 auto; transform:translateX(-100%); transition:transform 0.18s ease; z-index:25; box-shadow:2px 0 12px rgba(0,0,0,0.25) }}
     #sidebar.open {{ transform:translateX(0) }}
     #scrim {{ display:block; position:fixed; inset:0; top:calc(44px + env(safe-area-inset-top, 0px)); background:rgba(0,0,0,0.4); z-index:24 }}
@@ -3300,32 +3500,37 @@ _TEMPLATE = """<!doctype html>
   #sidebar-footer a {{ color:var(--side-text-3); text-decoration:none }}
   #sidebar-footer a:hover {{ color:var(--side-text); text-decoration:underline }}
   #sidebar-footer .sep {{ margin:0 6px; color:var(--side-border-2) }}
+  #sidebar-credit {{ margin:10px 0 0; font-size:var(--fs-xs); color:var(--side-text-2) }}
+  #sidebar-credit .heart {{ color:var(--side-accent-ink) }}
+  #sidebar-footer #sidebar-credit a {{ color:var(--side-accent-ink); font-weight:600 }}
+  #sidebar-footer #sidebar-credit a:hover {{ text-decoration:underline }}
   #sidebar-disclaimer {{ padding:0 4px 10px; margin-bottom:10px; border-bottom:1px solid var(--side-border); font-size:var(--fs-xs); line-height:1.5; color:var(--side-text-3) }}
   #sidebar-disclaimer a {{ color:var(--side-text-2); text-decoration:underline; text-underline-offset:2px }}
   #sidebar-disclaimer a:hover {{ color:var(--side-text) }}
   .feedback-copied {{ display:inline-block; margin-left:6px; padding:2px 6px; border-radius:3px; background:var(--c-accent); color:var(--n-0); font-size:var(--fs-2xs); opacity:0; transform:translateY(-1px); transition:opacity 180ms ease, transform 180ms ease; pointer-events:none }}
   .feedback-copied.visible {{ opacity:1; transform:translateY(0) }}
-  #about-dialog {{ width:520px; max-width:calc(100vw - 32px); padding:0; border:1px solid #ccc; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:var(--n-0); color:var(--n-850) }}
-  #about-dialog::backdrop {{ background:rgba(0,0,0,0.45) }}
-  #about-dialog .copy-field {{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin:2px 0 }}
-  #about-dialog .copy-field code {{ user-select:all; background:#f3f3f3; border:1px solid var(--n-200); border-radius:4px; padding:2px 6px; font-size:var(--fs-sm); word-break:break-all }}
-  #about-dialog .copy-btn {{ font:inherit; font-size:var(--fs-sm); padding:2px 10px; border:1px solid var(--n-300); border-radius:4px; background:var(--n-0); color:var(--n-850); cursor:pointer }}
-  #about-dialog .copy-btn:hover {{ background:#f3f3f3 }}
-  #about-dialog .copy-btn.copied {{ border-color:#2e7d32; color:#2e7d32 }}
-  html.theme-dark #about-dialog .copy-field code {{ background:var(--n-800); border-color:var(--n-700); color:var(--n-100) }}
-  html.theme-dark #about-dialog .copy-btn {{ background:var(--n-800); border-color:var(--n-600); color:var(--n-100) }}
-  html.theme-dark #about-dialog .copy-btn.copied {{ border-color:#66bb6a; color:#66bb6a }}
-  #about-dialog .close {{ position:absolute; top:10px; right:10px; background:var(--n-100); border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:var(--n-500) }}
-  #about-dialog .close:hover {{ background:var(--n-200); color:#000 }}
-  #about-dialog .about-body {{ padding:24px 28px; line-height:1.55 }}
-  #about-dialog h2 {{ font-size:20px; margin:0 0 14px; padding:0 32px 8px 0; border-bottom:2px solid var(--c-accent) }}
-  #about-dialog h3 {{ font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:0.05em; color:var(--c-accent); margin:20px 0 6px }}
-  #about-dialog p {{ margin:0 0 10px }}
+  #about-dialog, #share-dialog {{ width:520px; max-width:calc(100vw - 32px); padding:0; border:1px solid #ccc; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:var(--n-0); color:var(--n-850) }}
+  #about-dialog::backdrop, #share-dialog::backdrop {{ background:rgba(0,0,0,0.45) }}
+  #about-dialog .copy-field, #share-dialog .copy-field {{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin:2px 0 }}
+  #about-dialog .copy-field code, #share-dialog .copy-field code {{ user-select:all; background:#f3f3f3; border:1px solid var(--n-200); border-radius:4px; padding:2px 6px; font-size:var(--fs-sm); word-break:break-all }}
+  #about-dialog .copy-btn, #share-dialog .copy-btn {{ font:inherit; font-size:var(--fs-sm); padding:2px 10px; border:1px solid var(--n-300); border-radius:4px; background:var(--n-0); color:var(--n-850); cursor:pointer }}
+  #about-dialog .copy-btn:hover, #share-dialog .copy-btn:hover {{ background:#f3f3f3 }}
+  #about-dialog .copy-btn.copied, #share-dialog .copy-btn.copied {{ border-color:#2e7d32; color:#2e7d32 }}
+  html.theme-dark #about-dialog .copy-field code, html.theme-dark #share-dialog .copy-field code {{ background:var(--n-800); border-color:var(--n-700); color:var(--n-100) }}
+  html.theme-dark #about-dialog .copy-btn, html.theme-dark #share-dialog .copy-btn {{ background:var(--n-800); border-color:var(--n-600); color:var(--n-100) }}
+  html.theme-dark #about-dialog .copy-btn.copied, html.theme-dark #share-dialog .copy-btn.copied {{ border-color:#66bb6a; color:#66bb6a }}
+  #about-dialog .close, #share-dialog .close {{ position:absolute; top:10px; right:10px; background:var(--n-100); border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; color:var(--n-500) }}
+  #about-dialog .close:hover, #share-dialog .close:hover {{ background:var(--n-200); color:#000 }}
+  #about-dialog .about-body, #share-dialog .about-body {{ padding:24px 28px; line-height:1.55 }}
+  #about-dialog h2, #share-dialog h2 {{ font-size:20px; margin:0 0 14px; padding:0 32px 8px 0; border-bottom:2px solid var(--c-accent) }}
+  #about-dialog h3, #share-dialog h3 {{ font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:0.05em; color:var(--c-accent); margin:20px 0 6px }}
+  #about-dialog p, #share-dialog p {{ margin:0 0 10px }}
   #about-dialog ul {{ margin:0 0 10px; padding-left:18px }}
   #about-dialog li {{ margin:0 0 4px }}
   #about-dialog .about-meta {{ font-size:var(--fs-md); color:var(--n-500) }}
   #about-dialog .data-updated {{ white-space:nowrap }}
   #about-dialog .about-credit {{ margin:20px 0 0; padding-top:10px; border-top:1px solid var(--n-100); font-size:var(--fs-md); color:var(--n-500) }}
+  #about-dialog .about-credit .heart {{ color:var(--c-accent) }}
   #about-dialog a {{ color:var(--c-accent) }}
   #about-dialog a.bsky {{ white-space:nowrap }}
   #about-dialog .bsky-logo {{ width:1.05em; height:1.05em; vertical-align:-0.16em; margin-right:0.3em; fill:#1185fe }}
@@ -3353,6 +3558,61 @@ _TEMPLATE = """<!doctype html>
   #about-dialog button:focus-visible,
   #about-dialog a:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:2px; border-radius:3px }}
   .maplibregl-popup-content a:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:2px }}
+  /* The share dialog (app.js openShare): the link, the OS share sheet where
+     the browser has one, the embed code in a textarea. */
+  #share-dialog .share-what {{ font-weight:600; margin:0 0 6px }}
+  #share-dialog .copy-field {{ display:flex; align-items:center; gap:6px; flex-wrap:wrap }}
+  #share-dialog .copy-field code {{ flex:1 1 220px; min-width:0 }}
+  #share-dialog .copy-field.embed-field {{ align-items:flex-start }}
+  #share-dialog textarea {{ flex:1 1 220px; min-width:0; box-sizing:border-box; min-height:112px; padding:8px; border:1px solid var(--n-200); border-radius:4px; background:#f3f3f3; color:var(--n-850); font:12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize:vertical }}
+  html.theme-dark #share-dialog textarea {{ background:var(--n-800); border-color:var(--n-700); color:var(--n-100) }}
+  #share-dialog button:focus-visible, #share-dialog a:focus-visible, #share-dialog textarea:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:2px; border-radius:3px }}
+  #share-dialog .share-theme {{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:0 0 8px; font-size:var(--fs-sm) }}
+  #share-dialog .share-theme label {{ display:inline-flex; align-items:center; gap:5px; cursor:pointer }}
+  #share-dialog .share-theme input {{ margin:0; accent-color:var(--c-accent) }}
+  #share-dialog .share-params {{ margin-top:14px; font-size:var(--fs-sm) }}
+  #share-dialog .share-params summary {{ cursor:pointer; color:var(--n-500); display:flex; align-items:center; gap:8px; list-style:none }}
+  #share-dialog .share-params summary::-webkit-details-marker {{ display:none }}
+  #share-dialog .share-params summary:hover, #share-dialog .share-params[open] summary {{ color:var(--n-850) }}
+  #share-dialog .share-params .info-i {{ display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border:1px solid currentColor; border-radius:50%; font:italic 600 11px/1 Georgia, "Times New Roman", serif; flex:0 0 18px }}
+  #share-dialog .share-params p {{ margin:8px 0 6px; color:var(--n-500) }}
+  /* One parameter per row: code left, meaning right, a hairline and zebra
+     striping per row so a pair reads as one wherever the eye lands
+     (feedback 2026-10-22: stacked pairs with even gaps gave no ownership). */
+  #share-dialog .share-params dl {{ margin:0; display:grid; grid-template-columns:fit-content(45%) 1fr; border:1px solid var(--n-200); border-radius:4px; overflow:hidden }}
+  #share-dialog .share-params dt, #share-dialog .share-params dd {{ margin:0; padding:5px 10px; border-top:1px solid var(--n-200) }}
+  #share-dialog .share-params dt:first-of-type, #share-dialog .share-params dd:first-of-type {{ border-top:0 }}
+  #share-dialog .share-params dt:nth-of-type(even), #share-dialog .share-params dd:nth-of-type(even) {{ background:#f7f7f7 }}
+  #share-dialog .share-params dt code {{ font-size:var(--fs-xs); word-break:break-all; color:var(--n-850) }}
+  #share-dialog .share-params dd {{ color:var(--n-700) }}
+  html.theme-dark #share-dialog .share-params dl, html.theme-dark #share-dialog .share-params dt, html.theme-dark #share-dialog .share-params dd {{ border-color:var(--n-700) }}
+  html.theme-dark #share-dialog .share-params dt:nth-of-type(even), html.theme-dark #share-dialog .share-params dd:nth-of-type(even) {{ background:var(--n-800) }}
+  html.theme-dark #share-dialog .share-params dt code {{ color:var(--n-100) }}
+  html.theme-dark #share-dialog .share-params dd {{ color:var(--n-300) }}
+  /* The share control (top-right, above the ⚙; in the bar on a phone). */
+  .owm-share .owm-share-btn {{ width:36px !important; height:36px !important; display:flex; align-items:center; justify-content:center; color:var(--n-850) }}
+  .owm-share .owm-share-btn svg, #mobile-bar .owm-share-btn svg {{ width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }}
+  @media (max-width: 768px) {{
+    .maplibregl-ctrl-top-right .owm-share {{ display:none }}
+  }}
+  /* An embedded map (?embed=1): the map alone. The chrome never paints
+     (html.embed is set pre-paint); a brand badge top-left links to the same
+     view on the site; a click opens a popup whose rows open the appellation
+     there (app.js showEmbedPopup). */
+  html.embed #sidebar, html.embed #sidebar-rail, html.embed #mobile-bar, html.embed #scrim, html.embed #panel, html.embed .skip-link, html.embed #about-dialog, html.embed #share-dialog {{ display:none !important }}
+  .owm-brand a {{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px 5px 8px; border-radius:18px; background:rgba(255,255,255,0.94); color:var(--n-850); font-weight:600; font-size:var(--fs-sm); letter-spacing:0.02em; text-decoration:none; box-shadow:0 0 0 2px rgba(0,0,0,0.1); pointer-events:auto }}
+  .owm-brand a:hover, .owm-brand a:focus-visible {{ background:#fff; text-decoration:underline }}
+  .owm-brand img {{ width:16px; height:16px }}
+  .owm-brand .arrow {{ font-size:var(--fs-xs); opacity:0.7 }}
+  html.theme-dark .owm-brand a {{ background:var(--n-dark-panel); color:var(--n-dark-text) }}
+  .owm-embed-pop .maplibregl-popup-content {{ padding:8px 10px !important; border-radius:6px }}
+  .owm-embed-pop .rows {{ display:flex; flex-direction:column; gap:7px; padding-right:12px }}
+  .owm-embed-pop a {{ display:block; color:var(--c-accent); text-decoration:none }}
+  .owm-embed-pop a .n {{ display:block; font-weight:600; font-size:var(--fs-sm) }}
+  .owm-embed-pop a .m {{ display:block; font-size:var(--fs-xs); color:var(--n-500) }}
+  .owm-embed-pop a:hover .n, .owm-embed-pop a:focus-visible .n {{ text-decoration:underline }}
+  .owm-embed-pop .more {{ font-size:var(--fs-xs); color:var(--n-500) }}
+  html.theme-dark .owm-embed-pop a .m, html.theme-dark .owm-embed-pop .more {{ color:var(--n-300) }}
   /* Map chrome (app.js): the hover label that follows the cursor, the legend
      chip above the scale, and MapLibre's controls in both themes. Bottom-corner
      controls stack (later ones above): zoom above the attribution, the legend
@@ -3402,6 +3662,7 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark .owm-legend .legend-pill:not(.on) {{ color:var(--n-dark-text) }}
   html.theme-dark .owm-legend .legend-pill.on {{ background:var(--pill-c) }}
   html.theme-dark .owm-settings .owm-settings-btn {{ color:var(--n-dark-text) }}
+  html.theme-dark .owm-share .owm-share-btn {{ color:var(--n-dark-text) }}
   html.theme-dark .owm-hover .maplibregl-popup-content {{ background:rgba(28,28,30,0.95); color:var(--n-dark-text) }}
   /* Skip-to-map link: off-screen until focused, so keyboard users can bypass
      the filter sidebar and jump straight to the map. */
@@ -3430,9 +3691,9 @@ _TEMPLATE = """<!doctype html>
   /* Focus ring must keep ≥3:1 against the dark surface (WCAG 1.4.11/2.4.11):
      the burgundy var(--c-accent) ring drops to ~2:1 on var(--n-dark-panel), so brighten it. */
   html.theme-dark #panel button:focus-visible, html.theme-dark #panel a:focus-visible,
-  html.theme-dark #about-dialog button:focus-visible, html.theme-dark #about-dialog a:focus-visible {{ outline-color:var(--c-accent-ink-dark) }}
-  html.theme-dark #panel .close, html.theme-dark #about-dialog .close {{ background:var(--n-750); color:var(--n-300) }}
-  html.theme-dark #panel .close:hover, html.theme-dark #about-dialog .close:hover {{ background:var(--n-700); color:var(--n-0) }}
+  html.theme-dark #about-dialog button:focus-visible, html.theme-dark #about-dialog a:focus-visible, html.theme-dark #share-dialog button:focus-visible, html.theme-dark #share-dialog a:focus-visible, html.theme-dark #share-dialog textarea:focus-visible {{ outline-color:var(--c-accent-ink-dark) }}
+  html.theme-dark #panel .close, html.theme-dark #about-dialog .close, html.theme-dark #share-dialog .close {{ background:var(--n-750); color:var(--n-300) }}
+  html.theme-dark #panel .close:hover, html.theme-dark #about-dialog .close:hover, html.theme-dark #share-dialog .close:hover {{ background:var(--n-700); color:var(--n-0) }}
   html.theme-dark #panel .meta {{ color:#9a9a9a }}
   html.theme-dark #panel .meta .meta-country {{ color:#cfcfcf }}
   html.theme-dark #panel .stack-header {{ color:var(--n-300); border-bottom-color:var(--n-750) }}
@@ -3464,9 +3725,13 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel details.dulok {{ color:#ccc }}
   html.theme-dark #panel details.dulok > summary, html.theme-dark #panel details.dulok .dulo-tel {{ color:#d8b86a }}
   html.theme-dark #panel details.dulok .dulo-row {{ border-top-color:var(--n-750) }}
-  html.theme-dark #about-dialog {{ background:var(--n-dark-panel); color:var(--n-dark-text); border-color:var(--n-700) }}
-  html.theme-dark #about-dialog h2, html.theme-dark #about-dialog h3 {{ color:var(--c-accent-ink-dark); border-bottom-color:var(--c-accent-rule-dark) }}
+  html.theme-dark #about-dialog, html.theme-dark #share-dialog {{ background:var(--n-dark-panel); color:var(--n-dark-text); border-color:var(--n-700) }}
+  html.theme-dark #about-dialog h2, html.theme-dark #about-dialog h3, html.theme-dark #share-dialog h2, html.theme-dark #share-dialog h3 {{ color:var(--c-accent-ink-dark); border-bottom-color:var(--c-accent-rule-dark) }}
+  html.theme-dark #share-dialog .share-params summary {{ color:var(--n-300) }}
+  html.theme-dark #share-dialog .share-params summary:hover, html.theme-dark #share-dialog .share-params[open] summary {{ color:var(--n-dark-text) }}
+  html.theme-dark #share-dialog .share-params p {{ color:var(--n-300) }}
   html.theme-dark #about-dialog .about-meta, html.theme-dark #about-dialog .about-credit {{ color:#aaa; border-top-color:var(--n-750) }}
+  html.theme-dark #about-dialog .about-credit .heart {{ color:var(--c-accent-ink-dark) }}
   html.theme-dark #grape-tooltip {{ background:var(--n-dark-panel); color:var(--n-dark-text); border-color:var(--n-700); box-shadow:0 4px 16px rgba(0,0,0,0.5) }}
   html.theme-dark #grape-tooltip .note {{ color:var(--n-300) }}
   html.theme-dark #grape-tooltip .thumb {{ background:var(--n-750) }}
@@ -3532,7 +3797,7 @@ _TEMPLATE = """<!doctype html>
 
   <header id="mobile-bar">
     <a class="mobile-brand" href="/"><img class="brand-mark" src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="18" height="18">Open Wine Map</a>
-    <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}" aria-controls="sidebar" aria-expanded="false">☰</button>
+    <button id="sidebar-toggle" type="button" aria-label="{labels[sidebar_toggle_aria]}" aria-controls="sidebar" aria-expanded="false"><svg class="ico-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span class="ico-close" aria-hidden="true">×</span></button>
   </header>
 
   <main id="map" tabindex="-1" aria-label="{labels[map_aria]}"></main>
@@ -3544,6 +3809,7 @@ _TEMPLATE = """<!doctype html>
   </div>
 
   {about_dialog_html}
+  {share_dialog_html}
 </div>
 
 <script src="/assets/vendor/maplibre-gl-4.7.1.js"></script>
@@ -3644,6 +3910,7 @@ _LAB_LEGEND_FOOTER = """
         <span class="sep">·</span>
         <a href="#" id="about-link">{labels[about_link_label]}</a>
       </div>
+      <p id="sidebar-credit">{sidebar_credit_html}</p>
     </div>
 
   </aside>"""

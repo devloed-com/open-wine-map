@@ -21,6 +21,13 @@ from either host — which is what a preview host should say about itself.
 | security headers, Force-SSL, custom 404 | set by deploy.py | set by deploy.py |
 | status (2026-09-20) | live | **parked** — every request 301s to production (`--park`) |
 
+The security headers no longer include `X-Frame-Options` (retired
+2026-10-22 so the share dialog's embed snippet works on other sites; a
+read-only public map has nothing a click could be hijacked into): deploy.py
+lists it in `_RETIRED_HEADERS` and deletes the old `SAMEORIGIN` edge rule
+when it finds one. Verify after the deploy with
+`curl -sI https://www.openwinemap.com/nl/ | grep -i frame` (nothing expected).
+
 ## Parking beta (current state since 2026-09-20)
 
 Beta is not in use, so it is *parked*: one catch-all Redirect edge rule on

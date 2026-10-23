@@ -311,7 +311,7 @@ def _build_record(entry, parents_by_canton, canton_data, ofag_source):
     # extract has a per-AOC commune list for this slug, that wins over
     # the canton-wide commune list. Sub-AOCs WITHOUT a specific carved
     # list and without their own commune enumeration must NOT inherit
-    # the canton-wide list — they fall through to `parent-aoc` polygon
+    # the canton-wide list — they fall through to `parent-appellation` polygon
     # inheritance in stage 04 (geo_communes left empty).
     per_aoc_map = (extract.get("per_aoc_communes") if extract else {}) or {}
     carved = per_aoc_map.get(slug)

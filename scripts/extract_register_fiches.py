@@ -47,7 +47,9 @@ from _lib.grape_entity import (  # noqa: E402
 COUNTRY_CONFIG: dict[str, dict] = {
     # Family A — spec is the `I. <single document>` block
     "cz": {"anchor": ("JEDINÝ DOKLAD", "JEDNOTNÝ DOKUMENT"), "end": ("DALŠÍ INFORMACE",),
-           "kw": "_lib.cz.jednotny_dokument"},
+           "kw": "_lib.cz.jednotny_dokument",
+           # the 2011 template titles § 6 "Hrozny" (Šobes, Litoměřická)
+           "extra_kw": {"grape_varieties": ["hrozny"], "geo_area": ["vymezená oblast"]}},
     "hr": {"anchor": ("JEDINSTVENI DOKUMENT", "SINGLE DOCUMENT"), "end": ("OTHER INFORMATION", "OSTALE INFORMACIJE", "DRUGI PODACI"),
            "kw": "_lib.hr.jedinstveni_dokument"},
     "hu": {"anchor": ("ÖSSZEFOGLALÓ DOKUMENTUM", "EGYSÉGES DOKUMENTUM"), "end": ("EGYÉB INFORMÁCIÓK",),
@@ -82,18 +84,36 @@ _PAREN_RE = re.compile(r"\s*\(.*?\)\s*")
 # "** 01. Fetească albă". Strip the leading bullets + ordinal so the real
 # variety name reaches the matcher.
 _LIST_PREFIX_RE = re.compile(r"^[\s*•·∙‣◦\-–—]*(?:\d{1,3}[.)]\s*|\d{1,3}\s+)?[\s*•·∙‣◦\-–—]*")
+# The § 6 clause that opens the roster to every variety the national (or EU)
+# law recognises — "** všechny další odrůdy uznané ve všech členských státech
+# EU … (OTHER)" in the newer template, "c. Další odrůdy: Všechny další odrůdy
+# uznané …" in the 2011 one. The sidecar records it as `open_roster`; a
+# fiche without it names a closed roster (VOC Znojmo, Šobes).
+_OPEN_ROSTER = (
+    "všechny další", "všetky odrody", "všetky ostatné", "všetky ďalšie", "all other",
+    "всички други", "toate celelalte", "όλες οι άλλες", "λοιπές", "minden egyéb", "minden más",
+    "sve ostale", "vse druge", "vse ostale",
+)
 # §6 sub-structure headers + OIV/EU/national catch-all phrases + register
 # page furniture that are not varieties (multilingual stoplist).
-_NON_VARIETY = (
+_NON_VARIETY = _OPEN_ROSTER + (
     "inventory", "súpis", "popis osnovnih", "apogr", "απογρ", "inventar",
     "списък", "seznam", "soupis",
     "oiv", "organiz", "organisation", "mednarodn", "medzinárodn", "международн",
     "internațion", "internation", "διεθν", "organizáci",
-    "všechny další", "všetky odrody", "all other", "ostatní", "iné odrody",
-    "druge sorte", "други сортове", "alte soiuri", "λοιπές", "άλλες ποικιλ", "egyéb fajt",
+    "ostatní", "iné odrody",
+    "druge sorte", "други сортове", "alte soiuri", "άλλες ποικιλ", "egyéb fajt",
     "stvoreno dana", "tehnička dokumentacija", "vytvoř", "създаден",
     "e-bacchus", "e bacchus", "podklady", "podpůrné", "supporting",
 )
+# The 2011 template splits § 6 into "a. <main varieties>", "b. <varieties on
+# the OIV list>", "c. <other varieties>"; the newer one tags each bulleted
+# line "(MAIN)" / "(OIV)" / "(OTHER)". Main → principal, the rest →
+# accessory (Šobes lists Pálava under b. only). The tag, not the bullet,
+# carries the role: Hungary bullets main varieties "** Furmint (MAIN)" and
+# other ones "* Kéknyelű (OTHER)" alike.
+_SUB_BLOCK_RE = re.compile(r"^\s*([abc])[.)]\s+\S")
+_ROLE_TAG_RE = re.compile(r"\((MAIN|OIV|OTHER)\)$", re.IGNORECASE)
 
 
 def _norm(s: str) -> str:
@@ -130,12 +150,30 @@ def _route(sections, titles, role_keywords, extra_kw=None):
     return routed
 
 
+def _line_role(line, low, block):
+    """(text the stoplist reads, is-accessory) for one § 6 line. A tagged line
+    is read without its tag: "(OIV)" names the list the variety is on, not the
+    OIV heading the stoplist is for."""
+    stripped = line.strip()
+    tag = _ROLE_TAG_RE.search(stripped) if stripped.startswith("*") else None
+    if tag:
+        return low[: low.rfind("(")], tag.group(1).upper() != "MAIN"
+    return low, block != "a" or stripped.startswith("**") or "(other)" in low
+
+
 def _parse_grapes(section_text):
-    out = {"principal": [], "accessory": [], "observation": [], "details": []}
+    out = {"principal": [], "accessory": [], "observation": [], "details": [], "open_roster": False}
     seen = set()
+    block = "a"
     for line in (section_text or "").splitlines():
         low = line.lower()
-        if any(p in low for p in _NON_VARIETY):
+        sb = _SUB_BLOCK_RE.match(line)
+        if sb:
+            block = sb.group(1)
+        if any(p in low for p in _OPEN_ROSTER):
+            out["open_roster"] = True
+        body, other = _line_role(line, low, block)
+        if any(p in body for p in _NON_VARIETY):
             continue
         cand = _PAREN_RE.sub(" ", line)
         cand = _LIST_PREFIX_RE.sub("", cand).strip(" .,;:\t·–-")
@@ -145,8 +183,9 @@ def _parse_grapes(section_text):
         if m is None or m.slug in seen:
             continue
         seen.add(m.slug)
-        out["principal"].append(m.slug)
-        out["details"].append({"slug": m.slug, "name": cand, "role": "principal", "colour": m.colour})
+        role = "accessory" if other else "principal"
+        out[role].append(m.slug)
+        out["details"].append({"slug": m.slug, "name": cand, "role": role, "colour": m.colour})
     return out
 
 

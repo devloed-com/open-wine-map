@@ -72,11 +72,11 @@ _FUZZY_CUTOFF = 85
 # INAO colour-letter suffixes. Case-sensitive on purpose — lowercase `b`
 # is too common as a final letter (`Bobal B` correctly strips `B`, but
 # stripping a final `b` from any token would shred legitimate names).
+# The code follows any letter: a per-script allowlist had left out the
+# Croatian ć (Babić N matched nothing), the Italian ò and ì (Groppello di
+# Revò N) and the Greek capitals (ΑΣΥΡΤΙΚΟ Β), which then fell to fuzzy.
 _COLOUR_LETTER_RE = re.compile(
-    r"(?<=[A-Za-zàâäéèêëîïôöùûüçășțşţáíóúőűñõ"
-    r"α-ωάέήίόύώϊϋΐΰ"
-    # SK/CZ: ě č ř ť ď ň ů ľ ŕ ô ž š ý — both lower + upper forms.
-    r"ěčřťďňůľŕôžšýĚČŘŤĎŇŮĽŔÔŽŠÝ])"
+    r"(?<=[^\W\d_])"
     r"\s+(B|N|G|Rs|Rg|R|Β|Ν|Γ)\Z"
 )
 _COLOUR_LETTER_TO_NAME = {
@@ -111,6 +111,68 @@ _BANNED_SURFACES = frozenset({
     "gris", "grises",
     "rojo", "rojos", "roja", "rojas",
     "rosada", "rosadas", "rosado", "rosados",
+    # The rosé colour words: VIVC lists ROSE as a synonym of Nebbiolo (#8417),
+    # so a bare "rosé" / "rosè" from a wine-type line ("spumante rosato o
+    # rosè", the Hungarian "Rosé" category) bound Nebbiolo to Prosecco,
+    # Romagna Oriolo, Alto Adige, Mór … (2026-10-22). _normalise folds the
+    # accents, so the key is the bare form.
+    "rose", "roses", "rosee", "rosees",
+    "rosato", "rosati", "rosata", "rosate", "rosat", "rosats",
+    # Wine-style and colour words, place names and adjectives a variety list
+    # carries that had fuzzy-matched a cultivar (sweep of 2026-10-22): the
+    # Hungarian Siller / Egri Csillag styles and "piros" (red), the Alto Adige
+    # Kretzer, a bare "blanc", the Italian "gentile" and "rosa", Lacryma (of
+    # Lacryma Christi), the Greek Κάβα (aged-wine category), Πάτρα and
+    # Μοναστήρι. _normalise romanises the Greek.
+    "siller", "csillag", "piros", "kretzer", "blanc", "gentile", "rosa",
+    "lacryma", "kaba", "patra", "monasteri",
+    # the Greek "Για" (for) and the Retsina style word, which a fresh GR 02f
+    # had bound to Giro negre and Ritino (2026-10-11)
+    "gia", "retsina", "retsinas",
+    # "da sole / da soli / da sola o congiuntamente" (alone or together), the
+    # phrase every MASAF complement clause carries: VIVC lists SOLE under
+    # Folle blanche and SOLA under Molinara (Abruzzo, Aleatico di Puglia).
+    "sole", "soli", "sola",
+    # the bare colour word of "Moscato giallo" / "Trebbiano giallo", a VIVC
+    # synonym of Trebbiano di Soave
+    "giallo",
+    # "verde" (green) is a VIVC synonym of the Greek Lagorthi; Lacryma Christi
+    # is Vesuvio's wine, not a grape (it had matched Lacrima and Albanello)
+    "verde", "lacryma christi", "lacryma christi bianco", "lacryma christi rosso",
+    "lacryma christi rosato",
+    # Claims of passports fetched in the same sweep, caught by the second
+    # re-extraction: "m 2" (a Geneva règlement's square metre) is Karmin's
+    # breeder code "M. 2", "Roche" (the Vaud commune) a legacy synonym of
+    # Ruchè, "Montagna" (the Alto Adige comune) the VIVC prime of Paolina,
+    # and VIVC folds a bare "Asprouda" under several Greek cultivars —
+    # Anchialos's spec names it as a local name of Savatiano.
+    "m 2", "roche", "montagna", "asprouda",
+    # Squinzano's "ad esclusione dei moscati" (the muscats) had bound Moscato
+    # giallo; a "grano" left over from "Moscatel de ⏎ Grano Menudo" the
+    # Portuguese Granho; Limnos's prose names "Μοσχάτο" for its Muscat of
+    # Alexandria, which a bare "Moschato" had turned into Muscat blanc.
+    "moscati", "grano", "moskhato",
+    # Bare colour words of the corpus languages (review of 2026-10-22). The HU
+    # national specs head each block with "Fehér" (white) and the Majarcă albă
+    # passport (#11866) lists FEHER among its synonyms, so pinning it put
+    # Majarcă on six Hungarian cards; the Valais règlement's "blanche" had bound
+    # Mondeuse blanche; thirty more bare words bound something latent ("nera" →
+    # Pinot noir, "crna" → Plavac mali, "albe" → Elbling, "roter" → Roter
+    # Veltliner, "weisser" → Elbling, "bílá" → Okatica bijela …). A real variety
+    # that is a colour word stays out: "Bianca" and "Nero", the Hungarian
+    # crossings; "tinta" / "tinto" were banned already. Keys are the
+    # `_normalise` forms (Greek and Cyrillic romanised).
+    "feher", "voros", "kek", "szurke", "roze", "bila", "bile", "bily", "biele", "biela",
+    "cervena", "cervene", "cerveny", "modra", "modre", "modry", "ruzove", "ruzova", "ruzovy",
+    "bijela", "bijelo", "bijeli", "crna", "crno", "crni", "bela", "belo", "beli", "rdeca",
+    "rdece", "rdeci", "bialo", "cherveno", "cherveni", "chervena", "alb", "alba", "albe",
+    "negru", "negre", "neagra", "rosu", "rosie", "rosii", "nera", "nere", "neri", "bianco",
+    "bianchi", "bianche", "rosso", "rossa", "rossi", "rosse", "weiss", "weisse", "weisser",
+    "weisses", "rot", "rote", "roter", "rotes", "blau", "blaue", "blauer", "grau", "graue",
+    "grauer", "blanche", "blanches", "noir", "noire", "noirs", "noires", "rouge", "rouges",
+    "branco", "branca", "brancas", "brancos", "leuko", "leuka", "eruthro", "eruthra", "kokkino",
+    "wit", "witte", "rood", "rode", "zwart", "zwarte", "blauw", "blauwe", "white", "red",
+    "black",
     "seibel",
     # Bare "Bouschet" is the teinturier-breeding family (Petit / Gros /
     # Alicante Bouschet), never one cultivar — it reaches the matcher
@@ -159,6 +221,11 @@ class MatchResult:
 class Vocabulary:
     exact_index: dict[str, str]
     names: tuple[str, ...]
+    # The surfaces the lexicon itself vouches for — corpus slugs, GRAPE_ALIAS
+    # keys, VIVC prime names and the synonyms VIVC flags as a country's
+    # official name — as opposed to VIVC's unflagged synonyms,
+    # which include place names ("Valtellina", "Avola", "Barolo").
+    curated: frozenset = frozenset()
 
 
 @dataclass
@@ -176,6 +243,12 @@ def set_pliego_context(slug: str | None) -> None:
     that don't pass `source_pliego` explicitly. Callers wrap a per-pliego
     parse with `set_pliego_context(slug)` / `set_pliego_context(None)`."""
     _CURRENT_PLIEGO[0] = slug
+
+
+def current_pliego_context() -> str | None:
+    """The record slug a per-record parse set, so a country parser can apply
+    a per-record binding (IT `grape_context_overrides.json`)."""
+    return _CURRENT_PLIEGO[0]
 
 
 def _normalise(name: str) -> str:
@@ -323,6 +396,30 @@ def _vivc_canonical_by_id() -> dict[int, str]:
     }
 
 
+# A slug spells an elided article as a word ("bianco-d-alessano"), a token
+# keeps the apostrophe ("Bianco d'Alessano"): register both forms, or the
+# alias never fires (Valle d'Itria, Lizzano and Martina lost the variety).
+_ELISION_RE = re.compile(r"\b([dl]) (?=\w)")
+
+
+def _claim_into(exact: dict[str, str], name: object, canonical: str) -> None:
+    if not isinstance(name, str) or not name:
+        return
+    key = _normalise(name)
+    if len(key) < 3 or key in _BANNED_SURFACES:
+        return
+    exact.setdefault(key, canonical)
+
+
+def _claim_vivc_synonyms(exact: dict[str, str], records: list, *, official: bool) -> None:
+    """Claim the VIVC synonyms of one tier: those VIVC flags as a country's
+    official name, or the unflagged legacy ones."""
+    for canonical, data, _file_slug, _resolved in records:
+        for syn in data.get("synonyms") or []:
+            if isinstance(syn, dict) and bool(syn.get("official_in")) is official:
+                _claim_into(exact, syn.get("name"), canonical)
+
+
 @lru_cache(maxsize=1)
 def _load_vocabulary() -> Vocabulary:
     exact: dict[str, str] = {}
@@ -332,6 +429,7 @@ def _load_vocabulary() -> Vocabulary:
         if len(key) < 3 or key in _BANNED_SURFACES:
             continue
         exact.setdefault(key, slug)
+        exact.setdefault(_ELISION_RE.sub(r"\1'", key), slug)
 
     # GRAPE_ALIAS keys are curator-verified disambiguations of names that
     # are otherwise ambiguous across VIVC (e.g. "MOSCATEL" is a synonym
@@ -342,6 +440,7 @@ def _load_vocabulary() -> Vocabulary:
         if len(key) < 3 or key in _BANNED_SURFACES:
             continue
         exact.setdefault(key, GRAPE_ALIAS.get(canonical, canonical))
+        exact.setdefault(_ELISION_RE.sub(r"\1'", key), GRAPE_ALIAS.get(canonical, canonical))
 
     # VIVC keeps every name a variety has ever borne, so one surface is
     # routinely claimed by several records — "Freisa" is the prime name of
@@ -362,27 +461,38 @@ def _load_vocabulary() -> Vocabulary:
         canonical = canonical_by_id.get(vid) if isinstance(vid, int) else None
         if canonical is None:
             canonical = GRAPE_ALIAS.get(file_slug, file_slug)
-        records.append((canonical, data))
+        records.append((canonical, data, file_slug, isinstance(vid, int) and bool(vid)))
 
-    def _claim(name: object, canonical: str) -> None:
-        if not isinstance(name, str) or not name:
-            return
-        key = _normalise(name)
-        if len(key) < 3 or key in _BANNED_SURFACES:
-            return
-        exact.setdefault(key, canonical)
+    for canonical, data, _file_slug, _resolved in records:
+        _claim_into(exact, data.get("prime_name"), canonical)
+    _claim_vivc_synonyms(exact, records, official=True)
+    # A canonical slug keeps its own name against another record's unflagged
+    # synonym: the passport of Agostenga (#107), fetched in the sweep of
+    # 2026-10-22, lists MALVASIA BIANCA too, and file order handed the
+    # regulators' "Malvasia bianca B." to it on 29 Italian cards.
+    for canonical, _data, file_slug, resolved in records:
+        if resolved and canonical == file_slug:
+            _claim_into(exact, _slug_to_search_surface(file_slug), canonical)
+    # a name some country registers officially ("Carignano" in Italy) is a
+    # variety name; the unflagged tier holds the place names
+    curated = frozenset(exact)
+    _claim_vivc_synonyms(exact, records, official=False)
 
-    for canonical, data in records:
-        _claim(data.get("prime_name"), canonical)
-    for tier_official in (True, False):
-        for canonical, data in records:
-            for syn in data.get("synonyms") or []:
-                if not isinstance(syn, dict):
-                    continue
-                if bool(syn.get("official_in")) is tier_official:
-                    _claim(syn.get("name"), canonical)
+    return Vocabulary(exact_index=exact, names=tuple(exact.keys()), curated=curated)
 
-    return Vocabulary(exact_index=exact, names=tuple(exact.keys()))
+
+def is_curated_surface(token: str) -> bool:
+    """True when `token` (colour code stripped) is a name the lexicon vouches
+    for — a corpus slug, a GRAPE_ALIAS key, a VIVC prime name or a synonym VIVC
+    flags as a country's official name — and not only an unflagged VIVC synonym. A parser uses it to tell a variety that shares
+    its appellation's name ("Cesanese di Affile") from a place name VIVC keeps
+    as a synonym ("Valtellina" → Veltliner rot, "Avola" → Ribolla gialla)."""
+    cleaned = _prep_token(token)
+    if not cleaned:
+        return False
+    vocab = _load_vocabulary()
+    bare, _ = _strip_colour_letter(cleaned)
+    return _normalise(cleaned) in vocab.curated or _normalise(bare) in vocab.curated
 
 
 def _strip_colour_letter(token: str) -> tuple[str, str | None]:
@@ -525,9 +635,27 @@ def _fuzzy_passes_sanity(candidate_key: str, match_name: str, score: float) -> b
     This catches the prefix-shift class while preserving every typo
     fold I've seen in the corpus (the FR cahier typos all keep the
     first letter — `chardonay` ↔ `chardonnay`, `cabarnet` ↔
-    `cabernet`)."""
+    `cabernet`).
+
+    A name and its match that both carry numbers must carry the same ones,
+    at any score: "Incrocio Manzoni 2-14" is not 2-15, "Gm 324-58" not
+    Hibernal's 322-58 (sweep of 2026-10-22). A number on one side only — a
+    footnote ("Merlot. 3"), a share ("Corvina veronese 35") — is left to the
+    score.
+
+    Below 95 the candidate must also carry five letters or more: a four-letter
+    word scores 88 against any five-letter name that contains it ("doña", the
+    wrapped half of Extremadura's "Doña ⏎ Blanca", against Razaki's synonym
+    "Donna")."""
+    # joined, so "6.013" and "6.0.13" (Manzoni bianco) count as the same number
+    cand_digits = "".join(re.findall(r"\d", candidate_key))
+    match_digits = "".join(re.findall(r"\d", match_name))
+    if cand_digits and match_digits and cand_digits != match_digits:
+        return False
     if score >= 95:
         return True
+    if len(re.findall(r"[^\W\d_]", candidate_key)) < 5:
+        return False
     cand = candidate_key.lstrip()
     matched = match_name.lstrip()
     if not cand or not matched:

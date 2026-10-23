@@ -53,6 +53,12 @@ def test_clean_name_strips_extraction_debris_only():
     assert clean_name("Moscato bianco e") == "Moscato bianco"
     assert clean_name("Würzer;") == "Würzer"
     assert clean_name("Moscatel-") == "Moscatel"
+    # A hyphen broken across a line is closed; a spaced dash stays a separator.
+    assert clean_name("cabernet- sauvignon") == "cabernet-sauvignon"
+    assert clean_name("Folha -de -Figueira") == "Folha-de-Figueira"
+    assert clean_name("Durella B. - Durello") == "Durella B. - Durello"
+    assert clean_name("Negro Amaro N - Negroamaro") == "Negro Amaro N - Negroamaro"
+    assert clean_name("Cabernet-Sauvignon") == "Cabernet-Sauvignon"
     # Spellings stay: a name ending in "or", a colour code, an apostrophe.
     assert clean_name("rayon d or") == "rayon d or"
     assert clean_name("Rayon d'Or") == "Rayon d'Or"

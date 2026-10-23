@@ -7,7 +7,7 @@ Chain (per CH record, in priority order):
    GE (SITG `VIT_VIGNOBLE_AO` — parcel-precise). VD pending one-time
    ASIT VD WFS endpoint dereferencing. Other cantons: deferred.
 
-2. **`parent-aoc`** — sub-denominations inherit the parent AOC's
+2. **`parent-appellation`** — sub-denominations inherit the parent AOC's
    polygon when no geoportal layer covers them. Mirrors the FR DGC
    / DE Einzellage pattern.
 
@@ -61,6 +61,9 @@ _GEMEINDE_ALIAS: dict[str, str] = {
 }
 
 
+_CANTON_SUFFIX_RE = re.compile(r"\s*\([A-Z]{2}\)\s*$")
+
+
 def _norm(s: str) -> str:
     """Aggressive normalisation for commune name joins: lowercase,
     diacritics stripped, ß→ss, non-alphanumeric removed."""
@@ -102,6 +105,9 @@ class CHCommuneIndex:
 
         self._by_bfs: dict[int, dict] = {}
         self._bfs_by_name: dict[str, list[int]] = defaultdict(list)
+        # "Roche (VD)", "Stein (AG)": the official name carries its canton,
+        # the règlement's prose does not.
+        self._bare_names: set[str] = set()
         self._bfs_by_canton: dict[str, list[int]] = defaultdict(list)
         # Geometry index by BFS id.
         for _, row in gdf.iterrows():
@@ -125,6 +131,9 @@ class CHCommuneIndex:
             }
             self._by_bfs[bfs_int] = entry
             self._bfs_by_name[_norm(name)].append(bfs_int)
+            bare = _CANTON_SUFFIX_RE.sub("", name or "")
+            if bare != name:
+                self._bare_names.add(_norm(bare))
             if canton_code:
                 self._bfs_by_canton[canton_code].append(bfs_int)
         # Apply commune aliases.
@@ -151,6 +160,13 @@ class CHCommuneIndex:
              "canton": self._by_bfs[b]["canton"]}
             for b in bfs_ids
         ]
+
+    def is_commune_name(self, name: str) -> bool:
+        """True when `name` is a commune's official name, or one without the
+        canton the official name carries ("Roche" for "Roche (VD)"). The
+        variety scan's place-name guard; `lookup` stays exact."""
+        key = _norm(name)
+        return bool(self._bfs_by_name.get(key)) or key in self._bare_names
 
     def scan_text(self, text: str, *, max_tokens: int = 5) -> Iterable[dict]:
         """Greedy multi-token scan: walk word boundaries and try the
@@ -272,7 +288,10 @@ def resolve(
         parent_slug = record.get("parent_slug") or ""
         parent = parent_geom_by_slug.get(parent_slug)
         if parent is not None and not parent.is_empty:
-            return parent, "parent-aoc", {"matched": 1, "unmatched": 0}
+            # The same spelling as the FR / IT / PT / DE inheritors, so the hit
+            # test, the card's approximate-area note and the audits treat a
+            # Swiss sub-AOC alike (it was "parent-aoc" until 2026-10-22).
+            return parent, "parent-appellation", {"matched": 1, "unmatched": 0}
 
     # Step 3: commune-union from règlement-extracted commune list.
     bfs_ids = [c.get("bfs_id") for c in (record.get("geo_communes") or [])

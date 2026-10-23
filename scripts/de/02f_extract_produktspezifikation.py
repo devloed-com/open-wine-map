@@ -58,6 +58,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.de.landwein_spezifikation import extract as parse_landwein_pdf  # noqa: E402
 from _lib.de.produktspezifikation import extract as parse_anbaugebiet_pdf  # noqa: E402
+from _lib.extract_index import write_index  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue,
     match_variety,
@@ -254,7 +255,8 @@ def main() -> int:
         n_ok += 1
 
     set_pliego_context(None)
-    OUT_INDEX.write_text(json.dumps(index, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    # a --slug run merges into the index on disk (extract_index.py)
+    write_index(OUT_INDEX, index, partial=bool(args.slug))
     OUT_MANIFEST.write_text(json.dumps({
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "source_org": "BLE",

@@ -147,7 +147,7 @@ _ZONE_SOURCE_PREFIXES = (
     "parcellaire", "cadastre-lieu-dit", "ivv-commune-vineyard", "region-pdo-union",
     "pdo-plan-parcel",
 )
-_INHERITING_SOURCES = ("parent-appellation", "parent-aoc", "sibling-dgc")
+_INHERITING_SOURCES = ("parent-appellation", "sibling-dgc")
 CLASSES = ("border", "tier", "generalisation", "source", "suspicious")
 
 
