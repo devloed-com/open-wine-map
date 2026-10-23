@@ -34,7 +34,7 @@ from __future__ import annotations
 import re
 
 from .commune import parse_commune_list
-from .egyseges_dokumentum import COLOUR_BY_KEYWORD, STYLE_MARKERS
+from .egyseges_dokumentum import COLOUR_BY_KEYWORD, STYLE_MARKERS, sweetness_styles
 
 # Top-level Roman-numeral section header, e.g. "   IV. KÖRÜLHATÁROLT TERÜLET".
 # Longest numerals first so VIII/VII/VI win over V/I at the same position.
@@ -233,6 +233,7 @@ def parse_styles(bodies: dict[str, str], grapes: dict) -> list[str]:
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(blob):
             found.add(slug)
+    found |= sweetness_styles(blob)
     # A gris / rose berry makes white wine; every termékleírás names its
     # rozé in the text (2026-10-23, the NL rule — no HU record changed).
     _colour_to_style = {"blanc": "blanc", "noir": "noir", "gris": "blanc", "rose": "blanc"}

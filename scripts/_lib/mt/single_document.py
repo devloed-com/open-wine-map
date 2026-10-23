@@ -138,6 +138,14 @@ COLOUR_BY_KEYWORD = {
     "rosé": "rose",
 }
 
+# Colours coordinated before one "wine(s)": "Red, white and rosé wines are
+# produced …" (the register's single document) — every colour of the list.
+COLOUR_LIST_RE = re.compile(
+    r"\b(?:white|red|ros[ée])(?:\s*(?:,|and|or)\s*(?:white|red|ros[ée]))*\s+wines?\b",
+    re.IGNORECASE,
+)
+COLOUR_WORD_RE = re.compile(r"\b(white|red|ros[ée])\b", re.IGNORECASE)
+
 
 # Style markers in English (+ Maltese traditional terms), mapped to the
 # shared style-taxonomy slugs. Maltese practice names: Passito / Imqadded
@@ -152,6 +160,11 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\bpassito\b|\bimqadded\b|\bdried\s+grapes?\b|\braisin\s+wine", re.I),
      "raisin-wine"),
     (re.compile(r"\bnoble\s+rot|\bbotrytis", re.I), "grains-nobles"),
+    # the EU categories 15 / 16 and the "Sweet wines" sugar class of the
+    # register's single document (2026-10-23)
+    (re.compile(r"\braisined\s+grapes", re.I), "raisin-wine"),
+    (re.compile(r"\boverripe\s+grapes", re.I), "late-harvest"),
+    (re.compile(r"\bsweet\s+wines?\b", re.I), "sweet"),
 )
 
 

@@ -141,6 +141,11 @@ COLOUR_BY_KEYWORD = {
     "rosato": "rose",
     "rosati": "rose",
     "rose": "rose",
+    # the accented forms the texts write ("Franciacorta Rosé", "Prosecco
+    # Rosé", Abruzzo's "spumante rosè"), which "\brose\b" never matched
+    # (2026-10-23)
+    "rosé": "rose",
+    "rosè": "rose",
     # Garda's word for rosé (Bardolino, Riviera del Garda, Valtènesi).
     # "Cerasuolo" is not mapped: rosé in Abruzzo, red in Vittoria.
     "chiaretto": "rose",
@@ -163,18 +168,40 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
 )
 
 
+# The organoleptic template's colour field ("colore: giallo paglierino più o
+# meno intenso", "colore: dal rubino al granato") states a wine's colour where
+# its type name does not ("Offida Pecorino", "Riviera ligure di Ponente
+# Pigato", the base "Franciacorta"): the field's head word — after "da" /
+# "dal" / "tra" and at most one adjective — is read, yellow as white, ruby /
+# garnet / purple as red. A pink head is not read: the Vin Santo Occhio di
+# Pernice of five Tuscan DOCs is "colore: dal rosa all'ambrato"; nor a
+# reflection ("colore rosa intenso con lievi riflessi gialli", Matino)
+# (2026-10-23).
+_COLOUR_FIELD_RE = re.compile(
+    r"\bcolore\s*:?\s*(?:(?:da|dal|dallo|tra|fra)\s+(?:il\s+|lo\s+)?)?(?:[a-zàèéìòù]+\s+)?"
+    r"(giall|paglierin|rubin|granat|porpor|purpure)",
+    re.I,
+)
+_COLOUR_FIELD_HEADS = {
+    "giall": "blanc", "paglierin": "blanc",
+    "rubin": "noir", "granat": "noir", "porpor": "noir", "purpure": "noir",
+}
+
+
 def scan_styles(text: str) -> list[str]:
     """Detect wine-style tags in Italian regulator prose: colour adjectives
-    (rosso/bianco/rosato → noir/blanc/rose) + style markers (spumante,
-    frizzante, passito, vin santo, …). Colour values are the FR colour words
-    the rest of the corpus uses; stage 04 `_canonical_styles` folds them to the
-    taxonomy slugs (blanc→white, noir→red, rose→rose). Shared by the EU
-    documento-unico parser (stage 02) and the MASAF disciplinare parser
-    (stage 02f)."""
+    (rosso/bianco/rosato → noir/blanc/rose), the head word of the colour
+    field, and style markers (spumante, frizzante, passito, vin santo, …).
+    Colour values are the FR colour words the rest of the corpus uses; stage
+    04 `_canonical_styles` folds them to the taxonomy slugs (blanc→white,
+    noir→red, rose→rose). Shared by the EU documento-unico parser (stage 02)
+    and the MASAF disciplinare parser (stage 02f)."""
     found: set[str] = set()
     for kw, colour_slug in COLOUR_BY_KEYWORD.items():
         if re.search(rf"\b{re.escape(kw)}\b", text, re.I):
             found.add(colour_slug)
+    for m in _COLOUR_FIELD_RE.finditer(text):
+        found.add(_COLOUR_FIELD_HEADS[m.group(1).lower()])
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(text):
             found.add(slug)

@@ -236,7 +236,9 @@ _STYLE_MARKERS = [
     (re.compile(r"\bискрящ", re.I), "sparkling"),
     (re.compile(r"\bполупенлив|перлант", re.I), "semi-sparkling"),
     (re.compile(r"\bликьорн", re.I), "vin-de-liqueur"),
-    (re.compile(r"\bдесертн|късна?\s+реколта|ледено\s+вино", re.I), "vendanges-tardives"),
+    (re.compile(r"\bдесертн", re.I), "sweet"),
+    (re.compile(r"\bкъсна?\s+реколта", re.I), "vendanges-tardives"),
+    (re.compile(r"\bледено\s+вино", re.I), "icewine"),
     (re.compile(r"\bботритиз|благородна?\s+плесен", re.I), "grains-nobles"),
 ]
 

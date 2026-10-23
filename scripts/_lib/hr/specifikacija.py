@@ -283,8 +283,12 @@ _STYLE_MARKERS = [
     (re.compile(r"\bpjenušav", re.I), "sparkling-quality"),
     (re.compile(r"\bbiser\s+vin", re.I), "semi-sparkling"),
     (re.compile(r"\bliker(?:sk)", re.I), "vin-de-liqueur"),
-    (re.compile(r"\bdesertn", re.I), "vendanges-tardives"),
-    (re.compile(r"\bprosušen|prezrel", re.I), "vendanges-tardives"),
+    (re.compile(r"\bdesertn", re.I), "sweet"),
+    (re.compile(r"\bprezrel", re.I), "vendanges-tardives"),
+    # the selections of (dried) berries are the noble-rot ladder, as in the
+    # EU-OJ table; a wine of dried grapes is a raisin wine (2026-10-23)
+    (re.compile(r"\bizborna\s+berba\s+(?:prosušenih\s+)?bobica", re.I), "grains-nobles"),
+    (re.compile(r"\bprosušen\w*\s+grožđ", re.I), "raisin-wine"),
 ]
 _COLOUR_TO_STYLE = {"blanc": "blanc", "noir": "rouge", "gris": "blanc"}
 

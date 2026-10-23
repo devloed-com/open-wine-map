@@ -325,7 +325,7 @@ STYLE_MARKERS: dict[str, tuple[tuple[re.Pattern, str], ...]] = {
         (re.compile(r"\bwijn uit overrijpe druiven\b", re.I), "vendanges-tardives"),
         (re.compile(r"\bwijn uit gerimpelde druiven\b", re.I), "vin-de-paille"),
         (re.compile(r"\blate\s+oogst\b|\blaat\s+geoogst\b", re.I), "vendanges-tardives"),
-        (re.compile(r"\bijswijn\b", re.I), "vendanges-tardives"),
+        (re.compile(r"\bijswijn\b", re.I), "icewine"),
         (re.compile(r"\bdroge wijn(en)?\b", re.I), "dry"),
     ),
     "fr": (
@@ -337,7 +337,7 @@ STYLE_MARKERS: dict[str, tuple[tuple[re.Pattern, str], ...]] = {
         (re.compile(r"\bvin(s)?\s+de\s+raisins\s+surm[ûu]ris\b", re.I), "vendanges-tardives"),
         (re.compile(r"\bvin(s)?\s+de\s+raisins\s+pass[eé]rill[eé]s\b", re.I), "vin-de-paille"),
         (re.compile(r"\bvendanges\s+tardives\b", re.I), "vendanges-tardives"),
-        (re.compile(r"\bvin\s+de\s+glace\b", re.I), "vendanges-tardives"),
+        (re.compile(r"\bvin\s+de\s+glace\b", re.I), "icewine"),
         (re.compile(r"\bvin(s)?\s+sec(s)?\b", re.I), "dry"),
     ),
 }

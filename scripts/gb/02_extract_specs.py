@@ -47,6 +47,8 @@ from _lib.gb.geometry import is_approximate  # noqa: E402
 from _lib.gb.region import derive_region  # noqa: E402
 from _lib.gb.spec import (  # noqa: E402
     COLOUR_BY_KEYWORD,
+    COLOUR_LIST_RE,
+    COLOUR_WORD_RE,
     PART_STYLE_MARKERS,
     grape_candidates,
     parse_spec,
@@ -64,7 +66,9 @@ OUT_DIR = ROOT / "raw" / "gb" / "specs-extracted"
 INDEX_OUT = OUT_DIR / "_index.json"
 UNKNOWNS_OUT = ROOT / "raw" / "gb" / "extraction-unknowns.json"
 
-_GRAPE_COLOUR_TO_STYLE = {"blanc": "white", "noir": "red", "gris": "white", "rose": "rose"}
+# A berry colour is a floor for white / red only; the rosé a specification
+# lists is read from its text (2026-10-23, the NL / BE rule).
+_GRAPE_COLOUR_TO_STYLE = {"blanc": "white", "noir": "red", "gris": "white", "rose": "white"}
 
 
 def pdf_text(path: Path) -> str:
@@ -124,25 +128,27 @@ def parse_styles(parsed: dict, grape_details: list[dict], wine_name: str) -> lis
     The DEFRA 2011 template names its categories as `PART n: STILL WINE`
     / `PART n: QUALITY SPARKLING WINE`; Sussex names them in section 5
     ("Traditional method quality sparkling wine", "Quality still wine").
-    Colour comes from the varieties, since none of the UK specifications
-    describes its wines by colour in a keyword form.
+    The DEFRA templates state their colours only in the analytical limits
+    ("white and rosé wines", "red wine"); Sussex in its description. The
+    varieties' berry colour adds white / red, never a rosé.
     """
     found: set[str] = set()
     blob = " ".join(parsed.get("part_titles") or [])
     roles = parsed.get("roles") or {}
-    blob_full = f"{blob} {roles.get('description', '')} {wine_name}"
+    blob_full = f"{blob} {roles.get('description', '')} {roles.get('analytical', '')} {wine_name}"
     for pattern, slug in PART_STYLE_MARKERS:
         if slug and pattern.search(blob):
             found.add(slug)
     for kw, colour in COLOUR_BY_KEYWORD.items():
         if re.search(rf"\b{re.escape(kw)}\b", blob_full, re.I):
             found.add(colour)
+    for m in COLOUR_LIST_RE.finditer(blob_full):
+        for word in COLOUR_WORD_RE.findall(m.group(0)):
+            found.add("rose" if word.lower().startswith("ros") else word.lower())
     for g in grape_details:
         base = _GRAPE_COLOUR_TO_STYLE.get(g.get("colour") or "", "")
         if base:
             found.add(base)
-            if base == "red":
-                found.add("rose")
     return sorted(found)
 
 

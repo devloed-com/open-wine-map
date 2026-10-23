@@ -42,6 +42,8 @@ from _lib.mt.single_document import (  # noqa: E402
     _GEO_AREA_TITLE_BLOCKLIST,
     _GRAPE_LINE_DROP,
     COLOUR_BY_KEYWORD,
+    COLOUR_LIST_RE,
+    COLOUR_WORD_RE,
     DOC_ANCHOR_RE,
     INLINE_ROLE_RE,
     ROLE_BY_KEYWORD,
@@ -50,6 +52,7 @@ from _lib.mt.single_document import (  # noqa: E402
     SECTION_ROLE_KEYWORDS,
     STYLE_MARKERS,
 )
+from _lib.register_fiche import load_sidecar  # noqa: E402
 
 INDEX_IN = ROOT / "raw" / "mt" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "mt" / "oj-pages"
@@ -225,24 +228,35 @@ def parse_grapes(section_text: str) -> dict:
     return out
 
 
-_GRAPE_COLOUR_TO_STYLE = {"blanc": "white", "noir": "red", "gris": "white", "rose": "rose"}
+# A berry colour is a floor for white / red only; the rosé the single
+# document lists is read from its text (2026-10-23, the NL / BE rule).
+_GRAPE_COLOUR_TO_STYLE = {"blanc": "white", "noir": "red", "gris": "white", "rose": "white"}
 
 
 def parse_styles(
     sections: dict[str, str], titles: dict[str, str],
     grape_details: list[dict] | None = None, wine_name: str = "",
+    extra_text: str = "",
 ) -> list[str]:
+    """Styles from the amendment's description, categories and practices
+    ("DOK 'Riżerva' white wines …", "1. Passito"), plus `extra_text` — the
+    register's single document, the base text the amendments leave in force
+    ("Red, white and rosé wines are produced …", "Sweet wines")."""
     blob_parts = []
-    title_kw = ("description of the wine", "categories", "wine making", "essential further")
+    title_kw = ("description of the wine", "categories", "wine making", "essential further",
+                "oenological")
     for num, body in sections.items():
         title_low = titles.get(num, "").lower()
         if any(kw in title_low for kw in title_kw):
             blob_parts.append(body)
-    blob = " ".join(blob_parts) + " " + (wine_name or "")
+    blob = " ".join(blob_parts) + " " + (wine_name or "") + " " + (extra_text or "")
     found: set[str] = set()
     for kw, colour_slug in COLOUR_BY_KEYWORD.items():
         if re.search(rf"\b{re.escape(kw)}\b", blob, re.I):
             found.add(colour_slug)
+    for m in COLOUR_LIST_RE.finditer(blob):
+        for word in COLOUR_WORD_RE.findall(m.group(0)):
+            found.add("rose" if word.lower().startswith("ros") else word.lower())
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(blob):
             found.add(slug)
@@ -251,8 +265,6 @@ def parse_styles(
             base = _GRAPE_COLOUR_TO_STYLE.get(g.get("colour") or "", "")
             if base:
                 found.add(base)
-                if base == "red":
-                    found.add("rose")
     return sorted(found)
 
 
@@ -268,12 +280,15 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
                  oj_meta: dict) -> dict:
     routed = route_sections(sections, titles)
     grapes = parse_grapes(routed.get("grape_varieties", ""))
+    fiche = load_sidecar("mt", wine["slug"]) or {}
     styles = parse_styles(
         sections, titles, grape_details=grapes.get("details") or [],
         wine_name=wine.get("name", ""),
+        extra_text=" ".join(fiche.get(k) or "" for k in ("categories", "description")),
     )
     geo_area = routed.get("geo_area", "")
     region = derive_region({"file_number": wine["fileNumber"]})
+    fiche_src = fiche.get("source") or {}
     return {
         "country": "mt",
         "source_lang": "en",
@@ -302,6 +317,9 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
             "bytes": oj_meta.get("bytes", 0),
             "fetched_at": oj_meta.get("fetched_at", ""),
         },
+        # the register's single document, read for the styles
+        **({"register_fiche": {"url": fiche_src.get("url", ""), "ref": fiche_src.get("ref", "")}}
+           if fiche_src.get("url") else {}),
         "stub": False,
     }
 

@@ -257,6 +257,7 @@ from _lib.vineyard_envelope import (
     shape_metrics,
 )
 from _lib.vineyard_envelope import envelope as vineyard_envelope
+from _lib.wine_categories import declares_still, sparkling_only
 from shapely.geometry import mapping, shape
 from tqdm import tqdm
 from unidecode import unidecode as _unidecode
@@ -623,7 +624,9 @@ _BERRY_COLOUR_TO_WINE_STYLE: dict[str, str] = {
     "blanc": "white", "gris": "white", "rose": "white", "noir": "red",
 }
 _COLOUR_STYLES: frozenset[str] = frozenset({"white", "red", "rose"})
-_SPARKLING_FAMILY: frozenset[str] = frozenset({"sparkling", "semi-sparkling", "cremant"})
+# Every sparkling style of the taxonomy: sparkling, its quality / crémant /
+# semi-sparkling leaves and the method tags.
+_SPARKLING_FAMILY: frozenset[str] = frozenset(_taxonomy_descendants("sparkling"))
 
 
 def _grape_role_lists(grapes: dict) -> tuple[list[str], list[str], list[str]]:
@@ -651,12 +654,15 @@ def _grape_role_lists(grapes: dict) -> tuple[list[str], list[str], list[str]]:
     return principal, accessory, observation
 
 
-def _base_colour_styles_from_grapes(grapes: dict, existing_styles: set[str]) -> set[str]:
+def _base_colour_styles_from_grapes(
+    grapes: dict, existing_styles: set[str], declares_still: bool = False,
+) -> set[str]:
     """Wine-colour styles implied by the authorised varieties' berry colour.
     Per slug, first hit wins: (1) the record's own `details[].colour`, (2) the
     curated DEFAULT_COLOUR, (3) VIVC's `color` (which covers slugs DEFAULT_COLOUR
     misses, e.g. nebbiolo / chasselas). Returns the colours to ADD (white / red);
-    never invents rosé. The caller gates on no-colour-style + is_wine."""
+    never invents rosé. The caller gates on no-colour-style + is_wine, and on a
+    record that declares sparkling categories only (`_lib.wine_categories`)."""
     from _lib.grape_lexicon import DEFAULT_COLOUR  # noqa: E402
     vivc_colour = _load_vivc_colour_by_slug()
     detail_colour = {
@@ -672,11 +678,13 @@ def _base_colour_styles_from_grapes(grapes: dict, existing_styles: set[str]) -> 
         style = _BERRY_COLOUR_TO_WINE_STYLE.get(berry or "")
         if style:
             add.add(style)
-    # Sparkling-only refinement: don't assert a still `red` from a noir grape
-    # when the record's only declared styles are sparkling-family — those reds
-    # are for blanc-de-noirs / rosé sparkling, not still red (Franciacorta,
-    # Crémant d'Alsace, …).
-    if "red" in add and existing_styles and existing_styles <= _SPARKLING_FAMILY:
+    # Sparkling-only refinement, for a record that declares no category list:
+    # don't assert a still `red` from a noir grape when its only styles are
+    # sparkling-family — those reds are for blanc-de-noirs / rosé sparkling.
+    # A record that declares still wine keeps it (Dealu Mare: "1. Vin, 5. Vin
+    # spumant de calitate, 8. Vin petiant" had lost its Red here, 2026-10-23).
+    if ("red" in add and not declares_still and existing_styles
+            and existing_styles <= _SPARKLING_FAMILY):
         add.discard("red")
     return add
 
@@ -2813,8 +2821,15 @@ def main() -> int:
         # at all, derive the base colour(s) from its grapes' berry colour so it
         # gets a Styles section + is findable in the style facet. Additive only
         # (never overrides a real colour); skips spirits and grape-less records.
-        if is_wine == "1" and not (set(styles) & _COLOUR_STYLES):
-            extra = _base_colour_styles_from_grapes(grapes, set(styles))
+        # A record that declares sparkling categories only gets no colour from
+        # its grapes: its colours are the ones its text names, or none (a noir
+        # grape makes a blanc de noirs; "White · Red" beside Quality Sparkling
+        # read as still wines on Vlaamse mousserende kwaliteitswijn,
+        # Franciacorta and Crémant d'Alsace — 2026-10-23).
+        if is_wine == "1" and not (set(styles) & _COLOUR_STYLES) and not sparkling_only(record):
+            extra = _base_colour_styles_from_grapes(
+                grapes, set(styles), declares_still=declares_still(record)
+            )
             if extra:
                 styles = _canonical_styles(list(styles) + sorted(extra))
         # When the geometry came from a sibling-DGC umbrella, surface the
@@ -3650,6 +3665,8 @@ def _sources_for(record: dict) -> dict:
             "specifikacija_format": si_spec.get("format", ""),
             "specifikacija_source_org": si_spec.get("source_org", ""),
             "specifikacija_parser_template": si_spec.get("parser_template", ""),
+            **({"register_fiche_url": si_spec["styles_fiche_url"]}
+               if si_spec.get("styles_fiche_url") else {}),
         }
     if record.get("country") == "hr":
         # Croatia: only Muškat momjanski + Ponikve carry a fetchable
@@ -3957,7 +3974,10 @@ def _sources_for(record: dict) -> dict:
             "id_eambrosia": record.get("id_eambrosia") or "",
         }
     if record.get("country") == "mt":
-        # Malta: EU-OJ SINGLE DOCUMENT published in English (co-official).
+        # Malta: EU-OJ SINGLE DOCUMENT published in English (co-official),
+        # and the register's single document the amendment leaves in force
+        # (its colours and sugar classes are read for the styles).
+        fiche_url = (record.get("register_fiche") or {}).get("url") or ""
         return {
             "country": "mt",
             "source_lang": "en",
@@ -3967,6 +3987,7 @@ def _sources_for(record: dict) -> dict:
             "fetched_at": src.get("fetched_at") or "",
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
+            **({"register_fiche_url": fiche_url} if fiche_url else {}),
         }
     if record.get("country") == "gb":
         # United Kingdom: the DEFRA / GOV.UK product specification (PDF or

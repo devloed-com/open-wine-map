@@ -216,9 +216,9 @@ _MKGP_STYLE_MARKERS = [
     (re.compile(r"\bsuhi?\s+jagodni\s+izbor\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bjagodni\s+izbor\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bpozna\s+trgatev\b", re.I), "vendanges-tardives"),
-    (re.compile(r"\bledeno\s+vino\b", re.I), "vendanges-tardives"),
-    (re.compile(r"\bslamno\s+vino\b|\bvino\s+iz\s+su[šs]enega\s+grozdja\b", re.I),
-     "vendanges-tardives"),
+    (re.compile(r"\bledeno\s+vino\b", re.I), "icewine"),
+    (re.compile(r"\bslamno\s+vino\b", re.I), "vin-de-paille"),
+    (re.compile(r"\bvino\s+iz\s+su[šs]enega\s+grozdja\b", re.I), "raisin-wine"),
 ]
 _MKGP_COLOUR_TO_STYLE = {
     "blanc": "blanc",
@@ -245,6 +245,57 @@ def _parse_mkgp_styles(description: str, grapes: dict) -> list[str]:
         if style:
             out.add(style)
     return sorted(out)
+
+
+# The register's single document states what the national texts leave out —
+# the 2007 pravilnik is a variety list, an MKGP .doc gives its colours from the
+# grapes: no SI card had a rosé, Bela krajina only the floor's white and red
+# (2026-10-23). Its category list ("1. Vino, 4. Peneče vino") and its
+# description ("17 g/l za bela in rose vina ter 20 g/l za rdeča vina", "od
+# pozne trgatve do suhega jagodnega izbora in ledenega vina") are read,
+# inflected; 02f adds what they state to the national text's styles.
+_FICHE_CATEGORY_MARKERS = [
+    (re.compile(r"\bkakovostn\w*\s+(?:aromatičn\w*\s+)?pene[čc]", re.I), "sparkling-quality"),
+    (re.compile(r"\bpene[čc]\w*\s+vin|\bpenin", re.I), "sparkling"),
+    (re.compile(r"\bbiser\w*\s+vin", re.I), "semi-sparkling"),
+    (re.compile(r"\blikersk\w*\s+vin", re.I), "vin-de-liqueur"),
+]
+_FICHE_DESCRIPTION_MARKERS = [
+    (re.compile(r"\bpozn\w*\s+trgat", re.I), "vendanges-tardives"),
+    (re.compile(r"\bjagodn\w*\s+izbor", re.I), "grains-nobles"),
+    (re.compile(r"\bleden\w*\s+vin", re.I), "icewine"),
+    (re.compile(r"\bslamn\w*\s+vin", re.I), "vin-de-paille"),
+]
+_FICHE_COLOUR_BY_TOKEN = {
+    **dict.fromkeys(("bela", "belo", "bele", "beli", "belih", "belim", "belimi"), "blanc"),
+    **dict.fromkeys(("rdeča", "rdeče", "rdeči", "rdečih", "rdečim", "rdečimi"), "rouge"),
+    **dict.fromkeys(("rose", "rosé", "roza", "rozé"), "rose"),
+}
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+_WORD_RE = re.compile(r"[^\W\d_]+")
+
+
+def fiche_styles(categories: str, description: str) -> list[str]:
+    """Styles from the register single document's category list and
+    description: a colour word counts in a sentence that speaks of wine
+    ("vin…"), never as the region's name ("Bela krajina")."""
+    found: set[str] = set()
+    for pat, slug in _FICHE_CATEGORY_MARKERS:
+        if pat.search(categories or ""):
+            found.add(slug)
+    text = re.sub(r"\s+", " ", description or "")
+    for pat, slug in _FICHE_DESCRIPTION_MARKERS:
+        if pat.search(text):
+            found.add(slug)
+    for sentence in _SENTENCE_SPLIT_RE.split(text):
+        words = [w.lower() for w in _WORD_RE.findall(sentence)]
+        if not any(w.startswith("vin") for w in words):
+            continue
+        for i, w in enumerate(words):
+            colour = _FICHE_COLOUR_BY_TOKEN.get(w)
+            if colour and not (i + 1 < len(words) and words[i + 1].startswith("krajin")):
+                found.add(colour)
+    return sorted(found)
 
 
 def parse_mkgp_doc(text: str, slug: str) -> dict:

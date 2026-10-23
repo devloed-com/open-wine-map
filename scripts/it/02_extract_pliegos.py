@@ -317,6 +317,12 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
         title_low = titles.get(num, "").lower()
         if "descrizione" in title_low or "categori" in title_low or "ulterior" in title_low:
             blob_parts.append(body)
+    # A description that heads each wine type ("Franciacorta Rosé", "Vino
+    # Roma rosato", "Valcalepio Moscato passito", "Bardolino Novello") is
+    # sliced into sections titled by type, whose bodies are not read and run
+    # on into the rest of the document (the varieties' "Pinot bianco"): the
+    # titles name the types, so the titles are read (2026-10-23).
+    blob_parts += list(titles.values())
     return scan_styles(" ".join(blob_parts))
 
 

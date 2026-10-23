@@ -425,6 +425,45 @@ def parse_grape_list(grapes_text: str) -> dict:
     }
 
 
+# The wine categories and the colours a caderno states. PT records carried
+# no styles at all until 2026-10-23, so every card showed the stage-04
+# floor's red and white: Porto, Madeira and Carcavelos no Fortified, Alentejo
+# Borba no Rosé, Espumante or Licoroso. The category list ("1. Vinho / 3.
+# Vinho licoroso / 4. Vinho espumante"; Dão, Alentejo and Bucelas have none,
+# their description names the types) and the description are read; a colour
+# counts in its masculine form ("vinhos brancos", "Porto brancos e tintos",
+# "Vinho (Branco, Rosado e Tinto)"), never the grapes' "uvas tintas".
+_PT_CATEGORY_MARKERS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
+    (re.compile(r"\bespumantes?\s+de\s+qualidade\b", re.I), ("sparkling", "sparkling-quality")),
+    (re.compile(r"\bespumantes?\b", re.I), ("sparkling",)),
+    (re.compile(r"\bfrisantes?\b", re.I), ("semi-sparkling",)),
+    (re.compile(r"\blicoros[oa]s?\b|\bgeneros[oa]s?\b", re.I), ("vin-de-liqueur",)),
+    (re.compile(r"\buvas\s+sobreamadurecidas\b", re.I), ("late-harvest",)),
+)
+_PT_COLOUR_RE = re.compile(r"\b(tintos?|brancos?|rosados?|ros[ée]s?)\b", re.I)
+_PT_TRADITIONAL_METHOD_RE = re.compile(
+    r"fermenta[çc][ãa]o\s+cl[áa]ssica\s+em\s+garrafa|m[ée]todo\s+cl[áa]ssico"
+    r"|m[ée]todo\s+tradicional",
+    re.I,
+)
+
+
+def parse_styles(sections: dict[str, str]) -> list[str]:
+    blob = f"{sections.get('category', '')}\n{sections.get('description', '')}"
+    found: set[str] = set()
+    for pat, slugs in _PT_CATEGORY_MARKERS:
+        if pat.search(blob):
+            found.update(slugs)
+    for m in _PT_COLOUR_RE.finditer(blob):
+        word = m.group(1).lower()
+        found.add("red" if word.startswith("tint") else "white" if word.startswith("branc") else "rose")
+    if "sparkling" in found and _PT_TRADITIONAL_METHOD_RE.search(
+        f"{blob}\n{sections.get('practices', '')}"
+    ):
+        found.add("methode-traditionnelle")
+    return sorted(found)
+
+
 def make_parent_record(
     wine: dict,
     sections: dict[str, str],
@@ -463,6 +502,7 @@ def make_parent_record(
         "geo_area_brief": area[:1200],
         "link_to_terroir": link_to_terroir,
         "grapes": grapes,
+        "styles": parse_styles(sections_clean),
         "subregioes_count": subregioes_count,
         "source": {
             "filename": f"{wine['slug']}.pdf",
@@ -545,6 +585,7 @@ def make_subregion_record(
         "link_to_terroir": parent["link_to_terroir"],
         "grapes": subregion_grapes(parent["sections"].get("grapes", ""), subregiao["name"])
         or parent["grapes"],
+        "styles": parent["styles"],
         "subregioes_count": 0,
         "source_pattern": subregiao.get("source_pattern", ""),
         "source": parent["source"],

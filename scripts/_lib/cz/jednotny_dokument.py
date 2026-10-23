@@ -144,7 +144,7 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\b(šumivé|šumivá|šumivý|šumivého)\s+vín[oa]?\b", re.I), "sparkling"),
     (re.compile(r"\bperlivé\b", re.I), "semi-sparkling"),
     (re.compile(r"\bslámové víno\b", re.I), "vin-de-paille"),
-    (re.compile(r"\bledové víno\b", re.I), "vendanges-tardives"),
+    (re.compile(r"\bledové víno\b", re.I), "icewine"),
     (re.compile(r"\bpozdní sběr\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bvýběr z hroznů\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bvýběr z bobulí\b", re.I), "grains-nobles"),

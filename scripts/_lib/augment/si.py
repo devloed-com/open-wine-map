@@ -79,6 +79,8 @@ def augment_si_records_with_specifikacija(records: list[dict]) -> int:
             "license": src.get("license") or "",
             "parser_template": sidecar.get("parser_template") or "",
             "matched_okoliši": sidecar.get("matched_okoliši") or [],
+            # the register's single document, when the styles came from it
+            "styles_fiche_url": (sidecar.get("styles_source") or {}).get("url") or "",
         }
 
         if sidecar.get("summary"):

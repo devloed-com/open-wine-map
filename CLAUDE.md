@@ -1503,6 +1503,77 @@ pins the guards. Adding entries changes bindings in other countries, so the
 affected stage 02 / 02f runs are re-extracted with a snapshot and a per-record
 grape diff (the GR 02f drift of 2026-10-11 is why).
 
+## Style pills: what the readers state, what the floor adds
+
+A card's styles are its stage-02 reader's (with the national-spec or
+register-fiche sidecar merged at stage 04), stage 04's prose scan (icewine,
+vin santo, fondillón, the sparkling methods) and the grape-colour floor. The
+rules, settled on the validator findings of 2026-10-23 (phase C):
+
+- **A reader states what the text states.** Colours, the EU product
+  categories ("1. Vin / 4. Vin mousseux / 15. Wine from raisined grapes") and
+  the category words are read from the document; a missing pill is a reader
+  gap, fixed in the reader. PT had no reader until then (every card showed the
+  floor's red and white; `pt/02` `parse_styles`); SI reads the register's
+  single document beside its national text, which states no rosé
+  (`extract_register_fiches.py` keeps the fiche's `categories` and whole
+  `description`; `si/02f` adds what they state, the card cites the fiche); MT
+  reads the register's single document beside the amendment it publishes. FR
+  routes a section titled "Types de produit" as `couleur` (the one cahier
+  without a DGC section numbers it II, so the legacy fallback had read
+  Crémant d'Alsace's aire for its colours); the IT documento-unico reader
+  reads the section titles, because its slicer takes a description's
+  per-type headers ("Franciacorta Rosé", "Vino Roma rosato", "Valcalepio
+  Moscato passito") for sections whose bodies it does not read, and the
+  accented "rosé" / "rosè" that `\brose\b` never matched. Every IT reader
+  (EU document, MASAF article 1 + 6, sottozona annex) reads the head word of
+  the organoleptic colour field (`documento_unico._COLOUR_FIELD_RE`: after
+  "da" / "dal" / "tra" and at most one adjective) — "colore: giallo
+  paglierino" is a white wine, "colore: dal rubino al granato" a red one —
+  because a white type is named by its variety ("Offida Pecorino",
+  "Riviera ligure di Ponente Pigato"), not "bianco": IT's floor-only cards
+  went from 51 to 2, and Prosecco's newly read Rosé no longer hides its
+  White. A pink head is not read ("colore: dal rosa all'ambrato" is the Vin
+  Santo Occhio di Pernice of five Tuscan DOCs), nor a reflection.
+- **A sweetness level a document lists as a wine type is a style** — "Οίνος
+  λευκός ξηρός, ημίξηρος, ημίγλυκος, γλυκός" (`gr.eniaio_engrafo.
+  sweetness_type_styles`), "száraz, félédes vagy édes" (`hu.egyseges_dokumentum.
+  sweetness_styles`), "за полусладки вина … за сладки вина", IT "amabile" /
+  "dolce": Semi-sweet / Sweet. Semi-dry is not added.
+- **Sweet, dessert, ice and straw wine are not a late harvest.** Sweet and
+  dessert wine words map to `sweet`, ice wine to `icewine`, straw wine to
+  `vin-de-paille`, a wine of dried grapes to `raisin-wine`, the berry
+  selections to `grains-nobles`; `vendanges-tardives` only for a late harvest
+  the text names (pozna trgatev, késői szüret, neskorý zber, kasna berba,
+  cules târziu, όψιμη συγκομιδή …).
+- **Rosé comes from the text, never from a berry** (NL / BE / SK / HU / BG in
+  phase B; GB and MT in phase C — the DEFRA specs state their colours only in
+  their analytical limits, "white and rosé wines", which `gb.spec` keeps as an
+  `analytical` role).
+- **Greek colour words are matched as tokens beside a wine word** — or at the
+  head of a list of colours sharing one ("για ερυθρούς και 10% vol. για
+  λευκούς και ερυθρωπούς οίνους") — in all four GR / CY parsers
+  (`gr.eniaio_engrafo.colour_styles`); the EU-OJ ones had matched substrings.
+  The sparkling words likewise, in any inflection and case, with a wine word at
+  most two tokens before or three after (`sparkling_type_styles`: "Οίνος
+  λευκός ημιαφρώδης ξηρός", "ημιαφρωδών οίνων", "ΟΙΝΟΣ ΗΜΙΑΦΡΩΔΗΣ"); a
+  mention with no wine word beside it is no type.
+- **The floor reads the declared categories** ([scripts/_lib/wine_categories.py](scripts/_lib/wine_categories.py)).
+  A wine without a colour style gets white / red from its grapes' berry colour,
+  except a record that declares sparkling categories only (Crémant d'Alsace,
+  Franciacorta, Vlaamse mousserende kwaliteitswijn — a noir grape makes a blanc
+  de noirs; their colours are the ones their text names, or none). A record
+  that declares still wine keeps the floor's red even when every style it
+  states is sparkling (Dealu Mare); the old styles-based guess (drop red when
+  every style is sparkling) stays only where no category list is declared. The
+  BE reader's own grape fallback follows the same rule. `audit_styles.py`
+  mirrors the floor and counts sparkling styles without a colour as by design.
+  A stated colour switches the floor off, so a reader that starts stating one
+  colour can take away the others the floor supplied (Prosecco's newly read
+  Rosé had hidden its White): before a build, diff every card's styles, not
+  only the sidecars — a stage-04 load + augment + style-chokepoint run without
+  geometry does it in a minute.
+
 ## Page format (per-AOC pages)
 
 ```
@@ -1986,6 +2057,14 @@ other cadernos name their sub-regiões for area and terroir only.
 
 PT-specific notes:
 - `kind` is `"DOP"` / `"IGP"` (Portuguese convention, same as ES).
+- **Styles (2026-10-23).** `pt/02` `parse_styles` reads the caderno's
+  category list ("1. Vinho / 3. Vinho licoroso / 4. Vinho espumante de
+  qualidade"; the anchor takes a header glued to its number, Alentejo's and
+  Bucelas' "1.CATEGORIA") and the description's masculine colour words
+  ("vinhos brancos", "Porto brancos e tintos", "Vinho (Branco, Rosado e
+  Tinto)" — never "uvas tintas"), "fermentação clássica em garrafa" as the
+  traditional method; a sub-região takes its parent's. Until then PT records
+  carried no styles and every card showed the stage-04 floor's red and white.
 - The shared stages 02b/02c are extended to PT: grape lexicon
   (`02b_fetch_grape_lexicon.py`) iterates `raw/pt/cadernos-extracted/`;
   AOC lexicon (`02b_fetch_aoc_lexicon.py`) supports `--lang pt`;
@@ -2866,6 +2945,15 @@ SI-specific notes:
   each of the 14 DOPs maps to exactly one region (curated file_number
   map). Region labels follow the AT/IT/ES convention — native form, not
   gettext-translated.
+- **Styles from the register's single document too (2026-10-23).** The 2007
+  pravilnik is a variety list and an MKGP `.doc` gives its colours from the
+  grapes, so no SI card had a rosé and Bela krajina showed only the floor's
+  white and red. `si/02f` adds what the fiche's category list and description
+  state (`specifikacija.fiche_styles`, inflected: "17 g/l za bela in rose vina
+  ter 20 g/l za rdeča vina", "od pozne trgatve do suhega jagodnega izbora in
+  ledenega vina", "4. Peneče vino"); the sidecar records `styles_source` and
+  the card cites the fiche (`register_fiche_url`). Run
+  `extract_register_fiches.py --country si --all` before `si/02f`.
 
 ### SI geometry resolution chain (stage 04)
 
@@ -5788,8 +5876,7 @@ NL-specific notes:
   "roséwijn(en)", "rosékleur", the English template's "Rosé" — in the
   description, category, winemaking and "Wijncategorie" sections and their
   titles (Twente numbers one section per category and names it in the
-  title). GB and MT still add Rosé for any red grape: a style-floor question
-  for the next styles pass.
+  title). GB and MT follow the same rule since phase C (see "Style pills").
 - The Dutch ENIG DOCUMENT template is parsed by
   [scripts/_lib/nl/enig_document.py](scripts/_lib/nl/enig_document.py)
   (sibling of the BE NL table; kept separate so NL-only parser quirks
@@ -5870,7 +5957,8 @@ countries — `scripts/mt/01b_solve_waf.py` is the Chromium bootstrap
 | mt/00_fetch_data.py | (network: eAmbrosia) | raw/mt/eambrosia/index.json + manifest.json |
 | mt/01_fetch_pliegos.py | raw/mt/eambrosia/index.json + raw/mt/oj-pages/manual_overrides.json | raw/mt/oj-pages/*.html + manifest.json |
 | mt/01b_solve_waf.py | raw/mt/oj-pages/manifest.json | raw/mt/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
-| mt/02_extract_pliegos.py | raw/mt/oj-pages/*.html | raw/mt/dokumente-extracted/*.json + _index.json |
+| extract_register_fiches.py --country mt | (network: the eAmbrosia register) | raw/mt/register-fiches/*.pdf + raw/mt/register-fiches-extracted/*.json (the 2011 single documents) |
+| mt/02_extract_pliegos.py | raw/mt/oj-pages/*.html + raw/mt/register-fiches-extracted/ | raw/mt/dokumente-extracted/*.json + _index.json |
 | mt/02d_extract_terroir_facts.py | raw/mt/dokumente-extracted/*.json + raw/wikipedia/aocs/en/ | raw/terroir-facts/*.json (country="mt") + manifest-mt.json |
 | mt/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="mt") | raw/translations/terroir-facts/<fr\|es\|nl>/*.json |
 | mt/03_generate_wiki.py | raw/mt/dokumente-extracted/*.json | wiki/<slug>.md (per MT record) + merges MT entries into wiki/_index.json |
@@ -5909,6 +5997,14 @@ MT-specific notes:
   "Gozo" for the two PDOs, "Maltese Islands" for the archipelago-wide
   PGI. Native form, not gettext-translated.
 - v1 models the 3 wine GIs as a **flat corpus** — no sub-denominations.
+- **Styles read the register's single document too (2026-10-23).** The OJ
+  documents are amendments that restate only the sections they change; the
+  2011 single document they leave in force ("Red, white and rosé wines are
+  produced …", "Sweet wines", categories 1 / 4 / 15 / 16) is extracted with
+  `extract_register_fiches.py --country mt` and read by `mt/02` beside the
+  amendment (its 5.1 practices included: "1. Passito", "DOK 'Riżerva' white
+  wines"); the card cites it. A red grape no longer adds a rosé. The
+  Maltese Islands stub is not wired to its fiche yet (CURATOR_TODO).
 
 ### MT terroir facts — Wikipedia-primary (the CH/LU model)
 

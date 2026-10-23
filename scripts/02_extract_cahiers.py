@@ -540,7 +540,12 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
     # "géographique" (which appears in Champagne's section II,
     # "Dénominations géographiques, mentions complémentaires").
     "aire": ("aires et zones", "aire géographique", "aire geographique"),
-    "couleur": ("couleur",),
+    # A cahier with no DGC section titles its colour section "Types de
+    # produit" and numbers it II, so the legacy fallback below read the
+    # aire (III) as the colours: Crémant d'Alsace's "réservée aux vins
+    # mousseux blancs ou rosés" was never read (2026-10-23; the one AOC
+    # whose types section is not III).
+    "couleur": ("couleur", "types de produit", "type de produit"),
     "encepagement": ("encépagement", "encepagement"),
     "rendement": ("rendement",),
     "lien": ("lien avec", "lien au terroir", "lien au territoire"),

@@ -268,6 +268,7 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
     sections. Romanian colour adjectives + sparkling / late-harvest /
     dessert markers."""
     blob_parts = []
+    descr: list[str] = []
     for num, body in sections.items():
         title_low = titles.get(num, "").lower()
         if (
@@ -278,6 +279,11 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
             or "alte condi" in title_low
         ):
             blob_parts.append(body)
+            if "descrierea" in title_low:
+                descr.append(f"{num}.")
+    # the description's sub-sections ("4.1 Caracteristici analitice,
+    # organoleptice …", one per wine type: Cotnari, Jidvei; 2026-10-23)
+    blob_parts += [body for num, body in sections.items() if str(num).startswith(tuple(descr))]
     blob = " ".join(blob_parts)
     found: set[str] = set()
     for kw, colour_slug in COLOUR_BY_KEYWORD.items():

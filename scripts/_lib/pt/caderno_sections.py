@@ -147,10 +147,11 @@ _SECTION_ANCHORS: list[tuple[str, re.Pattern[str]]] = [
 ]
 
 # A header is plausible when preceded (within ~6 chars) by a digit
-# followed by a period — `1. CATEGORIA…`, `5. ÁREA…`. This filters out
-# stray in-prose mentions ("a área delimitada da DOP é …") that would
-# otherwise become false anchors.
-_NUMERIC_PREFIX_RE = re.compile(r"(?:^|\n)\s*(?:[IVX]{1,4}\.\s*)?\d{1,2}\s*[.\-]?\s+$")
+# followed by a period — `1. CATEGORIA…`, `5. ÁREA…`, and `1.CATEGORIA`
+# with no space (Alentejo, Bucelas: their category list was never read,
+# 2026-10-23). This filters out stray in-prose mentions ("a área
+# delimitada da DOP é …") that would otherwise become false anchors.
+_NUMERIC_PREFIX_RE = re.compile(r"(?:^|\n)\s*(?:[IVX]{1,4}\.\s*)?\d{1,2}\s*(?:[.\-]\s*|\s+)$")
 _NUMERIC_PREFIX_LOOKBACK = 12
 
 

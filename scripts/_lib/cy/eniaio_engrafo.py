@@ -21,5 +21,8 @@ from _lib.gr.eniaio_engrafo import (  # noqa: F401
     SECTION_NUM_RE,
     SECTION_ROLE_KEYWORDS,
     STYLE_MARKERS,
+    colour_styles,
     greek_norm,
+    sparkling_type_styles,
+    sweetness_type_styles,
 )

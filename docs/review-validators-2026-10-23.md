@@ -218,3 +218,77 @@ C), the ≤ 15 % optional group of Handakas-Candia and Arkadia's link-only
 semi-sparkling (phase C's GR category row), and the terroir caches of the GR
 records whose link text the strict header pass completed (phase D's re-run
 scope, listed in CURATOR_TODO). No LLM run; ≈ 30 live VIVC requests.
+
+
+## Addendum — phase C (2026-10-23, Opus 5.5)
+
+Items 9 and 10 of the work list, and the GB / MT "rosé for any red grape"
+phase B left, are closed in CURATOR_TODO (each row carries what changed); the
+step-by-step record is `tmp/validation/phaseC-2026-10-23.md`. Five full
+builds, each one's record diff equal, record for record, to the union of the
+style previews it followed; `audit_styles.py --strict` passed after each. A
+style preview (stage-04 load + augment + style chokepoint, no geometry) ran
+before every build and caught the one regression a reader change would have
+shipped: Prosecco, whose newly read Rosé switched off the floor's White. What
+a reader of the cards sees:
+
+- the floor reads the categories a record declares
+  (`scripts/_lib/wine_categories.py`): Vlaamse mousserende kwaliteitswijn
+  shows Quality Sparkling alone, Crémant d'Alsace, Franciacorta and the two
+  Walloon sparklings no colour their texts do not name (Crémant d'Alsace and
+  Franciacorta: White and Rosé, the Walloons no Red); Dealu Mare and Cotnari,
+  which declare still wine, keep Red;
+- a sweet or dessert wine is Sweet, an ice wine Icewine, a straw wine Vin de
+  paille, a wine of dried grapes Raisin wine — never Late Harvest: Dunavska
+  ravnina, Muškat momjanski, Nemea, Argolida, Dafnes, the two Patras PDOs; 15
+  HR specs gain Raisin wine or Noble Rot, two HU cards lose a Late Harvest
+  only their jégbor had given;
+- PT has a style reader (it had none): 66 cards gain Rosé, sparkling,
+  licoroso or the traditional method their caderno lists; SI reads the
+  register's single document beside its national text (Rosé on 12 of 17 cards,
+  none had one); SK its "Farba:" line; ES a national pliego's lettered type
+  list (La Palma's espumoso, aguja, licor); RO the description's sub-sections;
+- Greek and Hungarian sweetness levels listed as wine types are Semi-sweet /
+  Sweet (67 GR cards, Zakynthos among them; 16 HU); the four GR / CY readers
+  share one token-based colour matcher, which also reads a list of colours
+  sharing one wine word (Larnaka's Red) and stopped reading Santorini's aged
+  Vinsanto hue as a red wine; a (semi-)sparkling type in any inflection beside
+  a wine word gives Arkadia, Ήπειρος, Makedonia and Tyrnavos their
+  Semi-sparkling;
+- the Italian readers read the type titles a description is sliced into
+  (Franciacorta, Prosecco, Abruzzo, Riviera del Garda Rosé; Roma and Vicenza
+  Red and Rosé; Maremma Toscana's Passito and Vendemmia tardiva …) and the
+  head word of the colour field — "colore: giallo paglierino" is a white wine
+  even when the type is named Pigato, Pecorino or Vitovska: 22 cards gain
+  White (Riviera Ligure di Ponente, Offida, Carso, Cagliari, Colli Piacentini,
+  Vittoria …), Prosecco keeps the White its newly read Rosé would have
+  switched off, and the Vin Santo DOCs lose a Red the floor took from the
+  Sangiovese of their Occhio di Pernice; IT cards whose colour came from the
+  grapes alone: 51 → 2;
+- Crémant d'Alsace reads its "Types de produit" section (White, Rosé);
+- the UK and Maltese readers state their colours from the text (the DEFRA
+  analytical limits; the register's single document for Malta and Gozo, which
+  also gives them Sweet, Late Harvest and Raisin wine, cited on the card).
+
+Valle Belice was not a card defect: its Sweet is Art. 6 "sapore: da secco a
+dolce"; the MASAF sidecar now keeps Art. 6, so the judge's packet carries it.
+Side effects, both read: the HU 02 re-run applied phase B's Kéknyelű binding
+to six HU EU-document records (phase B had re-run HU 02f only); the GR 02
+re-run exposed the substring colour match fixed above. The release gate
+(`validate_release.py --quick`) passes 9 of 13 checks, its four failures —
+grape-surfaces, ambiguous-synonyms (46), untranslated (300 pairs),
+betard-delta (121) — with the same counts as before phase C; the suite passes
+(1,574).
+
+Left on purpose, each with a CURATOR_TODO row: 112 cards whose colour still
+comes from their grapes alone (DE 27, RO 20, FR 18, CH 15, AT 14 …;
+Cerasuolo d'Abruzzo, rosé-only, shows Red — a "colore: rosa" reading would
+also hit the Occhio di Pernice); the IT documento-unico slicer that takes
+per-type headers for sections (25 of 129 records; fixing it moves sections,
+rosters and terroir text); the FR "seconde fermentation en bouteille" as
+Traditional Method (60 records, each to read — Bugey Cerdon is ancestrale);
+Madeira's floor colours on a fortified-only DOC; the Maltese Islands IĠT stub
+not wired to its fiche; the "Vin de liqueur" label in EN / NL; semi-dry; the
+128 IT non-stub MASAF sidecars; the HU termékleírás colour fallback. No LLM
+run (the paired before / after reading is phase H's); about a dozen
+eAmbrosia attachment requests (the MT and SI fiches).

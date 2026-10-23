@@ -154,9 +154,10 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\bprošek\b", re.I), "vin-de-paille"),
     (re.compile(r"\bizborna berba prosušenih bobica\b", re.I), "grains-nobles"),
     (re.compile(r"\bizborna berba bobica\b", re.I), "grains-nobles"),
-    (re.compile(r"\bledeno vino\b", re.I), "vendanges-tardives"),
+    (re.compile(r"\bledeno vino\b", re.I), "icewine"),
     (re.compile(r"\bkasna berba\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bizborna berba\b", re.I), "vendanges-tardives"),
-    (re.compile(r"\bdesertno vino\b", re.I), "vendanges-tardives"),
+    # a dessert wine is the Sweet style, not a late harvest (2026-10-23)
+    (re.compile(r"\bdesertno vino\b", re.I), "sweet"),
     (re.compile(r"\bsuho vino\b", re.I), "dry"),
 )

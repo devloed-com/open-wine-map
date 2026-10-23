@@ -10,10 +10,13 @@ so no colour can be inferred from any public source).
 
 It mirrors the stage-04 grape-colour floor (`_base_colour_styles_from_grapes`
 in scripts/04_build_maps.py): berry colour blanc/gris/rose → white, noir → red,
-resolved from DEFAULT_COLOUR + VIVC `color`, with the same sparkling-only-red
-refinement. So `fixable` is the set the floor should have filled — run before a
-rebuild it estimates the work; run after, it should read 0 (only honest no-grape
-empties remain). The geojson lacks per-grape `details[].colour`, so the audit
+resolved from DEFAULT_COLOUR + VIVC `color`. So `fixable` is the set the floor
+should have filled — run before a rebuild it estimates the work; run after, it
+should read 0 (only honest no-grape empties remain). The floor adds nothing to an
+appellation that declares sparkling categories only (`_lib/wine_categories.py`);
+the geojson does not carry the declared categories, but every other record whose
+styles are all sparkling has been given a colour by the floor, so a record left
+with sparkling styles and no colour is counted as `sparkling-only`, not fixable. The geojson lacks per-grape `details[].colour`, so the audit
 resolves colour from DEFAULT_COLOUR + VIVC only — a strict subset of what the
 build uses, so the audit never over-reports a gap.
 
@@ -41,6 +44,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.grape_lexicon import DEFAULT_COLOUR  # noqa: E402
+from _lib.style_taxonomy import descendants  # noqa: E402
 
 DEFAULT_GEOJSON = ROOT / "wiki" / "map-data" / "appellations.geojson"
 VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
@@ -48,7 +52,7 @@ VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
 # Same tables as the stage-04 floor — kept in sync deliberately.
 BERRY_TO_STYLE = {"blanc": "white", "gris": "white", "rose": "white", "noir": "red"}
 COLOUR_STYLES = {"white", "red", "rose"}
-SPARKLING_FAMILY = {"sparkling", "semi-sparkling", "cremant"}
+SPARKLING_FAMILY = descendants("sparkling")
 
 
 def load_vivc_colour() -> dict[str, str]:
@@ -118,16 +122,16 @@ def _split(s: str | None) -> list[str]:
 def floor_add(grape_slugs: list[str], existing_styles: set[str],
               vivc: dict[str, str]) -> set[str]:
     """Colours the stage-04 floor would add (white / red), from DEFAULT_COLOUR
-    + VIVC. Mirrors `_base_colour_styles_from_grapes`, incl. the sparkling-red
-    refinement."""
+    + VIVC. Mirrors `_base_colour_styles_from_grapes`; nothing for a record whose
+    styles are all sparkling (see the module docstring)."""
+    if existing_styles and existing_styles <= SPARKLING_FAMILY:
+        return set()
     add: set[str] = set()
     for s in grape_slugs:
         berry = DEFAULT_COLOUR.get(s) or vivc.get(s)
         style = BERRY_TO_STYLE.get(berry or "")
         if style:
             add.add(style)
-    if "red" in add and existing_styles and existing_styles <= SPARKLING_FAMILY:
-        add.discard("red")
     return add
 
 
@@ -151,6 +155,7 @@ def main() -> int:
     empty_no_grapes = Counter() # empty AND no grapes (honest residual)
     no_colour = Counter()       # has no white/red/rose style
     fixable = Counter()         # no colour + wine + grapes resolve to a colour
+    sparkling_only = Counter()  # no colour, sparkling styles only (by design)
     fix_examples: dict[str, list[str]] = defaultdict(list)
     honest_examples: dict[str, list[str]] = defaultdict(list)
 
@@ -176,6 +181,8 @@ def main() -> int:
                     honest_examples[c].append(p.get("slug", "?"))
         if not (styles & COLOUR_STYLES):
             no_colour[c] += 1
+            if styles and styles <= SPARKLING_FAMILY:
+                sparkling_only[c] += 1
             if p.get("is_wine") == "1" and has_grapes and floor_add(grapes, styles, vivc):
                 fixable[c] += 1
                 if len(fix_examples[c]) < 6:
@@ -206,6 +213,13 @@ def main() -> int:
         for c in sorted(fix_examples, key=lambda x: -fixable[x]):
             print(f"  {c}: {fixable[c]:>4}  e.g. {', '.join(fix_examples[c])}",
                   file=sys.stderr)
+        print(file=sys.stderr)
+
+    if sum(sparkling_only.values()):
+        print(f"SPARKLING-ONLY — sparkling styles, no colour  [{sum(sparkling_only.values())}]  "
+              f"(declared sparkling categories only; the floor adds no colour)", file=sys.stderr)
+        for c in sorted(sparkling_only, key=lambda x: -sparkling_only[x]):
+            print(f"  {c}: {sparkling_only[c]:>4}", file=sys.stderr)
         print(file=sys.stderr)
 
     honest = sum(empty_no_grapes.values())

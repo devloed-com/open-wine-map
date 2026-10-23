@@ -762,6 +762,9 @@ _STYLE_TITLE_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
     (re.compile(r"\bvino(?:s)? rosado(?:s)?\b", re.I), ("rose",)),
 )
 
+# A lettered wine-type line ("j. Vino espumoso", "k) Vinos de aguja").
+_TYPE_LIST_LINE_RE = re.compile(r"^[ \t]*[a-zñ][ \t]*[.)][ \t]+(vinos?\b[^\n]*)$", re.I | re.M)
+
 _STYLE_BODY_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
     (re.compile(r"\bvinos? rancios?\b", re.I), ("oxidative", "rancio")),
     (re.compile(r"\bnaturalmente dulce|dulces? naturales?\b", re.I),
@@ -895,6 +898,18 @@ def parse_styles_es(sections: dict[str, str], titles: dict[str, str]) -> list[st
     for pat, slugs in _STYLE_BODY_PATTERNS:
         if pat.search(descr_blob):
             found.update(slugs)
+    # 3. A national pliego lists its wine types at the head of its
+    # description, one lettered line each ("a. Vino Blanco … j. Vino
+    # espumoso k. Vino de aguja l. Vino de licor", La Palma): each line is a
+    # category title, a "dulce" type a sweet one (2026-10-23).
+    for m in _TYPE_LIST_LINE_RE.finditer("\n".join(sections.get(k, "") for k in descr_keys)):
+        line = m.group(1).lower()
+        for pat, slugs in _STYLE_TITLE_PATTERNS:
+            if pat.search(line):
+                found.update(slugs)
+                break
+        if re.search(r"\bdulces?\b", line):
+            found.add("sweet")
     gate_blob = body + " " + " ".join(titles.values())
     if _SHERRY_GATE.search(gate_blob):
         for pat, slugs in _SHERRY_SUBSTYLE_PATTERNS:

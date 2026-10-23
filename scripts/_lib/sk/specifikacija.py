@@ -252,15 +252,36 @@ _STYLE_MARKERS = [
     (re.compile(r"\bperliv", re.I), "semi-sparkling"),
     (re.compile(r"\blikér", re.I), "vin-de-liqueur"),
     (re.compile(r"\bslamov", re.I), "vin-de-paille"),
-    (re.compile(r"\bľadov|neskorý\s+zber|hrozienkový\s+výber|bobuľový\s+výber|"
+    (re.compile(r"\bľadov", re.I), "icewine"),
+    (re.compile(r"neskorý\s+zber|hrozienkový\s+výber|bobuľový\s+výber|"
                 r"výber\s+z\s+hrozna", re.I), "vendanges-tardives"),
     (re.compile(r"\bcibébový\s+výber|botrytíd|ušľachtilá\s+pleseň", re.I), "grains-nobles"),
 ]
 
 
+# The colours the description states: "Farba: biela, ružová a červená" and
+# "pre biele a ružové vína" — Východoslovenská and the four other modern
+# specs had shown no Rosé (2026-10-23). An adjective counts before "vín…"
+# (coordinated or alone) or in the "Farba:" line, never a grape name
+# ("Veltlínske červené", "Tramín červený").
+_COLOUR_ADJ = r"(?:biel|ružov|červen)\w*"
+_COLOUR_WINE_RE = re.compile(
+    rf"\b{_COLOUR_ADJ}(?:\s*(?:,|a|alebo)\s*{_COLOUR_ADJ})*\s+vín\w*", re.I)
+_FARBA_RE = re.compile(r"\bFarba\s*:\s*([^.\n]+)", re.I)
+_COLOUR_BY_STEM = (("biel", "blanc"), ("ružov", "rose"), ("červen", "rouge"))
+
+
+def _text_colours(text: str) -> set[str]:
+    spans = [m.group(0) for m in _COLOUR_WINE_RE.finditer(text)]
+    spans += [m.group(1) for m in _FARBA_RE.finditer(text)]
+    return {colour for span in spans for stem, colour in _COLOUR_BY_STEM
+            if re.search(rf"\b{stem}", span, re.I)}
+
+
 def _parse_styles(description: str, grapes: dict) -> list[str]:
     out: set[str] = set()
     blob = description or ""
+    out |= _text_colours(blob)
     for pat, slug in _STYLE_MARKERS:
         if pat.search(blob):
             out.add(slug)

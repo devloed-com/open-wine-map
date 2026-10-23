@@ -52,6 +52,7 @@ from _lib.grape_entity import (  # noqa: E402
     match_variety,
     set_pliego_context,
 )
+from _lib.wine_categories import sparkling_only  # noqa: E402
 
 INDEX_IN = ROOT / "raw" / "be" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "be" / "oj-pages"
@@ -319,7 +320,10 @@ def parse_styles(
     for pattern, slug in STYLE_MARKERS[lang]:
         if pattern.search(blob):
             found.add(slug)
-    if grape_details:
+    # A sparkling-only PDO gets no colour from its grapes: Vlaamse
+    # mousserende kwaliteitswijn read "White · Red · Quality Sparkling", its
+    # Pinot noir counted as a red wine (2026-10-23).
+    if grape_details and not sparkling_only({"sections": sections, "section_titles": titles}):
         for g in grape_details:
             base = _GRAPE_COLOUR_TO_STYLE.get(g.get("colour") or "", "")
             if base:

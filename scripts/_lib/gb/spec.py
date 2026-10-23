@@ -66,6 +66,14 @@ COLOUR_BY_KEYWORD: dict[str, str] = {
     "rosé": "rose",
 }
 
+# Colours coordinated before one "wine(s)": "white and rosé wines", "white,
+# rosé and red wine" — read as a list, every colour of it counts.
+COLOUR_LIST_RE = re.compile(
+    r"\b(?:white|red|ros[ée])(?:\s*(?:,|and|or)\s*(?:white|red|ros[ée]))*\s+wines?\b",
+    re.IGNORECASE,
+)
+COLOUR_WORD_RE = re.compile(r"\b(white|red|ros[ée])\b", re.IGNORECASE)
+
 # Section titles that are never a variety roster, guarding the loose
 # keyword match used by the numbered templates.
 _GRAPE_TITLE_BLOCKLIST = ("proof of origin", "labelling", "inspection")
@@ -170,6 +178,10 @@ def parse_defra_pfn_2011(text: str) -> dict:
     yields: list[str] = []
     narratives: list[str] = []
     part_titles: list[str] = []
+    # The colours are stated nowhere but in the analytical limits ("1.08mg
+    # per litre in white and rosé wines / 1.2mg per litre in red wine") and
+    # the enrichment rule ("a white wine that has not been enriched").
+    analytical: list[str] = []
 
     for part in parts:
         title = part["title"]
@@ -187,6 +199,8 @@ def parse_defra_pfn_2011(text: str) -> dict:
             up = stitle.upper()
             if up.startswith("VINE VARIETIES"):
                 varieties.append(sbody)
+            elif up.startswith(("ASSESSMENT", "MINIMUM NATURAL")):
+                analytical.append(f"{title.title()}\n{sbody}")
             elif up.startswith("MAXIMUM YIELD"):
                 value = sbody.strip() or stitle.split(":", 1)[-1].strip()
                 yields.append(f"{title.title()}: {value}" if value else "")
@@ -205,6 +219,7 @@ def parse_defra_pfn_2011(text: str) -> dict:
             "link_to_terroir": "\n\n".join(narratives),
             "description": narratives[0] if narratives else "",
             "yields": "\n".join(y for y in yields if y),
+            "analytical": "\n\n".join(analytical),
         },
     }
 

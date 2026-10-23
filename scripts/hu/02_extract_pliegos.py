@@ -46,6 +46,7 @@ from _lib.hu.egyseges_dokumentum import (  # noqa: E402
     SECTION_NUM_RE,
     SECTION_ROLE_KEYWORDS,
     STYLE_MARKERS,
+    sweetness_styles,
 )
 from _lib.hu.region import derive_region  # noqa: E402
 
@@ -333,6 +334,7 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(blob):
             found.add(slug)
+    found |= sweetness_styles(blob)
     return sorted(found)
 
 

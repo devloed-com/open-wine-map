@@ -271,6 +271,87 @@ COLOUR_BY_KEYWORD = {
 }
 
 
+# A one-word colour form counts as a whole token beside a wine word (οίνος /
+# κρασί within three tokens after it or one before) — "λευκά" is not
+# Λευκάδα, "ερυθρωπές … αποχρώσεις" (an aged red's hue) no rosé — or at the
+# head of a list of colours that shares one ("για ερυθρούς και 10% vol. για
+# λευκούς και ερυθρωπούς οίνους", Larnaka). Shared by the EU-OJ and the
+# national-spec parsers of GR and CY: the EU-OJ ones had matched every form
+# as a substring, so phase B's inflected forms read Santorini's aged
+# Vinsanto ("ερυθρές και καφέ αποχρώσεις") as a red wine (2026-10-23).
+_WINE_WORD_RE = re.compile(r"^(?:οιν|κρασ)")
+_LIST_GLUE = frozenset({"και", "η", "για", "τουσ", "τισ", "τα", "οι", "vol"})
+_COLOUR_FORMS = {greek_norm(kw): colour for kw, colour in COLOUR_BY_KEYWORD.items() if " " not in kw}
+
+
+def _beside_wine_word(tokens: list[str], i: int) -> bool:
+    if any(_WINE_WORD_RE.match(t) for t in tokens[max(0, i - 1):i + 4]):
+        return True
+    for t in tokens[i + 1:i + 13]:
+        if _WINE_WORD_RE.match(t):
+            return True
+        if t not in _COLOUR_FORMS and t not in _LIST_GLUE:
+            return False
+    return False
+
+
+# The wine types a spec declares, colour by colour — "Οίνος λευκός ξηρός,
+# ημίξηρος, ημίγλυκος, γλυκός" (Zakynthos), "Οίνος Ερυθρός ξηρός, ημίξηρος
+# και ημίγλυκος" (Karditsa): a sweet or semi-sweet type is a style, as IT's
+# dolce / amabile are; semi-dry is not added (2026-10-23).
+_SWEETNESS = r"(?:ξηροσ|ημιξηροσ|ημιγλυκοσ|γλυκοσ|γλυκυσ)"
+_TYPE_HEADER_RE = re.compile(
+    rf"\bοινοσ\s+(?:λευκοσ|ερυθροσ|ερυθρωποσ|ροζε)\s+({_SWEETNESS}(?:\s*(?:,|και|η)\s*{_SWEETNESS})*)"
+)
+_SWEETNESS_STYLE = {"ημιγλυκοσ": "semi-sweet", "γλυκοσ": "sweet", "γλυκυσ": "sweet"}
+
+
+def sweetness_type_styles(text: str) -> set[str]:
+    """Sweet / semi-sweet from the wine-type headers of a Greek text."""
+    found: set[str] = set()
+    for m in _TYPE_HEADER_RE.finditer(greek_norm(text or "")):
+        for word in re.findall(rf"\b{_SWEETNESS}\b", m.group(1)):
+            if word in _SWEETNESS_STYLE:
+                found.add(_SWEETNESS_STYLE[word])
+    return found
+
+
+# A sparkling or semi-sparkling type in any inflection, a wine word at most two
+# tokens before it or three after: "Οινοποίηση λευκών και ερυθρωπών
+# ημιαφρωδών οίνων" (Arkadia), "Δ. ΟΙΝΟΣ ΗΜΙΑΦΡΩΔΗΣ" / "Οίνος λευκός
+# ημιαφρώδης ξηρός" (Ήπειρος). The markers below read only "αφρώδη" /
+# "αφρώδεις" and the nominative before οίνος; a mention with no wine word
+# beside it ("δεν λείπουν και δείγματα αφρωδών", Λήμνος) is no type
+# (2026-10-23).
+_SPARKLING_STEMS = (("ημιαφρωδ", "semi-sparkling"), ("αφρωδ", "sparkling"))
+
+
+def sparkling_type_styles(text: str) -> set[str]:
+    """Sparkling / semi-sparkling types a Greek text states beside a wine word."""
+    tokens = re.findall(r"[^\W\d_]+", greek_norm(text or ""))
+    found: set[str] = set()
+    for i, tok in enumerate(tokens):
+        for stem, slug in _SPARKLING_STEMS:
+            if tok.startswith(stem):
+                if any(_WINE_WORD_RE.match(t) for t in tokens[max(0, i - 2):i + 4]):
+                    found.add(slug)
+                break
+    return found
+
+
+def colour_styles(text: str) -> set[str]:
+    """The wine colours a Greek text states (`blanc` / `noir` / `rose`)."""
+    norm = greek_norm(text or "")
+    found = {colour for kw, colour in COLOUR_BY_KEYWORD.items()
+             if " " in kw and greek_norm(kw) in norm}
+    tokens = re.findall(r"[^\W\d_]+", norm)
+    for i, tok in enumerate(tokens):
+        colour = _COLOUR_FORMS.get(tok)
+        if colour and colour not in found and _beside_wine_word(tokens, i):
+            found.add(colour)
+    return found
+
+
 # Style markers in Greek, mapped to the shared style-taxonomy slugs.
 # The Greek "λιαστός" (sun-dried straw-wine), "vin doux naturel"
 # regulator alias "οίνος γλυκός φυσικός", and "αφρώδης" (sparkling)
@@ -293,7 +374,8 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\bλικεροειδ(?:ής|είς)\b", re.I), "vin-de-liqueur"),
     (re.compile(r"\bευγενής\s+σήψη\b", re.I), "grains-nobles"),
     (re.compile(r"\bβοτρύτης\b", re.I), "grains-nobles"),
-    (re.compile(r"\bγλυκ(?:ύς|είς)\s+οίν(?:ος|οι)\b", re.I), "vendanges-tardives"),
+    # a sweet wine is the Sweet style, not a late harvest (2026-10-23)
+    (re.compile(r"\bγλυκ(?:ύς|είς)\s+οίν(?:ος|οι)\b", re.I), "sweet"),
     (re.compile(r"\bξηρ(?:ός|οί)\s+οίν(?:ος|οι)\b", re.I), "dry"),
     # Rosé under its legal name in the ΥΠΑΑΤ specs: a wine type headed
     # "Οίνος Ερυθρωπός ξηρός" / "Γ. ΟΙΝΟΣ ΕΡΥΘΡΩΠΟΣ" / "Ο ερυθρωπός ξηρός

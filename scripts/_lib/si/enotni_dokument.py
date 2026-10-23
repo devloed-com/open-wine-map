@@ -151,7 +151,7 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\bslamno vino\b", re.I), "vin-de-paille"),
     (re.compile(r"\bsuhi jagodni izbor\b", re.I), "grains-nobles"),
     (re.compile(r"\bjagodni izbor\b", re.I), "grains-nobles"),
-    (re.compile(r"\bledeno vino\b", re.I), "vendanges-tardives"),
+    (re.compile(r"\bledeno vino\b", re.I), "icewine"),
     (re.compile(r"\bpozna trgatev\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bizbor\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bsuho vino\b", re.I), "dry"),

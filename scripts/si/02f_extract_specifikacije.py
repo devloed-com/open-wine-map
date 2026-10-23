@@ -52,7 +52,9 @@ from _lib.grape_entity import (  # noqa: E402
     flush_unknowns_queue,
     set_pliego_context,
 )
+from _lib.register_fiche import load_sidecar  # noqa: E402
 from _lib.si.specifikacija import (  # noqa: E402
+    fiche_styles,
     parse_mkgp_doc,
     parse_uradni_list_pravilnik,
 )
@@ -112,6 +114,7 @@ def _sidecar_for(slug: str, parsed: dict, source: dict) -> dict:
         "section_roles": parsed.get("section_roles") or {},
         "section_titles": parsed.get("section_titles") or {},
         "styles": parsed.get("styles") or [],
+        **({"styles_source": parsed["styles_source"]} if parsed.get("styles_source") else {}),
         "n_sections": parsed.get("n_sections", 0),
         "parser_template": parsed.get("parser_template", ""),
         "matched_okoliši": parsed.get("matched_okoliši", []),
@@ -206,6 +209,20 @@ def main() -> int:
             print(f"[err] {slug}: {exc}", file=sys.stderr)
             n_failed += 1
             continue
+
+        # The register's single document states the colours, the categories
+        # and the special qualities the national text leaves out — the 2007
+        # pravilnik is a variety list, an MKGP .doc gives its colours from the
+        # grapes: Bela krajina had shown the floor's white and red only, no
+        # SI card a rosé (2026-10-23).
+        fiche = load_sidecar("si", slug) or {}
+        extra = set(fiche_styles(fiche.get("categories", ""), fiche.get("description", "")))
+        extra -= set(parsed.get("styles") or [])
+        if extra:
+            fsrc = fiche.get("source") or {}
+            parsed["styles"] = sorted(set(parsed.get("styles") or []) | extra)
+            parsed["styles_source"] = {"kind": "eambrosia-register-fiche",
+                                       "url": fsrc.get("url", ""), "ref": fsrc.get("ref", "")}
 
         sidecar = _sidecar_for(slug, parsed, source)
         out_path = OUT_DIR / f"{slug}.json"

@@ -205,12 +205,15 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\bперлантно?\s+вин(?:о|а)\b", re.I), "semi-sparkling"),
     (re.compile(r"\bполупенлив(?:о|и)\s+вин(?:о|а)\b", re.I), "semi-sparkling"),
     (re.compile(r"\bкъсна?\s+реколта\b", re.I), "vendanges-tardives"),
-    (re.compile(r"\bледено\s+вино\b", re.I), "vendanges-tardives"),
-    (re.compile(r"\bдесертно?\s+вин(?:о|а)\b", re.I), "vendanges-tardives"),
+    (re.compile(r"\bледено\s+вино\b", re.I), "icewine"),
+    # A sweet or dessert wine is the Sweet style, not a late harvest: "за сладки
+    # вина — над 45 g/l" had put Late Harvest on Дунавска равнина (2026-10-23).
+    (re.compile(r"\bдесертно?\s+вин(?:о|а)\b", re.I), "sweet"),
     (re.compile(r"\bподбран?\s+гроздобер\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bблагородна?\s+плесен\b", re.I), "grains-nobles"),
     (re.compile(r"\bботритиз(?:иран[ао]?|ис)\b", re.I), "grains-nobles"),
     (re.compile(r"\bликьорн(?:о|и)\s+вин(?:о|а)\b", re.I), "vin-de-liqueur"),
     (re.compile(r"\bсух(?:о|и)\s+вин(?:о|а)\b", re.I), "dry"),
-    (re.compile(r"\bсладк(?:о|и)\s+вин(?:о|а)\b", re.I), "vendanges-tardives"),
+    (re.compile(r"\bсладк(?:о|и)\s+вин(?:о|а)\b", re.I), "sweet"),
+    (re.compile(r"\bполусладк(?:о|и)\s+вин(?:о|а)\b", re.I), "semi-sweet"),
 )

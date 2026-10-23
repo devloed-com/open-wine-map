@@ -351,10 +351,13 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
         "articles_present": sorted(articles.keys()),
         # Subsection of articles useful to downstream consumers — we
         # keep articles 1 / 3 / 9 verbatim so 02d-style terroir
-        # extraction can later run against them when stage 02 is silent.
+        # extraction can later run against them when stage 02 is silent,
+        # and 6, the organoleptic article the style scan reads: the card
+        # validator's packet then carries the source of a style (Valle
+        # Belice's Sweet is Art. 6 "sapore: da secco a dolce", 2026-10-23).
         "article_bodies": {
             str(n): articles.get(n, "")
-            for n in sorted({1, 2, 3, 9, terroir_article_num})
+            for n in sorted({1, 2, 3, 6, 9, terroir_article_num})
             if articles.get(n)
         },
         # Per-sottozona sub-disciplinari appended to the parent's PDF

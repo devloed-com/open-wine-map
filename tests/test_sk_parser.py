@@ -212,7 +212,8 @@ def test_regression_tokaj_predikat_ladder_styles(fixture_text):
     # The botrytis / late-harvest / straw / ice / sparkling / liqueur tags
     # are recovered from the per-wine-type section titles.
     assert "grains-nobles" in styles  # bobuľový výber (botrytis)
-    assert "vendanges-tardives" in styles  # ľadové víno
+    # an ice wine is the Icewine style, not a late harvest (2026-10-23)
+    assert "icewine" in styles  # ľadové víno
     assert "vin-de-paille" in styles  # slamové víno
     assert "vin-de-liqueur" in styles  # Likérové víno
     assert "sparkling" in styles  # Sekt V. O.

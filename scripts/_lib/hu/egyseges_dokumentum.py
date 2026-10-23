@@ -191,10 +191,33 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\bfordítás\b|\bforditas\b", re.I), "grains-nobles"),
     (re.compile(r"\bmáslás\b|\bmaslas\b", re.I), "grains-nobles"),
     (re.compile(r"\btöppedt\b|\btoppedt\b", re.I), "grains-nobles"),
-    (re.compile(r"\bjégbor\b|\bjegbor\b", re.I), "vendanges-tardives"),
+    (re.compile(r"\bjégbor\b|\bjegbor\b", re.I), "icewine"),
     (re.compile(r"\bkésői\s+szüretelésű\b|\bkesoi\s+szuretelesu\b", re.I), "vendanges-tardives"),
     (re.compile(r"\bkésői\s+szüret\b|\bkesoi\s+szuret\b", re.I), "vendanges-tardives"),
-    (re.compile(r"\bcsemegebor\b", re.I), "vendanges-tardives"),
+    # a dessert wine is the Sweet style, not a late harvest (2026-10-23)
+    (re.compile(r"\bcsemegebor\b", re.I), "sweet"),
     (re.compile(r"\blik[őo]rbor\b|\blikorbor\b", re.I), "vin-de-liqueur"),
     (re.compile(r"\bszáraz\b|\bszaraz\b", re.I), "dry"),
 )
+
+# The sweetness levels a description lists as the wine's types — "száraz,
+# félédes vagy édes fehérborok" (Balatonfüred-Csopak), "Száraz, félszáraz,
+# félédes és édes kategóriában" (Bükk): a sweet or semi-sweet one is a style,
+# semi-dry is not added (2026-10-23). Only a list counts, never "édeskés
+# ízérzet", "édes fűszerek".
+_SWEETNESS = r"(?:száraz|szaraz|félszáraz|felszaraz|félédes|feledes|édes|edes)"
+_SWEETNESS_LIST_RE = re.compile(
+    rf"\b{_SWEETNESS}(?:\s*(?:,|vagy|és|es|illetve)\s*{_SWEETNESS}\b)+", re.I
+)
+
+
+def sweetness_styles(text: str) -> set[str]:
+    out: set[str] = set()
+    for m in _SWEETNESS_LIST_RE.finditer(text or ""):
+        for word in re.findall(rf"\b{_SWEETNESS}\b", m.group(0), re.I):
+            low = word.lower()
+            if low in ("félédes", "feledes"):
+                out.add("semi-sweet")
+            elif low in ("édes", "edes"):
+                out.add("sweet")
+    return out

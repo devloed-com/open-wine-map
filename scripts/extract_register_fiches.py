@@ -77,6 +77,12 @@ COUNTRY_CONFIG: dict[str, dict] = {
            "kw": "_lib.ro.document_unic",
            "extra_kw": {"geo_area": ["zonă delimitată"], "grape_varieties": ["struguri de vinificaţie"],
                         "link_to_terroir": ["legătura cu zona geografică"]}},
+    # Family A — "V. SINGLE DOCUMENT" … "VI. OTHER INFORMATION": the base
+    # text Malta's amendments leave in force (read by mt/02 for the styles)
+    "mt": {"anchor": ("SINGLE DOCUMENT",), "end": ("OTHER INFORMATION",),
+           "kw": "_lib.mt.single_document",
+           "extra_kw": {"geo_area": ["demarcated area"], "grape_varieties": ["wine grapes"],
+                        "link_to_terroir": ["link with the geographical area"]}},
 }
 
 _PAREN_RE = re.compile(r"\s*\(.*?\)\s*")
@@ -247,6 +253,10 @@ def main() -> int:
             "country": args.country, "slug": slug, "name": w["name"],
             "file_number": w["fileNumber"],
             "summary": _summary(routed.get("description") or routed.get("geo_area") or ""),
+            # whole, for a style reader: the category list and the description
+            # the summary cuts at 600 characters (2026-10-23)
+            "categories": routed.get("category", ""),
+            "description": routed.get("description", ""),
             "grapes": grapes, "geo_area": routed.get("geo_area", ""),
             "link_to_terroir": link, "section_titles": titles,
             "source": {

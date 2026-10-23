@@ -197,6 +197,11 @@ COLOUR_BY_KEYWORD = {
     "vinuri rosé": "rose",
     "vin rozé": "rose",
     "vinuri rozé": "rose",
+    # with the definite article ("Vinurile albe au o culoare galben-pai",
+    # "vinurile roșii din Adamclisi"; 2026-10-23)
+    "vinul alb": "blanc", "vinurile albe": "blanc",
+    "vinul roșu": "noir", "vinul rosu": "noir", "vinurile roșii": "noir", "vinurile rosii": "noir",
+    "vinul roze": "rose", "vinurile roze": "rose",
 }
 
 
@@ -209,8 +214,9 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\bvin\s+spumos\b|\bvinuri\s+spumoase\b", re.I), "sparkling"),
     (re.compile(r"\bvin\s+petiant\b|\bvin\s+perlant\b", re.I), "semi-sparkling"),
     (re.compile(r"\bcules\s+t[âa]rziu\b", re.I), "vendanges-tardives"),
-    (re.compile(r"\bvin\s+de\s+ghea[țt][ăa]\b", re.I), "vendanges-tardives"),
-    (re.compile(r"\bvin\s+de\s+desert\b|\bvinuri\s+de\s+desert\b", re.I), "vendanges-tardives"),
+    (re.compile(r"\bvin\s+de\s+ghea[țt][ăa]\b", re.I), "icewine"),
+    # a dessert wine is the Sweet style, not a late harvest (2026-10-23)
+    (re.compile(r"\bvin\s+de\s+desert\b|\bvinuri\s+de\s+desert\b", re.I), "sweet"),
     (re.compile(r"\bcules\s+selec(?:t|ț)ionat\s+de\s+boabe\s+nobile\b", re.I), "grains-nobles"),
     (re.compile(r"\bselec(?:t|ț)ie\s+de\s+boabe\s+nobile\b", re.I), "grains-nobles"),
     (re.compile(r"\bbotritizat\b|\bbotritis\b", re.I), "grains-nobles"),

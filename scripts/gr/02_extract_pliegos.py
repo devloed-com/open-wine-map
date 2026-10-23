@@ -39,7 +39,6 @@ from _lib.extract_index import is_partial, write_index  # noqa: E402
 from _lib.gr.commune import parse_commune_list  # noqa: E402
 from _lib.gr.eniaio_engrafo import (  # noqa: E402
     _GEO_AREA_TITLE_BLOCKLIST,
-    COLOUR_BY_KEYWORD,
     DOC_ANCHOR_NORM,
     INLINE_ROLE_RE,
     ROLE_BY_KEYWORD,
@@ -47,7 +46,10 @@ from _lib.gr.eniaio_engrafo import (  # noqa: E402
     SECTION_NUM_RE,
     SECTION_ROLE_KEYWORDS,
     STYLE_MARKERS,
+    colour_styles,
     greek_norm,
+    sparkling_type_styles,
+    sweetness_type_styles,
 )
 from _lib.gr.region import derive_region  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
@@ -305,11 +307,8 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
         ):
             blob_parts.append(body)
     blob = " ".join(blob_parts)
-    blob_norm = greek_norm(blob)
-    found: set[str] = set()
-    for kw, colour_slug in COLOUR_BY_KEYWORD.items():
-        if greek_norm(kw) in blob_norm:
-            found.add(colour_slug)
+    found: set[str] = (colour_styles(blob) | sweetness_type_styles(blob)
+                       | sparkling_type_styles(blob))
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(blob):
             found.add(slug)

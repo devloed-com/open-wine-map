@@ -36,10 +36,12 @@ from pathlib import Path
 from unidecode import unidecode
 
 from _lib.gr.eniaio_engrafo import (
-    COLOUR_BY_KEYWORD,
     SECTION_ROLE_KEYWORDS,
     STYLE_MARKERS,
+    colour_styles,
     greek_norm,
+    sparkling_type_styles,
+    sweetness_type_styles,
 )
 from _lib.grape_entity import match_variety
 
@@ -498,9 +500,6 @@ def scan_grapes_prose(section_text: str, slug: str, exclude: frozenset = frozens
     return out
 
 
-_WINE_WORD_RE = re.compile(r"^(?:οιν|κρασ)")
-
-
 def parse_styles(sections: dict[str, str]) -> list[str]:
     # the winemaking practices state the categories made ("με την κλασική
     # μέθοδο παραγωγής αφρώδους οίνου", Ήπειρος) where the category list is
@@ -510,28 +509,14 @@ def parse_styles(sections: dict[str, str]) -> list[str]:
         for r in ("description", "category", "additional_conditions", "grape_varieties",
                   "viticultural_practices")
     )
-    norm = greek_norm(blob)
-    # A one-word colour form matches a whole token beside a wine word
-    # (οίνος / κρασί within three tokens after it or one before): "λευκά" is
-    # not Λευκάδα, "λευκωσ…" not a white wine, and the "ερυθρωπές …
-    # αποχρώσεις" of an aged red's hue is not a rosé category (2026-10-23,
-    # when the CY specs' "για ερυθρούς … λευκούς και ερυθρωπούς οίνους"
-    # alcohol minima had left Larnaka and Laona-Akama white-only).
-    tokens = re.findall(r"[^\W\d_]+", norm)
-    found: set[str] = set()
-    for kw, colour in COLOUR_BY_KEYWORD.items():
-        nk = greek_norm(kw)
-        if " " in nk:
-            if nk in norm:
-                found.add(colour)
-            continue
-        for i, tok in enumerate(tokens):
-            if tok == nk and any(_WINE_WORD_RE.match(t) for t in tokens[max(0, i - 1):i + 4]):
-                found.add(colour)
-                break
+    # colours: whole tokens beside a wine word, or heading a list of colours
+    # that shares one (`colour_styles`)
+    found: set[str] = colour_styles(blob)
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(blob):
             found.add(slug)
+    found |= sweetness_type_styles(blob)
+    found |= sparkling_type_styles(blob)
     return sorted(found)
 
 
