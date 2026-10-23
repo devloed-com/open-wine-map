@@ -137,6 +137,19 @@ COLOUR_BY_KEYWORD = {
     "rosé wijn": "rose",
     "rosé wijnen": "rose",
     "rose wijn": "rose",
+    # Rosé is a wine word on its own: the documents write "wijntype:
+    # roséwijn", "Kleur: lichte rosékleur", "rosé Pinot Noir", "Wine: Rosé"
+    # (the English template) — none of which the "rosé wijn" keyword saw
+    # (2026-10-23: eight NL PDOs lacked the Rosé their document lists).
+    "rosé": "rose",
+    "rosés": "rose",
+    "roséwijn": "rose",
+    "roséwijnen": "rose",
+    "rosékleur": "rose",
+    "red wine": "noir",
+    "red wines": "noir",
+    "white wine": "blanc",
+    "white wines": "blanc",
 }
 
 

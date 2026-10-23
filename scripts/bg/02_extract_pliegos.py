@@ -205,6 +205,14 @@ _GRAPE_LINE_DROP = (
 )
 
 
+def _strip_drop_phrase(item: str) -> str:
+    low = item.casefold()
+    for phrase in _GRAPE_LINE_DROP:
+        if low.startswith(phrase):
+            return item[len(phrase):].strip(" :–-")
+    return ""
+
+
 def _grape_items(section_text: str) -> list[str]:
     items: list[str] = []
     for chunk in _BULLET_SPLIT_RE.split(section_text or ""):
@@ -266,7 +274,12 @@ def parse_grapes(section_text: str) -> dict:
 
         low = item.casefold()
         if any(d in low for d in _GRAPE_LINE_DROP) and len(item) < 55:
-            continue
+            # The column header glued to an entry ("Сорт грозде Viognier",
+            # the one Latin-script line of Дунавска равнина's §7) keeps its
+            # name; a bare header line is still dropped (2026-10-23).
+            item = _strip_drop_phrase(item)
+            if not item:
+                continue
 
         for cand in _item_candidates(item):
             match = match_variety(cand)

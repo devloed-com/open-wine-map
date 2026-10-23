@@ -1012,6 +1012,11 @@ def _parroquias_line(rec: dict, lab: dict) -> str:
         lab["geom_parroquias_line"],
         {"n": len(names), "source": src, "names": esc("; ".join(names))},
     )
+    whole = sources.get("parroquias_whole_municipios") or []
+    if whole:
+        line += " " + fmt(
+            lab["geom_parroquias_whole"], {"n": len(whole), "names": esc("; ".join(whole))},
+        )
     return f'<div class="approx-line">{line}</div>'
 
 

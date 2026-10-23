@@ -31,13 +31,10 @@ from pathlib import Path
 from _lib.cy.eniaio_engrafo import greek_norm
 from _lib.gr.specifikacija import (
     _derive_summary,
-    _grape_windows,
     _pdf_to_text,
     _terroir_window,
-    extract_sections,
-    parse_grape_list,
     parse_styles,
-    scan_grapes_prose,
+    read_sections_and_grapes,
 )
 from _lib.grape_entity import match_variety  # noqa: F401  (kept for parity / debug)
 
@@ -107,18 +104,7 @@ def parse_spec(path: Path, slug: str, name: str = "") -> dict:
     method so the audit can tell OCR'd specs apart."""
     text, method = to_text(path)
     exclude = frozenset({greek_norm(name)}) if name.strip() else frozenset()
-    sections, titles = extract_sections(text)
-    grape_body = sections.get("grape_varieties", "")
-    grapes = parse_grape_list(grape_body, slug, exclude)
-    if not grapes["principal"]:
-        grapes = scan_grapes_prose(grape_body, slug, exclude)
-    if not grapes["principal"]:
-        best = grapes
-        for window in _grape_windows(text):
-            cand = scan_grapes_prose(window, slug, exclude)
-            if len(cand["principal"]) > len(best["principal"]):
-                best = cand
-        grapes = best
+    sections, titles, grapes = read_sections_and_grapes(text, slug, exclude)
     geo = sections.get("geo_area", "")
     link = sections.get("link_to_terroir", "")
     if len(link) < 400:

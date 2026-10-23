@@ -4024,6 +4024,12 @@ def _sources_for(record: dict) -> dict:
             "parroquias_attribution": PARROQUIAS_ATTRIBUTION if parr.get("matched") else "",
             "parroquias_matched": list(parr.get("matched") or []),
             "parroquias_unmatched": list(parr.get("unmatched") or []),
+            # the municipios the same inclusion list names whole (Monterrei's
+            # Vilardevós beside its 49 parishes) — only when there are any
+            **(
+                {"parroquias_whole_municipios": list(parr["whole_municipios"])}
+                if parr.get("whole_municipios") else {}
+            ),
             "sigpac_semantics": sig.get("semantics") or "",
             "sigpac_municipios": list(sig.get("municipios") or []),
             "sigpac_whole": list(sig.get("whole") or []),

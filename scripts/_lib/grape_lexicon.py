@@ -28,6 +28,30 @@ from unidecode import unidecode
 
 COLOUR_CODES = {"B": "blanc", "N": "noir", "G": "gris", "Rs": "rose", "Rg": "rouge"}
 
+# One passport per berry colour: a cahier lists "muscat à petits grains B",
+# "… Rg" and "… Rs" as three entries and VIVC files them apart (#8193
+# BLANCS, #8248 ROUGES, #8186 ROSES), the way veltliner-rot is distinct from
+# the Frühroter — so an entry whose colour code names a colour-specific
+# passport takes that slug and carries the colour word in its name (the
+# code expanded by the cahier's own legend); the bare name stays the white.
+# Keyed on the slug the colour-less name resolves to and the colour of the
+# code (`COLOUR_CODES`); read by the FR reader and by `match_variety` on an
+# explicit code only, never on a block colour (2026-10-23, Méditerranée Comté
+# de Grignan showed one pill for two entries).
+COLOUR_QUALIFIED_SLUGS: dict[tuple[str, str], tuple[str, str]] = {
+    ("muscat-a-petits-grains", "rouge"): ("muscat-a-petits-grains-rouges", "rouges"),
+    ("muscat-a-petits-grains", "rose"): ("muscat-a-petits-grains-roses", "roses"),
+}
+
+# A colour word that is also a registered cultivar. The matcher bans the
+# bare colour words of every corpus language; a reader that knows its token
+# is a whole roster cell — the SK §f Odroda column — binds these through
+# `grape_entity.match_roster_cell` (2026-10-23, Východoslovenská's "Rosa",
+# VIVC #22422). Keys are `_normalise` forms.
+COLOUR_WORD_VARIETIES: dict[str, str] = {
+    "rosa": "rosa",
+}
+
 _COLOUR_WORDS = frozenset({
     "blanc", "blanche", "blancs",
     "noir", "noire", "noirs",
@@ -81,7 +105,7 @@ GRAPE_ALIAS = {
     "garnacha": "grenache",
     "garnacha-tinta": "grenache",
     "garnacha-noir": "grenache",
-    "garnacha-peluda": "grenache",
+    "garnacha-peluda": "lledoner-pelut",  # VIVC #4460 GARNACHA PELUDA, a passport of its own (Garnacha tinta is #4461); the FR "lledoner pelut" already carried the slug — until 2026-10-23 the ES spelling folded into grenache and Castilla lost the pill
     "lladoner": "grenache",
     "lladoner-pelut": "grenache",
     "cannonau": "grenache",
@@ -2092,6 +2116,38 @@ GRAPE_ALIAS = {
     # Ribera del Guadiana writes "Eva o Beba de los Santos": the slug the
     # corpus already uses for Beba, not a second one for the same passport
     "beba-de-los-santos": "beba",
+    # 2026-10-23, validator findings (Drenthe and the other 11 NL provincie
+    # PGIs share one roster): varieties the single document lists that the
+    # lexicon lacked. Every id was checked on the live VIVC passport the same
+    # day; where the single document gives no colour code, the RVO
+    # productdossier (BGA, harvest 2025) does.
+    "baco-noir": "baco-noir",  # VIVC #870
+    "birstaler-muskat": "birstaler-muskat",  # VIVC #17208 — RVO writes "Birstaler Muskaat B"
+    "birstaler-muscat": "birstaler-muskat",
+    "birstaler-muskaat": "birstaler-muskat",
+    "excelsior": "excelsior",  # VIVC files two: #4017 white (France), #4018 black (USA); no document gives a colour
+    "melody": "melody",  # VIVC #7614 — RVO "Melody B"; not #25493 Blagratwo, a black grape VIVC also calls Melody
+    "muscat-bleu": "muscat-bleu",  # VIVC #16002 — the single document writes "Muscat Blue", RVO "Muscat Bleu N"
+    "muscat-blue": "muscat-bleu",
+    "palatina": "palatina",  # VIVC #14012
+    "polo-muscat": "polo-muscat",  # no VIVC passport under this name; "Polo Muscat B" in both documents
+    # 2026-10-23, validator findings phase B (items 4–8): identities the
+    # cards lacked, each read on the live VIVC passport the same day.
+    "keknyelu": "keknyelu",  # VIVC #16421 KEKNYELUE (blanc, Vulpea × ?), the Balaton white; VIVC lists KEKNYELUE as a synonym of Furmint #4292 too, which "Kéknyelű" fuzzy-matched at 94 on Balatonmelléki and was then deduped away
+    "keknyelue": "keknyelu",
+    "pikolit": "picolit",  # the Slovenian spelling of Friuli's Picolit #9236 (Kras, Primorska); #16421 lists PIKOLIT among its synonyms, so the key is pinned ahead of the passport claim
+    "sultanina": "sultanina",  # VIVC #12051 SULTANINA (blanc); Larnaka, Lemesos and Pafos list "ΣΟΥΛΤΑΝΙΝΑ"
+    "belana": "vilana",  # Βηλάνα, the η spelling of Vilana (the lexicon had Βιλάνα only); unidecode writes "Belana", which fuzzy-matched the Dalmatian Debit at 90 (Ηράκλειο)
+    "mavroudi": "mavroudi",  # Μαυρούδι, a bare name VIVC files as a prime of its own (#40691) and as a synonym of Agiorgitiko #102, Mavrud #7539 and Sevka #11736; the Έβρος and Πλαγιές Κνημίδας specs list it bare, and it had fuzzy-matched Agiorgitiko at 87 — own slug, no passport (pinned false), not the Arkadian Μαυρούδια #23168
+    "mauroudi": "mavroudi",  # unidecode
+    "mauroudia": "mavroudia",  # unidecode of Μαυρούδια, the Arkadian cultivar #23168 — without the key the new mauroudi was its nearest fuzzy match
+    "soultanina": "sultanina",  # the romanised Greek
+    "moschato-samou": "muscat-a-petits-grains",  # Μοσχάτο Σάμου: the Samos muscat is Muscat blanc à petits grains #8193 (MOSCHATO SAMOU, Greece); VIVC lists the name unflagged on Muscat Ottonel #8243 as well, and file order had handed the CY specs Ottonel
+    "moskhato samou": "muscat-a-petits-grains",
+    "coloraillo": "coloraillo",  # VIVC #2780 COLORAILLO (rouge; Marufo × Tempranillo tinto), the one Castilla lists under "Tintas"; #17589 is a white homonym
+    "rosa": "rosa",  # VIVC #22422 ROSA (noir), the VÚVV Bratislava crossing the SK §f tables list; a banned colour word for the matcher, bound only as a whole roster cell (COLOUR_WORD_VARIETIES)
+    "muscat-a-petits-grains-roses": "muscat-a-petits-grains-roses",  # VIVC #8186 — the FR "muscat à petits grains Rs" entry (COLOUR_QUALIFIED_SLUGS)
+    "muscat-a-petits-grains-rouges": "muscat-a-petits-grains-rouges",  # VIVC #8248 — the "… Rg" entry
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -3080,6 +3136,23 @@ DEFAULT_COLOUR: dict[str, str] = {
     "bellone": "blanc",  # VIVC #1114
     "castiglione": "noir",  # VIVC #26023
     "agostina": "blanc",  # Campania register V.B.B.
+    # 2026-10-23, the NL provincie PGIs (see GRAPE_ALIAS). Excelsior has no
+    # entry: VIVC knows a white and a black cultivar by that name.
+    "baco-noir": "noir",  # VIVC #870
+    "birstaler-muskat": "blanc",  # VIVC #17208
+    "melody": "blanc",  # VIVC #7614
+    "muscat-bleu": "noir",  # VIVC #16002
+    "palatina": "blanc",  # VIVC #14012
+    "polo-muscat": "blanc",  # "Polo Muscat B"
+    # 2026-10-23, phase B (see GRAPE_ALIAS)
+    "keknyelu": "blanc",  # VIVC #16421
+    "sultanina": "blanc",  # VIVC #12051
+    "coloraillo": "noir",  # VIVC #2780 ROUGE; Castilla lists it among the tintas
+    "lledoner-pelut": "noir",  # VIVC #4460 GARNACHA PELUDA
+    "mavroudi": "noir",  # every VIVC passport the name sits on is noir
+    "rosa": "noir",  # VIVC #22422
+    "muscat-a-petits-grains-roses": "rose",  # VIVC #8186
+    "muscat-a-petits-grains-rouges": "rouge",  # VIVC #8248; INAO's Rg
 }
 
 # Slugs that are pure boilerplate after stop-word filtering and should be
@@ -3335,11 +3408,16 @@ def _tokenise_role_chunk(chunk: str) -> list[dict]:
         # per the curation guide, not in the fuzzy matcher.
         if result.method.startswith("fuzzy"):
             continue
-        if result.slug in seen:
+        slug = result.slug
+        qualified = COLOUR_QUALIFIED_SLUGS.get((slug, colour))
+        if qualified:
+            slug, adjective = qualified
+            name = f"{name} {adjective}"
+        if slug in seen:
             continue
-        seen.add(result.slug)
+        seen.add(slug)
         out.append({
-            "slug": result.slug,
+            "slug": slug,
             "name": name,
             "colour": colour or result.colour,
         })

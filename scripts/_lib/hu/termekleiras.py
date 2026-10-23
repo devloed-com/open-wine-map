@@ -126,6 +126,25 @@ _GRAPE_HEADER_RE = re.compile(r"^\s*(?:\d+\.\s*)?[A-ZÁÉÍÓÖŐÚÜŰ]{2,}\s*:
 # Table column headers seen in the tabular variety layout (Balatonboglár,
 # Pécs, …): "Terméktípus    Engedélyezett fajták".
 _GRAPE_TABLE_HEADER_RE = re.compile(r"termékt[ií]pus|engedélyezett\s+fajt", re.I)
+# A wine-type label of the tabular layout — alone on its line ("2. rozé"),
+# in the first cell of a row ("1. fehér      Kövidinka, …", "Classicus
+# Olivér, …") or glued to a type suffix ("Prémium fehér fajta és cuvée"):
+# never a variety, and never a row boundary either (the label of a row sits
+# vertically centred, between two lines of its own comma list).
+_TYPE_WORD = (
+    r"(?:fehér|rozé|rosé|vörös|siller|classicus|superior|grand|prémium|premium|"
+    r"késői|szüretelésű|jégbor|töppedt|pezsgő|gyöngyöző|fajta|fajták|küvé|cuvée|"
+    r"termelői|válogatott|bor|borok|fehérbor|vörösbor|rozébor|királyi|és|vagy|"
+    r"szőlőből|muskotály|bikavér|egri|csillag|aszú|szamorodni|fordítás|máslás|"
+    r"eszencia|édes|száraz|félszáraz|félédes|illatos|minőségi|természetes|"
+    r"szén-dioxid|hozzáadásával|készült|kategória|termékkategória|bortípus)"
+)
+_TYPE_LABEL_RE = re.compile(rf"^(?:\d+\.?\s*)?{_TYPE_WORD}(?:\s+{_TYPE_WORD})*\.?$", re.I)
+_CELL_SPLIT_RE = re.compile(r"\s{2,}")
+# the Wingdings bullet pdftotext writes as U+F0B7 (Pannon's list) is a
+# separator like the comma
+_ITEM_SPLIT_RE = re.compile(r"\s*[,;\uf0b7•·]\s*|\s+és\s+")
+_OPEN_END_RE = re.compile(r"[,;]\s*$|\bés\s*$")
 
 
 def parse_grapes(body: str) -> dict:
@@ -138,8 +157,18 @@ def parse_grapes(body: str) -> dict:
     table whose left cell is the product type ("1. Fehér" / "2. Rozé")
     and right cell the wrapped comma list. Splitting on runs of 2+ spaces
     (the column gap) as well as commas peels the type label off the first
-    variety in each table row."""
-    from ..grape_entity import match_variety
+    variety in each table row.
+
+    A name the PDF wraps across two lines ("Irsai ⏎ Olivér", "Cabernet ⏎
+    franc", "Pinot ⏎ 2. rozé ⏎ noir", "Hamburgi ⏎ muskotály") is joined
+    before matching: a line that ends without a separator leaves its last
+    item pending, and the next line's first item is tried joined to it —
+    kept joined only when the lexicon knows the whole name exactly
+    ("Viognier ⏎ Alibernet" is a row boundary and stays two). Until
+    2026-10-23 the halves were matched apart: "Olivér" bound Plăvaie (an
+    OLIVER synonym), "franc" and "muskotály" nothing, on Balatonmelléki,
+    Eger, Monor, Duna and a dozen more."""
+    from ..grape_entity import exact_match, match_variety
 
     out: dict[str, list] = {
         "principal": [], "accessory": [], "observation": [], "details": [],
@@ -147,28 +176,49 @@ def parse_grapes(body: str) -> dict:
     if not body:
         return out
     seen: set[str] = set()
+
+    def emit(cand: str) -> None:
+        cand = cand.strip(" .\t-•·()\uf0b7")
+        if len(cand) < 3 or _TYPE_LABEL_RE.match(cand):
+            return
+        match = match_variety(cand)
+        if match is None or match.slug in seen:
+            return
+        seen.add(match.slug)
+        out["principal"].append(match.slug)
+        out["details"].append({
+            "slug": match.slug,
+            "name": cand,
+            "role": "principal",
+            "colour": match.colour,
+        })
+
+    pending: str | None = None
     for raw_line in body.splitlines():
         line = raw_line.strip()
         if not line or _GRAPE_HEADER_RE.match(line) or _GRAPE_TABLE_HEADER_RE.search(line):
             continue
-        for cand in re.split(r"\s*[,;]\s*|\s{2,}|\s+és\s+", line):
-            cand = cand.strip(" .\t-•·()")
-            if len(cand) < 3:
+        items: list[str] = []
+        for cell in _CELL_SPLIT_RE.split(line):
+            cell = cell.strip()
+            if not cell or _TYPE_LABEL_RE.match(cell.strip(" .\t-•·()")):
                 continue
-            match = match_variety(cand)
-            if match is None:
-                continue
-            slug = match.slug
-            if slug in seen:
-                continue
-            seen.add(slug)
-            out["principal"].append(slug)
-            out["details"].append({
-                "slug": slug,
-                "name": cand,
-                "role": "principal",
-                "colour": match.colour,
-            })
+            items.extend(x for x in _ITEM_SPLIT_RE.split(cell) if x.strip())
+        if not items:
+            continue
+        if pending is not None:
+            joined = f"{pending} {items[0].strip(' .-•·()' + chr(0xF0B7))}"
+            if exact_match(joined) is not None:
+                items[0] = joined
+            else:
+                emit(pending)
+            pending = None
+        if not _OPEN_END_RE.search(line):
+            pending = items.pop()
+        for cand in items:
+            emit(cand)
+    if pending is not None:
+        emit(pending)
     return out
 
 
@@ -183,7 +233,9 @@ def parse_styles(bodies: dict[str, str], grapes: dict) -> list[str]:
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(blob):
             found.add(slug)
-    _colour_to_style = {"blanc": "blanc", "noir": "noir", "gris": "rose", "rose": "rose"}
+    # A gris / rose berry makes white wine; every termékleírás names its
+    # rozé in the text (2026-10-23, the NL rule — no HU record changed).
+    _colour_to_style = {"blanc": "blanc", "noir": "noir", "gris": "blanc", "rose": "blanc"}
     for d in grapes.get("details") or []:
         s = _colour_to_style.get(d.get("colour") or "")
         if s:

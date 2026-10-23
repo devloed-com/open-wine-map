@@ -49,7 +49,13 @@ from unidecode import unidecode
 _LIB_ROOT = Path(__file__).resolve().parent
 if str(_LIB_ROOT.parent) not in sys.path:
     sys.path.insert(0, str(_LIB_ROOT.parent))
-from _lib.grape_lexicon import DEFAULT_COLOUR, GRAPE_ALIAS, slugify  # noqa: E402,F401
+from _lib.grape_lexicon import (  # noqa: E402,F401
+    COLOUR_QUALIFIED_SLUGS,
+    COLOUR_WORD_VARIETIES,
+    DEFAULT_COLOUR,
+    GRAPE_ALIAS,
+    slugify,
+)
 
 _REPO_ROOT = _LIB_ROOT.parent.parent
 
@@ -206,6 +212,14 @@ _BANNED_SURFACES = frozenset({
     # stale vocab slug and today fuzzy-matches rossese at 92. The table
     # grape Italia never appears in a wine variety roster.
     "italia",
+    # The Italian adjective "aromatico" and its inflections reach the matcher
+    # as bare tokens from MASAF clauses ("altri vitigni non aromatici", "del
+    # tipo aromatico"). VIVC lists AROMATO on Muscat bleu (#16002, pinned
+    # 2026-10-23 for the NL provincie PGIs), which "aromatico" then
+    # fuzzy-matched at 87 on Terratico di Bibbona, Trevenezie and Vigneti
+    # delle Dolomiti; a multi-word surface ("Malvasia di Candia aromatica",
+    # "Traminer aromatico") is unaffected.
+    "aromatico", "aromatica", "aromatici", "aromatiche",
 })
 
 
@@ -553,9 +567,14 @@ def match_variety(
     bare_key = _normalise(bare) if bare != cleaned else full_key
     if bare_key != full_key and bare_key in vocab.exact_index:
         canon = vocab.exact_index[bare_key]
+        name = bare
+        qualified = COLOUR_QUALIFIED_SLUGS.get((canon, explicit_colour or ""))
+        if qualified:
+            canon, adjective = qualified
+            name = f"{bare} {adjective}"
         return MatchResult(
             slug=canon,
-            name=bare,
+            name=name,
             colour=explicit_colour or ambient_colour or DEFAULT_COLOUR.get(canon, ""),
             method="exact-after-colour-strip",
         )
@@ -616,6 +635,55 @@ def match_variety(
 
     _log_unknown(token, cleaned, candidate_name, candidate_key, source_pliego)
     return None
+
+
+def exact_match(token: str, ambient_colour: str | None = None) -> MatchResult | None:
+    """`match_variety` restricted to its exact paths, and silent: a miss is
+    not logged to the unknowns queue. For a reader testing a *hypothesis*
+    — two halves of a wrapped name joined, an Article 1 varietal type —
+    where a miss is the expected answer, not a lexicon gap."""
+    cleaned = _prep_token(token)
+    if len(cleaned) < 3 or len(cleaned) > 80:
+        return None
+    vocab = _load_vocabulary()
+    full_key = _normalise(cleaned)
+    if full_key and len(full_key) >= 3 and full_key not in _BANNED_SURFACES \
+            and full_key in vocab.exact_index:
+        canon = vocab.exact_index[full_key]
+        return MatchResult(
+            slug=canon, name=cleaned,
+            colour=ambient_colour or DEFAULT_COLOUR.get(canon, ""), method="exact",
+        )
+    bare, explicit_colour = _strip_colour_letter(cleaned)
+    bare_key = _normalise(bare) if bare != cleaned else full_key
+    if bare_key != full_key and len(bare_key) >= 3 and bare_key not in _BANNED_SURFACES \
+            and bare_key in vocab.exact_index:
+        canon = vocab.exact_index[bare_key]
+        return MatchResult(
+            slug=canon, name=bare,
+            colour=explicit_colour or ambient_colour or DEFAULT_COLOUR.get(canon, ""),
+            method="exact-after-colour-strip",
+        )
+    return None
+
+
+def match_roster_cell(
+    token: str,
+    ambient_colour: str | None = None,
+    source_pliego: str | None = None,
+) -> MatchResult | None:
+    """`match_variety` for a token the reader knows to be a whole cell of a
+    variety table (the SK §f Odroda column): a banned colour word that is
+    also a registered cultivar (`COLOUR_WORD_VARIETIES` — "Rosa", VIVC
+    #22422) binds here and nowhere else."""
+    key = _normalise(_prep_token(token))
+    slug = COLOUR_WORD_VARIETIES.get(key)
+    if slug is not None:
+        return MatchResult(
+            slug=slug, name=_prep_token(token),
+            colour=ambient_colour or DEFAULT_COLOUR.get(slug, ""), method="exact-roster-cell",
+        )
+    return match_variety(token, ambient_colour, source_pliego)
 
 
 def _fuzzy_passes_sanity(candidate_key: str, match_name: str, score: float) -> bool:

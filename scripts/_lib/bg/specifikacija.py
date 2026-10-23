@@ -228,7 +228,9 @@ def _parse_grapes(section5: str) -> dict:
 
 # ───────────────────────────────────────────────────────────── styles ──
 
-_COLOUR_TO_STYLE = {"blanc": "blanc", "noir": "rouge", "gris": "blanc", "rose": "rose"}
+# A gris / rose berry makes white wine; the rosé style comes from the text
+# (2026-10-23, the NL rule — no BG record changed).
+_COLOUR_TO_STYLE = {"blanc": "blanc", "noir": "rouge", "gris": "blanc", "rose": "blanc"}
 _STYLE_MARKERS = [
     (re.compile(r"\bпенлив", re.I), "sparkling"),
     (re.compile(r"\bискрящ", re.I), "sparkling"),

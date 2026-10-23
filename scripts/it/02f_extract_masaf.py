@@ -66,6 +66,7 @@ from _lib.it.documento_unico import scan_styles  # noqa: E402
 from _lib.it.masaf import (  # noqa: E402
     PdfRecord,
     annex_entry,
+    article1_varietal_types,
     build_pdf_index,
     cap_at_sentence,
     derive_geo_area,
@@ -282,6 +283,15 @@ def build_record(wine: dict, articles: dict[int, str], pdf_meta: dict,
     grapes = grapes_with_annex(
         match_variety, articles.get(2, ""), raw_text, wine.get("name", "")
     )
+    # The varietal types article 1 reserves the name to — a wine of ≥ 85 %
+    # of a variety article 2 may name only by the rule (Colli Altotiberini).
+    have = {d["slug"] for d in grapes["details"]}
+    for d in article1_varietal_types(articles.get(1, ""), wine.get("name", "")):
+        if d["slug"] in have:
+            continue
+        have.add(d["slug"])
+        grapes["principal"].append(d["slug"])
+        grapes["details"].append(d)
     set_pliego_context(None)
 
     # Menzioni / Unità Geografiche Aggiuntive (MGA) chip list — harvested

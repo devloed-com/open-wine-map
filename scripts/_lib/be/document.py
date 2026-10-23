@@ -288,6 +288,13 @@ COLOUR_BY_KEYWORD: dict[str, dict[str, str]] = {
         "rosé wijn": "rose",
         "rosé wijnen": "rose",
         "rose wijn": "rose",
+        # Rosé is a wine word on its own ("Kleur : wit, rosé en …",
+        # "rosé-wijnen"); see the NL sibling table (2026-10-23).
+        "rosé": "rose",
+        "rosés": "rose",
+        "roséwijn": "rose",
+        "roséwijnen": "rose",
+        "rosékleur": "rose",
     },
     "fr": {
         "vin rouge": "noir",
@@ -298,6 +305,9 @@ COLOUR_BY_KEYWORD: dict[str, dict[str, str]] = {
         "vins rosés": "rose",
         "vin rose": "rose",
         "vins roses": "rose",
+        # "vins blancs et rosés", "blancs, rouges ou rosés" (the fiches).
+        "rosé": "rose",
+        "rosés": "rose",
     },
 }
 

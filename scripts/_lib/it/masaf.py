@@ -42,7 +42,7 @@ from typing import Iterable
 
 from rapidfuzz import fuzz
 
-from _lib.grape_entity import current_pliego_context, is_curated_surface
+from _lib.grape_entity import current_pliego_context, exact_match, is_curated_surface
 from _lib.grape_lexicon import DEFAULT_COLOUR
 from _lib.it.documento_unico import scan_styles
 
@@ -1217,6 +1217,76 @@ def parse_annex_grapes_with(matcher, raw_text: str, role: str = "principal") -> 
                 "colour": hit.colour,
                 "source": "masaf-disciplinare-allegato",
             })
+    return out
+
+
+# Article 1 lists the wines the name is reserved to, one «NAME» line per
+# type: "«Colli Altotiberini» Cabernet Sauvignon", "… Merlot riserva". A
+# varietal type is a wine of at least 85 % of that variety — the rule
+# article 2 states without naming them ("Per i vini con riferimento al nome
+# dei vitigni …") — so the variety is in the roster even where article 2
+# names only the blends' bases. The tail after the closing guillemet is read
+# with its type words stripped from the right (riserva, superiore, spumante,
+# passito …); only an exact lexicon name counts, a bare family word
+# ("Pinot", "Moscato", "Malvasia") never does, and the record's context pin
+# applies (Romagna's "Trebbiano"). 2026-10-23: Colli Altotiberini's card
+# lacked Cabernet Sauvignon and Merlot.
+_ART1_TYPE_LINE_RE = re.compile(r"^\s*[«“\"]([^»”\"]+)[»”“\"]\s*([^\n]+?)\s*[;.,]?\s*$", re.M)
+# "«Friuli Latisana» Merlot, anche nella tipologia novello …": the type name
+# ends at the first comma; a parenthetical ("(anche nella tipologia riserva)")
+# and the second quoted alias of the name ('"San Colombano al Lambro" o "San
+# Colombano" Rosso') are not part of it.
+_ART1_ALIAS_RE = re.compile(r"^\s*(?:o|e|ed)\s+[«“\"][^»”\"]+[»”“\"]\s*", re.I)
+_ART1_TYPE_WORDS = frozenset("""
+    bianco bianca bianchi rosso rossa rossi rosato rosati rosé rose spumante spumanti
+    frizzante superiore riserva novello passito dolce secco amabile abboccato liquoroso
+    classico vendemmia tardiva vin santo vino vini anche nelle nella tipologia tipologie
+    ed e o metodo millesimato brut extra dry demi sec occhio di pernice stravecchio
+    giovane tranquillo fermo naturale vigna vigneto cru
+""".split())
+_ART1_FAMILY_TAILS = frozenset({
+    "pinot", "moscato", "malvasia", "trebbiano", "lambrusco", "vernaccia", "greco",
+    "muscat", "bonarda", "cabernet", "sauvignon", "riesling", "traminer",
+})
+
+
+def article1_varietal_types(article1_body: str, wine_name: str = "") -> list[dict]:
+    """The varieties article 1 names as wine types, in document order."""
+    out: list[dict] = []
+    seen: set[str] = set()
+    name_key = _loose_key(wine_name) if wine_name else ""
+    for m in _ART1_TYPE_LINE_RE.finditer(article1_body or ""):
+        tail = _ART1_ALIAS_RE.sub("", m.group(2))
+        tail = re.sub(r"\([^)]*\)", " ", tail).split(",")[0]
+        words = tail.split()
+        while words and words[-1].lower().strip("«»“”\"'()") in _ART1_TYPE_WORDS:
+            words.pop()
+        while words and words[0].lower().strip("«»“”\"'()") in _ART1_TYPE_WORDS:
+            words.pop(0)
+        tail = " ".join(words).strip(" «»“”\"'()")
+        if not tail or (len(words) == 1 and tail.lower() in _ART1_FAMILY_TAILS):
+            continue
+        names = (wine_name,) if wine_name else ()
+        if (name_key and _loose_key(tail) == name_key) or (
+            _is_part_of_name(tail, names) and not is_curated_surface(tail)
+        ):
+            continue
+        # a legacy VIVC synonym is not enough: «Colli Etruschi Viterbesi»
+        # Rossetto (the Lazio white, Trebbiano giallo) had bound Grignolino,
+        # whose passport lists ROSSETTO
+        if not is_curated_surface(tail):
+            continue
+        hit = exact_match(tail)
+        if hit is None:
+            continue
+        hit = _apply_context_pin(hit, tail)
+        if hit.slug in seen:
+            continue
+        seen.add(hit.slug)
+        out.append({
+            "slug": hit.slug, "name": tail, "role": "principal", "colour": hit.colour,
+            "source": "masaf-disciplinare-art1",
+        })
     return out
 
 

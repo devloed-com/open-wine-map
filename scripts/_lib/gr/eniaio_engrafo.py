@@ -258,6 +258,16 @@ COLOUR_BY_KEYWORD = {
     "ροζέ οίνος": "rose",
     "ροζέ οίνοι": "rose",
     "ροζέ": "rose",
+    # The inflected forms the ΥΠΑΑΤ specs use in their alcohol minima and
+    # category sentences ("για τους ερυθρούς και ερυθρωπούς οίνους …");
+    # ερυθρωπός (reddish) is the Greek legal word for rosé (2026-10-23).
+    "ερυθρού": "noir", "ερυθρών": "noir", "ερυθρό": "noir", "ερυθρά": "noir",
+    "ερυθρή": "noir", "ερυθρές": "noir", "ερυθρούς": "noir",
+    "λευκού": "blanc", "λευκών": "blanc", "λευκό": "blanc", "λευκά": "blanc",
+    "λευκή": "blanc", "λευκές": "blanc", "λευκούς": "blanc",
+    "ερυθρωπός": "rose", "ερυθρωποί": "rose", "ερυθρωπού": "rose", "ερυθρωπών": "rose",
+    "ερυθρωπό": "rose", "ερυθρωπά": "rose", "ερυθρωπή": "rose", "ερυθρωπές": "rose",
+    "ερυθρωπούς": "rose",
 }
 
 

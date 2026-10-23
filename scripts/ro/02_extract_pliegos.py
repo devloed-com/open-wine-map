@@ -356,10 +356,57 @@ def _dedupe_names(scoped: list[tuple[str, list[str]]]) -> list[str]:
     return out
 
 
+# Varieties a yield table names and section 7 does not — "1. Merlot,
+# Băbească Neagră, Burgund Mare / 17 000 kilograme de struguri pe hectar"
+# (Dealurile Olteniei; 14 of the 46 single documents carry such a table):
+# the GI sets a yield for them, so they are in its roster, and since §7
+# lists the *main* varieties these are accessories. Only an exact lexicon
+# name counts — the prose of the row ("la maturitate deplină a recoltei",
+# "cules la maturitate deplină CMD") is not reported as an unknown
+# (2026-10-23).
+_YIELD_TITLE_RE = re.compile(r"produc(?:ț|t)i[iae]*\s+maxim|randament", re.I)
+_YIELD_LINE_SKIP_RE = re.compile(
+    r"\d\s*(?:\d{3}|hectolitr|kilogram|kg\b|tone|hl\b)|hectar|^\d+\.?$|produc", re.I
+)
+_YIELD_LEAD_RE = re.compile(r"^(?:soiurile|soiul|pentru|din)\s+", re.I)
+
+
+def add_yield_table_varieties(grapes: dict, sections: dict[str, str],
+                              titles: dict[str, str]) -> list[str]:
+    from _lib.grape_entity import exact_match
+
+    have = {d["slug"] for d in grapes["details"]}
+    added: list[str] = []
+    for num, body in sections.items():
+        if not _YIELD_TITLE_RE.search(titles.get(num, "")):
+            continue
+        for line in body.splitlines():
+            line = line.strip()
+            if not line or _YIELD_LINE_SKIP_RE.search(line):
+                continue
+            for piece in re.split(r"\s*[,;]\s*|\s+-\s+", line):
+                piece = _YIELD_LEAD_RE.sub("", piece).strip(" .:–-")
+                if len(piece) < 3:
+                    continue
+                m = exact_match(piece)
+                if m is None or m.slug in have:
+                    continue
+                have.add(m.slug)
+                added.append(m.slug)
+                grapes["accessory"].append(m.slug)
+                grapes["details"].append({
+                    "slug": m.slug, "name": piece, "role": "accessory",
+                    "colour": m.colour, "source": "yield-table",
+                })
+    return added
+
+
 def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
                  oj_meta: dict) -> dict:
     routed = route_sections(sections, titles)
     grapes = parse_grapes(routed.get("grape_varieties", ""))
+    if grapes["principal"]:
+        add_yield_table_varieties(grapes, sections, titles)
     styles = parse_styles(sections, titles)
     geo_area = routed.get("geo_area", "")
     geo_scoped = parse_commune_list_scoped(geo_area) if geo_area else []

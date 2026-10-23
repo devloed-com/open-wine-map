@@ -38,6 +38,7 @@ _LABELS = {
     "meta_communes_inao": "{n} communes (INAO)",
     "meta_parishes": "{n} parish(es)",
     "geom_parroquias_line": "{n} parishes from {source}: {names}.",
+    "geom_parroquias_whole": "Whole as well: {n} municipio(s) {names}.",
     "dgc_of": "Sub-region of",
     "geom_approx_within": "Approx area — inherited from {umbrella}",
     "geom_approx_parent": "Approx area — parent polygon.",
@@ -627,3 +628,21 @@ def test_related_country_link_points_at_the_browse_section() -> None:
     html = render_content_block(_geom_rec(), "x", ctx)
     assert '<p class="related-links"><a href="/en/appellations/#c-fr">' in html
     assert "related-links" not in _render(_geom_rec())  # no browse path, no link
+
+
+def test_parish_line_names_the_whole_municipios_of_the_redraw() -> None:
+    sources = {
+        "parroquias_matched": ["Laza: Camba", "Laza: Castro"],
+        "parroquias_attribution": "IET", "parroquias_licence": "CC BY 4.0",
+        "parroquias_licence_url": "https://example.org/l",
+        "parroquias_whole_municipios": ["Vilardevós"],
+    }
+    html = _render(_geom_rec(country="es", geom_source="iet-parroquia-union",
+                             communes_matched=1, sources=sources))
+    assert "2 parishes from" in html
+    assert "Whole as well: 1 municipio(s) Vilardevós." in html
+    without = dict(sources)
+    without.pop("parroquias_whole_municipios")
+    html = _render(_geom_rec(country="es", geom_source="iet-parroquia-union",
+                             communes_matched=1, sources=without))
+    assert "Whole as well" not in html

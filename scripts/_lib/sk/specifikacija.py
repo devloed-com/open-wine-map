@@ -42,7 +42,7 @@ from __future__ import annotations
 
 import re
 
-from _lib.grape_entity import match_variety
+from _lib.grape_entity import match_roster_cell
 
 # ───────────────────────────────────────────────────────── lettered slicing ──
 
@@ -140,7 +140,9 @@ def _add(grapes: dict, raw: str, colour_hint: str) -> bool:
     name = re.sub(r"\s*\(.*?\)\s*", " ", raw).strip(" \t.;,–-")
     if not name or len(name) < 2:
         return False
-    m = match_variety(name)
+    # A whole Odroda cell: "Rosa" (VIVC #22422) is a colour word everywhere
+    # else and binds only here (2026-10-23).
+    m = match_roster_cell(name)
     if m is None or m.slug in grapes["principal"]:
         return False
     grapes["principal"].append(m.slug)
@@ -242,7 +244,9 @@ def _parse_grapes(f_body: str) -> dict:
 
 # ───────────────────────────────────────────────────────────── styles ──
 
-_COLOUR_TO_STYLE = {"blanc": "blanc", "noir": "rouge", "gris": "blanc", "rose": "rose"}
+# A gris / rose berry makes white wine; the rosé style comes from the text
+# (2026-10-23, the NL rule — no SK record changed).
+_COLOUR_TO_STYLE = {"blanc": "blanc", "noir": "rouge", "gris": "blanc", "rose": "blanc"}
 _STYLE_MARKERS = [
     (re.compile(r"\bšumiv|\bsekt\b", re.I), "sparkling"),
     (re.compile(r"\bperliv", re.I), "semi-sparkling"),

@@ -1393,6 +1393,32 @@ one case of four failure modes, swept corpus-wide the same day:
   flags as a country's official name — so Cesanese di Affile stays), and a
   grape first met in such a phrase takes its label from the genuine phrase
   (Barolo's pill had read "Barolo", Lugana's "Lugana").
+- **One passport per berry colour (2026-10-23).** A cahier lists "muscat à
+  petits grains B", "… Rg" and "… Rs" as three entries and VIVC files them
+  apart (#8193 BLANCS, #8248 ROUGES, #8186 ROSES), the way `veltliner-rot` is
+  distinct from the Frühroter: `COLOUR_QUALIFIED_SLUGS` in `grape_lexicon.py`
+  gives a colour-coded entry its colour's passport slug, the name carrying the
+  code's colour word ("muscat à petits grains rouges" — the cahier's own
+  legend, so the two pills differ and the corpus label is the slug's). Read by
+  the FR reader and by `match_variety` on an explicit code only, never on a
+  block colour; 53 FR records gained the pink or red muscat as a second pill
+  (Méditerranée Comté de Grignan, validator finding).
+- **A colour word that is a cultivar binds only as a roster cell (2026-10-23).**
+  "Rosa" (VIVC #22422, the VÚVV Bratislava crossing the SK §f tables list) is
+  a banned colour surface everywhere; `grape_entity.match_roster_cell` binds
+  the `COLOUR_WORD_VARIETIES` of the lexicon when the reader knows its token is
+  a whole cell of a variety table (the SK Odroda column). `exact_match` is the
+  matcher's silent exact-only form, for a reader testing a hypothesis (two
+  halves of a wrapped name joined, an Article 1 varietal type) where a miss is
+  the expected answer, not a lexicon gap.
+- **A VIVC name under two primes is pinned `false`.** BLANCA DE MONTERREI is a
+  synonym of SIRIA #2742 and of CARREGA BRANCO #2124; the Monterrei pliego
+  lists it beside Doña Blanca (= Síria), and the pill carries no bracket rather
+  than a prime VIVC cannot settle (2026-10-23; it had been pinned to #2742 from
+  memory). The bare Italian adjective "aromatico" and its inflections are
+  `_BANNED_SURFACES`: Muscat bleu's passport (#16002, pinned for the NL
+  provincie PGIs) lists AROMATO, and the MASAF clauses' "non aromatici" tokens
+  fuzzy-matched it at 87.
 - **Elided articles.** A slug writes "bianco-d-alessano", a token keeps
   "Bianco d'Alessano"; the vocabulary registers both forms.
 - **A new passport claims old names.** Fetching a passport registers every
@@ -1854,7 +1880,10 @@ folded; spelling drift is pinned per record in
 with both spellings, never fuzzy-matched; parts under 1 ha (the 1:5k
 coastline's offshore rocks) are dropped. Every record using parish
 polygons carries the IET attribution in the panel's area line and its
-Sources list (`geom_parroquias_line` / `src_parroquias`). Barbanza e Iria:
+Sources list (`geom_parroquias_line` / `src_parroquias`); when the same
+inclusion list names a municipio whole (Monterrei's Vilardevós beside its 49
+parishes) the record's sources carry `parroquias_whole_municipios` and the
+line ends with them (`geom_parroquias_whole`, 2026-10-23). Barbanza e Iria:
 Padrón is now its two parishes (12.3 of 48.6 km²); Valle del Miño-Ourense
 725 → 379 km² (all 14 municipios are holders); Ourense city's Cabeza de
 Vaca, Santiago das Caldas and Tras do Hospital are not in the IET layer and
@@ -2560,6 +2589,17 @@ Pipeline per stub:
      to a documento-unico record that carries none (the EU single
      document lists only the main varieties) and records the MASAF
      provenance on any record that took something from the sidecar.
+   - **Article 1** also names the varietal types the name is reserved to
+     ("«Colli Altotiberini» Cabernet Sauvignon", "… Merlot riserva") — a
+     wine of ≥ 85 % of that variety, the rule Article 2 states without
+     naming them. `masaf.article1_varietal_types` (2026-10-23) reads the
+     tail of each «NAME» line up to its first comma, type words stripped,
+     and adds the variety as `principal` (`source:
+     masaf-disciplinare-art1`) when it is an exact *and curated* lexicon
+     surface — never a bare family word ("Pinot", "Malvasia"), never the
+     wine's own name ("San Colombano" had bound Verdea), never a legacy VIVC
+     synonym ("Rossetto" Grignolino). Colli Altotiberini, Colli Romagna
+     Centrale and Ischia changed; 519 did not.
    - **Article 3** → geo area / commune list
    - **Article 9** → link to terroir — `link_to_terroir` is the
      4,000-character panel cut, `link_to_terroir_full` the whole article
@@ -3240,6 +3280,17 @@ HU-specific notes:
   Csillag, Siller, Klárét, Pezsgő, Gyöngyözőbor, Késői Szüretelésű,
   Jégbor, Töppedt, and Likőrbor. Run
   `scripts/02b_fetch_aoc_lexicon.py --lang hu --source raw/hu/dokumentumok-extracted`
+  The termékleírás roster reader (`_lib/hu/termekleiras.parse_grapes`,
+  2026-10-23) joins a name the PDF wraps across two lines — "Irsai ⏎ Olivér",
+  "Cabernet ⏎ franc", "Pinot ⏎ 2. rozé ⏎ noir", "Hamburgi ⏎ muskotály" and a
+  dozen more — by trying the pending last item of a line joined to the next
+  line's first and keeping the join only when the lexicon knows the whole
+  name exactly (a row boundary "Viognier ⏎ Alibernet" stays two); the
+  wine-type labels ("2. rozé", "Classicus") and the Wingdings bullet are
+  skipped. Read apart, "Olivér" had bound Plăvaie (an OLIVER synonym) on
+  Balatonmelléki, Eger and Monor. `keknyelu` is VIVC #16421, which VIVC also
+  lists on Furmint — the fuzzy hit the dedupe had swallowed.
+  Run `scripts/02b_fetch_aoc_lexicon.py --lang hu --source raw/hu/dokumentumok-extracted`
   once before 02d so the Wikipedia salience hints exist (23/41 land
   on first run; 11 missing / 7 errors are curator-pinnable).
 
@@ -3322,7 +3373,12 @@ Romanian, Latin script with diacritics, Bétard PDO geometry — with
   geografic delimitat") behind a "Țara căreia îi aparține…" → "România"
   decoy (blocklisted); a density-based commune fallback in stage 02
   (`_harvest_communes_fallback`) recovers the list when the PDF→HTML
-  conversion mangles section numbering.
+  conversion mangles section numbering. The yield table (5.2 "Producții
+  maxime") names varieties section 7 omits — "Merlot, Băbească Neagră,
+  Burgund Mare / 17 000 kilograme …" on Dealurile Olteniei; 14 of the 46
+  documents carry one — and `add_yield_table_varieties` adds them as
+  accessories, exact lexicon names only, the row's prose never reported as an
+  unknown (2026-10-23: Olteniei + 3, Colinele Dobrogei + 8, Sebeș-Apold + 2).
 - **ONVPV national-spec layer** (stage 01c/02f) — the 14 grandfathered
   wines are augmented from the Oficiul Național al Viei și Produselor
   Vitivinicole caiet de sarcini (see the dedicated section below). This
@@ -3580,6 +3636,10 @@ BG-specific notes:
   Cyrillic. Settlement-tier prefixes (`с.` / `гр.` / `село` / `град`)
   drop the chunk entirely so only the parent община survives.
   Province (област) markers are consumed with their trailing name so
+  A column header glued to an entry ("Сорт грозде Viognier", the one
+  Latin-script line of Дунавска равнина's §7) keeps its name; a bare header
+  line is still dropped (2026-10-23). Oblast markers are consumed with their
+  trailing name so
   the 28 oblast-name capitals (which are themselves obshtini —
   Пловдив, Бургас, Варна, Сливен, …) survive as obshtina candidates.
 - Stage 02d/02e wire terroir-fact extraction + translation for BG
@@ -4001,7 +4061,31 @@ corpus is filled from the ΥΠΑΑΤ national spec via a parallel layer
   paragraph is windowed by anchor (`_geo_window`, "ΟΡΙΟΘΕΤΗΜΕΝΗ
   ΠΕΡΙΟΧΗ" → the next heading) the way the terroir narrative already
   was. Sidecars land in `raw/gr/national-specs-extracted/`
-  (132: 127 with grapes, 131 with terroir text).
+  (132: 127 with grapes, 131 with terroir text). Two header passes since
+  2026-10-23: the strict one folds the U+2206 Delta a PDF heading font pads
+  ("8. ∆ ΕΣΜΟΣ …", Malvasia Χάνδακας-Candia — its link header was never
+  recognised and the grape body ran through the history), takes no line that
+  starts lowercase, ends on a comma, holds a sentence boundary or ends on an
+  article, and re-opens no pre-link role after the link; the lenient one is
+  the reading of 2026-05 unchanged, and wins unless it hung the grape
+  section on a line the strict rules reject while the strict pass found a
+  real header (`read_sections_and_grapes`, shared with the CY parser) — a
+  count never decides between a precise reading and a loose one. 21 records
+  switched to the strict sections (their link narrative whole instead of cut
+  at a sub-heading, so their terroir caches are stale — CURATOR_TODO). A
+  grape section written as sentences is read as enumerations ("… των
+  ποικιλιών Ασύρτικο, Αθήρι, … και Malvasia di Candia aromatica", every one
+  in the section, the trailing clause cut, a parenthetical synonym taken for
+  the cultivar — "Αθήρι μαύρο (Μαυράθηρο)" —, a missing comma split, a
+  candidate always capitalised), ahead of the capitalised-word scan whenever
+  it reads three names; "εκτός των δύο τελευταίων … μέχρι 15 %" and "εκτός
+  της ποικιλίας X που … μέχρι 20 %" make accessories. The colour table
+  carries the inflected forms the specs use (ερυθρούς, ερυθρωπούς, λευκούς
+  …), a one-word form counts only as a whole token beside a wine word (οίνος
+  / κρασί within three tokens) — "λευκά" is not Λευκάδα, an aged red's
+  "ερυθρωπές αποχρώσεις" not a rosé — and the style scan reads the
+  winemaking-practices section, where a spec states the categories it makes
+  (Ήπειρος's sparkling, Paros's yield "για τον ερυθρό και ερυθρωπό οίνο").
 - **Stage 04** `augment_gr_records_with_national_specs()` merges the
   sidecar grapes / terroir text / styles / geo-area into the in-memory
   stub record (on-disk JSON stays immutable); `stub_reason` is prefixed
@@ -4816,7 +4900,9 @@ indprop.gov.sk). Two source shapes / parser templates:
   second line at the Odroda column ("Veltlínske červené ⏎ skoré", the five
   modern specs) is joined before matching (2026-10-22): read line by line
   the row was "Veltlínske červené", Roter Veltliner, and an alias had patched
-  the wrap instead of the reader. No principal/accessory split (same as
+  the wrap instead of the reader. A cell that is a colour word and a
+  registered cultivar — "Rosa", VIVC #22422, in the five modern specs — binds
+  through `grape_entity.match_roster_cell` (2026-10-23). No principal/accessory split (same as
   PT/IT/HR/BG) — every variety is `principal`.
 - **Stage 04** `augment_sk_records_with_national_specs()` merges the
   sidecar's summary / grapes / geo_area / link_to_terroir / styles /
@@ -5426,6 +5512,16 @@ BE-specific notes:
   HU/RO/BG/GR/DE/SK/CZ). `country` is `"be"`; **`source_lang` is
   per-record** (`"nl"` for the 6 Flemish + Maasvallei, `"fr"` for the
   4 Walloon).
+- **The slicer is monotonic (2026-10-23).** `extract_sections` accepts a
+  top-level header only as the next integer, or a sub-number of the last
+  accepted one, and never a nested item (a title starting lowercase, "Een
+  gemiddelde maximum gemeten …", a yield row): the Flemish amendments nest
+  per-wine-type blocks "1.", "2.", "3." inside section 4 and nine yield rows
+  inside 6, which read first-come had overwritten the real sections and left
+  Hagelandse, Haspengouwse and Heuvellandse wijn without a description — so
+  their "Rosé-wijnen: fijn, elegant …" was never read. The fiche's
+  "DESCRIPTION DU OU DES VINS" title and the bare "rosé" / "rosés" of both
+  languages are in the style tables.
 - The combined NL + FR template parser lives at
   [scripts/_lib/be/document.py](scripts/_lib/be/document.py) — one
   module, two keyword tables keyed by `source_lang`. The anchor regex
@@ -5684,6 +5780,16 @@ NL-specific notes:
 - `kind` is `"DOP"` / `"IGP"`. `country` is `"nl"`; `source_lang` is
   also `"nl"` (matches the prior convention where country code
   equals language code, like ES/PT/IT/HR/HU/RO/BG).
+- **Rosé comes from the text, never from a berry (2026-10-23).** The
+  `_GRAPE_COLOUR_TO_STYLE` floor maps a gris / rose berry to white in the NL,
+  BE, SK, HU and BG parsers (a Pinot gris makes white wine; Drenthe and the
+  other provincie PGIs had shown Rosé their single document never names), and
+  the NL text test reads the rosé the documents write — bare "rosé",
+  "roséwijn(en)", "rosékleur", the English template's "Rosé" — in the
+  description, category, winemaking and "Wijncategorie" sections and their
+  titles (Twente numbers one section per category and names it in the
+  title). GB and MT still add Rosé for any red grape: a style-floor question
+  for the next styles pass.
 - The Dutch ENIG DOCUMENT template is parsed by
   [scripts/_lib/nl/enig_document.py](scripts/_lib/nl/enig_document.py)
   (sibling of the BE NL table; kept separate so NL-only parser quirks

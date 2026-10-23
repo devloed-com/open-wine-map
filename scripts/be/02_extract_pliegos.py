@@ -86,14 +86,54 @@ def find_section_offsets(html: str) -> list[tuple[str, str, int, int]]:
     return out
 
 
+# A nested item's title is a grape list ("auxerrois, bacchus, cabernet cortis,
+# …", Hagelandse's wine types) or a yield sentence ("Een gemiddelde maximum
+# gemeten over een periode van 3 jaar, voor witte wijnen voor: …",
+# Heuvellandse's nine yield rows, whose "7.", "8.", "9." would otherwise pass
+# the monotonic walk as the real sections 7–9); a section title starts with a
+# capital and is a noun phrase.
+_NESTED_ITEM_RE = re.compile(
+    r"^Een\s+(?:gem\w*\s+)?maximum\b|\bhectoliter\b|\bhectolitre", re.I
+)
+
+
+def _looks_like_nested_item(title: str) -> bool:
+    t = title.strip()
+    return bool(t) and (t[:1].islower() or bool(_NESTED_ITEM_RE.search(t)))
+
+
 def extract_sections(html: str) -> tuple[dict[str, str], dict[str, str]]:
+    """Carve the ENIG DOCUMENT / DOCUMENT UNIQUE into numbered sections,
+    walking the headers in document order and accepting each only when it
+    is the next top-level integer, or a sub-number of the last accepted
+    top-level (the HU / BG / MT state machine). The Flemish amendments
+    nest per-wine-type blocks "1.", "2.", "3." inside section 4 and
+    per-category yield lines inside 5.2; read first-come, those restarted
+    numbers overwrote the real sections 1–6 and left the description empty
+    — Hagelandse, Haspengouwse and Heuvellandse wijn had no "Beschrijving
+    van de wijn(en)" body, so their "Rosé-wijnen: fijn, elegant …" was
+    never read (2026-10-23)."""
     headers = find_section_offsets(html)
     if not headers:
         return {}, {}
+    accepted: list[tuple[str, str, int, int]] = []
+    last_top = 0
+    for num, title, hstart, hend in headers:
+        parts = num.split(".")
+        if not all(p.isdigit() for p in parts):
+            continue
+        ip = tuple(int(p) for p in parts)
+        if len(ip) == 1:
+            if ip[0] != last_top + 1 or _looks_like_nested_item(title):
+                continue
+            accepted.append((num, title, hstart, hend))
+            last_top = ip[0]
+        elif ip[0] == last_top:
+            accepted.append((num, title, hstart, hend))
     bodies: dict[str, str] = {}
     titles: dict[str, str] = {}
-    for i, (num, title, _hstart, hend) in enumerate(headers):
-        end = headers[i + 1][2] if i + 1 < len(headers) else len(html)
+    for j, (num, title, _hs, hend) in enumerate(accepted):
+        end = accepted[j + 1][2] if j + 1 < len(accepted) else len(html)
         bodies[num] = strip_tags(html[hend:end]).strip()
         titles[num] = title
     return bodies, titles
@@ -230,11 +270,14 @@ def parse_grapes(section_text: str, lang: str) -> dict:
     return out
 
 
+# A berry colour is a floor for the still-wine colours, never a rosé: a gris
+# / rose-berried variety makes white wine, and the rosé a document lists is
+# read from its text (see the NL sibling; 2026-10-23).
 _GRAPE_COLOUR_TO_STYLE = {
     "blanc": "blanc",
     "noir": "noir",
     "gris": "blanc",
-    "rose": "rose",
+    "rose": "blanc",
 }
 
 
@@ -253,15 +296,20 @@ def parse_styles(
     title_kw_per_lang = {
         "nl": (
             "beschrijving van de wijn", "categorieën", "andere essentiële",
+            "wijnbereiding", "oenologische", "wijncategorie",
         ),
+        # "description du" also takes the EU-register fiche's "DESCRIPTION
+        # DU OU DES VINS" (the four Walloon records), which neither
+        # "description du vin" nor "description des vins" matched.
         "fr": (
-            "description du vin", "description des vins", "catégories",
+            "description du", "description des vins", "catégories",
             "autres conditions",
         ),
     }
     for num, body in sections.items():
         title_low = titles.get(num, "").lower()
         if any(kw in title_low for kw in title_kw_per_lang[lang]):
+            blob_parts.append(titles.get(num, ""))
             blob_parts.append(body)
     blob = " ".join(blob_parts) + " " + (wine_name or "")
     found: set[str] = set()

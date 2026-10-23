@@ -2685,7 +2685,10 @@
     const names = sources.parroquias_matched || [];
     if (!names.length) return '';
     const src = `<a href="${escapeAttr(sources.parroquias_licence_url || '')}" target="_blank" rel="noopener">${escapeHtml(sources.parroquias_attribution || '')} · ${escapeHtml(sources.parroquias_licence || '')}</a>`;
-    return `<div class="approx-line">${fmt(LABELS.geom_parroquias_line, { n: names.length, source: src, names: escapeHtml(names.join('; ')) })}</div>`;
+    let line = fmt(LABELS.geom_parroquias_line, { n: names.length, source: src, names: escapeHtml(names.join('; ')) });
+    const whole = sources.parroquias_whole_municipios || [];
+    if (whole.length) line += ' ' + fmt(LABELS.geom_parroquias_whole, { n: whole.length, names: escapeHtml(whole.join('; ')) });
+    return `<div class="approx-line">${line}</div>`;
   }
 
   // SIGPAC polígono inclusions: which reading drew them (the polígonos

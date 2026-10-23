@@ -228,7 +228,9 @@ def parse_grapes(section_text: str) -> dict:
 # (COLOUR_BY_KEYWORD emits noir/blanc/rose; stage 04's _canonical_styles
 # folds both these and the FR "rouge" form to the taxonomy bucket). Keeping
 # the same convention avoids a record carrying both `noir` and `rouge`.
-_COLOUR_TO_STYLE = {"blanc": "blanc", "noir": "noir", "gris": "blanc", "rose": "rose"}
+# A gris / rose berry makes white wine; the rosé style comes from the text
+# (2026-10-23, the NL rule — no SK record changed).
+_COLOUR_TO_STYLE = {"blanc": "blanc", "noir": "noir", "gris": "blanc", "rose": "blanc"}
 
 
 def parse_styles(sections: dict[str, str], titles: dict[str, str],

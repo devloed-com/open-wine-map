@@ -96,7 +96,8 @@ def test_identity(token, slug):
 
 @pytest.mark.parametrize("token", ["Siller", "csillag", "piros", "kretzer", "blanc", "gentile", "Rosa",
                                    "Lacryma", "Κάβα", "Πάτρα", "Μοναστήρι", "m 2", "Roche", "Montagna",
-                                   "Ασπρούδα", "moscati", "grano", "Μοσχάτο", "doña"])
+                                   "Ασπρούδα", "moscati", "grano", "Μοσχάτο", "doña",
+                                   "aromatico", "aromatici", "aromatiche"])
 def test_style_and_place_words_are_not_grapes(token):
     assert match_variety(token) is None
 

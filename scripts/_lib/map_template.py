@@ -297,6 +297,12 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "dans le document, dessinée(s) d'après le Mapa de Parroquias de "
             "Galicia ({source}) : {names}."
         ),
+        # … and the municipios the same list names whole (Monterrei's
+        # Vilardevós), drawn as their whole polygon.
+        "geom_parroquias_whole": _(
+            "S'y ajoute(nt) en entier {n} municipio(s) nommé(s) dans le même "
+            "document : {names}."
+        ),
         # SIGPAC polígono inclusions (scripts/_lib/es/sigpac.py): the reading
         # that drew them — the polígonos whole (a plot planted inside a listed
         # polígono qualifies) or only their vineyard parcels (Priorat /

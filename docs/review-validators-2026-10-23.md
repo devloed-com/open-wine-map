@@ -186,3 +186,35 @@ self-diff is empty.
 full suite passes (1,498). Ruff is clean on every new file; the three remaining
 repo-wide findings are in files of the uncommitted 2026-10-22 work
 (`04_build_maps.py` import order, `tests/test_masaf_roles.py`).
+
+
+## Addendum — phase B (2026-10-23, Fable 5.1 after Opus 5.5 halted)
+
+Items 3–8 of the work list are closed in CURATOR_TODO (each row carries what
+changed); the retry's record is `tmp/validation/phaseB-attempt2-2026-10-23.md`.
+What a reader of the cards sees:
+
+- the 12 NL provincie PGIs carry their seven listed varieties and no longer a
+  Rosé their single document never names; nine NL / BE records gain the Rosé
+  theirs lists, and the three Flemish PDOs have a description again (the BE
+  slicer is monotonic);
+- Kéknyelű on eight HU cards; the wrapped halves ("Irsai" / "Olivér (Plavaie)",
+  "Cabernet" / "franc") read as one name on fifteen;
+- Malvasia Χάνδακας-Candia and Malvasia Σητείας list their seven varieties
+  with the capped two as accessories — the GR national-spec reader now takes the real header over a prose line that merely carries a keyword, reads a grape sentence as an enumeration, and counts a colour word only beside a wine word; 31 GR rosters changed, every one read (Βηλάνα, Μπεκάρι, Βλάχικο, Βραδυανό, Κορινθιακό gained; Μαυρούδι its own pill on 11 cards instead of "(Agiorgitiko)"; the generic Malvasia and a colour word gone);
+- Larnaka and Laona-Akama carry the colours their alcohol minima state; the
+  three CY cards with Σουλτανίνα list it and Moschato Samou is the Samos
+  muscat, not Ottonel;
+- 53 FR cards carry the red or pink petits-grains muscat as its own pill;
+  nine ES cards Garnacha peluda as its own; Castilla Coloraillo; Colli
+  Altotiberini, Colli Romagna Centrale and Ischia their Article 1 varietal
+  types; three RO cards their yield-table varieties; Дунавска равнина
+  Viognier; the five modern SK specs Rosa;
+- Monterrei's Blanca de Monterrei pill carries no bracket and the parish line
+  names Vilardevós whole.
+
+Left on purpose: the GB / MT style readers' "rosé for any red grape" (phase
+C), the ≤ 15 % optional group of Handakas-Candia and Arkadia's link-only
+semi-sparkling (phase C's GR category row), and the terroir caches of the GR
+records whose link text the strict header pass completed (phase D's re-run
+scope, listed in CURATOR_TODO). No LLM run; ≈ 30 live VIVC requests.

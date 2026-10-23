@@ -320,7 +320,12 @@ def parse_grapes(section_text: str) -> dict:
     return out
 
 
-_GRAPE_COLOUR_TO_STYLE = {"blanc": "blanc", "noir": "noir", "gris": "blanc", "rose": "rose"}
+# A grape's berry colour is a floor for the card's styles, never a rosé: a
+# gris / rose-berried variety (Pinot gris, Muscat bleu's gris siblings) makes
+# white wine, and the rosé a document lists is read from its text. Until
+# 2026-10-23 "rose" mapped to the rosé style, which put Rosé on Drenthe and
+# the other provincie PGIs whose single document names white and red only.
+_GRAPE_COLOUR_TO_STYLE = {"blanc": "blanc", "noir": "noir", "gris": "blanc", "rose": "blanc"}
 
 
 def parse_styles(
@@ -328,10 +333,22 @@ def parse_styles(
     grape_details: list[dict] | None = None, wine_name: str = "",
 ) -> list[str]:
     blob_parts = []
-    title_kw = ("beschrijving van de wijn", "categorieën", "andere essentiële")
+    # The wine types ("Wijncategorie 1 wijn: rosé, volfruitig") sit under the
+    # description AND under the winemaking section of the Dutch template,
+    # and Ambt Delden's single document is the English template.
+    title_kw = (
+        "beschrijving van de wijn", "categorieën", "andere essentiële",
+        "wijnbereiding", "oenologische", "wijncategorie",
+        "description of the wine", "categories of grapevine", "winemaking",
+        "essential further",
+    )
     for num, body in sections.items():
         title_low = titles.get(num, "").lower()
         if any(kw in title_low for kw in title_kw):
+            # Twente numbers one section per category and names it in the
+            # title ("WIJNCATEGORIE 9: Parelwijn waaraan …"): the title is
+            # part of what the document says.
+            blob_parts.append(titles.get(num, ""))
             blob_parts.append(body)
     blob = " ".join(blob_parts) + " " + (wine_name or "")
     found: set[str] = set()
