@@ -45,13 +45,20 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip, terroir_verbatim  # noqa: E402
 from _lib.prompt_cache import cached_system  # noqa: E402
+from _lib.summary_link import is_summary_link, prefer_national_link  # noqa: E402
 from _lib.terroir_cache import write_source_cache  # noqa: E402
 from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
 from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
 from _lib.terroir_feedback import with_feedback  # noqa: E402
 from _lib.terroir_interactions import earn_interactions  # noqa: E402
 from _lib.terroir_normalize import normalize_facts  # noqa: E402
-from _lib.terroir_prompts import with_style_rules  # noqa: E402
+from _lib.terroir_prompts import (
+    ask_line,
+    product_topics,
+    should_retry,
+    sub_section_cap,
+    with_style_rules,
+)
 
 EXTRACTED = ROOT / "raw" / "it" / "disciplinari-extracted"
 MASAF_EXTRACTED = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
@@ -90,7 +97,7 @@ SUBSECTIONS = [
     {
         "key": "produit",
         "label": "Caratteristiche del prodotto (profilo sensoriale)",
-        "topics": "colori, profumi, struttura, invecchiamento, profilo sensoriale dei vini",
+        "topics": product_topics("it"),
         "max_bullets": 2,
     },
     {
@@ -137,7 +144,7 @@ Lettore destinatario: appassionato di vino o sommelier informato, interessato al
 ═══ FONTE 1: Estratto Wikipedia (sezioni pertinenti) ═══
 {wiki_hint}
 
-═══ FONTE 2: Testo del disciplinare di produzione (nel messaggio dell'utente qui sotto) ═══
+═══ FONTE 2: Testo del disciplinare di produzione (riportato all'inizio di questo prompt, prima di queste istruzioni) ═══
 
 Sotto-sezione trattata: {label}
 Categorie privilegiate: {topics}
@@ -255,20 +262,26 @@ def _resolve_lien_and_source(rec: dict) -> tuple[str, dict]:
     on_disk_lien = rec.get("link_to_terroir") or ""
     src = rec.get("source") or {}
     eu_url = src.get("final_url") or src.get("source_url") or ""
-    if not rec.get("stub") and on_disk_lien:
-        return on_disk_lien, {"pdf_url": eu_url, "kind": "eu-oj"}
-    # Stub: try MASAF sidecar.
+    eu = (on_disk_lien, {"pdf_url": eu_url, "kind": "eu-oj"})
+    non_stub = not rec.get("stub") and bool(on_disk_lien)
+    if non_stub and not is_summary_link(on_disk_lien):
+        return eu
+    # A stub, or a non-stub whose single document carries only the
+    # "Sintesi del legame": the MASAF sidecar's Article 9 (stage 04's
+    # `_backfill_it_nonstub_from_masaf` carries the same text, 2026-10-24).
     slug = rec.get("slug") or ""
     sidecar_path = MASAF_EXTRACTED / f"{slug}.json"
     if not sidecar_path.exists():
-        return on_disk_lien, {"pdf_url": eu_url, "kind": "none"}
+        return eu if non_stub else (on_disk_lien, {"pdf_url": eu_url, "kind": "none"})
     try:
         sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
     except (ValueError, OSError):
-        return on_disk_lien, {"pdf_url": eu_url, "kind": "none"}
+        return eu if non_stub else (on_disk_lien, {"pdf_url": eu_url, "kind": "none"})
     # The whole Art. 9 (v3 sidecars); the panel-length `link_to_terroir`
     # is a 4,000-char cut that hid 3.7 M characters of terroir text.
     masaf_lien = sidecar.get("link_to_terroir_full") or sidecar.get("link_to_terroir") or ""
+    if non_stub and not prefer_national_link(on_disk_lien, masaf_lien):
+        return eu
     msrc = sidecar.get("source") or {}
     # MASAF bundle matches have no direct URL; overrides do (`url` field).
     masaf_url = msrc.get("url") or eu_url
@@ -300,7 +313,7 @@ def collect_targets() -> list[dict]:
 
 
 def _ask_line(label: str) -> str:
-    return f"Sotto-sezione da trattare: {label}"
+    return ask_line("it", label)
 
 
 def _document_block(lien_text: str) -> str:
@@ -318,7 +331,7 @@ def _process_subsection(
         wiki_hint=wiki_hint or "(nessun estratto Wikipedia disponibile)",
         label=sub["label"],
         topics=sub["topics"],
-        max_bullets=sub["max_bullets"],
+        max_bullets=sub_section_cap(sub, lien),
     )
     system = with_feedback(system, record["slug"])
     # The lien is the cached leading block: the four sub-section calls share it.
@@ -333,6 +346,19 @@ def _process_subsection(
     if payload is None:
         return [], 0, perr or "no JSON in response"
     raw_facts = payload.get("facts") or []
+    if not raw_facts and should_retry(sub["key"], "it", f"{lien}\n{wiki_hint}"):
+        # an empty descriptive sub-section on a text that carries its vocabulary: one second
+        # reading (terroir_prompts); the first answer stands when the retry yields nothing
+        retried = record.setdefault("_retried", [])
+        if sub["key"] not in retried:
+            retried.append(sub["key"])
+        try:
+            raw = provider.chat(system=system, user=ask_line("it", sub["label"], retry=True),
+                                max_tokens=1500, num_ctx=8192, cache_phase=sub["key"], follow_up=True)
+        except Exception:  # noqa: BLE001
+            raw = ""
+        second, _ = llm_json.parse_facts(raw)
+        raw_facts = (second or {}).get("facts") or []
     kept, dropped = _ground_facts(raw_facts, lien, wiki_hint)
     return kept, dropped, ""
 
@@ -385,6 +411,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "wiki_source_revision": wiki_revision,
         "wiki_source_url": wiki_url,
         "subsection_errors": sub_errors,
+        **({"retried_subsections": list(record["_retried"])} if record.get("_retried") else {}),
     }
     write_source_cache(CACHE_DIR / f"{slug}.json", payload)
     return payload
@@ -455,12 +482,12 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "subsection": sub["key"],
                 "subsection_label": sub["label"],
                 "topics": sub["topics"],
-                "max_bullets": sub["max_bullets"],
+                "max_bullets": sub_section_cap(sub, job["lien"]),
                 "system_prompt": with_feedback(EXTRACT_SYSTEM.format(
                     wiki_hint=wiki_hint or "(nessun estratto Wikipedia disponibile)",
                     label=sub["label"],
                     topics=sub["topics"],
-                    max_bullets=sub["max_bullets"],
+                    max_bullets=sub_section_cap(sub, job["lien"]),
                 ), job["slug"]),
                 "cahier_text": job["lien"],
                 "wiki_hint": wiki_hint,
@@ -682,6 +709,7 @@ def _run_batch(args) -> int:
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-it.json",
         run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
+        follow_ups=True,
     )
     return 0
 

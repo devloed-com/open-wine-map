@@ -52,6 +52,7 @@ from _lib.grape_entity import (  # noqa: E402
     match_variety,
     set_pliego_context,
 )
+from _lib.section_varieties import add_section_varieties  # noqa: E402
 from _lib.wine_categories import sparkling_only  # noqa: E402
 
 INDEX_IN = ROOT / "raw" / "be" / "eambrosia" / "index.json"
@@ -344,6 +345,7 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
     lang = wine.get("source_lang") or "nl"
     routed = route_sections(sections, titles, lang)
     grapes = parse_grapes(routed.get("grape_varieties", ""), lang)
+    add_section_varieties(grapes, routed, wine.get("name", ""))
     styles = parse_styles(
         sections, titles, lang,
         grape_details=grapes.get("details") or [],

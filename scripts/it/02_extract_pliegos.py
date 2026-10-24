@@ -62,6 +62,7 @@ from _lib.it.menzione import extract_menzioni  # noqa: E402
 from _lib.it.province import load_comune_regione_map, resolve_gisco_lau  # noqa: E402
 from _lib.it.region import derive_regione  # noqa: E402
 from _lib.it.sottozona import extract_sottozone  # noqa: E402
+from _lib.section_varieties import add_section_varieties  # noqa: E402
 
 INDEX_IN = ROOT / "raw" / "it" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "it" / "oj-pages"
@@ -199,6 +200,13 @@ def route_sections(sections: dict[str, str], titles: dict[str, str]) -> dict[str
         body = _match_section_body(sections, titles, keywords, blocklist)
         if body is not None:
             routed[role] = body
+    # Terre Tollesi's single document (OJ C 396, 30.9.2021) heads its section 8
+    # "Descrizione dei vini" a second time — a drafting slip for "Descrizione
+    # del legame": no title names the link, and section 8 of the 9-section
+    # template carrying section 4's own title is it.
+    if ("link_to_terroir" not in routed and (sections.get("8") or "").strip()
+            and titles.get("8") and titles.get("8") == titles.get("4")):
+        routed["link_to_terroir"] = sections["8"]
     return routed
 
 
@@ -338,6 +346,7 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
                  oj_meta: dict, comune_map: dict) -> dict:
     routed = route_sections(sections, titles)
     grapes = parse_grapes(routed.get("grape_varieties", ""))
+    add_section_varieties(grapes, routed, wine["name"])
     styles = parse_styles(sections, titles)
     regione = derive_regione(
         {"file_number": wine["fileNumber"]},

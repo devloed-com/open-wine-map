@@ -220,6 +220,11 @@ _BANNED_SURFACES = frozenset({
     # delle Dolomiti; a multi-word surface ("Malvasia di Candia aromatica",
     # "Traminer aromatico") is unaffected.
     "aromatico", "aromatica", "aromatici", "aromatiche",
+    # The Spanish season word: VIVC lists VERANO on Sciacarello (#10837), and
+    # the Valencia national pliego's climate sentence ("la vid en primavera y
+    # verano", read into its variety section) put Sciacarello on the Valencia
+    # card and its four subzonas (found 2026-10-24).
+    "verano", "veranos",
 })
 
 

@@ -71,6 +71,7 @@ from _lib.augment._shared import (
     _LOD_RADIUS_BY_SLUG,
     _PARCEL_FILL_BY_SLUG,
     _PT_AREA_ACT_BY_SLUG,
+    _REGISTER_FICHE_ROLES_BY_SLUG,
     _RO_NATIONAL_SPEC_BY_SLUG,
     _SI_SPECIFIKACIJA_BY_SLUG,
     _SK_NATIONAL_SPEC_BY_SLUG,
@@ -82,6 +83,7 @@ from _lib.augment.cy import augment_cy_records_with_national_specs
 from _lib.augment.cz import augment_cz_records_with_national_specs
 from _lib.augment.de import augment_de_records_with_produktspezifikation
 from _lib.augment.es import augment_es_records_with_national_pliegos
+from _lib.augment.fiche_roles import apply_register_fiche_roles
 from _lib.augment.gr import augment_gr_records_with_national_specs
 from _lib.augment.hr import augment_hr_records_with_specifikacija
 from _lib.augment.hu import augment_hu_records_with_national_specs
@@ -584,6 +586,23 @@ def _cz_fiche_source_keys(record: dict) -> dict:
         "register_fiche_url": fr.get("url", ""),
         "register_fiche_ref": fr.get("ref", ""),
         "register_fiche_n_varieties": fr.get("n_varieties", 0),
+    }
+
+
+def _fiche_roles_source_keys(record: dict) -> dict:
+    """The register fiche as the source of the roster's roles — only where
+    augment/fiche_roles.py applied its MAIN / OTHER split (SI, SK, HU, BG,
+    GR, HR, RO, MT); empty otherwise so the payload carries no key."""
+    fr = (record.get("register_fiche_roles")
+          or _REGISTER_FICHE_ROLES_BY_SLUG.get(record.get("slug") or "") or {})
+    if not fr.get("url"):
+        return {}
+    return {
+        "register_fiche_roles_url": fr.get("url", ""),
+        "register_fiche_roles_ref": fr.get("ref", ""),
+        "register_fiche_roles_n_main": fr.get("n_main", 0),
+        "register_fiche_roles_n_other": fr.get("n_other", 0),
+        "register_fiche_roles_n_unlisted": fr.get("n_unlisted", 0),
     }
 
 
@@ -1211,6 +1230,16 @@ def main() -> int:
             f"[load] SK national-spec augmentation: {n_aug_sk} stub records enriched",
             file=sys.stderr,
         )
+    # Roles from the EU register's technical file where the national source
+    # lists its varieties role-less (decision 2026-10-23, validator phase E);
+    # after every national-spec augmenter so it sees the merged roster.
+    fiche_roles = apply_register_fiche_roles(extracted_records)
+    print(
+        f"[load] register-fiche roles: {fiche_roles['applied']} records, "
+        f"{fiche_roles['pills_to_accessory']} varieties to accessory; skipped "
+        + ", ".join(f"{k} {v}" for k, v in sorted(fiche_roles["skipped"].items())),
+        file=sys.stderr,
+    )
     # PT cadernos enumerate every authorised casta as `principal` —
     # the IVV documento-único format we parse doesn't carry a
     # principal/accessory split, and an investigation into the
@@ -3471,6 +3500,7 @@ def _shell_state() -> dict[str, dict]:
         "_LOD_RADIUS_BY_SLUG": _LOD_RADIUS_BY_SLUG,
         "_PARCEL_FILL_BY_SLUG": _PARCEL_FILL_BY_SLUG,
         "_PT_AREA_ACT_BY_SLUG": _PT_AREA_ACT_BY_SLUG,
+        "_REGISTER_FICHE_ROLES_BY_SLUG": _REGISTER_FICHE_ROLES_BY_SLUG,
         "_RO_NATIONAL_SPEC_BY_SLUG": _RO_NATIONAL_SPEC_BY_SLUG,
         "_SI_SPECIFIKACIJA_BY_SLUG": _SI_SPECIFIKACIJA_BY_SLUG,
         "_SK_NATIONAL_SPEC_BY_SLUG": _SK_NATIONAL_SPEC_BY_SLUG,
@@ -3546,6 +3576,14 @@ def _shell_only(args) -> int:
 
 
 def _sources_for(record: dict) -> dict:
+    """The per-country source block, plus the register-fiche roles line any
+    country may carry (augment/fiche_roles.py)."""
+    out = _sources_for_base(record)
+    out.update(_fiche_roles_source_keys(record))
+    return out
+
+
+def _sources_for_base(record: dict) -> dict:
     """Pull authoritative source URLs from the extracted record. The keys
     are country-specific: FR records carry BO Agri / show_texte / product
     URLs; ES records carry the EUR-Lex final URL + the original

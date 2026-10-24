@@ -12,6 +12,7 @@ import json
 import re
 
 from _lib.it.sottozona import extract_sottozone as extract_it_sottozone
+from _lib.summary_link import prefer_national_link
 from _lib.terroir_chapters import fold
 
 from ._shared import (
@@ -20,6 +21,14 @@ from ._shared import (
     IT_REGIONAL_REGISTERS,
     MASAF_DISCIPLINARI_IT,
 )
+
+# The sweetness levels a documento unico states as sugar thresholds without
+# the words — Marsala's C/2026/5127 gives "zuccheri riduttori inferiori a
+# 40 g/l" and no "secco" — while the disciplinare's organoleptic article
+# names them ("secco … semisecco … dolce"). A non-stub record whose EU
+# document states no sweetness takes the sidecar's; colours and categories
+# stay the EU document's (2026-10-24: seven cards, Marsala first).
+SWEETNESS_STYLES = frozenset({"dry", "semi-dry", "semi-sweet", "sweet"})
 
 
 def _backfill_it_nonstub_from_masaf(record: dict, sidecar: dict) -> bool:
@@ -59,9 +68,20 @@ def _backfill_it_nonstub_from_masaf(record: dict, sidecar: dict) -> bool:
         record["geo_area_brief"] = sidecar["geo_area_brief"]
         section_roles["geo_area"] = sidecar["geo_area_brief"]
         filled = True
-    if sidecar.get("link_to_terroir") and not (record.get("link_to_terroir") or "").strip():
+    lien = (record.get("link_to_terroir") or "").strip()
+    masaf_full = sidecar.get("link_to_terroir_full") or sidecar.get("link_to_terroir") or ""
+    if sidecar.get("link_to_terroir") and (not lien or prefer_national_link(lien, masaf_full)):
+        # An empty link, or the 2024/1143 template's "Sintesi del legame"
+        # against a far longer Article 9: the text IT 02d grounds on.
         record["link_to_terroir"] = sidecar["link_to_terroir"]
         section_roles["link_to_terroir"] = sidecar["link_to_terroir"]
+        record["masaf_link"] = True
+        filled = True
+    have_styles = set(record.get("styles") or [])
+    sweetness = set(sidecar.get("styles") or []) & SWEETNESS_STYLES
+    if sweetness and not (have_styles & SWEETNESS_STYLES):
+        record["styles"] = sorted(have_styles | sweetness)
+        record["masaf_sweetness"] = sorted(sweetness)
         filled = True
     if filled:
         record["section_roles"] = section_roles

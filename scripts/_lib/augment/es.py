@@ -9,9 +9,25 @@ from __future__ import annotations
 import json
 import re
 
+from _lib.es.national_pliego import prefer_national_link
 from _lib.terroir_chapters import fold
 
 from ._shared import _ES_NATIONAL_PLIEGO_BY_SLUG, NATIONAL_PLIEGOS_ES
+
+
+def _carry_link(record: dict, sidecar: dict, nat_provenance: dict) -> None:
+    """A single document on the 2024/1143 template carries only the "Resumen
+    del vínculo"; the pliego's §7 (sidecar `link_to_terroir`) is the full text
+    ES 02d grounds the facts on (2026-10-24), so the record carries it too."""
+    link = sidecar.get("link_to_terroir") or ""
+    lien = record.get("link_to_terroir") or ""
+    if not prefer_national_link(lien, link):
+        return
+    record["link_to_terroir"] = link
+    roles = dict(record.get("section_roles") or {})
+    roles["link_to_terroir"] = link
+    record["section_roles"] = roles
+    nat_provenance["link_used"] = True
 
 
 def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
@@ -58,6 +74,7 @@ def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
                 "parser_template": sidecar.get("parser_template", ""),
                 "added_slugs": [],
             }
+            _carry_link(record, sidecar, nat_provenance)
             record["national_pliego"] = nat_provenance
             _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
             _apply_subzona_principals(record, sidecar)
@@ -89,6 +106,7 @@ def augment_es_records_with_national_pliegos(records: list[dict]) -> int:
             "parser_template": sidecar.get("parser_template", ""),
             "added_slugs": added,
         }
+        _carry_link(record, sidecar, nat_provenance)
         record["national_pliego"] = nat_provenance
         _ES_NATIONAL_PLIEGO_BY_SLUG[slug] = nat_provenance
         _apply_subzona_principals(record, sidecar)

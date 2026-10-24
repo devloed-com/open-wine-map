@@ -222,7 +222,15 @@ details and "Hard rules" for invariants that apply to every country.
   (regulatory colour codes after a grape name — "Pinot noir N" — VT /
   SGN expansion, terminal period, and in the four target locales the
   Latinisation of residual Greek / Cyrillic script: homoglyphs mapped,
-  gloss tokens transliterated, chemical prefixes such as "α-terpineol"
+  gloss tokens transliterated — an all-caps token stays upper case,
+  "ΘΑΣΙΩΝ" is THASION and not ThASION, and a gloss that transliterates
+  to the very word it glosses, "tines (τίνες)", loses its bracket
+  (2026-10-24, the nine Greek residues of the `gr-anchor` run); the
+  non-Latin class covers Greek Extended too, so a polytonic quotation —
+  Rosso Conero's Strabo, «σφόδρα δ'εὔοινος» — comes out whole as
+  "sphodra d'euoinos" rather than keeping its "ὔ" (the audit's and the
+  untranslated detector's classes match it) —
+  chemical prefixes such as "α-terpineol"
   and predominantly non-Latin bullets left alone) to source and
   translation caches in step, and stage 04 applies the same normaliser at
   render time;
@@ -271,7 +279,19 @@ details and "Hard rules" for invariants that apply to every country.
   the block phrases each negative as "do not assert … unless the source
   states it explicitly", never carries the reviewer's corrected text,
   and includes only the `extraction` / `both` entries — `translation`
-  entries are for a 02e back-check. `audit_terroir_facts.py` reports
+  entries are for a 02e back-check. A `capture_if_present` hint is a
+  **priority, not a slot** (2026-10-24): the sub-section cap stands, and a
+  hinted fact the text states takes a slot ahead of an unhinted one —
+  phrased "If the text describes it, capture: …" until then, the hint
+  had no standing against the cap, and Tokajské's four raised
+  human-factor slots all went to unhinted facts on the first re-run. Two failure modes are claims a source
+  *does* state, so that escape would let them through (`ESCAPE_BY_MODE`,
+  2026-10-23): `source-vintage` (an outdated statement — a Wikipedia
+  article older than the regulator text in force: Alicante's two subzonas,
+  Monterrei's six municipalities) may be asserted only from the regulator
+  text, `sibling-or-subzone-confusion` only where the source says it of
+  this appellation; the gate's constraint lines carry the same notes.
+  `audit_terroir_facts.py` reports
   `feedback_recurrence`: a do-not-claim entry whose source-language
   bullet still matches a current bullet (the known error is still there
   before a re-run, or came back after one). Sidecars are built and
@@ -280,6 +300,16 @@ details and "Hard rules" for invariants that apply to every country.
   (review 2026-09-12: 384 do-not-claim entries in 346 records, 1,133
   hints, 96 cautions over 1,238 records — see
   [docs/review-terroir-facts-2026-09-12.md](docs/review-terroir-facts-2026-09-12.md)).
+  A card-level review (`audit_cards_llm.py --emit-feedback`) grades the
+  rendered card in one locale: its row is filed under the record that owns
+  the facts (the row's `owner`, else the slug's own cache, else its
+  parent's — a sub-denomination card shows its parent's bullets, so
+  `alicante-lalcoia`'s findings land in `alicante.json`), and the fact
+  index and source-language bullet are recovered from the owner's caches,
+  without which the recurrence check compared an English claim with
+  Spanish bullets and never fired. The card judge sees one locale only, so
+  the stage of a non-English record's finding is the curator's call when
+  merging (`where` in the evidence row).
   Like the other `raw/` caches the sidecars are gitignored; a checkout
   without them extracts exactly as before.
 - **Every terroir-fact write is snapshotted; the chain is one rollback
@@ -346,8 +376,54 @@ details and "Hard rules" for invariants that apply to every country.
   strengthened hedge) — so the extractor does the gate's job first; then
   one full sentence of ~120–220 characters (the 140-character cap that
   produced the "Label:" fragments is gone), named entities and figures
-  first (up to two extra bullets on a long text), an earned
-  `interactions` sub-section. The audit's `feedback_recurrence` counts a
+  first, an earned `interactions` sub-section. **The sub-section caps are
+  set by the code, not weighed by the model** (`sub_section_cap` in the
+  same module, 2026-10-24): the base caps are natural factors 5, human
+  factors 2, product 2, interactions 1; a regulator text over 4,000
+  characters — measured once per record on the cached leading document
+  block, the lien (the CH / GB / MT context block), never the Wikipedia
+  hint — raises them to 7 / 4 / 3 / 1, and `interactions` is never
+  widened. Until then the allowance was a sentence of the style block
+  ("you may return up to two extra bullets") set against each call's
+  hard "Maximum N": Sonnet 5.5 never used it (phase D of the 2026-10-23
+  review — 25 re-extractions, none over the base cap, Tokajské's 8.6 k
+  characters of history held to 2 human-factor bullets) while the older
+  models overshot freely (948 of 1,644 caches), so every scoped re-run
+  trimmed a richer cache (Tokajské 13 → 9). 1,275 of the 1,622
+  measurable liens are over the threshold, so the rule is close to a
+  base-cap raise. A cap change re-stales nothing — freshness keys on the
+  source sha and the Wikipedia revision — it applies when a record is
+  next re-run; `tests/test_terroir_prompts.py` lints that every 02d
+  script sets its cap through the helper. A descriptive sub-section can
+  also come back `{"facts": []}` from a text that states its facts —
+  Alicante's product call twice (its picks restated the natural factors and
+  the dedupe removed them), and in the `gr-anchor-2026-10-24` run 107 of
+  the 115 Greek product calls, 43 of them explaining that the text holds
+  "no organoleptic profile" while it states the wine's colour or sweetness,
+  three that the user turn carried only the title (since the caching
+  refactor the document is the leading system block and the 20 prompts
+  still said "in the user message below"); the same prompt re-sent
+  synchronously returned the facts, so the class is sampling variance on a
+  narrowly read sub-section. Three things in
+  [scripts/_lib/terroir_prompts.py](scripts/_lib/terroir_prompts.py) since
+  2026-10-24, used by all 20 non-FR scripts: `product_topics(lang)` names
+  the wine *types* the text says are made, a variety's colour range,
+  sweetness, ageing and the traditional methods, and says a colour /
+  sweetness / type statement is a product fact without a tasting note (the
+  ES wording generalised; GB and LU keep their own specifics as a lead);
+  `ask_line(lang, label)` is the one-line user turn and points at the
+  document block, as does every script's "SOURCE 2" header; and
+  `should_retry` asks for one **second reading** (`ask_line(…, retry=True)`:
+  the first answer was an empty list, yet the text carries statements on
+  these topics — an empty list only if there is truly none) when the
+  natural-factors or product call returns [] on a text carrying ≥ 3
+  distinct stems of that sub-section's vocabulary (`RETRY_VOCAB`, 15
+  languages) — never `interactions` (earned) or the human factors (no
+  empties in 115). The cache lists the sub-sections read twice
+  (`retried_subsections`). In batch mode the second reading is a
+  **follow-up round** (`batch.run_two_pass(..., follow_ups=True)`, see the
+  Batch API section). First probe, chios: its product call answered []
+  again and the second reading returned 2 facts. The audit's `feedback_recurrence` counts a
   do-not-claim entry as resolved when the matched fact's
   `support.original_bullet` is the claim and the gate's rewrite was not
   cosmetic.
@@ -379,7 +455,10 @@ details and "Hard rules" for invariants that apply to every country.
   (Opus — `STAGE_DEFAULTS["audit"]` — vs the Sonnet extractor) and reports the
   reader-misled share with a Wilson interval; `--from-backup <run>`
   grades the same records' pre-run state and `--compare A B` prints the
-  paired before / after. Run it after every scoped re-run; the review's
+  paired before / after. A record written in the graded locale (MT and GB
+  in English) is graded on its source bullets — the card renders them;
+  until 2026-10-23 it was skipped as `no-translation`, so no English-source
+  record had ever been measured. Run it after every scoped re-run; the review's
   target is < 1.5 % misleading. Every Batch-API run prices itself:
   `batch.run_batch` sums the per-result usage, prices it at the batch
   rate (`BATCH_PRICES_USD_PER_M`) and appends one row per batch to
@@ -936,6 +1015,18 @@ code only from a string field, so a float NaN never becomes a commune
 "nan", and a field carrying two codes ("49078,49115", a merged commune)
 counts both.
 
+The 2026-10-19 release (adopted 2026-10-24: 11,751 → 11,764 rows) brought
+AOC Montpeyroux its own parcels (id_denom 2951: Arboras, Lagamas,
+Montpeyroux, Saint-Jean-de-Fos, 5.9 km²), so the record left its
+four-commune union for `parcellaire`; both carry-forward entries stay —
+Saint-Sardos still has no row, and the DGC Languedoc Montpeyroux's own two
+rows are still absent (the successor's parcels are another denomination,
+so they do not make the entry STALE). It also re-digitised Ladoix with
+null-`insee` rows, three of which duplicate a climat's existing row (the
+union does not move; CURATOR_TODO). The newest
+`<date>_delim-parcellaire-aoc-shp.shp` under `raw/inao/parcellaire/` is the
+release built (`resolve_shapefile`).
+
 ## The FR corpus follows INAO's catalogue, not the export's vintage
 
 The SIQO referentiel on data.gouv.fr is republished about once a year
@@ -1415,12 +1506,76 @@ one case of four failure modes, swept corpus-wide the same day:
   synonym of SIRIA #2742 and of CARREGA BRANCO #2124; the Monterrei pliego
   lists it beside Doña Blanca (= Síria), and the pill carries no bracket rather
   than a prime VIVC cannot settle (2026-10-23; it had been pinned to #2742 from
-  memory). The bare Italian adjective "aromatico" and its inflections are
+  memory). The Cypriot single documents' bare "Malvasia Grossa" sits under four
+  primes (Síria, Malvasia Dubrovačka, Vermentino and a black passport of its own
+  name, #7268): its own slug, pinned `false`, with no colour (2026-10-24). The bare Italian adjective "aromatico" and its inflections are
   `_BANNED_SURFACES`: Muscat bleu's passport (#16002, pinned for the NL
   provincie PGIs) lists AROMATO, and the MASAF clauses' "non aromatici" tokens
   fuzzy-matched it at 87.
 - **Elided articles.** A slug writes "bianco-d-alessano", a token keeps
   "Bianco d'Alessano"; the vocabulary registers both forms.
+- **Agudelo is Chenin blanc (2026-10-24).** The 2026-05-19 research had
+  folded `agudelo` into Godello and called the OJ's "AGUDELO - CHENIN BLANC" an
+  ampelographic error; MAPA's own variety list (RD 684/2026, printed
+  2026-09-08) gives "Agudelo (B.)" the synonym Chenin Blanc in ARA / CAT / GAL
+  and Godello none, VIVC flags AGUDELO as Spain's official name on Chenin
+  blanc #2527, the Betanzos microsatellite study (OENO One 2011) found
+  Agudelo = Chenin Blanc, and the Galician documents themselves list Godello
+  *beside* "Chenín blanco (Agudelo)". The alias is `chenin`; the Catalan cards
+  lost a wrong Godello, the Galician keep theirs from their own entry.
+  Merseguera ↔ Sumoll blanc stays split (VIVC #7660 / #12073, MAPA lists
+  Sumoll Blanco as Merseguera's Catalan synonym, INCAVI names Sumoll blanc
+  only), but the one roster line "MERSEGUERA - SUMOLL BLANCO" is one pill on
+  the three Catalan documents that write it: the ES reader applies a
+  per-record pin from [scripts/_lib/es/grape_context_overrides.json](scripts/_lib/es/grape_context_overrides.json)
+  (the IT `grape_context_overrides` pattern — `context_pins` /
+  `_apply_context_pin` in `es/02`, keyed by the record slug, a subzona
+  inheriting through its parent's deep copy; `tests/test_es_grape_context.py`).
+- **Malvasia bianca under two slugs (2026-10-24).** `malvasia-bianca` and
+  `malvasia-bianca-lunga` both resolved to VIVC #7262. The spellings #7262
+  vouches for — Malvasia del Chianti, Malvasia toscana, Malvasia lunga, the
+  Greek "Pavlos B" (PAVLOS / PAULOS) — fold into `malvasia-bianca-lunga`; the
+  bare "Malvasia bianca" keeps a slug of its own with no bracket, pinned
+  `false` in VIVC: the name is a synonym of both #7262 and Malvasia bianca di
+  Candia #23555, and the Italian register carries "Malvasia bianca" as an
+  entry beside "Malvasia bianca lunga" (the Calabria, Campania and Sicilia
+  registers list it; 33 southern MASAF rosters write it bare, Puglia 14) —
+  the Veltlínské červenobílé precedent. The Cypriot documents' "Malvasia
+  Bianca" and "Malvasia Lunga" (the Cypriot official name on #7262) stay two
+  pills. Withdrawing a VIVC fold can expose the typo splitter: `malvasia-grossa`
+  (pinned `false` in phase F) had split into Malvasia + the Portuguese Grossa
+  on the Tarragona sidecar — `_split_concatenated` keeps a curated canonical
+  slug whole.
+- **Varieties outside §7 (2026-10-24).** An EU single document names
+  varieties beyond its §7 roster: §4 as a varietal type ("Piemonte bianco,
+  con specificazione di vitigno Cortese, Chardonnay, Sauvignon" — C 91/2020's
+  §7 has no Sauvignon), §5 in a production rule (Eger's Turán and Cabernet
+  dorsa, Prosecco's Chardonnay and the three Pinots up to 15 %). The corpus
+  sweep over the 16 EU-document readers found 38 such records (ES 21, IT 20,
+  HU 3, RO 1, BE 1), about half of them bare family words.
+  [scripts/_lib/section_varieties.py](scripts/_lib/section_varieties.py)
+  (`add_section_varieties`, called right after `parse_grapes` in the ES, IT,
+  HU and BE readers) adds them as **accessories** tagged `section-4-type` /
+  `section-5-rule` — the RO yield-table precedent — under four guards: an
+  exact *curated* lexicon surface (`is_curated_surface`), never a bare family
+  word (`FAMILY_WORDS`: lambrusco, albillo, moscato, listan, groppello,
+  raboso …, and the family words the lexicon folds onto one member —
+  canaiolo, malvasia nera, refosco, magliocco, nerello, verduzzo — which
+  `audit_grape_surfaces` lists as TRUNCATED; the first run had read Maremma
+  Toscana's "Canaiolo" as Canaiolo nero), never a variety name that is an
+  everyday word (`PROSE_WORDS`:
+  the first run read "óptima maduración" as Optima, "sol y serena" as
+  Serena, "frutti di bosco" as Bosco, "vitigni a bacca bianca" as Bianca,
+  "halvány rubin" as Rubin), and capitalised in the document or introduced
+  by a variety word within 30 characters ("las variedades garnacha blanca y
+  macabeo"), never after a toponym lead ("El Molar"). Result: 32 parents —
+  ES 12 (Montsant's §4 list of 11, the Vinos de Pago estate lists, El
+  Hierro, La Gomera, Granada), IT 16 (Sicilia's 29 varietal types, Maremma
+  Toscana and Val d'Arno di Sopra 15 each, Prosecco ×3, Piemonte's
+  Sauvignon, Rosso Orvietano, Vallagarina, Ravenna), HU 3 (Eger, Badacsony,
+  Kunság), BE 1 (Maasvallei's Madeleine Angevine). `tests/test_section_varieties.py`.
+  Residue: Dealurile Vrancei's §5 yield table names seven varieties the RO
+  yield-table rule does not read.
 - **A new passport claims old names.** Fetching a passport registers every
   legacy synonym it lists, so the second re-extraction found new wrong
   bindings: "Malvasia bianca" → Agostenga (#107 lists it too; 29 Italian
@@ -1448,8 +1603,11 @@ one case of four failure modes, swept corpus-wide the same day:
   the Valais règlement's "blanche" had bound Mondeuse blanche. The colour
   words of every corpus language are `_BANNED_SURFACES` (96 keys, the
   `_normalise` forms); a variety that is a colour word — Bianca, Nero — is
-  not. Pinning a passport claims its synonyms: check what a new passport
-  binds before and after.
+  not. The same goes for the Spanish season word "verano" (2026-10-24):
+  Sciacarello's passport (#10837) lists VERANO, and a climate sentence the
+  Valencia pliego parser read with its varieties put Sciacarello on Valencia
+  and its four subzonas for two months. Pinning a passport claims its
+  synonyms: check what a new passport binds before and after.
 - **One cultivar, one slug.** `fruhroter-veltliner` (CZ, HU) and
   `velteliner-rouge-precoce` carried the same VIVC 16157; the first folds
   into the second. `Veltlínské červenobílé`, which VIVC files under the same
@@ -1534,7 +1692,12 @@ rules, settled on the validator findings of 2026-10-23 (phase C):
   "Riviera ligure di Ponente Pigato"), not "bianco": IT's floor-only cards
   went from 51 to 2, and Prosecco's newly read Rosé no longer hides its
   White. A pink head is not read ("colore: dal rosa all'ambrato" is the Vin
-  Santo Occhio di Pernice of five Tuscan DOCs), nor a reflection.
+  Santo Occhio di Pernice of five Tuscan DOCs), nor a reflection; a golden or
+  amber head is white (Marsala's Oro and Ambra, "Colore dorato più o meno
+  intenso oppure giallo ambrato", whose first single document had lost its
+  White, 2026-10-24). When a document gives its link section the description's
+  title (Terre Tollesi, C 396/2021: §8 titled like §4), `route_sections`
+  takes §8 as the link.
 - **A sweetness level a document lists as a wine type is a style** — "Οίνος
   λευκός ξηρός, ημίξηρος, ημίγλυκος, γλυκός" (`gr.eniaio_engrafo.
   sweetness_type_styles`), "száraz, félédes vagy édes" (`hu.egyseges_dokumentum.
@@ -1558,6 +1721,25 @@ rules, settled on the validator findings of 2026-10-23 (phase C):
   most two tokens before or three after (`sparkling_type_styles`: "Οίνος
   λευκός ημιαφρώδης ξηρός", "ημιαφρωδών οίνων", "ΟΙΝΟΣ ΗΜΙΑΦΡΩΔΗΣ"); a
   mention with no wine word beside it is no type.
+- **A sweetness level the disciplinare states crosses to a non-stub IT card
+  (2026-10-24).** Marsala's first single document (C/2026/5127) gives its
+  sugar thresholds without the words secco / semisecco / dolce, while the
+  MASAF disciplinare's Article 6 names them; stage 04 fills only empty fields
+  of a non-stub record, so the card had lost Dry and Sweet when it stopped
+  being a stub. `_backfill_it_nonstub_from_masaf` now adds the sidecar's
+  `SWEETNESS_STYLES` (dry / semi-dry / semi-sweet / sweet) when the record
+  carries none of the four — colours and categories stay the EU document's,
+  and a record whose EU document states one level keeps it (Maremma
+  Toscana, Val d'Arno di Sopra and Venezia state "secco", so their Art. 6
+  dolce does not cross). Four records take a level — Marsala and Valcalepio
+  dry + sweet, Falerio and Rosso Piceno dry — but `dry` is a generic leaf
+  stage 04 never renders (`_DROP_STYLES`), so the visible change is the
+  Sweet pill on Marsala and Valcalepio; `masaf_sweetness` on the record,
+  the MASAF provenance in its sources. The 128 non-stub sidecars were
+  re-extracted the same day (`02f --all --include-nonstub`: Article 6 kept
+  on all 128, 25 sidecar style lists changed, two rosters — Castelfranco
+  Emilia's annex Malvasia di Schierano, Vicenza's Raboso).
+  `tests/test_it_nonstub_sweetness.py`.
 - **The floor reads the declared categories** ([scripts/_lib/wine_categories.py](scripts/_lib/wine_categories.py)).
   A wine without a colour style gets white / red from its grapes' berry colour,
   except a record that declares sparkling categories only (Crémant d'Alsace,
@@ -1573,6 +1755,45 @@ rules, settled on the validator findings of 2026-10-23 (phase C):
   Rosé had hidden its White): before a build, diff every card's styles, not
   only the sidecars — a stage-04 load + augment + style-chokepoint run without
   geometry does it in a minute.
+
+## Grape roles from the EU register fiche
+
+Where a national source lists its varieties without a principal / accessory
+split — the SI MKGP `.doc` and the 2007 pravilnik's PGI roll-up, the SK ÚPV
+§ f table, the HU termékleírás and single documents, the BG ИАЛВ spec, the
+GR ΥΠΑΑΤ spec and single documents, the RO caiet and single documents, MT,
+HR — every variety read "principal" on the card. Since 2026-10-23 (validator
+phase E, decision B) [scripts/_lib/augment/fiche_roles.py](scripts/_lib/augment/fiche_roles.py)
+gives those records the roles of the EU register's technical file
+(`raw/<cc>/register-fiches-extracted/`, `extract_register_fiches.py`): a
+variety the fiche tags MAIN (named in the single document) is principal,
+OTHER (the rest of the product specification's authorised list) accessory,
+and a card variety the fiche does not list — added to the national roster
+after the state's filing, not a main variety then — is accessory and counted
+on the card's source line ("Grape roles (EU GI register, single document,
+PDF) — 11 principal, 19 accessory per the single document · 2 added to the
+national roster since, shown as accessory"; `src_register_fiche_roles*`
+labels, `register_fiche_roles_*` source keys, `_REGISTER_FICHE_ROLES_BY_SLUG`,
+the record's `register_fiche_roles`). **Membership stays the national
+roster** — the newer, legally binding list — and the overlay needs the fiche
+to cover at least 80 % of it (`COVERAGE_MIN`): a fiche of another vintage
+(Somlói's names 5 varieties where the termékleírás names 43, Sopron's 23
+against 44, Duna-Tisza közi 41 against 67) would otherwise demote the national
+list wholesale; it is skipped and logged on the `[load] register-fiche
+roles` line. A record whose national source splits roles itself (Bela
+krajina's pravilnik, the RO yield-table additions, the GR 15 % caps) is left
+alone, CZ keeps its own rule (the fiche *is* the roster where it is narrower
+than the decree), and HR's fiches carry no split. The overlay runs after
+every national-spec augmenter, so it sees the merged roster; the card judge
+reports a fiche-only split as `defective` only where it is still missing.
+First build (2026-10-23): 134 records, 1,616 varieties to accessory, 61
+of them not listed by the fiche; 18 fiches skipped for coverage, 6 national
+splits kept, 163 fiches without a split; no roster changed membership. The
+re-judge of the four cards the validator had flagged took their 13 misleading
+findings to 5, none of them about roles on a fiche-governed card (Bela
+krajina keeps its pravilnik split and the judge's disagreement with it).
+`tests/test_fiche_roles.py` pins the gate, the flips, the unlisted count and
+the skips.
 
 ## Page format (per-AOC pages)
 
@@ -1711,9 +1932,25 @@ EU-OJ amendment publications.
 Pliego source: **EUR-Lex single-document HTML**, *not* a PDF.
 eAmbrosia's `singleDocument` field is null for every ES wine (verified
 2026-05). The canonical pliego is the EU-OJ "documento único"
-published inline as HTML and reachable via each GI's
-`publications[0].uri` (after Spanish-language URL rewrite — `/oj/spa`,
-or `legal-content/ES/TXT/HTML/?uri=…SPA`). Both the older
+published inline as HTML and reachable via the GI's newest OJ C
+publication (after Spanish-language URL rewrite — `/oj/spa`,
+or `legal-content/ES/TXT/HTML/?uri=…SPA`). **Which publication, in every
+EUR-Lex country** ([scripts/_lib/oj_publications.py](scripts/_lib/oj_publications.py),
+2026-10-24): eAmbrosia lists publications untyped and unordered, and "the
+first OJ C listed" had left 45 records on a superseded single document
+whose own list named the newer one; every stage 01 / 01b now takes the
+newest non-corrigendum OJ C by the date the register prints (else the ELI
+/ Formex number), corrigenda and OJ L after it. `amendmentsInProgressFlag`
+does not choose: an approved standard amendment is followed by no OJ L, so
+only the document's heading tells an application under opposition from an
+amendment in force (the ten flagged records of 2026-10-24 were all
+approved standard amendments). A newest OJ C that carries no single
+document — a cancellation request (Ambt Delden's C/2025/6054), a temporary
+amendment — is pinned per record in `raw/<cc>/oj-pages/manual_overrides.json`.
+The 2024/1143 template ends on "11. Otros requisitos aplicables" (GR
+"Περαιτέρω εφαρμοστέες απαιτήσεις", BG "Други основни условия", RO "Alte
+cerințe specifice"): each reader recognises it, or the link section runs
+into it and the EUR-Lex footer. Both the older
 `ti-grseq-1` (sections 1–9) and newer `oj-ti-grseq-1` (sections 1–10)
 templates are parsed; semantic role routing by Spanish title keyword
 (`zona geográfica`, `vínculo`, `variedad`) keeps downstream consumers
@@ -1801,6 +2038,35 @@ uv run scripts/es/02f_extract_national_pliegos.py --all
 Cached PDFs at `raw/es/national-pliegos/<slug>.pdf` are reused unless
 `--refresh` is passed.
 
+**The pliego's §7 vínculo grounds the terroir facts of a summary-only
+record (2026-10-24).** A single document on the 2024/1143 template carries
+only a "Resumen del vínculo" (540–760 characters on the four records that
+left their MAPA pliego for it in phase F; 50 ES parents carry a summary or a
+link under 1,000 characters), while the national pliego's "7. VÍNCULO CON
+LA ZONA GEOGRÁFICA" is the full text. `parse_link_section` in
+[scripts/_lib/es/national_pliego.py](scripts/_lib/es/national_pliego.py)
+reads it (the heading forms of 57 of the 60 cached PDFs — "7) VÍNCULO …",
+"7.- Vínculo …", "7. Vínculo con el medio", "G. VÍNCULO ENTRE …", "6.-
+Vínculo existente entre …"; the body ends at the next heading of the same
+kind or a post-link title, a lettered sub-item or a prose line opening on a
+number never ends it, page furniture dropped; Pla de Bages' bare "Vínculo",
+Catalunya and Condado de Huelva have none) and stage 02f writes it to the
+sidecar as `link_to_terroir`. ES 02d's `_resolve_lien_and_source` and stage
+04's `_carry_link` prefer it under the shared rule of
+[scripts/_lib/summary_link.py](scripts/_lib/summary_link.py)
+(`prefer_national_link`): the OJ lien `is_summary_link` (the "Resumen del
+vínculo" / "Sintesi del legame" marker in its head, or under 1,000
+characters) and the national text is at least 1.5× longer and at least
+1,000 characters — a text of the same size under a template heading never
+replaces the EU one. 48 records (29 parents, their subzonas with them —
+Rioja, Cava, Rías Baixas, Ribeiro, Monterrei …) now ground on the national
+text, the cache carrying `cahier_source_kind: national-pliego` and the PDF
+as `cahier_source_pdf_url` (the card's footer attribution), the record
+`national_pliego.link_used`. The former MAPA pliegos of 3 Riberas and Pago
+de Otazu are pinned in `manual_overrides.json`. The same rule serves Italy
+(the MASAF Article 9 against a "Sintesi del legame", see the IT 02d note).
+`tests/test_es_national_pliego_link.py`, `tests/test_summary_link.py`.
+
 When the doc-único's section-9 URL is dead (404, GVA backend timeout,
 BOE-modification-not-pliego, pdftotext-broken PDF), the curator pins a
 working replacement in `raw/es/national-pliegos/manual_overrides.json`
@@ -1810,6 +2076,21 @@ override is present the slug-keyed PDF cache is invalidated automatically
 if the existing sidecar's `source.url` disagrees with the override
 (or if no sidecar exists at all, since the cache vintage is unknown).
 Mirrors the FR pattern at `raw/inao/cahiers/manual_overrides.json`.
+Since 2026-10-24 (phase F): a link labelled as the pliego wins over the
+first PDF of the section (Condado de Huelva's document cites a map of its
+pagos first); a section-9 URL on a host that moved is relocated
+(`_RELOCATED_PREFIXES`: JCCM's `pagina.jccm.es/agricul/…` →
+`ficheroscomunes.castillalamancha.es/agricultura-dop/`) and a cached PDF
+whose sidecar URL disagrees is re-fetched; an `SSLError` falls back to
+curl (Python's certifi lacks the intermediate certificate
+`www.mapa.gob.es` serves). INCAVI moved its files from
+`.content/005-normativa/…` to `content/dam/incavi/home/normativa/plecs-de-condicions-de-les-do-catalanes/<do>/`
+while every Catalan single document still cites the old path: the nine
+Catalan DOs (Cataluña, Conca de Barberà, Costers del Segre, Empordà,
+Montsant, Penedès, Pla de Bages, Priorat, Tarragona) are pinned on the new
+location. A 2024/1143 single document lists every authorised variety, so
+for those records the sidecar adds no pill — it is the cited source; ten
+records find no PDF at all (Arlanza cites ITACyL's listing page).
 
 ### ES geometry resolution chain (stage 04)
 
@@ -1891,7 +2172,9 @@ in `geom_source` so the panel can attribute correctly):
    Pobra de Trives"), nor the Castilian plurals ("los Villares"), and a
    piece that is only an article is never fused into a compound ("Vielha
    e Mijaran, Les y Bossòst" keeps Les, the one municipio whose whole
-   name is an article). In the resolver
+   name is an article). A Castilian "ñ" name that GISCO spells with the
+   Valencian / Catalan "ny" is retried in that spelling (Valencia
+   Valentino's "Picaña" is GISCO's "Picanya", 2026-10-24). In the resolver
    ([scripts/_lib/es/geometry.py](scripts/_lib/es/geometry.py)
    `_reread_out_of_context`, 2026-09-25) an exact hit that is the only
    name in its province while the list established two or more others is
@@ -2327,11 +2610,24 @@ IT-specific notes:
   ~125 non-stub wines, and merges the MASAF sidecar's Article 9
   body in-memory for the ~385 MASAF-augmented stubs (mirrors stage
   04's `augment_it_records_with_masaf`), so both paths feed a single
-  Italian-language extraction prompt. IT 02e targets en/fr/es/nl (FR
-  + ES are translation targets, not sources). Cache files land in
-  the shared `raw/terroir-facts/` directory with `country: "it"` to
-  distinguish them from FR/ES/PT records. Sottozone are skipped —
-  they inherit the parent's bullets at the rendering layer.
+  Italian-language extraction prompt. **A non-stub whose single document
+  carries only the "Sintesi del legame" grounds on the Article 9 too**
+  (2026-10-24, the IT sibling of the ES decision of the same day):
+  `_resolve_lien_and_source` and stage 04's
+  `_backfill_it_nonstub_from_masaf` take the sidecar's text under
+  `summary_link.prefer_national_link` (the marker or under 1,000
+  characters, the Article 9 at least 1.5× longer; the record carries
+  `masaf_link`). The 2024/1143 template had left 39 non-stub records on a
+  600–1,500-character summary — Marsala (1,286 against 4,522; three
+  facts), Etna (702 against 13,671), Montefalco Sagrantino (625 against
+  17,852), Friuli Colli Orientali (738 against 26,646) — and 15 more with
+  an empty EU link already read the Article 9; Terre Abruzzesi's
+  15 k-character "Sintesi" against a 19 k Article 9 stays the EU text.
+  IT 02e targets en/fr/es/nl (FR + ES are translation targets, not
+  sources). Cache files land in the shared `raw/terroir-facts/` directory
+  with `country: "it"` to distinguish them from FR/ES/PT records.
+  Sottozone are skipped — they inherit the parent's bullets at the
+  rendering layer.
 
 ### Sottozone and Menzioni / Unità Geografiche Aggiuntive
 
@@ -3275,10 +3571,12 @@ add the EU-OJ narrative sections stage 02 parses directly).
 
 ## Hungary pipeline (`scripts/hu/`)
 
-Country #8. **41 wine GIs (35 DOP + 6 PGI)** from eAmbrosia; the
-profile sits between IT and SI/HR — 26 of 41 wines carry a fetchable
-EUR-Lex EGYSÉGES DOKUMENTUM (63 % vs. SI's 6 %), and 38 of 41 land on
-the map (92.7 %) via Bétard 2022 PDO match or PGI region-union.
+Country #8. **43 wine GIs (37 DOP + 6 PGI)** from eAmbrosia (41 at
+first; Mura / Murai joined on 2026-09-20, Nivegy-völgy / Nivegy-völgyi,
+PDO-HU-02816, Reg. (EU) 2026/2105, on 2026-10-24); the profile sits
+between IT and SI/HR — 30 of 43 wines carry a fetchable EUR-Lex
+EGYSÉGES DOKUMENTUM, and every one lands on the map via Bétard 2022
+PDO match, PGI region-union or the single document's település list.
 Structurally the closest sibling to SI: documento-único HTML, Latin
 script, Bétard PDO geometry, PGI = region-union; no national-spec
 parser branch in v1.
@@ -3332,7 +3630,13 @@ HU-specific notes:
   bodies. `extract_sections` therefore walks headers in document
   order with a monotonic state machine and skips any candidate
   top-level header whose title starts with a known nested-subsection
-  prefix (`Bor -`, `Pezsgő`, `Classicus`, `Likőrbor`, …).
+  prefix (`Bor -`, `Pezsgő`, `Classicus`, `Likőrbor`, `Siller`,
+  `Fehérbor`, …). The 2024/1143 template (2026-10-24, phase F) adds a
+  "3. Az az ország, amelyhez …" decoy the area routing now skips, and
+  names its wine types "Bor – Fehér" / "Bor – Vörös" / "Bor – Rozé", read
+  as colours (`_TYPE_COLOUR_RE`); a template whose types carry no colour
+  word (Nivegy-völgy's "Hegybor", "Dűlős bor", described as yellow) gets
+  the floor's colours from its roster.
 - The grape-variety section lists varieties one per line as
   `Canonical name – Synonym, Synonym` (with an en-dash); stage 02
   splits on the bullet, then on a plain hyphen for `Name - synonym`.
@@ -3398,10 +3702,13 @@ Per HU record, in priority order (`geom_source` records the choice):
    the union of its member-PDO polygons (the SI PGI pattern). Member
    tables live in `HU_PGI_MEMBER_PDOS`, curated from the Hungarian
    wine-law region structure.
-3. **`stub-no-geometry`** — the 3 newer PDOs (Etyeki Pezsgő, Kőszeg,
-   Füred) post-date the Bétard 2022 snapshot. Phase 2: parse the
-   Hungarian commune list from the Egységes Dokumentum + reuse
-   Eurostat GISCO LAU for HU comune polygons.
+3. **`gisco-commune-union`** — the PDOs that post-date the Bétard 2022
+   snapshot (Etyeki Pezsgő, Kőszeg, Füred, Mura, Nivegy-völgy): the
+   single document's area section names the települések
+   ([scripts/_lib/hu/commune.py](scripts/_lib/hu/commune.py)), unioned
+   from Eurostat GISCO LAU 2024 `HU_*` polygons (the RO / BG commune-list
+   pattern).
+4. **`stub-no-geometry`** — last resort; not hit.
 
 ### Curator workflow for HU wines without an OJ publication
 
@@ -3466,7 +3773,19 @@ Romanian, Latin script with diacritics, Bétard PDO geometry — with
   Burgund Mare / 17 000 kilograme …" on Dealurile Olteniei; 14 of the 46
   documents carry one — and `add_yield_table_varieties` adds them as
   accessories, exact lexicon names only, the row's prose never reported as an
-  unknown (2026-10-23: Olteniei + 3, Colinele Dobrogei + 8, Sebeș-Apold + 2).
+  unknown (2026-10-23: Olteniei + 3, Colinele Dobrogei + 8, Sebeș-Apold + 2;
+  Colinele Dobrogei's 2025 document lists its eight in § 7 itself, so they
+  are principal since 2026-10-24). The 2024/1143 template prints the table
+  as the sub-block "(b) Producții maxime" of a section 5 titled "Practici
+  oenologice", and the table is found by that heading too (11 documents;
+  Drăgășani's of 2026 names Sauvignon, Merlot, Pinot noir, Burgund mare and
+  Tămâioasă românească only there, 2026-10-24). The slicer is forward-only and keeps the
+  first header of each number whose title is a role title (2026-10-24):
+  Cotnari's C/2025/821 nests "1. Vin alb …" blocks and yield rows "6. cules
+  târziu …" that the last-wins reading had let overwrite sections 1–6, and
+  the 2024/1143 template's "Alte cerințe specifice" now ends the link. The
+  commune list splits before a dash + "com." / "comuna" ("Oraş Cernavodă -
+  comuna Cernavodă", Colinele Dobrogei and Murfatlar).
 - **ONVPV national-spec layer** (stage 01c/02f) — the 14 grandfathered
   wines are augmented from the Oficiul Național al Viei și Produselor
   Vitivinicole caiet de sarcini (see the dedicated section below). This
@@ -4016,7 +4335,10 @@ Per GR record, in priority order (`geom_source` records the choice):
    "(οικισμοί …)" are dropped; a decree's abbreviations ("Δ.Δ", "Κ.
    Τιθορέας", "Αγ. Άννης", "Αρχ. Ολυμπίας"), a Latin letter typed inside
    a Greek word ("Μυρoδάτου") and a hyphenated line break ("Πύρ-γου")
-   are read as written. Name matching: exact on the normalised name; a
+   are read as written, and so is a stray full stop after a tier word
+   ("… και Δένδρων Τυρνάβου της Δημοτικής Ενότητας. Τυρνάβου …", Τύρναβος'
+   2026 document, which had cost it the community — `_STRAY_TIER_STOP_RE`,
+   Ενότητας / Κοινότητας only). Name matching: exact on the normalised name; a
    trailing qualifier ("Μαρκοπούλου Αττικής", "Παλλήνη Αττικής" — the
    NUTS name in any case); then, inside the spec's NUTS unit, a
    **phonetic** key (η ι υ ει οι → ι, ο ω → ο, αι → ε, double consonants
@@ -4160,7 +4482,26 @@ corpus is filled from the ΥΠΑΑΤ national spec via a parallel layer
   real header (`read_sections_and_grapes`, shared with the CY parser) — a
   count never decides between a precise reading and a loose one. 21 records
   switched to the strict sections (their link narrative whole instead of cut
-  at a sub-heading, so their terroir caches are stale — CURATOR_TODO). A
+  at a sub-heading; re-extracted in phase D). **The link ends at the
+  template's trailing sections** (2026-10-24, `POST_LINK_ROLE`): "8. ΑΛΛΕΣ
+  ΠΡΟΫΠΟΘΕΣΕΙΣ", "9. ΕΦΑΡΜΟΣΤΕΕΣ ΑΠΑΙΤΗΣΕΙΣ", the control authorities, the
+  application form ("ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ", "ΓΛΩΣΣΑ ΑΙΤΗΣΗΣ", "ΣΥΝΔΕΣΜΟΣ ΜΕ ΤΗΝ
+  E-BACCHUS") and the ministry letterhead carried no role, so the link ran
+  to the end of the document in 123 of the 151 GR / CY sidecars (41 by more
+  than 1,000 characters), and the form's "Δεσμός: http://…" re-opened it by
+  the bare link keyword. A capitalised header of those sections — tested
+  before the role keywords once the link has opened, under the strict
+  header rules in both passes — opens a post-link role that no reader
+  consumes (`parse_styles` reads `additional_conditions` for the categories
+  a labelling rule names, and the phase C styles stay as settled), and
+  after it nothing re-opens a role. Every link change was a pure prefix
+  cut; no roster, style or area unit moved (27 area texts lost the legal
+  block a re-opened area header had swallowed — only their `decree_year`
+  shifted, all still before the 2011 tier threshold) and the stage-04
+  prose scan loses no slug; the terroir caches of the 123 were re-run
+  (`gr-anchor-2026-10-24`). The salvage window's end anchors carry the same
+  headers in folded form — its "προϋποθεσεισ" anchor had kept its
+  dialytika and could never match. `tests/test_gr_spec_link_end.py`. A
   grape section written as sentences is read as enumerations ("… των
   ποικιλιών Ασύρτικο, Αθήρι, … και Malvasia di Candia aromatica", every one
   in the section, the trailing clause cut, a parenthetical synonym taken for
@@ -4259,7 +4600,16 @@ DE-specific notes:
   [scripts/_lib/de/einziges_dokument.py](scripts/_lib/de/einziges_dokument.py)
   is structurally identical to AT's; tables ship as a sibling so future
   German-specific quirks land in the right country namespace without
-  churning AT code.
+  churning AT code. The first such quirk (2026-10-24): the 2024/1143
+  template opens each wine of section 6 on a product line, "Weinbauerzeugnis"
+  then "Wein, weiß" / "Qualitätswein rot" / "Perlwein rosé, Blanc de
+  Noir(s)", whose colour adjective `PRODUCT_COLOUR_WORDS` reads (Rheinhessen
+  and Landwein Main had read none); and a style word its own sentence
+  negates with "kein" is not a style ("darf keine Perlage … entwickeln, der
+  den Wein in die Kategorie Perlwein einordnet"; "nicht" negates the verb —
+  Rheinburgen's "nicht den für die Angabe „lieblich“ höchstzulässigen Wert
+  übersteigen" allows a lieblich wine). The AT table has neither yet; no AT
+  record is on that template.
 - The section-7 body lists varieties one per line as `Canonical name -
   Synonym, …` (e.g. `Spätburgunder - Pinot Noir, Blauburgunder`). The
   German wine corpus has the most prolific set of **breeding-station
@@ -5177,7 +5527,10 @@ pin every CZ wine's authorised varieties and delimited area:
 
 Fetch source: zakonyprolidi.cz (eSbírka is a JS SPA; the Sbírka PDF
 is image-scanned and would require OCR). Canonical attribution:
-Sbírka zákonů částka 32/2017 + částka 92/2010. Czech law text is
+Sbírka zákonů částka 32/2017 + částka 92/2010, linked on the card as
+`https://e-sbirka.gov.cz/sb/2017/88` and `…/sb/2010/254` (`SOURCES`
+`canonical_url`; the old `aplikace.mv.gov.cz` viewer has answered 404 since
+the e-Sbírka migration, 2026-10-24). Czech law text is
 public per **§3(d) of the Czech Copyright Act** (úřední dílo); the
 zakonyprolidi.cz layout is © AION CS but we only extract the law
 text, not the layout.
@@ -5850,7 +6203,10 @@ independently resolves so multi-word names never split. No manual
 override and no Playwright are needed — the 2018 CELEX is the index's
 own source. ambt-delden = 5 varieties, geo area, 6.8 KB
 link-to-terroir (9 terroir facts). v1: **21/21 NL wines extract,
-0 stubs.**
+0 stubs.** Since its cancellation (Reg. (EU) 2026/1068) the register's
+newest OJ C for Ambt Delden is the cancellation request C/2025/6054, which
+the newest-OJ-C rule would fetch: the 2018 document is pinned in
+`raw/nl/oj-pages/manual_overrides.json` (2026-10-24).
 
 | Script | Reads | Writes |
 |---|---|---|
@@ -6314,7 +6670,18 @@ run, re-run, **resumes** the in-flight batch instead of resubmitting
 `--batch` is **incremental** — it enumerates only the stale / missing
 entries and never resubmits an already-processed one — and pass 2 matches
 answers by content, not call order (runs are single-threaded all the
-same).
+same). A stage that asks a second question on reading an answer — the 20
+non-FR 02d scripts' second reading of an empty sub-section
+(`terroir_prompts.should_retry`) — passes `follow_ups=True` (2026-10-24):
+the answers are replayed first through a probe provider of kind
+`collecting` (the stage writes to its scratch dir, as in pass 1), the
+`chat(..., follow_up=True)` requests the stage issues on reading them are
+submitted as one more batch (sidecar `<stage>.r1.json`), and the merged
+answers feed the replay that writes; the main batch's answers wait in
+`<stage>.results.json` meanwhile, so an interruption during the follow-up
+batch resumes without resubmitting them (`tests/test_batch_follow_ups.py`).
+A `follow_up=True` request with no answer returns `""` instead of raising,
+so the stage's first answer stands; without the flag nothing changes.
 
 Default models are **per stage** (`providers.STAGE_DEFAULTS`; the split
 decided 2026-09-14 after the paired experiments in

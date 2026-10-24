@@ -1,0 +1,30 @@
+{
+  "_doc": "Per-record binding of a variety surface the single document writes as the Spanish state register's name for a cultivar the DO's own regulator (INCAVI) names otherwise — keyed by the ES record slug (a subzona is a deep copy of its parent's parsed roster, so a pin on the parent reaches it) -> normalised surface (lower-case, accents folded) -> {slug, name, reason, source, verified}. The one roster line \"MERSEGUERA - SUMOLL BLANCO\" otherwise gives two pills (VIVC keeps Merseguera #7660 and Sumoll blanco #12073 apart). A pin whose slug is not in the lexicon fails tests/test_es_grape_context.py. The IT sibling is scripts/_lib/it/grape_context_overrides.json.",
+  "penedes": {
+    "merseguera": {
+      "slug": "sumoll-blanco",
+      "name": "Sumoll blanco",
+      "reason": "The single document's §7 writes \"MERSEGUERA - SUMOLL BLANCO\": MAPA's variety list (RD 684/2026) gives Merseguera the Catalan synonym Sumoll Blanco, VIVC keeps #7660 and #12073 apart, and INCAVI's pliego names the variety \"Sumoi blanco\" beside Chenin — the line is one entry, the variety grown is Sumoll blanc.",
+      "source": "INCAVI, Plec de condicions DO Penedès (control de canvis), §6 varietats: \"Riesling, Gewurztraminer, Chenin, Sumoi blanco, Viognier, Xarel.lo rosado y Forcada\"",
+      "verified": "2026-10-24"
+    }
+  },
+  "cataluna": {
+    "merseguera": {
+      "slug": "sumoll-blanco",
+      "name": "Sumoll blanco",
+      "reason": "§7 writes \"MERSEGUERA - SUMOLL BLANCO\" (the state register's synonym pair); INCAVI's pliego lists \"Sumoll blanco (A)\" and no Merseguera.",
+      "source": "INCAVI, PC DO Catalunya modif. 6 (AM07, 2023), variedades: \"Chenin blanc (A)\", \"Sumoll blanco (A)\", \"Sumoll tinto (A)\"",
+      "verified": "2026-10-24"
+    }
+  },
+  "conca-de-barbera": {
+    "merseguera": {
+      "slug": "sumoll-blanco",
+      "name": "Sumoll blanco",
+      "reason": "§7 writes \"MERSEGUERA - SUMOLL BLANCO\"; INCAVI's pliego lists \"Sumoll blanco\" and no Merseguera.",
+      "source": "INCAVI, Conca de Barberà modificació PC AM05 (2024), variedades: \"Chenin\", \"Sumoll blanco\", \"Sumoll tinto\"",
+      "verified": "2026-10-24"
+    }
+  }
+}

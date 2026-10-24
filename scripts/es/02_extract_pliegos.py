@@ -40,7 +40,9 @@ import re
 import shutil
 import subprocess
 import sys
+from dataclasses import replace
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 
 from tqdm import tqdm
@@ -51,13 +53,17 @@ from _lib.es.national_pliego import _split_concatenated  # noqa: E402
 from _lib.es.subzona import extract_subzonas  # noqa: E402
 from _lib.extract_index import is_partial, write_index  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
+    _normalise,
+    current_pliego_context,
     flush_unknowns_queue,
     match_variety,
     set_pliego_context,
 )
 from _lib.grape_lexicon import (  # noqa: E402
+    DEFAULT_COLOUR,
     GRAPE_BLOCKLIST,
 )
+from _lib.section_varieties import add_section_varieties  # noqa: E402
 
 INDEX_IN = ROOT / "raw" / "es" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "es" / "oj-pages"
@@ -479,6 +485,38 @@ _FOOTNOTE_MARKER_RE = re.compile(r"\[\d+\]")
 _OIV_COLOUR_LETTERS = frozenset({"B", "N", "G", "Rs", "Rg", "R"})
 
 
+# A surface the single document writes as the state register's name for a
+# cultivar the DO's own regulator names otherwise ("MERSEGUERA - SUMOLL
+# BLANCO" on the Catalan documents, where INCAVI names Sumoll blanc and VIVC
+# keeps the two apart) is pinned per record — the IT `grape_context_overrides`
+# pattern, 2026-10-24. A pin changes a binding only for the record it names.
+CONTEXT_OVERRIDES_PATH = ROOT / "scripts" / "_lib" / "es" / "grape_context_overrides.json"
+
+
+@lru_cache(maxsize=1)
+def context_pins() -> dict[str, dict[str, dict]]:
+    try:
+        data = json.loads(CONTEXT_OVERRIDES_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {k: v for k, v in data.items() if not k.startswith("_") and isinstance(v, dict)}
+
+
+def _apply_context_pin(hit, surface: str):
+    if hit is None:
+        return hit
+    table = context_pins().get(current_pliego_context() or "")
+    if not table:
+        return hit
+    pin = table.get(_normalise(surface))
+    if not pin or pin.get("slug") in (None, hit.slug):
+        return hit
+    return replace(
+        hit, slug=pin["slug"], name=pin.get("name") or hit.name,
+        colour=DEFAULT_COLOUR.get(pin["slug"], hit.colour) or hit.colour, method="context-pin",
+    )
+
+
 def _normalise_grape_entry(
     name: str, ambient_colour: str | None, *, allow_lowercase: bool = False,
 ) -> dict | None:
@@ -529,7 +567,7 @@ def _normalise_grape_entry(
     if not first[0].isupper() and not allow_lowercase:
         return None
 
-    result = match_variety(name, ambient_colour=ambient_colour or None)
+    result = _apply_context_pin(match_variety(name, ambient_colour=ambient_colour or None), name)
     if result is None or result.slug in GRAPE_BLOCKLIST:
         return None
     return {"slug": result.slug, "name": result.name.lower(), "colour": result.colour}
@@ -890,10 +928,15 @@ def parse_styles_es(sections: dict[str, str], titles: dict[str, str]) -> list[st
     # that the singular "vino " missed — they carry the "Fino:" /
     # "Amontillado:" descriptors. The variety section ("…variedades de
     # uva de vinificación") has no "vinos " substring, so it stays out.
+    # The Reg. (EU) 2024/1143 template titles its variety section
+    # "Indicación de la variedad o variedades de uva de las que procede el
+    # vino o vinos": "vino " let it in, and its "Palomino Fino" made
+    # Manzanilla de Sanlúcar a Fino (C/2026/4513).
     descr_keys = {k for k, t in titles.items()
                   if any(kw in (t or "").lower()
                          for kw in ("descripción", "descripcion", "tipos",
-                                    "vino ", "vinos "))}
+                                    "vino ", "vinos "))
+                  and "variedad" not in (t or "").lower()}
     descr_blob = " ".join(sections.get(k, "") for k in descr_keys) or body
     for pat, slugs in _STYLE_BODY_PATTERNS:
         if pat.search(descr_blob):
@@ -912,8 +955,13 @@ def parse_styles_es(sections: dict[str, str], titles: dict[str, str]) -> list[st
             found.add("sweet")
     gate_blob = body + " " + " ".join(titles.values())
     if _SHERRY_GATE.search(gate_blob):
+        # The protected name states the type where the description no
+        # longer does ("Manzanilla - Sanlúcar de Barrameda": the 2024/1143
+        # description, C/2026/4513, names it nowhere).
+        name_blob = " ".join(sections.get(k, "") for k, t in titles.items()
+                             if (t or "").lower().startswith(("nombre", "denominación")))
         for pat, slugs in _SHERRY_SUBSTYLE_PATTERNS:
-            if pat.search(descr_blob):
+            if pat.search(descr_blob) or pat.search(name_blob):
                 found.update(slugs)
     # Colour detection scans the full pliego: the explicit "vinos X"
     # / colour-list / line-start-header regexes are unambiguous enough
@@ -1215,6 +1263,7 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
                  oj_meta: dict) -> dict:
     routed = route_sections(sections, titles)
     grapes = parse_grapes(routed.get("grape_varieties", ""))
+    add_section_varieties(grapes, routed, wine["name"])
     styles = parse_styles_es(sections, titles)
     return {
         "country": "es",

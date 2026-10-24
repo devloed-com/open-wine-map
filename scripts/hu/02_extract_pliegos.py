@@ -49,6 +49,7 @@ from _lib.hu.egyseges_dokumentum import (  # noqa: E402
     sweetness_styles,
 )
 from _lib.hu.region import derive_region  # noqa: E402
+from _lib.section_varieties import add_section_varieties  # noqa: E402
 
 INDEX_IN = ROOT / "raw" / "hu" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "hu" / "oj-pages"
@@ -102,6 +103,14 @@ _NESTED_TITLE_PREFIXES = (
     "nem engedélyezett", "nem engedelyezett",
     "a szőlőművelés", "a szolomuveles",
     "a szőlő minimális", "a szolo minimalis",
+    # The wine-type rows Mátra's single document (OJ C/2025/5009) numbers
+    # inside 5.a) — "6. Siller bor" had been taken for top-level 6 and the
+    # real "6. Körülhatárolt földrajzi terület" rejected as a duplicate.
+    "siller", "fehérbor", "feherbor", "fehér bor", "feher bor",
+    "rozé bor", "roze bor", "rozébor", "rozebor",
+    "vörösbor", "vorosbor", "vörös bor", "voros bor",
+    "muskotály", "muskotaly", "késői szüretelésű", "kesoi szuretelesu",
+    "tiltott borászati", "tiltott boraszati",
 )
 
 
@@ -308,6 +317,18 @@ def parse_grapes(section_text: str) -> dict:
     return out
 
 
+# A wine type written as category – colour, "1. Bor – Fehér", "Bor – rozé",
+# "Szén-dioxid hozzáadásával készült gyöngyözőbor – vörös" (Mátra, OJ
+# C/2025/5009): the colour table's "fehérbor" / "fehér bor" never matches it,
+# and a document stating its rosé alone switches the stage-04 grape floor off.
+_TYPE_COLOUR_RE = re.compile(
+    r"\b(?:bor|gyöngyözőbor|gyongyozobor|pezsgő|pezsgo)\s*[–—-]\s*(fehér|feher|vörös|voros|rozé|roze)\b",
+    re.I,
+)
+_TYPE_COLOUR = {"fehér": "blanc", "feher": "blanc", "vörös": "noir", "voros": "noir",
+                "rozé": "rose", "roze": "rose"}
+
+
 def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
     """Detect style tags from the description + additional-conditions
     sections. Hungarian colour adjectives + Tokaji ladder markers."""
@@ -331,6 +352,8 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
     for kw, colour_slug in COLOUR_BY_KEYWORD.items():
         if re.search(rf"\b{re.escape(kw)}\b", blob, re.I):
             found.add(colour_slug)
+    for m in _TYPE_COLOUR_RE.finditer(blob):
+        found.add(_TYPE_COLOUR[m.group(1).lower()])
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(blob):
             found.add(slug)
@@ -350,6 +373,7 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
                  oj_meta: dict) -> dict:
     routed = route_sections(sections, titles)
     grapes = parse_grapes(routed.get("grape_varieties", ""))
+    add_section_varieties(grapes, routed, wine["name"])
     styles = parse_styles(sections, titles)
     geo_area = routed.get("geo_area", "")
     geo_communes = parse_commune_list(geo_area) if geo_area else []

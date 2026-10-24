@@ -206,7 +206,14 @@ GRAPE_ALIAS = {
     # (Chrome-extension VIVC + EU DG-AGRI + MAPA + Canary Wine + Wine
     # Grapes cross-check, 2026-05-19). Notes for each:
     "almuneco": "listan-negro",                # VIVC #14943 LISTAN NEGRO; #6860 LISTAN PRIETO (=Mission/País) is a separate variety despite carrying ALMUNECO as a legacy synonym
-    "agudelo": "godello",                      # VIVC #12953 GOUVEIO (= Godello); the OJ's "AGUDELO - CHENIN BLANC" equation is an ampelographic error VIVC carries as a legacy ES synonym on #2527
+    # 2026-10-24: Agudelo is Chenin blanc — MAPA's variety list (RD 684/2026,
+    # printed 2026-09-08) gives "Agudelo (B.)" the synonym Chenin Blanc in
+    # ARA / CAT / GAL and Godello none; VIVC flags AGUDELO as the official
+    # Spanish name on Chenin blanc #2527 (unflagged on Gouveio #12953); the
+    # Betanzos microsatellite study (OENO One 2011) found Agudelo = Chenin
+    # Blanc; and the Galician documents list Godello beside "Chenín blanco
+    # (Agudelo)". The 2026-05-19 fold to godello was wrong.
+    "agudelo": "chenin",
     "blasco": "tinto-velasco",                 # VIVC #17353 TINTO VELASCO; #304 ALICANTE BOUSCHET also lists BLASCO as a synonym (VIVC duplication) — alias pins it to the correct variety
     "bastardo-negro": "trousseau",             # VIVC #12668 TROUSSEAU NOIR (= Merenzao); distinct from baboso-negro (= Alfrocheiro) despite the Canarian pliegos' synonymy claim
     "crudijera": "moravia-dulce",              # VIVC #23166 MORAVIA DULCE (CRUJIDERA synonym; "Crudijera" in La Mancha/Manchuela is a d↔j metathesis)
@@ -443,6 +450,22 @@ GRAPE_ALIAS = {
     # Malvasia cluster — multiple distinct cultivars sharing the name
     "malvasia-istriana": "malvasia-istriana",
     "malvasia-bianca-lunga": "malvasia-bianca-lunga",
+    # 2026-10-24: the spellings VIVC #7262 MALVASIA BIANCA LUNGA vouches for
+    # fold into the prime's slug (MALVASIA DEL CHIANTI, MALVASIA TOSCANA,
+    # LUNGA, the Greek PAVLOS). The bare "Malvasia bianca" keeps a slug of
+    # its own, with no VIVC bracket: the Italian register carries "Malvasia
+    # bianca" as an entry beside "Malvasia bianca lunga" (the Calabria,
+    # Campania and Sicilia registers list it), and the name is a synonym of
+    # both #7262 and Malvasia bianca di Candia #23555 — pinned `false` in
+    # raw/vivc/slug_overrides.json (the Veltlínské červenobílé precedent).
+    "malvasia-bianca": "malvasia-bianca",
+    "malvasia-del-chianti": "malvasia-bianca-lunga",
+    "malvasia-toscana": "malvasia-bianca-lunga",
+    "malvasia-bianca-di-toscana": "malvasia-bianca-lunga",
+    "malvasia-bianca-toscana": "malvasia-bianca-lunga",
+    "malvasia-lunga": "malvasia-bianca-lunga",
+    "malvasia-lunga-bianca": "malvasia-bianca-lunga",
+    "pavlos": "malvasia-bianca-lunga",            # GR Zakynthos "Pavlos B": VIVC #7262 synonym PAVLOS / PAULOS
     "malvasia-bianca-di-candia": "malvasia-di-candia",
     "malvasia-di-candia": "malvasia-di-candia",
     "malvasia-di-candia-aromatica": "malvasia-di-candia-aromatica",
@@ -2148,6 +2171,14 @@ GRAPE_ALIAS = {
     "rosa": "rosa",  # VIVC #22422 ROSA (noir), the VÚVV Bratislava crossing the SK §f tables list; a banned colour word for the matcher, bound only as a whole roster cell (COLOUR_WORD_VARIETIES)
     "muscat-a-petits-grains-roses": "muscat-a-petits-grains-roses",  # VIVC #8186 — the FR "muscat à petits grains Rs" entry (COLOUR_QUALIFIED_SLUGS)
     "muscat-a-petits-grains-rouges": "muscat-a-petits-grains-rouges",  # VIVC #8248 — the "… Rg" entry
+    # 2026-10-24, phase F: the Larnaka and Lefkosia single documents of 2026
+    # list "Malvasia Grossa" bare, beside Malvasia Bianca, Malvasia Lunga and
+    # Malvasia di Candia. VIVC files the name under four primes (live search
+    # 2026-10-24): SIRIA #2742, MALVASIA DUBROVACKA #7266 and VERMENTINO
+    # #12989 (all white) and a black MALVASIA GROSSA #7268 of its own (Spain).
+    # File order had bound it to Síria. Own slug, no passport (pinned false),
+    # no colour: neither document gives one.
+    "malvasia-grossa": "malvasia-grossa",
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -2233,6 +2264,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "loureira": "blanc",
     "alarije": "blanc",
     "merseguera": "blanc",
+    "sumoll-blanco": "blanc",                   # VIVC #12073 SUMOLL BLANCO (the Catalan pin, 2026-10-24)
     "moll": "blanc",
     "planta-nova": "blanc",
     "moscatel-de-alejandria": "blanc",
@@ -2330,6 +2362,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "albarola": "blanc",
     "malvasia-istriana": "blanc",
     "malvasia-bianca-lunga": "blanc",
+    "malvasia-bianca": "blanc",
     "malvasia-di-candia": "blanc",
     "malvasia-di-candia-aromatica": "blanc",
     "malvasia-di-basilicata": "blanc",

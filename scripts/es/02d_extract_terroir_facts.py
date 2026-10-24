@@ -40,6 +40,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, llm_json, providers, terroir_verbatim  # noqa: E402
+from _lib.es.national_pliego import is_summary_link, prefer_national_link  # noqa: E402
 from _lib.prompt_cache import cached_system  # noqa: E402
 from _lib.terroir_cache import write_source_cache  # noqa: E402
 from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
@@ -47,9 +48,16 @@ from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
 from _lib.terroir_feedback import with_feedback  # noqa: E402
 from _lib.terroir_interactions import earn_interactions  # noqa: E402
 from _lib.terroir_normalize import normalize_facts  # noqa: E402
-from _lib.terroir_prompts import with_style_rules  # noqa: E402
+from _lib.terroir_prompts import (
+    ask_line,
+    product_topics,
+    should_retry,
+    sub_section_cap,
+    with_style_rules,
+)
 
 EXTRACTED = ROOT / "raw" / "es" / "pliegos-extracted"
+NATIONAL_PLIEGOS = ROOT / "raw" / "es" / "national-pliegos-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "es"
 CACHE_DIR = ROOT / "raw" / "terroir-facts"
 MANIFEST = CACHE_DIR / "manifest-es.json"
@@ -85,7 +93,7 @@ SUBSECTIONS = [
     {
         "key": "produit",
         "label": "Características del producto (perfil sensorial)",
-        "topics": "colores, aromas, estructura, guarda, perfil sensorial de los vinos",
+        "topics": product_topics("es"),
         "max_bullets": 2,
     },
     {
@@ -131,7 +139,7 @@ Lector destinatario: aficionado al vino o sumiller informado, interesado en las 
 ═══ FUENTE 1: Resumen Wikipedia (secciones pertinentes) ═══
 {wiki_hint}
 
-═══ FUENTE 2: Texto del pliego (en el mensaje del usuario abajo) ═══
+═══ FUENTE 2: Texto del pliego (dado al principio mismo de esta instrucción, antes de estas reglas) ═══
 
 Sub-sección tratada: {label}
 Categorías a privilegiar: {topics}
@@ -239,8 +247,41 @@ def _ground_facts(
 # ───────────────────────────────────────────────────────────── core loop ──
 
 
+def _resolve_lien_and_source(rec: dict) -> tuple[str, dict]:
+    """Terroir-source resolution. A single document on the 2024/1143 template
+    carries only the "Resumen del vínculo" (540–760 characters on the four
+    records that left their MAPA pliego for it on 2026-10-24; 50 ES parents
+    carry a summary or a link under 1,000 characters). When the national
+    pliego's §7 vínculo is in the stage-02f sidecar (`link_to_terroir`) and
+    is the fuller text, the facts ground on it — the GR / BG / RO
+    national-spec pattern; stage 04's `augment_es_records_with_national_
+    pliegos` carries the same text, so 02d and the map agree."""
+    lien = rec.get("link_to_terroir") or ""
+    src = rec.get("source") or {}
+    eu_url = src.get("final_url") or src.get("source_url") or ""
+    eu = (lien, {"pdf_url": eu_url, "kind": "eu-oj"})
+    if not rec.get("slug") or not is_summary_link(lien):
+        return eu
+    pliego_slug = (rec.get("parent_slug") if rec.get("is_sub_denomination") else rec["slug"]) or rec["slug"]
+    sidecar_path = NATIONAL_PLIEGOS / f"{pliego_slug}.json"
+    if not sidecar_path.exists():
+        return eu
+    try:
+        sc = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return eu
+    ns_lien = sc.get("link_to_terroir") or ""
+    if not prefer_national_link(lien, ns_lien):
+        return eu
+    return ns_lien, {
+        "pdf_url": (sc.get("source") or {}).get("url") or "",
+        "kind": "national-pliego",
+    }
+
+
 def collect_targets() -> list[dict]:
-    """Return ES parent records (skipping DGCs and stubs and short pliegos)."""
+    """Return ES parent records (skipping DGCs and stubs and short pliegos),
+    each with its resolved terroir text and `_terroir_source`."""
     out = []
     for jp in sorted(EXTRACTED.glob("*.json")):
         if jp.name.startswith("_"):
@@ -248,15 +289,17 @@ def collect_targets() -> list[dict]:
         rec = json.loads(jp.read_text(encoding="utf-8"))
         if rec.get("is_sub_denomination") or rec.get("stub"):
             continue
-        lien = rec.get("link_to_terroir") or ""
+        lien, prov = _resolve_lien_and_source(rec)
         if len(lien) < MIN_LIEN_CHARS:
             continue
+        rec["link_to_terroir"] = lien
+        rec["_terroir_source"] = prov
         out.append(rec)
     return out
 
 
 def _ask_line(label: str) -> str:
-    return f"Sub-sección a tratar: {label}"
+    return ask_line("es", label)
 
 
 def _document_block(lien_text: str) -> str:
@@ -274,7 +317,7 @@ def _process_subsection(
         wiki_hint=wiki_hint or "(sin resumen Wikipedia disponible)",
         label=sub["label"],
         topics=sub["topics"],
-        max_bullets=sub["max_bullets"],
+        max_bullets=sub_section_cap(sub, lien),
     )
     system = with_feedback(system, record["slug"])
     # The lien is the cached leading block: the four sub-section calls share it.
@@ -290,6 +333,19 @@ def _process_subsection(
     if payload is None:
         return [], 0, perr or "no JSON in response"
     raw_facts = payload.get("facts") or []
+    if not raw_facts and should_retry(sub["key"], "es", f"{lien}\n{wiki_hint}"):
+        # an empty descriptive sub-section on a text that carries its vocabulary: one second
+        # reading (terroir_prompts); the first answer stands when the retry yields nothing
+        retried = record.setdefault("_retried", [])
+        if sub["key"] not in retried:
+            retried.append(sub["key"])
+        try:
+            raw = provider.chat(system=system, user=ask_line("es", sub["label"], retry=True),
+                                max_tokens=1500, num_ctx=8192, cache_phase=sub["key"], follow_up=True)
+        except Exception:  # noqa: BLE001
+            raw = ""
+        second, _ = llm_json.parse_facts(raw)
+        raw_facts = (second or {}).get("facts") or []
     kept, dropped = _ground_facts(raw_facts, lien, wiki_hint)
     return kept, dropped, ""
 
@@ -318,6 +374,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
             all_facts.append(f)
 
     src = record.get("source") or {}
+    prov = record.get("_terroir_source") or {}
     deduped = dedupe_facts(all_facts)
     all_facts = deduped.kept
     earned = earn_interactions(all_facts, "es")
@@ -337,10 +394,12 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "model_kind": provider.kind,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "cahier_source_sha": cahier_sha(lien),
-        "cahier_source_pdf_url": src.get("final_url") or src.get("source_url") or "",
+        "cahier_source_pdf_url": prov.get("pdf_url") or src.get("final_url") or src.get("source_url") or "",
+        "cahier_source_kind": prov.get("kind") or "eu-oj",
         "wiki_source_revision": wiki_revision,
         "wiki_source_url": wiki_url,
         "subsection_errors": sub_errors,
+        **({"retried_subsections": list(record["_retried"])} if record.get("_retried") else {}),
     }
     write_source_cache(CACHE_DIR / f"{slug}.json", payload)
     return payload
@@ -415,6 +474,7 @@ def _run_batch(args) -> int:
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-es.json",
         run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
+        follow_ups=True,
     )
     return 0
 
