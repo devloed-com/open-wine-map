@@ -319,3 +319,22 @@ def test_translation_stale_flags_an_outdated_key_but_not_pending(tmp_path, monke
         (tmp_path / lang / "x.json").write_text(json.dumps({"source_facts_sha": key, "facts": [{"bullet": "Soils are limestone."}]}))
     _, rows, _ = audit.audit_translations("x", src)
     assert [(r["lang"]) for r in rows if r["check"] == "translation_stale"] == ["es"]
+
+
+# ──────────────────────────────── LLM audit loading (audit_terroir_facts_llm) ──
+
+
+def test_llm_audit_grades_a_record_written_in_the_graded_locale(tmp_path, monkeypatch):
+    """MT and GB records are written in English and have no EN translation
+    cache — the card renders the source bullets, so the audit grades those
+    instead of skipping the record as `no-translation` (Maltese Islands, the
+    phase D re-run of 2026-10-23)."""
+    import audit_terroir_facts_llm as llm
+    facts = [{"bullet": "Maltese wine production traces back over two thousand years."}]
+    (tmp_path / "maltese-islands.json").write_text(json.dumps({"source_lang": "en", "facts": facts}), encoding="utf-8")
+    (tmp_path / "taurasi.json").write_text(json.dumps({"source_lang": "it", "facts": facts}), encoding="utf-8")
+    monkeypatch.setattr(llm, "TERROIR", tmp_path)
+    monkeypatch.setattr(llm, "TRANSLATIONS", tmp_path / "translations")
+    src, t = llm.load_record("maltese-islands", "en", None)
+    assert [f["bullet"] for f in t["facts"]] == [f["bullet"] for f in src["facts"]]
+    assert llm.load_record("taurasi", "en", None) == "no-translation"

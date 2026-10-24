@@ -29,6 +29,17 @@ appends it to `raw/.batch/costs.jsonl` — one row per batch, keyed by the
 stage sidecar — so a run reports its own cost instead of the numbers
 being re-read from the API afterwards. `run_two_pass` returns the same
 summary in its stats dict for the stage's report.
+
+A stage may ask for a second round (`run_two_pass(..., follow_ups=True)`,
+the 02d scripts): the answers are replayed once through a probe provider
+(kind "collecting", so the stage writes nothing) that collects every
+`chat(..., follow_up=True)` the stage issues on reading them — the second
+reading of a descriptive sub-section that came back empty on a text that
+carries its vocabulary (`terroir_prompts.should_retry`) — those are
+submitted as one more batch, and the merged answers feed the replay that
+writes. The main batch's answers are kept in `<stem>.results.json` while
+the follow-up batch is in flight, so an interrupted run resumes without
+resubmitting (or re-paying) them.
 """
 
 from __future__ import annotations
@@ -157,11 +168,23 @@ class ReplayProvider:
     def __init__(self, results: dict, kind: str) -> None:
         self.results = results
         self.kind = kind
+        self.follow_ups: list[dict] = []
+        self._seen: set[str] = set()
 
-    def chat(self, *, system, user: str, **_: object) -> str:
+    def chat(self, *, system, user: str, max_tokens: int = 1024, cache_phase=None,
+             follow_up: bool = False, **_: object) -> str:
         cid = _request_id(system, user)
         r = self.results.get(cid)
         if r is None:
+            if follow_up:
+                # a request the stage issues only on reading an answer (a sub-section's
+                # second reading): not in the batch — collected for the follow-up round,
+                # "" so the first answer stands
+                if cid not in self._seen:
+                    self._seen.add(cid)
+                    self.follow_ups.append({"custom_id": cid, "system": system, "user": user,
+                                            "max_tokens": max_tokens, "phase": cache_phase})
+                return ""
             raise RuntimeError(
                 f"batch replay: no result for request {cid} — its prompt "
                 "changed since the batch was submitted."
@@ -543,31 +566,83 @@ def run_phased(provider: str, model: str, reqs: list[dict], *, sidecar: Path,
     return results
 
 
+def _results_file(sidecar: Path) -> Path:
+    return sidecar.with_name(f"{sidecar.stem}.results{sidecar.suffix}")
+
+
+def _stored_results(sidecar: Path, reqs: list[dict]) -> dict | None:
+    """The main batch's answers kept while a follow-up batch was in flight —
+    when they cover every collected request; else None."""
+    path = _results_file(sidecar)
+    if not path.exists():
+        return None
+    try:
+        stored = json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return None
+    return stored if all(r["custom_id"] in stored for r in reqs) else None
+
+
+def _follow_up_round(provider: str, model: str, results: dict, *, sidecar: Path, run_loop,
+                     poll_interval: int, thinking: str | None) -> dict:
+    """Replay `results` through a probe (kind "collecting": the stage writes to
+    its scratch dir), submit the follow-up requests the stage issued as one
+    more batch, return the merged answers."""
+    probe = ReplayProvider(results, kind="collecting")
+    with contextlib.redirect_stderr(io.StringIO()):
+        run_loop(probe)
+    if not probe.follow_ups:
+        return results
+    print(f"[batch] {len(probe.follow_ups)} follow-up requests (a sub-section answered empty on a "
+          "text that carries its vocabulary) — one more batch", file=sys.stderr)
+    store = _results_file(sidecar)
+    store.parent.mkdir(parents=True, exist_ok=True)
+    store.write_text(json.dumps(results, ensure_ascii=False), encoding="utf-8")
+    side = sidecar.with_name(f"{sidecar.stem}.r1{sidecar.suffix}")
+    more = run_batch(provider, model, probe.follow_ups, sidecar=side,
+                     poll_interval=poll_interval, thinking=thinking)
+    side.unlink(missing_ok=True)
+    return {**results, **more}
+
+
 def run_two_pass(*, provider: str, model: str, sidecar: Path, run_loop,
-                 poll_interval: int = POLL_INTERVAL_S, thinking: str | None = None) -> dict:
+                 poll_interval: int = POLL_INTERVAL_S, thinking: str | None = None,
+                 follow_ups: bool = False) -> dict:
     """Run a stage's processing loop as a batch. `run_loop(provider)` runs the
-    stage loop once, single-threaded; it is called twice (collect, replay).
-    The stage should enumerate only stale / missing entries — replay matches
-    answers by prompt hash, so dropping already-done entries is safe and the
-    run is incremental. Returns a small stats dict."""
+    stage loop once, single-threaded; it is called twice (collect, replay) —
+    three times with `follow_ups` (collect, probe, replay; see the module
+    docstring). The stage should enumerate only stale / missing entries —
+    replay matches answers by prompt hash, so dropping already-done entries
+    is safe and the run is incremental. Returns a small stats dict."""
     if not supports(provider):
         raise SystemExit(f"error: --batch supports anthropic / mistral, not {provider!r}")
     collector = CollectingProvider()
     with contextlib.redirect_stderr(io.StringIO()):
         run_loop(collector)  # pass 1 — collect prompts (stderr muted: "" noise)
     reqs = collector.requests
-    in_flight = sidecar.exists() or any(sidecar.parent.glob(f"{sidecar.stem}.p*{sidecar.suffix}"))
+    in_flight = (sidecar.exists() or any(sidecar.parent.glob(f"{sidecar.stem}.[pr]*{sidecar.suffix}"))
+                 or _results_file(sidecar).exists())
     if not reqs and not in_flight:
         print("[batch] nothing to do — all entries already processed.", file=sys.stderr)
         return {"n_requests": 0, "n_results": 0, "n_errored": 0}
     print(f"[batch] collected {len(reqs)} distinct model requests", file=sys.stderr)
-    use_phases = phased() and any(r.get("phase") is not None for r in reqs)
-    runner = run_phased if use_phases else run_batch
-    results = runner(provider, model, reqs, sidecar=sidecar,
-                     poll_interval=poll_interval, thinking=thinking)
+    stored = _stored_results(sidecar, reqs) if follow_ups else None
+    if stored is not None:
+        print("[batch] resuming — the main batch's answers are on disk, not resubmitting",
+              file=sys.stderr)
+        results = stored
+    else:
+        use_phases = phased() and any(r.get("phase") is not None for r in reqs)
+        runner = run_phased if use_phases else run_batch
+        results = runner(provider, model, reqs, sidecar=sidecar,
+                         poll_interval=poll_interval, thinking=thinking)
+    if follow_ups:
+        results = _follow_up_round(provider, model, results, sidecar=sidecar, run_loop=run_loop,
+                                   poll_interval=poll_interval, thinking=thinking)
     usage = usage_summary(results, model)
     run_loop(ReplayProvider(results, kind=_KIND[provider]))  # pass 2 — write caches
     sidecar.unlink(missing_ok=True)  # batch fully consumed — clear resume state
+    _results_file(sidecar).unlink(missing_ok=True)
     n_err = sum(1 for r in results.values() if r.get("error"))
     if n_err:
         print(f"[batch] {n_err} of {len(results)} requests errored — re-run to "

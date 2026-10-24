@@ -325,7 +325,7 @@ def _run_translation_loop(
     done = 0
     skipped: list[tuple[str, str, str]] = []
     if workers <= 1:
-        for job in tqdm(jobs, desc="translate-bg", leave=False):
+        for job in tqdm(jobs, desc="translate-gr", leave=False):
             ok, err = _process_one_job(provider, model_id, job)
             if ok:
                 done += 1
@@ -336,7 +336,7 @@ def _run_translation_loop(
 
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futures = {ex.submit(_process_one_job, provider, model_id, j): j for j in jobs}
-        for fut in tqdm(as_completed(futures), total=len(jobs), desc="translate-bg", leave=False):
+        for fut in tqdm(as_completed(futures), total=len(jobs), desc="translate-gr", leave=False):
             job = futures[fut]
             try:
                 ok, err = fut.result()

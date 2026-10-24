@@ -416,13 +416,18 @@ def emit_feedback(rows: list[dict], packets: dict[str, dict], out_dir: Path, *, 
     """The verified misleading terroir-fact findings in the review-evidence
     shape `scripts/build_terroir_feedback.py` reads, so the next extraction
     sees them as do-not-claim constraints. The bullet index is recovered by
-    matching the finding's claim to the card's bullets."""
+    matching the finding's claim to the card's bullets; `owner` names the
+    record whose cache the card's facts come from (a sub-denomination shows
+    its parent's) and `locale` the language of the card bullet — the builder
+    files the row under the owner and recovers its source-language bullet."""
     out_dir.mkdir(parents=True, exist_ok=True)
     misleading = []
     for r in rows:
         if r.get("status") != "ok":
             continue
-        facts = (packets.get(r["slug"]) or {}).get("card", {}).get("terroir_facts") or []
+        card = (packets.get(r["slug"]) or {}).get("card", {})
+        facts = card.get("terroir_facts") or []
+        owner = card.get("facts_inherited_from") or r["slug"]
         for f in r["findings"]:
             if f["section"] != "terroir_facts" or f["severity"] != "misleads" or not f["verified"]:
                 continue
@@ -434,7 +439,8 @@ def emit_feedback(rows: list[dict], packets: dict[str, dict], out_dir: Path, *, 
             if best_i is None or best < 60:
                 continue
             misleading.append({
-                "id": f"{r['slug']}#{best_i}", "slug": r["slug"], "i": best_i, "country": r["country"],
+                "id": f"{r['slug']}#{best_i}", "slug": r["slug"], "owner": owner, "locale": locale,
+                "i": best_i, "country": r["country"],
                 "subsection": facts[best_i].get("subsection") or "", "mode": f["tag"],
                 "where": "extraction", "severity": "high", locale: facts[best_i].get("bullet") or "",
                 "src": "", "reason": f"{f['claim']} — evidence: {f['evidence']}", "corrected_en": f["fix"],

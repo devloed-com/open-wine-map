@@ -89,6 +89,12 @@ _CZ_CHZO_BY_SLUG: dict[str, dict] = {}
 # slámové víno). Populated by augment_cz_records_with_national_specs().
 _CZ_FICHE_ROSTER_BY_SLUG: dict[str, dict] = {}
 
+# Slug-keyed provenance of the EU-register technical file whose MAIN / OTHER
+# tags give a record its principal / accessory roles where the national
+# source lists varieties role-less (SI, SK, HU, BG, GR, HR, RO, MT). Populated
+# by augment/fiche_roles.apply_register_fiche_roles().
+_REGISTER_FICHE_ROLES_BY_SLUG: dict[str, dict] = {}
+
 # Slug-keyed cache of SI specifikacija provenance + augmented payload,
 # populated by augment_si_records_with_specifikacija(). Two source
 # patterns feed it (MKGP per-wine .doc, Uradni list RS pravilnik HTML);

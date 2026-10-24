@@ -55,7 +55,13 @@ from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
 from _lib.terroir_feedback import with_feedback  # noqa: E402
 from _lib.terroir_interactions import earn_interactions  # noqa: E402
 from _lib.terroir_normalize import normalize_facts  # noqa: E402
-from _lib.terroir_prompts import with_style_rules  # noqa: E402
+from _lib.terroir_prompts import (
+    ask_line,
+    product_topics,
+    should_retry,
+    sub_section_cap,
+    with_style_rules,
+)
 
 EXTRACTED = ROOT / "raw" / "ch" / "dokumente-extracted"
 WIKI_AOCS_ROOT = ROOT / "raw" / "wikipedia" / "aocs"
@@ -104,19 +110,19 @@ SUBSECTION_TOPICS: dict[str, dict[str, str]] = {
     "fr": {
         "facteurs_naturels": "géologie, nature des sols, climat, relief, cours d'eau, exposition, climats / lieux-dits / communes",
         "facteurs_humains": "histoire de l'appellation, pratiques viticoles et œnologiques, cépages traditionnels suisses (Chasselas/Fendant, Petite Arvine, Humagne, Cornalin, Amigne, …)",
-        "produit": "couleurs, arômes, structure, élevage, profil sensoriel des vins",
+        "produit": product_topics("fr"),
         "interactions": "lien explicite entre le terroir et le caractère du vin, expression du sol ou du climat dans le vin",
     },
     "de": {
         "facteurs_naturels": "Geologie, Bodenbeschaffenheit, Klima, Relief, Gewässer, Exposition, Lagen und Gemeinden",
         "facteurs_humains": "Geschichte der Ursprungsbezeichnung, weinbauliche und önologische Praktiken, schweizer Rebsorten (Riesling-Sylvaner / Müller-Thurgau, Blauburgunder, Räuschling, Completer, Heida, …)",
-        "produit": "Farben, Aromen, Struktur, Reifung, sensorisches Profil der Weine",
+        "produit": product_topics("de"),
         "interactions": "expliziter Zusammenhang zwischen dem Terroir und dem Charakter des Weins, Ausdruck von Boden oder Klima im Wein",
     },
     "it": {
         "facteurs_naturels": "geologia, natura dei suoli, clima, rilievo, corsi d'acqua, esposizione, zone e comuni",
         "facteurs_humains": "storia della denominazione, pratiche viticole ed enologiche, vitigni svizzeri (Merlot ticinese, Bondola, Americana, …)",
-        "produit": "colori, aromi, struttura, affinamento, profilo sensoriale dei vini",
+        "produit": product_topics("it"),
         "interactions": "legame esplicito fra il terroir e il carattere del vino, espressione del suolo o del clima nel vino",
     },
 }
@@ -184,7 +190,7 @@ Lecteur cible: amateur de vin ou sommelier informé. Bemerkenswert: formations g
 ═══ SOURCE 1: Extrait Wikipédia (sections pertinentes) ═══
 {wiki_hint}
 
-═══ SOURCE 2: Contexte règlement cantonal (utilisateur ci-dessous) ═══
+═══ SOURCE 2: Contexte règlement cantonal (donné tout au début de cette consigne, avant ces instructions) ═══
 
 Sous-section traitée: {label}
 Catégories préférées: {topics}
@@ -209,7 +215,7 @@ Zielleser: Weinliebhaber oder informierte Sommeliers. Bemerkenswert: geologische
 ═══ QUELLE 1: Wikipedia-Auszug (relevante Abschnitte) ═══
 {wiki_hint}
 
-═══ QUELLE 2: Kontext der kantonalen Verordnung (Nutzernachricht unten) ═══
+═══ QUELLE 2: Kontext der kantonalen Verordnung (steht ganz am Anfang dieses Prompts, vor diesen Anweisungen) ═══
 
 Behandelter Unterabschnitt: {label}
 Bevorzugte Kategorien: {topics}
@@ -234,7 +240,7 @@ Lettore target: appassionato di vino o sommelier informato. Rilevante: formazion
 ═══ FONTE 1: Estratto Wikipedia (sezioni pertinenti) ═══
 {wiki_hint}
 
-═══ FONTE 2: Contesto del regolamento cantonale (messaggio utente sotto) ═══
+═══ FONTE 2: Contesto del regolamento cantonale (riportato all'inizio di questo prompt, prima di queste istruzioni) ═══
 
 Sottosezione trattata: {label}
 Categorie preferite: {topics}
@@ -439,11 +445,12 @@ def _process_subsection(
         wiki_hint=wiki_hint or "(aucun extrait Wikipédia disponible / kein Wikipedia-Auszug verfügbar / nessun estratto Wikipedia disponibile)",
         label=label,
         topics=topic,
-        max_bullets=sub["max_bullets"],
+        max_bullets=sub_section_cap(sub, cahier_ctx),
     )
     system = with_feedback(system, record["slug"])
     # The regulator text is the cached leading block: the four sub-section calls share it.
-    user, doc = split_user_lead(USER_LEAD[lang], label=label, ctx=cahier_ctx)
+    _, doc = split_user_lead(USER_LEAD[lang], label=label, ctx=cahier_ctx)
+    user = ask_line(lang, label)
     system = cached_system(doc, system, phased=True)
     try:
         raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192,
@@ -454,6 +461,19 @@ def _process_subsection(
     if payload is None:
         return [], 0, perr or "no JSON in response"
     raw_facts = payload.get("facts") or []
+    if not raw_facts and should_retry(sub["key"], lang, f"{cahier_ctx}\n{wiki_hint}"):
+        # an empty descriptive sub-section on a text that carries its vocabulary: one second
+        # reading (terroir_prompts); the first answer stands when the retry yields nothing
+        retried = record.setdefault("_retried", [])
+        if sub["key"] not in retried:
+            retried.append(sub["key"])
+        try:
+            raw = provider.chat(system=system, user=ask_line(lang, label, retry=True),
+                                max_tokens=1500, num_ctx=8192, cache_phase=sub["key"], follow_up=True)
+        except Exception:  # noqa: BLE001
+            raw = ""
+        second, _ = llm_json.parse_facts(raw)
+        raw_facts = (second or {}).get("facts") or []
     kept, dropped = _ground_facts(raw_facts, cahier_ctx, wiki_hint)
     return kept, dropped, ""
 
@@ -506,6 +526,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "wiki_source_revision": wiki.get("revision"),
         "wiki_source_url": wiki.get("page_url"),
         "subsection_errors": sub_errors,
+        **({"retried_subsections": list(record["_retried"])} if record.get("_retried") else {}),
     }
     write_source_cache(CACHE_DIR / f"{slug}.json", payload)
     return payload
@@ -565,12 +586,12 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "lang": lang,
                 "subsection": sub["key"],
                 "subsection_label": label,
-                "max_bullets": sub["max_bullets"],
+                "max_bullets": sub_section_cap(sub, job["cahier_ctx"]),
                 "system_prompt": with_feedback(EXTRACT_SYSTEM[lang].format(
                     wiki_hint=wiki_hint or "(no Wikipedia extract)",
                     label=label,
                     topics=topics[sub["key"]],
-                    max_bullets=sub["max_bullets"],
+                    max_bullets=sub_section_cap(sub, job["cahier_ctx"]),
                 ), job["slug"]),
                 "cahier_ctx": job["cahier_ctx"],
                 "wiki_hint": wiki_hint,
@@ -740,6 +761,7 @@ def _run_batch(args) -> int:
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-ch.json",
         run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
+        follow_ups=True,
     )
     return 0
 

@@ -42,7 +42,7 @@ DEFAULT_REPORT = ROOT / "tmp" / "terroir-facts-review" / "untranslated.json"
 TARGET_LOCALES = ("en", "fr", "es", "nl")
 
 # Cyrillic + Greek blocks — any hit in a Latin-target cache is a leak.
-NON_LATIN = re.compile(r"[Ѐ-ӿͰ-Ͽ]")
+NON_LATIN = re.compile(r"[Ѐ-ӿͰ-Ͽ\u1F00-\u1FFF]")  # Cyrillic, Greek, Greek Extended
 
 # Verbatim from docs/plan-terroir-facts-quality.md, section W1.
 LEAK = re.compile(r"(?i)\b(lösz|mészkő|homokkő|argille|argilliti|arenari[ae]|calcar[ei]|marn[ae]|scisti|"

@@ -44,9 +44,34 @@ def test_block_keeps_extraction_claims_and_drops_translation_ones():
     assert "Do not assert «Volcanic material imparts minerality to Taurasi.»" in block
     assert "250–490" not in block
     assert "unless the source states it explicitly" in block
-    assert "capture: Aglianico's Greek origin" in block
+    assert "Reviewer hint: the source describes this and no bullet captured it." in block
+    assert "takes a slot ahead of any unhinted fact of the same sub-section (the maximum still holds): "\
+           "Aglianico's Greek origin" in block
     assert "Caution (sibling-text)" in block
     assert "(2026-09-12)" in block
+
+
+def test_a_claim_a_source_does_state_gets_no_source_escape():
+    """An outdated Wikipedia statement (source-vintage) or another tier's
+    statement (sibling-or-subzone-confusion) is stated by a source, so the
+    default "unless the source states it" escape would let it through — in
+    the 02d block and in the gate's constraints alike."""
+    from _lib.terroir_gate import _constraints_block
+    claims = [
+        {"claim_en": "The zone has two subzones.", "claim_src": "La zona tiene dos subzonas.",
+         "mode": "source-vintage", "stage": "extraction", "why": "eight subzonas now"},
+        {"claim_en": "Wines carry the DOK designation.", "claim_src": "",
+         "mode": "sibling-or-subzone-confusion", "stage": "extraction", "why": "DOK is the PDO tier"},
+    ]
+    fb = _fb(do_not_claim=claims, capture_if_present=[], record_cautions=[])
+    block = tf.feedback_prompt_block(fb)
+    assert "«The zone has two subzones.»: a source may state it, but that statement is outdated" in block
+    assert "never from the Wikipedia article alone" in block
+    assert "«Wines carry the DOK designation.» unless the source states it of this appellation itself" in block
+    assert "states it explicitly" not in block
+    gate = _constraints_block(fb)
+    assert "a Wikipedia hint stating it does not support this claim" in gate
+    assert "only where the source says it of this record" in gate
 
 
 def test_translation_stage_selects_the_other_bucket():
@@ -144,6 +169,46 @@ def test_builder_collects_and_merges_without_duplicating(tmp_path):
     assert dict(added) == {"do_not_claim": 1, "capture_if_present": 1, "record_cautions": 1}
     fb2, added2 = b.merge_into(fb, "x", per["x"], review)   # re-running the same review adds nothing
     assert dict(added2) == {} and len(fb2["reviews"]) == 1 and fb2["history"] == []
+
+
+def test_card_evidence_is_filed_under_the_facts_owner(tmp_path, monkeypatch):
+    """A card-level finding (audit_cards_llm --emit-feedback: no `src`, the
+    card slug) on a sub-denomination whose bullets are its parent's lands in
+    the parent's sidecar — the one 02d reads — with the parent's index and
+    source-language bullet recovered from the EN translation cache."""
+    b = _load_builder()
+    facts_dir, tr_dir, rec_dir = tmp_path / "tf", tmp_path / "tr", tmp_path / "rec"
+    (tr_dir / "en").mkdir(parents=True)
+    facts_dir.mkdir()
+    rec_dir.mkdir()
+    (facts_dir / "parent.json").write_text(json.dumps({"source_lang": "es", "facts": [
+        {"bullet": "Los suelos son calizos."}, {"bullet": "La zona se divide en dos subzonas."}]}), encoding="utf-8")
+    (tr_dir / "en" / "parent.json").write_text(json.dumps({"facts": [
+        {"bullet": "The soils are calcareous."}, {"bullet": "The zone is divided into two sub-zones."}]}), encoding="utf-8")
+    (rec_dir / "parent-child.json").write_text(json.dumps({"parent_slug": "parent"}), encoding="utf-8")
+    monkeypatch.setattr(b, "TERROIR_FACTS", facts_dir)
+    monkeypatch.setattr(b, "TRANSLATIONS", tr_dir)
+    monkeypatch.setattr(b, "record_path", lambda cc, slug: rec_dir / f"{slug}.json" if (rec_dir / f"{slug}.json").exists() else None)
+    ev = tmp_path / "ev"
+    ev.mkdir()
+    (ev / "confirmed-misleading.json").write_text(json.dumps([
+        {"slug": "parent-child", "i": 0, "country": "es", "mode": "source-vintage", "where": "extraction",
+         "en": "The zone is divided into two sub-zones", "src": "", "reason": "eight subzonas now"},
+    ]), encoding="utf-8")
+    (ev / "merged.json").write_text(json.dumps({"record_notes": {}}), encoding="utf-8")
+    per = b.collect(ev, "cards-t")
+    assert set(per) == {"parent"}
+    entry = per["parent"]["do_not_claim"][0]
+    assert entry["fact_index"] == 1 and entry["graded_on"] == "parent-child"
+    assert entry["claim_src"] == "La zona se divide en dos subzonas."
+    assert entry["claim_en"] == "The zone is divided into two sub-zones."
+    # an explicit owner (the emitter's `owner`) wins; a record written in the
+    # card's locale is matched against its own bullets
+    (facts_dir / "mt.json").write_text(json.dumps({"source_lang": "en", "facts": [
+        {"bullet": "Wines can carry the DOK designation."}]}), encoding="utf-8")
+    owner, entry = b.claim_entry({"slug": "card", "owner": "mt", "locale": "en", "i": 3,
+                                  "en": "Wines can carry the DOK designation", "src": ""}, "cards-t")
+    assert owner == "mt" and entry["fact_index"] == 0 and entry["claim_src"] == "Wines can carry the DOK designation."
 
 
 # ─────────────────────────────────────────────── wiring lint (21 scripts) ──

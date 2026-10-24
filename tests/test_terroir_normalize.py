@@ -69,6 +69,11 @@ def test_normalize_facts_counts_changes_and_edits_in_place():
         ("Vertisols (смолници) and brown forest soils.", "Vertisols (smolnitsi) and brown forest soils."),
         ("Bяло Мискет врачански: fine misket aroma.", "Bialo Misket vrachanski: fine misket aroma."),
         ("A bitter, resinous note of α-terpineol.", "A bitter, resinous note of α-terpineol."),
+        ("Amphorae stamped with the word ΘΑΣΙΩΝ, guaranteeing capacity.", "Amphorae stamped with the word THASION, guaranteeing capacity."),
+        ("Strabo called Ankón «σφόδρα δ'εὔοινος», a producer of good wine.", "Strabo called Ankón «sphodra d'euoinos», a producer of good wine."),
+        ("Wooden vessels called tines (τίνες) rested on scaffolds.", "Wooden vessels called tines rested on scaffolds."),
+        ("Terraces called xerolithies (ξερολιθιές) in the local dialect.", "Terraces called xerolithies in the local dialect."),
+        ("The level called « sans mesure » (άμετρος) by the islanders.", "The level called « sans mesure » (ametros) by the islanders."),
         ("Οι θερινοί άνεμοι αποτελούν παράγοντα μοναδικότητας των οίνων.", "Οι θερινοί άνεμοι αποτελούν παράγοντα μοναδικότητας των οίνων."),
     ],
 )

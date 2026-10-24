@@ -58,7 +58,13 @@ from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
 from _lib.terroir_feedback import with_feedback  # noqa: E402
 from _lib.terroir_interactions import earn_interactions  # noqa: E402
 from _lib.terroir_normalize import normalize_facts  # noqa: E402
-from _lib.terroir_prompts import with_style_rules  # noqa: E402
+from _lib.terroir_prompts import (
+    ask_line,
+    product_topics,
+    should_retry,
+    sub_section_cap,
+    with_style_rules,
+)
 
 EXTRACTED = ROOT / "raw" / "gb" / "specs-extracted"
 WIKI_AOCS_ROOT = ROOT / "raw" / "wikipedia" / "aocs"
@@ -90,7 +96,7 @@ SUBSECTION_LABELS = {
 SUBSECTION_TOPICS = {
     "facteurs_naturels": "geology and soils (South Downs and Chiltern chalk, the greensands, Kimmeridgian and Portland limestone, greensand, clay, slate), cool maritime climate, northerly latitude (above 49.9°N) and the long growing season it gives, high diurnal range, sunshine hours and growing degree days, aspect and shelter, rainfall",
     "facteurs_humains": "history of viticulture in England and Wales (Roman and monastic roots, the post-1950s revival, the sparkling-wine expansion), wine education and research (Plumpton College), traditional-method sparkling production, hand harvesting, choice of varieties for a cool climate",
-    "produit": "wine colours, aromas, structure, natural acidity, autolytic character of the traditional-method sparkling wines, the character of the still wines",
+    "produit": product_topics("en", "natural acidity, autolytic character of the traditional-method sparkling wines, the character of the still wines"),
     "interactions": "explicit link between the British terroir and the character of the wine — how the chalk, the cool maritime climate, the long growing season and the high acidity express themselves in the wine",
 }
 
@@ -116,7 +122,7 @@ EXTRACT_SYSTEM = """You extract noteworthy facts about a United Kingdom wine app
 
 Target reader: an informed wine lover or sommelier. Noteworthy: named geological formations (the South Downs chalk, the greensands, slate subsoil), specific soil types, the cool maritime climate and northerly latitude, growing-season length and diurnal range, distinctive viticultural and winemaking practices, precise sensory profile, dated historical anchors.
 
-═══ SOURCE 1: Product specification (user message below) ═══
+═══ SOURCE 1: Product specification (given at the very start of this prompt, before these instructions) ═══
 
 ═══ SOURCE 2: Wikipedia extract (relevant sections, may be empty) ═══
 {wiki_hint}
@@ -295,11 +301,12 @@ def _process_subsection(provider, model_id: str, record: dict, sub: dict):
     wiki_hint = _wiki_hint_for_subsection(wiki, sub["key"])
     system = EXTRACT_SYSTEM.format(
         wiki_hint=wiki_hint or "(no Wikipedia extract available)",
-        label=label, topics=topic, max_bullets=sub["max_bullets"],
+        label=label, topics=topic, max_bullets=sub_section_cap(sub, cahier_ctx),
     )
     system = with_feedback(system, record["slug"])
     # The regulator text is the cached leading block: the four sub-section calls share it.
-    user, doc = split_user_lead(USER_LEAD, label=label, ctx=cahier_ctx)
+    _, doc = split_user_lead(USER_LEAD, label=label, ctx=cahier_ctx)
+    user = ask_line("en", label)
     system = cached_system(doc, system, phased=True)
     try:
         raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192,
@@ -309,7 +316,21 @@ def _process_subsection(provider, model_id: str, record: dict, sub: dict):
     payload, perr = llm_json.parse_facts(raw)
     if payload is None:
         return [], 0, perr or "no JSON in response"
-    kept, dropped = _ground_facts(payload.get("facts") or [], cahier_ctx, wiki_hint)
+    raw_facts = payload.get("facts") or []
+    if not raw_facts and should_retry(sub["key"], "en", f"{cahier_ctx}\n{wiki_hint}"):
+        # an empty descriptive sub-section on a text that carries its vocabulary: one second
+        # reading (terroir_prompts); the first answer stands when the retry yields nothing
+        retried = record.setdefault("_retried", [])
+        if sub["key"] not in retried:
+            retried.append(sub["key"])
+        try:
+            raw = provider.chat(system=system, user=ask_line("en", label, retry=True),
+                                max_tokens=1500, num_ctx=8192, cache_phase=sub["key"], follow_up=True)
+        except Exception:  # noqa: BLE001
+            raw = ""
+        second, _ = llm_json.parse_facts(raw)
+        raw_facts = (second or {}).get("facts") or []
+    kept, dropped = _ground_facts(raw_facts, cahier_ctx, wiki_hint)
     return kept, dropped, ""
 
 
@@ -355,6 +376,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "wiki_source_revision": wiki.get("revision"),
         "wiki_source_url": wiki.get("page_url"),
         "subsection_errors": sub_errors,
+        **({"retried_subsections": list(record["_retried"])} if record.get("_retried") else {}),
     }
     write_source_cache(CACHE_DIR / f"{slug}.json", payload)
     return payload
@@ -399,11 +421,11 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "lang": SOURCE_LANG,
                 "subsection": sub["key"],
                 "subsection_label": label,
-                "max_bullets": sub["max_bullets"],
+                "max_bullets": sub_section_cap(sub, rec.get("_cahier_ctx") or ""),
                 "system_prompt": with_feedback(EXTRACT_SYSTEM.format(
                     wiki_hint=wiki_hint or "(no Wikipedia extract)",
                     label=label, topics=SUBSECTION_TOPICS[sub["key"]],
-                    max_bullets=sub["max_bullets"],
+                    max_bullets=sub_section_cap(sub, rec.get("_cahier_ctx") or ""),
                 ), rec["slug"]),
                 "cahier_ctx": rec.get("_cahier_ctx") or "",
                 "wiki_hint": wiki_hint,
@@ -537,6 +559,7 @@ def _run_batch(args) -> int:
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-gb.json",
         run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
+        follow_ups=True,
     )
     return 0
 

@@ -105,6 +105,11 @@ def load_record(slug: str, lang: str, run: str | None) -> tuple[dict, dict] | st
     src = _read(TERROIR / f"{slug}.json", run, "source")
     if not src or src.get("mode") == "verbatim" or not src.get("facts"):
         return "no-facts"
+    if src.get("source_lang") == lang:
+        # A record written in the graded locale (MT, GB in English) has no
+        # translation cache: the card renders its source bullets.
+        return src, {"facts": [{"bullet": f.get("bullet") or ""} for f in src["facts"]],
+                     "source_facts_sha": facts_sha(src["facts"])}
     t = _read(TRANSLATIONS / lang / f"{slug}.json", run, "translation", lang)
     if not t or t.get("mode") == "verbatim" or not t.get("facts"):
         return "no-translation"

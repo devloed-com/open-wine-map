@@ -343,6 +343,11 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_national_pliego_added": _("variétés ajoutées"),
         "src_national_spec": _("Cahier des charges national (PDF)"),
         "src_register_fiche": _("Cahier des charges (registre GI de l'UE, document unique, PDF)"),
+        "src_register_fiche_roles": _("Rôles des cépages (registre GI de l'UE, document unique, PDF)"),
+        "src_register_fiche_roles_note": _("{main} principaux, {other} accessoires selon le document unique"),
+        "src_register_fiche_roles_unlisted": _(
+            "{n} ajoutés depuis au cahier national, affichés comme accessoires"
+        ),
         "src_chzo_spec": _("Spécification du produit (IGP, PDF)"),
         "src_regional_register": _("Registre régional des cépages (PDF)"),
         "src_parroquias": _("Mapa de Parroquias de Galicia (IET, Xunta de Galicia)"),

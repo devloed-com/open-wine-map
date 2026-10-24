@@ -49,6 +49,20 @@ _WHY_CHARS = 320
 _HINT_CHARS = 320
 _NOTE_CHARS = 320
 
+# How a do-not-claim entry may still be asserted. "Unless the source states
+# it" fits a claim the sources never made; where a source DOES state it the
+# escape defeats the constraint: an outdated statement (a Wikipedia article
+# older than the regulator text in force — Alicante's two subzonas, Monterrei's
+# six municipalities) or a statement about another appellation, sub-zone or
+# tier (the DOK sentence of the "Maltese wine" article on the IĠT card).
+ESCAPE_BY_MODE = {
+    "source-vintage": ": a source may state it, but that statement is outdated — assert it only "
+                      "if the current regulator text itself states it, never from the Wikipedia article alone",
+    "sibling-or-subzone-confusion": " unless the source states it of this appellation itself, not of "
+                                    "another appellation, sub-zone or tier",
+}
+DEFAULT_ESCAPE = " unless the source states it explicitly"
+
 _cache: dict[str, dict | None] = {}
 
 
@@ -129,11 +143,17 @@ def feedback_prompt_block(
     for c in claims[:max_claims]:
         claim = _clip(c.get("claim_en") or c.get("claim_src") or "", 200)
         why = _clip(c.get("why") or "", _WHY_CHARS)
-        lines.append(f"- Do not assert «{claim}» unless the source states it explicitly — {why}")
+        escape = ESCAPE_BY_MODE.get(c.get("mode") or "", DEFAULT_ESCAPE)
+        lines.append(f"- Do not assert «{claim}»{escape} — {why}")
     if len(claims) > max_claims:
         lines.append(f"- ({len(claims) - max_claims} more claims of the same kind were unsupported.)")
     for h in capture[:max_capture]:
-        lines.append(f"- If the text describes it, capture: {_clip(h.get('hint') or '', _HINT_CHARS)}")
+        # A hint is a priority, not a slot: the cap stands, but a hinted fact the text
+        # states goes ahead of an unhinted one (2026-10-24 — under the raised caps
+        # Tokajské's four human-factor slots still went to unhinted facts).
+        lines.append("- Reviewer hint: the source describes this and no bullet captured it. Where the "
+                     "text you are given states it, it takes a slot ahead of any unhinted fact of the "
+                     f"same sub-section (the maximum still holds): {_clip(h.get('hint') or '', _HINT_CHARS)}")
     for n in cautions[:max_cautions]:
         lines.append(f"- Caution ({n.get('kind') or 'other'}): {_clip(n.get('note') or '', _NOTE_CHARS)}")
     return _safe("\n".join(lines))

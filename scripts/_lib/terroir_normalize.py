@@ -45,7 +45,7 @@ _EXPANSIONS = [
 ]
 _TERMINAL = ".!?…"
 _TARGET_LOCALES = ("en", "fr", "es", "nl")
-_NON_LATIN = re.compile(r"[Ѐ-ӿͰ-Ͽ]")
+_NON_LATIN = re.compile(r"[Ѐ-ӿͰ-Ͽ\u1F00-\u1FFF]")  # Cyrillic, Greek, Greek Extended (polytonic)
 _LETTER = re.compile(r"[^\W\d_]", re.UNICODE)
 _CHEM_PREFIX = re.compile(r"^[αβγδ]-\w")
 _HOMOGLYPH = str.maketrans({
@@ -138,7 +138,10 @@ def _latinize_token(token: str) -> str:
         return token
     if len(non_latin) * 2 < len(letters) and all(c in _HOMOGLYPH_CHARS for c in non_latin):
         return token.translate(_HOMOGLYPH)  # a stray lookalike inside a Latin word
-    return "".join(unidecode(c) if _NON_LATIN.match(c) else c for c in token)
+    out = "".join(unidecode(c) if _NON_LATIN.match(c) else c for c in token)
+    if len(letters) > 1 and all(c.isupper() for c in letters):
+        return out.upper()  # an inscription or acronym: "ΘΑΣΙΩΝ" is THASION, not ThASION
+    return out
 
 
 def latinize_residual_script(bullet: str) -> str:
@@ -152,7 +155,18 @@ def latinize_residual_script(bullet: str) -> str:
     share = sum(1 for c in letters if _NON_LATIN.match(c)) / len(letters)
     if share == 0 or share >= 0.8:
         return bullet
-    return re.sub(r"\S+", lambda m: _latinize_token(m.group(0)), bullet)
+    out = re.sub(r"\S+", lambda m: _latinize_token(m.group(0)), bullet)
+    return _REDUNDANT_GLOSS.sub(_drop_redundant_gloss, out)
+
+
+# A source-script gloss that transliterates to the word it glosses — "tines
+# (τίνες)" → "tines (tines)" — says nothing twice; the bracket goes.
+_REDUNDANT_GLOSS = re.compile(r"(?<![\w'’-])([^\W\d_][\w'’-]*) \(([^()]+)\)")
+
+
+def _drop_redundant_gloss(m: re.Match) -> str:
+    word, gloss = m.group(1), m.group(2)
+    return word if gloss.casefold() == word.casefold() else m.group(0)
 
 
 # Dutch: the common noun is "appellatie" (the UI's own word — "Appellatie

@@ -211,7 +211,7 @@ SHARED_QUOTE_MIN_CHARS = 60
 SHARED_QUOTE_MIN_RECORDS = 3
 SHARED_QUOTE_TOP = 30
 
-NON_LATIN_RE = re.compile(r"[Ѐ-ӿͰ-Ͽ]")
+NON_LATIN_RE = re.compile(r"[Ѐ-ӿͰ-Ͽ\u1F00-\u1FFF]")  # Cyrillic, Greek, Greek Extended (polytonic)
 ARROW_RE = re.compile("→")
 # A one- or two-word label ("Colour:", "Rioja Oriental:"), no parenthesis —
 # not an enumerating colon inside a sentence ("Three main soil types

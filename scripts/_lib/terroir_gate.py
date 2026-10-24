@@ -88,6 +88,16 @@ def needs_gate(d: dict, *, refresh: bool = False) -> bool:
     return any(not (f.get("support") or {}).get("verdict") for f in facts)
 
 
+# A constraint whose claim a source does state (terroir_feedback.ESCAPE_BY_MODE):
+# the system prompt's "unless the source states it" must not let it through.
+_CONSTRAINT_NOTE_BY_MODE = {
+    "source-vintage": " (outdated: a Wikipedia hint stating it does not support this claim — only the "
+                      "regulator source text can)",
+    "sibling-or-subzone-confusion": " (it holds for another appellation, sub-zone or tier: support counts "
+                                    "only where the source says it of this record)",
+}
+
+
 def _constraints_block(fb: dict | None) -> str:
     if not fb:
         return ""
@@ -97,8 +107,9 @@ def _constraints_block(fb: dict | None) -> str:
             continue
         claim = _clip(c.get("claim_src") or c.get("claim_en") or "", 220)
         why = _clip(c.get("why") or "", 260)
+        note = _CONSTRAINT_NOTE_BY_MODE.get(c.get("mode") or "", "")
         if claim:
-            lines.append(f"- Verified misleading before: «{claim}» — {why}")
+            lines.append(f"- Verified misleading before{note}: «{claim}» — {why}")
     for n in fb.get("record_cautions") or []:
         note = _clip(n.get("note") or "", 260)
         if note:

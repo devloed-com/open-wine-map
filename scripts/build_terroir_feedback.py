@@ -18,6 +18,15 @@ paraphrase one observation), the review is
 appended to `reviews`, and `history` is never touched — so a second
 review adds to the trail instead of replacing it.
 
+A card-level review (`scripts/audit_cards_llm.py --emit-feedback`) grades
+the rendered card in one locale, so its rows carry no `src` and may name a
+sub-denomination whose bullets are its parent's. Such a row is filed under
+the record that owns the facts — the row's `owner`, else the slug when it
+has a cache, else its parent (stage 04 `load_terroir_facts`) — and its
+index and source-language bullet are recovered from the owner's caches in
+the row's locale, so 02d reads the constraint and the audit's
+`feedback_recurrence` can match it against source-language bullets.
+
     .venv/bin/python scripts/build_terroir_feedback.py --dry-run
     .venv/bin/python scripts/build_terroir_feedback.py
     .venv/bin/python scripts/build_terroir_feedback.py --only taurasi --only volnay
@@ -37,14 +46,18 @@ from rapidfuzz import fuzz
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from _lib.card_packet import EXTRACTED_DIRS, record_path  # noqa: E402
 from _lib.terroir_feedback import FEEDBACK_DIR, clear_cache  # noqa: E402
 
 DEFAULT_EVIDENCE = ROOT / "tmp" / "terroir-facts-review" / "full-review-2026-09-12"
 DEFAULT_REVIEW_ID = "review-2026-09-12"
 DEFAULT_REVIEWER = "claude-opus-5 review agents, adversarially verified per record"
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
+TRANSLATIONS = ROOT / "raw" / "translations" / "terroir-facts"
+LOCALES = ("en", "fr", "es", "nl")
 
 MERGE_THRESHOLD = 90       # do-not-claim: same source bullet
+RECOVER_THRESHOLD = 85     # a card bullet against its cache bullet (render-time normalisation only)
 NOTE_MERGE_THRESHOLD = 60  # hints / cautions: two lenses paraphrase one observation (pairs score 60–74)
 NOTE_KIND = {"SIB": "sibling-text", "WRONG_SOURCE": "wrong-source", "OTHER": "other"}
 _SKIP_NOTE_PREFIXES = ("Batch-wide", "batch-wide")
@@ -74,9 +87,93 @@ def _caution_kind(note: str, tag: str) -> str:
     return "other"
 
 
+def _read(path: Path) -> dict:
+    try:
+        d = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return d if isinstance(d, dict) else {}
+
+
+def facts_owner(slug: str, country: str | None = None, owner: str | None = None) -> str:
+    """The record whose terroir-facts cache a card showed: `owner` when the
+    evidence recorded it, the slug itself when it has a cache, else the
+    parent the extracted record names (a sub-denomination shows its
+    parent's bullets). The slug unchanged when none of them has a cache."""
+    if owner and (TERROIR_FACTS / f"{owner}.json").exists():
+        return owner
+    if (TERROIR_FACTS / f"{slug}.json").exists():
+        return slug
+    countries = [country] if country else list(EXTRACTED_DIRS)
+    for cc in countries:
+        p = record_path(cc, slug)
+        parent = _read(p).get("parent_slug") if p else None
+        if parent and (TERROIR_FACTS / f"{parent}.json").exists():
+            return parent
+    return slug
+
+
+def recover_fact(owner: str, bullet: str, locale: str) -> tuple[int | None, str, str]:
+    """(index, source-language bullet, English bullet) of the owner's fact a
+    card bullet in `locale` renders, or (None, "", "") when no cache bullet
+    matches. The card shows the cache's translation in `locale` (index-aligned
+    with the source facts, `_lib/terroir_cache.py`) or, for a record written in
+    that locale, the source bullet itself, normalised at render time."""
+    src = _read(TERROIR_FACTS / f"{owner}.json")
+    facts = src.get("facts") or []
+    if not facts or not bullet:
+        return None, "", ""
+
+    def rendered(lang: str) -> list[str]:
+        if lang == src.get("source_lang"):
+            return [f.get("bullet") or "" for f in facts]
+        tr = (_read(TRANSLATIONS / lang / f"{owner}.json").get("facts")) or []
+        return [(t.get("bullet") or "") if isinstance(t, dict) else "" for t in tr][: len(facts)]
+
+    shown = rendered(locale)
+    best_i, best = None, 0.0
+    for i, b in enumerate(shown):
+        score = fuzz.ratio(bullet, b) if b else 0.0
+        if score > best:
+            best_i, best = i, score
+    if best_i is None or best < RECOVER_THRESHOLD:
+        return None, "", ""
+    en = rendered("en")
+    return best_i, facts[best_i].get("bullet") or "", (en[best_i] if best_i < len(en) else "") or ""
+
+
+def claim_entry(row: dict, review_id: str) -> tuple[str, dict]:
+    """(owner slug, do-not-claim entry) for one confirmed-misleading row."""
+    slug = row["slug"]
+    owner = facts_owner(slug, row.get("country"), row.get("owner"))
+    locale = row.get("locale") or next((k for k in LOCALES if row.get(k)), "en")
+    claim = row.get(locale) or ""
+    claim_en, claim_src, index = row.get("en") or "", row.get("src") or "", row.get("i")
+    if not claim_src:
+        k, src_bullet, en_bullet = recover_fact(owner, claim, locale)
+        if k is None:
+            log(f"{slug}#{index}: no bullet of «{owner}» renders the claim — kept as written")
+        else:
+            index, claim_src, claim_en = k, src_bullet, en_bullet or claim_en
+    entry = {
+        "claim_en": claim_en or claim,
+        "claim_src": claim_src,
+        "subsection": row.get("subsection") or "",
+        "mode": row.get("mode") or "other",
+        "stage": row.get("where") or "extraction",
+        "why": row.get("reason") or "",
+        "fact_index": index,
+        "review": review_id,
+    }
+    if owner != slug:
+        entry["graded_on"] = slug
+        log(f"{slug}#{row.get('i')}: the card shows «{owner}»'s facts — filed under {owner} (fact {index})")
+    return owner, entry
+
+
 def collect(evidence: Path, review_id: str) -> dict[str, dict]:
     """slug → {do_not_claim, capture_if_present, record_cautions} from the
-    evidence directory."""
+    evidence directory, keyed by the record that owns the facts."""
     misleading = json.loads((evidence / "confirmed-misleading.json").read_text(encoding="utf-8"))
     merged = json.loads((evidence / "merged.json").read_text(encoding="utf-8"))
     per: dict[str, dict] = {}
@@ -85,16 +182,8 @@ def collect(evidence: Path, review_id: str) -> dict[str, dict]:
         return per.setdefault(slug, {"do_not_claim": [], "capture_if_present": [], "record_cautions": []})
 
     for row in misleading:
-        slot(row["slug"])["do_not_claim"].append({
-            "claim_en": row.get("en") or "",
-            "claim_src": row.get("src") or "",
-            "subsection": row.get("subsection") or "",
-            "mode": row.get("mode") or "other",
-            "stage": row.get("where") or "extraction",
-            "why": row.get("reason") or "",
-            "fact_index": row.get("i"),
-            "review": review_id,
-        })
+        owner, entry = claim_entry(row, review_id)
+        slot(owner)["do_not_claim"].append(entry)
     for slug, notes in (merged.get("record_notes") or {}).items():
         for _lens, tag, note in notes:
             note = " ".join((note or "").split())

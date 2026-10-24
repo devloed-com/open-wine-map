@@ -2330,6 +2330,16 @@
     if (sources.register_fiche_url) {
       links.push(`<li><a href="${escapeAttr(sources.register_fiche_url)}" target="_blank" rel="noopener">${LABELS.src_register_fiche}</a></li>`);
     }
+    if (sources.register_fiche_roles_url) {
+      let note = fmt(LABELS.src_register_fiche_roles_note, {
+        main: sources.register_fiche_roles_n_main || 0,
+        other: sources.register_fiche_roles_n_other || 0,
+      });
+      if (sources.register_fiche_roles_n_unlisted) {
+        note += ' · ' + fmt(LABELS.src_register_fiche_roles_unlisted, { n: sources.register_fiche_roles_n_unlisted });
+      }
+      links.push(`<li><a href="${escapeAttr(sources.register_fiche_roles_url)}" target="_blank" rel="noopener">${LABELS.src_register_fiche_roles}</a> — ${escapeHtml(note)}</li>`);
+    }
     if (sources.chzo_spec_url) {
       const reg = sources.chzo_spec_region ? ' — ' + escapeHtml(sources.chzo_spec_region) : '';
       const org = sources.chzo_spec_source_org ? ' (' + escapeHtml(sources.chzo_spec_source_org.toUpperCase()) + ')' : '';

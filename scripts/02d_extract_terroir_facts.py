@@ -68,7 +68,7 @@ from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
 from _lib.terroir_feedback import with_feedback  # noqa: E402
 from _lib.terroir_interactions import earn_interactions  # noqa: E402
 from _lib.terroir_normalize import normalize_facts  # noqa: E402
-from _lib.terroir_prompts import with_style_rules  # noqa: E402
+from _lib.terroir_prompts import sub_section_cap, with_style_rules  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "fr"
@@ -444,11 +444,11 @@ def enumerate_aocs() -> list[dict]:
 # ───────────────────────────────────────────────────── extraction (loop) ──
 
 
-def build_prompt(spec: dict, wiki_hint: str) -> str:
+def build_prompt(spec: dict, wiki_hint: str, lien: str) -> str:
     return EXTRACT_SYSTEM.format(
         label=spec["label"],
         topics=spec["topics"],
-        max_bullets=spec["max_bullets"],
+        max_bullets=sub_section_cap(spec, lien),
         wiki_hint=wiki_hint or "(pas de section Wikipedia pertinente)",
     )
 
@@ -465,7 +465,7 @@ def extract_one_aoc(provider, job: dict) -> tuple[list[dict], list[str], dict]:
         if not cahier_text or len(cahier_text) < 200:
             continue
         wiki_hint = job["wiki_hints"].get(sub_key, "")
-        system = build_prompt(spec, wiki_hint)
+        system = build_prompt(spec, wiki_hint, job["lien"])
         system = with_feedback(system, job["slug"])
         try:
             raw = provider.chat(system=system, user=cahier_text, max_tokens=2000, num_ctx=8192)
@@ -517,8 +517,8 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "subsection": spec["key"],
                 "subsection_label": spec["label"],
                 "topics": spec["topics"],
-                "max_bullets": spec["max_bullets"],
-                "system_prompt": with_feedback(build_prompt(spec, wiki_hint), job["slug"]),
+                "max_bullets": sub_section_cap(spec, job["lien"]),
+                "system_prompt": with_feedback(build_prompt(spec, wiki_hint, job["lien"]), job["slug"]),
                 "cahier_text": cahier_text,
                 "wiki_hint": wiki_hint,
                 "cahier_source_sha": job["lien_sha"],

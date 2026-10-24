@@ -47,7 +47,13 @@ from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
 from _lib.terroir_feedback import with_feedback  # noqa: E402
 from _lib.terroir_interactions import earn_interactions  # noqa: E402
 from _lib.terroir_normalize import normalize_facts  # noqa: E402
-from _lib.terroir_prompts import with_style_rules  # noqa: E402
+from _lib.terroir_prompts import (
+    ask_line,
+    product_topics,
+    should_retry,
+    sub_section_cap,
+    with_style_rules,
+)
 
 EXTRACTED = ROOT / "raw" / "lu" / "cahier-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "fr"
@@ -85,10 +91,7 @@ SUBSECTIONS = [
     {
         "key": "produit",
         "label": "Caractéristiques du produit (profil sensoriel)",
-        "topics": (
-            "robe, nez, bouche, acidité, sucres résiduels, taux d'alcool, "
-            "vins vifs, vins ronds, profil sensoriel"
-        ),
+        "topics": product_topics("fr", "robe, nez, bouche, acidité, sucres résiduels, taux d'alcool, vins vifs, vins ronds"),
         "max_bullets": 2,
     },
     {
@@ -130,7 +133,7 @@ Public cible : amateurs de vin éclairés ou sommeliers intéressés par les par
 ═══ SOURCE 1 : extrait Wikipédia (sections pertinentes) ═══
 {wiki_hint}
 
-═══ SOURCE 2 : texte du cahier des charges (dans le message utilisateur ci-dessous) ═══
+═══ SOURCE 2 : texte du cahier des charges (donné tout au début de cette consigne, avant ces instructions) ═══
 
 Sous-section visée : {label}
 Catégories prioritaires : {topics}
@@ -266,7 +269,7 @@ def collect_targets() -> list[dict]:
 
 
 def _ask_line(label: str) -> str:
-    return f"Sous-section visée : {label}"
+    return ask_line("fr", label)
 
 
 def _document_block(lien_text: str) -> str:
@@ -282,7 +285,7 @@ def _process_subsection(
         wiki_hint=wiki_hint or "(extrait Wikipédia indisponible)",
         label=sub["label"],
         topics=sub["topics"],
-        max_bullets=sub["max_bullets"],
+        max_bullets=sub_section_cap(sub, lien),
     )
     system = with_feedback(system, record["slug"])
     # The lien is the cached leading block: the four sub-section calls share it.
@@ -297,6 +300,19 @@ def _process_subsection(
     if payload is None:
         return [], 0, perr or "no JSON in response"
     raw_facts = payload.get("facts") or []
+    if not raw_facts and should_retry(sub["key"], "fr", f"{lien}\n{wiki_hint}"):
+        # an empty descriptive sub-section on a text that carries its vocabulary: one second
+        # reading (terroir_prompts); the first answer stands when the retry yields nothing
+        retried = record.setdefault("_retried", [])
+        if sub["key"] not in retried:
+            retried.append(sub["key"])
+        try:
+            raw = provider.chat(system=system, user=ask_line("fr", sub["label"], retry=True),
+                                max_tokens=1500, num_ctx=8192, cache_phase=sub["key"], follow_up=True)
+        except Exception:  # noqa: BLE001
+            raw = ""
+        second, _ = llm_json.parse_facts(raw)
+        raw_facts = (second or {}).get("facts") or []
     kept, dropped = _ground_facts(raw_facts, lien, wiki_hint)
     return kept, dropped, ""
 
@@ -349,6 +365,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "wiki_source_revision": wiki_revision,
         "wiki_source_url": wiki_url,
         "subsection_errors": sub_errors,
+        **({"retried_subsections": list(record["_retried"])} if record.get("_retried") else {}),
     }
     write_source_cache(CACHE_DIR / f"{slug}.json", payload)
     return payload
@@ -415,12 +432,12 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "subsection": sub["key"],
                 "subsection_label": sub["label"],
                 "topics": sub["topics"],
-                "max_bullets": sub["max_bullets"],
+                "max_bullets": sub_section_cap(sub, job["lien"]),
                 "system_prompt": with_feedback(EXTRACT_SYSTEM.format(
                     wiki_hint=wiki_hint or "(extrait Wikipédia indisponible)",
                     label=sub["label"],
                     topics=sub["topics"],
-                    max_bullets=sub["max_bullets"],
+                    max_bullets=sub_section_cap(sub, job["lien"]),
                 ), job["slug"]),
                 "cahier_text": job["lien"],
                 "wiki_hint": wiki_hint,
@@ -615,6 +632,7 @@ def _run_batch(args) -> int:
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-lu.json",
         run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
+        follow_ups=True,
     )
     return 0
 

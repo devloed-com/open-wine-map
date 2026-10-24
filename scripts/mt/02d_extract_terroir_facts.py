@@ -50,7 +50,13 @@ from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
 from _lib.terroir_feedback import with_feedback  # noqa: E402
 from _lib.terroir_interactions import earn_interactions  # noqa: E402
 from _lib.terroir_normalize import normalize_facts  # noqa: E402
-from _lib.terroir_prompts import with_style_rules  # noqa: E402
+from _lib.terroir_prompts import (
+    ask_line,
+    product_topics,
+    should_retry,
+    sub_section_cap,
+    with_style_rules,
+)
 
 EXTRACTED = ROOT / "raw" / "mt" / "dokumente-extracted"
 WIKI_AOCS_ROOT = ROOT / "raw" / "wikipedia" / "aocs"
@@ -82,7 +88,7 @@ SUBSECTION_LABELS = {
 SUBSECTION_TOPICS = {
     "facteurs_naturels": "geology, soil types (Globigerina limestone, Coralline limestone, blue clay, terra rossa), Mediterranean climate, maritime influence, relief, low rainfall, the islands of Malta and Gozo",
     "facteurs_humains": "history of Maltese viticulture (Phoenician roots, post-2004 EU accession reform), indigenous grapes Ġellewża (red) and Girgentina (white), winemaking practices, dried-grape (Passito / Imqadded) wines",
-    "produit": "wine colours, aromas, structure, the character of the still and sparkling wines",
+    "produit": product_topics("en"),
     "interactions": "explicit link between the Maltese terroir and the character of the wine, expression of the limestone soils or maritime climate in the wine",
 }
 
@@ -111,7 +117,7 @@ Target reader: an informed wine lover or sommelier. Noteworthy: geological forma
 ═══ SOURCE 1: Wikipedia extract (relevant sections) ═══
 {wiki_hint}
 
-═══ SOURCE 2: Regulator context (user message below) ═══
+═══ SOURCE 2: Regulator context (given at the very start of this prompt, before these instructions) ═══
 
 Sub-section handled: {label}
 Preferred categories: {topics}
@@ -282,11 +288,12 @@ def _process_subsection(provider, model_id: str, record: dict, sub: dict):
     wiki_hint = _wiki_hint_for_subsection(wiki, sub["key"])
     system = EXTRACT_SYSTEM.format(
         wiki_hint=wiki_hint or "(no Wikipedia extract available)",
-        label=label, topics=topic, max_bullets=sub["max_bullets"],
+        label=label, topics=topic, max_bullets=sub_section_cap(sub, cahier_ctx),
     )
     system = with_feedback(system, record["slug"])
     # The regulator text is the cached leading block: the four sub-section calls share it.
-    user, doc = split_user_lead(USER_LEAD, label=label, ctx=cahier_ctx)
+    _, doc = split_user_lead(USER_LEAD, label=label, ctx=cahier_ctx)
+    user = ask_line("en", label)
     system = cached_system(doc, system, phased=True)
     try:
         raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192,
@@ -296,7 +303,21 @@ def _process_subsection(provider, model_id: str, record: dict, sub: dict):
     payload, perr = llm_json.parse_facts(raw)
     if payload is None:
         return [], 0, perr or "no JSON in response"
-    kept, dropped = _ground_facts(payload.get("facts") or [], cahier_ctx, wiki_hint)
+    raw_facts = payload.get("facts") or []
+    if not raw_facts and should_retry(sub["key"], "en", f"{cahier_ctx}\n{wiki_hint}"):
+        # an empty descriptive sub-section on a text that carries its vocabulary: one second
+        # reading (terroir_prompts); the first answer stands when the retry yields nothing
+        retried = record.setdefault("_retried", [])
+        if sub["key"] not in retried:
+            retried.append(sub["key"])
+        try:
+            raw = provider.chat(system=system, user=ask_line("en", label, retry=True),
+                                max_tokens=1500, num_ctx=8192, cache_phase=sub["key"], follow_up=True)
+        except Exception:  # noqa: BLE001
+            raw = ""
+        second, _ = llm_json.parse_facts(raw)
+        raw_facts = (second or {}).get("facts") or []
+    kept, dropped = _ground_facts(raw_facts, cahier_ctx, wiki_hint)
     return kept, dropped, ""
 
 
@@ -342,6 +363,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "wiki_source_revision": wiki.get("revision"),
         "wiki_source_url": wiki.get("page_url"),
         "subsection_errors": sub_errors,
+        **({"retried_subsections": list(record["_retried"])} if record.get("_retried") else {}),
     }
     write_source_cache(CACHE_DIR / f"{slug}.json", payload)
     return payload
@@ -386,11 +408,11 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "lang": SOURCE_LANG,
                 "subsection": sub["key"],
                 "subsection_label": label,
-                "max_bullets": sub["max_bullets"],
+                "max_bullets": sub_section_cap(sub, rec.get("_cahier_ctx") or ""),
                 "system_prompt": with_feedback(EXTRACT_SYSTEM.format(
                     wiki_hint=wiki_hint or "(no Wikipedia extract)",
                     label=label, topics=SUBSECTION_TOPICS[sub["key"]],
-                    max_bullets=sub["max_bullets"],
+                    max_bullets=sub_section_cap(sub, rec.get("_cahier_ctx") or ""),
                 ), rec["slug"]),
                 "cahier_ctx": rec.get("_cahier_ctx") or "",
                 "wiki_hint": wiki_hint,
@@ -524,6 +546,7 @@ def _run_batch(args) -> int:
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-mt.json",
         run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
+        follow_ups=True,
     )
     return 0
 

@@ -473,6 +473,18 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
             f'<li><a href="{esc(sources["register_fiche_url"])}" target="_blank" rel="noopener">'
             f'{lab["src_register_fiche"]}</a></li>'
         )
+    if sources.get("register_fiche_roles_url"):
+        note = fmt(lab["src_register_fiche_roles_note"], {
+            "main": sources.get("register_fiche_roles_n_main") or 0,
+            "other": sources.get("register_fiche_roles_n_other") or 0,
+        })
+        unlisted = sources.get("register_fiche_roles_n_unlisted") or 0
+        if unlisted:
+            note += " · " + fmt(lab["src_register_fiche_roles_unlisted"], {"n": unlisted})
+        links.append(
+            f'<li><a href="{esc(sources["register_fiche_roles_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_register_fiche_roles"]}</a> — {esc(note)}</li>'
+        )
     if sources.get("chzo_spec_url"):
         reg = f' — {esc(sources["chzo_spec_region"])}' if sources.get("chzo_spec_region") else ""
         org = (

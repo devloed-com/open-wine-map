@@ -47,7 +47,13 @@ from _lib.terroir_dedupe import dedupe_facts  # noqa: E402
 from _lib.terroir_feedback import with_feedback  # noqa: E402
 from _lib.terroir_interactions import earn_interactions  # noqa: E402
 from _lib.terroir_normalize import normalize_facts  # noqa: E402
-from _lib.terroir_prompts import with_style_rules  # noqa: E402
+from _lib.terroir_prompts import (
+    ask_line,
+    product_topics,
+    should_retry,
+    sub_section_cap,
+    with_style_rules,
+)
 
 EXTRACTED = ROOT / "raw" / "be" / "dokumenten-extracted"
 WIKI_AOCS_ROOT = ROOT / "raw" / "wikipedia" / "aocs"
@@ -96,7 +102,7 @@ SUBSECTION_TOPICS: dict[str, dict[str, str]] = {
             "wijnbereidingspraktijken, Belgische cultivars (Acolon, "
             "Dornfelder, Pinotin, Cabernet Cortis, Regent)"
         ),
-        "produit": "kleuren, aroma's, structuur, opvoeding, sensorisch profiel van de wijnen",
+        "produit": product_topics("nl"),
         "interactions": (
             "expliciet verband tussen het terroir en het karakter van "
             "de wijn, expressie van bodem of klimaat in de wijn"
@@ -113,7 +119,7 @@ SUBSECTION_TOPICS: dict[str, dict[str, str]] = {
             "œnologiques, cépages belges (Acolon, Régent, Pinotin, "
             "Solaris, Johanniter)"
         ),
-        "produit": "couleurs, arômes, structure, élevage, profil sensoriel des vins",
+        "produit": product_topics("fr"),
         "interactions": "lien explicite entre le terroir et le caractère du vin, expression du sol ou du climat dans le vin",
     },
 }
@@ -166,7 +172,7 @@ Doelpubliek: wijnliefhebbers of geïnformeerde sommeliers die geïnteresseerd zi
 ═══ BRON 1: Wikipedia-uittreksel (relevante secties) ═══
 {wiki_hint}
 
-═══ BRON 2: tekst van het enig document (in de gebruikersbericht hieronder) ═══
+═══ BRON 2: tekst van het enig document (staat helemaal aan het begin van deze prompt, vóór deze instructies) ═══
 
 Behandelde subsectie: {label}
 Voorkeurscategorieën: {topics}
@@ -193,7 +199,7 @@ Lecteur cible : amateur de vin ou sommelier informé intéressé par les spécif
 ═══ SOURCE 1 : extrait Wikipédia (sections pertinentes) ═══
 {wiki_hint}
 
-═══ SOURCE 2 : texte du document unique (message utilisateur ci-dessous) ═══
+═══ SOURCE 2 : texte du document unique (donné tout au début de cette consigne, avant ces instructions) ═══
 
 Sous-section traitée : {label}
 Catégories préférées : {topics}
@@ -360,11 +366,12 @@ def _process_subsection(
         wiki_hint=wiki_hint or "(geen Wikipedia-uittreksel beschikbaar / pas d'extrait Wikipédia disponible)",
         label=label,
         topics=topic,
-        max_bullets=sub["max_bullets"],
+        max_bullets=sub_section_cap(sub, lien),
     )
     system = with_feedback(system, record["slug"])
     # The regulator text is the cached leading block: the four sub-section calls share it.
-    user, doc = split_user_lead(USER_LEAD[lang], label=label, lien=lien)
+    _, doc = split_user_lead(USER_LEAD[lang], label=label, lien=lien)
+    user = ask_line(lang, label)
     system = cached_system(doc, system, phased=True)
     try:
         raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192,
@@ -375,6 +382,19 @@ def _process_subsection(
     if payload is None:
         return [], 0, perr or "no JSON in response"
     raw_facts = payload.get("facts") or []
+    if not raw_facts and should_retry(sub["key"], lang, f"{lien}\n{wiki_hint}"):
+        # an empty descriptive sub-section on a text that carries its vocabulary: one second
+        # reading (terroir_prompts); the first answer stands when the retry yields nothing
+        retried = record.setdefault("_retried", [])
+        if sub["key"] not in retried:
+            retried.append(sub["key"])
+        try:
+            raw = provider.chat(system=system, user=ask_line(lang, label, retry=True),
+                                max_tokens=1500, num_ctx=8192, cache_phase=sub["key"], follow_up=True)
+        except Exception:  # noqa: BLE001
+            raw = ""
+        second, _ = llm_json.parse_facts(raw)
+        raw_facts = (second or {}).get("facts") or []
     kept, dropped = _ground_facts(raw_facts, lien, wiki_hint)
     return kept, dropped, ""
 
@@ -425,6 +445,7 @@ def _process_record(provider, model_id: str, record: dict) -> dict:
         "wiki_source_revision": wiki_record.get("revision") if wiki_record else None,
         "wiki_source_url": wiki_record.get("page_url") if wiki_record else None,
         "subsection_errors": sub_errors,
+        **({"retried_subsections": list(record["_retried"])} if record.get("_retried") else {}),
     }
     write_source_cache(CACHE_DIR / f"{slug}.json", payload)
     return payload
@@ -492,12 +513,12 @@ def emit_todo(out_path: Path, *, skip_cached: bool, limit: int = 0) -> int:
                 "subsection": sub["key"],
                 "subsection_label": label,
                 "topics": topics[sub["key"]],
-                "max_bullets": sub["max_bullets"],
+                "max_bullets": sub_section_cap(sub, job["lien"]),
                 "system_prompt": with_feedback(EXTRACT_SYSTEM[lang].format(
                     wiki_hint=wiki_hint or "(no Wikipedia extract)",
                     label=label,
                     topics=topics[sub["key"]],
-                    max_bullets=sub["max_bullets"],
+                    max_bullets=sub_section_cap(sub, job["lien"]),
                 ), job["slug"]),
                 "cahier_text": job["lien"],
                 "wiki_hint": wiki_hint,
@@ -665,6 +686,7 @@ def _run_batch(args) -> int:
         provider=args.provider, model=model_id,
         sidecar=ROOT / "raw" / ".batch" / "02d-be.json",
         run_loop=run_loop, thinking=batch.default_thinking(args.provider, stage="02d"),
+        follow_ups=True,
     )
     return 0
 
