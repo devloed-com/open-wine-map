@@ -581,7 +581,27 @@ sentence the gate would drop). The second reading therefore recovered one
 of the four records it fired on; with eight records the widened topics and
 the pointer cannot be told apart from sampling. The next lever for the
 three needs no code: a `capture_if_present` hint in their feedback sidecar
-and a scoped re-run.
+and a scoped re-run. That re-run followed the same evening (`gr-hints-2026-10-24`,
+synchronous; one hint per record describing the pre-anchor product / natural
+statements as the source states them; 02d, gate, translation, back-check,
+strict audit with 0 failures; 21 → 27 facts, 26 after the boilerplate
+post-pass). kriti regained its product facts on the first reading (two; the
+gate filed the sugar-accumulation one under interactions and cut a 10–15 %
+clause another bullet carries). karditsa went from 2 to 5: the natural call
+returned three bullets and the gate re-filed all three as human factors (the
+"ideal soil and climatic conditions" clause belongs to the sentence on the
+wines' fame), its tautology interaction went to the boilerplate filter, and
+its natural factors stay empty because the 2,913-character text states none.
+messinia's product call answered for the first time, but its product
+statements are the effect clauses of its natural factors: the dedupe folded
+them and the gate filed the two causal ones (nutrients → aromatic substances,
+light and airing → pigments and aromas) under interactions, which leaves the
+record at two interactions against the cap of one — the gate's `subsection`
+verdict does not apply the cap. Gate: 23 supported, 4 rewritten, 0 dropped,
+7 moved; back-check 8 of 108 bullets fixed, 0 rejected; the untranslated
+detector lists none of the three. The hint works where the text states the
+fact as a sentence of that sub-section and cannot conjure one the text writes
+as a clause of another sub-section or does not write at all.
 
 The same afternoon closed the Collioure item of the phase-D row: the record
 had been built from INAO's PNOCDC draft of March 2011 (section X an empty
