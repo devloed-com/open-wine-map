@@ -133,6 +133,12 @@ _GEO_AREA_TITLE_BLOCKLIST = (
     # link_to_terroir instead.
     "kapcsolat a földrajzi",
     "kapcsolat a foldrajzi",
+    # The Reg. (EU) 2024/1143 template's section 3, "Az az ország, amelyhez
+    # a körülhatárolt földrajzi terület tartozik", whose body is the word
+    # "Magyarország" — it had won geo_area over section 9 (Csopak
+    # C/2026/4519, Balatonfüred-Csopak C/2026/3256); the GR / RO decoy.
+    "az az ország",
+    "az az orszag",
 )
 
 

@@ -131,6 +131,24 @@ COLOUR_BY_KEYWORD = {
     "roseweine": "rose",
 }
 
+# The 2024/1143 template opens each wine of section 6 on a product line,
+# "Weinbauerzeugnis" then "Wein, weiß" / "Qualitätswein rot" / "Perlwein rosé,
+# Blanc de Noir(s)": the colour is an adjective after the category, which no
+# compound noun above matches (Rheinhessen and Landwein Main read no colour).
+PRODUCT_LINE_RE = re.compile(r"Weinbauerzeugnis[ \t]*\n[ \t]*([^\n]+)")
+PRODUCT_COLOUR_WORDS: tuple[tuple[re.Pattern, str], ...] = (
+    (re.compile(r"\b(?:ros[ée]|wei(?:ß|ss)herbst)\b", re.I), "rose"),
+    (re.compile(r"\b(?:wei(?:ß|ss)|blanc de noirs?)\b", re.I), "blanc"),
+    (re.compile(r"\brot\b", re.I), "noir"),
+)
+
+# A style word its own sentence negates is not a style the text states: "darf
+# keine Perlage oder einen Überdruck entwickeln, der den Wein in die Kategorie
+# Perlwein einordnet" (Landwein Main) says the wine is not a Perlwein. Only
+# "kein" negates the noun: "darf … nicht den für die Angabe „lieblich“
+# höchstzulässigen Wert übersteigen" (Rheinburgen) allows a lieblich wine.
+NEGATION_RE = re.compile(r"\bkein\w*\b", re.I)
+
 
 # Style markers in German, mapped to the shared style-taxonomy slugs.
 # German wine carries the Prädikatswein ladder (Kabinett / Spätlese /

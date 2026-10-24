@@ -437,7 +437,10 @@ def _split_concatenated(slug: str, max_window: int = 4) -> list[str]:
     Cabernet Franc" → `["malbec", "cabernet-franc"]` in the source
     pliegos (casa-del-blanco, lanzarote)."""
     known = _known_canonical_slugs()
-    if slug in known:
+    # A curated canonical slug is never a typo to decompose: "malvasia-grossa"
+    # (pinned to no VIVC passport, 2026-10-24) had split into Malvasia + the
+    # Portuguese Grossa the moment its VIVC fold to Síria was withdrawn.
+    if slug in known or GRAPE_ALIAS.get(slug) == slug:
         return [slug]
     parts = slug.split("-")
     if len(parts) < 2:
@@ -610,6 +613,90 @@ def find_variety_section(text: str) -> tuple[int, int] | None:
             body_end = nxt.start()
             break
     return (body_start, body_end)
+
+
+# ----- the link section (2026-10-24) -----------------------------------------
+# The 2024/1143 single document carries only a "Resumen del vínculo"
+# (540–760 characters on the four records that left their MAPA pliego for it;
+# 50 ES parents carry a summary or a link under 1,000 characters), while the
+# national pliego's §7 "VÍNCULO CON LA ZONA GEOGRÁFICA" is the full text.
+# Stage 02f writes it into the sidecar as `link_to_terroir`; ES 02d grounds a
+# summary-only record on it and stage 04 carries it the same way (the GR /
+# BG / RO national-spec pattern). 57 of the 60 cached PDFs carry one of the
+# heading forms below (a bare "Vínculo" without a prefix — Pla de Bages — and
+# two PDFs without a heading do not).
+_LINK_HEADER_RE = re.compile(
+    _PREFIX + r"V[IÍ]NCULO(?:\s+(?:CON|ENTRE|EXISTENTE)\b[^\n]*|\s*[\.:]?\s*)$",
+    re.IGNORECASE | re.MULTILINE,
+)
+_POST_LINK_TITLES = _POST_VARIETY_TITLES - {"vínculo", "vinculo"} | {"otros", "otras", "prácticas", "practicas"}
+_LINK_MIN_CHARS = 300
+_LINK_FURNITURE_RE = re.compile(
+    r"^\s*(?:-\s*\d+\s*-|\d{1,3}|p[áa]gina\s+\d+(?:\s+de\s+\d+)?)\s*$"
+    r"|^\s*pliego\s+de\s+condiciones\b.*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+from _lib.summary_link import (  # noqa: E402, F401  (re-exported for the ES readers)
+    SUMMARY_LINK_MAX_CHARS,
+    is_summary_link,
+    prefer_national_link,
+)
+
+
+def _link_body_end(text: str, body_start: int, section_key: tuple[int, str]) -> int:
+    for nxt in _NEXT_SECTION_RE.finditer(text, pos=body_start):
+        nxt_key = _prefix_value(nxt.group(1))
+        nxt_title = nxt.group(2).lower()
+        # A heading's title is capitalised; a prose line that opens on a
+        # number ("30 a 40 y de 20 a 30", Uclés) is not a heading.
+        if not nxt.group(2)[0].isupper():
+            continue
+        # A lettered sub-item inside a numbered section ("A) Factores
+        # naturales") never ends it: a heading of the other kind counts only
+        # by its title.
+        same_kind = nxt_key[0] == section_key[0]
+        if (same_kind and nxt_key > section_key) or nxt_title in _POST_LINK_TITLES:
+            return nxt.start()
+    return len(text)
+
+
+def find_link_section(text: str) -> tuple[int, int, str] | None:
+    """(start, end, heading) of the pliego's vínculo section — the first
+    heading whose body reaches `_LINK_MIN_CHARS`, else the longest."""
+    best = None
+    for m in _LINK_HEADER_RE.finditer(text):
+        if _TOC_LINE_RE.search(m.group(0)):
+            continue
+        prefix_m = re.match(r"^\s*(\d+|[A-K])", m.group(0), re.IGNORECASE)
+        if prefix_m is None:
+            continue
+        start = m.end()
+        end = _link_body_end(text, start, _prefix_value(prefix_m.group(1)))
+        if end - start >= _LINK_MIN_CHARS:
+            return (start, end, m.group(0).strip())
+        if best is None or end - start > best[1] - best[0]:
+            best = (start, end, m.group(0).strip())
+    return best
+
+
+def _clean_link_text(body: str) -> str:
+    body = _LINK_FURNITURE_RE.sub("", body)
+    body = re.sub(r"(\w)-\n[ \t]*(\w)", r"\1\2", body)
+    body = "\n".join(re.sub(r"[ \t]+", " ", line).strip() for line in body.splitlines())
+    return re.sub(r"\n{3,}", "\n\n", body).strip()
+
+
+def parse_link_section(text: str) -> dict:
+    """{found, heading, text, chars} — the cleaned §7 vínculo text, `found`
+    only when it reaches `_LINK_MIN_CHARS`."""
+    span = find_link_section(text)
+    if span is None:
+        return {"found": False, "heading": "", "text": "", "chars": 0}
+    cleaned = _clean_link_text(text[span[0]:span[1]])
+    return {
+        "found": len(cleaned) >= _LINK_MIN_CHARS, "heading": span[2],
+        "text": cleaned, "chars": len(cleaned),
+    }
 
 
 def _emit_entry(entry: dict, seen: set[str], details: list[dict]) -> None:

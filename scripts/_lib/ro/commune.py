@@ -120,9 +120,11 @@ _JUDET_SPLIT_RE = re.compile(r"(,|\bși\b|\bsi\b|\bşi\b)", re.IGNORECASE)
 
 # Splits commune lists. Commas, semicolons, the conjunction "și",
 # colons (which often follow "Județul X:"), and newlines all act as
-# separators.
+# separators, and so does a dash before "com." / "comuna": "Oraş Cernavodă -
+# comuna Cernavodă" (Colinele Dobrogei, Murfatlar) names the town and its
+# commune, "Straja - comuna Sântimbru" a village and its commune.
 _COMMUNE_SPLIT_RE = re.compile(
-    r"\s*[,;:\n]\s*|\s+(?:și|şi|si)\s+|\s+[-–]\s+(?=com\b)", re.IGNORECASE,
+    r"\s*[,;:\n]\s*|\s+(?:și|şi|si)\s+|\s+[-–]\s+(?=com(?:una)?\b)", re.IGNORECASE,
 )
 
 # Tokens whose presence in a chunk strongly indicates it is section

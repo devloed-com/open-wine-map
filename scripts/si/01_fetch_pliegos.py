@@ -49,6 +49,9 @@ import requests
 from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.oj_publications import preferred_publication_uri  # noqa: E402
+
 INDEX_PATH = ROOT / "raw" / "si" / "eambrosia" / "index.json"
 OUT_DIR = ROOT / "raw" / "si" / "oj-pages"
 MANIFEST_PATH = OUT_DIR / "manifest.json"
@@ -75,43 +78,11 @@ def to_slovenian(url: str) -> str:
     return new
 
 
-def _is_oj_c_publication(pub: dict) -> bool:
-    """OJ Series C carries the single document; OJ Series L is the
-    implementing regulation. Distinguish via the `text` and URL form."""
-    text = (pub.get("text") or "").lower()
-    uri = (pub.get("uri") or "").lower()
-    if "official journal c" in text:
-        return True
-    if "/eli/c/" in uri:
-        return True
-    if "oj.c_." in uri or "oj:c_" in uri:
-        return True
-    return False
-
-
-def _is_corrigendum(pub: dict) -> bool:
-    """A Corrigendum / Popravek publication is a short correction notice,
-    not the full single document — deprioritise it."""
-    text = (pub.get("text") or "").lower()
-    return "corrigendum" in text or "popravek" in text
-
-
 def first_http_publication(pubs: list[dict]) -> str | None:
-    """Pick the single-document URL. Priority: non-corrigendum OJ-C → any
-    OJ-C → any http URL."""
-    for pub in pubs:
-        uri = pub.get("uri") or ""
-        if uri.startswith("http") and _is_oj_c_publication(pub) and not _is_corrigendum(pub):
-            return uri
-    for pub in pubs:
-        uri = pub.get("uri") or ""
-        if uri.startswith("http") and _is_oj_c_publication(pub):
-            return uri
-    for pub in pubs:
-        uri = pub.get("uri") or ""
-        if uri.startswith("http"):
-            return uri
-    return None
+    """The single-document URI to fetch: the newest OJ C publication by the
+    date the register gives, corrigenda and OJ L after it
+    (scripts/_lib/oj_publications.py) — not the first one listed."""
+    return preferred_publication_uri(pubs)
 
 
 def fetch_page(session: requests.Session, url: str) -> requests.Response | None:

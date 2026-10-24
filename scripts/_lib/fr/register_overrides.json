@@ -45,5 +45,12 @@
     "file_number": "",
     "register_name": "",
     "note": "Verified absence 2026-10-03: AOC recognised by arrêté du 11 août 2026 under national transitional protection (Reg. (EU) 2024/1143 art. 11) 'en vue de la transmission de la demande d'enregistrement'; eAmbrosia carries no Montpeyroux application yet. Provisional SIQO id (scripts/_lib/fr/siqo_supplements.json) — re-key when INAO's export publishes the real id_appellation, and look the file number up once the Commission publishes the application."
+  },
+  "254": {
+    "name": "Collioure",
+    "file_number": "PDO-FR-A1049",
+    "register_name": "Collioure",
+    "prefer_cahier": true,
+    "note": "INAO's product page (produit/7797) links only the PNOCDC draft 'PNOCDCCollioure.pdf' (PDF created 2011-03-23): its section X is an empty skeleton of headings, 315 characters, so the record carried no lien (shadow report 2026-08-29: register 14,412 chars). The register attachment 'CDC AOC Collioure.pdf' is the cahier that draft became — 'homologué par le décret n° 2011-1826 du 7 décembre 2011, JORF du 8 décembre 2011' — and eAmbrosia lists no publication or amendment for PDO-FR-A1049 after the Ares(2011)1381964 technical file (checked 2026-10-24). INAO's own index (show_texte 3042 / 2471 / 1817) was unreachable from here on 2026-10-24 (connection reset): if it turns out to list a later arrêté homologating a new cahier, pin that BO Agri URL in raw/inao/cahiers/manual_overrides.json and drop this pin."
   }
 }

@@ -170,6 +170,33 @@ def test_ro_yield_table_varieties_become_accessories():
     assert all(d["source"] == "yield-table" for d in grapes["details"] if d["role"] == "accessory")
 
 
+def test_ro_yield_table_inside_section_5_is_read():
+    """The 2024/1143 template titles section 5 "Practici oenologice" and prints
+    the table as its sub-block "(b) Producții maxime": read by the title alone,
+    Drăgășani's 2026 document lost Sauvignon, Merlot, Pinot noir, Burgund mare
+    and Tămâioasă românească, which it names only in that table."""
+    grapes = ro02.parse_grapes("Crâmpoşie selecţionată B\nFetească regală B\nNovac N")
+    sections = {
+        "5": "(a)\xa0\xa0\xa0 Practici oenologice specifice\n"
+             "La obținerea vinurilor cu DOP Drăgășani este interzisă îndulcirea vinurilor.\n"
+             "(b)\xa0\xa0\xa0 Producții maxime\n"
+             "2.   la maturitate deplină a recoltei, Fetească regală, Sauvignon\n"
+             "12 000 de kilograme de struguri pe hectar\n"
+             "4.   la maturitate deplină a recoltei, Novac, Burgund mare, Merlot\n"
+             "10 000 de kilograme de struguri pe hectar",
+    }
+    titles = {"5": "Practici oenologice"}
+    added = ro02.add_yield_table_varieties(grapes, sections, titles)
+    assert set(added) == {"sauvignon", "blaufrankisch", "merlot"}
+    assert "feteasca-regala" not in grapes["accessory"]
+
+
+def test_ro_section_5_without_a_yield_heading_adds_nothing():
+    grapes = ro02.parse_grapes("Fetească regală B")
+    sections = {"5": "Practici oenologice specifice\nMerlot este interzis la îndulcire."}
+    assert ro02.add_yield_table_varieties(grapes, sections, {"5": "Practici oenologice"}) == []
+
+
 # ---- BG: a column header glued to a name keeps the name --------------------
 
 def test_bg_header_phrase_glued_to_a_name_keeps_the_name():

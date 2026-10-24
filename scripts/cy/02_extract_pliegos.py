@@ -104,6 +104,13 @@ def find_section_offsets(html: str) -> list[tuple[str, str, int, int]]:
 
 _TOP_LEVEL_ROLE_TITLE_KEYWORDS_NORM: tuple[str, ...] = tuple(
     greek_norm(kw) for kws in SECTION_ROLE_KEYWORDS.values() for kw in kws
+) + (
+    # The Reg. (EU) 2024/1143 template (OJ C from 2025 on) closes with
+    # "11. Περαιτέρω εφαρμοστέες απαιτήσεις", a title no role keyword
+    # carries: rejected as a top-level header, it left the link section
+    # running through it and the EUR-Lex page footer (Τύρναβος C/2026/3788,
+    # Μακεδονία C/2026/2625). It ends the link; nothing routes to it.
+    greek_norm("περαιτέρω εφαρμοστέες απαιτήσεις"),
 )
 
 

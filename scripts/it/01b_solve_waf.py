@@ -25,6 +25,9 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.oj_publications import preferred_publication_uri  # noqa: E402
+
 INDEX_PATH = ROOT / "raw" / "it" / "eambrosia" / "index.json"
 OUT_DIR = ROOT / "raw" / "it" / "oj-pages"
 MANIFEST_PATH = OUT_DIR / "manifest.json"
@@ -39,28 +42,11 @@ def to_italian(url: str) -> str:
     return new
 
 
-def _is_oj_c_publication(pub: dict) -> bool:
-    text = (pub.get("text") or "").lower()
-    uri = (pub.get("uri") or "").lower()
-    if "official journal c" in text:
-        return True
-    if "/eli/c/" in uri:
-        return True
-    if "oj.c_." in uri:
-        return True
-    return False
-
-
 def first_http_publication(pubs: list[dict]) -> str | None:
-    for pub in pubs:
-        uri = pub.get("uri") or ""
-        if uri.startswith("http") and _is_oj_c_publication(pub):
-            return uri
-    for pub in pubs:
-        uri = pub.get("uri") or ""
-        if uri.startswith("http"):
-            return uri
-    return None
+    """The single-document URI to fetch: the newest OJ C publication by the
+    date the register gives, corrigenda and OJ L after it
+    (scripts/_lib/oj_publications.py) — not the first one listed."""
+    return preferred_publication_uri(pubs)
 
 
 def looks_like_single_document(html: str) -> bool:

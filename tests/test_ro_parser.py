@@ -525,6 +525,16 @@ def test_town_cu_tail_only_after_a_town_prefix():
     assert "malu cu flori" in _names("Malu cu Flori")
 
 
+def test_dash_before_comuna_splits_town_from_its_commune():
+    """The 2024/1143 documents write "Oraş Cernavodă - comuna Cernavodă." and
+    "Oraş Ovidiu - comuna Ovidiu, satul Poiana": kept whole, the chunk matched
+    no GISCO commune and Colinele Dobrogei's polygon lost both towns."""
+    out = _names("Oraş Cernavodă - comuna Cernavodă.\n—\nOraş Ovidiu - comuna Ovidiu, "
+                 "satul Poiana\n—\nStraja - comuna Sântimbru")
+    assert "cernavodă" in out and "ovidiu" in out and "sântimbru" in out
+    assert not [n for n in out if "comuna" in n]
+
+
 def test_commune_dash_tail_only_after_a_commune_prefix():
     assert "lungeşti" in _names("Com. Lungeşti - Lungeşti")
     # a hyphenated village listed on its own keeps its dash

@@ -63,14 +63,13 @@ UA = (
 
 # Each source is fetched from zakonyprolidi.cz (the most accessible CZ-law
 # mirror — eSbírka is a JS SPA, the Sbírka scan-PDF is image-only).
-# The canonical attribution is the Sbírka zákonů PDF URL.
+# The canonical attribution is the act's e-Sbírka page (the card's link):
+# the old Sbírka viewer (aplikace.mv.gov.cz/sbirka-zakonu/ViewFile.aspx)
+# answers 404 since the e-Sbírka migration (validator run of 2026-10-23).
 SOURCES: dict[str, dict[str, str]] = {
     "vyhlaska-88-2017": {
         "fetch_url": "https://www.zakonyprolidi.cz/cs/2017-88",
-        "canonical_url": (
-            "https://aplikace.mv.gov.cz/sbirka-zakonu/ViewFile.aspx"
-            "?type=c&id=61787"
-        ),
+        "canonical_url": "https://e-sbirka.gov.cz/sb/2017/88",
         "title": (
             "Vyhláška č. 88/2017 Sb., kterou se provádějí některá "
             "ustanovení zákona o vinohradnictví a vinařství"
@@ -80,10 +79,7 @@ SOURCES: dict[str, dict[str, str]] = {
     },
     "vyhlaska-254-2010": {
         "fetch_url": "https://www.zakonyprolidi.cz/cs/2010-254",
-        "canonical_url": (
-            "https://aplikace.mv.gov.cz/sbirka-zakonu/ViewFile.aspx"
-            "?type=c&id=5785"
-        ),
+        "canonical_url": "https://e-sbirka.gov.cz/sb/2010/254",
         "title": (
             "Vyhláška č. 254/2010 Sb., kterou se stanoví seznam "
             "vinařských podoblastí, vinařských obcí a viničních tratí"

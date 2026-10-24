@@ -14,9 +14,9 @@
       "file": "saint-sardos-2026-05-11.geojson.gz",
       "rows": 23,
       "area_km2": 36.44,
-      "reason": "The 2026-09-28 release carries no row for AOC Saint-Sardos (id_app 686: 23 communes, 36.4 km² in the 2026-05-11 release) while nothing retires the appellation — no act in the JORF between 11 May and 30 September 2026 (DILA dumps swept 2026-09-30), nothing new in INAO's Textes JO index, eAmbrosia PDO-FR-A0408 `registered`, INAO product pages 8380 / 8381 still served (updated 17-06-2026). An upstream data state, not a withdrawal: the record keeps the delimitation INAO last published instead of falling back to the 23-commune union. Re-check each weekly export; drop the entry when the rows return.",
+      "reason": "The 2026-09-28 release carries no row for AOC Saint-Sardos (id_app 686: 23 communes, 36.4 km² in the 2026-05-11 release) while nothing retires the appellation — no act in the JORF between 11 May and 30 September 2026 (DILA dumps swept 2026-09-30), nothing new in INAO's Textes JO index, eAmbrosia PDO-FR-A0408 `registered`, INAO product pages 8380 / 8381 still served (updated 17-06-2026). An upstream data state, not a withdrawal: the record keeps the delimitation INAO last published instead of falling back to the 23-commune union. Re-checked 2026-10-24 against the 2026-10-19 release: still no row, eAmbrosia PDO-FR-A0408 still `registered` (no removedFlag, last modified 2018-06-08). Re-check each weekly export; drop the entry when the rows return.",
       "source": "data.gouv.fr dataset delimitation-parcellaire-des-aoc-viticoles-de-linao, resource 2026-05-05-delim-parcellaire-aoc-shp.zip (sha256 21b74d4d533ffe7e9d2e9c43ad4a7dc32b36c1bb64986ec23321b05dc1c587bf, layer dated 2026-05-11; the URL no longer serves), rows `app = 'Saint-Sardos'` copied unchanged; CURATOR_TODO.md « INAO parcellaire release 2026-09-28 »",
-      "verified": "2026-10-04"
+      "verified": "2026-10-24"
     },
     {
       "match": {
@@ -31,9 +31,9 @@
       "file": "languedoc-montpeyroux-2026-05-11.geojson.gz",
       "rows": 2,
       "area_km2": 9.56,
-      "reason": "The 2026-09-28 release drops the two rows of DGC Languedoc Montpeyroux (id_denom 1313: Arboras, Montpeyroux, 9.6 km²) after the DGC became AOC Montpeyroux (arrêté du 11 août 2026, JORF 15-08-2026) and before INAO publishes the new appellation's parcels. The former DGC stays in the corpus marked Promoted (scripts/_lib/promoted_gis.json) and its delimitation is the one INAO published for it; the Languedoc parent rows for both communes are still in the release, so the parent polygon is unchanged by the carry. Drop the entry when INAO ships the Montpeyroux aire parcellaire.",
+      "reason": "The 2026-09-28 release drops the two rows of DGC Languedoc Montpeyroux (id_denom 1313: Arboras, Montpeyroux, 9.6 km²) after the DGC became AOC Montpeyroux (arrêté du 11 août 2026, JORF 15-08-2026) and before INAO publishes the new appellation's parcels. The former DGC stays in the corpus marked Promoted (scripts/_lib/promoted_gis.json) and its delimitation is the one INAO published for it; the Languedoc parent rows for both communes are still in the release, so the parent polygon is unchanged by the carry. The 2026-10-19 release ships the successor's parcels as AOC Montpeyroux (id_denom 2951: Arboras, Lagamas, Montpeyroux, Saint-Jean-de-Fos, 5.9 km²), which draw the successor's own record; it still carries no id_denom 1313 row and never will for a retired DGC, so the entry stays — dropping it would redraw the former DGC as the two-commune aires-CSV union, which the carry exists to prevent. STALE only if id_denom 1313 rows reappear (re-checked 2026-10-24).",
       "source": "data.gouv.fr dataset delimitation-parcellaire-des-aoc-viticoles-de-linao, resource 2026-05-05-delim-parcellaire-aoc-shp.zip (sha256 21b74d4d533ffe7e9d2e9c43ad4a7dc32b36c1bb64986ec23321b05dc1c587bf, layer dated 2026-05-11), rows `id_denom = 1313` copied unchanged; arrêté du 11 août 2026 NOR AGRT2607509A",
-      "verified": "2026-10-04"
+      "verified": "2026-10-24"
     }
   ]
 }

@@ -548,6 +548,13 @@ _PROSE_ITEM_RE = re.compile(r"^[^\W\d_]")
 _LINE_BREAK_HYPHEN_RE = re.compile(r"(?<=[α-ωά-ώϊϋΐΰ])-\s*(?=[α-ωά-ώϊϋΐΰ])")
 # "Αμφίκλειας- Ελάτειας", "Σερβίων – Βελβεντού": one compound name.
 _DASH_SPACING_RE = re.compile(r"(?<=[α-ωά-ώϊϋΐΰς])\s*[-–—]\s*(?=[Α-ΩΆ-ΏΪΫ])")
+# A stray full stop between a tier word and its name — Τύρναβος, OJ C/2026/3788:
+# "… και Δένδρων Τυρνάβου της Δημοτικής Ενότητας. Τυρνάβου και της …" — left
+# a container with no name and lost the community before it. Only the
+# Ενότητας / Κοινότητας tier words: "του ιδίου Δήμου. β)" ends a list item.
+_STRAY_TIER_STOP_RE = re.compile(
+    r"((?:[Δδ]ημοτικής|[Ττ]οπικής|[Ππ]εριφερειακής)\s+(?:[Εε]νότητας|[Κκ]οινότητας))\.\s+(?=[Α-ΩΆ-Ώ])"
+)
 _PROSE_ITEMS = frozenset(w.casefold() for w in {"υπουργικές αποφάσεις", "υπουργική απόφαση"})
 
 
@@ -662,6 +669,7 @@ def area_body(text: str) -> str:
     body = _truncate_at_terroir_section(unicodedata.normalize("NFKC", text or ""))
     body = _LINE_BREAK_HYPHEN_RE.sub("", body)
     body = _DASH_SPACING_RE.sub("-", body)
+    body = _STRAY_TIER_STOP_RE.sub(r"\1 ", body)
     body = _TIER_GLOSS_RE.sub(" ", body)
     body = _COLOUR_LIST_HEADER_RE.sub(", ", body)
     m = _SPEC_TAIL_RE.search(body)

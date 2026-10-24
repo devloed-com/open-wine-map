@@ -782,3 +782,20 @@ def test_compound_of_two_established_provinces_is_split_into_its_pieces():
     # In a Teruel list the compound is the Teruel municipio.
     got = _ines(idx, ["Teruel", "Alcañiz", "Toril y Masegoso"])
     assert got == {"44216", "44013", "44231"}
+
+
+_PICANYA_MUNIS = [
+    ("46193", "Picanya"), ("46190", "Paterna"), ("46244", "Torrent"),
+    ("09232", "Peñaranda de Duero"),
+]
+
+
+def test_castilian_enye_finds_the_valencian_ny_name():
+    # Valencia's 2024 single document lists "Picaña" in its Valentino
+    # subzona; GISCO carries the official name "Picanya" only.
+    idx = ESPolygonIndex(Path("/nonexistent.gpkg"), Path("/nonexistent.zip"))
+    for i, (ine, name) in enumerate(_PICANYA_MUNIS):
+        idx._add_municipio(box(i * 2, 0, i * 2 + 1, 1), ine, name)
+    assert _ines(idx, ["Paterna", "Picaña", "Torrent"]) == {"46190", "46193", "46244"}
+    # A name GISCO spells with ñ itself still matches exactly.
+    assert _ines(idx, ["Peñaranda de Duero"]) == {"09232"}

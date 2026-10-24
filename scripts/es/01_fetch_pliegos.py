@@ -49,6 +49,9 @@ import requests
 from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.oj_publications import preferred_publication_uri  # noqa: E402
+
 INDEX_PATH = ROOT / "raw" / "es" / "eambrosia" / "index.json"
 OUT_DIR = ROOT / "raw" / "es" / "oj-pages"
 MANIFEST_PATH = OUT_DIR / "manifest.json"
@@ -78,40 +81,11 @@ def to_spanish(url: str) -> str:
     return new
 
 
-def _is_oj_c_publication(pub: dict) -> bool:
-    """OJ Series C (Communications) carries the documento único; OJ Series L
-    (Legislation) is the implementing regulation that *approves* the
-    modification but doesn't include the pliego itself. Distinguish via the
-    `text` ("Official Journal C…") and via URL form (post-2023 ELI: `/eli/c/…`
-    or `/eli/C/…`; pre-2023: `OJ.C_.` segment)."""
-    text = (pub.get("text") or "").lower()
-    uri = (pub.get("uri") or "").lower()
-    if "official journal c" in text:
-        return True
-    if "/eli/c/" in uri:
-        return True
-    if "oj.c_." in uri:
-        return True
-    return False
-
-
 def first_http_publication(pubs: list[dict]) -> str | None:
-    """eAmbrosia's `publications` interleaves OJ-cite URLs (http) with internal
-    Ares document numbers (e.g. uri="86888"). We want the first http one that
-    points at an OJ C (documento único). When eAmbrosia lists both an OJ L
-    (modification-approval regulation) and an OJ C (the one that carries the
-    pliego), preferring OJ C avoids stage 02's `no-documento-unico-anchor`
-    stub. Fall back to any http URL when there's no OJ C — most ES wines
-    have only one http publication."""
-    for pub in pubs:
-        uri = pub.get("uri") or ""
-        if uri.startswith("http") and _is_oj_c_publication(pub):
-            return uri
-    for pub in pubs:
-        uri = pub.get("uri") or ""
-        if uri.startswith("http"):
-            return uri
-    return None
+    """The single-document URI to fetch: the newest OJ C publication by the
+    date the register gives, corrigenda and OJ L after it
+    (scripts/_lib/oj_publications.py) — not the first one listed."""
+    return preferred_publication_uri(pubs)
 
 
 def fetch_page(session: requests.Session, url: str) -> requests.Response | None:

@@ -611,6 +611,38 @@ fallback.
 
 ## Hungary
 
+### 2026-10-24 — Nivegy-völgy / Nivegy-völgyi added (eAmbrosia 42 → 43) ✅
+
+Live eAmbrosia (`country=HU`, `productType=WINE`, `status=registered`) lists
+43 wine GIs (37 DOP + 6 PGI); the cached index had 42. The delta is
+**Nivegy-völgy / Nivegy-völgyi** (`PDO-HU-02816`), registered by Commission
+Implementing Regulation (EU) 2026/2105 (OJ L, 21.9.2026; single document OJ
+C/2026/2812 of 21.5.2026).
+
+| Check | reference | pipeline | Match |
+|---|---:|---:|:---:|
+| eAmbrosia wine GIs | 43 | 43 (`raw/hu/eambrosia/index.json`) | ✓ |
+| Nivegy-völgy single document | EUR-Lex C/2026/2812 | fetched (stage 01), 6 varieties, 7 települések, §8 link text 5.7 KB (stage 02) | ✓ |
+| Region | mainly inside the Balatonfüred-Csopak PDO, partly Balaton-felvidék; "A címkén a „Balaton borrégió” megnevezés feltüntethető" (the document's own wording) | `Balaton` (`_lib/hu/region.py`) | ✓ |
+| Geometry | post-Bétard; §6 lists Balatoncsicsó, Monoszló, Óbudavár, Szentantalfa, Szentjakabfa, Tagyon, Zánka | `gisco-commune-union` of the 7 GISCO LAU 2024 units — one polygon, 58.4 km²; `audit_geometry_vs_text.py` OK (7 named, 7 drawn) | ✓ |
+| On the map | — | stage 04 (2026-10-24, 2,956 records): PDO, Balaton, White from the grape floor (the text names its two wine types by their yellow colour, never "fehér"); `audit_hu_coverage.py` 43 / 43 on the map | ✓ |
+| Terroir facts | — | 15 facts (natural factors 7, human factors 4, product 3, interactions 1; all from the single document — hu.wikipedia has no wine article, pinned `missing`); gate 12 supported, 3 rewritten, 0 dropped; translated en / fr / es / nl, the back-check fixed 3 NL bullets | ✓ |
+
+Recipe:
+
+```
+.venv/bin/python scripts/hu/00_fetch_data.py
+.venv/bin/python scripts/hu/01_fetch_pliegos.py --only nivegy-volgy
+.venv/bin/python scripts/hu/02_extract_pliegos.py --only nivegy-volgy
+.venv/bin/python scripts/02b_fetch_aoc_lexicon.py --lang hu --source raw/hu/dokumentumok-extracted --only nivegy-volgy
+.venv/bin/python scripts/hu/02d_extract_terroir_facts.py --only nivegy-volgy --provider anthropic
+.venv/bin/python scripts/02d_verify_terroir_facts.py --only nivegy-volgy
+.venv/bin/python scripts/hu/02e_translate_terroir_facts.py --only nivegy-volgy --provider anthropic
+.venv/bin/python scripts/02e_verify_terroir_facts.py --only nivegy-volgy
+.venv/bin/python scripts/hu/03_generate_wiki.py && .venv/bin/python scripts/04_build_maps.py
+.venv/bin/python scripts/audit_hu_coverage.py
+```
+
 ### 2026-09-20 — Mura / Murai added (eAmbrosia 41 → 42) ✅
 
 Live eAmbrosia (`country=HU`, `productType=WINE`, `status=registered`) lists

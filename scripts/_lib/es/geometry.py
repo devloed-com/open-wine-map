@@ -515,6 +515,14 @@ class ESPolygonIndex:
         cands = list(self._munis_by_full_norm.get(norm, []))
         if cands:
             return cands, True
+        # A Castilian "ñ" is the "ny" of a Valencian / Catalan official name:
+        # Valencia's 2024 single document lists "Picaña" in its Valentino
+        # subzona, GISCO carries only "Picanya" (2026-10-24).
+        if "ñ" in name.lower():
+            ny = _normalise_commune_name(name.replace("ñ", "ny").replace("Ñ", "Ny"))
+            cands = list(self._munis_by_full_norm.get(ny, []))
+            if cands:
+                return cands, True
         first_word = norm.split(" ", 1)[0]
         return list(self._munis_by_first_word.get(first_word, [])), False
 

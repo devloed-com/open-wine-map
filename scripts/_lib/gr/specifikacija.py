@@ -235,6 +235,52 @@ _PRE_LINK_ROLES = frozenset({
     "geo_area",
 })
 
+# The ΥΠΑΑΤ template continues past the link — "8. ΑΛΛΕΣ ΠΡΟΫΠΟΘΕΣΕΙΣ"
+# (labelling), "9. ΕΦΑΡΜΟΣΤΕΕΣ ΑΠΑΙΤΗΣΕΙΣ", the control authorities, the
+# application form ("ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ", "ΓΛΩΣΣΑ ΑΙΤΗΣΗΣ", the intermediary's and
+# the applicant's details) and at times the ministry letterhead of a trailing
+# page — and none of them carried a role, so the link ran to the end of the
+# document in 123 of the 151 GR / CY sidecars, 41 of them by more than 1,000
+# characters (2026-10-24). They are one post-link role that ends the link in
+# both passes and that no reader consumes: `parse_styles` reads
+# `additional_conditions` for the categories a labelling rule names, and the
+# phase C styles were settled without this text, so it stays out of it.
+POST_LINK_ROLE = "post_link_sections"
+_POST_LINK_KW_NORM = tuple(greek_norm(k) for k in (
+    "άλλες προϋποθέσεις",
+    "εφαρμοστέες απαιτήσεις",
+    "δικαιολογητικά",
+    "στοιχεία αρχών και οργανισμών ελέγχου",
+    "αρχές ελέγχου",
+    "οργανισμοί ελέγχου",
+    "άλλες πληροφορίες",
+    "στοιχεία ενδιάμεσου φορέα",
+    "στοιχεία μέρους με έννομο συμφέρον",
+    "γλώσσα αίτησης",
+    "e-bacchus",
+    "hellenic ministry",
+    "ministry of rural development",
+    "υπουργείο αγροτικής ανάπτυξης",
+))
+
+
+def _post_link_role(cand: str) -> str | None:
+    """`POST_LINK_ROLE` for a capitalised header of the template's trailing
+    sections — under the strict header rules whatever the pass, and only a
+    line set in capitals, so a sentence of the narrative that mentions
+    "δικαιολογητικά" in passing never ends the link; a sub-heading of the
+    narrative itself ("ΣΤΑΦΥΛΙΑ") carries none of the keywords."""
+    cand = _normalise_glyphs(cand)
+    if not (5 <= len(cand) <= 85) or cand[:1].islower() or cand.endswith(","):
+        return None
+    if _SENTENCE_INSIDE_RE.search(cand) or _CUT_SENTENCE_END_RE.search(cand):
+        return None
+    letters = [c for c in cand if c.isalpha()]
+    if not letters or sum(c.isupper() for c in letters) / len(letters) < 0.8:
+        return None
+    norm = greek_norm(cand)
+    return POST_LINK_ROLE if any(k in norm for k in _POST_LINK_KW_NORM) else None
+
 
 def extract_sections(text: str, strict: bool = True) -> tuple[dict[str, str], dict[str, str]]:
     """Walk lines; slice the document into role-keyed section bodies.
@@ -246,7 +292,19 @@ def extract_sections(text: str, strict: bool = True) -> tuple[dict[str, str], di
     current: str | None = None
     for raw in text.splitlines():
         cand = _strip_header_line(raw, strict)
-        role = _header_role(cand, strict) if cand else None
+        role = None
+        if cand and "link_to_terroir" in sections:
+            # after the link, a trailing-section header is tested first: the
+            # application form's "5. ΣΥΝΔΕΣΜΟΣ ΜΕ ΤΗΝ E-BACCHUS" and "Δεσμός:
+            # http://…" carry the bare link keyword and re-opened the link in
+            # both passes (Achaia's link ended "TA%20PGE.html / Αχαϊα")
+            role = _post_link_role(cand)
+        if role is None and cand:
+            role = _header_role(cand, strict)
+        if POST_LINK_ROLE in sections and role != POST_LINK_ROLE:
+            # the trailing sections have opened: the document is over and the
+            # form follows, so no header re-opens a role
+            role = None
         if strict and role in _PRE_LINK_ROLES and "link_to_terroir" in sections:
             role = None
         if role is not None:
@@ -578,11 +636,21 @@ _TERROIR_START_ANCHORS = (
     "περιγραφη του δεσμου",
 )
 _TERROIR_END_ANCHORS = (
-    "αλλεσ προϋποθεσεισ",
+    "αλλεσ προυποθεσεισ",
     "αλλεσ ουσιωδεισ",
     "δικαιολογητικα",
     "παραπομπη στη δημοσιευση",
     "συσκευασια",
+    # the template's trailing sections (see POST_LINK_ROLE); written as
+    # `_fold_keep_len` folds the text, so "προϋποθεσεισ" is "προυποθεσεισ"
+    "εφαρμοστεεσ απαιτησεισ",
+    "αρχεσ ελεγχου",
+    "οργανισμων ελεγχου",
+    "αλλεσ πληροφοριεσ",
+    "στοιχεια ενδιαμεσου φορεα",
+    "γλωσσα αιτησησ",
+    "hellenic ministry",
+    "υπουργειο αγροτικησ αναπτυξησ",
 )
 
 

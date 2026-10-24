@@ -42,6 +42,9 @@ from _lib.de.einziges_dokument import (  # noqa: E402
     COLOUR_BY_KEYWORD,
     DOC_ANCHOR_RE,
     INLINE_ROLE_RE,
+    NEGATION_RE,
+    PRODUCT_COLOUR_WORDS,
+    PRODUCT_LINE_RE,
     ROLE_BY_KEYWORD,
     SECTION_HEADER_RE,
     SECTION_NUM_RE,
@@ -238,14 +241,21 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
         ):
             blob_parts.append(body)
     blob = " ".join(blob_parts)
-    found: set[str] = set()
-    for kw, colour_slug in COLOUR_BY_KEYWORD.items():
-        if re.search(rf"\b{re.escape(kw)}\b", blob, re.I):
-            found.add(colour_slug)
-    for pattern, slug in STYLE_MARKERS:
-        if pattern.search(blob):
-            found.add(slug)
+    found = {colour for kw, colour in COLOUR_BY_KEYWORD.items()
+             if _stated(re.compile(rf"\b{re.escape(kw)}\b", re.I), blob)}
+    found |= {colour for line in PRODUCT_LINE_RE.findall(blob)
+              for pattern, colour in PRODUCT_COLOUR_WORDS if pattern.search(line)}
+    found |= {slug for pattern, slug in STYLE_MARKERS if _stated(pattern, blob)}
     return sorted(found)
+
+
+def _stated(pattern: re.Pattern, blob: str) -> bool:
+    """Some mention of `pattern` that its own sentence does not negate."""
+    for m in pattern.finditer(blob):
+        start = max(blob.rfind(".", 0, m.start()), blob.rfind("\n", 0, m.start())) + 1
+        if not NEGATION_RE.search(blob[start:m.start()]):
+            return True
+    return False
 
 
 def derive_summary(role_text: str, max_chars: int = 600) -> str:

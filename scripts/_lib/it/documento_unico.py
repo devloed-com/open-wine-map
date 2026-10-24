@@ -176,14 +176,16 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
 # garnet / purple as red. A pink head is not read: the Vin Santo Occhio di
 # Pernice of five Tuscan DOCs is "colore: dal rosa all'ambrato"; nor a
 # reflection ("colore rosa intenso con lievi riflessi gialli", Matino)
-# (2026-10-23).
+# (2026-10-23). A golden or amber head is a white wine too — Marsala's Oro
+# and Ambra, "Colore dorato più o meno intenso oppure giallo ambrato" (OJ
+# C/2026/5127) — while "dal rosa all'ambrato" keeps its pink head.
 _COLOUR_FIELD_RE = re.compile(
     r"\bcolore\s*:?\s*(?:(?:da|dal|dallo|tra|fra)\s+(?:il\s+|lo\s+)?)?(?:[a-zàèéìòù]+\s+)?"
-    r"(giall|paglierin|rubin|granat|porpor|purpure)",
+    r"(giall|paglierin|dorat|ambrat|rubin|granat|porpor|purpure)",
     re.I,
 )
 _COLOUR_FIELD_HEADS = {
-    "giall": "blanc", "paglierin": "blanc",
+    "giall": "blanc", "paglierin": "blanc", "dorat": "blanc", "ambrat": "blanc",
     "rubin": "noir", "granat": "noir", "porpor": "noir", "purpure": "noir",
 }
 

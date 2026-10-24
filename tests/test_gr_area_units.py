@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib.gr.commune import (  # noqa: E402
     _normalise_commune,
+    area_body,
     parse_area_units,
     record_pins,
 )
@@ -260,3 +261,19 @@ def test_landmark_file_is_sourced():
                 continue
             assert -90 < spec["lat"] < 90 and -180 < spec["lon"] < 180, (slug, name)
             assert spec["source"].startswith(("wikidata:Q", "geonames:")), (slug, name)
+
+
+def test_stray_stop_after_a_tier_word_keeps_the_community_before_it():
+    # Τύρναβος, OJ C/2026/3788 (2024/1143 template)
+    text = ("Η οριοθετημένη περιοχή για την παραγωγή των οίνων περιλαμβάνει τις περιοχές "
+            "του Δήμου Τυρνάβου και συγκεκριμένα της Δημοτικής Κοινότητας Τυρνάβου και των "
+            "Τοπικών Κοινοτήτων Αργυροπουλίου, Δαμασίου και Δένδρων Τυρνάβου της Δημοτικής "
+            "Ενότητας. Τυρνάβου και της Δημοτικής Κοινότητας Αμπελώνος και των Τοπικών "
+            "Κοινοτήτων Βρυοτόπου, Δελερίων και Ροδιάς της Δημοτικής Ενότητας Αμπελώνος της "
+            "περιφερειακής Ενότητας Λάρισας.")
+    assert "Δένδρων Τυρνάβου" in parse_area_units(text)["communities"]
+
+
+def test_a_list_item_ending_on_dimos_keeps_its_stop():
+    body = area_body("της Δημοτικής Ενότητας Ευρωπού του ιδίου Δήμου. β) στην Τοπική Κοινότητα Γοργόπης")
+    assert "Δήμου. β)" in body

@@ -165,22 +165,17 @@ def test_regression_nested_section4_subsections_do_not_shadow_5_to_9(fixture_tex
         routed["grape_varieties"])["principal"])
 
 
-def test_actual_section9_other_conditions_title_dropped(fixture_text):
-    """DISCREPANCY pin: the nested fixture's section 9 is titled "Други
-    основни условия (…)". The additional_conditions keyword table carries
-    "други условия" / "други специфични изисквания" / "други съществени
-    условия" — but "Други ОСНОВНИ условия" has "основни" between the two
-    words, so the substring "други условия" misses and the section is
-    silently dropped (no additional_conditions role). This mirrors the
-    real dunavska-ravnina extraction, which also keeps only sections 1–8.
-    The melnik fixture (title "Други специфични изисквания") does match —
-    so the gap is the specific "основни условия" wording, not all of
-    section 9."""
+def test_actual_section9_other_conditions_title_kept(fixture_text):
+    """The nested fixture's section 9 is titled "Други основни условия (…)":
+    "основни" sits between the two words of "други условия", so until
+    2026-10-24 the substring missed and the section was dropped, so the link
+    section before it ran on through it (Дунавска равнина). The keyword
+    table carries the phrase now."""
     _sections, titles, routed = _route_html(
         fixture_text("bg_edinen_dokument_nested_subsections.html")
     )
-    assert "9" not in titles
-    assert "additional_conditions" not in routed
+    assert "9" in titles
+    assert "additional_conditions" in routed
 
 
 # ==========================================================================

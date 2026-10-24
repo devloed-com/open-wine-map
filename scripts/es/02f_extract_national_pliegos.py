@@ -49,6 +49,7 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -57,7 +58,11 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-from _lib.es.national_pliego import parse_variety_section, pdf_to_text  # noqa: E402
+from _lib.es.national_pliego import (  # noqa: E402
+    parse_link_section,
+    parse_variety_section,
+    pdf_to_text,
+)
 from _lib.grape_entity import flush_unknowns_queue, set_pliego_context  # noqa: E402
 
 PLIEGOS_DIR = ROOT / "raw" / "es" / "pliegos-extracted"
@@ -90,9 +95,20 @@ PLIEGO_PDF_RE = re.compile(
 )
 
 
+# "Referencia electrónica (URL) a la publicación del pliego de condiciones
+# <URL>": the link the single document labels as the pliego wins over the
+# first PDF of the section — Condado de Huelva's (C/2026/4233) first PDF is a
+# map of its named pagos.
+PLIEGO_LABELLED_RE = re.compile(
+    r"pliego\s+de\s+condiciones\W{0,5}.{0,60}?(https?://[^\s)\]<>\"'»]+)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
 def find_pliego_url(record: dict) -> str | None:
     """Scan the record's section 9 / additional-conditions text for the
-    first national-pliego PDF URL. Returns the URL or None."""
+    national-pliego PDF URL: the one labelled as the pliego when it is a
+    PDF, else the first PDF URL. Returns the URL or None."""
     candidates = []
     sections = record.get("sections") or {}
     for key in ("9", "additional_conditions"):
@@ -101,6 +117,10 @@ def find_pliego_url(record: dict) -> str | None:
     roles = record.get("section_roles") or {}
     if roles.get("additional_conditions"):
         candidates.append(roles["additional_conditions"])
+    for text in candidates:
+        lm = PLIEGO_LABELLED_RE.search(text)
+        if lm and PLIEGO_PDF_RE.fullmatch(lm.group(1).rstrip(".,;")):
+            return PLIEGO_PDF_RE.search(lm.group(1)).group(0)
     for text in candidates:
         m = PLIEGO_PDF_RE.search(text)
         if m:
@@ -112,6 +132,28 @@ def load_overrides() -> dict:
     return json.loads(OVERRIDES_PATH.read_text(encoding="utf-8")) if OVERRIDES_PATH.exists() else {}
 
 
+# A regional host that moved its files keeping their names: the section-9
+# URL a single document prints is rewritten to where the file now lives, so
+# the card cites a URL that answers rather than one that redirects. Castilla-
+# La Mancha (2026): every pagina.jccm.es/…/consejos_new/pliegos/<file>
+# redirects to ficheroscomunes.castillalamancha.es/agricultura-dop/<file>
+# (13 records, checked 2026-10-24). INCAVI moved its files to per-DO folders
+# under new names — those are pinned per record in the overrides file.
+_RELOCATED_PREFIXES: tuple[tuple[str, str], ...] = (
+    ("http://pagina.jccm.es/agricul/paginas/comercial-industrial/consejos_new/pliegos/",
+     "https://ficheroscomunes.castillalamancha.es/agricultura-dop/"),
+    ("https://pagina.jccm.es/agricul/paginas/comercial-industrial/consejos_new/pliegos/",
+     "https://ficheroscomunes.castillalamancha.es/agricultura-dop/"),
+)
+
+
+def relocate(url: str) -> str:
+    for old, new in _RELOCATED_PREFIXES:
+        if url.startswith(old):
+            return new + url[len(old):]
+    return url
+
+
 def resolve_pliego_url(slug: str, record: dict, overrides: dict) -> tuple[str | None, str]:
     """Return (url, provenance) where provenance is 'override' or 'section-9'.
     Override takes precedence over the doc-único section-9 URL."""
@@ -119,7 +161,7 @@ def resolve_pliego_url(slug: str, record: dict, overrides: dict) -> tuple[str | 
     if entry and entry.get("pliego_url"):
         return entry["pliego_url"], "override"
     url = find_pliego_url(record)
-    return (url, "section-9") if url else (None, "")
+    return (relocate(url), "section-9") if url else (None, "")
 
 
 def fetch_pdf(url: str, dest: Path, refresh: bool) -> dict:
@@ -134,10 +176,20 @@ def fetch_pdf(url: str, dest: Path, refresh: bool) -> dict:
             "from_cache": True,
         }
     dest.parent.mkdir(parents=True, exist_ok=True)
-    resp = requests.get(url, headers={"User-Agent": UA}, timeout=60, allow_redirects=True)
-    resp.raise_for_status()
-    body = resp.content
-    dest.write_bytes(body)
+    try:
+        resp = requests.get(url, headers={"User-Agent": UA}, timeout=60, allow_redirects=True)
+        resp.raise_for_status()
+        body = resp.content
+        dest.write_bytes(body)
+    except requests.exceptions.SSLError:
+        # www.mapa.gob.es serves a certificate chain Python's ssl rejects
+        # ("unable to get local issuer certificate") and curl accepts — the
+        # boraszat.kormany.hu case of scripts/hu/01c_fetch_specifikacije.py.
+        subprocess.run(
+            ["curl", "-fsSL", "--retry", "2", "--max-time", "120", "-A", UA, "-o", str(dest), url],
+            check=True, capture_output=True,
+        )
+        body = dest.read_bytes()
     return {
         "sha256": hashlib.sha256(body).hexdigest(),
         "bytes": len(body),
@@ -178,16 +230,19 @@ def process(slug: str, refresh: bool, strict: bool = True, overrides: dict | Non
         return {"slug": slug, "status": "skip", "reason": "no-pliego-url"}
 
     pdf_dest = PDF_CACHE / f"{slug}.pdf"
-    # Override-driven URL change invalidates the slug-keyed PDF cache. The
-    # sidecar's source.url tells us what the cached PDF was fetched from;
-    # if it disagrees with the override (or no sidecar exists at all, so
-    # the cache vintage is unknown), force a refresh.
+    # A URL change invalidates the slug-keyed PDF cache. The sidecar's
+    # source.url tells us what the cached PDF was fetched from; if it
+    # disagrees with the URL now resolved — an override, or the section-9
+    # URL of a newer single document — or an override has no sidecar at all
+    # (the cache vintage is unknown), force a refresh. Until 2026-10-24 only
+    # an override change did, so a re-fetched single document kept its old
+    # pliego under the new URL.
     sidecar_path = OUT_DIR / f"{slug}.json"
-    if url_source == "override" and not refresh:
+    if not refresh:
         cached_url = None
         if sidecar_path.exists():
             cached_url = (json.loads(sidecar_path.read_text(encoding="utf-8")).get("source") or {}).get("url")
-        if cached_url != url:
+        if (sidecar_path.exists() or url_source == "override") and cached_url != url:
             refresh = True
     try:
         meta = fetch_pdf(url, pdf_dest, refresh=refresh)
@@ -206,6 +261,7 @@ def process(slug: str, refresh: bool, strict: bool = True, overrides: dict | Non
     set_pliego_context(slug)
     parsed = parse_variety_section(text)
     set_pliego_context(None)
+    link = parse_link_section(text)
     if not parsed["found"]:
         if strict:
             raise SystemExit(
@@ -235,6 +291,10 @@ def process(slug: str, refresh: bool, strict: bool = True, overrides: dict | Non
             "new_slugs": new_slugs,
         },
         "section_text": parsed["section_text"],
+        # The pliego's §7 vínculo, for a record whose single document carries
+        # only the "Resumen del vínculo" (ES 02d and stage 04 read it then).
+        "link_to_terroir": link["text"] if link["found"] else "",
+        "link_heading": link["heading"] if link["found"] else "",
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / f"{slug}.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")

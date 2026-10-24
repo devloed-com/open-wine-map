@@ -131,6 +131,11 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "additional_conditions": (
         "други специфични изисквания",
         "други съществени условия",
+        # "9. Други основни условия (опаковане, етикетиране, други
+        # изисквания)" — Дунавска равнина, OJ C/2025/3462: unmatched, the
+        # header was rejected and the link section ran through it and the
+        # EUR-Lex page footer.
+        "други основни условия",
         "други условия",
         "съществени условия",
         "специфични изисквания",

@@ -65,6 +65,8 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "tipul indicatiei geografice",
         "tip de indicație geografică",
         "tip de indicatie geografica",
+        "tipul de indicație geografică",
+        "tipul de indicatie geografica",
         "categoriile",
         "categorii",
     ),
@@ -79,6 +81,9 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "practici oenologice",
         "practicile vitivinicole",
         "practicile oenologice",
+        # Cotnari, OJ C/2025/821: "5. Practici enologice".
+        "practici enologice",
+        "practicile enologice",
         "randamente maxime",
         "producția maximă",
         "productia maxima",
@@ -140,6 +145,10 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "trimitere la publicare",
         "linkul la specificațiile produsului",
         "linkul la specificatiile produsului",
+        # Reg. (EU) 2024/1143 template, section 11; "Alte cerințe specifice
+        # (ambalarea, etichetarea, alte cerințe)" (Segarcea, Miniș, Recaș).
+        "alte cerințe",
+        "alte cerinte",
     ),
 }
 
@@ -202,6 +211,14 @@ COLOUR_BY_KEYWORD = {
     "vinul alb": "blanc", "vinurile albe": "blanc",
     "vinul roșu": "noir", "vinul rosu": "noir", "vinurile roșii": "noir", "vinurile rosii": "noir",
     "vinul roze": "rose", "vinurile roze": "rose",
+    # with "still" between article and colour ("Vinurile liniștite albe /
+    # roze / roșii", Babadag C/2024/5858; 2026-10-24)
+    "vinurile liniștite albe": "blanc", "vinurile linistite albe": "blanc",
+    "vinuri liniștite albe": "blanc", "vinuri linistite albe": "blanc",
+    "vinurile liniștite roșii": "noir", "vinurile linistite rosii": "noir",
+    "vinuri liniștite roșii": "noir", "vinuri linistite rosii": "noir",
+    "vinurile liniștite roze": "rose", "vinurile linistite roze": "rose",
+    "vinuri liniștite roze": "rose", "vinuri linistite roze": "rose",
 }
 
 

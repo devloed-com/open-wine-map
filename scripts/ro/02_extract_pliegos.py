@@ -92,14 +92,61 @@ def find_section_offsets(html: str) -> list[tuple[str, str, int, int]]:
     return out
 
 
+_TOP_LEVEL_ROLE_TITLE_KEYWORDS: tuple[str, ...] = tuple(
+    kw for kws in SECTION_ROLE_KEYWORDS.values() for kw in kws
+)
+
+
+# Rows a single document numbers inside a section, never a section of their
+# own: the wine types of section 4 ("1. Vinuri albe", "2. Caracteristici
+# analitice, organoleptice - vinuri liniștite roze") and the yield rows of 5.2
+# ("6. cules la maturitate deplină (CMD), soiurile Pinot gris, …", Lechința —
+# "soiurile" names a role, and the rows run past section 5).
+_NESTED_ROW_PREFIXES = ("cules", "vin de paie", "vinuri", "vin ", "caracteristici")
+
+
+def _title_matches_role(title: str) -> bool:
+    low = title.lower()
+    if low.lstrip().startswith(_NESTED_ROW_PREFIXES):
+        return False
+    return any(kw in low for kw in _TOP_LEVEL_ROLE_TITLE_KEYWORDS)
+
+
 def extract_sections(html: str) -> tuple[dict[str, str], dict[str, str]]:
+    """Walk the numbered headers in document order (the GR / BG pattern).
+    A top-level header is kept when its number moves forward, is met for the
+    first time and its title names a section role; a sub-number `top.x` when
+    `top` is the section last kept. Everything else is body text of the
+    section before it. Until 2026-10-24 every header was kept and a later
+    duplicate number won: Cotnari's single document (OJ C/2025/821) numbers
+    its wine types "1." … "6." inside section 4 and two practices "1.", "2."
+    inside 5.1, and those rows had replaced sections 1–4 — the description
+    and its colours were lost."""
     headers = find_section_offsets(html)
     if not headers:
         return {}, {}
+    kept: list[tuple[str, str, int, int]] = []
+    seen: set[int] = set()
+    last_top = 0
+    for h in headers:
+        num, title, _hstart, _hend = h
+        parts = num.split(".")
+        if not all(p.isdigit() for p in parts):
+            continue
+        top = int(parts[0])
+        if len(parts) > 1:
+            if top == last_top:
+                kept.append(h)
+            continue
+        if top in seen or top < last_top or not _title_matches_role(title):
+            continue
+        seen.add(top)
+        last_top = top
+        kept.append(h)
     bodies: dict[str, str] = {}
     titles: dict[str, str] = {}
-    for i, (num, title, _hstart, hend) in enumerate(headers):
-        end = headers[i + 1][2] if i + 1 < len(headers) else len(html)
+    for i, (num, title, _hstart, hend) in enumerate(kept):
+        end = kept[i + 1][2] if i + 1 < len(kept) else len(html)
         bodies[num] = strip_tags(html[hend:end]).strip()
         titles[num] = title
     return bodies, titles
@@ -375,6 +422,22 @@ _YIELD_LINE_SKIP_RE = re.compile(
     r"\d\s*(?:\d{3}|hectolitr|kilogram|kg\b|tone|hl\b)|hectar|^\d+\.?$|produc", re.I
 )
 _YIELD_LEAD_RE = re.compile(r"^(?:soiurile|soiul|pentru|din)\s+", re.I)
+# The 2024/1143 template titles section 5 "Practici oenologice" and prints the
+# table as its sub-block "(b) Producții maxime" / "b. Producții maxime": 11
+# documents carry it there, and Drăgășani's of 2026 names Sauvignon, Merlot,
+# Pinot noir, Burgund mare and Tămâioasă românească only in that table
+# (2026-10-24).
+_YIELD_HEADING_RE = re.compile(
+    r"^(?:\(?[a-h]\)?\.?\s+)?produc[țţt]i[iae]*\s+maxim", re.I
+)
+
+
+def _yield_block(body: str) -> str:
+    lines = body.splitlines()
+    for i, line in enumerate(lines):
+        if _YIELD_HEADING_RE.match(line.strip()):
+            return "\n".join(lines[i + 1:])
+    return ""
 
 
 def add_yield_table_varieties(grapes: dict, sections: dict[str, str],
@@ -385,7 +448,9 @@ def add_yield_table_varieties(grapes: dict, sections: dict[str, str],
     added: list[str] = []
     for num, body in sections.items():
         if not _YIELD_TITLE_RE.search(titles.get(num, "")):
-            continue
+            body = _yield_block(body)
+            if not body:
+                continue
         for line in body.splitlines():
             line = line.strip()
             if not line or _YIELD_LINE_SKIP_RE.search(line):
