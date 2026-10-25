@@ -55,7 +55,9 @@ from _lib.extract_index import is_partial, write_index  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
     _normalise,
     current_pliego_context,
+    exact_match,
     flush_unknowns_queue,
+    is_curated_surface,
     match_variety,
     set_pliego_context,
 )
@@ -573,6 +575,31 @@ def _normalise_grape_entry(
     return {"slug": result.slug, "name": result.name.lower(), "colour": result.colour}
 
 
+def _missing_comma_entries(
+    name: str, ambient_colour: str | None, *, allow_lowercase: bool = False,
+) -> list[dict]:
+    """Two variety names written without their comma — La Palma's §7
+    "Listán Prieto Moscatel negro", where MAPA's list carries Listán Prieto
+    (T.) and Moscatel Negro (T.) apart (2026-10-25; a lexicon slug had kept
+    the fused string as one variety). Tried only on a token that matched
+    nothing as a whole; both halves must be exact names the lexicon vouches
+    for (`is_curated_surface`), so a name the lexicon lacks is never cut
+    into two lucky halves."""
+    words = name.strip(" .,;:()").split()
+    if not 2 <= len(words) <= 8:
+        return []
+    for i in range(1, len(words)):
+        left, right = " ".join(words[:i]), " ".join(words[i:])
+        if not (exact_match(left) and exact_match(right)
+                and is_curated_surface(left) and is_curated_surface(right)):
+            continue
+        a = _normalise_grape_entry(left, ambient_colour, allow_lowercase=allow_lowercase)
+        b = _normalise_grape_entry(right, ambient_colour, allow_lowercase=True)
+        if a and b and a["slug"] != b["slug"]:
+            return [a, b]
+    return []
+
+
 _HEADER_LINE_RE = re.compile(
     r"^[-•·*]|"
     r"^(?:preferent|principal|permitid|recomendad|autorizad|accesori|complementari)|"
@@ -757,6 +784,10 @@ def parse_grapes(section_text: str) -> dict:
                         synonym, ambient_colour, allow_lowercase=in_roster,
                     )
                     if entry is None:
+                        for half in _missing_comma_entries(
+                            synonym, ambient_colour, allow_lowercase=in_roster,
+                        ):
+                            _emit_grape_with_split(half, role, seen_slugs, details)
                         continue
                     _emit_grape_with_split(entry, role, seen_slugs, details)
                     # Subsequent synonyms inside the same token alias onto

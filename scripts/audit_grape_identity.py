@@ -24,6 +24,18 @@ Three lists, all read-only:
              can bring one in). `--strict` exits 1 on a `review` pair; the
              release gate runs it.
 
+A fourth list reads the build rather than the corpus:
+
+  shared   — every pair of slugs VIVC files under one number that a parent
+             card shows as two pills, with the cards' own spellings. A pair
+             is `keep` when `scripts/_lib/vivc_shared_pills.json` records why
+             (the regulator lists both names as entries of their own — the
+             PT cadernos' castas, Jerez — or a lexicon decision keeps them
+             apart), else `review`: a fold, a wrong pin or a parse artefact
+             to settle. Built after the phase H re-grade of 2026-10-25
+             (Castilla, Larnaka; 118 cards that day). Report only — not part
+             of `--strict`.
+
 Fix a gap with a VIVC-verified entry in `scripts/_lib/grape_lexicon.py` (and a
 pin in `raw/vivc/slug_overrides.json`), a wrong fuzzy binding with an exact
 entry for the real cultivar, a style or place word with `_BANNED_SURFACES` in
@@ -50,6 +62,8 @@ from _lib.content_block import fold_only_bracket_class  # noqa: E402
 from _lib.grape_entity import match_variety  # noqa: E402
 
 VIVC_BY_SLUG = ROOT / "raw" / "vivc" / "by-slug"
+SHARED_TABLE = ROOT / "scripts" / "_lib" / "vivc_shared_pills.json"
+BUILD_DATA = ROOT / "wiki" / "data"
 
 _COLOURS = frozenset({"N", "B", "G", "Gr", "Rs", "Rg", "R", "Bl"})
 _UPPER_START = re.compile(r"[A-ZÀ-ÝĀ-ſ]")
@@ -179,6 +193,81 @@ def fold_only_brackets(
                                       e["slug"], e["name"]))
 
 
+def _vivc_ids() -> dict[str, int]:
+    out: dict[str, int] = {}
+    for f in VIVC_BY_SLUG.glob("*.json"):
+        try:
+            rec = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(rec.get("vivc_id"), int) and rec["vivc_id"] and rec.get("slug"):
+            out[rec["slug"]] = rec["vivc_id"]
+    return out
+
+
+def load_shared_table(path: Path = SHARED_TABLE) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def shared_decision(pair: tuple[str, ...], countries: set[str], table: dict) -> dict | None:
+    """The table's ruling on a pair: its own entry, else a country rule that
+    covers every card showing it."""
+    entry = (table.get("pairs") or {}).get("+".join(pair))
+    if entry:
+        return entry
+    rules = table.get("countries") or {}
+    if countries and all(c in rules for c in countries):
+        return rules[sorted(countries)[0]]
+    return None
+
+
+def shared_vivc_pills(data_dir: Path = BUILD_DATA, vids: dict[str, int] | None = None,
+                      table: dict | None = None) -> list[dict]:
+    """Parent cards of the build showing two slugs VIVC files under one
+    number, grouped by pair, `review` pairs first."""
+    bundles = sorted(data_dir.glob("aocs.en.*.js"))
+    if not bundles:
+        return []
+    text = bundles[-1].read_text(encoding="utf-8")
+    aocs = json.loads(text[text.index("{"): text.rindex("}") + 1])["aocs"]
+    vids = _vivc_ids() if vids is None else vids
+    table = load_shared_table() if table is None else table
+    groups: dict[tuple, dict] = {}
+    for slug, rec in aocs.items():
+        if rec.get("parent_slug"):
+            continue
+        roster = list(dict.fromkeys((rec.get("grapes_principal") or []) + (rec.get("grapes_accessory") or [])
+                                    + (rec.get("grapes_observation") or [])))
+        by_id: dict[int, list[str]] = collections.defaultdict(list)
+        for g in roster:
+            if g in vids:
+                by_id[vids[g]].append(g)
+        for vid, slugs in by_id.items():
+            if len(slugs) < 2:
+                continue
+            try:
+                names = json.loads((data_dir / "d" / "en" / f"{slug}.json").read_text(encoding="utf-8")).get("grape_names") or {}
+            except (OSError, ValueError):
+                names = {}
+            pair = tuple(sorted(slugs))
+            e = groups.setdefault(pair, {"vivc_id": vid, "pair": list(pair), "cards": [], "countries": set(),
+                                          "spellings": collections.Counter()})
+            e["cards"].append(slug)
+            e["countries"].add(rec.get("country") or "")
+            e["spellings"][" / ".join(str(names.get(g) or g) for g in pair)] += 1
+    out = []
+    for pair, e in groups.items():
+        ruling = shared_decision(pair, e["countries"], table)
+        out.append({"class": (ruling or {}).get("decision", "review"), "vivc_id": e["vivc_id"],
+                    "pair": e["pair"], "cards": sorted(e["cards"]), "countries": sorted(e["countries"]),
+                    "spellings": [s for s, _ in e["spellings"].most_common(3)],
+                    "reason": (ruling or {}).get("reason", "")})
+    return sorted(out, key=lambda e: (e["class"] != "review", -len(e["cards"]), e["pair"]))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--json", type=Path, help="also write the three lists here")
@@ -203,8 +292,16 @@ def main() -> int:
     for e in fold:
         print(f"  {e['class']:15s} {e['name']!r} ~ {e['prime']!r} ({e['slug']})  "
               f"records={len(e['records'])}  e.g. {', '.join(e['records'][:3])}")
+    shared = shared_vivc_pills()
+    sc = collections.Counter(e["class"] for e in shared)
+    print(f"\n## One VIVC number, two pills on a card — {len(shared)} pair(s) on "
+          f"{len({c for e in shared for c in e['cards']})} card(s): "
+          + ", ".join(f"{k} {v}" for k, v in sorted(sc.items())) + " (report only)")
+    for e in shared:
+        print(f"  {e['class']:7s} #{e['vivc_id']} {' + '.join(e['pair'])}  cards={len(e['cards'])} "
+              f"[{','.join(e['countries'])}]  e.g. {', '.join(e['cards'][:3])}  «{e['spellings'][0]}»")
     if args.json:
-        args.json.write_text(json.dumps({"unknown": unknown, "fuzzy": fuzzy, "fold": fold},
+        args.json.write_text(json.dumps({"unknown": unknown, "fuzzy": fuzzy, "fold": fold, "shared": shared},
                                         ensure_ascii=False, indent=2), encoding="utf-8")
     if args.strict and counts["review"]:
         print(f"\nSTRICT: {counts['review']} fold-only bracket pair(s) classed review", file=sys.stderr)

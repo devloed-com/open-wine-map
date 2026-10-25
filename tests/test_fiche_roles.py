@@ -68,6 +68,29 @@ def test_overlay_leaves_a_national_role_split_alone():
     assert rec["grapes"]["principal"] == ["a", "b"] and rec["grapes"]["accessory"] == ["c"]
 
 
+def test_overlay_overrides_an_ro_yield_table_split_and_lists_the_conflict():
+    # decision 2026-10-25: Dealurile Olteniei's §7 omits Merlot, its yield
+    # table names it (accessory), the register's single document tags it MAIN
+    rec = _record(["a", "b", "c"], accessory=["m", "p"], country="ro")
+    for d in rec["grapes"]["details"]:
+        if d["slug"] in ("m", "p"):
+            d["source"] = "yield-table"
+    rec["grapes"]["details"][3]["name"] = "Merlot"
+    prov, why = fr.overlay(rec, _fiche(["a", "m"], ["b", "c", "p"]))
+    assert why == "applied"
+    assert rec["grapes"]["principal"] == ["a", "m"]
+    assert rec["grapes"]["accessory"] == ["b", "c", "p"]
+    assert prov["yield_conflict"] == ["Merlot"]
+    # no conflict when the fiche agrees with the yield table
+    rec = _record(["a", "b"], accessory=["p"], country="ro")
+    rec["grapes"]["details"][2]["source"] = "yield-table"
+    prov, why = fr.overlay(rec, _fiche(["a"], ["b", "p"]))
+    assert why == "applied" and "yield_conflict" not in prov
+    # an accessory that is not a yield-table variety is a national split
+    rec = _record(["a", "b"], accessory=["c"], country="ro")
+    assert fr.overlay(rec, _fiche(["a", "c"], ["b"]))[1] == "national-roles"
+
+
 def test_overlay_skips_a_fiche_without_a_split_or_without_a_main_variety_of_the_card():
     rec = _record(["a", "b"])
     assert fr.overlay(rec, _fiche(["a", "b"], []))[1] == "no-split"

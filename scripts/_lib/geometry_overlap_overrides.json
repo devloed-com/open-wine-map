@@ -95,10 +95,10 @@
     {
       "pair": [
         "perigord",
-        "cotes-du-lot-rocamadour"
+        "cotes-du-lot"
       ],
-      "reason": "Shared commune listed for both appellations: Salviac. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Périgord' and 'Côtes du Lot Rocamadour' — the regulator assigns the ground to both, so the 30 km² overlap is the commune itself, not a double assignment of ours.",
-      "reviewed": "2026-09-25"
+      "reason": "Shared commune listed for both appellations: Salviac (INSEE 46297, Lot). The INAO igp-aires-communes CSV carries it in the rows of 'Périgord', of 'Lot' (the aire Côtes du Lot is drawn from since 2026-10-04) and of 'Côtes du Lot Rocamadour' — the regulator assigns the ground to both, so the ~30 km² overlap is the commune itself, not a double assignment of ours. Re-keyed 2026-10-25 from the Rocamadour pair: the audit now reports the parent, the DGC pair collapsed under it.",
+      "reviewed": "2026-10-25"
     },
     {
       "pair": [
@@ -194,14 +194,6 @@
         "pays-d-herault-coteaux-de-laurens"
       ],
       "reason": "Shared commune listed for both appellations: Fouzilhon. the INAO aires-communes CSV (raw/inao/aoc-aop-aires-communes.csv / igp-aires-communes.csv) carries the commune in the rows of both 'Côtes de Thongue' and 'Pays d'Hérault Coteaux de Laurens' — the regulator assigns the ground to both, so the 6 km² overlap is the commune itself, not a double assignment of ours.",
-      "reviewed": "2026-09-25"
-    },
-    {
-      "pair": [
-        "agenais",
-        "cotes-du-lot"
-      ],
-      "reason": "Fumel (Lot-et-Garonne). Listed in the INAO igp-aires-communes CSV rows of 'Agenais' and in the Côtes du Lot cahier's aire géographique (raw/inao/cahier-extracted/cotes-du-lot.json, aire_geographique → Lot-et-Garonne: Fumel; the record is drawn from that commune text). Both regulator texts assign Fumel to their IGP — the overlap is the commune itself.",
       "reviewed": "2026-09-25"
     },
     {

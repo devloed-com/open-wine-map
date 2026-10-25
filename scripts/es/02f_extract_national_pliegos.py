@@ -297,7 +297,17 @@ def process(slug: str, refresh: bool, strict: bool = True, overrides: dict | Non
         "link_heading": link["heading"] if link["found"] else "",
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / f"{slug}.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    side = OUT_DIR / f"{slug}.json"
+    # A PDF read from the cache keeps the fetch date the sidecar recorded for
+    # the same bytes (a re-parse had blanked 3 Riberas' of 2026-10-24).
+    if meta.get("from_cache") and side.exists():
+        try:
+            prior = (json.loads(side.read_text(encoding="utf-8")).get("source") or {})
+        except (ValueError, OSError):
+            prior = {}
+        if prior.get("sha256") == meta["sha256"] and prior.get("fetched_at"):
+            out["source"]["fetched_at"] = prior["fetched_at"]
+    side.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     out["status"] = "ok"
     return out
 

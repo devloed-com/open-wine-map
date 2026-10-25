@@ -38,7 +38,7 @@ from _lib import llm_json
 from _lib.terroir_dedupe import _numbers, dedupe_facts, is_cosmetic_rewrite
 from _lib.terroir_feedback import _clip, _safe
 from _lib.terroir_interactions import DEMOTION_TARGET, unearned_indices
-from _lib.terroir_normalize import normalize_bullet
+from _lib.terroir_normalize import document_reference, normalize_bullet
 
 SUBSECTION_KEYS = ("facteurs_naturels", "facteurs_humains", "produit", "interactions")
 VERDICTS = ("supported", "rewrite", "drop")
@@ -53,7 +53,7 @@ Your job is adversarial: for EACH bullet decide whether every assertion it makes
 
 Verdicts:
 - "supported": every assertion is stated by the sources. A simplification is not an error; a number written differently in the source (13°5, 22, 5, anni '60, XVIIIe) is not missing; a bullet grounded on the Wikipedia hint is legitimately grounded.
-- "rewrite": the main fact is stated, but the bullet adds something the sources do not state — a causal wrapper on a mere co-occurrence ("volcanic soils give minerality" when the source only records volcanic soils and, elsewhere, minerality), a narrowed attribution (one factor credited with what the source credits to several), a spatial or temporal qualifier the source does not give, a hedge strengthened ("typically" → "exclusively", "weakly" → "moderately") or dropped, a detail from a neighbouring sub-zone applied to the whole appellation. Provide "rewrite": the bullet in the SAME language, keeping the supported fact and removing or softening only what goes beyond the source. Never add content, never add a number that is not in the bullet or the source, keep it one full sentence ending with a period. A "rewrite" verdict MUST carry a non-empty "rewrite" that differs in meaning from the bullet — if you cannot phrase the narrower sentence, choose "supported" (with the note) or "drop" instead; a rewrite that only changes wording, punctuation or word order is not a rewrite.
+- "rewrite": the main fact is stated, but the bullet adds something the sources do not state — a causal wrapper on a mere co-occurrence ("volcanic soils give minerality" when the source only records volcanic soils and, elsewhere, minerality), a narrowed attribution (one factor credited with what the source credits to several), a spatial or temporal qualifier the source does not give, a hedge strengthened ("typically" → "exclusively", "weakly" → "moderately") or dropped, a detail from a neighbouring sub-zone applied to the whole appellation, a reference to the document itself or to Wikipedia ("according to the specification", "the disciplinare states that", "the disciplinare describes the wines as", "the types provided for by the disciplinare", "según el pliego", "selon Wikipédia" — drop the reference and keep the claim: the reader is shown the source; a rule the document sets stays a rule, stated without the document ("an ageing of 24 months is required"); where the bullet sets the source text beside Wikipedia ("…, while Wikipedia describes them as …"), keep the source text's statement and Wikipedia's only where it adds a detail that does not contradict it, naming neither — when the two give different figures for the same thing, keep the source text's; the document as an object of regulatory history, "the disciplinare was approved in 1967", is a fact, not a reference). Provide "rewrite": the bullet in the SAME language, keeping the supported fact and removing or softening only what goes beyond the source. Never add content, never add a number that is not in the bullet or the source, keep it one full sentence ending with a period. A "rewrite" verdict MUST carry a non-empty "rewrite" that differs in meaning from the bullet — if you cannot phrase the narrower sentence, choose "supported" (with the note) or "drop" instead; a rewrite that only changes wording, punctuation or word order is not a rewrite.
 - "drop": the main claim itself is unsupported or contradicted, describes another appellation or a sub-zone/neighbour rather than this one, is a tautology true of any appellation ("the terroir gives the wines their typicity"), or restates a fact another bullet already gives (then set "restates" to that bullet's index; keep the more precise one and drop the other).
 
 Sub-section rule: a bullet filed under "interactions" (causal terroir → wine links) is "supported" only when a source sentence itself states the link with an explicit connective (because, thanks to, gives, confers, results in, explains, favours, allows, or the equivalent in the source language). If the source merely lists factors and wine traits side by side, "rewrite" the bullet into the non-causal statement the source does make (and file it under the right sub-section via "subsection"), or "drop" it when that statement is already given by another bullet.
@@ -255,8 +255,10 @@ def parse_verdicts(raw: str, n_facts: int) -> tuple[list[dict] | None, str | Non
 
 def rewrite_ok(original: str, rewrite: str, source: str) -> str | None:
     """None when the rewrite is admissible, else the reason it is not: it
-    must differ, be one sane sentence, carry no arrow, and introduce no
-    number absent from the original bullet and the source."""
+    must differ, be one sane sentence, carry no arrow, introduce no number
+    absent from the original bullet and the source, and name no document
+    the original did not (a rewrite answering "unless the source states it"
+    with "according to the specification")."""
     rw = (rewrite or "").strip()
     if not rw:
         return "empty"
@@ -264,6 +266,8 @@ def rewrite_ok(original: str, rewrite: str, source: str) -> str | None:
         return "unchanged"
     if "→" in rw:
         return "arrow"
+    if document_reference(rw) and not document_reference(original):
+        return "document reference"
     if len(rw) > REWRITE_MAX_CHARS or len(rw) < 20:
         return "length"
     new_nums = _numbers(rw) - _numbers(original) - _numbers(source or "")

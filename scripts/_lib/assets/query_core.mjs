@@ -171,6 +171,12 @@ export function createQueryCore(ctx) {
     return toTitleCase(raw);
   }
 
+  // Every region a record is listed under: its own and, for one spanning
+  // several (Garda, Cava, the umbrella PGIs), its `region_aliases`.
+  function regionsOf(r) {
+    return [r.region, ...(r.region_aliases || [])].filter(Boolean);
+  }
+
   function regionLabel(region) {
     if (!region) return labels.meta_no_region;
     return (ctx.regionLabels || {})[region] || region;
@@ -456,8 +462,9 @@ export function createQueryCore(ctx) {
       if (!a.include_sub_denominations && r.is_sub_denomination) continue;
       if (!a.include_spirits && r.is_wine === false) continue;
       if (cc && !inCountry(r, cc)) continue;
-      if (nRegion && searchNormalize(r.region) !== nRegion && searchNormalize(regionLabel(r.region)) !== nRegion
-          && !regionSearchForms(r.region).some(f => searchNormalize(f) === nRegion)) continue;
+      if (nRegion && !regionsOf(r).some(reg => searchNormalize(reg) === nRegion
+          || searchNormalize(regionLabel(reg)) === nRegion
+          || regionSearchForms(reg).some(f => searchNormalize(f) === nRegion))) continue;
       if (styles && !setIntersects(styles, r.styles || [])) continue;
       if (grapes && !setIntersects(grapes, (a.main_grape_only ? r.grapes_principal : r.grapes_all) || [])) continue;
       if (term) {
@@ -533,7 +540,7 @@ export function createQueryCore(ctx) {
       if (r.is_sub_denomination || r.is_wine === false) continue;
       const cc = r.country || 'fr';
       bump(countries, cc, () => ({ code: cc, name: countryLabel(cc) }));
-      if (r.region) bump(regions, r.region, () => ({ value: regionLabel(r.region), country: cc }));
+      for (const reg of regionsOf(r)) bump(regions, reg, () => ({ value: regionLabel(reg), country: cc }));
       for (const s of r.styles || []) bump(styles, s, () => ({ value: s, label: (ctx.styleLabels || {})[s] || s }));
       for (const seg of (r.class_key || '').split(';').filter(Boolean)) {
         bump(schemes, seg, () => ({ value: seg, label: (ctx.termLabels || {})[seg] || seg }));

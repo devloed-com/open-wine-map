@@ -221,9 +221,21 @@ _GRAPE_LINE_DROP = (
 )
 
 
+# A bullet on a line of its own beside an em dash inside a content line: the
+# inline one separates a name from its synonym ("Malvasia di Candia —
+# Malvasia Aromatica", Larnaka C/2026/4992, where Lefkosia's document writes
+# a hyphen). Read as a bullet, the synonym became a variety of its own —
+# Malvasia Aromatica, another slug, a second pill (2026-10-25).
+_BULLET_LINE_RE = re.compile(r"^\s*—\s*$", re.MULTILINE)
+_INLINE_EM_DASH_RE = re.compile(r"(?<=\S)[ \t]+—[ \t]+(?=\S)")
+
+
 def _grape_items(section_text: str) -> list[str]:
     items: list[str] = []
-    for chunk in _BULLET_SPLIT_RE.split(section_text or ""):
+    text = section_text or ""
+    if _BULLET_LINE_RE.search(text):
+        text = _INLINE_EM_DASH_RE.sub(" - ", text)
+    for chunk in _BULLET_SPLIT_RE.split(text):
         chunk = chunk.strip(" \t;,.-")
         if chunk:
             items.append(chunk)

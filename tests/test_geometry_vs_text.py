@@ -65,3 +65,27 @@ def test_overrides_table_is_well_formed():
             continue
         assert {"reason", "source", "verified"} <= set(e), slug
         assert isinstance(e.get("missing", []), list) and isinstance(e.get("extra", []), list)
+
+
+def _bg_layer():
+    layer = agt.Layer("bg")
+    for i, (uid, name) in enumerate([("BG_RSE04", "Бяла"), ("BG_VAR05", "Бяла"), ("BG_PVN10", "Долна Митрополия"),
+                                     ("BG_PVN11", "Долни Дъбник"), ("BG_VAR09", "Вълчи дол")]):
+        layer.add(uid, name, box(i * 10, 0, i * 10 + 10, 10), cntr="BG")
+    layer.build()
+    return layer
+
+
+def test_bg_names_are_held_to_their_oblast_header():
+    """Two obshtini are called Бяла: the text's oblast header picks one; the
+    space-closed and abbreviated spellings of Дунавска равнина's text bind
+    inside the oblast only (2026-10-24)."""
+    layer = _bg_layer()
+    assert [layer.ids[i] for i in agt._bg_oblast_hits(layer, "Бяла", "BG_VAR")] == ["BG_VAR05"]
+    assert [layer.ids[i] for i in agt._bg_oblast_hits(layer, "Вълчидол", "BG_VAR")] == ["BG_VAR09"]
+    assert [layer.ids[i] for i in agt._bg_oblast_hits(layer, "Д. Митрополия", "BG_PVN")] == ["BG_PVN10"]
+    assert agt._bg_oblast_hits(layer, "Д. Митрополия", "BG_VAR") == []
+    rec = {"geo_communes": ["Бяла", "Бяла"], "geo_communes_scoped": [["Бяла", "RSE"], ["Бяла", "VAR"]],
+           "geo_area_brief": "Област Русе: Бяла. Област Варна: Бяла."}
+    out = agt.named_units("bg", "x", rec, {}, {}, layer, geom=box(0, 0, 10, 10))
+    assert out["ids"] == {"BG_RSE04", "BG_VAR05"} and not out["unresolved"]

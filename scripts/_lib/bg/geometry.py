@@ -15,21 +15,23 @@ Stage 04 resolves each BG record by:
 
   1. **figshare-pdo** — exact `file_number` → `PDOid` match. Expected
      to cover all 52 BG DOPs.
-  2. **region-pdo-union** — the 2 BG PGIs (Дунавска равнина /
-     Тракийска низина) are the 2 macro Bulgarian wine territories
-     (north of Stara Planina vs south). Bétard is PDO-only, so a PGI
-     has no polygon of its own; we union the Figshare polygons of the
-     member PDOs that lie inside that macro region. The mapping is
-     structural and hand-verified against the Bulgarian wine-law
-     5-region classification.
-  3. **gisco-commune-list** — parse the documento-unic geo-area body
-     into obshtina names (Cyrillic-preserving) and union matching
-     GISCO LAU polygons (CNTR_CODE='BG'). Mirrors the RO chain.
+  2. **gisco-commune-list** — the 2 BG PGIs (Дунавска равнина /
+     Тракийска низина) delimit their area by obshtina, listed under
+     „Област X:" headers (`commune.parse_area`); each name is matched
+     among its oblast's GISCO obshtini (two are called Бяла), and the
+     obshtini the text holds only in part are drawn whole and reported
+     (2026-10-24). Also the fallback of any record with a commune list
+     and no Bétard polygon.
+  3. **region-pdo-union** — a PGI whose list does not resolve: the
+     union of its member PDOs' Figshare polygons (north / south of Stara
+     Planina, hand-verified against the 5-region classification). Those
+     PDOs are settlement-scale, so the union under-draws the PGI.
   4. **stub-no-geometry** — no polygon resolvable (logged in audit).
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Iterable
 
@@ -106,6 +108,11 @@ BG_PGI_MEMBER_PDOS: dict[str, tuple[str, ...]] = {
 }
 
 
+# A PGI's commune list is drawn when at most this share of its names fail to
+# resolve; above it the member-PDO union stays (a text that changed shape).
+LIST_MAX_MISS_SHARE = 0.05
+
+
 class BGPolygonIndex:
     """In-memory polygon index for BG records: Bétard PDO + PGI-union
     + GISCO obshtina-list fallback."""
@@ -118,7 +125,13 @@ class BGPolygonIndex:
     ) -> None:
         self.target_crs = target_crs
         self._pdo_polygons: dict[str, BaseGeometry] = {}
-        self._lau_by_name: dict[str, list[BaseGeometry]] = {}
+        # (normalised name, oblast code, polygon) per GISCO obshtina, indexed
+        # by the name and by the name with its spaces closed ("Вълчидол" in
+        # Дунавска равнина's text is GISCO's "Вълчи дол", "Бобовдол" its
+        # "Бобов дол")
+        self._lau: list[tuple[str, str, BaseGeometry]] = []
+        self._lau_by_name: dict[str, list[int]] = {}
+        self._lau_by_compact: dict[str, list[int]] = {}
         self._n_lau = 0
 
         if figshare_gpkg.exists():
@@ -141,7 +154,11 @@ class BGPolygonIndex:
                 geom = r.geometry
                 if not name or geom is None or geom.is_empty:
                     continue
-                self._lau_by_name.setdefault(_normalise_commune(name), []).append(geom)
+                key = _normalise_commune(name)
+                # BG_VAR09 → VAR, the oblast's EKATTE code (commune.OBLAST_CODES)
+                self._lau.append((key, str(r.get("GISCO_ID") or "")[3:6], geom))
+                self._lau_by_name.setdefault(key, []).append(len(self._lau) - 1)
+                self._lau_by_compact.setdefault(key.replace(" ", ""), []).append(len(self._lau) - 1)
                 self._n_lau += 1
 
     @property
@@ -172,39 +189,100 @@ class BGPolygonIndex:
             return None, stats
         return unary_union(polys), stats
 
+    def _candidates(self, raw_name: str, oblast: str | None) -> tuple[list[int], str]:
+        """The obshtini a name can denote, held to its oblast when the text
+        gives one: the exact name, then the name with its spaces closed,
+        then — for an abbreviated word ("Д. Митрополия" is Долна
+        Митрополия) — the oblast's one name whose words the abbreviation
+        begins. Returns (indices, how)."""
+        from .commune import _normalise_commune
+        key = _normalise_commune(raw_name)
+
+        def scoped(idx: list[int]) -> list[int]:
+            return [i for i in idx if not oblast or self._lau[i][1] == oblast]
+
+        hits = scoped(self._lau_by_name.get(key, []))
+        if hits:
+            return hits, "exact"
+        hits = scoped(self._lau_by_compact.get(key.replace(" ", ""), []))
+        if hits:
+            return hits, "compact"
+        words = key.split()
+        if oblast and any(w.endswith(".") for w in words):
+            pat = re.compile(r"\s+".join(
+                re.escape(w[:-1]) + r"\w*" if w.endswith(".") else re.escape(w) for w in words
+            ) + r"$")
+            hits = [i for i, (k, ob, _) in enumerate(self._lau) if ob == oblast and pat.match(k)]
+            if len(hits) == 1:
+                return hits, "abbreviation"
+        if oblast and self._lau_by_name.get(key):
+            return [], "outside-oblast"
+        return [], "unmatched"
+
     def commune_union(
         self, commune_names: Iterable[str],
+        scoped: Iterable[tuple[str, str]] | None = None,
+        partial: Iterable[str] | None = None,
     ) -> tuple[BaseGeometry | None, dict]:
-        """Union the GISCO LAU polygons matching the given obshtina
-        names (after Cyrillic-preserving normalisation)."""
-        from .commune import _normalise_commune
+        """Union the GISCO LAU polygons of the given obshtini. `scoped`
+        pairs each name with the oblast code of the header it sits under
+        (`commune.parse_area`); without it a bare name that matches several
+        obshtini nationwide contributes nothing and is reported. `partial`
+        names the obshtini the text holds only in part — drawn whole, and
+        returned under stats["partial"] for the card to say so."""
+        items = [(n, c or None) for n, c in scoped] if scoped else [(n, None) for n in commune_names]
+        part = set(partial or [])
         polys: list[BaseGeometry] = []
         matched: list[str] = []
         unmatched: list[str] = []
         ambiguous: list[str] = []
-        for raw_name in commune_names:
-            key = _normalise_commune(raw_name)
-            if not key:
+        outside: list[str] = []
+        folded: list[str] = []
+        drawn_partial: list[str] = []
+        from .commune import OBSHTINA_GROUPS, _normalise_commune
+        for raw_name, oblast in items:
+            group = OBSHTINA_GROUPS.get((_normalise_commune(raw_name), oblast or ""))
+            if group:
+                idx = [i for k in group for i in self._lau_by_name.get(k, []) if self._lau[i][1] == oblast]
+                if len(idx) == len(group):
+                    # every unit the name stands for, each counted (the card's
+                    # header counts the units the polygon is the union of)
+                    for i in idx:
+                        polys.append(self._lau[i][2])
+                        matched.append(self._lau[i][0])
+                    folded.append(f"{raw_name} → {' + '.join(group)}")
+                    if raw_name in part:
+                        drawn_partial.append(raw_name)
+                    continue
+            hits, how = self._candidates(raw_name, oblast)
+            if not hits:
+                (outside if how == "outside-oblast" else unmatched).append(raw_name)
                 continue
-            cands = self._lau_by_name.get(key)
-            if not cands:
-                unmatched.append(raw_name)
-                continue
-            if len(cands) > 1:
+            if len(hits) > 1:
                 # A bare name that matches several communes nationwide is
                 # ambiguous; unioning all of them stretches the polygon
                 # across the country instead of drawing the appellation
                 # (see the GR / RO chains, where that shipped). It
                 # contributes nothing and is reported instead.
-                ambiguous.append(f"{raw_name} ({len(cands)})")
+                ambiguous.append(f"{raw_name} ({len(hits)})")
                 continue
-            polys.extend(cands)
+            polys.append(self._lau[hits[0]][2])
             matched.append(raw_name)
+            if how != "exact":
+                folded.append(f"{raw_name} → {self._lau[hits[0]][0]}")
+            if raw_name in part:
+                drawn_partial.append(raw_name)
         stats = {
             "matched": len(matched),
             "unmatched": len(unmatched),
+            "n_ambiguous": len(ambiguous),
+            "n_outside_oblast": len(outside),
             "names_unmatched": unmatched[:30],
             "names_ambiguous": ambiguous[:30],
+            "names_outside_oblast": outside[:30],
+            "names_folded": folded,
+            "partial": drawn_partial,
+            "scoped": bool(scoped),
         }
         if not polys:
             return None, stats
@@ -212,35 +290,46 @@ class BGPolygonIndex:
 
     def resolve(
         self, file_number: str, commune_names: Iterable[str] | None = None,
+        scoped: Iterable[tuple[str, str]] | None = None,
+        partial: Iterable[str] | None = None,
     ) -> tuple[BaseGeometry | None, str, dict]:
         """Resolve geometry for one BG record. Returns (geometry,
-        geom_source, stats). Bétard PDO match first; PGI-union for the
-        2 macro PGIs; GISCO commune-union fallback otherwise."""
+        geom_source, stats). A PGI whose text lists its obshtini is drawn
+        from them; a PGI without a usable list from the union of its member
+        PDOs; a PDO from Bétard; anything else from its commune list."""
         fn = file_number or ""
-        # PGIs first — they're not in Bétard, resolve via member union.
+        names = list(commune_names or [])
+        scoped = [tuple(x) for x in scoped] if scoped else None
         if fn in BG_PGI_MEMBER_PDOS:
+            # The ЕДИНЕН ДОКУМЕНТ / ИАЛВ spec of both PGIs delimits by
+            # obshtina, under „Област X:" headers. Their member PDOs are
+            # settlement-scale and cover a fraction of it: drawn as their
+            # union, Дунавска равнина held 40 of the 118 obshtini its text
+            # names (validator, 2026-10-23).
+            list_stats: dict = {}
+            if scoped:
+                geom, list_stats = self.commune_union(names, scoped, partial)
+                misses = (list_stats["unmatched"] + list_stats["n_ambiguous"]
+                          + list_stats["n_outside_oblast"])
+                if geom is not None and misses <= LIST_MAX_MISS_SHARE * len(scoped):
+                    return geom, "gisco-commune-list", list_stats
             geom, union_stats = self.pgi_union(fn)
             stats = {
                 "matched": -1 if geom is not None else 0,
                 "unmatched": 0,
                 **union_stats,
+                **({"list_rejected": list_stats} if list_stats else {}),
             }
             if geom is not None:
                 return geom, "region-pdo-union", stats
-            # Fall through to commune-list if PGI member union returned
-            # nothing (should not happen with the hand-verified map).
-            if commune_names:
-                geom, stats = self.commune_union(commune_names)
-                if geom is not None:
-                    return geom, "gisco-commune-list", stats
             return None, "stub-no-geometry", stats
         if fn in self._pdo_polygons:
             return (
                 self._pdo_polygons[fn], "figshare-pdo",
                 {"matched": -1, "unmatched": 0},
             )
-        if commune_names:
-            geom, stats = self.commune_union(commune_names)
+        if names:
+            geom, stats = self.commune_union(names, scoped, partial)
             if geom is not None:
                 return geom, "gisco-commune-list", stats
             return None, "stub-no-geometry", stats

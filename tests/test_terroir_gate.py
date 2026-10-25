@@ -33,6 +33,12 @@ def test_rewrite_guards():
     assert tg.rewrite_ok("Piove 600 mm.", "", "") == "empty"
     assert tg.rewrite_ok("Piove molto.", "Piove 800 mm all'anno in collina.", "piove molto") == "new numbers ['800']"
     assert tg.rewrite_ok("Piove molto.", "Suolo → vino.", "") == "arrow"
+    # a rewrite may drop a reference to the document, never add one (2026-10-25)
+    assert tg.rewrite_ok("Se cree que las cepas llegaron en 1505.",
+                         "Según el pliego, se cree que las cepas llegaron hacia 1505.", "1505") == "document reference"
+    assert tg.rewrite_ok("Según el pliego, se cree que las cepas llegaron en 1505.",
+                         "Se cree que las cepas llegaron hacia 1505.", "1505") is None
+    assert tg.rewrite_ok("Strabone loda il vino dell'isola.", "Secondo Strabone, il vino dell'isola era buono.", "") is None
 
 
 def test_apply_verdicts_drops_rewrites_moves_and_records_support():

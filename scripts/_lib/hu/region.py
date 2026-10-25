@@ -60,17 +60,21 @@ _CANON_BY_NORM = {_norm(r): r for r in REGIONS}
 _REGION_BY_FILE_NUMBER: dict[str, str] = {
     # Tokaj
     "PDO-HU-A1254": "Tokaj",            # Tokaj
-    "PDO-HU-A1373": "Tokaj",            # Debrői Hárslevelű (Bükkalja, but Hárslevelű-Tokaj orbit)
     # Felső-Magyarország
+    # Debrői Hárslevelű: Aldebrő, Feldebrő, Tarnaszentmária, Tófalu and
+    # Verpelét (Heves county, the Debrő district of the Eger borvidék) — its
+    # single document's area; filed under Tokaj until 2026-10-25.
+    "PDO-HU-A1373": "Felső-Magyarország",
     "PDO-HU-A1328": "Felső-Magyarország",  # Eger
     "PDO-HU-A1368": "Felső-Magyarország",  # Mátra
     "PDO-HU-A1500": "Felső-Magyarország",  # Bükk
     "PGI-HU-A1329": "Felső-Magyarország",  # Felső-Magyarország PGI
-    "PDO-HU-N1638": "Felső-Magyarország",  # Monor (sits between Duna and Felső-Magyarország;
-                                            # closer to Pest county wine area, but
-                                            # Hungarian wine law puts it in the Duna borrégió).
     # Duna
     "PDO-HU-A1332": "Duna",             # Kunság
+    # Monor: a Kunság municipality (the Duna-Tisza közi OFJ termékleírás lists
+    # it among the Kunsági borvidék's) — Duna borrégió; filed under
+    # Felső-Magyarország until 2026-10-25.
+    "PDO-HU-N1638": "Duna",
     "PDO-HU-A1383": "Duna",             # Csongrád
     "PDO-HU-A1388": "Duna",             # Hajós-Baja
     "PDO-HU-A1341": "Duna",             # Izsáki Arany Sárfehér

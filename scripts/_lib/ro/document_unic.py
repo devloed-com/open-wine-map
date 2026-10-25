@@ -221,6 +221,44 @@ COLOUR_BY_KEYWORD = {
     "vinuri liniștite roze": "rose", "vinuri linistite roze": "rose",
 }
 
+# The cedilla letters older documents print for the comma-below ones
+# ("Vinurile liniştite roze", Murfatlar; "şi vinuri roze", Colinele Dobrogei).
+_CEDILLA_TO_COMMA = str.maketrans({"ş": "ș", "Ş": "Ș", "ţ": "ț", "Ţ": "Ț"})
+
+_COLOUR_WORD_SRC = r"(?:alb[ăaei]?|ro[șs](?:u|ii|ie)|roz[eé]?|ros[eé])"
+# A wine noun followed by a list of colours sharing it — "Vinuri albe,
+# roze", "vinurile albe și roze", "Vinuri albe/roze", "vinurile petiante
+# roze / roșii", "la vinurile roșii, roze, aromate" — of which the table
+# above matched only the colour next to the noun (2026-10-25: seven RO
+# documents had lost their rosé to it).
+_COLOUR_LIST_RE = re.compile(
+    r"\bvin(?:ul|uri|urile|urilor|ului)?"
+    r"(?:\s+(?:lini[șs]tit\w*|petiant\w*|spumant\w*|perlant\w*))?"
+    rf"\s+({_COLOUR_WORD_SRC}(?:\s*(?:,|/|și/sau|și|si|sau)\s*{_COLOUR_WORD_SRC})*)\b",
+    re.IGNORECASE,
+)
+
+
+def _colour_of(word: str) -> str:
+    w = word.lower()
+    if w.startswith(("roz", "ros")) and not w.startswith(("roș", "rosu", "rosi")):
+        return "rose"
+    if w.startswith("alb"):
+        return "blanc"
+    return "noir"
+
+
+def colour_styles(text: str) -> set[str]:
+    """The wine colours a Romanian text states (`blanc` / `noir` / `rose`):
+    the keyword table, and every colour of a list sharing one wine noun."""
+    blob = (text or "").translate(_CEDILLA_TO_COMMA)
+    found = {colour for kw, colour in COLOUR_BY_KEYWORD.items()
+             if re.search(rf"\b{re.escape(kw)}\b", blob, re.I)}
+    for m in _COLOUR_LIST_RE.finditer(blob):
+        for word in re.findall(_COLOUR_WORD_SRC, m.group(1), re.I):
+            found.add(_colour_of(word))
+    return found
+
 
 # Style markers in Romanian, mapped to the shared style-taxonomy slugs.
 # Romanian late-harvest / botrytised / dessert vocabulary covers the

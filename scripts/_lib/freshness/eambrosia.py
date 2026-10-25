@@ -21,6 +21,7 @@ here is necessary, not sufficient, for France — the INAO probe decides.
 from __future__ import annotations
 
 import json
+import re
 
 from . import (
     COVERED,
@@ -88,6 +89,44 @@ def country_index(cc: str) -> tuple[list[dict], str]:
     return rows, gen
 
 
+_OJ_ELI_RE = re.compile(r"\bC[/_](\d{4})/?0*(\d{1,6})\b")
+_OJ_OLD_URI_RE = re.compile(r"OJ\.C_\.(\d{4})\.0*(\d{1,3})\.")
+_OJ_OLD_TEXT_RE = re.compile(r"\bC\s+0*(\d{1,3}),\s*\d{1,2}\.\d{1,2}\.(\d{4})")
+
+
+def oj_keys(s: str) -> set[tuple]:
+    """The OJ C references a publication string names, whatever its form:
+    the ELI "C/2026/3572" and EUR-Lex's "OJ:C_202603572" are one key, the
+    pre-2023 "OJ.C_.2021.453.01.0007.01" and "C 453, 9.11.2021" another."""
+    s = s or ""
+    keys = {("eli", y, int(n)) for y, n in _OJ_ELI_RE.findall(s)}
+    keys |= {("issue", y, int(n)) for y, n in _OJ_OLD_URI_RE.findall(s)}
+    keys |= {("issue", y, int(n)) for n, y in _OJ_OLD_TEXT_RE.findall(s)}
+    return keys
+
+
+def document_oj_keys(cc: str) -> dict[str, set[tuple]]:
+    """slug → the OJ references of the single document we hold (the URL the
+    oj-pages manifest fetched). The country index can predate that fetch:
+    phase F took the newest OJ C per record while SI's index was older, so
+    the probe read Belokranjec's C/2026/3572 — the document in the build —
+    as a new publication (2026-10-25)."""
+    out: dict[str, set[tuple]] = {}
+    mp = ROOT / "raw" / cc / "oj-pages" / "manifest.json"
+    if not mp.exists():
+        return out
+    try:
+        m = json.loads(mp.read_text(encoding="utf-8"))
+    except ValueError:
+        return out
+    for slug, e in (m.get("by_slug") or {}).items():
+        if isinstance(e, dict):
+            keys = oj_keys(e.get("source_url") or "") | oj_keys(e.get("final_url") or "")
+            if keys:
+                out[slug] = keys
+    return out
+
+
 def document_fetched_at(cc: str) -> dict[str, str]:
     """slug → fetched_at of the single document we hold (oj-pages manifest)."""
     out: dict[str, str] = {}
@@ -109,6 +148,7 @@ def probe_country(cc: str, live_by_cc: dict[str, dict[str, dict]], *, index_fetc
     live = live_by_cc.get(CC_TO_LIVE.get(cc, cc.upper()), {})
     rows, gen = country_index(cc)
     fetched = document_fetched_at(cc)
+    held_docs = document_oj_keys(cc)
     out: list[Probe] = []
     seen: set[str] = set()
     for r in rows:
@@ -127,7 +167,15 @@ def probe_country(cc: str, live_by_cc: dict[str, dict[str, dict]], *, index_fetc
             continue
         live_mod = lrow.get("modificationDate") or ""
         live_pubs = {p.get("text") or p.get("uri") for p in (lrow.get("publications") or []) if isinstance(p, dict)}
-        new_pubs = sorted(p for p in live_pubs - held_pubs if p)
+        held_keys = set(held_docs.get(slug, ()))
+        for p in r.get("publications") or []:
+            if isinstance(p, dict):
+                held_keys |= oj_keys(p.get("text") or "") | oj_keys(p.get("uri") or "")
+        held_by_key = {
+            (p.get("text") or p.get("uri")) for p in (lrow.get("publications") or [])
+            if isinstance(p, dict) and (oj_keys(p.get("text") or "") | oj_keys(p.get("uri") or "")) & held_keys
+        }
+        new_pubs = sorted(p for p in live_pubs - held_pubs - held_by_key if p)
         if lrow.get("removedFlag") or (lrow.get("status") or "").lower() not in ("registered", ""):
             out.append(Probe(**base, verdict=GONE, upstream=lrow.get("status") or "removed",
                              reason=f"live status {lrow.get('status')!r}, removedFlag={lrow.get('removedFlag')} — confirm the cancellation regulation on EUR-Lex and add the GI to scripts/_lib/cancelled_gis.json"))

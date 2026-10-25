@@ -56,3 +56,25 @@ def test_agudelo_is_chenin_everywhere():
     assert GRAPE_ALIAS["agudelo"] == "chenin"
     grapes = es02.parse_grapes("AGUDELO - CHENIN BLANC\nGODELLO\n")
     assert grapes["principal"] == ["chenin", "godello"]
+
+
+def test_two_names_written_without_their_comma_are_two_pills():
+    # La Palma §7 (2026-10-25): MAPA lists Listán Prieto (T.) and Moscatel
+    # Negro (T.) apart; a lexicon slug had kept the fused string
+    grapes = es02.parse_grapes("- Autorizadas: Bastardo negro o Baboso negro, "
+                               "Listán Prieto Moscatel negro y Vijariego Negro.\n")
+    assert {"listan-prieto", "moscatel-negro"} <= set(grapes["accessory"])
+    assert not any("listan-prieto-moscatel" in s for s in grapes["accessory"])
+    # El Hierro: a roster line wrapped without its comma
+    grapes = es02.parse_grapes("- Preferentes: Güal, Malvasía aromática, Malvasía volcánica\n"
+                               "    Moscatel de Alejandría y Vijariego blanco o Diego.\n")
+    assert {"malvasia-volcanica", "muscat-d-alexandrie"} <= set(grapes["principal"])
+
+
+def test_castello_subirat_is_alarije():
+    try:
+        set_pliego_context("castello")
+        grapes = es02.parse_grapes("- Blancas: Chardonnay, Subirat, Merseguera, Viura o Macabeo.\n")
+    finally:
+        set_pliego_context(None)
+    assert "alarije" in grapes["principal"] and "macabeu" in grapes["principal"]

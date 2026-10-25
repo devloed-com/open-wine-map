@@ -84,6 +84,8 @@ class CHCommuneIndex:
         polygons
       - `union_for_canton(canton_code)` → union of every Gemeinde of
         the given canton (the canton-level fallback)
+      - `in_bezirk(canton_code, bezirk_name)` → the communes of a
+        district (an intercantonal AOC delimited by districts)
     """
 
     def __init__(self, gpkg_path: Path, target_crs: str = "EPSG:4326") -> None:
@@ -109,6 +111,7 @@ class CHCommuneIndex:
         # the règlement's prose does not.
         self._bare_names: set[str] = set()
         self._bfs_by_canton: dict[str, list[int]] = defaultdict(list)
+        self._bfs_by_bezirk: dict[int, list[int]] = defaultdict(list)
         # Geometry index by BFS id.
         for _, row in gdf.iterrows():
             bfs = row.get("bfs_nummer")
@@ -136,6 +139,16 @@ class CHCommuneIndex:
                 self._bare_names.add(_norm(bare))
             if canton_code:
                 self._bfs_by_canton[canton_code].append(bfs_int)
+            bez = row.get("bezirksnummer")
+            if bez is not None and bez == bez:  # NaN for a canton without districts
+                self._bfs_by_bezirk[int(bez)].append(bfs_int)
+        # District names (tlm_bezirksgebiet), keyed by canton + normalised name.
+        self._bezirk_no: dict[tuple[str, str], int] = {}
+        bez_gdf = gpd.read_file(gpkg_path, layer="tlm_bezirksgebiet", ignore_geometry=True)
+        for _, row in bez_gdf.iterrows():
+            code = CANTON_CODE_BY_BFS.get(int(row.get("kantonsnummer") or 0), "")
+            if code and row.get("bezirksnummer") is not None:
+                self._bezirk_no[(code, _norm(row.get("name") or ""))] = int(row["bezirksnummer"])
         # Apply commune aliases.
         for src_norm, target_norm in _GEMEINDE_ALIAS.items():
             if target_norm in self._bfs_by_name:
@@ -160,6 +173,15 @@ class CHCommuneIndex:
              "canton": self._by_bfs[b]["canton"]}
             for b in bfs_ids
         ]
+
+    def in_bezirk(self, canton_code: str, bezirk_name: str) -> list[dict]:
+        """The communes of one district, as `lookup` returns them; empty for
+        a district name the canton does not carry."""
+        no = self._bezirk_no.get((canton_code, _norm(bezirk_name)))
+        if no is None:
+            return []
+        return [{"bfs_id": b, "name": self._by_bfs[b]["name"], "canton": self._by_bfs[b]["canton"]}
+                for b in self._bfs_by_bezirk.get(no, [])]
 
     def is_commune_name(self, name: str) -> bool:
         """True when `name` is a commune's official name, or one without the
@@ -301,9 +323,13 @@ def resolve(
         if g is not None and not g.is_empty:
             return g, "swissboundaries-commune-union", {"matched": len(bfs_ids), "unmatched": 0}
 
-    # Step 4: whole-canton union (fallback for canton-wide AOCs).
-    if canton and canton in CANTON_BFS_ID:
-        g = commune_index.union_for_canton(canton)
+    # Step 4: whole-canton union (fallback for canton-wide AOCs) — every canton
+    # the record spans: Zürichsee (SZ / ZH) is no longer Schwyz's alone.
+    cantons = [c.lower() for c in (record.get("cantons") or [canton]) if c]
+    cantons = [c for c in cantons if c in CANTON_BFS_ID]
+    if cantons:
+        bfs_ids = [b for c in cantons for b in commune_index._bfs_by_canton.get(c, [])]
+        g = commune_index.union_from_bfs_ids(bfs_ids)
         if g is not None and not g.is_empty:
             return g, "swissboundaries-canton-union", {"matched": -1, "unmatched": 0}
 

@@ -40,6 +40,22 @@ only (a count and the offending rows, never a failure):
   meta_text                  R  the bullet talks about the document or
                                 Wikipedia instead of the terroir
                                 ("confirmed by Wikipedia").
+  document_reference         S  the bullet refers to its own document or to
+                                Wikipedia at its opening ("Según el pliego,
+                                …", "Il disciplinare afferma che …"), at its
+                                end or alone in brackets — source and
+                                translated (`terroir_normalize.
+                                document_reference`). The normaliser cuts
+                                these; what it leaves is a Dutch or German
+                                lead the cut cannot reach without breaking the
+                                word order — the summary prints the 02e
+                                re-translation command per country — or a
+                                source bullet of that kind, for the gate.
+  document_reference_mid     R  the same reference inside the sentence, the
+                                document as the agent of a verb ("Il
+                                disciplinare descrive i vini come …"), any
+                                other mention of Wikipedia: rewording, the
+                                gate's rewrite case, not a cut.
   intra_record_duplicates    S  two facts of one record that
                                 `duplicate_reason` deems restatements
                                 (near-identical bullets, or the same
@@ -182,7 +198,12 @@ from _lib.terroir_coverage import (  # noqa: E402
 )
 from _lib.terroir_dedupe import duplicate_reason, facts_sha  # noqa: E402
 from _lib.terroir_feedback import load_feedback, recurrence_findings  # noqa: E402
-from _lib.terroir_normalize import strip_colour_codes  # noqa: E402
+from _lib.terroir_normalize import (  # noqa: E402
+    STRICT_REFERENCE_KINDS,
+    document_reference,
+    normalize_bullet,
+    strip_colour_codes,
+)
 from _lib.terroir_sources import COUNTRIES, Sources, resolve_sources  # noqa: E402
 
 FR_EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
@@ -233,13 +254,13 @@ TERMINAL_PUNCT = ".!?…"
 MULTI_SENTENCE_RE = re.compile(r"[.!?]\s+[A-ZÀ-ÝΑ-ΩА-Я]")
 
 STRICT_CHECKS = frozenset({
-    "non_latin", "colour_code", "no_terminal_punct", "intra_record_duplicates",
+    "non_latin", "colour_code", "no_terminal_punct", "document_reference", "intra_record_duplicates",
     "name_guard", "no_own_chapter", "quote_outside_own_chapter",
 })
 # Every check name, in report order.
 CHECKS = (
     "non_latin", "colour_code", "no_terminal_punct", "arrow", "label_prefix", "meta_text",
-    "multi_sentence", "intra_record_duplicates", "cross_record_shared_quotes",
+    "document_reference", "document_reference_mid", "multi_sentence", "intra_record_duplicates", "cross_record_shared_quotes",
     "cross_record_identical_en", "en_equals_src", "name_guard", "name_guard_other", "foreign_name", "wiki_binding",
     "no_own_chapter", "quote_outside_own_chapter", "wiki_with_cahier_quote",
     "feedback_recurrence", "masaf_sidecar_stale", "gate_pending", "rewrite_rejected",
@@ -287,6 +308,21 @@ def has_meta_text(bullet: str) -> bool:
     return bool(META_RE.search(bullet or ""))
 
 
+def has_document_reference(bullet: str) -> bool:
+    return document_reference(bullet) in STRICT_REFERENCE_KINDS
+
+
+def has_document_reference_mid(bullet: str) -> bool:
+    return document_reference(bullet) == "mid"
+
+
+def reference_cut(bullet: str, lang: str = "") -> bool:
+    """True when the normaliser removes the bullet's document reference (the
+    post-pass will clear it); False for a Dutch / German lead or a
+    subjunctive complement, which need 02e or the gate."""
+    return document_reference(normalize_bullet(bullet, lang)) not in STRICT_REFERENCE_KINDS
+
+
 def has_multiple_sentences(bullet: str) -> bool:
     """Two or more sentences: a terminator followed by a capital. A decimal
     ("13.5 % vol") or an abbreviation before a lowercase word does not fire."""
@@ -299,6 +335,8 @@ STYLE_CHECKS = (
     ("label_prefix", has_label_prefix),
     ("no_terminal_punct", missing_terminal_punct),
     ("meta_text", has_meta_text),
+    ("document_reference", has_document_reference),
+    ("document_reference_mid", has_document_reference_mid),
     ("multi_sentence", has_multiple_sentences),
 )
 
@@ -653,7 +691,9 @@ def audit_translations(slug: str, source_facts: list[dict] | None = None) -> tup
                 checks.insert(0, "non_latin")
             if i < len(src_bullets) and src_bullets[i] and bullet.strip() == src_bullets[i]:
                 checks.append("en_equals_src")
-            rows.extend({"check": c, "slug": slug, "lang": lang, "index": i} for c in checks)
+            rows.extend({"check": c, "slug": slug, "lang": lang, "index": i,
+                         **({"cut": reference_cut(bullet, lang)} if c == "document_reference" else {})}
+                        for c in checks)
             if lang == "en":
                 en_bullets.append(bullet)
     return n_by_lang, rows, en_bullets
@@ -683,7 +723,8 @@ def collect_findings(
         slug = a["slug"]
         for i, b in enumerate(a["bullets"]):
             for check in b["style"]:
-                rows[check].append({"slug": slug, "index": i})
+                rows[check].append({"slug": slug, "index": i,
+                                    **({"cut": reference_cut(b["bullet"])} if check == "document_reference" else {})})
         for d in a["duplicates"]:
             rows["intra_record_duplicates"].append({
                 "slug": slug, "index": d["j"], "duplicate_of": d["i"], "reason": d["reason"],
@@ -715,6 +756,28 @@ def collect_findings(
     rows["cross_record_shared_quotes"] = shared_groups
     rows["cross_record_identical_en"] = identical_en or []
     return rows
+
+
+def _script_for(country: str) -> str:
+    return "scripts/02e_translate_terroir_facts.py" if country == "fr" else f"scripts/{country}/02e_translate_terroir_facts.py"
+
+
+def document_reference_commands(rows: list[dict], country_of: dict[str, str]) -> dict[str, str]:
+    """The 02e command per country that re-translates the translated bullets
+    `document_reference` flags and the normaliser cannot cut — the Dutch /
+    German leads. --refresh re-does every bullet of the slug in that locale."""
+    by_cc: dict[str, dict[str, set]] = defaultdict(lambda: {"slugs": set(), "langs": set()})
+    for r in rows:
+        if "lang" in r and not r.get("cut"):
+            cc = country_of.get(r["slug"], "fr")
+            by_cc[cc]["slugs"].add(r["slug"])
+            by_cc[cc]["langs"].add(r["lang"])
+    return {
+        cc: (f".venv/bin/python {_script_for(cc)} --refresh"
+             + "".join(f" --lang {lang}" for lang in LANGS if lang in v["langs"])
+             + "".join(f" --only {s}" for s in sorted(v["slugs"])))
+        for cc, v in sorted(by_cc.items())
+    }
 
 
 def summarize(
@@ -980,6 +1043,12 @@ def main() -> int:
         unresolved=resolver.failed,
     )
     summary["elapsed_seconds"] = round(time.monotonic() - t_start, 1)
+    commands = document_reference_commands(findings["document_reference"], {a["slug"]: a["country"] for a in audits})
+    if commands:
+        summary["document_reference_commands"] = commands
+    uncut = [f"{r['slug']}#{r['index']}" for r in findings["document_reference"] if "lang" not in r and not r.get("cut")]
+    if uncut:
+        summary["document_reference_uncut_sources"] = uncut  # for the gate (its rewrite case)
     print("\n[audit] summary:", file=sys.stderr)
     print(json.dumps(summary, ensure_ascii=False, indent=2, default=str), file=sys.stderr)
 

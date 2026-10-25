@@ -45,10 +45,10 @@ from _lib.grape_entity import (  # noqa: E402
 from _lib.ro.commune import (  # noqa: E402
     _normalise_commune,
     parse_commune_list_scoped,
+    village_heads,
 )
 from _lib.ro.document_unic import (  # noqa: E402
     _GEO_AREA_TITLE_BLOCKLIST,
-    COLOUR_BY_KEYWORD,
     DOC_ANCHOR_RE,
     INLINE_ROLE_RE,
     ROLE_BY_KEYWORD,
@@ -56,6 +56,7 @@ from _lib.ro.document_unic import (  # noqa: E402
     SECTION_NUM_RE,
     SECTION_ROLE_KEYWORDS,
     STYLE_MARKERS,
+    colour_styles,
 )
 from _lib.ro.region import derive_region  # noqa: E402
 
@@ -332,10 +333,22 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
     # organoleptice …", one per wine type: Cotnari, Jidvei; 2026-10-23)
     blob_parts += [body for num, body in sections.items() if str(num).startswith(tuple(descr))]
     blob = " ".join(blob_parts)
-    found: set[str] = set()
-    for kw, colour_slug in COLOUR_BY_KEYWORD.items():
-        if re.search(rf"\b{re.escape(kw)}\b", blob, re.I):
-            found.add(colour_slug)
+    # the practices section's yield table names the colours made
+    # ("producție de vin - vinuri roșii, roze", Dealurile Sătmarului and
+    # Dealurile Zarandului state their rosé nowhere else; 2026-10-25)
+    practices = " ".join(body for num, body in sections.items()
+                         if "practici" in titles.get(num, "").lower())
+    # the link section states the colours made where the description is a
+    # per-variety list ("Fetească neagră – … culoare roşu violet") that
+    # never writes "vinuri roșii": Coteşti's "Vinurile roşii au culori
+    # intense" — read only through the wine-noun grammar of
+    # `colour_styles`, never the style markers (2026-10-25: the rosé list
+    # rule had switched the grape-colour floor off and the card lost Red)
+    link_nums = [f"{num}." for num, title in titles.items()
+                 if "legătur" in title.lower() or "legatur" in title.lower()]
+    link = " ".join(body for num, body in sections.items()
+                    if f"{num}." in link_nums or str(num).startswith(tuple(link_nums)))
+    found: set[str] = colour_styles(blob) | colour_styles(practices) | colour_styles(link)
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(blob):
             found.add(slug)
@@ -509,6 +522,9 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
         "geo_area_brief": geo_area,
         "geo_communes_scoped": [[n, j] for n, j in geo_scoped],
         "geo_communes": geo_communes,
+        # names the text gives only as villages, with their commune — stage
+        # 04 binds such a name to a commune only where it touches that one
+        "geo_communes_villages": [[v, h] for v, h in village_heads(geo_area)],
         "link_to_terroir": routed.get("link_to_terroir", ""),
         "producer_group": wine["producer_group"],
         "publications": wine["publications"],

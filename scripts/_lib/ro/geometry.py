@@ -37,6 +37,9 @@ from shapely.ops import unary_union
 
 # Romania's 41 județe + Bucharest — the NUTS-3 units the county masks use.
 N_JUDETE = 42
+# A village-named commune "touches" its text's head commune within ~200 m:
+# GISCO's 1:1M communes share their borders, give or take generalisation.
+VILLAGE_TOUCH_DEG = 0.002
 
 
 class ROPolygonIndex:
@@ -130,9 +133,17 @@ class ROPolygonIndex:
     def figshare_polygon(self, file_number: str) -> BaseGeometry | None:
         return self._pdo_polygons.get(file_number)
 
+    def _one_in(self, key: str, masks: list[BaseGeometry]) -> BaseGeometry | None:
+        """The one commune `key` names inside `masks` (or nationwide)."""
+        cands = self._lau_by_name.get(key) or []
+        if masks:
+            cands = [g for g in cands if any(m.intersects(g.representative_point()) for m in masks)]
+        return cands[0] if len(cands) == 1 else None
+
     def commune_union(
         self, commune_names: Iterable[str], judete: Iterable[str] | None = None,
         scoped: Iterable[tuple[str, list[str]]] | None = None,
+        villages: Iterable[tuple[str, str]] | None = None,
     ) -> tuple[BaseGeometry | None, dict]:
         """Union the GISCO LAU polygons that match the given commune
         names (after normalisation). Returns (geometry, stats) where
@@ -145,8 +156,23 @@ class ROPolygonIndex:
         down to one, that one is used; otherwise the name contributes
         nothing and is reported. Never a blind union of every homonym:
         that drew Colinele Dobrogei, a Black Sea appellation, across the
-        full width of the country."""
+        full width of the country.
+
+        `villages` pairs a name the text gives only as a village with the
+        commune it files it under (`commune.village_heads`). Such a name
+        binds a commune only when that commune touches its head — a village
+        split off into a commune of its own since (Paleu from Cetariu,
+        Saligny from Mircea Vodă, 2004); a same-named commune elsewhere in
+        the județ is a coincidence and is reported, not drawn."""
         from .commune import _SPELLING_ALIASES, _normalise_commune
+
+        def akey(name: str) -> str:
+            k = _normalise_commune(name)
+            return _SPELLING_ALIASES.get(k, k)
+
+        village_of: dict[str, set[str]] = {}
+        for v, h in villages or []:
+            village_of.setdefault(akey(v), set()).add(akey(h))
         record_masks = [
             self._judet_by_name[j]
             for j in (judete or [])
@@ -170,6 +196,7 @@ class ROPolygonIndex:
         unmatched: list[str] = []
         ambiguous: list[str] = []
         outside: list[str] = []
+        village_homonyms: list[str] = []
         for raw_name, masks in items:
             key = _normalise_commune(raw_name)
             if not key:
@@ -202,6 +229,12 @@ class ROPolygonIndex:
                 # than all of them.
                 ambiguous.append(f"{raw_name} ({len(cands)})")
                 continue
+            if key in village_of:
+                heads = [self._one_in(h, masks) for h in village_of[key]]
+                if not any(h is not None and cands[0].intersects(h.buffer(VILLAGE_TOUCH_DEG))
+                           for h in heads):
+                    village_homonyms.append(raw_name)
+                    continue
             polys.extend(cands)
             matched.append(raw_name)
         stats = {
@@ -212,6 +245,8 @@ class ROPolygonIndex:
             "names_unmatched": unmatched,
             "names_ambiguous": ambiguous,
             "names_outside_judet": outside,
+            "n_village_homonyms": len(village_homonyms),
+            "names_village_homonyms": village_homonyms,
             "judete": list(judete or []),
             "scoped": scoped is not None,
         }
@@ -223,6 +258,7 @@ class ROPolygonIndex:
         self, file_number: str, commune_names: Iterable[str] | None = None,
         judete: Iterable[str] | None = None,
         scoped: Iterable[tuple[str, list[str]]] | None = None,
+        villages: Iterable[tuple[str, str]] | None = None,
     ) -> tuple[BaseGeometry | None, str, dict]:
         """Resolve geometry for one RO record. Returns (geometry,
         geom_source, stats). Bétard PDO match first; commune-union
@@ -234,7 +270,7 @@ class ROPolygonIndex:
                 {"matched": -1, "unmatched": 0},
             )
         if commune_names:
-            geom, stats = self.commune_union(commune_names, judete, scoped)
+            geom, stats = self.commune_union(commune_names, judete, scoped, villages)
             if geom is not None:
                 return geom, "gisco-commune-list", stats
             return None, "stub-no-geometry", stats

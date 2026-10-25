@@ -117,8 +117,25 @@ def test_arrow_and_meta_text():
 def test_style_findings_lists_every_defect_in_order():
     assert audit.style_findings(
         "Rioja Oriental: pinot noir N → vins, confirmed by Wikipedia"
-    ) == ["colour_code", "arrow", "label_prefix", "no_terminal_punct", "meta_text"]
+    ) == ["colour_code", "arrow", "label_prefix", "no_terminal_punct", "meta_text", "document_reference_mid"]
     assert audit.style_findings("Sols argilo-calcaires sur marnes.") == []
+    assert audit.style_findings("Según el pliego, los suelos son calizos.") == ["meta_text", "document_reference"]
+
+
+def test_document_reference_commands_name_only_what_the_cut_cannot_reach():
+    rows = [
+        {"slug": "la-palma", "lang": "nl", "index": 7, "cut": False},
+        {"slug": "la-palma", "lang": "en", "index": 7, "cut": True},
+        {"slug": "alezio", "lang": "nl", "index": 12, "cut": False},
+        {"slug": "oolde", "index": 2, "cut": False},
+    ]
+    cmds = audit.document_reference_commands(rows, {"la-palma": "es", "alezio": "it", "oolde": "nl"})
+    assert cmds == {
+        "es": ".venv/bin/python scripts/es/02e_translate_terroir_facts.py --refresh --lang nl --only la-palma",
+        "it": ".venv/bin/python scripts/it/02e_translate_terroir_facts.py --refresh --lang nl --only alezio",
+    }
+    assert audit.reference_cut("Según el pliego, los suelos son calizos.")
+    assert not audit.reference_cut("Volgens het productdossier zijn de bodems kalkrijk.", "nl")
 
 
 # ─────────────────────────────────────────────────── non-Latin (W1) ──

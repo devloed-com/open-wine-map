@@ -778,3 +778,119 @@ def test_a_repeated_head_after_the_dash_is_the_seat_village_even_with_a_descript
         "Comuna Mihai Viteazu - Mihai Viteazu cu satele Cernavodă"
     )]
     assert names == ["Lungeşti", "Albeşti - Paleologu", "Mihai Viteazu"]
+
+
+def test_prose_quotes_and_lower_case_chunks_are_not_communes():
+    """Crişana's lead-in and sub-denomination headers ("astfel",
+    "Subdenumirile „DIOSIG” şi „BIHARIA”:") and the caiete's "în funcţie de
+    interesul producătorilor" reached the list (validator, 2026-10-23). A
+    quoted name is a sub-denomination's: dropping it lets the commune's own
+    item through the dedupe — "Comuna Biharia" had been shadowed by
+    „BIHARIA”, Iana's "Comuna Iana" by „IANA” (2026-10-24)."""
+    from _lib.ro.commune import parse_commune_list
+
+    names = parse_commune_list(
+        "se întinde pe teritoriul judeţelor Bihor şi Sălaj, astfel:\n"
+        "Subdenumirile „DIOSIG” şi „BIHARIA”:\nJudeţul Bihor:\n"
+        "—\nComuna Biharia, satul Biharia\n—\nComuna Ciuhoi, satete Sâniob, Ciuhoi\n"
+        "poate fi completată, în funcţie de interesul producătorilor"
+    )
+    assert names == ["Biharia", "Ciuhoi"]
+
+
+def test_component_locality_of_a_commune_reads_the_commune():
+    """Murfatlar: "Satul Ciocârlia, localitatea componentă a comunei
+    Ciocârlia" — the genitive names the commune."""
+    from _lib.ro.commune import parse_commune_list
+
+    names = parse_commune_list(
+        "Satul Cuza Vodă, localitatea componentă a comunei Cuza Vodă;\n"
+        "Satul Siliştea, localitatea componentă a comunei Siliștea;"
+    )
+    assert [commune._normalise_commune(n) for n in names] == ["cuza voda", "silistea"]
+
+
+def test_village_heads_pairs_villages_with_their_commune():
+    """Each item files its villages under its commune; a name the text also
+    gives as a commune of its own is no village-only name; the town of
+    "Oraş Ovidiu - comuna Ovidiu, satul Poiana" is Ovidiu (2026-10-24)."""
+    from _lib.ro.commune import village_heads
+
+    pairs = village_heads(
+        "Judeţul Bihor:\n—\nComuna Cetariu, satele Şişterea, Paleu\n—\n"
+        "Comuna Sălard, satele Sălard, Sântimreu\n—\nOraş Ovidiu - comuna Ovidiu, satul Poiana\n—\n"
+        "Comuna Hoceni, satele Hoceni, Deleni\n—\nComuna Deleni, satele Deleni, Maxut\n—\n"
+        "comuna Daia cu satele Daia, Dăiţa"
+    )
+    assert ("Paleu", "Cetariu") in pairs and ("Şişterea", "Cetariu") in pairs
+    assert ("Poiana", "Ovidiu") in pairs and ("Dăiţa", "Daia") in pairs
+    assert not any(v == "Deleni" for v, _ in pairs)
+    assert not any(v == h for v, h in pairs)
+
+
+def test_a_village_named_commune_binds_only_where_it_touches_its_head():
+    """Paleu, a village of Cetariu in the Crişana text, is the commune Paleu
+    split off in 2004 — it touches Cetariu and is drawn; Măldăreşti, a village
+    of Măciuca, is not the commune Măldăreşti 34 km away (2026-10-24)."""
+    from _lib.ro.geometry import ROPolygonIndex
+    from shapely.geometry import box
+
+    idx = ROPolygonIndex(Path("/nonexistent.gpkg"), None, None)
+    idx._lau_by_name = {
+        "maciuca": [box(0, 0, 1, 1)], "maldaresti": [box(5, 0, 6, 1)],
+        "cetariu": [box(10, 0, 11, 1)], "paleu": [box(11, 0, 12, 1)],
+    }
+    names = ["Măciuca", "Măldăreşti", "Cetariu", "Paleu"]
+    villages = [("Măldăreşti", "Măciuca"), ("Paleu", "Cetariu")]
+    geom, stats = idx.commune_union(names, villages=villages)
+    assert stats["matched"] == 3 and stats["names_village_homonyms"] == ["Măldăreşti"]
+    _, stats = idx.commune_union(names)
+    assert stats["matched"] == 4
+
+
+# ==========================================================================
+# Colours a list shares with one wine noun (2026-10-25, phase H findings)
+# ==========================================================================
+def test_colour_list_sharing_one_noun_reads_every_colour():
+    from _lib.ro.document_unic import colour_styles
+    assert colour_styles("Vinuri albe, roze") == {"blanc", "rose"}
+    assert colour_styles("vinurile albe și roze)") == {"blanc", "rose"}
+    assert colour_styles("Vinuri albe/roze") == {"blanc", "rose"}
+    assert colour_styles("la vinurile roșii, roze, aromate") == {"noir", "rose"}
+    # the cedilla letters older documents print
+    assert colour_styles("Vinurile liniştite roze") == {"rose"}
+    # a pink berry or a hue is no wine colour
+    assert colour_styles("Traminer roz: culoare verde-gălbui") == set()
+    assert colour_styles("Vin liniştit roze din struguri albi") == {"rose"}
+
+
+def test_parse_styles_reads_the_yield_tables_colours():
+    secs = {"4": "1. Traminer roz: Aspect limpede", "5": "producție de vin - vinuri roșii, roze"}
+    titles = {"4": "Descrierea vinului (vinurilor)", "5": "Practici oenologice"}
+    assert {"noir", "rose"} <= set(extract.parse_styles(secs, titles))
+
+
+def test_parse_styles_reads_the_colours_the_link_section_states():
+    # Coteşti: the description is a per-variety list ("Fetească neagră – …
+    # culoare roşu violet") that never writes "vinuri roșii"; the yield table
+    # states white and rosé, which switched the grape-colour floor off, and
+    # the card lost Red (2026-10-25). The link section states it.
+    secs = {
+        "4": "Fetească neagră – culoare roşu violet la vinul tânăr.",
+        "5": "producție de vin - vinuri albe, roze",
+        "8": "",
+        # the 2024/1143 template puts the text in sub-sections whose titles
+        # name no link ("Detalii privind produsul, interacțiune cauzală")
+        "8.2": "Vinurile roşii au culori intense, corpolență medie. Vinurile albe au prospeţime.",
+    }
+    titles = {"4": "Descrierea vinului (vinurilor)", "5": "Practici oenologice",
+              "8": "Descrierea legăturii (legăturilor)", "8.2": "Detalii privind produsul"}
+    assert {"blanc", "noir", "rose"} <= set(extract.parse_styles(secs, titles))
+    # a hue or a fruit note in the link is no wine colour
+    secs["8.2"] = "Solurile dau vinuri cu arome de fructe roşii şi culoare roşu-aprins."
+    assert "noir" not in extract.parse_styles(secs, titles)
+
+
+def test_caiet_backstop_never_makes_a_rose_from_a_berry():
+    grapes = {"details": [{"slug": "gewurztraminer", "colour": "rose"}, {"slug": "pinot-gris", "colour": "gris"}]}
+    assert caiet.parse_styles({"description": "Vinuri de calitate."}, grapes) == ["blanc"]

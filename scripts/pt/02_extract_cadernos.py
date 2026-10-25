@@ -354,6 +354,21 @@ def _line_candidates(line: str) -> list[str]:
 _MAX_WRAP_JOINS = 3
 
 
+# A PRT-code row whose name wraps inside its cell while the colour column
+# stays on the first line: Açores' "PRT52915 Moscatel- Branco" ⏎
+# "GalegoBranco" is "Moscatel-Galego Branco" (read apart: "Moscatel" bound
+# Muscat of Alexandria and "GalegoBranco" Alvarinho; 2026-10-25).
+_PRT_CELL_WRAP_RE = re.compile(
+    r"^([ \t]*PR?T\s?\d{4,6}\s+\S.*?)-[ \t]+(Branco|Tinto|Rosado|Roxo)[ \t]*\n"
+    r"[ \t]*([A-ZÀ-Ý][^\W\d_]+?)(Branco|Tinto|Rosado|Roxo)[ \t]*$",
+    re.MULTILINE,
+)
+
+
+def _rejoin_prt_cell_wraps(text: str) -> str:
+    return _PRT_CELL_WRAP_RE.sub(lambda m: f"{m.group(1)}-{m.group(3)} {m.group(2)}", text)
+
+
 def _join_wrapped_lines(lines: list[str]) -> list[str]:
     """Re-join a name or parenthesised synonym that pdftotext wrapped
     across two lines in the comma-enumeration layout (Algarve:
@@ -405,7 +420,7 @@ def parse_grape_list(grapes_text: str) -> dict:
         return {"principal": [], "accessory": [], "details": []}
     seen: set[str] = set()
     details: list[dict] = []
-    for raw in _join_wrapped_lines(grapes_text.split("\n")):
+    for raw in _join_wrapped_lines(_rejoin_prt_cell_wraps(grapes_text).split("\n")):
         candidates = _line_candidates(raw)
         if candidates == ["__STOP__"]:
             break

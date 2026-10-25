@@ -13,7 +13,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib.extract_index import is_partial, write_index  # noqa: E402
+from _lib.extract_index import is_partial, wiki_index_kept, write_index  # noqa: E402
 
 
 def test_full_run_replaces_and_partial_run_merges(tmp_path):
@@ -58,4 +58,33 @@ def test_every_stage_02_with_a_record_filter_writes_through_the_helper():
             continue
         if "write_index(" not in src or re.search(r"INDEX_OUT(_PATH)?\.write_text\(", src):
             offenders.append(script.relative_to(ROOT).as_posix())
+    assert not offenders, offenders
+
+
+def test_wiki_index_kept_full_and_partial():
+    """A full stage-03 run replaces its country's entries; a `--only` run
+    replaces only the records it selected (2026-10-24: `03 --only collioure`
+    had left one French entry in wiki/_index.json)."""
+    existing = {"a": {"country": "fr"}, "b": {"country": "fr"}, "c": {"country": "es"}}
+    assert wiki_index_kept(existing, "fr", partial=False) == {"c": {"country": "es"}}
+    kept = wiki_index_kept(existing, "fr", partial=True)
+    assert kept == existing and kept is not existing
+    assert {**kept, "b": {"country": "fr", "n": 2}}["a"] == {"country": "fr"}
+
+
+def test_every_stage_03_merges_through_the_helper():
+    """Wiring lint: every stage-03 generator takes `--only` and must merge
+    wiki/_index.json through `wiki_index_kept`, never by dropping its
+    country's entries itself."""
+    scripts = [ROOT / "scripts" / "03_generate_wiki.py",
+               *sorted((ROOT / "scripts").glob("*/03_generate_wiki.py"))]
+    offenders = []
+    for script in scripts:
+        src = script.read_text(encoding="utf-8")
+        if '"--only"' not in src:
+            continue
+        if ("wiki_index_kept(" not in src or "partial=bool(args.only)" not in src
+                or re.search(r'if v\.get\("country"\) != "[a-z]{2}"\}', src)):
+            offenders.append(script.relative_to(ROOT).as_posix())
+    assert len(scripts) >= 21
     assert not offenders, offenders

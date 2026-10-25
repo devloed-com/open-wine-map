@@ -1,0 +1,178 @@
+{
+  "_doc": "Regions an appellation is listed under beside its own (scripts/_lib/region_aliases.py). `entries`: slug → {country, regions, evidence: [{file, field, quote}] (verbatim from the extracted record; tests/test_region_aliases.py checks each quote), reason, verified}; `regions: []` suppresses the automatic derivations (member-PDO table, FR aire communes) for that record. `rejected`: slug → {region: reason} — geometric candidates of scripts/sweep_region_aliases.py that are not a second region (polygon overlaps, a neighbour's filing).",
+  "entries": {
+    "garda": {
+      "country": "it", "regions": ["Veneto"],
+      "evidence": [{"file": "raw/it/disciplinari-extracted/garda.json", "field": "section_roles.geo_area", "quote": "delle province di Brescia, Mantova e Verona"}],
+      "reason": "Brescia and Mantova are Lombardia, Verona is Veneto.", "verified": "2026-10-25"
+    },
+    "lugana": {
+      "country": "it", "regions": ["Lombardia"],
+      "evidence": [{"file": "raw/it/masaf-disciplinari-extracted/lugana.json", "field": "geo_area_brief", "quote": "comprende territori ricadenti nelle province di Brescia e Verona"}],
+      "reason": "Sirmione, Desenzano, Lonato and Pozzolengo (Brescia, Lombardia) beside Peschiera (Verona).", "verified": "2026-10-25"
+    },
+    "san-martino-della-battaglia": {
+      "country": "it", "regions": ["Veneto"],
+      "evidence": [{"file": "raw/it/masaf-disciplinari-extracted/san-martino-della-battaglia.json", "field": "geo_area_brief", "quote": "di Peschiera, in provincia di Verona"}],
+      "reason": "Peschiera del Garda (Verona, Veneto) beside the four Brescia communes.", "verified": "2026-10-25"
+    },
+    "valdadige": {
+      "country": "it", "regions": ["Veneto"],
+      "evidence": [{"file": "raw/it/masaf-disciplinari-extracted/valdadige.json", "field": "geo_area_brief", "quote": "Provincia di Verona: Brentino Belluno, Dolcè, Rivoli Veronese"}],
+      "reason": "The provinces of Trento and Bolzano and three Verona communes.", "verified": "2026-10-25"
+    },
+    "valdadige-terradeiforti": {
+      "country": "it", "regions": ["Trentino-Alto Adige"],
+      "evidence": [{"file": "raw/it/masaf-disciplinari-extracted/valdadige-terradeiforti.json", "field": "geo_area_brief", "quote": "Avio, in provincia di Trento"}],
+      "reason": "Three Verona communes and Avio (Trento).", "verified": "2026-10-25"
+    },
+    "delle-venezie": {
+      "country": "it", "regions": ["Trentino-Alto Adige", "Veneto"],
+      "evidence": [{"file": "raw/it/disciplinari-extracted/delle-venezie.json", "field": "section_roles.geo_area", "quote": "comprende la Provincia autonoma di Trento e le Regioni Friuli Venezia Giulia e Veneto"}],
+      "reason": "The province of Trento and the whole of Friuli-Venezia Giulia and Veneto.", "verified": "2026-10-25"
+    },
+    "trevenezie": {
+      "country": "it", "regions": ["Friuli-Venezia Giulia", "Trentino-Alto Adige"],
+      "evidence": [{"file": "raw/it/masaf-disciplinari-extracted/trevenezie.json", "field": "geo_area_brief", "quote": "per la provincia autonoma di Trento: l'intero territorio amministrativo della provincia"}],
+      "reason": "Trento, seven Veneto provinces and the Friuli-Venezia Giulia provinces.", "verified": "2026-10-25"
+    },
+    "prosecco": {
+      "country": "it", "regions": ["Friuli-Venezia Giulia"],
+      "evidence": [{"file": "raw/it/disciplinari-extracted/prosecco.json", "field": "section_roles.geo_area", "quote": "Belluno, Gorizia, Padova, Pordenone, Treviso, Trieste, Udine, Venezia e Vicenza"}],
+      "reason": "Gorizia, Pordenone, Trieste and Udine are Friuli-Venezia Giulia.", "verified": "2026-10-25"
+    },
+    "vigneti-delle-dolomiti": {
+      "country": "it", "regions": ["Veneto"],
+      "evidence": [{"file": "raw/it/disciplinari-extracted/vigneti-delle-dolomiti.json", "field": "section_roles.geo_area", "quote": "della provincia di Belluno nella Regione Veneto"}],
+      "reason": "Trento, Bolzano and Belluno.", "verified": "2026-10-25"
+    },
+    "colli-di-luni": {
+      "country": "it", "regions": ["Toscana"],
+      "evidence": [{"file": "raw/it/masaf-disciplinari-extracted/colli-di-luni.json", "field": "geo_area_brief", "quote": "interessa la provincia di La Spezia e quella di Massa"}],
+      "reason": "La Spezia (Liguria) and Massa-Carrara (Toscana).", "verified": "2026-10-25"
+    },
+    "orvieto": {
+      "country": "it", "regions": ["Lazio"],
+      "evidence": [{"file": "raw/it/disciplinari-extracted/orvieto.json", "field": "section_roles.geo_area", "quote": "Bagnoregio in provincia di Viterbo"}],
+      "reason": "Thirteen Terni communes (Umbria) and five Viterbo communes (Lazio).", "verified": "2026-10-25"
+    },
+    "lison": {
+      "country": "it", "regions": ["Friuli-Venezia Giulia"],
+      "evidence": [{"file": "raw/it/masaf-disciplinari-extracted/lison.json", "field": "geo_area_brief", "quote": "Provincia di Pordenone: Chions, Cordovado, Pravisdomini"}],
+      "reason": "Venezia and Treviso communes (Veneto) and six Pordenone communes.", "verified": "2026-10-25"
+    },
+    "lison-pramaggiore": {
+      "country": "it", "regions": ["Friuli-Venezia Giulia"],
+      "evidence": [{"file": "raw/it/masaf-disciplinari-extracted/lison-pramaggiore.json", "field": "geo_area_brief", "quote": "Provincia di Pordenone: Chions, Cordovado, Pravisdomini"}],
+      "reason": "Venezia and Treviso communes (Veneto) and six Pordenone communes.", "verified": "2026-10-25"
+    },
+    "alto-livenza": {
+      "country": "it", "regions": ["Friuli-Venezia Giulia"],
+      "evidence": [{"file": "raw/it/masaf-disciplinari-extracted/alto-livenza.json", "field": "geo_area_brief", "quote": "Polcenigo, Prati e Sacile, in provincia di Pordenone"}],
+      "reason": "Treviso communes (Veneto) and Pordenone communes.", "verified": "2026-10-25"
+    },
+    "vallagarina": {
+      "country": "it", "regions": ["Trentino-Alto Adige"],
+      "evidence": [{"file": "raw/it/disciplinari-extracted/vallagarina.json", "field": "section_roles.geo_area", "quote": "a cavallo fra le province di Trento e Verona"}],
+      "reason": "The Adige valley between Trento and Verona.", "verified": "2026-10-25"
+    },
+    "cava": {
+      "country": "es", "regions": ["Aragón", "Cataluña", "Comunidad Valenciana", "Extremadura", "La Rioja", "Navarra", "País Vasco"],
+      "evidence": [
+        {"file": "raw/es/pliegos-extracted/cava.json", "field": "section_roles.geo_area", "quote": "Provincia de Barcelona:"},
+        {"file": "raw/es/pliegos-extracted/cava.json", "field": "section_roles.geo_area", "quote": "Provincia de Álava:"},
+        {"file": "raw/es/pliegos-extracted/cava.json", "field": "section_roles.geo_area", "quote": "Provincia de La Rioja:"},
+        {"file": "raw/es/pliegos-extracted/cava.json", "field": "section_roles.geo_area", "quote": "Provincia de Navarra:"},
+        {"file": "raw/es/pliegos-extracted/cava.json", "field": "section_roles.geo_area", "quote": "Provincia de Zaragoza:"},
+        {"file": "raw/es/pliegos-extracted/cava.json", "field": "section_roles.geo_area", "quote": "Provincia de Badajoz:"},
+        {"file": "raw/es/pliegos-extracted/cava.json", "field": "section_roles.geo_area", "quote": "Provincia de Valencia:"}
+      ],
+      "reason": "Municipalities in ten provinces of seven comunidades; the record carries no primary region.", "verified": "2026-10-25"
+    },
+    "rioja": {
+      "country": "es", "regions": ["Castilla y León", "Navarra", "País Vasco"],
+      "evidence": [
+        {"file": "raw/es/pliegos-extracted/rioja.json", "field": "section_roles.geo_area", "quote": "Provincia de Burgos (Miranda de Ebro): El Ternero"},
+        {"file": "raw/es/pliegos-extracted/rioja.json", "field": "section_roles.geo_area", "quote": "Comunidad Autónoma de Navarra"},
+        {"file": "raw/es/pliegos-extracted/rioja.json", "field": "section_roles.geo_area", "quote": "Provincia de Álava"}
+      ],
+      "reason": "La Rioja, Álava, Navarra and the El Ternero enclave of Miranda de Ebro (Burgos).", "verified": "2026-10-25"
+    },
+    "jumilla": {
+      "country": "es", "regions": ["Castilla-La Mancha"],
+      "evidence": [{"file": "raw/es/pliegos-extracted/jumilla.json", "field": "section_roles.geo_area", "quote": "estos últimos situados en la provincia de Albacete"}],
+      "reason": "Jumilla (Murcia) and six Albacete municipalities.", "verified": "2026-10-25"
+    },
+    "ribera-del-queiles": {
+      "country": "es", "regions": ["Navarra"],
+      "evidence": [{"file": "raw/es/pliegos-extracted/ribera-del-queiles.json", "field": "section_roles.geo_area", "quote": "y de la Comunidad Foral de Navarra"}],
+      "reason": "Zaragoza municipalities (Aragón) and Navarra municipalities.", "verified": "2026-10-25"
+    },
+    "weinland": {
+      "country": "at", "regions": ["Burgenland", "Niederösterreich", "Wien"],
+      "evidence": [{"file": "raw/at/dokumente-extracted/weinland.json", "field": "section_roles.geo_area", "quote": "Niederösterreich, Burgenland und Wien"}],
+      "reason": "Three Bundesländer; filed under Österreich.", "verified": "2026-10-25"
+    },
+    "bergland": {
+      "country": "at", "regions": ["Kärnten", "Oberösterreich", "Salzburg", "Tirol", "Vorarlberg"],
+      "evidence": [{"file": "raw/at/dokumente-extracted/bergland.json", "field": "section_roles.geo_area", "quote": "Oberösterreich, Kärnten, Salzburg, Tirol und Vorarlberg"}],
+      "reason": "Five Bundesländer; filed under Österreich.", "verified": "2026-10-25"
+    },
+    "dunavska-ravnina": {
+      "country": "bg", "regions": ["Черноморски район"],
+      "evidence": [
+        {"file": "raw/bg/dokumenti-extracted/dunavska-ravnina.json", "field": "section_roles.geo_area", "quote": "Област Варна"},
+        {"file": "raw/bg/dokumenti-extracted/dunavska-ravnina.json", "field": "section_roles.geo_area", "quote": "Област Добрич"}
+      ],
+      "reason": "Its obshtini of the Varna and Dobrich oblasts hold the PDOs Варна and Евксиноград, filed under Черноморски район (853 of 854 and 685 of 686 km² inside its polygon).", "verified": "2026-10-25"
+    },
+    "trakiiska-nizina": {
+      "country": "bg", "regions": ["Долината на Струма", "Розова долина", "Черноморски район"],
+      "evidence": [
+        {"file": "raw/bg/national-specs-extracted/trakiiska-nizina.json", "field": "section_roles.geo_area", "quote": "Област Бургас"},
+        {"file": "raw/bg/national-specs-extracted/trakiiska-nizina.json", "field": "section_roles.geo_area", "quote": "Област Благоевград"},
+        {"file": "raw/bg/national-specs-extracted/trakiiska-nizina.json", "field": "section_roles.geo_area", "quote": "Област Стара Загора"}
+      ],
+      "reason": "The southern PGI: its obshtini cover the Burgas PDOs (Черноморски район), the Struma valley (Благоевград) and the Rose valley (Стара Загора, Пловдив) — 85 %, 99.9 % and 99.9 % of those regions' PDO polygons.", "verified": "2026-10-25"
+    },
+    "pitsilia": {
+      "country": "cy", "regions": ["Λευκωσία"],
+      "evidence": [{"file": "raw/cy/national-specs-extracted/pitsilia.json", "field": "section_roles.geo_area", "quote": "Λαγουδερά"}],
+      "reason": "Its villages straddle the Limassol and Nicosia districts (Lagoudera, Palaichori, Fikardou, Farmakas are Nicosia district): 237 of its 354 km² lie in the Λευκωσία PGI.", "verified": "2026-10-25"
+    },
+    "bayerischer-bodensee-landwein": {
+      "country": "de", "regions": [],
+      "reason": "No alias: its member table draws it as the whole Baden Anbaugebiet (PDO-DE-A1264, 13,231 km²) for a Landwein of the Lindau shore, so the derived Baden alias would repeat a geometry defect (CURATOR_TODO).", "verified": "2026-10-25"
+    }
+  },
+  "rejected": {
+    "benaco-bresciano": {"Veneto": "Brescia communes only; the overlap is Lugana's Brescia part (Lugana is filed under Veneto)."},
+    "civitella-d-agliano": {"Umbria": "Viterbo (Lazio) only; the overlap is Orvieto's Lazio part (Orvieto is filed under Umbria)."},
+    "lefkosia": {"Λεμεσός": "The Nicosia district only; the overlap is Pitsilia's Nicosia-district villages (Pitsilia is filed under Λεμεσός)."},
+    "clairette-de-bellegarde": {"VALLEE DU RHÔNE": "One commune, Bellegarde, which the Costières de Nîmes aire also holds — a shared commune, not an appellation spanning two regions."},
+    "bayerischer-bodensee-landwein": {"Baden": "Its member table draws the whole Baden Anbaugebiet for a Landwein of the Lindau shore (geometry defect, CURATOR_TODO); the alias is suppressed in `entries`.", "Württemberg": "The Baden polygon's Bétard overlap with Württemberg; see baden."},
+    "baden": {"Württemberg": "Bétard polygons of Baden and Württemberg overlap by 4,157 km²; the two Anbaugebiete are disjoint (CURATOR_TODO)."},
+    "badischer-landwein": {"Württemberg": "Drawn as the Baden polygon; see baden."},
+    "landwein-oberrhein": {"Württemberg": "Drawn as the Baden polygon; see baden."},
+    "wurttemberg": {"Baden": "Bétard overlap; see baden."},
+    "schwabischer-landwein": {"Baden": "Drawn as the Württemberg polygon; see baden."},
+    "landwein-neckar": {"Baden": "Drawn as the Württemberg polygon; see baden."},
+    "mittelrhein": {"Mosel": "Bétard overlap of neighbouring Anbaugebiete (106 km²)."},
+    "etyek-buda": {"Felső-Magyarország": "Bétard overlap with Mátra (526 km²; CURATOR_TODO).", "Pannon": "Bétard overlap of neighbouring districts."},
+    "matra": {"Felső-Pannon": "Bétard overlap with Etyek-Buda; see etyek-buda."},
+    "felso-magyarorszag": {"Felső-Pannon": "Drawn from its member PDOs, Mátra among them; see etyek-buda."},
+    "bizeljcan": {"Podravje": "Bétard overlap with Štajerska Slovenija (630 km²; CURATOR_TODO)."},
+    "bizeljsko-sremic": {"Podravje": "Bétard overlap; see bizeljcan."},
+    "dolenjska": {"Podravje": "Bétard overlap of neighbouring districts."},
+    "stajerska-slovenija": {"Posavje": "Bétard overlap; see bizeljcan."},
+    "podravje": {"Posavje": "Drawn from its member PDOs; see bizeljcan."},
+    "posavje": {"Podravje": "Drawn from its member PDOs; see bizeljcan."},
+    "chernomorski-raion": {"Дунавска равнина": "Bétard draws the PDO over north-east Bulgaria, where Дунавска равнина's own text claims the obshtini."},
+    "iambol": {"Черноморски район": "Bétard overlap of neighbouring PDOs."},
+    "karnobat": {"Тракийска низина": "Bétard overlap of neighbouring PDOs."},
+    "sliven": {"Черноморски район": "Bétard overlap of neighbouring PDOs."},
+    "sungurlare": {"Тракийска низина": "Bétard overlap of neighbouring PDOs."},
+    "plovdiv": {"Розова долина": "Bétard overlap of neighbouring PDOs."},
+    "tavora-varosa": {"Douro/Porto": "Border overlap with the Douro demarcation (66 km², 14 %) in the municípios the two share; not checked against the two cadernos (CURATOR_TODO)."}
+  }
+}

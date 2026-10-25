@@ -128,8 +128,11 @@ _DROP_WORDS = frozenset({
     "включително", "изключително", "съответно", "именно", "точно",
     "в", "на", "при", "от", "за", "до", "с", "край", "над", "под",
     "общините", "общината", "общинските",
-    # Bulgarian months — appear in publication-date stretches that
-    # bleed into the area description.
+})
+# Bulgarian months — appear in publication-date stretches that bleed into
+# the area description. Not dropped from a list under an „Област X:"
+# header, where "Септември" is the obshtina (област Пазарджик).
+_MONTHS = frozenset({
     "януари", "февруари", "март", "април", "май", "юни", "юли",
     "август", "септември", "октомври", "ноември", "декември",
 })
@@ -176,21 +179,12 @@ def _truncate_at_terroir_section(text: str) -> str:
     return text[: m.start()] if m else text
 
 
-def parse_commune_list(text: str) -> list[str]:
-    """Extract obshtina names from an ЕДИНЕН ДОКУМЕНТ section-6 area body.
-
-    Result: deduped list of canonical obshtina-name candidates that the
-    geometry resolver unions against the GISCO LAU `BG_*` polygon set.
-    Order preserved for debug-log readability.
-    """
-    if not text:
-        return []
-    body = _truncate_at_terroir_section(text)
+def _chunk_names(body: str, *, keep_months: bool = False) -> list[str]:
+    """The obshtina-name candidates of a stretch of area text, in order and
+    with repeats — the filters of `parse_commune_list`, which dedupes."""
     body = _SELO_BELONGS_RE.sub("община ", body)
     body = _OBLAST_MARKER_RE.sub(", ", body)
     body = _OBSHTINA_MARKER_RE.sub(", ", body)
-
-    seen: set[str] = set()
     out: list[str] = []
     for raw in _COMMUNE_SPLIT_RE.split(body):
         chunk = raw.strip(" .,;:")
@@ -202,7 +196,7 @@ def parse_commune_list(text: str) -> list[str]:
         if not chunk:
             continue
         key = _normalise_commune(chunk)
-        if not key or key in seen:
+        if not key:
             continue
         if any(t in _PROSE_TOKENS for t in key.split()):
             continue
@@ -210,6 +204,155 @@ def parse_commune_list(text: str) -> list[str]:
             continue
         if key in _DROP_WORDS or len(key) < 3:
             continue
+        if key in _MONTHS and not keep_months:
+            continue
+        out.append(chunk)
+    return out
+
+
+def parse_commune_list(text: str) -> list[str]:
+    """Extract obshtina names from an ЕДИНЕН ДОКУМЕНТ section-6 area body.
+
+    Result: deduped list of canonical obshtina-name candidates that the
+    geometry resolver unions against the GISCO LAU `BG_*` polygon set.
+    Order preserved for debug-log readability. A text that lists its
+    obshtini under „Област X:" headers is read by `parse_area` instead
+    (`area_fields`), which keeps a name repeated in two области.
+    """
+    if not text:
+        return []
+    seen: set[str] = set()
+    out: list[str] = []
+    for chunk in _chunk_names(_truncate_at_terroir_section(text)):
+        key = _normalise_commune(chunk)
+        if key in seen:
+            continue
         seen.add(key)
         out.append(chunk)
     return out
+
+
+# The 28 области and the three-letter EKATTE code GISCO LAU 2024 prints in
+# each obshtina's id (BG_VAR09 is Вълчи дол, област Варна). A name a text
+# lists under „Област X:" is looked up among X's obshtini only: two obshtini
+# are called Бяла (BG_RSE04, BG_VAR05), and Дунавска равнина's ЕДИНЕН
+# ДОКУМЕНТ names both, one under Русе and one under Варна.
+OBLAST_CODES: dict[str, str] = {
+    "благоевград": "BLG", "бургас": "BGS", "варна": "VAR", "велико търново": "VTR",
+    "видин": "VID", "враца": "VRC", "габрово": "GAB", "добрич": "DOB",
+    "кърджали": "KRZ", "кюстендил": "KNL", "ловеч": "LOV", "монтана": "MON",
+    "пазарджик": "PAZ", "перник": "PER", "плевен": "PVN", "пловдив": "PDV",
+    "разград": "RAZ", "русе": "RSE", "силистра": "SLS", "сливен": "SLV",
+    "смолян": "SML", "софия": "SFO", "софийска": "SFO", "софия град": "SOF",
+    "столична": "SOF", "стара загора": "SZR", "търговище": "TGV", "хасково": "HKV",
+    "шумен": "SHU", "ямбол": "JAM",
+}
+
+# „Област Монтана:" — the header of the PGI template's per-oblast list. The
+# colon is required: "находящо се в област Плевен" is prose, not a header.
+_OBLAST_HEADER_RE = re.compile(
+    r"\bОбласт\s+([А-ЯЁ][а-яё]+(?:[\s-][А-ЯЁа-яё][а-яё]+)?)\s*:",
+)
+# "Следните землища на населени места, както са изброени по общини, се
+# изключват от очертанията на района:" — what follows lists, per obshtina,
+# the villages whose lands are cut out of the area.
+_EXCLUSION_RE = re.compile(
+    r"[^.:]*?\b(?:се\s+изключват|изключват\s+се)\b[^:]*:", re.IGNORECASE,
+)
+_HOLDER_RE = re.compile(r"\bОбщина\s+([^:,.;]+?)\s*:")
+# "Баните - само землищата на с. Вишнево и с. Гълъбово" — an obshtina of
+# which only some villages' lands are in the area.
+_PARTIAL_RE = re.compile(r"^(.+?)\s+[-–—]\s+само\s+землищ", re.IGNORECASE)
+
+
+# One name the regulator writes for two obshtini. "Добрич" in област Добрич
+# is the city's obshtina (BG_DOB28) and the rural one around it, of which the
+# city is an enclave (GISCO's Добрич-селска, BG_DOB15; община Добричка): the
+# ИАЛВ's Черноморски район spec files "гр. Добрич" and Добричка's villages
+# (Бенковски, Богдан, Божурово, Карапелит, Стефан Караджа …) under one
+# "Община Добрич:" (settlement list: bg.wikipedia, "Община Добричка"), and
+# Дунавска равнина names "Добрич" as one of seven of the oblast's eight
+# obshtini — drawn as the city alone, an island in an undrawn ring
+# (2026-10-24). Keyed (normalised name, oblast code) → normalised GISCO names.
+OBSHTINA_GROUPS: dict[tuple[str, str], tuple[str, ...]] = {
+    ("добрич", "DOB"): ("добрич", "добрич селска"),
+}
+
+
+def oblast_code(name: str) -> str | None:
+    key = re.sub(r"[\s-]+", " ", (name or "").casefold()).strip()
+    return OBLAST_CODES.get(key)
+
+
+def parse_area(text: str) -> dict | None:
+    """Read the PGI template — obshtini listed under „Област X:" headers,
+    then the villages cut out of them — into {members: [(name, oblast
+    code)], partial: [name]}. `partial` lists the obshtini the area holds
+    only in part: those named "X - само землищата на с. …" and those the
+    exclusion clause cuts villages out of. GISCO carries no unit below the
+    obshtina, so such an obshtina is drawn whole and the card says so.
+    None when the text has no such header (a PDO's settlement list)."""
+    if not text:
+        return None
+    body = _truncate_at_terroir_section(text)
+    heads = [h for h in _OBLAST_HEADER_RE.finditer(body) if oblast_code(h.group(1))]
+    if not heads:
+        return None
+    excl = _EXCLUSION_RE.search(body, heads[0].start())
+    members_end = excl.start() if excl else len(body)
+    members: list[tuple[str, str]] = []
+    partial: list[str] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add(name: str, code: str, is_partial: bool) -> None:
+        key = (_normalise_commune(name), code)
+        if not key[0] or key in seen:
+            return
+        seen.add(key)
+        members.append((name, code))
+        if is_partial:
+            partial.append(name)
+
+    for i, h in enumerate(heads):
+        if h.start() >= members_end:
+            break
+        code = oblast_code(h.group(1)) or ""
+        end = min(heads[i + 1].start() if i + 1 < len(heads) else members_end, members_end)
+        in_clause = False
+        for piece in re.split(r"\s*[,;]\s*", body[h.end():end]):
+            piece = piece.strip(" .")
+            if not piece:
+                continue
+            m = _PARTIAL_RE.match(piece)
+            if m:
+                in_clause = True
+                add(_TIER_PREFIX_RE.sub("", m.group(1)).strip(" .,;:"), code, True)
+                continue
+            if in_clause and _SETTLEMENT_DROP_RE.match(piece):
+                # a village of the open "само землищата на" clause
+                continue
+            in_clause = False
+            for name in _chunk_names(piece, keep_months=True):
+                add(name, code, False)
+    if excl:
+        by_key = {_normalise_commune(n): n for n, _ in members}
+        for h in _HOLDER_RE.finditer(body[excl.end():]):
+            name = by_key.get(_normalise_commune(h.group(1)))
+            if name and name not in partial:
+                partial.append(name)
+    return {"members": members, "partial": partial}
+
+
+def area_fields(text: str) -> dict:
+    """The commune fields a BG record carries for its area text. The PGI
+    template gives the oblast-scoped list (`geo_communes_scoped`, [name,
+    oblast code] pairs) and the obshtini held only in part
+    (`geo_communes_partial`); any other text the deduped legacy reading."""
+    parsed = parse_area(text)
+    if parsed and parsed["members"]:
+        return {
+            "geo_communes": [n for n, _ in parsed["members"]],
+            "geo_communes_scoped": [[n, c] for n, c in parsed["members"]],
+            "geo_communes_partial": list(parsed["partial"]),
+        }
+    return {"geo_communes": parse_commune_list(text) if text else []}

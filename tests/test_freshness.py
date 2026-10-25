@@ -133,3 +133,15 @@ def test_probe_dict_roundtrip_and_cache(tmp_path):
     c.put("k", {"a": 1})
     assert c.get("k") == {"a": 1}
     assert Cache(directory=tmp_path, refresh=True).get("k") is None
+
+
+def test_oj_keys_match_the_eli_and_the_eurlex_forms_of_one_publication():
+    # 2026-10-25: the eu probe read Belokranjec's C/2026/3572 — the document
+    # the build holds — as a new publication because SI's index predated it
+    from _lib.freshness.eambrosia import oj_keys
+    assert oj_keys("http://data.europa.eu/eli/C/2026/3572/oj") == {("eli", "2026", 3572)}
+    assert oj_keys("https://eur-lex.europa.eu/legal-content/SL/TXT/HTML/?uri=OJ:C_202603572") == {("eli", "2026", 3572)}
+    assert oj_keys("Official Journal C, C/2026/3572, 6.7.2026") == {("eli", "2026", 3572)}
+    old = "https://eur-lex.europa.eu/legal-content/ES/TXT/HTML/?uri=uriserv%3AOJ.C_.2021.453.01.0007.01.SPA"
+    assert oj_keys(old) == oj_keys("Official Journal C 453, 9.11.2021") == {("issue", "2021", 453)}
+    assert oj_keys("Ares(2011)123") == set()

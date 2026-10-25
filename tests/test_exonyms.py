@@ -25,3 +25,26 @@ def test_gi_homonym_is_flagged_only_as_a_place():
 
 def test_every_table_entry_has_a_valid_locale():
     assert all(set(t) <= {"en", "fr", "es", "nl"} for t in EXONYMS.values())
+
+
+def test_a_form_that_is_already_the_target_form_is_never_flagged():
+    # 2026-10-25: "mar Egeo" is the Spanish name, "Karpaten" the Dutch one
+    assert exonym_hits("En el mar Egeo, la insolación es alta.", "es") == []
+    assert exonym_hits("De beken uit de Kleine Karpaten.", "nl") == []
+    assert exonym_hits("The Egeo islands.", "en") == ["Egeo"]
+
+
+def test_a_form_inside_a_proper_name_or_quotes_is_the_name():
+    gi = frozenset({"Toscana"})
+    assert exonym_hits("part of Manciano, Magliano in Toscana, Grosseto", "en", gi_forms=gi) == []
+    assert exonym_hits('the dithyramb "Bacco in Toscana" praised it', "en", gi_forms=gi) == []
+    assert exonym_hits("the vineyards of Alto Piemonte", "en", gi_forms=frozenset({"Piemonte"})) == []
+    assert exonym_hits("the vineyards of Toscana are warm", "en", gi_forms=gi) == ["Toscana"]
+
+
+def test_a_form_inside_the_records_own_longer_name_is_the_label():
+    own = ("Cannonau di Sardegna",)
+    assert exonym_hits("The zone of Cannonau di Sardegna covers Sardinia.", "en",
+                       gi_forms=frozenset({"Sardegna"}), own_names=own) == []
+    # a record named after the region alone keeps the place reading
+    assert exonym_hits("Upper Kärnten is alpine.", "en", own_names=("Kärnten",)) == ["Kärnten"]

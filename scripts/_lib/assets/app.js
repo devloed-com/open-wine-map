@@ -1221,7 +1221,13 @@
   // A cross-border appellation (a record carrying `country_aliases`, e.g.
   // Maasvallei Limburg on the BE/NL border) is listed under EVERY country it
   // spans. It stays one record with one polygon and one slug, so ticking it
-  // on either side toggles the same entry in `filters.appellations`.
+  // on either side toggles the same entry in `filters.appellations`. One
+  // level down the same holds for a record carrying `co_parents` (Vully under
+  // Vaud and in Trois-Lacs, Zürichsee under Schwyz and Zürich): it joins each
+  // co-parent's region group and nests under every co-parent there; and for
+  // one carrying `region_aliases` (Garda in Lombardia and Veneto, Cava in
+  // seven comunidades): it joins each region's group. Its sub-denominations
+  // stay in their own region (a Bourgogne DGC is no Beaujolais record).
   const COUNTRY_TREE = (() => {
     const byCountry = new Map();
     function push(cc, region, slug) {
@@ -1233,8 +1239,20 @@
     for (const slug in AOCS) {
       const rec = AOCS[slug];
       const region = rec.region || '';
-      push(rec.country || '', region, slug);
-      for (const alias of rec.country_aliases || []) push(alias, region, slug);
+      const regionAliases = rec.region_aliases || [];
+      // a record with no region of its own (Cava) sits in its alias regions only
+      if (region || !regionAliases.length) {
+        push(rec.country || '', region, slug);
+        for (const alias of rec.country_aliases || []) push(alias, region, slug);
+      }
+      const extra = new Set();
+      for (const cp of rec.co_parents || []) {
+        const r = AOCS[cp] ? (AOCS[cp].region || '') : region;
+        if (r !== region && !extra.has(r)) { extra.add(r); push(rec.country || '', r, slug); }
+      }
+      for (const r of regionAliases) {
+        if (r && r !== region && !extra.has(r)) { extra.add(r); push(rec.country || '', r, slug); }
+      }
     }
     // Countries and regions alphabetically, in the page's language (feedback
     // 2026-10-18: ordered by size — France, Italy, Spain, Greece … — the
@@ -1326,6 +1344,7 @@
       const regionHtml = [];
       let countryParents = 0;
       let countryTotal = 0;
+      const countrySeen = new Set();
       for (const region of regions.keys()) {
         const slugs = visibleSlugsInRegion(cc, region);
         if (!slugs.length) continue;
@@ -1336,9 +1355,13 @@
         const inGroup = new Set(slugs);
         const kids = new Map();
         const top = [];
+        const nestedHere = new Set();
+        const addKid = (p, slug) => { if (!kids.has(p)) kids.set(p, []); kids.get(p).push(slug); nestedHere.add(slug); };
         for (const slug of slugs) {
           const p = AOCS[slug].is_sub_denomination ? AOCS[slug].parent_slug : null;
-          if (p && p !== slug && inGroup.has(p)) { if (!kids.has(p)) kids.set(p, []); kids.get(p).push(slug); }
+          const cps = (AOCS[slug].co_parents || []).filter(c => c !== slug && inGroup.has(c));
+          if (p && p !== slug && inGroup.has(p)) addKid(p, slug);
+          else if (cps.length) for (const c of cps) addKid(c, slug);
           else top.push(slug);
         }
         const row = (slug, depth, parentRec, subId) => {
@@ -1363,9 +1386,15 @@
             + `<div class="tree-children" id="${subId}" hidden>${children.map(c => row(c, 1, AOCS[slug], '')).join('')}</div>`;
         }).join('');
         let parentCount = 0;
-        for (const s of slugs) if (!AOCS[s].is_sub_denomination) parentCount++;
-        countryParents += parentCount;
-        countryTotal += slugs.length;
+        for (const s of slugs) if (!AOCS[s].is_sub_denomination && !nestedHere.has(s)) parentCount++;
+        // a record listed in two region groups (co_parents) counts once per
+        // country, as the nested row it is
+        for (const s of slugs) {
+          if (countrySeen.has(s)) continue;
+          countrySeen.add(s);
+          countryTotal++;
+          if (!AOCS[s].is_sub_denomination && !(AOCS[s].co_parents || []).length) countryParents++;
+        }
         const safeRegion = escapeAttr(region);
         // Checkbox lives outside `<summary>` (sibling of `<details>`,
         // not a descendant) so the nested-interactive-in-summary
@@ -1842,9 +1871,13 @@
       appEl.querySelectorAll('.country-group').forEach(countryGroup => {
         let countryVisible = 0;
         let countryParents = 0;
+        // a record listed twice (co_parents: Zürichsee under Schwyz and
+        // Zürich, Vully in two region groups) counts once, as at first paint
+        const countrySeen = new Set();
         countryGroup.querySelectorAll('.region-group').forEach(group => {
           let visible = 0;
           let visibleParents = 0;
+          const groupSeen = new Set();
           const reachableRow = lbl => {
             const inp = lbl.querySelector('input[type=checkbox]'); if (!inp) return false;
             const slug = inp.dataset.key; const rec = AOCS[slug];
@@ -1864,9 +1897,16 @@
               if (wrap.hidden) setTreeOpen(wrap, true);
             }
             lbl.classList.toggle('facet-unavailable', !keep);
-            if (keep) {
+            const slug = inp.dataset.key;
+            if (keep && !groupSeen.has(slug)) {
+              groupSeen.add(slug);
               visible++;
-              if (!(rec && rec.is_sub_denomination)) visibleParents++;
+              if (!(rec && rec.is_sub_denomination) && lbl.dataset.depth === '0') visibleParents++;
+            }
+            if (keep && !countrySeen.has(slug)) {
+              countrySeen.add(slug);
+              countryVisible++;
+              if (rec && !rec.is_sub_denomination && !(rec.co_parents || []).length) countryParents++;
             }
           });
           (group.parentElement || group).classList.toggle('facet-unavailable', visible === 0);
@@ -1874,8 +1914,6 @@
             group.querySelector(':scope > summary > .count'),
             visibleParents, visible - visibleParents,
           );
-          countryVisible += visible;
-          countryParents += visibleParents;
         });
         (countryGroup.parentElement || countryGroup)
           .classList.toggle('facet-unavailable', countryVisible === 0);
@@ -2375,6 +2413,9 @@
       const via = sources.cantonal_roster_applied_by ? ' · ' + escapeHtml(sources.cantonal_roster_applied_by) : '';
       links.push(`<li><a href="${escapeAttr(sources.cantonal_roster_url)}" target="_blank" rel="noopener">${LABELS.src_cantonal_reglement}</a>${lab}${via}</li>`);
     }
+    for (const ruling of sources.cantonal_area_rulings || []) {
+      links.push(`<li><a href="${escapeAttr(ruling.url)}" target="_blank" rel="noopener">${LABELS.src_cantonal_reglement}</a> — ${escapeHtml(ruling.label)}</li>`);
+    }
     if (sources.gov_uk_spec_url) {
       const fmtTail = sources.spec_format ? ' — ' + escapeHtml(String(sources.spec_format).toUpperCase()) : '';
       links.push(`<li><a href="${escapeAttr(sources.gov_uk_spec_url)}" target="_blank" rel="noopener">${LABELS.src_gov_uk_spec}</a>${fmtTail}</li>`);
@@ -2746,6 +2787,16 @@
 
   // Entries that carry their own commas ("Alte, Querença (Loulé)") are
   // separated by semicolons. Mirrors _join_units in content_block.py.
+  // The RO yield-table role conflict (decision 2026-10-25): the varieties the
+  // register's single document names main while the OJ single document lists
+  // them only in its yield table. Mirrors _role_conflict_line in content_block.py.
+  function roleConflictLine(r) {
+    const names = (r.sources || {}).register_fiche_roles_yield_conflict || [];
+    if (!names.length) return '';
+    const key = names.length === 1 ? 'role_conflict_yield_one' : 'role_conflict_yield_many';
+    return `<div class="approx-line role-conflict">${escapeHtml(fmt(LABELS[key], { names: names.join(', ') }))}</div>`;
+  }
+
   function joinUnits(list) {
     const items = list.map(n => escapeHtml(String(n)));
     return items.join(items.some(n => n.includes(', ')) ? '; ' : ', ');
@@ -2841,7 +2892,9 @@
     }
     const links = [];
     const cc = r.country || '';
-    if (r.region) links.push(`<a href="#" class="scope-link" data-scope="region" data-country="${escapeAttr(cc)}" data-region="${escapeAttr(r.region)}">${escapeHtml(fmt(LABELS.related_all_in, { name: regionLabel(r.region) }))}</a>`);
+    for (const reg of [r.region, ...(r.region_aliases || [])].filter(Boolean)) {
+      links.push(`<a href="#" class="scope-link" data-scope="region" data-country="${escapeAttr(cc)}" data-region="${escapeAttr(reg)}">${escapeHtml(fmt(LABELS.related_all_in, { name: regionLabel(reg) }))}</a>`);
+    }
     if (cc) links.push(`<a href="#" class="scope-link" data-scope="country" data-country="${escapeAttr(cc)}">${escapeHtml(fmt(LABELS.related_all_in, { name: countryLabel(cc) }))}</a>`);
     if (links.length) out += `<p class="related-links">${links.join(' · ')}</p>`;
     return out;
@@ -2899,6 +2952,7 @@
     const ptRoleDisclaimer = (r.country === 'pt' && principal)
       ? `<div class="role-disclaimer">${escapeHtml(LABELS.pt_role_disclaimer)}</div>`
       : '';
+    const roleConflict = principal ? roleConflictLine(r) : '';
     // The unit count, only where the polygon is the union of the counted
     // units; a French DGC's CSV row repeats its parent's communes. A Galician
     // record adds the IET parishes drawn beside its whole municipios.
@@ -2916,12 +2970,17 @@
     if (parishCount && COUNTED_UNION_SOURCES.has(r.geom_source)) {
       metaTail += ' · ' + fmt(LABELS.meta_parishes, { n: parishCount });
     }
-    const region = r.region ? regionLabel(r.region) : '';
+    const region = [r.region, ...(r.region_aliases || [])].filter(Boolean).map(regionLabel).join(', ');
     const regionSeg = region ? ` · ${escapeHtml(region)}` : '';
     const countryChip = countryChipHtml(r.country, r.country_aliases);
     const countrySeg = countryChip ? `${countryChip} · ` : '';
     const dgcLine = r.is_sub_denomination && r.parent_slug
       ? `<div class="dgc-line">${escapeHtml(LABELS.dgc_of)} <a class="parent-link" data-slug="${escapeAttr(r.parent_slug)}" href="#">${escapeHtml(r.parent_name || r.parent_slug)}</a></div>`
+      : '';
+    // An appellation of several hierarchies (CH intercantonal AOCs) links each.
+    const coParents = (r.co_parents || []).filter(c => AOCS[c]);
+    const coParentLine = coParents.length
+      ? `<div class="dgc-line">${escapeHtml(LABELS.co_parent_of)} ${coParents.map(c => `<a class="parent-link" data-slug="${escapeAttr(c)}" href="#">${escapeHtml(AOCS[c].name || c)}</a>`).join(' · ')}</div>`
       : '';
     let approxLine = '';
     if (r.geom_source === 'sibling-dgc' && r.geom_fallback_slug) {
@@ -2981,11 +3040,11 @@
         <h1>${cardTitle(r)}</h1>
         <div class="meta">${countrySeg}${renderClassification(r)}${cancelledBadge(r)}${promotedBadge(r)}${regionSeg}${metaTail}</div>
         ${cancelledLine(r)}${promotedLine(r)}
-        ${dgcLine}
+        ${dgcLine}${coParentLine}
         ${stubLine}
         ${styleChips ? '<h2>' + LABELS.panel_styles_h + '</h2><div class="pills">' + styleChips + '</div>' : ''}
         ${principal ? '<h2>' + LABELS.facet_principal_h + '</h2><div class="pills">' + principal + '</div>' : ''}
-        ${ptRoleDisclaimer}
+        ${ptRoleDisclaimer}${roleConflict}
         ${accessory ? '<h2>' + LABELS.facet_accessory_h + '</h2><div class="pills">' + accessory + '</div>' : ''}
         ${observation ? '<h2>' + LABELS.panel_observation_h + '</h2><div class="pills">' + observation + '</div>' : ''}
         ${factsBlock || summary}

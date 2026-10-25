@@ -72,7 +72,7 @@ GRAPE_ALIAS = {
     "cinsaut": "cinsault",
     "sciaccarello": "sciacarello",
     "barbarossa": "barbaroux",
-    "niellucio": "nielluccio",
+    "niellucio": "sangiovese",
     "muscat-petits-grains": "muscat-a-petits-grains",
     "muscat-a-petits-grains-blancs": "muscat-a-petits-grains",
     "muscat-blanc-a-petits-grains": "muscat-a-petits-grains",  # spelling variant — same VIVC #8193
@@ -547,7 +547,7 @@ GRAPE_ALIAS = {
     "semidano": "semidano",
     "nuragus": "nuragus",
     "ansonica": "ansonica",
-    "inzolia": "inzolia",
+    "inzolia": "ansonica",
     "bianco-di-alessano": "bianco-di-alessano",
     "moscatello-selvatico": "moscatello-selvatico",
     "verduzzo-friulano": "verduzzo-friulano",
@@ -734,7 +734,7 @@ GRAPE_ALIAS = {
     "bombino-bianco": "pagadebiti",
     "canaiolo": "canaiolo-nero",
     "pignatello": "perricone",                  # disciplinari: "Pignatello o Perricone"
-    "insolia": "inzolia",
+    "insolia": "ansonica",
     "negro-amaro": "negroamaro",
     "sussumariello": "susumaniello",
     "corvina-veronese": "corvina",
@@ -947,12 +947,16 @@ GRAPE_ALIAS = {
     "piros-cirfandli": "zierfandler",
     "zierfandler": "zierfandler",
     "meszikadar": "meszikadar",                 # Hungarian crossing
-    "bakator": "bakator",                       # native Hungarian / Transylvanian family
+    "bakator": "bakator",                       # Kék bakator, VIVC #25053 BAKATOR KEK (noir)
     "kek-bakator": "bakator",
-    "piros-bakator": "bakator",
-    "bakar-rozsa": "bakator",
-    "bakator-rouge": "bakator",
-    "bakatortraube": "bakator",
+    # Piros bakator is a passport of its own, VIVC #25053's sibling #905
+    # BAKATOR ROZ (rose; BAKAR ROZSA, BAKATOR ROUGE and BAKATORTRAUBE are its
+    # synonyms) — until 2026-10-25 all folded into the Kék slug, so
+    # Balatonmelléki, which lists both, showed one pill.
+    "piros-bakator": "piros-bakator",
+    "bakar-rozsa": "piros-bakator",
+    "bakator-rouge": "piros-bakator",
+    "bakatortraube": "piros-bakator",
     "budai-zold": "budai-zold",                 # native Hungarian
     "zold-budai": "budai-zold",
     "budai": "budai-zold",
@@ -1309,8 +1313,16 @@ GRAPE_ALIAS = {
     "mavrathiro": "mavrathiro",
     # CY synonyms for international varieties:
     "malaga": "muscat-d-alexandrie",              # Μαλάγα — = Muscat of Alexandria in Cyprus
-    "moskhato kuprou": "muscat-a-petits-grains",  # Μοσχάτο Κύπρου — Muscat blanc à petits grains
-    "moschato kyprou": "muscat-a-petits-grains",
+    # Μοσχάτο Κύπρου: the Larnaka and Lefkosia single documents of 2026 list
+    # it as an entry of its own beside Μοσχάτο Ασπρο (Muscat blanc à petits
+    # grains), Μοσχάτο Αλεξανδρείας and Μοσχάτο Αμβούργου. VIVC has no
+    # MOSCHATO KYPROU (live search 2026-10-25); its MOSCATO CIPRO #8048 is a
+    # name-only passport (no colour, no country). Own slug, no passport
+    # (pinned false), no colour — the fold into Muscat blanc had been an
+    # unverified identity and hid the entry.
+    "moskhato kuprou": "moschato-kyprou",
+    "moschato kyprou": "moschato-kyprou",
+    "moschato-kyprou": "moschato-kyprou",
     # ----- DE (Germany) Einziges-Dokument varieties --------------------
     # German wine carries the most prolific set of breeding-station
     # crossings in the corpus: Geilweilerhof (JKI; "GM" + named releases),
@@ -2179,6 +2191,77 @@ GRAPE_ALIAS = {
     # File order had bound it to Síria. Own slug, no passport (pinned false),
     # no colour: neither document gives one.
     "malvasia-grossa": "malvasia-grossa",
+    # 2026-10-25, phase H findings: varieties MAPA's list (RD 684/2026,
+    # printed 2026-09-08, "Variedades de uva … autorizadas por las CCAA")
+    # carries as entries of their own, which bound another slug of the same
+    # pliego through a VIVC synonym — Castilla lists each beside the variety
+    # it was folded into. Verdoncho (B.), Castilla-La Mancha, no synonyms:
+    # VIVC knows it only as a synonym of PARDILLO #8934 (= Marisancho, which
+    # MAPA gives as Pardillo's synonym), so its own slug carries no passport
+    # (pinned false). Albillo Dorado (B.), Castilla-La Mancha: VIVC #23429
+    # ALBILLA DORADA (Marufo × Tempranillo; synonyms ALBILLO DE MANCHUELA,
+    # ALBILLO DORADO), not Albillo Real #247, which lists the name too.
+    # Tinto de la Pámpana Blanca (T.): VIVC #22848, a passport of its own,
+    # not Tinto Velasco #17353.
+    "verdoncho": "verdoncho",
+    "albillo-dorado": "albillo-dorado",
+    "albilla-dorada": "albillo-dorado",
+    "albillo-de-manchuela": "albillo-dorado",
+    "tinto-de-la-pampana-blanca": "tinto-de-la-pampana-blanca",
+    "tinto-pampana-blanca": "tinto-de-la-pampana-blanca",
+    # "Moravia dulce o Crujidera" (Castilla, La Mancha, Murcia, Campo de
+    # Cartagena): one variety, VIVC #23166 MORAVIA DULCE (CRUJIDERA a
+    # synonym; MAPA: Moravia Dulce, synonym Crudijera). Two slugs had made it
+    # two pills.
+    "crujidera": "moravia-dulce",
+    # La Palma's §7 writes "Listán Prieto Moscatel negro" without its comma;
+    # MAPA lists Listán Prieto (T.) and Moscatel Negro (T.) apart. The key
+    # lets the ES splitter decompose the fused slug (an alias-source piece,
+    # national_pliego._decomposes_into_known_with_alias).
+    "moscatel-negro": "moscatel-negro",
+    # 2026-10-25, one VIVC number, two pills on a card (the phase H class;
+    # decisions in scripts/_lib/vivc_shared_pills.json). Folds — one variety
+    # under one slug, the VIVC prime's where the corpus has it:
+    #  · Nielluccio is Sangiovese (VIVC #10680 lists NIELLUCCIO and PRUGNOLO
+    #    GENTILE; the Vino Nobile disciplinare writes "Sangiovese (denominato
+    #    localmente a Prugnolo gentile)"). The Corsican cahiers' 87 records
+    #    had made `nielluccio` #10680's canonical slug, so every Italian
+    #    synonym of Sangiovese bound the Corsican name and 46 Tuscan and
+    #    Umbrian cards read "Prugnolo Gentile (Sangiovese)" beside Sangiovese.
+    "nielluccio": "sangiovese",
+    "niellucciu": "sangiovese",
+    "prugnolo-gentile": "sangiovese",
+    #  · "Ansonica o Inzolia" (the Sicilian disciplinari): VIVC #492 ANSONICA,
+    #    INZOLIA its official Maltese name — the inzolia / insolia keys above.
+    #  · "rolle B ou vermentino B" (IGP Var): VIVC #12989 VERMENTINO, ROLLE its
+    #    official French name.
+    "rolle": "vermentino",
+    #  · Spain, MAPA's list (RD 684/2026, printed 2026-09-08): "Cariñena
+    #    Blanca (B.)" has the synonym Carignan blanc (Empordà writes "CARIÑENA
+    #    BLANCA — CARIGNAN BLANC"); "Bonicaire (T.)" the synonym Embolicaire
+    #    (Castelló: "Bonicaire o Embolicaire"); "Merseguera (B.)" the synonyms
+    #    Exquitsagos and Verdosilla (VAL); "Garnacha Tintorera (T.)"
+    #    (Castelló: "Garnacha tintorera o Tintorera"); "Planta Fina de
+    #    Pedralba o Planta Angort" (Castelló); "Merenzao (T.)" the synonym
+    #    Bastardillo Chico (Arribes names both).
+    "carinena-blanca": "carignan-blanc",
+    "embolicaire": "bonicaire",
+    "exquitsagos": "merseguera",
+    "tintorera": "alicante-bouschet",
+    "planta-angort": "planta-fina-de-pedralba",
+    "bastardillo-chico": "trousseau",
+    # Bratkovina crvena, the red Bratkovina of the Primorska Hrvatska and
+    # Srednja i Južna Dalmacija lists ("Crne sorte"), had bound Maresco — the
+    # Apulian name VIVC files under BRATKOVINA BIJELA #1660. VIVC lists
+    # BRATKOVINA CRVENA under #1660 and BRATKOVINA CRNA #1661 alike: own slug,
+    # no passport (pinned false).
+    "bratkovina-crvena": "bratkovina-crvena",
+    # Layout debris of two-column cahiers, the label column read into the
+    # variety: Pacherenc du Vic-Bilh's "petit ⏎ … suivie de la  manseng B" and
+    # Coteaux du Vendômois' "Vins gris  pineau d'Aunis N." (both cards carried
+    # a pill of the debris, bracketed with the right variety).
+    "suivie-de-la-manseng": "petit-manseng",
+    "gris-pineau-d-aunis": "pineau-d-aunis",
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -2193,6 +2276,17 @@ GRAPE_ALIAS = {
 # canonical, and the distinct mutations (`-blanc`, `-gris`) stay separate
 # because their suffix ≠ the default.
 DEFAULT_COLOUR: dict[str, str] = {
+    # --- 2026-10-25 (phase H findings; see GRAPE_ALIAS) -----------------
+    "piros-bakator": "rose",        # VIVC #905 BAKATOR ROZ
+    "verdoncho": "blanc",           # MAPA "Verdoncho (B.)"
+    "albillo-dorado": "blanc",      # VIVC #23429, MAPA "Albillo Dorado (B.)"
+    "tinto-de-la-pampana-blanca": "noir",  # VIVC #22848, MAPA "(T.)"
+    "bratkovina-crvena": "noir",    # the HR lists' "Crne sorte"
+    # VIVC #7266 MALVASIA DUBROVACKA (white): the slug the ES "Malvasía de
+    # Sitges / de Banyalbufar" pairs and the Cagliari context pin resolve to.
+    # Until 2026-10-25 it had no colour entry (the ES readers took the colour
+    # from the pliego's own list), so the pin test failed on it.
+    "malvasia-aromatica": "blanc",
     # --- GB (DEFRA / GOV.UK product specifications) --------------------
     "cascade": "noir",              # VIVC #2139
     "madeleine-angevine": "blanc",  # VIVC #7062

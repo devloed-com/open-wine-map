@@ -212,7 +212,10 @@ details and "Hard rules" for invariants that apply to every country.
   near-identical bullets, or same/contained source quote + substantial
   bullet overlap; never two bullets with different numbers, never two
   bullets leading with different sub-denomination names — stage 04's
-  sibling filter depends on those) and prunes the same indices from the
+  sibling filter depends on those; one `_leads_with_name` serves both, and
+  a name behind a wrapper leads too, "L'appellation Bonvillars …", "Le
+  vignoble de Chablais …" — 2026-10-25, the Vaud sub-appellation cards had
+  shown every sibling's bullet) and prunes the same indices from the
   index-aligned 02e caches, updating their `source_facts_sha`, so no
   translation is lost or redone. Both take `--dry-run` / `--only` and
   write a JSON report under `tmp/terroir-facts-review/`. Two more
@@ -230,8 +233,37 @@ details and "Hard rules" for invariants that apply to every country.
   Rosso Conero's Strabo, «σφόδρα δ'εὔοινος» — comes out whole as
   "sphodra d'euoinos" rather than keeping its "ὔ" (the audit's and the
   untranslated detector's classes match it) —
-  chemical prefixes such as "α-terpineol"
-  and predominantly non-Latin bullets left alone) to source and
+  chemical prefixes such as "α-terpineol" (also after an elided article,
+  "l'α-terpinéol")
+  and predominantly non-Latin bullets left alone; and in every language the
+  cut of a **reference to the document itself** — the regulator text or
+  Wikipedia — at the opening, at the end or alone in brackets, the claim
+  kept and re-capitalised: "Según el pliego, se cree que …", "According to
+  the production specification, …", "Il disciplinare afferma che …", "The
+  production regulations state that …", "A Wikipedia szerint …", "…,
+  selon Wikipédia.", "(según el pliego)" (2026-10-25,
+  `strip_document_reference`; the noun list covers 02e's renderings,
+  "productiereglement", "reglamento de producción"). A Dutch or German
+  fronted reference ("Volgens het productdossier zijn de …", "Het
+  productiereglement stelt dat …") is not cut — the verb would precede the
+  subject — and goes back to 02e; a subjunctive complement ("stabilisce che
+  le uve provengano") and two sources compared in one bullet ("…, mientras
+  que Wikipedia …") are left too. The source's own attributions — "according
+  to Strabo", "Σύμφωνα με τον μύθο", "según el estudio de …" — name no
+  document and are never touched, nor is the document as an object of
+  history ("il disciplinare fu approvato nel 1967"). `audit_terroir_facts.py`
+  counts the cuttable forms as the strict `document_reference` (its summary
+  prints the 02e command for what the cut cannot reach) and the rewording
+  cases — a mid-sentence "como señala el pliego", "Il disciplinare descrive i
+  vini come …", the document as the setter of a rule ("le tipologie previste
+  dal disciplinare", "definidos no caderno de especificações"), any other
+  Wikipedia mention, inflected or not ("podľa Wikipédie") — as the
+  report-only `document_reference_mid`, the gate's rewrite case: drop the
+  reference, keep the claim, a rule stays a rule, and where a bullet sets
+  the source text beside Wikipedia keep the source's statement and
+  Wikipedia's only where it adds a detail that does not contradict it (run
+  `docref-mid-2026-10-25` cleared 244 of 246 that way, 68 records re-gated;
+  Vaud kept its two). `rewrite_ok` refuses a rewrite that adds a reference) to source and
   translation caches in step, and stage 04 applies the same normaliser at
   render time;
   [scripts/filter_terroir_boilerplate.py](scripts/filter_terroir_boilerplate.py)
@@ -262,7 +294,15 @@ details and "Hard rules" for invariants that apply to every country.
   lists the (slug, locale) pairs still carrying non-Latin script, a
   leaked common noun or a source-form geographic name, with the exact
   `02e --refresh --only … --lang …` command per country; every 02e
-  script takes `--only`.
+  script takes `--only`. It does not flag (2026-10-25: 320 → 120 pairs, the
+  dropped ones read one by one, none a translation error): a form that is
+  already the target's ("mar Egeo" in Spanish, "Karpaten" in Dutch), one
+  inside a longer proper name ("Magliano in Toscana", "Alto Piemonte"), a
+  quoted title or formation («Bacco in Toscana», «Argille Varicolori»), one
+  inside the record's own longer appellation name ("Cannonau di Sardegna"),
+  a source term glossed in brackets after its translation ("lieu-dit (dűlő)")
+  and a capitalised term opening a name ("Podgoria Crucilor"). A record named
+  after the region alone still reads it as a place ("Upper Kärnten").
 - **Per-record review feedback is a constraint layer for the next
   extraction, never content.** A quality review's verified findings are
   kept per record in `raw/terroir-facts-feedback/<slug>.json`
@@ -277,7 +317,9 @@ details and "Hard rules" for invariants that apply to every country.
   its system prompt (live call and `--emit-todo` alike; the wiring lint
   in `tests/test_terroir_feedback.py` fails when a script drops it):
   the block phrases each negative as "do not assert … unless the source
-  states it explicitly", never carries the reviewer's corrected text,
+  states it explicitly (then state it plainly, without naming the source)"
+  — the bare escape had been answered "Según el pliego, …" (2026-10-25) —,
+  never carries the reviewer's corrected text,
   and includes only the `extraction` / `both` entries — `translation`
   entries are for a 02e back-check. A `capture_if_present` hint is a
   **priority, not a slot** (2026-10-24): the sub-section cap stands, and a
@@ -1125,6 +1167,71 @@ Narbonne (FR IGPs, Reg. 2025/2538 / 2025/2536), Salemi (IT IGP, Reg.
 2026/1043), Ambt Delden (NL PDO, Reg. 2026/1068). Adding earlier
 cancellations is a curator task.
 
+## An appellation spanning several regions is listed under each
+
+The region level of the listing rule of 2026-10-25 (Maasvallei under BE and
+NL — `country_aliases`; Vully and Zürichsee under each canton — `co_parents`):
+a record whose area spans several regions of its country's sidebar hierarchy
+is listed under every one of them (`region_aliases`, a sparse startup field),
+stays one record (one slug, one polygon), keeps its primary `region` for the
+title, the description, JSON-LD and `seo_display_name`, and the card's meta
+line names every region ("Lombardia, Veneto"), with one "All appellations in
+…" link each. [scripts/_lib/region_aliases.py](scripts/_lib/region_aliases.py)
+derives the list in `emit_html` from three sources:
+
+- the curated [scripts/_lib/region_aliases.json](scripts/_lib/region_aliases.json):
+  per slug the regions, a verbatim quote of the record's own area text
+  (`evidence`: file, field, quote — `tests/test_region_aliases.py` checks each
+  against the extracted record, whitespace folded) and a reason. IT (Garda,
+  Lugana, San Martino della Battaglia, Valdadige, Terradeiforti, Delle
+  Venezie, Trevenezie, Prosecco, Vigneti delle Dolomiti, Colli di Luni,
+  Orvieto, Lison, Lison-Pramaggiore, Alto Livenza, Vallagarina — found by the
+  provinces each area text names), ES (Cava, whose record has no region of
+  its own and now sits in its seven comunidades only; Rioja with Castilla y
+  León for El Ternero; Jumilla; Ribera del Queiles), AT (Weinland, Bergland,
+  filed under "Österreich"), BG (the two PGIs, by the oblasts their obshtini
+  lists name), CY (Pitsilia, whose villages straddle two districts). An entry
+  with `regions: []` suppresses the derivations (Bayerischer
+  Bodensee-Landwein, whose member table draws the whole Baden Anbaugebiet).
+- an umbrella PGI drawn as the union of member PDOs (`region-pdo-union`):
+  the regions of its members, from the same `*_PGI_MEMBER_PDOS` table that
+  draws its polygon (DE Landweine under their Anbaugebiete, HU Dunántúli,
+  Zemplén, SK Slovenská, MT Maltese Islands).
+- FR: the wine-region buckets whose own AOCs share communes with the
+  record's aire in the INAO aires-communes CSV — at least 5 communes, and 3 %
+  of the record's aire or 25 % of the bucket's; an AOC holding two other
+  AOCs (the Bourgogne regionals, Côtes du Rhône, Champagne) is left out of
+  its bucket's communes, and ARMAGNAC (the brandy's and Floc's bucket over
+  the same Gascon ground as SUD-OUEST) is neither source nor target. First
+  build: Atlantique (Cognac, Sud-Ouest), Méditerranée (Provence, Corse), Pays
+  d'Oc and Terres du Midi (Roussillon, Rhône), the Gard IGPs and Cévennes
+  (Rhône — the Duché d'Uzès, Costières de Nîmes and Lirac communes),
+  Languedoc (Roussillon), the three Rivesaltes AOCs (Languedoc — Fitou's
+  communes), the Bourgogne regionals (Beaujolais — the crus' communes),
+  Beaujolais (Bourgogne — Saint-Véran's), Comtés Rhodaniens (Savoie,
+  Beaujolais).
+
+The sidebar pushes the record into each alias region's group and counts it
+once per country; its sub-denominations stay in their own region (a Bourgogne
+DGC is no Beaujolais record, Rioja Alta no Basque one), so a parent's row in
+an alias group carries no children there; the
+query core's `filter({region})` and `facets()` read every region
+(`regionsOf`), so the MCP server answers the same after its next deploy.
+[scripts/sweep_region_aliases.py](scripts/sweep_region_aliases.py) is the
+detector: a region's footprint is the union of its own PDO polygons
+(umbrellas left out, all its parents when it has none), a record spans it
+when ≥ 20 km² of it lies there and that is 10 % of the record or 25 % of the
+footprint; each candidate is ACCEPTED (the build lists it), REJECTED (the
+table's `rejected` section: a polygon overlap — Bétard in DE / HU / SI / BG —
+or a neighbour's filing, each with its reason) or NEW, and a listed region
+the geometry no longer reaches is STALE (Prosecco's and Delle Venezie's
+polygons miss their Friuli and Trentino parts — CURATOR_TODO). Two filings
+the sweep exposed were wrong, not multi-region, and were fixed at the
+source: Debrői hárslevelű (Heves county, the Eger district) and Monor (a
+Kunság municipality) were filed under Tokaj and Felső-Magyarország;
+Nizza, Garda Colli Mantovani and Terre Siciliane had no regione and fell
+back to "Italia" (`regione_by_file_number.json`).
+
 ## Geometry-outlier overrides
 
 A resolved appellation polygon occasionally carries a part detached far
@@ -1645,6 +1752,41 @@ one case of four failure modes, swept corpus-wide the same day:
   canton its official name carries (`is_commune_name`: "Roche (VD)"). The SK §f reader joins a wrapped
   Odroda name ("Veltlínske červené ⏎ skoré"): read line by line the row was
   Roter Veltliner, and an alias had patched the wrap.
+- **One VIVC number, two pills on a card (2026-10-25, phase H).** The re-grade
+  found 118 parent cards showing two slugs VIVC files under one number. Each
+  pair was settled one of three ways, recorded in the lexicon's 2026-10-25
+  block, the VIVC pins and
+  [scripts/_lib/vivc_shared_pills.json](scripts/_lib/vivc_shared_pills.json):
+  **a fold** where the regulator writes one variety with its synonym or MAPA's
+  list (RD 684/2026, printed 2026-09-08) gives the synonym — Nielluccio and
+  Prugnolo gentile into Sangiovese, Inzolia into Ansonica ("Ansonica o
+  Inzolia"), Rolle into Vermentino ("rolle B ou vermentino B"), Crujidera into
+  Moravia dulce, Cariñena blanca into Carignan blanc, Embolicaire into
+  Bonicaire, Exquitsagos into Merseguera, Tintorera into Alicante Bouschet,
+  Planta Angort into Planta fina de Pedralba, Bastardillo Chico into Trousseau;
+  **own slug, no bracket** (pinned `false`) where VIVC's number belongs to
+  another entry the regulator lists beside it — Greco bianco, Palomino, bare
+  Raboso and Malvasia (family words), Bonicaire, Tijonera, Verdoncho,
+  Bratkovina crvena, Μοσχάτο Κύπρου — or **own slug on its own passport** —
+  Piros bakator (#905, beside Kék bakator #25053), Albillo Dorado (#23429),
+  Tinto de la Pámpana Blanca (#22848), Cariñena gris (#2097, it had been
+  Carignan noir's); **keep** where the regulator lists both as rows (the PT
+  cadernos' castas, a country rule; Castelfranco's Mostosa and Spergola;
+  Tintilla de Rota). Two traps it showed: `_vivc_canonical_by_id` ranks a
+  number's slugs by record count, so the Corsican cahiers' 87 "Nielluccio"
+  records made the Corsican name Sangiovese's canonical slug and every Italian
+  synonym of Sangiovese bound it; and layout debris of two-column cahiers
+  slugifies into a pill ("suivie de la manseng", "gris pineau d aunis",
+  folded in GRAPE_ALIAS). Readers fixed the same day: the ES pliego reader
+  splits a token that matches nothing into two curated exact names when a
+  comma is missing ("Listán Prieto Moscatel negro", El Hierro's wrapped
+  "Malvasía volcánica ⏎ Moscatel de Alejandría"; `_missing_comma_entries`);
+  the CY reader reads an em dash inside a content line as the name–synonym
+  separator when the bullets stand on lines of their own (Larnaka's "Malvasia
+  di Candia — Malvasia Aromatica"); the PT reader rejoins a PRT-code row whose
+  name wraps inside its cell ("PRT52915 Moscatel- Branco ⏎ GalegoBranco").
+  `audit_grape_identity.py` lists the class from the build (`shared`, report
+  only); a pair the table does not rule is `review`.
 
 Against the cards of the morning, the sweep changed the grape roster of 358
 cards in 17 countries (IT 175, DE 36, GR 36, CH 29, HU 17, NL 15); every
@@ -1654,9 +1796,18 @@ time, and every diff was read.
 [scripts/audit_grape_identity.py](scripts/audit_grape_identity.py) is the
 repeatable check: the colour-coded names no entry resolves, every distinct
 fuzzy binding in the corpus (most are spellings — "Mourverdre", "Cabertnet
-Sauvignon" — the rest go to CURATOR_TODO), and the brackets the card's umlaut
+Sauvignon" — the rest go to CURATOR_TODO), the brackets the card's umlaut
 fold alone suppresses (`--strict` fails on one no umlaut spelling explains;
-see "Grape pill labels"). `tests/test_grape_identity_guards.py`
+see "Grape pill labels") and the shared-VIVC pairs of the build
+(`tests/test_vivc_shared_pills.py`). **02g re-resolves every slug on every
+run** from the first corpus spelling it meets, against a search cached by
+slug: after the Cypriot re-extraction of 2026-10-25 a full run wrote a miss
+over 17 resolved slugs (Blaufränkisch queried as "blauer limberger",
+Catarratto, the Greek and Cypriot natives by their Greek spelling); they are
+pinned back on the live passports, a miss no longer replaces a resolution
+("kept-resolved"), and a partial run leaves the manifest and the curator queue
+alone. Before trusting a full 02g run, compare its by-slug ids with the last
+build's `grapes_info`. `tests/test_grape_identity_guards.py`
 pins the guards. Adding entries changes bindings in other countries, so the
 affected stage 02 / 02f runs are re-extracted with a snapshot and a per-record
 grape diff (the GR 02f drift of 2026-10-11 is why).
@@ -1712,7 +1863,24 @@ rules, settled on the validator findings of 2026-10-23 (phase C):
 - **Rosé comes from the text, never from a berry** (NL / BE / SK / HU / BG in
   phase B; GB and MT in phase C — the DEFRA specs state their colours only in
   their analytical limits, "white and rosé wines", which `gb.spec` keeps as an
-  `analytical` role).
+  `analytical` role; the RO caiet backstop since 2026-10-25, which had made a
+  rosé of Traminer roz and Pinot gris on three ONVPV records).
+- **Romanian colours are read as a list sharing one noun (2026-10-25)** —
+  `document_unic.colour_styles`: "Vinuri albe, roze", "vinurile albe și
+  roze", "Vinuri albe/roze", "la vinurile roșii, roze, aromate", the cedilla
+  letters older documents print folded to the comma ones ("Vinurile liniştite
+  roze") — and the practices section's yield table counts ("producție de vin
+  - vinuri roșii, roze"; Dealurile Sătmarului and Dealurile Zarandului state
+  their rosé nowhere else) — and the link section, sub-sections included
+  ("8.2 Detalii privind produsul": Coteşti's "Vinurile roşii au culori
+  intense"; a description that is a per-variety list, "Fetească neagră – …
+  culoare roşu violet", never writes "vinuri roșii", and once the yield
+  table stated white and rosé the grape-colour floor switched off and the
+  card lost Red — the trap the style-floor rule names, caught on the record
+  diff of the closing build). Twelve RO records gained the rosé their text
+  states (the seven the phase H re-grade named, and Coteşti, Dealurile
+  Moldovei, Dealurile Vrancei, Odobeşti, Recaş); Coteşti keeps its Red and
+  Dealurile Crişanei states its white and red from the link.
 - **Greek colour words are matched as tokens beside a wine word** — or at the
   head of a list of colours sharing one ("για ερυθρούς και 10% vol. για
   λευκούς και ερυθρωπούς οίνους") — in all four GR / CY parsers
@@ -1781,9 +1949,19 @@ to cover at least 80 % of it (`COVERAGE_MIN`): a fiche of another vintage
 against 44, Duna-Tisza közi 41 against 67) would otherwise demote the national
 list wholesale; it is skipped and logged on the `[load] register-fiche
 roles` line. A record whose national source splits roles itself (Bela
-krajina's pravilnik, the RO yield-table additions, the GR 15 % caps) is left
-alone, CZ keeps its own rule (the fiche *is* the roster where it is narrower
-than the decree), and HR's fiches carry no split. The overlay runs after
+krajina's pravilnik, the GR 15 % caps) is left alone, CZ keeps its own rule
+(the fiche *is* the roster where it is narrower than the decree), and HR's
+fiches carry no split. The RO yield-table split is not a role statement — a
+variety §7 omits and the yield table names is accessory by that rule only —
+so since 2026-10-25 (decision on the phase H re-grade) the fiche roles apply
+there too, and a yield-table variety the fiche tags MAIN is listed under the
+principal pills in an amber line: "Roles follow the EU GI register's single
+document, which names Merlot as a main variety; the single document published
+in the Official Journal lists it only in its yield table"
+(`register_fiche_roles_yield_conflict` in the sources, `role_conflict_yield_*`
+labels, `_role_conflict_line` / `roleConflictLine`). Four records: Coteşti,
+Dealurile Olteniei, Drăgăşani, Ştefăneşti (Lechinţa and Sebeş-Apold stay
+under the coverage gate). The overlay runs after
 every national-spec augmenter, so it sees the merged roster; the card judge
 reports a fiche-only split as `defective` only where it is still missing.
 First build (2026-10-23): 134 records, 1,616 varieties to accessory, 61
@@ -1850,7 +2028,16 @@ stage 02 writes its index through `write_index` / `is_partial` in
 corpus (stage 04 reads the per-record files and did not notice; stage 03 and
 the coverage audits read the index); PT merges its `by_slug` map and recounts
 its envelope; `tests/test_extract_index.py` lints the wiring. A parser change
-that touches many records still wants a full run.
+that touches many records still wants a full run. Stage 03 is the same one
+level up (2026-10-24): all 21 generators merge into the shared
+`wiki/_index.json` through `wiki_index_kept` (same module) — a full run
+replaces its country's entries, a `--only` run only the selected ones, and the
+FR `--only` run leaves `wiki/index.md` / `log.md` alone. Until then `03
+--only collioure` left one French entry of 1,541; stage 04 does not read the
+index, but the untranslated detector's appellation-name exemption and
+`terroir_roster` (the dedupe pass, the 02d / 02e prompts) do — the detector
+went from 307 to 413 flagged pairs on "Alsace", "Bourgogne" inside
+appellation names.
 
 | Script | Reads | Writes |
 |---|---|---|
@@ -2677,7 +2864,15 @@ Italy has two layers of sub-denomination granularity:
   `scripts/_lib/it/menzione.py` harvests the names (numbered-list +
   comma-list patterns; the shape is chosen by yield, not marker count,
   so a comma list carrying stray "art. N" references isn't mis-routed
-  to the numbered parser). Stage 02 harvests from the documento unico;
+  to the numbered parser; since 2026-10-24 also a dash-bulleted annex,
+  read across its "nel comune di X:" sub-headers and page numbers —
+  the Tuscan Allegati A). A trigger followed by a 2024/1143 field label
+  ("Quadro di riferimento giuridico:") before its colon is a condition
+  title, and one whose sentence ends before the colon introduces nothing:
+  until then "Nella legislazione unionale" was Roero's, Etna's and three
+  more records' one cru, and kept Etna's MASAF contrade off the card; a
+  comma list ends with its sentence ("…, Vicenziana. Le suddette …").
+  Stage 02 harvests from the documento unico;
   **stage 02f additionally harvests from the full MASAF disciplinare
   text** (the MGA roster lives in Article 8, absent from the cached
   `article_bodies`), so Barolo's 169 + Barbaresco's 66 MGAs now land.
@@ -3682,6 +3877,13 @@ HU-specific notes:
   skipped. Read apart, "Olivér" had bound Plăvaie (an OLIVER synonym) on
   Balatonmelléki, Eger and Monor. `keknyelu` is VIVC #16421, which VIVC also
   lists on Furmint — the fuzzy hit the dedupe had swallowed.
+  The area reader (`_lib/hu/commune.parse_commune_list`) reads every
+  "… település(ek)(nek)" group of a text, not only the first (2026-10-24):
+  Monor's termékleírás names one group per hill ("Monor településen a
+  Strázsa-hegy, Monor, Monorierdő és Bénye településen a Száraz-hegy, Gomba
+  településen …") and had read Monor alone, Tolna's opens on the heading
+  "Települések:" and had read nothing; headings ("CLASSICUS:", "Csongrádi
+  borvidék:") and the map-exclusion clause are dropped.
   Run `scripts/02b_fetch_aoc_lexicon.py --lang hu --source raw/hu/dokumentumok-extracted`
   once before 02d so the Wikipedia salience hints exist (23/41 land
   on first run; 11 missing / 7 errors are curator-pinnable).
@@ -3884,7 +4086,27 @@ Per RO record, in priority order (`geom_source` records the choice):
    and from the **ONVPV caiet de sarcini** (stage 02f sidecar, merged
    into `record["geo_communes"]` at load time) for the 2 grandfathered
    IGPs — Dealurile Transilvaniei + Viile Caraşului. Same shape as the
-   ES IGP-fallback chain.
+   ES IGP-fallback chain. A name is held to the județ of the header it
+   sits under (`geo_communes_scoped`), so the village Oneşti of comuna
+   Plugari (Iaşi) is never Municipiul Oneşti (Bacău). **A name the text
+   gives only as a village** ("Comuna Cetariu, satele Şişterea, Paleu";
+   `commune.village_heads` → `geo_communes_villages`, a name the text also
+   lists as a commune of its own excluded) binds a commune only when that
+   commune touches its head (2026-10-24, validator finding): the texts
+   list villages by the communes of before the 2004 splits, so Paleu
+   (from Cetariu), Boghiş (Nuşfalău), Saligny (Mircea Vodă), Pogoneşti
+   (Iveşti) and twenty more are the communes they became and stay drawn,
+   while a same-named commune elsewhere in the județ is a coincidence and
+   is reported (`names_village_homonyms`): Pănceşti (Sascut), Tansa
+   (Belceşti), Cristeşti (Brăeşti), Fântânele (Andrieşeni) on Dealurile
+   Moldovei, Cotmeana (Stolnici) on Dealurile Munteniei, Măldăreşti
+   (Măciuca) on Dealurile Olteniei — 6 communes, ≈ 300 km² no longer
+   drawn. The parser also drops a quoted name — a sub-denomination's
+   („BIHARIA”, „IANA”), which had shadowed the commune's own item in the
+   dedupe — a lower-case chunk (prose: "în funcţie de interesul
+   producătorilor", "cu localităţile"; no resolving name starts
+   lower-case), "astfel" and the "Subdenumirea / Denumirea …" headers, and
+   reads "localitatea componentă a comunei Y" as Y.
 3. **`stub-no-geometry`** — not hit in v1; all 46 RO wines resolve.
 
 The shared `raw/es/figshare/EU_PDO.gpkg` and
@@ -4067,18 +4289,40 @@ Per BG record, in priority order (`geom_source` records the choice):
 1. **`figshare-pdo`** — exact `file_number` (`PDO-BG-*`) → `PDOid`
    match against Bétard 2022 EU_PDO.gpkg. Covers all 52 BG PDOs. The
    shared `raw/es/figshare/EU_PDO.gpkg` — no new fetch in stage 00.
-2. **`region-pdo-union`** — the 2 BG PGIs (Дунавска равнина PGI =
-   21 northern PDOs; Тракийска низина PGI = 31 southern PDOs) = union
-   of member-PDO Figshare polygons (SI PGI pattern). Member tables
-   live in `BG_PGI_MEMBER_PDOS`
-   ([scripts/_lib/bg/geometry.py](scripts/_lib/bg/geometry.py)),
-   hand-verified against the Bulgarian wine-law 5-region structure
-   and the north/south Stara Planina partition.
-3. **`gisco-commune-list`** — defensive fallback (rare in v1) parsing
-   `geo_communes` from section 6 area body via
-   [scripts/_lib/bg/commune.py](scripts/_lib/bg/commune.py) and
-   unioning matching `BG_*` GISCO LAU polygons (~265 obshtini, shared
-   `raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip`).
+2. **`gisco-commune-list`** — the 2 BG PGIs, drawn from the obshtini
+   their text lists per oblast (2026-10-24, validator finding): Дунавска
+   равнина's ЕДИНЕН ДОКУМЕНТ §6 and Тракийска низина's ИАЛВ spec §3
+   (read from the whole `section_roles.geo_area`; the sidecar's
+   `geo_area_brief` is cut at 2,000 characters, before the exclusion
+   clause) both list obshtini under „Област X:" headers, then the villages
+   cut out of them. `commune.parse_area` reads that template into
+   `geo_communes_scoped` ([name, EKATTE oblast code] — the three letters
+   GISCO prints in `BG_VAR09`) and `geo_communes_partial` (the obshtini held
+   only in part: "Баните - само землищата на с. …", and those the
+   "се изключват" clause cuts villages out of); a PDO's settlement list
+   gets neither. The resolver matches each name among its oblast's
+   obshtini only — two are called Бяла (Русе, Варна) and the text names
+   both — then with its spaces closed ("Вълчидол" / Вълчи дол, "Бобовдол")
+   and an abbreviation that names one obshtina of the oblast ("Д.
+   Митрополия" / Долна Митрополия); "Септември" (област Пазарджик) is no
+   longer dropped as a month inside a header's list. A partial obshtina is
+   drawn whole (GISCO has no unit below it) and the card lists it
+   (`geom_units_partial`). The list is drawn when at most 5 % of its names
+   miss (`LIST_MAX_MISS_SHARE`). One name the regulator writes for two obshtini
+   is grouped (`commune.OBSHTINA_GROUPS`, scoped to its oblast): "Добрич" is
+   the city (BG_DOB28) and the rural obshtina it is an enclave of
+   (Добрич-селска / Добричка, BG_DOB15) — the ИАЛВ's Черноморски район spec
+   files "гр. Добрич" and Добричка's villages under one "Община Добрич".
+   Дунавска равнина: 119 units, 17,316 → 47,445 km² (21 partial);
+   Тракийска низина: 93, 55,220 → 43,393 km² (21 partial) — its
+   member-PDO union had drawn all of north-east Bulgaria (Bétard's
+   Черноморски район PDO), which Дунавска равнина's text claims; the two
+   PGIs no longer overlap.
+3. **`region-pdo-union`** — a PGI whose list does not resolve: the union
+   of its member-PDO Figshare polygons (`BG_PGI_MEMBER_PDOS` in
+   [scripts/_lib/bg/geometry.py](scripts/_lib/bg/geometry.py),
+   hand-verified against the 5-region structure and the north/south
+   Stara Planina partition). Not hit since 2026-10-24.
 4. **`stub-no-geometry`** — last resort. Not hit in v1; all 54 wines
    resolve.
 
@@ -5019,10 +5263,34 @@ CH-specific notes:
 - Sub-denomination model: tier "régionale" and "locale" entries are
   tagged `is_sub_denomination=true` with `parent_slug` = the same
   canton's "cantonale" AOC slug (when one exists). Orphan régionale
-  (FR's Cheyres + Vully — FR has no cantonale entry) stay flat. The
+  (FR's Cheyres — FR has no cantonale entry) stay flat. The
   GE premier crus (22 records, tier="locale") all carry
   `parent_slug=geneve`. Same data shape as FR DGCs / ES subzonas /
   IT sottozone / DE Einzellage.
+- **An intercantonal AOC belongs to every canton it spans**
+  (2026-10-25, the Maasvallei rule one level down): no sub-denomination,
+  no parent; `co_parents` = the cantonal AOC of each canton that has one
+  (`_co_parents_for` in CH stage 02). Vully → Vaud (Fribourg has none, so
+  it also stays a top-level row in Trois-Lacs); Zürichsee → Schwyz and
+  Zürich — until then Schwyz's sub-denomination, drawn as Schwyz alone. Stage
+  04 lists the record under each co-parent (`children_by_parent`: the
+  related-appellations list, the sibling filter, the entity nav), the sidebar
+  nests it under every co-parent in that co-parent's region group and counts
+  it once per country, the card says "Also part of" with links
+  (`co_parent_of`, `co_parent_names`), and it inherits nothing: no facts, no
+  parent polygon — without a commune list the whole-canton fallback draws
+  every canton it spans. `co_parents` is sparse and pipeline-agnostic; any
+  stage 02 may set it. Zürichsee's area is each canton's own ruling,
+  transcribed in `INTERCANTONAL_AREAS` (`_lib/ch/per_aoc_carving.py`,
+  `resolve_intercantonal_area`, every name held to its canton): the seven ZH
+  Bezirke of the Strickhof Verfügung of 26 June 2020 Ziff. III (Meilen,
+  Horgen, Uster, Pfäffikon, Hinwil, Affoltern, Zürich — expanded through the
+  swissBOUNDARIES Bezirk layer, `CHCommuneIndex.in_bezirk`) and the ten SZ
+  communes of the Allgemeinverfügung of 28 July 2025 Ziff. 2.1 (Freienbach,
+  Wollerau, Feusisberg, Altendorf, Lachen, Galgenen, Wangen, Schübelbach,
+  Tuggen, Reichenburg): 76 communes, `swissboundaries-commune-union`, both
+  rulings in its sources (`cantonal-area-ruling`, card rows
+  `cantonal_area_rulings`).
 - **VS Grand Cru per-commune sub-records (Phase 2.5)**: 12 communes
   identified with sources (Vinum Montis + grandcrusion.ch + Thomas
   Vino historical reportage, researched 2026-05). The roster lives
@@ -7830,7 +8098,12 @@ review is copied to a dated `docs/review-*.md`.
   modified or republished since their fetch, Nivegy-völgy (PDO-HU-02816)
   registered and not indexed, the INAO parcellaire release of 2026-10-19
   newer than the 2026-09-28 one built, Priorat's INCAVI pliego and
-  Znojemská's Sbírka file gone (404).
+  Znojemská's Sbírka file gone (404). A register publication counts as held
+  when its OJ reference is the document the oj-pages manifest fetched (the
+  ELI "C/2026/3572" and EUR-Lex's "OJ:C_202603572" are one key,
+  `eambrosia.oj_keys`): the country index can predate a newest-OJ-C fetch,
+  and Belokranjec and Metliška črnina had read NEWER-UPSTREAM for the
+  document already in the build (2026-10-25).
 - **`/validate-geometry`** — [scripts/audit_geometry_vs_text.py](scripts/audit_geometry_vs_text.py),
   the one polygon-vs-**text** check: the units the delimitation names (FR:
   INAO aires CSV + cahier section IV; CH: BFS communes; RO / BG / HU / GR / CY:
@@ -7838,9 +8111,18 @@ review is copied to a dated `docs/review-*.md`.
   stage-04 disclosure fields; `--llm`: an independent model reading, cached
   per text sha) against the units the resolved polygon covers whole (≥ 95 %)
   or in part (> 5 %), reverse-geocoded on GISCO LAU, IGN communes,
-  swissBOUNDARIES, CAOP or ONS. Homonyms are settled by distance (a same-named
-  unit farther than 25 km from the polygon is the layer's, not the text's),
-  administrative prefixes folded ("Oraş Babadag"), county-level names set
+  swissBOUNDARIES, CAOP or ONS. Homonyms are settled by the text's own header
+  where the list has one — the oblast for BG (`geo_communes_scoped`, the
+  GISCO id's EKATTE prefix), the județ for RO (each unit's NUTS-3 county),
+  with the resolver's village rule (`geo_communes_villages`) — else by
+  distance (a same-named unit farther than 25 km from the polygon is the
+  layer's, not the text's; 2026-10-24: the 25 km rule had bound RO villages
+  to same-named communes of the next county and filed five RO IGPs SUSPECT);
+  a national-spec stub is read from its sidecar's list, as stage 04 draws
+  it. The `--llm` read reports each unit's county / oblast (`parent`), keeps
+  villages apart (`village` level) and gets an answer budget that grows with
+  the text (a truncated answer is not cached). Administrative prefixes are
+  folded ("Oraş Babadag"), county-level names set
   aside (ABOVE-COMMUNE). Read through `geom_source`: a commune-union record's
   MISSING / EXTRA units are a parser defect, a zone / Bétard / parcellaire
   record's whole EXTRA units a vintage or attribution question. Also the

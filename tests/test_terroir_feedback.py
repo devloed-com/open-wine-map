@@ -43,7 +43,7 @@ def test_block_keeps_extraction_claims_and_drops_translation_ones():
     block = tf.feedback_prompt_block(_fb())
     assert "Do not assert «Volcanic material imparts minerality to Taurasi.»" in block
     assert "250–490" not in block
-    assert "unless the source states it explicitly" in block
+    assert "unless the source states it explicitly (then state it plainly, without naming the source)" in block
     assert "Reviewer hint: the source describes this and no bullet captured it." in block
     assert "takes a slot ahead of any unhinted fact of the same sub-section (the maximum still holds): "\
            "Aglianico's Greek origin" in block
@@ -66,8 +66,9 @@ def test_a_claim_a_source_does_state_gets_no_source_escape():
     fb = _fb(do_not_claim=claims, capture_if_present=[], record_cautions=[])
     block = tf.feedback_prompt_block(fb)
     assert "«The zone has two subzones.»: a source may state it, but that statement is outdated" in block
-    assert "never from the Wikipedia article alone" in block
+    assert "never from the Wikipedia article alone (then state it plainly, without naming the source)" in block
     assert "«Wines carry the DOK designation.» unless the source states it of this appellation itself" in block
+    assert "another appellation, sub-zone or tier (then state it plainly, without naming the source)" in block
     assert "states it explicitly" not in block
     gate = _constraints_block(fb)
     assert "a Wikipedia hint stating it does not support this claim" in gate

@@ -249,7 +249,8 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "administrative qui les contient : {names}."
         ),
         # Portuguese freguesias the text includes only in part ("parte das
-        # freguesias de …", "(lugares de …)", an altitude limit), drawn
+        # freguesias de …", "(lugares de …)", an altitude limit) and
+        # Bulgarian obshtini some of whose villages it cuts out, drawn
         # whole — the record's `geom_units_partial` panel-payload field.
         "geom_units_partial": _(
             "Unité(s) administrative(s) que le document n'inclut qu'en partie, "
@@ -371,6 +372,20 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         # The status line's "show in the list" action when a facet filter has
         # more matches than the tree auto-opens (app.js updateStatus).
         "status_show_matches": _("voir dans la liste"),
+        # The RO yield-table conflict (decision 2026-10-25): the card follows
+        # the register's single document where the OJ one names a variety only
+        # in its yield table. Rendered by content_block._role_conflict_line /
+        # roleConflictLine in app.js.
+        "role_conflict_yield_one": _(
+            "Rôles selon le document unique du registre GI de l'UE, qui classe {names} "
+            "parmi les cépages principaux ; le document unique publié au Journal officiel "
+            "ne le cite que dans son tableau des rendements."
+        ),
+        "role_conflict_yield_many": _(
+            "Rôles selon le document unique du registre GI de l'UE, qui classe {names} "
+            "parmi les cépages principaux ; le document unique publié au Journal officiel "
+            "ne les cite que dans son tableau des rendements."
+        ),
         "pt_role_disclaimer": _(
             "Le régulateur portugais (IVV) n'établit pas de distinction principal/accessoire — "
             "toutes les castas autorisées sont listées ensemble dans le caderno de especificações."
@@ -447,6 +462,8 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "facts_attribution_source_label_es": _("le pliego de condiciones"),
         "facts_attribution_source_label_pt": _("le caderno de especificações"),
         "dgc_of": _("Dénomination géographique complémentaire de"),
+        # an appellation of several hierarchies (Vully: Vaud; Zürichsee: Schwyz · Zürich)
+        "co_parent_of": _("Fait aussi partie de"),
         "about_link_label": _("À propos"),
         "about_h": _("À propos d'Open Wine Map"),
         "about_lead_html": _(
@@ -2406,6 +2423,12 @@ STARTUP_AOCS_FIELDS = frozenset({
     # vs complementary geographic designations, and nests each
     # sub-denomination under its parent's row (2026-10-18).
     "is_sub_denomination", "parent_slug",
+    # ...and lists an appellation of several hierarchies (CH intercantonal
+    # AOCs) under each co-parent (2026-10-25). Sparse.
+    "co_parents",
+    # ...and an appellation spanning several regions (Garda, Cava, the
+    # umbrella PGIs) under each region (_lib/region_aliases.py). Sparse.
+    "region_aliases",
     # The appellation tree nests region groups under a country group, and
     # lists a cross-border appellation under every country it spans.
     "country_aliases",

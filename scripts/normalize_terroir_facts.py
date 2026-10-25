@@ -1,7 +1,9 @@
 """Post-pass over the terroir-fact caches: apply the deterministic bullet
 clean-up of `_lib.terroir_normalize` (regulatory colour codes after grape
-names, VT / SGN expansion, terminal period) to the source caches AND the
-translation caches, in step. No LLM call.
+names, VT / SGN expansion, terminal period, a reference to the document
+itself cut at the opening / end / in brackets, residual Greek / Cyrillic in
+the four locales) to the source caches AND the translation caches, in step.
+No LLM call.
 
 Stage 04 applies the same normaliser at render time, so this pass is not
 needed for the map; it exists so the caches themselves — what the audit

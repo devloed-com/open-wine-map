@@ -45,6 +45,7 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.bg.commune import parse_area  # noqa: E402
 from _lib.bg.specifikacija import parse_specifikacija  # noqa: E402
 from _lib.grape_entity import flush_unknowns_queue, set_pliego_context  # noqa: E402
 
@@ -124,6 +125,23 @@ def extract_text(spec_path: Path, fmt: str) -> str:
     raise RuntimeError(f"unsupported format: {fmt}")
 
 
+def _area_fields(parsed: dict) -> dict:
+    """The oblast-scoped obshtina list of a spec that delimits by obshtina
+    under „Област X:" headers (the Тракийска низина PGI; stage 04 draws it
+    from them). Read from the whole §3, not the 2,000-character
+    `geo_area_brief`, where the exclusion clause is cut. A PDO's spec lists
+    settlements, which no obshtina layer can draw: nothing is added."""
+    text = (parsed.get("section_roles") or {}).get("geo_area") or parsed.get("geo_area_brief") or ""
+    area = parse_area(text)
+    if not area or not area["members"]:
+        return {}
+    return {
+        "geo_communes": [n for n, _ in area["members"]],
+        "geo_communes_scoped": [[n, c] for n, c in area["members"]],
+        "geo_communes_partial": list(area["partial"]),
+    }
+
+
 def _sidecar_for(slug: str, parsed: dict, source: dict) -> dict:
     return {
         "country": "bg",
@@ -132,6 +150,7 @@ def _sidecar_for(slug: str, parsed: dict, source: dict) -> dict:
         "summary": parsed.get("summary", ""),
         "grapes": parsed.get("grapes") or {},
         "geo_area_brief": parsed.get("geo_area_brief", ""),
+        **_area_fields(parsed),
         "link_to_terroir": parsed.get("link_to_terroir", ""),
         "section_roles": parsed.get("section_roles") or {},
         "section_titles": parsed.get("section_titles") or {},

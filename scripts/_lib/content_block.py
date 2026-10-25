@@ -1064,6 +1064,18 @@ def _sigpac_line(rec: dict, lab: dict) -> str:
     return f'<div class="approx-line">{line}</div>'
 
 
+def _role_conflict_line(rec: dict, lab: dict) -> str:
+    """The RO yield-table role conflict: the varieties the register's single
+    document names main while the OJ single document lists them only in its
+    yield table. Mirrors ``roleConflictLine`` in app.js."""
+    names = (rec.get("sources") or {}).get("register_fiche_roles_yield_conflict") or []
+    if not names:
+        return ""
+    key = "role_conflict_yield_one" if len(names) == 1 else "role_conflict_yield_many"
+    return (f'<div class="approx-line role-conflict">'
+            f'{esc(fmt(lab[key], {"names": ", ".join(names)}))}</div>')
+
+
 def _join_units(names: list) -> str:
     """Entries that carry their own commas ("Alte, Querença (Loulé)") are
     separated by semicolons. Mirrors ``joinUnits`` in app.js."""
@@ -1285,8 +1297,10 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
         if country == "pt" and principal
         else ""
     )
+    role_conflict = _role_conflict_line(rec, lab) if principal else ""
 
-    region = region_label(rec["region"], ctx) if rec.get("region") else ""
+    # every region the record is listed under (_lib/region_aliases.py)
+    region = ", ".join(region_label(r, ctx) for r in [rec.get("region"), *(rec.get("region_aliases") or [])] if r)
     region_seg = f" · {esc(region)}" if region else ""
     country_chip = country_chip_html(country, rec.get("country_aliases"), ctx)
     country_seg = f"{country_chip} · " if country_chip else ""
@@ -1298,6 +1312,13 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
         f'{esc(rec.get("parent_name") or rec["parent_slug"])}</a></div>'
         if rec.get("is_sub_denomination") and rec.get("parent_slug")
         else ""
+    )
+    co_parent_line = (
+        f'<div class="dgc-line">{esc(lab["co_parent_of"])} '
+        + " · ".join(f'<a class="parent-link" data-slug="{esc(cs)}" href="#">{esc(cn)}</a>'
+                     for cs, cn in zip(rec.get("co_parents") or [], rec.get("co_parent_names") or []))
+        + "</div>"
+        if rec.get("co_parent_names") else ""
     )
     boundary = _boundary_notes(rec, ctx)
     stub_line = (
@@ -1345,10 +1366,10 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
     inner = (
         f"<h1>{name_with_latin(rec)}</h1>"
         f'<div class="meta">{country_seg}{classification_html(rec, ctx) or esc(rec.get("kind") or "")}{cancelled_badge_html(rec, ctx)}{promoted_badge_html(rec, ctx)}{region_seg}{meta_tail}</div>'
-        f"{cancelled_line_html(rec, ctx)}{promoted_line_html(rec, ctx)}{dgc_line}{stub_line}"
+        f"{cancelled_line_html(rec, ctx)}{promoted_line_html(rec, ctx)}{dgc_line}{co_parent_line}{stub_line}"
         f"{_section(lab['panel_styles_h'], style_chips)}"
         f"{_section(lab['facet_principal_h'], principal)}"
-        f"{pt_role_disclaimer}"
+        f"{pt_role_disclaimer}{role_conflict}"
         f"{_section(lab['facet_accessory_h'], accessory)}"
         f"{_section(lab['panel_observation_h'], observation)}"
         f"{facts_block or summary}"

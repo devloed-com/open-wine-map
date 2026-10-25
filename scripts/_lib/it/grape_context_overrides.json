@@ -23,5 +23,13 @@
       "source": "MASAF disciplinare Colli d'Imola DOC, Art. 2",
       "verified": "2026-10-22"
     }
+  },
+  "cagliari": {
+    "malvasia": {
+      "slug": "malvasia-aromatica",
+      "reason": "Article 2: \"«Cagliari» Malvasia e «Cagliari» Malvasia riserva — Malvasia di Sardegna: minimo 85%\" — the bare word is the wine type's name, its variety Malvasia di Sardegna (the card had shown both).",
+      "source": "MASAF disciplinare Cagliari DOC, Art. 2",
+      "verified": "2026-10-25"
+    }
   }
 }

@@ -37,7 +37,7 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-from _lib.bg.commune import parse_commune_list  # noqa: E402
+from _lib.bg.commune import area_fields  # noqa: E402
 from _lib.bg.edinen_dokument import (  # noqa: E402
     _GEO_AREA_TITLE_BLOCKLIST,
     COLOUR_BY_KEYWORD,
@@ -348,7 +348,7 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
     grapes = parse_grapes(routed.get("grape_varieties", ""))
     styles = parse_styles(sections, titles)
     geo_area = routed.get("geo_area", "")
-    geo_communes = parse_commune_list(geo_area) if geo_area else []
+    area = area_fields(geo_area)
     region = derive_region(
         {"file_number": wine["fileNumber"]},
         geo_area,
@@ -373,7 +373,8 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
         "grapes": grapes,
         "styles": styles,
         "geo_area_brief": geo_area,
-        "geo_communes": geo_communes,
+        # the PGI template adds `geo_communes_scoped` / `_partial`
+        **area,
         "link_to_terroir": routed.get("link_to_terroir", ""),
         "producer_group": wine["producer_group"],
         "publications": wine["publications"],

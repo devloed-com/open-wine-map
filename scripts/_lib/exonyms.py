@@ -102,9 +102,30 @@ EXONYMS: dict[str, dict[str, str]] = {
 # An appellation label next to the name: the form is the registered name, not a place.
 _GI_MARKER = re.compile(
     r"\b(DOC|DOCG|IGT|IGP|DOP|AOC|AOP|PDO|PGI|DAC|g\.U\.|g\.g\.A\.|Landwein|grand cru|premier cru|"
-    r"appellation|denominazione|denominación|Vino de la Tierra|Anbaugebiet)\b", re.I)
+    r"appellation|denominazione|denominación|Vino de la Tierra|Anbaugebiet)\b|\bd\.o\.c\.", re.I)
 # A grape or institution built on the place name.
 _NAME_CONTEXT = re.compile(r"\b(Melon|Junta|Generalitat|Lezíria|Ribatejo|Consorzio|Consejo)\b", re.I)
+# The form inside a longer proper name, kept verbatim in every locale: a
+# comune ("Magliano in Toscana"), a title ("Bacco in Toscana", Redi's
+# dithyramb), a district name ("Alto Piemonte"); and a quoted name
+# («Argille Varicolori»). 2026-10-25: each was flagged as an untranslated
+# place on the caches re-translated in phases D–G.
+_IN_PROPER_NAME = re.compile(
+    r"[A-ZÀ-Ý][\w'’-]+\s+(?:in|di|del|della|de|du|des)\s+$"
+    r"|\b(?:Alto|Basso|Medio|Haut|Bas)[-\s]+$")
+_QUOTE_OPEN = "«“\"„"
+_QUOTE_CLOSE = "»”\"“"
+
+
+def _in_quotes(text: str, start: int, end: int) -> bool:
+    """True when [start, end) sits between an opening and a closing quote on
+    the same stretch of text (no sentence end in between)."""
+    before, after = text[:start], text[end:]
+    o = max(before.rfind(q) for q in _QUOTE_OPEN)
+    if o < 0 or any(before.rfind(q) > o for q in _QUOTE_CLOSE if q not in _QUOTE_OPEN):
+        return False
+    c = min((after.find(q) for q in _QUOTE_CLOSE if after.find(q) >= 0), default=-1)
+    return c >= 0 and ". " not in before[o:] and ". " not in after[:c]
 
 
 def _pattern(form: str) -> re.Pattern:
@@ -114,19 +135,43 @@ def _pattern(form: str) -> re.Pattern:
 _PATTERNS = {form: _pattern(form) for form in EXONYMS}
 
 
-def exonym_hits(bullet: str, lang: str, *, gi_forms: frozenset[str] = frozenset()) -> list[str]:
+def _inside_name(bullet: str, start: int, end: int, names) -> bool:
+    """True when [start, end) lies inside an occurrence of one of `names`
+    longer than the form itself ("Sardegna" in "Cannonau di Sardegna")."""
+    for name in names:
+        if len(name) <= end - start:
+            continue
+        for m in re.finditer(re.escape(name), bullet):
+            if m.start() <= start and end <= m.end():
+                return True
+    return False
+
+
+def exonym_hits(bullet: str, lang: str, *, gi_forms: frozenset[str] = frozenset(),
+                own_names=()) -> list[str]:
     """Source forms in `bullet` that should read as their `lang` exonym.
     `gi_forms`: the forms that also occur in an appellation name of the
-    corpus — flagged only in a place-like context."""
+    corpus — flagged only in a place-like context. `own_names`: the
+    bullet's own appellation names; a form inside one of them is the label
+    ("the production zone of Cannonau di Sardegna"), while a record named
+    after the region alone ("Upper Kärnten") is still read as a place."""
     out: list[str] = []
     for form, targets in EXONYMS.items():
         if lang not in targets:
+            continue
+        # the source form is already the target's ("mar Egeo" in Spanish,
+        # "Karpaten" in Dutch)
+        if _PATTERNS[form].search(targets[lang]):
             continue
         for m in _PATTERNS[form].finditer(bullet or ""):
             ctx = bullet[max(0, m.start() - 45): m.end() + 45]
             if form in gi_forms and (_GI_MARKER.search(ctx) or _NAME_CONTEXT.search(ctx)):
                 continue
             if form not in gi_forms and _NAME_CONTEXT.search(ctx):
+                continue
+            if _inside_name(bullet, m.start(), m.end(), own_names) \
+                    or _IN_PROPER_NAME.search(bullet[max(0, m.start() - 40): m.start()]) \
+                    or _in_quotes(bullet, m.start(), m.end()):
                 continue
             out.append(form)
             break

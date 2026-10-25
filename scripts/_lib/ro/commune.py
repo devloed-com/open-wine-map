@@ -96,6 +96,18 @@ _SATUL_BELONGS_RE = re.compile(
     r"(?:apar[țţt]in[âaă]nd|din)\s+(?:comuna|comunei|comunele|comunelor)\s+",
     re.IGNORECASE,
 )
+# "Satul Ciocârlia, localitatea componentă a comunei Ciocârlia" (Murfatlar):
+# the genitive names the commune; read as "comuna Ciocârlia".
+_COMPONENT_OF_RE = re.compile(
+    r"\blocalit[ăaâ][țţt](?:ea|ile|i)\s+component[ăae]\s+a\s+(?:comunei|ora[șş]ului|municipiului)\s+",
+    re.IGNORECASE,
+)
+# A quoted name is a (sub-)denomination's — „BIHARIA”, ”PIETROASA”,
+# "AIUD’’" — even where a commune of that name exists; the commune is
+# listed as an item of its own, which the quoted form must not shadow in
+# the dedupe (Iana's "Comuna Iana" and Crişana's "Comuna Biharia" were lost
+# that way).
+_QUOTE_RE = re.compile(r"[„“”\"«»‘’]")
 
 # Județ section markers — `Județul X[:]`, `în județul X[,]` — act as
 # commune-list section dividers. Both modern (`ț`) and cedilla (`ţ`)
@@ -139,6 +151,10 @@ _PROSE_TOKENS = frozenset({
     "podgoriei", "podgorii", "produc", "producția", "regiune", "regiunii",
     "viticol", "viticole", "viticolă", "respectiv", "anume", "precum",
     "totalitatea", "ansamblul",
+    # "Subdenumirile „DIOSIG” şi „BIHARIA”:" (Crişana), "Denumirea „HUŞI”"
+    # head a sub-denomination's block, they are not list items
+    "subdenumirea", "subdenumirile", "subdenumire", "subdenumiri",
+    "denumirea", "denumirile", "denumire", "denumiri",
 })
 
 # Drop these as not-a-commune-name tokens (regulatory / connective words
@@ -151,6 +167,8 @@ _DROP_WORDS = frozenset({
     "cuprinzând", "format", "formata", "formată", "alcatuit", "alcătuit",
     "alcatuita", "alcătuită", "delimitata", "delimitată", "delimitat",
     "judetele", "județele", "judetul", "județul",
+    # "… pe teritoriul judeţelor Bihor şi Sălaj, astfel:" — the lead-in
+    "astfel",
     # Calendar months — appear in publication dates that bleed into the
     # area description.
     "ianuarie", "februarie", "martie", "aprilie", "mai", "iunie",
@@ -341,6 +359,7 @@ def parse_commune_list_scoped(text: str) -> list[tuple[str, list[str]]]:
     # Rewrite "satul X aparținând comunei Y" → "comuna Y" so the
     # tier-prefix strip below picks up Y, not the (uncrappable) X.
     body = _SATUL_BELONGS_RE.sub("comuna ", body)
+    body = _COMPONENT_OF_RE.sub("comuna ", body)
     body = _GLUED_PREFIX_RE.sub(r"\1 ", body)
 
     # Segment the body at each county header; every segment inherits the
@@ -388,6 +407,14 @@ def parse_commune_list_scoped(text: str) -> list[tuple[str, list[str]]]:
                 chunk = _COMMUNE_DASH_TAIL_RE.sub("", chunk).strip(_EDGE_STRIP)
             if not chunk:
                 continue
+            if _QUOTE_RE.search(chunk):
+                continue
+            # Commune names are capitalised; a lower-case chunk is prose that
+            # survived the split ("în funcţie de interesul", "se poate face",
+            # "cu localităţile", "satete Sâniob") — no name that resolves in
+            # the corpus starts lower-case (sweep of 2026-10-24).
+            if chunk[0].islower():
+                continue
             key = _normalise_commune(chunk)
             if not key:
                 continue
@@ -415,6 +442,66 @@ def parse_commune_list_scoped(text: str) -> list[tuple[str, list[str]]]:
             # display / audit log; the resolver will renormalise.
             out.append((chunk, list(judete)))
     return out
+
+
+# One list item: "Comuna Cetariu, satele Şişterea, Paleu", "Com. Câlnic-sate
+# Câlnic, Cut", "comuna Daia cu satele Daia, Dăiţa", "Oraş Medgidia -
+# localităţi Medgidia, Remus Opreanu", "Municipiul Drăgăşani - localităţi: …".
+_VILLAGE_ITEM_RE = re.compile(
+    r"^\W*(?:comuna|com\.?|ora[șş]ul|ora[șş]|orasul|municipiul|municipul)\s*"
+    r"(?P<head>[^\n]+?)\s*(?:,|[-–]|\bcu\b)\s*(?:cu\s+)?"
+    r"(?:sat(?:ele|ul|e)?|localit[ăaâ][țţt](?:ile|ea|i)(?:\s+component[ăae])?)\b[:\s]*"
+    r"(?P<tail>.*)$",
+    re.IGNORECASE,
+)
+
+
+# "Oraş Ovidiu - comuna Ovidiu, satul Poiana": the town and its commune
+_HEAD_SELF_RE = re.compile(r"^(?P<head>.+?)\s+[-–]\s+(?:comuna|com\.?)\s+.+$", re.IGNORECASE)
+
+
+def village_heads(text: str) -> list[tuple[str, str]]:
+    """(village, head commune) for every village a list item files under its
+    commune — "Comuna Cetariu, satele Şişterea, Paleu" gives (Şişterea,
+    Cetariu) and (Paleu, Cetariu). A village is no commune, but many carry a
+    commune's name, and some ARE one now: the texts list villages by the
+    communes of before the 2004 splits (Paleu left Cetariu, Boghiş
+    Nuşfalău, Saligny Mircea Vodă). `ROPolygonIndex.commune_union` binds such
+    a name only to a commune that touches its head; a same-named commune
+    elsewhere in the județ is a coincidence (Măldăreşti, a village of
+    Măciuca, is not the commune Măldăreşti 34 km away)."""
+    if not text:
+        return []
+    body = unicodedata.normalize("NFKC", text)
+    body = _truncate_at_terroir_section(body)
+    body = _PAGE_FOOTER_RE.sub(" ", body)
+    body = re.sub(r"\([^)]*\)", " ", body)
+    body = _GLUED_PREFIX_RE.sub(r"\1 ", body)
+    pairs: list[tuple[str, str]] = []
+    kept: list[str] = []
+    for line in body.split("\n"):
+        m = _VILLAGE_ITEM_RE.match(line.strip())
+        if not m:
+            kept.append(line)
+            continue
+        head = m.group("head").strip(_EDGE_STRIP)
+        if hm := _HEAD_SELF_RE.match(head):
+            head = hm.group("head").strip(_EDGE_STRIP)
+        hk = _normalise_commune(head)
+        if not hk:
+            kept.append(line)
+            continue
+        kept.append(f"comuna {head}")
+        for v in re.split(r"\s*[,;]\s*|\s+(?:și|şi|si)\s+", m.group("tail")):
+            pm = _TIER_PREFIX_RE.match(v.strip(_EDGE_STRIP))
+            v = v.strip(_EDGE_STRIP)[pm.end():] if pm else v.strip(_EDGE_STRIP)
+            v = v.strip(_EDGE_STRIP)
+            if v and _normalise_commune(v) != hk:
+                pairs.append((v, head))
+    # a name the text also gives as a commune of its own (a head, or a bare
+    # list item) is that commune, not only a village
+    free = {_normalise_commune(n) for n, _ in parse_commune_list_scoped("\n".join(kept))}
+    return [(v, h) for v, h in pairs if _normalise_commune(v) not in free]
 
 
 def parse_commune_list(text: str) -> list[str]:

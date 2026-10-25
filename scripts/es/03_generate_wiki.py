@@ -31,6 +31,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from _lib.es.region import derive_ccaa  # noqa: E402
+from _lib.extract_index import wiki_index_kept  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "es" / "pliegos-extracted"
 WIKI = ROOT / "wiki"
@@ -252,7 +253,7 @@ def main() -> int:
             existing = json.loads(WIKI_INDEX.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             existing = {}
-    fr_kept = {k: v for k, v in existing.items() if v.get("country") != "es"}
+    fr_kept = wiki_index_kept(existing, "es", partial=bool(args.only))
     merged = {**fr_kept, **es_index}
     WIKI_INDEX.write_text(json.dumps(merged, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     print(

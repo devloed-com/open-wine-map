@@ -40,6 +40,7 @@ _LABELS = {
     "geom_parroquias_line": "{n} parishes from {source}: {names}.",
     "geom_parroquias_whole": "Whole as well: {n} municipio(s) {names}.",
     "dgc_of": "Sub-region of",
+    "co_parent_of": "Also part of",
     "geom_approx_within": "Approx area — inherited from {umbrella}",
     "geom_approx_parent": "Approx area — parent polygon.",
     "geom_approx_aires": "Approx area — commune envelope.",
@@ -222,6 +223,30 @@ def test_sub_denomination_line() -> None:
     out = _render({"name": "Clisson", "kind": "AOC", "country": "fr",
                    "is_sub_denomination": True, "parent_slug": "muscadet", "parent_name": "Muscadet"})
     assert '<div class="dgc-line">Sub-region of <a class="parent-link" data-slug="muscadet" href="#">Muscadet</a></div>' in out
+
+
+def test_co_parent_line_links_every_hierarchy() -> None:
+    """An appellation of several cantons (Zürichsee: Schwyz and Zürich) is
+    nobody's sub-denomination; the card links each hierarchy it is part of."""
+    out = _render({"name": "Zürichsee", "kind": "AOC", "country": "ch", "is_sub_denomination": False,
+                   "co_parents": ["schwyz", "zurich"], "co_parent_names": ["Schwyz", "Zürich"]})
+    assert ('<div class="dgc-line">Also part of <a class="parent-link" data-slug="schwyz" href="#">Schwyz</a>'
+            ' · <a class="parent-link" data-slug="zurich" href="#">Zürich</a></div>') in out
+    assert "Sub-region of" not in out
+    assert "Also part of" not in _render({"name": "Vaud", "kind": "AOC", "country": "ch"})
+
+
+def test_meta_line_names_every_region() -> None:
+    """A record spanning several regions (Garda: Lombardia and Veneto) names
+    each on the meta line, its own first; one with no region of its own
+    (Cava) names its alias regions."""
+    out = _render({"name": "Garda", "kind": "DOP", "country": "it", "region": "Lombardia",
+                   "region_aliases": ["Veneto"]})
+    assert " · Lombardia, Veneto" in out
+    out = _render({"name": "Cava", "kind": "DOP", "country": "es", "region": "",
+                   "region_aliases": ["Aragón", "Cataluña"]})
+    assert " · Aragón, Cataluña" in out
+    assert " · Veneto</div>" in _render({"name": "Soave", "kind": "DOP", "country": "it", "region": "Veneto"})
 
 
 def test_stub_message_uses_country_doc_name() -> None:

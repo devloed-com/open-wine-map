@@ -38,6 +38,10 @@ SHELL_PATHS = (
     "scripts/_lib/cancelled_gis.json",
     "scripts/_lib/promoted_gis.json",
     "scripts/_lib/region_exonyms.json",
+    # emit_html derives the region aliases itself (the table, the member
+    # tables it imports, the aires CSV), so a table edit needs no full build
+    "scripts/_lib/region_aliases.json",
+    "scripts/_lib/region_aliases.py",
     "scripts/_lib/region_search_terms.json",
     "scripts/_lib/region_search_terms.py",
     "scripts/_lib/grape_labels.py",

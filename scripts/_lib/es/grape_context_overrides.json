@@ -26,5 +26,14 @@
       "source": "INCAVI, Conca de Barberà modificació PC AM05 (2024), variedades: \"Chenin\", \"Sumoll blanco\", \"Sumoll tinto\"",
       "verified": "2026-10-24"
     }
+  },
+  "castello": {
+    "subirat": {
+      "slug": "alarije",
+      "name": "Subirat",
+      "reason": "Castelló's single document lists \"Subirat\" beside \"Viura o Macabeo\"; MAPA's list (RD 684/2026) gives Alarije the Valencian synonym Subirat Parent, while the bare slug's VIVC pin is Viura (Macabeo) — the card had shown Subirat as a second Macabeo.",
+      "source": "Castelló single document §7; MAPA, Variedades de uva autorizadas por las CCAA (2026-09-08), Alarije",
+      "verified": "2026-10-25"
+    }
   }
 }

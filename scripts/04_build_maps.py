@@ -33,7 +33,6 @@ import re
 import shutil
 import subprocess
 import sys
-import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -218,6 +217,7 @@ from _lib.pt.subregiao_areas import load_table as load_pt_subregiao_areas
 from _lib.pt.subregiao_areas import outside_km2 as pt_subregiao_outside_km2
 from _lib.pt.subregiao_areas import pieces_for as pt_subregiao_pieces
 from _lib.pt.subregiao_areas import unreviewed_acts as pt_unreviewed_acts
+from _lib.region_aliases import derive as derive_region_aliases
 from _lib.region_search_terms import region_search_terms_for
 from _lib.ro.commune import judet_source_text as ro_judet_source_text
 from _lib.ro.commune import parse_judet_list as parse_ro_judet_list
@@ -249,6 +249,7 @@ from _lib.style_taxonomy import (
     taxonomy_dfs_order as _taxonomy_dfs_order,
 )
 from _lib.summaries import derive_summary
+from _lib.terroir_dedupe import _leads_with_name as _dedupe_leads_with_name
 from _lib.terroir_normalize import normalize_aocs
 from _lib.vineyard_envelope import (
     ENVELOPE_GEOM_SOURCE,
@@ -603,6 +604,8 @@ def _fiche_roles_source_keys(record: dict) -> dict:
         "register_fiche_roles_n_main": fr.get("n_main", 0),
         "register_fiche_roles_n_other": fr.get("n_other", 0),
         "register_fiche_roles_n_unlisted": fr.get("n_unlisted", 0),
+        **({"register_fiche_roles_yield_conflict": fr["yield_conflict"]}
+           if fr.get("yield_conflict") else {}),
     }
 
 
@@ -1236,7 +1239,8 @@ def main() -> int:
     fiche_roles = apply_register_fiche_roles(extracted_records)
     print(
         f"[load] register-fiche roles: {fiche_roles['applied']} records, "
-        f"{fiche_roles['pills_to_accessory']} varieties to accessory; skipped "
+        f"{fiche_roles['pills_to_accessory']} varieties to accessory, "
+        f"{fiche_roles.get('yield_conflict', 0)} RO yield-table role conflicts shown; skipped "
         + ", ".join(f"{k} {v}" for k, v in sorted(fiche_roles["skipped"].items())),
         file=sys.stderr,
     )
@@ -2140,6 +2144,7 @@ def main() -> int:
                 record.get("geo_communes") or [],
                 parse_ro_judet_list(ro_judet_source_text(record)),
                 [(n, j) for n, j in (record.get("geo_communes_scoped") or [])] or None,
+                [(v, h) for v, h in (record.get("geo_communes_villages") or [])] or None,
             )
             ro_hits[geom_source] += 1
             v_geom = geom
@@ -2160,16 +2165,32 @@ def main() -> int:
             # BG branch — Bétard Figshare PDO match covers all 52 BG
             # PDOs (Bulgaria entered the EU in 2007; everything predates
             # Bétard's Nov-2021 cutoff). The 2 macro BG PGIs (Дунавска
-            # равнина / Тракийска низина) resolve as the union of their
-            # member-PDO polygons (SI PGI pattern). GISCO BG commune-list
-            # is a defensive fallback that should not normally be hit.
+            # равнина / Тракийска низина) are drawn from the obshtini their
+            # text lists per oblast (`gisco-commune-list`), the union of
+            # their member PDOs only when that list does not resolve.
             sib_v_geom = sib_name = sib_slug = None
             cadastre_match = None
             geom, geom_source, stats = bg_polygons.resolve(
                 record.get("file_number") or "",
                 record.get("geo_communes") or [],
+                record.get("geo_communes_scoped") or None,
+                record.get("geo_communes_partial") or None,
             )
             bg_hits[geom_source] += 1
+            if geom_source == "gisco-commune-list":
+                # Panel payload: the obshtini drawn whole that the text holds
+                # only in part (villages cut out, or "само землищата на …"),
+                # and names no obshtina resolved — `_units_line` / `unitsLine`.
+                disclosure = {}
+                if stats.get("partial"):
+                    disclosure["geom_units_partial"] = list(stats["partial"])
+                unmatched = (list(stats.get("names_unmatched") or [])
+                             + list(stats.get("names_outside_oblast") or [])
+                             + [a.rsplit(" (", 1)[0] for a in stats.get("names_ambiguous") or []])
+                if unmatched:
+                    disclosure["geom_units_unmatched"] = unmatched
+                if disclosure:
+                    _GEOM_UNITS_DISCLOSURE_BY_SLUG[record["slug"]] = disclosure
             v_geom = geom
             v_source = geom_source
             v_stats = stats
@@ -3172,6 +3193,10 @@ def main() -> int:
         # 112-parcel record and a compact one of the same area get different
         # stroke widths (scripts/_lib/map_template.py, _build_source_block).
         common_props["parts"], common_props["frag"] = shape_metrics(tile_geom)
+        if record.get("co_parents"):
+            # An appellation of several cantons (CH intercantonal AOCs): listed
+            # under each co-parent, inheriting from none. Sparse.
+            common_props["co_parents"] = ";".join(record["co_parents"])
         features.append(
             {
                 "type": "Feature",
@@ -3984,6 +4009,10 @@ def _sources_for_base(record: dict) -> dict:
             "cantonal_roster_url": roster.get("url", ""),
             "cantonal_roster_label": roster.get("label", ""),
             "cantonal_roster_applied_by": roster.get("applied_by", ""),
+            # An intercantonal AOC's area, as each canton's ruling delimits it (Zürichsee).
+            **({"cantonal_area_rulings": rulings} if (rulings := [
+                {"url": s.get("url", ""), "label": s.get("label", "")}
+                for s in sources_list if s.get("kind") == "cantonal-area-ruling"]) else {}),
         }
     if record.get("country") == "be":
         # Belgium: EU-OJ ENIG DOCUMENT (Flemish) or DOCUMENT UNIQUE
@@ -4252,17 +4281,9 @@ def overlay_translated_facts(
     return out
 
 
-def _norm_name(s: str) -> str:
-    s = unicodedata.normalize("NFKD", s or "")
-    s = "".join(c for c in s if not unicodedata.combining(c))
-    return " ".join(s.casefold().split())
-
-
 def _leads_with_name(bullet: str, name: str) -> bool:
-    nb, nn = _norm_name(bullet), _norm_name(name)
-    if not nn or not nb.startswith(nn):
-        return False
-    return len(nb) == len(nn) or not nb[len(nn)].isalnum()
+    # one test for the render filter and the dedupe post-pass (terroir_dedupe)
+    return _dedupe_leads_with_name(bullet, name)
 
 
 def annotate_inherited_facts(
@@ -4620,6 +4641,7 @@ def emit_html(
             "is_sub_denomination": p.get("is_sub_denomination", "0") == "1",
             "parent_slug": p.get("parent_slug", "") or "",
             "parent_name": p.get("parent_name", "") or "",
+            **({"co_parents": [c for c in p["co_parents"].split(";") if c]} if p.get("co_parents") else {}),
             "communes_matched": p["communes_matched"],
             "geom_source": p.get("geom_source", "communes"),
             "geom_fallback_slug": p.get("geom_fallback_slug", "") or "",
@@ -4810,10 +4832,52 @@ def emit_html(
     # denominations" as own content. Child display names resolve per-locale in
     # render() from the per-locale aocs dict.
     children_by_parent: dict[str, list[str]] = {}
+    # A record spanning several regions of its country's hierarchy (Garda,
+    # Cava, the umbrella PGIs) is listed under each — _lib/region_aliases.py.
+    _aires_for_aliases = load_aires()
+    region_aliases, _alias_warnings = derive_region_aliases(
+        [
+            {
+                "slug": f["properties"]["slug"],
+                "name": f["properties"]["name"],
+                "country": f["properties"].get("country") or "fr",
+                "region": f["properties"].get("region") or "",
+                "kind": f["properties"].get("kind") or "",
+                "is_wine": f["properties"].get("is_wine", "1") == "1",
+                "is_sub_denomination": f["properties"].get("is_sub_denomination", "0") == "1",
+                "file_number": f["properties"].get("id_appellation") or "",
+                "geom_source": f["properties"].get("geom_source") or "",
+            }
+            for f in features
+        ],
+        aire_of=lambda name: lookup_aire(_aires_for_aliases, name),
+    )
+    for _w in _alias_warnings:
+        print(f"[region] alias warn: {_w}", file=sys.stderr)
+    for _slug, _regions in region_aliases.items():
+        if _slug in aocs:
+            aocs[_slug]["region_aliases"] = _regions
+    print(
+        f"[region] {len(region_aliases)} record(s) listed under more than one region: "
+        + ", ".join(f"{s} (+{'/'.join(r)})" for s, r in sorted(region_aliases.items())),
+        file=sys.stderr,
+    )
     for _slug, _rec in aocs.items():
         _p = _rec.get("parent_slug")
         if _p and _p in aocs:
             children_by_parent.setdefault(_p, []).append(_slug)
+        # A record spanning several parents' hierarchies (Vully under Vaud,
+        # Zürichsee under Schwyz and Zürich) is listed under each — the
+        # related-appellations list, the sibling filter, the entity nav —
+        # and inherits from none. The panel names them (co_parent_names).
+        _cps = [c for c in _rec.get("co_parents") or [] if c in aocs and c != _slug]
+        for _c in _cps:
+            children_by_parent.setdefault(_c, []).append(_slug)
+        if _cps:
+            _rec["co_parents"] = _cps  # aligned with the names the SSR card zips them with
+            _rec["co_parent_names"] = [aocs[c].get("name") or c for c in _cps]
+        elif "co_parents" in _rec:
+            del _rec["co_parents"]
     for _kids in children_by_parent.values():
         _kids.sort(key=lambda s: (aocs[s].get("name") or s).casefold())
     # The live card lists a parent's sub-denominations too (renderRelated in

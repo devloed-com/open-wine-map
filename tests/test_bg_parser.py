@@ -464,3 +464,124 @@ def test_regression_oriakhovitsa_is_a_trakiiska_nizina_member():
     assert "PDO-BG-A1344" in BG_PGI_MEMBER_PDOS["PGI-BG-A1552"]
     assert "PDO-BG-A1344" not in BG_PGI_MEMBER_PDOS["PGI-BG-A1538"]
     assert region_for_file_number("PDO-BG-A1344") == "Тракийска низина"
+
+
+# ==========================================================================
+# The PGI template: obshtini under „Област X:" headers (2026-10-24)
+# ==========================================================================
+
+# Redacted from Дунавска равнина's ЕДИНЕН ДОКУМЕНТ §6 (raw/bg/dokumenti-
+# extracted/dunavska-ravnina.json) and Тракийска низина's ИАЛВ spec §3.
+_DUNAVSKA_AREA = (
+    "Районът за производство на вино със ЗГУ „Дунавска равнина“ е очертан при "
+    "следните граници на землищата на населените места: Област Плевен: Белене, "
+    "Червен бряг, Д. Митрополия, Долни Дъбник. Област Русе: Бяла, Борово. "
+    "Област Варна: Аксаково, Бяла, Вълчидол. Следните землища на населени места, "
+    "както са изброени по общини, се изключват от очертанията на района: "
+    "Община Белене: с. Петокладенци. Община Аксаково: с. Кичево."
+)
+_TRAKIISKA_AREA = (
+    "Районът за производство на вино със ЗГУ “Тракийска низина” е очертан при "
+    "следните граници на землищата на населените места, включени в общините: "
+    "Област Пазарджик: Пазарджик, Пещера, Септември, Стрелча. Област Смолян: "
+    "Баните - само землищата на с. Вишнево и с. Гълъбово, Мадан - само землищата "
+    "на с. Лещак, с. Цирка и с. Равнил, Златоград - само землищата на с. Пресока "
+    "и Златоград. Област Стара Загора: Гълъбово, Казанлък."
+)
+
+
+def test_parse_area_scopes_each_name_to_its_oblast():
+    """Two obshtini are called Бяла (Русе, Варна) and the Дунавска равнина
+    text names both; the legacy parse deduped the second away and the
+    unscoped matcher dropped both as ambiguous."""
+    area = commune.parse_area(_DUNAVSKA_AREA)
+    assert ("Бяла", "RSE") in area["members"] and ("Бяла", "VAR") in area["members"]
+    assert ("Д. Митрополия", "PVN") in area["members"]
+    assert len(area["members"]) == 9
+
+
+def test_parse_area_exclusion_clause_marks_partial_not_members():
+    """The villages after "се изключват" are cut out of their obshtina: the
+    obshtina stays a member (drawn whole, disclosed as partial) and no
+    village becomes a member."""
+    area = commune.parse_area(_DUNAVSKA_AREA)
+    names = [n for n, _ in area["members"]]
+    assert "Петокладенци" not in names and "Кичево" not in names
+    assert set(area["partial"]) == {"Белене", "Аксаково"}
+
+
+def test_parse_area_only_some_villages_and_the_septemvri_obshtina():
+    """"Баните - само землищата на с. …" is an obshtina held in part, its
+    villages (Гълъбово among them — also an obshtina of Стара Загора) are
+    not members; "Септември" is the Pazardzhik obshtina, not the month the
+    legacy filter drops."""
+    area = commune.parse_area(_TRAKIISKA_AREA)
+    assert ("Септември", "PAZ") in area["members"]
+    assert {"Баните", "Мадан", "Златоград"} <= set(area["partial"])
+    sml = [n for n, c in area["members"] if c == "SML"]
+    assert sml == ["Баните", "Мадан", "Златоград"]
+    assert ("Гълъбово", "SZR") in area["members"]
+    assert "септември" not in [commune._normalise_commune(n) for n in parse_commune_list(
+        "публикувано на 3 септември 2020")]
+
+
+def test_parse_area_is_none_for_a_settlement_list():
+    """A PDO's spec lists settlements, which no obshtina layer can draw."""
+    assert commune.parse_area(
+        "Районът ... е очертан при следните граници на землищата на населените "
+        "места – гр. Поморие, с. Бата, с. Горица, находящи се в обл. Бургас.") is None
+    assert "geo_communes_scoped" not in commune.area_fields("с. Брестник, област Пловдив.")
+
+
+def _toy_index():
+    from _lib.bg.geometry import BGPolygonIndex
+    from shapely.geometry import box
+    idx = BGPolygonIndex(Path("/nonexistent.gpkg"), None)
+    units = [("Бяла", "RSE"), ("Бяла", "VAR"), ("Долна Митрополия", "PVN"),
+             ("Долни Дъбник", "PVN"), ("Вълчи дол", "VAR"), ("Белене", "PVN")]
+    for i, (name, ob) in enumerate(units):
+        key = commune._normalise_commune(name)
+        idx._lau.append((key, ob, box(i, 0, i + 1, 1)))
+        idx._lau_by_name.setdefault(key, []).append(i)
+        idx._lau_by_compact.setdefault(key.replace(" ", ""), []).append(i)
+    idx._pdo_polygons["PDO-BG-A1425"] = box(100, 0, 101, 1)  # Русе, a member PDO
+    return idx
+
+
+def test_bg_resolver_oblast_scope_compact_and_abbreviation():
+    idx = _toy_index()
+    assert idx._candidates("Бяла", None)[0] == [0, 1]
+    assert idx._candidates("Бяла", "VAR") == ([1], "exact")
+    assert idx._candidates("Вълчидол", "VAR") == ([4], "compact")
+    assert idx._candidates("Д. Митрополия", "PVN") == ([2], "abbreviation")
+    assert idx._candidates("Белене", "VAR") == ([], "outside-oblast")
+
+
+def test_bg_pgi_drawn_from_its_list_union_only_as_fallback():
+    idx = _toy_index()
+    scoped = [("Бяла", "RSE"), ("Бяла", "VAR"), ("Д. Митрополия", "PVN"), ("Белене", "PVN")]
+    geom, src, stats = idx.resolve("PGI-BG-A1538", [n for n, _ in scoped], scoped, ["Белене"])
+    assert src == "gisco-commune-list" and stats["matched"] == 4
+    assert stats["partial"] == ["Белене"]
+    # a list most of whose names miss is not drawn: the member-PDO union is
+    bad = [("Икс", "PVN"), ("Игрек", "PVN"), ("Белене", "PVN")]
+    geom, src, stats = idx.resolve("PGI-BG-A1538", [n for n, _ in bad], bad)
+    assert src == "region-pdo-union" and stats["list_rejected"]["unmatched"] == 2
+
+
+def test_dobrich_is_the_city_and_the_rural_obshtina_around_it():
+    """The ИАЛВ files the city and Добричка's villages under one "Община
+    Добрич"; drawn as the city alone, Дунавска равнина had an undrawn ring
+    around an island (2026-10-24). Only under област Добрич."""
+    from _lib.bg.geometry import BGPolygonIndex
+    from shapely.geometry import box
+    idx = BGPolygonIndex(Path("/nonexistent.gpkg"), None)
+    for i, (name, ob) in enumerate([("Добрич", "DOB"), ("Добрич-селска", "DOB"), ("Каварна", "DOB")]):
+        key = commune._normalise_commune(name)
+        idx._lau.append((key, ob, box(i, 0, i + 1, 1)))
+        idx._lau_by_name.setdefault(key, []).append(i)
+        idx._lau_by_compact.setdefault(key.replace(" ", ""), []).append(i)
+    geom, stats = idx.commune_union([], [("Добрич", "DOB"), ("Каварна", "DOB")])
+    assert stats["matched"] == 3 and abs(geom.area - 3.0) < 1e-9
+    _, stats = idx.commune_union([], [("Добрич", None)])
+    assert stats["matched"] == 1

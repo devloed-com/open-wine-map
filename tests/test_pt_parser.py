@@ -527,3 +527,16 @@ def test_geometry_folds_connector_spelling_to_the_one_caop_name():
     assert geom.centroid.x == 0.5
     _, stats = idx.union_concelhos(["Vila da Conde"])
     assert stats == {"matched": 0, "unmatched": 1, "ambiguous_resolved": 0}
+
+
+def test_a_prt_row_name_wrapped_inside_its_cell_is_rejoined():
+    # Açores (2026-10-25): "PRT52915 Moscatel- Branco" ⏎ "GalegoBranco" is
+    # Moscatel-Galego Branco; read apart it bound Muscat of Alexandria and Alvarinho
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "pt02", Path(__file__).resolve().parents[1] / "scripts" / "pt" / "02_extract_cadernos.py")
+    pt02 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pt02)
+    text = "PRT50518 Merlot Tinto\nPRT52915 Moscatel- Branco\nGalegoBranco\n\n6\n"
+    assert pt02._rejoin_prt_cell_wraps(text) == "PRT50518 Merlot Tinto\nPRT52915 Moscatel-Galego Branco\n\n6\n"
+    assert pt02._rejoin_prt_cell_wraps("PRT50518 Merlot Tinto\n") == "PRT50518 Merlot Tinto\n"

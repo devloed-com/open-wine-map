@@ -32,7 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from _lib.exonyms import exonym_hits, gi_forms_from_names  # noqa: E402
+from _lib.exonyms import _in_quotes, exonym_hits, gi_forms_from_names  # noqa: E402
 from _lib.nl_articles import article_hits  # noqa: E402
 
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
@@ -43,6 +43,9 @@ TARGET_LOCALES = ("en", "fr", "es", "nl")
 
 # Cyrillic + Greek blocks — any hit in a Latin-target cache is a leak.
 NON_LATIN = re.compile(r"[Ѐ-ӿͰ-Ͽ\u1F00-\u1FFF]")  # Cyrillic, Greek, Greek Extended
+# a Greek-letter chemical prefix is chemistry, not residual script ("α-terpineol",
+# "l'α-terpinéol"; the audit's has_non_latin exempts it the same way)
+_CHEM_PREFIX = re.compile(r"\b[αβγδ]-(?=[^\W\d_])")
 
 # Verbatim from docs/plan-terroir-facts-quality.md, section W1.
 LEAK = re.compile(r"(?i)\b(lösz|mészkő|homokkő|argille|argilliti|arenari[ae]|calcar[ei]|marn[ae]|scisti|"
@@ -90,6 +93,7 @@ def _script_for(country: str) -> str:
 
 
 _GI_FORMS: frozenset[str] | None = None
+_INDEX: dict | None = None
 
 
 def _gi_forms() -> frozenset[str]:
@@ -104,17 +108,49 @@ def _gi_forms() -> frozenset[str]:
     return _GI_FORMS
 
 
-def _reasons(bullet: str, lang: str, *, raw: bool) -> list[str]:
+# A source term the translation keeps as a gloss beside its rendering —
+# "lieu-dit (dűlő)", "wijngaardpercelen (dűlő)" — is the translation done
+# right; and a capitalised term opening a proper name ("Podgoria Crucilor",
+# the area's historical name) or a quoted one («Argille Varicolori», a
+# formation) is a name. 2026-10-25: the phase H count had read them as leaks.
+_GLOSS_RE = re.compile(r"\w[\w'’-]*\s*\(\s*$")
+_NAME_FOLLOWS_RE = re.compile(r"^\s+[A-ZÀ-ÝĂÂÎȘȚŞŢ][\w'’-]+")
+
+
+def _own_names(slug: str) -> tuple[str, ...]:
+    """The record's own appellation names — its name, its " ou " aliases and
+    its parent's — for `exonym_hits`."""
+    global _INDEX
+    if _INDEX is None:
+        index = ROOT / "wiki" / "_index.json"
+        _INDEX = json.loads(index.read_text(encoding="utf-8")) if index.exists() else {}
+    names: list[str] = []
+    for s in (slug, (_INDEX.get(slug) or {}).get("parent_slug") or ""):
+        name = (_INDEX.get(s) or {}).get("name") or "" if s else ""
+        if name:
+            names.append(name)
+            names.extend(p.strip() for p in re.split(r"\s+ou\s+|\s*/\s*", name) if p.strip())
+    return tuple(dict.fromkeys(names))
+
+
+def _reasons(bullet: str, lang: str, *, raw: bool, slug: str = "") -> list[str]:
     reasons: list[str] = []
-    m = NON_LATIN.search(bullet)
+    m = NON_LATIN.search(_CHEM_PREFIX.sub("", bullet))
     if m:
         reasons.append(f"non-latin:{m.group(0)}")
-    for form in exonym_hits(bullet, lang, gi_forms=_gi_forms()):
+    own = () if raw or not slug else _own_names(slug)
+    for form in exonym_hits(bullet, lang, gi_forms=_gi_forms(), own_names=own):
         reasons.append(f"exonym:{form}")
     native = set() if raw else _TARGET_NATIVE.get(lang, set())
     for m in LEAK.finditer(bullet):
         tok = m.group(1)
         if not raw and (tok.lower() in native or tok in _PROPER_NOUN_TOKENS):
+            continue
+        if not raw and (
+            (_GLOSS_RE.search(bullet[:m.start()]) and bullet[m.end():].lstrip().startswith(")"))
+            or (tok[:1].isupper() and _NAME_FOLLOWS_RE.match(bullet[m.end():]))
+            or _in_quotes(bullet, m.start(), m.end())
+        ):
             continue
         reasons.append(f"leak:{tok}")
     if lang == "nl":
@@ -134,7 +170,7 @@ def scan(languages: tuple[str, ...], *, raw: bool) -> list[dict]:
             country = _country_of(slug, d, memo)
             for i, fact in enumerate(d.get("facts") or []):
                 bullet = fact.get("bullet") or ""
-                reasons = _reasons(bullet, lang, raw=raw)
+                reasons = _reasons(bullet, lang, raw=raw, slug=slug)
                 if reasons:
                     rows.append({
                         "slug": slug, "lang": lang, "country": country, "index": i,

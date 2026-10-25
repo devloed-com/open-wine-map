@@ -1,0 +1,25 @@
+{
+  "_doc": "Why a card may show two slugs VIVC files under one number (scripts/audit_grape_identity.py, list `shared`). `pairs` is keyed by the sorted slugs joined with '+'; `countries` holds a rule for every pair on that country's cards. Each entry: {decision: keep, reason, source, verified}. A pair with no entry is `review`: fold it in grape_lexicon.py, correct its VIVC pin, or record here why both names stay. Started 2026-10-25 from the phase H re-grade (Castilla, Larnaka): the folds and pins of that day are in grape_lexicon.py (2026-10-25 block) and raw/vivc/slug_overrides.json.",
+  "countries": {
+    "pt": {
+      "decision": "keep",
+      "reason": "The IVV cadernos list each casta of the national list as a row of its own (Duriense: \"Marufo N\", \"Mourisco N\", \"Mourisco Roxo R\"; \"Barreto N\" and \"Bragão\"; \"Jampal B\" and \"Pinheira Branca\"), and VIVC folds several of them as synonyms by DNA. The card follows the regulator's rows; the VIVC bracket says what VIVC holds.",
+      "source": "IVV cadernos de especificações (IG Duriense, Península de Setúbal, Algarve, Tejo, DOC Douro / Porto …)",
+      "verified": "2026-10-25"
+    }
+  },
+  "pairs": {
+    "graciano+tintilla-de-rota": {
+      "decision": "keep",
+      "reason": "MAPA's list (RD 684/2026) still carries \"Tintilla de Rota (T.)\" as an entry beside Graciano; a MAPA draft would make it Graciano's synonym. The lexicon keeps the peninsular Tintilla apart until the decree changes (grape_lexicon.py, `tintilla-de-rota`).",
+      "source": "MAPA, Variedades de uva autorizadas por las CCAA (2026-09-08); modificación RD 1338/2018 (participación pública)",
+      "verified": "2026-10-25"
+    },
+    "spergola+trbljan": {
+      "decision": "keep",
+      "reason": "Castelfranco Emilia's register annex lists Mostosa and Spergola as two rows; VIVC files SPERGOLA and TRBLJAN as synonyms of MOSTOSA #8075, and the corpus' canonical slug for #8075 is the Croatian trbljan.",
+      "source": "MASAF disciplinare Castelfranco Emilia IGT, Allegato (vitigni idonei)",
+      "verified": "2026-10-25"
+    }
+  }
+}

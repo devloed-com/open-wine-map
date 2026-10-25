@@ -271,6 +271,84 @@ def test_menzione_trigger_without_colon_skipped():
     assert extract_menzioni(text, "Chianti") == []
 
 
+def test_menzione_template_field_value_is_not_a_name():
+    # The 2024/1143 "Altre condizioni" block: the trigger is the condition's
+    # title, the first colon a field label, and "Nella legislazione
+    # unionale" its value (Roero's one menzione until 2026-10-24).
+    text = (
+        "Unità geografiche aggiuntive\n"
+        "Quadro di riferimento giuridico:\n"
+        "Nella legislazione unionale\n"
+        "Tipo di condizione supplementare:\n"
+        "Disposizioni supplementari in materia di etichettatura\n"
+        "Descrizione della condizione:\n"
+        "Nella designazione dei vini della DOP Roero è consentito il riferimento a "
+        "«unità geografiche aggiuntive», più piccole, elencate in apposita lista.\n"
+    )
+    assert extract_menzioni(text, "Roero") == []
+
+
+def test_menzione_list_in_the_condition_description_is_read():
+    text = (
+        "Impiego delle Unità Geografiche Aggiuntive\n"
+        "Quadro di riferimento giuridico:\n"
+        "Nella legislazione unionale\n"
+        "Descrizione della condizione:\n"
+        "Terre di Chieti con le seguenti Unità geografiche aggiuntive più piccole: "
+        "Colline Teatine o Teatino, Colline Frentane, Colline del Vastese o Hystonium.\n"
+    )
+    assert _names(extract_menzioni(text, "Cerasuolo d'Abruzzo")) == [
+        "Colline Teatine o Teatino", "Colline Frentane", "Colline del Vastese o Hystonium",
+    ]
+
+
+def test_menzione_comma_list_ends_with_its_sentence():
+    text = (
+        "può essere seguita da una delle seguenti «menzioni geografiche aggiuntive»:\n"
+        "Albesani, Asili, Vicenziana. Le suddette menzioni geografiche aggiuntive "
+        "sono delimitate nell'allegato."
+    )
+    assert _names(extract_menzioni(text, "Barbaresco")) == ["Albesani", "Asili", "Vicenziana"]
+
+
+def test_menzione_trigger_closing_its_sentence_introduces_no_list():
+    # Alto Adige's Santa Maddalena clause: the next colon is the Terlano
+    # sottozona's area, not a list of menzioni.
+    text = (
+        "vino tipico Santa Maddalena unità geografiche aggiuntive Prazöll, St. Peter), "
+        "è consentito l'uso della specificazione aggiuntiva «classico».\n\n"
+        "3.5. «Alto Adige» sottozona «Terlano»: la zona di produzione comprende: "
+        "il territorio dei comuni di Meltina, Tesimo, Caldaro. Essa è composta da due territori."
+    )
+    assert extract_menzioni(text, "Alto Adige") == []
+
+
+def test_menzione_bullet_annex_across_headers_and_page_numbers():
+    # MASAF Allegato A of the Tuscan DOCs: one name per bullet, sub-headers,
+    # blank lines and a page number inside the list.
+    text = (
+        "Allegato A\nElenco delle Menzioni Geografiche Aggiuntive\n\n"
+        "Elenco dei Comuni:\n- Isola del Giglio\n- Monte Argentario\n\n"
+        "                    11\n"
+        "Elenco delle Frazioni:\n\nnel comune di Manciano:\n- Marsiliana\n"
+        "   - Aldein-Aich: vitigni Pinot Bianco, Pinot Nero\n\n"
+        "Allegato 2\nVitigni idonei\n- Barbera N.\n"
+    )
+    assert _names(extract_menzioni(text, "Ansonica Costa dell'Argentario")) == [
+        "Isola del Giglio", "Monte Argentario", "Marsiliana", "Aldein-Aich",
+    ]
+
+
+def test_menzione_bullets_must_follow_the_colon():
+    # A bullet list further down (a section of the disciplinare) is not the
+    # list a trigger introduces.
+    text = (
+        "le unità geografiche aggiuntive di cui all'articolo 7: sono indicate in etichetta.\n"
+        "Art. 4\nNorme per la viticoltura\n- Condizioni naturali dell'ambiente\n"
+    )
+    assert extract_menzioni(text, "Trebbiano d'Abruzzo") == []
+
+
 # ==========================================================================
 # masaf — article carving + Article-2 grape extraction
 # ==========================================================================

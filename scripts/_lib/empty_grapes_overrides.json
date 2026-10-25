@@ -51,5 +51,9 @@
   "zurich": {
     "reason": "LS 916.51 was repealed 01.01.2018 with no successor in the LS (§ 12c of the repealed text kept the register at the Amt für Landschaft und Natur); ZH runs on the federal Weinverordnung + ALN Rebsortenliste.",
     "source": "cantonal règlement, verified 2026-09-20 (CURATOR_TODO, empty-grape audit)"
+  },
+  "zurichsee": {
+    "reason": "Intercantonal AOC (Schwyz / Zürich) since 2026-10-25, no longer Schwyz's sub-denomination: neither canton catalogues a variety locally — Schwyz's règlement defers to the federal OVin, Zürich's LS 916.51 was repealed in 2018 (see `schwyz`, `zurich`).",
+    "source": "the two cantonal entries above; CH stage 02 co_parents (2026-10-25)"
   }
 }

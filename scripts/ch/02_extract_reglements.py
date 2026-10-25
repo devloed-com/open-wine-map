@@ -45,7 +45,12 @@ Sub-denomination model (v1):
 - Tier "régionale" and "locale" entries are tagged is_sub_denomination=true
   with parent_slug = the canton's "cantonale" AOC slug (when present).
 - Intercantonal AOCs (Vully VD/FR; Zürichsee ZH/SZ) are emitted once with
-  `cantons=[primary, secondary]`.
+  `cantons=[primary, secondary]`, and belong to every canton they span, not
+  to the primary one: no sub-denomination, no parent, `co_parents` = the
+  cantonal AOC of each canton that has one (Vully → Vaud, Fribourg having
+  none; Zürichsee → Schwyz and Zürich). Stage 04 lists such a record under
+  each co-parent and lets it inherit from none (2026-10-25 — Zürichsee had
+  been Schwyz's sub-denomination, drawn as Schwyz alone).
 - For VS specifically, the OVV règlement's commune-list parse identifies
   "Grand Cru" communes — per the user-locked scope these become
   per-commune sub-denomination records of the parent Valais AOC.
@@ -70,8 +75,10 @@ from _lib.ch.geometry import CHCommuneIndex  # noqa: E402
 from _lib.ch.ofag_register import slugify  # noqa: E402
 from _lib.ch.per_aoc_carving import (  # noqa: E402
     CARVE_TEXT_BLOCKS,
+    INTERCANTONAL_AREAS,
     PER_AOC_COMMUNE_LISTS,
     VS_GRAND_CRU,
+    resolve_intercantonal_area,
 )
 from _lib.ch.region import region_for_canton  # noqa: E402
 from _lib.ch.reglement import (  # noqa: E402
@@ -260,6 +267,14 @@ def _ofag_source(ofag_meta: dict) -> dict:
     }
 
 
+def _co_parents_for(entry, parents_by_canton) -> list[str]:
+    """The cantonal AOC of every canton an intercantonal AOC spans, where the
+    canton has one; empty for a one-canton AOC."""
+    if entry.tier == "cantonale" or len(entry.cantons) < 2:
+        return []
+    return [slugify(parents_by_canton[c].name) for c in entry.cantons if c in parents_by_canton]
+
+
 def _parent_slug_for(entry, parents_by_canton):
     """Return (parent_slug, parent_name) for non-cantonale tiers."""
     if entry.tier == "cantonale":
@@ -280,6 +295,10 @@ def _build_record(entry, parents_by_canton, canton_data, ofag_source):
     primary_canton = entry.canton
     extract = canton_data.get(primary_canton)
     parent_slug, parent_name = _parent_slug_for(entry, parents_by_canton)
+    intercantonal = entry.tier != "cantonale" and len(entry.cantons) > 1
+    co_parents = _co_parents_for(entry, parents_by_canton)
+    if intercantonal:
+        parent_slug, parent_name = "", ""
     is_sub = bool(parent_slug)
     source_lang = (extract.get("source_lang") if extract
                    else source_lang_for_canton(primary_canton))
@@ -287,6 +306,9 @@ def _build_record(entry, parents_by_canton, canton_data, ofag_source):
     sources = [ofag_source]
     if extract:
         sources.append(extract["source"])
+    for c, part in INTERCANTONAL_AREAS.get(slug, {}).items():
+        sources.append({"kind": "cantonal-area-ruling", "canton": c,
+                        "label": part["source"], "url": part["url"]})
 
     grapes = (extract.get("varieties") if extract else []) or []
     ref_canton, applied_by = ROSTER_BY_REFERENCE.get(primary_canton, ("", ""))
@@ -317,10 +339,11 @@ def _build_record(entry, parents_by_canton, canton_data, ofag_source):
     carved = per_aoc_map.get(slug)
     if carved:
         communes = carved
-    elif is_sub:
+    elif is_sub or intercantonal:
         # Sub-denomination without carved data — let stage 04 inherit
         # the parent's polygon rather than over-broadly using the
-        # canton-wide commune union.
+        # canton-wide commune union. An intercantonal AOC without a carved
+        # list is drawn by stage 04 from every canton it spans.
         communes = []
     else:
         # Cantonale (parent): canton-wide commune scan is correct.
@@ -340,6 +363,7 @@ def _build_record(entry, parents_by_canton, canton_data, ofag_source):
         "parent_slug": parent_slug,
         "parent_name": parent_name,
         "parent_canton": primary_canton if is_sub else "",
+        "co_parents": co_parents,
         "region": region_for_canton(primary_canton),
         "sources": sources,
         "section_roles": {
@@ -380,6 +404,20 @@ def main() -> int:
     for e in entries:
         if e.tier == "cantonale":
             parents_by_canton.setdefault(e.canton, e)
+
+    # An intercantonal AOC's area as each canton's text delimits it, carved
+    # onto its primary canton's extract (the per-AOC list _build_record reads).
+    for e in entries:
+        slug = slugify(e.name)
+        if slug not in INTERCANTONAL_AREAS or e.canton not in canton_data:
+            continue
+        communes, misses = resolve_intercantonal_area(slug, commune_idx)
+        if misses:
+            print(f"[02-ch] {slug}: area names that resolve to nothing: {misses}", file=sys.stderr)
+        if communes:
+            canton_data[e.canton].setdefault("per_aoc_communes", {})[slug] = communes
+            print(f"[02-ch] {slug}: {len(communes)} communes from "
+                  f"{', '.join(INTERCANTONAL_AREAS[slug])} texts", file=sys.stderr)
 
     records: list[dict] = []
     by_kind = Counter()
@@ -481,6 +519,7 @@ def main() -> int:
             "tier": rec["tier"], "source_lang": rec["source_lang"],
             "is_sub_denomination": rec["is_sub_denomination"],
             "parent_slug": rec["parent_slug"],
+            "co_parents": rec.get("co_parents") or [],
             "region": rec["region"], "n_grapes": rec["n_grapes"],
             "n_communes": rec["n_communes"],
         }

@@ -117,11 +117,13 @@ def _name_at(text: str, start: int, table: dict[str, str]) -> str | None:
 # An empty value means "no region" — the wine appears top-level in the
 # appellation list but doesn't get bucketed under any region heading.
 # Use this for genuinely multi-region wines (Cava spans Catalonia,
-# Aragón, Rioja, Navarra, Extremadura, País Vasco, Valencia; the
-# Castilla IGP spans 5 CCAAs).
+# Aragón, Rioja, Navarra, Extremadura, País Vasco, Valencia).
 CCAA_OVERRIDES: dict[str, str] = {
     "cava": "",
-    "castilla": "",
+    # The Castilla IGP is Castilla-La Mancha's ("los términos municipales del
+    # territorio de Castilla-La Mancha", its single document's §6); the
+    # override had read its five provinces as five CCAAs (2026-10-25).
+    "castilla": "Castilla-La Mancha",
     "islas-canarias": "Canarias",  # umbrella DOP for the islands
     # Cataluña DOPs (the pliegos tend to use Catalan-language place names
     # that don't trigger our Spanish "provincia de" regex)

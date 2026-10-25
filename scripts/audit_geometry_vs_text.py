@@ -66,6 +66,7 @@ SWISS_GPKG = sorted((ROOT / "raw" / "ch" / "swisstopo").glob("swissboundaries3d_
 CAOP_CONT = ROOT / "raw" / "pt" / "caop" / "Continente_CAOP2025.gpkg"
 ONS_COUNTIES = ROOT / "raw" / "gb" / "ons" / "counties.geojson"
 OVERRIDES = ROOT / "scripts" / "_lib" / "geometry_text_overrides.json"
+NUTS3 = ROOT / "raw" / "gr" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_3.geojson"
 REPORT_DIR = ROOT / "tmp" / "validation"
 LLM_CACHE = ROOT / "raw" / "cache" / "geometry-text-llm"
 
@@ -177,7 +178,33 @@ def load_lau(countries: set[str]) -> Layer:
         layer.add(row.GISCO_ID, row.LAU_NAME or "", row.geometry, cntr=row.CNTR_CODE)
     layer.build()
     log(f"LAU: {len(layer.ids)} units for {sorted(codes)}")
+    if "RO" in codes:
+        _tag_ro_judete(layer)
     return layer
+
+
+def _tag_ro_judete(layer: Layer) -> None:
+    """Each RO unit's județ, read off the GISCO NUTS-3 polygons — the county
+    masks stage 04's resolver holds a header's names to."""
+    if not NUTS3.exists():
+        log(f"{NUTS3} missing — RO names are scoped by distance only")
+        return
+    from _lib.ro.commune import _normalise_commune as ro_norm
+    from shapely.prepared import prep
+    masks = []
+    for f in json.loads(NUTS3.read_text(encoding="utf-8"))["features"]:
+        p = f.get("properties") or {}
+        if p.get("CNTR_CODE") == "RO" and f.get("geometry"):
+            masks.append((ro_norm(p.get("NUTS_NAME") or ""), prep(shp_transform(_to_3035, shape(f["geometry"])))))
+    for i, ex in enumerate(layer.extra):
+        if ex.get("cntr") != "RO":
+            continue
+        pt = layer.geoms[i].representative_point()
+        for key, m in masks:
+            if m.contains(pt):
+                ex["judet"] = key
+                break
+    layer.ro_judete = True
 
 
 def load_ign() -> Layer:
@@ -313,6 +340,47 @@ def _pick_near(layer: Layer, hits: list[int], geom) -> list[int]:
     return [i for i in hits if layer.geoms[i].intersects(near)]
 
 
+def _bg_oblast_hits(layer: Layer, name: str, prefix: str) -> list[int]:
+    """A BG obshtina name among one oblast's units: exact, then with the
+    spaces closed ("Вълчидол" / Вълчи дол), then a one-letter abbreviation
+    ("Д. Митрополия" / Долна Митрополия) when it names one unit only."""
+    pool = [i for i, uid in enumerate(layer.ids) if uid.startswith(prefix)]
+    key = norm(name)
+    hits = [i for i in pool if norm(layer.names[i]) == key]
+    if hits:
+        return hits
+    hits = [i for i in pool if norm(layer.names[i]).replace(" ", "") == key.replace(" ", "")]
+    if hits:
+        return hits
+    words = key.split()
+    if any(len(w) == 1 for w in words):
+        pat = re.compile(r"\s+".join(re.escape(w) + (r"\w*" if len(w) == 1 else "") for w in words) + "$")
+        hits = [i for i in pool if pat.match(norm(layer.names[i]))]
+        if len(hits) == 1:
+            return hits
+    return []
+
+
+def with_national_spec(country: str, slug: str, rec: dict) -> dict:
+    """A national-spec stub's area as stage 04 draws it: the augmenter copies
+    the sidecar's commune list onto the record (BG Тракийска низина, the RO
+    caiet stubs), so the audit reads it from there too."""
+    if rec.get("geo_communes"):
+        return rec
+    for kind, _label, d in card_packet.SIDECAR_DIRS.get(country, ()):
+        if kind != "national-spec":
+            continue
+        sc = card_packet.load_json(d / f"{slug}.json") or {}
+        if sc.get("geo_communes"):
+            rec = dict(rec)
+            for k in ("geo_communes", "geo_communes_scoped", "geo_communes_partial", "geo_communes_villages",
+                      "geo_area_brief"):
+                if sc.get(k):
+                    rec[k] = sc[k]
+            return rec
+    return rec
+
+
 def named_units(country: str, slug: str, rec: dict, startup: dict, payload: dict, layer: Layer | None,
                 fr_aires=None, dept_codes: dict | None = None, geom=None) -> dict:
     """{ids, unresolved, above_commune, far, method} — the units the text
@@ -388,6 +456,66 @@ def named_units(country: str, slug: str, rec: dict, startup: dict, payload: dict
         return out
     cc = LAU_CC.get(country)
     near = geom.buffer(HOMONYM_KM * 1000) if geom is not None else None
+    scoped = rec.get("geo_communes_scoped") if out["method"] == "record-geo_communes" else None
+    if scoped and country == "ro" and getattr(layer, "ro_judete", False):
+        # a name the text lists under "Judeţul X" is X's: the village Oneşti
+        # of comuna Plugari (Iaşi) is not Municipiul Oneşti (Bacău), however
+        # close; names under no header take the record's declared județe —
+        # stage 04's rule (ROPolygonIndex.commune_union), the spellings of
+        # its checked alias table included
+        from _lib.ro.commune import _SPELLING_ALIASES, judet_source_text, parse_judet_list
+        from _lib.ro.commune import _normalise_commune as ro_norm
+        record_judete = set(parse_judet_list(judet_source_text(rec)))
+
+        def ro_hits(name: str, own: set[str]) -> list[int]:
+            key = ro_norm(name)
+            key = _SPELLING_ALIASES.get(key, key)
+            hits = [i for i in layer._by_norm.get(norm(key), []) if layer.extra[i].get("cntr") == "RO"]
+            if own:
+                return [i for i in hits if layer.extra[i].get("judet") in own]
+            return _pick_near(layer, hits, geom) if len(hits) > 1 else hits
+
+        # a name the text gives only as a village names a commune only where
+        # that commune touches the village's own (a 2004 split) — the
+        # resolver's rule, `ROPolygonIndex.commune_union`
+        village_of: dict[str, list[str]] = defaultdict(list)
+        for v, h in rec.get("geo_communes_villages") or []:
+            village_of[norm(ro_norm(v))].append(h)
+        for n, judete in scoped:
+            own = set(judete or []) or record_judete
+            hits = ro_hits(n, own)
+            if len(hits) == 1 and norm(ro_norm(n)) in village_of:
+                heads = [h for hn in village_of[norm(ro_norm(n))] for h in ro_hits(hn, own)[:1]]
+                if not any(layer.geoms[hits[0]].distance(layer.geoms[h]) < 200 for h in heads):
+                    continue
+            if len(hits) == 1:
+                out["ids"].add(layer.ids[hits[0]])
+            elif hits:
+                out["unresolved"].append(f"{n} (×{len(hits)} in-județ)")
+            else:
+                out["unresolved"].append(n)
+        out["method"] += "+judet-scoped"
+        return out
+    if scoped and country == "bg":
+        # the text's own oblast header scopes each name (BG_VAR… = област
+        # Варна): two obshtini are called Бяла, and a named obshtina far
+        # from the polygon is the text's, so it counts as missing, not far
+        from _lib.bg.commune import OBSHTINA_GROUPS
+        from _lib.bg.commune import _normalise_commune as bg_norm
+        for n, code in scoped:
+            group = OBSHTINA_GROUPS.get((bg_norm(n), code or ""))
+            if group:
+                # one name the regulator writes for several obshtini (Добрич)
+                for m in group:
+                    out["ids"].update(layer.ids[i] for i in _bg_oblast_hits(layer, m, f"BG_{code}")[:1])
+                continue
+            hits = _bg_oblast_hits(layer, n, f"BG_{code}") if code else layer.by_name(n, within={"cntr": cc})
+            if len(hits) == 1:
+                out["ids"].add(layer.ids[hits[0]])
+            else:
+                out["unresolved"].append(n + (f" (×{len(hits)})" if hits else ""))
+        out["method"] += "+oblast-scoped"
+        return out
     for n in names:
         if country == "hu" and norm(n) in HU_COUNTIES:
             out["above_commune"].append(n)
@@ -410,19 +538,39 @@ def named_units(country: str, slug: str, rec: dict, startup: dict, payload: dict
 # ───────────────────────────────────────────────────────── LLM read ──
 
 LLM_SYSTEM = """You read a wine appellation's delimitation text (the regulator's own words) and list the administrative units it names. Return JSON only:
-{"members": [{"name": "", "level": "municipality|parish|district|province|region|department|canton|other", "quote": ""}], "excluded": [{"name": "", "level": "", "quote": ""}], "holders": [{"name": "", "level": "", "quote": ""}]}
+{"members": [{"name": "", "level": "municipality|parish|village|district|province|region|department|canton|other", "parent": "", "quote": ""}], "excluded": [{"name": "", "level": "", "parent": "", "quote": ""}], "holders": [{"name": "", "level": "", "parent": "", "quote": ""}]}
 - members: units whose whole territory is included. A unit named as a whole ("the whole of the province of X", "l'intero territorio comunale di X") is a member at its level.
+- A municipality listed with its villages ("Comuna X, satele X, A, B", "X cu satele …") is one member at municipality level; do not list its villages. A village named on its own, without its municipality, is a member at village level.
+- parent: the county / province / oblast / district heading or phrase the text files the unit under ("Judeţul Iaşi", "Област Варна"), else "".
 - excluded: units the text excludes.
 - holders: units named only as the container of smaller units ("the parishes A and B of the municipality X" → X is a holder, A and B members at parish level; "the parcels of section C in commune Y" → Y is a holder).
 Boundary prose (roads, rivers, ridges, "follows the line from A to B") names landmarks, not members — skip it. Keep the regulator's spelling; one quote (≤ 120 chars) per unit. No text before or after the JSON."""
 
 
-def llm_named_units(country: str, slug: str, text: str, layer: Layer, provider, model: str, cache_dir: Path) -> dict:
+def _llm_scope(country: str, layer: Layer, hits: list[int], parent: str, geom) -> list[int]:
+    """Hold an LLM-named unit to the county / oblast it reported, as the
+    deterministic side does; without one, a homonym is taken within
+    HOMONYM_KM of the polygon."""
+    if parent and country == "ro" and getattr(layer, "ro_judete", False):
+        from _lib.ro.commune import _county_prefix
+        key, _n = _county_prefix(re.sub(r"(?i)^\s*(?:\d[\d.]*\s*)?(?:jude[țţt](?:ul|ului)?|jud\.)\s*", "", parent))
+        if key:
+            return [i for i in hits if layer.extra[i].get("judet") == key]
+    if parent and country == "bg":
+        from _lib.bg.commune import oblast_code
+        code = oblast_code(re.sub(r"(?i)^\s*област\s+", "", parent))
+        if code:
+            return [i for i in hits if layer.ids[i].startswith(f"BG_{code}")]
+    return _pick_near(layer, hits, geom) if len(hits) > 1 else hits
+
+
+def llm_named_units(country: str, slug: str, text: str, layer: Layer, provider, model: str, cache_dir: Path,
+                    geom=None) -> dict:
     import hashlib
 
     from _lib import llm_json
     from _lib.prompt_cache import mark_cached
-    key = hashlib.sha256(f"{model}|{text}".encode("utf-8")).hexdigest()[:24]
+    key = hashlib.sha256(f"{model}|{LLM_SYSTEM}|{text}".encode("utf-8")).hexdigest()[:24]
     cache_dir.mkdir(parents=True, exist_ok=True)
     cp = cache_dir / f"{key}.json"
     data = None
@@ -432,16 +580,29 @@ def llm_named_units(country: str, slug: str, text: str, layer: Layer, provider, 
         except ValueError:
             data = None
     if data is None:
-        raw = provider.chat(system=mark_cached(LLM_SYSTEM), user=f"COUNTRY: {country}\nRECORD: {slug}\n\nDELIMITATION TEXT:\n{text[:40000]}", max_tokens=6000)
+        # the answer lists every unit with a quote: a 10,000-character
+        # commune list (Dealurile Moldovei, ~200 communes) needs room for it
+        # beside the model's thinking, or the JSON comes back cut off — and
+        # a Cyrillic or Greek text costs about three times the tokens
+        # (Дунавска равнина's 3,500 characters name ~300 units)
+        per_char = 1 if text.isascii() or country not in ("bg", "gr", "cy") else 3
+        raw = provider.chat(system=mark_cached(LLM_SYSTEM), user=f"COUNTRY: {country}\nRECORD: {slug}\n\nDELIMITATION TEXT:\n{text[:40000]}",
+                            max_tokens=min(32000, 6000 + per_char * len(text[:40000])))
         s = llm_json.strip_fences(raw or "")
         try:
             data = json.loads(s)
         except ValueError:
             m = re.search(r"\{.*\}", s, re.S)
-            data = json.loads(m.group(0)) if m else {}
-        if raw:
+            try:
+                data = json.loads(m.group(0)) if m else {}
+            except ValueError:
+                data = {}
+        if raw and data:
+            # never cache a truncated or unparsed answer as "names nothing"
             cp.write_text(json.dumps(data, ensure_ascii=False) + "\n", encoding="utf-8")
-    out = {"ids": set(), "unresolved": [], "above_commune": [], "excluded_ids": set(), "holders": []}
+        elif raw:
+            log(f"{slug}: LLM answer did not parse ({len(raw)} chars) — not cached")
+    out = {"ids": set(), "unresolved": [], "above_commune": [], "below_commune": [], "excluded_ids": set(), "holders": []}
     cc = LAU_CC.get(country)
     for m in data.get("members") or []:
         if not isinstance(m, dict) or not m.get("name"):
@@ -449,7 +610,16 @@ def llm_named_units(country: str, slug: str, text: str, layer: Layer, provider, 
         if (m.get("level") or "") in ("province", "region", "department", "district", "canton"):
             out["above_commune"].append(m["name"])
             continue
+        if (m.get("level") or "") == "village" and country in ("ro", "bg", "hu"):
+            # below the LAU tier of these layers: no unit to compare
+            out["below_commune"].append(m["name"])
+            continue
         hits = layer.by_name(m["name"], within={"cntr": cc} if cc else None)
+        if country == "bg" and not hits and m.get("parent"):
+            from _lib.bg.commune import oblast_code
+            code = oblast_code(re.sub(r"(?i)^\s*област\s+", "", m["parent"]))
+            hits = _bg_oblast_hits(layer, m["name"], f"BG_{code}") if code else []
+        hits = _llm_scope(country, layer, hits, m.get("parent") or "", geom)
         if len(hits) == 1:
             out["ids"].add(layer.ids[hits[0]])
         else:
@@ -591,7 +761,7 @@ def main() -> int:
         if rec is None and rec_s.get("parent_slug"):
             prp = card_packet.record_path(cc, rec_s["parent_slug"])
             rec = card_packet.load_json(prp) if prp else None
-        rec = rec or {}
+        rec = with_national_spec(cc, slug, rec or {})
         row = {"slug": slug, "country": cc, "name": rec_s.get("name"), "geom_source": rec_s.get("geom_source"),
                "is_sub_denomination": bool(rec_s.get("is_sub_denomination")), "parent_slug": rec_s.get("parent_slug") or ""}
         if geom is None:
@@ -616,10 +786,12 @@ def main() -> int:
         if args.llm and provider is not None:
             text = area_text(cc, rec) if cc != "fr" else ((rec.get("section_roles") or {}).get("aire") or "")
             if text.strip():
-                lu = llm_named_units(cc, slug, text, layer, provider, model, LLM_CACHE)
+                lu = llm_named_units(cc, slug, text, layer, provider, model, LLM_CACHE, geom=geom)
                 lb, ld = classify(rec_s.get("geom_source") or "", lu["ids"], drawn_whole, drawn_part, named_above=lu["above_commune"])
                 detail["llm"] = {"bucket": lb, "named": len(lu["ids"]), "missing": ld["missing"][:20], "extra": ld["extra"][:20],
                                  "unresolved": lu["unresolved"][:20], "above_commune": lu["above_commune"][:10],
+                                 "villages": len(lu["below_commune"]),
+                                 "parser_only": sorted(nu["ids"] - lu["ids"])[:30], "llm_only": sorted(lu["ids"] - nu["ids"])[:30],
                                  "agrees_with_parser": lu["ids"] == nu["ids"] if nu["ids"] else None}
                 if bucket in ("NO-UNITS", "ABOVE-COMMUNE", "NO-TEXT") and lu["ids"]:
                     bucket = lb

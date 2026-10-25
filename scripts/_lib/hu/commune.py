@@ -54,6 +54,10 @@ _PROSE_TOKENS = frozenset({
     "borvidék", "borvidéki", "következő", "alábbi", "alábbiak",
     "lehatárolt", "körülhatárolt", "földrajzi", "valamint", "egész",
     "közigazgatási", "külterülete", "belterülete",
+    # "kivéve a termékleírás térképi mellékletén jelölt területek" (Debrői
+    # hárslevelű) — an exclusion by map, reached once every group is read
+    "területek", "kivéve", "termékleírás", "térképi", "mellékletén",
+    "mellékletében", "melléklet", "jelölt", "határrészeibe", "határrészei",
 })
 
 
@@ -68,33 +72,56 @@ def _normalise_commune(name: str) -> str:
     return s.casefold()
 
 
-def parse_commune_list(text: str) -> list[str]:
-    """Extract settlement names from a Hungarian Egységes Dokumentum
-    area body. Returns a deduped list of candidate names (original form,
-    order preserved) that `HUPolygonIndex.commune_union` resolves."""
-    if not text:
-        return []
-    # Cut the cadastre-qualifier tail ("… településeknek a szőlő
-    # termőhelyi kataszter szerint …") so only the name list survives.
-    body = _DESCRIPTOR_TAIL_RE.sub("", text).strip(_EDGE_STRIP)
-    if not body:
-        return []
-    seen: set[str] = set()
+# "Települések:", "1. CLASSICUS BOROK:", "Pest megye:" — a heading ends at
+# its colon and names no settlement; what precedes it since the last comma
+# or full stop is dropped.
+_HEADING_RE = re.compile(r"(?:^|(?<=[,;.:\n]))[^,;.:\n]*:")
+_MARKER_RE = re.compile(r"\btelepül[eé]s\w*\b", re.IGNORECASE)
+
+
+def _chunks(body: str) -> list[str]:
     out: list[str] = []
     for raw in _SPLIT_RE.split(body):
         chunk = _TIER_PREFIX_RE.sub("", (raw or "").strip(_EDGE_STRIP))
         chunk = chunk.strip(_EDGE_STRIP)
-        if not chunk:
-            continue
         key = _normalise_commune(chunk)
-        if not key or key in seen:
-            continue
-        if any(tok in _PROSE_TOKENS for tok in key.split()):
+        if not key or any(tok in _PROSE_TOKENS for tok in key.split()):
             continue
         # Hungarian settlement names are rarely > 3 whitespace tokens;
         # longer chunks are prose.
         if len(key.split()) > 3 or len(key) < 3 or not key[0].isalpha():
             continue
-        seen.add(key)
         out.append(chunk)
+    return out
+
+
+def parse_commune_list(text: str) -> list[str]:
+    """Extract settlement names from a Hungarian Egységes Dokumentum
+    area body. Returns a deduped list of candidate names (original form,
+    order preserved) that `HUPolygonIndex.commune_union` resolves.
+
+    A name list ends at "… település(ek)(nek)" and the cadastre qualifier
+    follows. A text can carry several such groups — one per wine tier
+    (Eger's Classicus and Superior lists) or one per hill, "Monor
+    településen a Strázsa-hegy, Monor, Monorierdő és Bénye településen a
+    Száraz-hegy, Gomba településen Harc-völgy dőlőknek …" — so every group
+    is read, a later group from after the earlier one's qualifier or hill
+    (its first comma); until 2026-10-24 the first marker ended the list
+    (Monor read Monor alone, Tolna's "Települések: Aba, …" nothing)."""
+    if not text:
+        return []
+    body = _HEADING_RE.sub(",", text)
+    parts = _MARKER_RE.split(body)
+    groups = parts[:-1] if len(parts) > 1 else parts
+    seen: set[str] = set()
+    out: list[str] = []
+    for k, part in enumerate(groups):
+        if k:
+            # the previous group's qualifier or hill runs to the first comma
+            part = part.split(",", 1)[1] if "," in part else ""
+        for chunk in _chunks(part):
+            key = _normalise_commune(chunk)
+            if key not in seen:
+                seen.add(key)
+                out.append(chunk)
     return out

@@ -82,16 +82,32 @@ def _share_quote(a: dict, b: dict) -> bool:
 def _norm_name(s: str) -> str:
     s = unicodedata.normalize("NFKD", s or "")
     s = "".join(c for c in s if not unicodedata.combining(c))
-    return " ".join(s.casefold().split())
+    # a hyphen is a space: the register writes "Côtes-de-l'Orbe", a bullet "Côtes de l'Orbe"
+    return " ".join(s.casefold().replace("-", " ").split())
+
+
+# A bullet may name its sub-denomination behind a wrapper — "L'appellation
+# Bonvillars se situe …", "Le vignoble de Chablais s'étend …" (the Vaud bullets
+# shown on every Vaud sub-appellation card until 2026-10-25). Matched on the
+# `_norm_name` form (accents and case folded, hyphens read as spaces).
+_NAME_WRAPPER_RE = re.compile(
+    r"^(?:(?:l['’]|le |la |les |the |el |il |lo |los |las |o |a |het |de |die |der |das )\s*)?"
+    r"(?:appellation|vignoble|denomination|denominacion|denominazione|sottozona|subzona|sub-regiao"
+    r"|vineyards?|wine region|aire)(?:\s+(?:de |d['’]|du |des |of |del |di |da |do |van ))?\s*"
+)
 
 
 def _leads_with_name(bullet: str, name: str) -> bool:
-    """Mirror of stage 04's sibling test (`_leads_with_name` in
-    04_build_maps.py): the bullet starts with the name as a whole word."""
+    """The sibling test stage 04 renders with (`annotate_inherited_facts`) and
+    the dedupe keeps two bullets apart by: the bullet starts with the name as
+    a whole word, or after a wrapper ("L'appellation X", "Le vignoble de X")."""
     nb, nn = _norm_name(bullet), _norm_name(name)
-    if not nn or not nb.startswith(nn):
+    if not nn:
         return False
-    return len(nb) == len(nn) or not nb[len(nn)].isalnum()
+    for cand in (nb, _NAME_WRAPPER_RE.sub("", nb, count=1)):
+        if cand.startswith(nn) and (len(cand) == len(nn) or not cand[len(nn)].isalnum()):
+            return True
+    return False
 
 
 def _lead_name(bullet: str, names: Iterable[str]) -> str | None:

@@ -125,7 +125,8 @@ _GEOGRAPHY = (
     "Piemonte → Piedmont / Piëmont / Piamonte; Sicilia → Sicily / Sicilië / Sicile; Sardegna → "
     "Sardinia / Sardinië / Sardaigne / Cerdeña; Bourgogne → Burgundy / Bourgondië / Borgoña as "
     "the region; Alsace → Elzas / Alsacia as the region; Wien → Vienna / Wenen / Vienne / Viena "
-    "as the city; Steiermark → Styria / Stiermarken / Styrie / Estiria; Danube Plain → Danubian "
+    "as the city and as the wine region named after it (\"Weinbaugebiet Wien\" → \"the Vienna "
+    "wine-growing region\", verbatim only as the appellation's name «Wien»); Steiermark → Styria / Stiermarken / Styrie / Estiria; Danube Plain → Danubian "
     "Plain / Donauvlakte / Llanura del Danubio / plaine du Danube. When the target language "
     "has no established form, keep the source form."
 )

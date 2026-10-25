@@ -33,8 +33,8 @@ from __future__ import annotations
 
 import re
 
-from .commune import parse_commune_list, parse_commune_list_scoped
-from .document_unic import COLOUR_BY_KEYWORD, STYLE_MARKERS
+from .commune import parse_commune_list, parse_commune_list_scoped, village_heads
+from .document_unic import STYLE_MARKERS, colour_styles
 
 # Late import — grape_entity lives one package up. Imported lazily inside
 # the function to keep this module importable without the heavy lexicon
@@ -210,17 +210,16 @@ def parse_styles(bodies: dict[str, str], grapes: dict) -> list[str]:
     blob = " ".join(
         bodies.get(r, "") for r in ("summary", "description", "grape_varieties")
     )
-    found: set[str] = set()
-    for kw, colour_slug in COLOUR_BY_KEYWORD.items():
-        if re.search(rf"\b{re.escape(kw)}\b", blob, re.I):
-            found.add(colour_slug)
+    found: set[str] = colour_styles(blob)
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(blob):
             found.add(slug)
     # Backstop: colour from the matched grapes (a caiet whose section I
-    # doesn't name colours still implies them via the variety list).
-    _colour_to_style = {"blanc": "blanc", "noir": "rouge", "gris": "rose",
-                        "rose": "rose"}
+    # doesn't name colours still implies them via the variety list). A gris
+    # or rose berry makes white wine: rosé comes from the text, never from a
+    # berry (2026-10-25, the phase-B rule of the other readers).
+    _colour_to_style = {"blanc": "blanc", "noir": "rouge", "gris": "blanc",
+                        "rose": "blanc"}
     for d in grapes.get("details") or []:
         s = _colour_to_style.get(d.get("colour") or "")
         if s:
@@ -252,6 +251,7 @@ def parse_caiet(text: str, slug: str) -> dict:
         "geo_area_brief": _derive_summary(geo_area, max_chars=2000),
         "geo_communes": geo_communes,
         "geo_communes_scoped": [[n, j] for n, j in geo_scoped],
+        "geo_communes_villages": [[v, h] for v, h in village_heads(geo_area)],
         "link_to_terroir": link,
         "styles": parse_styles(bodies, grapes),
         "section_roles": {

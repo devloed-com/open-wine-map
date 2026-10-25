@@ -30,7 +30,12 @@ Writes: raw/vivc/search/<slug>.html          (cached search response)
         raw/vivc/manifest.json
         raw/vivc/slug_overrides.example.json (ambiguous-slug curator queue)
 
-Re-runnable: cached HTML + by-slug JSON skipped unless --refresh.
+Re-runnable: search and passport HTML are cached (re-fetched with
+--refresh), but every run re-resolves every selected slug and rewrites its
+by-slug JSON. The query is the first corpus spelling met, so a re-extraction
+can change it; a query that misses keeps the slug's earlier resolution
+("kept-resolved") rather than writing a miss over it. A partial run
+(--only / --limit) leaves the manifest and the curator queue alone.
 """
 
 from __future__ import annotations
@@ -249,6 +254,21 @@ def _resolve_one(
     search_html = _cached_search(session, slug, query, refresh)
     rows = parse_search_results(search_html)
     row, status = pick_best(rows, query)
+    if row is None and not refresh:
+        # Every run re-resolves every slug from the corpus spelling it meets
+        # first, against a search cached by slug — a spelling that changed
+        # with a re-extraction (the Greek one after the Cypriot run,
+        # "blauer limberger") made a miss of 17 resolved slugs on 2026-10-25,
+        # Blaufränkisch and Catarratto among them. A miss never replaces a
+        # resolution; --refresh re-resolves from a fresh search.
+        try:
+            prior = json.loads(out_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            prior = {}
+        if isinstance(prior.get("vivc_id"), int) and prior["vivc_id"]:
+            print(f"[02g] {slug}: query {query!r} misses; kept #{prior['vivc_id']} "
+                  f"({prior.get('prime_name')})", file=sys.stderr)
+            return prior, "kept-resolved"
     if row is None:
         # Persist a miss record so audit_grape_coverage can see it.
         rec = {
@@ -417,6 +437,13 @@ def main() -> int:
     session.headers.update({"User-Agent": UA})
 
     buckets, ambiguous = _run_loop(session, slugs, overrides, args)
+    # A partial run (--only / --limit) resolves its slugs and leaves the
+    # corpus summaries alone: until 2026-10-25 `--only X` rewrote the
+    # manifest as a one-slug corpus and the curator queue as its ambiguities.
+    if args.only or args.limit:
+        print(f"[02g] partial run: buckets={dict(sorted(buckets.items()))}; "
+              "manifest and curator queue left as they were", file=sys.stderr)
+        return 0
 
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),

@@ -129,6 +129,63 @@ FR_PER_AOC_COMMUNES: dict[str, list[str]] = {
 }
 
 
+# ──────────────────────────────────────────── intercantonal areas ──
+
+# An AOC that spans cantons is delimited by each canton for its own side
+# (Weinverordnung Art. 21 Abs. 3: one geographic unit, the same
+# requirements), so its area is listed canton by canton, each with the
+# text that delimits it. Stage 02 resolves the communes / districts to BFS
+# ids; stage 04 draws their union (2026-10-25 — until then Zürichsee was
+# drawn as Schwyz alone, then as both cantons whole).
+INTERCANTONAL_AREAS: dict[str, dict[str, dict]] = {
+    "zurichsee": {
+        "zh": {
+            # "«Zürichsee» (umfasst das Gebiet der Bezirke Meilen, Horgen, Uster,
+            # Pfäffikon, Hinwil, Affoltern und Stadt Zürich)" — Ziff. III.
+            "bezirke": ["Meilen", "Horgen", "Uster", "Pfäffikon", "Hinwil", "Affoltern", "Zürich"],
+            "source": "Baudirektion Kanton Zürich, Amt für Landschaft und Natur, Verfügung vom "
+                      "26. Juni 2020 (Rebbau), Ziff. III Geographische Gebiete",
+            "url": "https://redaktion.strickhof.ch/server/api/dokument/GetDokument?id=607",
+        },
+        "sz": {
+            # "Bezirk Höfe: Freienbach, Wollerau, Feusisberg. Bezirk March:
+            # Altendorf, Lachen, Galgenen, Wangen, Schübelbach, Tuggen,
+            # Reichenburg." — Ziff. 2.1 (March without Innerthal, Vorderthal).
+            "communes": ["Freienbach", "Wollerau", "Feusisberg", "Altendorf", "Lachen", "Galgenen",
+                         "Wangen (SZ)", "Schübelbach", "Tuggen", "Reichenburg"],
+            "source": "Amt für Landwirtschaft des Kantons Schwyz, Allgemeinverfügung «AOC Zürichsee» "
+                      "vom 28. Juli 2025, Ziff. 2.1 Geografische Abgrenzung",
+            "url": "https://www.sz.ch/public/upload/assets/47307/Allgemeinverfuegung_Betreffend_AOC_Zuerichsee.pdf",
+        },
+    },
+}
+
+
+def resolve_intercantonal_area(slug: str, commune_idx) -> tuple[list[dict], list[str]]:
+    """(communes, names that resolve to nothing) of one intercantonal AOC,
+    every commune held to its canton."""
+    out: list[dict] = []
+    misses: list[str] = []
+    seen: set[int] = set()
+    for canton, part in INTERCANTONAL_AREAS.get(slug, {}).items():
+        hits: list[dict] = []
+        for bez in part.get("bezirke") or []:
+            found = commune_idx.in_bezirk(canton, bez)
+            hits += found
+            if not found:
+                misses.append(f"{canton}:Bezirk {bez}")
+        for name in part.get("communes") or []:
+            found = [h for h in commune_idx.lookup(name) if h["canton"] == canton]
+            hits += found
+            if not found:
+                misses.append(f"{canton}:{name}")
+        for h in hits:
+            if h["bfs_id"] not in seen:
+                seen.add(h["bfs_id"])
+                out.append(h)
+    return out, misses
+
+
 # ──────────────────────────────────────────────── VS Grand Cru ──
 
 # Valais Grand Cru per-commune sub-denomination roster, homologated

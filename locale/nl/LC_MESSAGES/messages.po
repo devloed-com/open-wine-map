@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  open-wine-map\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-23 21:13+0200\n"
+"POT-Creation-Date: 2026-10-25 12:10+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: nl\n"
@@ -176,7 +176,7 @@ msgstr "Hoofddruivenrassen"
 msgid "Cépages accessoires"
 msgstr "Aanvullende druivenrassen"
 
-#: scripts/_lib/map_template.py:103 scripts/_lib/map_template.py:542
+#: scripts/_lib/map_template.py:103 scripts/_lib/map_template.py:559
 msgid "Cépages"
 msgstr "Druivenrassen"
 
@@ -340,12 +340,12 @@ msgstr "Stijlen"
 msgid "Variétés d'intérêt"
 msgstr "Variëteiten van belang"
 
-#: scripts/_lib/map_template.py:142 scripts/_lib/map_template.py:479
-#: scripts/_lib/map_template.py:545
+#: scripts/_lib/map_template.py:142 scripts/_lib/map_template.py:496
+#: scripts/_lib/map_template.py:562
 msgid "Sources"
 msgstr "Bronnen"
 
-#: scripts/_lib/map_template.py:143 scripts/_lib/map_template.py:543
+#: scripts/_lib/map_template.py:143 scripts/_lib/map_template.py:560
 msgid "Terroir"
 msgstr "Terroir"
 
@@ -588,7 +588,7 @@ msgstr ""
 "Plaats(en) zonder eigen polygoon, getekend als de bestuurlijke eenheid "
 "die ze bevat: {names}."
 
-#: scripts/_lib/map_template.py:255
+#: scripts/_lib/map_template.py:256
 #, python-brace-format
 msgid ""
 "Unité(s) administrative(s) que le document n'inclut qu'en partie, "
@@ -597,7 +597,7 @@ msgstr ""
 "Bestuurlijke eenheid/eenheden die het document maar voor een deel omvat, "
 "volledig getekend: {names}."
 
-#: scripts/_lib/map_template.py:259
+#: scripts/_lib/map_template.py:260
 #, python-brace-format
 msgid ""
 "Aire approchée : le document délimite la zone par une ligne passant par "
@@ -608,7 +608,7 @@ msgstr ""
 "genoemde plaatsen; hier getekend als de veelhoek die deze plaatsen "
 "omschrijven, elk op zijn middelpunt (Wikidata-coördinaten): {names}."
 
-#: scripts/_lib/map_template.py:265
+#: scripts/_lib/map_template.py:266
 #, python-brace-format
 msgid ""
 "Aire approchée : le document délimite la zone par une ligne passant par "
@@ -619,7 +619,7 @@ msgstr ""
 "genoemde plaatsen, hier getekend als de bestuurlijke eenheden die ze "
 "bevatten: {names}."
 
-#: scripts/_lib/map_template.py:273
+#: scripts/_lib/map_template.py:274
 #, python-brace-format
 msgid ""
 "Commune(s) de l'aire délimitée (INAO) sans délimitation parcellaire "
@@ -629,7 +629,7 @@ msgstr ""
 "perceelsafbakening in de INAO-perceellaag, in hun geheel getekend: "
 "{names}."
 
-#: scripts/_lib/map_template.py:277
+#: scripts/_lib/map_template.py:278
 #, python-brace-format
 msgid ""
 "Commune(s) de l'aire délimitée (INAO) sans délimitation parcellaire "
@@ -640,7 +640,7 @@ msgstr ""
 "perceelsafbakening voor deze benaming, getekend uit de {donor}-percelen "
 "van de gemeente: {names}."
 
-#: scripts/_lib/map_template.py:282
+#: scripts/_lib/map_template.py:283
 #, python-brace-format
 msgid ""
 "Commune(s) de l'aire délimitée (INAO) sans délimitation parcellaire "
@@ -649,7 +649,7 @@ msgstr ""
 "Gemeente(n) van het afgebakende gebied (INAO) zonder gepubliceerde "
 "perceelsafbakening in de INAO-perceellaag, niet getekend: {names}."
 
-#: scripts/_lib/map_template.py:289
+#: scripts/_lib/map_template.py:290
 #, python-brace-format
 msgid ""
 "Délimitation parcellaire de la publication INAO du {release} ; la "
@@ -658,7 +658,7 @@ msgstr ""
 "Perceelsafbakening uit de INAO-publicatie van {release}; de publicatie "
 "van {current} bevat deze benaming niet."
 
-#: scripts/_lib/map_template.py:296
+#: scripts/_lib/map_template.py:297
 #, python-brace-format
 msgid ""
 "Aire complétée par {n} paroisse(s) civile(s) (parroquias) nommée(s) dans "
@@ -669,7 +669,7 @@ msgstr ""
 "document noemt, getekend naar de Mapa de Parroquias de Galicia "
 "({source}): {names}."
 
-#: scripts/_lib/map_template.py:303
+#: scripts/_lib/map_template.py:304
 #, python-brace-format
 msgid ""
 "S'y ajoute(nt) en entier {n} municipio(s) nommé(s) dans le même document "
@@ -678,7 +678,7 @@ msgstr ""
 "Daarbij komen {n} municipio(s) die hetzelfde document in hun geheel "
 "noemt: {names}."
 
-#: scripts/_lib/map_template.py:311
+#: scripts/_lib/map_template.py:312
 #, python-brace-format
 msgid ""
 "Aire : les {n} polígonos cadastraux SIGPAC que le document énumère dans "
@@ -689,7 +689,7 @@ msgstr ""
 "opsomt in {municipios}, elk volledig getekend — elk perceel dat erin "
 "wordt aangeplant komt voor de appellation in aanmerking ({source})."
 
-#: scripts/_lib/map_template.py:316
+#: scripts/_lib/map_template.py:317
 #, python-brace-format
 msgid ""
 "Aire : les parcelles de vigne (SIGPAC, usage VI) situées dans les {n} "
@@ -699,171 +699,193 @@ msgstr ""
 "Gebied: de wijngaardpercelen (SIGPAC, grondgebruik VI) binnen de {n} "
 "kadastrale polígonos die het document opsomt in {municipios} ({source})."
 
-#: scripts/_lib/map_template.py:320
+#: scripts/_lib/map_template.py:321
 #, python-brace-format
 msgid "S'y ajoutent, en totalité, les communes {whole}."
 msgstr "Daarbij komen, in hun geheel, de gemeenten {whole}."
 
-#: scripts/_lib/map_template.py:321
+#: scripts/_lib/map_template.py:322
 #, python-brace-format
 msgid "{n} appellations à ce point"
 msgstr "{n} appellaties op dit punt"
 
-#: scripts/_lib/map_template.py:325
+#: scripts/_lib/map_template.py:326
 msgid ""
 "Cliquez à nouveau sur la carte pour passer à la suivante, ou choisissez "
 "un nom ci-dessous."
 msgstr "Klik opnieuw op de kaart voor de volgende, of kies hieronder een naam."
 
-#: scripts/_lib/map_template.py:328
+#: scripts/_lib/map_template.py:329
 msgid "Aussi à ce point"
 msgstr "Ook op dit punt"
 
-#: scripts/_lib/map_template.py:331
+#: scripts/_lib/map_template.py:332
 msgid "À propos du contour"
 msgstr "Over de begrenzing"
 
-#: scripts/_lib/map_template.py:332
+#: scripts/_lib/map_template.py:333
 #, python-brace-format
 msgid "Toutes les appellations de {name}"
 msgstr "Alle appellaties in {name}"
 
-#: scripts/_lib/map_template.py:333
+#: scripts/_lib/map_template.py:334
 #, python-brace-format
 msgid "et {n} autres"
 msgstr "en nog {n}"
 
-#: scripts/_lib/map_template.py:334
+#: scripts/_lib/map_template.py:335
 msgid "Cahier des charges (BO Agri, PDF)"
 msgstr "Productdossier (BO Agri, PDF)"
 
-#: scripts/_lib/map_template.py:335
+#: scripts/_lib/map_template.py:336
 msgid "Cahier des charges (registre GI de l'UE, PDF)"
 msgstr "Productdossier (EU GI-register, PDF)"
 
-#: scripts/_lib/map_template.py:336
+#: scripts/_lib/map_template.py:337
 msgid "homologué"
 msgstr "goedgekeurd"
 
-#: scripts/_lib/map_template.py:337
+#: scripts/_lib/map_template.py:338
 msgid "JORF"
 msgstr "JORF"
 
-#: scripts/_lib/map_template.py:338
+#: scripts/_lib/map_template.py:339
 msgid "Texte officiel INAO (show_texte)"
 msgstr "Officiële INAO-tekst (show_texte)"
 
-#: scripts/_lib/map_template.py:339
+#: scripts/_lib/map_template.py:340
 msgid "Fiche produit INAO"
 msgstr "INAO-productfiche"
 
-#: scripts/_lib/map_template.py:340
+#: scripts/_lib/map_template.py:341
 msgid "Site officiel de l'interprofession"
 msgstr "Officiële site van de wijnorganisatie"
 
-#: scripts/_lib/map_template.py:341
+#: scripts/_lib/map_template.py:342
 msgid "Cahier des charges (EUR-Lex, document unique)"
 msgstr "Productspecificatie (EUR-Lex, enig document)"
 
-#: scripts/_lib/map_template.py:342
+#: scripts/_lib/map_template.py:343
 msgid "Pliego de condiciones (national, PDF)"
 msgstr "Nationaal pliego de condiciones (PDF)"
 
-#: scripts/_lib/map_template.py:343
+#: scripts/_lib/map_template.py:344
 msgid "variétés ajoutées"
 msgstr "rassen toegevoegd"
 
-#: scripts/_lib/map_template.py:344
+#: scripts/_lib/map_template.py:345
 msgid "Cahier des charges national (PDF)"
 msgstr "Nationaal productdossier (PDF)"
 
-#: scripts/_lib/map_template.py:345
+#: scripts/_lib/map_template.py:346
 msgid "Cahier des charges (registre GI de l'UE, document unique, PDF)"
 msgstr "Productdossier (EU GI-register, enig document, PDF)"
 
-#: scripts/_lib/map_template.py:346
+#: scripts/_lib/map_template.py:347
 msgid "Rôles des cépages (registre GI de l'UE, document unique, PDF)"
 msgstr "Druivenrollen (EU GI-register, enig document, PDF)"
 
-#: scripts/_lib/map_template.py:347
+#: scripts/_lib/map_template.py:348
 #, python-brace-format
 msgid "{main} principaux, {other} accessoires selon le document unique"
 msgstr "{main} hoofdrassen, {other} bijrassen volgens het enig document"
 
-#: scripts/_lib/map_template.py:349
+#: scripts/_lib/map_template.py:350
 #, python-brace-format
 msgid "{n} ajoutés depuis au cahier national, affichés comme accessoires"
 msgstr "{n} later aan de nationale lijst toegevoegd, getoond als bijras"
 
-#: scripts/_lib/map_template.py:351
+#: scripts/_lib/map_template.py:352
 msgid "Spécification du produit (IGP, PDF)"
 msgstr "Productdossier (BGA, PDF)"
 
-#: scripts/_lib/map_template.py:352
+#: scripts/_lib/map_template.py:353
 msgid "Registre régional des cépages (PDF)"
 msgstr "Regionaal druivenrasregister (PDF)"
 
-#: scripts/_lib/map_template.py:353
+#: scripts/_lib/map_template.py:354
 msgid "Mapa de Parroquias de Galicia (IET, Xunta de Galicia)"
 msgstr "Mapa de Parroquias de Galicia (IET, Xunta de Galicia)"
 
-#: scripts/_lib/map_template.py:354
+#: scripts/_lib/map_template.py:355
 msgid "Délimitation des sous-régions (Diário da República, PDF)"
 msgstr "Afbakening van de subregio's (Diário da República, PDF)"
 
-#: scripts/_lib/map_template.py:355
+#: scripts/_lib/map_template.py:356
 msgid "Registre eAmbrosia (UE)"
 msgstr "eAmbrosia-register (EU)"
 
-#: scripts/_lib/map_template.py:356
+#: scripts/_lib/map_template.py:357
 msgid "Numéro de dossier"
 msgstr "Dossiernummer"
 
-#: scripts/_lib/map_template.py:357
+#: scripts/_lib/map_template.py:358
 msgid "Règlement cantonal sur la vigne et le vin"
 msgstr "Kantonaal wijnreglement"
 
-#: scripts/_lib/map_template.py:358
+#: scripts/_lib/map_template.py:359
 msgid "Répertoire suisse des AOC (OFAG/BLW)"
 msgstr "Zwitsers AOC-register (OFAG/BLW)"
 
-#: scripts/_lib/map_template.py:359
+#: scripts/_lib/map_template.py:360
 msgid "Cahier des charges (GOV.UK, PDF)"
 msgstr "Productdossier (GOV.UK, PDF)"
 
-#: scripts/_lib/map_template.py:360
+#: scripts/_lib/map_template.py:361
 msgid "Registre des IG du Royaume-Uni"
 msgstr "Register van geografische aanduidingen (VK)"
 
-#: scripts/_lib/map_template.py:363
+#: scripts/_lib/map_template.py:364
 msgid "Légende couleurs"
 msgstr "Legende"
 
-#: scripts/_lib/map_template.py:364
+#: scripts/_lib/map_template.py:365
 msgid "Plus l'aire est petite, plus la teinte est dense."
 msgstr "Hoe kleiner het gebied, hoe dichter de tint."
 
-#: scripts/_lib/map_template.py:366
+#: scripts/_lib/map_template.py:367
 msgid "Zoom avant"
 msgstr "Inzoomen"
 
-#: scripts/_lib/map_template.py:367
+#: scripts/_lib/map_template.py:368
 msgid "Zoom arrière"
 msgstr "Uitzoomen"
 
-#: scripts/_lib/map_template.py:369
+#: scripts/_lib/map_template.py:370
 msgid "Agrandir la fiche"
 msgstr "Paneel uitvouwen"
 
-#: scripts/_lib/map_template.py:370
+#: scripts/_lib/map_template.py:371
 msgid "Réduire la fiche"
 msgstr "Paneel inklappen"
 
-#: scripts/_lib/map_template.py:373
+#: scripts/_lib/map_template.py:374
 msgid "voir dans la liste"
 msgstr "toon in de lijst"
 
-#: scripts/_lib/map_template.py:375
+#: scripts/_lib/map_template.py:380
+#, python-brace-format
+msgid ""
+"Rôles selon le document unique du registre GI de l'UE, qui classe {names}"
+" parmi les cépages principaux ; le document unique publié au Journal "
+"officiel ne le cite que dans son tableau des rendements."
+msgstr ""
+"Rollen volgens het enig document van het EU GI-register, dat {names} als "
+"hoofdras noemt; het enig document in het Publicatieblad noemt het alleen "
+"in zijn opbrengsttabel."
+
+#: scripts/_lib/map_template.py:385
+#, python-brace-format
+msgid ""
+"Rôles selon le document unique du registre GI de l'UE, qui classe {names}"
+" parmi les cépages principaux ; le document unique publié au Journal "
+"officiel ne les cite que dans son tableau des rendements."
+msgstr ""
+"Rollen volgens het enig document van het EU GI-register, dat {names} als "
+"hoofdrassen noemt; het enig document in het Publicatieblad noemt ze "
+"alleen in zijn opbrengsttabel."
+
+#: scripts/_lib/map_template.py:390
 msgid ""
 "Le régulateur portugais (IVV) n'établit pas de distinction "
 "principal/accessoire — toutes les castas autorisées sont listées ensemble"
@@ -873,7 +895,7 @@ msgstr ""
 "en bijrassen — alle toegelaten druivenrassen worden samen vermeld in de "
 "caderno de especificações."
 
-#: scripts/_lib/map_template.py:379
+#: scripts/_lib/map_template.py:394
 msgid ""
 "Bianchello (ou Biancame) est traité ici comme un cépage distinct, "
 "conformément au disciplinare de la DOP Bianchello del Metauro ; le "
@@ -884,20 +906,20 @@ msgstr ""
 "Metauro; de VIVC-catalogus vermeldt het als synoniem van Trebbiano "
 "Toscano."
 
-#: scripts/_lib/map_template.py:384
+#: scripts/_lib/map_template.py:399
 #, python-brace-format
 msgid "Open Wine Map n'a pas encore trouvé de {doc} pour cette appellation."
 msgstr "Open Wine Map heeft nog geen {doc} gevonden voor deze benaming."
 
-#: scripts/_lib/map_template.py:386
+#: scripts/_lib/map_template.py:401
 msgid "aidez-nous à le trouver"
 msgstr "help ons het te vinden"
 
-#: scripts/_lib/map_template.py:390
+#: scripts/_lib/map_template.py:405
 msgid "Annulée"
 msgstr "Geannuleerd"
 
-#: scripts/_lib/map_template.py:392
+#: scripts/_lib/map_template.py:407
 #, python-brace-format
 msgid ""
 "Cette appellation a été annulée le {date} par {regulation}. Des "
@@ -908,26 +930,26 @@ msgstr ""
 "flessen, etiketten en cursusmateriaal kunnen de naam nog vermelden; ze "
 "blijft hier ter referentie staan."
 
-#: scripts/_lib/map_template.py:396
+#: scripts/_lib/map_template.py:411
 #, python-brace-format
 msgid "Acte national : {act}."
 msgstr "Nationaal besluit: {act}."
 
-#: scripts/_lib/map_template.py:397
+#: scripts/_lib/map_template.py:412
 #, python-brace-format
 msgid "Elle est remplacée par {successor}."
 msgstr "Ze is opgevolgd door {successor}."
 
-#: scripts/_lib/map_template.py:398
+#: scripts/_lib/map_template.py:413
 #, python-brace-format
 msgid "Enregistrement annulé le {date}"
 msgstr "Registratie geannuleerd op {date}"
 
-#: scripts/_lib/map_template.py:402
+#: scripts/_lib/map_template.py:417
 msgid "Promue"
 msgstr "Verzelfstandigd"
 
-#: scripts/_lib/map_template.py:404
+#: scripts/_lib/map_template.py:419
 #, python-brace-format
 msgid ""
 "Cette dénomination est devenue l'appellation {successor} à part entière "
@@ -938,160 +960,164 @@ msgstr ""
 "({act}). Oudere etiketten kunnen de vroegere naam nog dragen; ze blijft "
 "hier ter referentie."
 
-#: scripts/_lib/map_template.py:408
+#: scripts/_lib/map_template.py:423
 #, python-brace-format
 msgid "Cahier des charges de la nouvelle appellation : {cahier}."
 msgstr "Productdossier van de nieuwe appellation: {cahier}."
 
-#: scripts/_lib/map_template.py:409
+#: scripts/_lib/map_template.py:424
 msgid "BO Agri (PDF)"
 msgstr "BO Agri (PDF)"
 
-#: scripts/_lib/map_template.py:410
+#: scripts/_lib/map_template.py:425
 #, python-brace-format
 msgid "Devenue appellation à part entière le {date}"
 msgstr "Zelfstandige appellation sinds {date}"
 
-#: scripts/_lib/map_template.py:416
+#: scripts/_lib/map_template.py:431
 #, python-brace-format
 msgid "Délimitée par {regulator} dans son {doc}, qui autorise {grapes}."
 msgstr "Afgebakend door {regulator} in zijn {doc}, dat {grapes} toestaat."
 
-#: scripts/_lib/map_template.py:418
+#: scripts/_lib/map_template.py:433
 #, python-brace-format
 msgid "Délimitée par {regulator} dans son {doc}{extra}."
 msgstr "Afgebakend door {regulator} in zijn {doc}{extra}."
 
-#: scripts/_lib/map_template.py:419
+#: scripts/_lib/map_template.py:434
 #, python-brace-format
 msgid "{names} et {n} autres cépages"
 msgstr "{names} en {n} andere druivenrassen"
 
-#: scripts/_lib/map_template.py:420
+#: scripts/_lib/map_template.py:435
 msgid "le registre eAmbrosia de l'UE"
 msgstr "het eAmbrosia-register van de EU"
 
-#: scripts/_lib/map_template.py:421
+#: scripts/_lib/map_template.py:436
 #, python-brace-format
 msgid "le canton de {canton}"
 msgstr "het kanton {canton}"
 
-#: scripts/_lib/map_template.py:422
+#: scripts/_lib/map_template.py:437
 msgid "(français)"
 msgstr "(bron: Frans)"
 
-#: scripts/_lib/map_template.py:423
+#: scripts/_lib/map_template.py:438
 msgid "Texte source en français"
 msgstr "Brontekst in het Frans"
 
-#: scripts/_lib/map_template.py:424
+#: scripts/_lib/map_template.py:439
 msgid "(español)"
 msgstr "(bron: Spaans)"
 
-#: scripts/_lib/map_template.py:425
+#: scripts/_lib/map_template.py:440
 msgid "Texte source en espagnol"
 msgstr "Brontekst in het Spaans"
 
-#: scripts/_lib/map_template.py:426
+#: scripts/_lib/map_template.py:441
 msgid "(português)"
 msgstr "(bron: Portugees)"
 
-#: scripts/_lib/map_template.py:427
+#: scripts/_lib/map_template.py:442
 msgid "Texte source en portugais"
 msgstr "Brontekst in het Portugees"
 
-#: scripts/_lib/map_template.py:428
+#: scripts/_lib/map_template.py:443
 msgid "Recherche et filtres"
 msgstr "Zoeken en filteren"
 
-#: scripts/_lib/map_template.py:429
+#: scripts/_lib/map_template.py:444
 #, python-brace-format
 msgid "Traduit de {wiki} · CC BY-SA 4.0"
 msgstr "Vertaald uit {wiki} · CC BY-SA 4.0"
 
-#: scripts/_lib/map_template.py:430
+#: scripts/_lib/map_template.py:445
 msgid "Wikipédia en anglais"
 msgstr "Engelstalige Wikipedia"
 
-#: scripts/_lib/map_template.py:431
+#: scripts/_lib/map_template.py:446
 msgid "Wikipédia en français"
 msgstr "Franstalige Wikipedia"
 
-#: scripts/_lib/map_template.py:432
+#: scripts/_lib/map_template.py:447
 msgid "Wikipédia en espagnol"
 msgstr "Spaanstalige Wikipedia"
 
-#: scripts/_lib/map_template.py:433
+#: scripts/_lib/map_template.py:448
 msgid "Wikipédia en néerlandais"
 msgstr "Nederlandstalige Wikipedia"
 
-#: scripts/_lib/map_template.py:434
+#: scripts/_lib/map_template.py:449
 msgid "Wikipédia en portugais"
 msgstr "Portugeestalige Wikipedia"
 
-#: scripts/_lib/map_template.py:435
+#: scripts/_lib/map_template.py:450
 msgid "Wikipédia en croate"
 msgstr "Kroatische Wikipedia"
 
-#: scripts/_lib/map_template.py:436
+#: scripts/_lib/map_template.py:451
 msgid "Wikipédia en italien"
 msgstr "Italiaanstalige Wikipedia"
 
-#: scripts/_lib/map_template.py:437
+#: scripts/_lib/map_template.py:452
 msgid "Wikipédia en allemand"
 msgstr "Duitstalige Wikipedia"
 
-#: scripts/_lib/map_template.py:438
+#: scripts/_lib/map_template.py:453
 msgid "Wikipédia en slovène"
 msgstr "Sloveenstalige Wikipedia"
 
-#: scripts/_lib/map_template.py:439
+#: scripts/_lib/map_template.py:454
 msgid "Wikipédia en bulgare"
 msgstr "Bulgaarstalige Wikipedia"
 
-#: scripts/_lib/map_template.py:440
+#: scripts/_lib/map_template.py:455
 msgid "Wikipédia en hongrois"
 msgstr "Hongaarstalige Wikipedia"
 
-#: scripts/_lib/map_template.py:441
+#: scripts/_lib/map_template.py:456
 msgid "Vitis International Variety Catalogue (Julius Kühn-Institut)"
 msgstr "Vitis International Variety Catalogue (Julius Kühn-Institut)"
 
-#: scripts/_lib/map_template.py:442
+#: scripts/_lib/map_template.py:457
 #, python-brace-format
 msgid "VIVC #{id}"
 msgstr "VIVC #{id}"
 
-#: scripts/_lib/map_template.py:443
+#: scripts/_lib/map_template.py:458
 #, python-brace-format
 msgid "Traduction automatique depuis {source}"
 msgstr "Automatisch vertaald uit {source}"
 
-#: scripts/_lib/map_template.py:444
+#: scripts/_lib/map_template.py:459
 msgid "le cahier des charges"
 msgstr "het productdossier (cahier des charges)"
 
-#: scripts/_lib/map_template.py:445 scripts/_lib/map_template.py:447
+#: scripts/_lib/map_template.py:460 scripts/_lib/map_template.py:462
 msgid "le pliego de condiciones"
 msgstr "het productdossier (pliego de condiciones)"
 
-#: scripts/_lib/map_template.py:446 scripts/_lib/map_template.py:448
+#: scripts/_lib/map_template.py:461 scripts/_lib/map_template.py:463
 msgid "le caderno de especificações"
 msgstr "het productdossier (caderno de especificações)"
 
-#: scripts/_lib/map_template.py:449
+#: scripts/_lib/map_template.py:464
 msgid "Dénomination géographique complémentaire de"
 msgstr "Deelgebied van"
 
-#: scripts/_lib/map_template.py:450
+#: scripts/_lib/map_template.py:466
+msgid "Fait aussi partie de"
+msgstr "Hoort ook bij"
+
+#: scripts/_lib/map_template.py:467
 msgid "À propos"
 msgstr "Over"
 
-#: scripts/_lib/map_template.py:451
+#: scripts/_lib/map_template.py:468
 msgid "À propos d'Open Wine Map"
 msgstr "Over Open Wine Map"
 
-#: scripts/_lib/map_template.py:453
+#: scripts/_lib/map_template.py:470
 msgid ""
 "Carte de référence des appellations viticoles, générée automatiquement à "
 "partir des registres publics : le registre de l'Union européenne des AOP "
@@ -1103,7 +1129,7 @@ msgstr ""
 " het Zwitserse federale repertorium van kantonnale AOC's en het Britse "
 "register van geografische aanduidingen."
 
-#: scripts/_lib/map_template.py:460
+#: scripts/_lib/map_template.py:477
 msgid ""
 "Une partie du texte est produite par des modèles de langage : les repères"
 " de terroir sont dégagés du texte du régulateur par Claude, vérifiés "
@@ -1122,7 +1148,7 @@ msgstr ""
 "Claude; de samenvattingen van de productdossiers zijn machinaal vertaald."
 " Elk onderdeel heeft zijn eigen bronvermelding in het paneel."
 
-#: scripts/_lib/map_template.py:469
+#: scripts/_lib/map_template.py:486
 msgid ""
 "Les données structurées — nom, classement, cépages, styles de vin, aire "
 "et contour — sont extraites des cahiers des charges par un pipeline de "
@@ -1140,28 +1166,28 @@ msgstr ""
 "gemeentegrenzen. De pipeline is openbaar en de hele kaart wordt uit de "
 "bronnen opnieuw opgebouwd."
 
-#: scripts/_lib/map_template.py:476
+#: scripts/_lib/map_template.py:493
 #, python-brace-format
 msgid "Réalisé avec {heart} par {devloed}."
 msgstr "Met {heart} gemaakt door {devloed}."
 
-#: scripts/_lib/map_template.py:480
+#: scripts/_lib/map_template.py:497
 msgid "Comment la carte est faite"
 msgstr "Hoe de kaart gemaakt wordt"
 
-#: scripts/_lib/map_template.py:481
+#: scripts/_lib/map_template.py:498
 msgid "Pour les assistants IA"
 msgstr "Voor AI-assistenten"
 
-#: scripts/_lib/map_template.py:482
+#: scripts/_lib/map_template.py:499
 msgid "Vie privée"
 msgstr "Privacy"
 
-#: scripts/_lib/map_template.py:483
+#: scripts/_lib/map_template.py:500
 msgid "Contribuer et suivre"
 msgstr "Bijdragen en volgen"
 
-#: scripts/_lib/map_template.py:485
+#: scripts/_lib/map_template.py:502
 #, python-brace-format
 msgid ""
 "France : cahiers des charges et délimitations parcellaires de l'{inao}, "
@@ -1170,7 +1196,7 @@ msgstr ""
 "Frankrijk: productdossiers (cahiers des charges) en perceelsafbakeningen "
 "van het {inao}, gemeentegrenzen van het {ign}."
 
-#: scripts/_lib/map_template.py:489
+#: scripts/_lib/map_template.py:506
 #, python-brace-format
 msgid ""
 "Autres pays : le registre des indications géographiques de l'UE "
@@ -1183,7 +1209,7 @@ msgstr ""
 "publiceert; grenzen uit officiële nationale en regionale kaartlagen, "
 "{gisco} en Bétard 2022."
 
-#: scripts/_lib/map_template.py:495
+#: scripts/_lib/map_template.py:512
 #, python-brace-format
 msgid ""
 "Cépages : {vivc}, le Vitis International Variety Catalogue du Julius "
@@ -1194,7 +1220,7 @@ msgstr ""
 "Julius Kühn-Institut (Röckel et al.), voor de canonieke namen en "
 "rasnummers."
 
-#: scripts/_lib/map_template.py:500
+#: scripts/_lib/map_template.py:517
 #, python-brace-format
 msgid ""
 "Compléments narratifs : {wikipedia} (CC BY-SA 4.0), signalés partout où "
@@ -1203,17 +1229,17 @@ msgstr ""
 "Narratieve aanvullingen: {wikipedia} (CC BY-SA 4.0), overal vermeld waar "
 "ze voorkomen."
 
-#: scripts/_lib/map_template.py:503
+#: scripts/_lib/map_template.py:520
 #, python-brace-format
 msgid "Fond de carte : {osm} et {carto}."
 msgstr "Basiskaart: {osm} en {carto}."
 
-#: scripts/_lib/map_template.py:505
+#: scripts/_lib/map_template.py:522
 #, python-brace-format
 msgid "Liste complète des sources et des licences dans le {readme}."
 msgstr "Volledige lijst van bronnen en licenties in de {readme}."
 
-#: scripts/_lib/map_template.py:508
+#: scripts/_lib/map_template.py:525
 #, python-brace-format
 msgid ""
 "Une erreur ? Chaque fiche se termine par « {report} » : un clic suffit, "
@@ -1222,7 +1248,7 @@ msgstr ""
 "Een fout gezien? Elke fiche eindigt met ‘{report}’: één klik volstaat, "
 "zonder account."
 
-#: scripts/_lib/map_template.py:512
+#: scripts/_lib/map_template.py:529
 #, python-brace-format
 msgid ""
 "Niveau de détail : en dessous du zoom {zoom}, les appellations françaises"
@@ -1239,12 +1265,12 @@ msgstr ""
 "appellaties); vanaf zoomniveau {zoom} worden de percelen zelf getekend. "
 "Alle andere appellaties behouden dezelfde omtrek op elk zoomniveau."
 
-#: scripts/_lib/map_template.py:520
+#: scripts/_lib/map_template.py:537
 #, python-brace-format
 msgid "Suggestions et pull requests bienvenues sur {github}."
 msgstr "Issues en pull requests welkom op {github}."
 
-#: scripts/_lib/map_template.py:522
+#: scripts/_lib/map_template.py:539
 #, python-brace-format
 msgid ""
 "La fréquentation est mesurée avec une instance {plausible} auto-hébergée,"
@@ -1260,20 +1286,20 @@ msgstr ""
 "cookies, geen persistente identifiers, geen opgeslagen IP-adressen, geen "
 "tracking over sites of apparaten heen — daarom is er geen cookiebanner."
 
-#: scripts/_lib/map_template.py:529
+#: scripts/_lib/map_template.py:546
 #, python-brace-format
 msgid "Suivez les mises à jour sur {bluesky}."
 msgstr "Volg de updates op {bluesky}."
 
-#: scripts/_lib/map_template.py:530
+#: scripts/_lib/map_template.py:547
 msgid "e-mail"
 msgstr "e-mail"
 
-#: scripts/_lib/map_template.py:531
+#: scripts/_lib/map_template.py:548
 msgid "E-mail copié dans le presse-papiers"
 msgstr "E-mail gekopieerd naar klembord"
 
-#: scripts/_lib/map_template.py:533
+#: scripts/_lib/map_template.py:550
 #, python-brace-format
 msgid ""
 "Carte générée automatiquement — des erreurs sont possibles. Signalez-les "
@@ -1282,55 +1308,55 @@ msgstr ""
 "Automatisch gegenereerde kaart — fouten zijn mogelijk. Meld ze op de "
 "fiche van de appellatie, of per {email}."
 
-#: scripts/_lib/map_template.py:539
+#: scripts/_lib/map_template.py:556
 msgid "Signaler une erreur"
 msgstr "Een fout melden"
 
-#: scripts/_lib/map_template.py:540
+#: scripts/_lib/map_template.py:557
 msgid "Un clic nous dit quoi vérifier — sans compte."
 msgstr "Eén tik vertelt ons wat we moeten nakijken — geen account nodig."
 
-#: scripts/_lib/map_template.py:541
+#: scripts/_lib/map_template.py:558
 msgid "Aire / contour"
 msgstr "Gebied / grens"
 
-#: scripts/_lib/map_template.py:544
+#: scripts/_lib/map_template.py:561
 msgid "Nom / type"
 msgstr "Naam / type"
 
-#: scripts/_lib/map_template.py:546
+#: scripts/_lib/map_template.py:563
 msgid "Autre"
 msgstr "Anders"
 
-#: scripts/_lib/map_template.py:547
+#: scripts/_lib/map_template.py:564
 #, python-brace-format
 msgid "Merci, c'est noté : {aspect}."
 msgstr "Bedankt, genoteerd: {aspect}."
 
-#: scripts/_lib/map_template.py:549
+#: scripts/_lib/map_template.py:566
 msgid "Précisez si vous voulez (facultatif, sans données personnelles)"
 msgstr "Licht toe als je wilt (optioneel, geen persoonsgegevens)"
 
-#: scripts/_lib/map_template.py:551
+#: scripts/_lib/map_template.py:568
 msgid "Envoyer"
 msgstr "Verzenden"
 
-#: scripts/_lib/map_template.py:554
+#: scripts/_lib/map_template.py:571
 msgid "Géométrie"
 msgstr "Geometrie"
 
-#: scripts/_lib/map_template.py:555
+#: scripts/_lib/map_template.py:572
 msgid "Envoyé, merci !"
 msgstr "Verzonden, bedankt!"
 
-#: scripts/_lib/map_template.py:557
+#: scripts/_lib/map_template.py:574
 #, python-brace-format
 msgid ""
 "{aspect} — votre navigateur bloque notre outil de mesure, envoyez plutôt "
 "un {email}."
 msgstr "{aspect} — je browser blokkeert onze meettool; stuur liever een {email}."
 
-#: scripts/_lib/map_template.py:561
+#: scripts/_lib/map_template.py:578
 #, python-brace-format
 msgid ""
 "{c} pays européens cartographiés ({n} fiches : {parents} appellations et "
@@ -1343,15 +1369,15 @@ msgstr ""
 "verfijnen de datakwaliteit en breiden de dekking uit tot buiten de EU, "
 "Zwitserland en het Verenigd Koninkrijk."
 
-#: scripts/_lib/map_template.py:566
+#: scripts/_lib/map_template.py:583
 msgid "Toutes les appellations"
 msgstr "Alle appellaties"
 
-#: scripts/_lib/map_template.py:567
+#: scripts/_lib/map_template.py:584
 msgid "Toutes les appellations viticoles — Open Wine Map"
 msgstr "Alle wijnappellaties — Open Wine Map"
 
-#: scripts/_lib/map_template.py:569
+#: scripts/_lib/map_template.py:586
 #, python-brace-format
 msgid ""
 "Liste des {n} appellations viticoles cartographiées sur Open Wine Map, "
@@ -1360,7 +1386,7 @@ msgstr ""
 "Lijst van de {n} wijnappellaties op Open Wine Map, per land: BOB's en "
 "BGA's van de EU, Zwitserse AOC's en Britse GA's."
 
-#: scripts/_lib/map_template.py:573
+#: scripts/_lib/map_template.py:590
 #, python-brace-format
 msgid ""
 "Les {n} appellations ci-dessous sont classées par pays. Retour à la "
@@ -1369,33 +1395,33 @@ msgstr ""
 "De {n} onderstaande appellaties zijn gegroepeerd per land. Terug naar de "
 "{map_link}."
 
-#: scripts/_lib/map_template.py:576
+#: scripts/_lib/map_template.py:593
 msgid "carte interactive"
 msgstr "interactieve kaart"
 
-#: scripts/_lib/map_template.py:577
+#: scripts/_lib/map_template.py:594
 msgid "Liste des appellations par pays"
 msgstr "Lijst van appellaties per land"
 
-#: scripts/_lib/map_template.py:578
+#: scripts/_lib/map_template.py:595
 msgid "Appellation parente"
 msgstr "Bovenliggende appellatie"
 
-#: scripts/_lib/map_template.py:579
+#: scripts/_lib/map_template.py:596
 msgid "Dénominations rattachées"
 msgstr "Gekoppelde benamingen"
 
-#: scripts/_lib/map_template.py:581
+#: scripts/_lib/map_template.py:598
 #, python-brace-format
 msgid "Parcourir la liste complète des appellations : {browse_link}."
 msgstr "Blader door de volledige lijst van appellaties: {browse_link}."
 
-#: scripts/_lib/map_template.py:583
+#: scripts/_lib/map_template.py:600
 #, python-brace-format
 msgid "Données mises à jour le {date}."
 msgstr "Gegevens bijgewerkt op {date}."
 
-#: scripts/_lib/map_template.py:585
+#: scripts/_lib/map_template.py:602
 #, python-brace-format
 msgid ""
 "Votre navigateur parle déjà {webmcp} ? Chaque page de la carte lui "
@@ -1406,43 +1432,43 @@ msgstr ""
 "dezelfde zoekfuncties aan. Zegt dat je niets, geen probleem: de MCP-"
 "server hierboven is degene die je AI-assistent kan gebruiken."
 
-#: scripts/_lib/map_template.py:589
+#: scripts/_lib/map_template.py:606
 msgid "Copier"
 msgstr "Kopiëren"
 
-#: scripts/_lib/map_template.py:590
+#: scripts/_lib/map_template.py:607
 msgid "Copié"
 msgstr "Gekopieerd"
 
-#: scripts/_lib/map_template.py:593
+#: scripts/_lib/map_template.py:610
 msgid "Partager"
 msgstr "Delen"
 
-#: scripts/_lib/map_template.py:594
+#: scripts/_lib/map_template.py:611
 msgid "Partager cette vue"
 msgstr "Deze weergave delen"
 
-#: scripts/_lib/map_template.py:595
+#: scripts/_lib/map_template.py:612
 msgid "La carte telle qu'affichée"
 msgstr "De kaart zoals weergegeven"
 
-#: scripts/_lib/map_template.py:596
+#: scripts/_lib/map_template.py:613
 msgid "Lien"
 msgstr "Link"
 
-#: scripts/_lib/map_template.py:597
+#: scripts/_lib/map_template.py:614
 msgid "Copier le lien"
 msgstr "Link kopiëren"
 
-#: scripts/_lib/map_template.py:598
+#: scripts/_lib/map_template.py:615
 msgid "Partager…"
 msgstr "Delen…"
 
-#: scripts/_lib/map_template.py:599
+#: scripts/_lib/map_template.py:616
 msgid "Intégrer sur votre site"
 msgstr "Insluiten op je site"
 
-#: scripts/_lib/map_template.py:601
+#: scripts/_lib/map_template.py:618
 msgid ""
 "Collez ce code dans votre page : la carte reste interactive, et un clic "
 "sur une appellation l'ouvre sur Open Wine Map."
@@ -1450,28 +1476,28 @@ msgstr ""
 "Plak deze code in je pagina: de kaart blijft interactief, en een klik op "
 "een appellatie opent die op Open Wine Map."
 
-#: scripts/_lib/map_template.py:604
+#: scripts/_lib/map_template.py:621
 msgid "Copier le code d'intégration"
 msgstr "Insluitcode kopiëren"
 
-#: scripts/_lib/map_template.py:607
+#: scripts/_lib/map_template.py:624
 #, python-brace-format
 msgid "{what} sur Open Wine Map"
 msgstr "{what} op Open Wine Map"
 
-#: scripts/_lib/map_template.py:609
+#: scripts/_lib/map_template.py:626
 msgid "Ouvrir sur Open Wine Map"
 msgstr "Openen op Open Wine Map"
 
-#: scripts/_lib/map_template.py:611
+#: scripts/_lib/map_template.py:628
 msgid "Thème de la carte intégrée"
 msgstr "Thema van de ingesloten kaart"
 
-#: scripts/_lib/map_template.py:613
+#: scripts/_lib/map_template.py:630
 msgid "Paramètres d'URL (utilisateurs avancés)"
 msgstr "URL-parameters (gevorderde gebruikers)"
 
-#: scripts/_lib/map_template.py:615
+#: scripts/_lib/map_template.py:632
 msgid ""
 "Chaque paramètre peut s'écrire à la main dans l'adresse de la carte ; "
 "plusieurs valeurs se séparent par des virgules."
@@ -1479,67 +1505,67 @@ msgstr ""
 "Elke parameter kun je met de hand in het adres van de kaart zetten; "
 "meerdere waarden scheid je met komma's."
 
-#: scripts/_lib/map_template.py:618
+#: scripts/_lib/map_template.py:635
 msgid "Cépage : identifiant, nom ou synonyme VIVC."
 msgstr "Druif: sleutel, naam of VIVC-synoniem."
 
-#: scripts/_lib/map_template.py:619
+#: scripts/_lib/map_template.py:636
 msgid "Cépage principal uniquement."
 msgstr "Alleen hoofddruif."
 
-#: scripts/_lib/map_template.py:620
+#: scripts/_lib/map_template.py:637
 msgid "Style de vin : identifiant ou libellé."
 msgstr "Wijnstijl: sleutel of label."
 
-#: scripts/_lib/map_template.py:621
+#: scripts/_lib/map_template.py:638
 msgid "Pays entier coché."
 msgstr "Heel land aangevinkt."
 
-#: scripts/_lib/map_template.py:622
+#: scripts/_lib/map_template.py:639
 msgid "Région (code pays:clé)."
 msgstr "Regio (landcode:sleutel)."
 
-#: scripts/_lib/map_template.py:623
+#: scripts/_lib/map_template.py:640
 msgid "Appellations cochées."
 msgstr "Aangevinkte appellaties."
 
-#: scripts/_lib/map_template.py:624
+#: scripts/_lib/map_template.py:641
 msgid "Ouvre ces appellations : fiche, surbrillance, cadrage."
 msgstr "Opent deze appellaties: kaart, markering, inzoomen."
 
-#: scripts/_lib/map_template.py:625
+#: scripts/_lib/map_template.py:642
 msgid "AOP masquées (affichées par défaut)."
 msgstr "BOB verborgen (standaard getoond)."
 
-#: scripts/_lib/map_template.py:626
+#: scripts/_lib/map_template.py:643
 msgid "IGP affichées (masquées par défaut)."
 msgstr "BGA getoond (standaard verborgen)."
 
-#: scripts/_lib/map_template.py:627
+#: scripts/_lib/map_template.py:644
 msgid "Spiritueux affichés (masqués par défaut)."
 msgstr "Gedistilleerd getoond (standaard verborgen)."
 
-#: scripts/_lib/map_template.py:628
+#: scripts/_lib/map_template.py:645
 msgid "Carte seule, à intégrer dans une page."
 msgstr "Alleen de kaart, om in een pagina in te sluiten."
 
-#: scripts/_lib/map_template.py:629
+#: scripts/_lib/map_template.py:646
 msgid "Thème sombre de la carte intégrée."
 msgstr "Donker thema voor de ingesloten kaart."
 
-#: scripts/_lib/map_template.py:630
+#: scripts/_lib/map_template.py:647
 msgid "Zone à cadrer : ouest,sud,est,nord en degrés."
 msgstr "Gebied om in te kaderen: west,zuid,oost,noord in graden."
 
-#: scripts/_lib/map_template.py:631
+#: scripts/_lib/map_template.py:648
 msgid "Zoom/latitude/longitude ; l'emporte sur bbox."
 msgstr "Zoom/breedtegraad/lengtegraad; wint van bbox."
 
-#: scripts/_lib/map_template.py:632
+#: scripts/_lib/map_template.py:649
 msgid "Copier l'adresse du serveur MCP"
 msgstr "Het adres van de MCP-server kopiëren"
 
-#: scripts/_lib/map_template.py:634
+#: scripts/_lib/map_template.py:651
 #, python-brace-format
 msgid ""
 "Les assistants IA peuvent interroger les appellations avec les mêmes "
@@ -1550,179 +1576,179 @@ msgstr ""
 " als de kaart, via de MCP-server {mcp_link} (zonder authenticatie; voeg "
 "hem toe als eigen connector)."
 
-#: scripts/_lib/map_template.py:655
+#: scripts/_lib/map_template.py:672
 msgid "BOURGOGNE"
 msgstr "Bourgogne"
 
-#: scripts/_lib/map_template.py:656
+#: scripts/_lib/map_template.py:673
 msgid "BEAUJOLAIS"
 msgstr "Beaujolais"
 
-#: scripts/_lib/map_template.py:657
+#: scripts/_lib/map_template.py:674
 msgid "JURA"
 msgstr "Jura"
 
-#: scripts/_lib/map_template.py:658
+#: scripts/_lib/map_template.py:675
 msgid "SAVOIE"
 msgstr "Savoie"
 
-#: scripts/_lib/map_template.py:659
+#: scripts/_lib/map_template.py:676
 msgid "BUGEY"
 msgstr "Bugey"
 
-#: scripts/_lib/map_template.py:660
+#: scripts/_lib/map_template.py:677
 msgid "ALSACE"
 msgstr "Elzas"
 
-#: scripts/_lib/map_template.py:661
+#: scripts/_lib/map_template.py:678
 msgid "LORRAINE"
 msgstr "Lotharingen"
 
-#: scripts/_lib/map_template.py:662
+#: scripts/_lib/map_template.py:679
 msgid "VAL DE LOIRE"
 msgstr "Loirestreek"
 
-#: scripts/_lib/map_template.py:663
+#: scripts/_lib/map_template.py:680
 msgid "BORDEAUX"
 msgstr "Bordeaux"
 
-#: scripts/_lib/map_template.py:664
+#: scripts/_lib/map_template.py:681
 msgid "SUD-OUEST"
 msgstr "Zuidwest-Frankrijk"
 
-#: scripts/_lib/map_template.py:665
+#: scripts/_lib/map_template.py:682
 msgid "VALLEE DU RHÔNE"
 msgstr "Rhônestreek"
 
-#: scripts/_lib/map_template.py:666
+#: scripts/_lib/map_template.py:683
 msgid "LANGUEDOC"
 msgstr "Languedoc"
 
-#: scripts/_lib/map_template.py:667
+#: scripts/_lib/map_template.py:684
 msgid "ROUSSILLON"
 msgstr "Roussillon"
 
-#: scripts/_lib/map_template.py:668
+#: scripts/_lib/map_template.py:685
 msgid "PROVENCE"
 msgstr "Provence"
 
-#: scripts/_lib/map_template.py:669
+#: scripts/_lib/map_template.py:686
 msgid "CORSE"
 msgstr "Corsica"
 
-#: scripts/_lib/map_template.py:670
+#: scripts/_lib/map_template.py:687
 msgid "CHAMPAGNE"
 msgstr "Champagne"
 
-#: scripts/_lib/map_template.py:671
+#: scripts/_lib/map_template.py:688
 msgid "ILE-DE-FRANCE"
 msgstr "Île-de-France"
 
-#: scripts/_lib/map_template.py:672
+#: scripts/_lib/map_template.py:689
 msgid "NORMANDIE"
 msgstr "Normandië"
 
-#: scripts/_lib/map_template.py:673
+#: scripts/_lib/map_template.py:690
 msgid "BRETAGNE"
 msgstr "Bretagne"
 
-#: scripts/_lib/map_template.py:674
+#: scripts/_lib/map_template.py:691
 msgid "MAINE"
 msgstr "Maine"
 
-#: scripts/_lib/map_template.py:675
+#: scripts/_lib/map_template.py:692
 msgid "COGNAC"
 msgstr "Cognac"
 
-#: scripts/_lib/map_template.py:676
+#: scripts/_lib/map_template.py:693
 msgid "ARMAGNAC"
 msgstr "Armagnac"
 
-#: scripts/_lib/map_template.py:677
+#: scripts/_lib/map_template.py:694
 msgid "RHUM"
 msgstr "Rum"
 
-#: scripts/_lib/map_template.py:717
+#: scripts/_lib/map_template.py:734
 msgid "France"
 msgstr "Frankrijk"
 
-#: scripts/_lib/map_template.py:718
+#: scripts/_lib/map_template.py:735
 msgid "Espagne"
 msgstr "Spanje"
 
-#: scripts/_lib/map_template.py:719
+#: scripts/_lib/map_template.py:736
 msgid "Portugal"
 msgstr "Portugal"
 
-#: scripts/_lib/map_template.py:720
+#: scripts/_lib/map_template.py:737
 msgid "Italie"
 msgstr "Italië"
 
-#: scripts/_lib/map_template.py:721
+#: scripts/_lib/map_template.py:738
 msgid "Autriche"
 msgstr "Oostenrijk"
 
-#: scripts/_lib/map_template.py:722
+#: scripts/_lib/map_template.py:739
 msgid "Slovénie"
 msgstr "Slovenië"
 
-#: scripts/_lib/map_template.py:723
+#: scripts/_lib/map_template.py:740
 msgid "Croatie"
 msgstr "Kroatië"
 
-#: scripts/_lib/map_template.py:724
+#: scripts/_lib/map_template.py:741
 msgid "Hongrie"
 msgstr "Hongarije"
 
-#: scripts/_lib/map_template.py:725
+#: scripts/_lib/map_template.py:742
 msgid "Roumanie"
 msgstr "Roemenië"
 
-#: scripts/_lib/map_template.py:726
+#: scripts/_lib/map_template.py:743
 msgid "Bulgarie"
 msgstr "Bulgarije"
 
-#: scripts/_lib/map_template.py:727
+#: scripts/_lib/map_template.py:744
 msgid "Grèce"
 msgstr "Griekenland"
 
-#: scripts/_lib/map_template.py:728
+#: scripts/_lib/map_template.py:745
 msgid "Allemagne"
 msgstr "Duitsland"
 
-#: scripts/_lib/map_template.py:729
+#: scripts/_lib/map_template.py:746
 msgid "Slovaquie"
 msgstr "Slowakije"
 
-#: scripts/_lib/map_template.py:730
+#: scripts/_lib/map_template.py:747
 msgid "Suisse"
 msgstr "Zwitserland"
 
-#: scripts/_lib/map_template.py:731
+#: scripts/_lib/map_template.py:748
 msgid "Tchéquie"
 msgstr "Tsjechië"
 
-#: scripts/_lib/map_template.py:732
+#: scripts/_lib/map_template.py:749
 msgid "Luxembourg"
 msgstr "Luxemburg"
 
-#: scripts/_lib/map_template.py:733
+#: scripts/_lib/map_template.py:750
 msgid "Belgique"
 msgstr "België"
 
-#: scripts/_lib/map_template.py:734
+#: scripts/_lib/map_template.py:751
 msgid "Pays-Bas"
 msgstr "Nederland"
 
-#: scripts/_lib/map_template.py:735
+#: scripts/_lib/map_template.py:752
 msgid "Malte"
 msgstr "Malta"
 
-#: scripts/_lib/map_template.py:736
+#: scripts/_lib/map_template.py:753
 msgid "Chypre"
 msgstr "Cyprus"
 
-#: scripts/_lib/map_template.py:737
+#: scripts/_lib/map_template.py:754
 msgid "Royaume-Uni"
 msgstr "Verenigd Koninkrijk"
 

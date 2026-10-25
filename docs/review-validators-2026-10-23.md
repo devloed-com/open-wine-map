@@ -743,3 +743,456 @@ connects), and es/02f now falls back to curl.
 The ten records from the peer's run that untranslated lists are all a Spanish "mar Egeo", the correct exonym — a detector false positive, not a translation defect.
 
 **Cost.** About $0.6 of synchronous Anthropic calls for the Nivegy-völgy chain (02d, gate, 02e, back-check; estimated from token counts, since synchronous calls are not in the batch ledger) and one live VIVC search. This phase ran no batch job. The peer session's Greek anchor run ($16.03, batch) is in its own section above.
+
+## Addendum — phase G (2026-10-24, Opus 5.5)
+
+Items 17–19 of the work list: the polygons `/validate-geometry` found
+disagreeing with their text. Each re-extraction ran as backup → run →
+per-file diff (only the commune-list fields moved), and the one stage-04
+build's record diff changed exactly five records; the CURATOR_TODO rows under
+"`/validate-geometry`" carry the detail.
+
+**17 — the two BG PGIs are drawn from their obshtini.** Дунавска равнина was
+the union of its 21 member PDOs and covered 40 of the obshtini its ЕДИНЕН
+ДОКУМЕНТ names; Тракийска низина, a stub the first run could not read, was
+the union of 32 southern PDOs. Both texts list obshtini under „Област X:"
+headers and then cut villages out of them, a template the BG reader now
+reads: each name is held to its oblast (two obshtini are called Бяла and
+the text names both), "Д. Митрополия" and "Вълчидол" resolve to Долна
+Митрополия and Вълчи дол, and "Септември" is an obshtina, not a month. 21
+obshtini in each PGI are held only in part; they are drawn whole and the
+card lists them. Дунавска равнина: 118 obshtini, 17,316 → 46,151 km².
+Тракийска низина: 93, 55,220 → 43,393 km². Its old union had drawn all of
+north-east Bulgaria through Bétard's Черноморски район PDO, ground the
+northern text claims, so the two PGIs used to overlap; they no longer do.
+`--country bg --strict` passes (118 / 118, 93 / 93), and the independent LLM
+read agrees: 118 of 118 for Дунавска равнина. For Тракийска низина it
+differs only by the three Smolyan obshtini held "само землищата на" a few
+villages. "Добрич" first drew the city obshtina alone, an island inside
+Добрич-селска. The ИАЛВ's Черноморски район spec settles it: under one
+"Община Добрич" it lists the city and the villages of Добричка. Both units
+are drawn now, which makes Дунавска равнина 119 units and 47,445 km².
+
+**18 — RO: mostly the audit, once the parser.** The five RO IGPs' SUSPECT
+came largely from the audit itself. Its 25 km homonym rule bound villages
+("Comuna Plugari, satele Plugari, Oneşti") to same-named communes of the
+next county (Municipiul Oneşti, Bacău). Stage 04 already holds a name to
+its header's județ, and the audit now does the same. The LLM read (7
+records) names nothing the parser misses. What the parser draws beyond the
+LLM's list falls into three explained classes. One of them showed a real
+defect: a village listed under its commune bound any same-named commune of
+the county. That is right for the communes split off in 2004 (Paleu from
+Cetariu, Saligny from Mircea Vodă, ~20 more) and wrong for coincidences.
+The resolver now binds such a name only to a commune that touches its head.
+Six coincidental communes left three IGPs: Pănceşti, Tansa, Cristeşti and
+Fântânele (Dealurile Moldovei), Cotmeana (Munteniei), Măldăreşti
+(Olteniei). The prose tokens are gone. Dropping quoted sub-denomination
+names also let two shadowed communes back into their lists: "Comuna
+Biharia" (Crişana) and "Comuna Iana".
+
+**19 — Bétard padding, queued.** A sweep of the Bétard-drawn HU / RO / BG
+PDOs gives the class: Etyek-Buda, Mátra (all of Budapest for
+"Budapest-Rákosliget"), Duna, Balaton, Balaton-felvidék, Crişana and six
+RO PDOs one unit each. Its fix is the commune-list redraw already used for
+the post-Bétard PDOs, which needs a partial-unit disclosure first.
+
+**The audit, changed.** BG names are scoped by oblast and RO names by
+județ, with the village rule mirrored. A national-spec stub is read from
+its sidecar, as stage 04 draws it (HU / RO NO-TEXT 28 → 0). That surfaced
+one new finding: Monor's termékleírás names four települések and the HU
+reader kept one. The reader ended a list at its first "település…", and
+Monor names one group per hill. Fixed: every group is read and headings are
+dropped. That changed 8 HU lists, all for the better: Monor 1 → 4 and Tolna
+0 → 59 (its text opens on "Települések:"), and Duna gains five headed
+names. All eight are Bétard-drawn, so no polygon moved. On the `--llm` side, the model reports each unit's county and
+keeps villages apart. Its answer budget grows with the text and triples for
+Cyrillic, because the first two BG answers came back truncated. A truncated
+answer is no longer cached as "names nothing".
+
+**Cost.** Synchronous Opus 5.5 for the LLM reads: 7 RO texts, then the 2 BG
+texts twice (the first pair truncated). About $4–6 estimated from the answer
+sizes; synchronous calls are not in the batch ledger. No batch job ran.
+
+## Addendum — phase H (2026-10-24 → 25, Opus 5.5)
+
+Item 20 of the work list: the closing build and the measurements behind it.
+The CURATOR_TODO subsection "Phase H — close" carries one row per item.
+
+**The build.** A full stage-04 build is byte-identical to the build of 21:40
+(23,677 files), and its record diff is empty, so the phase G tree builds
+deterministically. Over phases A–G the record diff is 950 records changed and
+one added (Nivegy-völgy).
+
+**The gates.** `validate_release.py --quick` fails on the four gates that
+failed on the first run, all of them queues rather than regressions: the
+grape-surfaces queue of family words the lexicon folds onto one member
+("Canaiolo", "Malvasia Nera", "Refosco nostrano"), 46 ambiguous synonyms
+(47 on the first run), 320 untranslated pairs and 122 Bétard-delta records.
+The other eight gates pass, and pytest passes 1,674 tests. The untranslated
+count had first read 413. The rise was not in the translations: every
+stage-03 generator dropped its whole country from the shared
+`wiki/_index.json` before merging, so an earlier
+`03_generate_wiki.py --only collioure` had left one French entry of 1,541.
+Stage 04 does not read that index, but the untranslated detector takes its appellation-name exemption from it ("Alsace" inside "Crémant
+d'Alsace"), and `terroir_roster` takes the sub-denomination roster of the
+dedupe pass and the 02d / 02e prompts from it. All 21 generators now merge
+through `extract_index.wiki_index_kept`: a `--only` run replaces only its
+selection, and the FR run leaves `index.md` / `log.md` alone. A wiring lint
+in `tests/test_extract_index.py` covers it. With the FR index rebuilt the
+count is 320 (300 on the first run). Of the rise, 47 flags are real, on the
+caches the phase D–G re-runs re-translated (Egeo, Piemonte, Toscana kept in
+the source form; dűlő, Podgoria, Argille left untranslated) and queued for a
+scoped 02e refresh. The Bétard-delta count reached 122 before phase F's
+index refresh, not in this phase.
+
+**Sources.** `audit_source_freshness.py` on the 241 records the phases
+touched, then `--deep` on the Last-Modified verdicts, found no new upstream
+content. The 16 eAmbrosia modification dates carry no new publication. The
+11 Last-Modified verdicts (Laona Akama, the SZPI PDF of the nine CZ records,
+Priorat's pliego) are sha-identical: server re-stamps. The 2 GONE are already
+in `cancelled_gis.json`, and the 70 UNREACHABLE come from six hosts that
+reset or fail SSL from this machine. The two SI NEWER-UPSTREAM verdicts
+(Belokranjec, Metliška črnina) are the validator's own: it compares against
+an SI register index older than the documents the build holds.
+
+**Geometry.** `--country bg --strict` passes with 0 SUSPECT.
+
+**The cards, before and after.** The 23 cards that carried real defects on
+2026-10-23 were re-graded by the same judge (Opus 5.5, batch) and paired
+with the first run: cards with a misleading finding 23 → 7, misleading
+findings 61 → 14; 21 cards better, 2 the same, none worse. Every misleading
+finding of the first run on these cards is gone, except two: Castilla's
+missing Verdoncho, and Bela krajina's roles, which are a house decision.
+Each of the 14 was read against the build and its documents. Twelve are real
+and two are judgement calls. They are mostly rosters the phases changed,
+seen afresh:
+
+- **Grape identity.** Kék and Piros Bakator share one slug (Balatonmelléki).
+  Castilla's Verdoncho, Albillo Dorado and Tinto de la Pámpana Blanca bind,
+  through VIVC synonyms, the slugs of the Pardillo, Albillo Real and Tinto
+  Velasco the same pliego lists beside them. In Larnaka a synonym after the
+  dash ("Malvasia di Candia — Malvasia Aromatica") makes a pill of its own.
+  La Palma's comma-less "Listán Prieto Moscatel negro" has a slug of its own.
+- **A stale extraction.** Larnaka and Lefkosia lack Malvasia Lunga. The
+  current reader returns it, but both records were extracted the morning
+  before the Malvasia bianca split.
+- **A reader gap, not isolated.** Seven RO cards miss a rosé their single
+  document names in a list sharing one noun ("vinuri albe, roze").
+- **Facts.** La Palma states the 1505 planting without the source's "se cree
+  que" (a hedge the gate passed in September), and gives a Wikipedia alcohol
+  range for vino de tea where the pliego gives one range per colour.
+  Dunavska ravnina's facts leave out that the sparkling wine is Gergana alone.
+- **Judgement calls.** Dealurile Olteniei's Merlot is accessory by the RO
+  yield-table rule and MAIN in the register fiche. Bela krajina keeps its
+  pravilnik split.
+
+The identity findings point to a wider class, swept on the build: 118 parent
+cards show two slugs VIVC files under one number (194 pairs). The largest
+group is 46 Tuscan and Umbrian cards where the register's "Prugnolo gentile"
+binds the Corsican `nielluccio` and sits beside Sangiovese. Then come Greco
+and Greco bianco (15), Ansonica and Inzolia (11), and the PT IVV rosters.
+Some pairs are deliberate and some are the regulator's own two names, so
+this is a curator queue, not a defect count. The list is in
+`tmp/validation/vivc-shared-pills-2026-10-25.txt`.
+
+**Not done in this phase, and why.** None of the new findings was fixed
+here. Each needs a re-extraction with its own diff and another build, and
+the phase's job was to measure the tree the earlier phases left. They are
+queued with their recipes.
+
+**Cost.** The card batch: $1.52 (440 k input / 56 k output tokens; the
+estimate said $1.82). Over the programme since 2026-10-23 the batch ledger
+holds $25.49: the 40-card first run $2.12, the Greek anchor chain $16.03,
+the curator-decision re-run and the LLM audits making up the rest. The
+synchronous calls, which the ledger does not record, are estimated at
+$13–16 (phase D gate / 02e / back-check $6–7 and ≈ $1, phase E $0.59,
+phase F $0.6, phase G $4–6, the first three-card run $0.42). Total ≈ $39–42.
+
+## Addendum — phase H, fixes applied (2026-10-25, Opus 5.5 then Fable 5.1)
+
+Boris asked for the 14 findings of the phase H re-grade to be fixed, and
+settled the one decision among them: the register fiche's roles win over the
+Romanian yield-table rule, with a warning on the card. Opus 5.5 applied the
+fixes and halted when the harness's safety check failed seven times in a row
+(a transient outage, nothing lost); Fable 5.1 took over from the one failing
+test and finished the chain. Nothing is committed.
+
+**Fixed, each re-extracted with a per-record diff read.**
+
+- **Merlot on Dealurile Olteniei (the decision).** `augment/fiche_roles.py`
+  applies the fiche's MAIN / OTHER split to the RO yield-table records too;
+  a yield-table variety the fiche tags MAIN is listed under the principal
+  pills with an amber line in all four locales. Four cards: Coteşti, Dealurile
+  Olteniei, Drăgăşani, Ştefăneşti.
+- **Romanian rosé, not isolated.** `document_unic.colour_styles` reads a
+  colour list sharing one noun, the cedilla spellings and the yield table:
+  12 cards gained the rosé their text states, 3 caiet cards lost a rosé a
+  pink berry had given them. The record diff of the closing build then
+  showed Coteşti had lost its Red: its description is a per-variety list and
+  the floor had switched off. The reader now reads the link section too
+  (sub-sections included); the RO sweep changed Coteşti and Dealurile
+  Crişanei and nothing else.
+- **Grape identity.** Piros Bakator on its own passport (#905); Castilla's
+  Verdoncho, Albillo Dorado and Tinto de la Pámpana Blanca apart from the
+  varieties they had merged into, Crujidera into Moravia dulce, the region
+  Castilla-La Mancha and a sourced note on «Campo de Calatrava»; Larnaka and
+  Lefkosia with Malvasia Lunga back and the synonym pill gone, Μοσχάτο Κύπρου
+  its own slug; La Palma's comma-less "Listán Prieto Moscatel negro" split.
+- **The 118-card shared-VIVC class**, pair by pair: folds (Nielluccio and
+  Prugnolo gentile into Sangiovese on 46 Tuscan and Umbrian and the Corsican
+  cards, Inzolia into Ansonica, Rolle into Vermentino, seven Spanish pairs
+  per MAPA), own slugs with no bracket, corrected passports (Cariñena gris),
+  PT keeps as a country rule, two layout-debris pills folded. 31 VIVC pins
+  verified or written on the live passports; the decisions in
+  `scripts/_lib/vivc_shared_pills.json`. Closing build: 48 pairs on 29 cards,
+  37 `keep`, 11 `review` (queued).
+- **Facts.** La Palma's two wrong facts and Dunavska ravnina's missing
+  Gergana fact through feedback sidecars and run `phaseH-fix-2026-10-25`
+  ($0.34); the re-grade then found a third La Palma fact — "tea barrels … 20
+  days to several years", a Wikipedia figure the pliego caps at six months —
+  fixed the same way under `phaseH-fix3-2026-10-25` (14 facts, gate 14 / 14
+  with 4 rewrites, back-check 2 fixes, audit clean; the 1505 bullet keeps its
+  "se cree que"). Castilla's narrowed limestone claim through the first run,
+  then a synchronous second pass (`phaseH-fix2-2026-10-25`, cents) — its product
+  sub-section stays empty by structure: the lien writes every product
+  statement as a consequence of a natural factor, so the product bullets
+  restate the natural-factor quotes and the dedupe removes them (twice). The
+  three product statements survive inside the natural-factor bullets. The ES
+  `--only` is a substring: `--only castilla` also re-extracted Castilla y
+  León, rolled back from the same run.
+- **Two false alarms corrected in the tools, not the data.** The 47
+  "untranslated" flags were exonyms already in the target form, place names
+  inside longer names, quoted titles and glossed terms: the detector exempts
+  those classes (320 → 120 pairs, every dropped row read). The two Slovenian
+  NEWER-UPSTREAM verdicts: the freshness probe now recognises the document
+  the build holds (all 17 SI rows current).
+- **An incident, repaired.** A full 02g run wrote a miss over 17 resolved
+  VIVC slugs (Blaufränkisch queried as "blauer limberger", Catarratto, the
+  Greek and Cypriot natives by their Greek spelling); all 17 restored and
+  pinned, and a miss no longer replaces a resolution. The pin test then
+  caught the one lexicon gap left: `malvasia-aromatica` had no colour entry.
+
+**Left, and why.** Dunavska ravnina's natural factors: the OJ document's §8
+describes none (0 hits for "Данни за географския район"), the register fiche's
+link does — a source change for BG 02d, queued. Bela krajina keeps its
+pravilnik split by decision. The 11 shared-VIVC `review` pairs, the four
+standing gates (the family-word surfaces, 48 ambiguous synonyms — four made
+visible by today's folds —, 120 untranslated pairs, 122 Bétard-delta records)
+are the queue rows.
+
+**Measurements.** Two full stage-04 builds; the cumulative record diff against
+the pre-fix build is 220 records (130 principal rosters, 81 accessory, 15
+styles, 4 source lists, 3 fact sets, 1 region), every row read against a
+documented decision. `audit_terroir_facts --strict` 0 failures on the re-run
+records; `audit_vivc_coverage --strict`, `audit_grape_identity --strict`,
+`audit_dup_keys` clean.
+
+**The cards, before and after.** The seven cards that still carried a
+misleading finding after phase H were re-graded by the same judge (Opus 5.5,
+batch, $0.57; Lefkosia graded for the first time): misleading findings 14 →
+3, cards with one 7 → 2; six cards better, Bela krajina counted "worse" by
+one new finding. Castilla, Dunavska ravnina, Larnaka, Lefkosia, Balatonmelléki
+and Dealurile Olteniei read `trust` with no misleading finding. The three
+left: La Palma's tea-barrel figure (fixed above, after the re-grade); Bela
+krajina's roles (the pravilnik split, kept by decision) and its Sparkling pill,
+which the judge calls an extra but is the register fiche's own category list
+("4. Peneče vino", cited on the card) — a judgement call, kept. Report:
+`tmp/validation/cards-phaseH-fix-8.{json,md}`, paired against
+`cards-phaseH-23.json`. One style blemish the re-grade surfaced without
+flagging it: three EN bullets corpus-wide open on "According to the
+specification" (La Palma, Arabako Txakolina, Manzanilla de Sanlúcar) — the
+style rule says never to mention the document; queued for the normaliser.
+
+**Release gate** (`validate_release.py --quick`, three builds today): every
+check passes except the four standing queues phase H already listed —
+grape-surfaces (the family words the lexicon folds onto one member:
+Canaiolo, Malvasia Nera, Refosco nostrano), ambiguous synonyms 46 → 48
+(four surfaces today's folds made visible: Subirat → Alarije, Malvasia rosa
+→ Malvasia di Schierano, Moscatel-Galego → Moscatel Galego Branco, Mostosa →
+Trbljan; Nerello → Frappato left the list), untranslated 320 → 120, Bétard
+delta 122 (unchanged). pytest 1,691 pass.
+
+**Cost.** Batch ledger today: $0.34 (the first fix run) + $0.57 (the 8-card
+re-grade) = $0.91; the synchronous Castilla and La Palma passes (02d, gate,
+02e, back-check) are not in the ledger, ≈ $0.40. Programme total since
+2026-10-23 ≈ $41–43.
+
+## Addendum — document self-references (2026-10-25, Opus 5.5)
+
+The phase H re-grade had noted three EN bullets opening on "According to the
+specification". **Not isolated.** The sweep found 143 bullets in 30 records
+naming their own document or Wikipedia at the opening, the end or in
+brackets (32 source, 111 translated), against the 4 + 11 first counted: the
+four "Según el pliego, …" / "Secondo il disciplinare, …" leads (Vin Santo
+del Chianti Classico's EN and NL carried the lead too, as "According to the
+production specification" and "Volgens het productiereglement"); the MASAF
+template's "Il disciplinare afferma / indica / stabilisce che …" in 21 IT
+records, rendered by 02e as "The production regulations state that …",
+"Le cahier des charges indique que …", "Het productiereglement stelt dat
+…"; "According to / Selon / Volgens Wikipedia" leads; trailing "… selon
+Wikipédia", "…, come attesta il disciplinare". The cause is the
+do-not-claim escape "unless the source states it explicitly", answered by
+naming the source; the gate grades the claim, which is supported, and
+nothing looked for the reference. The Greek "Σύμφωνα με …" bullets
+(Theopompus, a chrysobull, the Tripoli station) are the source's own
+attributions and are untouched, as is the disciplinare as an object of
+history ("fu approvato nel 1967").
+
+**Fixed, run `docref-2026-10-25`.** A deterministic cut in
+`terroir_normalize` (02d write time, the post-pass, stage-04 render): the
+reference goes, the claim stays, re-capitalised. A Dutch or German fronted
+reference is not cut — the finite verb would come first — and went back to
+02e: 24 Dutch caches re-translated (Sonnet 5.5) and back-checked (Opus 5.5:
+29 fixes on other bullets of the fresh translations — exonyms, het/de
+agreement, "cretaceo" ≠ "krijtachtig" —, none on the cut bullets). Two
+source bullets naming Wikipedia the cut cannot reach were re-gated one
+record each under the gate's new rewrite case: oolde's Dutch "Volgens
+Wikipedia bevat de bodem …" (the gate also narrowed #4 to Twente and moved
+#10 to human factors) and neszmely's Hungarian mid-sentence "a Wikipedia
+szerint", whose fresh Dutch translation had fronted it; both re-translated
+and back-checked (neszmely FR: "deux tiers" corrected to "un tiers").
+`audit_terroir_facts --strict`: `document_reference` 143 → 0, all checks 0;
+`translation_stale` 0. The gate refuses a rewrite that adds a reference;
+the feedback escape now ends "(then state it plainly, without naming the
+source)". Two neighbours found on the way: the Latinisation turned "l'α-
+terpinéol" into "l'a-terpinéol" (its chemical-prefix guard missed an elided
+article — fixed), and the untranslated detector counted α-terpineol as
+residual script where the audit does not (fixed; 3 La Palma pairs).
+
+**Measurements.** Full stage-04 build; record diff against
+`records-after-phaseH-fix3.json`: 54 records, `facts_sha` only — 28
+parents and 26 sub-denominations inheriting their bullets (Bardolino's
+three sottozone, Cognac's seven crus, Monthélie's sixteen premiers crus).
+Rendered EN bullets: every change is the cut, except the re-gated and
+re-translated oolde and neszmely (24 rewordings, read). Every rendered
+panel: 0 strict references. `validate_release --quick`: only the four
+standing queues fail — grape-surfaces, ambiguous synonyms 48, untranslated
+119 (120 at phase H close + 3 α-terpineol pairs from `phaseH-fix3`, − those
+3 as false positives, − neszmely nl), Bétard delta 122. Model spend ≈ $1
+(synchronous runs, estimated from today's batch rows; no batch ledger row).
+
+**Left.** `document_reference_mid`, report-only: 246 bullets in 60 records
+where the reference needs rewording — mid-sentence, the document as the
+agent of a verb ("Il disciplinare descrive i vini come …"), and the
+Wikipedia comparisons ("…, mientras que Wikipedia los describe como …"),
+some of which set two figures side by side. The gate's rewrite case is the
+tool; a scoped re-gate of the 58 source records is queued in CURATOR_TODO.
+
+### Follow-up (2026-10-25) — the report-only references, re-gated
+
+Boris asked for the 246 `document_reference_mid` bullets to be done. **Not
+isolated either:** the sweep before the run added 9 IT records citing the
+disciplinare as the setter of a rule ("le tipologie previste dal
+disciplinare", "entro i limiti del disciplinare"), the Portuguese "definidos
+no caderno de especificações", the Swiss "prévus par le règlement" and a
+Slovak "podľa Wikipédie" the detector had missed (its Wikipedia pattern took
+no inflection) — 69 records, all added to the report check. The gate's
+rewrite case was made specific before the run: a rule stays a rule, stated
+without the document; where a bullet sets the source text beside Wikipedia,
+the source's statement is kept and Wikipedia's only where it adds a detail
+that does not contradict it, neither named, the source's figure where the two
+differ.
+
+**Run `docref-mid-2026-10-25`.** Gate on the 69 records (Opus 5.5 batch,
+$2.97): 76 references removed — Yecla keeps its 300 mm and loses
+Wikipedia's 350, Clos des Lambrays its 260–350 m against 250, Bonarda and
+Tarragona fold Wikipedia's compatible detail in unnamed —, 65 further
+rewrites, the gate doing its job on the re-read records (dropped hedges
+restored: "fundamentalmente", "souvent", "tipicamente"; Rangen's 850 mm read
+as the rainfall, not the average; Monthélie's cooler mesoclimate credited to
+the combe; Osco's geology narrowed to Molise), 4 sub-section moves, every one
+read. Then 238 translation caches re-translated (Sonnet 5.5, $1.41; one
+reply that failed the stage's count check redone synchronously) and
+back-checked (Opus 5.5, $3.19: 199 fixes in 2,579 bullets — tipologia,
+generoso / généreux, sapido, appellation left in French, exonyms, het/de).
+Run total $7.57 at the batch rate, above the $5 estimate.
+
+**Vaud, rolled back out of the run.** The gate dropped 5 of its 7 facts —
+the Bonvillars, Chablais, Côtes de l'Orbe, La Côte and Vully sub-region
+bullets — as "a sub-zone, not this appellation". On the Vaud card they are
+right; the defect was on its 8 sub-appellation cards, which showed every
+sibling's bullet, because stage 04's sibling filter matched a sibling only
+when the bullet *opened* on its name and these open "L'appellation X" / "Le
+vignoble de X". The filter now reads a name behind that wrapper and folds
+hyphens ("Côtes-de-l'Orbe" against "Côtes de l'Orbe"); the test is shared
+with the dedupe post-pass. Corpus sweep: Vaud's 8 cards only. Vaud keeps its
+"aux minima prévus par le règlement" — the 2 report rows left — and the Vully
+bullet still shows on its children: Vully is cross-cantonal and no Vaud child,
+so no sibling.
+
+**Measurements.** `document_reference_mid` 246 → 2, `meta_text` 186 → 18,
+`audit_terroir_facts --strict` 0. Record diff against
+`records-after-docref.json`: 141 records, fact fields only — the 68 re-gated
+records, 65 sub-denominations inheriting their bullets, the 8 Vaud cards
+(7 → 3 or 4 facts: the canton-wide bullets and their own). `validate_release
+--quick`: only the four standing queues fail; untranslated 119 → 121, both new
+pairs one bullet — Wien's EN and FR now say "the Wien wine-growing region" /
+"le vignoble de Wien" where the earlier translation had Vienna / Vienne; two
+re-translations and the back-check keep "Wien" as the appellation's name, the
+detector reads a region-named record as a place. Left as a judgement call.
+
+## Addendum 2026-10-25 — listing under every branch: cantons, regions
+
+**Wien re-translated.** The exonym rule of the 02e prompt now covers the wine
+region named after the city ("Weinbaugebiet Wien" → "the Vienna wine-growing
+region"), verbatim only as the appellation's name; the EN and FR caches were
+re-translated and the detector's two new pairs are gone.
+
+**Vully and Zürichsee: one record, listed under each canton (`co_parents`).**
+Vully (FR / VD) had sat under Fribourg only — Vaud never counted it, and
+Vaud's Vully bullet showed on every Vaud card; Zürichsee (SZ / ZH) was
+Schwyz's sub-denomination and drew Schwyz alone. Both are now nobody's
+sub-denomination, listed under the cantonal AOC of each canton that has one,
+with an "Also part of" line, inheriting nothing (Boris: option 2, and the
+same rule wherever the pattern recurs — the Maasvallei rule one level down).
+Zürichsee's area is each canton's own ruling: the seven ZH Bezirke of the
+Strickhof Verfügung of 26 June 2020 Ziff. III and the ten SZ communes of the
+Allgemeinverfügung of 28 July 2025 Ziff. 2.1 — 76 communes, 0.39 × the
+two-canton area it was drawn as.
+
+**The same pattern one level up: 63 records listed under every region they
+span (`region_aliases`).** A record whose area spans several regions of its
+country's sidebar is listed under each and names them all on its meta line
+("Lombardia, Veneto"), one "All appellations in …" link each; it keeps its
+primary region for the title, the description and JSON-LD, and its
+sub-denominations stay in their own region. Three sources: a table citing a
+verbatim quote of each record's area text (24 records — IT 15, found by the
+provinces each text names: Garda, Lugana, San Martino della Battaglia,
+Valdadige, Terradeiforti, Delle Venezie, Trevenezie, Prosecco, Vigneti delle
+Dolomiti, Colli di Luni, Orvieto, Lison, Lison-Pramaggiore, Alto Livenza,
+Vallagarina; ES Cava — which had no region and sat in "no region" — Rioja,
+Jumilla, Ribera del Queiles; AT Weinland, Bergland; BG the two PGIs; CY
+Pitsilia), the umbrella PGIs' member tables (19: the DE Landweine under their
+Anbaugebiete, HU Dunántúli and Zemplén, SK Slovenská, MT Maltese Islands) and,
+for France, the wine regions whose own AOCs share communes with the record's
+INAO aire (20: Atlantique, Méditerranée, Pays d'Oc, Terres du Midi, the Gard
+IGPs, Cévennes, Languedoc, the three Rivesaltes AOCs, the Bourgogne regionals
+under Beaujolais, Beaujolais under Bourgogne, Comtés Rhodaniens). The query
+core's region filter and facets read every region (`filter({region:
+'Veneto'})` returns Garda), so the MCP server answers the same once
+redeployed. `scripts/sweep_region_aliases.py`, the geometric detector: 85
+candidates accepted, 30 rejected with their reason (Bétard overlaps in DE /
+HU / SI / BG, a neighbour's filing, Clairette de Bellegarde's one shared
+commune), 2 new — Taubertäler, queued until a text names its Bereiche.
+
+Not isolated, and not only listings: the sweep found five records filed in
+the wrong region, fixed at the source — Debrői hárslevelű (five Heves
+villages of the Eger district) under Tokaj, Monor (a Kunság municipality)
+under Felső-Magyarország, and Nizza, Garda Colli Mantovani and Terre
+Siciliane under "Italia" for want of a regione. Also found and queued: five
+IT interregional polygons drawn from one regional geoportal that miss their
+other region's part (Prosecco, Delle Venezie, Vigneti delle Dolomiti,
+Valdadige, Colli di Luni), Bayerischer Bodensee-Landwein drawn as the whole
+Baden Anbaugebiet by its member table, and Rioja Alavesa carrying Rioja's
+region.
+
+**`audit_geometry_overlaps.py --strict` passes again.** The one SUSPICIOUS
+sliver, Côtes du Lot / Périgord, is Salviac, in both aires of the INAO CSV;
+its whitelist entry had been keyed on the Rocamadour DGC and is re-keyed to
+the parent, and the Agenais / Côtes du Lot entry is dropped (Fumel left Côtes
+du Lot's polygon with its 2026-10-04 aire change). `validate_release --quick`
+had not run the geometry audits, which is why the failure went unseen.
+
+**Record diff** against `records-after-coparents.json`: 6 records — the five
+regions above and Zürichsee's geometry. The aliases themselves are a startup
+field the diff does not compare.

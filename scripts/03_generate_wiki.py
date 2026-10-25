@@ -28,6 +28,9 @@ from pathlib import Path
 from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.extract_index import wiki_index_kept  # noqa: E402
+
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
 INDEX_IN = EXTRACTED / "_index.json"
 TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
@@ -577,20 +580,23 @@ def main() -> int:
         for r in records
     }
     # Merge: keep any non-FR entries (ES added by scripts/es/03_generate_wiki.py),
-    # replace FR entries wholesale. Stage 03 (FR) and stage 03 (ES) can be
-    # run in any order without clobbering each other.
+    # replace FR entries wholesale — only the selected ones on a `--only` run.
+    # Stage 03 (FR) and stage 03 (ES) can be run in any order without
+    # clobbering each other.
     existing_idx: dict[str, dict] = {}
     if WIKI_INDEX.exists():
         try:
             existing_idx = json.loads(WIKI_INDEX.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             existing_idx = {}
-    non_fr_kept = {k: v for k, v in existing_idx.items() if v.get("country") != "fr"}
+    non_fr_kept = wiki_index_kept(existing_idx, "fr", partial=bool(args.only))
     merged = {**non_fr_kept, **fr_idx}
     WIKI_INDEX.write_text(json.dumps(merged, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
 
-    (WIKI / "index.md").write_text(render_index(records), encoding="utf-8")
-    (WIKI / "log.md").write_text(render_log(records), encoding="utf-8")
+    # The corpus pages list every record: a `--only` run leaves them as they are.
+    if not args.only:
+        (WIKI / "index.md").write_text(render_index(records), encoding="utf-8")
+        (WIKI / "log.md").write_text(render_log(records), encoding="utf-8")
 
     print(f"[done] wrote {written} pages to {WIKI.relative_to(ROOT)}/", file=sys.stderr)
     return 0

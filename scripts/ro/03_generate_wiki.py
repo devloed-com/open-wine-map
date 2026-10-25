@@ -25,6 +25,7 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.extract_index import wiki_index_kept  # noqa: E402
 from _lib.ro.region import derive_region  # noqa: E402
 
 EXTRACTED = ROOT / "raw" / "ro" / "dokumente-extracted"
@@ -277,7 +278,7 @@ def main() -> int:
             existing = json.loads(WIKI_INDEX.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             existing = {}
-    other_kept = {k: v for k, v in existing.items() if v.get("country") != "ro"}
+    other_kept = wiki_index_kept(existing, "ro", partial=bool(args.only))
     merged = {**other_kept, **ro_index}
     WIKI_INDEX.write_text(json.dumps(merged, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     print(

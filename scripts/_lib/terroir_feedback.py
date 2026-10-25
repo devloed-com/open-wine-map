@@ -55,13 +55,19 @@ _NOTE_CHARS = 320
 # older than the regulator text in force — Alicante's two subzonas, Monterrei's
 # six municipalities) or a statement about another appellation, sub-zone or
 # tier (the DOK sentence of the "Maltese wine" article on the IĠT card).
+#
+# Every escape ends on how to comply: the model had answered "unless the
+# source states it explicitly" by naming the source ("Según el pliego, se
+# cree que …", La Palma, 2026-10-25), which the style rules forbid.
+_PLAINLY = " (then state it plainly, without naming the source)"
 ESCAPE_BY_MODE = {
     "source-vintage": ": a source may state it, but that statement is outdated — assert it only "
-                      "if the current regulator text itself states it, never from the Wikipedia article alone",
+                      "if the current regulator text itself states it, never from the Wikipedia article alone"
+                      + _PLAINLY,
     "sibling-or-subzone-confusion": " unless the source states it of this appellation itself, not of "
-                                    "another appellation, sub-zone or tier",
+                                    "another appellation, sub-zone or tier" + _PLAINLY,
 }
-DEFAULT_ESCAPE = " unless the source states it explicitly"
+DEFAULT_ESCAPE = " unless the source states it explicitly" + _PLAINLY
 
 _cache: dict[str, dict | None] = {}
 

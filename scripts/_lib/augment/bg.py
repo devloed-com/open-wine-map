@@ -24,6 +24,8 @@ def augment_bg_records_with_national_specs(records: list[dict]) -> int:
       - grapes            ← section 5 (Винени сортове грозде, colour-split)
       - link_to_terroir   ← section 6 (Връзка с географския район)
       - geo_area_brief / summary / styles ← matching sections
+      - geo_communes(_scoped, _partial) ← section 3's obshtini, where the
+                            spec delimits by obshtina (Тракийска низина)
       - section_roles     ← unified role dict so 02d reads terroir uniformly
       - stub_reason       ← prefixed `national-spec:` so the audit can tell
                             EU-OJ-extracted from spec-augmented wines
@@ -68,6 +70,11 @@ def augment_bg_records_with_national_specs(records: list[dict]) -> int:
             record["grapes"] = sidecar["grapes"]
         if sidecar.get("geo_area_brief"):
             record["geo_area_brief"] = sidecar["geo_area_brief"]
+        if sidecar.get("geo_communes_scoped"):
+            # Тракийска низина's obshtini (stage 04 draws the PGI from them)
+            record["geo_communes"] = sidecar.get("geo_communes") or []
+            record["geo_communes_scoped"] = sidecar["geo_communes_scoped"]
+            record["geo_communes_partial"] = sidecar.get("geo_communes_partial") or []
         if sidecar.get("link_to_terroir"):
             record["link_to_terroir"] = sidecar["link_to_terroir"]
         if sidecar.get("styles"):

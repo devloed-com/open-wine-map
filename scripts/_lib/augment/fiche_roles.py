@@ -14,10 +14,16 @@ where the termékleírás names 43) would otherwise demote the national list
 wholesale. A card variety the fiche does not list was added to the national
 roster after the state's filing and was not a main variety then: it is
 shown as accessory and counted (`n_unlisted`) on the card's source line. A
-national source that splits roles itself (Bela krajina's pravilnik, the RO
-yield-table additions) is left untouched, and CZ keeps its own fiche rule
-(augment/cz.py: the fiche *is* the roster where it is narrower than the
-decree).
+national source that splits roles itself (Bela krajina's pravilnik) is left
+untouched, and CZ keeps its own fiche rule (augment/cz.py: the fiche *is* the
+roster where it is narrower than the decree).
+
+The RO yield-table split is not a role statement of its own: a variety the
+single document names only in its yield table is accessory because §7 omits
+it (ro/02 `add_yield_table_varieties`). Decision of 2026-10-25: the fiche
+roles apply there too, and a yield-table variety the fiche tags MAIN is
+listed (`yield_conflict`, the document's own spellings) so the card says the
+two documents disagree — Dealurile Olteniei's Merlot.
 """
 from __future__ import annotations
 
@@ -52,20 +58,24 @@ def overlay(record: dict, fiche: dict | None) -> tuple[dict | None, str]:
     principal = [s for s in grapes.get("principal") or [] if s]
     if not principal:
         return None, "no-roster"
-    if grapes.get("accessory"):
+    accessory = [s for s in grapes.get("accessory") or [] if s]
+    yield_names = _yield_table_names(record)
+    if accessory and not set(accessory) <= set(yield_names):
         return None, "national-roles"
+    roster = principal + [s for s in accessory if s not in principal]
     sets = fiche_role_sets(fiche)
     if sets is None:
         return None, "no-split"
     main, other = sets
-    cov = coverage(principal, main | other)
+    cov = coverage(roster, main | other)
     if cov < COVERAGE_MIN:
         return None, "coverage"
-    new_principal = [s for s in principal if s in main]
+    new_principal = [s for s in roster if s in main]
     if not new_principal:
         return None, "no-main"
-    new_accessory = [s for s in principal if s not in main]
+    new_accessory = [s for s in roster if s not in main]
     unlisted = [s for s in new_accessory if s not in other]
+    yield_conflict = [yield_names[s] for s in accessory if s in main]
     role_of = {s: "principal" for s in new_principal}
     role_of.update({s: "accessory" for s in new_accessory})
     for d in grapes.get("details") or []:
@@ -87,7 +97,19 @@ def overlay(record: dict, fiche: dict | None) -> tuple[dict | None, str]:
         "coverage": round(cov, 3),
         "source_org": "eambrosia-register",
     }
+    if yield_conflict:
+        prov["yield_conflict"] = yield_conflict
     return prov, "applied"
+
+
+def _yield_table_names(record: dict) -> dict[str, str]:
+    """slug → the document's spelling, for the varieties an RO single
+    document names only in its yield table."""
+    if record.get("country") != "ro":
+        return {}
+    return {d["slug"]: d.get("name") or d["slug"]
+            for d in (record.get("grapes") or {}).get("details") or []
+            if d.get("source") == "yield-table" and d.get("slug")}
 
 
 def apply_register_fiche_roles(records: list[dict], countries=FICHE_ROLE_COUNTRIES) -> dict:
@@ -110,5 +132,7 @@ def apply_register_fiche_roles(records: list[dict], countries=FICHE_ROLE_COUNTRI
         record["register_fiche_roles"] = prov
         _REGISTER_FICHE_ROLES_BY_SLUG[slug] = prov
         counts["applied"] += 1
-        counts["pills_to_accessory"] += before - prov["n_main"]
+        counts["pills_to_accessory"] += max(before - prov["n_main"], 0)
+        if prov.get("yield_conflict"):
+            counts["yield_conflict"] = counts.get("yield_conflict", 0) + 1
     return counts

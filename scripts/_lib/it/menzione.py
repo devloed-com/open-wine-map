@@ -75,6 +75,40 @@ _LIST_END_RE = re.compile(
 )
 
 
+# The field labels of the 2024/1143 "Altre condizioni" block. A trigger
+# followed by one of them before its colon is a condition *title*
+# ("Unità geografiche aggiuntive" / "Quadro di riferimento giuridico:" /
+# "Nella legislazione unionale"), not a list introduction — the label's
+# value had been read as the one menzione of Roero, Etna, Trebbiano
+# d'Abruzzo and Montecucco Sangiovese.
+_TEMPLATE_LABEL_RE = re.compile(
+    r"quadro\s+di\s+riferimento\s+giuridico|"
+    r"tipo\s+di\s+condizione\s+supplementare|"
+    r"descrizione\s+della\s+condizione",
+    re.IGNORECASE,
+)
+
+# Between a trigger and its colon: a full stop closing a word of three
+# letters or more before a capitalised word or a number ("«classico».\n\n
+# 3.5. … comprende:"). The trigger then ends its sentence in prose and the
+# colon introduces something else — Alto Adige's Santa Maddalena clause
+# had taken the Terlano sottozona's comuni. "St. Peter" / "S. Genesio"
+# are abbreviations, not sentence ends, nor is "all'art. 5 comma 2"; a
+# blank line is not one either (Etna's "Elenco unità geografiche
+# aggiuntive\n\nNel comune di …:").
+_SENTENCE_END_RE = re.compile(
+    r"(?<=[a-zà-ÿ»)]{3})(?<!\bart)(?<!\bartt)(?<!\blett)(?<!\bpag)"
+    r"\.\s+(?=[A-ZÀ-Þ«]|\d+\.\d)"
+)
+
+# A dash-bulleted annex ("Elenco dei Comuni:\n- Isola del Giglio\n-
+# Monte Argentario", MASAF Allegato A of the Tuscan DOCs): one name per
+# bullet, sub-headers ("nel comune di Manciano:", "Elenco delle
+# Frazioni:") and blank lines inside the list.
+_BULLET_LINE_RE = re.compile(r"^\s*[-–—•]\s+(.+)$")
+_BULLET_HEADER_RE = re.compile(r"^\s*(?:elenco\s+del|nel(?:la)?\s+comun|in\s+comune)[^:]*:\s*$",
+                               re.IGNORECASE)
+
 _NAME_DROP_TOKENS = frozenset({
     "e", "ed", "del", "della", "dei", "delle", "il", "la", "lo", "gli", "le",
     "di", "in", "tra", "fra", "con", "per", "a", "alla", "alle", "ai",
@@ -131,9 +165,35 @@ def _names_from_numbered_block(block: str) -> list[str]:
     return out
 
 
+def _names_from_bullet_block(text: str) -> list[str]:
+    """Parse a dash-bulleted list starting at `text`, read across blank
+    lines, sub-headers and page numbers; it ends at the first line that
+    is none of these, and a text whose first such line is not a bullet
+    holds no list."""
+    out: list[str] = []
+    for line in text.splitlines():
+        if not line.strip() or line.strip().isdigit() or _BULLET_HEADER_RE.match(line):
+            continue
+        m = _BULLET_LINE_RE.match(line)
+        if not m:
+            break
+        # "- Aldein-Aich: vitigni Pinot Bianco, Pinot Nero" (Alto Adige):
+        # the name is the head before the unit's own rule.
+        name = m.group(1).split(":", 1)[0].strip().rstrip(".,;")
+        if not name or name[0].islower() or any(c.isdigit() for c in name):
+            continue
+        if len(name) > 60 or name.lower() in _NAME_DROP_TOKENS:
+            continue
+        out.append(name)
+    return out
+
+
 def _names_from_comma_block(block: str) -> list[str]:
     """Parse a `Name1, Name2, ... e NameN` comma-separated list."""
     s = re.sub(r"\s+", " ", block).strip().rstrip(".,;:")
+    # The list ends with its sentence: "…, Vicenziana. Le suddette
+    # menzioni geografiche aggiuntive …" (Barbaresco).
+    s = _SENTENCE_END_RE.split(s, maxsplit=1)[0]
     s = re.split(r"\s+(?:rispettivamente|come\s+segue|tipologie?|sono|che|i\s+cui)\b",
                  s, maxsplit=1)[0].strip().rstrip(",.;")
     out: list[str] = []
@@ -169,9 +229,15 @@ def extract_menzioni(text: str, parent_wine_name: str) -> list[dict]:
         colon = tail.find(":")
         if colon < 0:
             continue
+        lead = tail[:colon]
+        if _TEMPLATE_LABEL_RE.search(lead):
+            continue
         list_start = tail_start + colon + 1
-        # Find the end of the list block.
         rest = text[list_start:]
+        bullets = _names_from_bullet_block(rest[:6000])
+        if _SENTENCE_END_RE.search(lead) and not bullets:
+            continue
+        # Find the end of the list block.
         end_m = _LIST_END_RE.search(rest)
         list_block = rest[: end_m.start()] if end_m else rest[:1500]
 
@@ -179,13 +245,14 @@ def extract_menzioni(text: str, parent_wine_name: str) -> list[dict]:
         # comma list (Barolo/Barbaresco's 169/66 MGAs) can carry a few
         # stray "art. N" / "comma N" numbered references that would fool a
         # marker-count heuristic into the numbered parser (which then
-        # returns nothing). Parse both and keep whichever recovers more.
+        # returns nothing). Parse every shape and keep whichever recovers
+        # most.
         numbered = _names_from_numbered_block(list_block)
         comma = _names_from_comma_block(list_block)
-        if len(numbered) >= len(comma):
-            names, pattern = numbered, "numbered-list"
-        else:
-            names, pattern = comma, "comma-list"
+        names, pattern = max(
+            (numbered, "numbered-list"), (comma, "comma-list"), (bullets, "bullet-list"),
+            key=lambda c: len(c[0]),
+        )
 
         for name in names:
             sl = slugify(name)

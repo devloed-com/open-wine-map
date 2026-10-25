@@ -264,3 +264,13 @@ def test_phone_bar_button_opens_the_drawer_on_the_search() -> None:
     # focused — `via: 'search'` is what setDrawer focuses the omni input on.
     assert "setDrawer(!drawerOpen(), 'search', sidebarToggle)" in APP_JS
     assert "const target = via === 'search' ? document.getElementById('omni') : sidebarEl;" in APP_JS
+
+
+def test_an_appellation_of_several_hierarchies_nests_under_each() -> None:
+    """`co_parents` (CH intercantonal AOCs): the record joins each co-parent's
+    region group, nests under every co-parent there, and counts once per
+    country (2026-10-25, the Maasvallei rule one level down)."""
+    assert "for (const cp of rec.co_parents || [])" in APP_JS
+    assert "else if (cps.length) for (const c of cps) addKid(c, slug);" in APP_JS
+    assert "countrySeen.has(s)" in APP_JS
+    assert "LABELS.co_parent_of" in APP_JS

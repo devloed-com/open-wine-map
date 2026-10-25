@@ -50,6 +50,14 @@ test('filter: grape synonyms, region labels, styles and schemes', { skip }, () =
   assert.throws(() => core('en').filter({ region: '!!' }), QueryError);
 });
 
+test('filter: a record spanning several regions answers to each (region_aliases)', { skip }, () => {
+  assert.ok(slugs(core('en').filter({ region: 'Veneto', limit: 200 })).includes('garda'));
+  assert.ok(slugs(core('en').filter({ region: 'Lombardia', limit: 200 })).includes('garda'));
+  assert.ok(slugs(core('en').filter({ country: 'es', region: 'Extremadura', limit: 200 })).includes('cava'));
+  const veneto = core('en').facets().regions.find(r => r.country === 'it' && r.value === 'Veneto');
+  assert.ok(veneto && veneto.count >= core('en').filter({ region: 'Veneto', limit: 1 }).total);
+});
+
 test('filter: sub-denominations and spirits only on request', { skip }, () => {
   const base = core('en').filter({ country: 'fr', limit: 1 }).total;
   assert.ok(core('en').filter({ country: 'fr', include_sub_denominations: true, limit: 1 }).total > base);

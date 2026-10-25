@@ -331,3 +331,32 @@ def test_grape_keywords_routing_table_priority():
     # geo_area's most specific keyword leads its tuple too.
     geo_keywords = SECTION_ROLE_KEYWORDS["geo_area"]
     assert geo_keywords[0] == "körülhatárolt földrajzi terület"
+
+
+def test_every_telepules_group_is_read_and_headings_dropped():
+    """Until 2026-10-24 the first "település…" ended the list: Monor's
+    termékleírás, one group per hill, read Monor alone; Tolna's, which
+    opens on the heading "Települések:", read nothing; Debrői hárslevelű
+    kept the heading "CLASSICUS" as a name."""
+    from _lib.hu.commune import parse_commune_list
+
+    assert parse_commune_list(
+        "Monor településen a Strázsa-hegy, Monor, Monorierdő és Bénye településen a "
+        "Száraz-hegy, Gomba településen Harc-völgy dőlőknek a borszőlő termőhelyi "
+        "kataszter szerint I. és II. osztályú határrészeibe tartozó területei."
+    ) == ["Monor", "Monorierdő", "Bénye", "Gomba"]
+    assert parse_commune_list(
+        "A körülhatárolt terület meghatározása: Települések: Aba, Aparhant, Závod "
+        "településeknek, a szőlő termőhelyi kataszter szerint I. és II. osztályú területek."
+    ) == ["Aba", "Aparhant", "Závod"]
+    assert parse_commune_list(
+        "CLASSICUS: Aldebrő, Feldebrő és Verpelét települések, a szőlő termőhelyi kataszter "
+        "szerint I. és II. osztályú határrészeibe tartozó területek, kivéve a termékleírás "
+        "térképi mellékletén jelölt területek. SUPERIOR: Aldebrő, Feldebrő és Verpelét "
+        "települések, a szőlő termőhelyi kataszter szerint I. osztályú területek."
+    ) == ["Aldebrő", "Feldebrő", "Verpelét"]
+    # the one-group form is unchanged
+    assert parse_commune_list(
+        "Bozsok, Cák, Kőszeg és Kőszegdoroszló településeknek a szőlő termőhelyi "
+        "kataszter szerint I. és II. osztályú területei."
+    ) == ["Bozsok", "Cák", "Kőszeg", "Kőszegdoroszló"]

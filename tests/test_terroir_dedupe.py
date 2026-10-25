@@ -114,3 +114,17 @@ def test_protected_name_must_lead_the_bullet_as_a_whole_word():
     a = fact("Rioja Altamira: suelos arcillo-calcáreos, vinos frescos con buena acidez y fruta roja madura.")
     b = fact("Rioja Altamira: suelos arcillo-calcáreos, vinos frescos con buena acidez y fruta roja.")
     assert dedupe_facts([a, b], protected_names=names).kept_indices == [0]
+
+
+def test_a_sibling_named_behind_a_wrapper_still_leads():
+    """Stage 04's sibling filter and the dedupe share this test: Vaud's
+    "L'appellation Bonvillars …" / "Le vignoble de Chablais …" were shown on
+    every Vaud sub-appellation card until 2026-10-25."""
+    from _lib.terroir_dedupe import _leads_with_name
+    assert _leads_with_name("L'appellation Bonvillars se situe au bord du lac de Neuchâtel.", "Bonvillars")
+    assert _leads_with_name("Le vignoble de Chablais s'étend de Villeneuve à la frontière.", "Chablais")
+    assert _leads_with_name("Rioja Oriental: suelos aluviales.", "Rioja Oriental")
+    assert _leads_with_name("L'appellation Côtes de l'Orbe se situe entre deux lacs.", "Côtes-de-l'Orbe")
+    assert not _leads_with_name("Le vignoble de Chablis s'étend sur 5 000 ha.", "Chablis premier cru Vaillons")
+    assert not _leads_with_name("Le vignoble vaudois couvre 3 800 hectares.", "Vaud")
+    assert not _leads_with_name("Bonvillarsien est un adjectif.", "Bonvillars")

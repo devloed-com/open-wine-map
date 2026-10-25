@@ -109,6 +109,7 @@ def main() -> int:
             "geo_area_brief": parsed["geo_area_brief"],
             "geo_communes": parsed["geo_communes"],
             "geo_communes_scoped": parsed["geo_communes_scoped"],
+            "geo_communes_villages": parsed["geo_communes_villages"],
             "link_to_terroir": parsed["link_to_terroir"],
             "section_roles": parsed["section_roles"],
             "section_titles": parsed["section_titles"],

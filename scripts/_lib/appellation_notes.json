@@ -49,5 +49,19 @@
         "url": "https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=uriserv:OJ.C_.2023.224.01.0015.01.SPA"
       }
     ]
+  },
+  "castilla": {
+    "note": {
+      "en": "The label may name «Campo de Calatrava» as a smaller geographical unit of the Castilla PGI when all the grapes come from 16 municipalities of the province of Ciudad Real (Aldea del Rey, Almagro, Argamasilla de Calatrava, Ballesteros de Calatrava, Bolaños de Calatrava, Calzada de Calatrava, Cañada de Calatrava, Carrión de Calatrava, Granátula de Calatrava, Miguelturra, Moral de Calatrava, Pozuelo de Calatrava, Torralba de Calatrava, Valenzuela de Calatrava, Villanueva de San Carlos, Villar del Pozo). It is a labelling unit of this PGI, distinct from the Campo de Calatrava PDO.",
+      "fr": "L'étiquette peut mentionner «Campo de Calatrava» comme unité géographique plus petite de l'IGP Castilla lorsque la totalité des raisins provient de 16 communes de la province de Ciudad Real (Aldea del Rey, Almagro, Argamasilla de Calatrava, Ballesteros de Calatrava, Bolaños de Calatrava, Calzada de Calatrava, Cañada de Calatrava, Carrión de Calatrava, Granátula de Calatrava, Miguelturra, Moral de Calatrava, Pozuelo de Calatrava, Torralba de Calatrava, Valenzuela de Calatrava, Villanueva de San Carlos, Villar del Pozo). C'est une unité d'étiquetage de cette IGP, distincte de l'AOP Campo de Calatrava.",
+      "es": "Puede indicarse en el etiquetado la unidad geográfica menor «Campo de Calatrava» de la IGP Castilla cuando el 100 % de las uvas procede de 16 municipios de la provincia de Ciudad Real (Aldea del Rey, Almagro, Argamasilla de Calatrava, Ballesteros de Calatrava, Bolaños de Calatrava, Calzada de Calatrava, Cañada de Calatrava, Carrión de Calatrava, Granátula de Calatrava, Miguelturra, Moral de Calatrava, Pozuelo de Calatrava, Torralba de Calatrava, Valenzuela de Calatrava, Villanueva de San Carlos, Villar del Pozo). Es una unidad de etiquetado de esta IGP, distinta de la DOP Campo de Calatrava.",
+      "nl": "Het etiket mag «Campo de Calatrava» vermelden als kleinere geografische eenheid van de BGA Castilla wanneer alle druiven afkomstig zijn uit 16 gemeenten van de provincie Ciudad Real (Aldea del Rey, Almagro, Argamasilla de Calatrava, Ballesteros de Calatrava, Bolaños de Calatrava, Calzada de Calatrava, Cañada de Calatrava, Carrión de Calatrava, Granátula de Calatrava, Miguelturra, Moral de Calatrava, Pozuelo de Calatrava, Torralba de Calatrava, Valenzuela de Calatrava, Villanueva de San Carlos, Villar del Pozo). Het is een etiketteringseenheid van deze BGA, te onderscheiden van de BOB Campo de Calatrava."
+    },
+    "sources": [
+      {
+        "label": "Single document, OJ C 453 of 9.11.2021 (EUR-Lex)",
+        "url": "https://eur-lex.europa.eu/legal-content/ES/TXT/HTML/?uri=uriserv%3AOJ.C_.2021.453.01.0007.01.SPA&toc=OJ%3AC%3A2021%3A453%3ATOC"
+      }
+    ]
   }
 }
