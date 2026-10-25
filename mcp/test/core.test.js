@@ -54,6 +54,13 @@ test('filter: a record spanning several regions answers to each (region_aliases)
   assert.ok(slugs(core('en').filter({ region: 'Veneto', limit: 200 })).includes('garda'));
   assert.ok(slugs(core('en').filter({ region: 'Lombardia', limit: 200 })).includes('garda'));
   assert.ok(slugs(core('en').filter({ country: 'es', region: 'Extremadura', limit: 200 })).includes('cava'));
+  const cava = core('en').filter({ country: 'es', region: 'Extremadura', limit: 200 }).results.find(r => r.slug === 'cava');
+  assert.equal(cava.region, null);
+  assert.ok(cava.regions.includes('Extremadura') && cava.regions.includes('Cataluña'));
+  const garda = core('en').search({ query: 'Garda' }).results.find(r => r.slug === 'garda');
+  assert.deepEqual(garda.regions, ['Lombardia', 'Veneto']);
+  const soave = core('en').search({ query: 'Soave' }).results.find(r => r.slug === 'soave');
+  assert.equal(soave.regions, undefined);
   const veneto = core('en').facets().regions.find(r => r.country === 'it' && r.value === 'Veneto');
   assert.ok(veneto && veneto.count >= core('en').filter({ region: 'Veneto', limit: 1 }).total);
 });

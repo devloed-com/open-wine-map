@@ -144,7 +144,7 @@ function tilePaths(tiles) {
 }
 
 function showOnMapText(out) {
-  const lines = out.appellations.map(a => `- [${a.name}](${a.url}) — ${[a.classification, a.region, a.country_name].filter(Boolean).join(' · ')}`);
+  const lines = out.appellations.map(a => `- [${a.name}](${a.url}) — ${[a.classification, a.regions ? a.regions.join(', ') : a.region, a.country_name].filter(Boolean).join(' · ')}`);
   if (out.appellations.length > 1) lines.push(`\nAll of them on the map: ${out.map_url}`);
   if (out.unknown.length) lines.push(`(not found: ${out.unknown.join(', ')})`);
   return `Shown on the map (Open Wine Map):\n${lines.join('\n')}`;

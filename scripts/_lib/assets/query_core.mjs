@@ -54,7 +54,7 @@ const READ_ONLY = { readOnlyHint: true, idempotentHint: true, openWorldHint: fal
 // its own locale.
 export const TOOL_DEFS = {
   search_appellations: {
-    description: 'Find European wine appellations (PDO/PGI, AOC, DOC, DO, …) by name, including romanised forms of Greek and Bulgarian names. Returns slug, official name, country, region, classification and the page URL.',
+    description: 'Find European wine appellations (PDO/PGI, AOC, DOC, DO, …) by name, including romanised forms of Greek and Bulgarian names. Returns slug, official name, country, region (and regions, when the appellation spans several), classification and the page URL.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -215,6 +215,9 @@ export function createQueryCore(ctx) {
       url: pageUrl(slug),
     };
     if (r.name_latin) out.name_latin = r.name_latin;
+    // an appellation spanning several regions (Garda, Cava) names them all,
+    // its own first; Cava has no region of its own
+    if ((r.region_aliases || []).length) out.regions = regionsOf(r).map(regionLabel);
     if (r.is_sub_denomination) out.is_sub_denomination = true;
     if (r.is_wine === false) out.is_wine = false;
     if (r.cancelled) out.cancelled = r.cancelled;
