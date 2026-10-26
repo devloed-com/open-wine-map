@@ -7986,7 +7986,14 @@ instance — change search semantics in the core, never in app.js.
   pinned against `mcp/src/context.js` by `tests/test_mcp_query_context.py`);
   the script caches it per isolate and revalidates by ETag every 5 min, and
   `get_appellation` fetches the panel JSON `/data/d/<locale>/<slug>.json`.
-  Counted server-side as the `MCP Tool` Plausible event. Build / deploy:
+  Counted server-side as the `MCP Tool` and `MCP Connect` Plausible events
+  (2026-10-26: the declaring client's name — every 2026-07-28 request carries
+  it, a 2025-era client only in `initialize` —, the protocol era, the
+  User-Agent's product token, result counts and errors; never a search's
+  text). The calls arrive from the chat vendors' datacenters, so their country
+  is the vendor's; the people are counted through the links: every site link
+  the tools return carries `?utm_medium=mcp` (`LINK_TAG`, the query core's
+  `linkQuery`), plus `utm_content=map` from the map view. Build / deploy:
   `.venv/bin/python scripts/deploy_mcp.py deploy` (esbuild bundle → Bunny
   compute API → publish with the git SHA → smoke test in all three protocol
   modes); the site deploy (`deploy.sh`) must go first when the context format
@@ -8026,7 +8033,11 @@ environment, an unknown host loads no tracker. Custom events go through
 event/prop reference, the goal-configuration recipe (events are stored but
 invisible until configured as goals — retroactively), and the known reading
 artefacts (replaceState opens are not pageviews; page-load opens are not
-tracked; `Appellation Viewed.slug` is the stack focus, split by `via`) live in
+tracked; `Appellation Viewed.slug` is the stack focus, split by `via`; app.js
+rewrites the address while the page parses, so the head snippet notes the
+landing's `utm_*` / `ref` / `source` parameters and hands them back to the
+first pageview through the tracker's `transformRequest` — campaign tags were
+lost 2026-10-22 → 10-26 without it) live in
 [docs/analytics.md](docs/analytics.md). Keep that table in sync when adding
 or renaming a `track()` call, and never commit an API key.
 

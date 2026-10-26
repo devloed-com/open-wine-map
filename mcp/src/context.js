@@ -6,6 +6,11 @@ import { createQueryCore } from '../../scripts/_lib/assets/query_core.mjs';
 
 export const LOCALES = ['en', 'fr', 'es', 'nl'];
 export const SUPPORTED_FORMATS = [1];
+// Every site link the tools return carries it, so the site's Plausible counts
+// a visit that follows one under UTM medium "mcp" — with the visitor's own
+// country, unlike the tool calls, which reach this server from the chat
+// vendors' datacenters. The source stays the referrer (claude.ai, chatgpt.com).
+export const LINK_TAG = 'utm_medium=mcp';
 
 export function coreFromContext(ctx, siteOrigin) {
   if (!SUPPORTED_FORMATS.includes(ctx.format_version)) {
@@ -15,6 +20,7 @@ export function coreFromContext(ctx, siteOrigin) {
     locale: ctx.locale,
     siteOrigin,
     slugBase: `/${ctx.locale}/`,
+    linkQuery: `?${LINK_TAG}`,
     aocs: ctx.aocs,
     grapesInfo: ctx.grapes_info,
     grapeSearchIndex: ctx.grape_search_index,

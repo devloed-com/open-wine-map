@@ -71,7 +71,8 @@ option is inert, and a build with no `localhost` entry loads nothing there.
 | `Omnisearch Result Picked` | `type` (`grape` / `region` / `style` / `classification`), `locale` | a non-appellation suggestion is picked (appellation picks fire `Appellation Opened`) |
 | `WebMCP Tool` | `tool` (`search_appellations` / `filter_appellations` / `get_appellation` / `list_facets` / `show_appellation`), `slug` (`get_appellation` / `show_appellation`, a known slug only — since 2026-10-05), `locale` | a browser agent called one of the page's WebMCP tools (`document.modelContext`, end of app.js; registered only where the browser exposes the API). No other argument is sent — a search's query text stays private, as for the search box. |
 | `MCP Address Copied` | `locale` | the copy button next to the MCP server address in the About dialog. |
-| `MCP Tool` | `tool` (`search_appellations` / `filter_appellations` / `get_appellation` / `list_facets` / `show_on_map`), `locale`; `slug` (`get_appellation`: the appellation fetched), `slugs` + `count` (`show_on_map`: the known slugs shown, comma-joined in call order, cut at a slug boundary to 2,000 characters) — both since 2026-10-05, unknown slugs left out | a client of the remote MCP server (`mcp.openwinemap.com/mcp`, mcp/) called a tool. Sent server-side by the Bunny Edge Script through Plausible's events API (`PLAUSIBLE_HOST` / `PLAUSIBLE_DOMAIN` script variables; unset → nothing sent), with the client's User-Agent and forwarded IP so visitor counting works as for page events. No other argument is sent — a search's query text stays private. Its page URL is `https://mcp.openwinemap.com/mcp`. **Which appellations agents read**: filter `tool` = `get_appellation`, break down by `slug`. `slugs` is one row per *set*; count one appellation's shows with a `contains` filter on it. |
+| `MCP Tool` | `tool` (`search_appellations` / `filter_appellations` / `get_appellation` / `list_facets` / `show_on_map`), `locale`; `slug` (`get_appellation`: the appellation fetched), `slugs` + `count` (`show_on_map`: the known slugs shown, comma-joined in call order, cut at a slug boundary to 2,000 characters) — both since 2026-10-05, unknown slugs left out; since 2026-10-26: `criteria` (`filter_appellations`: the criteria given, comma-joined in a fixed order — `country,region,style,grape,main_grape_only,scheme,include_sub_denominations,include_spirits` — or `(none)`) with `country`, `grape` and `style` as the catalogue keys they resolved to (left out when a value resolves to nothing — the site's `Filter Applied` rule); `result_count` + `had_match` (`true` / `false`; search and filter — the total, not the page returned); `error` (`invalid` — the tool refused its input: an unknown slug, grape, style; `unavailable` — the appellation data could not be loaded; `internal`); `client` + `client_version` (the name and version the client declares: every 2026-07-28 request carries them, a 2025-era client only in its `initialize` — see `MCP Connect`), `era` (`modern` / `legacy`), `ua` (the first product token of the User-Agent, lower-cased: `claude-user`, `openai-mcp`, `node`, `python-httpx`; a browser's is `browser`) | a client of the remote MCP server (`mcp.openwinemap.com/mcp`, mcp/) called a tool. Sent server-side by the Bunny Edge Script through Plausible's events API (`PLAUSIBLE_HOST` / `PLAUSIBLE_DOMAIN` script variables; unset → nothing sent), with the client's User-Agent and forwarded IP so visitor counting works as for page events. A call that fails the input schema (a country in capitals, a limit over 200) is refused by the SDK before the tool runs and is not counted. No other argument is sent — a search's query text stays private. Its page URL is `https://mcp.openwinemap.com/mcp`. **Which appellations agents read**: filter `tool` = `get_appellation`, break down by `slug`. `slugs` is one row per *set*; count one appellation's shows with a `contains` filter on it. **Which apps call**: break down by `client` (modern) and `ua` (both eras). Country and visitors mean little here — see *Reading the MCP numbers* below. |
+| `MCP Connect` | `client`, `client_version`, `era`, `protocol` (the protocol version the client asks for: `2025-06-18`, `2026-07-28` …), `ua` | a client opened a connection — its `initialize` (2025-era) or `server/discover` (2026-07-28) request (since 2026-10-26; `connectProps` in mcp/src/http.js). The only event that names a 2025-era client: the server is stateless and sees each later request alone, so that client's `MCP Tool` events carry `ua` and `era` but no `client`. A modern client that skips `server/discover` is counted by its tool calls only. |
 | `Search Used` | `result_count`, `had_match`, `query_len`, `locale` | the legacy sidebar search (superseded by the omnisearch in June 2026; its dead handler was removed 2026-10-17 — no longer emitted) |
 | `Theme Changed` | `theme` (`light` / `system` / `dark`), `locale` | the theme switch (in the ⚙ menu since 2026-10-18, with its words beside the icons; the sidebar's top before that) |
 | `Drawer Opened` | `via` (`search` — the bar's magnifier, which opens the drawer with the search field focused, since 2026-10-21; `menu` was the ☰ of 2026-10-17 → 10-21; `search` was also the bar's separate search button until 2026-10-18), `locale` | a phone opens the sidebar drawer from the bar's button (since 2026-10-17) — the engagement signal the mobile bounce rate lacked |
@@ -104,7 +105,10 @@ lists only the props added under Site settings → Properties; a new prop
 is stored from its first event but stays hidden there until it is added
 (the Stats API reads it either way). Added 2026-10-05 for the MCP events:
 `slugs`, `count` and the other props missing at the time. When a
-`track()` call or the MCP server gains a prop, add it there too.
+`track()` call or the MCP server gains a prop, add it there too — the
+2026-10-26 MCP props still to add: `criteria`, `result_count`, `error`,
+`client`, `client_version`, `era`, `ua`, `protocol`, `grape`, `style`
+(`had_match`, `country` exist already), and the `MCP Connect` goal.
 
 `beta.openwinemap.com` carries `Appellation Viewed`, `Outbound Link: Click`
 and the four `Feedback *` goals (2026-09-16); the interaction goals are not
@@ -137,11 +141,49 @@ configured for this site" (the Sites API is not enabled on this instance).
   bounding box under the click, so an umbrella appellation whose aire equals
   a famous one gets the credit (Coteaux Champenois ≡ Champagne). Filter on
   `via` = `facet` / `omnisearch` — or use `Appellation Opened` — for intent.
+- **Campaign tags were lost from 2026-10-22 until the head-script fix
+  (built 2026-10-26).** The view-in-URL change makes app.js rewrite the
+  address to its own view query while the page is still parsing (~110 ms),
+  and the async tracker reads `location.href` after that, so every `utm_*`
+  parameter was gone before the first pageview: ChatGPT's
+  `utm_source=chatgpt.com` stopped on 2026-10-22, and a newsletter's tags would
+  have too. The head snippet now notes the landing's `utm_*` / `ref` / `source`
+  parameters before app.js runs and hands them back to the first pageview
+  through the tracker's `transformRequest` (map_template.py); the address
+  bar stays clean. Sessions of those four days count as *Direct* or by
+  referrer.
 - A wrongly-huge overview polygon shows up in this breakdown before it
   shows up anywhere else (Pouilly-Loché, 2026-09: a 0.4 km² AOC drawn
   across all of Burgundy by a stage-02 aire parse miss). Stage 04's
   `[villages-guard]` log line now flags the pattern; the analytics is the
   second line of defence.
+
+## Reading the MCP numbers
+
+- **The tool calls come from the chat vendor, not the person.** A hosted
+  connector (claude.ai, ChatGPT, Le Chat) calls the server from its own cloud,
+  so the forwarded IP — and with it `visit:country`, `visit:city` and the
+  visitor hash — is a vendor datacenter: the US rows with no city are such
+  calls, and their egress IPs rotate, so 36 calls read as 31 "visitors". Only
+  a client running on the person's machine (Claude Code, an IDE, a script)
+  shows the person's country. Plausible keeps no raw User-Agent and parses an
+  MCP client's as "(not set)"; `client` and `ua` (2026-10-26) are what tell the
+  apps apart.
+- **Where the people are: the links.** Every site link the tools return
+  carries `?utm_medium=mcp` (`LINK_TAG` in mcp/src/context.js), and a link
+  opened from the map inside the chat (`show_on_map`) adds `utm_content=map`
+  (mcp/view/view.js). A visit that follows one is an ordinary pageview from
+  the person's own browser: filter `visit:utm_medium` = `mcp` and break down
+  by `visit:country`, `visit:source` (the referrer — `claude.ai`,
+  `chatgpt.com`, *Direct* from a desktop app) or `visit:utm_content`.
+- **One bulk client on launch night.** 8,078 of the first 8,169 `MCP Tool`
+  events (2026-10-04 19:00 → 10-05 03:00 UTC, Florence, rotating Chrome /
+  Windows, Chrome / Android and "Mobile App" User-Agents: 7,313 searches,
+  816 fetches) were one client walking the catalogue. Exclude the city or
+  start the range on 2026-10-06 before reading anything all-time.
+- **Your own tests**: the deploy smoke test sends `X-OWM-Smoke` and is not
+  counted; a manual run from a terminal or Claude Code is (`ua` = `node`,
+  your own country).
 
 ## Querying
 

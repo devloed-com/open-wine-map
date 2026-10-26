@@ -63,8 +63,11 @@ def free_port() -> int:
         return s.getsockname()[1]
 
 
+# The server tags its site links (?utm_medium=mcp, src/context.js LINK_TAG);
+# the page's own tools do not.
 def normalise(obj, origin: str):
-    return json.loads(json.dumps(obj).replace(origin, "ORIGIN"))
+    text = json.dumps(obj).replace(origin, "ORIGIN").replace("?utm_medium=mcp", "")
+    return json.loads(text)
 
 
 def page_answers(page, base: str, locale: str, calls):

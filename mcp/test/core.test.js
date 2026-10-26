@@ -75,7 +75,7 @@ test('full: panel merge, attribution, locale labels', { skip }, () => {
   const panel = JSON.parse(readFileSync(path.join(WIKI, 'data', 'd', 'fr', 'priorat.json'), 'utf8'));
   const ctx = load('fr');
   const r = core('fr').full('priorat', { ...ctx.aocs.priorat, ...panel }, true);
-  assert.equal(r.url, 'https://www.openwinemap.com/fr/priorat');
+  assert.equal(r.url, 'https://www.openwinemap.com/fr/priorat?utm_medium=mcp');
   assert.ok(r.grapes.principal.length > 0);
   assert.ok(r.terroir_facts.length > 0 && r.terroir_facts_attribution);
   assert.ok(Object.values(r.sources).every(u => /^https?:\/\//.test(u)));

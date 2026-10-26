@@ -192,7 +192,7 @@ function showPopup(slug, lngLat) {
   open.className = 'popup-open';
   open.type = 'button';
   open.textContent = CONFIG.labels.open;
-  open.addEventListener('click', () => app.openLink({ url: a.url }));
+  open.addEventListener('click', () => app.openLink({ url: fromMap(a.url) }));
   box.append(name, meta, open);
   new maplibregl.Popup({ closeButton: true, maxWidth: '260px' }).setLngLat(lngLat).setDOMContent(box).addTo(map);
 }
@@ -296,6 +296,18 @@ app.onhostcontextchanged = ctx => {
 
 $('title').addEventListener('click', () => toggleList());
 $('show-all').addEventListener('click', () => showAll());
+// A visit that follows a link of the map itself is told apart from one that
+// follows a link in the chat's text (both carry the server's utm_medium=mcp).
+function fromMap(url) {
+  try {
+    const u = new URL(url);
+    u.searchParams.set('utm_content', 'map');
+    return u.toString().replace(/%2C/g, ',');
+  } catch (e) {
+    return url;
+  }
+}
+
 // The site link follows the view: the appellation zoomed to, else the ones
 // still shown (the server's ?aocs= link, minus what the reader hid).
 function siteUrl() {
@@ -316,7 +328,7 @@ function siteUrl() {
 }
 
 $('open-site').addEventListener('click', () => {
-  if (data) app.openLink({ url: siteUrl() });
+  if (data) app.openLink({ url: fromMap(siteUrl()) });
 });
 
 async function main() {

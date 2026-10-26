@@ -1,6 +1,6 @@
 // HTTP shell around the MCP handler: routing, CORS, no-store. Shared by the
 // Bunny entry point and the tests.
-import { createHandler } from './server.js';
+import { createHandler, clientProps, CLIENT_INFO_KEY, PROTOCOL_VERSION_KEY } from './server.js';
 import { createContextStore } from './context.js';
 
 const CORS = {
@@ -35,13 +35,47 @@ async function proxyTiles(request, url, opts, fetchImpl) {
   return withHeaders(upstream, { ...CORS, 'Cache-Control': 'no-store' });
 }
 
-// opts: { dataOrigin, fetchImpl?, onToolCallFor?(request) → (tool, locale, props) => void,
+// A client's opening request — `initialize` (2025-era) or `server/discover`
+// (2026-07-28) — as `MCP Connect` props: the client it names, the protocol it
+// asks for, its User-Agent token. A 2025-era client names itself nowhere else:
+// this server is stateless and sees each later request alone. null for any
+// other request, or one too large to read twice (the SDK caps bodies at 64 KB).
+const PEEK_MAX = 64 * 1024;
+export async function connectProps(request) {
+  if (request.method !== 'POST') return null;
+  const length = Number(request.headers.get('Content-Length'));
+  if (!length || length > PEEK_MAX) return null;
+  let msg;
+  try {
+    msg = await request.clone().json();
+  } catch {
+    return null;
+  }
+  if (Array.isArray(msg)) msg = msg[0];
+  const params = (msg && msg.params) || {};
+  let info;
+  let protocol;
+  let era;
+  if (msg && msg.method === 'initialize') {
+    [info, protocol, era] = [params.clientInfo, params.protocolVersion, 'legacy'];
+  } else if (msg && msg.method === 'server/discover') {
+    const meta = params._meta || {};
+    [info, protocol, era] = [meta[CLIENT_INFO_KEY], meta[PROTOCOL_VERSION_KEY], 'modern'];
+  } else {
+    return null;
+  }
+  const out = clientProps(info, era, request);
+  if (typeof protocol === 'string' && protocol) out.protocol = protocol.slice(0, 20);
+  return out;
+}
+
+// opts: { dataOrigin, fetchImpl?, track?(request) → ((event, props) => void) | undefined,
 //         view?: { html, tileOrigin, cartoKey }, tileProxy?: boolean }
 export function createApp(opts) {
   const fetchImpl = opts.fetchImpl || fetch;
   // One context store per isolate, shared by every request's handler.
   const store = createContextStore({ dataOrigin: opts.dataOrigin, fetchImpl });
-  const mcp = createHandler({ dataOrigin: opts.dataOrigin, fetchImpl, store, onToolCallFor: opts.onToolCallFor, view: opts.view });
+  const mcp = createHandler({ dataOrigin: opts.dataOrigin, fetchImpl, store, track: opts.track, view: opts.view });
   return async function handle(request) {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -51,6 +85,11 @@ export function createApp(opts) {
         { error: 'not found', mcp_endpoint: `${url.origin}/mcp`, site: opts.dataOrigin },
         { status: 404, headers: { ...CORS, 'Cache-Control': 'no-store' } },
       );
+    }
+    const send = opts.track ? opts.track(request) : undefined;
+    if (send) {
+      const props = await connectProps(request);
+      if (props) send('MCP Connect', props);
     }
     const resp = await mcp.fetch(request);
     return withHeaders(resp, { ...CORS, 'Cache-Control': 'no-store' });

@@ -105,7 +105,10 @@ const capInt = (v, dflt, max) => Math.max(1, Math.min(max, parseInt(v, 10) || df
 // ctx: { locale, siteOrigin, slugBase, aocs, grapesInfo, grapeSearchIndex,
 //        vivcSiblings, styleDescendants, styleLabels, simpleStyleLabels,
 //        simpleStyleBuckets, regionLabels, regionSearchTerms, countryLabels,
-//        termLabels, labels }
+//        termLabels, labels, linkQuery? }
+// linkQuery: appended to every page link the core returns ("?utm_medium=mcp"
+// on the MCP server, so a visit that follows one is counted as such); the
+// map app passes none.
 export function createQueryCore(ctx) {
   const aocs = ctx.aocs;
   const labels = ctx.labels || {};
@@ -200,7 +203,7 @@ export function createQueryCore(ctx) {
   }));
 
   function pageUrl(slug) {
-    return ctx.siteOrigin + ctx.slugBase + encodeURIComponent(slug);
+    return ctx.siteOrigin + ctx.slugBase + encodeURIComponent(slug) + (ctx.linkQuery || '');
   }
 
   function brief(slug) {

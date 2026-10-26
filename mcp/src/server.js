@@ -1,13 +1,13 @@
 // Open Wine Map MCP server: a stateless, web-standard request handler.
 // Runtime-agnostic (Bunny Edge Scripting in production, Node in tests): the
-// entry point supplies `dataOrigin` and, optionally, a `fetch` and an
-// `onToolCall` hook (analytics; see callProps). The tools are the query core's
+// entry point supplies `dataOrigin` and, optionally, a `fetch` and a `track`
+// hook (analytics; see callProps and clientProps). The tools are the query core's
 // TOOL_DEFS — the same definitions and code the map page registers as WebMCP
 // tools.
 import { McpServer, createMcpHandler, fromJsonSchema } from '@modelcontextprotocol/server';
 import { CfWorkerJsonSchemaValidator } from '@modelcontextprotocol/server/validators/cf-worker';
 import { TOOL_DEFS, QueryError } from '../../scripts/_lib/assets/query_core.mjs';
-import { LOCALES, createContextStore } from './context.js';
+import { LOCALES, LINK_TAG, createContextStore } from './context.js';
 
 // OWM_BUILD is the release's git SHA, injected by esbuild (--define) at
 // deploy time; the smoke test waits until the endpoint reports it, so a
@@ -65,16 +65,45 @@ const validator = new CfWorkerJsonSchemaValidator();
 const asResult = obj => ({ content: [{ type: 'text', text: JSON.stringify(obj) }], structuredContent: obj });
 const fail = msg => ({ content: [{ type: 'text', text: msg }], isError: true });
 
-// Analytics props of a call: the appellations it fetched or showed. Catalogue
-// slugs only, and only known ones — never the query text of a search (private,
-// as for the site's search box). `slug` is get_appellation's one appellation;
-// a show_on_map set goes in `slugs` (comma-joined, cut at a slug boundary to
-// Plausible's 2,000-character property limit) with its `count`, so a `slug`
-// breakdown stays one appellation per row.
+// Analytics props of a call: the appellations it fetched or showed, and the
+// criteria of a filter. Catalogue keys only, and only known ones — never the
+// query text of a search (private, as for the site's search box). `slug` is
+// get_appellation's one appellation; a show_on_map set goes in `slugs`
+// (comma-joined, cut at a slug boundary to Plausible's 2,000-character
+// property limit) with its `count`, so a `slug` breakdown stays one
+// appellation per row. A filter names the criteria it was given (`criteria`)
+// and the country, grape and style each resolved to, as the site's
+// `Filter Applied` does; a value that resolves to nothing is left out.
 const PROP_MAX = 2000;
+const FILTER_CRITERIA = ['country', 'region', 'style', 'grape', 'main_grape_only', 'scheme',
+  'include_sub_denominations', 'include_spirits'];
+const countrySets = new WeakMap();
+function countriesOf(aocs) {
+  if (!countrySets.has(aocs)) {
+    const set = new Set();
+    for (const r of Object.values(aocs)) {
+      set.add(r.country || 'fr');
+      for (const cc of r.country_aliases || []) set.add(cc);
+    }
+    countrySets.set(aocs, set);
+  }
+  return countrySets.get(aocs);
+}
+
 export function callProps(name, args, entry) {
   if (!entry || !args) return {};
   if (name === 'get_appellation') return entry.aocs[args.slug] ? { slug: args.slug } : {};
+  if (name === 'filter_appellations') {
+    const given = FILTER_CRITERIA.filter(k => args[k] !== undefined && args[k] !== '' && args[k] !== false);
+    const out = { criteria: given.length ? given.join(',') : '(none)' };
+    const cc = String(args.country || '').toLowerCase();
+    if (countriesOf(entry.aocs).has(cc)) out.country = cc;
+    const grape = args.grape && entry.core.grapeKeyFor(args.grape);
+    if (grape) out.grape = grape;
+    const style = args.style && entry.core.styleKeyFor(args.style);
+    if (style) out.style = style;
+    return out;
+  }
   if (name === 'show_on_map') {
     const known = [...new Set(args.slugs || [])].filter(s => entry.aocs[s]);
     if (!known.length) return {};
@@ -84,6 +113,47 @@ export function callProps(name, args, entry) {
   }
   return {};
 }
+
+// What a call's answer was: how many appellations a search or filter found
+// (`result_count`, `had_match` — as the site's `Omnisearch Used`), or why it
+// failed (`error`: `invalid` — the tool's own refusal of its input, an unknown
+// slug or grape; `unavailable` — the appellation data could not be loaded).
+export function resultProps(name, out) {
+  if (!out || !Array.isArray(out.results)) return {};
+  const total = typeof out.total === 'number' ? out.total : out.results.length;
+  return { result_count: total, had_match: total > 0 ? 'true' : 'false' };
+}
+
+// Who is calling: the name and version the client declares — every 2026-07-28
+// request carries them in its `_meta` envelope; a 2025-era client declares
+// them only in `initialize`, a request of its own on this stateless server
+// (the `MCP Connect` event, http.js) — the protocol era, and the first product
+// token of the User-Agent, which also names the software behind a 2025-era
+// tool call. Plausible keeps no raw User-Agent and reads a client's as
+// "(not set)", so without these every agent call is one bucket.
+export const CLIENT_INFO_KEY = 'io.modelcontextprotocol/clientInfo';
+export const PROTOCOL_VERSION_KEY = 'io.modelcontextprotocol/protocolVersion';
+
+// "Claude-User/1.0 (…)" → "claude-user", "python-httpx/0.28.1" →
+// "python-httpx"; a browser's "Mozilla/5.0 (…)" is "browser". Names the
+// software, never the person.
+export function uaToken(ua) {
+  const m = /^\s*([A-Za-z][\w.+-]{0,39})/.exec(ua || '');
+  if (!m) return '(none)';
+  const token = m[1].toLowerCase();
+  return token === 'mozilla' ? 'browser' : token;
+}
+
+export function clientProps(info, era, request) {
+  const out = { era: era || '(unknown)', ua: uaToken(request && request.headers.get('User-Agent')) };
+  if (info && typeof info.name === 'string' && info.name.trim()) {
+    out.client = info.name.trim().slice(0, 80);
+    if (typeof info.version === 'string' && info.version.trim()) out.client_version = info.version.trim().slice(0, 40);
+  }
+  return out;
+}
+
+const envelopeClient = ctx => ctx && ctx.mcpReq && ctx.mcpReq.envelope ? ctx.mcpReq.envelope[CLIENT_INFO_KEY] : undefined;
 
 function withLocale(inputSchema) {
   return { ...inputSchema, properties: { ...inputSchema.properties, locale: LOCALE_PROP } };
@@ -131,7 +201,7 @@ async function showOnMap(entry, { slugs }, locale, siteOrigin) {
     Math.max(...boxes.map(b => b[2])), Math.max(...boxes.map(b => b[3])),
   ] : null;
   const home = `${siteOrigin}${locale === 'en' ? '/' : `/${locale}/`}`;
-  const mapUrl = appellations.length === 1 ? appellations[0].url : `${home}?aocs=${known.join(',')}`;
+  const mapUrl = appellations.length === 1 ? appellations[0].url : `${home}?aocs=${known.join(',')}&${LINK_TAG}`;
   return { appellations, bbox, map_url: mapUrl, tiles: tilePaths(entry.tiles), unknown };
 }
 
@@ -162,7 +232,12 @@ function viewResource(view) {
   };
 }
 
-function buildServer(tools, onToolCall, view, siteOrigin) {
+// call: { send?(event, props), era, request } — the analytics of this
+// request (send is absent when nothing is counted).
+function buildServer(tools, call, view, siteOrigin) {
+  const report = (tool, locale, ctx, props) => {
+    if (call.send) call.send('MCP Tool', { tool, locale, ...props, ...clientProps(envelopeClient(ctx), call.era, call.request) });
+  };
   const server = new McpServer(SERVER_INFO, {
     jsonSchemaValidator: validator,
     capabilities: { tools: { listChanged: false }, resources: { listChanged: false } },
@@ -189,15 +264,20 @@ function buildServer(tools, onToolCall, view, siteOrigin) {
       }, validator),
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       _meta: { ui: { resourceUri: VIEW_URI } },
-    }, async (args) => {
+    }, async (args, ctx) => {
       const { locale = 'en', slugs } = args || {};
       const entry = await tools.contexts.get(locale).catch(() => null);
-      if (onToolCall) onToolCall('show_on_map', locale, callProps('show_on_map', { slugs }, entry));
-      if (!entry) return fail('The appellation data is temporarily unavailable; try again shortly.');
+      const props = callProps('show_on_map', { slugs }, entry);
+      if (!entry) {
+        report('show_on_map', locale, ctx, { ...props, error: 'unavailable' });
+        return fail('The appellation data is temporarily unavailable; try again shortly.');
+      }
       try {
         const out = await showOnMap(entry, { slugs }, locale, siteOrigin);
+        report('show_on_map', locale, ctx, props);
         return { content: [{ type: 'text', text: showOnMapText(out) }], structuredContent: out };
       } catch (e) {
+        report('show_on_map', locale, ctx, { ...props, error: e instanceof QueryError ? 'invalid' : 'internal' });
         if (e instanceof QueryError) return fail(e.message);
         throw e;
       }
@@ -208,14 +288,20 @@ function buildServer(tools, onToolCall, view, siteOrigin) {
       description: def.description,
       inputSchema: fromJsonSchema(withLocale(def.inputSchema), validator),
       annotations: def.annotations,
-    }, async (args) => {
+    }, async (args, ctx) => {
       const { locale = 'en', ...rest } = args || {};
       const entry = await tools.contexts.get(locale).catch(() => null);
-      if (onToolCall) onToolCall(name, locale, callProps(name, rest, entry));
-      if (!entry) return fail('The appellation data is temporarily unavailable; try again shortly.');
+      const props = callProps(name, rest, entry);
+      if (!entry) {
+        report(name, locale, ctx, { ...props, error: 'unavailable' });
+        return fail('The appellation data is temporarily unavailable; try again shortly.');
+      }
       try {
-        return asResult(await tools[name](rest, entry, locale));
+        const out = await tools[name](rest, entry, locale);
+        report(name, locale, ctx, { ...props, ...resultProps(name, out) });
+        return asResult(out);
       } catch (e) {
+        report(name, locale, ctx, { ...props, error: e instanceof QueryError ? 'invalid' : 'internal' });
         if (e instanceof QueryError) return fail(e.message);
         throw e;
       }
@@ -224,14 +310,19 @@ function buildServer(tools, onToolCall, view, siteOrigin) {
   return server;
 }
 
-// onToolCallFor(request) → (tool, locale, props) => void | undefined: the analytics
-// hook, built from the HTTP request the SDK hands each per-request server.
-// view: { html, tileOrigin, cartoKey } — the MCP Apps map; omitted → no
+// track(request) → ((event, props) => void) | undefined: the analytics hook,
+// built from the HTTP request the SDK hands each per-request server (undefined:
+// nothing is counted for this request — no analytics configured, or a smoke
+// test). view: { html, tileOrigin, cartoKey } — the MCP Apps map; omitted → no
 // show_on_map tool (the data tools are unaffected).
-export function createHandler({ dataOrigin, fetchImpl = fetch, onToolCallFor, store, view }) {
+export function createHandler({ dataOrigin, fetchImpl = fetch, track, store, view }) {
   const tools = createTools({ dataOrigin, fetchImpl, store });
-  const hook = ctx => (onToolCallFor && ctx && ctx.requestInfo ? onToolCallFor(ctx.requestInfo) : undefined);
-  return createMcpHandler(ctx => buildServer(tools, hook(ctx), view, dataOrigin), {
+  const callOf = (ctx = {}) => ({
+    send: track && ctx.requestInfo ? track(ctx.requestInfo) : undefined,
+    era: ctx.era,
+    request: ctx.requestInfo,
+  });
+  return createMcpHandler(ctx => buildServer(tools, callOf(ctx), view, dataOrigin), {
     legacy: 'stateless',
     responseMode: 'json',
     maxRequestBodySize: 64 * 1024,

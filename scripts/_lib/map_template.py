@@ -3818,10 +3818,17 @@ _TEMPLATE = """<!doctype html>
 <!-- Privacy-friendly analytics by Plausible. The tracker script is per site
      (its id pins the domain), so it is picked by hostname at runtime: one build
      serves every environment; a host with no entry loads no tracker. The
-     localhost opt-in only matters when a dev site is keyed on localhost. -->
+     localhost opt-in only matters when a dev site is keyed on localhost.
+     app.js rewrites the address to its own view query while the page is still
+     parsing, before the async tracker reads location.href, so the landing's
+     campaign parameters (utm_*, ref, source — ChatGPT's utm_source, a
+     newsletter's, the MCP server's utm_medium=mcp) are noted here first and
+     handed back to the first pageview: the session keeps its source and the
+     address bar stays clean. -->
 <script>
   window.plausible=window.plausible||function(){{(plausible.q=plausible.q||[]).push(arguments)}},plausible.init=plausible.init||function(i){{plausible.o=i||{{}}}};
-  plausible.init({{captureOnLocalhost:true}});
+  (function(){{var tags=[];try{{new URLSearchParams(location.search).forEach(function(v,k){{if(/^(utm_[a-z]+|ref|source)$/.test(k))tags.push([k,v])}})}}catch(e){{}}
+  plausible.init({{captureOnLocalhost:true,transformRequest:function(p){{if(tags.length&&p.n==='pageview'){{try{{var u=new URL(p.u);tags.forEach(function(t){{if(!u.searchParams.has(t[0]))u.searchParams.set(t[0],t[1])}});p.u=u.toString()}}catch(e){{}}tags=[]}}return p}}}})}})();
   (function(sites,host){{var id=sites[host.replace(/^www\\./,'')];if(!id)return;var s=document.createElement('script');s.async=true;s.src={plausible_host_json}+'/js/'+id+'.js';document.head.appendChild(s)}})({plausible_sites_json},location.hostname);
 </script>
 </head>
