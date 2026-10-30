@@ -32,7 +32,7 @@ const VIEW = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist
 // a request reports.
 export async function startServer(opts = {}) {
   const view = existsSync(VIEW)
-    ? { html: await readFile(VIEW, 'utf8'), tileOrigin: DATA_ORIGIN, cartoKey: 'test-key' }
+    ? { html: await readFile(VIEW, 'utf8'), tileOrigin: DATA_ORIGIN, cartoKey: 'test-key', analytics: opts.viewAnalytics || null }
     : undefined;
   const app = createApp({ dataOrigin: DATA_ORIGIN, fetchImpl: wikiFetch, view, track: opts.track });
   const server = http.createServer(async (req, res) => {

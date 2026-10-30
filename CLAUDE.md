@@ -7715,7 +7715,7 @@ writes it in `currentUrl` (app.js):
   is a security-header decision and is applied by hand; until then the
   snippet works on the site's own origin only.
 - Analytics: `Share Opened {via, what}`, `Share Copied {kind}`, `Share
-  Native`, `Embed Viewed {host}`, `Embed Link Clicked {target, slug}` — see
+  Native`, `Embed Viewed {host, framed}`, `Embed Link Clicked {target, slug}` — see
   [docs/analytics.md](docs/analytics.md). An embed's pageview lands on the
   locale home's path (Plausible strips the query).
 
@@ -7986,14 +7986,27 @@ instance — change search semantics in the core, never in app.js.
   pinned against `mcp/src/context.js` by `tests/test_mcp_query_context.py`);
   the script caches it per isolate and revalidates by ETag every 5 min, and
   `get_appellation` fetches the panel JSON `/data/d/<locale>/<slug>.json`.
-  Counted server-side as the `MCP Tool` and `MCP Connect` Plausible events
+  Counted server-side as the `MCP Tool` and `MCP Connect` Plausible events,
+  in a Plausible site of their own, `mcp.openwinemap.com` (since 2026-10-28,
+  the script's `PLAUSIBLE_DOMAIN`; until then the website's site, where every
+  call from a rotating vendor IP counted as a visitor — 51 of the 200
+  visitors of 2026-10-27; read the website's 2026-10-04 → 10-28 numbers with
+  `hostname is not mcp.openwinemap.com`)
   (2026-10-26: the declaring client's name — every 2026-07-28 request carries
   it, a 2025-era client only in `initialize` —, the protocol era, the
   User-Agent's product token, result counts and errors; never a search's
   text). The calls arrive from the chat vendors' datacenters, so their country
   is the vendor's; the people are counted through the links: every site link
   the tools return carries `?utm_medium=mcp` (`LINK_TAG`, the query core's
-  `linkQuery`), plus `utm_content=map` from the map view. Build / deploy:
+  `linkQuery`), plus `utm_content=map` from the map view, and by the view's
+  own `MCP Map Viewed` event, sent from the reader's browser once the map has
+  drawn (`trackViewed` in mcp/view/view.js; configured, and its Plausible host
+  added to the view's CSP, only for a counted request — `viewAnalytics` in
+  server.js). `MCP Connect` counts conversations that loaded the connector
+  (claude.ai and Claude Code list the tools at every start), not uses; a
+  claude.ai connector used from Claude Code is proxied through Anthropic's
+  cloud too (`ua` = `claude-user`, a US datacenter), so the owner's own
+  sessions are indistinguishable from anyone's. Build / deploy:
   `.venv/bin/python scripts/deploy_mcp.py deploy` (esbuild bundle → Bunny
   compute API → publish with the git SHA → smoke test in all three protocol
   modes); the site deploy (`deploy.sh`) must go first when the context format
@@ -8024,7 +8037,8 @@ instance — change search semantics in the core, never in app.js.
 ## Analytics
 
 Self-hosted Plausible, one site per environment (`openwinemap.com`,
-`beta.openwinemap.com`, …): the tracker script pins the site, so the snippet
+`beta.openwinemap.com`, …) and one for the MCP server's events
+(`mcp.openwinemap.com`, set by the Edge Script, never the website's): the tracker script pins the site, so the snippet
 in `_TEMPLATE` picks it by hostname at runtime from `plausible_sites()`
 ([scripts/_lib/env.py](scripts/_lib/env.py); prod is the code default, other
 environments via `PLAUSIBLE_SITES` in `.env`) — one build serves every

@@ -4264,8 +4264,14 @@ __OWM_source_block__
   });
 
   // ---- Embed (?embed=1): the map alone, clicks open the site ---------------
+  // 'no-referrer' when the browser sent none (a tab of its own, or a page that
+  // withholds it), never '(none)': Plausible's label for a missing property.
   function embedHost() {
-    try { return document.referrer ? new URL(document.referrer).hostname : '(none)'; } catch (e) { return '(none)'; }
+    try { return document.referrer ? new URL(document.referrer).hostname : 'no-referrer'; } catch (e) { return 'no-referrer'; }
+  }
+  // Comparing the two windows is allowed across origins.
+  function embedFramed() {
+    try { return window.self !== window.top ? 'yes' : 'no'; } catch (e) { return 'yes'; }
   }
   // The brand badge (top-left, where the sidebar would be): the same view on
   // the full site, in a new tab. The href is refreshed on click so the gates
@@ -4316,7 +4322,7 @@ __OWM_source_block__
   }
   if (EMBED) {
     map.addControl(brandControl, 'top-left');
-    track('Embed Viewed', { host: embedHost(), locale: LANG });
+    track('Embed Viewed', { host: embedHost(), framed: embedFramed(), locale: LANG });
   }
 
   // ---- WebMCP (document.modelContext) --------------------------------------

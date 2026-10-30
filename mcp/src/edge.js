@@ -3,7 +3,9 @@
 // Script environment variables (all optional):
 //   DATA_ORIGIN       the site the data is read from (https://www.openwinemap.com)
 //   PLAUSIBLE_HOST    self-hosted Plausible; unset → no analytics
-//   PLAUSIBLE_DOMAIN  the Plausible site the `MCP Tool` / `MCP Connect` events are counted under
+//   PLAUSIBLE_DOMAIN  the Plausible site the `MCP Tool` / `MCP Connect` / `MCP Map Viewed` events
+//                     are counted under: a site of their own, never the website's, where every
+//                     call from a vendor datacenter would count as a visitor
 //   TILE_ORIGIN       where the map view loads /map-data/*.pmtiles (needs CORS)
 //   TILE_PROXY        "1": this script re-serves the site's tiles with CORS
 //   CARTO_KEY         CARTO basemap key for the map view (public, as on the site)
@@ -15,7 +17,7 @@ import VIEW_HTML from '../dist/view.html';
 const env = name => (process.env[name] || '').trim().replace(/\/$/, '');
 const dataOrigin = env('DATA_ORIGIN') || 'https://www.openwinemap.com';
 const plausibleHost = env('PLAUSIBLE_HOST');
-const plausibleDomain = env('PLAUSIBLE_DOMAIN') || 'openwinemap.com';
+const plausibleDomain = env('PLAUSIBLE_DOMAIN') || 'mcp.openwinemap.com';
 
 // The server's analytics: `MCP Tool` {tool, locale, slug | slugs + count,
 // filter criteria, result_count / had_match | error, client, era, ua}
@@ -49,7 +51,13 @@ function track(request) {
 const app = createApp({
   dataOrigin,
   track,
-  view: { html: VIEW_HTML, tileOrigin: env('TILE_ORIGIN') || dataOrigin, cartoKey: env('CARTO_KEY') },
+  view: {
+    html: VIEW_HTML,
+    tileOrigin: env('TILE_ORIGIN') || dataOrigin,
+    cartoKey: env('CARTO_KEY'),
+    // The view's own `MCP Map Viewed` event, sent from the reader's browser.
+    analytics: plausibleHost ? { host: plausibleHost, domain: plausibleDomain } : null,
+  },
   tileProxy: env('TILE_PROXY') === '1',
 });
 

@@ -275,6 +275,52 @@ async function render(result) {
   $('open-site').hidden = false;
   // A multi-appellation answer opens the list, so the colours are explained.
   toggleList(n > 1);
+  trackViewed(result, n);
+}
+
+// `MCP Map Viewed`, once per tool result drawn: the one MCP event sent from
+// the reader's own browser, so it carries the reader's country (the tool calls
+// arrive from the chat vendor's cloud) and says the host rendered the map, not
+// only received `show_on_map`. `client` is the name the host declares to the
+// view. Configured by the server only when the request is counted. Sent on
+// the first idle with appellations on screen: a host whose CSP refuses the
+// map's worker shows the frame but never draws, and is not counted.
+let viewedFor = null;
+function trackViewed(result, n) {
+  if (!CONFIG.analytics || viewedFor === result) return;
+  viewedFor = result;
+  map.once('idle', () => {
+    if (data !== result) return;
+    if (!map.queryRenderedFeatures({ layers: FILLS.filter(id => map.getLayer(id)) }).length) return;
+    sendViewed(result, n);
+  });
+}
+
+function sendViewed(result, n) {
+  const a = CONFIG.analytics;
+  const props = { count: n, locale: localeOf(result.map_url) };
+  const host = (app.getHostVersion && app.getHostVersion()) || {};
+  if (typeof host.name === 'string' && host.name.trim()) props.client = host.name.trim().slice(0, 80);
+  if (typeof host.version === 'string' && host.version.trim()) props.client_version = host.version.trim().slice(0, 40);
+  try {
+    // text/plain keeps it a simple request (no CORS preflight), as Plausible's own script does.
+    fetch(a.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      keepalive: true,
+      body: JSON.stringify({ name: 'MCP Map Viewed', url: a.url, domain: a.domain, props }),
+    }).catch(() => {});
+  } catch (e) { /* analytics never breaks the map */ }
+}
+
+// The locale of the tool call, from the site link it returned (/fr/…, /es/…).
+function localeOf(url) {
+  try {
+    const m = /^\/(fr|es|nl)\//.exec(new URL(url).pathname);
+    return m ? m[1] : 'en';
+  } catch (e) {
+    return 'en';
+  }
 }
 
 const app = new App(

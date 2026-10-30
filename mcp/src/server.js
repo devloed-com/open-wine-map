@@ -220,15 +220,31 @@ function showOnMapText(out) {
   return `Shown on the map (Open Wine Map):\n${lines.join('\n')}`;
 }
 
-function viewResource(view) {
+// analytics: { endpoint, domain, url } for the view's `MCP Map Viewed` event,
+// or null; its origin joins the CSP's connect list only when it is set.
+function viewResource(view, analytics) {
   const config = { tileOrigin: view.tileOrigin, cartoKey: view.cartoKey || '', labels: VIEW_LABELS };
+  if (analytics) config.analytics = analytics;
   const html = view.html.replace('__OWM_VIEW_CONFIG__', () => JSON.stringify(config).replace(/</g, '\\u003c'));
   const domains = [view.tileOrigin, CARTO];
+  const connect = analytics ? [...domains, new URL(analytics.endpoint).origin] : domains;
   return {
     uri: VIEW_URI,
     mimeType: VIEW_MIME,
     text: html,
-    _meta: { ui: { csp: { connectDomains: domains, resourceDomains: domains }, prefersBorder: true } },
+    _meta: { ui: { csp: { connectDomains: connect, resourceDomains: domains }, prefersBorder: true } },
+  };
+}
+
+// The view counts itself only when this request is counted (call.send is
+// absent for a smoke test or without PLAUSIBLE_HOST); the event's page is
+// /map on the MCP server's own host, beside the tool events' /mcp.
+function viewAnalytics(view, call) {
+  if (!view.analytics || !call.send || !call.request) return null;
+  return {
+    endpoint: `${view.analytics.host}/api/event`,
+    domain: view.analytics.domain,
+    url: `${new URL(call.request.url).origin}/map`,
   };
 }
 
@@ -248,7 +264,7 @@ function buildServer(tools, call, view, siteOrigin) {
       title: 'Open Wine Map',
       description: 'Interactive map of wine appellations (shown by show_on_map).',
       mimeType: VIEW_MIME,
-    }, async () => ({ contents: [viewResource(view)] }));
+    }, async () => ({ contents: [viewResource(view, viewAnalytics(view, call))] }));
     server.registerTool('show_on_map', {
       title: 'Show on the map',
       description: 'Show wine appellations on an interactive map in the conversation — their real boundaries, framed and highlighted. '

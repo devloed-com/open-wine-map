@@ -188,3 +188,29 @@ test('show_on_map: briefs with bbox, union bbox, map links, UI resource', { skip
     await client.close();
   }
 });
+
+test('map view: its MCP Map Viewed event is configured only for a counted request', { skip }, async () => {
+  const { Client, StreamableHTTPClientTransport } = await import('@modelcontextprotocol/client');
+  const viewAnalytics = { host: 'https://plausible.test', domain: 'owm.test' };
+  const readView = async opts => {
+    const local = await startServer({ ...opts, viewAnalytics });
+    const client = new Client({ name: 't', version: '0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
+    await client.connect(new StreamableHTTPClientTransport(new URL(local.url)));
+    try {
+      return { origin: new URL(local.url).origin, c: (await client.readResource({ uri: 'ui://open-wine-map/map' })).contents[0] };
+    } finally {
+      await client.close();
+      await local.close();
+    }
+  };
+  const base = ['https://data.test', 'https://*.basemaps.cartocdn.com'];
+  const counted = await readView({ track: () => () => {} });
+  assert.deepEqual(counted.c._meta.ui.csp.connectDomains, [...base, 'https://plausible.test']);
+  assert.deepEqual(counted.c._meta.ui.csp.resourceDomains, base);
+  assert.ok(counted.c.text.includes(
+    `"analytics":{"endpoint":"https://plausible.test/api/event","domain":"owm.test","url":"${counted.origin}/map"}`));
+  // Not counted (a smoke test, no PLAUSIBLE_HOST): the view sends nothing and the CSP stays as it was.
+  const quiet = await readView({});
+  assert.deepEqual(quiet.c._meta.ui.csp.connectDomains, base);
+  assert.ok(!quiet.c.text.includes('"analytics"'));
+});

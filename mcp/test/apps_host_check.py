@@ -142,6 +142,9 @@ def main() -> int:
     config = {"tileOrigin": tile_origin, "cartoKey": os.environ.get("CARTO_BASEMAP_KEY", ""),
               "labels": {"open": "Open ↗", "site": "Open Wine Map ↗", "zoom": "zoom", "show": "show", "hide": "hide",
                          "show_all": "Show all", "nothing": "none", "waiting": "waiting", "appellations": "appellations"}}
+    # The view's `MCP Map Viewed` event goes to the tile server (already in the
+    # CSP's connect list), which answers 501; the request itself is the check.
+    config["analytics"] = {"endpoint": f"{tile_origin}/api/event", "domain": "owm.test", "url": "https://mcp.test/map"}
     view_html = view_tpl.replace("__OWM_VIEW_CONFIG__", json.dumps(config))
     domains = [tile_origin, CARTO]
     if args.live:
@@ -187,6 +190,9 @@ def main() -> int:
                 page.on("console", lambda m: msgs.append(f"{m.type}: {m.text}"))
                 tile_hits = []
                 page.on("request", lambda r: tile_hits.append(r.url) if r.url.startswith(tile_origin) else None)
+                beacons: list[dict] = []
+                page.on("request", lambda r: beacons.append(json.loads(r.post_data or "{}"))
+                        if r.url.endswith("/api/event") else None)
                 page.set_content(host_page(policy, theme), wait_until="load")
                 page.wait_for_timeout(9000)
                 frame = next(f for f in page.frames if f.url.startswith(view_origin))
@@ -210,6 +216,17 @@ def main() -> int:
                 if drew != expect_map:
                     ok = False
                     print(f"    UNEXPECTED: drew={drew}, expected {expect_map}")
+                # One `MCP Map Viewed` per drawn tool result, naming the host the view saw, and
+                # none where the map does not draw (the live view carries no analytics:
+                # read_view.js reads it as a smoke test).
+                if not args.live:
+                    want = [{"name": "MCP Map Viewed", "url": "https://mcp.test/map", "domain": "owm.test",
+                             "props": {"count": 2, "locale": "en", "client": "owm-test-host", "client_version": "0"}}]
+                    want = want if drew else []
+                    print(f"    map-viewed events: {beacons}")
+                    if beacons != want:
+                        ok = False
+                        print(f"    UNEXPECTED: expected exactly {want}")
                 page.close()
         browser.close()
     tiles.shutdown()

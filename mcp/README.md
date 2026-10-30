@@ -22,7 +22,10 @@ Tools — the same definitions and code the map page registers as WebMCP tools
 - `src/context.js` — loads `/data/mcp/<locale>.json` from the site (written by
   stage 04), caches it per isolate, revalidates by ETag
 - `src/http.js` — routing (`POST /mcp`), CORS, `no-store`
-- `src/edge.js` — Bunny entry point; optional `MCP Tool` Plausible event
+- `src/edge.js` — Bunny entry point; optional `MCP Tool` / `MCP Connect`
+  Plausible events (the view sends `MCP Map Viewed` itself), counted under
+  the Plausible site `mcp.openwinemap.com` (`PLAUSIBLE_DOMAIN`), never the
+  website's
 - `view/` — the `show_on_map` view (MapLibre + pmtiles + the ext-apps `App`),
   bundled into one HTML file, `dist/view.html`, by `scripts/build-view.mjs`
 

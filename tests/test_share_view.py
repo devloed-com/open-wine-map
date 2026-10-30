@@ -168,7 +168,10 @@ def test_embed_mode_is_the_map_alone() -> None:
     assert ".owm-brand a {{" in css and ".owm-embed-pop" in css
     assert "if (EMBED) { showEmbedPopup(e.lngLat, slugs); return; }" in APP_JS
     assert "map.addControl(brandControl, 'top-left');" in APP_JS
-    assert "track('Embed Viewed', { host: embedHost(), locale: LANG });" in APP_JS
+    assert "track('Embed Viewed', { host: embedHost(), framed: embedFramed(), locale: LANG });" in APP_JS
+    # Plausible labels a missing property '(none)'; the sentinel must not collide.
+    assert ": 'no-referrer'; } catch (e) { return 'no-referrer'; }" in APP_JS
+    assert "'(none)'" not in APP_JS[APP_JS.index("function embedHost()"):APP_JS.index("const brandControl")]
     assert "if (EMBED) return VIEW_QUERY.theme === 'dark' ? 'dark' : 'light';" in APP_JS
     assert "function fitPadding(base) {\n    if (EMBED) return base;" in APP_JS
     assert "if (!EMBED) map.addControl(settingsControl, 'top-right');" in APP_JS
