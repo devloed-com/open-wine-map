@@ -379,7 +379,7 @@ def main() -> int:
     pt_wines_all = [
         g
         for g in full
-        if "PT" in (g.get("countries") or []) and g.get("productType") == "WINE"
+        if "PT" in (g.get("countries") or []) and (g.get("productType") or "").upper() == "WINE"
     ]
     pt_wines = [g for g in pt_wines_all if g.get("status") == "registered"]
     n_skipped_applied = len(pt_wines_all) - len(pt_wines)

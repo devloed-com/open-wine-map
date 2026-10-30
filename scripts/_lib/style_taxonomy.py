@@ -57,6 +57,23 @@ _NODES_RAW: tuple[StyleNode, ...] = (
     # ----- colour sub-styles -----
     StyleNode("clairet",   "red", "clairet",  ("fr",)),
     StyleNode("primeur",   "red", "primeur",  ("fr",)),
+    # A white wine fermented on its skins: the OIV's "white wine with
+    # maceration" (OIV-ECO 647-2020, Code I.4.9, a Georgian proposal), which
+    # names neither colour; the documents write "vino naranja" (Manchuela,
+    # Arribes), "brisado" (the Catalan DOs), "narancsbor" (Somló),
+    # "maischevergorene Weißweine" (six DE Landweine). Orange and amber are
+    # search terms, not the label (2026-10-30).
+    StyleNode("skin-contact-white", "white", "blanc de macération", ("es", "hu", "de"),
+              synonyms=("orange wine", "orange", "vin orange", "vino naranja", "vinho laranja",
+                        "oranje wijn", "orangewein", "amber wine", "amber", "vin ambre",
+                        "vino ambar", "amberwijn", "karvisperi", "skin contact",
+                        "skin-contact", "skin contact white", "skin-contact white",
+                        "macerated white", "white wine with maceration",
+                        "vin blanc de maceration", "vin blanc macere",
+                        "vino blanco de maceracion", "brisado", "vino brisado",
+                        "blanco brisado", "vi brisat", "brisat", "narancsbor",
+                        "maischevergoren", "maischevergorener weisswein",
+                        "oranzno vino", "narancasto vino", "vino macerato")),
     # ----- sparkling sub-styles -----
     StyleNode("sparkling-quality", "sparkling", "mousseux de qualité", ("fr", "es")),
     StyleNode("cremant",           "sparkling", "crémant",             ("fr",)),
@@ -338,7 +355,7 @@ def _msgid_anchors_for_babel(_: Callable[[str], str]) -> tuple[str, ...]:
     return (
         _("rouge"), _("blanc"), _("rosé"), _("mousseux"), _("doux"),
         _("autres"),
-        _("clairet"), _("primeur"),
+        _("clairet"), _("primeur"), _("blanc de macération"),
         _("mousseux de qualité"), _("crémant"), _("méthode ancestrale"),
         _("méthode traditionnelle"), _("méthode Charmat"), _("méthode dioise"),
         _("pétillant"),

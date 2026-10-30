@@ -59,7 +59,7 @@ def live_rows(http: Http) -> list[dict] | str:
 def wine_rows_by_country(rows: list[dict]) -> dict[str, dict[str, dict]]:
     out: dict[str, dict[str, dict]] = {}
     for r in rows:
-        if (r.get("productType") or "") != "WINE":
+        if (r.get("productType") or "").upper() != "WINE":
             continue
         fn = r.get("fileNumber") or ""
         for c in r.get("countries") or []:

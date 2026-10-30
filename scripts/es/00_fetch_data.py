@@ -641,7 +641,7 @@ def main() -> int:
     full, etag = fetch_list()
     es_wines_all = [
         g for g in full
-        if "ES" in (g.get("countries") or []) and g.get("productType") == "WINE"
+        if "ES" in (g.get("countries") or []) and (g.get("productType") or "").upper() == "WINE"
     ]
     # status=applied entries are pending registrations (e.g. Viñedos de Álava
     # 2024 carve-out from Rioja Alavesa) or stale duplicates of a registered

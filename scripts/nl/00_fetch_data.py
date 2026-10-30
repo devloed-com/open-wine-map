@@ -181,7 +181,7 @@ def main() -> int:
     full, etag = fetch_eambrosia()
     nl_wines_all = [
         g for g in full
-        if "NL" in (g.get("countries") or []) and g.get("productType") == "WINE"
+        if "NL" in (g.get("countries") or []) and (g.get("productType") or "").upper() == "WINE"
     ]
     nl_wines = [g for g in nl_wines_all if g.get("status") == "registered"]
     n_skipped_status = len(nl_wines_all) - len(nl_wines)

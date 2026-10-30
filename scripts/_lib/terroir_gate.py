@@ -332,6 +332,9 @@ def apply_verdicts(
                 new_bullet = normalize_bullet(v["rewrite"], source_lang)
                 support["original_bullet"] = fact.get("bullet") or ""
                 new["bullet"] = new_bullet
+                # `wiki_part` was read on the old text (`_lib/terroir_wiki_part.py`);
+                # without it stage 04 shows the marker until the post-pass re-reads
+                new.pop("wiki_part", None)
                 rewritten.append({"index": i, "from": fact.get("bullet") or "", "to": new_bullet, "note": note})
                 text_changed = True
             else:

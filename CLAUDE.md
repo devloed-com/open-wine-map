@@ -49,8 +49,19 @@ details and "Hard rules" for invariants that apply to every country.
     oxidative / generoso), distinctive leaves (vin jaune, crémant, vdn,
     vin de paille, grains nobles, vendanges tardives, clairet, primeur,
     vin de liqueur, fino, manzanilla, amontillado, oloroso, palo
-    cortado, rancio, mistela), and the generic leaves (tranquille,
-    dry). Per-locale Wikipedia titles live in
+    cortado, rancio, mistela, skin-contact white), and the generic
+    leaves (tranquille, dry). `skin-contact-white` (under white, 2026-10-30)
+    is the OIV's "white wine with maceration" (OIV-ECO 647-2020, Code I.4.9,
+    adopted on Georgia's proposal), which names neither colour: the label is
+    "skin-contact white" / "blanc de macération" / "blanco de maceración" /
+    "wit met schilcontact", "orange" and "amber" are its search names, and
+    the tooltip is the "Orange wine" article (es "Vino brisado" — es "Vino
+    naranja" is a disambiguation page that includes the orange-peel wine of
+    Condado de Huelva). Readers: ES "vino naranja" / "brisado" (Manchuela,
+    Arribes, Pla de Bages, Conca de Barberà, Empordà, Tarragona), HU
+    "narancsbor" (Somló), DE "maischevergorene Weißweine" (six Landweine);
+    PT "curtimenta" is fermentation on the skins in general and IT "ramato"
+    a synonym of rosato, neither the type. Per-locale Wikipedia titles live in
     `raw/wikipedia/style_overrides.json`. When a target locale has no
     native Wikipedia article for a slug, the gap is filled by stage
     02b-translate rather than left blank.
@@ -160,8 +171,20 @@ details and "Hard rules" for invariants that apply to every country.
   longest-contiguous-match against the respective source) keeps the
   bullet if at least one quote grounds. Per-bullet `provenance` is one
   of `both` / `cahier` / `wiki`. The UI renders "via Wikipedia · CC
-  BY-SA 4.0" beside `wiki`-only bullets; `both` and `cahier` default to
-  the footer attribution linking to the cahier PDF. Cache invalidates
+  BY-SA 4.0" beside `wiki`-only bullets and beside a `both` bullet part of
+  whose claim only Wikipedia makes (`wiki_part`,
+  [scripts/_lib/terroir_wiki_part.py](scripts/_lib/terroir_wiki_part.py):
+  a number, a proper noun or two word stems its `wiki_quote` carries and
+  the whole regulator record — lien, other sections, national and register
+  sidecars — lacks; written by `recompute_terroir_provenance.py`, which
+  `rerun_terroir_facts.py` runs after the gate; a `both` fact the pass has
+  not read counts as carrying one, and the gate drops the field from a bullet
+  it rewrites, so a verdict read on the old text never stands; a German bullet
+  (`source_lang` de) has no proper-noun shortcut, every noun being capitalised,
+  and needs a number or two stems. 2026-10-30: 119 of 1,556 `both` facts —
+  Manchuela's "13 °C … 600 l/m²", Somontano's Roman clause); the other
+  `both` and the `cahier` bullets default to the footer attribution linking
+  to the cahier PDF. Cache invalidates
   per AOC when EITHER `cahier_source_sha` OR `wiki_source_revision`
   changes. Providers: `anthropic` / `ollama` / `manual`. The manual
   round-trip mirrors 02c (`--emit-todo` + `--import`). Stage 02e
@@ -1853,7 +1876,18 @@ rules, settled on the validator findings of 2026-10-23 (phase C):
   λευκός ξηρός, ημίξηρος, ημίγλυκος, γλυκός" (`gr.eniaio_engrafo.
   sweetness_type_styles`), "száraz, félédes vagy édes" (`hu.egyseges_dokumentum.
   sweetness_styles`), "за полусладки вина … за сладки вина", IT "amabile" /
-  "dolce": Semi-sweet / Sweet. Semi-dry is not added.
+  "dolce", ES "Vinos Semisecos, Semidulces y Dulces" / "se clasifican en
+  secos, dulces, semisecos y semidulces" / a limit set "para semisecos,
+  semidulces y dulces" (`es/02` `sweetness_type_styles`, 2026-10-30: a list of
+  two levels or more outside the link section and its sub-sections — Rosalejo's
+  "8.3" compares the IGP Castilla's types with its own dry wine — read within one
+  section body or title, and never a list its own sentence introduces as
+  labelling terms, the EU sugar-term rule restated: "podrán emplearse las
+  indicaciones seco, semiseco, semidulce y dulce", "Según la legislación vigente
+  se podrán denominar: secos, semisecos …" (`_sweetness_list_is_labelling`;
+  Castilla y León's analytical footnote was its only source, Bailén's heading
+  "Vinos semisecos, semidulces y dulces" states the types anyway); 30 ES records):
+  Semi-sweet / Sweet. Semi-dry is not added.
 - **Sweet, dessert, ice and straw wine are not a late harvest.** Sweet and
   dessert wine words map to `sweet`, ice wine to `icewine`, straw wine to
   `vin-de-paille`, a wine of dried grapes to `raisin-wine`, the berry
@@ -8136,7 +8170,12 @@ review is copied to a dated `docs/review-*.md`.
   stage-04 disclosure fields; `--llm`: an independent model reading, cached
   per text sha) against the units the resolved polygon covers whole (≥ 95 %)
   or in part (> 5 %), reverse-geocoded on GISCO LAU, IGN communes,
-  swissBOUNDARIES, CAOP or ONS. Homonyms are settled by the text's own header
+  swissBOUNDARIES, CAOP or ONS. An FR aire token with a partial-commune
+  qualifier — "Mercurol-Veaunes pour le seul territoire de la commune déléguée
+  de Mercurol" — resolves to the commune (`fr_token`) and is not `missing` when
+  its parcels fall under the drawn-in-part threshold (`partial_undrawn`;
+  2026-10-30, 340 such tokens in 142 FR records had read as unresolved).
+  Homonyms are settled by the text's own header
   where the list has one — the oblast for BG (`geo_communes_scoped`, the
   GISCO id's EKATTE prefix), the județ for RO (each unit's NUTS-3 county),
   with the resolver's village rule (`geo_communes_villages`) — else by

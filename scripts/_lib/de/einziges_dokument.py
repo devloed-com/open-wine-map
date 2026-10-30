@@ -164,6 +164,9 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\beiswein\b", re.I), "vendanges-tardives"),
     (re.compile(r"\b(spätlese|spaetlese|auslese)\b", re.I), "vendanges-tardives"),
     (re.compile(r"\blikörwein\b", re.I), "vin-de-liqueur"),
+    # "Insbesondere maischevergorene Weißweine können auch orangefarben …
+    # erscheinen" (six Landwein single documents, 2026-10-30)
+    (re.compile(r"\bmaischevergoren\w*\s+wei(?:ß|ss)wein", re.I), "skin-contact-white"),
     (re.compile(r"\b(süßwein|suesswein|lieblich)\b", re.I), "sweet"),
     (re.compile(r"\btrocken\b", re.I), "dry"),
 )

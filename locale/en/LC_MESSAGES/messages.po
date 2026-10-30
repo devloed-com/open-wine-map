@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  open-wine-map\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-25 12:10+0100\n"
+"POT-Creation-Date: 2026-10-30 10:54+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -252,23 +252,23 @@ msgstr "System"
 msgid "Afficher les IGP"
 msgstr "Show PGIs"
 
-#: scripts/_lib/map_template.py:122 scripts/_lib/style_taxonomy.py:339
-#: scripts/_lib/style_taxonomy.py:368
+#: scripts/_lib/map_template.py:122 scripts/_lib/style_taxonomy.py:356
+#: scripts/_lib/style_taxonomy.py:385
 msgid "rouge"
 msgstr "red"
 
-#: scripts/_lib/map_template.py:123 scripts/_lib/style_taxonomy.py:339
-#: scripts/_lib/style_taxonomy.py:369
+#: scripts/_lib/map_template.py:123 scripts/_lib/style_taxonomy.py:356
+#: scripts/_lib/style_taxonomy.py:386
 msgid "blanc"
 msgstr "white"
 
-#: scripts/_lib/map_template.py:124 scripts/_lib/style_taxonomy.py:339
-#: scripts/_lib/style_taxonomy.py:370
+#: scripts/_lib/map_template.py:124 scripts/_lib/style_taxonomy.py:356
+#: scripts/_lib/style_taxonomy.py:387
 msgid "rosé"
 msgstr "rosé"
 
-#: scripts/_lib/map_template.py:125 scripts/_lib/style_taxonomy.py:339
-#: scripts/_lib/style_taxonomy.py:371
+#: scripts/_lib/map_template.py:125 scripts/_lib/style_taxonomy.py:356
+#: scripts/_lib/style_taxonomy.py:388
 msgid "mousseux"
 msgstr "sparkling"
 
@@ -276,7 +276,7 @@ msgstr "sparkling"
 msgid "moelleux / liquoreux"
 msgstr "sweet / dessert"
 
-#: scripts/_lib/map_template.py:127 scripts/_lib/style_taxonomy.py:352
+#: scripts/_lib/map_template.py:127 scripts/_lib/style_taxonomy.py:369
 msgid "oxydatif"
 msgstr "oxidative"
 
@@ -1740,155 +1740,159 @@ msgstr "Cyprus"
 msgid "Royaume-Uni"
 msgstr "United Kingdom"
 
-#: scripts/_lib/style_taxonomy.py:339 scripts/_lib/style_taxonomy.py:372
+#: scripts/_lib/style_taxonomy.py:356 scripts/_lib/style_taxonomy.py:389
 msgid "doux"
 msgstr "sweet"
 
-#: scripts/_lib/style_taxonomy.py:340 scripts/_lib/style_taxonomy.py:373
+#: scripts/_lib/style_taxonomy.py:357 scripts/_lib/style_taxonomy.py:390
 msgid "autres"
 msgstr "other"
 
-#: scripts/_lib/style_taxonomy.py:341
+#: scripts/_lib/style_taxonomy.py:358
 msgid "clairet"
 msgstr "clairet"
 
-#: scripts/_lib/style_taxonomy.py:341
+#: scripts/_lib/style_taxonomy.py:358
 msgid "primeur"
 msgstr "primeur"
 
-#: scripts/_lib/style_taxonomy.py:342
+#: scripts/_lib/style_taxonomy.py:358
+msgid "blanc de macération"
+msgstr "skin-contact white"
+
+#: scripts/_lib/style_taxonomy.py:359
 msgid "mousseux de qualité"
 msgstr "quality sparkling"
 
-#: scripts/_lib/style_taxonomy.py:342
+#: scripts/_lib/style_taxonomy.py:359
 msgid "crémant"
 msgstr "crémant"
 
-#: scripts/_lib/style_taxonomy.py:342
+#: scripts/_lib/style_taxonomy.py:359
 msgid "méthode ancestrale"
 msgstr "ancestral method"
 
-#: scripts/_lib/style_taxonomy.py:343
+#: scripts/_lib/style_taxonomy.py:360
 msgid "méthode traditionnelle"
 msgstr "traditional method"
 
-#: scripts/_lib/style_taxonomy.py:343
+#: scripts/_lib/style_taxonomy.py:360
 msgid "méthode Charmat"
 msgstr "Charmat method"
 
-#: scripts/_lib/style_taxonomy.py:343
+#: scripts/_lib/style_taxonomy.py:360
 msgid "méthode dioise"
 msgstr "méthode dioise"
 
-#: scripts/_lib/style_taxonomy.py:344
+#: scripts/_lib/style_taxonomy.py:361
 msgid "pétillant"
 msgstr "semi-sparkling"
 
-#: scripts/_lib/style_taxonomy.py:345
+#: scripts/_lib/style_taxonomy.py:362
 msgid "vin muté"
 msgstr "fortified"
 
-#: scripts/_lib/style_taxonomy.py:345
+#: scripts/_lib/style_taxonomy.py:362
 msgid "vendanges tardives (catégorie)"
 msgstr "late-harvest (category)"
 
-#: scripts/_lib/style_taxonomy.py:346
+#: scripts/_lib/style_taxonomy.py:363
 msgid "vin de raisins passerillés"
 msgstr "raisin wine"
 
-#: scripts/_lib/style_taxonomy.py:347
+#: scripts/_lib/style_taxonomy.py:364
 msgid "demi-doux"
 msgstr "semi-sweet"
 
-#: scripts/_lib/style_taxonomy.py:347
+#: scripts/_lib/style_taxonomy.py:364
 msgid "vin de glace"
 msgstr "ice wine"
 
-#: scripts/_lib/style_taxonomy.py:348
+#: scripts/_lib/style_taxonomy.py:365
 msgid "vin doux naturel"
 msgstr "vin doux naturel"
 
-#: scripts/_lib/style_taxonomy.py:348
+#: scripts/_lib/style_taxonomy.py:365
 msgid "vin de liqueur"
 msgstr "vin de liqueur"
 
-#: scripts/_lib/style_taxonomy.py:348
+#: scripts/_lib/style_taxonomy.py:365
 msgid "mistelle"
 msgstr "mistelle"
 
-#: scripts/_lib/style_taxonomy.py:349
+#: scripts/_lib/style_taxonomy.py:366
 msgid "vendanges tardives"
 msgstr "late harvest"
 
-#: scripts/_lib/style_taxonomy.py:349
+#: scripts/_lib/style_taxonomy.py:366
 msgid "uvas sobremaduradas"
 msgstr "overripe grapes"
 
-#: scripts/_lib/style_taxonomy.py:350
+#: scripts/_lib/style_taxonomy.py:367
 msgid "vin naturellement doux"
 msgstr "naturally sweet"
 
-#: scripts/_lib/style_taxonomy.py:350
+#: scripts/_lib/style_taxonomy.py:367
 msgid "grains nobles"
 msgstr "grains nobles"
 
-#: scripts/_lib/style_taxonomy.py:351
+#: scripts/_lib/style_taxonomy.py:368
 msgid "vin de paille"
 msgstr "vin de paille"
 
-#: scripts/_lib/style_taxonomy.py:351
+#: scripts/_lib/style_taxonomy.py:368
 msgid "uvas pasificadas"
 msgstr "dried grapes"
 
-#: scripts/_lib/style_taxonomy.py:351
+#: scripts/_lib/style_taxonomy.py:368
 msgid "vin santo"
 msgstr "vin santo"
 
-#: scripts/_lib/style_taxonomy.py:352
+#: scripts/_lib/style_taxonomy.py:369
 msgid "tranquille"
 msgstr "still"
 
-#: scripts/_lib/style_taxonomy.py:352
+#: scripts/_lib/style_taxonomy.py:369
 msgid "sur lie"
 msgstr "sur lie"
 
-#: scripts/_lib/style_taxonomy.py:352
+#: scripts/_lib/style_taxonomy.py:369
 msgid "sec"
 msgstr "dry"
 
-#: scripts/_lib/style_taxonomy.py:352
+#: scripts/_lib/style_taxonomy.py:369
 msgid "demi-sec"
 msgstr "semi-dry"
 
-#: scripts/_lib/style_taxonomy.py:353
+#: scripts/_lib/style_taxonomy.py:370
 msgid "rancio"
 msgstr "rancio"
 
-#: scripts/_lib/style_taxonomy.py:353
+#: scripts/_lib/style_taxonomy.py:370
 msgid "vin jaune"
 msgstr "vin jaune"
 
-#: scripts/_lib/style_taxonomy.py:353
+#: scripts/_lib/style_taxonomy.py:370
 msgid "generoso"
 msgstr "generoso"
 
-#: scripts/_lib/style_taxonomy.py:354
+#: scripts/_lib/style_taxonomy.py:371
 msgid "fino"
 msgstr "fino"
 
-#: scripts/_lib/style_taxonomy.py:354
+#: scripts/_lib/style_taxonomy.py:371
 msgid "manzanilla"
 msgstr "manzanilla"
 
-#: scripts/_lib/style_taxonomy.py:354
+#: scripts/_lib/style_taxonomy.py:371
 msgid "amontillado"
 msgstr "amontillado"
 
-#: scripts/_lib/style_taxonomy.py:355
+#: scripts/_lib/style_taxonomy.py:372
 msgid "oloroso"
 msgstr "oloroso"
 
-#: scripts/_lib/style_taxonomy.py:355
+#: scripts/_lib/style_taxonomy.py:372
 msgid "palo cortado"
 msgstr "palo cortado"
 

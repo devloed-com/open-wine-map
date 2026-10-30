@@ -996,6 +996,11 @@ def parse_communes(field: str) -> list[str]:
     # a soft-wrapped hyphen also precedes a lowercase particle
     # ("Fontevraud-\nl'Abbaye", "Villeneuve-\nde-la-Raho")
     s = re.sub(r"-\s+(?=[A-Za-zÀ-ÿ])", "-", s)
+    # "Communes retenues en entier : A, B et C. Commune retenue en partie : D
+    # pour le seul territoire de …" — the labels name no commune, and the
+    # partial commune is one more member, not the tail of C's sentence
+    s = _RETENUES_WHOLE_RE.sub("", s)
+    s = _RETENUES_PART_RE.sub(", ", s).strip(" ,")
     out: list[str] = []
     depth = 0
     cur: list[str] = []
@@ -1025,7 +1030,24 @@ def parse_communes(field: str) -> list[str]:
     tok = "".join(cur).strip()
     if tok:
         out.append(tok)
-    return out
+    # "Kaysersberg Vignoble pour le seul territoire des communes déléguées de
+    # Kientzheim et de Sigolsheim": the " et " belongs to the qualifier
+    joined: list[str] = []
+    for tok in out:
+        if joined and tok.startswith("de ") and _SEUL_TERRITOIRE_RE.search(joined[-1]):
+            joined[-1] += " et " + tok
+        else:
+            joined.append(tok)
+    return joined
+
+
+_RETENUES_WHOLE_RE = re.compile(
+    r"-?\s*\bCommunes?\s+retenues?\s+en\s+(?:entier|totalit[ée])\s*:\s*", re.IGNORECASE,
+)
+_RETENUES_PART_RE = re.compile(
+    r"\s*[.;]?\s*-?\s*\bCommunes?\s+retenues?\s+(?:en|pour)\s+partie\s*:\s*", re.IGNORECASE,
+)
+_SEUL_TERRITOIRE_RE = re.compile(r"\bpour le (?:seul )?territoire\b(?![^()]*\))")
 
 
 def _clean_commune_tokens(tokens: list[str]) -> list[str]:

@@ -657,7 +657,7 @@ def main() -> int:
     full, etag = fetch_list()
     it_wines_all = [
         g for g in full
-        if "IT" in (g.get("countries") or []) and g.get("productType") == "WINE"
+        if "IT" in (g.get("countries") or []) and (g.get("productType") or "").upper() == "WINE"
     ]
     it_wines = [g for g in it_wines_all if g.get("status") == "registered"]
     n_skipped_applied = len(it_wines_all) - len(it_wines)

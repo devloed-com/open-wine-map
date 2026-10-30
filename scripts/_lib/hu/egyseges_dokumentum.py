@@ -203,6 +203,8 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     # a dessert wine is the Sweet style, not a late harvest (2026-10-23)
     (re.compile(r"\bcsemegebor\b", re.I), "sweet"),
     (re.compile(r"\blik[őo]rbor\b|\blikorbor\b", re.I), "vin-de-liqueur"),
+    # a white fermented on its skins, a wine type of Somló (2026-10-30)
+    (re.compile(r"\bnarancsbor\w*", re.I), "skin-contact-white"),
     (re.compile(r"\bszáraz\b|\bszaraz\b", re.I), "dry"),
 )
 

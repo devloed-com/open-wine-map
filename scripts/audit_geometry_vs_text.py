@@ -103,6 +103,17 @@ def log(msg: str) -> None:
     print(f"[geom-text] {msg}", file=sys.stderr)
 
 
+# "Mercurol-Veaunes pour le seul territoire de la commune déléguée de Mercurol":
+# the commune, and the fact that the text takes only part of it (so its
+# parcels may cover less than the 5 % that counts as drawn in part).
+_FR_PARTIAL_RE = re.compile(r"\s+pour le (?:seul )?territoire\b.*$", re.I | re.S)
+
+
+def fr_token(name: str) -> tuple[str, bool]:
+    base = _FR_PARTIAL_RE.sub("", name or "").strip(" ,;.")
+    return base, base != (name or "").strip(" ,;.")
+
+
 def norm(s: str) -> str:
     s = unicodedata.normalize("NFKD", s or "")
     s = "".join(c for c in s if not unicodedata.combining(c)).casefold()
@@ -386,7 +397,7 @@ def named_units(country: str, slug: str, rec: dict, startup: dict, payload: dict
     """{ids, unresolved, above_commune, far, method} — the units the text
     names, resolved to the layer's ids. A unique hit farther than HOMONYM_KM
     from the polygon is listed under `far` and not counted as named."""
-    out = {"ids": set(), "unresolved": [], "above_commune": [], "far": [], "method": ""}
+    out = {"ids": set(), "unresolved": [], "above_commune": [], "far": [], "method": "", "partial": set()}
     if layer is None or not layer.geoms:
         return out
     if country == "fr":
@@ -410,11 +421,14 @@ def named_units(country: str, slug: str, rec: dict, startup: dict, payload: dict
             for dept, names in ag.items():
                 code = (dept_codes or {}).get(norm(dept))
                 for n in names or []:
-                    hits = layer.by_name(n, within={"dept": code} if code else None)
+                    base, partial = fr_token(n)
+                    hits = layer.by_name(base, within={"dept": code} if code else None)
                     if len(hits) > 1:
                         hits = _pick_near(layer, hits, geom)
                     if len(hits) == 1:
                         out["ids"].add(layer.ids[hits[0]])
+                        if partial:
+                            out["partial"].add(layer.ids[hits[0]])
                     elif not hits:
                         out["unresolved"].append(f"{n} ({dept})")
             if ag:
@@ -776,8 +790,14 @@ def main() -> int:
         drawn_whole = {layer.ids[i] for i in whole}
         drawn_part = {layer.ids[i] for i in part}
         nu = named_units(cc, slug, rec, rec_s, payload, layer, fr_aires=fr_aires, dept_codes=dept_codes, geom=geom)
-        bucket, detail = classify(rec_s.get("geom_source") or "", nu["ids"], drawn_whole, drawn_part, named_above=nu["above_commune"])
+        # a commune the text takes in part only is not missing when its few
+        # parcels fall under the drawn-in-part threshold
+        partial_undrawn = (nu.get("partial") or set()) - drawn_whole - drawn_part
+        bucket, detail = classify(rec_s.get("geom_source") or "", nu["ids"] - partial_undrawn, drawn_whole, drawn_part,
+                                  named_above=nu["above_commune"])
         detail["method"] = nu["method"]
+        if partial_undrawn:
+            detail["partial_undrawn"] = sorted(partial_undrawn)
         detail["unresolved"] = nu["unresolved"][:20]
         detail["far_homonyms"] = nu.get("far", [])[:10]
         detail["above_commune"] = nu["above_commune"][:10]

@@ -232,3 +232,16 @@ def test_backcheck_user_message_carries_the_appellation_note_for_a_parent(monkey
     assert "CONTEXT FOR THE CHECK:" in msg and "do not flag it as an added or wrong entity" in msg
     assert "CONTEXT" not in tb.build_user_message(**kw, slug="leaf")
     assert "CONTEXT" not in tb.build_user_message(**kw)
+
+
+def test_a_rewrite_drops_the_wiki_part_verdict_and_a_supported_fact_keeps_it():
+    # `wiki_part` was read on the old bullet; stage 04 marks a `both` fact
+    # without the field until the provenance post-pass re-reads it
+    facts = [dict(FACTS[0], provenance="both", wiki_part=True), dict(FACTS[1], provenance="both", wiki_part=False)]
+    verdicts = [
+        {"verdict": "rewrite", "note": "presence only", "rewrite": "I suoli sono di origine vulcanica", "restates": None, "subsection": None},
+        {"verdict": "supported", "note": "", "rewrite": "", "restates": None, "subsection": None},
+    ]
+    res = tg.apply_verdicts(facts, verdicts, source=SOURCE, source_lang="it", run="r1", model="m")
+    assert res["facts"][0]["bullet"] == "I suoli sono di origine vulcanica." and "wiki_part" not in res["facts"][0]
+    assert res["facts"][1]["wiki_part"] is False

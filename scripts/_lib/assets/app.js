@@ -2537,7 +2537,7 @@
       const facts = grouped[k];
       if (!facts || !facts.length) return [];
       const items = facts.map(f => {
-        const marker = f.provenance === 'wiki' ? wikiAttr : '';
+        const marker = (f.provenance === 'wiki' || f.wiki_part) ? wikiAttr : '';
         return `<li>${escapeHtml(f.bullet)}${marker}</li>`;
       }).join('');
       return [`<div class="facts-sub-h">${escapeHtml(FACTS_SUB_LABELS[k] || k)}</div><ul class="facts">${items}</ul>`];

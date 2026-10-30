@@ -89,3 +89,11 @@ def test_bg_names_are_held_to_their_oblast_header():
            "geo_area_brief": "Област Русе: Бяла. Област Варна: Бяла."}
     out = agt.named_units("bg", "x", rec, {}, {}, layer, geom=box(0, 0, 10, 10))
     assert out["ids"] == {"BG_RSE04", "BG_VAR05"} and not out["unresolved"]
+
+
+def test_fr_token_cuts_a_partial_commune_qualifier():
+    # "Commune retenue en partie : X pour le seul territoire de …" — X is the
+    # commune, drawn in part only (2026-10-30)
+    assert agt.fr_token("Mercurol-Veaunes pour le seul territoire de la commune déléguée de Mercurol") == ("Mercurol-Veaunes", True)
+    assert agt.fr_token("Kaysersberg Vignoble pour le territoire des communes déléguées de Kientzheim et de Sigolsheim") == ("Kaysersberg Vignoble", True)
+    assert agt.fr_token("Tain-l’Hermitage") == ("Tain-l’Hermitage", False)

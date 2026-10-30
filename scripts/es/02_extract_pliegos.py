@@ -831,14 +831,21 @@ _STYLE_TITLE_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
     (re.compile(r"\bvino(?:s)? rosado(?:s)?\b", re.I), ("rose",)),
 )
 
-# A lettered wine-type line ("j. Vino espumoso", "k) Vinos de aguja").
-_TYPE_LIST_LINE_RE = re.compile(r"^[ \t]*[a-zñ][ \t]*[.)][ \t]+(vinos?\b[^\n]*)$", re.I | re.M)
+# A lettered wine-type line ("j. Vino espumoso", "k) Vinos de aguja"), also
+# numbered under its letter ("a.2. Vinos espumosos de calidad", Somontano).
+_TYPE_LIST_LINE_RE = re.compile(
+    r"^[ \t]*[a-zñ](?:\.\d+)*[ \t]*[.)][ \t]+(vinos?\b[^\n]*)$", re.I | re.M)
 
 _STYLE_BODY_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
     (re.compile(r"\bvinos? rancios?\b", re.I), ("oxidative", "rancio")),
     (re.compile(r"\bnaturalmente dulce|dulces? naturales?\b", re.I),
         ("sweet", "dulce-natural")),
     (re.compile(r"\bmistelas?\b", re.I), ("sweet", "fortified", "mistela")),
+    # A white fermented on its skins (Manchuela, Arribes: "vino naranja"; the
+    # Catalan DOs: "blanco brisado"). "Vino Naranja del Condado de Huelva" is
+    # an orange-peel fortified wine, never this type.
+    (re.compile(r"\bvinos? naranjas?\b(?!\s+del\s+condado)|\bbrisad[oa]s?\b", re.I),
+        ("skin-contact-white",)),
 )
 
 # Sherry sub-styles are gated on the document being a "vinos generosos"
@@ -912,6 +919,62 @@ _COLOUR_SLUGS = {"tinto": "red", "blanco": "white", "rosado": "rose"}
 
 def _colour_slug(token: str) -> str | None:
     return _COLOUR_SLUGS.get(token.lower().rstrip("s"))
+
+
+# The sweetness levels a pliego lists as its wines' types — "Vinos
+# Semisecos, Semidulces y Dulces, blancos, rosados y tintos" (Almansa), "en
+# función del contenido en azúcar, se clasifican en secos, dulces, semisecos
+# y semidulces" (Bullas), "para semisecos, semidulces y dulces" (a limit
+# set for them, Uclés): a sweet or semi-sweet one is a style, semi-dry is not
+# added (the phase-C rule of GR / HU / BG / IT, 2026-10-30). Only a list of
+# two levels or more counts, never "sabor dulce", "taninos dulces"; and never
+# in the link section, which compares other GIs ("Los vinos de la IGP
+# Castilla pueden ser secos, semisecos, semidulces y dulces, los vinos
+# Rosalejo sólo son secos").
+_SWEETNESS_WORD = r"(?:semi-?\s?secos?|semi-?\s?dulces?|secos?|dulces?|abocados?)"
+_SWEETNESS_LIST_RE = re.compile(
+    rf"\b{_SWEETNESS_WORD}(?:(?:\s*(?:,|\by\b|\bo\b|\be\b|/))+\s*{_SWEETNESS_WORD}\b)+", re.I)
+# A list the same sentence introduces as labelling terms restates the EU
+# sugar-term rule, not the wines made: "podrán emplearse las indicaciones
+# seco, semiseco, semidulce y dulce" (Bailén, whose heading "Vinos
+# semisecos, semidulces y dulces" states the types all the same), "(*) Según
+# la legislación vigente se podrán denominar: secos, semisecos, semidulces y
+# dulces" (Castilla y León's analytical footnote). "pueden denominarse: secos
+# o semisecos, dulces o semidulces" with no such word (Málaga) is the wines,
+# and "con mención Roble" before a list (Méntrida's heading) is a wine type,
+# so "mención" is no guard word. Read within the section body or title the
+# list stands in, never across them.
+_SWEETNESS_LABEL_TERM_RE = re.compile(
+    r"\b(?:indicaci[oó]n(?:es)?|t[ée]rminos?|etiquet\w*|legislaci[oó]n|normativa"
+    r"|podr[áa]n?\s+(?:emplear|utilizar|usar|figurar|llevar)\w*)\b", re.I)
+_SENTENCE_START_RE = re.compile(r"(?<=[.;!?])\s+|\n\s*\n")
+
+
+def _sweetness_list_is_labelling(text: str, start: int) -> bool:
+    lead = _SENTENCE_START_RE.split(text[max(0, start - 160):start])[-1]
+    return bool(_SWEETNESS_LABEL_TERM_RE.search(lead))
+
+
+def sweetness_type_styles(sections: dict[str, str], titles: dict[str, str]) -> set[str]:
+    link_kw = SECTION_ROLE_KEYWORDS["link_to_terroir"]
+    link = {k for k, t in titles.items() if any(kw in (t or "").lower() for kw in link_kw)}
+    # the link's sub-sections too ("8.3 Relación entre las características …")
+    in_link = {k for k in titles.keys() | sections.keys()
+               if k in link or any(k.startswith(f"{n}.") for n in link)}
+    texts = [body for k, body in sections.items() if k not in in_link]
+    texts += [t for k, t in titles.items() if k not in in_link]
+    found: set[str] = set()
+    for text in texts:
+        for m in _SWEETNESS_LIST_RE.finditer(text or ""):
+            if _sweetness_list_is_labelling(text, m.start()):
+                continue
+            for word in re.findall(_SWEETNESS_WORD, m.group(0), re.I):
+                w = re.sub(r"[-\s]", "", word.lower())
+                if w.startswith("semidulce"):
+                    found.add("semi-sweet")
+                elif w.startswith("dulce"):
+                    found.add("sweet")
+    return found
 
 
 def parse_styles_es(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
@@ -1063,6 +1126,7 @@ def parse_styles_es(sections: dict[str, str], titles: dict[str, str]) -> list[st
         slug = _colour_slug(m.group(1))
         if slug:
             found.add(slug)
+    found |= sweetness_type_styles(sections, titles)
     return sorted(found)
 
 

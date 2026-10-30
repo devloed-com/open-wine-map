@@ -4214,6 +4214,10 @@ def load_terroir_facts(slug: str, parent_slug: str = "") -> dict | None:
                 "bullet": f.get("bullet", ""),
                 "subsection": f.get("subsection", "facteurs_naturels"),
                 "provenance": f.get("provenance", "cahier"),
+                # A `both` fact the provenance post-pass has not read yet
+                # counts as carrying a Wikipedia-only part (`_lib/terroir_wiki_part.py`).
+                **({"wiki_part": True}
+                   if f.get("provenance") == "both" and f.get("wiki_part", True) else {}),
             }
             for f in facts
         ],

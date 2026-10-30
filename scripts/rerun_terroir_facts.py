@@ -218,6 +218,13 @@ def main() -> int:
         if rc:
             return 1
 
+    # The provenance post-pass marks the `both` facts whose bullet carries a
+    # Wikipedia-only part (`wiki_part`): the card shows the Wikipedia marker.
+    prov_scope = [x for slug in slugs for x in ("--only", slug)]
+    rc = run_step([str(PY), str(ROOT / "scripts" / "recompute_terroir_provenance.py"), *prov_scope,
+                   "--report", str(logdir / "provenance.json")], logdir / "provenance.log", env)
+    log(f"  provenance post-pass: exit {rc} — {logdir / 'provenance.log'}")
+
     if not args.skip_02e:
         # Every country: the gate may have rewritten records outside the scope.
         cc_02e = sorted(COUNTRIES)

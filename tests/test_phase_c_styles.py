@@ -193,6 +193,54 @@ def test_es_reads_a_lettered_wine_type_list():
     assert {"sparkling", "semi-sparkling", "vin-de-liqueur", "sweet", "white", "rose"} <= styles
 
 
+def test_es_reads_a_type_list_numbered_under_its_letter():
+    es02 = importlib.import_module("es.02_extract_pliegos")
+    sections = {"2": "a.1. Vinos blancos, rosados y tintos:\n  a.1.1. Grado alcohólico\n"
+                     "a.2. Vinos espumosos de calidad\n  - Grado alcohólico\n"
+                     "a.3. Vinos de licor\n"}
+    titles = {"2": "DESCRIPCIÓN DEL VINO."}
+    styles = set(es02.parse_styles_es(sections, titles))
+    assert {"sparkling", "sparkling-quality", "vin-de-liqueur", "fortified"} <= styles
+
+
+def test_a_white_fermented_on_its_skins_is_read_in_es_hu_de():
+    es02 = importlib.import_module("es.02_extract_pliegos")
+    titles = {"6": "Descripción del vino o vinos"}
+    for body in ("Vino naranja: gama desde el amarillo hasta el naranja.",
+                 "Blanco Brisado: Fase visual: tonalidades del amarillo al anaranjado.",
+                 "BRISADO: Con tonalidades que pueden ir del amarillo al anaranjado."):
+        assert "skin-contact-white" in es02.parse_styles_es({"6": body}, titles)
+    huelva = "Vinos generosos. El Vino Naranja del Condado de Huelva se elabora con cáscaras."
+    assert "skin-contact-white" not in es02.parse_styles_es({"6": huelva}, titles)
+    from _lib.hu import termekleiras
+    hu = termekleiras.parse_styles({"description": "Bortípusok: 1. Fehér 2. Narancsbor 3. Rozé"}, {})
+    assert "skin-contact-white" in hu
+    de02 = importlib.import_module("de.02_extract_pliegos")
+    de = de02.parse_styles({"4": "Insbesondere maischevergorene Weißweine können auch orangefarben erscheinen."},
+                           {"4": "Beschreibung des Weins"})
+    assert "skin-contact-white" in de
+
+
+def test_es_sweetness_levels_listed_as_types():
+    es02 = importlib.import_module("es.02_extract_pliegos")
+    descr = {"6": "Descripción del vino o vinos"}
+    s = set(es02.parse_styles_es({"6": "Producto vitivinícola Vinos Semisecos, Semidulces y Dulces, "
+                                       "blancos, rosados y tintos"}, descr))
+    assert {"semi-sweet", "sweet"} <= s and "semi-dry" not in s
+    s = set(es02.parse_styles_es({"5": "Vinos blancos, rosados, y tintos jóvenes, semisecos, semidulces y, dulces."},
+                                 {"5": "Prácticas vitivinícolas"}))
+    assert {"semi-sweet", "sweet"} <= s
+    assert "sweet" not in es02.parse_styles_es(
+        {"6": "En boca, sabor dulce y taninos dulces, vinos secos."}, descr)
+    link = {"8": "Vínculo con la zona geográfica"}
+    assert "sweet" not in es02.parse_styles_es(
+        {"8": "Los vinos de la IGP Castilla pueden ser secos, semisecos, semidulces y dulces, "
+              "los vinos Rosalejo sólo son secos."}, link)
+    assert "sweet" not in es02.parse_styles_es(
+        {"8": "", "8.3": "Los vinos de la IGP Castilla pueden ser secos, semisecos, semidulces y dulces."},
+        {"8": "Descripción del (de los) vínculo(s)", "8.3": "Relación entre las características de la zona"})
+
+
 def test_ro_reads_the_description_sub_sections_and_article_forms():
     ro02 = importlib.import_module("ro.02_extract_pliegos")
     sections = {"4": "", "4.1": "Vinurile albe au o culoare galben-pai.",
@@ -299,3 +347,34 @@ def test_it_colour_field_head_word_states_the_colour():
     assert colours("colore: colore rosa intenso con lievi riflessi gialli") == set()
     assert colours("colore: dal rosa all'ambrato") == set()
     assert colours("profumo di frutta a polpa gialla") == set()
+
+
+def test_es_sweetness_labelling_terms_are_not_wine_types():
+    es02 = importlib.import_module("es.02_extract_pliegos")
+    descr = {"6": "Descripción del vino o vinos"}
+    # Bailén restates the EU sugar-term rule for labelling
+    bailen = ("Según el contenido de azúcar, en los vinos con IGP “Bailén” podrán emplearse las "
+              "indicaciones seco, semiseco, semidulce y dulce, atendiendo a los siguientes rangos: Secos: …")
+    assert not {"sweet", "semi-sweet"} & set(es02.parse_styles_es({"6": bailen}, descr))
+    # Castilla y León: a footnote on the analytical table
+    cyl = ("Azúcares (g/l) 4 (máx.) 4 (máx.)\n"
+           "(*) Según la legislación vigente se podrán denominar: secos, semisecos, semidulces y dulces.")
+    assert not {"sweet", "semi-sweet"} & set(es02.parse_styles_es({"6": cyl}, descr))
+    # Málaga classes its own wines by their sugar
+    malaga = ("Vinos de licor o encabezados, que son aquellos en cuya elaboración se ha adicionado alcohol "
+              "vínico, y que en función del contenido final en azúcares pueden denominarse: secos o semisecos, "
+              "dulces o semidulces; y entre los que se encuentran los vinos dulces naturales.")
+    assert {"sweet", "semi-sweet"} <= set(es02.parse_styles_es({"6": malaga}, descr))
+    # a labelling word in the previous sentence does not reach the list (Almansa)
+    almansa = ("Los límites establecidos en la legislación aplicable de la UE. "
+               "Producto vitivinícola Vinos Semisecos, Semidulces y Dulces, blancos, rosados y tintos")
+    assert {"sweet", "semi-sweet"} <= set(es02.parse_styles_es({"6": almansa}, descr))
+    # a list in a section title is read on the title alone, and "con mención
+    # Roble" before it is a wine type, not a labelling-term rule (Méntrida)
+    mentrida = {"2": "Vino Blanco, Vino Blanco con mención Roble, Vino Blanco envejecido en tonel, "
+                     "Semisecos, Semidulces y Dulces", "3": "Vino rosado seco, semisecos, semidulces y dulces"}
+    assert {"sweet", "semi-sweet"} <= set(es02.parse_styles_es({"2": "x", "3": "y"}, mentrida))
+    # Bailén's heading states the types the body's labelling sentence does not
+    assert {"sweet", "semi-sweet"} <= set(es02.parse_styles_es(
+        {"B.1": bailen, "C.3": "…"}, {"B.1": "Principales características analíticas",
+                                     "C.3": "Vinos semisecos, semidulces y dulces"}))

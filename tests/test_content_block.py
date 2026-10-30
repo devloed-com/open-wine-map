@@ -284,6 +284,18 @@ def test_bullet_facts_group_and_wiki_marker_and_suppress_summary() -> None:
     assert "Should be hidden." not in out  # facts present -> summary suppressed
 
 
+def test_wiki_marker_on_a_both_fact_with_a_wikipedia_only_part() -> None:
+    rec = {"name": "M", "kind": "DOP", "country": "es",
+           "terroir_facts": {"facts": [
+               {"bullet": "Mean 13 °C.", "subsection": "facteurs_naturels", "provenance": "both",
+                "wiki_part": True},
+               {"bullet": "Clay soils.", "subsection": "facteurs_naturels", "provenance": "both"}],
+               "wiki_source_url": "http://w/x", "cahier_source_pdf_url": "http://c/p.pdf"}}
+    out = _render(rec)
+    assert out.count('class="wiki-attr"') == 1
+    assert out.index("Mean 13 °C.") < out.index('class="wiki-attr"') < out.index("Clay soils.")
+
+
 def test_inherited_facts_disclosure_line() -> None:
     rec = {"name": "RIOJA ALAVESA", "kind": "DOP", "country": "es",
            "is_sub_denomination": True, "parent_slug": "rioja", "parent_name": "Rioja",

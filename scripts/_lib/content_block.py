@@ -401,7 +401,7 @@ def render_terroir_facts(rec: dict, ctx: RenderCtx) -> str:
             continue
         items = "".join(
             f'<li>{esc(f.get("bullet") or "")}'
-            f'{wiki_attr if f.get("provenance") == "wiki" else ""}</li>'
+            f'{wiki_attr if f.get("provenance") == "wiki" or f.get("wiki_part") else ""}</li>'
             for f in sub
         )
         blocks.append(

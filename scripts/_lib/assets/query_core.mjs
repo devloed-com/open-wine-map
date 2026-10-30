@@ -506,12 +506,13 @@ export function createQueryCore(ctx) {
       out.terroir_facts = tf.facts.map(f => ({
         text: f.bullet,
         section: factsSubLabels[f.subsection] || f.subsection,
-        source: f.provenance === 'wiki' ? 'wikipedia' : 'specification',
+        source: f.provenance === 'wiki' ? 'wikipedia'
+          : f.wiki_part ? 'specification and wikipedia' : 'specification',
       }));
       out.terroir_facts_attribution = {
         specification_url: tf.cahier_source_pdf_url || null,
         wikipedia_url: tf.wiki_source_url || null,
-        wikipedia_licence: tf.facts.some(f => f.provenance === 'wiki') ? 'CC BY-SA 4.0' : null,
+        wikipedia_licence: tf.facts.some(f => f.provenance === 'wiki' || f.wiki_part) ? 'CC BY-SA 4.0' : null,
         note: 'Extracted from the regulator specification (and Wikipedia where marked), machine-translated outside the source language.',
       };
     } else if (r.summary) {

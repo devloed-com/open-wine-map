@@ -42,7 +42,8 @@
     "methode-ancestrale",
     "methode-traditionnelle",
     "methode-charmat",
-    "methode-dioise"
+    "methode-dioise",
+    "skin-contact-white"
   ],
   "fr": {
     "red": "Vin rouge",
@@ -78,7 +79,8 @@
     "methode-ancestrale": "Méthode ancestrale",
     "methode-traditionnelle": "Méthode traditionnelle",
     "methode-charmat": "Méthode Charmat",
-    "methode-dioise": "Clairette de Die"
+    "methode-dioise": "Clairette de Die",
+    "skin-contact-white": "Vin orange"
   },
   "en": {
     "red": "Red wine",
@@ -117,7 +119,8 @@
     "vin-santo": "Vin Santo",
     "methode-ancestrale": "Ancestral method",
     "methode-traditionnelle": "Traditional method",
-    "methode-charmat": "Charmat process"
+    "methode-charmat": "Charmat process",
+    "skin-contact-white": "Orange wine"
   },
   "es": {
     "red": "Vino tinto",
@@ -153,7 +156,8 @@
     "oloroso": "Oloroso",
     "palo-cortado": "Palo cortado",
     "icewine": "Vino de hielo",
-    "vin-santo": "Vin Santo"
+    "vin-santo": "Vin Santo",
+    "skin-contact-white": "Vino brisado"
   },
   "nl": {
     "red": "Rode wijn",
@@ -170,6 +174,7 @@
     "vin-de-paille": "Strowijn",
     "vin-jaune": "Vin jaune",
     "icewine": "IJswijn",
-    "vin-santo": "Vin Santo"
+    "vin-santo": "Vin Santo",
+    "skin-contact-white": "Oranje wijn"
   }
 }

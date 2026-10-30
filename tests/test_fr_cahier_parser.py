@@ -88,6 +88,43 @@ def test_parse_communes_reglues_soft_wrapped_hyphen():
     assert out == ["Saint-Claude-de-Diray", "Candé-sur-Beuvron"]
 
 
+def test_parse_communes_reads_the_retenues_labels():
+    # Crozes-Hermitage (2024): the partial commune had been cut off with the
+    # sentence that ends the whole-commune list, and the label kept as text
+    field = (
+        "Communes retenues en entier : Beaumont-Monteux, Serves-sur-Rhône et "
+        "Tain-l’Hermitage.\nCommune retenue en partie : Mercurol-Veaunes pour le "
+        "seul territoire de la commune déléguée de Mercurol."
+    )
+    assert extract.parse_communes(field) == [
+        "Beaumont-Monteux", "Serves-sur-Rhône", "Tain-l’Hermitage",
+        "Mercurol-Veaunes pour le seul territoire de la commune déléguée de Mercurol",
+    ]
+    # Côtes de Provence: dash-led labels between ";" items, "en totalité"
+    field = (
+        "-Communes retenues en totalité : Fréjus, Saint-Raphaël ; "
+        "-Communes retenues en partie : Callas"
+    )
+    assert extract.parse_communes(field) == ["Fréjus", "Saint-Raphaël", "Callas"]
+
+
+def test_parse_communes_keeps_the_et_of_a_partial_commune_qualifier():
+    # the 51 Alsace grands crus had carried a token "de Sigolsheim"
+    field = (
+        "Zellenberg. Commune retenue en partie : Kaysersberg Vignoble pour le seul "
+        "territoire des communes déléguées de Kientzheim et de Sigolsheim."
+    )
+    assert extract.parse_communes(field) == [
+        "Zellenberg",
+        "Kaysersberg Vignoble pour le seul territoire des communes déléguées de "
+        "Kientzheim et de Sigolsheim",
+    ]
+    # outside a qualifier a lowercase "de …" token is not joined
+    assert extract.parse_communes("A (pour le seul territoire de B), de C") == [
+        "A (pour le seul territoire de B)", "de C",
+    ]
+
+
 # --------------------------------------------------------------------------
 # extract_sections — section slicing + the f1ad98c regressions
 # --------------------------------------------------------------------------

@@ -10,6 +10,11 @@ to Wikipedia). `_lib.terroir_coverage.fuzzy_coverage` now grades a
 multi-span quote span by span; this script applies that rule to the
 caches that were graded before it existed.
 
+It also marks each `both` fact whose bullet states something only its
+Wikipedia quote carries (`wiki_part`, `_lib/terroir_wiki_part.py`): the card
+shows the Wikipedia marker on it as on a `wiki` fact. Stage 04 reads it from
+the source cache, so the translation caches do not carry it.
+
 How: each country's stage-02d module is loaded and asked for the exact
 source text it graded against — the lien (for CH/MT/GB the règlement /
 spec context) plus the per-sub-section Wikipedia hint — so the result is
@@ -47,6 +52,7 @@ from _lib import cache  # noqa: E402
 from _lib.terroir_cache import sync_translation_provenance, write_source_cache  # noqa: E402
 from _lib.terroir_coverage import fuzzy_coverage, provenance_for  # noqa: E402
 from _lib.terroir_sources import Sources, resolve_sources  # noqa: E402
+from _lib.terroir_wiki_part import mark_wiki_parts, record_documents_text  # noqa: E402
 
 TERROIR = ROOT / "raw" / "terroir-facts"
 TRANSLATIONS = ROOT / "raw" / "translations" / "terroir-facts"
@@ -143,16 +149,28 @@ def main() -> int:
                 skipped.append({"slug": slug, "country": cc, "reason": "no-source-today"})
                 stats["skipped"] += 1
                 continue
-            if d.get("cahier_source_sha") != src.cahier_sha:
-                skipped.append({"slug": slug, "country": cc, "reason": "cahier-sha-drift"})
-                stats["skipped"] += 1
-                continue
-            if d.get("wiki_source_revision") != src.wiki_revision:
-                skipped.append({"slug": slug, "country": cc, "reason": "wiki-revision-drift"})
-                stats["skipped"] += 1
-                continue
             facts = d["facts"]
+            regulator_text = src.cahier + "\n" + record_documents_text(cc, slug)
+            drift = ("cahier-sha-drift" if d.get("cahier_source_sha") != src.cahier_sha
+                     else "wiki-revision-drift" if d.get("wiki_source_revision") != src.wiki_revision
+                     else "")
+            if drift:
+                skipped.append({"slug": slug, "country": cc, "reason": drift})
+                stats["skipped"] += 1
+                # The Wikipedia-only part is read against today's regulator
+                # texts, so a cache stale for the re-grade still gets it.
+                n_wp = mark_wiki_parts(facts, regulator_text, d.get("source_lang") or "")
+                stats["wiki_part"] += sum(1 for f in facts if f.get("wiki_part"))
+                stats["wiki_part_changed"] += n_wp
+                if n_wp:
+                    n_records_written += 1
+                    if not args.dry_run:
+                        write_source_cache(p, d)
+                continue
             res = regrade_facts(facts, src)
+            n_wp = mark_wiki_parts(facts, regulator_text, d.get("source_lang") or "")
+            stats["wiki_part"] += sum(1 for f in facts if f.get("wiki_part"))
+            stats["wiki_part_changed"] += n_wp
             stats["facts"] += len(facts)
             stats["coverage_only"] += res.coverage_only
             stats["ungrounded_now"] += res.ungrounded_now
@@ -160,7 +178,7 @@ def main() -> int:
             for ch in res.changed:
                 transitions[(ch["old_provenance"], ch["new_provenance"])] += 1
                 changes.append({"slug": slug, "country": cc, **ch})
-            if res.changed or res.coverage_only:
+            if res.changed or res.coverage_only or n_wp:
                 n_records_written += 1
                 if not args.dry_run:
                     write_source_cache(p, d)
@@ -176,10 +194,10 @@ def main() -> int:
         f"{len(misaligned_translations)} translation caches misaligned (left for 02e); "
         f"{len(skipped)} records skipped")
     log("transitions: " + ", ".join(f"{a}→{b}: {n}" for (a, b), n in transitions.most_common()))
-    log(f"{'cc':4} {'facts':>6} {'prov-chg':>8} {'cov-only':>8} {'ungrnd':>6} {'skip':>5}")
+    log(f"{'cc':4} {'facts':>6} {'prov-chg':>8} {'cov-only':>8} {'ungrnd':>6} {'skip':>5} {'wiki-pt':>7} {'wp-chg':>6}")
     for cc, st in sorted(per_country.items()):
         log(f"{cc:4} {st['facts']:6} {st['provenance_changed']:8} {st['coverage_only']:8} "
-            f"{st['ungrounded_now']:6} {st['skipped']:5}")
+            f"{st['ungrounded_now']:6} {st['skipped']:5} {st['wiki_part']:7} {st['wiki_part_changed']:6}")
     if skipped:
         reasons = Counter(s["reason"] for s in skipped)
         log("skipped by reason: " + ", ".join(f"{r}: {n}" for r, n in reasons.most_common()))
