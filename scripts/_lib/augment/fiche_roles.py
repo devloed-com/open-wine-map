@@ -54,6 +54,10 @@ def coverage(card_slugs, fiche_slugs) -> float:
 def overlay(record: dict, fiche: dict | None) -> tuple[dict | None, str]:
     """Give the record's roster the fiche's roles, in place. Returns the
     provenance and "applied", or None and the reason nothing changed."""
+    if record.get("register_fiche_roster"):
+        # the roster itself came from the fiche, roles included (augment/cz.py,
+        # augment/sk.py); the document's own § 7 varieties keep their role
+        return None, "fiche-roster"
     grapes = record.get("grapes") or {}
     principal = [s for s in grapes.get("principal") or [] if s]
     if not principal:

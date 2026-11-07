@@ -146,6 +146,46 @@ COLOUR_BY_KEYWORD = {
 }
 
 
+# A colour the document gives as a list sharing one noun — "biele a ružové
+# vína", "pre červené a 200 mg/l pre biele a ružové vína" — or after "Farba:"
+# ("Farba: biela, ružová a červená"): the compound table above matches
+# "ružové vína" alone, so Stredoslovenská's white never read (2026-11-07,
+# the RO colour-list rule of 2026-10-25).
+_COLOUR_STEM = {"biel": "blanc", "červen": "noir", "ružov": "rose"}
+_COLOUR_ADJ = r"(?:biel|červen|ružov)\w*"
+_COLOUR_LIST_RE = re.compile(
+    rf"\b{_COLOUR_ADJ}(?:\s*(?:,|\ba\b|\balebo\b|\bči\b)\s*{_COLOUR_ADJ})+\s+(?:vín\w*|víno)\b",
+    re.I,
+)
+_FARBA_RE = re.compile(r"\bfarba\s*:\s*([^.\n;]+)", re.I)
+
+
+_ANALYTICAL_RE = re.compile(r"mg/l|g/l|najviac|najmenej|obsah", re.I)
+
+
+def _is_analytical(text: str, start: int, end: int) -> bool:
+    """A list inside an analytical limit — "najviac 150 mg/l pre červené a 200
+    mg/l pre biele a ružové vína", the EU sulphite ceilings every document
+    restates — states no colour the GI makes."""
+    lo = max(text.rfind("\n", 0, start), text.rfind(".", 0, start)) + 1
+    hi_candidates = [i for i in (text.find("\n", end), text.find(".", end)) if i != -1]
+    hi = min(hi_candidates) if hi_candidates else len(text)
+    return bool(_ANALYTICAL_RE.search(text[lo:hi]))
+
+
+def colour_list_styles(text: str) -> set[str]:
+    found: set[str] = set()
+    text = text or ""
+    clauses = [m.group(0) for m in _COLOUR_LIST_RE.finditer(text)
+               if not _is_analytical(text, m.start(), m.end())]
+    clauses += [m.group(1) for m in _FARBA_RE.finditer(text)]
+    for clause in clauses:
+        for m in re.finditer(_COLOUR_ADJ, clause, re.I):
+            word = m.group(0).lower()
+            found.add(next(slug for stem, slug in _COLOUR_STEM.items() if word.startswith(stem)))
+    return found
+
+
 # Style markers in Slovak, mapped to the shared style-taxonomy slugs.
 # The Tokaj predikat ladder (samorodné / výber / esencia) and the
 # slamové / ľadové leaves are the obvious mappings.

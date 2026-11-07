@@ -1,0 +1,13 @@
+{
+  "_doc": [
+    "People thanked in the About dialog's thanks list (map_template.contributor_names).",
+    "A name enters only as the visitor gave it to be credited: the `credit` of a",
+    "`Feedback Note` (scripts/feedback_report.py lists them under 'Credits offered'),",
+    "or an e-mail that asks for it. Added at triage when the report was acted on",
+    "(fixed, or confirmed and queued). Not added: a name that is offensive, impersonates",
+    "someone, or carries contact details or a link. Removed on request, no questions.",
+    "Fields: name (as given, at most 60 characters), added (ISO date), via (card | email),",
+    "slugs (the appellations the report concerned), report (one line: what it led to)."
+  ],
+  "contributors": []
+}

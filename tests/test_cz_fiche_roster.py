@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib.augment import cz as cz_augment  # noqa: E402
-from _lib.augment._shared import _CZ_FICHE_ROSTER_BY_SLUG, _CZ_NATIONAL_SPEC_BY_SLUG  # noqa: E402
+from _lib.augment._shared import _REGISTER_FICHE_ROSTER_BY_SLUG, _CZ_NATIONAL_SPEC_BY_SLUG  # noqa: E402
 
 FICHE_DIR = ROOT / "raw" / "cz" / "register-fiches-extracted"
 SPEC_DIR = ROOT / "raw" / "cz" / "national-specs"
@@ -48,7 +48,7 @@ def test_znojmo_takes_the_fiche_roster_and_the_podoblast_keeps_the_decree():
     assert znojmo["register_fiche_roster"]["n_varieties"] == 3
     assert znojmo["register_fiche_roster"]["url"].endswith("/attachments/17135")
     assert "national_spec" not in znojmo
-    assert _CZ_FICHE_ROSTER_BY_SLUG["znojmo"]["n_varieties"] == 3
+    assert _REGISTER_FICHE_ROSTER_BY_SLUG["znojmo"]["n_varieties"] == 3
     assert "znojmo" not in _CZ_NATIONAL_SPEC_BY_SLUG
     assert len(znojemska["grapes"]["principal"]) > 60
     assert "register_fiche_roster" not in znojemska

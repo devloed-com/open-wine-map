@@ -36,6 +36,8 @@ SHELL_PATHS = (
     "scripts/_lib/appellation_urls.json",
     "scripts/_lib/appellation_notes.json",
     "scripts/_lib/cancelled_gis.json",
+    "scripts/_lib/contributors.json",
+    "scripts/_lib/contributors.py",
     "scripts/_lib/promoted_gis.json",
     "scripts/_lib/region_exonyms.json",
     # emit_html derives the region aliases itself (the table, the member
@@ -47,6 +49,8 @@ SHELL_PATHS = (
     "scripts/_lib/grape_labels.py",
     "scripts/_lib/romanise.py",
     "scripts/_lib/shell_snapshot.py",
+    "scripts/_lib/site_root/",
+    "scripts/_lib/site_root_files.py",
     "scripts/compare_build_output.py",
     "scripts/serve.py",
     "scripts/deploy.py",

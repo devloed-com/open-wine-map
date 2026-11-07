@@ -108,6 +108,19 @@ def test_header_is_the_brand_block_and_the_locale_names() -> None:
     assert "browse-header { background:" not in _BROWSE_CSS  # the maroon bar is gone
 
 
+def test_social_card_tags_match_the_map_shell() -> None:
+    # Ahrefs (2026-11-06): the four browse hubs were the only pages without
+    # og:image and twitter:* — the shell template carries the social card, the
+    # browse template did not.
+    page = _page("fr")
+    assert '<meta property="og:image" content="https://www.openwinemap.com/assets/social-card.png">' in page
+    assert '<meta property="og:image:width" content="1200">' in page
+    assert '<meta property="og:image:alt" content="Toutes les appellations' in page
+    assert '<meta name="twitter:card" content="summary_large_image">' in page
+    assert '<meta name="twitter:image" content="https://www.openwinemap.com/assets/social-card.png">' in page
+    assert page.count('<meta name="twitter:description" content="') == 1
+
+
 def test_dom_for_machines_is_unchanged() -> None:
     page = _page()
     assert page.count("<h1>") == 1 and "<h1>Toutes les appellations</h1>" in page

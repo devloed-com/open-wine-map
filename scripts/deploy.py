@@ -466,8 +466,12 @@ def public_url(rel: str) -> str | None:
     the four homepages and the browse hubs are directory URLs with a trailing
     slash, `en/index.html` is a duplicate of `/`, and an entity page is
     `/<lang>/<slug>` with no slash. Submitting the slash form told Bing about
-    11,821 URLs it had never seen in the sitemap (2026-09-26)."""
+    11,821 URLs it had never seen in the sitemap (2026-09-26). A root-level
+    `.html` other than `index.html` is a service file — a search console's
+    ownership-verification page (scripts/_lib/site_root/) — never a page."""
     if not rel.endswith(".html") or rel == "404.html":
+        return None
+    if "/" not in rel and rel != "index.html":
         return None
     base = f"https://{_CANONICAL_HOST}"
     if rel in ("index.html", "en/index.html"):

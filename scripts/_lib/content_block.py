@@ -122,13 +122,16 @@ def esc(s) -> str:
     )
 
 
-# JS: s.replace(/(?:^|[\s\-'(])\p{L}/gu, c => c.toUpperCase()) — uppercase a
-# letter at a word boundary (start, or after space / - / ' / "(" ).
-_TITLE_RE = re.compile(r"(?:^|[\s\-'(])[^\W\d_]", re.UNICODE)
+# JS `toTitleCase` (query_core.mjs): uppercase a letter at a word boundary
+# (start, or after space / - / ' / ’ / "(" ), then lower an elided article
+# again — "Muscat d'Alexandrie", "Nero d'Avola".
+_TITLE_RE = re.compile(r"(?:^|[\s\-'’(])[^\W\d_]", re.UNICODE)
+_ELIDED_RE = re.compile(r"([\s(])([DL])(?=['’][^\W\d_])", re.UNICODE)
 
 
 def to_title_case(s: str) -> str:
-    return _TITLE_RE.sub(lambda m: m.group(0).upper(), s or "")
+    s = _TITLE_RE.sub(lambda m: m.group(0).upper(), s or "")
+    return _ELIDED_RE.sub(lambda m: m.group(1) + m.group(2).lower(), s)
 
 
 # JS fmt: tpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] != null ? vars[k] : '')
@@ -473,6 +476,12 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
             f'<li><a href="{esc(sources["register_fiche_url"])}" target="_blank" rel="noopener">'
             f'{lab["src_register_fiche"]}</a></li>'
         )
+    if sources.get("wikipedia_url"):
+        # the Wikipedia article behind a wiki-marked terroir bullet (2026-11-07)
+        links.append(
+            f'<li><a href="{esc(sources["wikipedia_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_wikipedia"]}</a></li>'
+        )
     if sources.get("register_fiche_roles_url"):
         note = fmt(lab["src_register_fiche_roles_note"], {
             "main": sources.get("register_fiche_roles_n_main") or 0,
@@ -742,10 +751,38 @@ def _provenance_line(rec: dict, ctx: RenderCtx) -> str:
 
 # ---------------------------------------------------------------- pills
 
+_RBC_COLOUR_ORDER = ("white", "red", "rose", "gris")
+
+
+def _role_by_colour_text(by_colour: dict | None, lab: dict) -> str:
+    """"principal for white wines · accessory for red wines" — the roles of a
+    grape per colour clause (FR), for the pill's tooltip and title. Mirrors
+    roleByColourText in app.js."""
+    if not by_colour:
+        return ""
+    return " · ".join(
+        f"{lab.get('rbc_' + by_colour[c], by_colour[c])} {lab.get('rbc_' + c, c)}"
+        for c in _RBC_COLOUR_ORDER if by_colour.get(c)
+    )
+
+
+def _section4_line(rec: dict, lab: dict) -> str:
+    """The varieties a single document names only as varietal wine types (§ 4),
+    shown as principal (decision 2026-11-07). Mirrors section4VarietalLine."""
+    names = [to_title_case(n) for n in (rec.get("grapes_section4") or []) if n]
+    if not names:
+        return ""
+    key = "grapes_section4_one" if len(names) == 1 else "grapes_section4_many"
+    return (f'<div class="approx-line role-conflict">'
+            f'{fmt(lab[key], {"names": esc(", ".join(names))})}</div>')
+
+
 def _grape_pill(g: str, cls: str, rec: dict, ctx: RenderCtx) -> str:
     info = ctx.grapes_info.get(g)
-    has = bool(info and (info.get("extract") or (info.get("vivc_id") and info.get("vivc_url")) or info.get("note")))
+    role_note = _role_by_colour_text((rec.get("grape_roles_by_colour") or {}).get(g), ctx.labels)
+    has = bool(info and (info.get("extract") or (info.get("vivc_id") and info.get("vivc_url")) or info.get("note"))) or bool(role_note)
     cls2 = " ".join(x for x in ("pill", "grape", cls, "has-info" if has else "") if x)
+    role_attrs = f' data-roles="{esc(role_note)}" title="{esc(role_note)}"' if role_note else ""
     cahier_name = to_title_case((rec.get("grape_names") or {}).get(g) or grape_name(g, ctx))
     canon = (
         (info.get("canonical_name") if info else "")
@@ -758,7 +795,7 @@ def _grape_pill(g: str, cls: str, rec: dict, ctx: RenderCtx) -> str:
     else:
         label_inner = esc(cahier_name)
     return (
-        f'<a class="{cls2}" data-slug="{esc(g)}" href="{esc(grape_url(g, ctx))}" '
+        f'<a class="{cls2}" data-slug="{esc(g)}"{role_attrs} href="{esc(grape_url(g, ctx))}" '
         f'target="_blank" rel="noopener">{label_inner}</a>'
     )
 
@@ -1298,6 +1335,11 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
         else ""
     )
     role_conflict = _role_conflict_line(rec, lab) if principal else ""
+    section4_line = _section4_line(rec, lab) if principal else ""
+    inferred_line = (
+        f'<div class="approx-line styles-inferred">{esc(lab["styles_inferred_line"])}</div>'
+        if rec.get("styles_inferred") else ""
+    )
 
     # every region the record is listed under (_lib/region_aliases.py)
     region = ", ".join(region_label(r, ctx) for r in [rec.get("region"), *(rec.get("region_aliases") or [])] if r)
@@ -1368,8 +1410,9 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
         f'<div class="meta">{country_seg}{classification_html(rec, ctx) or esc(rec.get("kind") or "")}{cancelled_badge_html(rec, ctx)}{promoted_badge_html(rec, ctx)}{region_seg}{meta_tail}</div>'
         f"{cancelled_line_html(rec, ctx)}{promoted_line_html(rec, ctx)}{dgc_line}{co_parent_line}{stub_line}"
         f"{_section(lab['panel_styles_h'], style_chips)}"
+        f"{inferred_line}"
         f"{_section(lab['facet_principal_h'], principal)}"
-        f"{pt_role_disclaimer}{role_conflict}"
+        f"{pt_role_disclaimer}{role_conflict}{section4_line}"
         f"{_section(lab['facet_accessory_h'], accessory)}"
         f"{_section(lab['panel_observation_h'], observation)}"
         f"{facts_block or summary}"

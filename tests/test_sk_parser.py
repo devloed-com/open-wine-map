@@ -381,3 +381,23 @@ def test_specifikacija_wrapped_odroda_name_is_joined():
         "Veltlínske červené skoré": "velteliner-rouge-precoce",
         "Veltlínske zelené": "gruner-veltliner",
     }
+
+
+# ---------------------------------------------------------------- colours listed sharing one noun (2026-11-07)
+# Stredoslovenská's single document states its colours as "Farba: biela,
+# ružová a červená" and never as "biele víno", so the compound table above
+# read red and rosé and no white; the EU sulphite ceilings every document
+# restates ("najviac 150 mg/l pre červené a 200 mg/l pre biele a ružové vína")
+# state no colour the GI makes.
+
+
+def test_colour_list_reads_farba_and_a_list_sharing_one_noun_but_no_analytical_limit():
+    from _lib.sk.jednotny_dokument import colour_list_styles
+
+    assert colour_list_styles("Organoleptické vlastnosti:\nFarba: biela, ružová a červená zodpovedajúca "
+                              "označeniu a ročníku,\nVôňa: čistá") == {"blanc", "rose", "noir"}
+    assert colour_list_styles("Vyrábajú sa biele, ružové a červené vína tichého charakteru.") == {
+        "blanc", "rose", "noir"}
+    assert colour_list_styles("celkový obsah oxidu siričitého\nnajviac 150 mg/l pre červené a 200 mg/l "
+                              "pre biele a ružové vína\nak je obsah") == set()
+    assert colour_list_styles("Farba: bledožltá až zlatožltá s hnedastým odtieňom") == set()

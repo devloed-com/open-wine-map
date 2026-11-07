@@ -84,10 +84,13 @@ _CZ_NATIONAL_SPEC_BY_SLUG: dict[str, dict] = {}
 _CZ_CHZO_BY_SLUG: dict[str, dict] = {}
 
 # Slug-keyed provenance of the EU-register single document (fiche technique)
-# that supplies a CZ record's roster when its § 6 names the appellation's own
-# varieties rather than the national decree's list (VOC Znojmo, Novosedelské
-# slámové víno). Populated by augment_cz_records_with_national_specs().
-_CZ_FICHE_ROSTER_BY_SLUG: dict[str, dict] = {}
+# that supplies a record's roster: a CZ record whose fiche § 6 names the
+# appellation's own varieties rather than the national decree's list (VOC
+# Znojmo, Novosedelské slámové víno — augment_cz_records_with_national_specs()),
+# and a non-stub record whose EU single document § 7 names a few varieties
+# where the fiche lists the whole authorised roster (Stredoslovenská's one
+# Furmint against 40 — augment_sk_records_with_register_fiche(), 2026-11-07).
+_REGISTER_FICHE_ROSTER_BY_SLUG: dict[str, dict] = {}
 
 # Slug-keyed provenance of the EU-register technical file whose MAIN / OTHER
 # tags give a record its principal / accessory roles where the national

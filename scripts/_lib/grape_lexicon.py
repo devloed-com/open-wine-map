@@ -20,6 +20,9 @@ the map UI uses as filter facets.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import re
 import unicodedata
 from collections.abc import Iterable
@@ -3423,7 +3426,46 @@ _ROLE_PATTERNS = [
     ),
     (re.compile(r"seul\s+c[ée]page", re.IGNORECASE), "principal"),
     (re.compile(r"exclusivement\s+(?:du|des|issus\s+du|issus\s+des)\s+c[ée]pages?", re.IGNORECASE), "principal"),
+    # a colour clause with no role header of its own ("b) - Les vins blancs
+    # sont issus des cépages marsanne B et roussanne B", Crozes-Hermitage):
+    # without it the clause ran on in the red's "cépages accessoires" chunk
+    (
+        re.compile(
+            r"\bvins\s+(?:blancs?|rouges?|ros[ée]s?|gris)\s+(?:sont\s+)?issus\s+"
+            r"(?:exclusivement\s+)?(?:du|des)\s+c[ée]pages?",
+            re.IGNORECASE,
+        ),
+        "principal",
+    ),
 ]
+_DGC_HEADING_RE = re.compile(
+    r"d[ée]nominations?\s+g[ée]ographiques?\s+compl[ée]mentaires?\s*[«\"]", re.IGNORECASE,
+)
+# the colour a clause is about — "a) - Les vins rouges", "Vins blancs", "Vins
+# rouges et rosés" — for the per-colour roles the card's pill tooltip states
+# (2026-11-07): a grape principal in the white clause and accessory in the red
+_COLOUR_CLAUSE_RE = re.compile(
+    r"\bvins?\s+(?:(?:tranquilles?|mousseux|effervescents?|de\s+qualit[ée])\s+)*"
+    r"((?:blancs?|rouges?|ros[ée]s?|gris)(?:\s*(?:,|\bet\b|\bou\b)\s*(?:blancs?|rouges?|ros[ée]s?|gris))*)",
+    re.IGNORECASE,
+)
+_CLAUSE_COLOUR_SLUG = (("blanc", "white"), ("rouge", "red"), ("ros", "rose"), ("gris", "gris"))
+
+
+def _clause_colours(text: str, offset: int) -> set[str]:
+    """The colours of the clause a role chunk at `offset` belongs to: the last
+    colour header before it ("Vins rouges et rosés" → {red, rose}); empty when
+    none precedes it."""
+    last = None
+    for m in _COLOUR_CLAUSE_RE.finditer(text, 0, offset):
+        last = m
+    if last is None:
+        return set()
+    words = last.group(1).lower()
+    return {slug for stem, slug in _CLAUSE_COLOUR_SLUG if stem in words}
+_ADDON_VARIETIES_RE = re.compile(r"\bet\s+(?:des|les)\s+vari[ée]t[ée]s\b", re.IGNORECASE)
+_CONVENTION_END_RE = re.compile(r"sous\s+r[ée]serve\s+de\s+la\s+signature[^.]*\.(?=\s)", re.IGNORECASE)
+_TRAILING_ACCESSORY_RE = re.compile(r"[^.]*\ben\s+tant\s+que\s+c[ée]pages?\s+accessoires?\b", re.IGNORECASE)
 
 
 def slugify(s: str) -> str:
@@ -3482,6 +3524,63 @@ def _name_from_words(words: list[str]) -> str | None:
     return name if len(name) >= 3 else None
 
 
+def _with_source_apostrophes(name: str, head: str) -> str:
+    """`name` with the apostrophes its source writes between two of its words.
+    `_WORD_RE` takes an apostrophe for a separator, so the words alone read
+    "muscat d alexandrie" for "muscat d'Alexandrie B" — the spelling of 93
+    FR records' pills and of the corpus label, with Pineau d'Aunis (49),
+    Roussette d'Ayze (43), Len de l'El (25), Nero d'Avola (12) and Rayon d'Or
+    (11) (2026-10-30). The words matched stay space-joined."""
+    words = name.split(" ")
+    if len(words) < 2:
+        return name
+    pat = re.compile(r"\b" + r"(\s*['’]\s*|\s+)".join(re.escape(w) for w in words) + r"\b",
+                     re.IGNORECASE)
+    found = list(pat.finditer(head))
+    if not found:
+        return name
+    out = words[0]
+    for word, sep in zip(words[1:], found[-1].groups()):
+        out += ("'" if "'" in sep or "’" in sep else " ") + word
+    return out
+
+
+_FR_CONTEXT_OVERRIDES_PATH = Path(__file__).resolve().parent / "fr" / "grape_context_overrides.json"
+_FR_CONTEXT_PINS: dict[str, dict[str, dict]] | None = None
+
+
+def fr_context_pins() -> dict[str, dict[str, dict]]:
+    """The per-record FR pins (scripts/_lib/fr/grape_context_overrides.json):
+    record slug → "surface code" → {slug, name, …}; empty when the file is
+    missing."""
+    global _FR_CONTEXT_PINS
+    if _FR_CONTEXT_PINS is None:
+        try:
+            data = json.loads(_FR_CONTEXT_OVERRIDES_PATH.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            data = {}
+        _FR_CONTEXT_PINS = {k: v for k, v in data.items() if not k.startswith("_") and isinstance(v, dict)}
+    return _FR_CONTEXT_PINS
+
+
+def _fr_context_pin(hit, surface: str, code: str):
+    """Rebind a `surface code` token the current record pins (Saint-Mont's
+    rosé "manseng B" is Gros Manseng, not the Manseng noir the bare alias
+    gives); a no-op outside stage 02's record context (2026-11-07)."""
+    from dataclasses import replace  # noqa: PLC0415
+
+    from _lib.grape_entity import _normalise, current_pliego_context  # noqa: PLC0415
+
+    table = fr_context_pins().get(current_pliego_context() or "")
+    if not table or hit is None:
+        return hit
+    pin = table.get(f"{_normalise(surface)} {(code or '').lower()}".strip())
+    if not pin or pin.get("slug") in (None, hit.slug):
+        return hit
+    return replace(hit, slug=pin["slug"], name=pin.get("name") or hit.name,
+                   colour=DEFAULT_COLOUR.get(pin["slug"], hit.colour) or hit.colour, method="context-pin")
+
+
 def _tokenise_role_chunk(chunk: str) -> list[dict]:
     """Pull every `<name> <colour>` token from a role sub-list body.
 
@@ -3535,7 +3634,9 @@ def _tokenise_role_chunk(chunk: str) -> list[dict]:
         # per the curation guide, not in the fuzzy matcher.
         if result.method.startswith("fuzzy"):
             continue
+        result = _fr_context_pin(result, name, m.group(1))
         slug = result.slug
+        name = _with_source_apostrophes(name, head)
         qualified = COLOUR_QUALIFIED_SLUGS.get((slug, colour))
         if qualified:
             slug, adjective = qualified
@@ -3559,6 +3660,41 @@ _PAGE_HEADER_RE = re.compile(
     r"\s*\n",
     re.IGNORECASE,
 )
+
+
+def _role_chunks(text: str) -> list[tuple[str, int, str]]:
+    """Cut a section V body into (role, offset, text) chunks at its role headers."""
+    offsets: list[tuple[int, str]] = []
+    for pat, role in _ROLE_PATTERNS:
+        for m in pat.finditer(text):
+            offsets.append((m.end(), role))
+    offsets.sort()
+
+    chunks: list[tuple[str, int, str]] = []
+    if not offsets:
+        chunks.append(("principal", 0, text))
+    else:
+        if offsets[0][0] > 0:
+            head = text[: offsets[0][0]]
+            if any(c.isalpha() for c in head):
+                chunks.append(("principal", 0, head))
+        for i, (start, role) in enumerate(offsets):
+            end = offsets[i + 1][0] if i + 1 < len(offsets) else len(text)
+            body = text[start:end]
+            # an adaptation clause ends with its convention sentence; a table
+            # row that follows with no role label of its own (the 2026 Alsace
+            # cahier's white row, Coteaux Varois's) is the colour's roster
+            close = _CONVENTION_END_RE.search(body) if role == "observation" else None
+            if close and any(c.isalpha() for c in body[close.end():]):
+                rest = body[close.end():]
+                # "Toutefois, les cépages barbaroux Rs et calitor N sont
+                # autorisés en tant que cépages accessoires" (Côtes de Provence)
+                row_role = "accessory" if _TRAILING_ACCESSORY_RE.match(rest) else "principal"
+                chunks.append((role, start, body[: close.end()]))
+                chunks.append((row_role, start + close.end(), rest))
+            else:
+                chunks.append((role, start, body))
+    return chunks
 
 
 def parse_grapes(section_v: str) -> dict:
@@ -3591,39 +3727,55 @@ def parse_grapes(section_v: str) -> dict:
     if cut_m:
         text = text[: cut_m.start()]
 
-    offsets: list[tuple[int, str]] = []
-    for pat, role in _ROLE_PATTERNS:
-        for m in pat.finditer(text):
-            offsets.append((m.end(), role))
-    offsets.sort()
+    chunks = _role_chunks(text)
 
-    chunks: list[tuple[str, str]] = []
-    if not offsets:
-        chunks.append(("principal", text))
-    else:
-        if offsets[0][0] > 0:
-            head = text[: offsets[0][0]]
-            if any(c.isalpha() for c in head):
-                chunks.append(("principal", head))
-        for i, (start, role) in enumerate(offsets):
-            end = offsets[i + 1][0] if i + 1 < len(offsets) else len(text)
-            chunks.append((role, text[start:end]))
-
+    # A grape accessory in the red's list and principal in the white's
+    # (Crozes-Hermitage's marsanne, Arbois's poulsard) is principal on the
+    # card, which shows one role. The stronger role is taken only from the
+    # record's own clauses: not from a DGC's rows further down the section
+    # (Touraine's Amboise chenin), nor from the convention add-on
+    # "et des variétés … sous réserve de la signature … d'une convention"
+    # (Bordeaux's arinarnoa in the rosé clause).
+    dgc_m = _DGC_HEADING_RE.search(text)
+    dgc_at = dgc_m.start() if dgc_m else len(text)
     by_role: dict[str, list[dict]] = {"principal": [], "accessory": [], "observation": []}
-    seen: set[str] = set()
-    for role, body in chunks:
-        for tok in _tokenise_role_chunk(body):
-            if tok["slug"] in seen:
-                continue
-            seen.add(tok["slug"])
-            by_role[role].append(tok)
+    seen: dict[str, str] = {}
+    rank = {"principal": 0, "accessory": 1, "observation": 2}
+    # slug → colour → its role in that colour's clause (the stronger, where a
+    # colour has several clauses); the card's pill tooltip states the roles
+    # that differ across colours (2026-11-07)
+    by_colour: dict[str, dict[str, str]] = {}
+    for role, start, body in chunks:
+        addon = _ADDON_VARIETIES_RE.search(body)
+        parts = [(body[: addon.start()], True), (body[addon.start():], False)] if addon else [(body, True)]
+        colours = _clause_colours(text, start) if start < dgc_at else set()
+        for part, may_promote in parts:
+            may_promote = may_promote and start < dgc_at
+            for tok in _tokenise_role_chunk(part):
+                if colours and may_promote:
+                    per = by_colour.setdefault(tok["slug"], {})
+                    for c in colours:
+                        if c not in per or rank[role] < rank[per[c]]:
+                            per[c] = role
+                had = seen.get(tok["slug"])
+                if had is not None and (not may_promote or rank[had] <= rank[role]):
+                    continue
+                if had is not None:
+                    by_role[had] = [t for t in by_role[had] if t["slug"] != tok["slug"]]
+                seen[tok["slug"]] = role
+                by_role[role].append(tok)
 
     flat = (
         [{**t, "role": "principal"} for t in by_role["principal"]]
         + [{**t, "role": "accessory"} for t in by_role["accessory"]]
         + [{**t, "role": "observation"} for t in by_role["observation"]]
     )
-    return {**by_role, "all": flat}
+    roles_by_colour = {
+        slug: dict(sorted(per.items()))
+        for slug, per in sorted(by_colour.items())
+        if len(set(per.values())) > 1
+    }
+    return {**by_role, "all": flat, "roles_by_colour": roles_by_colour}
 
 
 # ---- styles ----------------------------------------------------------------

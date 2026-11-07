@@ -63,5 +63,69 @@
         "url": "https://eur-lex.europa.eu/legal-content/ES/TXT/HTML/?uri=uriserv%3AOJ.C_.2021.453.01.0007.01.SPA&toc=OJ%3AC%3A2021%3A453%3ATOC"
       }
     ]
+  },
+  "saint-mont": {
+    "note": {
+      "en": "The cahier's rosé clause lists « manseng B » among the accessory varieties, beside « petit manseng B ». The card reads it as Gros Manseng, the only other white Manseng and the white wine's principal variety; the Manseng noir of the adaptation clause (« manseng N ») is shown apart. This is a reading of the cahier's letter, not its wording.",
+      "fr": "La clause des vins rosés du cahier des charges cite « manseng B » parmi les cépages accessoires, à côté de « petit manseng B ». La fiche le lit comme le gros manseng, seul autre manseng blanc et cépage principal des vins blancs ; le manseng noir de la clause d'adaptation (« manseng N ») est affiché à part. C'est une lecture de la lettre du cahier, non sa formulation.",
+      "es": "La cláusula de los rosados del pliego cita « manseng B » entre las variedades accesorias, junto a « petit manseng B ». La ficha lo lee como Gros Manseng, el único otro manseng blanco y variedad principal del blanco; el Manseng noir de la cláusula de adaptación (« manseng N ») se muestra aparte. Es una lectura de la letra del pliego, no su redacción.",
+      "nl": "De roséclausule van het cahier noemt « manseng B » onder de bijkomende rassen, naast « petit manseng B ». De kaart leest het als Gros Manseng, de enige andere witte Manseng en het hoofdras van de witte wijn; de Manseng noir van de aanpassingsclausule (« manseng N ») staat apart. Dit is een lezing van de letter van het cahier, niet zijn bewoording."
+    },
+    "sources": [
+      {
+        "label": "Cahier des charges AOC Saint-Mont (BO Agri, 12 juin 2025), chapitre I, V 1° b)",
+        "url": "https://info.agriculture.gouv.fr/boagri/document_administratif-dd1b4854-8107-471e-8f13-73e1e9fd7de7/telechargement"
+      }
+    ]
+  },
+  "stredoslovenska": {
+    "note": {
+      "en": "The single document published in the Official Journal (C 122/2020) names one main variety in § 7, Furmint. The varieties shown come from the EU register's technical file (2013), which lists ten main and thirty other varieties; Furmint keeps its place among the main ones.",
+      "fr": "Le document unique publié au Journal officiel (C 122/2020) ne cite qu'un cépage principal au § 7, le furmint. Les cépages affichés proviennent du dossier technique du registre de l'UE (2013), qui en liste dix principaux et trente autres ; le furmint garde sa place parmi les principaux.",
+      "es": "El documento único publicado en el Diario Oficial (C 122/2020) nombra una sola variedad principal en el § 7, Furmint. Las variedades mostradas proceden del expediente técnico del registro de la UE (2013), que lista diez principales y treinta más; Furmint conserva su lugar entre las principales.",
+      "nl": "Het in het Publicatieblad gepubliceerde enig document (C 122/2020) noemt in § 7 één hoofdras, Furmint. De getoonde rassen komen uit het technisch dossier van het EU-register (2013), dat tien hoofdrassen en dertig andere opsomt; Furmint behoudt zijn plaats onder de hoofdrassen."
+    },
+    "sources": [
+      {
+        "label": "Jednotný dokument, OJ C 122/2020 (EUR-Lex)",
+        "url": "https://eur-lex.europa.eu/legal-content/SK/TXT/HTML/?uri=uriserv:OJ.C_.2020.122.01.0007.01.SLK&toc=OJ:C:2020:122:TOC"
+      },
+      {
+        "label": "Technical file, EU GI register (Ares(2013)3381798)",
+        "url": "https://ec.europa.eu/geographical-indications-register/eambrosia-public-api/api/v1/attachments/17675"
+      }
+    ]
+  },
+  "bela-krajina": {
+    "note": {
+      "en": "The roles follow the 2007 pravilnik (Uradni list RS 49/2007): its « priporočene » varieties are shown as principal and its « dovoljene » as accessory. The EU register's technical file tags Kraljevina and Renski rizling as main varieties; the national list is kept as the legally binding one. Sparkling wine is one of the categories the technical file declares (« 4. Peneče vino »).",
+      "fr": "Les rôles suivent le pravilnik de 2007 (Uradni list RS 49/2007) : ses cépages « priporočene » sont affichés comme principaux et ses « dovoljene » comme accessoires. Le dossier technique du registre de l'UE classe Kraljevina et Renski rizling parmi les cépages principaux ; la liste nationale, juridiquement contraignante, est conservée. Le vin mousseux est l'une des catégories que le dossier technique déclare (« 4. Peneče vino »).",
+      "es": "Los roles siguen el pravilnik de 2007 (Uradni list RS 49/2007): sus variedades « priporočene » se muestran como principales y las « dovoljene » como accesorias. El expediente técnico del registro de la UE clasifica Kraljevina y Renski rizling como principales; se conserva la lista nacional, jurídicamente vinculante. El vino espumoso es una de las categorías que el expediente técnico declara (« 4. Peneče vino »).",
+      "nl": "De rollen volgen de pravilnik van 2007 (Uradni list RS 49/2007): zijn « priporočene » rassen staan als hoofdrassen, zijn « dovoljene » als bijkomende. Het technisch dossier van het EU-register merkt Kraljevina en Renski rizling als hoofdrassen aan; de nationale, juridisch bindende lijst is behouden. Schuimwijn is een van de categorieën die het technisch dossier opgeeft (« 4. Peneče vino »)."
+    },
+    "sources": [
+      {
+        "label": "Pravilnik o seznamu geografskih označb za vina in trsnem izboru, Uradni list RS 49/2007",
+        "url": "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2007-01-2634?sop=2007-01-2634"
+      },
+      {
+        "label": "Technical file, EU GI register (Ares(2011)1373284)",
+        "url": "https://ec.europa.eu/geographical-indications-register/eambrosia-public-api/api/v1/attachments/11544"
+      }
+    ]
+  },
+  "alsace-suivi-d-un-nom-de-lieu-dit": {
+    "note": {
+      "en": "INAO's catalogue (the SIQO referentiel) lists « Alsace suivi d'un nom de lieu-dit » as a denomination of the Alsace appellation, which is why it appears here among the complementary geographical denominations. The cahier des charges treats the lieu-dit mention apart from the thirteen DGCs (chapter I, II 3°). The varieties and colours shown are the appellation's.",
+      "fr": "Le référentiel de l'INAO (SIQO) recense « Alsace suivi d'un nom de lieu-dit » comme une dénomination de l'appellation Alsace ; c'est pourquoi elle figure ici parmi les dénominations géographiques complémentaires. Le cahier des charges traite la mention d'un lieu-dit à part des treize DGC (chapitre I, II 3°). Les cépages et couleurs affichés sont ceux de l'appellation.",
+      "es": "El catálogo del INAO (referencial SIQO) recoge « Alsace suivi d'un nom de lieu-dit » como denominación de la apelación Alsace, por eso figura aquí entre las denominaciones geográficas complementarias. El pliego trata la mención de un lieu-dit aparte de las trece DGC (capítulo I, II 3°). Las variedades y colores mostrados son los de la apelación.",
+      "nl": "De catalogus van het INAO (het SIQO-referentieel) vermeldt « Alsace suivi d'un nom de lieu-dit » als een benaming van de appellatie Alsace; daarom staat ze hier onder de aanvullende geografische benamingen. Het cahier des charges behandelt de lieu-dit-vermelding apart van de dertien DGC's (hoofdstuk I, II 3°). De getoonde rassen en kleuren zijn die van de appellatie."
+    },
+    "sources": [
+      {
+        "label": "Cahier des charges AOC Alsace (BO Agri), chapitre I, II 3°",
+        "url": "https://info.agriculture.gouv.fr/boagri/document_administratif-6fe90f2b-ac49-4fec-a13f-309ce19ef3e7/telechargement"
+      }
+    ]
   }
 }

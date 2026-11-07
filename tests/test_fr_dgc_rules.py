@@ -175,3 +175,188 @@ verts. Le nez est porté sur les agrumes frais et les fleurs blanches.
 def test_a_description_is_not_a_colour_rule():
     assert dgc_text(ISERE_III, {"coteaux du gresivaudan"}, {"coteaux du gresivaudan", "isere"},
                     RESERVATION) is None
+
+
+# ---------------------------------------------------------------- Alsace / Savoie rows (2026-11-07)
+# The Alsace cahier (BO Agri du 15 janvier 2026) lists one DGC per table row,
+# one blank line apart; the Savoie cahier (BO-AGRI du 6 juillet 2023) wraps a
+# row's label over three lines around its value. Until 2026-11-07 no DGC of an
+# "X ou Y" parent matched its own row, pooled rows gave every Alsace DGC the
+# union of the rows, and the Savoie heading ran into the rows below it.
+
+ALSACE = "Alsace ou Vin d'Alsace"
+ALSACE_DGCS = ["Alsace Bergheim", "Alsace Blienschwiller", "Alsace Côtes de Barr",
+               "Alsace Klevener de Heiligenstein", "Alsace Ottrott", "Alsace Rodern",
+               "Alsace Saint-Hippolyte", "Alsace Wolxheim"]
+
+ALSACE_V = """1°- Règles d’encépagement
+
+a) - Les vins sont issus des cépages suivants :
+
+                                         « Alsace » ou « Vin d’Alsace » suivie ou non d’un nom de lieu-dit
+
+                                                       auxerrois B, chasselas B et chasselas rose Rs,
+                                                       gewurztraminer Rs, muscat ottonel B, pinot blanc B, pinot gris G,
+Vins blancs                                            pinot noir N, riesling B, sylvaner B, et savagnin rose Rs,
+                                                       pour les seules parcelles appartenant à l’aire parcellaire
+                                                       délimitée de la dénomination géographique « Klevener de
+                                                       Heiligenstein »
+Vins rouges                                            pinot noir N
+
+            « Alsace » ou « Vin d’Alsace » suivie d’une dénomination géographique complémentaire
+
+
+« Bergheim »                                          gewurztraminer Rs
+
+« Blienschwiller », « Côtes de Barr »                 sylvaner B
+
+« Klevener de Heiligenstein »                         savagnin rose Rs
+
+« Ottrott », « Rodern », « Saint Hippolyte »          pinot noir N
+
+« Scherwiller », « Wolxheim »                         riesling B
+"""
+
+ALSACE_III = """APPELLATION D’ORIGINE CONTRÔLEE, DENOMINATION
+                                                                                  TYPE DE PRODUIT
+      GEOGRAPHIQUE COMPLÉMENTAIRE, LIEU-DIT,
+                                                                                ET COULEUR DES VINS
+         DENOMINATIONS EN USAGE, MENTIONS
+
+ « Alsace » ou « Vin d’Alsace »                                           Vins tranquilles blancs, rouges et rosés
+
+ « Alsace » ou « Vin d’Alsace » suivi d’un nom de lieu- dit               Vins tranquilles blancs et rouges
+
+Dénominations géographiques complémentaires :
+- « Bergheim » ;
+- « Blienschwiller » ;
+- « Côtes de Barr » ;
+                                                                            Vins tranquilles blancs
+- « Klevener de Heiligenstein » ;
+- « Scherwiller » ;
+- « Wolxheim »
+Dénominations géographiques complémentaires :
+- « Rodern » ;
+- « Saint Hippolyte » ;                                                     Vins tranquilles rouges
+- « Ottrott ».
+
+Dénomination géographique complémentaire « Côte de Rouffach »               Vins tranquilles blancs et rouges
+
+Mentions « vendanges tardives » ou « sélection de grains nobles »           Vins tranquilles blancs
+"""
+
+
+def alsace_keys(name):
+    return dgc_keys(name, ALSACE)
+
+
+def alsace_covered():
+    return set().union(*(alsace_keys(n) for n in ALSACE_DGCS)) | {"alsace", "vin d'alsace"}
+
+
+def test_dgc_keys_strip_every_alias_of_an_x_ou_y_parent():
+    assert "klevener de heiligenstein" in alsace_keys("Alsace Klevener de Heiligenstein")
+    assert "apremont" in dgc_keys("Vin de Savoie Apremont", "Vin de Savoie ou Savoie")
+    # the hyphen SIQO writes where the cahier's row reads « Saint Hippolyte »
+    assert {"saint-hippolyte", "saint hippolyte"} <= alsace_keys("Alsace Saint-Hippolyte")
+
+
+def test_one_dgc_per_row_takes_its_own_row_not_the_pooled_rows():
+    rows = {n: slugs(dgc_text(ALSACE_V, alsace_keys(n), alsace_covered())) for n in ALSACE_DGCS}
+    assert rows["Alsace Bergheim"] == {"gewurztraminer"}
+    assert rows["Alsace Blienschwiller"] == rows["Alsace Côtes de Barr"] == {"sylvaner"}
+    assert rows["Alsace Ottrott"] == rows["Alsace Rodern"] == rows["Alsace Saint-Hippolyte"] == {"pinot-noir"}
+    assert rows["Alsace Wolxheim"] == {"riesling"}
+
+
+def test_a_value_cell_naming_the_dgc_yields_to_its_own_row():
+    # the parent's white row restricts savagnin rose to the Klevener parcels;
+    # the DGC's own row below is its roster
+    assert slugs(dgc_text(ALSACE_V, alsace_keys("Alsace Klevener de Heiligenstein"),
+                          alsace_covered())) == {"savagnin-rose"}
+
+
+def test_alsace_dgc_colours_come_from_the_label_block_of_section_iii():
+    want = {n: colours(dgc_text(ALSACE_III, alsace_keys(n), alsace_covered(), RESERVATION))
+            for n in ALSACE_DGCS}
+    assert want["Alsace Bergheim"] == want["Alsace Klevener de Heiligenstein"] == {"white"}
+    assert want["Alsace Ottrott"] == want["Alsace Saint-Hippolyte"] == {"red"}
+
+
+SAVOIE = "Vin de Savoie ou Savoie"
+SAVOIE_DGCS = ["Vin de Savoie Apremont", "Vin de Savoie Arbin", "Vin de Savoie Saint-Jean-de-la-Porte",
+               "Vin de Savoie Chautagne", "Vin de Savoie Chignin", "Vin de Savoie Chignin-Bergeron",
+               "Vin de Savoie Crépy"]
+
+SAVOIE_V = """1°- Encépagement
+
+Les vins sont issus des cépages suivants :
+
+ APPELLATION D’ORIGINE CONTRÔLÉE,
+    INDICATION, DENOMINATIONS
+                                                                    ENCÉPAGEMENT
+ GEOGRAPHIQUES COMPLEMENTAIRES,
+     COULEUR ET TYPE DES VINS
+                                                - cépage principal : jacquère B ;
+                                                - cépages accessoires : aligoté B, altesse B,
+                                                chardonnay B, velteliner rouge
+                                                précoce Rs, les variétés suivantes bia B, mondeuse
+  Dénominations géographiques
+                                                grise G, petite sainte-Marie B, pinot gris G, sous
+  complémentaires « Apremont », « Cruet »,
+                                                réserve de la signature entre l’INAO, l’ODG,
+  « Montmélian », « Saint-Jeoire-Prieuré »
+                                                l’opérateur habilité concerné et l’opérateur-
+                                                vinificateur d’une convention conforme à la
+                                                convention cadre approuvée par le comité national
+                                                compétent le 11 février 2021
+  Dénominations géographiques
+  complémentaires « Arbin », « Saint-Jean-de-   mondeuse N exclusivement
+  la-Porte »
+
+      Dénominations géographiques complémentaires « Chautagne », « Chignin », « Jongieux »
+
+                                                  - cépage principal : jacquère B ;
+  Vins blancs tranquilles                         - cépages accessoires : aligoté B, altesse B
+                                                  - cépages principaux : gamay N, mondeuse N,
+  Vins rouges tranquilles                         pinot N;
+  Dénomination géographique complémentaire
+                                                   roussanne B exclusivement
+  « Chignin-Bergeron »
+                                                   - cépage principal : chasselas B ;
+  Dénominations géographiques                      - cépages accessoires : aligoté B, gringet B
+  complémentaires « Crépy », « Marignan »
+"""
+
+
+def savoie_keys(name):
+    return dgc_keys(name, SAVOIE)
+
+
+def savoie_covered():
+    return set().union(*(savoie_keys(n) for n in SAVOIE_DGCS)) | {"vin de savoie", "savoie"}
+
+
+def roles(text):
+    g = parse_grapes(strip_names(text))
+    return {k: {t["slug"] for t in g[k]} for k in ("principal", "accessory")}
+
+
+def test_a_label_wrapped_around_the_rows_keeps_the_wrapped_grape_whole():
+    # "mondeuse / grise G" with the label's line between its halves
+    got = roles(dgc_text(SAVOIE_V, savoie_keys("Vin de Savoie Apremont"), savoie_covered()))
+    assert got["principal"] == {"jacquere"}
+    assert {"mondeuse-grise", "bia", "petite-sainte-marie", "pinot-gris"} <= got["accessory"]
+
+
+def test_a_quoted_name_wrapping_around_the_value_cell_still_names_the_row():
+    for name in ("Vin de Savoie Arbin", "Vin de Savoie Saint-Jean-de-la-Porte"):
+        assert slugs(dgc_text(SAVOIE_V, savoie_keys(name), savoie_covered())) == {"mondeuse"}
+
+
+def test_a_heading_scope_ends_at_the_next_dgc_row():
+    got = slugs(dgc_text(SAVOIE_V, savoie_keys("Vin de Savoie Chautagne"), savoie_covered()))
+    assert got == {"jacquere", "aligote", "altesse", "gamay", "mondeuse"}
+    assert slugs(dgc_text(SAVOIE_V, savoie_keys("Vin de Savoie Chignin-Bergeron"), savoie_covered())) == {"roussanne"}
+    assert slugs(dgc_text(SAVOIE_V, savoie_keys("Vin de Savoie Crépy"), savoie_covered())) == {
+        "chasselas", "aligote", "gringet"}

@@ -221,4 +221,6 @@ STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
     (re.compile(r"\bсух(?:о|и)\s+вин(?:о|а)\b", re.I), "dry"),
     (re.compile(r"\bсладк(?:о|и)\s+вин(?:о|а)\b", re.I), "sweet"),
     (re.compile(r"\bполусладк(?:о|и)\s+вин(?:о|а)\b", re.I), "semi-sweet"),
+    # decision 2026-11-07: a semi-dry wine type the text names
+    (re.compile(r"\bполусух(?:о|и)\s+вин(?:о|а)\b", re.I), "semi-dry"),
 )

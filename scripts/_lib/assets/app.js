@@ -212,8 +212,9 @@
   // `window.plausible` (a queue stub until the tracker script arrives), so
   // when the tracker never loads — ad-blocker, offline preview, a host with
   // no tracker configured — events queue harmlessly and are never sent.
-  // Every prop is a bounded slug vocabulary, with one deliberate exception:
-  // the `note` of `Feedback Note` is short user text (see docs/analytics.md).
+  // Every prop is a bounded slug vocabulary, with two deliberate exceptions:
+  // the `note` and the `credit` of `Feedback Note` are short user text (see
+  // docs/analytics.md).
   function track(name, props) {
     try {
       if (typeof window.plausible !== 'function') return;
@@ -993,9 +994,20 @@
   // below the detail zoom, hide it above. Patch the node in place — never
   // re-render the card from a zoom, that would wipe pressed feedback chips
   // and a half-typed note.
+  // One line per band — the footprint note below the detail zoom, the parcel
+  // delimitation from it on — the other hidden, so the boundary fold always
+  // has a visible line (2026-11-07: Margaux at z12 opened "About this
+  // boundary" on nothing; the footprint note was its only content, hidden).
+  function lodLines(r, slug) {
+    const radius = r.geom_lod_radius_m || LOD.radius_m;
+    const band = lodBand(r);
+    const line = (b, text) => `<div class="approx-line lod-line" data-lod-line="${escapeAttr(slug)}" data-lod-band="${b}"${band === b ? '' : ' hidden'}>${escapeHtml(text)}</div>`;
+    return line('footprint', fmt(LABELS.geom_lod_footprint, { radius }))
+      + line('parcels', fmt(LABELS.geom_lod_parcels, { radius }));
+  }
   function refreshLodLines() {
-    const overview = map.getZoom() < LOD.footprint_max_zoom;
-    document.querySelectorAll('#panel [data-lod-line]').forEach(el => { el.hidden = !overview; });
+    const band = map.getZoom() < LOD.footprint_max_zoom ? 'footprint' : 'parcels';
+    document.querySelectorAll('#panel [data-lod-line]').forEach(el => { el.hidden = el.dataset.lodBand !== band; });
   }
   map.on('zoomend', refreshLodLines);
 
@@ -2368,6 +2380,10 @@
     if (sources.register_fiche_url) {
       links.push(`<li><a href="${escapeAttr(sources.register_fiche_url)}" target="_blank" rel="noopener">${LABELS.src_register_fiche}</a></li>`);
     }
+    // the Wikipedia article behind a wiki-marked terroir bullet (2026-11-07)
+    if (sources.wikipedia_url) {
+      links.push(`<li><a href="${escapeAttr(sources.wikipedia_url)}" target="_blank" rel="noopener">${LABELS.src_wikipedia}</a></li>`);
+    }
     if (sources.register_fiche_roles_url) {
       let note = fmt(LABELS.src_register_fiche_roles_note, {
         main: sources.register_fiche_roles_n_main || 0,
@@ -2790,6 +2806,25 @@
   // The RO yield-table role conflict (decision 2026-10-25): the varieties the
   // register's single document names main while the OJ single document lists
   // them only in its yield table. Mirrors _role_conflict_line in content_block.py.
+  // The roles of a grape per wine colour, for the pill tooltip and title
+  // (FR: "principal for white wines · accessory for red wines"). Mirrored by
+  // _role_by_colour_text in content_block.py.
+  const RBC_COLOUR_ORDER = ['white', 'red', 'rose', 'gris'];
+  function roleByColourText(byColour) {
+    if (!byColour) return '';
+    const parts = RBC_COLOUR_ORDER.filter(c => byColour[c]).map(c =>
+      `${LABELS['rbc_' + byColour[c]] || byColour[c]} ${LABELS['rbc_' + c] || c}`);
+    return parts.join(' · ');
+  }
+  // The varieties a single document names only as varietal wine types (§ 4,
+  // a wine of at least 85 % of the variety), shown as principal (decision
+  // 2026-11-07). Mirrored by _section4_line in content_block.py.
+  function section4VarietalLine(r) {
+    const names = (r.grapes_section4 || []).map(n => toTitleCase(n));
+    if (!names.length) return '';
+    const key = names.length === 1 ? 'grapes_section4_one' : 'grapes_section4_many';
+    return `<div class="approx-line role-conflict">${fmt(LABELS[key], { names: escapeHtml(names.join(', ')) })}</div>`;
+  }
   function roleConflictLine(r) {
     const names = (r.sources || {}).register_fiche_roles_yield_conflict || [];
     if (!names.length) return '';
@@ -2919,8 +2954,12 @@
     }).join('');
     const grapePill = (g, cls) => {
       const info = GRAPES_INFO[g];
-      const has = !!(info && (info.extract || (info.vivc_id && info.vivc_url) || info.note));
+      // a grape whose role differs between the colour clauses (FR): the pill
+      // shows the stronger role, its tooltip and title the role per colour
+      const roleNote = roleByColourText((r.grape_roles_by_colour || {})[g]);
+      const has = !!(info && (info.extract || (info.vivc_id && info.vivc_url) || info.note)) || !!roleNote;
       const cls2 = ['pill', 'grape', cls, has ? 'has-info' : ''].filter(Boolean).join(' ');
+      const roleAttrs = roleNote ? ` data-roles="${escapeAttr(roleNote)}" title="${escapeAttr(roleNote)}"` : '';
       // Title-case both the cahier spelling and the canonical bracket so
       // pills stay consistent regardless of source casing ("mourvèdre" /
       // "MOURVEDRE" → "Mourvèdre").
@@ -2939,7 +2978,7 @@
       const labelInner = canon && !canonicalEqualsCahier(canon, cahierName)
         ? `${escapeHtml(cahierName)} <span class="canon">(${escapeHtml(canon)})</span>`
         : escapeHtml(cahierName);
-      return `<a class="${cls2}" data-slug="${escapeAttr(g)}" href="${escapeAttr(grapeUrl(g))}" target="_blank" rel="noopener">${labelInner}</a>`;
+      return `<a class="${cls2}" data-slug="${escapeAttr(g)}"${roleAttrs} href="${escapeAttr(grapeUrl(g))}" target="_blank" rel="noopener">${labelInner}</a>`;
     };
     const principal = (r.grapes_principal || []).map(g => grapePill(g, '')).join('');
     const accessory = (r.grapes_accessory || []).map(g => grapePill(g, 'accessory')).join('');
@@ -2953,6 +2992,9 @@
       ? `<div class="role-disclaimer">${escapeHtml(LABELS.pt_role_disclaimer)}</div>`
       : '';
     const roleConflict = principal ? roleConflictLine(r) : '';
+    const section4Line = principal ? section4VarietalLine(r) : '';
+    const inferredLine = (r.styles_inferred && r.styles_inferred.length)
+      ? `<div class="approx-line styles-inferred">${escapeHtml(LABELS.styles_inferred_line)}</div>` : '';
     // The unit count, only where the polygon is the union of the counted
     // units; a French DGC's CSV row repeats its parent's communes. A Galician
     // record adds the IET parishes drawn beside its whole municipios.
@@ -3007,11 +3049,9 @@
     }
     approxLine += parroquiasLine(r) + sigpacLine(r) + unitsLine(r) + parcelFillLine(r);
     // Zoom-dependent: below the detail zoom the map shows a generalised
-    // footprint of this record's parcels, not the delimitation. Hidden above
-    // it; refreshLodLines() flips the node on zoomend.
-    const lodLine = hasFootprint(r)
-      ? `<div class="approx-line lod-line" data-lod-line="${escapeAttr(slug)}"${lodBand(r) === 'footprint' ? '' : ' hidden'}>${escapeHtml(fmt(LABELS.geom_lod_footprint, { radius: r.geom_lod_radius_m || LOD.radius_m }))}</div>`
-      : '';
+    // footprint of this record's parcels, from it on the parcels themselves.
+    // One line per band; refreshLodLines() flips them on zoomend.
+    const lodLine = hasFootprint(r) ? lodLines(r, slug) : '';
     const stubLine = r.is_stub
       ? `<div class="approx-line">${fmt(LABELS.stub_message, { doc: '<em>' + escapeHtml(STUB_DOC_NAMES[r.country] || STUB_DOC_NAMES.fr) + '</em>' })} <a class="stub-help" href="#" data-fb-aspect="sources">${escapeHtml(LABELS.stub_help_label)}</a></div>`
       : '';
@@ -3043,8 +3083,9 @@
         ${dgcLine}${coParentLine}
         ${stubLine}
         ${styleChips ? '<h2>' + LABELS.panel_styles_h + '</h2><div class="pills">' + styleChips + '</div>' : ''}
+        ${inferredLine}
         ${principal ? '<h2>' + LABELS.facet_principal_h + '</h2><div class="pills">' + principal + '</div>' : ''}
-        ${ptRoleDisclaimer}${roleConflict}
+        ${ptRoleDisclaimer}${roleConflict}${section4Line}
         ${accessory ? '<h2>' + LABELS.facet_accessory_h + '</h2><div class="pills">' + accessory + '</div>' : ''}
         ${observation ? '<h2>' + LABELS.panel_observation_h + '</h2><div class="pills">' + observation + '</div>' : ''}
         ${factsBlock || summary}
@@ -3070,6 +3111,22 @@
   const FEEDBACK_ASPECTS = ['boundary', 'grapes', 'facts', 'name', 'sources', 'other'];
   const FEEDBACK_NOTE_MAX = 500;
   const FEEDBACK_STORE_KEY = 'owm_feedback';
+  // The optional name or pseudonym a visitor gives to be thanked publicly
+  // (the About dialog's list, scripts/_lib/contributors.json, filled at
+  // triage — nothing typed here is published by itself). Kept in this
+  // browser so a second report needs no retyping; clearing the field and
+  // sending forgets it.
+  const FEEDBACK_CREDIT_MAX = 60;
+  const FEEDBACK_CREDIT_KEY = 'owm_feedback_credit';
+  function storedCredit() {
+    try { return localStorage.getItem(FEEDBACK_CREDIT_KEY) || ''; } catch (e) { return ''; }
+  }
+  function rememberCredit(name) {
+    try {
+      if (name) localStorage.setItem(FEEDBACK_CREDIT_KEY, name);
+      else localStorage.removeItem(FEEDBACK_CREDIT_KEY);
+    } catch (e) {}
+  }
   function feedbackFlagged(slug) {
     try {
       const all = JSON.parse(localStorage.getItem(FEEDBACK_STORE_KEY) || '{}');
@@ -3166,15 +3223,19 @@
     }
     box.hidden = false;
     const noted = fmt(LABELS.feedback_noted_html, { aspect: aspectsHtml(pressedAspects(row)) });
-    const pending = box.querySelector('textarea.fb-note');
-    if (pending && pending.value.trim()) {
-      // A second chip while a note is being typed: keep the draft, widen it.
+    if (box.querySelector('textarea.fb-note')) {
+      // A second chip while the box is open: keep the note and the name
+      // being typed, widen the status line.
       const status = box.querySelector('.fb-status');
       if (status) status.innerHTML = noted;
       return;
     }
+    const hintId = 'fb-credit-hint-' + slug;
     box.innerHTML = `<span class="fb-status" role="status">${noted}</span>`
       + `<textarea class="fb-note" maxlength="${FEEDBACK_NOTE_MAX}" rows="2" placeholder="${escapeAttr(LABELS.feedback_note_placeholder)}" aria-label="${escapeAttr(LABELS.feedback_note_placeholder)}"></textarea>`
+      + `<label class="fb-credit">${escapeHtml(LABELS.feedback_credit_label)}`
+      + `<input type="text" class="fb-credit-input" maxlength="${FEEDBACK_CREDIT_MAX}" autocomplete="nickname" spellcheck="false" value="${escapeAttr(storedCredit())}" aria-describedby="${escapeAttr(hintId)}"></label>`
+      + `<span class="fb-credit-hint" id="${escapeAttr(hintId)}">${escapeHtml(LABELS.feedback_credit_hint)}</span>`
       + `<button type="button" class="fb-send">${escapeHtml(LABELS.feedback_send_label)}</button>`;
   }
   function sendFeedbackNote(box, slug) {
@@ -3182,10 +3243,22 @@
     const aspects = pressedAspects(row);
     const ta = box.querySelector('textarea.fb-note');
     const note = ta ? ta.value.replace(/\s+/g, ' ').trim().slice(0, FEEDBACK_NOTE_MAX) : '';
+    const input = box.querySelector('input.fb-credit-input');
+    const credit = input ? input.value.replace(/\s+/g, ' ').trim().slice(0, FEEDBACK_CREDIT_MAX) : '';
+    if (input) rememberCredit(credit);
     // `aspect` is the pressed set joined with '+', so one note about two
     // things reads `boundary+grapes` in the breakdown rather than only the last tap.
-    if (note) track('Feedback Note', { slug: slug, aspect: aspects.join('+') || 'other', note: note, lod: lodBand(AOCS[slug]), zoom: zoomStr(), locale: LANG });
-    box.innerHTML = `<span class="fb-status" role="status">${note ? escapeHtml(LABELS.feedback_sent) : fmt(LABELS.feedback_noted_html, { aspect: aspectsHtml(aspects) })}</span>`;
+    // A name with no note still goes out: it credits the flags on this card.
+    if (note || credit) {
+      const props = { slug: slug, aspect: aspects.join('+') || 'other', lod: lodBand(AOCS[slug]), zoom: zoomStr(), locale: LANG };
+      if (note) props.note = note;
+      if (credit) props.credit = credit;
+      track('Feedback Note', props);
+    }
+    const status = credit ? escapeHtml(fmt(LABELS.feedback_sent_credit, { name: credit }))
+      : note ? escapeHtml(LABELS.feedback_sent)
+      : fmt(LABELS.feedback_noted_html, { aspect: aspectsHtml(aspects) });
+    box.innerHTML = `<span class="fb-status" role="status">${status}</span>`;
   }
 
   function bboxArea(b) {
@@ -3821,10 +3894,12 @@
 
   function resolvePillInfo(el) {
     if (el.matches('a.pill.grape.has-info')) {
+      const roleNote = el.dataset.roles || '';
       const info = GRAPES_INFO[el.dataset.slug];
-      if (!info) return null;
-      if (!info.extract && !(info.vivc_id && info.vivc_url) && !info.note) return null;
-      return { info, url: info.page_url || grapeUrl(el.dataset.slug) };
+      const rich = !!(info && (info.extract || (info.vivc_id && info.vivc_url) || info.note));
+      if (!rich && !roleNote) return null;
+      const merged = rich ? { ...info, role_note: roleNote } : { role_note: roleNote };
+      return { info: merged, url: (info && info.page_url) || grapeUrl(el.dataset.slug) };
     }
     if (el.matches('.pill.style.has-info')) {
       const info = STYLES_INFO[el.dataset.slug];
@@ -3885,8 +3960,9 @@
     }
     const extPara = hasExtract ? `<p class="ext">${escapeHtml(info.extract)}</p>` : '';
     const notePara = info.note ? `<p class="note">${escapeHtml(info.note)}</p>` : '';
+    const rolePara = info.role_note ? `<p class="note role-note">ⓘ ${escapeHtml(info.role_note)}</p>` : '';
     const srcDiv = srcBlock ? `<div class="src">${srcBlock}</div>` : '';
-    grapeTip.innerHTML = thumb + extPara + notePara + srcDiv;
+    grapeTip.innerHTML = rolePara + thumb + extPara + notePara + srcDiv;
     cancelGrapeTipClose();
     grapeTip.style.display = 'block';
     if (describedPill && describedPill !== el) describedPill.removeAttribute('aria-describedby');
@@ -3936,6 +4012,13 @@
     });
   }
   panel.addEventListener('keydown', e => {
+    // Enter in the one-line name field sends, as in a form.
+    if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('fb-credit-input')) {
+      e.preventDefault();
+      const row = e.target.closest('.card-feedback');
+      if (row) sendFeedbackNote(row.querySelector('.fb-more'), row.dataset.slug);
+      return;
+    }
     if (e.key === 'Escape' && grapeTip.style.display === 'block') {
       // Esc dismisses the innermost layer first: kill the tooltip and stop the
       // event so the document-level handler doesn't also close the panel.

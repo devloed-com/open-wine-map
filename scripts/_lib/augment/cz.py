@@ -11,7 +11,7 @@ import json
 
 from ._shared import (
     _CZ_CHZO_BY_SLUG,
-    _CZ_FICHE_ROSTER_BY_SLUG,
+    _REGISTER_FICHE_ROSTER_BY_SLUG,
     _CZ_NATIONAL_SPEC_BY_SLUG,
     NATIONAL_SPECS_CZ,
 )
@@ -113,7 +113,7 @@ def augment_cz_records_with_national_specs(records: list[dict]) -> int:
     """
     _CZ_NATIONAL_SPEC_BY_SLUG.clear()
     _CZ_CHZO_BY_SLUG.clear()
-    _CZ_FICHE_ROSTER_BY_SLUG.clear()
+    _REGISTER_FICHE_ROSTER_BY_SLUG.clear()
     if not NATIONAL_SPECS_CZ.exists():
         return 0
 
@@ -262,7 +262,7 @@ def augment_cz_records_with_national_specs(records: list[dict]) -> int:
             _CZ_CHZO_BY_SLUG[slug] = chzo_prov
         if own is not None:
             record["register_fiche_roster"] = own[1]
-            _CZ_FICHE_ROSTER_BY_SLUG[slug] = own[1]
+            _REGISTER_FICHE_ROSTER_BY_SLUG[slug] = own[1]
         else:
             record["national_spec"] = provenance_base
             _CZ_NATIONAL_SPEC_BY_SLUG[slug] = provenance_base

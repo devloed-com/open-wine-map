@@ -498,10 +498,55 @@ live site; all held. It raised these points, applied the same evening:
   threshold, not a defect.
 - **Lint and numbers.** The `productType` lint also catches subscript reads of
   the field. The `wiki_part` docstring said 120 where the run marked 119.
-- **In progress elsewhere:** the Crozes card's Marsanne / Roussanne roles,
-  accessory on the card where the cahier makes them the sole varieties of the
-  white. A parallel session is fixing the per-colour role class in
-  `grape_lexicon.parse_grapes` (`tests/test_fr_grape_roles.py`) and re-ran FR
-  stage 02 at 19:52; its change is not in the triage commit.
-- **Still to build and deploy:** the 82 FR records' aire lists, the Crozes
-  re-run, Castilla y León's styles.
+- **Done in a parallel session the same evening:** the per-colour role class
+  behind the Crozes card's Marsanne / Roussanne (section "Found on the
+  re-grade: grape roles across colour clauses" above; 73 cards, roles only,
+  `tests/test_fr_grape_roles.py`). The change is not in the triage commit.
+- **Built and deployed.** A deploy at 22:01 local (IndexNow fingerprints
+  written 22:03; not run by either session working in the tree) carried the
+  82 FR records' aire lists, the Crozes re-run, Castilla y León's styles and
+  the parallel session's grape-role fix. A verification build at 01:02 on
+  2026-10-31 produced byte-identical data bundles (the same hashed names);
+  against the 14:34 build deployed at 19:03 it changes 74 records: 73 grape-
+  role flips, Crozes' facts, Castilla y León's styles. The 01:02 build log
+  shows no STALE pin and no wine record without grapes.
+
+## Follow-up — grape names that lost their apostrophe
+
+The live MCP answer for Manchuela listed "Muscat D Alexandrie".
+
+- **Failure mode:** the FR roster reader splits words on letters only. An
+  apostrophe acts as a separator, so the name it stores reads "muscat d
+  alexandrie", and the pills and the corpus label follow it.
+- **Isolated or broader:** broader. 161 French records carried such a name:
+  - Muscat d'Alexandrie 93;
+  - Pineau d'Aunis 50;
+  - Roussette d'Ayze 43;
+  - Len de l'El 25;
+  - Nero d'Avola 12;
+  - Rayon d'Or 11.
+- **Fix, part 1:** `_with_source_apostrophes` restores the apostrophe the
+  source writes between two of the name's words. The words passed to the
+  matcher are unchanged, so no grape binding moves.
+- **Fix, part 2:** Title Case now keeps an elided d' / l' lower case in
+  both mirrors (the JS query core and `content_block.py`), so the pill reads
+  "Muscat d'Alexandrie" rather than "Muscat D'Alexandrie". "Nero d'Avola"
+  benefits too.
+- **Re-extraction:** run in a clean worktree, because another session's
+  uncommitted French role change sat in `grape_lexicon.py` and its French
+  audit was reading the corpus. The worktree used the current code plus this
+  fix, and a full run there, diffed against the corpus, changed the stored
+  name on 161 records and nothing else (`_index.json` identical). Those 161
+  files were then copied into the corpus.
+
+**Deployed 2026-10-30, 22:00.**
+- **Site:** `deploy.sh`; the CDN matched 60 / 60 sampled files and IndexNow
+  received 819 changed pages.
+- **MCP server:** release `d09c83d+dirty`, smoke test passed in all three
+  modes. The live `get_appellation` for Manchuela lists "Muscat
+  d'Alexandrie".
+- **Also in this deploy:** the build carried the other session's pending
+  French role rule (73 records: Arbois's poulsard, the Alsace rows,
+  Crozes-Hermitage's marsanne and roussanne as principal). Its code in
+  `grape_lexicon.py` is still uncommitted.
+

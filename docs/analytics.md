@@ -7,8 +7,8 @@ is **`openwinemap.com`** (Plausible strips the `www.`). Custom events are sent
 through the `track(name, props)` helper in
 [scripts/_lib/assets/app.js](../scripts/_lib/assets/app.js). Every prop is a
 bounded slug vocabulary — never raw user text — so breakdowns stay useful and
-nothing personal can leak. The one deliberate exception is the `note` prop of
-`Feedback Note` (short visitor text, see below).
+nothing personal can leak. The two deliberate exceptions are the `note` and
+`credit` props of `Feedback Note` (short visitor text, see below).
 
 ## Environments — one build, one tracker per hostname
 
@@ -96,7 +96,7 @@ option is inert, and a build with no `localhost` entry loads nothing there.
 | `Sheet Expanded` | `slug`, `via` (`handle` / `scroll`), `locale` | a phone's 45 % sheet is expanded, by the handle or by scrolling the card (since 2026-10-17) |
 | `Feedback Flagged` | `slug`, `aspect` (`boundary` / `grapes` / `facts` / `name` / `sources` / `other`), `country`, `kind`, `geom_source`, `view_mode` (`simple` / `advanced` — sent by the 2026-09-22 → 2026-10-17 builds only; absent since the toggle was removed, `lod` + `zoom` say what was on screen), `lod` (`footprint` / `parcels` / `zone` — what was on screen for this record: below the detail zoom a French parcel-level record draws its generalised vineyard footprint, from z12 its parcels, every other record one polygon at every zoom), `zoom` (the map zoom at the tap, one decimal), `via` (`card` / `stub-help`), `locale` | one tap on an aspect chip in the **"Report a mistake" section at the bottom of every appellation card** (2026-09). No account, no form. Pressed chips are remembered per browser (localStorage) so a revisit does not re-fire. A `slug × aspect` breakdown is the curator queue; flags ÷ `Appellation Viewed` is a per-record trust score. |
 | `Feedback Retracted` | `slug`, `aspect`, `view_mode` (historical, see above), `lod`, `zoom`, `locale` | a second tap on a pressed chip un-flags it (a misclick, or a change of mind). A flag cannot be recalled from Plausible, so net the two: flags − retractions per `slug × aspect`. |
-| `Feedback Note` | `slug`, `aspect`, `note`, `view_mode` (historical), `lod`, `zoom`, `locale` | the optional free-text note sent after a flag. `aspect` is every chip pressed on the card at send time, joined with `+` (`boundary+grapes`). **`note` is visitor text** — whitespace-collapsed, capped at 500 characters client-side (Plausible accepts up to 2,000), with an inline "no personal details" hint. Self-hosted, no visitor identity attached; `scripts/feedback_report.py` lists every note with its slug and date. |
+| `Feedback Note` | `slug`, `aspect`, `note`, `credit`, `view_mode` (historical), `lod`, `zoom`, `locale` | the optional free-text note sent after a flag, and since 2026-10-31 the optional **credit**: the name or pseudonym the visitor types under "Your name or pseudonym (optional)", whose hint says it is public. Send carries `note`, `credit` or both (a name with no note credits the card's flags; a chip tap never sends a name); `credit` is whitespace-collapsed and capped at 60 characters, remembered in the browser (`owm_feedback_credit`) and forgotten when the field is sent empty. It is published only once a curator adds it to `scripts/_lib/contributors.json` (the About dialog's thanks list). `aspect` is every chip pressed on the card at send time, joined with `+` (`boundary+grapes`). **`note` is visitor text** — whitespace-collapsed, capped at 500 characters client-side (Plausible accepts up to 2,000), with an inline "no personal details" hint. Self-hosted, no visitor identity attached; `scripts/feedback_report.py` lists every note with its slug and date. |
 | `Feedback Clicked` | `channel` (`email`), `locale` | the e-mail link in the sidebar disclaimer. The GitHub-issue link was removed 2026-09: months of clicks produced zero issues (a login wall + blank form). GitHub stays reachable from the About dialog for PRs. |
 | `Outbound Link: Click` | `url` | Plausible's own outbound-link tracking (source PDFs, Wikipedia, interprofessions, GitHub) |
 
@@ -122,6 +122,8 @@ is stored from its first event but stays hidden there until it is added
 shown without an entry). As of 2026-10-27 every prop in the table above is
 listed (the last five added that day: `criteria`, `grape`, `style`,
 `error`, `framed`), plus the dead `variant` of the 2026-06 search A/B test.
+`credit` (2026-10-31) is to add on `openwinemap.com` and
+`beta.openwinemap.com`; the report reads it without the entry.
 When a `track()` call or the MCP server gains a prop, or a new event is
 added, add the prop and the goal in the same change.
 
@@ -243,8 +245,13 @@ cannot net a flag against its retraction, so the curation view is
 [scripts/feedback_report.py](../scripts/feedback_report.py): it cross-tabs the
 three `Feedback *` goals through the Stats API and prints a Markdown report —
 the queue (net flags per appellation × aspect, `Appellation Viewed` over the
-same range as a trust ratio, geometry source) and every note verbatim with
-its date. The Stats API key is `PLAUSIBLE_API_KEY` in the repo-root `.env`
+same range as a trust ratio, geometry source), every note verbatim with its
+date and credit, and the **credits offered** — each name once with its
+appellations, marked when `scripts/_lib/contributors.json` already lists it.
+A name goes into that table at triage, for a report that was acted on (fixed,
+or confirmed and queued): `{name, added, via: card | email, slugs, report}`;
+never a name that is offensive, impersonates someone, or carries contact
+details or a link, and any name comes out on request. The Stats API key is `PLAUSIBLE_API_KEY` in the repo-root `.env`
 (gitignored, next to the deploy and CARTO keys; an exported variable wins):
 
     .venv/bin/python scripts/feedback_report.py                       # production, all time
@@ -255,7 +262,7 @@ its date. The Stats API key is `PLAUSIBLE_API_KEY` in the repo-root `.env`
 `--csv` is the spreadsheet form: one row per event, with `date` and `datetime`
 (hour resolution — the finest the Stats API exposes — in the site's timezone; `event` =
 `flagged` / `retracted` / `note`) with slug, aspect, country, kind,
-`geom_source`, `via`, locale, the note text and the slug's panel opens;
+`geom_source`, `via`, locale, the note text, the credit and the slug's panel opens;
 `--csv -` prints it instead of the report. Notes are whitespace-collapsed
 before they are sent, and the `csv` module quotes the rest.
 

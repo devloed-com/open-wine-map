@@ -57,7 +57,6 @@ from _lib.augment._shared import (
     _BG_NATIONAL_SPEC_BY_SLUG,
     _CY_NATIONAL_SPEC_BY_SLUG,
     _CZ_CHZO_BY_SLUG,
-    _CZ_FICHE_ROSTER_BY_SLUG,
     _CZ_NATIONAL_SPEC_BY_SLUG,
     _DE_PRODUKTSPEZIFIKATION_BY_SLUG,
     _ES_NATIONAL_PLIEGO_BY_SLUG,
@@ -71,6 +70,7 @@ from _lib.augment._shared import (
     _PARCEL_FILL_BY_SLUG,
     _PT_AREA_ACT_BY_SLUG,
     _REGISTER_FICHE_ROLES_BY_SLUG,
+    _REGISTER_FICHE_ROSTER_BY_SLUG,
     _RO_NATIONAL_SPEC_BY_SLUG,
     _SI_SPECIFIKACIJA_BY_SLUG,
     _SK_NATIONAL_SPEC_BY_SLUG,
@@ -93,7 +93,10 @@ from _lib.augment.it import (
 )
 from _lib.augment.ro import augment_ro_records_with_national_specs
 from _lib.augment.si import augment_si_records_with_specifikacija
-from _lib.augment.sk import augment_sk_records_with_national_specs
+from _lib.augment.sk import (
+    augment_sk_records_with_national_specs,
+    augment_sk_records_with_register_fiche,
+)
 from _lib.be.geometry import BEPolygonIndex
 from _lib.be.region import derive_region as derive_be_region
 from _lib.bg.geometry import BGPolygonIndex
@@ -227,6 +230,7 @@ from _lib.romanise import fold_confusables, search_forms
 from _lib.shell_snapshot import load_snapshot, restore_state, stale_inputs, write_snapshot
 from _lib.si.geometry import SIPolygonIndex
 from _lib.si.region import derive_region as derive_si_region
+from _lib.site_root_files import copy_site_root_files
 from _lib.sk.geometry import SKPolygonIndex
 from _lib.sk.region import derive_region as derive_sk_region
 from _lib.style_taxonomy import FACET_BUCKET_ORDER
@@ -260,7 +264,7 @@ from _lib.vineyard_envelope import (
     shape_metrics,
 )
 from _lib.vineyard_envelope import envelope as vineyard_envelope
-from _lib.wine_categories import declares_still, sparkling_only
+from _lib.wine_categories import declares_still, liqueur_only, sparkling_only
 from shapely.geometry import mapping, shape
 from tqdm import tqdm
 from unidecode import unidecode as _unidecode
@@ -579,10 +583,10 @@ def _load_cz_register_fiche_text() -> dict[str, str]:
 _CZ_REGISTER_FICHE_TEXT: dict[str, str] = _load_cz_register_fiche_text()
 
 
-def _cz_fiche_source_keys(record: dict) -> dict:
+def _fiche_roster_source_keys(record: dict) -> dict:
     """The register fiche as the roster's source, for the panel's source
-    block — only where augment/cz.py took the roster from it."""
-    fr = record.get("register_fiche_roster") or _CZ_FICHE_ROSTER_BY_SLUG.get(record.get("slug") or "") or {}
+    block — only where augment/cz.py or augment/sk.py took the roster from it."""
+    fr = record.get("register_fiche_roster") or _REGISTER_FICHE_ROSTER_BY_SLUG.get(record.get("slug") or "") or {}
     return {
         "register_fiche_url": fr.get("url", ""),
         "register_fiche_ref": fr.get("ref", ""),
@@ -678,6 +682,7 @@ def _grape_role_lists(grapes: dict) -> tuple[list[str], list[str], list[str]]:
 
 def _base_colour_styles_from_grapes(
     grapes: dict, existing_styles: set[str], declares_still: bool = False,
+    liqueur_only: bool = False,
 ) -> set[str]:
     """Wine-colour styles implied by the authorised varieties' berry colour.
     Per slug, first hit wins: (1) the record's own `details[].colour`, (2) the
@@ -708,6 +713,13 @@ def _base_colour_styles_from_grapes(
     if ("red" in add and not declares_still and existing_styles
             and existing_styles <= _SPARKLING_FAMILY):
         add.discard("red")
+    # A record that declares liqueur wine only (Madeira, Jerez, Samos) takes a
+    # floor colour only from a roster of one colour: a fortified wine of white
+    # grapes alone is white; Madeira's Tinta Negra beside Sercial states no
+    # colour (decision 2026-11-07). Mirrored by audit_styles.py through the
+    # `styles_floor_off` feature property.
+    if liqueur_only and len(add) > 1:
+        return set()
     return add
 
 
@@ -1231,6 +1243,13 @@ def main() -> int:
     if n_aug_sk:
         print(
             f"[load] SK national-spec augmentation: {n_aug_sk} stub records enriched",
+            file=sys.stderr,
+        )
+    n_fiche_sk = augment_sk_records_with_register_fiche(extracted_records)
+    if n_fiche_sk:
+        print(
+            f"[load] SK register-fiche roster: {n_fiche_sk} non-stub records whose single "
+            "document names a fraction of the fiche's roster took the fiche's",
             file=sys.stderr,
         )
     # Roles from the EU register's technical file where the national source
@@ -2876,12 +2895,19 @@ def main() -> int:
         # grape makes a blanc de noirs; "White · Red" beside Quality Sparkling
         # read as still wines on Vlaamse mousserende kwaliteitswijn,
         # Franciacorta and Crémant d'Alsace — 2026-10-23).
+        styles_inferred: list[str] = []
+        styles_floor_off = ""
         if is_wine == "1" and not (set(styles) & _COLOUR_STYLES) and not sparkling_only(record):
+            liq = liqueur_only(record)
             extra = _base_colour_styles_from_grapes(
-                grapes, set(styles), declares_still=declares_still(record)
+                grapes, set(styles), declares_still=declares_still(record), liqueur_only=liq
             )
             if extra:
                 styles = _canonical_styles(list(styles) + sorted(extra))
+                # the card says the colours are inferred, not stated (2026-11-07)
+                styles_inferred = sorted(extra)
+            elif liq and _base_colour_styles_from_grapes(grapes, set(styles), declares_still=True):
+                styles_floor_off = "liqueur-mixed"
         # When the geometry came from a sibling-DGC umbrella, surface the
         # umbrella's slug/name so the panel can explain "approximate area
         # — within {umbrella}".
@@ -3175,6 +3201,8 @@ def main() -> int:
             "cadastre_score": cadastre_score,
             "categories": _join_set(categories),
             "styles": _join_set(styles),
+            **({"styles_inferred": _join_set(styles_inferred)} if styles_inferred else {}),
+            **({"styles_floor_off": styles_floor_off} if styles_floor_off else {}),
             "classifications": _join_set(classifications),
             "grapes_principal": _join_set(principal),
             "grapes_accessory": _join_set(accessory),
@@ -3512,7 +3540,7 @@ def _shell_state() -> dict[str, dict]:
         "_BG_NATIONAL_SPEC_BY_SLUG": _BG_NATIONAL_SPEC_BY_SLUG,
         "_CY_NATIONAL_SPEC_BY_SLUG": _CY_NATIONAL_SPEC_BY_SLUG,
         "_CZ_CHZO_BY_SLUG": _CZ_CHZO_BY_SLUG,
-        "_CZ_FICHE_ROSTER_BY_SLUG": _CZ_FICHE_ROSTER_BY_SLUG,
+        "_REGISTER_FICHE_ROSTER_BY_SLUG": _REGISTER_FICHE_ROSTER_BY_SLUG,
         "_CZ_NATIONAL_SPEC_BY_SLUG": _CZ_NATIONAL_SPEC_BY_SLUG,
         "_DE_PRODUKTSPEZIFIKATION_BY_SLUG": _DE_PRODUKTSPEZIFIKATION_BY_SLUG,
         "_ES_NATIONAL_PLIEGO_BY_SLUG": _ES_NATIONAL_PLIEGO_BY_SLUG,
@@ -3917,6 +3945,9 @@ def _sources_for_base(record: dict) -> dict:
             "national_spec_format": sk_spec.get("format", ""),
             "national_spec_source_org": sk_spec.get("source_org", ""),
             "national_spec_parser_template": sk_spec.get("parser_template", ""),
+            # the register fiche as the roster's source for a non-stub whose
+            # § 7 names a fraction of it (Stredoslovenská, 2026-11-07)
+            **_fiche_roster_source_keys(record),
         }
     if record.get("country") == "cz":
         # Czech Republic: 0 of 13 wines carry a fetchable EUR-Lex
@@ -3951,7 +3982,7 @@ def _sources_for_base(record: dict) -> dict:
             "national_spec_sbirka_castka": ns.get("sbirka_castka", ""),
             "national_spec_sha256": ns.get("sha256", ""),
             "national_spec_n_varieties": ns.get("n_varieties", 0),
-            **_cz_fiche_source_keys(record),
+            **_fiche_roster_source_keys(record),
             "chzo_spec_url": chzo.get("url", ""),
             "chzo_spec_title": chzo.get("title", ""),
             "chzo_spec_region": chzo.get("region", ""),
@@ -4045,11 +4076,14 @@ def _sources_for_base(record: dict) -> dict:
         # and the register's single document the amendment leaves in force
         # (its colours and sugar classes are read for the styles).
         fiche_url = (record.get("register_fiche") or {}).get("url") or ""
+        # a record built from the register's single document alone (the
+        # Maltese Islands IĠT, no OJ publication) cites the fiche, not EUR-Lex
+        from_fiche = src.get("kind") == "eambrosia-register-fiche"
         return {
             "country": "mt",
             "source_lang": "en",
-            "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
-            "eu_oj_publication_url": src.get("source_url") or "",
+            "eur_lex_url": "" if from_fiche else (src.get("final_url") or src.get("source_url") or ""),
+            "eu_oj_publication_url": "" if from_fiche else (src.get("source_url") or ""),
             "filename": src.get("filename") or "",
             "fetched_at": src.get("fetched_at") or "",
             "file_number": record.get("file_number") or "",
@@ -4629,6 +4663,22 @@ def emit_html(
         # forms are search-only (see STARTUP_AOCS_FIELDS).
         name_latin = fold_confusables(p.get("name_latin") or "")
         record_search_forms = search_forms(p["name"], name_latin, p.get("country") or "fr")
+        rec_grapes = rec.get("grapes") or {}
+        all_grape_set = set(all_grapes)
+        roles_by_colour = {g: v for g, v in (rec_grapes.get("roles_by_colour") or {}).items()
+                           if g in all_grape_set and isinstance(v, dict)}
+        section4_names = [
+            (grape_names.get(d.get("slug")) or d.get("name") or d.get("slug"))
+            for d in rec_grapes.get("details") or []
+            if d.get("source") == "section-4-type" and d.get("slug") in set(principal)
+        ]
+        styles_inferred = [x for x in (p.get("styles_inferred") or "").split(";") if x]
+        # the Wikipedia article behind a wiki-marked bullet joins the Sources
+        if terroir_facts and terroir_facts.get("wiki_source_url") and any(
+            f.get("provenance") == "wiki" or f.get("wiki_part")
+            for f in terroir_facts.get("facts") or []
+        ):
+            sources = {**sources, "wikipedia_url": terroir_facts["wiki_source_url"]}
 
         aocs[slug] = {
             "country": p.get("country") or "fr",
@@ -4699,6 +4749,14 @@ def emit_html(
             "sources": sources,
             "wikidata_qid": (wikidata_qids.get(slug) or {}).get("qid", ""),
             "terroir_facts": terroir_facts,
+            # Transparency fields (decisions 2026-11-07), present only when
+            # they say something: the roles of a grape per colour clause
+            # where they differ (FR), the varieties shown as principal because
+            # the single document names them as varietal types (§ 4), and the
+            # colours the grape-colour floor inferred.
+            **({"grape_roles_by_colour": roles_by_colour} if roles_by_colour else {}),
+            **({"grapes_section4": section4_names} if section4_names else {}),
+            **({"styles_inferred": styles_inferred} if styles_inferred else {}),
             "dulok": dulok,
             "menzioni": _IT_MENZIONI_BY_SLUG.get(slug, []),
             "note": appellation_notes.get(slug),
@@ -5341,10 +5399,12 @@ def write_seo_files(entity_entries: list[tuple[str, str, str]] | None = None) ->
 
     _write_llms_txt(entity_entries)
     _write_404_page()
+    root_files = copy_site_root_files(WIKI)
+    root_note = "".join(f", {name}" for name in root_files)
 
     print(
         f"[seo] wrote {WIKI.relative_to(ROOT)}/robots.txt, sitemap.xml, llms.txt, 404.html"
-        f"{indexnow_note} "
+        f"{indexnow_note}{root_note} "
         f"({len(url_blocks)} URLs: {len(LOCALES)} home + {len(LOCALES)} browse + "
         f"{n_entity} entity)",
         file=sys.stderr,

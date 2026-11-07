@@ -59,21 +59,32 @@ def key(name: str) -> str:
 
 def dgc_keys(dgc_name: str, parent_name: str) -> set[str]:
     """Folded names a DGC answers to: its register name, the part after the
-    parent's name ("Touraine Oisly" → "oisly"), and their " ou " aliases."""
+    parent's name ("Touraine Oisly" → "oisly") or after any " ou " alias of
+    it ("Alsace Klevener de Heiligenstein" under "Alsace ou Vin d'Alsace" →
+    "klevener de heiligenstein"; until 2026-11-07 only the whole parent name
+    was a prefix, so no DGC of Alsace, Corse or Savoie ever matched its own
+    « row »), and their " ou " aliases."""
     out: set[str] = set()
-    pf = key(parent_name)
+    prefixes = {key(a) for a in shared_cahier.aliases(parent_name)} | {key(parent_name)}
     for part in [dgc_name, *re.split(r"\s+ou\s+", dgc_name or "", flags=re.I)]:
         k = key(part)
         if not k:
             continue
-        out.add(k)
-        if k.startswith(pf + " "):
-            out.add(k[len(pf):].strip())
+        out |= _variants(k)
+        for pf in prefixes:
+            if pf and k.startswith(pf + " "):
+                out |= _variants(k[len(pf):].strip())
     return out
 
 
+def _variants(k: str) -> set[str]:
+    """A key with and without its hyphens: SIQO writes "Saint-Hippolyte" where
+    the Alsace cahier's rows read « Saint Hippolyte » (2026-11-07)."""
+    return {k, " ".join(k.replace("-", " ").split())}
+
+
 def quoted_keys(text: str) -> set[str]:
-    return {key(m.group(1)) for m in _QUOTED.finditer(text or "")}
+    return set().union(*(_variants(key(m.group(1))) for m in _QUOTED.finditer(text or "")), set())
 
 
 def names(text: str, want: set[str]) -> bool:
@@ -157,61 +168,125 @@ def _blocks(rows: list[_Line], side: str) -> list[tuple[int, int]]:
     spans: list[tuple[int, int]] = []
     start = last = None
     gap = 0
+    block: list[str] = []
     for i, ln in enumerate(rows):
         text = getattr(ln, side)
         if not text:
             gap += 1
             continue
-        starts_new = (
-            _LABEL_START.match(text) if side == "left" else _VALUE_START.match(text)
-        )
+        if side == "left":
+            starts_new = _LABEL_START.match(text) or _opens_row_label(text, block)
+        else:
+            starts_new = _VALUE_START.match(text)
         if start is None:
             start = last = i
+            block = [text]
         elif gap <= 1 and not starts_new:
             last = i
+            block.append(text)
         else:
             spans.append((start, last))
             start = last = i
+            block = [text]
         gap = 0
     if start is not None:
         spans.append((start, last))
     return spans
 
 
-def _paired(label: tuple[int, int], values: list[tuple[int, int]]) -> list[tuple[int, int]]:
+def _opens_row_label(text: str, block: list[str]) -> bool:
+    """A « quoted name » opening a left line is a row label of its own when the
+    block above it already holds a whole quoted name and does not run on into
+    it — the Alsace and Savoie tables list one DGC per row, one blank line
+    apart, and read as one block their rows pooled into one roster
+    (2026-11-07). "Dénomination géographique complémentaire / « Abymes »" and
+    "complémentaires « Apremont », « Cruet », / « Montmélian »" continue."""
+    if not text.startswith("«") or not block:
+        return False
+    above = " ".join(block)
+    if above.count("«") == 0 or above.count("«") != above.count("»"):
+        return False
+    return not re.search(r"(?:,|\bou|\bet)\s*$", block[-1])
+
+
+def _paired(label: tuple[int, int], values: list[tuple[int, int]],
+            labels: list[tuple[int, int]] = ()) -> list[tuple[int, int]]:
+    """The value blocks a label overlaps (else the nearest one). A value block
+    that runs across several labels — the Alsace DGC rows, one grape each,
+    one blank line apart, which nothing in the right column separates — is
+    cut at the labels' first lines, so each label takes its own rows."""
     a, b = label
     hit = [v for v in values if v[0] <= b and v[1] >= a]
     if hit:
-        return hit
+        return [_cut(v, label, labels) for v in hit]
     if not values:
         return []
     dist = [(min(abs(v[0] - b), abs(a - v[1])), -v[0], v) for v in values]
     return [min(dist)[2]]
 
 
+def _cut(value: tuple[int, int], label: tuple[int, int],
+         labels: list[tuple[int, int]]) -> tuple[int, int]:
+    others = [lb for lb in labels if lb != label and lb[0] <= value[1] and lb[1] >= value[0]]
+    lo, hi = value
+    if any(lb[0] < label[0] for lb in others):
+        lo = max(lo, label[0])
+    later = [lb[0] for lb in others if lb[0] > label[0]]
+    if later:
+        hi = min(hi, min(later) - 1)
+    return (lo, max(lo, hi))
+
+
+def _label_text(rows: list[_Line], span: tuple[int, int]) -> str:
+    return " ".join(rows[k].left for k in range(span[0], span[1] + 1) if rows[k].left)
+
+
+def _right_text(rows: list[_Line], span: tuple[int, int]) -> str:
+    return "\n".join(rows[k].right for k in range(span[0], span[1] + 1) if rows[k].right)
+
+
 def _table_text(lines: list[str], col: int, want: set[str], covered: set[str]) -> str | None:
     rows = _split(lines, col)
     heads = _headings(rows, col, covered)
+    labels = _blocks(rows, "left")
+    values = _blocks(rows, "right")
+    row_labels = [lb for lb in labels if quoted_keys(_label_text(rows, lb)) & covered]
     for n, (i, text) in enumerate(heads):
         if quoted_keys(text) & want:
             end = heads[n + 1][0] if n + 1 < len(heads) else len(rows)
+            # a row labelled with another DGC ends the heading's scope: the
+            # Savoie heading « Chautagne », « Chignin », « Jongieux » is
+            # followed by the rows of « Chignin-Bergeron » and « Crépy »
+            later = [lb[0] for lb in row_labels
+                     if lb[0] > i and not quoted_keys(_label_text(rows, lb)) & want]
+            if later:
+                end = min(end, min(later))
             return "\n".join(lines[i:end])
-    labels = _blocks(rows, "left")
-    values = _blocks(rows, "right")
-    picked: list[tuple[int, int]] = []
+    # a row: its label, then the right-column text of the value lines it
+    # pairs with — the columns apart, so a label line sitting inside a wrapped
+    # value ("mondeuse / grise G") or a quoted name wrapping around a value
+    # ("« Saint-Jean-de- mondeuse N exclusivement / la-Porte »") no longer cuts
+    # the grape (2026-11-07)
+    parts: list[str] = []
     for lb in labels:
-        text = " ".join(rows[k].left for k in range(lb[0], lb[1] + 1))
-        if quoted_keys(text) & want:
-            picked.append(lb)
-            picked.extend(_paired(lb, values))
-    for vb in values:
-        text = " ".join(rows[k].right for k in range(vb[0], vb[1] + 1))
-        if quoted_keys(text) & want:
-            picked.append(vb)
-    if not picked:
+        if not quoted_keys(_label_text(rows, lb)) & want:
+            continue
+        parts.append(_label_text(rows, lb))
+        for vb in _paired(lb, values, labels):
+            right = _right_text(rows, vb)
+            if right:
+                parts.append(right)
+    # a value cell naming the DGC counts only where no row label does: the
+    # parent's white row of Alsace restricts savagnin rose to the parcels of
+    # « Klevener de Heiligenstein », whose own row below is the DGC's roster
+    if not parts:
+        for vb in values:
+            right = _right_text(rows, vb)
+            if quoted_keys(right) & want:
+                parts.append(right)
+    if not parts:
         return None
-    keep = sorted({k for a, b in picked for k in range(a, b + 1)})
-    return "\n".join(f"{rows[k].left}  {rows[k].right}".strip() for k in keep)
+    return "\n".join(parts)
 
 
 # ---------------------------------------------------------------- public API
@@ -229,14 +304,19 @@ def dgc_text(text: str, want: set[str], covered: set[str],
     None when the section names no `want` (the DGC follows the parent).
     `covered` holds the names of every DGC (and the parent) of the cahier;
     `prose_rule`, when given, is what a prose unit must say to count."""
-    if not text or not names(text, want):
+    if not text:
         return None
     lines = text.splitlines()
     col = _value_column(lines)
     if col is not None:
+        # the table reader tests the names column by column: a quoted name
+        # wrapping around a value cell ("« Saint-Jean-de- mondeuse N / la-Porte »")
+        # names nothing when read across the line
         got = _table_text(lines, col, want, covered)
         if got is not None:
             return got
+    if not names(text, want):
+        return None
     units = shared_cahier._units(text, covered)
     own: list[str] = []
     for i, u in enumerate(units):
@@ -288,6 +368,6 @@ def drop_colours(text: str, allowed: set[str], covered: set[str]) -> str:
         text_l = " ".join(rows[k].left for k in range(lb[0], lb[1] + 1))
         cols = unit_colours(text_l)
         if (cols and not cols & allowed) or quoted_keys(text_l) & covered:
-            for a, b in [lb, *_paired(lb, values)]:
+            for a, b in [lb, *_paired(lb, values, labels)]:
                 drop.update(range(a, b + 1))
     return "\n".join(lines[k] for k in range(len(lines)) if k not in drop)

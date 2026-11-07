@@ -28,6 +28,7 @@ from _lib.content_block import (
     render_content_block,
     to_title_case,
 )
+from _lib.contributors import contributor_names
 from _lib.env import (
     carto_basemap_key,
     carto_basemap_keys,
@@ -206,6 +207,13 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "comme une silhouette de son vignoble généralisée à {radius} m à "
             "partir de la délimitation parcellaire INAO ; les parcelles "
             "elles-mêmes apparaissent en zoomant."
+        ),
+        # The parcels band of the same record (from the detail zoom on): the
+        # fold must say what is on screen there too, or it opens on nothing.
+        "geom_lod_parcels": _(
+            "Délimitation parcellaire INAO (aire parcellaire délimitée) ; aux "
+            "zooms d'ensemble, la carte en montre une silhouette généralisée à "
+            "{radius} m."
         ),
         "geom_src_geoportal": _(
             "Aire : zone de production officielle publiée par le géoportail "
@@ -386,6 +394,33 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "parmi les cépages principaux ; le document unique publié au Journal officiel "
             "ne les cite que dans son tableau des rendements."
         ),
+        # Transparency lines (decisions 2026-11-07). The roles of a grape per
+        # colour clause, for the pill tooltip ("principal pour les vins blancs ·
+        # accessoire pour les vins rouges"): roleByColourText / _role_by_colour_text.
+        "rbc_principal": _("principal"),
+        "rbc_accessory": _("accessoire"),
+        "rbc_observation": _("variété d'intérêt à fin d'adaptation"),
+        "rbc_white": _("pour les vins blancs"),
+        "rbc_red": _("pour les vins rouges"),
+        "rbc_rose": _("pour les vins rosés"),
+        "rbc_gris": _("pour les vins gris"),
+        # a § 4 varietal wine type shown as principal: section4VarietalLine / _section4_line
+        "grapes_section4_one": _(
+            "{names} est affiché comme cépage principal : le document unique le nomme comme "
+            "type de vin de cépage (section 4, au moins 85 % du cépage), non dans sa liste "
+            "des cépages (section 7)."
+        ),
+        "grapes_section4_many": _(
+            "{names} sont affichés comme cépages principaux : le document unique les nomme "
+            "comme types de vin de cépage (section 4, au moins 85 % du cépage), non dans sa "
+            "liste des cépages (section 7)."
+        ),
+        # the grape-colour floor's colours: inferredLine / inferred_line
+        "styles_inferred_line": _(
+            "Couleurs déduites de la couleur des baies des cépages autorisés ; "
+            "le texte du régulateur ne nomme aucune couleur."
+        ),
+        "src_wikipedia": _("Article Wikipédia (CC BY-SA 4.0)"),
         "pt_role_disclaimer": _(
             "Le régulateur portugais (IVV) n'établit pas de distinction principal/accessoire — "
             "toutes les castas autorisées sont listées ensemble dans le caderno de especificações."
@@ -535,6 +570,15 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "le même contour à tous les zooms."
         ),
         "about_contrib_html": _("Suggestions et pull requests bienvenues sur {github}."),
+        "about_thanks_h": _("Merci"),
+        "about_thanks_html": _(
+            "À celles et ceux dont les signalements ont amélioré la carte : {names}."
+        ),
+        "about_privacy_credit_html": _(
+            "Seule exception : le nom ou pseudonyme que vous choisissez d'ajouter à un "
+            "signalement, conservé pour vous remercier publiquement et retiré sur "
+            "simple demande par {email}."
+        ),
         "about_privacy_html": _(
             "La fréquentation est mesurée avec une instance {plausible} "
             "auto-hébergée, qui reçoit aussi les signalements faits depuis les fiches. "
@@ -566,6 +610,15 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Précisez si vous voulez (facultatif, sans données personnelles)"
         ),
         "feedback_send_label": _("Envoyer"),
+        # The optional public credit, sent as the `credit` of `Feedback Note`.
+        # A name reaches the site only through scripts/_lib/contributors.json,
+        # added at triage; the hint says it is public before anything is sent.
+        "feedback_credit_label": _("Votre nom ou pseudonyme (facultatif)"),
+        "feedback_credit_hint": _(
+            "Public : si votre signalement nous aide, nous vous remercierons sous "
+            "ce nom dans « À propos ». Laissez vide pour rester anonyme."
+        ),
+        "feedback_sent_credit": _("Envoyé, merci {name} !"),
         # Labels the geom_source token in the prefilled e-mail body so a
         # visitor doesn't delete an unexplained `mapa-zone` before sending.
         "feedback_mail_geometry_label": _("Géométrie"),
@@ -968,6 +1021,9 @@ def _build_about_dialog(
 
     privacy = [
         labels["about_privacy_html"].format(plausible=_ext_link(_PLAUSIBLE_POLICY_URL, "Plausible"))
+        + " " + labels["about_privacy_credit_html"].format(
+            email=_feedback_email_anchor(labels["feedback_email_label"])
+        )
     ]
 
     # Butterfly + "Bluesky" are the link; rel="me": the site vouches for the account.
@@ -985,6 +1041,15 @@ def _build_about_dialog(
         inner = lead_html + "".join(f"<p>{p}</p>" for p in paragraphs)
         return f"<section><h3>{labels[heading_key]}</h3>{inner}</section>"
 
+    # The thanks list appears with its first name (contributors.json).
+    thanks = []
+    names = contributor_names()
+    if names:
+        thanks.append(section(
+            "about_thanks_h",
+            [labels["about_thanks_html"].format(names=", ".join(esc(n) for n in names))],
+        ))
+
     credit = _made_by_html(labels)
     body = "\n      ".join([
         *intro,
@@ -997,6 +1062,7 @@ def _build_about_dialog(
         section("about_ai_h", ai),
         section("about_privacy_h", privacy),
         section("about_contrib_h", contrib),
+        *thanks,
         f'<p class="about-credit">{credit}</p>',
     ])
     return (
@@ -1863,9 +1929,13 @@ def _build_entity_jsonld(
     if based_on:
         webpage["isBasedOn"] = based_on if len(based_on) > 1 else based_on[0]
 
+    # No `inLanguage` on the Place: schema.org defines the property on
+    # CreativeWork and Event, and the validator flagged it UNKNOWN_FIELD on
+    # every entity page (Ahrefs crawl of 2026-11-06). WebSite and WebPage
+    # carry it.
     place = {
         "@type": "AdministrativeArea", "@id": place_id, "name": name,
-        "url": canonical_url, "description": description, "inLanguage": locale,
+        "url": canonical_url, "description": description,
     }
     if _WIKIDATA_GI_TYPE:
         place["additionalType"] = _WIKIDATA_GI_TYPE
@@ -2036,6 +2106,35 @@ def _entity_title(
     return candidate
 
 
+_DESC_ROSTER_MAX = 12
+
+
+def _fill_grape_clause(
+    head, styles_txt, tail, rec, grapes_info, grape_rank, canon_of, labels,
+) -> str:
+    """The facts clause of a lead-less description with as many principal
+    grapes as the 160 characters hold beside `head` and `tail` — the whole
+    roster when it fits, else the first k with the rest counted through the
+    `provenance_grapes_more` label ("{names} and {n} other grape varieties").
+    "" when nothing beyond the three-grape clause fits, or the label is
+    missing and the roster does not fit whole."""
+    names, _ = _entity_grape_names(rec, grapes_info, 10**6, grape_rank, canon_of)
+    total = len(names)
+    more_tpl = labels.get("provenance_grapes_more") or ""
+    for k in range(min(total, _DESC_ROSTER_MAX), 3, -1):
+        shown = ", ".join(names[:k])
+        if k == total:
+            grapes = shown
+        elif more_tpl:
+            grapes = more_tpl.format(names=shown, n=total - k)
+        else:
+            continue
+        clause = " — ".join(x for x in (styles_txt, grapes) if x)
+        if len(_join_sentences([head, clause, tail])) <= _META_DESC_MAX:
+            return clause
+    return ""
+
+
 def _build_entity_meta(
     slug, rec, locale, labels, region_labels, country_labels, grapes_info,
     folded=False, children=None, style_labels=None, title_regions=None,
@@ -2125,14 +2224,24 @@ def _build_entity_meta(
         facts = grapes_txt
     if lead and room(facts) < _LEAD_MIN_ROOM:
         lead = ""
-    parts = [head, facts, lead]
     # A record with neither facts nor summary (the thin CH cantonal AOCs that
-    # are indexed only as parents) names the denominations it carries instead,
-    # so the description is never the bare head line Bing flags as too short.
+    # are indexed only as parents, Oberösterreich, the Veneto IGT) has only its
+    # denominations and its roster to say, so the description is never the
+    # bare head line Bing flags as too short: it names the denominations it
+    # carries, and its grape clause grows to as many principal varieties as
+    # the budget holds, "… and N other grape varieties" when cut (2026-11-07:
+    # the 46 pages under Ahrefs' 100-character floor were all of this class).
+    # A record with a lead keeps the three-grape clause.
+    kids_txt = ""
     if not has_lead and children:
         kids = ", ".join(c["name"] for c in children[:6] if c.get("name"))
         if kids:
-            parts.append(f"{labels.get('entity_nav_children', '')}: {kids}".lstrip(": "))
+            kids_txt = f"{labels.get('entity_nav_children', '')}: {kids}".lstrip(": ")
+    if not has_lead and grapes_txt:
+        facts = _fill_grape_clause(
+            head, styles_txt, kids_txt, rec, grapes_info, grape_rank, canon_of, labels,
+        ) or facts
+    parts = [head, facts, lead, kids_txt]
     desc = _clamp(_join_sentences(parts), _META_DESC_MAX)
     if folded:
         canonical_url = self_url
@@ -2277,6 +2386,14 @@ _BROWSE_TEMPLATE = """<!doctype html>
 <meta property="og:title" content="{og_title}">
 <meta property="og:description" content="{meta_description}">
 <meta property="og:url" content="{canonical_url}">
+<meta property="og:image" content="https://www.openwinemap.com/assets/social-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{og_title}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{og_title}">
+<meta name="twitter:description" content="{meta_description}">
+<meta name="twitter:image" content="https://www.openwinemap.com/assets/social-card.png">
 {jsonld_html}
 <script>{theme_script}</script>
 <style>{browse_css}</style>
@@ -3427,6 +3544,10 @@ _TEMPLATE = """<!doctype html>
   #panel .fb-send {{ padding:3px 12px; border:1px solid var(--c-accent); border-radius:4px; background:var(--c-accent); color:var(--n-0); font:inherit; font-size:var(--fs-xs); cursor:pointer }}
   #panel .fb-send:hover {{ background:var(--c-accent-hover) }}
   #panel .fb-send:disabled {{ opacity:.5; cursor:default }}
+  #panel .fb-credit {{ display:block; margin:2px 0 0; font-size:var(--fs-sm); color:var(--n-750) }}
+  #panel .fb-credit-input {{ display:block; width:100%; max-width:22em; box-sizing:border-box; margin:3px 0 2px; padding:5px 8px; border:1px solid #d9d3ca; border-radius:4px; background:var(--n-0); color:var(--n-850); font:inherit; font-size:var(--fs-sm); line-height:1.4 }}
+  #panel .fb-credit-input:focus-visible {{ outline:2px solid var(--c-accent); outline-offset:0 }}
+  #panel .fb-credit-hint {{ display:block; margin:0 0 6px; font-size:var(--fs-xs); line-height:1.4; color:var(--n-600) }}
   #panel .fb-status {{ color:#5a6b3a; font-weight:600 }}
   #panel .fb-more .fb-aspect {{ color:var(--c-accent); font-weight:600 }}
   #panel .fb-more a {{ color:var(--c-accent); text-decoration:underline; text-underline-offset:2px }}
@@ -3529,8 +3650,9 @@ _TEMPLATE = """<!doctype html>
     .filter-chip {{ font-size:var(--fs-sm); padding:4px 6px 4px 10px }}
     .filter-chip button {{ font-size:18px; padding:0 6px; min-width:24px; min-height:24px }}
     #active-filters #reset {{ font-size:var(--fs-sm); padding-top:6px }}
-    /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box). */
-    .omni-input {{ font-size:16px }}
+    /* 16px avoids iOS Safari auto-zoom on focus (lab omnisearch box, and the
+       card's feedback note and name fields). */
+    .omni-input, #panel .fb-more textarea, #panel .fb-credit-input {{ font-size:16px }}
   }}
   #sidebar-footer {{ flex:0 0 auto; margin-top:auto; padding:12px 16px 16px; border-top:1px solid var(--side-border); font-size:var(--fs-xs); color:var(--side-text-3); text-align:center }}
   #sidebar-footer a {{ color:var(--side-text-3); text-decoration:none }}
@@ -3808,7 +3930,9 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel .fb-chip {{ background:#232325; border-color:#4a4a4e; color:#d0d0d0 }}
   html.theme-dark #panel .fb-chip:hover {{ background:#343437; color:var(--n-100) }}
   html.theme-dark #panel .fb-chip[aria-pressed="true"] {{ background:var(--c-accent-hover); border-color:var(--c-accent-hover); color:var(--n-0) }}
-  html.theme-dark #panel .fb-more textarea {{ background:#1e1e20; border-color:var(--n-700); color:var(--n-200) }}
+  html.theme-dark #panel .fb-more textarea, html.theme-dark #panel .fb-credit-input {{ background:#1e1e20; border-color:var(--n-700); color:var(--n-200) }}
+  html.theme-dark #panel .fb-credit {{ color:#d0d0d0 }}
+  html.theme-dark #panel .fb-credit-hint {{ color:#b5b5b5 }}
   html.theme-dark #panel .fb-status {{ color:#a7c48a }}
   html.theme-dark #panel .fb-more .fb-aspect {{ color:#e6a0b6 }}
   html.theme-dark #panel .fb-more a {{ color:#e6a0b6 }}

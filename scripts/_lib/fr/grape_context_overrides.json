@@ -1,0 +1,12 @@
+{
+  "_doc": "Per-record binding of a variety surface a cahier writes in a form the lexicon's bare alias reads as another cultivar — keyed by the FR record slug (a DGC parses its parent's rows, so a pin on the parent reaches it) -> normalised surface with its colour code (lower-case, accents folded: \"manseng b\") -> {slug, name, reason, source, verified}. Applied by grape_lexicon._fr_context_pin inside the FR roster reader when stage 02 has set the pliego context to the record. A pin is an interpretation of the regulator's letter: the record also carries an entry in appellation_notes.json so the card says so. The ES and IT siblings are scripts/_lib/es/grape_context_overrides.json and scripts/_lib/it/grape_context_overrides.json.",
+  "saint-mont": {
+    "manseng b": {
+      "slug": "gros-manseng",
+      "name": "manseng",
+      "reason": "The rosé clause of the cahier (BO Agri du 12 juin 2025, section V 1° b) lists the accessories \"manseng B, arrufiac B, petit courbu B, courbu B, petit manseng B\": petit manseng is named beside it and gros manseng is the only other white Manseng, the white clause's principal variety. The bare alias would bind Manseng noir, the record's adaptation variety (\"manseng N\"), with a white colour code. Decision 2026-11-07.",
+      "source": "Cahier des charges AOC Saint-Mont, BO Agri du 12 juin 2025, chapitre I, V 1° b) Vins rosés",
+      "verified": "2026-11-07"
+    }
+  }
+}

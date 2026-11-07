@@ -43,7 +43,8 @@ def _slugs(roles, have, name=""):
 def test_piemonte_sauvignon_is_a_type_the_roster_lacks():
     found = section_varieties(PIEMONTE, {"cortese", "chardonnay"}, "Piemonte")
     assert [d["slug"] for d in found] == ["sauvignon"]
-    assert found[0]["role"] == "accessory"
+    # a varietal wine type (≥ 85 % of the variety) names a main grape (2026-11-07)
+    assert found[0]["role"] == "principal"
     assert found[0]["source"] == "section-4-type"
     assert found[0]["name"] == "Sauvignon"
 
@@ -76,10 +77,11 @@ def test_roster_members_and_the_appellation_name_are_skipped():
     assert _slugs(roles, {"barbera", "freisa"}, "Barbera d'Asti") == []
 
 
-def test_add_section_varieties_appends_accessories_in_place():
+def test_add_section_varieties_appends_in_place_by_role():
     grapes = {"principal": ["cortese", "chardonnay"], "accessory": [], "details": []}
     assert add_section_varieties(grapes, PIEMONTE, "Piemonte") == ["sauvignon"]
-    assert grapes["accessory"] == ["sauvignon"]
+    assert grapes["principal"] == ["cortese", "chardonnay", "sauvignon"]
+    assert grapes["accessory"] == []
     assert grapes["details"][-1]["source"] == "section-4-type"
     assert add_section_varieties(grapes, PIEMONTE, "Piemonte") == []
 

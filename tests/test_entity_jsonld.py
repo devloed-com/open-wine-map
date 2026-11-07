@@ -288,6 +288,78 @@ def test_meta_description_names_children_when_the_record_has_no_lead() -> None:
     assert "Related denominations" not in meta["meta_description"]
 
 
+def test_meta_description_of_a_lead_less_record_fills_with_its_roster() -> None:
+    # /en/basel-stadt: no facts, no readable summary, 40 principal varieties —
+    # the three-grape clause left the description at 95 characters (Ahrefs,
+    # 2026-11-06: 46 such pages under its 100-character floor). The grape
+    # clause grows to what fits, the rest counted.
+    slugs = ["blauburgunder", "chardonnay", "divico", "mueller-thurgau", "riesling",
+             "sauvignon-blanc", "gamaret", "garanoir", "johanniter", "solaris",
+             "cabernet-jura", "regent"]
+    rec = {"name": "Basel-Stadt", "kind": "AOC", "class_label": "AOC", "country": "fr",
+           "region": "PRIORAT", "grapes_principal": slugs, "styles_simple": ["red", "white"],
+           "summary": "", "terroir_facts": {}}
+    labels = {**_LABELS, "provenance_grapes_more": "{names} and {n} other grape varieties"}
+    meta = _build_entity_meta(
+        "basel-stadt", rec, "en", labels, _REGION_LABELS, _COUNTRY_LABELS, {},
+        style_labels=_STYLE_LABELS,
+    )
+    desc = meta["meta_description"]
+    assert desc.startswith("Basel-Stadt, Priorat, France · AOC. White, red — Blauburgunder, Chardonnay, Divico, ")
+    assert desc.endswith(" other grape varieties.") and len(desc) <= 160
+    shown = desc.split(" — ", 1)[1].split(" and ")[0].count(",") + 1
+    n_more = int(desc.rsplit(" and ", 1)[1].split()[0])
+    assert shown + n_more == len(slugs) and shown > 3
+    # A roster that fits whole is listed whole, without a count.
+    four = {**rec, "grapes_principal": slugs[:4]}
+    meta = _build_entity_meta(
+        "basel-stadt", four, "en", labels, _REGION_LABELS, _COUNTRY_LABELS, {},
+        style_labels=_STYLE_LABELS,
+    )
+    assert meta["meta_description"] == (
+        "Basel-Stadt, Priorat, France · AOC. White, red — Blauburgunder, Chardonnay, Divico, "
+        "Mueller Thurgau."
+    )
+    # The children clause still follows and keeps its room: the roster grows
+    # only as far as the budget beside it allows (here not at all).
+    kids = [{"name": "Zürichsee", "path": "/en/zurichsee", "classification": "AOC"}]
+    meta = _build_entity_meta(
+        "basel-stadt", rec, "en", {**labels, "entity_nav_children": "Related denominations"},
+        _REGION_LABELS, _COUNTRY_LABELS, {}, style_labels=_STYLE_LABELS, children=kids,
+    )
+    assert meta["meta_description"] == (
+        "Basel-Stadt, Priorat, France · AOC. White, red — Blauburgunder, Chardonnay, Divico. "
+        "Related denominations: Zürichsee."
+    )
+    meta = _build_entity_meta(
+        "basel-stadt", {**rec, "grapes_principal": slugs[:5]}, "en",
+        {**labels, "entity_nav_children": "Related denominations"},
+        _REGION_LABELS, _COUNTRY_LABELS, {}, style_labels=_STYLE_LABELS, children=kids,
+    )
+    assert meta["meta_description"] == (
+        "Basel-Stadt, Priorat, France · AOC. White, red — Blauburgunder, Chardonnay, Divico, "
+        "Mueller Thurgau, Riesling. Related denominations: Zürichsee."
+    )
+    # A record with a lead keeps the three-grape clause.
+    led = {**rec, "terroir_facts": {"facts": [{"bullet": "Basel-Stadt grows vines on the Rhine."}]}}
+    meta = _build_entity_meta(
+        "basel-stadt", led, "en", labels, _REGION_LABELS, _COUNTRY_LABELS, {},
+        style_labels=_STYLE_LABELS,
+    )
+    assert meta["meta_description"] == (
+        "Basel-Stadt, Priorat, France · AOC. White, red — Blauburgunder, Chardonnay, Divico. "
+        "Basel-Stadt grows vines on the Rhine."
+    )
+    # Without the label, only a roster that fits whole grows.
+    meta = _build_entity_meta(
+        "basel-stadt", rec, "en", _LABELS, _REGION_LABELS, _COUNTRY_LABELS, {},
+        style_labels=_STYLE_LABELS,
+    )
+    assert meta["meta_description"] == (
+        "Basel-Stadt, Priorat, France · AOC. White, red — Blauburgunder, Chardonnay, Divico."
+    )
+
+
 def test_lang_switcher_keeps_the_appellation_on_entity_pages() -> None:
     home = _lang_switcher("en", "Language")
     assert 'href="/fr/"' in home and 'href="/"' in home
@@ -297,11 +369,15 @@ def test_lang_switcher_keeps_the_appellation_on_entity_pages() -> None:
     assert 'href="/fr/"' not in page and 'data-lang="en" class="lang active"' in page
 
 
-def test_inlanguage_matches_locale() -> None:
+def test_inlanguage_matches_locale_on_the_creative_works_only() -> None:
+    # schema.org defines `inLanguage` on CreativeWork and Event; on the Place
+    # the validator flagged it UNKNOWN_FIELD on every entity page (Ahrefs,
+    # 2026-11-06).
     for loc in ("en", "fr", "es", "nl"):
         g = _graph(_RICH, slug="priorat", locale=loc)
-        for typ in ("WebSite", "WebPage", "AdministrativeArea"):
+        for typ in ("WebSite", "WebPage"):
             assert _node(g, typ)["inLanguage"] == loc
+        assert "inLanguage" not in _node(g, "AdministrativeArea")
 
 
 def test_breadcrumb_every_nonfinal_item_has_url() -> None:
@@ -446,8 +522,11 @@ def test_description_grapes_are_ranked_title_cased_and_latin() -> None:
         "rioja", rec, "en", _LABELS, {}, {"es": "Spain"}, {}, style_labels=_STYLE_LABELS,
         grape_rank=rank,
     )
+    # A lead-less record lists its whole roster when it fits (2026-11-07); the
+    # ranked three still lead.
     assert meta["meta_description"] == (
-        "Rioja, La Rioja, Spain · DOCa (PDO). Red — Tempranillo, Garnacha Tinta, Chardonnay."
+        "Rioja, La Rioja, Spain · DOCa (PDO). Red — Tempranillo, Garnacha Tinta, Chardonnay, "
+        "Alarije, Albillo Mayor."
     )
     # A Cyrillic regulator spelling yields to the lexicon's Latin name.
     bg = {"name": "Мелник", "name_latin": "Melnik", "class_label": "PDO", "country": "es",

@@ -64,7 +64,9 @@ def augment_cy_records_with_national_specs(records: list[dict]) -> int:
             record["styles"] = sorted(set(record.get("styles") or []) | set(sidecar["styles"]))
 
         section_roles = dict(record.get("section_roles") or {})
-        for role in ("description", "geo_area", "grape_varieties", "link_to_terroir"):
+        # the category list too ("3. Οίνος λικέρ"), so the colour floor knows what
+        # the spec declares (wine_categories; Koumandaria, 2026-11-07)
+        for role in ("category", "description", "geo_area", "grape_varieties", "link_to_terroir"):
             sidecar_roles = sidecar.get("section_roles") or {}
             if sidecar_roles.get(role):
                 section_roles[role] = sidecar_roles[role]

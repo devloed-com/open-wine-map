@@ -111,5 +111,31 @@ def sparkling_only(record: dict) -> bool:
     return bool(kinds) and kinds <= {"sparkling"}
 
 
+_LIQUEUR_RE = re.compile(
+    r"licor|liquor|liqueur|lik[öőoée]r|likeur|ликьор|λικέρ|lichior|doux\s+naturel"
+    r"|generos|fortifi",
+    re.IGNORECASE,
+)
+
+
+def _declared_items(record: dict) -> list[str]:
+    if record.get("country") == "fr":
+        return [c for c in record.get("categories") or [] if isinstance(c, str) and c.strip()]
+    return [item for body in _category_bodies(record) for item in _items(body)]
+
+
+def liqueur_only(record: dict) -> bool:
+    """The record declares liqueur wine (vin doux naturel, vinho licoroso, vino
+    de licor, οίνος λικέρ) and no still or sparkling category — Madeira, Jerez,
+    Samos. The colour floor then speaks only for a roster of one colour
+    (decision 2026-11-07): a fortified wine of white grapes alone is white; a
+    mixed roster states no colour (Madeira's Tinta Negra and Sercial)."""
+    items = _declared_items(record)
+    if not items:
+        return False
+    kinds = {classify(i) for i in items}
+    return kinds <= {"other"} and any(_LIQUEUR_RE.search(i) for i in items)
+
+
 def declares_still(record: dict) -> bool:
     return "still" in (declared_kinds(record) or ())

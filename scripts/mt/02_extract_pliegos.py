@@ -324,6 +324,85 @@ def build_record(wine: dict, sections: dict[str, str], titles: dict[str, str],
     }
 
 
+def build_record_from_fiche(wine: dict, fiche: dict, oj_meta: dict) -> dict:
+    """The register's single document (fiche technique) as the record of a GI
+    that has no OJ publication — the Maltese Islands IĠT (2026-11-07): the
+    fiche's roster with its MAIN / OTHER tags, its description ("Red, white
+    and rosé wines are produced …") and categories for the styles, its
+    demarcated area and link text. The card cites the fiche as the source."""
+    fg = fiche.get("grapes") or {}
+    details = []
+    seen: set[str] = set()
+    for d in fg.get("details") or []:
+        slug = d.get("slug")
+        if not slug or slug in seen:
+            continue
+        seen.add(slug)
+        details.append({
+            "slug": slug,
+            "name": d.get("name") or slug,
+            "role": "accessory" if d.get("role") == "accessory" else "principal",
+            "colour": d.get("colour") or "",
+            "source": "eambrosia-register-fiche",
+        })
+    grapes = {
+        "principal": [d["slug"] for d in details if d["role"] == "principal"],
+        "accessory": [d["slug"] for d in details if d["role"] == "accessory"],
+        "observation": [],
+        "details": details,
+    }
+    description = (fiche.get("description") or "").strip()
+    categories = (fiche.get("categories") or "").strip()
+    geo_area = (fiche.get("geo_area") or "").strip()
+    link = (fiche.get("link_to_terroir") or "").strip()
+    sections = {num: body for num, body in (
+        ("1", wine["name"]), ("3", categories), ("4", description), ("6", geo_area), ("8", link),
+    ) if body}
+    titles = {"1": "Name to be registered", "3": "Categories of grapevine products",
+              "4": "Description of the wine(s)", "6": "Demarcated geographical area",
+              "8": "Description of the link(s)"}
+    titles = {num: titles[num] for num in sections}
+    routed = {"name": wine["name"], "category": categories, "description": description,
+              "geo_area": geo_area, "grape_varieties": "", "link_to_terroir": link}
+    styles = parse_styles(sections, titles, grape_details=details, wine_name=wine.get("name", ""),
+                          extra_text=" ".join((categories, description)))
+    src = fiche.get("source") or {}
+    return {
+        "country": "mt",
+        "source_lang": "en",
+        "id_eambrosia": wine["giIdentifier"],
+        "file_number": wine["fileNumber"],
+        "slug": wine["slug"],
+        "name": wine["name"],
+        "kind": wine["kind"],
+        "is_sub_denomination": False,
+        "region": derive_region({"file_number": wine["fileNumber"]}),
+        "categories": [wine["kind"]] if wine.get("kind") else [],
+        "summary": derive_summary(description or geo_area),
+        "sections": sections,
+        "section_titles": titles,
+        "section_roles": {k: v for k, v in routed.items() if v},
+        "grapes": grapes,
+        "styles": styles,
+        "geo_area_brief": geo_area,
+        "link_to_terroir": link,
+        "producer_group": wine["producer_group"],
+        "publications": wine["publications"],
+        "source": {
+            "filename": "",
+            "source_url": src.get("url", ""),
+            "final_url": src.get("url", ""),
+            "bytes": 0,
+            "fetched_at": src.get("fetched_at") or oj_meta.get("fetched_at", ""),
+            "kind": "eambrosia-register-fiche",
+            "ref": src.get("ref", ""),
+            "attachment_uri": src.get("attachment_uri", ""),
+        },
+        "register_fiche": {"url": src.get("url", ""), "ref": src.get("ref", "")},
+        "stub": False,
+    }
+
+
 def build_stub(wine: dict, oj_meta: dict, reason: str) -> dict:
     return {
         "country": "mt",
@@ -405,7 +484,12 @@ def main() -> int:
             sections, titles, parse_reason = _extract_from_html(html_cache)
         else:
             sections, titles, parse_reason = {}, {}, oj_meta.get("status") or "no-html-cached"
-        if parse_reason or not sections:
+        fiche = load_sidecar("mt", slug) if (parse_reason or not sections) else None
+        if (parse_reason or not sections) and fiche and (fiche.get("grapes") or {}).get("details"):
+            # no OJ publication, but the register serves the single document
+            record = build_record_from_fiche(w, fiche, oj_meta)
+            extracted += 1
+        elif parse_reason or not sections:
             record = build_stub(w, oj_meta, parse_reason or "no-sections")
             if parse_reason in (
                 "no-html-cached", "no-publication", "fetch-error",

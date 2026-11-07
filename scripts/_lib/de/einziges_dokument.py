@@ -19,8 +19,11 @@ from __future__ import annotations
 
 import re
 
+# the Commission-decision layout (Bürgstadter Berg, OJ C 384/2016, CELEX
+# 32016D1018(01)) prints the anchor as a document title, "ANHANG" then
+# "EINZIGES DOKUMENT" in `doc-ti` paragraphs (2026-11-07)
 DOC_ANCHOR_RE = re.compile(
-    r'<p[^>]*class="[^"]*\bti-grseq-1\b[^"]*"[^>]*>\s*EINZIGES\s+DOKUMENT\s*</p>',
+    r'<p[^>]*class="[^"]*\b(?:ti-grseq-1|doc-ti)\b[^"]*"[^>]*>\s*EINZIGES\s+DOKUMENT\s*</p>',
     re.I | re.S,
 )
 
@@ -66,6 +69,9 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "wichtigste keltertraubensorte",
         "keltertraubensorte",
         "keltertraubensorten",
+        # the 2016 decision layout (Bürgstadter Berg): "7. Wichtigste Keltertrauben"
+        "wichtigste keltertrauben",
+        "keltertrauben",
         "rebsorte",
         "rebsorten",
         "traubensorte",

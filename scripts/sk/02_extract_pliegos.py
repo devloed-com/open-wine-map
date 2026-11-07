@@ -46,6 +46,7 @@ from _lib.sk.jednotny_dokument import (  # noqa: E402
     SECTION_NUM_RE,
     SECTION_ROLE_KEYWORDS,
     STYLE_MARKERS,
+    colour_list_styles,
 )
 from _lib.sk.region import derive_region  # noqa: E402
 
@@ -259,6 +260,7 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str],
     for kw, colour_slug in COLOUR_BY_KEYWORD.items():
         if re.search(rf"\b{re.escape(kw)}\b", blob, re.I):
             found.add(colour_slug)
+    found |= colour_list_styles(blob)
     for pattern, slug in STYLE_MARKERS:
         if pattern.search(blob):
             found.add(slug)

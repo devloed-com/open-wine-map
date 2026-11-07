@@ -576,3 +576,26 @@ def test_landwein_region_facet_follows_the_anbaugebiet_or_bundesland_rule():
     assert region_for_file_number("PGI-DE-A1305") == "Württemberg"
     assert region_for_file_number("PGI-DE-A1284") == "Württemberg"   # Landwein Neckar, coextensive
     assert region_for_file_number("PGI-DE-A1279") == "Baden"         # Badischer Landwein, coextensive
+
+
+# ---------------------------------------------------------------- 2016 decision layout (2026-11-07)
+# Bürgstadter Berg (OJ C 384/2016, CELEX 32016D1018(01)) is the one DE record
+# published as a Commission decision: the anchor is a `doc-ti` title after
+# "ANHANG", and § 7 is headed "Wichtigste Keltertrauben". It had been a stub
+# since May (`no-einziges-dokument-anchor`), its card inheriting Franken's.
+
+DECISION_HTML = """<p class="doc-ti" id="d1e32-5-1">ANHANG</p>
+<p class="doc-ti">EINZIGES DOKUMENT</p>
+<p class="ti-grseq-1" id="d1e41-5-1">1.\xa0\xa0\xa0<span class="bold">Einzutragende(r) Name(n)</span></p>
+<p class="normal">Bürgstadter Berg</p>
+<p class="ti-grseq-1">7.\xa0\xa0\xa0<span class="bold">Wichtigste Keltertrauben</span></p>
+<p class="normal">Blauer Zweigelt</p>
+<p class="normal">Weißer Riesling</p>
+"""
+
+
+def test_decision_layout_anchor_and_grape_heading():
+    from _lib.de.einziges_dokument import DOC_ANCHOR_RE, SECTION_ROLE_KEYWORDS
+
+    assert DOC_ANCHOR_RE.search(DECISION_HTML) is not None
+    assert "wichtigste keltertrauben" in SECTION_ROLE_KEYWORDS["grape_varieties"]

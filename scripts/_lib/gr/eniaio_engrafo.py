@@ -303,7 +303,8 @@ _SWEETNESS = r"(?:ξηροσ|ημιξηροσ|ημιγλυκοσ|γλυκοσ|γ
 _TYPE_HEADER_RE = re.compile(
     rf"\bοινοσ\s+(?:λευκοσ|ερυθροσ|ερυθρωποσ|ροζε)\s+({_SWEETNESS}(?:\s*(?:,|και|η)\s*{_SWEETNESS})*)"
 )
-_SWEETNESS_STYLE = {"ημιγλυκοσ": "semi-sweet", "γλυκοσ": "sweet", "γλυκυσ": "sweet"}
+# ημίξηρος → Semi-dry since 2026-11-07 (decision: the same type-list rule as the sweet levels)
+_SWEETNESS_STYLE = {"ημιξηροσ": "semi-dry", "ημιγλυκοσ": "semi-sweet", "γλυκοσ": "sweet", "γλυκυσ": "sweet"}
 
 
 def sweetness_type_styles(text: str) -> set[str]:

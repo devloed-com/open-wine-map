@@ -37,7 +37,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from _lib.fr import dgc_rules, shared_cahier, siqo
+from _lib.fr import dgc_rules, roster_table, shared_cahier, siqo
 from _lib.fr.naming import candidate_keys, normalize_name
 from _lib.grape_entity import (
     flush_unknowns_queue,
@@ -1591,6 +1591,7 @@ def _apply_dgc_rules(dgc: dict, parent: dict, dgc_names: list[str]) -> None:
                 "accessory": [t["slug"] for t in grapes["accessory"]],
                 "observation": [t["slug"] for t in grapes["observation"]],
                 "details": grapes["all"],
+                **({"roles_by_colour": grapes["roles_by_colour"]} if grapes.get("roles_by_colour") else {}),
             }
             applied["encepagement"] = how
     if applied:
@@ -2188,12 +2189,19 @@ def main() -> int:
                 encepagement_block(roles.get("encepagement") or ""),
                 meta["name"], covered, record["styles"],
             )
+            # a table label printed inside a wrapped variety name ("ugni /
+            # Vins blancs / blanc B") is moved above it before the read
+            v_text = roster_table.repair_label_interleave(v_text)
             grapes = parse_grapes(v_text)
             record["grapes"] = {
                 "principal": [t["slug"] for t in grapes["principal"]],
                 "accessory": [t["slug"] for t in grapes["accessory"]],
                 "observation": [t["slug"] for t in grapes["observation"]],
                 "details": grapes["all"],
+                # a grape whose role differs between the colour clauses
+                # (Crozes's marsanne: the white's principal, the red's accessory) —
+                # the card shows the stronger role and the pill tooltip the rest
+                **({"roles_by_colour": grapes["roles_by_colour"]} if grapes.get("roles_by_colour") else {}),
             }
 
         # The parent record is everything we just built. Find its SIQO row to

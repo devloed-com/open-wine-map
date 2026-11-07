@@ -228,4 +228,7 @@ def sweetness_styles(text: str) -> set[str]:
                 out.add("semi-sweet")
             elif low in ("édes", "edes"):
                 out.add("sweet")
+            elif low in ("félszáraz", "felszaraz"):
+                # decision 2026-11-07: Semi-dry under the same list rule
+                out.add("semi-dry")
     return out

@@ -169,3 +169,23 @@ def test_hit_test_keeps_an_inheritor_whose_donor_is_not_painted() -> None:
     assert "(rec && rec.geom_fallback_slug) || p.geom_fallback_slug" in body
     # The unconditional drop is gone.
     assert "if (src === 'parent-appellation' || src === 'sibling-dgc') continue;" not in body
+
+
+def test_boundary_fold_has_a_line_for_both_lod_bands() -> None:
+    """2026-11-07: Margaux at z12 opened "About this boundary" on nothing — the
+    footprint note was the fold's only line and the zoom had hidden it. A
+    footprint record carries one line per band, the zoom shows the band on
+    screen, and the parcels label is translated in every UI locale."""
+    js = (Path(mt.__file__).resolve().parent / "assets" / "app.js").read_text()
+    assert "data-lod-band=" in js
+    assert "LABELS.geom_lod_footprint" in js and "LABELS.geom_lod_parcels" in js
+    assert "el.hidden = el.dataset.lodBand !== band" in js
+    msgid = mt.build_labels(lambda s: s)["geom_lod_parcels"]
+    assert "{radius}" in msgid
+    from babel.messages.pofile import read_po
+
+    for lang in ("en", "es", "nl"):
+        po = Path(mt.__file__).resolve().parents[2] / "locale" / lang / "LC_MESSAGES" / "messages.po"
+        with po.open("rb") as fh:
+            msg = read_po(fh).get(msgid)
+        assert msg is not None and msg.string and "{radius}" in msg.string, lang

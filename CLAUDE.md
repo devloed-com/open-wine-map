@@ -531,6 +531,75 @@ details and "Hard rules" for invariants that apply to every country.
   under `batch`, and `rerun_terroir_facts.py` logs the run's spend per
   stage at the end.
 
+## Decisions of 2026-11-07 — interpretations the card discloses
+
+Eight questions the curator queue had left to Boris were settled on
+2026-11-07. The rule that came with them: **where the card interprets or
+departs from the regulator's letter, the card says so** — a disclosure line
+under the pills, a pill tooltip, a Sources row or a cited per-record note in
+[scripts/_lib/appellation_notes.json](scripts/_lib/appellation_notes.json)
+(the ⓘ block). Decision by decision:
+
+- **A FR per-record grape pin.** Saint-Mont's rosé clause lists "manseng B"
+  beside "petit manseng B"; the bare alias binds Manseng noir, the record's
+  adaptation variety ("manseng N"). [scripts/_lib/fr/grape_context_overrides.json](scripts/_lib/fr/grape_context_overrides.json)
+  (record slug → "surface code" → slug, reason, source, verified; the ES / IT
+  pattern) reads it as Gros Manseng on that record only
+  (`grape_lexicon._fr_context_pin`, applied inside the FR roster reader when
+  stage 02 has set the pliego context); no other cahier writes a bare
+  "manseng B". The card carries a note saying it is a reading of the letter.
+  `tests/test_fr_grape_context.py`.
+- **The colour floor for a liqueur-only record** (`wine_categories.liqueur_only`:
+  liqueur wine declared, no still or sparkling category): a floor colour only
+  from a roster of one colour. Jerez, Manzanilla, Samos, Malvasia Paros,
+  Moschato Rodou and Rio Patras keep White; Madeira, Koumandaria, Grand
+  Roussillon and Condado de Huelva lose the Red and White their mixed rosters
+  had inferred (the feature property `styles_floor_off`, which
+  `audit_styles.py` honours). **Every floor-inferred colour is disclosed**: the
+  feature property `styles_inferred` reaches the panel payload and the card
+  prints "Colours inferred from the berry colour of the authorised varieties;
+  the regulator's text names no colour" under the style pills
+  (`styles_inferred_line`). The GR and CY national-spec augmenters merge the
+  spec's `category` role since the same day (they had merged four roles and
+  not the category list, so Koumandaria declared nothing and kept its floor
+  colours); the three Greek liqueur records already state their colour.
+- **Semi-dry** joins Semi-sweet and Sweet under the same type-list rule in
+  the ES, GR, HU and BG readers ("secos, semisecos, semidulces y dulces";
+  ημίξηρος; félszáraz; "полусухи вина") — never from an IT "sapore: da secco
+  ad abboccato" taste range or a FR "demi-sec" labelling mention (IT and FR
+  unchanged). Dry stays unrendered (`_DROP_STYLES`).
+- **A § 4 varietal wine type is a principal variety** (`section_varieties.py`:
+  `section-4-type` → principal, `section-5-rule` → accessory), the reading of
+  the MASAF Article 1 reader; this revises the 2026-10-24 "accessory" call
+  after the card validator graded Piemonte's Sauvignon misleading. The card
+  says it: "{names} shown as principal: the single document names them as
+  varietal wine types (section 4, at least 85 % of the variety), not in its
+  list of varieties (section 7)" (`grapes_section4` in the payload, from the
+  details' source tag; `grapes_section4_one` / `_many`). 15 ES / IT records.
+- **A Wikipedia Sources row** wherever a rendered terroir bullet is
+  Wikipedia-marked (`provenance` wiki or `wiki_part`): `sources.wikipedia_url`
+  is the facts cache's `wiki_source_url`, the row "Wikipedia article (CC BY-SA
+  4.0)" (`src_wikipedia`). The inline marker stays.
+- **Per-colour grape roles on the pill.** The FR reader records, per grape,
+  its role in each colour clause (`_COLOUR_CLAUSE_RE` / `_clause_colours`:
+  the last "Vins blancs" / "a) - Les vins rouges" / "Vins rouges et rosés"
+  header before the role chunk, the record's own clauses only) and
+  `parse_grapes` returns `roles_by_colour` for the grapes whose roles differ;
+  stage 02 stores it on the record (parent and DGC), the payload carries
+  `grape_roles_by_colour`, and the pill — which keeps the stronger role — gets
+  `data-roles` + `title` and a tooltip line "principal for white wines ·
+  accessory for red wines" (`rbc_*` labels; `roleByColourText` /
+  `_role_by_colour_text`). 179 FR parents have such a grape (Crozes's
+  Marsanne, Arbois's Poulsard).
+- **Bela krajina keeps the 2007 pravilnik's role split** over the fiche's MAIN
+  tags and the fiche's "4. Peneče vino" as a category — a house decision the
+  card now states in a note citing both documents.
+- **"Alsace suivi d'un nom de lieu-dit" stays listed** as SIQO lists it, with a
+  note saying the cahier treats the lieu-dit mention apart from the DGCs.
+- Two more notes of the same kind: Stredoslovenská (the roster is the 2013
+  technical file's where the 2020 single document's § 7 names Furmint alone)
+  and Saint-Mont (above).
+
 ## Denomination model (sub-denominations)
 
 The unit of generation is the **denomination** (`id_denomination_geo` in the
@@ -581,6 +650,46 @@ Languedoc and Côtes du Rhône Villages red-only DGCs lost white and rosé,
 Mâcon Fuissé / Loché / Vinzelles white Chardonnay. Known residue: a grape
 both accessory in one colour row and principal in another takes the first
 role read (Fiefs Vendéens Vix's rosé Gamay).
+
+The table reader was settled on the Alsace and Savoie cahiers on 2026-11-07
+(CURATOR_TODO row of 2026-10-30: Klevener de Heiligenstein inherited the 21
+Alsace varieties while its row reads "savagnin rose Rs"): `dgc_keys` strips
+*every* " ou " alias of the parent as a prefix, not only the whole name
+("Alsace Klevener de Heiligenstein" under "Alsace ou Vin d'Alsace" yields
+"klevener de heiligenstein"; until then no DGC of Alsace, Corse or Savoie ever
+matched its own row), and folds the hyphen SIQO writes where the row reads
+« Saint Hippolyte »; a « quoted name » opening a left line starts a row label
+of its own when the label above already holds a whole quoted name and does
+not run on into it (the Alsace table lists one DGC per row, one blank line
+apart, and read as one block the rows pooled into one roster — Bergheim had
+the union of every row; "Dénomination géographique complémentaire / « Abymes
+»" and "« Apremont », « Cruet », / « Montmélian »" continue); a value block
+running across several labels is cut at their first lines (`_cut`); a row is
+serialised as its label then the right-column text of its value lines, the
+columns apart, so a label line inside a wrapped value ("mondeuse / grise G")
+or a quoted name wrapping around the value cell ("« Saint-Jean-de- mondeuse N
+exclusivement / la-Porte »") no longer cuts the grape — and the names are
+tested column by column, so that wrapped name still names its row; a value
+cell merely naming the DGC counts only where no row label does (the parent's
+white row restricts savagnin rose to the Klevener parcels; the DGC's own row
+is its roster); and a heading's scope ends at the next row labelled with
+another DGC (the Savoie heading « Chautagne », « Chignin », « Jongieux » had
+swallowed Chignin-Bergeron's and Crépy's rows). 28 of 1,063 DGC records
+changed, every one read against its cahier: the 13 Alsace DGCs (Bergheim
+Gewurztraminer, Ottrott / Rodern / Saint-Hippolyte Pinot noir, Côte de
+Rouffach four, their colours from the section III label blocks; the VT / SGN
+on Val Saint Grégoire, Vallée Noble and Wolxheim are their SIQO categories)
+and the 15 Savoie DGCs (Apremont Jacquère with its accessories, Arbin and
+Saint-Jean-de-la-Porte Mondeuse "exclusivement", Ayze Gringet, Chignin-
+Bergeron Roussanne, Crépy Chasselas). The full FR re-extraction of the same
+afternoon changed six more DGC records the sweep had not predicted — it had
+compared the old and new `dgc_keys` with the other reader changes present on
+both sides, so the row-label split's own effect was invisible; compare against
+the on-disk records next time. All six follow their cahier's rows: Mâcon
+Serrières is "Vins tranquilles rouges et rosés" (its white and primeur
+gone), Mâcon Solutré-Pouilly white only, Côtes du Roussillon Villages
+Caramany and Lesquerde without Mourvèdre, Les Aspres and Tautavel without
+Lledoner pelut. `tests/test_fr_dgc_rules.py` carries both tables.
 
 Stage 04 resolves sub-denomination geometry by `id_denomination_geo`
 against the INAO parcellaire shapefile (the shapefile carries `id_denom`
@@ -757,6 +866,25 @@ d'Alsace items of the same day:
   Pouilly-sur-Loire (Chasselas). A SIQO product named "… vendanges tardives
   …" / "… sélection de grains nobles …" adds that category even when its
   `categorie` column says "Vin tranquille" (Kaefferkopf had lost VT / SGN).
+- **A table label inside a wrapped variety name**
+  ([scripts/_lib/fr/roster_table.py](scripts/_lib/fr/roster_table.py),
+  2026-11-07): `pdftotext -layout` centres a two-column roster table's row
+  labels ("Vins blancs", the adaptation clause) on the row's value lines, so
+  a label line can sit between the halves of a wrapped name — Coteaux
+  Varois's "… semillon B, ugni / Vins blancs / blanc B, vermentino B.", whose
+  card lacked Ugni blanc — and a label's prose can run up to one space
+  before the values on the same line — Alsace's "… l'ODG et Voltis B, …,
+  Johanniter / les opérateurs habilités concernés, d'une convention B, Chenin
+  B", whose Johanniter was lost (card re-grade of 2026-10-30).
+  `repair_label_interleave`, called on the parent's roster text right before
+  `parse_grapes`, cuts each line at the value column (`dgc_rules`'
+  `_value_column`; the run splitter would read a one-space gap as one run)
+  and moves such a left-column stretch above the value line it interrupts —
+  only when the two halves form an exact lexicon surface closed by a colour
+  code (`grape_entity.exact_match`); everywhere else the text is returned
+  as printed. Corpus diff: 2 of 448 parents change (Ugni blanc principal on
+  Coteaux Varois, Johanniter observation on Alsace). The DGC path reads its
+  rows through `dgc_rules`' own column serialisation and needs no repair.
 - **The record name follows the referentiel, not the fetch cache.** Stage
   02 overlays each manifest entry's `name` with the `appellation` the
   referentiel gives through `siqo.siqo_rows()` (`[name]` log line per
@@ -1571,8 +1699,17 @@ its document's spelling; the one thing it shares with the label is
 `clean_name`'s repair of a hyphen pdftotext broke across a line ("cabernet-
 sauvignon" → "cabernet-sauvignon", a dash spaced on both sides staying a
 separator), so the Côtes de Thau pill no longer shows the line break either.
-`tests/test_grape_corpus_labels.py` and `tests/test_grape_labels.py` pin the
-rules.
+The FR roster reader stores an elided article with its apostrophe
+(`_with_source_apostrophes` in `grape_lexicon.py`: its word splitter takes
+the apostrophe for a separator, and until 2026-10-30 Muscat d'Alexandrie,
+Pineau d'Aunis, Roussette d'Ayze, Len de l'El, Nero d'Avola and Rayon d'Or
+were stored as "muscat d alexandrie" etc. on 233 records — the pills and the
+corpus label read "Muscat D Alexandrie"); the words it matches stay
+space-joined. Title Case (`toTitleCase` in query_core.mjs, `to_title_case` in
+content_block.py, `tests/test_content_block.py` runs both) keeps an elided
+d' / l' lower case: "Muscat d'Alexandrie", "Nero d'Avola".
+`tests/test_grape_corpus_labels.py`, `tests/test_grape_labels.py` and
+`tests/test_fr_grape_apostrophes.py` pin the rules.
 
 ## Grape identity: lexicon gaps, fuzzy look-alikes, restated names
 
@@ -1942,6 +2079,14 @@ rules, settled on the validator findings of 2026-10-23 (phase C):
   on all 128, 25 sidecar style lists changed, two rosters — Castelfranco
   Emilia's annex Malvasia di Schierano, Vicenza's Raboso).
   `tests/test_it_nonstub_sweetness.py`.
+- **Slovak colours listed sharing one noun, or after "Farba:"** —
+  `jednotny_dokument.colour_list_styles` (2026-11-07): "Farba: biela, ružová
+  a červená", "biele, ružové a červené vína"; never the EU sulphite ceilings
+  ("najviac 150 mg/l pre červené a 200 mg/l pre biele a ružové vína").
+  Stredoslovenská gained its White; Vinohradnícka oblasť Tokaj's two sekt
+  types ("Sekt V. O.", "Pestovateľský sekt") state "biela, ružová a červená"
+  in their own organoleptic description, so the card gained Red and Rosé —
+  the text's statement, not a guess.
 - **The floor reads the declared categories** ([scripts/_lib/wine_categories.py](scripts/_lib/wine_categories.py)).
   A wine without a colour style gets white / red from its grapes' berry colour,
   except a record that declares sparkling categories only (Crémant d'Alsace,
@@ -2104,7 +2249,7 @@ appellation names.
 | audit_empty_grapes.py | wiki/data/aocs.en.*.js + wiki/data/d/en/*.json + scripts/_lib/empty_grapes_overrides.json | (stdout — FLAGGED / INHERIT / REVIEWED / STUB / NON-WINE buckets; `--strict`, `--json PATH`) |
 | audit_parcellaire_gaps.py | raw/inao/parcellaire/*.shp (attribute table, cached to raw/cache/parcellaire-coverage/) + scripts/_lib/parcellaire_carry_forward.json (+ its extracts) + raw/inao/aoc-aop-aires-communes.csv + raw/ign/communes.geojson + raw/inao/cahier-extracted/*.json + scripts/_lib/parcellaire_gap_fills.json | (stdout — aire communes without a parcel row per parcellaire record, classed; gap-fill pins and carried-forward rows APPLIED / STALE; `--strict`, `--json PATH`) |
 | extract_parcellaire_carry_forward.py | raw/inao/parcellaire/<release>_delim-parcellaire-aoc-shp.shp | scripts/_lib/parcellaire_carry_forward/<label>-<release>.geojson.gz (rows of one appellation or denomination, unchanged) |
-| 04_build_maps.py (`--shell-only`: re-emit from raw/cache/stage04-shell-snapshot.pkl) | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/{en,fr,es,nl}/<slug>/index.html (per-appellation entity pages), wiki/{en,fr,es,nl}/appellations/index.html (browse-index hub linking every indexable slug, grouped by country — fixes the entity-page link-graph orphan problem), wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (4 home + 4 browse + 1,638 index slugs × 4 locales), wiki/llms.txt (AI-crawler index), wiki/404.html |
+| 04_build_maps.py (`--shell-only`: re-emit from raw/cache/stage04-shell-snapshot.pkl) | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/{en,fr,es,nl}/<slug>/index.html (per-appellation entity pages), wiki/{en,fr,es,nl}/appellations/index.html (browse-index hub linking every indexable slug, grouped by country — fixes the entity-page link-graph orphan problem), wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (4 home + 4 browse + 1,638 index slugs × 4 locales), wiki/llms.txt (AI-crawler index), wiki/404.html, the files of scripts/_lib/site_root/ (search-console verification pages) |
 
 ### Stage 04 `--shell-only`
 
@@ -4887,7 +5032,12 @@ DE-specific notes:
   den Wein in die Kategorie Perlwein einordnet"; "nicht" negates the verb —
   Rheinburgen's "nicht den für die Angabe „lieblich“ höchstzulässigen Wert
   übersteigen" allows a lieblich wine). The AT table has neither yet; no AT
-  record is on that template.
+  record is on that template. The second (2026-11-07): Bürgstadter Berg's only publication is the
+  2016 Commission decision (OJ C 384, CELEX 32016D1018(01)), which prints the
+  anchor as `doc-ti` paragraphs ("ANHANG", "EINZIGES DOKUMENT") and heads § 7
+  "Wichtigste Keltertrauben"; `DOC_ANCHOR_RE` accepts the class and the role
+  table the heading, so the Einzellage left its May stub (eight varieties,
+  its own link text) instead of inheriting Franken's card.
 - The section-7 body lists varieties one per line as `Canonical name -
   Synonym, …` (e.g. `Spätburgunder - Pinot Noir, Blauburgunder`). The
   German wine corpus has the most prolific set of **breeding-station
@@ -5672,6 +5822,34 @@ Re-runnable per slug or sweep:
 ```
 Cached PDFs at `raw/sk/national-specs/<slug>.pdf` are reused unless
 `--refresh` is passed.
+
+### SK register-fiche roster for a non-stub with a narrow § 7 (2026-11-07)
+
+Stredoslovenská's EU single document (OJ C 122/2020) names one variety in
+§ 7 — Furmint — where the register's 2013 technical file lists ten MAIN and
+thirty OTHER varieties; the card carried one pill (CURATOR_TODO,
+`/validate-cards` 2026-10-23). `augment_sk_records_with_register_fiche`
+([scripts/_lib/augment/sk.py](scripts/_lib/augment/sk.py), after the
+national-spec augmenter, before the roles overlay) gives a non-stub SK parent
+whose document roster is under half the fiche's (`fiche_roster_is_wider`) the
+fiche's roster: the document's own § 7 varieties stay principal, the fiche's
+MAIN join them, its OTHER are the accessories (details carry `source:
+eambrosia-register-fiche`), the record and the shared
+`_REGISTER_FICHE_ROSTER_BY_SLUG` (renamed from `_CZ_FICHE_ROSTER_BY_SLUG` —
+the CZ pattern in reverse, there the fiche is the narrower list) carry the
+provenance, and the card's Sources list the fiche
+(`src_register_fiche`). `fiche_roles.overlay` returns `fiche-roster` for such
+a record (its roles are already the fiche's). Only Stredoslovenská qualifies
+(Skalický rubín's and the two Tokaj fiches carry no split).
+`tests/test_sk_fiche_roster.py`.
+
+The same session read the SK colour statement "Farba: biela, ružová a
+červená" and a list sharing one noun ("biele, ružové a červené vína") —
+`jednotny_dokument.colour_list_styles`, the RO rule of 2026-10-25; the
+compound table had matched "ružové vína" alone, so Stredoslovenská's white
+never read. A list inside an analytical limit ("najviac 150 mg/l pre červené
+a 200 mg/l pre biele a ružové vína", the EU sulphite ceilings every document
+restates) states no colour and is skipped (`_is_analytical`).
 
 ### SK geometry resolution chain (stage 04)
 
@@ -6664,6 +6842,19 @@ MT-specific notes:
   wines"); the card cites it. A red grape no longer adds a rosé. The
   Maltese Islands stub is not wired to its fiche yet (CURATOR_TODO).
 
+### The Maltese Islands IĠT is built from its register fiche (2026-11-07)
+
+The PGI has no OJ publication, so it had been a stub with no roster, colour
+or area on its card, although the register's 2011 single document carries
+them all (`extract_register_fiches.py --country mt`, 2026-10-23). `mt/02`
+`build_record_from_fiche` makes the record of a wine with no HTML cache but a
+fiche sidecar with a roster: the fiche's varieties with their MAIN / OTHER
+tags (10 principal, 46 accessory), its description ("Red, white and rosé
+wines are produced …") and categories read by `parse_styles`, its demarcated
+area and link text; `source.kind` is `eambrosia-register-fiche`, the record
+is not a stub, and stage 04's MT source block emits no EUR-Lex key for it,
+only `register_fiche_url`. `tests/test_mt_fiche_record.py`.
+
 ### MT terroir facts — Wikipedia-primary (the CH/LU model)
 
 The STANDARD AMENDMENT documents restate only *changed* sections, so
@@ -7187,7 +7378,12 @@ on rerun).
 .venv/bin/python -m babel.messages.frontend init -i locale/messages.pot -d locale -l <lang>   # to add a new locale
 ```
 
-After editing a `.po`, just rerun `uv run scripts/04_build_maps.py`.
+After editing a `.po`, just rerun `uv run scripts/04_build_maps.py`. The French-named
+style nodes carry the EU English term in EN and its Dutch equivalent in NL
+since 2026-11-07 — "liqueur wine" / "likeurwijn" (Reg. 1308/2013 Annex VII
+Part II point 3), "straw wine" / "strowijn"; the card judge had read "Vin De
+Liqueur" on Moravské and Východoslovenská as untranslated. *Vin doux naturel*
+is a protected traditional term and keeps its French name in every locale.
 
 ## Search: the regulator's string on screen, derived keys in the index
 
@@ -7421,7 +7617,12 @@ never disagree about the zoom bands:
   [scripts/_lib/content_block.py](scripts/_lib/content_block.py)): the
   zoom-reactive footprint line (`geom_lod_footprint`, shown below z12,
   patched in place on `zoomend` — never re-render the card from a zoom, it
-  would wipe pressed feedback chips and a half-typed note); the
+  would wipe pressed feedback chips and a half-typed note; since 2026-11-07
+  the parcels band has a line of its own, `geom_lod_parcels` — "INAO parcel
+  delimitation; at overview zooms a silhouette generalised at {radius} m" —
+  one node per band, `data-lod-band`, the other hidden, because a
+  parcellaire record's fold held only the footprint line and opened on
+  nothing at z12: Margaux, a visitor's report of the same day); the
   commune-union line `geom_approx_aires_union` ("réunion des {n}
   communes de l'aire délimitée (INAO) ; pas de délimitation parcellaire")
   for plain `aires-csv` / `dgc-village-override` / `communes` records —
@@ -7801,7 +8002,10 @@ author / editorial dates for a generated page).
   only when it is readable in that locale (02c-translated, or written in it —
   an untranslated FR decree boilerplate "Seuls peuvent prétendre…" is not an
   English description); else the meta description. `inLanguage` is the page
-  locale. The `<meta name="description">` / `og:description` are facts
+  locale on the WebSite and WebPage nodes only — schema.org defines it on
+  CreativeWork and Event, and on the Place the validator flagged it
+  UNKNOWN_FIELD on every entity page (Ahrefs, 2026-11-06). The `<meta
+  name="description">` / `og:description` are facts
   first, then the lead: `name, region, country · TERM (SCHEME). Red, white —
   Chardonnay, Pinot Noir. <lead sentence>` clamped to 160 characters (the
   simple styles and three principal grapes: those the record's own facts
@@ -7823,9 +8027,15 @@ author / editorial dates for a generated page).
   then the lead (a stub lead misleads more than none); a summary under
   eight words (a pliego form heading) is no lead;
   a record with neither facts nor summary (the thin CH cantonal AOCs
-  indexed only as parents) names its related denominations instead, so the
-  description is never the bare head line (Bing flagged /en/schwyz at 42
-  characters, 2026-09-26).
+  indexed only as parents, Oberösterreich, the Veneto IGT) names its related
+  denominations instead, so the description is never the bare head line
+  (Bing flagged /en/schwyz at 42 characters, 2026-09-26), and its grape
+  clause grows to as many principal varieties as the budget holds, "… and N
+  other grape varieties" (`provenance_grapes_more`) when cut
+  (`_fill_grape_clause`, 2026-11-07: Ahrefs' 46 descriptions under 100
+  characters were all of this class, 76–99 characters; a record with a lead
+  keeps the three-grape clause, and Schwyz / Zürich, with no roster, keep
+  the denominations tail alone — never template text).
 - The interprofession link (`sources.syndicate`, also a JSON-LD `sameAs`)
   resolves in [scripts/_lib/appellation_urls.py](scripts/_lib/appellation_urls.py):
   by slug, by parent slug, by the FR wine region (`by_bassin` is keyed on
@@ -7883,6 +8093,9 @@ static link layer (all in [scripts/_lib/map_template.py](scripts/_lib/map_templa
   map shell) listing every **index**-classified appellation as a real `<a>`,
   grouped by country and sorted by localized name. The static crawl hub.
   A namespace `assert "appellations" not in aocs` guards the path collision.
+  It carries the shell's social-card block (`og:image` 1200×630 +
+  `twitter:*`) since 2026-11-07 — the four hubs were the only pages without
+  it (Ahrefs, `tests/test_browse_page.py`).
   Since 2026-10-21 it reads like the About dialog: the map's design tokens,
   sliced from the shell's style block (`_design_tokens_css` /
   `_static_page_css`, shared with the 404 page — both had kept the
@@ -7943,6 +8156,18 @@ static link layer (all in [scripts/_lib/map_template.py](scripts/_lib/map_templa
   indexable `/valtenesi` pages from 2026-09-20 had survived two renames).
 - **`wiki/404.html`** (`_write_404_page`) — self-contained noindex branded
   error page; Bunny serves it via `Custom404FilePath`.
+- **Root-level verification files** — a search console's ownership file
+  (Naver's `navera60fce37d9e94743bbf6483eed322080.html` and Seznam's
+  `seznam-wmt-BrZt5ppWxq6mCwzBgnu0wNQXQ8USZoY4.txt`, both 2026-11-06; Seznam
+  names the apex host, which 301s to www) is
+  checked in under `scripts/_lib/site_root/` and copied into `wiki/` by stage
+  04 beside the other root files (`copy_site_root_files` in
+  [scripts/_lib/site_root_files.py](scripts/_lib/site_root_files.py); the
+  directory is a shell path, so `--shell-only` re-emits it). deploy.py's
+  `public_url` is None for a root-level `.html` other than `index.html`, so
+  such a file is uploaded but never fingerprinted or submitted to IndexNow.
+  The IndexNow key file is the exception: it stays in `.env` (see
+  `write_seo_files`).
 - **Data-updated date** — only the 5 homepages carry it (`about_updated_html`
   in the About dialog). `about_dialog_html` is built per-`_fill` (date for the
   homepage, dateless for entities) instead of living in `page_shell`, so a
@@ -8096,15 +8321,26 @@ dropped 2026-09-16 as redundant): one tap on an aspect
 chip (boundary / grapes / facts / name / sources / other) fires
 `Feedback Flagged {slug, aspect, geom_source, …}` (a second tap un-flags it:
 `Feedback Retracted`), and an optional note goes out as `Feedback Note {slug,
-aspect, note}` — the single prop that carries visitor text (≤ 500 chars,
-self-hosted). A blocked tracker — localhost included — falls back to the
+aspect, note, credit}` — `note` (≤ 500 chars) and `credit` (≤ 60) are the two
+props that carry visitor text (self-hosted). **Credit (2026-10-31):** the box
+a chip opens also offers "Your name or pseudonym (optional)" under a hint that
+says it is public; Send carries it as `credit` (a name with no note still goes
+out — it credits that card's flags), never a chip tap; the browser remembers it
+(`owm_feedback_credit`, cleared by sending an empty field). A name reaches the
+site only through the checked-in [scripts/_lib/contributors.json](scripts/_lib/contributors.json)
+(`_lib/contributors.py`), added at triage for a report that was acted on —
+never an offensive name, an impersonation, contact details or a link; removed
+on request. The About dialog shows a "Thanks" section once the table has a
+name, and its privacy paragraph states the exception (kept to thank you,
+removed by e-mail). A blocked tracker — localhost included — falls back to the
 prefilled e-mail link (chip shown pressed, nothing persisted), and `track()` echoes events
 to the console; a dev site keyed on `localhost` in `PLAUSIBLE_SITES` makes
 local testing land in a dashboard. The stub card's "help us find it" opens the same row on
 `sources`. The sidebar's GitHub-issue link is gone (clicks, no issues). The
 curation view is [scripts/feedback_report.py](scripts/feedback_report.py)
 (`PLAUSIBLE_API_KEY` in the repo-root `.env`): net flags per
-appellation × aspect against panel opens, plus every note verbatim.
+appellation × aspect against panel opens, every note verbatim with its credit,
+and the names offered for credit, marked when contributors.json lists them.
 
 ## Validators (detectors over the build, never editors)
 

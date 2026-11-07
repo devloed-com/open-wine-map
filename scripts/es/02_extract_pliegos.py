@@ -974,6 +974,9 @@ def sweetness_type_styles(sections: dict[str, str], titles: dict[str, str]) -> s
                     found.add("semi-sweet")
                 elif w.startswith("dulce"):
                     found.add("sweet")
+                elif w.startswith("semiseco"):
+                    # decision 2026-11-07: Semi-dry under the same list rule
+                    found.add("semi-dry")
     return found
 
 

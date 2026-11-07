@@ -8,8 +8,9 @@ rule for a variety ("a bort legalább 6 hónapig fahordóban kell érlelni,
 kivéve: Blauburger, Kadarka, Kékoportó, Turán fajták borait" — Eger's §7
 has no Turán; Prosecco's §5 allows Chardonnay and the three Pinots up to
 15 %). A variety the regulator names as a type or in a rule is a permitted
-variety, so it joins the roster as an *accessory*, tagged by the section
-that names it (`section-4-type` / `section-5-rule`) — the RO yield-table
+variety, so it joins the roster tagged by the section that names it
+(`section-4-type`, a varietal wine type — principal since 2026-11-07;
+`section-5-rule`, a production rule — accessory) — the RO yield-table
 precedent (`add_yield_table_varieties`).
 
 Only an exact, curated lexicon surface counts (`is_curated_surface`: a
@@ -164,19 +165,26 @@ def section_varieties(roles: dict, have: set[str], wine_name: str = "") -> list[
             if not _reads_as_a_name(text, surface):
                 continue
             seen.add(hit.slug)
+            # a varietal wine type of § 4 ("Piemonte Sauvignon", a wine of at
+            # least 85 % of the variety) has that variety as its main grape —
+            # principal, as the MASAF Article 1 reader reads it (decision
+            # 2026-11-07; until then accessory, graded misleading by the card
+            # validator); a § 5 production rule's variety stays accessory
             out.append({
-                "slug": hit.slug, "name": _written_form(text, surface), "role": "accessory",
+                "slug": hit.slug, "name": _written_form(text, surface),
+                "role": "principal" if source == "section-4-type" else "accessory",
                 "colour": hit.colour, "source": source,
             })
     return out
 
 
 def add_section_varieties(grapes: dict, roles: dict, wine_name: str = "") -> list[str]:
-    """Append the §4 / §5 varieties to `grapes` in place (accessory + details).
-    Returns the added slugs."""
+    """Append the §4 / §5 varieties to `grapes` in place (principal for a § 4
+    varietal type, accessory for a § 5 rule; details). Returns the added slugs."""
     have = set(grapes.get("principal") or []) | set(grapes.get("accessory") or [])
     added = section_varieties(roles, have, wine_name)
+    for d in added:
+        grapes.setdefault(d["role"], []).append(d["slug"])
     if added:
-        grapes.setdefault("accessory", []).extend(d["slug"] for d in added)
         grapes.setdefault("details", []).extend(added)
     return [d["slug"] for d in added]

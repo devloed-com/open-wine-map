@@ -156,6 +156,7 @@ def main() -> int:
     no_colour = Counter()       # has no white/red/rose style
     fixable = Counter()         # no colour + wine + grapes resolve to a colour
     sparkling_only = Counter()  # no colour, sparkling styles only (by design)
+    floor_off = Counter()       # no colour, liqueur wine only with a mixed roster (by design)
     fix_examples: dict[str, list[str]] = defaultdict(list)
     honest_examples: dict[str, list[str]] = defaultdict(list)
 
@@ -183,7 +184,9 @@ def main() -> int:
             no_colour[c] += 1
             if styles and styles <= SPARKLING_FAMILY:
                 sparkling_only[c] += 1
-            if p.get("is_wine") == "1" and has_grapes and floor_add(grapes, styles, vivc):
+            if p.get("styles_floor_off"):
+                floor_off[c] += 1  # liqueur wine only, mixed roster (by design, 2026-11-07)
+            elif p.get("is_wine") == "1" and has_grapes and floor_add(grapes, styles, vivc):
                 fixable[c] += 1
                 if len(fix_examples[c]) < 6:
                     fix_examples[c].append(p.get("slug", "?"))
@@ -215,6 +218,9 @@ def main() -> int:
                   file=sys.stderr)
         print(file=sys.stderr)
 
+    if sum(floor_off.values()):
+        print(f"LIQUEUR-ONLY, MIXED ROSTER — no floor colour by design  [{sum(floor_off.values())}]  "
+              + ", ".join(f"{c}={floor_off[c]}" for c in sorted(floor_off)), file=sys.stderr)
     if sum(sparkling_only.values()):
         print(f"SPARKLING-ONLY — sparkling styles, no colour  [{sum(sparkling_only.values())}]  "
               f"(declared sparkling categories only; the floor adds no colour)", file=sys.stderr)

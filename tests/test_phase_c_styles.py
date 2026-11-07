@@ -226,7 +226,8 @@ def test_es_sweetness_levels_listed_as_types():
     descr = {"6": "Descripción del vino o vinos"}
     s = set(es02.parse_styles_es({"6": "Producto vitivinícola Vinos Semisecos, Semidulces y Dulces, "
                                        "blancos, rosados y tintos"}, descr))
-    assert {"semi-sweet", "sweet"} <= s and "semi-dry" not in s
+    # decision 2026-11-07: Semi-dry under the same list rule
+    assert {"semi-dry", "semi-sweet", "sweet"} <= s
     s = set(es02.parse_styles_es({"5": "Vinos blancos, rosados, y tintos jóvenes, semisecos, semidulces y, dulces."},
                                  {"5": "Prácticas vitivinícolas"}))
     assert {"semi-sweet", "sweet"} <= s
@@ -269,8 +270,9 @@ def test_gr_wine_type_headers_declare_sweet_and_semi_sweet_types():
 def test_hu_sweetness_lists_declare_the_types():
     from _lib.hu.egyseges_dokumentum import sweetness_styles
     assert sweetness_styles("száraz, félédes vagy édes, lágy karakterű") == {"semi-sweet", "sweet"}
+    # decision 2026-11-07: Semi-dry under the same list rule (Dry is never rendered)
     assert sweetness_styles("Száraz, félszáraz, félédes és édes kategóriában") == {
-        "semi-sweet", "sweet"}
+        "semi-dry", "semi-sweet", "sweet"}
     assert sweetness_styles("száraz vagy félédes borok") == {"semi-sweet"}
     # a sweetish taste, sweet spices, sweetening: no type
     assert sweetness_styles("édeskés ízérzet, édes fűszerek, musttal történő édesítés") == set()
@@ -378,3 +380,29 @@ def test_es_sweetness_labelling_terms_are_not_wine_types():
     assert {"sweet", "semi-sweet"} <= set(es02.parse_styles_es(
         {"B.1": bailen, "C.3": "…"}, {"B.1": "Principales características analíticas",
                                      "C.3": "Vinos semisecos, semidulces y dulces"}))
+
+
+def test_liqueur_only_declarations_and_the_floor_wiring():
+    # decision 2026-11-07: a liqueur-only record takes a floor colour only
+    # from a roster of one colour
+    madeira = {"country": "pt", "section_titles": {"1": "Categorias de produtos vitivinícolas"},
+               "sections": {"1": "3. Vinho licoroso"}}
+    jerez = {"country": "es", "section_titles": {"3": "Categorías de productos vitícolas"},
+             "sections": {"3": "3. Vino de licor"}}
+    rivesaltes = {"country": "fr", "categories": ["Vin doux naturel"]}
+    dealu_mare = {"country": "ro", "section_titles": {"3": "Categorii de produse vitivinicole"},
+                  "sections": {"3": "1. Vin\n3. Vin licoros\n5. Vin spumant de calitate"}}
+    assert wc.liqueur_only(madeira) and wc.liqueur_only(jerez) and wc.liqueur_only(rivesaltes)
+    assert not wc.liqueur_only(dealu_mare)
+    assert not wc.liqueur_only({"country": "fr", "categories": ["Vin tranquille"]})
+    src = (ROOT / "scripts" / "04_build_maps.py").read_text(encoding="utf-8")
+    assert "liqueur_only=liq" in src and "if liqueur_only and len(add) > 1:" in src
+    assert '"styles_floor_off"' in (ROOT / "scripts" / "audit_styles.py").read_text(encoding="utf-8")
+
+
+def test_gr_and_cy_augmenters_merge_the_category_role():
+    # Koumandaria's spec declares "3. Οίνος λικέρ / 15. Οίνος από λιαστά σταφύλια";
+    # without the role the record declared nothing and the floor painted it red
+    for cc in ("gr", "cy"):
+        src = (ROOT / "scripts" / "_lib" / "augment" / f"{cc}.py").read_text(encoding="utf-8")
+        assert 'for role in ("category", "description", "geo_area", "grape_varieties", "link_to_terroir"):' in src

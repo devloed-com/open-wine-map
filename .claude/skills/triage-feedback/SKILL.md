@@ -48,6 +48,13 @@ The recurring triage session of 2026-09-22 → 2026-10-22 as a skill
    corpus-wide count for a rendering rule.
 4. **Fix upstream**, re-extract with a snapshot and a per-record diff
    (`scripts/diff_records.py`), rebuild, re-run the validator on the slug.
-5. **Write** `docs/feedback-triage-<date>.md` (what was flagged, what was
-   wrong, isolated or broader, what changed) and the CURATOR_TODO rows for what
-   is queued; save the memory note (`project_feedback_triage_<date>`).
+5. **Credit** (the report's "Credits offered" section): for each name whose
+   report was acted on (fixed, or confirmed and queued), append
+   `{name, added, via, slugs, report}` to `scripts/_lib/contributors.json`,
+   the name exactly as given. Skip an offensive name, an impersonation, contact
+   details or a link; remove a name on request. The About dialog's thanks list
+   follows on the next build (`04_build_maps.py --shell-only` is enough).
+6. **Write** `docs/feedback-triage-<date>.md` (what was flagged, what was
+   wrong, isolated or broader, what changed, who is credited) and the
+   CURATOR_TODO rows for what is queued; save the memory note
+   (`project_feedback_triage_<date>`).

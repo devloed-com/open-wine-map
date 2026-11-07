@@ -163,6 +163,8 @@ def test_indexnow_urls_are_the_pages_own_canonicals(tmp_path):
     assert deploy.public_url("nl/appellations/index.html") == base + "/nl/appellations/"
     assert deploy.public_url("en/mercurey/index.html") == base + "/en/mercurey"
     assert deploy.public_url("404.html") is None
+    assert deploy.public_url("navera60fce37d9e94743bbf6483eed322080.html") is None
+    assert deploy.public_url("en/legacy.html") == base + "/en/legacy.html"
     assert deploy.public_url("assets/app.en.0123456789.js") is None
 
     (tmp_path / "en" / "mercurey").mkdir(parents=True)

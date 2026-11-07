@@ -29,8 +29,11 @@ export function searchNormalize(s) {
 // "Cabernet Sauvignon" title case), and the slug fallback is pure
 // lowercase — normalising here makes pills and filter entries
 // consistent regardless of source.
+// An elided article stays lower case and the word after it is capitalised:
+// "Muscat d'Alexandrie", "Nero d'Avola", "Len de l'El" (2026-10-30).
 export function toTitleCase(s) {
-  return s.replace(/(?:^|[\s\-'(])\p{L}/gu, c => c.toUpperCase());
+  return s.replace(/(?:^|[\s\-'’(])\p{L}/gu, c => c.toUpperCase())
+    .replace(/([\s(])([DL])(?=['’]\p{L})/gu, (m, a, b) => a + b.toLowerCase());
 }
 
 // A scheme / traditional term as typed ("DOCa", "Vino de Pago", "it:docg")

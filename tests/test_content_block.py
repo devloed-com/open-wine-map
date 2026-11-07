@@ -28,6 +28,7 @@ from _lib.content_block import (  # noqa: E402
     canonical_equals_cahier,
     counted_units,
     render_content_block,
+    to_title_case,
 )
 
 # Minimal label catalog — every key content_block.py reads, with fmt
@@ -217,6 +218,33 @@ def test_canonical_bracket_rule_mirrored_in_app_js() -> None:
     out = subprocess.run([shutil.which("node"), "-"], input=prog, capture_output=True,
                          text=True, check=True)
     assert json.loads(out.stdout) == [same for _c, _h, same in _BRACKET_PAIRS]
+
+
+_TITLE_CASES = [
+    ("muscat d'alexandrie", "Muscat d'Alexandrie"),
+    ("nero d’avola", "Nero d’Avola"),
+    ("len de l'el", "Len De l'El"),
+    ("pineau d'aunis", "Pineau d'Aunis"),
+    ("muscat à petits grains", "Muscat À Petits Grains"),
+    ("moscatel de alejandría", "Moscatel De Alejandría"),
+    ("d'artagnan", "D'Artagnan"),
+    ("cabernet-sauvignon", "Cabernet-Sauvignon"),
+]
+
+
+def test_title_case_keeps_an_elided_article_lower_case() -> None:
+    for raw, want in _TITLE_CASES:
+        assert to_title_case(raw) == want, raw
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_title_case_mirrored_in_the_query_core() -> None:
+    core = (ROOT / "scripts/_lib/assets/query_core.mjs").as_uri()
+    prog = (f"const {{ toTitleCase }} = await import({json.dumps(core)});\n"
+            f"process.stdout.write(JSON.stringify({json.dumps([r for r, _ in _TITLE_CASES])}.map(toTitleCase)));")
+    out = subprocess.run([shutil.which("node"), "--input-type=module", "-"], input=prog,
+                         capture_output=True, text=True, check=True)
+    assert json.loads(out.stdout) == [w for _, w in _TITLE_CASES]
 
 
 def test_sub_denomination_line() -> None:
