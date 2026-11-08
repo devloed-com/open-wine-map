@@ -1358,6 +1358,20 @@ Triage doc: [docs/feedback-triage-2026-10-30.md](docs/feedback-triage-2026-10-30
 | 🟡 | FR aire lists, 27 items in ~15 records | prose of section IV read as list items: "de la qualité" from "l'Institut national de l'origine et de la qualité", "l'aire parcellaire délimitée est celle approuvée …", "dans les communes suivantes du département de la Marne : …" | `by_dept` / `_list_paragraph_after` take a paragraph that continues past the list; a lowercase-initial token in the list form is prose (but IGP layouts carry legitimate lowercase tokens, see `_clean_commune_tokens`) — needs its own sweep. Shown on the wiki pages only. |
 | ✅ deployed 2026-10-30 | grape names with an elided article (FR, 161 records): `muscat-d-alexandrie` 93, `pineau-d-aunis` 50, `roussette-d-ayze` 43, `len-de-l-el` 25, `nero-davola` 12, `rayon-d-or` 11 | seen in the live MCP answer for Manchuela: "Muscat D Alexandrie"; the FR roster reader's word splitter takes the apostrophe for a separator, so the stored name, the pill and the corpus label read "muscat d alexandrie" | `_with_source_apostrophes` in `grape_lexicon.py` stores the source spelling (the matched words stay space-joined, so no binding moves); Title Case keeps an elided d' / l' lower case ("Muscat d'Alexandrie", "Nero d'Avola") in `query_core.mjs` and `content_block.py`. FR re-extracted in a clean worktree with the current code: 161 records, names only. |
 
+### Visitor flags of 2026-10-30 → 2026-11-08 (`feedback_report.py --range 30d`: 10 new flags on 5 cards, 6 retracted, no note; 4 net — Bullas name / facts / grapes, Wachau grapes)
+
+Triage doc: [docs/feedback-triage-2026-11-08.md](docs/feedback-triage-2026-11-08.md).
+
+| | slug(s) | finding | failure mode / recipe |
+|---|---|---|---|
+| ✅ fixed 2026-11-08 (not deployed) | `bullas` — grapes (en, zone z8.4, 2026-11-03) | all 15 varieties shown principal where the pliego says "se considera como principal la Monastrell en tintas y la Macabeo entre las blancas" (card validator: misleads) | broader, 6 ES records: the sentence after the roster (`_apply_principal_designation` — Bullas, Lebrija, Málaga, Valle del Miño-Ourense); the singular "principal:" header `principales?` never matched (Valtiendas: Tempranillo accessory); "secundarias" was no role word (Castilla y León's 40). Rosters changed roles on 8 records. |
+| ✅ fixed 2026-11-08 (not deployed) | `bullas` — styles (validator) | no Fortified / Vin de liqueur, no Sparkling, though the pliego lists "blancos, rosados, tintos, de licor y espumosos" | broader, 13 ES records named a type the styles lacked; the type-list sentence, bulleted type lines, the EU category cited by number or listed, a capitals type heading. 46 style lists grew (29 parents), every pill checked against the category list or type header of its text. |
+| ✅ fixed 2026-11-08 (not deployed) | 85 of the 90 EUR-Lex ES records (`valencia`, `calatayud`, `campo-de-borja`, `islas-canarias`, `montsant`, `rias-baixas`, `yecla`, `montilla-moriles` …) | the description's nested numbered type headers shadowed the real sections read last-wins: no categories section, Valencia's "5. Vino espumoso aromático de calidad" overwritten by "5. Prácticas vitivinícolas", Montsant's `description` role was its link text (its 11 "§4 varieties" of 2026-10-24 were the link's prose) | `_template_headers` in `es/02`: template titles only, monotonic, sub-numbers of the open section; numbered type lines read from the body. Montsant keeps 4 principal from §7 and takes the INCAVI pliego's 12 as accessories (sidecar delta recomputed). |
+| ✅ no defect | `bullas` — name, facts (en) | card validator (Opus, en): name correct, terroir facts "track the pliego closely"; the rebuilt card re-graded with 0 findings (was do-not-trust, 3 misleading) | — |
+| 🟡 queued | `wachau` — grapes (en, zone z8.2, 2026-11-07, not retracted); `kremstal` all four aspects flagged and retracted the same hour | card validator "trust": the roster (Grüner Veltliner, Riesling) is the EU single document's §7 "Wichtigste Keltertraubensorten". The BML Produktspezifikation §f names them "Hauptsorten" and allows 17 Gebietswein varieties (Weißer / Grauer Burgunder, Chardonnay, Neuburger, Muskateller, Sauvignon blanc, Traminer, Frühroter / Roter Veltliner, Müller-Thurgau, Muskat Ottonel, Gemischter Satz, Blauer Burgunder, St. Laurent, Zweigelt), 9 for Ortswein, 2 for Riedenwein | **AT national-spec layer**: 17 of 30 AT cards carry ≤ 2 grapes for the same reason. All 30 (31 files) Produktspezifikationen are linked from `https://www.bmluk.gv.at/themen/landwirtschaft/landwirtschaft-in-oesterreich/pflanzliche-produktion/wein/Weinherkunft.html` (relative `/dam/jcr:<uuid>/<Name> Produktspezifikation.pdf`; the Wachau corrigendum C/2025/90060 cites the PDF as the spec in force), lettered a–i template, §f the roster with "Hauptsorten" → principal and the Gebietswein list → accessory. Scaffold with `/national-spec-layer at` (01c / `_lib/at/produktspezifikation.py` / 02f / six stage-04 hooks). Weinviertel (Grüner Veltliner only) stays one grape by law. |
+| 🟡 | `wachau` terroir facts (validator, defective) | the medieval-terraces fact appears in natural factors and again as the only human-factors bullet; the dedupe pass keeps both (different lead words, distinct quotes) | `rerun_terroir_facts.py` scoped to `wachau` (the gate's `restates` verdict), or a do-not-claim entry. |
+| ✅ no defect | `eisenberg`, `monteregio-di-massa-marittima` — boundary (en, 2026-11-05, both retracted within the hour) | Eisenberg is the Bezirke Oberwart, Güssing, Jennersdorf of its text (72 Gemeinden, ~1,460 km²); Monteregio the Tuscany geoportal zone (~800 km²); `audit_geometry_vs_text` ABOVE-COMMUNE / NO-TEXT | — |
+
 ### Simple-mode polygons carry open water, and the panel does not say the shape is the commune — 🟡 disclosure + footprint on branch `feat/zoom-lod` (2026-09-23), water mask still open
 
 - **Branch `feat/zoom-lod` (2026-09-23, not merged):** zoom now picks the geometry instead of the mode — below z12 the 1,259 French parcel-level records draw a generalised vineyard footprint (250 m morphological closing of the INAO parcellaire, `scripts/_lib/vineyard_envelope.py`; median 1.3× the parcels vs 5–8× for the commune union), from z12 the parcels; the commune union is no longer drawn for them, which removes the water for the 32 records whose twin is parcellaire (Saint-Estèphe 26 % estuary → 0). Every card now says what the polygon is: the zoom-reactive footprint line, a "réunion des {n} communes, plans d'eau compris" line for plain `aires-csv` / `dgc-village-override` / `communes` records (the 97 water records that no envelope can reach — every IGP, Champagne), and a zone-source line for the other countries (geoportal / MAPA / Bétard / administrative union). `Feedback *` and `Appellation Viewed` carry `lod` + `zoom`. Audit: `scripts/audit_vineyard_envelopes.py` (`--water` measures BD TOPO water, rivers included, inside the footprint's added area).
@@ -2296,6 +2310,20 @@ Bouvier, Goldburger, Rathay, Blütenmuskateller (+ Grauburgunder →
 Pinot Gris). Re-run `scripts/at/02_extract_pliegos.py` →
 `scripts/02g_fetch_vivc.py` after any edit. One residual junk token
 (`"4"`) in `raw/at/extraction-unknowns.json` — ignorable.
+
+### Grape rosters — the single document lists the Hauptsorten only — 🟡 national-spec layer (2026-11-08)
+
+A visitor flagged Wachau's two-grape roster (2026-11-07). The EU Einziges
+Dokument §7 "Wichtigste Keltertraubensorten" names the main varieties; the
+BML Produktspezifikation (§f) names them "Hauptsorten" and lists the whole
+authorised roster per tier (Wachau: 17 Gebietswein, 9 Ortswein, 2
+Riedenwein varieties). 17 of 30 AT cards carry ≤ 2 grapes (Mittelburgenland,
+Weinviertel, Weststeiermark 1; Bergland, Eisenberg, Kärnten, Kremstal,
+Neusiedlersee, Niederösterreich, Rosalia, Steirerland, Tirol, Traisental,
+Vorarlberg, Wachau, Weinland, Wien 2). All 30 PDFs (31 files, Eisenberg
+twice) are linked from the BML Weinherkunft page (see the 2026-11-08 triage
+rows in the cross-country feedback section for the URL pattern and the
+scaffold recipe). Weinviertel is Grüner Veltliner only by its DAC rule.
 
 ### Appellation organisation URLs — ✅ 32 / 32 curated (2026-05-22)
 

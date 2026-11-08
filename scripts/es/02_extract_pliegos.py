@@ -40,6 +40,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 from dataclasses import replace
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -299,13 +300,66 @@ def extract_sections(html: str) -> tuple[dict[str, str], dict[str, str]]:
     headers = find_section_offsets(html)
     if not headers:
         return {}, {}
+    accepted = _template_headers(headers)
+    if len(accepted) < 3:
+        accepted = headers
     bodies: dict[str, str] = {}
     titles: dict[str, str] = {}
-    for i, (num, title, _hstart, hend) in enumerate(headers):
-        end = headers[i + 1][2] if i + 1 < len(headers) else len(html)
+    for i, (num, title, _hstart, hend) in enumerate(accepted):
+        end = accepted[i + 1][2] if i + 1 < len(accepted) else len(html)
         bodies[num] = strip_tags(html[hend:end]).strip()
         titles[num] = title
     return bodies, titles
+
+
+# The single document numbers its sections once; the description nests one
+# numbered header per wine type ("1. Vino blanco … 5. Vino espumoso aromático
+# de calidad blanco … 7. Vino blanco, rosado y tinto etiquetado con la mención
+# «Petit Valencia»", Valencia) and the categories section lists its items the
+# same way, so read last-wins the nested headers shadowed the real sections:
+# 85 of the 90 EUR-Lex records had no categories section and Valencia's
+# sparkling type sat under a "5" that "5. Prácticas vitivinícolas" overwrote
+# (2026-11-08). A top-level header is a section when its title is one of the
+# template's and its number is higher than the last section's; a sub-number
+# belongs to the open section; everything else stays in the body, where the
+# style reader reads the type lines.
+_TEMPLATE_TITLE_KEYWORDS = (
+    "nombre", "denominación del producto", "denominacion del producto",
+    "tipo de indicación", "tipo de indicacion", "país al que", "pais al que",
+    "clasificación del producto", "clasificacion del producto",
+    "categorías de producto", "categorias de producto", "categoría de producto",
+    "categoria de producto",
+    "descripción del", "descripcion del", "descripción de los", "descripcion de los",
+    "prácticas vitivinícolas", "practicas vitivinicolas",
+    "prácticas enológicas", "practicas enologicas",
+    "zona geográfica", "zona geografica", "definición breve", "definicion breve",
+    "variedad", "uvas de vinificación", "uvas de vinificacion",
+    "vínculo", "vinculo", "condiciones complementarias", "otros requisitos",
+)
+
+
+def _template_headers(
+    headers: list[tuple[str, str, int, int]],
+) -> list[tuple[str, str, int, int]]:
+    accepted: list[tuple[str, str, int, int]] = []
+    last_top = 0
+    for num, title, hstart, hend in headers:
+        parts = num.split(".")
+        if not all(p.isdigit() for p in parts):
+            continue
+        top = int(parts[0])
+        if len(parts) == 1:
+            tlow = title.lower()
+            # a wine-type header names its wine first ("Vinos de licor (categoría
+            # 3). Vinos generosos", Montilla-Moriles); no template title does
+            if tlow.startswith("vino"):
+                continue
+            if top > last_top and any(k in tlow for k in _TEMPLATE_TITLE_KEYWORDS):
+                accepted.append((num, title, hstart, hend))
+                last_top = top
+        elif top == last_top:
+            accepted.append((num, title, hstart, hend))
+    return accepted
 
 
 # ES pliegos list grape varieties in two shapes:
@@ -317,13 +371,21 @@ def extract_sections(html: str) -> tuple[dict[str, str], dict[str, str]]:
 # ("Variedades de uvas blancas:" / "Variedades tintas:") subdivide the
 # section. The parser walks line-by-line so it works for both templates.
 
+# "principal(?:es)?", not "principales?": the singular never matched, so
+# Valtiendas' "- Variedad principal: Tempranillo." kept the accessory role of
+# the line before it (2026-11-08). "secundarias" is Castilla y León's word for
+# the accessory list.
+_ROLE_WORDS = (
+    r"preferentes?|principal(?:es)?|permitidas?|recomendadas?|autorizadas?|accesorias?"
+    r"|complementarias?|secundarias?"
+)
 _ROLE_HEADER_RE = re.compile(
-    r"^\s*-?\s*(preferentes?|principales?|permitidas?|recomendadas?|autorizadas?|accesorias?|complementarias?)\s*:?\s*$|"
-    r"^\s*-?\s*(preferentes?|principales?|permitidas?|recomendadas?|autorizadas?|accesorias?|complementarias?)\s*:\s*",
+    rf"^\s*-?\s*({_ROLE_WORDS})\s*:?\s*$|"
+    rf"^\s*-?\s*({_ROLE_WORDS})\s*:\s*",
     re.IGNORECASE,
 )
 _INLINE_ROLE_RE = re.compile(
-    r"\b(preferentes?|principales?|permitidas?|recomendadas?|autorizadas?|accesorias?|complementarias?)\s*:\s*",
+    rf"\b({_ROLE_WORDS})\s*:\s*",
     re.IGNORECASE,
 )
 _COLOUR_HEADER_RE = re.compile(
@@ -361,6 +423,7 @@ _ROLE_BY_KEYWORD = {
     "autorizada": "accessory",
     "accesoria": "accessory",
     "complementaria": "accessory",
+    "secundaria": "accessory",
 }
 _COLOUR_BY_KEYWORD = {
     "tinta": "noir",
@@ -376,7 +439,7 @@ _GRAPE_DROP_TOKENS = {
     "principal", "principales", "preferentes", "preferente",
     "autorizada", "autorizadas", "accesoria", "accesorias",
     "complementaria", "complementarias", "permitidas",
-    "recomendada", "recomendadas",
+    "recomendada", "recomendadas", "secundaria", "secundarias",
     "tinta", "tintas", "blanca", "blancas", "negra", "negras",
     "rosada", "rosadas", "rosa", "rosas",
     "vino", "vinos", "uva", "uvas", "tipo", "tipos",
@@ -602,7 +665,7 @@ def _missing_comma_entries(
 
 _HEADER_LINE_RE = re.compile(
     r"^[-•·*]|"
-    r"^(?:preferent|principal|permitid|recomendad|autorizad|accesori|complementari)|"
+    r"^(?:preferent|principal|permitid|recomendad|autorizad|accesori|complementari|secundari)|"
     r"^[a-z][.)]\s|"          # "a. Variedades de uvas blancas" / "b) Variedades de uva tinta"
     r"^\d+[.)]\s|"            # "1. La elaboración..."
     r"variedades?\s+(?:de\s+uvas?\s+)?(?:tinta|blanca|negra|rosa)s?\b",
@@ -655,7 +718,12 @@ def _stitch_lines(text: str) -> list[str]:
             bool(out) and not is_header
             and "," in prev and not prev.rstrip().endswith((".", ";"))
         )
-        is_phrase_continuation = bool(out) and bool(_DANGLING_CONNECTOR_RE.search(prev))
+        # "… de las variedades «Pero\nXimén» (Pedro Ximénez)" (Málaga): a name
+        # opened with « and not closed continues on the next line; read apart,
+        # "Ximén" was a pill of its own (2026-11-08).
+        is_phrase_continuation = bool(out) and (
+            bool(_DANGLING_CONNECTOR_RE.search(prev)) or prev.count("«") > prev.count("»")
+        )
         if is_indent_continuation or is_list_continuation or is_phrase_continuation:
             out[-1] = (prev + " " + stripped).strip()
         else:
@@ -686,6 +754,13 @@ def _emit_grape_with_split(
                 "colour": entry["colour"],
                 "role": role,
             })
+
+
+# Top-level separators inside a roster line: the comma, the semicolon, " y ",
+# and a sentence end before a capital ("… y Verdejo. Variedades secundarias:")
+# — never the period of "(sin. Macabeo)".
+_TOKEN_SPLIT_RE = re.compile(r"[,;]|\s+y\s+|(?<!\bsin)\.\s+(?=[A-ZÁÉÍÓÚÑ«])")
+_GUILLEMET_NAME_RE = re.compile(r"«([^»]{2,60})»")
 
 
 def parse_grapes(section_text: str) -> dict:
@@ -767,9 +842,20 @@ def parse_grapes(section_text: str) -> dict:
                         role = v
                         break
 
-            for tok in re.split(r"[,;]|\s+y\s+", seg):
+            for tok in _TOKEN_SPLIT_RE.split(seg):
                 tok = tok.strip(" .:")
                 if not tok:
+                    continue
+                # A sentence introducing the roster, the first name inside it
+                # in guillemets: "… con uvas de las variedades «Pero Ximén»
+                # (Pedro Ximénez)" (Málaga) — the quoted names are the
+                # candidates, the prose around them is not.
+                quoted = _GUILLEMET_NAME_RE.findall(tok)
+                if quoted and len(tok.split()) > 6:
+                    for name in quoted:
+                        entry = _normalise_grape_entry(name, ambient_colour, allow_lowercase=in_roster)
+                        if entry is not None:
+                            _emit_grape_with_split(entry, role, seen_slugs, details)
                     continue
                 m_label = _INLINE_COLOUR_LABEL_RE.match(tok)
                 if m_label:
@@ -779,6 +865,13 @@ def parse_grapes(section_text: str) -> dict:
                     tok = tok[m_label.end():].strip(" .:")
                     if not tok:
                         continue
+                # "Picapoll Blanco o Extra" (Cangas): after " o " the pliego
+                # gives the same variety's other name, so an alternative that
+                # resolves to another cultivar — "Extra" is a VIVC synonym of
+                # Clairette — is not a second pill unless a regulator vouches
+                # for the spelling (2026-11-08).
+                narrative = bool(re.search(r"\s+[ou]\s+", tok, re.IGNORECASE))
+                first_slug: str | None = None
                 for synonym in _split_synonym_group(tok):
                     entry = _normalise_grape_entry(
                         synonym, ambient_colour, allow_lowercase=in_roster,
@@ -789,10 +882,17 @@ def parse_grapes(section_text: str) -> dict:
                         ):
                             _emit_grape_with_split(half, role, seen_slugs, details)
                         continue
+                    if (narrative and first_slug and entry["slug"] != first_slug
+                            and not is_curated_surface(synonym)):
+                        continue
                     _emit_grape_with_split(entry, role, seen_slugs, details)
+                    if first_slug is None:
+                        first_slug = entry["slug"]
                     # Subsequent synonyms inside the same token alias onto
                     # the same canonical slug; the dedup loop swallows them.
             i += 2
+
+    _apply_principal_designation(text, details)
 
     return {
         "principal":   [e["slug"] for e in details if e["role"] == "principal"],
@@ -800,6 +900,69 @@ def parse_grapes(section_text: str) -> dict:
         "observation": [e["slug"] for e in details if e["role"] == "observation"],
         "details":     details,
     }
+
+
+# A sentence after the roster names the principal varieties: "De estas
+# variedades se considera como principal la Monastrell en tintas y la Macabeo
+# entre las blancas" (Bullas), "De ellas son consideradas principales Palomino
+# y Palomino Fino" (Lebrija), "de las que se consideran preferentes «Pero
+# Ximén» y las «Moscateles»" (Málaga), "un mínimo del 60 % de uva de las
+# siguientes variedades consideradas como principales: - Blancas: … - Tintas:
+# …" (Valle del Miño-Ourense). The roster read before it carried the default
+# role, so every variety was principal (visitor flag on Bullas, 2026-11-08).
+# The varieties the sentence names keep principal, the rest of the roster
+# becomes accessory; a plural family word ("las Moscateles") names every
+# variety whose first word it pluralises. Nothing moves when the roster
+# already carries an explicit accessory list, when the sentence names no
+# variety of the roster, or when it names them all.
+_DESIGNATION_RE = re.compile(
+    r"\b(?:se\s+considera(?:n|r[áa]n?)?|son\s+consideradas?|consideradas?)\s+(?:como\s+)?"
+    r"(?:principal(?:es)?|preferentes?|recomendadas?)\b\s*(:?)",
+    re.IGNORECASE,
+)
+_DESIGNATION_END_RE = re.compile(r"\.(?=\s+[A-ZÁÉÍÓÚÑ(«\"-]|\s*$|\s*\n)")
+_WORD_CHARS = "a-z0-9áéíóúñüàèìòùçï"
+
+
+def _fold(text: str) -> str:
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
+
+
+def _apply_principal_designation(text: str, details: list[dict]) -> None:
+    if any(e["role"] == "accessory" for e in details) or len(details) < 2:
+        return
+    m = _DESIGNATION_RE.search(text)
+    if not m:
+        return
+    tail = text[m.end():]
+    if m.group(1):
+        statement = tail
+    else:
+        end = _DESIGNATION_END_RE.search(tail)
+        statement = tail[: end.start()] if end else tail
+    statement = " " + _fold(re.sub(r"\s+", " ", statement)) + " "
+    designated: set[int] = set()
+    by_len = sorted(range(len(details)), key=lambda i: -len(details[i]["name"]))
+    for i in by_len:
+        name = _fold(re.sub(r"\s+", " ", details[i]["name"].strip()))
+        if not name:
+            continue
+        pat = re.compile(rf"(?<![{_WORD_CHARS}]){re.escape(name)}(?![{_WORD_CHARS}])")
+        if pat.search(statement):
+            designated.add(i)
+            statement = pat.sub(" ", statement)
+    for i in by_len:
+        if i in designated:
+            continue
+        head = _fold(details[i]["name"].strip().split(" ")[0])
+        if len(head) >= 5 and re.search(
+            rf"(?<![{_WORD_CHARS}]){re.escape(head)}e?s(?![{_WORD_CHARS}])", statement
+        ):
+            designated.add(i)
+    if not designated or len(designated) >= len(details):
+        return
+    for i, e in enumerate(details):
+        e["role"] = "principal" if i in designated else "accessory"
 
 
 # ----- ES style detection -----------------------------------------------
@@ -812,9 +975,9 @@ def parse_grapes(section_text: str) -> dict:
 
 _STYLE_TITLE_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
     # Carbonation
-    (re.compile(r"\bvino(?:s)? espumoso(?:s)? de calidad\b", re.I),
+    (re.compile(r"\bvino(?:s)? (?:de )?espumoso(?:s)?(?: arom[áa]ticos?)? de calidad\b", re.I),
         ("sparkling", "sparkling-quality")),
-    (re.compile(r"\bvino(?:s)? espumoso(?:s)?\b", re.I), ("sparkling",)),
+    (re.compile(r"\bvino(?:s)? (?:de )?espumoso(?:s)?\b", re.I), ("sparkling",)),
     (re.compile(r"\bvino(?:s)? de aguja\b", re.I), ("sparkling", "semi-sparkling")),
     # Sweet / fortified categories (EU OJ product categories)
     (re.compile(r"\bvinos? generosos? de licor\b", re.I),
@@ -832,9 +995,83 @@ _STYLE_TITLE_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
 )
 
 # A lettered wine-type line ("j. Vino espumoso", "k) Vinos de aguja"), also
-# numbered under its letter ("a.2. Vinos espumosos de calidad", Somontano).
+# numbered under its letter ("a.2. Vinos espumosos de calidad", Somontano);
+# since 2026-11-08 a numbered one ("4. Vino de licor blanco, rosado y tinto" —
+# the per-type headers of the single document's description, which the slicer
+# now leaves in its body) and a bulleted one ("- Vino de licor", El Hierro;
+# the Wingdings bullets pdftotext prints as private-use glyphs: Castelló's
+# "\uf02d Vino espumoso de calidad", Valdejalón's "\uf0a7 Vino de licor").
 _TYPE_LIST_LINE_RE = re.compile(
-    r"^[ \t]*[a-zñ](?:\.\d+)*[ \t]*[.)][ \t]+(vinos?\b[^\n]*)$", re.I | re.M)
+    r"^[ \t]*(?:[a-zñ](?:\.\d+)*[ \t]*[.)]|\d{1,2}(?:\.\d+)*[ \t]*[.)]|[-–—•·*\uf02d\uf0a7\uf0b7\uf0d8\uf0fc])"
+    r"[ \t]+(vinos?\b[^\n]*)$", re.I | re.M)
+
+# The wine types a national pliego lists in one sentence, with the word
+# "vino" said once: "Los tipos de los vinos amparados … son los siguientes:
+# blancos, rosados, tintos, de licor y espumosos" (Bullas), "…: blancos,
+# rosados y tintos; de licor; de uva sobremadura y de aguja" (Murcia). The
+# colour words were read, the types were not (visitor flag on Bullas,
+# 2026-11-08). Read from the sentence that introduces the list to its end.
+_TYPE_LIST_SENTENCE_RE = re.compile(
+    r"\b(?:tipos?\s+de\s+(?:los\s+)?vinos?\b[^:]{0,200}?|vinos\s+(?:amparados|protegidos)\b[^:]{0,160}?):\s*",
+    re.I,
+)
+_TYPE_PHRASE_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
+    (re.compile(r"(?<![\wáéíóú])espumosos?(?:\s+arom[áa]ticos?)?\s+de\s+calidad\b", re.I),
+        ("sparkling", "sparkling-quality")),
+    (re.compile(r"(?<![\wáéíóú])espumosos?\b", re.I), ("sparkling",)),
+    (re.compile(r"\bde\s+aguja\b", re.I), ("sparkling", "semi-sparkling")),
+    (re.compile(r"\bgenerosos?\s+de\s+licor\b", re.I),
+        ("sweet", "fortified", "vin-de-liqueur", "oxidative", "generoso")),
+    (re.compile(r"\bde\s+licor\b", re.I), ("sweet", "fortified", "vin-de-liqueur")),
+    (re.compile(r"\bgenerosos?\b", re.I), ("oxidative", "generoso")),
+    (re.compile(r"\bde\s+uvas?\s+sobremadur", re.I),
+        ("sweet", "late-harvest", "uvas-sobremaduradas")),
+    (re.compile(r"\bde\s+uvas?\s+pasificad", re.I),
+        ("sweet", "raisin-wine", "uvas-pasificadas")),
+)
+# The EU product category a pliego cites by number: "a la categoría 3 "Vino
+# de licor", a la categoría 5 "Vino espumoso de calidad"" (Castilla y León),
+# "de la categoría 5: espumosos de calidad" (Tharsys), "Categorías de
+# productos vitícolas: vino, vino de licor, vino de uvas sobremaduradas y
+# vino de uvas pasificadas" (Málaga).
+_CATEGORY_NUMBER_RE = re.compile(
+    r'\bcategor[íi]as?\s+(?:n[.º°]?\s*)?\d{1,2}\s*[:.]?\s*[“"«]?\s*((?:vinos?\s+)?(?:(?!\bcategor)[^”"»;.]){0,60})', re.I)
+_CATEGORY_LIST_RE = re.compile(
+    r"\bcategor[íi]as?\s+de\s+productos?\s+vit[íi]\w*\s*:\s*([^.]{0,300})", re.I)
+# A type stated as a heading of its own, in capitals — the single document's
+# link section describes each category under one ("VINO DE LICOR", "VINO
+# ESPUMOSO DE CALIDAD", Campo de Borja; Calatayud's "VINO DE ESPUMOSO DE
+# CALIDAD").
+_CAPS_TYPE_LINE_RE = re.compile(r"^[ \t]*(VINOS?\s+[A-ZÁÉÍÓÚÑ ]{3,50})[ \t]*$", re.M)
+
+
+_NUMBERED_TITLE_LINE_RE = re.compile(r"^[ \t]*\d{1,2}\.[ \t\u00a0]+([^\n]{3,80}?)[ \t]*$", re.M)
+
+
+def _type_statement_styles(sections: dict[str, str], descr_keys: set[str]) -> set[str]:
+    found: set[str] = set()
+    descr = "\n".join(sections.get(k, "") for k in descr_keys)
+    for m in _TYPE_LIST_SENTENCE_RE.finditer(descr):
+        tail = descr[m.end():]
+        end = _DESIGNATION_END_RE.search(tail)
+        statement = tail[: end.start()] if end else tail[:400]
+        statement = re.sub(r"\s+", " ", statement)
+        for pat, slugs in _TYPE_PHRASE_PATTERNS:
+            if pat.search(statement):
+                found.update(slugs)
+    body = "\n".join(sections.values())
+    phrases = [m.group(1) for m in _CATEGORY_NUMBER_RE.finditer(body)]
+    phrases += [m.group(1) for m in _CATEGORY_LIST_RE.finditer(body)]
+    phrases += [m.group(1) for m in _CAPS_TYPE_LINE_RE.finditer(body)]
+    for phrase in phrases:
+        pl = re.sub(r"\s+", " ", phrase).lower()
+        for pat, slugs in _STYLE_TITLE_PATTERNS:
+            if pat.search(pl):
+                found.update(slugs)
+        for pat, slugs in _TYPE_PHRASE_PATTERNS:
+            if pat.search(pl):
+                found.update(slugs)
+    return found
 
 _STYLE_BODY_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
     (re.compile(r"\bvinos? rancios?\b", re.I), ("oxidative", "rancio")),
@@ -1050,6 +1287,24 @@ def parse_styles_es(sections: dict[str, str], titles: dict[str, str]) -> list[st
                 break
         if re.search(r"\bdulces?\b", line):
             found.add("sweet")
+    found |= _type_statement_styles(sections, descr_keys)
+    # The per-type headers of the single document's description, left in its
+    # body by the template-title slicer ("4. Rías Baixas Tinto", "5. Rías
+    # Baixas espumoso de calidad", "3. Vinos generosos (categoría 1)"): read as
+    # the titles they were — the type words, and a colour closing the line.
+    for m in _NUMBERED_TITLE_LINE_RE.finditer("\n".join(sections.get(k, "") for k in descr_keys)):
+        line = m.group(1).strip().lower()
+        for pat, slugs in _STYLE_TITLE_PATTERNS:
+            if pat.search(line):
+                found.update(slugs)
+        for pat, slugs in _TYPE_PHRASE_PATTERNS:
+            if pat.search(line):
+                found.update(slugs)
+        mc = _TITLE_COLOUR_TAIL_RE.search(line)
+        if mc:
+            slug = _colour_slug(mc.group(1))
+            if slug:
+                found.add(slug)
     gate_blob = body + " " + " ".join(titles.values())
     if _SHERRY_GATE.search(gate_blob):
         # The protected name states the type where the description no

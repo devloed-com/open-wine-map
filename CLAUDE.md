@@ -2320,7 +2320,42 @@ into it and the EUR-Lex footer. Both the older
 `ti-grseq-1` (sections 1–9) and newer `oj-ti-grseq-1` (sections 1–10)
 templates are parsed; semantic role routing by Spanish title keyword
 (`zona geográfica`, `vínculo`, `variedad`) keeps downstream consumers
-indifferent to which template a given page used. Section 9 (older)
+indifferent to which template a given page used. **The slicer keeps the
+template's own titles** (`_template_headers`, 2026-11-08, visitor flags on
+Bullas): the description nests one numbered header per wine type ("1. Vino
+blanco … 5. Vino espumoso aromático de calidad blanco", Valencia) and the
+categories section lists its items the same way, and read last-wins those
+headers shadowed the real sections — 85 of the 90 EUR-Lex records had no
+categories section, Valencia's sparkling type sat under a "5" that "5.
+Prácticas vitivinícolas" overwrote, Montsant's `description` role was its
+link text. A top-level header is a section when its title is one of the
+template's (`_TEMPLATE_TITLE_KEYWORDS`; never a title opening on "vino"),
+its number higher than the last section's; a sub-number belongs to the open
+section; everything else stays in the body, where `parse_styles_es` reads
+the numbered type lines as the titles they were (`_NUMBERED_TITLE_LINE_RE`:
+"4. Rías Baixas Tinto", "3. Vinos generosos (categoría 1)"). The same day the
+style reader learnt the types a national pliego states once with the word
+"vino" — the type-list sentence ("son los siguientes: blancos, rosados,
+tintos, de licor y espumosos"; `_TYPE_LIST_SENTENCE_RE` + `_TYPE_PHRASE_PATTERNS`),
+a dash- or Wingdings-bulleted "- Vino de licor" line, the EU category cited
+by number ("a la categoría 3 "Vino de licor"", "de la categoría 5: espumosos
+de calidad") or listed ("Categorías de productos vitícolas: vino, vino de
+licor, …"), and a type as a capitals heading of the link section ("VINO DE
+LICOR") — and the roster reader three things: the singular "principal:"
+header (`principales?` never matched it, so Valtiendas' Tempranillo kept the
+accessory role of the line before), "secundarias" as the accessory list
+(Castilla y León's 40), and the sentence after the roster that names the
+principal varieties (`_apply_principal_designation`: "se considera como
+principal la Monastrell en tintas y la Macabeo entre las blancas" — Bullas,
+Lebrija, Málaga's "las «Moscateles»", Valle del Miño-Ourense's list form),
+the rest becoming accessory; a name opened with « and wrapped over the line
+continues ("«Pero ⏎ Ximén»"), a roster token splits at a sentence end before
+a capital, a guillemet name is read out of an introductory sentence, and
+after " o " an alternative that binds another cultivar ("Picapoll Blanco o
+Extra" — EXTRA is a Clairette synonym) is the pliego's synonym, not a pill.
+Full run against the snapshot: 91 records changed, no section shorter, 46
+style lists grew (29 parents), 8 rosters changed roles or membership.
+`tests/test_es_roles_and_types.py`. Section 9 (older)
 or 6 (newer) frequently carries the **full subzona-grouped commune
 list** (Rioja Alta / Alavesa / Oriental + commune names), so subzona
 extraction is achievable from this single source — no separate full-
