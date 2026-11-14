@@ -1,0 +1,144 @@
+{
+  "__doc__": "Per-record style additions a curator read where the country's reader has no rule for the sentence yet (scripts/_lib/style_overrides.py). Keyed by record slug → {country, add, basis, evidence, reason, source, verified[, disclose]}. `basis: stated` — the record's own text names the level as a type of the wine; `basis: method` — the text names no level and the style follows from the production method it lays down, which is an interpretation: the entry carries a `disclose` sentence in en / fr / es / nl and the card prints it under the style pills. Every `evidence` quote is a verbatim passage of the extracted record (file, dotted field, quote; whitespace folded). Sub-denominations inherit their parent's entry. An entry whose record already carries every style it adds is STALE (the reader states it now): stage 04 says so and tests/test_style_overrides.py fails — drop the entry. Never add a style no public text supports; never use the table to remove one.",
+  "porto": {
+    "country": "pt",
+    "add": [
+      "semi-dry",
+      "sweet"
+    ],
+    "basis": "stated",
+    "evidence": [
+      {
+        "file": "raw/pt/cadernos-extracted/porto.json",
+        "field": "sections.description",
+        "quote": "podem apresentar várias designações de acordo com o teor em açúcares (glucose e frutose)"
+      },
+      {
+        "file": "raw/pt/cadernos-extracted/porto.json",
+        "field": "sections.description",
+        "quote": "Meio Seco"
+      },
+      {
+        "file": "raw/pt/cadernos-extracted/porto.json",
+        "field": "sections.description",
+        "quote": "Muito doce ou Lágrima"
+      }
+    ],
+    "reason": "The caderno's description prints the Port sweetness grades as a table under «Doçura»: Extra-Seco 17,5 a 40 g/L, Seco 40 a 65, Meio Seco 65 a 85, Doce 85 a 130, Muito doce ou Lágrima > 130. The PT reader (pt/02 parse_styles) reads categories and colours and has no sweetness rule, so the card showed Liqueur wine with no sweetness and the record left the Sweet filter with the taxonomy change of 2026-11-14. Meio Seco → semi-dry, Doce and Muito doce → sweet, by the type-list rule the ES / GR / HU / BG readers apply; Seco and Extra-Seco are `dry`, which no card renders.",
+    "source": "Caderno de Especificações DO «Porto», PDO-PT-A1540 (IVV, DO_Porto.pdf), descrição do vinho",
+    "verified": "2026-11-14"
+  },
+  "madeira": {
+    "country": "pt",
+    "add": [
+      "semi-dry",
+      "semi-sweet",
+      "sweet"
+    ],
+    "basis": "stated",
+    "evidence": [
+      {
+        "file": "raw/pt/cadernos-extracted/madeira.json",
+        "field": "sections.description",
+        "quote": "Pode apresentar-se nos seguintes tipos: extra-seco; seco; meio-seco; meio-doce e doce."
+      }
+    ],
+    "reason": "The caderno lists the types of Vinho da Madeira by sweetness — in the analytical table (Extra-seco, Seco/Sercial, Meio-seco/Verdelho, Meio-doce/Boal, Doce/Malvasia, by degrees Baumé) and in the organoleptic description quoted here. The PT reader has no sweetness rule. Meio-seco → semi-dry, meio-doce → semi-sweet, doce → sweet; seco and extra-seco are `dry`, which no card renders.",
+    "source": "Caderno de Especificações DO «Madeira», PDO-PT-A0038 (IVV, PDO_Madeira.pdf), descrição do vinho",
+    "verified": "2026-11-14"
+  },
+  "pineau-des-charentes": {
+    "country": "fr",
+    "add": [
+      "sweet"
+    ],
+    "basis": "method",
+    "evidence": [
+      {
+        "file": "raw/inao/cahier-extracted/pineau-des-charentes.json",
+        "field": "sections.IX",
+        "quote": "Les vins de liqueur sont élaborés par mutage du moût de raisins par de l’eau-de-vie à appellation d’origine contrôlée « Cognac »"
+      },
+      {
+        "file": "raw/inao/cahier-extracted/pineau-des-charentes.json",
+        "field": "sections.IX",
+        "quote": "doivent, au moment du mutage, présenter une teneur en sucre supérieure à 170 grammes par litre"
+      }
+    ],
+    "reason": "The cahier names no sweetness level and sets no sugar content for the finished wine (its analytical norms are the alcoholic strength, 16 to 22 %, volatile acidity and sulphur dioxide). It lays down the method: grape must, which may at most have begun to ferment and must hold over 170 g/l of sugar, is muted with Cognac — so the must's sugar is the wine's. Sweet is read from that method; the card says so.",
+    "source": "Cahier des charges de l'AOC « Pineau des Charentes », homologué le 8 juin 2026 (BO Agri du 25 juin 2026), chapitre Ier, IX 2° « Mutage »",
+    "verified": "2026-11-14",
+    "disclose": {
+      "en": "Sweet inferred from the method: grape must fortified with Cognac while it still holds over 170 g/l of sugar; the regulator's text names no sweetness level.",
+      "fr": "Doux déduit du mode d'élaboration : un moût de raisin muté au Cognac alors qu'il contient encore plus de 170 g/l de sucre ; le texte du régulateur ne nomme aucun niveau de sucre.",
+      "es": "Dulce deducido del método de elaboración: un mosto de uva encabezado con Cognac cuando aún contiene más de 170 g/l de azúcar; el texto del regulador no nombra ningún nivel de dulzor.",
+      "nl": "Zoet afgeleid uit de bereidingswijze: druivenmost die met cognac wordt versterkt terwijl hij nog meer dan 170 g/l suiker bevat; de tekst van de regulator noemt geen zoetheidsgraad."
+    }
+  },
+  "floc-de-gascogne": {
+    "country": "fr",
+    "add": [
+      "sweet"
+    ],
+    "basis": "method",
+    "evidence": [
+      {
+        "file": "raw/inao/cahier-extracted/floc-de-gascogne.json",
+        "field": "sections.IX",
+        "quote": "Les vins de liqueur sont élaborés par mutage du moût de raisins par de l’eau-de-vie à appellation d’origine contrôlée « Armagnac »"
+      },
+      {
+        "file": "raw/inao/cahier-extracted/floc-de-gascogne.json",
+        "field": "sections.IX",
+        "quote": "présentent, au moment du mutage, une richesse minimale en sucre au moins égale à 170 grammes par litre de moût"
+      },
+      {
+        "file": "raw/inao/cahier-extracted/floc-de-gascogne.json",
+        "field": "sections.X",
+        "quote": "L’eau-de-vie apporte la nervosité et des arômes floraux, le moût, la saveur sucrée et des arômes fruités."
+      }
+    ],
+    "reason": "The same clause as Pineau des Charentes, with Armagnac: the cahier names no sweetness level; the wine is grape must of at least 170 g/l of sugar muted with Armagnac to 16–18 % vol, and its link section says the must brings «la saveur sucrée». Sweet is read from that method; the card says so.",
+    "source": "Cahier des charges de l'AOC « Floc de Gascogne », homologué le 23 novembre 2011, chapitre Ier, IX 2° « Mutage »",
+    "verified": "2026-11-14",
+    "disclose": {
+      "en": "Sweet inferred from the method: grape must fortified with Armagnac while it still holds at least 170 g/l of sugar; the regulator's text names no sweetness level.",
+      "fr": "Doux déduit du mode d'élaboration : un moût de raisin muté à l'Armagnac alors qu'il contient encore au moins 170 g/l de sucre ; le texte du régulateur ne nomme aucun niveau de sucre.",
+      "es": "Dulce deducido del método de elaboración: un mosto de uva encabezado con Armagnac cuando aún contiene al menos 170 g/l de azúcar; el texto del regulador no nombra ningún nivel de dulzor.",
+      "nl": "Zoet afgeleid uit de bereidingswijze: druivenmost die met armagnac wordt versterkt terwijl hij nog minstens 170 g/l suiker bevat; de tekst van de regulator noemt geen zoetheidsgraad."
+    }
+  },
+  "macvin-du-jura": {
+    "country": "fr",
+    "add": [
+      "sweet"
+    ],
+    "basis": "method",
+    "evidence": [
+      {
+        "file": "raw/inao/cahier-extracted/macvin-du-jura.json",
+        "field": "sections.IX",
+        "quote": "L’eau-de-vie à appellation d’origine contrôlée « Marc du Jura » utilisée pour le mutage"
+      },
+      {
+        "file": "raw/inao/cahier-extracted/macvin-du-jura.json",
+        "field": "sections.IX",
+        "quote": "doivent, au moment du mutage, présenter une teneur en sucre supérieure ou égale à 153 grammes par litre"
+      },
+      {
+        "file": "raw/inao/cahier-extracted/macvin-du-jura.json",
+        "field": "sections.X",
+        "quote": "un bel équilibre entre sucre et alcool"
+      }
+    ],
+    "reason": "The same construction as Pineau des Charentes, with Marc du Jura: the cahier names no sweetness level; the wine is grape must of at least 153 g/l of sugar muted with the marc, and its link section describes «un bel équilibre entre sucre et alcool». Sweet is read from that method; the card says so.",
+    "source": "Cahier des charges de l'AOC « Macvin du Jura », homologué le 1er décembre 2025, chapitre Ier, IX 2° « Mutage » et X",
+    "verified": "2026-11-14",
+    "disclose": {
+      "en": "Sweet inferred from the method: grape must fortified with Marc du Jura while it still holds at least 153 g/l of sugar; the regulator's text names no sweetness level.",
+      "fr": "Doux déduit du mode d'élaboration : un moût de raisin muté au Marc du Jura alors qu'il contient encore au moins 153 g/l de sucre ; le texte du régulateur ne nomme aucun niveau de sucre.",
+      "es": "Dulce deducido del método de elaboración: un mosto de uva encabezado con Marc du Jura cuando aún contiene al menos 153 g/l de azúcar; el texto del regulador no nombra ningún nivel de dulzor.",
+      "nl": "Zoet afgeleid uit de bereidingswijze: druivenmost die met Marc du Jura wordt versterkt terwijl hij nog minstens 153 g/l suiker bevat; de tekst van de regulator noemt geen zoetheidsgraad."
+    }
+  }
+}

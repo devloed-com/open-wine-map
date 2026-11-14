@@ -9,6 +9,14 @@ per-country list, coverage and mechanics live in `CLAUDE.md`. Every
 per-record fact traces back to a public-source document — nothing here is
 hand-written narrative.
 
+Since November 2026 the map also holds the spirit drinks, aromatised wines,
+ciders and perries with a protected name (Cognac, Grappa, Ouzo, Scotch
+Whisky, Vermut di Torino, Sidra de Asturias …): the French ones through
+INAO, the others through one pipeline under `scripts/drinks/` that reads the
+EU register's technical files, the UK register and Switzerland's federal
+register. They are hidden until the "Spirits & other drinks" pill on the map
+is switched on.
+
 ## Status
 
 The FR pipeline runs end-to-end across the full AOC/AOP/IGP corpus, emitting

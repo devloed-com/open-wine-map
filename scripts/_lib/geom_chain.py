@@ -40,6 +40,9 @@ from _lib.es.sigpac import (
     SigpacIndex,
     inclusion_semantics,
 )
+from _lib.fr.former_communes import former_names
+from _lib.fr.former_communes import resolve as resolve_former
+from _lib.fr.seat_communes import narrowed_seats
 from _lib.lieu_dit import LieuDitIndex, derive_climat_name
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -80,17 +83,83 @@ DEPT_NAME_TO_CODE: dict[str, str] = {
 }
 
 
+_DEPT_CODE_BY_KEY: dict[str, str] = {}
+
+
+def dept_code_for(name: str) -> str | None:
+    """The code of a département as a cahier writes it: the table's spelling,
+    else the same letters whatever the hyphens and spaces — « Pyrénées
+    Orientales », « Maine-et Loire », « Haute Savoie », and the « Puy-deDôme »
+    of a PDF that lost its non-breaking hyphens (Marc d'Auvergne, 2025). A
+    cut name (« Côte » for « Côte d'Or ») is no département and gets None."""
+    code = DEPT_NAME_TO_CODE.get(name.replace("’", "'"))
+    if code:
+        return code
+    if not _DEPT_CODE_BY_KEY:
+        for known, known_code in DEPT_NAME_TO_CODE.items():
+            _DEPT_CODE_BY_KEY[normalize_commune(known)] = known_code
+    return _DEPT_CODE_BY_KEY.get(normalize_commune(name))
+
+
 def normalize_commune(s: str) -> str:
     """Loose match key for commune names — strip diacritics, casing, spacing,
     leading articles, parenthetical notes."""
     s = re.sub(r"\(.*?\)", "", s)  # drop "(uniquement pour la partie ...)"
     s = re.sub(r"^(?:Le|La|Les|L['’])\s+", "", s, flags=re.IGNORECASE)
+    # IGN writes « Dœuil-sur-le-Mignon », a cahier types « Doeuil »: the
+    # ligature is spelled out, or the ASCII fold drops it on one side only
+    s = s.replace("œ", "oe").replace("Œ", "Oe").replace("æ", "ae").replace("Æ", "Ae")
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     return re.sub(r"[\W_]+", "", s).lower()
 
 
+def _strict_commune_key(s: str) -> str:
+    """`normalize_commune` with the article kept, under a prefix no loose key
+    carries: « La Vergne » and « Vergné » (Charente-Maritime) share the loose
+    key, and the index held one of them for both names."""
+    s = re.sub(r"\(.*?\)", "", s)
+    s = s.replace("œ", "oe").replace("Œ", "Oe").replace("æ", "ae").replace("Æ", "Ae")
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    return "=" + re.sub(r"[\W_]+", "", s).lower()
+
+
+def find_commune(commune_idx: dict, dept_code: str, name: str):
+    """(geometry, insee) of a commune named in a cahier, or None: the name as
+    written first (article kept), then the loose key."""
+    return (commune_idx.get((dept_code, _strict_commune_key(name)))
+            or commune_idx.get((dept_code, normalize_commune(name))))
+
+
+# A name a cahier writes wrongly, per record: record slug → name as written →
+# {name: the commune's name in the layer, reason}. Never a fuzzy match.
+COMMUNE_NAME_PINS_PATH = Path(__file__).with_name("fr") / "commune_name_pins.json"
+_COMMUNE_NAME_PINS: dict[str, dict] | None = None
+
+
+def _name_pins(record: dict) -> dict:
+    global _COMMUNE_NAME_PINS
+    if _COMMUNE_NAME_PINS is None:
+        _COMMUNE_NAME_PINS = {}
+        if COMMUNE_NAME_PINS_PATH.exists():
+            data = json.loads(COMMUNE_NAME_PINS_PATH.read_text(encoding="utf-8"))
+            _COMMUNE_NAME_PINS = {k: v for k, v in data.items() if not k.startswith("_")}
+    return _COMMUNE_NAME_PINS.get(record.get("slug") or "") or {}
+
+
+def _pinned_name(record: dict, name: str) -> str:
+    pin = _name_pins(record).get(name.strip())
+    return pin["name"] if pin else name
+
+
+def written_names(record: dict, name: str) -> list[str]:
+    """The names the record's cahier writes for the commune the layer calls
+    `name` (commune_name_pins.json): « Saint-Maurice-ès-Allier » for
+    Saint-Maurice."""
+    return [written for written, pin in _name_pins(record).items() if pin.get("name") == name]
+
+
 def load_commune_index(
-    path: Path,
+    path: Path, former_path: Path | None = None, movements_path: Path | None = None,
 ) -> tuple[dict[tuple[str, str], tuple[dict, str]], dict[str, dict], dict[str, str]]:
     """Build three indexes over IGN AdminExpress communes.
 
@@ -100,6 +169,14 @@ def load_commune_index(
     (which gives INSEE codes directly, avoiding name-fuzzy-match work).
     The third is `insee → commune name`, used to render attribution
     strings for cadastre lieu-dit matches.
+
+    `former_path` (the communes associées and déléguées, stage 00) adds to
+    the NAME index only the former communes a cahier still names — "Beuzeville"
+    is a commune of today, "Saint-Maudez" a commune déléguée — each under its
+    own outline and code, never over a commune of today of the same name in
+    the same département. The INSEE index stays the communes of today: the
+    parcel-gap audit and the village narrowing test codes against it, and a
+    former code is drawn through `union_from_insee(…, former)`.
     """
     print(f"[load] {path.relative_to(ROOT)} ({path.stat().st_size // (1<<20)} MB)", file=sys.stderr)
     fc = json.loads(path.read_text(encoding="utf-8"))
@@ -111,8 +188,35 @@ def load_commune_index(
         name_idx[(p["codeDepartement"], normalize_commune(p["nom"]))] = (
             feat["geometry"], p["code"],
         )
+        name_idx[(p["codeDepartement"], _strict_commune_key(p["nom"]))] = (
+            feat["geometry"], p["code"],
+        )
         insee_idx[p["code"]] = feat["geometry"]
         insee_to_name[p["code"]] = p["nom"]
+    if former_path is not None and former_path.exists():
+        added = 0
+        for feat in json.loads(former_path.read_text(encoding="utf-8"))["features"]:
+            p = feat["properties"]
+            if not feat.get("geometry"):
+                continue
+            for dept in {p.get("codeDepartement") or p["code"][:2], p["code"][:2]}:
+                key = (dept, normalize_commune(p["nom"]))
+                if key not in name_idx:
+                    name_idx[key] = (feat["geometry"], p["code"])
+                    added += 1
+                name_idx.setdefault((dept, _strict_commune_key(p["nom"])), (feat["geometry"], p["code"]))
+        print(f"[load] former communes by name: {added}", file=sys.stderr)
+    if movements_path is not None:
+        # a commune of today under the name it had (INSEE's rename rows)
+        renamed = 0
+        for code, old_name in former_names(insee_idx, movements_path):
+            dept = code[:3] if code.startswith("97") else code[:2]
+            for key in ((dept, normalize_commune(old_name)), (dept, _strict_commune_key(old_name))):
+                if key not in name_idx:
+                    name_idx[key] = (insee_idx[code], code)
+                    renamed += 1
+        if renamed:
+            print(f"[load] former names of communes: {renamed} key(s)", file=sys.stderr)
     return name_idx, insee_idx, insee_to_name
 
 
@@ -128,33 +232,48 @@ def cahier_insee(record: dict, commune_idx: dict) -> set[str]:
     out: set[str] = set()
     by_dept = record.get("aire", {}).get("aire_geographique", {}) or {}
     for dept_name, communes in by_dept.items():
-        dept_code = DEPT_NAME_TO_CODE.get(dept_name.replace("’", "'"))
+        dept_code = dept_code_for(dept_name)
         if not dept_code:
             continue
         for commune in communes:
-            hit = commune_idx.get((dept_code, normalize_commune(commune)))
+            hit = find_commune(commune_idx, dept_code, _pinned_name(record, commune))
             if hit is not None:
                 out.add(hit[1])
     return out
 
 
-def union_for_appellation(record: dict, commune_idx: dict) -> tuple[object | None, dict]:
+def union_for_appellation(
+    record: dict, commune_idx: dict, insee_idx: dict | None = None,
+) -> tuple[object | None, dict]:
     """Resolve commune names → polygons → union (cahier-text path).
 
     Used as a fallback when neither parcellaire nor INAO aires CSV give
-    us a direct geometry/INSEE list for this appellation.
+    us a direct geometry/INSEE list for this appellation. With `insee_idx`,
+    a département the cahier names whole (`aire_departements`: "Département
+    du Var, toutes les communes." — Marc de Provence) is drawn as every
+    commune of it; without, only the named communes are (the village-level
+    callers, which narrow a list).
     """
     matched = unmatched = 0
     geoms = []
+    if insee_idx is not None:
+        for dept_name in record["aire"].get("aire_departements") or []:
+            dept_code = dept_code_for(dept_name)
+            if not dept_code:
+                unmatched += 1
+                continue
+            for code, geom in insee_idx.items():
+                if code.startswith(dept_code):
+                    geoms.append(shape(geom))
+                    matched += 1
     by_dept = record["aire"]["aire_geographique"]
     for dept_name, communes in by_dept.items():
-        dept_code = DEPT_NAME_TO_CODE.get(dept_name.replace("’", "'"))
+        dept_code = dept_code_for(dept_name)
         if not dept_code:
             unmatched += len(communes)
             continue
         for commune in communes:
-            key = (dept_code, normalize_commune(commune))
-            hit = commune_idx.get(key)
+            hit = find_commune(commune_idx, dept_code, _pinned_name(record, commune))
             if hit is None:
                 unmatched += 1
                 continue
@@ -165,20 +284,81 @@ def union_for_appellation(record: dict, commune_idx: dict) -> tuple[object | Non
     return unary_union(geoms), {"matched": matched, "unmatched": unmatched}
 
 
-def union_from_insee(insee_codes: set[str], insee_idx: dict[str, dict]) -> tuple[object | None, dict]:
-    """Resolve INSEE codes (from the INAO aires CSV) → polygons → union."""
-    matched = unmatched = 0
+# A seat whose named parts cover this share of its commune is the commune.
+_SEAT_WHOLE_SHARE = 0.995
+
+
+def union_from_insee(
+    insee_codes: set[str], insee_idx: dict[str, dict], former=None, seats: dict[str, dict] | None = None,
+) -> tuple[object | None, dict]:
+    """Resolve INSEE codes (from the INAO aires CSV) → polygons → union.
+
+    A code the commune layer no longer carries — a commune merged since the
+    row was written — is drawn through `former`
+    ([_lib/fr/former_communes.py](fr/former_communes.py)): its own outline
+    where the merger kept one, the commune of today where every former commune
+    of it is in `insee_codes`; one that lies in a commune the aire draws
+    anyway adds nothing. `matched` counts the communes of today the union
+    touches — INAO's rows can carry a commune nouvelle and its former communes
+    side by side, and the card's "N communes" must not count ground twice;
+    `unmatched` counts what is left undrawn, and the stats name it
+    (`former_undrawn`) for the card. A code whose ground left its département
+    before the cahiers were written (Chassieu under 38088) is not in the
+    aire: counted in `former_elsewhere`, never drawn or named.
+
+    `seats` ([_lib/fr/seat_communes.py](fr/seat_communes.py)): the communes of
+    today the cahier holds only in part — the seat of a commune nouvelle named
+    by its former name, or restricted "pour le seul territoire de la commune
+    déléguée de …" — each drawn as the former communes named, not whole
+    (`seats_narrowed` in the stats)."""
+    today: set[str] = set()
     geoms = []
+    narrowed = []
     for code in insee_codes:
         geom = insee_idx.get(code)
         if geom is None:
-            unmatched += 1
             continue
+        seat = (seats or {}).get(code)
+        if seat:
+            # with the former communes the rows carry under their own codes,
+            # the parts can be the whole commune again: nothing to narrow
+            parts = [shape(g) for g in seat["geoms"]]
+            rows = [shape(former.geoms[c]) for c in insee_codes
+                    if c in former.geoms and former.commune_of_today(c) == code]
+            if unary_union(parts + rows).area >= _SEAT_WHOLE_SHARE * shape(geom).area:
+                seat = None
+        if seat:
+            geoms.extend(parts)
+            narrowed.append(f"{seat['today']} → {', '.join(seat['names'])}")
+        else:
+            geoms.append(shape(geom))
+        today.add(code)
+    res = resolve_former(set(insee_codes), insee_idx, former)
+    for code, geom in res.outlines.items():
         geoms.append(shape(geom))
-        matched += 1
+        today.add(former.commune_of_today(code))
+    for code in res.whole:
+        geoms.append(shape(insee_idx[code]))
+        today.add(code)
+    stats = {
+        "matched": len(today),
+        "unmatched": len(res.undrawn),
+    }
+    if res.outlines or res.whole or res.covered or res.undrawn or res.elsewhere:
+        stats["former_drawn"] = len(res.outlines) + sum(len(v) for v in res.whole.values())
+        stats["former_covered"] = len(res.covered)
+        stats["former_undrawn"] = sorted(
+            (former.name(c) if former else c) for c in res.undrawn
+        )
+        # dead codes of communes that left their département before the
+        # cahiers: not in the aire, neither drawn nor named on the card
+        if res.elsewhere:
+            stats["former_elsewhere"] = len(res.elsewhere)
+    if narrowed:
+        stats["seats_narrowed"] = sorted(narrowed)
     if not geoms:
-        return None, {"matched": matched, "unmatched": unmatched}
-    return unary_union(geoms), {"matched": matched, "unmatched": unmatched}
+        return None, stats
+    return unary_union(geoms), stats
 
 
 def _find_sibling_umbrella(
@@ -233,6 +413,8 @@ def resolve_dgc_geometry(
     lieu_dit_index: LieuDitIndex,
     parent_geom_by_slug: dict,
     sibling_geom_by_id_app: dict,
+    former=None,
+    insee_names: dict[str, str] | None = None,
 ) -> DGCGeomResult:
     """Resolve a DGC's detailed geometry by walking the priority chain:
 
@@ -269,7 +451,7 @@ def resolve_dgc_geometry(
     # 2. dgc-village-override
     override_insee = DGC_VILLAGE_INSEE.get(id_denom)
     if override_insee:
-        geom, stats = union_from_insee(override_insee, insee_idx)
+        geom, stats = union_from_insee(override_insee, insee_idx, former)
         if geom is not None and not geom.is_empty:
             return DGCGeomResult(geom=geom, source="dgc-village-override", stats=stats)
 
@@ -306,7 +488,8 @@ def resolve_dgc_geometry(
         if sib_aires_insee == dgc_aires_insee:
             dgc_aires_insee = None
     if dgc_aires_insee:
-        geom, stats = union_from_insee(dgc_aires_insee, insee_idx)
+        seats = narrowed_seats(record, set(dgc_aires_insee), insee_names or {}, former)
+        geom, stats = union_from_insee(dgc_aires_insee, insee_idx, former, seats)
         if geom is not None and not geom.is_empty:
             return DGCGeomResult(geom=geom, source="aires-csv-dgc", stats=stats)
 

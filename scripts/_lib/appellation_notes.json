@@ -127,5 +127,27 @@
         "url": "https://info.agriculture.gouv.fr/boagri/document_administratif-6fe90f2b-ac49-4fec-a13f-309ce19ef3e7/telechargement"
       }
     ]
+  },
+  "euskal-sagardoa-ou-sidra-del-pais-vasco-ou-cidre-du-pays-basque-ou-cidre-du-pays-basque-eu": {
+    "note": {
+      "en": "One area on both sides of the border, listed under France and Spain: in Spain, named districts of the provinces of Biscay, Gipuzkoa and Álava (drawn as the three provinces whole); in France, the communes of Soule, Basse-Navarre and Labourd (Pyrénées-Atlantiques). The record is the French one because the document in the build is INAO's specification. The full name is «Euskal Sagardoa / Sidra del País Vasco / Cidre du Pays Basque / Cidre du Pays Basque - Euskal Sagarnoa»; in the EU register it is a joint Spanish and French application (PDO-ES-FR-02309), not yet registered.",
+      "fr": "Une seule aire de part et d'autre de la frontière, classée en France et en Espagne : en Espagne, des cantons nommés des provinces de Biscaye, du Gipuzkoa et d'Álava (tracées ici comme les trois provinces entières) ; en France, les communes de la Soule, de la Basse-Navarre et du Labourd (Pyrénées-Atlantiques). La fiche est la fiche française parce que le document utilisé est le cahier des charges de l'INAO. Le nom complet est « Euskal Sagardoa / Sidra del País Vasco / Cidre du Pays Basque / Cidre du Pays Basque - Euskal Sagarnoa » ; au registre de l'UE, il s'agit d'une demande conjointe de l'Espagne et de la France (PDO-ES-FR-02309), non encore enregistrée.",
+      "es": "Una sola zona a ambos lados de la frontera, clasificada en Francia y en España: en España, comarcas nombradas de las provincias de Bizkaia, Gipuzkoa y Álava (dibujadas aquí como las tres provincias enteras); en Francia, los municipios de Sola, Baja Navarra y Labort (Pirineos Atlánticos). La ficha es la francesa porque el documento utilizado es el pliego del INAO. El nombre completo es «Euskal Sagardoa / Sidra del País Vasco / Cidre du Pays Basque / Cidre du Pays Basque - Euskal Sagarnoa»; en el registro de la UE es una solicitud conjunta de España y Francia (PDO-ES-FR-02309), aún no registrada.",
+      "nl": "Eén gebied aan beide zijden van de grens, ingedeeld onder Frankrijk en Spanje: in Spanje met name genoemde districten van de provincies Biskaje, Gipuzkoa en Álava (hier getekend als de drie hele provincies); in Frankrijk de gemeenten van Soule, Neder-Navarra en Labourd (Pyrénées-Atlantiques). De fiche is de Franse omdat het gebruikte document het productdossier van het INAO is. De volledige naam is «Euskal Sagardoa / Sidra del País Vasco / Cidre du Pays Basque / Cidre du Pays Basque - Euskal Sagarnoa»; in het EU-register is het een gezamenlijke Spaanse en Franse aanvraag (PDO-ES-FR-02309), nog niet geregistreerd."
+    },
+    "sources": [
+      {
+        "label": "Cahier des charges (BO Agri, homologated 5 February 2025), section on the geographical area",
+        "url": "https://info.agriculture.gouv.fr/boagri/document_administratif-ca0f762e-8c6f-44a9-8502-b391dad9d8f1/telechargement"
+      },
+      {
+        "label": "INAO product page",
+        "url": "https://www2.inao.gouv.fr/produit/18184"
+      },
+      {
+        "label": "EU GI register (eAmbrosia), file PDO-ES-FR-02309, status: applied (read 2026-11-13)",
+        "url": "https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/"
+      }
+    ]
   }
 }

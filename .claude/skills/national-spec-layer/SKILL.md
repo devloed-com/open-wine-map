@@ -195,3 +195,21 @@ new source format, a missed lint check). Keep it terse.
   instead of scaffolding a bespoke `specifikacija.py` — skips the keyword-table
   TODO. The bespoke path stays for national-format specs. Whether the register
   covers a country corpus-wide is the deferred CURATOR_TODO spike.
+- 2026-11-08 — AT (BML Produktspezifikation): the first **non-stub** layer
+  built with this skill. The country's records all have an EU single
+  document; the national spec *supplements* the roster (the DE BLE shape),
+  so the model is `_lib/augment/de.py`, not BG: hooks 1–5 as written (the
+  cache dict is `_AT_PRODUKTSPEZIFIKATION_BY_SLUG`, the sidecar dir
+  `PRODUKTSPEZIFIKATION_AT` in `_shared.py`, the call site after DE), hook 6
+  added for symmetry only (no AT record is a stub), hook 7 as the DE
+  `zusammenhang_text` fallback (it unlocked Oberösterreich). Two things the
+  contract did not say: a new cache dict must also join `_shell_state()` in
+  04 (or `--shell-only` loses it) and the card needs its own Sources row +
+  gettext label (`src_bml_produktspezifikation`, the four `.po` files) — the
+  wiring lint in `tests/test_at_produktspezifikation.py` checks both. Source
+  read from an index page, not a pinned URL list (opaque jcr uuids); a
+  duplicate file per slug is settled by a checked-in pin table.
+  Also add the sidecar to `card_packet.SIDECAR_DIRS` (the validator must see
+  the national text, or it grades the grounded facts "unsupported"), and
+  let a stated colour only complete the EU text's colour list, never start
+  one (the berry floor switches off on the first stated colour).

@@ -93,7 +93,10 @@ def _country_of_uncached(slug: str) -> str:
         cc = d.get("country")
         if cc:
             return cc
-    return ""
+    # a spirit drink, aromatised wine or cider: its stage is the drinks
+    # pipeline's, whatever its own country
+    d = cache.read_json_or_none(ROOT / "raw" / "drinks" / "extracted" / f"{slug}.json") or {}
+    return "drinks" if d.get("pipeline") == "drinks" else ""
 
 
 def mark_stale(slugs: list[str], *, dry_run: bool) -> dict[str, list[str]]:

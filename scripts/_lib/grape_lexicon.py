@@ -818,6 +818,7 @@ GRAPE_ALIAS = {
     "primitivo": "tribidrag",                   # IT synonym (DNA-equivalent)
     "grasevina": "welschriesling",              # VIVC #13096 WELSCHRIESLING (= Graševina = Laški rizling = Riesling Italico — distinct from Renski rizling / Riesling)
     "laski-rizling": "welschriesling",
+    "welschrielsing": "welschriesling",         # the BML Produktspezifikation Eisenberg (2025) spells it so in § f (2026-11-08)
     "rizvanac": "muller-thurgau",               # VIVC #8141 MÜLLER-THURGAU; Croatian name
     "malvazija-istarska": "malvazija-istarska", # VIVC #7349 MALVAZIJA ISTARSKA (Istrian white)
     "muskat-zuti": "muskat-zuti",               # VIVC #8242 MUSCAT D'ALEXANDRIE — but the Croatian "Muškat žuti" is the YELLOW (Muscat Lunel) cluster; pinned as its own slug until VIVC reconciliation

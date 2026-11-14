@@ -27,10 +27,13 @@ from pathlib import Path
 from typing import Callable
 
 from _lib.grape_lexicon import slugify
+from _lib.product_class import product_class
 
 TERMS_PATH = Path(__file__).with_name("traditional_terms.json")
 
-SCHEMES: tuple[str, ...] = ("pdo", "pgi", "spirit-gi", "uk-pdo", "uk-pgi", "none")
+SCHEMES: tuple[str, ...] = (
+    "pdo", "pgi", "spirit-gi", "uk-pdo", "uk-pgi", "uk-spirit-gi", "none",
+)
 
 _SCHEME_LABEL_KEY = {
     "pdo": "scheme_pdo",
@@ -38,6 +41,7 @@ _SCHEME_LABEL_KEY = {
     "pgi": "scheme_pgi",
     "uk-pgi": "scheme_pgi",
     "spirit-gi": "scheme_spirit_gi",
+    "uk-spirit-gi": "scheme_spirit_gi",
     "none": "",
 }
 
@@ -75,18 +79,28 @@ _SCHEME_ABBREVIATIONS = frozenset({
 })
 
 
+# Switzerland is outside the EU scheme: "AOP" / "IGP" there are the national
+# designations of the Ordonnance sur les AOP et les IGP (RS 910.12), which is
+# what a Swiss spirit AOP (Abricotine, Damassine …) carries — a term, with no
+# EU scheme behind it to conflate with.
+_ABBREVIATION_EXEMPT_COUNTRIES = frozenset({"ch"})
+
+
 def _reject_scheme_abbreviations(table: dict) -> None:
-    def _check(term: str, where: str) -> None:
+    def _check(term: str, where: str, cc: str) -> None:
+        if cc in _ABBREVIATION_EXEMPT_COUNTRIES:
+            return
         if term and term.casefold().replace(" ", "") in _SCHEME_ABBREVIATIONS:
             raise ValueError(f"traditional_terms.json: {where} uses the scheme abbreviation {term!r}")
     for cc, by_kind in (table.get("constants") or {}).items():
         for kind, term in by_kind.items():
-            _check(term, f"constants[{cc}][{kind}]")
+            _check(term, f"constants[{cc}][{kind}]", cc)
     for cc, pins in (table.get("pins") or {}).items():
         for key, pin in pins.items():
-            _check(pin.get("term") or "", f"pins[{cc}][{key}]")
+            _check(pin.get("term") or "", f"pins[{cc}][{key}]", cc)
     for key in (table.get("terms") or {}):
-        _check(key.partition(":")[2], f"terms[{key}]")
+        cc, _, term = key.partition(":")
+        _check(term, f"terms[{key}]", cc)
 
 
 def _pin_for(record: dict, table: dict) -> dict | None:
@@ -133,6 +147,16 @@ def resolve_national_term(
     if pin is not None and "term" in pin:
         return pin["term"] or ""
     country = record.get("country") or "fr"
+    if product_class(record) != "wine":
+        # The traditional terms are wine terms (Reg. 1308/2013 Art. 112): a
+        # spirit drink, an aromatised wine or a cider takes none from the
+        # per-kind constants or the wine rosters — Sidra da Madeira is no
+        # "Vinho Regional", Vermut di Torino no "IGT". France is the one
+        # national sign that crosses the classes: INAO signs Cognac, Calvados
+        # and the Pays d'Auge ciders AOC under the same Code rural article.
+        if country == "fr" and (record.get("signe_fr") or "").strip().upper() == "AOC":
+            return "AOC"
+        return ""
     if country == "it" and it_term_for is not None:
         return it_term_for(record, mvt_kind) or ""
     if country == "es" and es_term_for is not None:
@@ -181,6 +205,13 @@ def build_terms_info(locale: str) -> dict[str, dict]:
             "note": _localised(entry.get("note"), locale),
             "sources": entry.get("sources") or [],
         }
+    # the product classes the legend explains ("drinks": the Spirits pill's ⓘ)
+    for cls, entry in (table.get("classes") or {}).items():
+        out[cls] = {
+            "full": _localised(entry.get("full"), locale),
+            "note": _localised(entry.get("note"), locale),
+            "sources": entry.get("sources") or [],
+        }
     for key, entry in (table.get("terms") or {}).items():
         country, _, term = key.partition(":")
         info = {
@@ -196,7 +227,9 @@ def build_terms_info(locale: str) -> dict[str, dict]:
     return out
 
 
-SCHEME_ORDER: tuple[str, ...] = ("pdo", "pgi", "spirit-gi", "uk-pdo", "uk-pgi", "none")
+SCHEME_ORDER: tuple[str, ...] = (
+    "pdo", "pgi", "spirit-gi", "uk-pdo", "uk-pgi", "uk-spirit-gi", "none",
+)
 
 
 def build_term_tree(counts: dict[str, int]) -> tuple[list[dict], dict[str, list[str]]]:

@@ -1,0 +1,25 @@
+‘Market Mulled Wine’ technical file
+
+Name                                         Market Mulled Wine
+Name and address of applicant                Mulled Wine Guild
+                                             1 Market Square
+                                             Oldtown
+                                             Producers:
+                                             Old Cellar Ltd, Oldtown
+                                             Spice House Ltd, Oldtown
+                                             Winter Wines Ltd, Oldtown
+
+Description of principal analytical and      Colour: ruby red, clear.
+organoleptic characteristics                 Smell and taste: cinnamon and cloves on a
+                                             sweet red-wine base.
+                                             Actual alcoholic strength: at least 8.5 % vol.
+Specific production processes and            Red wine is sweetened, spiced and heated; no
+specifications                               water is added.
+Demarcation of the relevant geographical     City of Oldtown
+area                                         Production takes place within the city.
+Link pursuant to Article 2(3) of            The link to the area relates to the special
+Regulation (EU) No 251/2014                  reputation.
+                                             The drink has been served at the Christmas
+                                             market of Oldtown since around 1970.
+                                             Its recipe is kept by the guild.
+Names and addresses of the authorities       Food Inspectorate, Oldtown

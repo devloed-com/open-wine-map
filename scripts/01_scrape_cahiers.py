@@ -153,18 +153,20 @@ WINE_SIGNS = siqo.WINE_SIGNS
 
 
 def load_appellations(csv_path: Path) -> list[Appellation]:
-    """Parse the SIQO referentiel → list[Appellation], wine AOC/AOP/IGP +
-    Publié only.
+    """Parse the SIQO referentiel → list[Appellation]: the VITICOLE sector's
+    AOC / AOP / IGP / IG rows, Publié only.
 
-    SIQO bundles cider and a few stray Label Rouge entries under sector
-    VITICOLE; we keep only rows with an AOC/AOP/IGP sign so the manifest
-    matches what publishes a cahier des charges. The rows come through
+    SIQO files wine, cider, the spirit drinks and a few stray Label Rouge
+    entries under sector VITICOLE; we keep the rows with a GI sign (IG = a
+    spirit-drink GI without the national AOC, in the corpus since
+    2026-11-12) so the manifest matches what publishes a cahier des charges.
+    The rows come through
     `siqo.siqo_rows`, so the checked-in supplements (a GI the export
     predates, a row the export dropped) are appellations like any other.
     """
     groups: dict[str, Appellation] = {}
     for row in siqo.siqo_rows(csv_path):
-        if not siqo.is_wine_row(row):
+        if not siqo.is_corpus_row(row):
             continue
         id_app = row["id_appellation"].strip()
         name = row["appellation"].strip()
@@ -408,9 +410,72 @@ class RegisterTier:
             return None
         return cahier
 
+    def detail_for(self, id_appellation: str) -> dict | None:
+        """The register's detail record of the GI bound to `id_appellation`,
+        cached under raw/inao/register/detail/."""
+        binding = self.resolved.get(id_appellation)
+        file_number = (binding or {}).get("file_number") or ""
+        if not file_number:
+            return None
+        cache = rc.REGISTER_DIR / "detail" / f"{file_number}.json"
+        if cache.exists():
+            try:
+                return json.loads(cache.read_text(encoding="utf-8"))
+            except (ValueError, OSError):
+                pass
+        detail = er.gi_detail(file_number, self.id_map, self.session)
+        time.sleep(self.delay)
+        if detail is None:
+            return None
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps(detail, ensure_ascii=False, indent=1), encoding="utf-8")
+        return detail
+
+    def spec_link_for(self, id_appellation: str) -> str:
+        """The BO Agri download URL of the cahier the register itself links
+        as the GI's product specification (`productSpecificationLink`), or
+        "". The register carries it for the spirit-drink GIs, whose technical
+        file is not the cahier: 30 of the 34 IG-only spirits on 2026-11-12."""
+        detail = self.detail_for(id_appellation) or {}
+        link = (detail.get("productSpecificationLink") or "").strip()
+        m = _BOAGRI_DOC_RE.search(link)
+        if m is None or "info.agriculture.gouv.fr" not in link:
+            return ""
+        return f"https://info.agriculture.gouv.fr/boagri/{m.group(0)}/telechargement"
+
     def save(self) -> None:
         if self.enabled:
             rc.save_manifest(self.manifest)
+
+
+_BOAGRI_DOC_RE = re.compile(r"document_administratif-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+
+
+def _register_spec_link(app: Appellation, manifest: dict, meta: dict,
+                        register: "RegisterTier") -> bool:
+    """Download the cahier the EU register links as the product
+    specification and record it as the appellation's BO Agri cahier. The PDF
+    is BO Agri's own, so `boagri_url` is truthful; `spec_link_source` says who
+    pointed at it (INAO's product page did not)."""
+    url = register.spec_link_for(app.id_appellation)
+    if not url:
+        return False
+    try:
+        digest, dest = download_pdf(register.session, url, OUT_DIR)
+    except (requests.RequestException, RuntimeError) as exc:
+        print(f"[register] {app.name}: specification link {url[:90]}: {exc}", file=sys.stderr)
+        return False
+    binding = register.resolved.get(app.id_appellation, {})
+    meta["boagri_url"] = url
+    meta["filename"] = dest.name
+    meta["sha256"] = digest
+    meta["fetched_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    meta["spec_link_source"] = "eambrosia-register"
+    meta["register_file_number"] = binding.get("file_number", "")
+    manifest[app.id_appellation] = meta
+    print(f"[register] {app.name} ({app.id_appellation}) -> BO Agri cahier linked by "
+          f"{binding.get('file_number', '?')}", file=sys.stderr)
+    return True
 
 
 def _promote_register_pdf(cahier: rc.RegisterCahier) -> Path:
@@ -465,6 +530,9 @@ _INAO_META_KEYS = (
 )
 
 
+_CATALOGUE_META_KEYS = ("canonical_idproduit", "canonical_produit", "product_url")
+
+
 def _stub_meta(app: Appellation, prior: dict | None = None) -> dict:
     """A manifest entry for an appellation INAO surfaced nothing for.
 
@@ -500,8 +568,12 @@ def _process_override_only(
 ) -> tuple[str, int]:
     """INAO didn't surface any candidates but a manual override is set.
     Download the override URLs and seed a manifest entry from them so
-    stage 02's cross-bundle rescue can pick this AOC up."""
-    meta = _stub_meta(app)
+    stage 02's cross-bundle rescue can pick this AOC up. The product page of
+    an earlier run is kept (an unreachable INAO is no evidence it ceased to
+    exist); the text trail is not — show_texte, Légifrance ids and candidate
+    URLs describe the cahier the override replaces."""
+    prior = manifest.get(app.id_appellation) or {}
+    meta = _stub_meta(app, {k: prior[k] for k in _CATALOGUE_META_KEYS if prior.get(k)})
     meta["manual_override_note"] = override.get("note", "")
     n = _download_alt_candidates(session, app.name, override["boagri_urls"], delay)
     try:
@@ -546,6 +618,8 @@ def _register_tier(
         return miss
     if _has_usable_cahier(prior):
         return miss
+    if _register_spec_link(app, manifest, meta, register):
+        return "register-link", 0
     cahier = register.cahier_for(app.id_appellation)
     if cahier is None:
         return miss
@@ -775,7 +849,7 @@ def main() -> int:
     fetched = cached = missed = extra = 0
     counters = {
         "fetched": 0, "cached": 0, "missed": 0,
-        "legifrance-only": 0, "override-only": 0, "register": 0,
+        "legifrance-only": 0, "override-only": 0, "register": 0, "register-link": 0,
     }
 
     try:
@@ -794,12 +868,13 @@ def main() -> int:
             encoding="utf-8",
         )
 
-    fetched = counters["fetched"] + counters["override-only"]
+    fetched = counters["fetched"] + counters["override-only"] + counters["register-link"]
     cached = counters["cached"]
     missed = counters["missed"] + counters["legifrance-only"]
 
     print(
         f"[done] fetched={fetched} cached={cached} register={counters['register']} "
+        f"register-link={counters['register-link']} "
         f"extra={extra} missed={missed} manifest={MANIFEST_PATH.relative_to(ROOT)}",
         file=sys.stderr,
     )

@@ -54,6 +54,11 @@ class _Tier:
     def cahier_for(self, id_appellation):
         return self._cahier if id_appellation in self.resolved else None
 
+    def spec_link_for(self, id_appellation):
+        # the register links no BO Agri cahier for this GI: the attachment
+        # tier decides (the link tier has its own test below)
+        return getattr(self, "spec_link", "")
+
 
 def _patch_dirs(monkeypatch, tmp_path, cache_dir):
     """Point the register cache at `cache_dir` and the cahiers dir at a temp
@@ -231,3 +236,57 @@ def test_absent_id_map_does_not_record_a_sticky_miss(monkeypatch, tmp_path):
 
     assert regc.fetch("PDO-FR-A0571", {"PDO-FR-OTHER": 1}, manifest) == (None, "unresolved")
     assert manifest["PDO-FR-A0571"]["status"] == "unresolved"
+
+
+def test_the_specification_link_wins_over_the_attachment(monkeypatch, tmp_path):
+    """The register's detail record can carry `productSpecificationLink`, a
+    BO Agri URL of the cahier itself (30 of the 34 IG-only spirits, whose
+    INAO page could not be walked): it is downloaded as the BO Agri cahier
+    it is, and the manifest says who pointed at it."""
+    cahier, cache = _cahier(tmp_path)
+    _patch_dirs(monkeypatch, tmp_path, cache)
+    tier = _Tier(cahier, {"file_number": "PGI-FR-02028"})
+    tier.session = object()
+    tier.spec_link = "https://info.agriculture.gouv.fr/boagri/document_administratif-1/telechargement"
+    seen = {}
+
+    def fake_download(session, url, out_dir):
+        seen["url"] = url
+        return SHA, out_dir / f"{SHA}.pdf"
+
+    monkeypatch.setattr(m01, "download_pdf", fake_download)
+    manifest: dict = {}
+    app = m01.Appellation(id_appellation="130", name="Genièvre Flandre Artois", products=[])
+    status, _extra = m01._register_tier(app, manifest, m01._stub_meta(app), tier, {}, fallback=("missed", 0))
+    assert status == "register-link"
+    entry = manifest["130"]
+    assert seen["url"] == tier.spec_link and entry["boagri_url"] == tier.spec_link
+    assert entry["spec_link_source"] == "eambrosia-register"
+    assert entry["register_file_number"] == "PGI-FR-02028"
+    assert "source_kind" not in entry, "a BO Agri cahier, not a register attachment"
+
+
+def test_an_override_keeps_the_product_page_and_drops_the_old_text_trail(monkeypatch, tmp_path):
+    """A curator override replaces the cahier (Cognac, arrêté du 10 juin 2026,
+    pinned while INAO's product site was unreachable): the product page of the
+    earlier run stays, the show_texte / Légifrance trail of the superseded
+    text does not, nor the earlier resolution's provenance."""
+    monkeypatch.setattr(m01, "OUT_DIR", tmp_path)
+    monkeypatch.setattr(m01, "_download_alt_candidates", lambda *a, **k: 0)
+    monkeypatch.setattr(m01, "download_pdf", lambda session, url, out: (SHA, tmp_path / f"{SHA}.pdf"))
+    app = m01.Appellation(id_appellation="320", name="Cognac", products=[])
+    manifest = {"320": {
+        "name": "Cognac", "product_url": "https://www2.inao.gouv.fr/produit/21042",
+        "canonical_idproduit": "21042", "show_texte_url": "https://www2.inao.gouv.fr/show_texte/8260",
+        "legifrance_jorftext_ids": ["JORFTEXT000000000000"], "spec_link_source": "eambrosia-register",
+        "boagri_url": "https://example.invalid/old", "sha256": "0" * 64,
+    }}
+    override = {"boagri_urls": ["https://example.invalid/new"], "note": "Arrêté du 10 juin 2026"}
+    status, _ = m01._process_override_only(None, app, manifest, override, 0)
+    entry = manifest["320"]
+    assert status == "override-only"
+    assert entry["boagri_url"] == "https://example.invalid/new" and entry["sha256"] == SHA
+    assert entry["product_url"].endswith("/21042") and entry["canonical_idproduit"] == "21042"
+    assert not entry["show_texte_url"] and not entry["legifrance_jorftext_ids"]
+    assert "spec_link_source" not in entry
+    assert entry["manual_override_note"] == "Arrêté du 10 juin 2026"

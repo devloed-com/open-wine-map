@@ -27,7 +27,9 @@ own units lies inside its parent (CHILD-OUTSIDE-PARENT — the overlap audit
 skips hierarchy pairs, so nothing else does).
 
 Buckets: OK / SUSPECT / REVIEWED (scripts/_lib/geometry_text_overrides.json)
-/ NO-TEXT / NO-UNITS / NO-GEOM. `--strict` exits 1 on an unreviewed SUSPECT.
+/ PINNED (a drink's curated area: units beyond the parser's reading are no
+finding, a named unit the polygon lacks is) / NO-TEXT / NO-UNITS / NO-GEOM.
+`--strict` exits 1 on an unreviewed SUSPECT.
 Read-only. Streams the 300 MB GeoJSON once (~1 min), loads only the layers
 of the countries in scope.
 
@@ -78,6 +80,8 @@ COMMUNE_UNION_SOURCES = ("gisco-", "aires-csv", "communes", "swissboundaries-", 
                          "dgc-village-override", "ons-", "nuts2-province", "region-pdo-union", "gisco-nuts-region")
 PARCEL_OR_ZONE_SOURCES = ("parcellaire", "mapa-zone", "geoportal-", "figshare-pdo", "sigpac-", "cadastre-lieu-dit",
                           "ivv-commune-vineyard", "pdo-plan-parcel-hull-approx", "geometry-research-municipios")
+# the drinks pipeline's two sources: a quote-checked pin, the technical file's NUTS rows
+CURATED_AREA_SOURCES = ("drinks-area-pin", "gisco-nuts-union")
 # a parent drawn from the communes a règlement scan happened to name is not a
 # delimitation a child can be tested against (the CH cantonal AOCs)
 PARTIAL_PARENT_SOURCES = ("swissboundaries-commune-union", "communes", "parent-appellation", "sibling-dgc", "stub-no-geometry")
@@ -392,6 +396,36 @@ def with_national_spec(country: str, slug: str, rec: dict) -> dict:
     return rec
 
 
+_FR_FORMER: dict = {}
+
+
+def _fr_former(current: set[str]) -> dict:
+    if not _FR_FORMER:
+        from _lib.fr import former_communes as fc
+        former = fc.load(current, log=False)
+        chef = {}
+        if fc.FORMER_GEOJSON.exists():
+            chef = {f["properties"]["code"]: f["properties"]["chefLieu"]
+                    for f in json.loads(fc.FORMER_GEOJSON.read_text(encoding="utf-8"))["features"]}
+        _FR_FORMER.update(successor=former.successor, chef=chef, former=former, resolve=fc.resolve)
+    return _FR_FORMER
+
+
+def _fr_dead_codes(insee: set[str], current: set[str]) -> set[str]:
+    """The codes of an aire whose ground left its département before the
+    cahiers and lies outside the aire (Chassieu, 38088, in IGP Isère's rows):
+    not rows of the aire, nothing of them is drawn."""
+    table = _fr_former(current)
+    return set(table["resolve"](set(insee), current, table["former"]).elsewhere)
+
+
+def _fr_commune_of_today(code: str, current: set[str]) -> str | None:
+    """The commune of today that holds a pre-merger INSEE code of INAO's rows."""
+    table = _fr_former(current)
+    end = table["successor"].get(code) or table["chef"].get(code)
+    return end if end in current else None
+
+
 def named_units(country: str, slug: str, rec: dict, startup: dict, payload: dict, layer: Layer | None,
                 fr_aires=None, dept_codes: dict | None = None, geom=None) -> dict:
     """{ids, unresolved, above_commune, far, method} — the units the text
@@ -402,38 +436,66 @@ def named_units(country: str, slug: str, rec: dict, startup: dict, payload: dict
         return out
     if country == "fr":
         from _lib import aires as aires_mod
+        from _lib.geom_chain import dept_code_for
         if startup.get("is_sub_denomination"):
             # a DGC shares the parent's cahier: its section IV and the CSV row
             # the name lookup falls back to describe the parent, not the DGC
             out["method"] = "sub-denomination: parent aire not applicable"
             return out
         name = startup.get("name") or rec.get("name") or ""
-        insee = None
-        try:
-            insee = aires_mod.lookup(fr_aires, name)
-        except Exception:  # noqa: BLE001
-            insee = None
-        if insee:
-            out["ids"] |= {i for i in insee if i in set(layer.ids)}
-            out["method"] = "inao-aires-csv"
+        cahier_ids: set[str] = set()
         ag = ((rec.get("aire") or {}).get("aire_geographique") or {})
         if isinstance(ag, dict):
             for dept, names in ag.items():
-                code = (dept_codes or {}).get(norm(dept))
+                code = (dept_codes or {}).get(norm(dept)) or dept_code_for(dept)
                 for n in names or []:
                     base, partial = fr_token(n)
                     hits = layer.by_name(base, within={"dept": code} if code else None)
                     if len(hits) > 1:
                         hits = _pick_near(layer, hits, geom)
                     if len(hits) == 1:
-                        out["ids"].add(layer.ids[hits[0]])
+                        cahier_ids.add(layer.ids[hits[0]])
                         if partial:
                             out["partial"].add(layer.ids[hits[0]])
                     elif not hits:
                         out["unresolved"].append(f"{n} ({dept})")
-            if ag:
-                out["method"] = (out["method"] + "+cahier-iv").strip("+")
-        for d in rec.get("aire_departements") or []:
+        insee = None
+        try:
+            # the cahier's own communes choose the aire where a name has two
+            # (IDA 2375 the Calvados spirit, 1993 the Calvados wine IGP) — the
+            # hint stage 04 passes; without it the two were pooled and each
+            # record "named" the other's communes
+            insee = aires_mod.lookup(fr_aires, name, cahier_ids or None)
+        except Exception:  # noqa: BLE001
+            insee = None
+        if insee:
+            current = set(layer.ids)
+            out["ids"] |= {i for i in insee if i in current}
+            # a row written before a merger names the commune of today in
+            # part: stage 04 draws the former commune's own outline where one
+            # exists (scripts/_lib/fr/former_communes.py)
+            dead = _fr_dead_codes(insee, current)
+            for code in insee:
+                end = None if code in current or code in dead else _fr_commune_of_today(code, current)
+                if end and end not in insee:
+                    out["ids"].add(end)
+                    out["partial"].add(end)
+            # the seat of a commune nouvelle the cahier names by its former
+            # name, or restricts to named former communes: drawn as those
+            # (scripts/_lib/fr/seat_communes.py), the commune of today in part
+            from _lib.fr.seat_communes import narrowed_seats
+            out["partial"] |= set(narrowed_seats(
+                rec, set(insee), dict(zip(layer.ids, layer.names)), _fr_former(current)["former"]))
+            out["method"] = "inao-aires-csv"
+        out["ids"] |= cahier_ids
+        # a commune the curator's pin records as named in part, or named and
+        # excluded (`not_drawn` in aires_supplements.json — Pommeau de
+        # Normandie's « Communes incluses en partie »): a decided difference
+        pin = aires_mod.load_aire_supplements().get(slug) or {}
+        out["partial"] |= {c for c in pin.get("not_drawn") or {} if c in out["ids"]}
+        if ag:
+            out["method"] = (out["method"] + "+cahier-iv").strip("+")
+        for d in (rec.get("aire") or {}).get("aire_departements") or rec.get("aire_departements") or []:
             out["above_commune"].append(d)
         return out
     if country == "ch":
@@ -679,6 +741,19 @@ def classify(geom_source: str, named: set[str], drawn_whole: set[str], drawn_par
     return "OK", detail
 
 
+def curated_area_bucket(bucket: str, geom_source: str, detail: dict) -> str:
+    """A drink's area is a curator pin (every quote and unit checked by
+    tests/test_drinks_areas.py) or the register's NUTS rows. The country
+    parsers were written for wine texts and read fewer names from a drink's
+    (a county taken for a commune, "Krems" for Krems an der Donau), so whole
+    units beyond their reading are no finding: PINNED. A name they did read
+    that the polygon lacks stays SUSPECT."""
+    if (bucket == "SUSPECT" and geom_source in CURATED_AREA_SOURCES
+            and not detail.get("missing") and not detail.get("child_outside_parent")):
+        return "PINNED"
+    return bucket
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--geojson", type=Path, default=GEOJSON)
@@ -726,6 +801,14 @@ def main() -> int:
     if "fr" in countries:
         from _lib import aires as aires_mod
         fr_aires = aires_mod.load_aires()
+        # the resolver's spirit guard, as stage 04 sets it (Marc de Champagne
+        # is not the wine Champagne's aire)
+        aires_mod.register_product_names(
+            (r.get("name") for r in aocs.values()
+             if r.get("country", "fr") == "fr" and r.get("product_class") == "spirit"),
+            (r.get("name") for r in aocs.values()
+             if r.get("country", "fr") == "fr" and r.get("is_wine", True) is not False),
+        )
         import csv
         with (ROOT / "raw" / "inao" / "aoc-aop-aires-communes.csv").open(encoding="latin-1") as fh:
             for row in csv.DictReader(fh, delimiter=";"):
@@ -835,6 +918,7 @@ def main() -> int:
                 detail["child_outside_parent"] = True
                 if bucket in ("OK", "NO-UNITS", "ABOVE-COMMUNE", "NO-TEXT"):
                     bucket = "SUSPECT"
+        bucket = curated_area_bucket(bucket, rec_s.get("geom_source") or "", detail)
         if bucket == "SUSPECT" and slug in overrides:
             ov = overrides[slug]
             if set(ov.get("missing") or []) >= set(detail.get("missing") or []) and set(ov.get("extra") or []) >= set(detail.get("extra") or []):

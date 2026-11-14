@@ -97,7 +97,7 @@ _DIRECT_TRANSLATION_WRITE = re.compile(r"cache\.write_json\(\s*(cache_path\(lang
 
 
 def test_every_02d_writes_through_the_backup_helper():
-    assert len(STAGE_02D) == 21
+    assert len(STAGE_02D) == 22
     for path in STAGE_02D:
         src = path.read_text(encoding="utf-8")
         assert "write_source_cache" in src, path
@@ -105,7 +105,7 @@ def test_every_02d_writes_through_the_backup_helper():
 
 
 def test_every_02e_writes_through_the_backup_helper():
-    assert len(STAGE_02E) == 21
+    assert len(STAGE_02E) == 22
     for path in STAGE_02E:
         src = path.read_text(encoding="utf-8")
         assert "write_translation_cache" in src, path

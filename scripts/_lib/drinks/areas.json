@@ -1,0 +1,1701 @@
+{
+  "_README": "Curator pins of the area a drink GI is drawn from — see scripts/_lib/drinks/geometry.py. Keyed by record slug. `units`: `country:XX` (the whole country), `nuts:CODE` (a GISCO NUTS 2024 unit of any level), `lau:XX:Name[@NUTS]` (a GISCO LAU 2024 municipality by its layer name, inside the NUTS unit after @ when the name is not unique) `lauid:XX:PREFIX=Label` (every LAU row whose GISCO id starts with the prefix — a Greek δήμος or δημοτική ενότητα, a Portuguese município — under the label the card shows), `minus:<unit>` (cut out of the union of the others) `uk:country:Name` / `uk:county:Name[=Label]` (an ONS country or county / unitary authority of the United Kingdom) or `ref:slug` (the polygon of another record — the wine appellation the drink shares its delimitation with). `quote` is the sentence of the record's own area text that names the units, verbatim (tests/test_drinks_areas.py checks it against the extracted record, whitespace folded); `note` is the curator's remark on the reading; `disclose` (en / fr / es / nl) is the sentence the card adds where the drawing departs from the letter — a part of a municipality drawn as the municipality, an island as its NUTS unit, a named unit left out; `largest_part` keeps the largest polygon of the union (an island without the islets its parishes also hold); `region` overrides the sidebar region. `verified` is the date the text was read. A record whose text names units no layer carries (a parish, a radius, a boundary traced in prose) has no pin and is not drawn: scripts/audit_drinks_coverage.py lists it.",
+  "abricotine": {
+    "units": [
+      "nuts:CH012"
+    ],
+    "quote": "à l’intérieur des limites du canton du Valais",
+    "region": "Valais",
+    "verified": "2026-11-12"
+  },
+  "aguardente-bagaceira-alentejo": {
+    "units": [
+      "ref:alentejo"
+    ],
+    "quote": "as sub-regiões da denominação de origem Alentejo",
+    "note": "The polygon is the Alentejo wine record's.",
+    "verified": "2026-11-12"
+  },
+  "aguardente-bagaceira-bairrada": {
+    "units": [
+      "ref:bairrada"
+    ],
+    "quote": "A área geográfica corresponde à Denominação de Origem Bairrada",
+    "note": "The delimitation is the Bairrada region's; the polygon is the Bairrada wine record's.",
+    "verified": "2026-11-12"
+  },
+  "aguardente-bagaceira-da-regiao-dos-vinhos-verdes": {
+    "units": [
+      "ref:vinho-verde"
+    ],
+    "quote": "Todos os municípios dos distritos de Braga e de Viana do Castelo",
+    "note": "The delimitation is the Vinho Verde region's; the polygon is the Vinho Verde wine record's.",
+    "verified": "2026-11-12"
+  },
+  "aguardente-de-vinho-alentejo": {
+    "units": [
+      "ref:alentejo"
+    ],
+    "quote": "as sub-regiões da denominação de origem Alentejo",
+    "note": "The polygon is the Alentejo wine record's.",
+    "verified": "2026-11-12"
+  },
+  "aguardente-de-vinho-da-regiao-dos-vinhos-verdes": {
+    "units": [
+      "ref:vinho-verde"
+    ],
+    "quote": "Todos os municípios dos distritos de Braga e de Viana do Castelo",
+    "note": "The delimitation is the Vinho Verde region's; the polygon is the Vinho Verde wine record's.",
+    "verified": "2026-11-12"
+  },
+  "aguardente-de-vinho-douro": {
+    "units": [
+      "ref:douro"
+    ],
+    "quote": "tradicionalmente agrupadas em três áreas geográficas",
+    "note": "The delimitation is the Região Demarcada do Douro's; the polygon is the Douro wine record's.",
+    "verified": "2026-11-12"
+  },
+  "aguardente-de-vinho-lourinha": {
+    "units": [
+      "lauid:PT:1108=Lourinhã",
+      "lau:PT:Atouguia da Baleia",
+      "lau:PT:Serra d'El-Rei",
+      "lau:PT:Olho Marinho",
+      "lau:PT:Bombarral e Vale Covo",
+      "lau:PT:Campelos e Outeiro da Cabeça"
+    ],
+    "quote": "Do Município da Lourinhã, as freguesias de Lourinhã, Atalaia, Ribamar",
+    "note": "The eleven freguesias named in Lourinhã are, since the 2013 unions, the whole município (eight parishes in GISCO LAU 2024).",
+    "disclose": {
+      "en": "Vale Covo and Campelos are drawn as the parish unions that hold them since 2013 (Bombarral e Vale Covo, Campelos e Outeiro da Cabeça).",
+      "fr": "Vale Covo et Campelos sont dessinées comme les unions de paroisses qui les contiennent depuis 2013 (Bombarral e Vale Covo, Campelos e Outeiro da Cabeça).",
+      "es": "Vale Covo y Campelos se dibujan como las uniones de parroquias que las contienen desde 2013 (Bombarral e Vale Covo, Campelos e Outeiro da Cabeça).",
+      "nl": "Vale Covo en Campelos zijn getekend als de parochie-unies waartoe ze sinds 2013 behoren (Bombarral e Vale Covo, Campelos e Outeiro da Cabeça)."
+    },
+    "verified": "2026-11-12"
+  },
+  "aguardente-de-vinho-ribatejo": {
+    "units": [
+      "ref:do-tejo"
+    ],
+    "quote": "corresponde à totalidade da área geográfica da região do Ribatejo incluindo as suas sub-regiões",
+    "note": "The six sub-regiões are those of the DoTejo appellation (the former Ribatejo); the polygon is the DoTejo wine record's.",
+    "verified": "2026-11-12"
+  },
+  "aguardiente-de-hierbas-de-galicia": {
+    "units": [
+      "nuts:ES11"
+    ],
+    "quote": "todo el territorio de la Comunidad Autónoma de Galicia",
+    "verified": "2026-11-12"
+  },
+  "anis-paloma-monforte-del-cid": {
+    "units": [
+      "nuts:ES521"
+    ],
+    "quote": "Provincia de Alicante",
+    "verified": "2026-11-12"
+  },
+  "aperitivo-cafe-de-alcoy": {
+    "units": [
+      "nuts:ES521"
+    ],
+    "quote": "Provincia de Alicante",
+    "verified": "2026-11-12"
+  },
+  "aprikot-trentino": {
+    "units": [
+      "nuts:ITH2"
+    ],
+    "quote": "territorio della Provincia Autonoma di Trento",
+    "verified": "2026-11-12"
+  },
+  "balegemse-jenever": {
+    "units": [
+      "lau:BE:Oosterzele"
+    ],
+    "quote": "uitsluitend gestookt te Balegem, een deelgemeente van de gemeente Oosterzele",
+    "note": "Balegem is a part of the municipality of Oosterzele, which is drawn whole.",
+    "disclose": {
+      "en": "Balegem is a part of the municipality of Oosterzele, which is drawn whole.",
+      "fr": "Balegem est une section de la commune d'Oosterzele, dessinée en entier.",
+      "es": "Balegem es una parte del municipio de Oosterzele, que se dibuja entero.",
+      "nl": "Balegem is een deelgemeente van Oosterzele, dat in zijn geheel is getekend."
+    },
+    "verified": "2026-11-12"
+  },
+  "bayerischer-barwurz": {
+    "units": [
+      "nuts:DE2"
+    ],
+    "quote": "The defined geographical area is the whole of Bavaria.",
+    "verified": "2026-11-12"
+  },
+  "bayerischer-blutwurz": {
+    "units": [
+      "nuts:DE2"
+    ],
+    "quote": "Bayern (NUTS area DE2) is therefore designated as the defined geographical area.",
+    "verified": "2026-11-12"
+  },
+  "bayerischer-gebirgsenzian": {
+    "units": [
+      "nuts:DE2"
+    ],
+    "quote": "wird ausschließlich im Freistaat Bayern",
+    "verified": "2026-11-12"
+  },
+  "bayerischer-krauterlikor": {
+    "units": [
+      "nuts:DE2"
+    ],
+    "quote": "im geografischen Gebiet des Freistaates Bayern",
+    "verified": "2026-11-12"
+  },
+  "bekesi-szilvapalinka": {
+    "units": [
+      "lau:HU:Békés",
+      "lau:HU:Békéscsaba",
+      "lau:HU:Tarhos",
+      "lau:HU:Bélmegyer",
+      "lau:HU:Kamut",
+      "lau:HU:Murony",
+      "lau:HU:Mezőberény",
+      "lau:HU:Telekgerendás",
+      "lau:HU:Köröstarcsa",
+      "lau:HU:Kétsoprony",
+      "lau:HU:Vésztő",
+      "lau:HU:Doboz",
+      "lau:HU:Gyula",
+      "lau:HU:Sarkad",
+      "lau:HU:Sarkadkeresztúr",
+      "lau:HU:Szabadkígyós"
+    ],
+    "quote": "Ez a terület magában foglalja Békés várost és közigazgatási határain kívül a következő, Békés környéki településeket",
+    "verified": "2026-11-12"
+  },
+  "benediktbeurer-klosterlikor": {
+    "units": [
+      "lau:DE:Benediktbeuern"
+    ],
+    "quote": "wird im Gebiet der Gemeinde Benediktbeuern angesetzt",
+    "verified": "2026-11-12"
+  },
+  "borzag-palinka": {
+    "units": [
+      "nuts:HU313"
+    ],
+    "quote": "Nógrád megye közigazgatási területe.",
+    "verified": "2026-11-12"
+  },
+  "bourgaska-muscatova-rakya": {
+    "units": [
+      "nuts:BG341"
+    ],
+    "quote": "се произвежда в област Бургас",
+    "verified": "2026-11-12"
+  },
+  "brandy-de-jerez": {
+    "units": [
+      "lau:ES:Jerez de la Frontera",
+      "lau:ES:El Puerto de Santa María",
+      "lau:ES:Sanlúcar de Barrameda"
+    ],
+    "quote": "por los términos municipales de Jerez de la Frontera, El Puerto de Santa María y Sanlúcar de Barrameda",
+    "verified": "2026-11-12"
+  },
+  "brandy-del-penedes": {
+    "units": [
+      "lau:ES:Avinyonet del Penedès",
+      "lau:ES:Castellet i la Gornal",
+      "lau:ES:Castellví de la Marca",
+      "lau:ES:Font-rubí",
+      "lau:ES:Gelida",
+      "lau:ES:Mediona",
+      "lau:ES:Olesa de Bonesvalls",
+      "lau:ES:Olèrdola",
+      "lau:ES:Pacs del Penedès",
+      "lau:ES:Pontons",
+      "lau:ES:Puigdàlber",
+      "lau:ES:Sant Cugat Sesgarrigues",
+      "lau:ES:Sant Llorenç d'Hortons",
+      "lau:ES:Sant Martí Sarroca",
+      "lau:ES:Sant Pere de Riudebitlles",
+      "lau:ES:Sant Quintí de Mediona",
+      "lau:ES:Sant Sadurní d'Anoia",
+      "lau:ES:Santa Fe del Penedès",
+      "lau:ES:Santa Margarida i els Monjos",
+      "lau:ES:Subirats",
+      "lau:ES:Torrelavit",
+      "lau:ES:Torrelles de Foix",
+      "lau:ES:Vilafranca del Penedès",
+      "lau:ES:Vilobí del Penedès",
+      "lau:ES:el Pla del Penedès",
+      "lau:ES:la Granada",
+      "lau:ES:les Cabanyes",
+      "lau:ES:Albinyana",
+      "lau:ES:Banyeres del Penedès",
+      "lau:ES:Bellvei",
+      "lau:ES:Bonastre",
+      "lau:ES:Calafell",
+      "lau:ES:Cunit",
+      "lau:ES:Llorenç del Penedès",
+      "lau:ES:Masllorenç",
+      "lau:ES:Sant Jaume dels Domenys",
+      "lau:ES:Santa Oliva",
+      "lau:ES:el Montmell",
+      "lau:ES:el Vendrell",
+      "lau:ES:l'Arboç",
+      "lau:ES:la Bisbal del Penedès",
+      "lau:ES:Constantí"
+    ],
+    "quote": "por los términos municipales de las comarcas del Alt Penedés i el Baix Penedés, y el municipio de Constantí de la comarca del Tarragonés",
+    "note": "The municipalities of the two comarcas are Wikidata's (P131 of Q15355 Alt Penedès, 27, and Q15362 Baix Penedès, 14; CC0, read 2026-11-12); Wikidata's 'Terrassola i Lavit' is the layer's Torrelavit.",
+    "verified": "2026-11-12"
+  },
+  "brandy-italiano": {
+    "units": [
+      "country:it"
+    ],
+    "quote": "intero territorio nazionale italiano",
+    "verified": "2026-11-12"
+  },
+  "brinjevec": {
+    "units": [
+      "country:si"
+    ],
+    "quote": "celotno območje Republike Slovenije",
+    "verified": "2026-11-12"
+  },
+  "cantueso-alicantino": {
+    "units": [
+      "nuts:ES521"
+    ],
+    "quote": "Provincia de Alicante",
+    "verified": "2026-11-12"
+  },
+  "chinchon": {
+    "units": [
+      "lau:ES:Chinchón"
+    ],
+    "quote": "se restringe al término municipal de Chinchón",
+    "verified": "2026-11-12"
+  },
+  "damassine": {
+    "units": [
+      "nuts:CH025"
+    ],
+    "quote": "à l’intérieur des limites de la République et canton du Jura",
+    "region": "Trois-Lacs",
+    "verified": "2026-11-12"
+  },
+  "distillato-di-mele-trentino": {
+    "units": [
+      "nuts:ITH2"
+    ],
+    "quote": "territorio della Provincia Autonoma di Trento",
+    "verified": "2026-11-12"
+  },
+  "domaci-rum": {
+    "units": [
+      "country:si"
+    ],
+    "quote": "celotno območje Republike Slovenije",
+    "verified": "2026-11-12"
+  },
+  "eau-de-vie-de-poire-du-valais": {
+    "units": [
+      "nuts:CH012"
+    ],
+    "quote": "à l’intérieur des limites du canton du Valais",
+    "region": "Valais",
+    "verified": "2026-11-12"
+  },
+  "emslander-korn": {
+    "units": [
+      "nuts:DE949"
+    ],
+    "quote": "erfolgt im Landkreis Emsland",
+    "verified": "2026-11-12"
+  },
+  "english-whisky": {
+    "units": [
+      "uk:country:England"
+    ],
+    "quote": "English Whisky is whisky distilled and matured in England",
+    "verified": "2026-11-12"
+  },
+  "ettaler-klosterlikor": {
+    "units": [
+      "lau:DE:Ettal"
+    ],
+    "quote": "wird in der Gemeinde Ettal",
+    "verified": "2026-11-12"
+  },
+  "genepi-della-valle-d-aosta": {
+    "units": [
+      "nuts:ITC2"
+    ],
+    "quote": "entro i confini territoriali della Regione Valle d’Aosta",
+    "verified": "2026-11-12"
+  },
+  "genziana-trentina": {
+    "units": [
+      "nuts:ITH2"
+    ],
+    "quote": "territorio della Provincia Autonoma di Trento",
+    "verified": "2026-11-12"
+  },
+  "gloucestershire-cider": {
+    "units": [
+      "uk:county:Gloucestershire"
+    ],
+    "quote": "The County of Gloucestershire",
+    "note": "ONS 'Gloucestershire' is the county council's area, without the unitary authority of South Gloucestershire.",
+    "disclose": {
+      "en": "The county is drawn as the Gloucestershire county council area, without South Gloucestershire.",
+      "fr": "Le comté est dessiné comme le territoire du conseil de comté du Gloucestershire, sans le South Gloucestershire.",
+      "es": "El condado se dibuja como el territorio del consejo del condado de Gloucestershire, sin South Gloucestershire.",
+      "nl": "Het graafschap is getekend als het gebied van de Gloucestershire County Council, zonder South Gloucestershire."
+    },
+    "verified": "2026-11-12"
+  },
+  "gloucestershire-perry": {
+    "units": [
+      "uk:county:Gloucestershire"
+    ],
+    "quote": "The County of Gloucestershire",
+    "note": "ONS 'Gloucestershire' is the county council's area, without the unitary authority of South Gloucestershire.",
+    "disclose": {
+      "en": "The county is drawn as the Gloucestershire county council area, without South Gloucestershire.",
+      "fr": "Le comté est dessiné comme le territoire du conseil de comté du Gloucestershire, sans le South Gloucestershire.",
+      "es": "El condado se dibuja como el territorio del consejo del condado de Gloucestershire, sin South Gloucestershire.",
+      "nl": "Het graafschap is getekend als het gebied van de Gloucestershire County Council, zonder South Gloucestershire."
+    },
+    "verified": "2026-11-12"
+  },
+  "gonci-barackpalinka": {
+    "units": [
+      "lau:HU:Abaújvár",
+      "lau:HU:Gönc",
+      "lau:HU:Göncruszka",
+      "lau:HU:Tornyosnémeti",
+      "lau:HU:Hidasnémeti",
+      "lau:HU:Zsujta",
+      "lau:HU:Arka",
+      "lau:HU:Boldogkőváralja",
+      "lau:HU:Hejce",
+      "lau:HU:Hernádcéce",
+      "lau:HU:Korlát",
+      "lau:HU:Vizsoly",
+      "lau:HU:Abaújkér",
+      "lau:HU:Encs",
+      "lau:HU:Fancsal",
+      "lau:HU:Forró",
+      "lau:HU:Ináncs",
+      "lau:HU:Hernádkércs",
+      "lau:HU:Nagykinizs",
+      "lau:HU:Szentistvánbaksa",
+      "lau:HU:Alsógagy",
+      "lau:HU:Felsővadász",
+      "lau:HU:Lak",
+      "lau:HU:Selyeb",
+      "lau:HU:Szakácsi",
+      "lau:HU:Alsóvadász",
+      "lau:HU:Homrogd",
+      "lau:HU:Szikszó",
+      "lau:HU:Sajóvámos",
+      "lau:HU:Sajópálfala",
+      "lau:HU:Miskolc",
+      "lau:HU:Fulókércs",
+      "lau:HU:Garadna",
+      "lau:HU:Baktakék",
+      "lau:HU:Beret",
+      "lau:HU:Detek",
+      "lau:HU:Léh",
+      "lau:HU:Abaújszántó",
+      "lau:HU:Golop",
+      "lau:HU:Megyaszó",
+      "lau:HU:Monok",
+      "lau:HU:Rátka",
+      "lau:HU:Tállya",
+      "lau:HU:Bekecs",
+      "lau:HU:Legyesbénye",
+      "lau:HU:Szerencs"
+    ],
+    "quote": "kizárólag az alább felsorolt településeken működő szeszfőzdében szabad előállítani, palackozni",
+    "verified": "2026-11-12"
+  },
+  "grappa": {
+    "units": [
+      "country:it"
+    ],
+    "quote": "il territorio nazionale italiano",
+    "verified": "2026-11-12"
+  },
+  "grappa-della-valle-d-aosta": {
+    "units": [
+      "nuts:ITC2"
+    ],
+    "quote": "The entire territory of the Autonomous Region of Valle d’Aosta.",
+    "verified": "2026-11-12"
+  },
+  "grappa-trentina": {
+    "units": [
+      "nuts:ITH2"
+    ],
+    "quote": "Provincia Autonoma di Trento",
+    "note": "The technical file's NUTS row is the 2010 code ITD2, today ITH2.",
+    "verified": "2026-11-12"
+  },
+  "grozdova-rakya-ot-targovishte": {
+    "units": [
+      "nuts:BG334"
+    ],
+    "quote": "се произвежда в област Търговище",
+    "verified": "2026-11-12"
+  },
+  "haselunner-korn": {
+    "units": [
+      "lau:DE:Haselünne"
+    ],
+    "quote": "in der Stadt Haselünne",
+    "verified": "2026-11-12"
+  },
+  "hasseltse-jenever": {
+    "units": [
+      "lau:BE:Hasselt",
+      "lau:BE:Zonhoven",
+      "lau:BE:Diepenbeek"
+    ],
+    "quote": "gevormd door de steden en/of gemeenten Hasselt, Zonhoven en Diepenbeek",
+    "verified": "2026-11-12"
+  },
+  "herbero-de-la-sierra-de-mariola": {
+    "units": [
+      "nuts:ES521"
+    ],
+    "quote": "Provincia de Alicante",
+    "verified": "2026-11-12"
+  },
+  "herefordshire-cider": {
+    "units": [
+      "uk:county:Herefordshire, County of=Herefordshire"
+    ],
+    "quote": "The County of Herefordshire",
+    "verified": "2026-11-12"
+  },
+  "herefordshire-perry": {
+    "units": [
+      "uk:county:Herefordshire, County of=Herefordshire"
+    ],
+    "quote": "The County of Herefordshire",
+    "verified": "2026-11-12"
+  },
+  "hessischer-apfelwein": {
+    "units": [
+      "nuts:DE7"
+    ],
+    "quote": "Bundesland Hessen",
+    "verified": "2026-11-12"
+  },
+  "hierbas-de-mallorca": {
+    "units": [
+      "nuts:ES532"
+    ],
+    "quote": "se limita a la isla de Mallorca",
+    "verified": "2026-11-12"
+  },
+  "hohenloher-birnenbrand": {
+    "units": [
+      "nuts:DE119",
+      "nuts:DE11B",
+      "nuts:DE11A",
+      "nuts:DE118",
+      "nuts:DE127"
+    ],
+    "quote": "Apart from the rural district of Hohenlohe, the area of ‘Hohenlohe’, which is located in Baden-Württemberg, comprises the neighbouring rural districts of Main-Tauber, Schwäbisch Hall and Heilbronn, as well as the district of Neckar-Odenwald",
+    "verified": "2026-11-12"
+  },
+  "homokhati-oszibarack-palinka": {
+    "units": [
+      "lau:HU:Mórahalom",
+      "lau:HU:Ásotthalom",
+      "lau:HU:Domaszék",
+      "lau:HU:Zákányszék",
+      "lau:HU:Ruzsa",
+      "lau:HU:Öttömös",
+      "lau:HU:Pusztamérges",
+      "lau:HU:Üllés",
+      "lau:HU:Bordány",
+      "lau:HU:Forráskút",
+      "lau:HU:Zsombó",
+      "lau:HU:Szatymaz",
+      "lau:HU:Kelebia",
+      "lau:HU:Balotaszállás"
+    ],
+    "quote": "Mórahalom, Ásotthalom, Domaszék, Zákányszék",
+    "verified": "2026-11-12"
+  },
+  "horinca-de-camarzana": {
+    "units": [
+      "lau:RO:Cămărzana",
+      "lau:RO:Târşolţ",
+      "lau:RO:Bixad@RO115"
+    ],
+    "quote": "Cămârzana, Tarsolt, Aliceni, Boineşti, Trip şi Bixad",
+    "note": "The six localities are the communes of Cămărzana (one village), Târșolț (Aliceni, Târșolț) and Bixad (Bixad, Boinești, Trip) whole — ro.wikipedia, Comuna Târșolț / Comuna Bixad / Comuna Cămărzana, Satu Mare.",
+    "verified": "2026-11-12"
+  },
+  "inlanderrum": {
+    "units": [
+      "country:at"
+    ],
+    "quote": "in allen Regionen der Republik Österreich",
+    "verified": "2026-11-12"
+  },
+  "irish-cream": {
+    "units": [
+      "country:ie",
+      "uk:country:Northern Ireland"
+    ],
+    "quote": "must take place in the geographical area of the island of Ireland",
+    "verified": "2026-11-12"
+  },
+  "irish-poteen": {
+    "units": [
+      "country:ie",
+      "uk:country:Northern Ireland"
+    ],
+    "quote": "must take place in the geographical area of Ireland",
+    "note": "The GI is registered for Ireland and Northern Ireland (EU file PGI-IE+UK(NI)-02080; the GOV.UK register lists it under both): the technical file's 'Ireland' is the island.",
+    "disclose": {
+      "en": "The text says Ireland; the name is registered for Ireland and Northern Ireland, and the whole island is drawn.",
+      "fr": "Le texte dit l'Irlande ; le nom est enregistré pour l'Irlande et l'Irlande du Nord, et l'île entière est dessinée.",
+      "es": "El texto dice Irlanda; el nombre está registrado para Irlanda e Irlanda del Norte, y se dibuja toda la isla.",
+      "nl": "De tekst zegt Ierland; de naam is geregistreerd voor Ierland en Noord-Ierland, en het hele eiland is getekend."
+    },
+    "verified": "2026-11-12"
+  },
+  "irish-whiskey": {
+    "units": [
+      "country:ie",
+      "uk:country:Northern Ireland"
+    ],
+    "quote": "must take place in the geographical area of the island of Ireland",
+    "verified": "2026-11-12"
+  },
+  "jagertee": {
+    "units": [
+      "country:at"
+    ],
+    "quote": "in allen Regionen der Republik Österreich",
+    "verified": "2026-11-12"
+  },
+  "karlovska-grozdova-rakya": {
+    "units": [
+      "lau:BG:Карлово",
+      "lau:BG:Сопот"
+    ],
+    "quote": "Обхваща землищата на общините Карлово и Сопот",
+    "verified": "2026-11-12"
+  },
+  "karnobatska-grozdova-rakya": {
+    "units": [
+      "lau:BG:Карнобат",
+      "lau:BG:Сунгурларе",
+      "lau:BG:Айтос",
+      "lau:BG:Царево",
+      "lau:BG:Стралджа"
+    ],
+    "quote": "Районът обхваща територията на следните землищата",
+    "note": "village lands inside the listed municipalities; drawn as the municipalities whole",
+    "disclose": {
+      "en": "The area is made of village lands inside these municipalities, which are drawn whole.",
+      "fr": "L'aire est faite de terres villageoises situées dans ces communes, dessinées en entier.",
+      "es": "La zona se compone de términos de pueblos situados en estos municipios, que se dibujan enteros.",
+      "nl": "Het gebied bestaat uit dorpsgronden binnen deze gemeenten, die in hun geheel zijn getekend."
+    },
+    "verified": "2026-11-12"
+  },
+  "kecskemeti-barackpalinka": {
+    "units": [
+      "lau:HU:Kecskemét",
+      "lau:HU:Ballószög",
+      "lau:HU:Bócsa",
+      "lau:HU:Ágasegyháza",
+      "lau:HU:Fülöpháza",
+      "lau:HU:Fülöpjakab",
+      "lau:HU:Helvécia",
+      "lau:HU:Izsák",
+      "lau:HU:Jakabszállás",
+      "lau:HU:Kerekegyháza",
+      "lau:HU:Kunszállás",
+      "lau:HU:Lajosmizse",
+      "lau:HU:Lakitelek",
+      "lau:HU:Nagykőrös",
+      "lau:HU:Nyárlőrinc",
+      "lau:HU:Orgovány",
+      "lau:HU:Szentkirály",
+      "lau:HU:Tiszakécske",
+      "lau:HU:Városföld"
+    ],
+    "quote": "Ballószög, Bócsa, Ágasegyháza, Fülöpháza",
+    "note": "Hetényegyháza, Kerekdomb, Kisfái and Matkó are parts of Kecskemét and Tiszabög of Tiszakécske; those two municipalities are drawn whole.",
+    "verified": "2026-11-12"
+  },
+  "kirsch-friulano": {
+    "units": [
+      "nuts:ITH4"
+    ],
+    "quote": "territorio della Regione Friuli-Venezia Giulia",
+    "verified": "2026-11-12"
+  },
+  "kirsch-trentino": {
+    "units": [
+      "nuts:ITH2"
+    ],
+    "quote": "territorio della Provincia Autonoma di Trento",
+    "verified": "2026-11-12"
+  },
+  "kitro-of-naxos": {
+    "units": [
+      "lauid:EL:670201=Δημοτική Ενότητα Νάξου",
+      "lauid:EL:670203=Δημοτική Ενότητα Δρυμαλίας"
+    ],
+    "quote": "παράγεται αποκλειστικά στη νήσο Νάξο",
+    "note": "The island is the municipal units of Naxos and Drymalia (el.wikipedia, Δήμος Νάξου και Μικρών Κυκλάδων); the Small Cyclades of the same municipality are not part of it.",
+    "verified": "2026-11-12"
+  },
+  "korn": {
+    "units": [
+      "country:de",
+      "country:at",
+      "nuts:BE336"
+    ],
+    "quote": "in Deutschland, Österreich oder in der deutschsprachigen Gemeinschaft Belgiens",
+    "verified": "2026-11-12"
+  },
+  "koum-kouat-of-corfu": {
+    "units": [
+      "nuts:EL622"
+    ],
+    "quote": "παράγεται αποκλειστικά στη νήσο Κέρκυρα",
+    "note": "The island is drawn as the regional unit of Kerkyra (NUTS-3 EL622), which also holds Paxoi and the Diapontia islets.",
+    "disclose": {
+      "en": "The island is drawn as the regional unit of Kerkyra, which also takes in the smaller islands around it.",
+      "fr": "L'île est dessinée comme l'unité régionale de Kerkyra, qui comprend aussi les petites îles voisines.",
+      "es": "La isla se dibuja como la unidad regional de Kerkyra, que incluye también las islas menores vecinas.",
+      "nl": "Het eiland is getekend als de regionale eenheid Kerkyra, waartoe ook de kleinere eilanden eromheen behoren."
+    },
+    "verified": "2026-11-12"
+  },
+  "licor-cafe-de-galicia": {
+    "units": [
+      "nuts:ES11"
+    ],
+    "quote": "todo el territorio de la Comunidad Autónoma de Galicia",
+    "verified": "2026-11-12"
+  },
+  "licor-de-hierbas-de-galicia": {
+    "units": [
+      "nuts:ES11"
+    ],
+    "quote": "todo el territorio de la Comunidad Autónoma de Galicia",
+    "verified": "2026-11-12"
+  },
+  "liquore-di-limone-della-costa-d-amalfi": {
+    "units": [
+      "lau:IT:Amalfi",
+      "lau:IT:Atrani",
+      "lau:IT:Cetara",
+      "lau:IT:Conca dei Marini",
+      "lau:IT:Furore",
+      "lau:IT:Maiori",
+      "lau:IT:Minori",
+      "lau:IT:Positano",
+      "lau:IT:Praiano",
+      "lau:IT:Ravello",
+      "lau:IT:Scala",
+      "lau:IT:Tramonti",
+      "lau:IT:Vietri sul Mare"
+    ],
+    "quote": "Amalfi, Atrani, Cetara, Conca dei Marini",
+    "verified": "2026-11-12"
+  },
+  "liquore-di-limone-di-sorrento": {
+    "units": [
+      "lau:IT:Vico Equense",
+      "lau:IT:Meta",
+      "lau:IT:Piano di Sorrento",
+      "lau:IT:Sant'Agnello",
+      "lau:IT:Sorrento",
+      "lau:IT:Massa Lubrense",
+      "lau:IT:Capri",
+      "lau:IT:Anacapri"
+    ],
+    "quote": "Vico Equense, Meta, Piano di Sorrento",
+    "verified": "2026-11-12"
+  },
+  "loveshka-slivova-rakya": {
+    "units": [
+      "lau:BG:Ловеч"
+    ],
+    "quote": "на територията на община Ловеч, област Ловеч",
+    "note": "The distillery is in the town of Lovech and the orchards in the lands of Kakrina and Hlevene, all in the municipality of Lovech, which is drawn whole.",
+    "disclose": {
+      "en": "The text names the town of Lovech and the lands of two villages of the municipality of Lovech; the municipality is drawn whole.",
+      "fr": "Le texte nomme la ville de Lovetch et les terres de deux villages de la commune de Lovetch ; la commune est dessinée en entier.",
+      "es": "El texto nombra la ciudad de Lovech y las tierras de dos pueblos del municipio de Lovech; el municipio se dibuja entero.",
+      "nl": "De tekst noemt de stad Lovetsj en de gronden van twee dorpen in de gemeente Lovetsj; de gemeente is in haar geheel getekend."
+    },
+    "verified": "2026-11-12"
+  },
+  "madarasi-birspalinka": {
+    "units": [
+      "nuts:HU331"
+    ],
+    "quote": "Bács-Kiskun megye területén",
+    "verified": "2026-11-12"
+  },
+  "mariazeller-magenlikor": {
+    "units": [
+      "lau:AT:Mariazell"
+    ],
+    "quote": "umfasst die Stadt Mariazell",
+    "verified": "2026-11-12"
+  },
+  "masticha-of-chios": {
+    "units": [
+      "nuts:EL413"
+    ],
+    "quote": "παράγεται αποκλειστικά στη νήσο Χίο",
+    "note": "The island is drawn as the regional unit of Chios (NUTS-3 EL413), which also holds Psara and Oinousses.",
+    "disclose": {
+      "en": "The island is drawn as the regional unit of Chios, which also takes in Psara and Oinousses.",
+      "fr": "L'île est dessinée comme l'unité régionale de Chios, qui comprend aussi Psara et Oinousses.",
+      "es": "La isla se dibuja como la unidad regional de Quíos, que incluye también Psará e Inusas.",
+      "nl": "Het eiland is getekend als de regionale eenheid Chios, waartoe ook Psara en Oinousses behoren."
+    },
+    "verified": "2026-11-12"
+  },
+  "mirto-di-sardegna": {
+    "units": [
+      "nuts:ITG2"
+    ],
+    "quote": "della Regione Autonoma della Sardegna",
+    "verified": "2026-11-12"
+  },
+  "munsterlander-korn": {
+    "units": [
+      "nuts:DEA3",
+      "lau:DE:Werne"
+    ],
+    "quote": "Gebiet des Regierungsbezirks Münster und vom Regierungsbezirk Arnsberg",
+    "note": "The Regierungsbezirk Münster and the town of Werne are drawn; the Stadtbezirk Hamm-Bockum-Hövel, the third unit the text names, is a part of the city of Hamm and is not drawn.",
+    "disclose": {
+      "en": "The Hamm-Bockum-Hövel district, which the technical file also names, is a part of the city of Hamm and is not drawn.",
+      "fr": "Le district de Hamm-Bockum-Hövel, que le dossier technique nomme aussi, est une partie de la ville de Hamm et n'est pas dessiné.",
+      "es": "El distrito de Hamm-Bockum-Hövel, que el expediente técnico también nombra, es una parte de la ciudad de Hamm y no se dibuja.",
+      "nl": "Het stadsdeel Hamm-Bockum-Hövel, dat het technisch dossier ook noemt, is een deel van de stad Hamm en is niet getekend."
+    },
+    "verified": "2026-11-12"
+  },
+  "nagykorui-cseresznyepalinka": {
+    "units": [
+      "lau:HU:Csataszög",
+      "lau:HU:Fegyvernek",
+      "lau:HU:Hunyadfalva",
+      "lau:HU:Kőtelek",
+      "lau:HU:Nagykörű"
+    ],
+    "quote": "Csataszög, Dobapuszta, Fegyvernek, Hunyadfalva, Kőtelek és Nagykörű",
+    "note": "Dobapuszta is no municipality of GISCO LAU 2024 and is not drawn on its own.",
+    "disclose": {
+      "en": "Dobapuszta, which the text also names, has no polygon of its own in the municipal layer.",
+      "fr": "Dobapuszta, que le texte nomme aussi, n'a pas de polygone propre dans la couche communale.",
+      "es": "Dobapuszta, que el texto también nombra, no tiene polígono propio en la capa municipal.",
+      "nl": "Dobapuszta, dat de tekst ook noemt, heeft geen eigen polygoon in de gemeentelaag."
+    },
+    "verified": "2026-11-12"
+  },
+  "nagykunsagi-birspalinka": {
+    "units": [
+      "lau:HU:Tiszafüred",
+      "lau:HU:Tiszaszőlős",
+      "lau:HU:Tiszaigar",
+      "lau:HU:Tiszaderzs",
+      "lau:HU:Tiszaörs",
+      "lau:HU:Abádszalók",
+      "lau:HU:Tiszaszentimre",
+      "lau:HU:Nagyiván",
+      "lau:HU:Tiszabura",
+      "lau:HU:Tomajmonostora",
+      "lau:HU:Kunmadaras",
+      "lau:HU:Tiszaroff",
+      "lau:HU:Tiszagyenda",
+      "lau:HU:Kunhegyes",
+      "lau:HU:Berekfürdő",
+      "lau:HU:Tiszabő",
+      "lau:HU:Karcag",
+      "lau:HU:Fegyvernek",
+      "lau:HU:Kenderes",
+      "lau:HU:Kisújszállás",
+      "lau:HU:Tiszapüspöki",
+      "lau:HU:Örményes",
+      "lau:HU:Szolnok",
+      "lau:HU:Szajol",
+      "lau:HU:Törökszentmiklós",
+      "lau:HU:Túrkeve",
+      "lau:HU:Tiszatenyő",
+      "lau:HU:Kuncsorba",
+      "lau:HU:Rákóczifalva",
+      "lau:HU:Rákócziújfalu",
+      "lau:HU:Kengyel",
+      "lau:HU:Kétpó",
+      "lau:HU:Martfű",
+      "lau:HU:Mezőhék",
+      "lau:HU:Mezőtúr",
+      "lau:HU:Cibakháza",
+      "lau:HU:Tiszaföldvár",
+      "lau:HU:Mesterszállás",
+      "lau:HU:Nagyrév",
+      "lau:HU:Öcsöd",
+      "lau:HU:Tiszainoka",
+      "lau:HU:Tiszakürt",
+      "lau:HU:Cserkeszőlő",
+      "lau:HU:Kunszentmárton",
+      "lau:HU:Tiszasas",
+      "lau:HU:Csépa",
+      "lau:HU:Szelevény"
+    ],
+    "quote": "within the administrative boundaries of the following municipalities of Jász-Nagykun-Szolnok County to the east of the Tisza River",
+    "verified": "2026-11-12"
+  },
+  "nagykunsagi-szilvapalinka": {
+    "units": [
+      "lau:HU:Tiszafüred",
+      "lau:HU:Tiszaszőlős",
+      "lau:HU:Tiszaigar",
+      "lau:HU:Tiszaderzs",
+      "lau:HU:Tiszaörs",
+      "lau:HU:Abádszalók",
+      "lau:HU:Tiszaszentimre",
+      "lau:HU:Nagyiván",
+      "lau:HU:Tiszabura",
+      "lau:HU:Tomajmonostora",
+      "lau:HU:Kunmadaras",
+      "lau:HU:Tiszaroff",
+      "lau:HU:Tiszagyenda",
+      "lau:HU:Kunhegyes",
+      "lau:HU:Berekfürdő",
+      "lau:HU:Tiszabő",
+      "lau:HU:Karcag",
+      "lau:HU:Fegyvernek",
+      "lau:HU:Kenderes",
+      "lau:HU:Kisújszállás",
+      "lau:HU:Tiszapüspöki",
+      "lau:HU:Örményes",
+      "lau:HU:Szolnok",
+      "lau:HU:Szajol",
+      "lau:HU:Törökszentmiklós",
+      "lau:HU:Túrkeve",
+      "lau:HU:Tiszatenyő",
+      "lau:HU:Kuncsorba",
+      "lau:HU:Rákóczifalva",
+      "lau:HU:Rákócziújfalu",
+      "lau:HU:Kengyel",
+      "lau:HU:Kétpó",
+      "lau:HU:Martfű",
+      "lau:HU:Mezőhék",
+      "lau:HU:Mezőtúr",
+      "lau:HU:Cibakháza",
+      "lau:HU:Tiszaföldvár",
+      "lau:HU:Mesterszállás",
+      "lau:HU:Nagyrév",
+      "lau:HU:Öcsöd",
+      "lau:HU:Tiszainoka",
+      "lau:HU:Tiszakürt",
+      "lau:HU:Cserkeszőlő",
+      "lau:HU:Kunszentmárton",
+      "lau:HU:Tiszasas",
+      "lau:HU:Csépa",
+      "lau:HU:Szelevény"
+    ],
+    "quote": "Jász-Nagykun-Szolnok megyének a Tisza vonalától keletre elhelyezkedő településeinek közigazgatási területéről",
+    "verified": "2026-11-12"
+  },
+  "nocino-di-modena": {
+    "units": [
+      "nuts:ITH54"
+    ],
+    "quote": "dal territorio della provincia di Modena",
+    "verified": "2026-11-12"
+  },
+  "nurnberger-gluhwein": {
+    "units": [
+      "lau:DE:Nürnberg"
+    ],
+    "quote": "Production takes place within the city of Nuremberg.",
+    "verified": "2026-11-12"
+  },
+  "o-de-flander-oost-vlaamse-graanjenever": {
+    "units": [
+      "nuts:BE23"
+    ],
+    "quote": "provincie Oost-Vlaanderen",
+    "verified": "2026-11-12"
+  },
+  "orujo-de-galicia": {
+    "units": [
+      "nuts:ES11"
+    ],
+    "quote": "todo el territorio de la Comunidad Autónoma de Galicia",
+    "verified": "2026-11-12"
+  },
+  "ouzo": {
+    "units": [
+      "country:gr",
+      "country:cy"
+    ],
+    "quote": "αποκλειστικά στην Ελλάδα και στην Κύπρο",
+    "verified": "2026-11-12"
+  },
+  "ouzo-of-kalamata": {
+    "units": [
+      "lauid:EL:4401=Δήμος Καλαμάτας"
+    ],
+    "quote": "εντός των ορίων του Δήμου Καλαμάτας",
+    "verified": "2026-11-12"
+  },
+  "ouzo-of-macedonia": {
+    "units": [
+      "nuts:EL52",
+      "nuts:EL53",
+      "nuts:EL514",
+      "nuts:EL515"
+    ],
+    "quote": "περιλαμβάνει τις περιφερειακές ενότητες (πρώην νομούς) Γρεβενών, Δράμας, Ημαθίας, Θεσσαλονίκης, Καβάλας, Καστοριάς, Κιλκίς, Κοζάνης, Πέλλας, Πιερίας, Σερρών, Φλώρινας και Χαλκιδικής",
+    "note": "The thirteen regional units are the regions Kentriki and Dytiki Makedonia plus Drama and Kavala.",
+    "disclose": {
+      "en": "The regional unit of Kavala is drawn as the statistical unit Thasos–Kavala, which also takes in the island of Thasos.",
+      "fr": "L'unité régionale de Kavala est dessinée comme l'unité statistique Thasos–Kavala, qui comprend aussi l'île de Thasos.",
+      "es": "La unidad regional de Kavala se dibuja como la unidad estadística Tasos–Kavala, que incluye también la isla de Tasos.",
+      "nl": "De regionale eenheid Kavala is getekend als de statistische eenheid Thasos–Kavala, waartoe ook het eiland Thasos behoort."
+    },
+    "verified": "2026-11-12"
+  },
+  "ouzo-of-mitilene": {
+    "units": [
+      "lauid:EL:5301=Δήμος Μυτιλήνης",
+      "lauid:EL:5302=Δήμος Δυτικής Λέσβου",
+      "minus:lauid:EL:530106=Δημοτική Ενότητα Πλωμαρίου"
+    ],
+    "quote": "στη νήσο Λέσβο, πλην της περιοχής της Δημοτικής Ενότητας Πλωμαρίου",
+    "note": "Lesbos is its two municipalities of GISCO LAU 2024 (Mytilini, Dytiki Lesvos).",
+    "disclose": {
+      "en": "The municipal unit of Plomari, which the text excludes, is cut out.",
+      "fr": "L'unité municipale de Plomari, que le texte exclut, est retirée.",
+      "es": "La unidad municipal de Plomari, que el texto excluye, queda fuera.",
+      "nl": "De gemeentelijke eenheid Plomari, die de tekst uitsluit, is weggelaten."
+    },
+    "verified": "2026-11-12"
+  },
+  "ouzo-of-plomari": {
+    "units": [
+      "lauid:EL:530106=Δημοτική Ενότητα Πλωμαρίου"
+    ],
+    "quote": "εντός των ορίων της περιοχής της Δημοτικής Ενότητας Πλωμαρίου",
+    "verified": "2026-11-12"
+  },
+  "ouzo-of-thrace": {
+    "units": [
+      "nuts:EL511",
+      "nuts:EL512",
+      "nuts:EL513"
+    ],
+    "quote": "περιφερειακές ενότητες Ξάνθης, Ροδόπης και Έβρου",
+    "verified": "2026-11-12"
+  },
+  "pacharan-navarro": {
+    "units": [
+      "nuts:ES22"
+    ],
+    "quote": "circunscrita al territorio de la Comunidad Foral de Navarra",
+    "verified": "2026-11-12"
+  },
+  "palinca": {
+    "units": [
+      "nuts:RO115",
+      "nuts:RO114",
+      "nuts:RO116",
+      "nuts:RO111",
+      "nuts:RO113",
+      "nuts:RO125",
+      "nuts:RO122",
+      "nuts:RO112",
+      "nuts:RO124",
+      "nuts:RO123",
+      "nuts:RO126",
+      "nuts:RO421",
+      "nuts:RO121"
+    ],
+    "quote": "Pălinca este produsă în 13 judeţe cuprinse în arcul Carpatic",
+    "verified": "2026-11-12"
+  },
+  "palo-de-mallorca": {
+    "units": [
+      "nuts:ES532"
+    ],
+    "quote": "se limita a la isla de Mallorca",
+    "verified": "2026-11-12"
+  },
+  "pelinkovec": {
+    "units": [
+      "country:si"
+    ],
+    "quote": "območje Republike Slovenije",
+    "verified": "2026-11-12"
+  },
+  "pfalzer-weinbrand": {
+    "units": [
+      "nuts:DEB3"
+    ],
+    "quote": "umfasst die kreisfreien Städte Frankenthal (Pfalz), Kaiserslautern",
+    "note": "The ten towns and ten districts the text lists are, together, the statistical region Rheinhessen-Pfalz (NUTS-2 DEB3), drawn as that unit.",
+    "verified": "2026-11-12"
+  },
+  "pomoriyska-grozdova-rakya": {
+    "units": [
+      "lau:BG:Поморие"
+    ],
+    "quote": "се произвежда в община Поморие",
+    "verified": "2026-11-12"
+  },
+  "pregler": {
+    "units": [
+      "nuts:AT333"
+    ],
+    "quote": "Political district of Lienz",
+    "note": "The 33 municipalities the text lists are the political district of Lienz, which is the NUTS-3 unit Osttirol (AT333).",
+    "verified": "2026-11-12"
+  },
+  "ratafia-ciociara": {
+    "units": [
+      "nuts:ITI45"
+    ],
+    "quote": "nel territorio della provincia di Frosinone",
+    "verified": "2026-11-12"
+  },
+  "rheinberger-krauter": {
+    "units": [
+      "lau:DE:Rheinberg"
+    ],
+    "quote": "wird in der Stadt Rheinberg",
+    "verified": "2026-11-12"
+  },
+  "samoborski-bermet": {
+    "units": [
+      "lau:HR:Samobor"
+    ],
+    "quote": "The town of Samobor",
+    "verified": "2026-11-12"
+  },
+  "scotch-whisky": {
+    "units": [
+      "uk:country:Scotland"
+    ],
+    "quote": "Scotch Whisky is whisky distilled and matured in Scotland.",
+    "verified": "2026-11-12"
+  },
+  "sendenhorster-korn": {
+    "units": [
+      "lau:DE:Sendenhorst"
+    ],
+    "quote": "in der Gemeinde Sendenhorst",
+    "verified": "2026-11-12"
+  },
+  "sidra-da-madeira": {
+    "units": [
+      "lauid:PT:31=Ilha da Madeira"
+    ],
+    "quote": "Ilha da Madeira.",
+    "note": "The parishes of the island's ten municipalities; the Desertas and Selvagens, which belong to two of them, are left out (largest_part).",
+    "largest_part": true,
+    "verified": "2026-11-12"
+  },
+  "sidra-de-asturias": {
+    "units": [
+      "nuts:ES12"
+    ],
+    "quote": "comprende el territorio de la Comunidad Autónoma del Principado de Asturias",
+    "verified": "2026-11-12"
+  },
+  "single-malt-welsh-whisky": {
+    "units": [
+      "uk:country:Wales"
+    ],
+    "quote": "must take place in the geographical area of the country of Wales",
+    "verified": "2026-11-12"
+  },
+  "slavonska-sljivovica": {
+    "units": [
+      "nuts:HR024",
+      "nuts:HR025",
+      "nuts:HR023",
+      "nuts:HR022",
+      "nuts:HR026"
+    ],
+    "quote": "Zemljopisno područje istočne Hrvatske: Slavonija, Baranja i zapadni Srijem",
+    "note": "Eastern Croatia — Slavonia, Baranja and western Syrmia — read as the five counties east of the Ilova: a reading, the text names no unit.",
+    "disclose": {
+      "en": "The text names eastern Croatia — Slavonia, Baranja and western Syrmia — and no administrative unit; it is drawn as the five counties of that region.",
+      "fr": "Le texte nomme la Croatie orientale — Slavonie, Baranja et Syrmie occidentale — sans unité administrative ; elle est dessinée comme les cinq comitats de cette région.",
+      "es": "El texto nombra Croacia oriental — Eslavonia, Baranja y Sirmia occidental — sin unidad administrativa; se dibuja como los cinco condados de esa región.",
+      "nl": "De tekst noemt Oost-Kroatië — Slavonië, Baranja en West-Syrmië — en geen bestuurlijke eenheid; het is getekend als de vijf provincies van die regio."
+    },
+    "verified": "2026-11-12"
+  },
+  "slivenska-perla": {
+    "units": [
+      "lau:BG:Сливен",
+      "lau:BG:Нова Загора",
+      "lau:BG:Твърдица"
+    ],
+    "quote": "е с център гр. Сливен и обхваща землищата",
+    "note": "village lands inside the listed municipalities; drawn as the municipalities whole",
+    "disclose": {
+      "en": "The area is made of village lands inside these municipalities, which are drawn whole.",
+      "fr": "L'aire est faite de terres villageoises situées dans ces communes, dessinées en entier.",
+      "es": "La zona se compone de términos de pueblos situados en estos municipios, que se dibujan enteros.",
+      "nl": "Het gebied bestaat uit dorpsgronden binnen deze gemeenten, die in hun geheel zijn getekend."
+    },
+    "verified": "2026-11-12"
+  },
+  "sliwovitz-del-friuli-venezia-giulia": {
+    "units": [
+      "nuts:ITH4"
+    ],
+    "quote": "territorio della Regione Friuli-Venezia Giulia",
+    "verified": "2026-11-12"
+  },
+  "sliwovitz-trentino": {
+    "units": [
+      "nuts:ITH2"
+    ],
+    "quote": "territorio della Provincia Autonoma di Trento",
+    "verified": "2026-11-12"
+  },
+  "somerset-cider-brandy": {
+    "units": [
+      "uk:county:Somerset"
+    ],
+    "quote": "The county of Somerset in England",
+    "note": "ONS 'Somerset' is the council area (the county council's until 2023), without North Somerset and Bath and North East Somerset.",
+    "disclose": {
+      "en": "The county is drawn as the Somerset council area, without North Somerset and Bath and North East Somerset.",
+      "fr": "Le comté est dessiné comme le territoire du conseil du Somerset, sans le North Somerset ni Bath and North East Somerset.",
+      "es": "El condado se dibuja como el territorio del consejo de Somerset, sin North Somerset ni Bath and North East Somerset.",
+      "nl": "Het graafschap is getekend als het gebied van de Somerset Council, zonder North Somerset en Bath and North East Somerset."
+    },
+    "verified": "2026-11-12"
+  },
+  "steinhager": {
+    "units": [
+      "lau:DE:Steinhagen@DEA"
+    ],
+    "quote": "Gemeinde Steinhagen",
+    "verified": "2026-11-12"
+  },
+  "straldjanska-muscatova-rakya": {
+    "units": [
+      "lau:BG:Стралджа",
+      "lau:BG:Тунджа",
+      "lau:BG:Болярово",
+      "lau:BG:Елхово",
+      "lau:BG:Камено",
+      "lau:BG:Айтос"
+    ],
+    "quote": "е с център гр. Стралджа и обхваща землищата",
+    "note": "village lands inside the listed municipalities; drawn as the municipalities whole",
+    "disclose": {
+      "en": "The area is made of village lands inside these municipalities, which are drawn whole.",
+      "fr": "L'aire est faite de terres villageoises situées dans ces communes, dessinées en entier.",
+      "es": "La zona se compone de términos de pueblos situados en estos municipios, que se dibujan enteros.",
+      "nl": "Het gebied bestaat uit dorpsgronden binnen deze gemeenten, die in hun geheel zijn getekend."
+    },
+    "verified": "2026-11-12"
+  },
+  "sudtiroler-enzian": {
+    "units": [
+      "nuts:ITH1"
+    ],
+    "quote": "nel territorio della Provincia Autonoma Südtirol-Alto Adige",
+    "verified": "2026-11-12"
+  },
+  "sudtiroler-golden-delicious": {
+    "units": [
+      "nuts:ITH1"
+    ],
+    "quote": "nella Provincia Autonoma Südtirol-Alto Adige",
+    "verified": "2026-11-12"
+  },
+  "sudtiroler-grappa": {
+    "units": [
+      "nuts:ITH1"
+    ],
+    "quote": "Alto Adige",
+    "note": "The technical file's NUTS row is the 2010 code ITD1, today ITH1.",
+    "verified": "2026-11-12"
+  },
+  "sudtiroler-gravensteiner": {
+    "units": [
+      "nuts:ITH1"
+    ],
+    "quote": "nella provincia autonoma Südtirol - Alto Adige",
+    "verified": "2026-11-12"
+  },
+  "sudtiroler-kirsch": {
+    "units": [
+      "nuts:ITH1"
+    ],
+    "quote": "Provincia Autonoma Südtirol-Alto Adige",
+    "verified": "2026-11-12"
+  },
+  "sudtiroler-marille": {
+    "units": [
+      "nuts:ITH1"
+    ],
+    "quote": "nel territorio della Provincia Autonoma Südtirol-Alto Adige",
+    "verified": "2026-11-12"
+  },
+  "sudtiroler-obstler": {
+    "units": [
+      "nuts:ITH1"
+    ],
+    "quote": "nel territorio della Provincia Autonoma Südtirol-Alto Adige",
+    "verified": "2026-11-12"
+  },
+  "sudtiroler-williams": {
+    "units": [
+      "nuts:ITH1"
+    ],
+    "quote": "nel territorio della Provincia Autonoma Südtirol-Alto Adige",
+    "verified": "2026-11-12"
+  },
+  "sudtiroler-zwetschgeler": {
+    "units": [
+      "nuts:ITH1"
+    ],
+    "quote": "nel territorio della Provincia Autonoma Südtirol-Alto Adige",
+    "verified": "2026-11-12"
+  },
+  "suhindolska-grozdova-rakya": {
+    "units": [
+      "lau:BG:Сухиндол"
+    ],
+    "quote": "Районът обхваща територията на община Сухиндол",
+    "quote_field": "sections",
+    "disclose": {
+      "en": "The text names the town of Suhindol and the villages of Dimcha and Koevtsi, in the municipality of Suhindol; the municipality is drawn whole.",
+      "fr": "Le texte nomme la ville de Souhindol et les villages de Dimtcha et Koevtsi, dans la commune de Souhindol ; la commune est dessinée en entier.",
+      "es": "El texto nombra la ciudad de Suhindol y los pueblos de Dimcha y Koevtsi, en el municipio de Suhindol; el municipio se dibuja entero.",
+      "nl": "De tekst noemt de stad Soehindol en de dorpen Dimtsja en Koevtsi, in de gemeente Soehindol; de gemeente is in haar geheel getekend."
+    },
+    "verified": "2026-11-12"
+  },
+  "sungurlarska-grozdova-rakya": {
+    "units": [
+      "lau:BG:Сунгурларе",
+      "lau:BG:Карнобат",
+      "lau:BG:Котел"
+    ],
+    "quote": "Районът включва землищата на общините Сунгурларе, Карнобат и Котел",
+    "verified": "2026-11-12"
+  },
+  "szatmari-szilvapalinka": {
+    "units": [
+      "lau:HU:Aranyosapáti",
+      "lau:HU:Barabás",
+      "lau:HU:Beregdaróc",
+      "lau:HU:Beregsurány",
+      "lau:HU:Botpalád",
+      "lau:HU:Csaholc",
+      "lau:HU:Csaroda",
+      "lau:HU:Darnó",
+      "lau:HU:Fülesd",
+      "lau:HU:Gacsály",
+      "lau:HU:Garbolc",
+      "lau:HU:Gelénes",
+      "lau:HU:Gemzse",
+      "lau:HU:Gulács",
+      "lau:HU:Gyüre",
+      "lau:HU:Hetefejércse",
+      "lau:HU:Ilk",
+      "lau:HU:Jánd",
+      "lau:HU:Jánkmajtis",
+      "lau:HU:Kisar",
+      "lau:HU:Kishódos",
+      "lau:HU:Kisnamény",
+      "lau:HU:Kispalád",
+      "lau:HU:Kisszekeres",
+      "lau:HU:Kisvárda",
+      "lau:HU:Kisvarsány",
+      "lau:HU:Kölcse",
+      "lau:HU:Kömörő",
+      "lau:HU:Lövőpetri",
+      "lau:HU:Magosliget",
+      "lau:HU:Mánd",
+      "lau:HU:Márokpapi",
+      "lau:HU:Méhtelek",
+      "lau:HU:Milota",
+      "lau:HU:Nagyar",
+      "lau:HU:Nagydobos",
+      "lau:HU:Nagyhódos",
+      "lau:HU:Nagyvarsány",
+      "lau:HU:Nyírlövő",
+      "lau:HU:Olcsva",
+      "lau:HU:Olcsvaapáti",
+      "lau:HU:Panyola",
+      "lau:HU:Pap",
+      "lau:HU:Penyige",
+      "lau:HU:Rozsály",
+      "lau:HU:Sonkád",
+      "lau:HU:Szabolcsbáka",
+      "lau:HU:Szamosszeg",
+      "lau:HU:Szatmárcseke",
+      "lau:HU:Tákos",
+      "lau:HU:Tarpa",
+      "lau:HU:Tiszaadony",
+      "lau:HU:Tiszabecs",
+      "lau:HU:Tiszacsécse",
+      "lau:HU:Tiszakóród",
+      "lau:HU:Tiszaszalka",
+      "lau:HU:Tiszavid",
+      "lau:HU:Tivadar",
+      "lau:HU:Turistvándi",
+      "lau:HU:Turricse",
+      "lau:HU:Uszka",
+      "lau:HU:Vámosatya",
+      "lau:HU:Vámosoroszi",
+      "lau:HU:Vásárosnamény"
+    ],
+    "quote": "Szabolcs-Szatmár-Bereg megyéjében az alábbi felsorolt helységek és közigazgatási határuk területéről",
+    "verified": "2026-11-12"
+  },
+  "tentoura": {
+    "units": [
+      "lauid:EL:3701=Δήμος Πατρέων",
+      "lauid:EL:370401=Δημοτική Ενότητα Φαρρών",
+      "lauid:EL:370304=Δημοτική Ενότητα Ωλενίας"
+    ],
+    "quote": "εντός των ορίων του Δήμου Πατρέων, της Δημοτικής ενότητας Φαρρών του Δήμου Ερυμάνθου και της Δημοτικής ενότητας Ωλένιας του Δήμου Κάτω Αχαΐας",
+    "note": "GISCO id prefixes checked against the community lists of el.wikipedia (Δήμος Ερυμάνθου: Φαρρών, seat Χαλανδρίτσα; Δήμος Δυτικής Αχαΐας: Ωλενίας, with Λουσικά).",
+    "verified": "2026-11-12"
+  },
+  "thuringer-gluhwein": {
+    "units": [
+      "nuts:DEG"
+    ],
+    "quote": "The boundaries of the state of Thuringia",
+    "verified": "2026-11-12"
+  },
+  "traditional-welsh-cider": {
+    "units": [
+      "uk:country:Wales"
+    ],
+    "quote": "The country of Wales.",
+    "verified": "2026-11-12"
+  },
+  "traditional-welsh-perry": {
+    "units": [
+      "uk:country:Wales"
+    ],
+    "quote": "The country of Wales.",
+    "verified": "2026-11-12"
+  },
+  "trencianska-borovicka-juniperus": {
+    "units": [
+      "lau:SK:Trenčín"
+    ],
+    "quote": "prebieha na území mesta Trenčín",
+    "verified": "2026-11-12"
+  },
+  "troyanska-slivova-rakya": {
+    "units": [
+      "lau:BG:Троян"
+    ],
+    "quote": "на територията на община Троян",
+    "note": "The text lists the village lands inside the municipality of Troyan; the municipality is drawn whole.",
+    "disclose": {
+      "en": "The technical file names five village territories and two localities inside the municipality of Troyan; the municipality is drawn whole.",
+      "fr": "Le dossier technique nomme cinq territoires villageois et deux lieux-dits de la commune de Troyan ; la commune est dessinée en entier.",
+      "es": "El expediente técnico nombra cinco términos de pueblos y dos parajes del municipio de Troyan; el municipio se dibuja entero.",
+      "nl": "Het technisch dossier noemt vijf dorpsgebieden en twee plaatsen binnen de gemeente Trojan; de gemeente is in haar geheel getekend."
+    },
+    "verified": "2026-11-12"
+  },
+  "tsikoudia": {
+    "units": [
+      "country:gr"
+    ],
+    "quote": "παράγεται αποκλειστικά στην Ελλάδα",
+    "verified": "2026-11-12"
+  },
+  "tsikoudia-of-crete": {
+    "units": [
+      "nuts:EL43"
+    ],
+    "quote": "παράγεται στην Κρήτη",
+    "verified": "2026-11-12"
+  },
+  "tsipouro-of-macedonia": {
+    "units": [
+      "nuts:EL52",
+      "nuts:EL53",
+      "nuts:EL514",
+      "nuts:EL515"
+    ],
+    "quote": "περιλαμβάνει τις περιφέρειες Δυτικής και Κεντρικής Μακεδονίας και τις περιφερειακές ενότητες Δράμας και Καβάλας",
+    "disclose": {
+      "en": "The regional unit of Kavala is drawn as the statistical unit Thasos–Kavala, which also takes in the island of Thasos.",
+      "fr": "L'unité régionale de Kavala est dessinée comme l'unité statistique Thasos–Kavala, qui comprend aussi l'île de Thasos.",
+      "es": "La unidad regional de Kavala se dibuja como la unidad estadística Tasos–Kavala, que incluye también la isla de Tasos.",
+      "nl": "De regionale eenheid Kavala is getekend als de statistische eenheid Thasos–Kavala, waartoe ook het eiland Thasos behoort."
+    },
+    "verified": "2026-11-12"
+  },
+  "tsipouro-of-thessaly": {
+    "units": [
+      "nuts:EL61"
+    ],
+    "quote": "παράγεται στην περιοχή της Θεσσαλίας",
+    "verified": "2026-11-12"
+  },
+  "tsipouro-of-tyrnavos": {
+    "units": [
+      "lauid:EL:2206=Δήμος Τυρνάβου",
+      "lauid:EL:220102=Δημοτική Ενότητα Γιάννουλης"
+    ],
+    "quote": "περιλαμβάνει τον Δήμο Τυρνάβου και τη Δημοτική Ενότητα Γιάννουλης του Δήμου Λαρισαίων",
+    "verified": "2026-11-12"
+  },
+  "tuica-zetea-de-mediesu-aurit": {
+    "units": [
+      "lau:RO:Medieşu Aurit"
+    ],
+    "quote": "este zona administrativă a comunei Medieşu Aurit",
+    "verified": "2026-11-12"
+  },
+  "vasi-vadkorte-palinka": {
+    "units": [
+      "nuts:HU222",
+      "nuts:HU223"
+    ],
+    "quote": "within the administrative boundaries of Vas and Zala Counties",
+    "verified": "2026-11-12"
+  },
+  "vermut-di-torino": {
+    "units": [
+      "nuts:ITC1"
+    ],
+    "quote": "The production and packaging area comprises the entire area of the Region of Piedmont.",
+    "verified": "2026-11-12"
+  },
+  "vinars-murfatlar": {
+    "units": [
+      "ref:murfatlar"
+    ],
+    "quote": "va fi doar în arealul delimitat DOC Murfatlar prezentat mai sus",
+    "note": "The polygon is the Murfatlar wine record's.",
+    "verified": "2026-11-12"
+  },
+  "vinars-segarcea": {
+    "units": [
+      "ref:segarcea"
+    ],
+    "quote": "în arealul delimitat pentru producerea vinurilor cu denumirea de origine controlată Segarcea",
+    "note": "The polygon is the Segarcea wine record's.",
+    "verified": "2026-11-12"
+  },
+  "vinars-tarnave": {
+    "units": [
+      "lau:RO:Jidvei",
+      "lau:RO:Şona",
+      "lau:RO:Cetatea de Baltă",
+      "lau:RO:Valea Lungă@RO121"
+    ],
+    "quote": "Vinarsul se produce doar în Centrul Viticol Jidvei și cuprinde localitățile",
+    "note": "The ten localities are villages of the communes of Jidvei, Șona, Cetatea de Baltă and Valea Lungă (ro.wikipedia, the four commune articles); Cetatea de Baltă is named whole.",
+    "disclose": {
+      "en": "The text names ten villages of the communes of Jidvei, Șona, Cetatea de Baltă and Valea Lungă, which are drawn whole.",
+      "fr": "Le texte nomme dix villages des communes de Jidvei, Șona, Cetatea de Baltă et Valea Lungă, dessinées en entier.",
+      "es": "El texto nombra diez pueblos de los municipios de Jidvei, Șona, Cetatea de Baltă y Valea Lungă, que se dibujan enteros.",
+      "nl": "De tekst noemt tien dorpen in de gemeenten Jidvei, Șona, Cetatea de Baltă en Valea Lungă, die in hun geheel zijn getekend."
+    },
+    "verified": "2026-11-12"
+  },
+  "vino-naranja-del-condado-de-huelva": {
+    "units": [
+      "lau:ES:Almonte",
+      "lau:ES:Bollullos Par del Condado",
+      "lau:ES:Chucena",
+      "lau:ES:Gibraleón",
+      "lau:ES:La Palma del Condado",
+      "lau:ES:Manzanilla",
+      "lau:ES:Moguer",
+      "lau:ES:Rociana del Condado",
+      "lau:ES:San Juan del Puerto",
+      "lau:ES:Villalba del Alcor"
+    ],
+    "quote": "Almonte, Bollullos Par del Condado, Chucena, Gibraleón, La Palma del Condado, Manzanilla, Moguer, Rociana del Condado, San Juan del Puerto and Villalba del Alcor",
+    "verified": "2026-11-12"
+  },
+  "wachauer-marillenbrand": {
+    "units": [
+      "lau:AT:Aggsbach",
+      "lau:AT:Albrechtsberg an der Großen Krems",
+      "lau:AT:Bergern im Dunkelsteinerwald",
+      "lau:AT:Droß",
+      "lau:AT:Dürnstein",
+      "lau:AT:Emmersdorf an der Donau",
+      "lau:AT:Furth bei Göttweig",
+      "lau:AT:Gedersdorf",
+      "lau:AT:Krems an der Donau",
+      "lau:AT:Maria Laach am Jauerling",
+      "lau:AT:Mautern an der Donau",
+      "lau:AT:Mühldorf@AT12",
+      "lau:AT:Paudorf",
+      "lau:AT:Rohrendorf bei Krems",
+      "lau:AT:Rossatz-Arnsdorf",
+      "lau:AT:Schönbühel-Aggsbach",
+      "lau:AT:Senftenberg",
+      "lau:AT:Spitz",
+      "lau:AT:Stratzing",
+      "lau:AT:Weinzierl am Walde",
+      "lau:AT:Weißenkirchen in der Wachau"
+    ],
+    "quote": "Das Gebiet umfasst die Gemeinden Aggsbach-Markt, Albrechtsberg",
+    "note": "The municipalities are drawn under the names GISCO LAU 2024 gives them.",
+    "verified": "2026-11-12"
+  },
+  "wachauer-marillenlikor": {
+    "units": [
+      "lau:AT:Aggsbach",
+      "lau:AT:Albrechtsberg an der Großen Krems",
+      "lau:AT:Bergern im Dunkelsteinerwald",
+      "lau:AT:Droß",
+      "lau:AT:Dürnstein",
+      "lau:AT:Emmersdorf an der Donau",
+      "lau:AT:Furth bei Göttweig",
+      "lau:AT:Gedersdorf",
+      "lau:AT:Krems an der Donau",
+      "lau:AT:Maria Laach am Jauerling",
+      "lau:AT:Mautern an der Donau",
+      "lau:AT:Mühldorf@AT12",
+      "lau:AT:Paudorf",
+      "lau:AT:Rohrendorf bei Krems",
+      "lau:AT:Rossatz-Arnsdorf",
+      "lau:AT:Schönbühel-Aggsbach",
+      "lau:AT:Senftenberg",
+      "lau:AT:Spitz",
+      "lau:AT:Stratzing",
+      "lau:AT:Weinzierl am Walde",
+      "lau:AT:Weißenkirchen in der Wachau"
+    ],
+    "quote": "Das Gebiet umfasst die Gemeinden Aggsbach-Markt, Albrechtsberg",
+    "note": "The municipalities are drawn under the names GISCO LAU 2024 gives them.",
+    "verified": "2026-11-12"
+  },
+  "wachauer-weinbrand": {
+    "units": [
+      "lau:AT:Aggsbach",
+      "lau:AT:Bergern im Dunkelsteinerwald",
+      "lau:AT:Dürnstein",
+      "lau:AT:Mautern an der Donau",
+      "lau:AT:Mühldorf@AT12",
+      "lau:AT:Rossatz-Arnsdorf",
+      "lau:AT:Spitz",
+      "lau:AT:Weißenkirchen in der Wachau"
+    ],
+    "quote": "umfasst die niederösterreichischen Gemeinden Aggsbach, Bergern im Dunkelsteinerwald",
+    "note": "The municipalities are drawn under the names GISCO LAU 2024 gives them.",
+    "verified": "2026-11-12"
+  },
+  "williams-friulano": {
+    "units": [
+      "nuts:ITH4"
+    ],
+    "quote": "territorio della Regione Friuli-Venezia Giulia",
+    "verified": "2026-11-12"
+  },
+  "williams-trentino": {
+    "units": [
+      "nuts:ITH2"
+    ],
+    "quote": "territorio della Provincia Autonoma di Trento",
+    "verified": "2026-11-12"
+  },
+  "worcestershire-cider": {
+    "units": [
+      "uk:county:Worcestershire"
+    ],
+    "quote": "The County of Worcestershire",
+    "verified": "2026-11-12"
+  },
+  "worcestershire-perry": {
+    "units": [
+      "uk:county:Worcestershire"
+    ],
+    "quote": "The County of Worcestershire",
+    "verified": "2026-11-12"
+  },
+  "yambolska-grozdova-rakya": {
+    "units": [
+      "lau:BG:Ямбол",
+      "lau:BG:Стралджа",
+      "lau:BG:Тунджа",
+      "lau:BG:Болярово",
+      "lau:BG:Елхово",
+      "lau:BG:Камено",
+      "lau:BG:Айтос",
+      "lau:BG:Средец",
+      "lau:BG:Тополовград"
+    ],
+    "quote": "обхваща територията на област Ямбол и част от съседната област Бургас и включва следните землища",
+    "note": "village lands inside the listed municipalities; drawn as the municipalities whole",
+    "disclose": {
+      "en": "The area is made of village lands inside these municipalities, which are drawn whole.",
+      "fr": "L'aire est faite de terres villageoises situées dans ces communes, dessinées en entier.",
+      "es": "La zona se compone de términos de pueblos situados en estos municipios, que se dibujan enteros.",
+      "nl": "Het gebied bestaat uit dorpsgronden binnen deze gemeenten, die in hun geheel zijn getekend."
+    },
+    "verified": "2026-11-12"
+  },
+  "zuger-kirsch": {
+    "units": [
+      "nuts:CH066",
+      "lau:CH:Arth",
+      "lau:CH:Küssnacht (SZ)",
+      "lau:CH:Steinen",
+      "lau:CH:Steinerberg",
+      "lau:CH:Sattel",
+      "lau:CH:Lauerz",
+      "lau:CH:Schwyz",
+      "lau:CH:Gersau",
+      "lau:CH:Ingenbohl",
+      "lau:CH:Weggis",
+      "lau:CH:Meggen",
+      "lau:CH:Vitznau",
+      "lau:CH:Greppen",
+      "lau:CH:Meierskappel",
+      "lau:CH:Adligenswil",
+      "lau:CH:Udligenswil"
+    ],
+    "quote": "Das Gebiet umfasst folgende Gemeinden",
+    "note": "The whole canton of Zug (its eleven communes), nine communes of Schwyz and seven of Luzern; 'Küssnacht am Rigi' and 'Brunnen-Ingenbohl' are the layer's Küssnacht (SZ) and Ingenbohl.",
+    "region": "Deutschschweiz",
+    "verified": "2026-11-12"
+  }
+}

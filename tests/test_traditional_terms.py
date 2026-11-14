@@ -15,7 +15,7 @@ import pytest
 
 PATH = Path(__file__).resolve().parents[1] / "scripts" / "_lib" / "traditional_terms.json"
 LOCALES = {"en", "fr", "es", "nl"}
-SCHEME_IDS = {"pdo", "pgi", "spirit-gi", "uk-pdo", "uk-pgi", "none"}
+SCHEME_IDS = {"pdo", "pgi", "spirit-gi", "uk-pdo", "uk-pgi", "uk-spirit-gi", "none"}
 COUNTRIES = {
     "fr",
     "ch",
@@ -74,8 +74,22 @@ def test_canonical_serialisation(raw: str, table: dict) -> None:
 
 
 def test_top_level_keys(table: dict) -> None:
-    assert set(table) == {"__doc__", "schemes", "constants", "rulings", "pins", "terms"}
+    assert set(table) == {
+        "__doc__", "schemes", "classes", "constants", "rulings", "pins", "terms",
+    }
     assert table["__doc__"].strip()
+
+
+def test_classes(table: dict) -> None:
+    """The non-wine umbrella the Spirits legend pill explains: UI copy in the
+    four locales and its legal sources, like a scheme."""
+    assert set(table["classes"]) == {"drinks"}
+    for cid, cls in table["classes"].items():
+        assert set(cls) == {"full", "note", "sources"}, cid
+        _assert_locales(cls["full"], f"classes.{cid}.full")
+        _assert_locales(cls["note"], f"classes.{cid}.note")
+        _assert_sources(cls["sources"], f"classes.{cid}")
+    assert not set(table["classes"]) & set(table["schemes"])
 
 
 def test_schemes(table: dict) -> None:
@@ -93,7 +107,9 @@ def test_constants_cover_every_country(table: dict) -> None:
     assert set(table["rulings"]) == COUNTRIES
     for cc, kinds in constants.items():
         for kind, term in kinds.items():
-            assert kind in {"AOC", "IGP", "EDV", "DOP"}, (cc, kind)
+            # wine kinds only: a spirit drink, an aromatised wine or a cider
+            # takes no term from the constants (gi_terms.resolve_national_term)
+            assert kind in {"AOC", "IGP", "DOP"}, (cc, kind)
             assert isinstance(term, str), (cc, kind)
             assert (cc, kind) not in ROSTER_KINDS, f"{cc}:{kind} is roster-served, not constant"
     for cc, kind in ROSTER_KINDS:

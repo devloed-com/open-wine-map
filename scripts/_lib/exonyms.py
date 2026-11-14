@@ -109,9 +109,11 @@ _NAME_CONTEXT = re.compile(r"\b(Melon|Junta|Generalitat|Lezíria|Ribatejo|Consor
 # comune ("Magliano in Toscana"), a title ("Bacco in Toscana", Redi's
 # dithyramb), a district name ("Alto Piemonte"); and a quoted name
 # («Argille Varicolori»). 2026-10-25: each was flagged as an untranslated
-# place on the caches re-translated in phases D–G.
+# place on the caches re-translated in phases D–G. A German or Austrian town
+# named by its river likewise ("Ludwigshafen am Rhein", "Mautern an der
+# Donau", 2026-11-13: the drink records' municipality lists).
 _IN_PROPER_NAME = re.compile(
-    r"[A-ZÀ-Ý][\w'’-]+\s+(?:in|di|del|della|de|du|des)\s+$"
+    r"[A-ZÀ-Ý][\w'’-]+\s+(?:in|di|del|della|de|du|des|am|an der|ob der|bei)\s+$"
     r"|\b(?:Alto|Basso|Medio|Haut|Bas)[-\s]+$")
 _QUOTE_OPEN = "«“\"„"
 _QUOTE_CLOSE = "»”\"“"
@@ -135,13 +137,24 @@ def _pattern(form: str) -> re.Pattern:
 _PATTERNS = {form: _pattern(form) for form in EXONYMS}
 
 
+def _fold_name(text: str) -> str:
+    """Lower case and one apostrophe, character for character — the offsets
+    of the folded text are the offsets of `text` (`str.casefold` turns "ß"
+    into two letters)."""
+    return "".join(c.lower() if len(c.lower()) == 1 else c for c in text.replace("’", "'"))
+
+
 def _inside_name(bullet: str, start: int, end: int, names) -> bool:
     """True when [start, end) lies inside an occurrence of one of `names`
     longer than the form itself ("Sardegna" in "Cannonau di Sardegna")."""
+    # the name as a translation writes it: either apostrophe, any case
+    # (the record is « Kirsch d’Alsace », the Spanish bullet "el Kirsch
+    # d'Alsace"; "de marc d'Alsace Gewurztraminer" opens lower-case)
+    folded = _fold_name(bullet)
     for name in names:
         if len(name) <= end - start:
             continue
-        for m in re.finditer(re.escape(name), bullet):
+        for m in re.finditer(re.escape(_fold_name(name)), folded):
             if m.start() <= start and end <= m.end():
                 return True
     return False

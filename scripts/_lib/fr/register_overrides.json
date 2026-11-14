@@ -52,5 +52,11 @@
     "register_name": "Collioure",
     "prefer_cahier": true,
     "note": "INAO's product page (produit/7797) links only the PNOCDC draft 'PNOCDCCollioure.pdf' (PDF created 2011-03-23): its section X is an empty skeleton of headings, 315 characters, so the record carried no lien (shadow report 2026-08-29: register 14,412 chars). The register attachment 'CDC AOC Collioure.pdf' is the cahier that draft became — 'homologué par le décret n° 2011-1826 du 7 décembre 2011, JORF du 8 décembre 2011' — and eAmbrosia lists no publication or amendment for PDO-FR-A1049 after the Ares(2011)1381964 technical file (checked 2026-10-24). INAO's own index (show_texte 3042 / 2471 / 1817) was unreachable from here on 2026-10-24 (connection reset): if it turns out to list a later arrêté homologating a new cahier, pin that BO Agri URL in raw/inao/cahiers/manual_overrides.json and drop this pin."
+  },
+  "400": {
+    "name": "Eaux-de-vie de poiré de Normandie",
+    "file_number": "PGI-FR-01980",
+    "register_name": "Eau-de-vie de poiré de Normandie",
+    "note": "SIQO writes the appellation in the plural ('Eaux-de-vie de poiré de Normandie'); the register's protectedName is singular, so the exact-key resolver misses it. Same GI — the perry spirit of Normandy, category 10 (register listing of 2026-11-12)."
   }
 }

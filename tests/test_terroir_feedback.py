@@ -75,6 +75,27 @@ def test_a_claim_a_source_does_state_gets_no_source_escape():
     assert "only where the source says it of this record" in gate
 
 
+def test_a_restated_claim_is_kept_to_its_own_subsection():
+    """Wachau, 2026-11-08: the medieval laying-out of the terraces, stated once
+    by the source, sat in the natural-factors bullet beside the human-factors
+    bullet that owns it. The source states it, so the default escape would let
+    it through; the mode tells 02d to give it in one sub-section only and the
+    gate to rewrite the restating bullet to its own fact (or drop it)."""
+    from _lib.terroir_gate import _constraints_block
+    claims = [{"claim_en": "The terraces were laid out in the Middle Ages.",
+               "claim_src": "Die Terrassen wurden im Mittelalter angelegt.",
+               "mode": "restated-across-subsections", "stage": "extraction",
+               "why": "the human-factors bullet carries it"}]
+    fb = _fb(do_not_claim=claims, capture_if_present=[], record_cautions=[])
+    block = tf.feedback_prompt_block(fb)
+    assert ("«The terraces were laid out in the Middle Ages.»: the source states it, but it belongs "
+            "to one sub-section only") in block
+    assert "states it explicitly" not in block
+    gate = _constraints_block(fb)
+    assert "another bullet of this record already gives it in its own sub-section" in gate
+    assert "rewrite this bullet to the fact it states on its own" in gate
+
+
 def test_translation_stage_selects_the_other_bucket():
     block = tf.feedback_prompt_block(_fb(), stage="translation")
     assert "250–490" in block and "Volcanic material" not in block
@@ -219,7 +240,7 @@ STAGE_02D = [ROOT / "scripts" / "02d_extract_terroir_facts.py"] + sorted(ROOT.gl
 
 
 def test_all_02d_scripts_are_wired():
-    assert len(STAGE_02D) == 21
+    assert len(STAGE_02D) == 22
     for path in STAGE_02D:
         src = path.read_text(encoding="utf-8")
         assert "from _lib.terroir_feedback import with_feedback" in src, path

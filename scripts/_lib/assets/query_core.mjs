@@ -57,7 +57,7 @@ const READ_ONLY = { readOnlyHint: true, idempotentHint: true, openWorldHint: fal
 // its own locale.
 export const TOOL_DEFS = {
   search_appellations: {
-    description: 'Find European wine appellations (PDO/PGI, AOC, DOC, DO, …) by name, including romanised forms of Greek and Bulgarian names. Returns slug, official name, country, region (and regions, when the appellation spans several), classification and the page URL.',
+    description: 'Find European wine appellations (PDO/PGI, AOC, DOC, DO, …) and the geographical indications for spirit drinks, aromatised wines and ciders (Cognac, Grappa, Scotch Whisky, Vermouth di Torino) by name, including romanised forms of Greek and Bulgarian names. Returns slug, official name, country, region (and regions, when the appellation spans several), classification and the page URL.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -70,25 +70,25 @@ export const TOOL_DEFS = {
     annotations: READ_ONLY,
   },
   filter_appellations: {
-    description: 'List wine appellations matching structured criteria: country, region, wine style, grape variety, legal scheme or traditional term. All criteria are optional and combined with AND. list_facets returns the accepted values.',
+    description: 'List wine appellations matching structured criteria: country, region, wine style, grape variety, legal scheme or traditional term. All criteria are optional and combined with AND. Spirit drinks, aromatised wines and ciders are left out unless include_spirits is set or the style is one of their categories. list_facets returns the accepted values.',
     inputSchema: {
       type: 'object',
       properties: {
         country: { type: 'string', pattern: '^[a-z]{2}$', description: 'ISO 3166-1 alpha-2 code, lower-case.' },
         region: { type: 'string', maxLength: 100, description: 'Wine region as shown on the map, e.g. "Bourgogne", "Catalunya", "Mosel".' },
-        style: { type: 'string', maxLength: 100, description: 'Wine style slug or label, e.g. "red", "white", "rose", "sparkling", "sweet", "fortified", "vin-jaune".' },
+        style: { type: 'string', maxLength: 100, description: 'Wine style slug or label, e.g. "red", "white", "rose", "sparkling", "sweet", "fortified", "vin-jaune" — or a drink category: "rum", "whisky", "grape-marc", "fruit-spirit", "liqueur", "aromatised-wine", "cider" ("drinks" for all of them).' },
         grape: { type: 'string', maxLength: 100, description: 'Grape variety name or slug, e.g. "Garnacha", "pinot-noir". Synonyms of the same VIVC variety are included.' },
         main_grape_only: { type: 'boolean', description: 'Only match the grape among the principal varieties (default false).' },
-        scheme: { type: 'string', maxLength: 50, description: 'Legal scheme (pdo, pgi, spirit-gi, uk-pdo, uk-pgi, none) or traditional term (aoc, docg, doc, igt, doca, doq, dac, …; "it:doc" to name one country\'s).' },
+        scheme: { type: 'string', maxLength: 50, description: 'Legal scheme (pdo, pgi, spirit-gi, uk-pdo, uk-pgi, uk-spirit-gi, none) or traditional term (aoc, docg, doc, igt, doca, doq, dac, …; "it:doc" to name one country\'s).' },
         include_sub_denominations: { type: 'boolean', description: 'Include sub-denominations (DGCs, subzonas, sottozone, crus); default false.' },
-        include_spirits: { type: 'boolean', description: 'Include spirit-drink and cider GIs; default false.' },
+        include_spirits: { type: 'boolean', description: 'Include spirits and other alcoholic drinks — the spirit-drink, aromatised-wine and cider GIs; default false.' },
         limit: { type: 'integer', minimum: 1, maximum: 200, description: 'Maximum results (default 50).' },
       },
     },
     annotations: READ_ONLY,
   },
   get_appellation: {
-    description: 'Full record of one wine appellation by slug: grape varieties (principal / accessory), wine styles, terroir facts with their provenance, source documents and the attribution to give when quoting it.',
+    description: 'Full record of one appellation by slug — a wine, or a spirit drink, aromatised wine or cider GI: grape varieties (principal / accessory), styles or drink category, terroir facts with their provenance, source documents and the attribution to give when quoting it.',
     inputSchema: {
       type: 'object',
       properties: { slug: { type: 'string', pattern: SLUG_PATTERN, description: 'Appellation slug, as returned by search_appellations.' } },
@@ -97,7 +97,7 @@ export const TOOL_DEFS = {
     annotations: READ_ONLY,
   },
   list_facets: {
-    description: 'The values filter_appellations accepts, with appellation counts: countries, wine regions, wine styles, and legal schemes / traditional terms. Counts cover wine appellations, not sub-denominations or spirits.',
+    description: 'The values filter_appellations accepts, with appellation counts: countries, wine regions, wine styles, and legal schemes / traditional terms. Those counts cover wine appellations, not sub-denominations; `drinks` counts the spirit drinks, aromatised wines and ciders by category.',
     inputSchema: { type: 'object', properties: {} },
     annotations: READ_ONLY,
   },
@@ -465,11 +465,15 @@ export function createQueryCore(ctx) {
     // 'es:vino-de-pago'): fold case, accents and spaces, keep the ':'.
     const term = schemeKey(a.scheme);
     if (a.scheme && !term) throw new QueryError('unknown scheme: ' + a.scheme);
+    // Asking for a drink category (rum, cider, "drinks") is asking for the
+    // records behind the drinks switch.
+    const drinkCats = new Set((ctx.styleDescendants || {}).drinks || []);
+    const wantsDrinks = !!a.include_spirits || (!!styles && [...styles].some(s => drinkCats.has(s)));
     const out = [];
     for (const slug in aocs) {
       const r = aocs[slug];
       if (!a.include_sub_denominations && r.is_sub_denomination) continue;
-      if (!a.include_spirits && r.is_wine === false) continue;
+      if (!wantsDrinks && r.is_wine === false) continue;
       if (cc && !inCountry(r, cc)) continue;
       if (nRegion && !regionsOf(r).some(reg => searchNormalize(reg) === nRegion
           || searchNormalize(regionLabel(reg)) === nRegion
@@ -534,12 +538,15 @@ export function createQueryCore(ctx) {
   }
 
   // The values filter() accepts, counted over wine appellations (no
-  // sub-denominations, no spirits), each list sorted by count then label.
+  // sub-denominations, no spirits), each list sorted by count then label;
+  // `drinks` counts the spirit drinks, aromatised wines and ciders by their
+  // category (the leaves of the style tree's last bucket).
   function facets() {
     const countries = new Map();
     const regions = new Map();
     const styles = new Map();
     const schemes = new Map();
+    const drinks = new Map();
     const bump = (m, key, init) => {
       const e = m.get(key) || Object.assign({ count: 0 }, init());
       e.count += 1;
@@ -547,7 +554,11 @@ export function createQueryCore(ctx) {
     };
     for (const slug in aocs) {
       const r = aocs[slug];
-      if (r.is_sub_denomination || r.is_wine === false) continue;
+      if (r.is_sub_denomination) continue;
+      if (r.is_wine === false) {
+        for (const s of r.styles || []) bump(drinks, s, () => ({ value: s, label: (ctx.styleLabels || {})[s] || s }));
+        continue;
+      }
       const cc = r.country || 'fr';
       bump(countries, cc, () => ({ code: cc, name: countryLabel(cc) }));
       for (const reg of regionsOf(r)) bump(regions, reg, () => ({ value: regionLabel(reg), country: cc }));
@@ -562,6 +573,7 @@ export function createQueryCore(ctx) {
       regions: [...regions.values()].sort(order('value')),
       styles: [...styles.values()].sort(order('label')),
       schemes: [...schemes.values()].sort(order('label')),
+      drinks: [...drinks.values()].sort(order('label')),
     };
   }
 

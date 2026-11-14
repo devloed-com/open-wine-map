@@ -1,0 +1,19 @@
+{
+  "_README": "The curator queue of the drinks geometry (scripts/audit_drinks_coverage.py reads it). `undrawn`: a record of the drinks pipeline that is not on the map, with the reason no layer can draw its area — the audit's --strict fails on an undrawn record that is not listed here and on a listed record that is drawn (STALE: remove the entry). `coarser_than_text`: a record drawn from the NUTS rows of its technical file while its area text delimits less (or other) than those units; the card names the units drawn, the entry says what the text delimits.",
+  "undrawn": {
+    "dolenjski-sadjevec": "a boundary traced in prose: the right bank of the Sava from Breg pri Litiji to the Bregana, the Gorjanci ridge to spot height 824, then Črmošnjice – Dvor – Smuka – Krka – Šmartno pri Litiji",
+    "genepi-del-piemonte": "some 230 comuni of six provinces, a list older than a dozen municipal mergers (Valdilana, Val di Chy, Alto Sermenza …) and printed with OCR spellings; needs the ISTAT merger acts",
+    "hasetaler-korn": "the towns, Samtgemeinden and Gemeinden of the Zweckverband Erholungsgebiet Hasetal; GISCO LAU carries no Samtgemeinde and the text does not list their member municipalities",
+    "sarreti-kokenypalinka": "seven járás (districts) of Hajdú-Bihar and Békés; no layer of the corpus carries the járás",
+    "spisska-borovicka": "six okresy (Spišská Nová Ves, Stará Ľubovňa, Poprad, Levoča, Kežmarok, Gelnica); GISCO LAU carries the obce only",
+    "steinfelder-magenbitter": "a region within 60 km of the Steinfeld, a former heath inside the city of Graz — a radius, no unit",
+    "ujfehertoi-meggypalinka": "seventeen places of Szabolcs-Szatmár-Bereg, most of them farmsteads below the municipality",
+    "dovey-native-botanical-gin": "the Dyfi / Dovey UNESCO World Biosphere Reserve as designated in 2009 — no administrative unit; needs the reserve's own boundary layer"
+  },
+  "coarser_than_text": {
+    "medronho-do-algarve": "drawn as the Algarve (NUTS PT150); the text lists whole concelhos, freguesias of others (Silves, Lagos, Portimão, Albufeira, Loulé, Faro, Tavira, Castro Marim, Alcoutim) and freguesias of three Alentejo concelhos (Odemira, Ourique, Almodôvar) that lie outside the Algarve",
+    "tuica-de-arges": "drawn as the county of Argeş (NUTS RO311); the text names fruit-growing basins inside it",
+    "poncha-da-madeira": "drawn as the Região Autónoma da Madeira (NUTS PT300), the uninhabited Desertas and Selvagens included",
+    "rum-da-madeira": "drawn as the Região Autónoma da Madeira (NUTS PT300), the uninhabited Desertas and Selvagens included"
+  }
+}

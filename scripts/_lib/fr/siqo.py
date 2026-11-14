@@ -41,7 +41,59 @@ ROOT = Path(__file__).resolve().parents[3]
 SIQO_CSV = ROOT / "raw" / "inao" / "siqo-referentiel.csv"
 SUPPLEMENTS_PATH = Path(__file__).with_name("siqo_supplements.json")
 
-WINE_SIGNS = {"AOC", "AOP", "IGP"}
+# The signs a corpus row carries. "IG" is the EU sign of a spirit-drink GI
+# (Reg. (EU) 2019/787): INAO signs 29 of its spirits AOC as well, and those
+# were in the corpus from the start; the 34 appellations whose only sign is
+# IG (Fine Bordeaux, Marc de Champagne, Ratafia champenois, the rums, the
+# Alsace fruit spirits, cassis, génépi, absinthe, genièvre, Whisky d'Alsace)
+# joined on 2026-11-12 with the other countries' spirit drinks.
+CORPUS_SIGNS = {"AOC", "AOP", "IGP", "IG"}
+WINE_SIGNS = CORPUS_SIGNS  # the name the stages imported before the widening
+
+# SIQO `categorie` → (product_class, drink_category); see
+# `_lib/product_class.py`. Every categorie beginning with "Vin" is a wine.
+CATEGORIE_CLASS: dict[str, tuple[str, str]] = {
+    "Cidre": ("cider", "cider"),
+    "Poiré": ("cider", "cider"),
+    "Eaux-de-vie de vin": ("spirit", "wine-spirit"),
+    "Eaux-de-vie de marc de raisin": ("spirit", "grape-marc"),
+    "Eaux-de-vie de fruits": ("spirit", "fruit-spirit"),
+    "Eaux-de-vie de cidre et de poiré": ("spirit", "cider-spirit"),
+    "Rhum": ("spirit", "rum"),
+    "Whisky ou Whiskey": ("spirit", "whisky"),
+    "Liqueur": ("spirit", "liqueur"),
+    "Crème de cassis": ("spirit", "liqueur"),
+    "Boissons aromatisées baies de genévrier": ("spirit", "juniper"),
+    "Autres boissons spiritueuses": ("spirit", "other-spirit"),
+}
+
+# Where the export's `categorie` and the EU register disagree about a spirit,
+# the register's Annex I category is the legal one. id_appellation → category
+# slug, each with the register entry it was read from.
+CATEGORY_PINS: dict[str, tuple[str, str]] = {
+    # SIQO files Genièvre Flandre-Artois under "Eaux-de-vie de fruits"; the
+    # register: "19. Juniper-flavoured spirit drink" (PGI-FR-02028).
+    "1030": ("juniper", "EU GI register PGI-FR-02028, category 19"),
+    # SIQO files Absinthe de Pontarlier under "Liqueur"; the register:
+    # "45. Spirit drinks" (PGI-FR-01870).
+    "746": ("other-spirit", "EU GI register PGI-FR-01870, category 45"),
+}
+
+
+def classify_categorie(categorie: str, id_appellation: str = "") -> tuple[str, str]:
+    """(product_class, drink_category) for a SIQO categorie; ("wine", "") for
+    a wine and ("", "") for a categorie the table does not know (the caller
+    decides: an empty categorie on a stub says nothing)."""
+    cat = (categorie or "").strip()
+    if cat.startswith("Vin"):
+        return "wine", ""
+    known = CATEGORIE_CLASS.get(cat)
+    if known is None:
+        return "", ""
+    pin = CATEGORY_PINS.get(str(id_appellation or "").strip())
+    if pin and known[0] == "spirit":
+        return "spirit", pin[0]
+    return known
 
 SIQO_COLUMNS = (
     "signe_fr", "signe_ue", "id_categorie_produit", "categorie", "id_type_produit",
@@ -160,12 +212,30 @@ def siqo_rows(csv_path: Path = SIQO_CSV, supplements_path: Path = SUPPLEMENTS_PA
     return rows
 
 
-def is_wine_row(row: dict) -> bool:
-    """The filter every FR stage applies: VITICOLE sector, AOC/AOP/IGP sign,
-    état Publié."""
+# A GI of several member states is one record, owned by the first country of
+# its EU file number (the Maasvallei rule). INAO's referentiel lists the ones
+# France shares; one that another state filed is built by the drinks pipeline
+# (scripts/drinks/), with France among its `country_aliases`, and is no record
+# of the French stages. id_appellation → the register entry that says so.
+DRINKS_PIPELINE_IDS: dict[str, str] = {
+    # Genièvre / Jenever / Genever — Belgium, the Netherlands, France, Germany
+    "1157": "EU GI register PGI-BE+NL+FR+DE-01962: filed by Belgium, the first country of the file number",
+}
+
+
+def is_corpus_row(row: dict) -> bool:
+    """The filter every FR stage applies: VITICOLE sector (INAO files wines,
+    ciders and spirit drinks under it), an AOC / AOP / IGP / IG sign, état
+    Publié — and not a multi-country GI another state filed
+    (`DRINKS_PIPELINE_IDS`)."""
     if row["secteur"].strip() != "VITICOLE":
+        return False
+    if (row.get("id_appellation") or "").strip() in DRINKS_PIPELINE_IDS:
         return False
     if row["lib_etat"].strip() != "Publié":
         return False
     sign = row["signe_fr"].strip() or row["signe_ue"].strip()
-    return sign in WINE_SIGNS
+    return sign in CORPUS_SIGNS
+
+
+is_wine_row = is_corpus_row  # the name before the corpus held IG-only spirits

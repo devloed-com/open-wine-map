@@ -11,6 +11,8 @@ documents) is the second country, with parallel scripts under
 field (`"fr"` / `"es"`) so stage 04 can merge both streams into a
 single unified map. See "Spain pipeline" below for ES-specific
 details and "Hard rules" for invariants that apply to every country.
+Since 2026-11-12 the map also holds the spirit drinks, aromatised wines and
+ciders with a protected name — see "Spirits and other alcoholic drinks".
 
 ## Hard rules
 
@@ -44,9 +46,9 @@ details and "Hard rules" for invariants that apply to every country.
     summary per wine-style slug, used in the map sidepanel style-pill
     tooltip. The curated set covers **every node** in
     `scripts/_lib/style_taxonomy.py`: top-level buckets (red / white /
-    rosé / sparkling / sweet / other), interior groups (fortified /
-    sparkling-quality / semi-sparkling / late-harvest / raisin-wine /
-    oxidative / generoso), distinctive leaves (vin jaune, crémant, vdn,
+    rosé / sparkling / sweet / fortified / oxidative / other), interior
+    groups (sparkling-quality / semi-sparkling / late-harvest /
+    raisin-wine / generoso), distinctive leaves (vin jaune, crémant, vdn,
     vin de paille, grains nobles, vendanges tardives, clairet, primeur,
     vin de liqueur, fino, manzanilla, amontillado, oloroso, palo
     cortado, rancio, mistela, skin-contact white), and the generic
@@ -322,7 +324,11 @@ details and "Hard rules" for invariants that apply to every country.
   already the target's ("mar Egeo" in Spanish, "Karpaten" in Dutch), one
   inside a longer proper name ("Magliano in Toscana", "Alto Piemonte"), a
   quoted title or formation («Bacco in Toscana», «Argille Varicolori»), one
-  inside the record's own longer appellation name ("Cannonau di Sardegna"),
+  inside the record's own longer appellation name ("Cannonau di Sardegna" —
+  whatever the apostrophe or the case since 2026-11-13: the record is
+  « Kirsch d’Alsace », the Spanish bullet writes "el Kirsch d'Alsace", a
+  Dutch one "de marc d'Alsace Gewurztraminer"; nine rows on the re-run French
+  spirits),
   a source term glossed in brackets after its translation ("lieu-dit (dűlő)")
   and a capitalised term opening a name ("Podgoria Crucilor"). A record named
   after the region alone still reads it as a place ("Upper Kärnten").
@@ -740,7 +746,10 @@ cahier attachment ahead of BO Agri (full `eambrosia-register` provenance,
 `boagri_url` left empty), bypassing the has-usable-cahier guard that
 otherwise protects working resolutions from INAO outages. The audit's FR
 name guard (`audit_terroir_facts.py`, strict) flags a lien that never
-names its appellation, so a recurrence cannot go unnoticed.
+names its appellation, so a recurrence cannot go unnoticed. A register name
+that lists its aliases ("X ou Y ou Z") is named when any alias is: Fine du
+Languedoc's longest token was "originaire", a word its cahier of 9 December
+2025 no longer writes.
 
 ## Stage 02: homologation dates, the unnumbered 2024 layout, the aire table, the 2026 eau-de-vie template
 
@@ -849,6 +858,56 @@ d'Alsace items of the same day:
   ("Département de l'Hérault\nAutignac, …" had read "Hérault Autignac"), a
   sub-item "b) Pour la dénomination …" ends a list, and a list token that
   runs into a sentence keeps its first sentence.
+- **Lists that cross a page, and what ends a list (2026-11-13).** Re-sourcing
+  the spirits from BO Agri showed the aire reader losing the tail of long
+  lists: the page number and the BO running header inside a list — "Saint-Loup,
+  Saint-\n   2/8\n\fPublié au BO du MASA …\n\nMaigrin" (Cassis de Saintonge
+  lost 89 communes there; the break inside a hyphenated name is joined), with
+  or without a blank line before the page number (the Gard list of the Rhône
+  spirits) — is folded by `_BO_PAGE_HEADER_RE`; a header no longer takes the
+  next "Département …" line into its own ("Département des Bouches-du-Rhône,
+  toutes les communes." had been given the Drôme's list); a département
+  named whole **in list form** ("Département du Var, toutes les communes." /
+  ": l'ensemble des communes", Marc de Provence, Côtes Catalanes, the
+  Normandy perry spirit) and "Territoire français : départements des …"
+  (Génépi des Alpes) join `aire_departements`; and a list ends where a
+  sentence starts — "… Varennes-sur-Loire.\nLes documents cartographiques …
+  de l'origine et de la qualité." had left a commune « de la qualité » on some
+  twenty records (Fixin, Mercurey, Muscadet, Savennières …). Full FR runs
+  against a snapshot after each fix: every changed record changed in `aire`
+  only (48 parents, then 28 more) — Bordeaux 146 → 495 communes read, Cognac 303 → 733, Calvados 914 →
+  1,418, Pommeau de Normandie 1,022 → 1,530, Mirabelle de Lorraine 578 → 964,
+  Atlantique 1,480 → 1,667; Pays d'Oc 37 → 6 (the lists of its two smaller
+  units and three junk tokens gone: four départements whole and six Lozère
+  communes are its aire). No wine polygon reads these lists; the two records
+  drawn from the cahier text do (below). The spirit template is also read in
+  its 2013 layout ("A/ FICHE TECHNIQUE", sections "a." to "h.": Absinthe de
+  Pontarlier), "Partie I. Fiche technique" with its full stop, and the date
+  of "homologué l'arrêté du …" (Kirsch d'Alsace: no "par").
+  `union_for_appellation(record, commune_idx, insee_idx)` draws a
+  département of `aire_departements` whole — only Marc de Provence (three
+  départements whole and the communes of four more) and Euskal Sagardoa are
+  drawn from the cahier text. `tests/test_fr_cahier_parser.py`.
+- **A département heading with no colon, a département the cahier spells its
+  own way (2026-11-13, later the same day).** "Département des Côtes-d'Armor"
+  alone on its line with the communes on the lines below is a heading
+  (`_BARE_DEPT_HEAD_RE`): it must name a département of the table and the
+  paragraph under it must read as a list (`_list_paragraph_after`); in the
+  aire's own text it counts only up to the first mention of the proximity
+  zone (Saint-Chinian prints "3o Aire de proximité immédiate" — a letter o,
+  no block header the splitter knows — over a centred "Département de
+  l'Aude"). Lists are kept in text order whichever form reads them.
+  `_canonical_dept` keys a département as the table spells it when the
+  cahier does not: « Pyrénées Orientales », « Maine-et Loire », « Puy-deDôme »,
+  and a name the header pattern cut at a lower-case particle, completed from
+  the text after it (« Côte » d'Or, « Bouches » du Rhône, « Ille » et Vilaine,
+  « Saône » et Loire); the table's own spellings stay as written, and two
+  spellings of one département share one key (Crémant de Bourgogne had
+  « Côte-d’Or » and a cut « Côte »). Full FR run against a snapshot: 168
+  records changed (30 parents and their sub-denominations), `aire` only —
+  the six drinks, Roussette de Savoie's proximity zone (empty until then),
+  and département keys of 22 wines (Côtes Catalanes' 223 communes and Coteaux
+  de l'Auxois's 192 resolve for the first time; both match INAO's rows).
 - **A shared cahier is read per appellation** (`shared_cahier.own_text` /
   `own_encepagement`, [scripts/_lib/fr/shared_cahier.py](scripts/_lib/fr/shared_cahier.py),
   2026-10-04): where section I declares several appellations, the colour
@@ -1508,12 +1567,281 @@ cahier's zone text names). Nothing is parsed automatically — a cahier lists
 the vinification zone, exclusions and the proximity zone in the same prose
 (Alpilles names 29 communes for vinification and 19 for the grapes). v1
 pins: Cévennes (+39 Lozère communes, 3,482 → 4,952 km²; Massegros Causses
-Gorges is in the aire for the commune déléguée Les Vignes only and is not
-drawn, which leaves Le Rozier and Saint-Pierre-des-Tripiers as a detached
-lobe), Côtes de Thau (+9 communes around the Étang de Thau, cahier of 24
+Gorges is in the aire for the commune déléguée Les Vignes only, and was not
+drawn — Le Rozier and Saint-Pierre-des-Tripiers a detached lobe — until the
+former-commune layer of 2026-11-13 gave Les Vignes an outline: pinned under
+its own code 48195, 4,981 km², one polygon), Côtes de Thau (+9 communes around the Étang de Thau, cahier of 24
 August 2023 against rows of 2015; 181 → 422 km²), Maures (+3, cahier of 11
-December 2025; 2,193 → 2,313 km²). Candidates for a later pass are in
-[CURATOR_TODO.md](CURATOR_TODO.md).
+December 2025; 2,193 → 2,313 km²). A CSV aire can also be **cut short**:
+the IG Cassis de Saintonge carries 36 rows — the head of the Charente list,
+Angeduc to Guizengeard — where its cahier (BO Agri, 22 January 2015) lists
+some four hundred communes of the Charente and the Charente-Maritime; the
+polygon-versus-text audit found it on 2026-11-13 and the pin adds the 363
+names that are current communes of their département (`names_not_current`
+keeps the 24 that merged or were renamed since, not drawn — the fate of any
+pre-merger code). The scoped audit run of the same day (the 273 drink
+polygons) found three more aires whose rows lack communes a later cahier
+lists whole — Calvados Pays d'Auge +6, Pommeau de Bretagne +9, Pommeau de
+Normandie +11 (Cormes, included in part, `not_drawn`) — pinned. Four more
+had rows dated later than the cahier in the build; Boris's ruling of the same
+day settles the class — **the cahier is the delimitation and wins over
+INAO's data publication; first check that the build holds the newest
+published cahier** (see "The cahier wins" below).
+The row-count sweep (CSV rows against the cahier's own list, every French
+parent) found no other aire cut short; among the wines Alpilles
+and Thézac-Perricard are the known cases, Bellet's list is the lieux-dits of
+Nice, and the cancelled IGP Coteaux de Narbonne has 5 rows for the 11
+communes its cahier names (CURATOR_TODO).
+Candidates for a later pass are in [CURATOR_TODO.md](CURATOR_TODO.md).
+
+**The cahier wins (2026-11-13).** The check for a newer cahier found the
+build behind, not INAO's rows: the EU register's `productSpecificationLink`,
+through which 30 French spirits had been bound the day before, points at the
+cahiers of 2014–2015, and BO Agri's own title search
+(`https://info.agriculture.gouv.fr/boagri/recherche/resultat_recherche_rapide?titre=<name>`
+— it answers from outside France when INAO's product site does not; results
+in `<ul id="liste-resultat">`: the document type, the BO date, the
+homologation act) lists a newer one for 28 of the 59 French drink parents —
+the arrêtés of 10 September 2021 (the five overseas rums), 20 June 2022 (the
+three Champagne spirits), 15 July 2024 (Cassis de Saintonge, Marc de Savoie),
+27 March, 10 April, 1 July and 1 September 2025 (Marc d'Auvergne, Fine
+Bordeaux, Cassis de Bourgogne, the Alsace fruit spirits), 9 December 2025
+(the Rhône, Languedoc, Provence and Bugey spirits), 17 January 2026 (the Pays
+d'Auge cider, bound to a PNO draft until then), 4 February 2026 (Cassis de
+Dijon) and 10 June 2026 (Cognac) — and a cahier for the three stubs (Absinthe
+de Pontarlier 2013, Génépi des Alpes 2014, Cassis de Dijon). Each is pinned in
+`raw/inao/cahiers/manual_overrides.json` with its act, its header read; stage
+01's override path keeps the product page of an earlier run and drops the
+text trail of the cahier it replaces (`_CATALOGUE_META_KEYS`). Calvados has
+none newer than the arrêté of 17 December 2021.
+
+With the right cahiers in the build,
+[scripts/audit_aires_vs_cahier.py](scripts/audit_aires_vs_cahier.py) reads
+every French parent that binds an aire of the CSV and whose cahier lists
+communes: the communes the cahier names that the rows lack, each classed by
+its place in the zone text — `whole` (an item of a commune list under its
+département; a commune of today the cahier names by every one of its former
+communes), `partial` (a qualifier in brackets, an "en partie" sub-list, a
+name inside an exclusion clause — Armagnac lists Losse, Mont-de-Marsan,
+Roquefort, Saint-Martin-d'Oney and Houeillès and excludes them from the
+vineyard and the still in the next sentence), `unclear` (a canton heading,
+another name: the cahier's « Les Salles » is Les Salles-de-Castillon, not
+Salles) — and, report only, the rows whose commune the zone text does not
+name, with the **neighbouring codes**: INAO's file carries Gignac (84048)
+where the cahier lists Gigondas (84049), Saint-Alban-de-Roche (38352) for
+Saint-Alban-du-Rhône, Les Fourgs (25254) for Fourg (25253: the detached
+Haut-Doubs lobe of Marc du Jura, whitelisted as "the CSV's own statement" on
+2026-09-25, was a wrong row), La Cassaigne (11072) for Cassaignes,
+Saint-Christophe-sur-Avre for Saint-Christophe-sur-Condé, Pionsat (63281)
+for Pignols (63280: Marc d'Auvergne's lobe 27 km off, whitelisted on
+2026-11-12, likewise). A detached part of a commune-union record is a
+question for the cahier before it is a whitelist entry. The pin table
+gained what the rule needs: `remove` (a row the cahier does not list —
+`apply_supplements` takes it out; a row to remove that the CSV no longer
+carries is STALE), a **former commune pinned under its own code** (drawn by
+its own outline, below), `not_drawn` as a decision (a commune named and not
+part of the production area), `whole_departements` (Génépi des Alpes: the
+cahier names six départements whole and the rows carry no commune of Savoie —
+273 communes pinned; the Haute-Savoie lobe is attached again), and a pin
+binds the aire the record resolves to, per IDA (INAO cuts a long label
+short; « Calvados » is the spirit's aire and the wine IGP's). 21 drink
+records are pinned from their cahier (898 communes added, 10 rows removed,
+28 named and not drawn); `--drinks --strict` is a release gate
+(`aires-vs-cahier`), `--bare --emit-pins` rebuilds a pin from scratch. The
+same audit over the wines lists 28 NEW, 9 UNCLEAR and 4 UNREAD records — a
+curator queue (most wines are drawn from parcels, so their polygon does not
+move): CURATOR_TODO. Fine-Faugères shows the rule at its smallest: seven
+communes in the cahier, seven rows, Pézènes-les-Mines where the cahier has
+Autignac.
+
+**The audit says what it could not read.** Its first cut compared only the
+records whose cahier list stage 02 had read, and skipped the others without
+a word — so "OK 12, PINNED 16 of 28" hid six drink records whose list the
+reader had lost: the cider spirits of Bretagne and the Maine and the two
+Bugey spirits print one "Département de X" heading per département with no
+colon (0 of 366 and 0 of 141 communes read), and Marc d'Auvergne's PDF lost
+its non-breaking hyphens (88 communes under « Puy-deDôme », a département no
+table knew). The polygon-versus-text audit caught Marc d'Auvergne (three
+communes "missing") and the trail led to the rest. Since then: stage 02
+reads the bare heading and keys a département as the table spells it (see
+the stage-02 list rules); `geom_chain.dept_code_for` finds a département
+whatever its hyphens and spaces, for every consumer of a cahier list; a
+record whose list resolves no name is bucketed **UNREAD** and fails
+`--strict` from five names up; `written_names` lets the audit find a commune
+under the name its cahier writes (`commune_name_pins.json`: Marc d'Auvergne's
+« Saint-Maurice-ès-Allier » is Saint-Maurice, 63378). What it found: INAO's
+rows of **Eau-de-vie de cidre du Maine are cut short** like Cassis de
+Saintonge's — 62 rows, to Épineux-le-Seguin, for the 141 communes of the
+décret of 13 February 2015 (+71 pinned: the polygon was half the aire);
+Eau-de-vie de cidre de Bretagne +19 (Saint-Grégoire, named only in the
+exception for apple growing, not drawn); Marc d'Auvergne +Champeix,
++Pignols, +Saint-Maurice and −Pionsat (63281, the row beside Pignols'
+63280); Marc du Bugey +Serrières-de-Briord. The polygon-versus-text audit
+reads a pin's `not_drawn` communes as named in part, so Pommeau de
+Normandie's fifteen « Communes incluses en partie » are a decided
+difference, not a suspect one.
+
+## Former French communes (pre-merger codes in INAO's rows)
+
+INAO's aires-communes rows keep the commune code of the day each row was
+written. A commune merged since is not in IGN's commune layer, and until
+2026-11-13 its code was simply skipped — the "vintage drift" of the coverage
+log. Counting skipped codes overstates the loss (24 of the 141 French parents
+drawn from the CSV skipped 10 % of their codes or more): INAO usually writes
+the commune of today beside its former communes, and the ground was lost only
+where the rows carry the former communes alone — with the layer,
+Eau-de-vie de cidre du Maine gained 23 % of area, Cidre Cotentin 8 %,
+Pommeau du Maine 7 %, Domfront 6 %, Calvados 3 % (its pin of 20 communes
+included), and 23 wine records 1.4 % or less. Boris's "ok"
+of the same day settled it, with a rule that never draws ground the
+delimitation did not hold ([scripts/_lib/fr/former_communes.py](scripts/_lib/fr/former_communes.py),
+`union_from_insee(codes, insee_idx, former)` in geom_chain.py). Over every
+aire of the two CSVs, 31,845 row codes are not in the commune layer:
+
+- **its own outline** (21,754) — the merger kept the former commune as a
+  commune déléguée or associée and geo.api.gouv.fr
+  (`/communes_associees_deleguees`, IGN AdminExpress, Licence Ouverte 2.0)
+  still serves its outline under its old code, or under the code a change of
+  département gave it on the way (Le Fresne-sur-Loire 44060 → 49382, Freigné
+  49144 → 44225): drawn exactly. 1,999 outlines;
+- **its commune of today is in the aire** (9,700) — INSEE's movements table
+  (`v_mvt_commune_2026.csv`, "Code officiel géographique au 1er janvier
+  2026", https://www.insee.fr/fr/information/8740222) gives the commune each
+  code ended in; where the aire's rows carry that commune it is drawn whole
+  already and the former commune lies inside it: nothing to add. A commune
+  **suppressed and shared out** (event 30: Creusy, 1965, between Chevilly and
+  Sougy) is covered when the rows carry every commune that took a part;
+- **a new code for the same ground** — a commune of today whose every former
+  commune is in the rows (a change of code, MOD 41 / 50): drawn whole. No row
+  of today's CSVs falls here (the 1967 cases are the next class); the rule
+  stands for a commune that changes code after the cahiers. A merger's
+  commune always counts among its own former communes (INSEE gives it a row
+  of its own in all but one of 2,081 mergers), so a former commune fused into
+  a commune the aire does not list never draws that commune;
+- **left its département before the cahiers** (156, `Resolution.elsewhere`) —
+  INAO's commune table still holds the code a commune lost when it passed to
+  another département: Chassieu, Meyzieu and 22 more under the `38…` codes of
+  1967 (the Rhône since), six communes of the Ain likewise, Frettes
+  (Haute-Marne until 1974, a part of Champlitte in Haute-Saône since). The
+  rows of IGP Isère, IGP Coteaux de l'Ain, IGP Haute-Marne and Génépi des
+  Alpes carry them, and each cahier says "le département de …": **the cahier
+  wins**, the code is neither drawn nor named. Two tests, both needed: the
+  date (`OLDEST_CAHIER`, 2009-01-01: no cahier in force is older; a commune
+  that crossed a border after it — Pont-Farcy, 2018 — is resolved like any
+  other) and the aire itself — the class holds only where the rows carry no
+  commune of today in the département the ground went to. Antorpe left the
+  Jura for the Doubs in 1974 and IGP Franche-Comté spans both, so its code
+  is resolved like any other (107 row codes of that kind over the two CSVs).
+  The first build of the day drew the 24 Rhône communes for IGP Isère and
+  Frettes for IGP Haute-Marne; the overlap audit caught the second (a new
+  17 km² sliver against IGP Franche-Comté);
+- **the rest** (235: fused without trace into a commune outside the aire) has
+  no outline in any public layer: not drawn, and named on the card —
+  `geom_units_former_undrawn` in the panel payload, "Former commune(s) of the
+  area, since merged into a commune outside it and with no outline of their
+  own, not drawn: …" (both renderers' unit lines).
+
+INAO's table also keeps communes INSEE calls "périmées" (the IGP file's
+`Actual` column: 1 commune, 2 associée, 3 périmée, 4 old code after a change
+of département, 6 déléguée). A Corsican commune merged before 1976 stands in
+INSEE's table under its `20…` code and in INAO's rows under the `2A…` /
+`2B…` code it never bore: read through the `20…` one (the split of 1976 is no
+change of département). One that ceased **before 1943**, where INSEE's table
+begins, is pinned to the commune that took it in
+[scripts/_lib/fr/former_commune_pins.json](scripts/_lib/fr/former_commune_pins.json)
+(Lompnes and « Hauteville-Lompnés » → 01185, Palalda and Amélie-les-Bains →
+66003; each pin quotes its source). Unpinned, such a code prints as a bare
+number on the card.
+
+Stage 00 fetches both files (`raw/ign/communes-associees-deleguees.geojson`,
+`raw/insee/v_mvt_commune.csv`, sha in `raw/manifest.json`); with either
+missing the module resolves nothing and every record draws what it drew
+before. The INSEE index stage 04 hands the parcel-gap logic and the village
+narrowing stays the communes of today — a former code is drawn only through
+the union. The **name** index does carry the former communes (never over a
+commune of today of the same name in its département), so a cahier that
+still names one resolves ("Saint-Maudez", "La Benâte"); `find_commune` reads
+a name as written before the article-stripped key (« La Vergne » and
+« Vergné », Charente-Maritime, shared one key and one of them was lost), and
+`normalize_commune` spells out the ligature (IGN's « Dœuil-sur-le-Mignon »,
+a cahier's « Doeuil »). A supplement pin may carry a former commune's own
+code. `audit_geometry_vs_text.py` reads a pre-merger row as naming today's
+commune in part. `tests/test_fr_former_communes.py`.
+
+Three more things the name index and the union learnt the same day. A
+commune **renamed** since its cahier was written is found by its old name
+(`former_names`, INSEE event 10: « Céreste » for Céreste-en-Luberon,
+« Clara » for Clara-Villerach, « Roquestéron-Grasse » for La
+Roque-en-Provence). A name the cahier spells unlike any table is pinned per
+record in [scripts/_lib/fr/commune_name_pins.json](scripts/_lib/fr/commune_name_pins.json)
+(Euskal Sagardoa's « Alciette-Bascassan » → Ahaxe-Alciette-Bascassan), each
+with its reason. And the card's **commune count is communes of today**
+(`stats["matched"]` in `union_from_insee`): INAO's rows carry a commune
+nouvelle and its former communes side by side, and counting codes counts
+that ground twice — Armagnac's 289 row codes are 284 communes of today
+(Cannet, Gueyze, Meylan, Labarrère and Villeneuve-de-Mézin are former
+communes of four of them), Calvados's 1,592 are 1,238.
+
+**The seat of a commune nouvelle (2026-11-14).** The mirror case: a commune
+nouvelle keeps the code of its seat, so a row written for « Putanges-Pont-
+Écrepin » (61339) reads today as Putanges-le-Lac, nine former communes, and
+IGN's polygon under the code is all of them. Put to Boris as a choice, his
+answer was "Is there any clear legal interpretation about this? We should
+follow that reality vs deciding ourselves" — and there is one, in the texts.
+268 of the 500 French parent cahiers date their commune list ("sur la base du
+code officiel géographique de l'année 2020"); the Official Journal notice of
+such a redraft says why — the reference "permet de référencer l'aire
+géographique par rapport à la version en vigueur en 2019 du code officiel
+géographique, édité par l'INSEE et de sécuriser juridiquement la délimitation
+de l'aire géographique. Le périmètre de l'aire géographique reste strictement
+identique", "afin que celle-ci ne soit pas impactée ultérieurement par des
+fusions ou scissions de communes ou de parties de communes, ou des
+changements de nom" (Marsannay, PDO-FR-A0175-AM01, OJ C 89 of 16.3.2021,
+p. 11, items 1 and 3); and a commune nouvelle that is only partly inside is
+written "Tuffalun (pour le seul territoire de la commune déléguée
+d'Ambillou-Château)" — 521 such restrictions in the build's cahiers. **A
+merger never moves an aire; a commune named in a list is the commune of the
+list's day.** [scripts/_lib/fr/seat_communes.py](scripts/_lib/fr/seat_communes.py)
+(`narrowed_seats`, handed to `union_from_insee(…, seats)` by stage 04 for the
+parent, its village geometry and the `aires-csv-dgc` path) lets the cahier's
+wording decide, on positive evidence only: it names the commune of today and
+**restricts** it → the former communes the restriction names ("Lamballe-Armor
+(pour le seul territoire des communes déléguées de Lamballe, Meslin,
+Planguenoual)"; the seat is not among them for Terres du Midi's Massegros
+Causses Gorges → Les Vignes); it names the seat **by its former name** and
+nowhere the commune of today → the seat's former outline, with any other
+former commune of it the text names (Calvados Pays d'Auge's Mézidon-Canon
+and Grandchamp-le-Château); the commune **kept its name** and the list is
+dated before the merger — its code officiel géographique year, else the
+cahier's homologation (`reference_date`; a décret of February 2015 cannot
+name the Montsûrs of 2019) → the seat's former outline; it names the commune
+of today **without restriction**, names neither, or lists no commune → the
+whole commune, as before. The seat's outline is the commune déléguée
+geo.api.gouv.fr serves under the commune's own code (`FormerCommunes.seats` /
+`seat_names`, 584 of them; `merged_on` holds the merger dates); a name is
+read only under its own département's heading (« Conteville » in the Eure's
+list is not Conteville, Calvados, a former commune of Valambray); a seat is
+narrowed only when every part has an outline and no former commune the rows
+carry would lose its ground, and not at all when the parts and the rows'
+former communes are the whole commune again (`_SEAT_WHOLE_SHARE`). Build of
+2026-11-14: 49 seats in 18 records drawn from INAO's rows — 14 drinks, three
+wine IGPs (Comtés Rhodaniens, Terres du Midi, Vin des Allobroges) and one
+DGC; 19 records changed (Calvados Domfrontais inherits its parent's
+polygon), `area` only: Muscadet Sèvre et Maine Mouzillon-Tillières −59 % (it
+was drawn as all of Sèvremoine, ten former communes, for the two its row of
+the cahier names), Calvados Pays d'Auge −3.9 %, Calvados Domfrontais −2.1 %,
+Eau-de-vie de cidre du Maine −1.5 %, the two Bugey spirits −1.4 %, Calvados
+−1.0 %, Pommeau de Normandie −0.9 %, Pommeau de Bretagne −0.8 %, the rest
+under 0.6 %. 102 more seat rows the rule narrows sit in records drawn from
+parcels (only their audit-only village geometry follows), and 25 in
+rows-drawn records change nothing, the rows carrying the other former
+communes. Left whole, the text being silent (CURATOR_TODO): 102 rows of
+rows-drawn records the cahier names in neither form, 34 of them rows where
+INAO's own row carries the old name, and 5 where a commune kept its name and
+the cahier, homologated after the merger, dates its list nowhere. A sub-denomination reads the restrictions of its parent's whole
+text, so it can keep a former commune a sibling's row names.
+`audit_geometry_vs_text.py` reads a narrowed seat as named in part.
+`tests/test_fr_seat_communes.py`.
 
 ## Geometry-overlap audit
 
@@ -1539,7 +1867,11 @@ of one appellation) and classifies the rest by `share` = overlap area
 all normal — versus **SLIVER**: a small overlap (1–50 km², < 10 % of
 *both* appellations) between otherwise-disjoint appellations. One
 appellation overlapping a parent and all its sub-denominations
-collapses to a single finding.
+collapses to a single finding, named after the member with the largest
+overlap; a review keyed on the parents holds whichever member that is (a
+sub-denomination that inherits the parent's geometry can come first by the
+last digits of an area — Périgord / Comté tolosan went unreviewed that way
+on 2026-11-13).
 
 The first corpus-wide review (2026-09-25, 520 slivers) showed that the
 double-assigned-commune premise holds for one class of pair only, so
@@ -2025,6 +2357,94 @@ rules, settled on the validator findings of 2026-10-23 (phase C):
   Castilla y León's analytical footnote was its only source, Bailén's heading
   "Vinos semisecos, semidulces y dulces" states the types anyway); 30 ES records):
   Semi-sweet / Sweet. Semi-dry is not added.
+- **A liqueur wine is fortified, not sweet; a generoso is not oxidative by
+  itself (ES, 2026-11-14).** Boris's question on Manzanilla de Sanlúcar: the
+  card showed Sweet and Oxidative where the single document (C/2026/4513)
+  reads "Sabor: Seco … azúcar inferior a 4 g/L" and "aromas propios de la
+  crianza biológica". The ES reader alone coupled the category to both pills
+  — `vino de licor` → `sweet`, `generoso` / `fino` / `manzanilla` →
+  `oxidative` — where every other reader maps a liqueur wine to
+  `vin-de-liqueur` alone (PT: 0 of 20 fortified parents carried Sweet; ES: 46
+  of 46). Now `vino de licor` states `fortified` + `vin-de-liqueur`
+  (`generoso de licor` adds `generoso`), a generoso states `generoso`, and
+  `oxidative` comes with the three types whose definition is an oxidative
+  ageing (amontillado, oloroso, palo cortado). Sweetness is read where the
+  text states it (`liqueur_sweetness_styles`): a type header that says
+  "dulce" ("6. Vinos de licor dulces (categoría 3)", Montilla-Moriles; "7.
+  Vinos Rosados (Jumilla Dulce)"; "5. VINO - VINOS DULCES", Cigales; "2. Vino
+  Blanco y Rosado, dulce", Ribera del Júcar — the last two had no Sweet at
+  all), a predicate of the wine in the liqueur wine's own block ("En boca
+  dulce y golosa", Valencia; "El dulzor predomina sobre la acidez", Jumilla;
+  "Vinos de licor: … En boca será dulce", Valdejalón) or in a section titled
+  for it ("caracterizados por un elevado contenido en azúcar", Navarra's link
+  sub-section) — never "taninos dulces", "fruta dulce", "sin dulzor marcado",
+  nor grapes rich in sugar (Costers del Segre, Utiel-Requena). Full ES run
+  against a snapshot: 14 records, styles only — Sweet off Manzanilla and
+  Rueda ("Vino Dorado, vino de licor, seco") and off Cataluña, Costers del
+  Segre and its five subzonas, Pla i Llevant, Utiel-Requena (text silent);
+  Oxidative off Manzanilla and Lebrija ("vino generoso: vino de licor
+  elaborado bajo velo de flor, proceso biológico"); Sweet on Cigales and
+  Ribera del Júcar. `tests/test_es_liqueur_styles.py`.
+- **The style taxonomy is a graph with a tree drawn over it (2026-11-14).**
+  The facet had filed the same wines where the pills no longer put them:
+  `fortified` was a child of `sweet` and `generoso` (with fino and manzanilla)
+  a child of `oxidative`, so "Sweet / dessert" returned 33 parents only
+  because they are fortified (Douro, Madeira, Rueda, Manzanilla …) and
+  "Oxidative" two only because they are generosos. Styles are several axes —
+  colour, effervescence, sweetness, fortification, ageing — and
+  [scripts/_lib/style_taxonomy.py](scripts/_lib/style_taxonomy.py) says so now:
+  every slug has one primary parent, where the sidebar tree shows it once,
+  and `extra_parents` for the other axes it sits on, which filtering follows
+  (the vin-santo mechanism). `fortified` is a bucket of its own (`BUCKETS` /
+  `FACET_BUCKET_ORDER`: white, rosé, red, sparkling, sweet, fortified,
+  oxidative, other, drinks; its row carries the node's own label, no second
+  msgid); `vdn` and `mistela` are sweet by definition and keep `sweet` as an
+  extra parent, a `vin-de-liqueur` is sweet where its record states it;
+  `generoso` sits under `fortified`; `amontillado`, `oloroso` and
+  `palo-cortado` keep `oxidative` as an extra parent, `fino` and `manzanilla`
+  do not. `styles_simple` follows (a full build), the entity description's
+  reading order gained "fortified" (`_STYLE_ORDER`), and the ES label of the
+  sweet row reads "dulce / de postre" ("licoroso" named the wines that left
+  it). The MCP context carries the new bucket as data — its keys are
+  unchanged. A fortified wine whose reader states no sweetness is found
+  under "Fortified", not "Sweet / dessert" — the next bullet covers the five
+  a curator pinned; the rest are in CURATOR_TODO.
+  `tests/test_style_taxonomy_axes.py`.
+- **A curator's cited style where the reader has no rule yet (2026-11-14).**
+  [scripts/_lib/style_overrides.json](scripts/_lib/style_overrides.json)
+  (record slug → `add`, `basis`, `evidence`, `reason`, `source`, `verified`;
+  [scripts/_lib/style_overrides.py](scripts/_lib/style_overrides.py)) adds
+  styles to one record at stage 04's style chokepoint, after the reader's
+  styles and the prose scan; a sub-denomination takes its parent's entry.
+  Two bases. **`stated`**: the record's own text names the level as a type
+  and the reader does not read it — Porto's «Doçura» table ("Meio Seco …
+  Doce … Muito doce ou Lágrima": semi-dry, sweet), Madeira's "tipos:
+  extra-seco; seco; meio-seco; meio-doce e doce" (semi-dry, semi-sweet,
+  sweet); the PT reader has no sweetness rule. The card states what the text
+  states and discloses nothing. **`method`**: the text names no level and
+  the style follows from the method it lays down — Pineau des Charentes,
+  Floc de Gascogne and Macvin du Jura are grape must (over 170, at least 170
+  and at least 153 g/l of sugar) muted with Cognac, Armagnac or Marc du
+  Jura, and their cahiers set no sugar content for the finished wine. That
+  is an interpretation, so the entry carries a `disclose` sentence in en /
+  fr / es / nl and the card prints it under the style pills ("Sweet inferred
+  from the method: grape must fortified with Cognac while it still holds
+  over 170 g/l of sugar; the regulator's text names no sweetness level" —
+  the feature property `styles_override` names the entry, the panel payload
+  carries `styles_note` only for a `method` entry; `styles_note_line` in
+  content_block.py, `stylesNoteLine` in app.js). Every `evidence` quote is a
+  verbatim passage of the extracted record (file, dotted field, quote), and
+  an entry whose record already carries every style it adds is **STALE** —
+  the reader states it now: stage 04 says so and
+  `tests/test_style_overrides.py` fails, so a pin retires when its reader
+  arrives. Never a style no public text supports, never a removal. First
+  build: 10 records, styles only (the five parents, Porto's three
+  sub-regiões, Pineau's two island denominations). Not pinned, each read:
+  Clairette du Languedoc's vin de liqueur is 9 to 40 g/l of sugar; Setúbal
+  and Carcavelos state no sweetness word (an analytical table, a 150 g/l
+  ceiling); Douro's Moscatel is muted "de acordo com o grau de doçura
+  desejado"; Algarve names "vinhos licorosos brancos doces" beside "brancos
+  secos" and Graciosa "entre o seco e o meio doce" — the PT reader's job.
 - **Sweet, dessert, ice and straw wine are not a late harvest.** Sweet and
   dessert wine words map to `sweet`, ice wine to `icewine`, straw wine to
   `vin-de-paille`, a wine of dried grapes to `raisin-wine`, the berry
@@ -2102,6 +2522,75 @@ rules, settled on the validator findings of 2026-10-23 (phase C):
   Rosé had hidden its White): before a build, diff every card's styles, not
   only the sidecars — a stage-04 load + augment + style-chokepoint run without
   geometry does it in a minute.
+
+## Grape tooltips: the article must be the pill's own
+
+Stage 02b accepts a Wikipedia article when it is about *a* grape
+(`is_grape_summary`), not when it is about *this* one, and an `ok` cache
+entry is never re-fetched. Boris's question on Manzanilla de Sanlúcar
+(2026-11-13: its Palomino and Palomino Fino pills opened one extract, the
+bare one beginning "Palomino Fino is …") turned out to be one case of three
+([scripts/_lib/grape_wiki_identity.py](scripts/_lib/grape_wiki_identity.py)):
+
+- **A match made through a VIVC passport the slug no longer has**
+  (`passport_match_is_stale`): the article was found by the passport's prime
+  name, a synonym or a donor slug of the same number (`matched_via`
+  `vivc-prime` / `vivc-synonym:*` / `shared-vivc:*`), and the slug's pin was
+  corrected or withdrawn since. Pugnitello (pinned `false` on 2026-10-25)
+  still opened the Montepulciano article on 53 pills, Tijonera Tempranillo,
+  Picardan (now #527) Bourboulenc in Dutch; 13 slugs in the four UI locales.
+  Stage 04 withholds such an entry (`_load_native_grape`), and a translated
+  extract whose source entry is stale, missing or another title
+  (`_translation_source_stands`); the 02b fetcher treats it as due
+  (`_cache_is_fresh`) and never uses it as a donor. A match by the slug's own
+  title (`primary`, a legacy entry) or a curator pin (`override`) is never
+  stale by this rule, and a slug with no resolution and no withdrawn pin
+  keeps its entry — a gap, not a decision. The 13 were re-fetched the same
+  day (`--only`, four locales): wrong articles gone, Blanca de Monterrei,
+  Bonicaire (fr), Mollard (nl) and Picardan (nl) on their own.
+- **A name Wikipedia redirects to another cultivar** (`article_is_anothers`):
+  the article's title is none of the slug's own names (slug, VIVC prime and
+  synonyms, or the family its name extends — "Grenache" for grenache-gris)
+  and is the slug or prime of another slug with a different number.
+  Chenanson's synonym VAALBLAAR STEIN is a name of Chenin blanc, Raffiat de
+  Moncade's ROUSSELET redirects to Gewürztraminer, Gamay de Chaudenay's PLANT
+  GRIS to Aligoté, "Mollard" to Carignan. The fetcher rejects such a
+  candidate on every route but `override` and records
+  `error: other_cultivar_article`, so no new entry of the kind is cached; the
+  existing ones were read one by one the same day
+  ([docs/grape-wikipedia-redirects-2026-11-14.md](docs/grape-wikipedia-redirects-2026-11-14.md):
+  the two VIVC passports, the article's own text, the rosters): of 108
+  entries 9 are right (a colour mutation under its parent's article —
+  Sauvignon gris, Lledoner pelut — or a family article naming the member), 72
+  wrong (VIVC gives different parents or colours, the article says the two
+  differ, or it never names the pill) — pinned `null` per (slug, language) in
+  `raw/wikipedia/grape_overrides.json`, a pin that now takes effect on a
+  cached article without `--refresh` (`_null_pin_unapplied`) — and 27
+  unsettled (the article lists the name as its subject's while VIVC keeps two
+  passports with nothing to tell them apart; a checklist in CURATOR_TODO). A
+  hit is not a verdict: Vinhão's "Sezão" article itself says the two "are two
+  distinct varieties".
+  [scripts/audit_grape_wikipedia.py](scripts/audit_grape_wikipedia.py) lists
+  STALE-PASSPORT / OTHER-CULTIVAR (96 slugs on 2026-11-14) / UNVERIFIED (73:
+  a title none of the slug's names and no other slug's — a local name, a
+  family article or another wrong binding), report only; a wrong one is fixed
+  by a title or `null` pin in `raw/wikipedia/grape_overrides.json` and a
+  `02b_fetch_grape_lexicon.py --only SLUG` run.
+- **A name under two primes whose article describes one of them.** The bare
+  `palomino` is pinned `false` (VIVC files the name under Palomino Fino #8888
+  and under Palomino de Jerez #8887, "PALOMINO FINO MUTATION", passports read
+  live 2026-11-14), and Wikipedia's Palomino article is Palomino Fino's. The
+  curator-note table of the page emitter (`_GRAPE_NOTES` / `apply_grape_notes`
+  in map_template.py, the Bianchello precedent) gives the bare pill a note
+  that *replaces* the article ("The VIVC catalogue files the name Palomino
+  under two varieties …", `palomino_note`, sources VIVC #8888 and #8887); the
+  article stays on the Palomino Fino pill. 22 cards carry the bare pill, four
+  both (Jerez, Manzanilla, Lebrija, Villaviciosa de Córdoba). The single
+  documents list "PALOMINO" and "PALOMINO FINO — LISTÁN BLANCO" as two rows;
+  no public text read so far names the bare one, so its identity is not
+  pinned.
+
+`tests/test_grape_wiki_identity.py`.
 
 ## Grape roles from the EU register fiche
 
@@ -2220,7 +2709,7 @@ appellation names.
 
 | Script | Reads | Writes |
 |---|---|---|
-| 00_fetch_data.py | (network) | raw/inao/siqo-referentiel.csv, raw/ign/communes.geojson, raw/inao/parcellaire/*.shp, raw/cadastre/lieux-dits/*.json.gz |
+| 00_fetch_data.py | (network) | raw/inao/siqo-referentiel.csv, raw/ign/communes.geojson, raw/ign/communes-associees-deleguees.geojson, raw/insee/v_mvt_commune.csv, raw/inao/parcellaire/*.shp, raw/cadastre/lieux-dits/*.json.gz |
 | 01_scrape_cahiers.py | raw/inao/siqo-referentiel.csv + scripts/_lib/fr/siqo_supplements.json + raw/inao/cahiers/manual_overrides.json + raw/inao/register/resolved.json | raw/inao/cahiers/*.pdf, raw/inao/cahiers/manifest.json, raw/inao/register/{cahiers/*.pdf,manifest.json} |
 | 01d_resolve_register.py | raw/inao/cahiers/manifest.json (or raw/inao/siqo-referentiel.csv + scripts/_lib/fr/siqo_supplements.json) + raw/eambrosia-register/gi-index.json + scripts/_lib/fr/register_overrides.json | raw/inao/register/{resolved,unresolved}.json |
 | 02_extract_cahiers.py | raw/inao/cahiers/*.pdf + raw/inao/siqo-referentiel.csv + scripts/_lib/fr/siqo_supplements.json (+ the previous _index.json for the drop guard) | raw/inao/cahier-extracted/*.json + _index.json |
@@ -2246,7 +2735,9 @@ appellation names.
 | 02g_fetch_vivc.py | raw/inao/cahier-extracted/*.json + raw/es/pliegos-extracted/ + raw/pt/cadernos-extracted/ + raw/vivc/slug_overrides.json | raw/vivc/{search,passport,by-slug}/*.html\|json + manifest.json + slug_overrides.example.json |
 | 02i_fetch_wikidata_qids.py | raw/*/*-extracted/*.json (slug + id_eambrosia) + raw/wikipedia/aocs/<lang>/ + raw/wikidata/slug_overrides.json | raw/wikidata/qids-by-slug.json + p9854.json + manifest.json + slug_overrides.example.json |
 | 03_generate_wiki.py | raw/inao/cahier-extracted/*.json + raw/terroir-facts/ | wiki/*.md, wiki/_index.json |
+| audit_grape_wikipedia.py | raw/wikipedia/grapes/<lang>/*.json + raw/vivc/by-slug/ + raw/vivc/slug_overrides.json + the extracted corpora (grape slugs) | (stdout — grape tooltips whose article is not the pill's: STALE-PASSPORT / OTHER-CULTIVAR / UNVERIFIED, report only; `--langs`, `--all`, `--json PATH`) |
 | audit_empty_grapes.py | wiki/data/aocs.en.*.js + wiki/data/d/en/*.json + scripts/_lib/empty_grapes_overrides.json | (stdout — FLAGGED / INHERIT / REVIEWED / STUB / NON-WINE buckets; `--strict`, `--json PATH`) |
+| audit_aires_vs_cahier.py | raw/inao/cahier-extracted/*.json (zone sections) + raw/inao/aoc-aop-aires-communes.csv + igp-aires-communes.csv + scripts/_lib/aires_supplements.json + raw/ign/communes.geojson + communes-associees-deleguees.geojson + raw/insee/v_mvt_commune.csv | (stdout — per French parent: communes the cahier lists that INAO's rows lack, classed whole / partial / unclear; rows the zone text does not name; neighbouring codes; OK / PINNED / NEW / UNCLEAR; `--drinks`, `--bare`, `--emit-pins PATH`, `--strict`, `--json PATH`) |
 | audit_parcellaire_gaps.py | raw/inao/parcellaire/*.shp (attribute table, cached to raw/cache/parcellaire-coverage/) + scripts/_lib/parcellaire_carry_forward.json (+ its extracts) + raw/inao/aoc-aop-aires-communes.csv + raw/ign/communes.geojson + raw/inao/cahier-extracted/*.json + scripts/_lib/parcellaire_gap_fills.json | (stdout — aire communes without a parcel row per parcellaire record, classed; gap-fill pins and carried-forward rows APPLIED / STALE; `--strict`, `--json PATH`) |
 | extract_parcellaire_carry_forward.py | raw/inao/parcellaire/<release>_delim-parcellaire-aoc-shp.shp | scripts/_lib/parcellaire_carry_forward/<label>-<release>.geojson.gz (rows of one appellation or denomination, unchanged) |
 | 04_build_maps.py (`--shell-only`: re-emit from raw/cache/stage04-shell-snapshot.pkl) | raw/inao/cahier-extracted/*.json + raw/wikipedia/grapes/ + raw/translations/grapes/ + raw/vivc/by-slug/ + raw/wikidata/qids-by-slug.json + raw/wikipedia/styles/ + raw/translations/styles/ + raw/wikipedia/aocs/ + raw/translations/summaries/ + raw/translations/terroir-facts/ + raw/terroir-facts/ + raw/ign/communes.geojson + raw/inao/parcellaire/ + raw/cadastre/lieux-dits/ | wiki/index.html (EN canonical = homepage), wiki/{fr,es,nl}/index.html, wiki/{en,fr,es,nl}/<slug>/index.html (per-appellation entity pages), wiki/{en,fr,es,nl}/appellations/index.html (browse-index hub linking every indexable slug, grouped by country — fixes the entity-page link-graph orphan problem), wiki/map-data/*.pmtiles, wiki/robots.txt, wiki/sitemap.xml (4 home + 4 browse + 1,638 index slugs × 4 locales), wiki/llms.txt (AI-crawler index), wiki/404.html, the files of scripts/_lib/site_root/ (search-console verification pages) |
@@ -2257,11 +2748,19 @@ A template, JS, CSS or catalog change re-renders every page (hashed asset
 names, and every page embeds the sidebar server-side), but nothing the page
 emitter *consumes* has changed. The emitter reads the two feature lists —
 their properties only; the geometry is tiled, never rendered into a page —
-and 23 runtime caches that main() fills while loading, augmenting and
-resolving the records (`_shell_state()` in 04: the three local
-`*_BY_SLUG` dicts, the eighteen of `_lib/augment/_shared.py` and the two
-ES provenance dicts of `_lib/geom_chain.py` — the first shell-only run
-lost the Galician records' IET attribution without those). Every
+and 28 runtime caches that main() fills while loading, augmenting and
+resolving the records (`_shell_state()` in 04: the local `*_BY_SLUG`
+dicts, those of `_lib/augment/_shared.py`, the two ES provenance dicts of
+`_lib/geom_chain.py` — the first shell-only run lost the Galician records'
+IET attribution without those — and, since 2026-11-13, `_FR_PRODUCT_NAMES`:
+the French record names by product class, which both paths register with
+the aire resolver's spirit guard, `aires.register_product_names`. That
+guard is module state the emitter's region-alias derivation reads through
+`lookup_aire`; a shell-only run without it gave Fine du Languedoc a wine's
+aire and dropped its Roussillon alias — found because the four MCP context
+files came out 34 bytes smaller than the full build's. State the emitter
+reads that is neither a feature property nor in this map is a shell-only
+bug waiting; compare the `[mcp]` byte counts of the two logs). Every
 full build pickles exactly those at the emit boundary
 ([scripts/_lib/shell_snapshot.py](scripts/_lib/shell_snapshot.py) →
 `raw/cache/stage04-shell-snapshot.pkl`, a raw cache), and
@@ -3465,9 +3964,11 @@ registry in [scripts/at/00_fetch_data.py](scripts/at/00_fetch_data.py)).
 Pliego source: the EU-OJ **"EINZIGES DOKUMENT"** published inline as
 HTML, reached via each GI's `publications[].uri` (German-language URL
 rewrite — `/legal-content/DE/TXT/HTML/`, `…01.DEU`). Structurally a
-near-verbatim mirror of the IT pipeline **minus the MASAF / stage-02f
-layer** — Austria needs no national-spec fallback because every wine
-has its EU single document.
+near-verbatim mirror of the IT pipeline. Every wine has its EU single
+document, so no record is a stub; since 2026-11-08 the **BML
+Produktspezifikation** — the national specification filed under Art. 94 —
+rides a stage 01c / 02f layer of its own that adds the authorised roster the
+single document's § 7 leaves out (see "AT national-spec layer" below).
 
 WAF caveat: same as ES / IT — EUR-Lex returns HTTP 202 + an AWS WAF
 JavaScript challenge; all 30 AT wines hit it on the first pass.
@@ -3480,11 +3981,13 @@ JavaScript challenge; all 30 AT wines hit it on the first pass.
 | at/01_fetch_pliegos.py | raw/at/eambrosia/index.json + raw/at/oj-pages/manual_overrides.json | raw/at/oj-pages/*.html (German EINZIGES-DOKUMENT HTMLs) + manifest.json |
 | at/01b_solve_waf.py | raw/at/oj-pages/manifest.json | raw/at/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
 | at/02_extract_pliegos.py | raw/at/oj-pages/*.html | raw/at/dokumente-extracted/*.json + _index.json |
-| at/02d_extract_terroir_facts.py | raw/at/dokumente-extracted/*.json + raw/wikipedia/aocs/de/ | raw/terroir-facts/*.json (country="at") + manifest-at.json |
+| at/01c_fetch_produktspezifikationen.py | (network: the BML Weinherkunft page) + raw/at/eambrosia/index.json + scripts/_lib/at/produktspezifikation_pins.json + raw/at/produktspezifikationen/manual_overrides.json | raw/at/produktspezifikationen/<slug>.pdf + weinherkunft.html + manifest.json |
+| at/02f_extract_produktspezifikationen.py | raw/at/produktspezifikationen/*.pdf + manifest.json | raw/at/produktspezifikationen-extracted/*.json + _index.json + manifest.json, raw/at/extraction-unknowns-produktspezifikation.json |
+| at/02d_extract_terroir_facts.py | raw/at/dokumente-extracted/*.json + raw/at/produktspezifikationen-extracted/ (the § g text where the EU link is short) + raw/wikipedia/aocs/de/ | raw/terroir-facts/*.json (country="at") + manifest-at.json |
 | at/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="at") | raw/translations/terroir-facts/<en\|fr\|es\|nl>/*.json |
 | at/03_generate_wiki.py | raw/at/dokumente-extracted/*.json | wiki/<slug>.md (per AT record) + merges AT entries into wiki/_index.json |
 | at/regen_manual_overrides_template.py | raw/at/eambrosia/index.json + raw/at/oj-pages/manifest.json | raw/at/oj-pages/manual_overrides.json (curator queue) |
-| audit_at_coverage.py | raw/at/eambrosia/ + raw/at/dokumente-extracted/ + raw/at/oj-pages/manifest.json + raw/es/figshare/EU_PDO.gpkg | (stdout — coverage table + curator queue) |
+| audit_at_coverage.py | raw/at/eambrosia/ + raw/at/dokumente-extracted/ + raw/at/oj-pages/manifest.json + raw/at/produktspezifikationen-extracted/ + raw/terroir-facts/ + raw/es/figshare/EU_PDO.gpkg | (stdout — coverage table, the Produktspezifikation layer's added varieties per record, terroir-fact counts, curator queue) |
 
 AT-specific notes:
 - `kind` is `"DOP"` / `"IGP"` (same convention as ES/PT/IT). `country`
@@ -3498,9 +4001,11 @@ AT-specific notes:
   *Wichtigste Keltertraubensorte(n)*, *Beschreibung des
   Zusammenhangs*…). The HTML-slice machinery (anchor regex, numbered
   `ti-grseq-1` headers) is identical to ES/IT.
-- Section 7 ("Keltertraubensorten") lists varieties one per line as
-  `Offizieller Name - Synonym, Synonym` — the canonical name is the
-  segment before the dash. Austrian-only varieties (Zweigelt, Sankt
+- Section 7 ("Wichtigste Keltertraubensorten") lists the **main**
+  varieties one per line as `Offizieller Name - Synonym, Synonym` — the
+  canonical name is the segment before the dash; they are the card's
+  principal grapes. The whole authorised roster comes from the BML
+  Produktspezifikation (below). Austrian-only varieties (Zweigelt, Sankt
   Laurent, Neuburger, Scheurebe, Blauer Wildbacher, Bouvier,
   Goldburger, Rathay, Grauburgunder) are folded into the shared
   `GRAPE_ALIAS` / `DEFAULT_COLOUR` tables in `grape_lexicon.py`.
@@ -3521,6 +4026,107 @@ AT-specific notes:
   Dokument section 8 + de.wikipedia.org per-DOP page), German
   extraction prompt, fuzzy-coverage filter (≥ 0.6), per-bullet
   provenance, manual round-trip flow. 02e targets en/fr/es/nl.
+
+### AT national-spec layer — the BML Produktspezifikation (stages 01c + 02f)
+
+A visitor flagged Wachau's two-grape roster on 2026-11-07. The card stated
+what its cited document states — the EU Einziges Dokument's § 7 "Wichtigste
+Keltertraubensorten" names Grüner Veltliner and Riesling — while the
+specification in force, the BML Produktspezifikation that the corrigendum
+C/2025/90060 links, calls the two the "Hauptsorten" and allows a Wachau
+Gebietswein from 17 varieties. 17 of 30 AT cards carried two grapes or fewer
+for the same reason. The layer is the DE BLE pattern (a non-stub record
+augmented, not a stub filled), not the BG / GR stub pattern:
+
+- **Stage 01c** ([scripts/at/01c_fetch_produktspezifikationen.py](scripts/at/01c_fetch_produktspezifikationen.py))
+  reads the BML "Weinherkunft" page, where every specification is linked as
+  `/dam/jcr:<uuid>/<Name> Produktspezifikation.pdf` (the 2025 template
+  `Produktspezifikation_<Name>.pdf`), maps the filename to the AT slug and
+  downloads 30 PDFs into `raw/at/produktspezifikationen/`. The jcr uuid is
+  opaque and never pinned: a cached PDF is kept while the page links the
+  same URL, a rotated URL is re-fetched and a changed sha256 logged as a new
+  edition. A slug the page lists twice is settled by the checked-in
+  [scripts/_lib/at/produktspezifikation_pins.json](scripts/_lib/at/produktspezifikation_pins.json)
+  (Eisenberg: the 2025 file, whose § f allows Blaufränkisch and Welschriesling
+  as the EU document in force does, over the Blaufränkisch-only one) — an
+  unpinned duplicate is skipped and reported, never guessed.
+  `manual_overrides.json` in the same directory is the curator path.
+  Licence: amtliches Werk (§ 7 UrhG), attribution to the BML.
+- **The parser** ([scripts/_lib/at/produktspezifikation.py](scripts/_lib/at/produktspezifikation.py))
+  finds the a)–i) sections by their **title words**, a letter accepted where
+  printed: pdftotext glued Kärnten's "g)" title to the roster's last line
+  ("Rotburger).Angaben über Güte …") and the 2025 template prints the terroir
+  title without a letter. Section f) comes in five shapes, every one of the
+  31 PDFs one of them: the national roster in two numbered colour blocks
+  (35 varieties, synonyms in brackets) with or without a closing "Die
+  Hauptsorten des Weinbaugebiets X sind …" sentence; the DAC rule with the
+  Hauptsorten sentence and the Gebietswein / Ortswein / Riedenwein lists in
+  „quotes" (Wachau); an exclusive prose list (Kamptal's five); one or two
+  varieties (Weinviertel, Rosalia); an open reference alone ("Alle weißen
+  Qualitätsweinrebsorten", Ruster Ausbruch). Names are read by a
+  longest-first window over the words of each separator-bounded segment
+  through the lexicon's **exact** matcher only; bracket contents are the
+  regulator's synonyms and are dropped. Three Austrian pins: a bare
+  "Morillon" is Chardonnay (the lexicon's unpinned surface is the French
+  Pinot noir synonym; the Steiermark DACs list it bare), the bare family
+  words "Burgunder" / "Veltliner" never bind (VIVC files BURGUNDER under
+  Blaufränkisch), and the designation and Bundesland names never bind
+  ("Steiermark" is a VIVC synonym of Furmint). "Gemischter Satz" is a field
+  blend, not a variety. A quoted name without a colour block takes the
+  national roster's colour class (`ROSTER_COLOURS`, the two blocks every
+  Bundesland specification prints). The § g text is kept whole as
+  `zusammenhang_text`.
+- **Stage 02f** ([scripts/at/02f_extract_produktspezifikationen.py](scripts/at/02f_extract_produktspezifikationen.py))
+  writes one sidecar per wine with the roles: a Hauptsorten sentence makes
+  its varieties principal and the rest accessory (`role_rule: hauptsorten`
+  — Wachau, Wien, Burgenland, Niederösterreich, Steiermark); the national
+  roster without one makes every variety accessory, the EU § 7 being the
+  principal list (`national-roster` — the Bundesland PDOs, the three
+  Landwein PGIs, Wiener Gemischter Satz's white half); a closed list makes
+  every variety principal, as the EU document lists them (`exclusive-list`);
+  an open reference leaves the EU roster alone (`open`). First run: 30 of 30
+  sidecars, no roster name the lexicon lacks (the 2025 Eisenberg file's
+  "Welschrielsing" is a `GRAPE_ALIAS` entry).
+- **Stage 04** ([scripts/_lib/augment/at.py](scripts/_lib/augment/at.py),
+  called after the DE augmenter) adds every sidecar variety the EU record
+  lacks with the sidecar's role, tagged `source: bml-produktspezifikation`;
+  an EU variety keeps its role and spelling, nothing is demoted or removed.
+  Where the EU link text is under 400 characters (Oberösterreich's 347) the
+  § g text becomes `link_to_terroir`, and AT 02d reads the same sidecar
+  (`cahier_source_kind: bml-produktspezifikation`, the PDF as the card's
+  footer attribution) — Oberösterreich carries 9 facts since, where it had
+  the 02c summary fallback. The card discloses the layer in its Sources
+  row, "National product specification (BML, PDF) — +N varieties added"
+  (`bml_produktspezifikation_*` in the panel payload and `_sources_for`,
+  `src_bml_produktspezifikation`; the provenance line stays the EU single
+  document's, whose § 7 names the principal grapes). First build: 368
+  varieties added on 15 records — the Bundesland PDOs and the PGIs 2 → 35,
+  Wachau 2 → 16, Weststeiermark 1 → 9, Oberösterreich 19 → 35 — and nothing
+  on the 15 whose EU document already lists the closed roster (Kamptal,
+  Thermenregion, Wagram …); Weinviertel stays Grüner Veltliner by its own
+  rule. `tests/test_at_produktspezifikation.py` (fixtures `at_bml_*.txt`),
+  `audit_at_coverage.py` prints the per-record additions.
+- **Colours the specification states** (`stated_colour_styles`, the EU
+  reader's own colour table over sections b) and g): "Rund 2/3 der
+  Anbaufläche sind mit Weißwein bepflanzt, ein Drittel mit Rotwein", "Die
+  Rotweine werden aus den Sorten …", "Rot- und Roséweine spielen eine sehr
+  untergeordnete Rolle") ride the sidecar as `styles_stated` with the
+  sentence, and the augmenter **completes** a colour list the EU text
+  already started — never starts one: a record whose EU text states no
+  colour keeps the berry-colour floor, because one stated colour would
+  switch the floor off and lose the others (Eisenberg's § g names "Eisenberg
+  Rotwein" and not the Welschriesling whites it also allows; the trap the
+  style-floor rule names). The card validator had graded Oberösterreich
+  "caution" for a missing Red on a red-heavy roster (its EU text states
+  white, its specification "Die Rotweine werden aus den Sorten Blauer
+  Burgunder, Zweigelt …"). Four cards change: Carnuntum and Oberösterreich
+  gain Red, Wachau Rosé, Weinland Red and Rosé, each from a quoted
+  sentence (`styles_evidence` in the provenance).
+- **The card packet carries the sidecar** (`card_packet.SIDECAR_DIRS["at"]`,
+  the `description_text` / `geo_area_text` keys, a list-shaped roster —
+  the DE sidecar's too, which the judge had never seen): on the first
+  rebuilt card the validator read Oberösterreich's grounded facts as
+  "in no supplied document".
 
 ### AT geometry resolution chain (stage 04)
 
@@ -6788,10 +7394,13 @@ Per NL record, in priority order (`geom_source` records the choice):
 3. **`stub-no-geometry`** — the 4 newer PDOs that post-date the Bétard
    2022 snapshot (`PDO-NL-02774` Rivierenland, `PDO-NL-02775`
    Schouwen-Duiveland, `PDO-NL-02776` De Voerendaalse Bergen,
-   `PDO-NL-02873` Twente). Visible in the sidebar/search, absent
-   from the map until Phase 2 parses commune lists from their
-   ENIG DOCUMENT against shared GISCO LAU (the RO IGP / BG fallback
-   pattern).
+   `PDO-NL-02873` Twente). Not on the map and not in the sidebar
+   either: stage 04 skips a record without a polygon before the
+   feature list is built, and the startup blob is built from the
+   features (verified 2026-11-09; the four German Landwein PGIs on this
+   step are absent the same way). Until Phase 2 parses commune lists
+   from their ENIG DOCUMENT against shared GISCO LAU (the RO IGP / BG
+   fallback pattern).
 
 The shared `raw/es/figshare/EU_PDO.gpkg` is re-used. The
 NL-specific NUTS-2 GeoJSON (`raw/nl/nuts/`) is the only new geodata
@@ -7172,6 +7781,269 @@ attention:
 .venv/bin/python scripts/gb/03_generate_wiki.py
 .venv/bin/python scripts/04_build_maps.py
 ```
+
+## Spirits and other alcoholic drinks (`scripts/drinks/`, 2026-11-12)
+
+Since 2026-11-12 the corpus holds the **spirit drinks, aromatised wines,
+ciders and perries** with a protected name beside the wines (Boris's
+decisions of 2026-11-09: spirit-drink GIs in general; the EU register for the
+EU countries, the GOV.UK register for the United Kingdom, OFAG's federal
+register for Switzerland; one non-wine class under the umbrella "spirits and
+other alcoholic drinks" with the EU product category as the facet beneath;
+off by default on the map). 268 drink records: 59 French (INAO's referentiel,
+the French stages; 13 sub-denominations beside them — the Cognac crus, the
+Armagnac districts) and 209 of the drinks pipeline — 189 of the EU register
+in 15 countries, 16 of the UK register, 4 Swiss. 273 are on the map (the 72
+French ones and 201 of the 209; eight have no area that can be drawn yet).
+
+**Class model** ([scripts/_lib/product_class.py](scripts/_lib/product_class.py)).
+A record carries `product_class` (`spirit` / `aromatised-wine` / `cider`;
+absent = wine — the field is sparse, no wine record changed) and
+`drink_category`, one of fifteen slugs that are the leaves of the `drinks`
+style bucket (`style_taxonomy.py`): wine-spirit, brandy, grape-marc,
+fruit-spirit, cider-spirit, rum, whisky, grain-spirit, juniper, aniseed,
+liqueur, bitter, other-spirit, aromatised-wine, cider. A spirit's category is
+the Annex I number of Reg. (EU) 2019/787 the register prints (`_ANNEX_CATEGORY`;
+an unlisted number — vodka, the residual "45. Spirit drinks" — is
+`other-spirit`); the UK register keeps the 110/2008 numbering, so its
+category slug is read by its words (`uk_register.category_of`). A drink's
+`styles` is its category alone and it never runs a wine reader (no colour,
+no floor, no grape roster). `is_wine` stays the tile / startup flag. The
+stored `kind` is `EDV` for every spirit, `DOP` / `IGP` for a cider or an
+aromatised wine. Schemes (`gi_terms.py`): `spirit-gi`, `uk-spirit-gi`, `pdo` /
+`pgi` / `uk-pgi` for ciders and aromatised wines, `none` for Switzerland. A
+drink takes **no wine traditional term** — Sidra da Madeira is no "Vinho
+Regional" — except the French AOC sign (Cognac, Calvados, the Pays d'Auge
+ciders) and a cited pin: the four Swiss spirits are `AOP`
+(`traditional_terms.json` `pins.ch`, `terms["ch:AOP"]`, RS 910.12).
+
+**France** stays with the French stages. `siqo.CORPUS_SIGNS` now holds `IG`
+(34 IG-only spirits joined the 26 AOC / IGP ones; one of the 60, Genièvre /
+Jenever / Genever, is a drinks-pipeline record — below), `siqo.classify_categorie`
+maps INAO's `categorie` to the class, `CATEGORY_PINS` corrects it where the
+register's Annex I category differs (Genièvre Flandre-Artois is juniper,
+Absinthe de Pontarlier other-spirit). INAO's site resets connections from
+outside France, so stage 01 gained a **specification-link tier**
+(`RegisterTier.spec_link_for`): the register's detail record carries
+`productSpecificationLink`, a BO Agri URL, for 30 of the 34 — the manifest
+records `spec_link_source: "eambrosia-register"`. Stage 02 reads the
+Partie-I spirit template more widely (lettered `A)` and `1 -` headers, the
+all-capitals headings of Armagnac, "détails corroborant le lien", the read-on
+past an in-text cahier reference): Armagnac, Calvados, Calvados Pays d'Auge
+and Pommeau du Maine regained their lien. `aires._resolve_key` refuses to
+hand a spirit the aire of a wine appellation by a contained name (the spirit
+guard, `register_product_names`); the three Champagne spirits, whose cahier
+delimits "les territoires délimités par l'article V de la loi du 22 juillet
+1927 relative à l'AOC « Champagne »", take the Champagne aire by the cited
+[scripts/_lib/aire_references.json](scripts/_lib/aire_references.json). A
+shared GI is the record of the first country of its file number (the
+Maasvallei rule): Génépi des Alpes (PGI-FR+IT-01909) is French, Genièvre /
+Jenever / Genever (PGI-BE+NL+FR+DE-01962) is a drinks record of Belgium with
+France among its aliases although INAO lists it (`siqo.DRINKS_PIPELINE_IDS`).
+The register's link turned out to point at the cahiers of 2014–2015: on
+2026-11-13 the 28 French drinks BO Agri lists a newer cahier for were
+re-sourced from it, the three stubs among them (Absinthe de Pontarlier,
+Cassis de Dijon, Génépi des Alpes — no French drink is a stub since), and
+their aires checked against the cahier — "The cahier wins" under "INAO
+aires-communes supplements". **Two French records cross the border**
+([scripts/_lib/fr/cross_border.py](scripts/_lib/fr/cross_border.py),
+`cross_border_areas.json`; Boris: the Maasvallei pattern): Euskal Sagardoa —
+the Basque cider, whose cahier delimits named districts of Bizkaia, Gipuzkoa
+and Álava beside the 148 French communes — and Génépi des Alpes (Piemonte
+and Valle d'Aosta beside six départements). Each stays one French record
+(INAO's cahier is the document in the build), carries `country_aliases`
+(written by stage 02, so it is listed under Spain / Italy too), and stage 04
+unions the foreign units (the drinks unit grammar, `nuts:ES213` …) into its
+polygon and names them on the commune-union line with the entry's
+disclosure — the Spanish part is drawn as the three provinces whole where
+the cahier names districts inside them, in Álava four of them (CURATOR_TODO).
+IGN's communes and GISCO's NUTS units draw the state border at two
+resolutions, which left 223 slivers of empty ground along the Alpine crest
+in Génépi des Alpes's first union: `_fill_seam_holes` closes the holes of
+the union that touch the foreign part and are under `_SEAM_HOLE_MAX_DEG2`
+(2e-4 deg², about 2 km²) — a lake or an enclave is larger and stays open.
+`tests/test_fr_cross_border.py` checks each quote against the record and
+each unit against the NUTS layers.
+
+**The drinks pipeline** — one set of stages for every other country, records
+under `raw/drinks/extracted/` with `pipeline: "drinks"`, their own `country`
+and `source_lang`:
+
+| Script | Reads | Writes |
+|---|---|---|
+| drinks/00_fetch_index.py | the EU register listing (`eambrosia_register.load_gi_rows`), GOV.UK search API, scripts/_lib/drinks/{cider_gis,name_pins,ch_register,areas}.json, raw/inao/register/resolved.json, ONS Open Geography | raw/drinks/eambrosia/{index,manifest}.json, raw/drinks/ons/{countries,counties}.geojson |
+| drinks/01_fetch_technical_files.py | the index, the register's detail records, GOV.UK content API, blw.admin.ch, raw/drinks/manual_overrides.json | raw/drinks/register-detail/*.json, raw/drinks/technical-files/<slug>.<lang>.pdf + manifest.json, raw/drinks/national-specs/* |
+| drinks/01b_fetch_oj_pages.py | the manifest's OJ publications (records with no technical file) | raw/drinks/oj-pages/*.html + manifest.json (headless Chromium, the EUR-Lex WAF) |
+| drinks/02_extract_technical_files.py | the three document directories | raw/drinks/extracted/*.json + _index.json |
+| drinks/02d_extract_terroir_facts.py | raw/drinks/extracted/ (+ raw/wikipedia/aocs/<lang>/ when cached) | raw/terroir-facts/*.json (`country: "drinks"`) |
+| drinks/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (`country: "drinks"`) | raw/translations/terroir-facts/<lang>/*.json |
+| drinks/03_generate_wiki.py | raw/drinks/extracted/ | wiki/<slug>.md + the `pipeline: "drinks"` entries of wiki/_index.json |
+| audit_drinks_coverage.py | the register listing, the index, the extracted records, the French non-wine records, the build | (stdout — register vs corpus per country, stubs, geometry by source, the undrawn queue; `--strict`, `--json`) |
+
+- **Which rows** ([scripts/_lib/drinks/index.py](scripts/_lib/drinks/index.py)):
+  Registered rows that are a spirit drink, an aromatised wine (register
+  classes 2.21 / 2.22) or a cider of the curated
+  [cider_gis.json](scripts/_lib/drinks/cider_gis.json) (a cider is a
+  Food-class GI in class 1.8, among spices and salts). Left out: the rows the
+  French stages hold, and the UK's — read from GOV.UK instead
+  ([uk_register.py](scripts/_lib/drinks/uk_register.py): the `spirit-drinks`
+  register and the cider / perry names of the food register; the three
+  all-island Irish names carry `country_aliases: ["ie"]`, Ireland being an
+  alias country with a label and a flag and no record of its own). The Swiss
+  four are the curated transcription of OFAG's register page
+  ([ch_register.json](scripts/_lib/drinks/ch_register.json)). `name` is the
+  first registered alias, `name_latin` the first Latin one of a Greek or
+  Cyrillic name, the other aliases search keys; a slug that another corpus
+  uses stops stage 00.
+- **Which document.** A spirit registered before 2019 has a *technical file*
+  (`singleDocTechFile` — the application language and, often, the
+  Commission's English copy, which the English card shows as an official
+  translation: `official_en`, "European Commission translation"); an
+  aromatised wine has its technical file in `summarySheets` (English only);
+  a spirit registered since, and a cider, has only the Official Journal
+  single document (01b); a UK name its GOV.UK product specification; a Swiss
+  AOP its cahier des charges plus the "Résumé de la demande
+  d'enregistrement", whose sections 7 and 8 are the only history and link
+  text. All 209 extract (no stub).
+- **The readers**
+  ([technical_file.py](scripts/_lib/drinks/technical_file.py),
+  [single_document.py](scripts/_lib/drinks/single_document.py)): the
+  Commission's e-form (numbered `1.`–`9.` under `I.`, two-column label /
+  value tables whose labels are learnt per language from four files or more —
+  `learn_labels` — and the NUTS rows of 4b), its decimal variant, and a member
+  state's own document, read by heading words in fifteen languages
+  (`ROLE_HEADINGS`: description, area, method, link, labelling, stop). What
+  the form reader guards against, each found on a real file: a table of
+  contents (a run of headings ending on a page number or a range, entries
+  wrapped over two lines — `_contents_zone`; never a table of analytical
+  values), a cross-reference in brackets or quotes, small capitals printed
+  letter by letter (Irish Poteen), a file laid out as one two-column table
+  (the Glühwein files — `_decolumn`, only where value lines outnumber rows, so
+  a page of two prose columns is not taken for one), a page printed in two
+  columns (Grappa's decree in the Gazzetta Ufficiale: read again in reading
+  order when the layout parse yields under three text sections). A single
+  document is its numbered top-level headings, each given its role by its
+  title (the heading words may stand at its end). A parser change is checked
+  by re-extracting and diffing every record's role lengths.
+- **Geometry** ([geometry.py](scripts/_lib/drinks/geometry.py)), in this
+  order: **`drinks-area-pin`** — a curator pin of
+  [areas.json](scripts/_lib/drinks/areas.json) (151): the units the area text
+  names as `country:`, `nuts:`, `lau:CC:Name[@NUTS]`, `lauid:CC:PREFIX=Label`
+  (every LAU row under a GISCO id prefix: a Greek δήμος or δημοτική ενότητα,
+  a Portuguese município), `uk:country:` / `uk:county:` (ONS), `minus:<unit>`
+  or `ref:<slug>` (the polygon of the wine record whose delimitation the text
+  cites — Aguardente de Vinho Douro, Vinars Murfatlar), each with the
+  verbatim sentence it reads (`tests/test_drinks_areas.py` checks every quote
+  against the record and every unit against the layers) and, where the
+  drawing departs from the letter, a `disclose` sentence in the four UI
+  languages that the card prints (a part of a municipality drawn as the
+  municipality, village lands drawn as their obshtini, an island as its
+  NUTS unit); **`gisco-nuts-union`** — the leaves of the technical file's
+  NUTS rows, a retired code found by its name; else the record is **not
+  drawn** and must be listed with its reason in
+  [area_queue.json](scripts/_lib/drinks/area_queue.json) (a radius, a
+  boundary in prose, a tier no layer carries). A pin that no longer resolves
+  is never half-drawn. The card names the units drawn (up to twelve).
+- **Region** ([region.py](scripts/_lib/drinks/region.py)): the pin's, else
+  the referenced wine record's, else the administrative region its units
+  lie in where the country's wine facet is administrative
+  ([nuts_regions.json](scripts/_lib/drinks/nuts_regions.json): ES, IT, AT,
+  DE, BE, NL; the UK's home nation), else the country's own name.
+- **Stage 04** treats `pipeline == "drinks"` before any country branch
+  (geometry, region, sources — `technical_file_url`, `technical_file_en_url`,
+  `national_spec_url`, `national_link_url`, `gov_uk_register_url`); the
+  snapshot carries `_DRINKS_GEOM_BY_SLUG`; `wiki_index_kept` keeps the drinks
+  entries apart from each country's.
+- **Terroir facts.** One 02d / 02e pair for fourteen languages: English
+  instructions that name the language the bullets are written in (the
+  document's), the grounding text is the area, description, method and link
+  together, the cache's `country` is `"drinks"` — the stage that owns the
+  source text, which the gate, the audits and the provenance pass load
+  through `terroir_sources` — with the record's country in `record_country`.
+  No Wikipedia hint yet (no article is cached for a drink). First corpus
+  run, `drinks-2026-11-12` (the 209 drinks records and the 34 French spirits
+  new to the corpus): 2,930 facts extracted, 49 dropped and 333 narrowed by
+  the gate, translated and back-checked, $36.60 at the batch rate;
+  `drinks-2026-11-13` re-ran Irish Whiskey and Irish Poteen after a parser
+  fix. 2,883 facts on 243 records. Two things the run taught: a Greek or
+  Cyrillic drink name came back in its own script in the fr / es / nl
+  bullets (25, Latinised by `normalize_terroir_facts.py`; the 02e prompt
+  now asks for Latin script only, and the normaliser drops a gloss that
+  repeats its word, "Ouzo (Ouzo)"), and the exonym detector took "am Rhein"
+  / "an der Donau" inside a town's name for the river (`_IN_PROPER_NAME`).
+  The **French** drinks go through the French 02d, and that one sliced a
+  link text by the numerals of the AOC wine template ("1° - … a) … b) … 2° -
+  … 3° - …"). A spirit or cider cahier is headed by titles ("5.1 Les
+  facteurs physiques du lien", "5.2 Les facteurs humains", "5.3 Les
+  spécificités du produit", "5.4 Lien causal"; "a) Éléments historiques
+  concernant les facteurs du lien au terroir"), as is every IGP wine cahier
+  ("7.1 – Spécificité de la zone géographique", "7.2 – Spécificité du
+  produit", "7.3 – Lien causal …"): the whole text went through the one
+  natural-factors call, and 50 of the 58 French drinks carried natural
+  factors only, history and product filed under them.
+  [scripts/_lib/fr/lien_titles.py](scripts/_lib/fr/lien_titles.py)
+  (`slice_by_titles`, tried when `slice_section_x` finds fewer than two
+  sub-sections) reads the headings by their words. Two runs on 2026-11-13:
+  `drinks-cahiers-2026-11-13` (the 28 records whose cahier changed; 169
+  facts, 12 narrowed, none dropped, $3.14) and `drinks-cahiers-2026-11-13b`
+  (57 French drinks, sub-section by sub-section: 691 facts — 330 natural,
+  180 human, 137 product, 44 interactions — 44 narrowed, none dropped,
+  $6.53; no record is left with natural factors only). The **75 IGP wines**
+  in the same case keep their facts until Boris decides (CURATOR_TODO,
+  ≈ $11).
+
+**Audits and validators.** `audit_drinks_coverage.py --strict` is a quick
+release gate (`validate_release.py`: `drinks-coverage`). The overlap audit
+classes any pair with a drink as **DRINK** (another product, its own
+delimitation — never SUSPICIOUS: Korn is Germany, Austria and the
+German-speaking Community of Belgium; a marc shares the communes of its wine
+appellation); the outlier audit lists a drink drawn from whole named units as
+**ADMINISTRATIVE** (a detached part is an island of the unit itself), while a
+French spirit drawn from INAO's aire is whitelisted like any other record
+(the overseas rum's four territories) — after its cahier has been read:
+three such lobes turned out to be wrong rows on 2026-11-13 (Marc du Jura,
+Marc des Côtes du Rhône, Marc d'Auvergne), and Génépi des Alpes' Haute-Savoie
+lobe closed when Savoie, missing from its rows, was pinned.
+The polygon-versus-text audit reads a drink's area text with the country
+parsers written for wine texts, which read fewer names than the curator did
+(a county taken for a commune, "Krems" for Krems an der Donau): a drink
+drawn from a pin or from NUTS rows is **PINNED** when the only difference is
+whole units beyond the parser's reading, and stays SUSPECT when a unit the
+parser read is not drawn (`curated_area_bucket`). Run scoped on the 273
+drink polygons (2026-11-13: 70 OK, 8 PINNED, 175 without units, 12 above the
+commune tier), it found the French spirits whose INAO rows lack communes
+their cahier lists — Cassis de Saintonge's 36 rows for some four hundred
+communes — see "INAO aires-communes supplements". A full-corpus run is
+hours long (the Italian zone records); scope it with `--only` / `--country`.
+`diff_records.py` snapshots `product_class`, `drink_category` and
+`country_aliases`; the card packet finds a drinks record's document
+(`card_packet.DRINKS_DIR`); `rerun_terroir_facts.py` routes an uncached
+drinks slug to the drinks stage. An untranslated drink summary names its
+own source language (`src_lang_marker_aria`, the endonym in brackets — the
+old marker assumed French for every country but Spain and Portugal).
+
+**Acceptance, 2026-11-13.** The adversarial facts audit on a seeded sample
+(40 records, 492 English bullets): 2 misleading, 0.41 % (0.11–1.47 %), both
+translation slips — PT "vinhas estremes" is a pure-stand vineyard, not a
+single-variety one (now in the EN glossary), BG "допринася" is "contributes
+to" — fixed by a scoped back-check and filed as feedback. The card validator
+on 20 drink cards (`audit_cards_llm.py --all-products --slugs-file …`; the
+judge prompt says how a drink card differs: one category pill, no colour, no
+roster, no wine term, the first registered name as title): 19 trust, 1
+caution — Euskal Sagardoa, a French record of long standing whose cahier
+delimits a Spanish-French area while the card draws the French communes; it
+carries a cited note since (`appellation_notes.json`), the rest of that
+question is in CURATOR_TODO. `mcp/test/parity_webmcp.py` asks four drink
+questions. The polygon-versus-text audit passes its cahier communes to the
+aire lookup as stage 04 does, so a name with two INAO aires (Calvados: the
+spirit's and the wine IGP's) is no longer read as both.
+
+**On the map.** The legend's third pill is the umbrella ("Spirits & other
+drinks", tooltip key `drinks`); the three pills partition the records — the
+PGI pill is a wine pill, so a cider or aromatised-wine PGI sits behind the
+drinks pill alone (`isIgpRec`). Ticking a drink category in the Style tree
+turns the pill on (`Kind Toggled {via: 'style-pick'}`); the `drinks` rows are
+counted while it is off. `?spirits=1` in a shared URL as before.
 
 ## Batch API (02b-grapes / 02c / 02d / 02e)
 
@@ -7678,8 +8550,8 @@ never disagree about the zoom bands:
   gated spirits; 6.5 % of visitors ever touched it (Plausible, 90 days). Now
   the style facet is the taxonomy tree alone — depth-0 rows in
   `FACET_BUCKET_ORDER` (white, rosé, red, sparkling, sweet / dessert,
-  oxidative, other; `BUCKETS` keeps the membership order the MCP context
-  keys on), sub-styles folded behind a chevron (`buildTreeFacet`: the
+  fortified — since 2026-11-14 — oxidative, other; `BUCKETS` keeps the
+  membership order the MCP context keys on), sub-styles folded behind a chevron (`buildTreeFacet`: the
   checkbox's label and the chevron button are siblings in a `.tree-row`,
   the subtree a hidden sibling `.tree-children` wrapper;
   `revealCheckedTreeRows` opens the branches above a ticked row). That also
@@ -7783,9 +8655,13 @@ code that owns each piece:
   (`openGroupsWithMatches`, tagged `data-auto-opened-f`, closed again when
   the filter clears); above that the status line offers "show in the list".
 - **Map chrome** (app.js after the landing gate; CSS "Map chrome" block):
-  the **start view fits the corpus** (`bounds: corpusBounds()` — every
+  the **start view fits the corpus** (`bounds: corpusBounds()` — every wine
   record's bbox except the Atlantic islands west of 12° W, which would push
-  the continent into a corner; a URL hash still wins, MapLibre applies
+  the continent into a corner; the drinks, `is_wine` false and off by
+  default, never count — with them the frame ran from Guadeloupe to La
+  Réunion and the map opened at z3 over the Sahara, 2026-11-14: the overseas
+  rum's one bbox spans both, so its east edge passes the 12° W test; a URL
+  hash still wins, MapLibre applies
   `bounds` only when it is empty; until 2026-10-18 a fixed France view at
   z5.4, "too zoomed in"), and **no card is reopened** on the next visit
   (the `selected_slugs` restore reopened Penedès for whoever came after;
@@ -8469,7 +9345,10 @@ review is copied to a dated `docs/review-*.md`.
   is drawn as the union of its 21 member PDOs while its text names 114
   obshtini (40 drawn) — the region-pdo-union fallback under-draws a PGI whose
   text is a commune list; Bétard's padding shows as EXTRA whole communes on
-  the Romanian PDOs.
+  the Romanian PDOs. Its French sibling,
+  [scripts/audit_aires_vs_cahier.py](scripts/audit_aires_vs_cahier.py)
+  (2026-11-13), compares the cahier's own commune list with INAO's rows —
+  the cahier wins; see "INAO aires-communes supplements".
 - **`/validate-release`** — [scripts/validate_release.py](scripts/validate_release.py)
   runs the registry of `--strict` audits, the translation detectors, pytest,
   the About-page date and the stage-04 snapshot staleness as one table

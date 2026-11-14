@@ -23,10 +23,13 @@ export const SERVER_INFO = {
 };
 
 const INSTRUCTIONS = [
-  'Open Wine Map covers the protected wine appellations of 19 European countries (EU PDO/PGI and the UK and Swiss schemes),',
-  'built from the regulators\' own specifications. Use search_appellations to find an appellation by name,',
-  'filter_appellations for structured questions (country, region, style, grape, scheme) — list_facets gives the accepted',
-  'values — and get_appellation for one appellation\'s grapes, styles, terroir facts and sources.',
+  'Open Wine Map covers the protected wine appellations of 19 European countries (EU PDO/PGI and the UK and Swiss schemes)',
+  'and, since November 2026, their spirit drinks, aromatised wines and ciders with a protected name (Cognac, Grappa, Ouzo,',
+  'Scotch Whisky, Vermut di Torino …), built from the regulators\' own specifications.',
+  'Use search_appellations to find an appellation by name, filter_appellations for structured questions (country, region,',
+  'style, grape, scheme) — list_facets gives the accepted values — and get_appellation for one appellation\'s grapes, styles,',
+  'terroir facts and sources. Drinks other than wine are left out of filter results unless include_spirits is true or a',
+  'drink category (rum, whisky, liqueur, cider …) is the style asked for; a drink has a category, no grape roster.',
   'When quoting terroir facts, cite the specification URL, and Wikipedia (CC BY-SA 4.0) where a fact says so.',
   'Every result carries the appellation\'s page on www.openwinemap.com.',
   'Whenever your answer names specific appellations, call show_on_map with their slugs so the user sees them',

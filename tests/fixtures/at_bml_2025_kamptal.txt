@@ -1,0 +1,79 @@
+# Redacted excerpt — BML Produktspezifikation Kamptal (2025 template) (Austria), raw/at/produktspezifikationen/kamptal.pdf
+# via `pdftotext -layout`. Public, licence-clear: amtliches Werk (§ 7 UrhG), bmluk.gv.at Weinherkunft page.
+# Trimmed to d) area, e) yield, f) the exclusive prose list, the UNLETTERED terroir title and its first
+# paragraph, then the g) "Geltende Anforderungen" title the 2025 template gives the next section.
+d)   Abgrenzung des betreffenden geografischen Gebiets:
+     Die Ursprungsbezeichnung „Kamptal“ umfasst die niederösterreichischen Ge-
+     meinden Grafenegg, Hadersdorf-Kammern, Langenlois, Lengenfeld, Schönberg am
+     Kamp und Straß im Straßertale.
+
+e)   Höchstertrag je Hektar:
+     Die Hektarhöchstmenge beträgt 10.000 kg Weintrauben oder 7.500 l Wein je ha.
+
+f)   Angabe der Keltertraubensorte oder -sorten, aus denen die Weine gewonnen
+     werden:
+     Für die Gewinnung der Weine sind ausschließlich die Qualitätsweinrebsorten Grü-
+     ner Veltliner, Riesling, Chardonnay, Weißer Burgunder und Grauer Burgunder er-
+     laubt. Der Wein kann sowohl sortenrein als auch im Cuvee ausgebaut werden. Ein
+     bezeichnungsunschädlicher Verschnitt (max. 15 % mit anderen Qualitätswein-
+     rebsorten) wird toleriert.
+
+     Angaben über Güte und Eigenschaften, welche die Weine überwiegend oder aus-
+     schließlich den geografischen Verhältnissen einschließlich der natürlichen und
+     menschlichen Verhältnisse verdanken:
+
+     - Angaben zum geografischen Gebiet:
+     Der Boden im Kamptal ist bereits im 270 Millionen Jahre alten Perm Zeitalter ent-
+     standen. Die Terroirformationen bestehen aus Löss-, Schotter- und Urgesteinsbö-
+     den mit teilweise vulkanischen Elementen. Das Klima im Kamptal wird einerseits
+     vom heißen, pannonischen Klima beeinflusst, andererseits von kühlen Strömun-
+     gen aus dem Waldviertel. Der Niederschlagsmenge liegt bei 550 bis 600 mm im
+     Jahr. Die Jahresdurchschnittstemperatur liegt bei über 9 Grad Celsius. In Talniede-
+     rungen muss mit Spätfrösten bis Mitte Mai gerechnet werden.
+     Die Produktionsstruktur im Weinbaugebiet Kamptal ist geprägt von familienbe-
+     trieblich organisierten Winzern, die zum überwiegenden Teil Trauben aus eigener
+     Produktion verarbeiten und vielfach auch in der Direktvermarktung ab Hof verkau-
+     fen. Es besteht ein starker Zusammenhang zwischen dem ausgeprägten Tourismus
+     und der Weinwirtschaft.
+
+     Die Weinstöcke werden praktisch ausschließlich in Hochkultur am Drahtrahmen
+     gezogen.
+
+     - Angaben zu Qualität und Eigenschaften des Erzeugnisses:
+     •   Gebietswein (keine kleineren Herkünfte als Kamptal): leichte bis mittlere Stilis-
+         tik, keine Botrytis-Dominanz, kein wahrnehmbarer Holzton, ausgewogen, in der
+
+
+         Dichte der Typizität des angegebenen Jahrgangs entsprechend.
+     •   Ortswein (mit Angabe einer ortsübergreifenden Weinbaugemeinde – siehe
+         dazu lit. h): mittelkräftige Stilistik, keine Botrytisdominanz, ortsübliche Reife,
+         kein wahrnehmbarer Holzton, ausgewogen, in der Dichte der Typizität des an-
+         gegebenen Jahrgangs entsprechend.
+     •   Riedenwein (mit Angabe einer Riede – siehe dazu lit. h): mittlere bis kräftige
+         Stilistik, geprägt von den spezifischen Eigenschaften hinsichtlich Boden und
+         Klima der entsprechenden Ried, würzig bis mittleres Aroma, keine Botrytisdo-
+         minanz, kein oder nur leichter bis mittlerer Holzton, ausgewogen, in der Dichte
+         der Typizität des angegebenen Jahrgangs entsprechend.
+     •   Eigenschaften bei Verwendung des Begriffs „Reserve“:
+         •   Kräftige Stilistik;
+         •   Ausgeprägten Gebietscharakter;
+         •   Dicht und lang im Abgang;
+         •   Zarter Botrytis- und Holzton
+
+     - Beschreibung des kausalen Zusammenhangs:
+     Die steilen Terrassen wo sich keine Lössauflagen anlagern können, bringen einen
+     kraftvollen, mineralischen und langlebigen Riesling hervor. Die breiteren Lehm-
+     und Lössterrassen sind ideal für die Produktion von kräftigen, fruchtigen Grüner
+     Veltliner. Die durch das pannonische Klima beeinflusste Hitze am Tag und die küh-
+     len Nächte sorgen für eine große Aromafinesse und eine lebendige Säure bei den
+     Weinen.
+     Durch die überwiegend familienbetriebliche Winzerstruktur erfolgt überdies eine
+     generationenübergreifende Weitergabe des traditionellen Stils der Weinberei-
+     tung, was zusätzlich zum ausgeprägten Charakter der Kamptal Weine beiträgt.
+
+
+g)   Geltende Anforderungen gemäß gemeinschaftlicher oder nationaler Rechtsvor-
+     schriften, oder – sofern von den Mitgliedstaaten vorgesehen – von Organisatio-
+     nen, die geschützte Ursprungsbezeichnungen oder geografische Angaben verwal-
+     ten, wobei darauf zu achten ist, dass diese Anforderungen objektiv und nichtdis-
+     kriminierend sowie mit dem Gemeinschaftsrecht vereinbar sind:

@@ -72,6 +72,20 @@ def test_wiki_index_kept_full_and_partial():
     assert {**kept, "b": {"country": "fr", "n": 2}}["a"] == {"country": "fr"}
 
 
+def test_wiki_index_kept_leaves_the_drinks_pipeline_alone():
+    """The drinks pipeline writes records of every country and marks its
+    entries: a country's full run keeps them, its own full run replaces them
+    and nothing else."""
+    existing = {
+        "rioja": {"country": "es"},
+        "orujo-de-galicia": {"country": "es", "pipeline": "drinks"},
+        "barolo": {"country": "it"},
+    }
+    assert set(wiki_index_kept(existing, "es", partial=False)) == {"orujo-de-galicia", "barolo"}
+    assert set(wiki_index_kept(existing, "", partial=False, pipeline="drinks")) == {"rioja", "barolo"}
+    assert wiki_index_kept(existing, "", partial=True, pipeline="drinks") == existing
+
+
 def test_every_stage_03_merges_through_the_helper():
     """Wiring lint: every stage-03 generator takes `--only` and must merge
     wiki/_index.json through `wiki_index_kept`, never by dropping its

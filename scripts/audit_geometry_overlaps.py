@@ -17,6 +17,10 @@ The first corpus-wide review (2026-09-25, 520 slivers) found that premise
 holds only for one class of pair, so every sliver is first classified —
 listed in full, never hidden — and only the last class is SUSPICIOUS:
 
+  DRINK           — at least one side is a spirit drink, an aromatised wine
+                    or a cider (`is_wine` "0"): another product, drawn from
+                    its own delimitation, which covers wine areas and other
+                    drinks by design, across borders too.
   BORDER          — two countries, a band under --thin-km wide: the two
                     national layers digitise the state border differently.
   TIER            — a PGI / IGP (or a spirit-drink GI) over a PDO / AOC of
@@ -111,7 +115,7 @@ class Feat:
     """One appellation: metadata plus its reprojected, simplified geometry."""
 
     __slots__ = ("slug", "name", "country", "region", "kind", "geom", "area",
-                 "parent", "id_app", "geom_source")
+                 "parent", "id_app", "geom_source", "is_wine")
 
     def __init__(self, props: dict, geom: BaseGeometry):
         self.slug = props.get("slug") or ""
@@ -122,6 +126,8 @@ class Feat:
         self.parent = props.get("parent_slug") or ""
         self.id_app = props.get("id_appellation")
         self.geom_source = props.get("geom_source") or ""
+        # "0" for a spirit drink, an aromatised wine or a cider
+        self.is_wine = str(props.get("is_wine", "1")) != "0"
         self.geom = geom
         self.area = geom.area
 
@@ -148,7 +154,7 @@ _ZONE_SOURCE_PREFIXES = (
     "pdo-plan-parcel",
 )
 _INHERITING_SOURCES = ("parent-appellation", "sibling-dgc")
-CLASSES = ("border", "tier", "generalisation", "source", "suspicious")
+CLASSES = ("drink", "border", "tier", "generalisation", "source", "suspicious")
 
 
 def _tier(kind: str) -> str:
@@ -174,6 +180,13 @@ def root_source(f: "Feat", by_slug: dict[str, "Feat"]) -> str:
 def classify(ov: "Overlap", src_a: str, src_b: str, thin_km: float) -> str:
     """One of CLASSES for a sliver (see the module docstring)."""
     a, b = ov.a, ov.b
+    if not (a.is_wine and b.is_wine):
+        # A spirit drink, an aromatised wine or a cider is another product,
+        # drawn from its own delimitation — a country, a region, the communes
+        # of the wine area it is distilled from: it shares ground with wines
+        # and with other drinks by design, across borders too (Korn is
+        # Germany, Austria and the German-speaking Community of Belgium).
+        return "drink"
     if a.country != b.country:
         return "border" if ov.eff_width_km < thin_km else "suspicious"
     if _tier(a.kind) != _tier(b.kind):
@@ -357,9 +370,16 @@ def main() -> int:
         rep = members[0]
         extra = len(members) - 1
         pair_key = frozenset((rep.a.slug, rep.b.slug))
-        used_keys.add(pair_key)
-        if pair_key in overrides:
-            accepted.append((rep, extra, overrides[pair_key]))
+        # A review is written for the family: the member with the largest
+        # overlap can be a sub-denomination one build and its parent the next
+        # (they share one geometry, the areas differ in the last digits), and
+        # a review keyed on the parents still holds.
+        keys = [pair_key, frozenset((fam(rep.a), fam(rep.b))),
+                *(frozenset((o.a.slug, o.b.slug)) for o in members[1:])]
+        hit = next((k for k in keys if k in overrides), None)
+        used_keys.add(hit or pair_key)
+        if hit is not None:
+            accepted.append((rep, extra, overrides[hit]))
         else:
             suspicious.append((rep, extra))
     suspicious.sort(key=lambda t: -t[0].area_km2)
@@ -407,12 +427,13 @@ def main() -> int:
     print()
 
     expected_titles = {
+        "drink": "DRINK — a spirit drink, aromatised wine or cider and another record: another product, its own delimitation",
         "border": f"BORDER — two national layers along a state border, < {args.thin_km:g} km wide",
         "tier": "TIER — a PGI / IGP or spirit-drink GI over a PDO / AOC of the same country",
         "generalisation": f"GENERALISATION — same tier, two geometry sources, < {args.thin_km:g} km wide",
         "source": "SOURCE-DRAWN — same tier, both polygons from an official zone layer or Bétard",
     }
-    for cls in ("border", "tier", "generalisation", "source"):
+    for cls in ("drink", "border", "tier", "generalisation", "source"):
         rows_c = classes[cls]
         print(f"{expected_titles[cls]}  [{len(rows_c)}]")
         for ov, extra in rows_c:
@@ -467,7 +488,7 @@ def main() -> int:
     print(f"  suspicious slivers  : {len(suspicious)}  "
           f"({len(cross)} cross-country, {len(same)} same-country)")
     print("  expected slivers    : " + ", ".join(
-        f"{len(classes[c])} {c}" for c in ("border", "tier", "generalisation", "source")))
+        f"{len(classes[c])} {c}" for c in ("drink", "border", "tier", "generalisation", "source")))
     print(f"  accepted (whitelist): {len(accepted)}")
     print(f"  normal overlaps     : {nested} nested + {partial} large partial "
           f"+ {wide} wide")

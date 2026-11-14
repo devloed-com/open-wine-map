@@ -43,6 +43,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib.aires import load_aires  # noqa: E402
 from _lib.aires import lookup as lookup_aire
+from _lib.fr.former_communes import FORMER_GEOJSON, MOVEMENTS_CSV  # noqa: E402
 from _lib.geom_chain import cahier_insee, load_commune_index  # noqa: E402
 from _lib.parcellaire_gaps import load_coverage, load_gap_fills, parcel_gaps  # noqa: E402
 
@@ -70,7 +71,8 @@ def main() -> int:
     if cov is None:
         sys.exit("no INAO parcellaire shapefile under raw/inao/parcellaire/")
     aires = load_aires()
-    commune_idx, insee_idx, insee_name = load_commune_index(COMMUNES_GEOJSON)
+    # the name index reads a cahier's former communes too, as stage 04's does
+    commune_idx, insee_idx, insee_name = load_commune_index(COMMUNES_GEOJSON, FORMER_GEOJSON, MOVEMENTS_CSV)
     fills = load_gap_fills()
 
     records = []

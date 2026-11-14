@@ -31,6 +31,7 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _lib.grape_corpus import collect_grape_slugs as _collect_corpus  # noqa: E402
+from _lib.grape_wiki_identity import article_is_anothers, passport_match_is_stale  # noqa: E402
 from _lib.wiki import is_grape_summary  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -152,6 +153,10 @@ def _build_donor_index(lang_dir: Path) -> dict[int, dict]:
             continue
         if rec.get("missing") or rec.get("error") or not rec.get("extract"):
             continue
+        # a record found through a passport its own slug no longer has is
+        # no donor for the slugs of the passport it has now
+        if passport_match_is_stale(rec, f.stem):
+            continue
         vivc = _load_vivc(f.stem)
         if not vivc or not vivc.get("vivc_id"):
             continue
@@ -198,7 +203,10 @@ def _cache_is_fresh(cached: dict, slug: str, donors: dict[int, dict] | None = No
     Pre-fingerprint legacy entries (no `vivc_consulted`) invalidate
     whenever any VIVC record now exists for the slug."""
     if not _is_negative(cached):
-        return True
+        # an `ok` record stands — unless it was found through a VIVC passport
+        # the slug no longer has (a corrected or withdrawn pin): that one is
+        # re-fetched, and stage 04 does not show it meanwhile
+        return not passport_match_is_stale(cached, slug)
     if donors is not None:
         vivc = _load_vivc(slug)
         if vivc and vivc.get("vivc_id") in donors:
@@ -359,13 +367,33 @@ def fetch_summary(session: requests.Session, lang: str, slug: str) -> dict:
     vivc = _vivc_fingerprint(slug)
     candidates = _build_candidates(lang, slug)
     last_data: dict | None = None
+    anothers: dict | None = None
     for title, matched_via in candidates:
         data = _try_one(session, lang, title)
         if data is None:
             continue
         last_data = data
         if looks_like_grape(lang, data):
+            # a grape article, but whose? A synonym or the slug's own title
+            # that Wikipedia redirects to another corpus cultivar's article
+            # (Chenanson's VAALBLAAR STEIN → Chenin blanc, "Mollard" →
+            # Carignan) is not this pill's; a curator pin is taken as given.
+            owners = [] if matched_via == "override" else article_is_anothers(slug, data.get("title") or "")
+            if owners:
+                anothers = {"title": data.get("title"), "owned_by": owners, "via": matched_via}
+                continue
             return _summary_record(lang, slug, data, matched_via, now, vivc)
+    if anothers is not None:
+        return {
+            "slug": slug,
+            "lang": lang,
+            "error": "other_cultivar_article",
+            "rejected_title": anothers["title"],
+            "rejected_owned_by": anothers["owned_by"],
+            "rejected_via": anothers["via"],
+            "vivc_consulted": vivc,
+            "fetched_at": now,
+        }
     if last_data is not None:
         return {
             "slug": slug,
@@ -396,7 +424,9 @@ def _fetch_locale(
         cache = lang_dir / f"{slug}.json"
         if cache.exists() and not refresh:
             cached_data = json.loads(cache.read_text(encoding="utf-8"))
-            if _cache_is_fresh(cached_data, slug, donors):
+            if _cache_is_fresh(cached_data, slug, donors) and not _null_pin_unapplied(
+                lang, slug, cached_data
+            ):
                 cached += 1
                 continue
             revalidated += 1
@@ -437,6 +467,14 @@ def _override_absent(lang: str, slug: str) -> bool:
     the white Verdejo)."""
     table = (LANG_OVERRIDES or {}).get(lang) or {}
     return slug in table and table[slug] is None
+
+
+def _null_pin_unapplied(lang: str, slug: str, cached: dict) -> bool:
+    """A `null` pin written after the entry was cached: the entry still
+    carries an article the curator has ruled out, so the pin takes effect on
+    the next run for the slug without `--refresh` (2026-11-14, the 72 wrong
+    redirects of docs/grape-wikipedia-redirects-2026-11-14.md)."""
+    return _override_absent(lang, slug) and cached.get("matched_via") != "override-absent"
 
 
 def _resolve_one(

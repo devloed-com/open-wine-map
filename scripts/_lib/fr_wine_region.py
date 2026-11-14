@@ -198,6 +198,10 @@ _DEPARTEMENT_BUCKET: dict[str, str] = {
     "VIENNE": "VAL DE LOIRE",
     "DEUX-SEVRES": "VAL DE LOIRE",
     "SARTHE": "VAL DE LOIRE",
+    # No wine region: the grain and juniper spirits of French Flanders and
+    # Artois (Genièvre Flandre-Artois) are the bucket's only records.
+    "NORD": "NORD",
+    "PAS-DE-CALAIS": "NORD",
     "MAYENNE": "VAL DE LOIRE",
     "ALLIER": "VAL DE LOIRE",
     "PUY-DE-DOME": "VAL DE LOIRE",
@@ -272,6 +276,14 @@ _SLUG_BUCKET: dict[str, str] = {
     # IGP Coteaux de l'Ain covers the whole département: Bugey for want of a
     # better name (Pays de Gex, Revermont and Val de Saône are DGCs of it).
     "coteaux-de-l-ain": "BUGEY",
+    # Spirit drinks without an aires-CSV row of their own (2026-11-12). Marc
+    # de Provence's comité spans Provence and Corsica; Ratafia champenois has
+    # no comité at all; both name their region. The cross-border Genièvre /
+    # Jenever / Genever is, in France, the Nord and Pas-de-Calais départements
+    # (Reg. (EC) 110/2008, Annex III, category 19).
+    "marc-de-provence-ou-eau-de-vie-de-marc-de-provence": "PROVENCE",
+    "ratafia-de-champagne-ou-ratafia-champenois": "CHAMPAGNE",
+    "genievre-ou-jenever-ou-genever": "NORD",
 }
 
 
@@ -346,5 +358,5 @@ FR_WINE_REGIONS: tuple[str, ...] = (
     "BOURGOGNE", "BEAUJOLAIS", "JURA", "SAVOIE", "BUGEY", "ALSACE", "LORRAINE",
     "CHAMPAGNE", "ILE-DE-FRANCE", "VAL DE LOIRE", "BORDEAUX", "SUD-OUEST",
     "VALLEE DU RHÔNE", "LANGUEDOC", "ROUSSILLON", "PROVENCE", "CORSE",
-    "NORMANDIE", "BRETAGNE", "MAINE", "COGNAC", "ARMAGNAC", "RHUM",
+    "NORMANDIE", "BRETAGNE", "MAINE", "COGNAC", "ARMAGNAC", "RHUM", "NORD",
 )

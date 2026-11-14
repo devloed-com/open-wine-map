@@ -61,6 +61,38 @@ independent check: **polygon vs text**.
    tier.
 5. **Re-run** after a fix with the same scope; the record moves to OK or the
    override to REVIEWED.
+   A spirit, aromatised wine or cider drawn from a curator pin or from the
+   register's NUTS rows (`drinks-area-pin`, `gisco-nuts-union`) reports
+   **PINNED** when the only difference is whole units beyond the parser's
+   reading — the country parsers were written for wine texts — and SUSPECT
+   when a unit the parser read is not drawn. Scope a drinks run with one
+   `--only` per slug; a full-corpus run takes hours.
+   For a French record drawn from INAO's commune rows, the cahier is the
+   delimitation and wins over the rows (Boris, 2026-11-13). First check the
+   build holds the newest published cahier — BO Agri's title search,
+   `https://info.agriculture.gouv.fr/boagri/recherche/resultat_recherche_rapide?titre=<name>`,
+   answers when INAO's product site does not; pin a newer one in
+   `raw/inao/cahiers/manual_overrides.json` and re-extract. Then
+   `.venv/bin/python scripts/audit_aires_vs_cahier.py --only <slug>` lists
+   the communes the cahier names that the rows lack (whole / partial /
+   unclear, with the sentence), the rows the zone text does not name and the
+   neighbouring codes (Gignac for Gigondas); `--bare --emit-pins PATH` stages
+   a pin for `scripts/_lib/aires_supplements.json` (`communes`, `remove`,
+   `not_drawn`, `whole_departements`). Read the text around every `whole`
+   commune before pinning: Armagnac lists five communes and excludes them
+   from the vineyard in the next sentence.
+   A pre-merger commune code in the rows is drawn by the former commune's own
+   outline where one exists (`scripts/_lib/fr/former_communes.py`); the ones
+   with no outline are named on the card, not a defect. A code whose commune
+   left its département before 2009 (Chassieu under 38088, Frettes under
+   52210) is INAO's table at fault where the cahier says "le département de
+   …": not drawn, listed by the audit (`--all`). The mirror case — a row
+   whose code is today a commune nouvelle larger than the commune the cahier
+   names — is drawn as the seat's former outline where the cahier names the
+   old commune or restricts the new one (`scripts/_lib/fr/seat_communes.py`;
+   stage 04 lists them, "[geo] seats of communes nouvelles …"); the audit
+   reads such a commune as named in part. A merger never moves an aire: a
+   commune of today drawn whole for a row that names its seat is a finding.
 6. The polygon-vs-polygon audits still run on every geometry change
    (`scripts/validate_release.py` without `--quick` runs them all).
 

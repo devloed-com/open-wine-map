@@ -1,12 +1,26 @@
-"""Canonical wine-style taxonomy shared by FR + ES pipelines.
+"""Canonical wine-style taxonomy shared by every pipeline.
 
-The tree is a directed forest: every slug has at most one parent. Buckets
-(red, white, rose, sparkling, sweet, oxidative, other) are the seven
-top-level nodes, the style facet's depth-0 rows. Internal groups (fortified, late-harvest,
-raisin-wine, oxidative, generoso) collect siblings whose membership is
+Styles are several axes — colour, effervescence, sweetness, fortification,
+ageing — and a wine sits on each of them, so the taxonomy is a graph with a
+tree drawn over it. Every slug has one *primary* parent: that is where the
+sidebar's style tree shows it, once. A slug that also belongs elsewhere
+names its `extra_parents`: filtering any parent reaches it. Buckets (red,
+white, rose, sparkling, sweet, fortified, oxidative, other) are the
+top-level nodes, the style facet's depth-0 rows. Internal groups
+(late-harvest, raisin-wine, generoso) collect siblings whose membership is
 shared semantics; they're selectable as filters and expand to all
-descendants. Leaves are the fine-grained tags that records actually
-carry.
+descendants. Leaves are the fine-grained tags that records actually carry.
+
+Fortification is an axis of its own since 2026-11-14 (Boris's question on
+Manzanilla de Sanlúcar): `fortified` was a child of `sweet` and `generoso`,
+with fino and manzanilla, a child of `oxidative`, so the facet filed a bone-
+dry wine aged under flor under "Sweet / dessert" and "Oxidative" — as it did
+Rueda's dry Dorado, and 31 more fortified records whose text states no
+sweetness. Now: `fortified` is a bucket; a vin doux naturel and a mistela
+are sweet by definition and keep `sweet` as an extra parent, a liqueur wine
+is sweet where its record says so; `generoso` sits under `fortified`, and
+the three types whose ageing is oxidative (amontillado, oloroso, palo
+cortado) keep `oxidative` as an extra parent — fino and manzanilla do not.
 
 `panel_only` is an available leaf flag: a panel_only leaf shows as a
 chip on the AOC panel but is kept out of the facet tree and
@@ -53,6 +67,7 @@ _NODES_RAW: tuple[StyleNode, ...] = (
     StyleNode("rose",      None,  "rosé"),
     StyleNode("sparkling", None,  "mousseux"),
     StyleNode("sweet",     None,  "doux"),
+    StyleNode("fortified", None,  "vin muté", ("fr", "es")),
     StyleNode("other",     None,  "autres"),
     # ----- colour sub-styles -----
     StyleNode("clairet",   "red", "clairet",  ("fr",)),
@@ -104,7 +119,6 @@ _NODES_RAW: tuple[StyleNode, ...] = (
               ("fr",), synonyms=("methode dioise",)),
     StyleNode("semi-sparkling",    "sparkling", "pétillant",           ("es",)),
     # ----- sweet groups -----
-    StyleNode("fortified",   "sweet", "vin muté",       ("fr", "es")),
     StyleNode("late-harvest","sweet", "vendanges tardives (catégorie)", ("fr", "es")),
     StyleNode("raisin-wine", "sweet", "vin de raisins passerillés",     ("fr", "es")),
     # ----- sweet leaves (sweetness level + icewine) -----
@@ -118,9 +132,15 @@ _NODES_RAW: tuple[StyleNode, ...] = (
                         "ledove vino", "ledové víno", "ledeno vino",
                         "vino de hielo", "vino di ghiaccio", "ghiacciato")),
     # ----- fortified leaves -----
-    StyleNode("vdn",            "fortified", "vin doux naturel", ("fr",)),
+    # A vin doux naturel and a mistela are sweet by definition (a fermentation
+    # stopped, or never started, by the spirit): filtering `sweet` reaches
+    # them. A liqueur wine is the EU category (Reg. 1308/2013 Annex VII Part II
+    # point 3) and says nothing of sweetness — Manzanilla, Rueda's Dorado.
+    StyleNode("vdn",            "fortified", "vin doux naturel", ("fr",),
+              extra_parents=("sweet",)),
     StyleNode("vin-de-liqueur", "fortified", "vin de liqueur",   ("fr", "es")),
-    StyleNode("mistela",        "fortified", "mistelle",         ("es", "fr")),
+    StyleNode("mistela",        "fortified", "mistelle",         ("es", "fr"),
+              extra_parents=("sweet",)),
     # ----- late-harvest leaves -----
     StyleNode("vendanges-tardives",  "late-harvest", "vendanges tardives",   ("fr",)),
     StyleNode("uvas-sobremaduradas", "late-harvest", "uvas sobremaduradas",  ("es",)),
@@ -148,13 +168,75 @@ _NODES_RAW: tuple[StyleNode, ...] = (
     StyleNode("rancio",    "oxidative", "rancio",    ("fr", "es"),
               synonyms=("fondillon", "fondillón", "ranci")),
     StyleNode("vin-jaune", "oxidative", "vin jaune", ("fr",)),
-    StyleNode("generoso",  "oxidative", "generoso",  ("es",)),
-    # ----- generoso (Sherry) sub-styles — facetable + searchable -----
+    # ----- generoso (Sherry) — a fortified family, facetable + searchable.
+    # Fino and manzanilla are aged under flor; amontillado, oloroso and palo
+    # cortado oxidatively, so filtering `oxidative` reaches those three.
+    StyleNode("generoso",     "fortified", "generoso",    ("es",)),
     StyleNode("fino",         "generoso", "fino",         ("es",)),
     StyleNode("manzanilla",   "generoso", "manzanilla",   ("es",)),
-    StyleNode("amontillado",  "generoso", "amontillado",  ("es",)),
-    StyleNode("oloroso",      "generoso", "oloroso",      ("es",)),
-    StyleNode("palo-cortado", "generoso", "palo cortado", ("es",)),
+    StyleNode("amontillado",  "generoso", "amontillado",  ("es",),
+              extra_parents=("oxidative",)),
+    StyleNode("oloroso",      "generoso", "oloroso",      ("es",),
+              extra_parents=("oxidative",)),
+    StyleNode("palo-cortado", "generoso", "palo cortado", ("es",),
+              extra_parents=("oxidative",)),
+    # ----- spirits and other alcoholic drinks (2026-11-12) -----
+    # Not wine styles: the facet beneath the non-wine class. A spirit drink,
+    # aromatised wine or cider record carries exactly one of these leaves as
+    # its `styles` (its `drink_category`, `_lib/product_class.py`), so the
+    # style tree, the card's pill, the MCP facets and the 02b tooltips serve
+    # it unchanged. The leaves follow Annex I of Reg. (EU) 2019/787, grouped
+    # where the annex splits what a reader takes for one drink.
+    StyleNode("drinks", None, "spiritueux et autres boissons"),
+    StyleNode("wine-spirit", "drinks", "eau-de-vie de vin",
+              synonyms=("wine spirit", "wine brandy", "eau-de-vie de vin",
+                        "aguardiente de vino", "aguardente vinica", "acquavite di vino",
+                        "branntwein", "wijndistillaat")),
+    StyleNode("brandy", "drinks", "brandy",
+              synonyms=("brandy", "weinbrand")),
+    StyleNode("grape-marc", "drinks", "eau-de-vie de marc",
+              synonyms=("grape marc", "pomace brandy", "grappa", "orujo",
+                        "bagaceira", "tsipouro", "tsikoudia", "zivania", "tresterbrand",
+                        "trester", "torkolypalinka", "torkolypálinka", "komovica",
+                        "eau-de-vie de marc", "aguardiente de orujo", "druivendraf")),
+    StyleNode("fruit-spirit", "drinks", "eau-de-vie de fruits",
+              synonyms=("fruit spirit", "fruit brandy", "eau-de-vie de fruits", "obstbrand",
+                        "obstler", "palinka", "pálinka", "rakia", "rakija", "sljivovica",
+                        "slivovice", "tuica", "țuică", "kirsch",
+                        "aguardiente de frutas", "acquavite di frutta", "vruchtendistillaat")),
+    StyleNode("cider-spirit", "drinks", "eau-de-vie de cidre ou de poiré",
+              synonyms=("cider spirit", "perry spirit", "cider brandy", "calvados",
+                        "eau-de-vie de cidre", "aguardiente de sidra", "apple brandy")),
+    StyleNode("rum", "drinks", "rhum",
+              synonyms=("rum", "rhum", "rhum agricole")),
+    StyleNode("whisky", "drinks", "whisky",
+              synonyms=("whisky", "whiskey", "scotch")),
+    StyleNode("grain-spirit", "drinks", "eau-de-vie de céréales",
+              synonyms=("grain spirit", "korn", "kornbrand", "eau-de-vie de cereales",
+                        "aguardiente de cereales", "graandistillaat")),
+    StyleNode("juniper", "drinks", "boisson spiritueuse au genièvre",
+              synonyms=("juniper", "juniper spirit", "gin", "genever", "jenever", "genievre",
+                        "genièvre", "wacholder", "borovicka", "borovička", "ginebra")),
+    StyleNode("aniseed", "drinks", "boisson spiritueuse anisée",
+              synonyms=("aniseed", "anise", "ouzo", "pastis", "anisette", "mistra",
+                        "mistrà", "tsipouro me glykaniso", "anijs")),
+    StyleNode("liqueur", "drinks", "liqueur",
+              synonyms=("liqueur", "licor", "liquore", "likor", "likör", "likeur", "ratafia",
+                        "creme de cassis", "crème de cassis", "pacharan", "pacharán",
+                        "nocino", "maraschino")),
+    StyleNode("bitter", "drinks", "amer",
+              synonyms=("bitter", "amaro")),
+    StyleNode("other-spirit", "drinks", "autre boisson spiritueuse",
+              synonyms=("spirit drink", "boisson spiritueuse", "bebida espirituosa",
+                        "bevanda spiritosa", "spirituose", "vodka", "absinthe", "gentian",
+                        "enzian", "kummel", "kümmel", "pommeau")),
+    StyleNode("aromatised-wine", "drinks", "vin aromatisé",
+              synonyms=("aromatised wine", "aromatized wine", "vermouth", "vermut", "vermout",
+                        "gluhwein", "glühwein", "mulled wine", "bermet", "vino aromatizado",
+                        "vino aromatizzato", "gearomatiseerde wijn", "vin aromatise")),
+    StyleNode("cider", "drinks", "cidre ou poiré",
+              synonyms=("cider", "cidre", "sidra", "perry", "poire", "poiré", "apfelwein",
+                        "sagardoa", "cyder", "appelwijn")),
 )
 
 
@@ -198,11 +280,19 @@ def descendants(slug: str, *, include_self: bool = True) -> set[str]:
 
 # Top-level buckets, in membership order (`simple_buckets`, `bucket_descendants`
 # and the MCP query context key on it).
-BUCKETS: tuple[str, ...] = ("red", "white", "rose", "sparkling", "sweet", "oxidative", "other")
+BUCKETS: tuple[str, ...] = (
+    "red", "white", "rose", "sparkling", "sweet", "fortified", "oxidative", "other", "drinks",
+)
+# The wine buckets — what a wine record can carry. `drinks` is the class of
+# the spirit drinks, aromatised wines and ciders, last in both orders.
+WINE_BUCKETS: tuple[str, ...] = tuple(b for b in BUCKETS if b != "drinks")
+DRINKS_BUCKET = "drinks"
 # The order the sidebar's style facet lists the buckets in — white, rosé,
-# red, sparkling, sweet, oxidative, other — so the top rows read like a
-# wine-style legend rather than by frequency. Same members as BUCKETS.
-FACET_BUCKET_ORDER: tuple[str, ...] = ("white", "rose", "red", "sparkling", "sweet", "oxidative", "other")
+# red, sparkling, sweet, fortified, oxidative, other — so the top rows read
+# like a wine-style legend rather than by frequency. Same members as BUCKETS.
+FACET_BUCKET_ORDER: tuple[str, ...] = (
+    "white", "rose", "red", "sparkling", "sweet", "fortified", "oxidative", "other", "drinks",
+)
 assert set(FACET_BUCKET_ORDER) == set(BUCKETS)
 
 
@@ -370,6 +460,12 @@ def _msgid_anchors_for_babel(_: Callable[[str], str]) -> tuple[str, ...]:
         _("rancio"), _("vin jaune"), _("generoso"),
         _("fino"), _("manzanilla"), _("amontillado"),
         _("oloroso"), _("palo cortado"),
+        _("spiritueux et autres boissons"), _("eau-de-vie de vin"), _("brandy"),
+        _("eau-de-vie de marc"), _("eau-de-vie de fruits"),
+        _("eau-de-vie de cidre ou de poiré"), _("rhum"), _("whisky"),
+        _("eau-de-vie de céréales"), _("boisson spiritueuse au genièvre"),
+        _("boisson spiritueuse anisée"), _("liqueur"), _("amer"),
+        _("autre boisson spiritueuse"), _("vin aromatisé"), _("cidre ou poiré"),
     )
 
 
@@ -387,5 +483,7 @@ def build_simple_style_labels(_: Callable[[str], str]) -> dict[str, str]:
         "rose":      _("rosé"),
         "sparkling": _("mousseux"),
         "sweet":     _("doux"),
+        "fortified": _("vin muté"),
         "other":     _("autres"),
+        "drinks":    _("spiritueux et autres boissons"),
     }

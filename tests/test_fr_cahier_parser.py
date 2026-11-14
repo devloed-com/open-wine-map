@@ -654,3 +654,196 @@ def test_2026_eau_de_vie_template_is_read_as_a_spirit_with_aire_lien_and_grape()
     assert [t["slug"] for t in grapes["all"]] == ["gewurztraminer"]
     assert extract.is_grape_spirit("Eaux-de-vie de marc de raisin")
     assert not extract.is_grape_spirit("Eaux-de-vie de cidre")
+
+
+# ----- 2026-11-13: the spirit cahiers re-sourced from BO Agri -----------------
+
+def test_a_page_number_and_running_header_inside_a_list_do_not_end_it():
+    """Cassis de Saintonge (2024): the Charente-Maritime list breaks inside a
+    hyphenated name, on a page number and the BO header."""
+    iv = (
+        "Département de la Charente-Maritime : Saint-Léger, Saint-Loup, Saint-\n"
+        "                                                    2/8\n"
+        "\x0cPublié au BO du MASA le 8 août 2024\n\n"
+        "Maigrin, Saint-Mandé-sur-Brédoire, Saintes.\n"
+    )
+    communes = extract.extract_aire(iv)["aire_geographique"]["Charente-Maritime"]
+    assert communes == ["Saint-Léger", "Saint-Loup", "Saint-Maigrin", "Saint-Mandé-sur-Brédoire", "Saintes"]
+
+
+def test_a_blank_line_before_the_page_number_is_part_of_the_page_break():
+    """Fine des Côtes du Rhône (2025): the Gard list stops on a comma, a blank
+    line, the page number, the header."""
+    iv = (
+        "- Département du Gard :\n"
+        "Aiguèze, Issirac, Jonquières-Saint-Vincent,\n\n"
+        "                                                      2/9\n"
+        "\x0cPublié au BO Agri du MAASA le 25 décembre 2025\n\n\n\n"
+        "Laudun-l’Ardoise, Lirac.\n"
+    )
+    communes = extract.extract_aire(iv)["aire_geographique"]["Gard"]
+    assert communes == ["Aiguèze", "Issirac", "Jonquières-Saint-Vincent", "Laudun-l’Ardoise", "Lirac"]
+
+
+def test_a_departement_named_whole_does_not_take_the_next_one_s_list():
+    """Marc de Provence (2025): « Département des Bouches-du-Rhône, toutes les
+    communes. » had been read as the header of the Drôme's list."""
+    iv = (
+        "Département des Alpes-Maritimes, les communes de : Aiglun, Amirat.\n\n"
+        "Département des Bouches-du-Rhône, toutes les communes.\n\n"
+        "Département de la Drôme, les communes de : Arpavon, Aubres.\n\n"
+        "Département du Var, toutes les communes,\n"
+    )
+    aire = extract.extract_aire(iv)
+    assert aire["aire_geographique"] == {"Alpes-Maritimes": ["Aiglun", "Amirat"], "Drôme": ["Arpavon", "Aubres"]}
+    assert aire["aire_departements"] == ["Bouches-du-Rhône", "Var"]
+
+
+def test_whole_departements_of_a_french_territory_line():
+    """Génépi des Alpes: « - Territoire français : départements des … »."""
+    iv = (
+        "sont effectuées sur les territoires suivants :\n"
+        "- Territoire français : départements des Alpes de Haute-Provence, des Hautes-Alpes, de\n"
+        "l’Isère, de la Savoie et de la Haute-Savoie.\n"
+        "- Territoire italien : « Regione Piemonte ».\n"
+    )
+    assert extract.whole_departements(iv) == [
+        "Alpes-de-Haute-Provence", "Hautes-Alpes", "Isère", "Savoie", "Haute-Savoie"]
+
+
+def test_a_commune_list_ends_where_a_sentence_starts():
+    """« … Varennes-sur-Loire.\\nLes documents cartographiques … de l'origine
+    et de la qualité. » had left a commune « de la qualité » on 25 records."""
+    iv = (
+        "- département de Maine-et-Loire : Saumur, Varennes-sur-Loire.\n"
+        "Les documents cartographiques représentant l’aire géographique sont consultables sur le site internet de\n"
+        "l’Institut national de l’origine et de la qualité.\n"
+    )
+    assert extract.extract_aire(iv)["aire_geographique"]["Maine-et-Loire"] == ["Saumur", "Varennes-sur-Loire"]
+
+
+def test_the_2013_spirit_layout_is_read_by_its_lettered_sections():
+    """Absinthe de Pontarlier: « A/ FICHE TECHNIQUE », sections « a. » to « h. »."""
+    segment = (
+        "CAHIER DES CHARGES\nDE L’INDICATION GEOGRAPHIQUE\n\nABSINTHE DE PONTARLIER\n"
+        "                                        A/ FICHE TECHNIQUE\n\n"
+        "a. Nom et catégorie de la boisson spiritueuse portant l’indication géographique :\n\nAbsinthe de Pontarlier.\n\n"
+        "b. Description de la boisson spiritueuse comprenant les caractéristiques physiques, chimiques et/ou\n"
+        "organoleptiques\n\nUne boisson anisée.\n\n"
+        "c. Définition de la zone géographique concernée :\n\nles communes suivantes du département du Doubs: Arçon, Bannans.\n\n"
+        "d. Description de la méthode d’obtention de la boisson spiritueuse\n\nMacération.\n\n"
+        "e. Détails corroborant le lien avec l’environnement géographique ou l’origine géographique :\n\nLe Haut-Doubs.\n"
+    )
+    assert extract.is_spiritueux_template(segment)
+    bodies, titles = extract.extract_spiritueux_sections(segment)
+    assert list(bodies) == ["A", "B", "C", "D", "E"]
+    routed = extract.route_spiritueux(bodies, titles)
+    assert "Doubs" in routed["aire"] and routed["lien"] == "Le Haut-Doubs."
+
+
+def test_partie_one_with_a_full_stop_is_the_spirit_template():
+    assert extract.is_spiritueux_template("« Marc de Provence »\nPartie I. Fiche technique\n\n1. Nom et catégorie")
+
+
+def test_homologation_date_without_par():
+    """« homologué l’arrêté du 1er septembre 2025 » (Kirsch d'Alsace)."""
+    head = "Cahier des charges de l’indication géographique « Kirsch d’Alsace » homologué l’arrêté du 1er septembre 2025, publié au JORF"
+    assert extract.homologation_date(head) == "2025-09-01"
+
+
+def test_a_bare_page_number_before_the_header_and_its_typo():
+    """Marc des Côtes du Rhône (2025): « Pont-Saint-\\n   2\\n\\fPublié ai BO Agri … »."""
+    iv = (
+        "- Département du Gard :\n"
+        "Orsan, Le Pin, Pont-Saint-\n"
+        "                                                        2\n"
+        "\x0cPublié ai BO Agri du MAASA le 25 décembre 2025\n\n\n\n"
+        "Esprit, Pougnadoresse.\n"
+    )
+    assert extract.extract_aire(iv)["aire_geographique"]["Gard"] == [
+        "Orsan", "Le Pin", "Pont-Saint-Esprit", "Pougnadoresse"]
+
+
+def test_a_bare_page_number_inside_a_list_is_no_commune():
+    """The Basque cider: « TROIS-VILLES,\\n   …   7\\n   UHART-CIZE »."""
+    iv = (
+        "Communes du département des Pyrénées-Atlantiques : TARDETS-SORHOLUS, TROIS-VILLES,\n"
+        "                                                                                   7\n"
+        "   UHART-CIZE, VIODOS.\n"
+    )
+    communes = extract.extract_aire(iv)["aire_geographique"]["Pyrénées-Atlantiques"]
+    assert [c.upper() for c in communes] == ["TARDETS-SORHOLUS", "TROIS-VILLES", "UHART-CIZE", "VIODOS"]
+
+
+# ----- extract_aire: a département heading with no colon, a département as the cahier spells it -----
+
+
+def test_a_departement_heading_alone_on_its_line_heads_the_list_below():
+    """Eau-de-vie de cidre de Bretagne (BO Agri, 19 February 2015): "L'aire
+    géographique est constituée par le territoire des 372 communes suivantes"
+    then one bare heading per département — no colon anywhere, and until
+    2026-11-13 the record held the two communes of the exception clause as
+    its whole aire."""
+    iv = (
+        "L’aire géographique est constituée par le territoire des 372 communes suivantes :\n\n"
+        "Département des Côtes-d'Armor\n"
+        "Andel, Aucaleuc, Bégard, Binic, Caouënnec-\n"
+        "Lanvézéac, Caulnes.\n\n"
+        "Département d'Ille-et-Vilaine\n"
+        "Acigné, Amanlis, Andouillé-Neuville.\n\n"
+        "Département de la Loire-Atlantique\n"
+        "Avessac, Fégréac.\n\n"
+        "Les pommes sont produites, récoltées dans l’aire géographique à l’exception des communes\n"
+        "suivantes :\n\n"
+        "Département des Côtes d'Armor : Plounérin\n\n"
+        "Département de l'Ille et Vilaine : Saint Grégoire\n"
+    )
+    geo = extract.extract_aire(iv)["aire_geographique"]
+    assert geo["Côtes-d'Armor"][:6] == ["Andel", "Aucaleuc", "Bégard", "Binic", "Caouënnec-Lanvézéac", "Caulnes"]
+    assert geo["Ille-et-Vilaine"][:3] == ["Acigné", "Amanlis", "Andouillé-Neuville"]
+    assert geo["Loire-Atlantique"] == ["Avessac", "Fégréac"]
+    # the colon form's « Côtes d'Armor » and « Ille et Vilaine » are the same
+    # départements, not a « Côtes » and an « Ille »
+    assert set(geo) == {"Côtes-d'Armor", "Ille-et-Vilaine", "Loire-Atlantique"}
+    assert "Plounérin" in geo["Côtes-d'Armor"] and "Saint Grégoire" in geo["Ille-et-Vilaine"]
+
+
+def test_a_bare_heading_must_name_a_departement_and_head_a_list():
+    iv = (
+        "Département de la Qualité\nAndel, Aucaleuc, Bégard.\n\n"
+        "Département du Finistère\nLes communes sont fixées par le comité national.\n"
+    )
+    assert extract.extract_aire(iv)["aire_geographique"] == {}
+
+
+def test_a_bare_heading_in_the_proximity_zone_is_not_the_aire():
+    """Saint-Chinian prints "3o Aire de proximité immédiate" (a letter o, no
+    block header the splitter knows) over a centred "Département de l'Aude"."""
+    iv = (
+        "La récolte des raisins est assurée sur le territoire des communes suivantes du département de\n"
+        "l’Hérault : Cessenon-sur-Orb, Roquebrun, Vieussan.\n\n"
+        "  3o Aire de proximité immédiate :\n"
+        "a) L’aire de proximité immédiate est constituée par le territoire des communes suivantes :\n"
+        "                    Département de l’Aude\n"
+        "Argeliers, Bize-Minervois, Ouveillan ;\n"
+    )
+    assert extract.extract_aire(iv)["aire_geographique"] == {"Hérault": ["Cessenon-sur-Orb", "Roquebrun", "Vieussan"]}
+
+
+def test_a_departement_is_keyed_as_the_table_spells_it_when_the_cahier_does_not():
+    assert extract._canonical_dept("Puy-deDôme") == "Puy-de-Dôme"          # a PDF that lost its hyphens
+    assert extract._canonical_dept("Pyrénées Orientales") == "Pyrénées-Orientales"
+    assert extract._canonical_dept("Maine-et Loire") == "Maine-et-Loire"
+    assert extract._canonical_dept("Côte", " d’Or, sur la base du code") == "Côte-d'Or"
+    assert extract._canonical_dept("Bouches", " du Rhône : Les Baux-de-Provence") == "Bouches-du-Rhône"
+    assert extract._canonical_dept("Saône", " et Loire : Mâcon") == "Saône-et-Loire"
+    # the table's own spellings are kept as written, either apostrophe
+    assert extract._canonical_dept("Côte-d’Or") == "Côte-d’Or"
+    assert extract._canonical_dept("Haute-Saône", " : Champlitte") == "Haute-Saône"
+    # a name the table does not know comes back as written
+    assert extract._canonical_dept("Pyrénées Orientale") == "Pyrénées Orientale"
+    assert extract._canonical_dept("Qualité", " des vins") == "Qualité"
+    iv = ("L’aire géographique est constituée par le territoire des communes suivantes du département du "
+          "Puy-deDôme :\nAubière, Authezat, SaintAmant-Tallende.\n")
+    assert extract.extract_aire(iv)["aire_geographique"] == {
+        "Puy-de-Dôme": ["Aubière", "Authezat", "SaintAmant-Tallende"]}

@@ -25,8 +25,12 @@ from pathlib import Path
 from _lib.terroir_coverage import SourceMatcher
 
 ROOT = Path(__file__).resolve().parents[2]
+# "drinks" is no country: the stage of the spirit drinks, aromatised wines
+# and ciders (scripts/drinks/), whose facts caches carry it as `country` so
+# the gate, the audits and the provenance pass load that stage for them (the
+# record's own country is the cache's `record_country`).
 COUNTRIES = ("fr", "at", "be", "bg", "ch", "cy", "cz", "de", "es", "gb", "gr", "hr", "hu",
-             "it", "lu", "mt", "nl", "pt", "ro", "si", "sk")
+             "it", "lu", "mt", "nl", "pt", "ro", "si", "sk", "drinks")
 
 
 def _sha(text: str) -> str:

@@ -54,13 +54,19 @@ def test_target_language_is_named_and_w5_rules_present():
     assert "never strengthen them" in rules
 
 
-def test_glossary_appended_for_en_and_nl_only():
-    for target in ("en", "nl"):
+def test_glossary_appended_per_target_locale():
+    """Every target gets its own glossary (FR and ES carry one verified rule
+    each since 2026-11-08 — the DE "spritzig" false friend), never another
+    locale's."""
+    for target in ("en", "nl", "fr", "es"):
         out = translation_system_prompt("BASE", source_lang="it", target_lang=target, proper_nouns="")
-        assert out.endswith(glossary_for(target))
-    out_es = translation_system_prompt("BASE", source_lang="it", target_lang="es", proper_nouns="")
-    assert glossary_for("en") not in out_es and glossary_for("nl") not in out_es
-    assert out_es.endswith(translation_rules("it", "es", proper_nouns=""))
+        assert glossary_for(target) and out.endswith(glossary_for(target))
+        for other in ("en", "nl", "fr", "es"):
+            if other != target:
+                assert glossary_for(other) not in out
+    for target in ("en", "nl", "fr", "es"):
+        assert "spritzig" in glossary_for(target)
+    assert glossary_for("de") == ""
 
 
 def test_output_starts_with_base_prompt():

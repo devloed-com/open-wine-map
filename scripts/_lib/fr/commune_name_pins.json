@@ -1,0 +1,18 @@
+{
+  "__doc": "A commune name a cahier writes wrongly, per record (scripts/_lib/geom_chain.py `_pinned_name`): record slug → the name as the zone section writes it → {name: the commune's name in IGN's layer, reason, verified}. Renamed and merged communes need no pin (INSEE's movements table and the former-communes layer resolve them).",
+  "euskal-sagardoa-ou-sidra-del-pais-vasco-ou-cidre-du-pays-basque-ou-cidre-du-pays-basque-eu": {
+    "ALCIETTE-BASCASSAN": {
+      "name": "Ahaxe-Alciette-Bascassan",
+      "reason": "The cahier's alphabetical list of the Pyrénées-Atlantiques opens « ALCIETTE-BASCASSAN, AHETZE, AICIRITS-CAMOU-SUHAST » — the first word of Ahaxe-Alciette-Bascassan (64008) is missing; no other commune of the département ends so.",
+      "verified": "2026-11-13"
+    }
+  },
+  "marc-d-auvergne": {
+    "Saint-Maurice-ès-Allier": {
+      "name": "Saint-Maurice",
+      "reason": "The commune's customary name: INSEE and IGN call it Saint-Maurice (63378). The cahier of AOC Côtes d'Auvergne (BO Agri, arrêté du 11 janvier 2024) writes « Saint-Julien-de-Coppel, Saint-Maurice, Saint-Sandoux » where this cahier writes « Saint-Julien-de-Coppel, Saint-Maurice-ès-Allier, Saint-Myon, SaintSandoux », and INAO's rows of Côtes d'Auvergne carry 63378; the French Wikipedia article of the commune (code commune 63378; neighbours Les Martres-de-Veyre, Mirefleurs, Busséol, Laps, Vic-le-Comte, all in this cahier's list) uses « Saint-Maurice-ès-Allier » itself.",
+      "source": "https://fr.wikipedia.org/wiki/Saint-Maurice_(Puy-de-D%C3%B4me)",
+      "verified": "2026-11-13"
+    }
+  }
+}

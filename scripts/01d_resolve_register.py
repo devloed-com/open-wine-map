@@ -51,11 +51,11 @@ def appellations_from_manifest() -> list[dict]:
 
 
 def appellations_from_siqo() -> list[dict]:
-    """Stage-01-free fallback: the same VITICOLE / AOC-AOP-IGP / Publié
-    filter stage 01 applies, one row per id_appellation."""
+    """The same VITICOLE / AOC-AOP-IGP-IG / Publié filter stage 01 applies,
+    one row per id_appellation."""
     out: dict[str, dict] = {}
     for row in siqo.siqo_rows(SIQO_CSV):
-        if not siqo.is_wine_row(row):
+        if not siqo.is_corpus_row(row):
             continue
         id_app = row["id_appellation"].strip()
         out.setdefault(id_app, {
@@ -75,6 +75,15 @@ def main() -> int:
     if MANIFEST_PATH.exists():
         appellations = appellations_from_manifest()
         origin = MANIFEST_PATH
+        # An appellation the referentiel lists and stage 01 has not reached
+        # (a spirit INAO's product page could not be walked for) is bound
+        # too: stage 01's register tiers need the file number to fetch
+        # anything for it.
+        if SIQO_CSV.exists():
+            held = {a["id_appellation"] for a in appellations}
+            appellations += [
+                a for a in appellations_from_siqo() if a["id_appellation"] not in held
+            ]
     elif SIQO_CSV.exists():
         appellations = appellations_from_siqo()
         origin = SIQO_CSV

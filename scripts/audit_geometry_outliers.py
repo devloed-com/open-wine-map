@@ -351,6 +351,11 @@ def bbox_span_km(bbox: tuple[float, float, float, float]) -> float:
     return _haversine_km(miny, minx, maxy, maxx)
 
 
+# Geometry sources of the drinks pipeline (scripts/_lib/drinks/geometry.py):
+# unions of the administrative units the area text names.
+ADMINISTRATIVE_SOURCES = frozenset({"drinks-area-pin", "gisco-nuts-union"})
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--geojson", type=Path, default=DEFAULT_GEOJSON)
@@ -528,9 +533,17 @@ def main() -> int:
     # Pass 3; any that match no drop spec still count as unreviewed.
     accepted: list[tuple[str, dict]] = []
     unreviewed: list[tuple[str, dict, list[Outlier]]] = []
+    administrative: list[tuple[str, dict]] = []
     for slug, info in detected.items():
         if overrides.is_whitelisted(slug):
             accepted.append((slug, info))
+            continue
+        if info.get("geom_source") in ADMINISTRATIVE_SOURCES:
+            # a drink GI drawn from whole administrative units its text names
+            # (a country, NUTS regions, municipalities): a detached part is
+            # an island of the unit itself — Italy's Pantelleria for Grappa,
+            # the Canaries for a Spanish drink — never a stray fragment
+            administrative.append((slug, info))
             continue
         spec = clip_specs.get(slug)
         leftover = info["outliers"]
@@ -581,6 +594,12 @@ def main() -> int:
               f"{len(info['outliers'])} detached "
               f"(worst ~{worst.area_km2:.1f} km2, {worst.gap_km:.0f} km away) — "
               f"{overrides.whitelist[slug]}")
+    print()
+
+    print(f"ADMINISTRATIVE — drinks drawn from whole named units; detached parts are the units' own  "
+          f"[{len(administrative)}]")
+    if administrative:
+        print("  " + ", ".join(sorted(slug for slug, _ in administrative)))
     print()
 
     prominent = [u for u in unreviewed

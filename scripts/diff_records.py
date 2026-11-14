@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 FIELDS = ("name", "class_label", "region", "styles", "grapes_principal", "grapes_accessory",
           "geom_source", "area", "communes", "facts_n", "facts_sha", "summary_sha", "source_urls",
-          "is_stub", "parent_slug", "children_n")
+          "is_stub", "parent_slug", "children_n", "product_class", "drink_category", "country_aliases")
 
 
 def _sha(text: str) -> str:
@@ -77,6 +77,9 @@ def snapshot(site: Path, locale: str = "en") -> dict:
             "summary_sha": _sha(payload.get("summary") or "") if payload.get("summary") else "",
             "source_urls": urls, "is_stub": bool(payload.get("is_stub")),
             "parent_slug": rec.get("parent_slug") or "", "children_n": len(payload.get("children") or []),
+            # the class model (sparse on the records: a wine carries neither)
+            "product_class": rec.get("product_class") or "", "drink_category": rec.get("drink_category") or "",
+            "country_aliases": sorted(rec.get("country_aliases") or []),
         }
     return {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "site": str(site), "locale": locale, "records": out}
@@ -98,7 +101,9 @@ def diff(a: dict, b: dict, *, area_tolerance: float = 0.02) -> dict:
                 if abs(ax - ay) / base > area_tolerance:
                     delta[f] = {"before": ax, "after": ay, "ratio": round(ay / ax, 3) if ax else None}
                 continue
-            if x.get(f) != y.get(f):
+            # a snapshot older than a field carries no key for it: an absent
+            # value and an empty one are the same statement
+            if (x.get(f) or None) != (y.get(f) or None):
                 if isinstance(x.get(f), list) and isinstance(y.get(f), list):
                     delta[f] = {"added": sorted(set(y[f]) - set(x[f])), "removed": sorted(set(x[f]) - set(y[f]))}
                 else:

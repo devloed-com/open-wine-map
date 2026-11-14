@@ -95,6 +95,10 @@ _CONSTRAINT_NOTE_BY_MODE = {
                       "regulator source text can)",
     "sibling-or-subzone-confusion": " (it holds for another appellation, sub-zone or tier: support counts "
                                     "only where the source says it of this record)",
+    "restated-across-subsections": " (the source states it, and another bullet of this record already "
+                                   "gives it in its own sub-section: here it is a restatement — rewrite "
+                                   "this bullet to the fact it states on its own, or drop it as a "
+                                   "restatement of that bullet)",
 }
 
 

@@ -1,0 +1,18 @@
+{
+  "_README": "The cider and perry GIs of the EU register that the drinks pipeline holds, keyed by file number. They are Food-class GIs in class 1.8 ('Other products of Annex I of the Treaty (spices etc.)'), which the register listing does not tell apart from spices or salt, so the list is curated: `register_name` is the protectedName read from the listing on the `verified` date. Not here: the French ciders (INAO's referentiel carries them: Cidre de Bretagne, Cidre de Normandie, Cidre Cotentin, Cidre du Perche, Pays d'Auge, Cornouaille, Domfront, Euskal Sagardoa) and the five British cider / perry PGIs (GOV.UK register: Gloucestershire, Herefordshire and Worcestershire cider / perry, Traditional Welsh Cider, Traditional Welsh Perry). scripts/audit_drinks_coverage.py lists a register name containing a cider word that is in neither place.",
+  "PDO-ES-0260": {
+    "register_name": "Sidra de Asturias / Sidra d'Asturies",
+    "country": "es",
+    "verified": "2026-11-12"
+  },
+  "PGI-DE-0620": {
+    "register_name": "Hessischer Apfelwein",
+    "country": "de",
+    "verified": "2026-11-12"
+  },
+  "PGI-PT-02641": {
+    "register_name": "Sidra da Madeira",
+    "country": "pt",
+    "verified": "2026-11-12"
+  }
+}

@@ -1,5 +1,35 @@
 {
- "__doc__": "Curated ruling + definition table for the two naming axes stage 04 derives on every appellation record: eu_scheme (pdo / pgi / spirit-gi / uk-pdo / uk-pgi / none) and national_term — the traditional term (Reg. (EU) 1308/2013 Art. 112(a); registered under Reg. (EC) 607/2009 Annex XII, now kept in the EU register per Reg. (EU) 2019/33) that the member state's regulator attaches to the geographical indication as a whole. Admission rule for a term: (1) it is registered as a traditional term in Annex XII / the EU register (or, for Switzerland, defined in the federal OVin); (2) it is GI-wide — constant for every wine of the GI, never a lot-level quality grade (Qualitätswein, Prädikatswein, kakovostno, jakostní, akostné are excluded); (3) it is attached to the GI by a regulator document (national law, decree, DAC-Verordnung, the register itself) or by a cited curator pin. Scheme abbreviations and their translations (PDO/PGI, AOP/IGP, OEM/OFJ, ZOP/ZGO, ΠΟΠ/ΠΓΕ, CHOP/CHZO, ЗНП/ЗГУ, BOB/BGA, g.U./g.g.A.) are NOT terms. Sections: schemes (the six eu_scheme values, with UI copy), constants (per country, keyed by the record's kind token — FR: AOC/IGP/EDV, others: DOP/IGP; \"\" = no term and a missing (country, kind) also means no term; countries with a per-record roster — it DOP, es DOP+IGP, at DOP — omit that kind here), rulings (the why per country, with sources), pins (per-country file_number → term overrides, e.g. the Austrian DACs), terms (tooltip definitions keyed '<cc>:<term>' exactly as spelled in constants / pins / rosters). Rendering is 'TERM (SCHEME)'; term only when scheme is none; scheme only when the country has no term. To extend: add a constant or a pin with at least one public source URL, add the matching '<cc>:<term>' definition with all four locales, and record the ruling; tests/test_traditional_terms.py validates the shape. Every fact here cites a public source; notes are hand-authored UI copy (en/fr/es/nl), never machine-translated.",
+ "__doc__": "Curated ruling + definition table for the two naming axes stage 04 derives on every appellation record: eu_scheme (pdo / pgi / spirit-gi / uk-pdo / uk-pgi / uk-spirit-gi / none) and national_term — the traditional term (Reg. (EU) 1308/2013 Art. 112(a); registered under Reg. (EC) 607/2009 Annex XII, now kept in the EU register per Reg. (EU) 2019/33) that the member state's regulator attaches to the geographical indication as a whole. Admission rule for a term: (1) it is registered as a traditional term in Annex XII / the EU register (or, for Switzerland, defined in the federal OVin); (2) it is GI-wide — constant for every wine of the GI, never a lot-level quality grade (Qualitätswein, Prädikatswein, kakovostno, jakostní, akostné are excluded); (3) it is attached to the GI by a regulator document (national law, decree, DAC-Verordnung, the register itself) or by a cited curator pin. Scheme abbreviations and their translations (PDO/PGI, AOP/IGP, OEM/OFJ, ZOP/ZGO, ΠΟΠ/ΠΓΕ, CHOP/CHZO, ЗНП/ЗГУ, BOB/BGA, g.U./g.g.A.) are NOT terms. The traditional terms are wine terms: a spirit drink, an aromatised wine or a cider (product_class != wine) takes none from the constants or the rosters — only a pin, or for France the AOC that INAO's own sign states. Sections: schemes (the seven eu_scheme values, with UI copy), constants (per country, keyed by the record's kind token — FR: AOC/IGP, others: DOP/IGP; \"\" = no term and a missing (country, kind) also means no term; countries with a per-record roster — it DOP, es DOP+IGP, at DOP — omit that kind here), rulings (the why per country, with sources), pins (per-country file_number → term overrides, e.g. the Austrian DACs), classes (the non-wine umbrella the Spirits legend pill explains: 'drinks', with UI copy), terms (tooltip definitions keyed '<cc>:<term>' exactly as spelled in constants / pins / rosters). Rendering is 'TERM (SCHEME)'; term only when scheme is none; scheme only when the country has no term. To extend: add a constant or a pin with at least one public source URL, add the matching '<cc>:<term>' definition with all four locales, and record the ruling; tests/test_traditional_terms.py validates the shape. Every fact here cites a public source; notes are hand-authored UI copy (en/fr/es/nl), never machine-translated.",
+ "classes": {
+  "drinks": {
+   "full": {
+    "en": "Spirits and other alcoholic drinks",
+    "es": "Destilados y otras bebidas alcohólicas",
+    "fr": "Spiritueux et autres boissons alcoolisées",
+    "nl": "Gedistilleerd en andere alcoholische dranken"
+   },
+   "note": {
+    "en": "The geographical indications that are not wine: spirit drinks (Regulation (EU) 2019/787 — Cognac, Grappa, Scotch Whisky), aromatised wines such as Vermouth di Torino (Regulation (EU) 251/2014) and the ciders and perries with a protected name. No single legal term covers the three; the map draws them in one colour and hides them until this switch is on.",
+    "es": "Las indicaciones geográficas que no son vino: bebidas espirituosas (Reglamento (UE) 2019/787: Cognac, Grappa, Scotch Whisky), vinos aromatizados como el Vermouth di Torino (Reglamento (UE) n.º 251/2014) y las sidras y peradas con nombre protegido. Ningún término legal único abarca las tres; el mapa las dibuja en un mismo color y las oculta hasta que se activa este interruptor.",
+    "fr": "Les indications géographiques qui ne sont pas des vins : boissons spiritueuses (règlement (UE) 2019/787 — Cognac, Grappa, Scotch Whisky), vins aromatisés comme le Vermouth di Torino (règlement (UE) n° 251/2014) et cidres et poirés à dénomination protégée. Aucun terme juridique unique ne couvre les trois ; la carte les dessine d'une même couleur et les masque tant que cet interrupteur n'est pas activé.",
+    "nl": "De geografische aanduidingen die geen wijn zijn: gedistilleerde dranken (Verordening (EU) 2019/787 — Cognac, Grappa, Scotch Whisky), gearomatiseerde wijnen zoals Vermouth di Torino (Verordening (EU) nr. 251/2014) en de ciders en perry's met een beschermde naam. Geen enkele juridische term dekt de drie; de kaart tekent ze in één kleur en verbergt ze tot deze schakelaar aan staat."
+   },
+   "sources": [
+    {
+     "label": "Reg. (EU) 2019/787 on the definition, description, presentation and labelling of spirit drinks",
+     "url": "https://eur-lex.europa.eu/eli/reg/2019/787/oj"
+    },
+    {
+     "label": "Reg. (EU) No 251/2014 on aromatised wine products",
+     "url": "https://eur-lex.europa.eu/eli/reg/2014/251/oj"
+    },
+    {
+     "label": "Reg. (EU) 2024/1143 on geographical indications for wine, spirit drinks and agricultural products",
+     "url": "https://eur-lex.europa.eu/eli/reg/2024/1143/oj"
+    }
+   ]
+  }
+ },
  "constants": {
   "at": {
    "IGP": "Landwein"
@@ -30,7 +60,6 @@
   "es": {},
   "fr": {
    "AOC": "AOC",
-   "EDV": "AOC",
    "IGP": ""
   },
   "gb": {
@@ -396,6 +425,64 @@
     "term": "DAC"
    }
   },
+  "ch": {
+   "abricotine": {
+    "note": "Spirit drink of the federal register of AOP and IGP (decision of the OFAG of 6 novembre 2002); not a cantonal wine AOC.",
+    "sources": [
+     {
+      "label": "Ordonnance sur les AOP et les IGP (RS 910.12)",
+      "url": "https://www.fedlex.admin.ch/eli/cc/1997/1198_1198_1198/fr"
+     },
+     {
+      "label": "OFAG / BLW — Registre des AOP et des IGP",
+      "url": "https://www.blw.admin.ch/fr/aop-igp-appellations-dorigine-et-indications-geographiques"
+     }
+    ],
+    "term": "AOP"
+   },
+   "damassine": {
+    "note": "Spirit drink of the federal register of AOP and IGP (decision of the OFAG of 16 août 2007); not a cantonal wine AOC.",
+    "sources": [
+     {
+      "label": "Ordonnance sur les AOP et les IGP (RS 910.12)",
+      "url": "https://www.fedlex.admin.ch/eli/cc/1997/1198_1198_1198/fr"
+     },
+     {
+      "label": "OFAG / BLW — Registre des AOP et des IGP",
+      "url": "https://www.blw.admin.ch/fr/aop-igp-appellations-dorigine-et-indications-geographiques"
+     }
+    ],
+    "term": "AOP"
+   },
+   "eau-de-vie-de-poire-du-valais": {
+    "note": "Spirit drink of the federal register of AOP and IGP (decision of the OFAG of 7 novembre 2001); not a cantonal wine AOC.",
+    "sources": [
+     {
+      "label": "Ordonnance sur les AOP et les IGP (RS 910.12)",
+      "url": "https://www.fedlex.admin.ch/eli/cc/1997/1198_1198_1198/fr"
+     },
+     {
+      "label": "OFAG / BLW — Registre des AOP et des IGP",
+      "url": "https://www.blw.admin.ch/fr/aop-igp-appellations-dorigine-et-indications-geographiques"
+     }
+    ],
+    "term": "AOP"
+   },
+   "zuger-kirsch": {
+    "note": "Spirit drink of the federal register of AOP and IGP (decision of the OFAG of 2 mai 2013); not a cantonal wine AOC.",
+    "sources": [
+     {
+      "label": "Ordonnance sur les AOP et les IGP (RS 910.12)",
+      "url": "https://www.fedlex.admin.ch/eli/cc/1997/1198_1198_1198/fr"
+     },
+     {
+      "label": "OFAG / BLW — Registre des AOP et des IGP",
+      "url": "https://www.blw.admin.ch/fr/aop-igp-appellations-dorigine-et-indications-geographiques"
+     }
+    ],
+    "term": "AOP"
+   }
+  },
   "fr": {
    "marc-d-alsace-gewurztraminer": {
     "note": "SIQO row with an empty categorie (see CLAUDE.md, FR register pins): a marc (grape-pomace spirit), so a spirit-drink GI carrying the AOC term, not a wine PDO. Pinned by slug because signe_fr/signe_ue are both empty on the row.",
@@ -540,7 +627,7 @@
    ]
   },
   "fr": {
-   "reason": "AOC: 'Appellation d'origine contrôlée' is the Annex XII PDO term and the mandatory national recognition stage (Code rural L641-5) — every French wine AOP is an AOC. EDV: French spirit-drink GIs (Cognac, Armagnac, Calvados …) are AOCs under the same Code rural article, protected at EU level as spirit-drink GIs (Reg. 2019/787), so the term is AOC with eu_scheme spirit-gi. IGP: 'Vin de pays' is registered but INAO's PGI wines are labelled IGP since 2009, so no term.",
+   "reason": "AOC: 'Appellation d'origine contrôlée' is the Annex XII PDO term and the mandatory national recognition stage (Code rural L641-5) — every French wine AOP is an AOC. IGP: 'Vin de pays' is registered but INAO's PGI wines are labelled IGP since 2009, so no term. Spirit drinks and ciders are not served by the per-kind constants: a non-wine record carries AOC only when INAO signs it AOC (SIQO signe_fr) — Cognac, Armagnac, Calvados, the Pays d'Auge ciders, under the same Code rural article — and no term when its only sign is the EU one (Fine Bordeaux, Marc de Champagne, the rums other than Martinique: 'IG', Reg. 2019/787), so those render the scheme alone.",
    "sources": [
     {
      "label": "Reg. (EC) 607/2009, Annex XII — List of traditional terms (legislation.gov.uk copy)",
@@ -830,10 +917,10 @@
     "nl": "Geografische aanduiding voor gedistilleerde dranken"
    },
    "note": {
-    "en": "EU protection for spirit drinks under Regulation (EU) 2019/787 — a single geographical-indication tier, without the wine PDO/PGI split. French eaux-de-vie (Cognac, Armagnac, Calvados) keep AOC as their national term under the Code rural.",
-    "es": "Protección de la UE para bebidas espirituosas conforme al Reglamento (UE) 2019/787: un único nivel de indicación geográfica, sin la distinción DOP/IGP del vino. Los aguardientes franceses (Cognac, Armagnac, Calvados) conservan la AOC como término nacional en virtud del Code rural.",
-    "fr": "Protection européenne des boissons spiritueuses au titre du règlement (UE) 2019/787 — un seul niveau d'indication géographique, sans la distinction AOP/IGP des vins. Les eaux-de-vie françaises (Cognac, Armagnac, Calvados) conservent l'AOC comme mention nationale au titre du Code rural.",
-    "nl": "EU-bescherming voor gedistilleerde dranken onder Verordening (EU) 2019/787 — één niveau van geografische aanduiding, zonder de BOB/BGA-splitsing van wijn. Franse eaux-de-vie (Cognac, Armagnac, Calvados) behouden AOC als nationale term krachtens de Code rural."
+    "en": "EU protection for spirit drinks under Regulation (EU) 2019/787 — a single geographical-indication tier, without the wine PDO/PGI split. French eaux-de-vie that INAO signs AOC (Cognac, Armagnac, Calvados) keep AOC as their national term under the Code rural; every other spirit drink shows the scheme alone.",
+    "es": "Protección de la UE para bebidas espirituosas conforme al Reglamento (UE) 2019/787: un único nivel de indicación geográfica, sin la distinción DOP/IGP del vino. Los aguardientes franceses que el INAO reconoce como AOC (Cognac, Armagnac, Calvados) conservan la AOC como término nacional en virtud del Code rural; las demás bebidas espirituosas muestran solo el régimen.",
+    "fr": "Protection européenne des boissons spiritueuses au titre du règlement (UE) 2019/787 — un seul niveau d'indication géographique, sans la distinction AOP/IGP des vins. Les eaux-de-vie françaises que l'INAO reconnaît en AOC (Cognac, Armagnac, Calvados) conservent l'AOC comme mention nationale au titre du Code rural ; les autres boissons spiritueuses n'affichent que le régime.",
+    "nl": "EU-bescherming voor gedistilleerde dranken onder Verordening (EU) 2019/787 — één niveau van geografische aanduiding, zonder de BOB/BGA-splitsing van wijn. Franse eaux-de-vie die het INAO als AOC erkent (Cognac, Armagnac, Calvados) behouden AOC als nationale term krachtens de Code rural; alle andere gedistilleerde dranken tonen alleen de regeling."
    },
    "sources": [
     {
@@ -899,6 +986,30 @@
     {
      "label": "GOV.UK — Protected food and drink names register",
      "url": "https://www.gov.uk/protected-food-drink-names"
+    }
+   ]
+  },
+  "uk-spirit-gi": {
+   "full": {
+    "en": "UK geographical indication for spirit drinks",
+    "es": "Indicación geográfica de bebida espirituosa (Reino Unido)",
+    "fr": "Indication géographique de boisson spiritueuse (Royaume-Uni)",
+    "nl": "Geografische aanduiding voor gedistilleerde dranken (Verenigd Koninkrijk)"
+   },
+   "note": {
+    "en": "The spirit-drinks register of the post-Brexit UK GI scheme (GOV.UK, since 1 January 2021): a single geographical-indication tier, as in the EU regulation it was retained from. Scotch Whisky, Irish Whiskey (shared with Ireland) and Somerset Cider Brandy are entries.",
+    "es": "El registro de bebidas espirituosas del régimen británico de indicaciones geográficas posterior al Brexit (GOV.UK, desde el 1 de enero de 2021): un único nivel de indicación geográfica, como en el reglamento de la UE del que procede. Scotch Whisky, Irish Whiskey (compartida con Irlanda) y Somerset Cider Brandy figuran en él.",
+    "fr": "Le registre des boissons spiritueuses du régime britannique d'indications géographiques d'après le Brexit (GOV.UK, depuis le 1er janvier 2021) : un seul niveau d'indication géographique, comme dans le règlement européen dont il est issu. Scotch Whisky, Irish Whiskey (partagée avec l'Irlande) et Somerset Cider Brandy y figurent.",
+    "nl": "Het register voor gedistilleerde dranken van de Britse GI-regeling van na de Brexit (GOV.UK, sinds 1 januari 2021): één niveau van geografische aanduiding, zoals in de EU-verordening waaruit het is overgenomen. Scotch Whisky, Irish Whiskey (gedeeld met Ierland) en Somerset Cider Brandy staan erin."
+   },
+   "sources": [
+    {
+     "label": "GOV.UK — Protected geographical food and drink names: UK GI schemes",
+     "url": "https://www.gov.uk/guidance/protected-geographical-food-and-drink-names-uk-gi-schemes"
+    },
+    {
+     "label": "GOV.UK — Protected food and drink names register (spirit drinks)",
+     "url": "https://www.gov.uk/protected-food-drink-names?register%5B%5D=spirit-drinks"
     }
    ]
   }
@@ -969,6 +1080,26 @@
     {
      "label": "OFAG / BLW — Répertoire suisse des AOC (état au 1er janvier 2026)",
      "url": "https://www.blw.admin.ch/dam/fr/sd-web/bQQd5jj01Ivw/AOC_KUB-AOC_DOC_1er%20janvier%202026.pdf"
+    }
+   ]
+  },
+  "ch:AOP": {
+   "full": "Appellation d'origine protégée (Swiss federal AOP)",
+   "note": {
+    "en": "Swiss federal designation of origin for agricultural products other than wine, spirit drinks included: registered by the Federal Office for Agriculture under the Ordinance on PDOs and PGIs, with a cahier des charges that fixes the area, the raw material and the method. Outside the EU scheme; the same letters as the EU's AOP, another register.",
+    "es": "Denominación de origen federal suiza para los productos agrícolas distintos del vino, bebidas espirituosas incluidas: la registra la Oficina Federal de Agricultura conforme a la ordenanza sobre las DOP y las IGP, con un pliego que fija la zona, la materia prima y el método. Fuera del régimen de la UE; las mismas letras que la AOP de la UE, otro registro.",
+    "fr": "Appellation d'origine fédérale suisse pour les produits agricoles autres que le vin, spiritueux compris : enregistrée par l'Office fédéral de l'agriculture au titre de l'ordonnance sur les AOP et les IGP, avec un cahier des charges qui fixe l'aire, la matière première et la méthode. Hors régime de l'UE ; les mêmes lettres que l'AOP de l'UE, un autre registre.",
+    "nl": "Zwitserse federale oorsprongsbenaming voor andere landbouwproducten dan wijn, gedistilleerde dranken inbegrepen: geregistreerd door het Federaal Bureau voor Landbouw onder de verordening over de BOB's en BGA's, met een productdossier dat het gebied, de grondstof en de methode vastlegt. Buiten de EU-regeling; dezelfde letters als de AOP van de EU, een ander register."
+   },
+   "scheme": "none",
+   "sources": [
+    {
+     "label": "Ordonnance sur les AOP et les IGP (RS 910.12)",
+     "url": "https://www.fedlex.admin.ch/eli/cc/1997/1198_1198_1198/fr"
+    },
+    {
+     "label": "OFAG / BLW — Registre des AOP et des IGP",
+     "url": "https://www.blw.admin.ch/fr/aop-igp-appellations-dorigine-et-indications-geographiques"
     }
    ]
   },

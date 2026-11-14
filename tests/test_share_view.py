@@ -73,7 +73,8 @@ def test_a_shared_view_takes_its_gates_from_the_url_and_an_embed_saves_nothing()
     # The slug landing's own gate rule still follows.
     assert APP_JS.index("if (VIEW_QUERY.shared) {") < APP_JS.index("for (const s of LANDING.slugs) {")
     assert "localStorage.setItem('show_" not in APP_JS
-    assert APP_JS.count("saveGate('show_") == 7
+    # 8 since 2026-11-12: ticking a drink category in the Style tree turns the drinks pill on
+    assert APP_JS.count("saveGate('show_") == 8
     assert "function saveGate(key, on) {\n    if (EMBED) return;" in APP_JS
 
 
@@ -168,7 +169,18 @@ def test_embed_mode_is_the_map_alone() -> None:
     assert ".owm-brand a {{" in css and ".owm-embed-pop" in css
     assert "if (EMBED) { showEmbedPopup(e.lngLat, slugs); return; }" in APP_JS
     assert "map.addControl(brandControl, 'top-left');" in APP_JS
-    assert "track('Embed Viewed', { host: embedHost(), framed: embedFramed(), locale: LANG });" in APP_JS
+    assert ("track('Embed Viewed', { host: embedHost(), framed: embedFramed(), "
+            "view: embedView(), area: embedArea(), locale: LANG });") in APP_JS
+    # Which map an embed shows: the view without the embed flags ('map' when
+    # bare), class / type keys only when the map's tables know them, and the
+    # area fitted on load; the click-throughs carry the view too.
+    embed_fns = APP_JS[APP_JS.index("function embedView()"):APP_JS.index("const brandControl")]
+    assert "embed: false, theme: null, bbox: null," in embed_fns
+    assert "return q ? q.slice(0, 2000) : 'map';" in embed_fns
+    assert "VIEW_QUERY.classifications.filter(k => CLASS_LABELS[k] || CLASS_DESCENDANTS[k])" in embed_fns
+    assert "return 'fit';" in embed_fns
+    assert APP_JS.count("track('Embed Link Clicked', { target: ") == 2
+    assert APP_JS.count("view: embedView(), locale: LANG });") == 2
     # Plausible labels a missing property '(none)'; the sentinel must not collide.
     assert ": 'no-referrer'; } catch (e) { return 'no-referrer'; }" in APP_JS
     assert "'(none)'" not in APP_JS[APP_JS.index("function embedHost()"):APP_JS.index("const brandControl")]

@@ -1,0 +1,15 @@
+# Redacted excerpt — BML Produktspezifikation Leithaberg (Austria), raw/at/produktspezifikationen/leithaberg.pdf
+# via `pdftotext -layout`. Public, licence-clear: amtliches Werk (§ 7 UrhG), bmluk.gv.at Weinherkunft page.
+# Trimmed to f): colour given by "Rotwein muss" / "Weißwein muss", a broken quote („Pinot Blanc, „Weißer
+# Burgunder“ — the same variety twice), then the g) title.
+f)   Angabe der Keltertraubensorte oder -sorten, aus denen die Weine gewonnen wer-
+     den:
+     Rotwein muss aus der Qualitätswein-Rebsorte „Blaufränkisch“ bereitet worden sein.
+     Weißwein muss aus den Qualitätswein-Rebsorten „Pinot Blanc, „Weißer Burgunder“
+     („Weißburgunder“), „Chardonnay“, „Neuburger“, „Grüner Veltliner“ oder aus einem
+     Verschnitt (max. 15 %) dieser Rebsorten bereitet worden sein.
+
+
+g)   Angaben über Güte und Eigenschaften, welche die Weine überwiegend oder aus-
+     schließlich den geografischen Verhältnissen einschließlich der natürlichen und
+     menschlichen Verhältnisse verdanken:

@@ -74,7 +74,7 @@ def test_style_rules_leave_the_allowance_to_the_number():
 
 
 def test_every_02d_script_sets_the_cap_through_the_helper():
-    assert len(STAGE_02D) == 21
+    assert len(STAGE_02D) == 22
     for path in STAGE_02D:
         src = path.read_text(encoding="utf-8")
         assert re.search(r"from _lib\.terroir_prompts import (?:\([^)]*)?\bsub_section_cap\b", src, re.S), path
@@ -142,13 +142,14 @@ def test_should_retry_needs_the_vocabulary_and_only_fires_on_descriptive_sub_sec
 
 
 def test_every_non_fr_02d_script_reads_twice_and_asks_for_the_follow_up_round():
-    assert len(NON_FR_02D) == 20
+    assert len(NON_FR_02D) == 21
     for path in NON_FR_02D:
         src = path.read_text(encoding="utf-8")
         assert src.count("should_retry(") == 1, path
         assert re.search(r'ask_line\((?:"[a-z]{2}"|lang), (?:sub\["label"\]|label), retry=True\)', src), path
         assert re.search(r'ask_line\((?:"[a-z]{2}"|lang), label\)', src), path
         assert "follow_up=True" in src and "follow_ups=True" in src, path
-        assert "product_topics(" in src, path
+        if path.parent.name != "drinks":  # a drink's product topics are not wine types
+            assert "product_topics(" in src, path
         assert "retried_subsections" in src, path
         assert "message below" not in src and "mensaje del usuario" not in src, path

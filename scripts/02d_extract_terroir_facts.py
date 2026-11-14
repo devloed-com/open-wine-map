@@ -61,6 +61,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _lib import batch, cache, llm_json, providers, roundtrip  # noqa: E402
+from _lib.fr.lien_titles import slice_by_titles  # noqa: E402
 from _lib.terroir_cache import write_source_cache  # noqa: E402
 from _lib.terroir_chapters import is_shared, own_chapter  # noqa: E402
 from _lib.terroir_coverage import fuzzy_coverage  # noqa: E402
@@ -401,6 +402,10 @@ def _job_from_record(rec: dict) -> dict | None:
             return None
         lien = lien[window[0]:window[1]].strip()
     slices = slice_section_x(lien)
+    if len(slices) < 2:
+        # no "1° -" numerals (an IGP wine, a spirit, a cider): the headings
+        # are read by their words
+        slices = slice_by_titles(lien)
     if len(slices) < 2:
         slices = {"facteurs_naturels": lien}
     wiki_hints, wiki_data = load_wiki_hint(slug)

@@ -46,6 +46,10 @@ WATCH_LIST = (
     "tirage (the bottling for the second fermentation — never 'disgorgement', which is dégorgement)",
     "generoso / vino generoso (a fortified wine — never 'generous')",
     "Lehm (loam — not clay, which is Ton)",
+    "spritzig / Spritzigkeit (the lively, acidity-driven freshness of a light German or Austrian wine — "
+    "'lively', 'zesty', 'fresh', 'vif', 'vivaz', 'levendig'; never 'lightly sparkling', 'perlant', "
+    "'de aguja', 'parelend': a sparkle is meant only where the source names Perlwein, Kohlensäure or "
+    "Sturm, the fermenting must)",
     "Spritzigkeit / spritzig (a light sparkle — not 'spiciness')",
     "capa (Spanish: depth of colour — 'capa alta' is deep colour, never 'layer')",
     "tipologia (a wine type / style, never 'typology')",

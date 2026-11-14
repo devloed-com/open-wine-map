@@ -30,10 +30,42 @@ def test_scheme_falls_back_on_the_derived_kind_when_signe_is_empty() -> None:
 
 def test_switzerland_has_no_scheme_and_uk_is_its_own_register() -> None:
     assert g.derive_eu_scheme({"country": "ch"}, "AOC") == "none"
+    assert g.derive_eu_scheme({"country": "ch"}, "EDV") == "none"
     assert g.derive_eu_scheme({"country": "gb"}, "DOP") == "uk-pdo"
     assert g.derive_eu_scheme({"country": "gb"}, "IGP") == "uk-pgi"
+    assert g.derive_eu_scheme({"country": "gb"}, "EDV") == "uk-spirit-gi"
+    assert g.derive_eu_scheme({"country": "it"}, "EDV") == "spirit-gi"
     assert g.derive_eu_scheme({"country": "it"}, "DOP") == "pdo"
     assert g.derive_eu_scheme({"country": "it"}, "IGP") == "pgi"
+
+
+def test_a_drink_takes_no_wine_term() -> None:
+    """The traditional terms are wine terms: the per-kind constants and the
+    wine rosters never label a spirit drink, an aromatised wine or a cider.
+    France alone crosses the classes, and only by INAO's own sign."""
+    cognac = {"country": "fr", "categorie": "Eaux-de-vie de vin", "signe_fr": "AOC",
+              "signe_ue": "IG", "kind": "EDV"}
+    fine = {"country": "fr", "categorie": "Eaux-de-vie de vin", "signe_fr": "",
+            "signe_ue": "IG", "kind": "EDV"}
+    assert g.resolve_national_term(cognac, "EDV") == "AOC"
+    assert g.resolve_national_term(fine, "EDV") == ""
+    assert g.classification_label("AOC", g.derive_eu_scheme(cognac, "EDV"), LABELS) == "AOC (spirit-drink GI)"
+    assert g.classification_label("", g.derive_eu_scheme(fine, "EDV"), LABELS) == "spirit-drink GI"
+    # a cider PDO INAO signs AOC keeps it; one with the EU sign alone does not
+    auge = {"country": "fr", "categorie": "Cidre", "signe_fr": "AOC", "signe_ue": "AOP"}
+    sagardoa = {"country": "fr", "categorie": "Cidre", "signe_fr": "", "signe_ue": "AOP"}
+    assert g.resolve_national_term(auge, "AOC") == "AOC"
+    assert g.resolve_national_term(sagardoa, "AOC") == ""
+    # the wine constants of another country never reach a drink
+    sidra = {"country": "pt", "product_class": "cider", "kind": "IGP"}
+    glueh = {"country": "de", "product_class": "aromatised-wine", "kind": "IGP"}
+    vermut = {"country": "it", "product_class": "aromatised-wine", "kind": "IGP"}
+    assert g.resolve_national_term(sidra, "IGP") == ""
+    assert g.resolve_national_term(glueh, "IGP") == ""
+    assert g.resolve_national_term(vermut, "IGP", it_term_for=lambda r, k: "IGT") == ""
+    # … and still reach a wine
+    assert g.resolve_national_term({"country": "pt", "kind": "IGP"}, "IGP") == "Vinho Regional"
+    assert g.classification_label("", "uk-spirit-gi", LABELS) == "spirit-drink GI"
 
 
 def test_label_is_term_then_localised_scheme_in_brackets() -> None:

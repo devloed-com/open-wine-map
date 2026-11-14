@@ -187,7 +187,8 @@ def _pick_from_omnisearch(app_js: str, rec: dict, pdo_on: bool = True) -> dict:
     on, IGPs and spirits off) and return the gates' state afterwards."""
     fns = "\n".join(_js_function(app_js, n)
                     for n in ("hiddenGates", "hiddenBy", "pickOmni", "openAppellation"))
-    is_pdo_rec = re.search(r"^  const isPdoRec = .*$", app_js, re.M).group(0)
+    is_pdo_rec = "\n".join(re.search(rf"^  const {name} = .*$", app_js, re.M).group(0)
+                           for name in ("isPdoRec", "isIgpRec"))
     prog = f"""
 let showIgp = false, showSpirits = false, showPdo = {json.dumps(pdo_on)};
 {is_pdo_rec}
@@ -213,16 +214,17 @@ console.log(JSON.stringify({{ hidden: hiddenBy(AOCS.rec), showIgp, showSpirits, 
 
 @pytest.mark.skipif(NODE is None, reason="node not installed")
 @pytest.mark.parametrize("rec, igp, spirits", [
-    ({"kind": "IGP", "is_wine": False}, True, True),    # cidre de Bretagne / de Normandie
+    ({"kind": "IGP", "is_wine": False}, False, True),   # cidre de Bretagne / de Normandie
     ({"kind": "IGP", "is_wine": True}, True, False),
     ({"kind": "AOC", "is_wine": False}, False, True),
     ({"kind": "AOC", "is_wine": True}, False, False),
 ])
 def test_picking_a_hidden_record_turns_on_every_gate_that_hides_it(rec, igp, spirits):
-    """A cider PGI is behind the IGP toggle AND the spirits gate. Picking it
-    from the omnisearch used to turn on only the first, so its panel opened
-    while the map and the tree still hid it. Only the gates that actually
-    hide a record are touched."""
+    """Picking a hidden record from the omnisearch turns on the gates that
+    hide it, and only those. Since 2026-11-12 the three pills partition the
+    records: the PGI pill is a wine pill, so a cider PGI sits behind the
+    drinks pill alone (before, it was behind both and a pick had to turn on
+    two gates)."""
     app_js = (ROOT / "scripts" / "_lib" / "assets" / "app.js").read_text(encoding="utf-8")
     after = _pick_from_omnisearch(app_js, rec)
     assert after["hidden"] == ""

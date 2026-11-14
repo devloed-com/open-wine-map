@@ -53,6 +53,10 @@ def derive_summary(record: dict) -> str:
     keep the same SHA — the cache only re-translates AOCs whose summary
     was previously clipped mid-clause.
     """
+    if record.get("pipeline") == "drinks":
+        # a drink's blurb is its technical file's description, cut by the
+        # drinks stage 02
+        return record.get("summary", "") or ""
     if record.get("country") in ("es", "pt", "lu", "gb"):
         # ES/PT records carry a pre-computed summary; LU records
         # likewise come pre-summarised from stage 02 (the cahier's

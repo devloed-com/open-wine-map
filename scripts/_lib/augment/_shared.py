@@ -21,6 +21,7 @@ NATIONAL_PLIEGOS_ES = ROOT / "raw" / "es" / "national-pliegos-extracted"
 MASAF_DISCIPLINARI_IT = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
 IT_REGIONAL_REGISTERS = ROOT / "raw" / "it" / "regional-variety-registers"
 PRODUKTSPEZIFIKATION_DE = ROOT / "raw" / "de" / "produktspezifikationen-extracted"
+PRODUKTSPEZIFIKATION_AT = ROOT / "raw" / "at" / "produktspezifikationen-extracted"
 SPECIFIKACIJE_SI = ROOT / "raw" / "si" / "specifikacije-extracted"
 SPECIFIKACIJE_HR = ROOT / "raw" / "hr" / "specifikacije-extracted"
 NATIONAL_SPECS_BG = ROOT / "raw" / "bg" / "national-specs-extracted"
@@ -58,6 +59,13 @@ _PT_AREA_ACT_BY_SLUG: dict[str, dict] = {}
 # populated by augment_de_records_with_produktspezifikation() and read
 # by _sources_for() / panel rendering — same shape as the IT/ES caches.
 _DE_PRODUKTSPEZIFIKATION_BY_SLUG: dict[str, dict] = {}
+
+# Slug-keyed cache of AT BML-Produktspezifikation provenance, populated by
+# augment_at_records_with_produktspezifikation() (2026-11-08): the varieties the
+# national specification authorises beyond the EU single document's § 7 main
+# varieties (`added_slugs`), the role rule and the terroir backfill flag; read
+# by _sources_for() as the card's "Produktspezifikation (BML, PDF)" row.
+_AT_PRODUKTSPEZIFIKATION_BY_SLUG: dict[str, dict] = {}
 
 # populated by augment_it_records_with_masaf() and read by _sources_for()
 # / the AOC-blob phase (which re-reads each on-disk extracted JSON,

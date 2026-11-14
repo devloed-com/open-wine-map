@@ -12,6 +12,7 @@ from pathlib import Path
 
 from unidecode import unidecode
 
+from _lib.grape_wiki_identity import passport_match_is_stale
 from _lib.wiki import is_grape_summary
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -154,6 +155,10 @@ def _load_native_grape(lang: str, slug: str, max_chars: int = 280) -> dict | Non
     d = json.loads(f.read_text(encoding="utf-8"))
     if d.get("missing") or d.get("error"):
         return None
+    # an article found through a VIVC passport the slug no longer has
+    # (Pugnitello's Montepulciano, Picardan's Bourboulenc) is not its own
+    if passport_match_is_stale(d, slug):
+        return None
     title = (d.get("wikipedia_title") or "").strip()
     extract = (d.get("extract") or "").strip()
     if not extract or not is_grape_summary(lang, d.get("description", ""), extract):
@@ -174,6 +179,25 @@ def _load_native_grape(lang: str, slug: str, max_chars: int = 280) -> dict | Non
     return out
 
 
+def _translation_source_stands(d: dict, slug: str) -> bool:
+    """A translated extract is only as good as the article it translates: it
+    is withheld when the slug's source-locale entry is no longer that article
+    — found through a VIVC passport the slug has lost, re-fetched as missing,
+    or re-fetched as another title. An older revision of the same article
+    stands (02b-translate re-translates it in its own time)."""
+    src = LEXICON_DIR / str(d.get("source_lang") or "") / f"{slug}.json"
+    if not d.get("source_lang") or not src.exists():
+        return True
+    try:
+        source = json.loads(src.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return True
+    if source.get("missing") or source.get("error") or passport_match_is_stale(source, slug):
+        return False
+    was, now = d.get("source_wikipedia_title"), source.get("wikipedia_title")
+    return not (was and now and was != now)
+
+
 def _load_translated_grape(lang: str, slug: str, max_chars: int = 280) -> dict | None:
     f = GRAPE_TRANSLATIONS_DIR / lang / f"{slug}.json"
     if not f.exists():
@@ -181,6 +205,8 @@ def _load_translated_grape(lang: str, slug: str, max_chars: int = 280) -> dict |
     d = json.loads(f.read_text(encoding="utf-8"))
     extract = (d.get("extract") or "").strip()
     if not extract:
+        return None
+    if not _translation_source_stands(d, slug):
         return None
     if len(extract) > max_chars:
         cut = extract[:max_chars].rsplit(". ", 1)[0]

@@ -269,6 +269,17 @@ def test_name_guard_requires_the_whole_name_or_a_long_token():
     assert lien_names_record("x", "AOC de la") is None
 
 
+def test_name_guard_reads_a_name_that_lists_its_aliases_alias_by_alias():
+    from audit_terroir_facts import lien_names_record
+    name = "Eau-de-vie de vin originaire du Languedoc ou Fine du Languedoc ou Eau-de-vie de vin du Languedoc"
+    # the longest token of the whole name is "originaire", which the cahier
+    # of 9 December 2025 no longer writes
+    assert lien_names_record("… l'eau-de-vie du Languedoc est distillée … " * 5, name) is True
+    assert lien_names_record("… le cognac vieillit en fût de chêne … " * 5, name) is False
+    assert lien_names_record("… " * 50, "Cidre de Bretagne ou Cidre breton") is False
+    assert lien_names_record("… le cidre breton … " * 5, "Cidre de Bretagne ou Cidre breton") is True
+
+
 def test_foreign_name_guard_flags_a_pasted_or_mis_bound_text():
     from audit_terroir_facts import foreign_names
     text = ("Η ζώνη ΠΓΕ Παρνασσός καλύπτει τους δήμους … Παρνασσός … Παρνασσός … Παρνασσός … Παρνασσός … " + "λοιπά " * 300)

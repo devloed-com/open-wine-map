@@ -349,6 +349,9 @@ def style_findings(bullet: str) -> list[str]:
 # ───────────────────────────────────────────────── pure checks (record) ──
 
 
+_ALIAS_SPLIT_RE = re.compile(r"\s+ou\s+")
+
+
 def fold(s: str) -> str:
     s = unicodedata.normalize("NFKD", s or "")
     s = "".join(c for c in s if not unicodedata.combining(c))
@@ -371,7 +374,18 @@ def lien_names_record(lien: str, name: str) -> bool | None:
     NAME_GUARD_LONG_TOKEN letters. Any 4-letter token was too weak: "tout"
     and "grains" occur in every French cahier, so Bourgogne
     Passe-tout-grains passed on the Beaujolais cahier (review 2026-09-12).
-    None: the name has no usable token, so nothing can be required."""
+    None: the name has no usable token, so nothing can be required.
+
+    A register name that lists its aliases ("Eau-de-vie de vin originaire du
+    Languedoc ou Fine du Languedoc ou Eau-de-vie de vin du Languedoc") is
+    named when any one of them is: its longest token is "originaire", a word
+    the cahier of 9 December 2025 no longer writes in its link text."""
+    aliases = [a for a in _ALIAS_SPLIT_RE.split(name) if a.strip()]
+    if len(aliases) > 1:
+        results = [lien_names_record(lien, alias) for alias in aliases]
+        if any(r is True for r in results):
+            return True
+        return None if all(r is None for r in results) else False
     tokens = name_tokens(name)
     if not tokens:
         return None

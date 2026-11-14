@@ -366,10 +366,14 @@ def latinize_residual_script(bullet: str) -> str:
     if not letters:
         return bullet
     share = sum(1 for c in letters if _NON_LATIN.match(c)) / len(letters)
-    if share == 0 or share >= 0.8:
+    if share >= 0.8:
         return bullet
+    if share == 0:
+        # already Latin: only a bracket that repeats the words before it goes
+        return _ANY_GLOSS.sub(_drop_repeated_gloss, bullet)
     out = re.sub(r"\S+", lambda m: _latinize_token(m.group(0)), bullet)
-    return _REDUNDANT_GLOSS.sub(_drop_redundant_gloss, out)
+    out = _REDUNDANT_GLOSS.sub(_drop_redundant_gloss, out)
+    return _ANY_GLOSS.sub(_drop_repeated_gloss, out)
 
 
 # A source-script gloss that transliterates to the word it glosses — "tines
@@ -380,6 +384,20 @@ _REDUNDANT_GLOSS = re.compile(r"(?<![\w'’-])([^\W\d_][\w'’-]*) \(([^()]+)\)"
 def _drop_redundant_gloss(m: re.Match) -> str:
     word, gloss = m.group(1), m.group(2)
     return word if gloss.casefold() == word.casefold() else m.group(0)
+
+
+# The same for a name of several words: a translator that kept a Greek name
+# and glossed it — "Ούζο Πλωμαρίου (Ouzo Plomariou)" — reads "Ouzo Plomariou
+# (Ouzo Plomariou)" once the name is transliterated.
+_ANY_GLOSS = re.compile(r" \(([^()]+)\)")
+
+
+def _drop_repeated_gloss(m: re.Match) -> str:
+    before, gloss = m.string[: m.start()], m.group(1)
+    if len(gloss) < 3 or not before.casefold().endswith(gloss.casefold()):
+        return m.group(0)
+    start = len(before) - len(gloss)
+    return "" if start == 0 or not before[start - 1].isalnum() else m.group(0)
 
 
 # Dutch: the common noun is "appellatie" (the UI's own word — "Appellatie

@@ -24,6 +24,9 @@ HAND_CHECKED = {
     "CAOP (DGT, Portugal)": ("raw/pt/caop/*CAOP2025.gpkg", "https://geo2.dgterritorio.gov.pt/caop/"),
     "ONS Open Geography (GB)": ("raw/gb/ons/*.geojson", "https://geoportal.statistics.gov.uk/"),
     "IGN AdminExpress communes (FR)": ("raw/ign/communes.geojson", "https://geo.api.gouv.fr/communes"),
+    "IGN communes associées et déléguées (FR)": (
+        "raw/ign/communes-associees-deleguees.geojson", "https://geo.api.gouv.fr/communes_associees_deleguees"),
+    "INSEE commune movements (COG, FR)": ("raw/insee/v_mvt_commune.csv", "https://www.insee.fr/fr/information/2560452"),
     "Cadastre Etalab lieux-dits (FR)": ("raw/cadastre/lieux-dits/", "https://cadastre.data.gouv.fr/data/etalab-cadastre/latest/"),
     "IET parroquias (Galicia)": ("raw/es/xunta/parroquias/", "https://abertos.xunta.gal/"),
     "SIGPAC (Catalonia, FEGA)": ("raw/es/sigpac/", "https://sigpac-hubcloud.es/"),

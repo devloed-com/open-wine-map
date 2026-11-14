@@ -22,6 +22,8 @@ EXTRACTED = ROOT / "raw" / "at" / "dokumente-extracted"
 OJ_MANIFEST = ROOT / "raw" / "at" / "oj-pages" / "manifest.json"
 OVERRIDES = ROOT / "raw" / "at" / "oj-pages" / "manual_overrides.json"
 FIGSHARE = ROOT / "raw" / "es" / "figshare" / "EU_PDO.gpkg"
+PRODUKTSPEZIFIKATIONEN = ROOT / "raw" / "at" / "produktspezifikationen-extracted"
+TERROIR_FACTS = ROOT / "raw" / "terroir-facts"
 
 
 def _load_eambrosia() -> list[dict]:
@@ -146,6 +148,64 @@ def main() -> int:
     print("## Grape extraction")
     print(f"  Wines with grapes:  {n_with_grapes} of {len(extracted)}")
     print(f"  Total grape-slugs:  {grape_total}")
+    print()
+
+    # BML Produktspezifikation layer (stage 01c / 02f, scripts/_lib/augment/at.py):
+    # the varieties the national specification authorises beyond the EU
+    # single document's § 7, the role rule per record, the roster names the
+    # lexicon lacks, and the records whose terroir text the sidecar supplies.
+    sidecars: dict[str, dict] = {}
+    if PRODUKTSPEZIFIKATIONEN.exists():
+        for jp in PRODUKTSPEZIFIKATIONEN.glob("*.json"):
+            if not jp.name.startswith("_") and jp.name != "manifest.json":
+                try:
+                    sidecars[jp.stem] = json.loads(jp.read_text(encoding="utf-8"))
+                except (ValueError, OSError):
+                    continue
+    print(f"## BML Produktspezifikation layer ({len(sidecars)} of {len(extracted)} records with a sidecar)")
+    by_rule: Counter[str] = Counter()
+    total_added = n_with_added = n_backfill = 0
+    unmatched: list[tuple[str, str]] = []
+    rows: list[tuple[int, str, str, int, int]] = []
+    for slug, sc in sorted(sidecars.items()):
+        rec = extracted.get(slug) or {}
+        eu = {d.get("slug") for d in (rec.get("grapes") or {}).get("details") or []}
+        spec = [g["slug"] for g in sc.get("grapes") or []]
+        added = [x for x in spec if x not in eu]
+        by_rule[sc.get("role_rule") or "?"] += 1
+        total_added += len(added)
+        n_with_added += bool(added)
+        if len((rec.get("link_to_terroir") or "").strip()) < 400 and len(sc.get("zusammenhang_text") or "") >= 400:
+            n_backfill += 1
+        unmatched.extend((slug, n) for n in sc.get("unmatched_names") or [])
+        rows.append((len(added), slug, sc.get("role_rule") or "?", len(eu), len(spec)))
+    print(f"  Role rule:            {dict(by_rule)}")
+    print(f"  Varieties added:      {total_added} on {n_with_added} records (EU § 7 roster kept as principal)")
+    print(f"  Terroir backfilled:   {n_backfill} record(s) whose EU link text is under 400 chars")
+    for added, slug, rule, n_eu, n_spec in sorted(rows, reverse=True):
+        if added:
+            print(f"    +{added:>2}  {slug:24} {rule:16} EU {n_eu:>2} → {n_eu + added:>2}")
+    if unmatched:
+        print(f"  Roster names the lexicon lacks ({len(unmatched)}): "
+              + ", ".join(f"{s}: {n}" for s, n in unmatched))
+    missing = sorted(set(extracted) - set(sidecars))
+    if missing:
+        print(f"  Without a sidecar:    {', '.join(missing)}")
+    print()
+    n_facts_records = n_facts = 0
+    if TERROIR_FACTS.exists():
+        for jp in TERROIR_FACTS.glob("*.json"):
+            if jp.name.startswith(("manifest", "_")):
+                continue
+            try:
+                tf = json.loads(jp.read_text(encoding="utf-8"))
+            except (ValueError, OSError):
+                continue
+            if tf.get("country") == "at":
+                n_facts_records += 1
+                n_facts += len(tf.get("facts") or [])
+    print("## Terroir facts (stage 02d)")
+    print(f"  Records with facts:   {n_facts_records} of {len(extracted)}  ({n_facts} bullets)")
     print()
 
     if EAMBROSIA_MANIFEST.exists():

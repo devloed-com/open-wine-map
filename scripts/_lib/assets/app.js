@@ -276,11 +276,16 @@
     return norm(canon) === norm(cahier);
   }
 
+  // A wine PGI: what the PGI pill draws. A cider or aromatised-wine PGI is
+  // painted in the drinks colour and sits behind the drinks pill alone (until
+  // 2026-11-12 it needed both pills).
+  const isIgpRec = rec => rec.is_wine !== false && (rec.kind || 'AOC') === 'IGP';
+
   // The toggles that currently hide a record from the map: 'igp', 'spirit'
-  // (a cider PGI is behind both) and 'pdo'.
+  // and 'pdo' — the three pills partition the records, so at most one.
   function hiddenGates(rec) {
     const gates = [];
-    if (!showIgp && (rec.kind || 'AOC') === 'IGP') gates.push('igp');
+    if (!showIgp && isIgpRec(rec)) gates.push('igp');
     if (!showSpirits && rec.is_wine === false) gates.push('spirit');
     if (!showPdo && isPdoRec(rec)) gates.push('pdo');
     return gates;
@@ -376,11 +381,16 @@
   // view was "too zoomed in"; on a phone it showed the middle of France).
   // Its mainland extent: the Atlantic islands — the Azores, Madeira, the
   // Canaries, every record west of 12° W — would push the continent into a
-  // corner, so they are left out of the fit, not off the map. A URL hash
-  // still wins: MapLibre applies `bounds` only when the hash is empty.
+  // corner, so they are left out of the fit, not off the map. The drinks
+  // (is_wine false) are left out too: they sit behind a pill that is off by
+  // default, and with them the frame ran from Guadeloupe to La Réunion — the
+  // overseas rum's one bbox spans both, so its east edge passes the 12° W
+  // test, and La Réunion lies east of it (2026-11-14). A URL hash still
+  // wins: MapLibre applies `bounds` only when the hash is empty.
   function corpusBounds() {
     let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
     for (const slug in AOCS) {
+      if (AOCS[slug].is_wine === false) continue;
       const b = AOCS[slug].bbox || AOCS[slug].bbox_villages;
       if (!b || b[2] < -12) continue;
       if (b[0] < w) w = b[0];
@@ -728,7 +738,7 @@
       const pill = (cls, id, text, aria, hintKey, hintLabel) => `<span class="legend-pill ${cls}"><label><input type="checkbox" id="${id}" aria-label="${escapeAttr(aria)}"><span class="txt">${escapeHtml(text)}</span></label><button type="button" class="scope-hint gi-scheme has-info" data-key="${hintKey}" aria-label="${escapeAttr(hintLabel)}">i</button></span>`;
       this._el.innerHTML = pill('aoc', 'show-pdo', LABELS.scheme_pdo, LABELS.show_pdo_label, 'pdo', LABELS.scope_hint_pdo)
         + pill('igp', 'show-igp', LABELS.scheme_pgi, LABELS.show_igp_label, 'pgi', LABELS.scope_hint_pgi)
-        + pill('spirit', 'show-spirits', LABELS.legend_spirits_label, LABELS.show_spirits_label, 'spirit-gi', LABELS.scope_hint_spirits);
+        + pill('spirit', 'show-spirits', LABELS.legend_spirits_label, LABELS.show_spirits_label, 'drinks', LABELS.scope_hint_spirits);
       this.refresh();
       return this._el;
     },
@@ -871,6 +881,21 @@
   const refreshFacetAvailabilityDebounced = debounce(() => refreshFacetAvailability(), 140);
 
   function applyFilter(opts) {
+    // A drink category is ticked (Rum, Cider, Aromatised wine …): its records
+    // sit behind the drinks pill, so the pick itself is the ask to show them.
+    if (!showSpirits && filters.styles.size) {
+      const drinks = STYLE_DESCENDANTS.drinks || [];
+      let wanted = false;
+      for (const k of filters.styles) if (drinks.includes(k)) { wanted = true; break; }
+      if (wanted) {
+        showSpirits = true;
+        const spiritsEl = document.getElementById('show-spirits');
+        if (spiritsEl) spiritsEl.checked = true;
+        saveGate('show_spirits', true);
+        track('Kind Toggled', { kind: 'spirits', enabled: 'true', locale: LANG, via: 'style-pick' });
+        buildAppellationFacet();
+      }
+    }
     const expr = buildFilterExpr();
     for (const id of ['appellations-fill', 'appellations-outline',
                        'appellations-fill-overview', 'appellations-outline-overview']) {
@@ -1088,7 +1113,7 @@
       if (!showIgp) {
         for (const slug in AOCS) {
           const rec = AOCS[slug];
-          if ((rec.kind || 'AOC') !== 'IGP') continue;
+          if (!isIgpRec(rec)) continue;
           if (matchesClient(rec, slug, { ignoreIgpGate: true })) nHiddenIgp++;
         }
       }
@@ -1682,7 +1707,7 @@
 
   function buildFilterExpr() {
     const parts = ['all'];
-    if (!showIgp) parts.push(['!=', ['get', 'kind'], 'IGP']);
+    if (!showIgp) parts.push(['any', ['==', ['get', 'is_wine'], '0'], ['!=', ['get', 'kind'], 'IGP']]);
     if (!showSpirits) parts.push(['==', ['get', 'is_wine'], '1']);
     if (!showPdo) parts.push(['any', ['==', ['get', 'is_wine'], '0'], ['==', ['get', 'kind'], 'IGP']]);
     function inField(field, set) {
@@ -1708,7 +1733,7 @@
   }
 
   function matchesClient(rec, slug, opts) {
-    if (!(opts && opts.ignoreIgpGate) && !showIgp && (rec.kind || 'AOC') === 'IGP') return false;
+    if (!(opts && opts.ignoreIgpGate) && !showIgp && isIgpRec(rec)) return false;
     if (!showSpirits && rec.is_wine === false) return false;
     if (!showPdo && isPdoRec(rec)) return false;
     const styleSet = activeStyleFineSet();
@@ -1721,9 +1746,9 @@
     return true;
   }
 
-  function matchesExceptFacets(rec, slug, except) {
-    if (!showIgp && (rec.kind || 'AOC') === 'IGP') return false;
-    if (!showSpirits && rec.is_wine === false) return false;
+  function matchesExceptFacets(rec, slug, except, opts) {
+    if (!showIgp && isIgpRec(rec)) return false;
+    if (!(opts && opts.ignoreSpiritGate) && !showSpirits && rec.is_wine === false) return false;
     if (!showPdo && isPdoRec(rec)) return false;
     if (!except.has('styles')) {
       const styleSet = activeStyleFineSet();
@@ -1820,9 +1845,13 @@
     if (treeEl) {
       const except = new Set(['styles']);
       const treeCounts = new Map();
+      // The drink categories count their records while the drinks pill is
+      // off: ticking one turns the pill on (applyFilter), so "0, unavailable"
+      // would be untrue of the row.
+      const drinksOpts = { ignoreSpiritGate: true };
       for (const slug in AOCS) {
         const rec = AOCS[slug];
-        if (!matchesExceptFacets(rec, slug, except)) continue;
+        if (!matchesExceptFacets(rec, slug, except, rec.is_wine === false ? drinksOpts : null)) continue;
         const recStyleSet = new Set(rec.styles || []);
         if (!recStyleSet.size) continue;
         for (const node in STYLE_DESCENDANTS) {
@@ -2373,12 +2402,31 @@
       const note = added ? ' — +' + added + ' ' + LABELS.src_national_pliego_added : '';
       links.push(`<li><a href="${escapeAttr(sources.national_pliego_url)}" target="_blank" rel="noopener">${LABELS.src_national_pliego}</a>${note}</li>`);
     }
+    if (sources.bml_produktspezifikation_url) {
+      // the AT national specification beside the EU single document (2026-11-08)
+      const added = (sources.bml_produktspezifikation_added_slugs || []).length;
+      const note = added ? ' — +' + added + ' ' + LABELS.src_national_pliego_added : '';
+      links.push(`<li><a href="${escapeAttr(sources.bml_produktspezifikation_url)}" target="_blank" rel="noopener">${LABELS.src_bml_produktspezifikation}</a>${note}</li>`);
+    }
     if (sources.national_spec_url) {
       const org = sources.national_spec_source_org ? ' — ' + escapeHtml(sources.national_spec_source_org) : '';
       links.push(`<li><a href="${escapeAttr(sources.national_spec_url)}" target="_blank" rel="noopener">${LABELS.src_national_spec}</a>${org}</li>`);
     }
     if (sources.register_fiche_url) {
       links.push(`<li><a href="${escapeAttr(sources.register_fiche_url)}" target="_blank" rel="noopener">${LABELS.src_register_fiche}</a></li>`);
+    }
+    // a drink GI: the register's technical file, and the Commission's
+    // English copy of it where there is one
+    if (sources.technical_file_url) {
+      links.push(`<li><a href="${escapeAttr(sources.technical_file_url)}" target="_blank" rel="noopener">${LABELS.src_technical_file}</a></li>`);
+    }
+    if (sources.technical_file_en_url) {
+      links.push(`<li><a href="${escapeAttr(sources.technical_file_en_url)}" target="_blank" rel="noopener">${LABELS.src_technical_file_en}</a></li>`);
+    }
+    // a Swiss AOP: the summary of the application, where its history and
+    // link sections are
+    if (sources.national_link_url) {
+      links.push(`<li><a href="${escapeAttr(sources.national_link_url)}" target="_blank" rel="noopener">${LABELS.src_application_summary}</a></li>`);
     }
     // the Wikipedia article behind a wiki-marked terroir bullet (2026-11-07)
     if (sources.wikipedia_url) {
@@ -2454,7 +2502,17 @@
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  function srcMarker(country) {
+  // The language a drinks record's text is written in, by its own name (a
+  // technical file is in one of fourteen languages, whatever the country).
+  const LANG_ENDONYM = { bg: 'български', cs: 'čeština', de: 'Deutsch', el: 'Ελληνικά', en: 'English', es: 'español', fr: 'français', hr: 'hrvatski', hu: 'magyar', it: 'italiano', nl: 'Nederlands', pt: 'português', ro: 'română', sk: 'slovenčina', sl: 'slovenščina' };
+
+  function srcMarker(country, rec) {
+    if (rec && rec.pipeline === 'drinks') {
+      const lang = rec.source_lang || '';
+      if (!lang || lang === LANG) return '';
+      const name = LANG_ENDONYM[lang] || lang;
+      return ` <span class="fr-marker" title="${escapeAttr(fmt(LABELS.src_lang_marker_aria, { lang: name }))}">(${escapeHtml(name)})</span>`;
+    }
     const sourceLang = (country === 'es' || country === 'pt') ? country : 'fr';
     if (LANG === sourceLang) return '';
     const text = country === 'es' ? LABELS.es_marker
@@ -2468,7 +2526,11 @@
 
   function translationAttribution(t, country) {
     if (!t) return '';
-    const labelText = country === 'es'
+    // the Commission's own English copy of a technical file is a
+    // translation, not a machine one
+    const labelText = t.official
+      ? LABELS.translation_source_label_technical_file
+      : country === 'es'
       ? LABELS.translation_source_label_es
       : country === 'pt'
       ? (LABELS.translation_source_label_pt || LABELS.translation_source_label)
@@ -2477,7 +2539,7 @@
     const sourceHtml = url
       ? `<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(labelText)}</a>`
       : escapeHtml(labelText);
-    const tpl = LABELS.translation_attribution;
+    const tpl = t.official ? LABELS.translation_attribution_official : LABELS.translation_attribution;
     const placeholder = '{source}';
     const idx = tpl.indexOf(placeholder);
     const pre = idx >= 0 ? tpl.slice(0, idx) : (tpl + ' ');
@@ -2638,6 +2700,13 @@
     const euFallback = () => (s.eur_lex_url && hasEambrosia)
       ? [eambrosiaReg, PROV_EU_DOC_TERM[country] || 'single document', false, extra] : null;
 
+    // a drink GI read from the register's technical file, any country
+    if (s.technical_file_url) return [eambrosiaReg, 'technical file', false, extra];
+    // a drink whose only document is a national one (a UK product
+    // specification, a Swiss cahier des charges)
+    if (s.drinks_spec_doc && s.national_spec_url) {
+      return [escapeHtml(s.national_spec_source_org || ''), s.drinks_spec_doc, false, extra];
+    }
     if (country === 'fr') {
       // The register serves the INAO cahier itself, so the authoring body is
       // INAO either way; only the link label differs (see renderSources).
@@ -2740,8 +2809,26 @@
       const act = `<a href="${escapeAttr(sources.area_act_url)}" target="_blank" rel="noopener">${escapeHtml(sources.area_act_label || '')}</a>`;
       return fmt(LABELS.geom_src_national_act, { act: act });
     }
-    if (/^(gisco-|caop-|swissboundaries-|ons-)/.test(gs) || gs === 'nuts2-province' || gs === 'geometry-research-municipios') return escapeHtml(LABELS.geom_src_admin_union);
+    if (/^(gisco-|caop-|swissboundaries-|ons-)/.test(gs) || gs === 'nuts2-province' || gs === 'geometry-research-municipios' || gs === 'drinks-area-pin') {
+      return escapeHtml(LABELS.geom_src_admin_union) + drinksUnitsText(r);
+    }
     return '';
+  }
+
+  // A drink GI's polygon is the union of a few named units (NUTS regions,
+  // municipalities, a country, a wine appellation's area): name them, up to
+  // twelve, then the pin's disclosure sentence. Mirrored by
+  // _drinks_units_text in content_block.py.
+  function drinksUnitsText(r) {
+    const gd = r.geom_drinks || {};
+    const units = (gd.units || []).map(u => u.label).filter(Boolean);
+    let out = '';
+    if (units.length && units.length <= 12) {
+      out += ' ' + escapeHtml(fmt(LABELS.geom_drinks_units, { units: units.join(', ') }));
+    }
+    // where the drawing departs from the letter of the area text
+    if (gd.precision) out += ' ' + escapeHtml(gd.precision);
+    return out;
   }
 
   // Galician parishes drawn from the IET Mapa de Parroquias: which ones,
@@ -2840,6 +2927,7 @@
   function unitsLine(r) {
     let out = '';
     for (const key of ['geom_units_unmatched', 'geom_units_proxied', 'geom_units_partial',
+      'geom_units_former_undrawn',
       'geom_units_boundary', 'geom_units_boundary_units']) {
       const list = r[key] || [];
       if (list.length) {
@@ -2995,6 +3083,10 @@
     const section4Line = principal ? section4VarietalLine(r) : '';
     const inferredLine = (r.styles_inferred && r.styles_inferred.length)
       ? `<div class="approx-line styles-inferred">${escapeHtml(LABELS.styles_inferred_line)}</div>` : '';
+    // A style read from the production method, not a stated level
+    // (_lib/style_overrides.py); styles_note_line in content_block.py.
+    const stylesNoteLine = (typeof r.styles_note === 'string' && r.styles_note)
+      ? `<div class="approx-line styles-note">${escapeHtml(r.styles_note)}</div>` : '';
     // The unit count, only where the polygon is the union of the counted
     // units; a French DGC's CSV row repeats its parent's communes. A Galician
     // record adds the IET parishes drawn beside its whole municipios.
@@ -3042,7 +3134,9 @@
       // delimitation exists for this record (every French IGP and Champagne
       // draw this way) — nothing more; a reader does not take a commune-wide
       // area for vineyard.
-      approxLine = `<div class="approx-line">${escapeHtml(fmt(LABELS.geom_approx_aires_union, { n: r.communes_matched || 0 }))}</div>`;
+      // (a French record whose area crosses the border also names the
+      // foreign units drawn beside its communes)
+      approxLine = `<div class="approx-line">${escapeHtml(fmt(LABELS.geom_approx_aires_union, { n: r.communes_matched || 0 }))}${drinksUnitsText(r)}</div>`;
     } else {
       const src = geomSourceLine(r);
       if (src) approxLine = `<div class="approx-line">${src}</div>`;
@@ -3059,7 +3153,7 @@
     const menzioniBlock = renderMenzioni(r);
     const factsBlock = renderTerroirFacts(r);
     const isTranslated = !!r.summary_translation;
-    const summaryMarker = isTranslated ? '' : srcMarker(r.country);
+    const summaryMarker = isTranslated ? '' : srcMarker(r.country, r);
     const summary = (!factsBlock && r.summary)
       ? `<p>${escapeHtml(r.summary)}${summaryMarker}</p>${translationAttribution(r.summary_translation, r.country)}`
       : '';
@@ -3084,6 +3178,7 @@
         ${stubLine}
         ${styleChips ? '<h2>' + LABELS.panel_styles_h + '</h2><div class="pills">' + styleChips + '</div>' : ''}
         ${inferredLine}
+        ${stylesNoteLine}
         ${principal ? '<h2>' + LABELS.facet_principal_h + '</h2><div class="pills">' + principal + '</div>' : ''}
         ${ptRoleDisclaimer}${roleConflict}${section4Line}
         ${accessory ? '<h2>' + LABELS.facet_accessory_h + '</h2><div class="pills">' + accessory + '</div>' : ''}
@@ -4356,6 +4451,29 @@ __OWM_source_block__
   function embedFramed() {
     try { return window.self !== window.top ? 'yes' : 'no'; } catch (e) { return 'yes'; }
   }
+  // Which map the embed shows, for its events. view: the URL's view in the
+  // canonical form the address bar would carry (queryFromView — grape and
+  // style keys, defaults left out) without the embed flags, 'map' for the
+  // bare map; an MCP aocs= set can name 200 slugs, so it is cut to
+  // Plausible's 2,000-character limit. Class and type keys pass the query
+  // core unchecked, so only those applyViewQuery accepts are named: the
+  // prop stays the map's own vocabulary. area: the area fitted on load — the
+  // bbox= at 0.1°, else the camera hash, else 'fit' (framed on the matches)
+  // — the one thing that tells two bare-map embeds apart.
+  function embedView() {
+    const q = QC.queryFromView(Object.assign({}, VIEW_QUERY, {
+      classifications: VIEW_QUERY.classifications.filter(k => CLASS_LABELS[k] || CLASS_DESCENDANTS[k]),
+      types: VIEW_QUERY.types.filter(k => TERM_LABELS[k] || TERM_DESCENDANTS[k]),
+      embed: false, theme: null, bbox: null,
+    }));
+    return q ? q.slice(0, 2000) : 'map';
+  }
+  function embedArea() {
+    if (VIEW_QUERY.bbox) return VIEW_QUERY.bbox.map(x => x.toFixed(1)).join(',');
+    const cam = INITIAL_CAMERA_HASH.replace(/^#/, '').split('/').slice(0, 3).map(Number);
+    if (cam.length === 3 && cam.every(Number.isFinite)) return cam.map(x => x.toFixed(1)).join('/');
+    return 'fit';
+  }
   // The brand badge (top-left, where the sidebar would be): the same view on
   // the full site, in a new tab. The href is refreshed on click so the gates
   // and the camera travel as they are then.
@@ -4369,7 +4487,7 @@ __OWM_source_block__
       a.rel = 'noopener';
       a.title = LABELS.embed_open_label;
       a.innerHTML = '<img src="/assets/pin-icon.svg" alt="" aria-hidden="true" width="16" height="16"><span>Open Wine Map</span><span class="arrow" aria-hidden="true">↗</span>';
-      a.addEventListener('click', () => { a.href = siteUrl(); track('Embed Link Clicked', { target: 'brand', locale: LANG }); });
+      a.addEventListener('click', () => { a.href = siteUrl(); track('Embed Link Clicked', { target: 'brand', view: embedView(), locale: LANG }); });
       this._el.appendChild(a);
       return this._el;
     },
@@ -4398,14 +4516,14 @@ __OWM_source_block__
       const el = embedPopup.getElement();
       if (el) el.addEventListener('click', e => {
         const a = e.target.closest('a[data-slug]');
-        if (a) track('Embed Link Clicked', { target: 'appellation', slug: a.dataset.slug, locale: LANG });
+        if (a) track('Embed Link Clicked', { target: 'appellation', slug: a.dataset.slug, view: embedView(), locale: LANG });
       });
     });
     embedPopup.on('close', () => setSelection([]));
   }
   if (EMBED) {
     map.addControl(brandControl, 'top-left');
-    track('Embed Viewed', { host: embedHost(), framed: embedFramed(), locale: LANG });
+    track('Embed Viewed', { host: embedHost(), framed: embedFramed(), view: embedView(), area: embedArea(), locale: LANG });
   }
 
   // ---- WebMCP (document.modelContext) --------------------------------------

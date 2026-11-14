@@ -64,3 +64,21 @@ def test_root_source_reads_through_an_inheriting_sub_denomination():
     by_slug = {"p": parent, "c": child}
     assert root_source(child, by_slug) == "geoportal-zone:veneto"
     assert root_source(parent, by_slug) == "geoportal-zone:veneto"
+
+
+def test_a_pair_with_a_drink_is_its_own_class():
+    """A spirit drink, an aromatised wine or a cider shares ground with wines
+    and other drinks by design, across borders too: never SUSPICIOUS."""
+    wine = _feat("eisenberg", "at", "DOP", "gisco-commune-union")
+    spirit = Feat({"slug": "vasi-vadkorte-palinka", "name": "x", "country": "hu", "kind": "EDV",
+                   "geom_source": "drinks-area-pin", "is_wine": "0"}, box(0, 0, 1000, 1000))
+    cider = Feat({"slug": "sidra-de-asturias", "name": "x", "country": "es", "kind": "DOP",
+                  "geom_source": "drinks-area-pin", "is_wine": "0"}, box(0, 0, 1000, 1000))
+    assert classify(_ov(wine, spirit, 1.5), wine.geom_source, spirit.geom_source, 0.3) == "drink"
+    assert classify(_ov(spirit, cider, 0.1), spirit.geom_source, cider.geom_source, 0.3) == "drink"
+    # a cider PDO is no wine PDO: the pair is not a same-tier commune-list pair
+    wine_es = _feat("cangas", "es", "DOP", "gisco-commune-list")
+    assert classify(_ov(wine_es, cider, 2.0), wine_es.geom_source, cider.geom_source, 0.3) == "drink"
+    # two wines are classed as before
+    assert classify(_ov(wine, _feat("burgenland", "hu", "DOP", "figshare-pdo"), 1.5),
+                    wine.geom_source, "figshare-pdo", 0.3) == "suspicious"

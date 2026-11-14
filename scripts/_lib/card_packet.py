@@ -74,6 +74,8 @@ SIDECAR_DIRS: dict[str, tuple[tuple[str, str, Path], ...]] = {
             RAW / "it" / "masaf-disciplinari-extracted"),),
     "de": (("national-spec", "Produktspezifikation (BLE)",
             RAW / "de" / "produktspezifikationen-extracted"),),
+    "at": (("national-spec", "Produktspezifikation (BML)",
+            RAW / "at" / "produktspezifikationen-extracted"),),
     "si": (("national-spec", "Specifikacija proizvoda (MKGP / Uradni list)",
             RAW / "si" / "specifikacije-extracted"),
            ("register-fiche", "EU register fiche technique", RAW / "si" / "register-fiches-extracted")),
@@ -105,8 +107,8 @@ WIKI_LANG_BY_COUNTRY = {
 
 # Text-bearing keys of an extracted record or a sidecar, in the order the
 # judge should read them. Dict-valued keys are joined section by section.
-_TEXT_KEYS = ("summary", "geo_area", "geo_area_brief", "section_text",
-              "link_to_terroir_full", "link_to_terroir", "zusammenhang_text",
+_TEXT_KEYS = ("summary", "description_text", "geo_area", "geo_area_brief", "geo_area_text",
+              "section_text", "link_to_terroir_full", "link_to_terroir", "zusammenhang_text",
               "region_terroir_text", "max_yields", "demarcation")
 _SECTION_DICT_KEYS = ("sections", "article_bodies")
 _LIST_TEXT_PREFIX = "raw_section_"
@@ -176,8 +178,13 @@ def merged_record(locale: str, slug: str) -> dict | None:
 # ──────────────────────────────────────────────────────── the sources ──
 
 
+# The spirit drinks, aromatised wines and ciders outside France: one directory
+# for every country (scripts/drinks/), each record carrying its own country.
+DRINKS_DIR = RAW / "drinks" / "extracted"
+
+
 def record_path(country: str, slug: str) -> Path | None:
-    for d in EXTRACTED_DIRS.get(country, ()):
+    for d in (*EXTRACTED_DIRS.get(country, ()), DRINKS_DIR):
         p = d / f"{slug}.json"
         if p.exists():
             return p
@@ -192,9 +199,13 @@ def load_json(path: Path) -> dict | None:
     return d if isinstance(d, dict) else None
 
 
-def roster_text(grapes: dict | None) -> str:
+def roster_text(grapes: dict | list | None) -> str:
     """The parsed variety roster as the judge should read it — one line per
-    variety with its role and colour, the regulator's spelling first."""
+    variety with its role and colour, the regulator's spelling first. A
+    record carries a dict with `details`; the DE and AT Produktspezifikation
+    sidecars carry the detail list itself."""
+    if isinstance(grapes, list):
+        grapes = {"details": grapes}
     if not isinstance(grapes, dict):
         return ""
     details = grapes.get("details") or []

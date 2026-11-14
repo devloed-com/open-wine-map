@@ -53,6 +53,7 @@ from _lib.terroir_prompts import (
 
 EXTRACTED = ROOT / "raw" / "at" / "dokumente-extracted"
 WIKI_AOCS = ROOT / "raw" / "wikipedia" / "aocs" / "de"
+PRODUKTSPEZIFIKATION = ROOT / "raw" / "at" / "produktspezifikationen-extracted"
 CACHE_DIR = ROOT / "raw" / "terroir-facts"
 MANIFEST = CACHE_DIR / "manifest-at.json"
 
@@ -241,12 +242,25 @@ def _ground_facts(
 
 def _resolve_lien_and_source(rec: dict) -> tuple[str, dict]:
     """Return (link_to_terroir text, source-provenance dict) for an AT
-    record. Austria has no national-spec fallback layer, so this is just
-    the on-disk Einziges-Dokument section 8 plus the EUR-Lex URL for
-    cache attribution."""
+    record: the Einziges Dokument's section 8 where it is long enough, else
+    the BML Produktspezifikation's section g) "Angaben über Güte und
+    Eigenschaften" from the stage-02f sidecar (Oberösterreich's EU text is
+    347 characters, its specification's 3,500) — the DE BLE rule."""
     lien = rec.get("link_to_terroir") or ""
     src = rec.get("source") or {}
     eu_url = src.get("final_url") or src.get("source_url") or ""
+    if len(lien) >= MIN_LIEN_CHARS:
+        return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
+    sidecar_path = PRODUKTSPEZIFIKATION / f"{rec.get('slug') or ''}.json"
+    if sidecar_path.exists():
+        try:
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            sidecar = {}
+        text = (sidecar.get("zusammenhang_text") or "").strip()
+        if len(text) >= MIN_LIEN_CHARS:
+            url = (sidecar.get("source") or {}).get("url") or ""
+            return text, {"pdf_url": url, "kind": "bml-produktspezifikation"}
     return lien, {"pdf_url": eu_url, "kind": "eu-oj"}
 
 
@@ -276,7 +290,9 @@ def _ask_line(label: str) -> str:
     return ask_line("de", label)
 
 
-def _document_block(lien_text: str) -> str:
+def _document_block(lien_text: str, kind: str = "eu-oj") -> str:
+    if kind == "bml-produktspezifikation":
+        return f"Text der Produktspezifikation (Angaben über Güte und Eigenschaften):\n\n{lien_text}"
     return f"Text des Einzigen Dokuments (Beschreibung des Zusammenhangs):\n\n{lien_text}"
 
 
@@ -295,7 +311,10 @@ def _process_subsection(
     )
     system = with_feedback(system, record["slug"])
     # The lien is the cached leading block: the four sub-section calls share it.
-    system = cached_system(_document_block(lien), system, phased=True)
+    system = cached_system(
+        _document_block(lien, (record.get("_terroir_source") or {}).get("kind") or "eu-oj"),
+        system, phased=True,
+    )
     user = _ask_line(sub["label"])
     try:
         raw = provider.chat(system=system, user=user, max_tokens=1500, num_ctx=8192,

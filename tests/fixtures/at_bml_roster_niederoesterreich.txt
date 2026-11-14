@@ -1,0 +1,73 @@
+# Redacted excerpt — BML Produktspezifikation Niederösterreich (Austria), raw/at/produktspezifikationen/niederosterreich.pdf
+# via `pdftotext -layout`. Public, licence-clear: amtliches Werk (§ 7 UrhG), bmluk.gv.at Weinherkunft page.
+# Trimmed to f) the national roster in two numbered colour blocks (names wrapped with hyphens,
+# synonyms in brackets) + the closing Hauptsorten sentence, g) the terroir section, the h) title.
+f)    Angabe der Keltertraubensorte oder -sorten, aus denen die Weine gewonnen wer-
+      den:
+      Für die Gewinnung der Weine sind folgende Keltertraubensorten erlaubt:
+      1. Weißweinrebsorten:
+      Bouvier, Chardonnay (Morillon), Frühroter Veltliner (Malvasier), Furmint, Goldbur-
+      ger, Grauer Burgunder (Pinot Gris, Ruländer), Grüner Veltliner (Weißgipfler), Jubilä-
+      umsrebe, Müller-Thurgau (Rivaner), Muskateller (Gelber Muskateller, Roter Muska-
+      teller), Muskat-Ottonel, Neuburger, Roter Veltliner, Rotgipfler, Sauvignon Blanc,
+      Scheurebe (Sämling 88), Sylvaner (Grüner Sylvaner), Traminer (Gewürztraminer,
+      Roter Traminer, Gelber Traminer), Weißer Burgunder (Weißburgunder, Pinot Blanc,
+      Klevner), Weißer Riesling (Riesling, Rheinriesling), Welschriesling, Zierfandler (Spät-
+      rot);
+      2. Rotweinrebsorten:
+      Blauburger, Blauer Burgunder (Blauer Spätburgunder, Blauburgunder, Pinot Noir),
+      Blauer Portugieser, Blauer Wildbacher, Blaufränkisch, Cabernet Franc, Cabernet
+      Sauvignon, Merlot, Rathay, Roesler, St. Laurent, Syrah (Shiraz), Zweigelt (Blauer
+      Zweigelt, Rotburger).
+      Die Hauptsorten des Weinbaugebiets Niederösterreich sind Grüner Veltliner bei den
+      Weißweinen, und Zweigelt bei den Rotweinen.
+
+
+
+
+
+g)    Angaben über Güte und Eigenschaften, welche die Weine überwiegend oder aus-
+      schließlich den geografischen Verhältnissen einschließlich der natürlichen und
+      menschlichen Verhältnisse verdanken:
+      -   Angaben zum geografischen Gebiet:
+     Die steilen Urgesteinslagen der Wachau gehen im östlichen Teil des benachbarten
+     Kremstal in Lössterassen über, die auch im Traisental, Kamptal und am Wagram zu
+     finden sind. Im Kamptal, kommen auch vulkanische Böden vor. Das Wetter wird vom
+     heißen, pannonischen Klima im Osten und von kühlen Strömungen aus dem Wald-
+     viertel beeinflusst.
+     Die Produktionsstruktur im Weinbaugebiet Niederösterreich ist geprägt von fami-
+     lienbetrieblich organisierten Winzern, die zum überwiegenden Teil Trauben aus eige -
+     ner Produktion verarbeiten und vielfach auch in der Direktvermarktung ab Hof ver-
+     kaufen. Es besteht ein starker Zusammenhang zwischen dem ausgeprägten Touris-
+     mus und der Weinwirtschaft. Einige wenige große Betriebe (Kellereien und Winzer-
+     genossenschaften) ergänzen die familienbetriebliche Struktur.
+     Die Weinstöcke werden praktisch ausschließlich in Hochkultur am Drahtrahmen ge-
+     zogen.
+      -   Angaben zu Qualität und Eigenschaften des Erzeugnisses:
+
+      Im Weinbaugebiet Niederösterreich wird zu fast 80 Prozent Weißwein produziert.
+      Hauptsächlich im vom pannonischen Klima geprägten Teil Niederösterreichs, im
+      Süden und Osten von Wien, wird auch Rotwein angepflanzt. Bei den Rotweinen
+      herrschen fruchtige Zweigelt und würzige Blaufränkisch vor. Die Palette der Weiß-
+      weine reicht von frischen fruchtigen Weinen, wie dem typisch pfeffrigen Grünen
+      Veltliner, über kräftige, gehaltvolle Weine die im klassi schen Holz- bzw. Barrique-
+      fass ausgebaut werden.
+
+      -   Beschreibung des kausalen Zusammenhangs:
+
+      Auf den Urgesteinsverwitterungsböden und den vulkanischen Böden wachsen mi-
+      neralische, würzige Weine, während die Lössablagerungen auf den Terrassen eher
+      einen runden, fülligeren Weintyp prägen. Das heiße pannonische K lima, und die
+      kühle Luft aus dem Waldviertel welche für kühle Nächte sorgt, sorgen für eine
+      Temperaturdifferenz zwischen Tag und Nacht, was den Weinen eine ausgeprägte
+      Säurestruktur verleiht.
+
+      Durch die überwiegend familienbetriebliche Winzerstruktur erfolgt überdies eine
+      generationenübergreifende Weitergabe des traditionellen Stils der Weinbereitung,
+      was zusätzlich zum ausgeprägten Charakter der Niederösterreich Weine beiträgt.
+
+
+
+
+
+h)   Geltende Anforderungen gemäß gemeinschaftlicher oder nationaler Rechts-

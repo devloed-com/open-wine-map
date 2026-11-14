@@ -56,14 +56,15 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         # on the browse page, which actually lists them; here they read as a
         # spec sheet. "Appellation", not "region" — region is the facet one
         # level up (bassin / regione / Bundesland).
-        "page_title": _("Open Wine Map — carte des appellations viticoles d'Europe"),
+        "page_title": _("Open Wine Map — carte des appellations de vins et de spiritueux d'Europe"),
         # Wraps the appellation name in the locale's map phrase for the
         # <title> tiers that carry no brand (see _entity_title).
         "title_with_map": _("{name}, carte du vignoble"),
-        "subtitle": _("carte des appellations viticoles"),
+        "subtitle": _("carte des appellations de vins et de spiritueux"),
         "meta_description": _(
-            "Carte interactive des appellations viticoles d'Europe : cépages, "
-            "styles et terroir, d'après les registres officiels."
+            "Carte interactive des appellations viticoles d'Europe et des spiritueux, "
+            "vins aromatisés et cidres protégés : cépages, styles et terroir, d'après "
+            "les registres officiels."
         ),
         "loading": _("Chargement…"),
         "search_h": _("Recherche"),
@@ -74,7 +75,9 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "main_grape_only_label": _("Cépage principal uniquement"),
         "omni_no_results": _("Aucun résultat pour « {q} »"),
         "omni_hidden_igp": _("IGP masquée · s'affiche à la sélection"),
-        "omni_hidden_spirit": _("Eau-de-vie masquée · s'affiche à la sélection"),
+        "omni_hidden_spirit": _(
+            "Spiritueux ou autre boisson masqué(e) · s'affiche à la sélection"
+        ),
         "options_h": _("Options"),
         "active_filters_aria": _("Filtres actifs"),
         "select_all_aria": _("Tout sélectionner"),
@@ -84,12 +87,12 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "region_count_title_flat": _("{p} appellations"),
         "open_appellation_aria": _("Ouvrir la fiche de {name}"),
         "open_appellation_title": _("Ouvrir la fiche"),
-        "show_spirits_label": _("Inclure les spiritueux"),
+        "show_spirits_label": _("Inclure les spiritueux et autres boissons alcoolisées"),
         "scope_hint_pgi": _("Qu'est-ce qu'une IGP ?"),
-        "scope_hint_spirits": _("Qu'est-ce qu'une IG de spiritueux ?"),
+        "scope_hint_spirits": _("Que couvre « spiritueux et autres boissons » ?"),
         "scope_hint_pdo": _("Qu'est-ce qu'une AOP ?"),
         "show_pdo_label": _("Afficher les AOP"),
-        "legend_spirits_label": _("Spiritueux"),
+        "legend_spirits_label": _("Spiritueux et autres boissons"),
         "omni_hidden_pdo": _("AOP masquée · s'affiche à la sélection"),
         # The ⚙ control on the map (language + theme) and the desktop
         # sidebar's fold / unfold buttons (app.js settingsControl, setSidebarCollapsed).
@@ -97,7 +100,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "sidebar_collapse_aria": _("Replier le panneau"),
         "sidebar_expand_aria": _("Déplier le panneau"),
         "search_clear_aria": _("Effacer la recherche"),
-        "facet_styles_h": _("Style de vin"),
+        "facet_styles_h": _("Style"),
         "facet_classification_h": _("Classement"),
         "facet_principal_h": _("Cépages principaux"),
         "facet_accessory_h": _("Cépages accessoires"),
@@ -127,6 +130,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "style_simple_sweet": _("moelleux / liquoreux"),
         "style_simple_oxidative": _("oxydatif"),
         "style_simple_other": _("autre"),
+        "style_simple_drinks": _("spiritueux et autres boissons"),
         "reset": _("Réinitialiser"),
         "count_total": _("{n} appellations"),
         "count_filtered": _("{n} / {total} appellations"),
@@ -136,7 +140,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "remove_filter_aria": _("Retirer le filtre {label}"),
         "sidebar_aria": _("Filtres et options de la carte"),
         "lang_switcher_aria": _("Langue"),
-        "map_aria": _("Carte des appellations viticoles"),
+        "map_aria": _("Carte des appellations de vins et de spiritueux"),
         "skip_to_map": _("Aller à la carte"),
         "panel_styles_h": _("Styles"),
         "panel_observation_h": _("Variétés d'intérêt"),
@@ -147,7 +151,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "facts_sub_facteurs_naturels": _("Facteurs naturels"),
         "facts_sub_facteurs_humains": _("Facteurs humains"),
         "facts_sub_produit": _("Caractéristiques du produit"),
-        "facts_sub_interactions": _("Lien terroir / vin"),
+        "facts_sub_interactions": _("Lien terroir / produit"),
         "facts_attribution": _(
             "Faits dégagés du Lien au terroir par interprétation automatique — voir {source}."
         ),
@@ -264,6 +268,14 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Unité(s) administrative(s) que le document n'inclut qu'en partie, "
             "tracée(s) en entier : {names}."
         ),
+        # French communes of the aire merged since INAO wrote its rows, kept
+        # as no commune déléguée and fused into a commune the aire does not
+        # list: no public layer has their outline
+        # (scripts/_lib/fr/former_communes.py) — `geom_units_former_undrawn`.
+        "geom_units_former_undrawn": _(
+            "Ancienne(s) commune(s) de l'aire, fusionnée(s) depuis dans une "
+            "commune hors de l'aire et sans contour propre, non tracée(s) : {names}."
+        ),
         "geom_units_boundary": _(
             "Aire approchée : le document délimite la zone par une ligne "
             "passant par des lieux-dits ; tracée ici comme le polygone que "
@@ -351,7 +363,18 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_national_pliego": _("Pliego de condiciones (national, PDF)"),
         "src_national_pliego_added": _("variétés ajoutées"),
         "src_national_spec": _("Cahier des charges national (PDF)"),
+        "src_bml_produktspezifikation": _("Cahier des charges national (BML, PDF)"),
         "src_register_fiche": _("Cahier des charges (registre GI de l'UE, document unique, PDF)"),
+        # A spirit drink's technical file (Reg. (EC) 110/2008 Art. 20) as the
+        # EU register serves it, and the Commission's English copy of it.
+        "src_technical_file": _("Fiche technique (registre des IG de l'UE, PDF)"),
+        "src_technical_file_en": _("Traduction anglaise de la Commission (PDF)"),
+        "translation_attribution_official": _("Traduction de la Commission européenne — {source}"),
+        "translation_source_label_technical_file": _("fiche technique"),
+        # the units a drink GI's polygon is the union of ({units}: names)
+        "geom_drinks_units": _("Unités dessinées : {units}."),
+        "geom_drinks_ref": _("aire de l'appellation {name}"),
+        "src_application_summary": _("Résumé de la demande d'enregistrement (PDF)"),
         "src_register_fiche_roles": _("Rôles des cépages (registre GI de l'UE, document unique, PDF)"),
         "src_register_fiche_roles_note": _("{main} principaux, {other} accessoires selon le document unique"),
         "src_register_fiche_roles_unlisted": _(
@@ -430,6 +453,11 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "au disciplinare de la DOP Bianchello del Metauro ; le catalogue VIVC le recense "
             "comme synonyme du Trebbiano Toscano."
         ),
+        "palomino_note": _(
+            "Le catalogue VIVC range le nom Palomino sous deux variétés : le Palomino Fino, "
+            "principal cépage du xérès, et le Palomino de Jerez, qui en est une mutation. "
+            "Le nom seul ne renvoie donc ici à aucun numéro de variété."
+        ),
         "stub_message": _(
             "Open Wine Map n'a pas encore trouvé de {doc} pour cette appellation."
         ),
@@ -470,6 +498,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "provenance_reg_eambrosia": _("le registre eAmbrosia de l'UE"),
         "provenance_reg_canton": _("le canton de {canton}"),
         "fr_marker": _("(français)"),
+        "src_lang_marker_aria": _("Texte source en {lang}"),
         "fr_marker_aria": _("Texte source en français"),
         "es_marker": _("(español)"),
         "es_marker_aria": _("Texte source en espagnol"),
@@ -502,10 +531,11 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "about_link_label": _("À propos"),
         "about_h": _("À propos d'Open Wine Map"),
         "about_lead_html": _(
-            "Carte de référence des appellations viticoles, générée automatiquement à "
-            "partir des registres publics : le registre de l'Union européenne des AOP et "
-            "IGP, les régulateurs nationaux, le répertoire fédéral suisse des AOC "
-            "cantonales et le registre britannique des indications géographiques."
+            "Carte de référence des appellations viticoles et des indications géographiques "
+            "de spiritueux, de vins aromatisés et de cidres, générée automatiquement à "
+            "partir des registres publics : le registre de l'Union européenne des "
+            "indications géographiques, les régulateurs nationaux, les répertoires fédéraux "
+            "suisses et le registre britannique des indications géographiques."
         ),
         # No model version numbers here: they change between builds.
         "about_llm_html": _(
@@ -518,7 +548,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "sa propre ligne d'attribution dans le panneau."
         ),
         "about_pipeline_html": _(
-            "Les données structurées — nom, classement, cépages, styles de vin, aire et contour "
+            "Les données structurées — nom, classement, cépages, styles, aire et contour "
             "— sont extraites des cahiers des charges par un pipeline de code, sans modèle de "
             "langage : des analyseurs lisent le document de chaque régulateur, les cépages sont "
             "rapprochés du catalogue VIVC et les contours sont dessinés à partir des "
@@ -634,10 +664,11 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "l'UE, de la Suisse et du Royaume-Uni."
         ),
         "browse_all_label": _("Toutes les appellations"),
-        "browse_title": _("Toutes les appellations viticoles — Open Wine Map"),
+        "browse_title": _("Toutes les appellations de vins et de spiritueux — Open Wine Map"),
         "browse_meta_description": _(
-            "Liste des {n} appellations viticoles cartographiées sur Open Wine Map, "
-            "classées par pays : AOP et IGP de l'UE, AOC suisses et IG britanniques."
+            "Liste des {n} appellations de vins, de spiritueux et d'autres boissons "
+            "cartographiées sur Open Wine Map, classées par pays : indications géographiques "
+            "de l'UE, AOC et AOP suisses et IG britanniques."
         ),
         "browse_intro_html": _(
             "Les {n} appellations ci-dessous sont classées par pays. "
@@ -687,14 +718,16 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         ),
         "share_param_grape": _("Cépage : identifiant, nom ou synonyme VIVC."),
         "share_param_main": _("Cépage principal uniquement."),
-        "share_param_style": _("Style de vin : identifiant ou libellé."),
+        "share_param_style": _("Style ou catégorie de boisson : identifiant ou libellé."),
         "share_param_country": _("Pays entier coché."),
         "share_param_region": _("Région (code pays:clé)."),
         "share_param_sel": _("Appellations cochées."),
         "share_param_aocs": _("Ouvre ces appellations : fiche, surbrillance, cadrage."),
         "share_param_pdo": _("AOP masquées (affichées par défaut)."),
         "share_param_pgi": _("IGP affichées (masquées par défaut)."),
-        "share_param_spirits": _("Spiritueux affichés (masqués par défaut)."),
+        "share_param_spirits": _(
+            "Spiritueux et autres boissons affichés (masqués par défaut)."
+        ),
         "share_param_embed": _("Carte seule, à intégrer dans une page."),
         "share_param_theme": _("Thème sombre de la carte intégrée."),
         "share_param_bbox": _("Zone à cadrer : ouest,sud,est,nord en degrés."),
@@ -745,6 +778,7 @@ def build_region_labels(_: Callable[[str], str]) -> dict[str, str]:
         "COGNAC": _("COGNAC"),
         "ARMAGNAC": _("ARMAGNAC"),
         "RHUM": _("RHUM"),
+        "NORD": _("NORD"),
     }
 
 
@@ -774,6 +808,10 @@ _COUNTRY_FLAG_EMOJI: dict[str, str] = {
     "mt": "\U0001F1F2\U0001F1F9",  # 🇲🇹
     "cy": "\U0001F1E8\U0001F1FE",  # 🇨🇾
     "gb": "\U0001F1EC\U0001F1E7",  # 🇬🇧
+    # no record's own country: the all-island Irish spirit drinks (Irish
+    # Whiskey, Irish Cream, Irish Poteen) are UK-register records listed
+    # under Ireland too (`country_aliases`)
+    "ie": "\U0001F1EE\U0001F1EA",  # 🇮🇪
 }
 
 
@@ -805,6 +843,7 @@ def build_country_labels(_: Callable[[str], str]) -> dict[str, str]:
         "mt": _("Malte"),
         "cy": _("Chypre"),
         "gb": _("Royaume-Uni"),
+        "ie": _("Irlande"),
     }
 
 
@@ -1643,7 +1682,8 @@ _LEAD_MIN_ROOM = 60
 # The simple styles in the order a searcher reads them: colours first, so a
 # roster cut never loses "white" to "oxidative" (an alphabetical cut did, on
 # 420 pages, 2026-09-26).
-_STYLE_ORDER = ("white", "red", "rose", "sparkling", "sweet", "oxidative", "other")
+_STYLE_ORDER = ("white", "red", "rose", "sparkling", "sweet", "fortified", "oxidative", "other",
+                "drinks")
 
 
 def _clamp(text: str, n: int = 160) -> str:
@@ -1730,8 +1770,8 @@ def _entity_grape_names(
 
 
 # Wikidata class for the Place.additionalType — "wine-producing region"
-# (Q2140699, "type of region"): an honest place-class true for every record,
-# EU and non-EU alike, that types the appellation as a wine region without a
+# (Q2140699, "type of region"): an honest place-class true for every wine
+# record, EU and non-EU alike, that types the appellation as a wine region without a
 # native schema.org type. Set to "" to omit. The EU PDO/PGI regulatory classes
 # (Q13439060 / Q3104453) are deliberately NOT used here — they're EU-only (would
 # mis-tag the Swiss AOCs) and assert "protected-as", not "is-a".
@@ -1742,9 +1782,10 @@ _WIKIDATA_GI_TYPE = "https://www.wikidata.org/wiki/Q2140699"
 # generated from these official specs). Identity pages (Wikipedia / Wikidata /
 # regulator site) go in sameAs instead; PDFs and legal acts belong here.
 _SOURCE_DOC_KEYS = (
-    "eur_lex_url", "eu_oj_publication_url", "national_pliego_url",
+    "eur_lex_url", "eu_oj_publication_url", "technical_file_url", "national_pliego_url",
     "national_spec_url", "specifikacija_url", "specifikacija_final_url",
-    "ble_produktspezifikation_url", "masaf_override_url", "ivv_caderno_url",
+    "ble_produktspezifikation_url", "bml_produktspezifikation_url", "masaf_override_url",
+    "ivv_caderno_url",
     "cahier_url", "chzo_spec_url", "area_act_url",
 )
 
@@ -1937,7 +1978,9 @@ def _build_entity_jsonld(
         "@type": "AdministrativeArea", "@id": place_id, "name": name,
         "url": canonical_url, "description": description,
     }
-    if _WIKIDATA_GI_TYPE:
+    # a wine region only when the record is a wine: a spirit drink, an
+    # aromatised wine or a cider GI gets no place class (none is honest)
+    if _WIKIDATA_GI_TYPE and rec.get("is_wine", True) is not False:
         place["additionalType"] = _WIKIDATA_GI_TYPE
     bbox = rec.get("bbox")
     if bbox and len(bbox) == 4:
@@ -2199,11 +2242,16 @@ def _build_entity_meta(
     # A colour bucket that only a "primeur" leaf rolled up to (Muscadet's
     # white primeur became "red") is not the record's colour.
     own = set(rec.get("styles") or [])
-    simple = sorted(
-        (st for st in (rec.get("styles_simple") or [])
-         if st not in ("red", "white", "rose") or st in own or not own),
-        key=lambda st: _STYLE_ORDER.index(st) if st in _STYLE_ORDER else len(_STYLE_ORDER),
-    )
+    if rec.get("is_wine", True) is False:
+        # a spirit drink, aromatised wine or cider names its category (the
+        # leaf: "Rum", "Cider"), not the umbrella it sits under
+        simple = list(rec.get("styles") or [])
+    else:
+        simple = sorted(
+            (st for st in (rec.get("styles_simple") or [])
+             if st not in ("red", "white", "rose") or st in own or not own),
+            key=lambda st: _STYLE_ORDER.index(st) if st in _STYLE_ORDER else len(_STYLE_ORDER),
+        )
     styles = [(style_labels or {}).get(st, "") for st in simple]
     styles_txt = ", ".join(x for x in styles if x)
     if styles_txt:
@@ -2526,6 +2574,9 @@ QUERY_CONTEXT_LABELS = (
 
 STARTUP_AOCS_FIELDS = frozenset({
     "name", "name_latin", "kind", "region", "country", "is_wine",
+    # The class of a non-wine record and its category (_lib/product_class.py):
+    # sparse — a wine carries neither.
+    "product_class", "drink_category",
     # Search-only romanisations of a Greek / Cyrillic name (_lib/romanise.py):
     # the omnisearch and the tree filter read them at startup, never display
     # them. Sparse — only records that have one carry the key.
@@ -2627,11 +2678,21 @@ def render(
         "red": labels["style_simple_red"],
         "sparkling": labels["style_simple_sparkling"],
         "sweet": labels["style_simple_sweet"],
+        # the fortified row carries its node's own label (no second msgid)
+        "fortified": style_labels["fortified"],
         "oxidative": labels["style_simple_oxidative"],
         "other": labels["style_simple_other"],
+        "drinks": labels["style_simple_drinks"],
     }
     from .style_taxonomy import bucket_descendants, style_search_terms
+    from .style_taxonomy import descendants as _style_descendants
     simple_style_buckets = bucket_descendants()
+    # the labels the entity description reads: the buckets, plus the drink
+    # categories a non-wine record names in their place
+    description_style_labels = {
+        **{slug: style_labels[slug] for slug in _style_descendants("drinks") if slug in style_labels},
+        **simple_style_labels,
+    }
     # {canonical style slug -> [searchable synonym terms]}: lets the
     # omnisearch find a style by a local
     # name (fondillón → rancio, eiswein → icewine, vinsanto → vin-santo).
@@ -2664,9 +2725,14 @@ def render(
     # Curator notes pinned to a grape slug — rendered in the pill tooltip.
     # bianchello: kept as a distinct variety (Bianchello del Metauro
     # disciplinare) although VIVC folds it into Trebbiano Toscano.
+    # palomino: the bare name is under two VIVC primes (pinned `false`), and
+    # Wikipedia's Palomino article describes Palomino Fino — on the cards that
+    # list both (Jerez, Manzanilla, Lebrija, Villaviciosa de Córdoba) the two
+    # pills opened one extract, the bare one beginning "Palomino Fino is …"
+    # (2026-11-14). The note stands in for the article; the article stays on
+    # the Palomino Fino pill.
     if grapes_info is not None:
-        for note_slug, note_key in {"bianchello": "bianchello_note"}.items():
-            grapes_info.setdefault(note_slug, {})["note"] = labels[note_key]
+        apply_grape_notes(grapes_info, labels)
 
     # Per-(slug, country) usage from the corpus + global totals — drive the
     # per-locale canonical row label inside each VIVC group. FR picks the
@@ -3028,7 +3094,7 @@ def render(
             meta = _build_entity_meta(
                 slug, rec, locale, labels, region_labels, country_labels,
                 grapes_info or {}, folded=False, children=kids,
-                style_labels=simple_style_labels, title_regions=title_regions,
+                style_labels=description_style_labels, title_regions=title_regions,
                 grape_rank=_grape_rank_for(rec), canon_of=slug_to_canonical,
             )
             nav = _entity_nav_html(
@@ -3045,7 +3111,7 @@ def render(
             meta = _build_entity_meta(
                 slug, rec, locale, labels, region_labels, country_labels,
                 grapes_info or {}, folded=True,
-                style_labels=simple_style_labels, title_regions=title_regions,
+                style_labels=description_style_labels, title_regions=title_regions,
                 grape_rank=_grape_rank_for(rec), canon_of=slug_to_canonical,
             )
             nav = _entity_nav_html(
@@ -4135,6 +4201,38 @@ _APP_JS_SOURCE = (Path(__file__).resolve().parent / "assets" / "app.js").read_te
     encoding="utf-8"
 )
 _OWM_TOKEN_RE = re.compile(r"__OWM_(\w+?)__")
+
+
+_VIVC_PASSPORT_URL = "https://www.vivc.de/index.php?r=passport%2Fview&id={id}"
+# slug → (label key, the note replaces the Wikipedia article, cited sources)
+_GRAPE_NOTES: dict[str, tuple[str, bool, tuple[tuple[str, str], ...]]] = {
+    "bianchello": ("bianchello_note", False, ()),
+    "palomino": ("palomino_note", True, (
+        ("VIVC #8888", _VIVC_PASSPORT_URL.format(id=8888)),
+        ("VIVC #8887", _VIVC_PASSPORT_URL.format(id=8887)),
+    )),
+}
+# what a Wikipedia entry contributes to a grapes_info record
+_GRAPE_ARTICLE_KEYS = (
+    "extract", "page_url", "revision_id", "thumbnail", "wikipedia_title",
+    "matched_via", "translator", "translator_kind",
+)
+
+
+def apply_grape_notes(grapes_info: dict, labels: dict) -> None:
+    """Attach the curator notes of `_GRAPE_NOTES` to their slugs' tooltip
+    records; a note that replaces the article drops the Wikipedia fields, so
+    the pill shows the note and its sources and nothing borrowed."""
+    for slug, (note_key, replaces_article, sources) in _GRAPE_NOTES.items():
+        entry = grapes_info.setdefault(slug, {})
+        entry["note"] = labels[note_key]
+        if sources:
+            entry["sources"] = [{"label": lab, "url": url} for lab, url in sources]
+        if replaces_article:
+            for key in _GRAPE_ARTICLE_KEYS:
+                entry.pop(key, None)
+            entry["is_translated"] = False
+            entry["source_lang"] = None
 
 
 def _load_query_core_inline() -> str:

@@ -43,10 +43,15 @@ def write_index(path: Path, entries: dict, *, partial: bool) -> dict:
     return merged
 
 
-def wiki_index_kept(existing: dict, country: str, *, partial: bool) -> dict:
+def wiki_index_kept(existing: dict, country: str, *, partial: bool, pipeline: str = "") -> dict:
     """The entries of `wiki/_index.json` a stage-03 run keeps before laying
     its own over them: the other countries' — and, on a partial run, its own
-    country's too, so only the selected records are replaced."""
+    country's too, so only the selected records are replaced. The drinks
+    pipeline (`pipeline="drinks"`) writes records of every country and marks
+    its entries: a full run of it replaces the marked entries only, and a
+    country's full run leaves them alone."""
     if partial:
         return dict(existing)
-    return {k: v for k, v in existing.items() if v.get("country") != country}
+    if pipeline:
+        return {k: v for k, v in existing.items() if v.get("pipeline") != pipeline}
+    return {k: v for k, v in existing.items() if v.get("country") != country or v.get("pipeline")}

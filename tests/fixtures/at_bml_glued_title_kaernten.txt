@@ -1,0 +1,35 @@
+# Redacted excerpt — BML Produktspezifikation Kärnten (Austria), raw/at/produktspezifikationen/karnten.pdf
+# via `pdftotext -layout`. Public, licence-clear: amtliches Werk (§ 7 UrhG), bmluk.gv.at Weinherkunft page.
+# Trimmed to f) the national roster, whose last line runs straight into the unlettered g) title
+# ("Rotburger).Angaben über Güte …" — pdftotext dropped the letter), the first lines of g), the next title.
+f)   Angabe der Keltertraubensorte oder -sorten, aus denen die Weine gewonnen wer-
+     den:
+     Für die Gewinnung der Weine sind folgende Keltertraubensorten erlaubt:
+     1. Weißweinrebsorten:
+     Bouvier, Chardonnay (Morillon), Frühroter Veltliner (Malvasier), Furmint, Goldbur-
+     ger, Grauer Burgunder (Pinot Gris, Ruländer), Grüner Veltliner (Weißgipfler), Jubilä-
+     umsrebe, Müller-Thurgau (Rivaner), Muskateller (Gelber Muskateller, Roter Muska-
+     teller), Muskat-Ottonel, Neuburger, Roter Veltliner, Rotgipfler, Sauvignon Blanc,
+     Scheurebe (Sämling 88), Sylvaner (Grüner Sylvaner), Traminer (Gewürztraminer, Ro-
+     ter Traminer, Gelber Traminer), Weißer Burgunder (Weißburgunder, Pinot Blanc,
+     Klevner), Weißer Riesling (Riesling, Rheinriesling), Welschriesling, Zierfandler (Spät-
+     rot);
+
+     2. Rotweinrebsorten:
+     Blauburger, Blauer Burgunder (Blauer Spätburgunder, Blauburgunder, Pinot Noir),
+     Blauer Portugieser, Blauer Wildbacher, Blaufränkisch, Cabernet Franc, Cabernet Sau-
+     vignon, Merlot, Rathay, Roesler, St. Laurent, Syrah (Shiraz), Zweigelt (Blauer Zwei-
+     gelt, Rotburger).Angaben über Güte und Eigenschaften, welche die Weine überwie-
+     gend oder ausschließlich den geografischen Verhältnissen einschließlich der natürli-
+     chen und menschlichen Verhältnisse verdanken:
+
+
+     -   Angaben zum geografischen Gebiet:
+     Kärnten grenzt im Westen an Osttirol, im Nordwesten an Salzburg, im Nordosten und
+     Osten an die Steiermark und im Süden an Slowenien sowie die italienischen Regionen
+     Friaul-Julisch Venetien und Venetien. Die Landesgrenze wird fast vollständig von Ge-
+g)   Geltende Anforderungen gemäß gemeinschaftlicher oder nationaler Rechtsvor-
+     schriften, oder – sofern von den Mitgliedstaaten vorgesehen – von Organisatio-
+     nen, die geschützte Ursprungsbezeichnungen oder geografische Angaben verwal-
+     ten, wobei darauf zu achten ist, dass diese Anforderungen objektiv und nichtdiskri-
+     minierend sowie mit dem Gemeinschaftsrecht vereinbar sind:

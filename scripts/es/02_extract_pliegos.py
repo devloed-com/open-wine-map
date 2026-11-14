@@ -979,11 +979,17 @@ _STYLE_TITLE_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
         ("sparkling", "sparkling-quality")),
     (re.compile(r"\bvino(?:s)? (?:de )?espumoso(?:s)?\b", re.I), ("sparkling",)),
     (re.compile(r"\bvino(?:s)? de aguja\b", re.I), ("sparkling", "semi-sparkling")),
-    # Sweet / fortified categories (EU OJ product categories)
+    # Fortified categories (EU OJ product categories). A liqueur wine is a
+    # fortified wine (Reg. 1308/2013 Annex VII Part II point 3), sweet only
+    # where the text says so — Manzanilla's is "Seco … azúcar inferior a 4
+    # g/L", Rueda's Dorado "vino de licor, seco" — and a generoso is aged under
+    # flor as often as oxidatively: neither pill follows from the category
+    # (2026-11-14; until then every ES liqueur wine was Sweet and every
+    # generoso Oxidative). `liqueur_sweetness_styles` reads the stated sweetness.
     (re.compile(r"\bvinos? generosos? de licor\b", re.I),
-        ("sweet", "fortified", "vin-de-liqueur", "oxidative", "generoso")),
-    (re.compile(r"\bvinos? de licor\b", re.I), ("sweet", "fortified", "vin-de-liqueur")),
-    (re.compile(r"\bvinos? generosos?\b", re.I), ("oxidative", "generoso")),
+        ("fortified", "vin-de-liqueur", "generoso")),
+    (re.compile(r"\bvinos? de licor\b", re.I), ("fortified", "vin-de-liqueur")),
+    (re.compile(r"\bvinos? generosos?\b", re.I), ("generoso",)),
     (re.compile(r"\bvinos? de uvas? sobremadur", re.I),
         ("sweet", "late-harvest", "uvas-sobremaduradas")),
     (re.compile(r"\bvinos? de uvas? pasificad", re.I),
@@ -1021,9 +1027,9 @@ _TYPE_PHRASE_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
     (re.compile(r"(?<![\wáéíóú])espumosos?\b", re.I), ("sparkling",)),
     (re.compile(r"\bde\s+aguja\b", re.I), ("sparkling", "semi-sparkling")),
     (re.compile(r"\bgenerosos?\s+de\s+licor\b", re.I),
-        ("sweet", "fortified", "vin-de-liqueur", "oxidative", "generoso")),
-    (re.compile(r"\bde\s+licor\b", re.I), ("sweet", "fortified", "vin-de-liqueur")),
-    (re.compile(r"\bgenerosos?\b", re.I), ("oxidative", "generoso")),
+        ("fortified", "vin-de-liqueur", "generoso")),
+    (re.compile(r"\bde\s+licor\b", re.I), ("fortified", "vin-de-liqueur")),
+    (re.compile(r"\bgenerosos?\b", re.I), ("generoso",)),
     (re.compile(r"\bde\s+uvas?\s+sobremadur", re.I),
         ("sweet", "late-harvest", "uvas-sobremaduradas")),
     (re.compile(r"\bde\s+uvas?\s+pasificad", re.I),
@@ -1090,9 +1096,11 @@ _STYLE_BODY_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
 # (= elegant), on "Tinto Fino" the Tempranillo synonym, and on common
 # tasting-note words like "oloroso" (= fragrant).
 _SHERRY_GATE = re.compile(r"\bvinos? generosos?\b", re.I)
+# Fino and Manzanilla are aged under flor ("crianza biológica"); the oxidative
+# pill belongs to the three types whose definition is an oxidative ageing.
 _SHERRY_SUBSTYLE_PATTERNS: tuple[tuple[re.Pattern, tuple[str, ...]], ...] = (
-    (re.compile(r"\bfino\b", re.I), ("oxidative", "generoso", "fino")),
-    (re.compile(r"\bmanzanilla\b", re.I), ("oxidative", "generoso", "manzanilla")),
+    (re.compile(r"\bfino\b", re.I), ("generoso", "fino")),
+    (re.compile(r"\bmanzanilla\b", re.I), ("generoso", "manzanilla")),
     (re.compile(r"\bamontillado\b", re.I), ("oxidative", "generoso", "amontillado")),
     (re.compile(r"\boloroso\b", re.I), ("oxidative", "generoso", "oloroso")),
     (re.compile(r"\bpalo cortado\b", re.I), ("oxidative", "generoso", "palo-cortado")),
@@ -1217,6 +1225,64 @@ def sweetness_type_styles(sections: dict[str, str], titles: dict[str, str]) -> s
     return found
 
 
+# The sweetness a text states for its liqueur wine. The category says a wine
+# is fortified, not that it is sweet (2026-11-14), so "sweet" is read where
+# the liqueur wine's own block says it: under its type heading ("4. Vino de
+# licor blanco, rosado y tinto … En boca dulce y golosa", Valencia; "9. Vinos
+# de Licor (Tinto Monastrell) … El dulzor predomina sobre la acidez", Jumilla;
+# the national pliego's "Vinos de licor: Color ámbar … En boca será dulce",
+# Valdejalón) and in a section titled for it ("Vino de licor — … caracterizados
+# por un elevado contenido en azúcar", Navarra's link sub-section). Only a
+# predicate of the wine counts — never "taninos dulces", "fruta dulce", "sin
+# dulzor". A block ends at the next type heading; styles are per record, so a
+# block that runs on into a sweet type states nothing the record does not make.
+_LIQUEUR_HEAD_RE = re.compile(
+    r"^[ \t]*(?:(?:\d{1,2}|[a-zñ])(?:\.\d+)*[ \t]*[.)][ \t\u00a0]*|[-–—•·*\uf02d\uf0a7\uf0b7][ \t]*)?"
+    r"vinos?[ \t]+(?:generosos?[ \t]+)?de[ \t]+licor\b", re.I | re.M)
+_LIQUEUR_TITLE_RE = re.compile(r"^\s*vinos?\s+(?:generosos?\s+)?de\s+licor\b", re.I)
+_TYPE_BLOCK_END_RE = re.compile(
+    r"^[ \t]*(?:\d{1,2}\.[ \t\u00a0]+\S|Producto\s+vitivin[íi]cola\b"
+    r"|[-–—•·*]?[ \t]*Vinos?\s[^:\n]{0,40}:)", re.I | re.M)
+_LIQUEUR_BLOCK_MAX = 1500
+_SWEET_PREDICATE_RES: tuple[re.Pattern, ...] = (
+    re.compile(r"\ben\s+(?:la\s+)?boca\s+(?:(?:es|son|ser[áa]n?|resultan?|se\s+muestran?)\s+)?"
+               r"(?:muy\s+)?dulces?\b", re.I),
+    re.compile(r"\bdulzor\s+(?:predomina|dominante|marcado|elevado|intenso)\b"
+               r"|\bpredomin\w+\s+(?:de\s+|del\s+|el\s+)?dulzor\b", re.I),
+    re.compile(r"\bsabor(?:es)?\s*:?\s*(?:muy\s+)?dulces?\b", re.I),
+    re.compile(r"\b(?:vinos?|son|ser[áa]n?)\s+(?:muy\s+)?dulces\b", re.I),
+    re.compile(r"\b(?:elevado|alto)\s+contenido\s+(?:en|de)\s+az[úu]car(?:es)?\b", re.I),
+)
+
+
+_NEGATION_LEAD_RE = re.compile(r"\b(?:sin|no|ni|nunca|poco|escaso|nada\s+de)\s+(?:el\s+|un\s+)?$", re.I)
+
+
+def _states_sweet(block: str) -> bool:
+    flat = re.sub(r"\s+", " ", block)
+    for pat in _SWEET_PREDICATE_RES:
+        for m in pat.finditer(flat):
+            # "sin dulzor marcado", "no son dulces"
+            if not _NEGATION_LEAD_RE.search(flat[max(0, m.start() - 16):m.start()]):
+                return True
+    return False
+
+
+def liqueur_sweetness_styles(sections: dict[str, str], titles: dict[str, str]) -> set[str]:
+    for key, body in sections.items():
+        body = body or ""
+        if _LIQUEUR_TITLE_RE.search(titles.get(key) or "") and _states_sweet(body):
+            return {"sweet"}
+        for m in _LIQUEUR_HEAD_RE.finditer(body):
+            line_end = body.find("\n", m.end())
+            rest_from = len(body) if line_end < 0 else line_end + 1
+            end = _TYPE_BLOCK_END_RE.search(body, rest_from)
+            stop = min(end.start() if end else len(body), m.start() + _LIQUEUR_BLOCK_MAX)
+            if _states_sweet(body[m.start():stop]):
+                return {"sweet"}
+    return set()
+
+
 def parse_styles_es(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
     """Derive a sorted list of taxonomy slugs from the per-category section
     titles (canonical signal) and a body-text scan (catches rancio /
@@ -1300,6 +1366,10 @@ def parse_styles_es(sections: dict[str, str], titles: dict[str, str]) -> list[st
         for pat, slugs in _TYPE_PHRASE_PATTERNS:
             if pat.search(line):
                 found.update(slugs)
+        # a type the header itself calls sweet: "6. Vinos de licor dulces
+        # (categoría 3)" (Montilla-Moriles), "7. Vinos Rosados (Jumilla Dulce)"
+        if re.search(r"\bdulces?\b", line):
+            found.add("sweet")
         mc = _TITLE_COLOUR_TAIL_RE.search(line)
         if mc:
             slug = _colour_slug(mc.group(1))
@@ -1385,6 +1455,7 @@ def parse_styles_es(sections: dict[str, str], titles: dict[str, str]) -> list[st
         if slug:
             found.add(slug)
     found |= sweetness_type_styles(sections, titles)
+    found |= liqueur_sweetness_styles(sections, titles)
     return sorted(found)
 
 

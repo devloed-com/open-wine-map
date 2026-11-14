@@ -1,0 +1,27 @@
+# Redacted excerpt — BML Produktspezifikation Vulkanland Steiermark (Austria), raw/at/produktspezifikationen/vulkanland-steiermark.pdf
+# via `pdftotext -layout`. Public, licence-clear: amtliches Werk (§ 7 UrhG), bmluk.gv.at Weinherkunft page.
+# Trimmed to f): the designation's own name in the rule ("Steiermark" is a VIVC synonym of Furmint),
+# a bare "Morillon" (Austrian for Chardonnay), the per-Gemeinde Leitsorten lines, then the g) title.
+f)   Angabe der Keltertraubensorte oder -sorten, aus denen die Weine gewonnen wer-
+     den:
+
+     Für die Ursprungsbezeichnung “Vulkanland Steiermark” dürfen folgende Rebsorten
+     verwendet werden: Welschriesling, Weißburgunder, Morillon, Grauburgunder, Ries-
+     ling, Gelber Muskateller, Sauvignon blanc, Traminer sowie Verschnitte daraus.
+     Für die ortsübergreifenden Weinbaugemeinden sind folgende Leitsorten festgelegt:
+     Oststeiermark: Sauvignon blanc, Weissburgunder
+     Riegersburg: Sauvignon blanc, Weissburgunder
+     Kapfenstein: Sauvignon blanc, Weissburgunder
+     St. Anna: Sauvignon blanc, Weissburgunder
+     Tieschen: Sauvignon blanc, Burgundercuvée
+     Klöch: Sauvignon blanc, Traminer
+
+
+     Straden: Sauvignon blanc, Grauburgunder
+     St. Peter: Sauvignon blanc, Weissburgunder
+     Bad Gleichenberg: Chardonnay und Sauvignon Blanc
+
+
+g)   Angaben über Güte und Eigenschaften, welche die Weine überwiegend oder aus-
+     schließlich den geografischen Verhältnissen einschließlich der natürlichen und
+     menschlichen Verhältnisse verdanken:

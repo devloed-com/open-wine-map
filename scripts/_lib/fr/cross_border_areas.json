@@ -1,0 +1,31 @@
+{
+  "__doc": "French records whose delimited area crosses the border (scripts/_lib/fr/cross_border.py). slug → country_aliases (the other countries the record is listed under), units (the foreign part, in the unit grammar of scripts/_lib/drinks/geometry.py), quote (verbatim from the cahier's zone section), disclose (what the drawing departs from the letter by, en / fr / es / nl), file_number, source, verified.",
+  "euskal-sagardoa-ou-sidra-del-pais-vasco-ou-cidre-du-pays-basque-ou-cidre-du-pays-basque-eu": {
+    "country_aliases": ["es"],
+    "units": ["nuts:ES213", "nuts:ES212", "nuts:ES211"],
+    "quote": "pour la partie espagnole, les territoires historiques de la communauté autonome du Pays Basque que sont les provinces suivantes",
+    "disclose": {
+      "en": "The Spanish part is drawn as the provinces of Bizkaia, Gipuzkoa and Álava whole; the specification names districts inside each — in Álava only the Valles Alaveses, the Llanada Alavesa, Laguardia-Rioja Alavesa and the Montaña Alavesa.",
+      "fr": "La partie espagnole est tracée comme les provinces de Biscaye, du Guipuscoa et d'Alava entières ; le cahier des charges y nomme des cantons — en Alava les seuls Valles Alaveses, Llanada Alavesa, Laguardia-Rioja Alavesa et Montaña Alavesa.",
+      "es": "La parte española se dibuja como las provincias de Bizkaia, Gipuzkoa y Álava enteras; el pliego nombra comarcas dentro de cada una — en Álava solo los Valles Alaveses, la Llanada Alavesa, Laguardia-Rioja Alavesa y la Montaña Alavesa.",
+      "nl": "Het Spaanse deel is getekend als de provincies Bizkaia, Gipuzkoa en Álava in hun geheel; het productdossier noemt daarbinnen districten — in Álava alleen de Valles Alaveses, de Llanada Alavesa, Laguardia-Rioja Alavesa en de Montaña Alavesa."
+    },
+    "file_number": "PDO-ES-FR-02309",
+    "source": "Cahier des charges de l'AOP (en cours de reconnaissance) « Euskal Sagardoa / Sidra del País Vasco / Cidre du Pays Basque / Cidre du Pays Basque - Euskal Sagarnoa », BO Agri 13-02-2025, section C; EU GI register, joint ES + FR application PDO-ES-FR-02309 (status Applied on 2026-11-13); Eurostat GISCO NUTS 2024 (ES211 Araba/Álava, ES212 Gipuzkoa, ES213 Bizkaia).",
+    "verified": "2026-11-13"
+  },
+  "genepi-des-alpes": {
+    "country_aliases": ["it"],
+    "units": ["nuts:ITC1", "nuts:ITC2"],
+    "quote": "Territoire italien : « Regione Piemonte » et « Regione Autonoma della Valle d’Aosta ».",
+    "disclose": {
+      "en": "The regions and départements the specification names are drawn whole; it limits the gathering and growing of the génépi plant to the ground above 1,500 m inside them.",
+      "fr": "Les régions et départements que nomme le cahier des charges sont tracés en entier ; il limite la cueillette et la culture de la plante de génépi aux terrains situés à plus de 1 500 m à l'intérieur.",
+      "es": "Las regiones y departamentos que nombra el pliego se dibujan enteros; este limita la recolección y el cultivo de la planta de génépi a los terrenos situados por encima de 1.500 m en su interior.",
+      "nl": "De regio's en departementen die het productdossier noemt zijn in hun geheel getekend; het beperkt het plukken en telen van de génépi-plant tot de grond boven 1.500 m daarbinnen."
+    },
+    "file_number": "PGI-FR+IT-01909",
+    "source": "Cahier des charges de l'indication géographique « Génépi des Alpes », arrêté du 15 décembre 2014 (BO Agri 25-12-2014), Partie I section 3; EU GI register PGI-FR+IT-01909 « Génépi des Alpes / Genepì delle Alpi »; Eurostat GISCO NUTS 2024 (ITC1 Piemonte, ITC2 Valle d'Aosta/Vallée d'Aoste).",
+    "verified": "2026-11-13"
+  }
+}

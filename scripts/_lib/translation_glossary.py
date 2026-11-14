@@ -7,7 +7,8 @@ showed recurring problems. Append the returned block to a translation
 SYSTEM_PROMPT under a blank-line separator; an empty return makes the
 append a no-op for locales without curated guidance.
 
-Curated for NL and EN. The first pass came from a sweep of the FR + ES →
+Curated for NL and EN; FR and ES carry one verified rule each since
+2026-11-08 (the DE "spritzig" false friend). The first pass came from a sweep of the FR + ES →
 target corpus (~6850 terroir-fact bullets and ~340 ollama-translated
 summaries per target); the 2026-09-11 corpus-wide review (plan W1) added
 the EN calques that the IT / CZ / SI / HU / PT / FR sources produce. Since
@@ -44,7 +45,8 @@ language. Prefer the LEFT term over the RIGHT:
 - "het wijngebied" (the vineyard area as a whole) or "de wijngaard" / "de wijngaarden" (planted plots) NOT "het wijngaard" — for FR "le vignoble", ES "el viñedo", IT "il vigneto"; "wijngaard" is a de-word, so its pronouns and adjectives follow it ("de wijngaard, die …").
 - Mind the article of every noun: de gemeente, de aanplant, de bodem, de ondergrond; het productiegebied, het perceel, het landschap, het bekken, het terras, het graniet, het druivenras.
 - "climat" (kept) NOT "klimaat" — for the Burgundian FR "climat", a named, delimited vineyard site (de climat La Romanée); "klimaat" only for climate in the weather sense.
-- Render Spanish-pliego header transliterations like "Vinnen", "Vitwijnen", "Wijndruivenproduct" simply as "Wijnen"."""
+- Render Spanish-pliego header transliterations like "Vinnen", "Vitwijnen", "Wijndruivenproduct" simply as "Wijnen".
+- "levendig" or "fris" NOT "licht parelend" / "sprankelend" — for DE "spritzig / Spritzigkeit", the frisse zuurgraad of a light wine; "parelend" only where the source names Perlwein, Kohlensäure or Sturm (de gistende most)."""
 
 
 _EN_GLOSSARY = """\
@@ -67,17 +69,32 @@ language. Prefer the LEFT term over the RIGHT:
 - "tirage" or "bottling for the second fermentation" NOT "disgorgement" — for FR "tirage" (sparkling: the bottling with liqueur de tirage; "dégorgement" is disgorgement; "à compter du tirage" = "from the date of tirage").
 - "fortified wine(s)" or "generoso wine(s)" NOT "generous wine(s)" — for ES "vino generoso / vinos generosos" (the regulatory category of fortified, oxidatively aged wines: fino, amontillado, oloroso).
 - "loam" NOT "clay" — for DE "Lehm" (clay is "Ton"); "loess" for "Löss"; "primary rock" or "crystalline basement" NOT "primeval rock" for "Urgestein".
-- "slight sparkle" or "light spritz" NOT "spiciness" — for DE "Spritzigkeit / spritzig".
+- "lively", "zesty" or "fresh" NOT "spiciness" and NOT "lightly sparkling" / "with a slight sparkle" — for DE "spritzig / Spritzigkeit", the acidity-driven freshness of a light wine ("leichter, spritziger Heuriger"); only where the source names Perlwein, Kohlensäure or Sturm (the fermenting must, which is fizzy) is a sparkle meant (Oberösterreich, 2026-11-08).
 - "depth of colour" / "deep-coloured" NOT "layer" — for ES "capa" as in "capa alta / media" (colour intensity).
 - "Riesling" for BG "Немски ризлинг / Рейнски ризлинг" and "Welschriesling" for "Италиански ризлинг" — never swap the two.
 - "Rhodopes" (EN) for BG "Родопи" / "Rodopi"; keep "Stara Planina" as such (a one-time gloss "(Balkan Mountains)" is fine); "Bavaria" for DE "Bayern".
 - A grape name is never translated by sound-alike: HU "Pintes" is the variety Pintes, not "Pinot"; HR "Plavac" stays Plavac.
-- A demonym is rendered as its town, never back-formed into a place: IT "caiatino" is "of Caiazzo" (not "the Caiata area"), "aversano" is "of Aversa"."""
+- A demonym is rendered as its town, never back-formed into a place: IT "caiatino" is "of Caiazzo" (not "the Caiata area"), "aversano" is "of Aversa".
+- "pure-stand vineyards" or "vineyards not interplanted with other crops" NOT "single-variety vineyards" — for PT "vinha(s) estreme(s)" (a vineyard grown as the sole crop of its plot, as opposed to vines in "bordadura" or mixed with other crops); it says nothing about the number of varieties."""
+
+
+_FR_GLOSSARY = """\
+Vocabulaire français (FR) du registre sommelier — quelle que soit la langue source. \
+Préférer le terme de GAUCHE au terme de DROITE :
+- « vif » ou « frais » PLUTÔT QUE « perlant » / « pétillant » — pour l'allemand « spritzig / Spritzigkeit », la fraîcheur acidulée d'un vin léger ; « perlant » seulement si la source nomme Perlwein, Kohlensäure ou Sturm (le moût en fermentation)."""
+
+
+_ES_GLOSSARY = """\
+Vocabulario español (ES) del registro sumiller — sea cual sea la lengua de origen. \
+Preferir el término de la IZQUIERDA al de la DERECHA:
+- «vivaz» o «fresco» EN LUGAR DE «chispeante» / «de aguja» — para el alemán «spritzig / Spritzigkeit», la frescura ácida de un vino ligero; «de aguja» solo si la fuente nombra Perlwein, Kohlensäure o Sturm (el mosto en fermentación)."""
 
 
 _GLOSSARIES: dict[str, str] = {
     "en": _EN_GLOSSARY,
     "nl": _NL_GLOSSARY,
+    "fr": _FR_GLOSSARY,
+    "es": _ES_GLOSSARY,
 }
 
 

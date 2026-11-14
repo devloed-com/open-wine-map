@@ -89,6 +89,7 @@ _LABELS = {
     "src_national_pliego": "National pliego",
     "src_national_pliego_added": "varieties added",
     "src_national_spec": "National spec",
+    "src_bml_produktspezifikation": "National product specification (BML, PDF)",
     "src_chzo_spec": "CHZO spec",
     "src_regional_register": "Regional register",
     "src_area_act": "Sub-region delimitation (Diário da República, PDF)",
@@ -632,6 +633,21 @@ def test_zone_source_lines_for_other_countries() -> None:
     # what stage 04 writes for the SIGPAC-resolved Priorat / Montsant records).
     assert "approx-line" not in _render(_geom_rec(country="es", geom_source="sigpac-hybrid-pliego"))
     assert "approx-line" not in _render(_geom_rec(country="lu", geom_source="ivv-commune-vineyard"))
+
+
+def test_at_produktspezifikation_sources_row_counts_the_added_varieties() -> None:
+    """The Austrian card lists the BML national specification beside the EU
+    single document, with the count of varieties it added to the roster
+    (2026-11-08); no count when it added none. Mirrors renderSources in app.js."""
+    url = "https://www.bmluk.gv.at/dam/jcr:e3bf80c9/Wachau%20Produktspezifikation.pdf"
+    html = _render(_geom_rec(country="at", kind="DOP", geom_source="gisco-commune-union",
+                             sources={"bml_produktspezifikation_url": url,
+                                      "bml_produktspezifikation_added_slugs": ["pinot-blanc", "pinot-gris", "chardonnay"]}))
+    assert (f'<li><a href="{url}" target="_blank" rel="noopener">'
+            "National product specification (BML, PDF)</a> — +3 varieties added</li>") in html
+    html = _render(_geom_rec(country="at", kind="DOP", geom_source="gisco-commune-union",
+                             sources={"bml_produktspezifikation_url": url}))
+    assert f'<li><a href="{url}" target="_blank" rel="noopener">National product specification (BML, PDF)</a></li>' in html
 
 
 def test_pdo_plan_line() -> None:

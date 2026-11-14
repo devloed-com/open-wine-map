@@ -263,7 +263,23 @@ def country_chip_html(code: str, aliases, ctx: RenderCtx) -> str:
 
 # ---------------------------------------------------------------- attribution
 
-def _src_marker(country: str, ctx: RenderCtx) -> str:
+# The language a drinks record's text is written in, by its own name. Mirrors
+# LANG_ENDONYM in app.js.
+LANG_ENDONYM = {
+    "bg": "български", "cs": "čeština", "de": "Deutsch", "el": "Ελληνικά", "en": "English",
+    "es": "español", "fr": "français", "hr": "hrvatski", "hu": "magyar", "it": "italiano",
+    "nl": "Nederlands", "pt": "português", "ro": "română", "sk": "slovenčina", "sl": "slovenščina",
+}
+
+
+def _src_marker(country: str, ctx: RenderCtx, rec: dict | None = None) -> str:
+    if rec and rec.get("pipeline") == "drinks":
+        lang = rec.get("source_lang") or ""
+        if not lang or lang == ctx.locale:
+            return ""
+        name = LANG_ENDONYM.get(lang, lang)
+        aria = fmt(ctx.labels["src_lang_marker_aria"], {"lang": name})
+        return f' <span class="fr-marker" title="{esc(aria)}">({esc(name)})</span>'
     source_lang = country if country in ("es", "pt") else "fr"
     if ctx.locale == source_lang:
         return ""
@@ -294,7 +310,10 @@ def _translation_attribution(t: dict | None, country: str, ctx: RenderCtx) -> st
     if not t:
         return ""
     lab = ctx.labels
-    if country == "es":
+    if t.get("official"):
+        # the Commission's own English copy of a technical file
+        label_text = lab["translation_source_label_technical_file"]
+    elif country == "es":
         label_text = lab["translation_source_label_es"]
     elif country == "pt":
         label_text = lab.get("translation_source_label_pt") or lab["translation_source_label"]
@@ -306,7 +325,8 @@ def _translation_attribution(t: dict | None, country: str, ctx: RenderCtx) -> st
         if url
         else esc(label_text)
     )
-    return _attr_paragraph(lab["translation_attribution"], source_html)
+    template = lab["translation_attribution_official" if t.get("official") else "translation_attribution"]
+    return _attr_paragraph(template, source_html)
 
 
 def _build_facts_source_label(country: str, ctx: RenderCtx) -> str:
@@ -461,6 +481,14 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
             f'<li><a href="{esc(sources["national_pliego_url"])}" target="_blank" rel="noopener">'
             f'{lab["src_national_pliego"]}</a>{note}</li>'
         )
+    if sources.get("bml_produktspezifikation_url"):
+        # the AT national specification beside the EU single document (2026-11-08)
+        added = len(sources.get("bml_produktspezifikation_added_slugs") or [])
+        note = f' — +{added} {lab["src_national_pliego_added"]}' if added else ""
+        links.append(
+            f'<li><a href="{esc(sources["bml_produktspezifikation_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_bml_produktspezifikation"]}</a>{note}</li>'
+        )
     if sources.get("national_spec_url"):
         org = (
             f' — {esc(sources["national_spec_source_org"])}'
@@ -475,6 +503,25 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
         links.append(
             f'<li><a href="{esc(sources["register_fiche_url"])}" target="_blank" rel="noopener">'
             f'{lab["src_register_fiche"]}</a></li>'
+        )
+    # a drink GI: the register's technical file, and the Commission's English
+    # copy of it where there is one
+    if sources.get("technical_file_url"):
+        links.append(
+            f'<li><a href="{esc(sources["technical_file_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_technical_file"]}</a></li>'
+        )
+    if sources.get("technical_file_en_url"):
+        links.append(
+            f'<li><a href="{esc(sources["technical_file_en_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_technical_file_en"]}</a></li>'
+        )
+    # a Swiss AOP: the summary of the application, where its history and link
+    # sections are
+    if sources.get("national_link_url"):
+        links.append(
+            f'<li><a href="{esc(sources["national_link_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_application_summary"]}</a></li>'
         )
     if sources.get("wikipedia_url"):
         # the Wikipedia article behind a wiki-marked terroir bullet (2026-11-07)
@@ -626,6 +673,13 @@ def _provenance_source(rec: dict, ctx: RenderCtx) -> tuple[str, str, bool, str] 
             return (eambrosia_reg, _EU_DOC_TERM.get(country, "single document"), False, extra)
         return None
 
+    if s.get("technical_file_url"):
+        # a drink GI read from the register's technical file, any country
+        return (eambrosia_reg, "technical file", False, extra)
+    if s.get("drinks_spec_doc") and s.get("national_spec_url"):
+        # a drink whose only document is a national one (a UK product
+        # specification, a Swiss cahier des charges)
+        return (esc(s.get("national_spec_source_org") or ""), s["drinks_spec_doc"], False, extra)
     if country == "fr":
         if s.get("boagri"):
             d = s.get("homologation_date") or s.get("jorf_date") or ""
@@ -1027,9 +1081,25 @@ def _geom_source_line(rec: dict, lab: dict) -> str:
             f'{esc(sources.get("area_act_label") or "")}</a>'
         )
         return fmt(lab["geom_src_national_act"], {"act": act})
-    if gs.startswith(_ADMIN_UNION_PREFIXES) or gs in ("nuts2-province", "geometry-research-municipios"):
-        return esc(lab["geom_src_admin_union"])
+    if gs.startswith(_ADMIN_UNION_PREFIXES) or gs in (
+        "nuts2-province", "geometry-research-municipios", "drinks-area-pin",
+    ):
+        return esc(lab["geom_src_admin_union"]) + _drinks_units_text(rec, lab)
     return ""
+
+
+def _drinks_units_text(rec: dict, lab: dict) -> str:
+    """The units a drink GI's polygon is the union of, up to twelve, then the
+    pin's disclosure sentence. Mirrors ``drinksUnitsText`` in app.js."""
+    gd = rec.get("geom_drinks") or {}
+    units = [u.get("label") for u in (gd.get("units") or [])]
+    units = [u for u in units if u]
+    out = ""
+    if units and len(units) <= 12:
+        out += " " + esc(fmt(lab["geom_drinks_units"], {"units": ", ".join(units)}))
+    if gd.get("precision"):
+        out += " " + esc(gd["precision"])
+    return out
 
 
 def has_footprint(rec: dict, lod: dict) -> bool:
@@ -1128,6 +1198,7 @@ def _units_line(rec: dict, lab: dict) -> str:
     drawn through named places. Mirrors ``unitsLine`` in app.js."""
     out = ""
     for key in ("geom_units_unmatched", "geom_units_proxied", "geom_units_partial",
+                "geom_units_former_undrawn",
                 "geom_units_boundary", "geom_units_boundary_units"):
         names = rec.get(key) or []
         if names:
@@ -1212,6 +1283,8 @@ def _approx_line(rec: dict, ctx: RenderCtx) -> str:
         )
     elif gs in ("aires-csv", "dgc-village-override", "communes"):
         line = esc(fmt(lab["geom_approx_aires_union"], {"n": rec.get("communes_matched") or 0}))
+        # a French record whose area crosses the border: the foreign units
+        line += _drinks_units_text(rec, lab)
     else:
         line = _geom_source_line(rec, lab)
     out = f'<div class="approx-line">{line}</div>' if line else ""
@@ -1340,6 +1413,12 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
         f'<div class="approx-line styles-inferred">{esc(lab["styles_inferred_line"])}</div>'
         if rec.get("styles_inferred") else ""
     )
+    # a style read from the production method, not a stated level
+    # (_lib/style_overrides.py, `basis: method`); stylesNoteLine in app.js
+    styles_note_line = (
+        f'<div class="approx-line styles-note">{esc(rec["styles_note"])}</div>'
+        if isinstance(rec.get("styles_note"), str) and rec.get("styles_note") else ""
+    )
 
     # every region the record is listed under (_lib/region_aliases.py)
     region = ", ".join(region_label(r, ctx) for r in [rec.get("region"), *(rec.get("region_aliases") or [])] if r)
@@ -1373,7 +1452,7 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
 
     facts_block = render_terroir_facts(rec, ctx)
     is_translated = bool(rec.get("summary_translation"))
-    summary_marker = "" if is_translated else _src_marker(country, ctx)
+    summary_marker = "" if is_translated else _src_marker(country, ctx, rec)
     if not facts_block and rec.get("summary"):
         summary = (
             f"<p>{esc(rec['summary'])}{summary_marker}</p>"
@@ -1411,6 +1490,7 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
         f"{cancelled_line_html(rec, ctx)}{promoted_line_html(rec, ctx)}{dgc_line}{co_parent_line}{stub_line}"
         f"{_section(lab['panel_styles_h'], style_chips)}"
         f"{inferred_line}"
+        f"{styles_note_line}"
         f"{_section(lab['facet_principal_h'], principal)}"
         f"{pt_role_disclaimer}{role_conflict}{section4_line}"
         f"{_section(lab['facet_accessory_h'], accessory)}"

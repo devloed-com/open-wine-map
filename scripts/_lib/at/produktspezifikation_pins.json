@@ -1,0 +1,8 @@
+{
+  "_comment": "A designation the BML Weinherkunft page lists with more than one Produktspezifikation PDF: the file stage 01c takes, with the reason. Filenames as the page prints them (URL-decoded).",
+  "eisenberg": {
+    "filename": "Produktspezifikation_Eisenberg.pdf",
+    "reason": "The page links two Eisenberg PDFs. The one on the 2025 template (bml.gv.at letterhead, Geschäftszahl 2025-0.143.229) allows Blaufränkisch and Welschriesling with Orts- and Riedenwein tiers, as the EU single document in force does (§ 7 names both); the other is the earlier Blaufränkisch-only specification.",
+    "verified": "2026-11-08"
+  }
+}

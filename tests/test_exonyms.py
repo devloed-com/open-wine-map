@@ -48,3 +48,16 @@ def test_a_form_inside_the_records_own_longer_name_is_the_label():
                        gi_forms=frozenset({"Sardegna"}), own_names=own) == []
     # a record named after the region alone keeps the place reading
     assert exonym_hits("Upper Kärnten is alpine.", "en", own_names=("Kärnten",)) == ["Kärnten"]
+
+
+def test_a_form_inside_the_records_own_name_is_the_label_whatever_the_apostrophe_or_case():
+    """The record is « Kirsch d’Alsace » (typographic apostrophe); a
+    translation writes "Kirsch d'Alsace", and "de marc d'Alsace
+    Gewurztraminer" opens lower-case. Both are the GI's name, not the region."""
+    assert exonym_hits("El Kirsch d'Alsace es un aguardiente blanco.", "es",
+                       own_names=("Kirsch d’Alsace",)) == []
+    assert exonym_hits("De reputatie van de marc d'Alsace Gewurztraminer werd erkend.", "nl",
+                       own_names=("Marc d'Alsace Gewurztraminer",)) == []
+    # the region on its own is still read as a place
+    assert exonym_hits("Los viñedos de Alsace se extienden al pie de los Vosgos.", "es",
+                       own_names=("Kirsch d’Alsace",)) == ["Alsace"]

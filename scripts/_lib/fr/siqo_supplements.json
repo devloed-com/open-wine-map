@@ -36,6 +36,12 @@
       "_reason": "The export's `appellation` column reads 'Marc d'Alsace'; its own `produit` column, the INAO product page (idproduit 13046), the EU register (PGI-FR-01836, protectedName 'Marc d'Alsace Gewurztraminer') and the cahier des charges homologated by the arrêté du 2 septembre 2026 (section 2: « enregistrée sous la dénomination « Marc d'Alsace Gewurztraminer » au registre des Indications Géographiques ») name the GI with its mandatory dénomination. The record, its slug and its URL (/en/marc-d-alsace-gewurztraminer, live since the first build, keyed by every pin) keep the registered name; the 2026-10-01 manifest refresh re-read the column and renamed the record marc-d-alsace until this pin (2026-10-04).",
       "_source": "https://www2.inao.gouv.fr/produit/13046 ; https://info.agriculture.gouv.fr/boagri/document_administratif-11f6768c-d390-4f6c-b551-07ff5554f796/telechargement ; raw/inao/siqo-referentiel.csv (2025-12-31, row id_appellation 1091, produit column)",
       "_verified": "2026-10-04"
+    },
+    "1151": {
+      "appellation": "Eau-de-vie de vin originaire du Languedoc ou Fine du Languedoc ou Eau-de-vie de vin du Languedoc",
+      "_reason": "The export cuts the `appellation` column at 90 characters ('… ou Eau-de-vie de vin du Lan') and the `denomination` column at 79; its own `produit` column carries the whole name, the three aliases the cahier des charges of the IG protects. The record, its slug and its search keys take the whole name.",
+      "_source": "raw/inao/siqo-referentiel.csv (2025-12-31, row id_appellation 1151, produit column, idproduit 13120) ; EU GI register PGI-FR-02067 'Eau-de-vie de vin originaire du Languedoc'",
+      "_verified": "2026-11-12"
     }
   }
 }

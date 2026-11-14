@@ -95,19 +95,30 @@ def apply_supplements(
     the CSV lacks. INAO's CSV rows can be a decade older than the cahier in
     force (IGP Cévennes: rows of 2012, Gard only; the 2024 cahier adds 40
     Lozère communes), and nothing in the CSV says so — hence a cited pin per
-    record rather than a parse of every cahier. Returns one status row per
-    pin: `added` (INSEE codes folded in), `stale` (pinned codes the CSV
-    carries again — not added, the pin wants re-verifying) and `unbound`
-    (the pin's aire / IDA is not in the CSV: nothing is added)."""
+    record rather than a parse of every cahier. The cahier is the
+    delimitation and the CSV a publication of it, so a pin may also `remove`
+    a row the cahier does not list — a neighbouring code (Gignac 84048 for
+    Gigondas 84049 in Marc des Côtes du Rhône, Les Fourgs 25254 for Fourg
+    25253 in Marc du Jura). Returns one status row per pin: `added` (INSEE
+    codes folded in), `removed`, `stale` (pinned codes the CSV carries again —
+    not added — and `stale_remove`, rows to remove that the CSV no longer
+    carries: the pin wants re-verifying) and `unbound` (the pin's aire / IDA
+    is not in the CSV: nothing is changed)."""
     report: list[dict] = []
     for slug, pin in (load_aire_supplements() if pins is None else pins).items():
         bucket = aires.get(_normalize(pin["aire"]), {}).get(pin["ida"])
-        row = {"slug": slug, "aire": pin["aire"], "added": [], "stale": []}
+        row = {"slug": slug, "aire": pin["aire"], "added": [], "stale": [],
+               "removed": [], "stale_remove": []}
         row["unbound"] = bucket is None
         if bucket is not None:
-            row["stale"] = sorted(c for c in pin["communes"] if c in bucket)
-            row["added"] = sorted(c for c in pin["communes"] if c not in bucket)
+            communes = pin.get("communes") or {}
+            row["stale"] = sorted(c for c in communes if c in bucket)
+            row["added"] = sorted(c for c in communes if c not in bucket)
             bucket.update(row["added"])
+            remove = pin.get("remove") or {}
+            row["removed"] = sorted(c for c in remove if c in bucket)
+            row["stale_remove"] = sorted(c for c in remove if c not in bucket)
+            bucket.difference_update(row["removed"])
         report.append(row)
     return report
 
@@ -152,8 +163,61 @@ def lookup_departements(index: dict[str, Counter], name: str) -> Counter:
 _CSV_ALIAS_KEYS: dict[str, set[str]] = {}
 
 
+# Normalised names of the spirit-drink records and of the wine appellations
+# (`register_product_names`). A spirit named after a wine region is not that
+# wine's aire: "Marc de Champagne ou Marc champenois …" and "Ratafia de
+# Champagne ou Ratafia champenois" have no CSV row of their own, and the
+# contained-name step below handed them the 635 communes of the wine
+# "Champagne" (dry run of 2026-11-09). For a spirit, a CSV name that is a wine
+# appellation's name and merely sits inside the record name binds nothing. A
+# contained CSV name that is no wine's stays a bind: the CSV cuts its labels
+# at 70 characters, so the long rum names find their own truncated row that
+# way, and "Marc d'Alsace Gewurztraminer" finds "Marc d'Alsace".
+_SPIRIT_KEYS: set[str] = set()
+_WINE_KEYS: set[str] = set()
+
+
+def register_product_names(spirit_names, wine_names) -> None:
+    """Tell the resolver which record names are spirit drinks and which are
+    wines (stage 04 and the geometry audit call it once the FR records are
+    loaded). A wine's " ou " aliases count as its names."""
+    _SPIRIT_KEYS.update(_normalize(n) for n in spirit_names if n)
+    for name in wine_names:
+        if not name:
+            continue
+        _WINE_KEYS.add(_normalize(name))
+        _WINE_KEYS.update(_normalize(part) for part in name.split(" ou "))
+    _WINE_KEYS.discard("")
+
+
+AIRE_REFERENCES_PATH = Path(__file__).with_name("aire_references.json")
+_AIRE_REFERENCES: dict[str, str] | None = None
+
+
+def load_aire_references(path: Path = AIRE_REFERENCES_PATH) -> dict[str, dict]:
+    """The cited pins of `aire_references.json`: record name → {aire, quote,
+    source, verified} for an appellation whose cahier defines its area as
+    another appellation's (the three Champagne spirits: "les territoires
+    délimités par … la loi du 22 juillet 1927 relative à l'AOC Champagne")."""
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {k: v for k, v in data.items() if not k.startswith("_")}
+
+
+def _aire_reference(key: str) -> str | None:
+    global _AIRE_REFERENCES
+    if _AIRE_REFERENCES is None:
+        _AIRE_REFERENCES = {
+            _normalize(name): _normalize(pin["aire"])
+            for name, pin in load_aire_references().items()
+        }
+    return _AIRE_REFERENCES.get(key)
+
+
 def _resolve_key(aires: dict, name: str) -> str | None:
-    """The CSV name `name` binds to: exact, then near-exact (a source typo),
+    """The CSV name `name` binds to: a cited reference first (a cahier that
+    defines its area as another appellation's), then exact, then near-exact (a source typo),
     then — for a SIQO 'X ou Y' register name — the exact row of one of its
     aliases ("Moulis ou Moulis-en-Médoc" → "Moulis"; the substring step below
     sees two candidates there and binds nothing), then the single CSV name
@@ -161,6 +225,9 @@ def _resolve_key(aires: dict, name: str) -> str | None:
     key = _normalize(name)
     if key in aires:
         return key
+    referenced = _aire_reference(key)
+    if referenced is not None and referenced in aires:
+        return referenced
     if len(key) < 6:
         return None
     near = _near_exact(key, aires)
@@ -182,10 +249,11 @@ def _resolve_key(aires: dict, name: str) -> str | None:
     # (tests) carries no alias parts and keeps the plain containment test.
     words = {_normalize(w) for w in re.split(r"[^\w]+", name)}
     parts = {_normalize(p) for p in re.split(r"\s+ou\s+|\s+et\s+|,", name)} - {""}
+    spirit = key in _SPIRIT_KEYS
     candidates = [
         k for k in aires
         if (key in k and (not _CSV_ALIAS_KEYS or parts <= _CSV_ALIAS_KEYS.get(k, set())))
-        or (k in key and (len(k) >= 6 or k in words))
+        or (k in key and (len(k) >= 6 or k in words) and not (spirit and k in _WINE_KEYS))
     ]
     return candidates[0] if len(candidates) == 1 else None
 

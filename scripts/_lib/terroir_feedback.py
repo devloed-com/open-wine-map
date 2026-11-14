@@ -66,6 +66,12 @@ ESCAPE_BY_MODE = {
                       + _PLAINLY,
     "sibling-or-subzone-confusion": " unless the source states it of this appellation itself, not of "
                                     "another appellation, sub-zone or tier" + _PLAINLY,
+    # The source states it, but another bullet of the record already gives it — a
+    # human factor (a history date, a practice) carried into a natural-factors
+    # bullet beside the physical feature (Wachau's medieval terraces, 2026-11-08).
+    "restated-across-subsections": ": the source states it, but it belongs to one sub-section only — give "
+                                   "it there and nowhere else; a bullet of another sub-section states its "
+                                   "own fact without this clause" + _PLAINLY,
 }
 DEFAULT_ESCAPE = " unless the source states it explicitly" + _PLAINLY
 

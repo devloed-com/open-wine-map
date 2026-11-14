@@ -1,0 +1,21 @@
+{
+  "__doc__": "Appellations whose cahier des charges defines the geographical area as another appellation's — see scripts/_lib/aires.py (_resolve_key). The INAO aires-communes CSV carries no row for them, and binding a name to a longer or shorter CSV label by resemblance is how a wrong aire gets drawn, so each reference is a cited pin: `aire` is the CSV label whose rows are the record's area, `quote` the sentence of the record's own cahier that says so (tests/test_aire_references.py checks it against the extracted record when raw/ is present), `source` the published cahier, `verified` the date it was read. Keyed by the record name as the SIQO referentiel gives it. The communes the same sentence then lists are the parcel-delimitation exceptions inside that area (INAO plans deposited in the mairies), not the area.",
+  "Marc de Champagne ou Marc champenois ou Eau-de-vie de marc champenois": {
+    "aire": "Champagne",
+    "quote": "sont assurés sur les territoires délimités par l'article V de la loi du 22 juillet 1927",
+    "source": "Cahier des charges de l'indication géographique « Marc de Champagne », Partie I, 3. (homologué par l'arrêté du 20 juin 2022) — https://info.agriculture.gouv.fr/boagri/document_administratif-86676e69-a69d-40ab-bb0e-acfabbcf1d0f/telechargement",
+    "verified": "2026-11-13"
+  },
+  "Eau-de-vie de vin de la Marne ou Fine champenoise": {
+    "aire": "Champagne",
+    "quote": "territoires délimités par l'article V de la loi du 22 juillet 1927 relative à l’AOC « Champagne »",
+    "source": "Cahier des charges de l'indication géographique « Eau-de-vie de vin de la Marne » ou « Fine champenoise », Partie I, 3. (homologué par l'arrêté du 20 juin 2022) — https://info.agriculture.gouv.fr/boagri/document_administratif-33271774-b8c4-43f1-b6e5-658d37944872/telechargement",
+    "verified": "2026-11-13"
+  },
+  "Ratafia de Champagne ou Ratafia champenois": {
+    "aire": "Champagne",
+    "quote": "sont assurés sur les territoires délimités par l'article V de la loi du 22 juillet 1927 relative à l’appellation d’origine contrôlée « Champagne »",
+    "source": "Cahier des charges de l'indication géographique « Ratafia de Champagne » ou « Ratafia champenois », Partie I, 3. (homologué par l'arrêté du 20 juin 2022) — https://info.agriculture.gouv.fr/boagri/document_administratif-c1a02b47-d9d1-4af2-958f-0f3c00e59f3f/telechargement",
+    "verified": "2026-11-13"
+  }
+}

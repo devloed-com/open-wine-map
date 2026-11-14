@@ -69,6 +69,9 @@ CATEGORIE_PRODUCT_TYPE: dict[str, str] = {
     "Autres boissons spiritueuses": "Spirit drink",
     "Whisky ou Whiskey": "Spirit drink",
     "Rhum": "Spirit drink",
+    "Liqueur": "Spirit drink",
+    "Crème de cassis": "Spirit drink",
+    "Boissons aromatisées baies de genévrier": "Spirit drink",
     "Cidre": "Food",
     "Poiré": "Food",
 }

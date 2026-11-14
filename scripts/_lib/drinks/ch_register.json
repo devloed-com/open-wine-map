@@ -1,0 +1,43 @@
+{
+  "_README": "The spirit drinks of Switzerland's federal register of AOP and IGP (agricultural products other than wine), kept by the Federal Office for Agriculture (OFAG / BLW). Switzerland is outside the EU GI scheme and the register has no API: the entries are transcribed from the register page (`register_url`, read on the `verified` date — 42 products, four of them under 'Catégorie: Spiritueux', all AOP; no cider, perry or aromatised wine). `name` is the register's string (aliases slash-separated), `decision` the date of the registration decision it cites, `cahier_url` the cahier des charges in the language the application was made in, `resume_url` the 'Résumé de la demande d'enregistrement', whose sections 7 and 8 carry the history and the link to the area (the cahier has neither). scripts/drinks/01_fetch_technical_files.py fetches and sha-pins both; scripts/audit_drinks_coverage.py lists the entries. Pending applications on the same page, not registered: Absinthe du Val-de-Travers (IGP), Grappa Ticino (AOP), Eau-de-vie de Bérudge (AOP).",
+  "register_url": "https://www.blw.admin.ch/fr/aop-igp-appellations-dorigine-et-indications-geographiques",
+  "verified": "2026-11-12",
+  "spirits": [
+    {
+      "name": "Abricotine / Eau-de-vie d'abricot du Valais",
+      "type": "AOP",
+      "decision": "2002-11-06",
+      "lang": "fr",
+      "drink_category": "fruit-spirit",
+      "cahier_url": "https://www.blw.admin.ch/dam/fr/sd-web/dwk-1VnsQAnK/Abricotine%20Cahier%20des%20charges.pdf",
+      "resume_url": "https://www.blw.admin.ch/dam/fr/sd-web/mXScNjGkdCZR/Abricotine%20R%C3%A9sum%C3%A9%20de%20la%20demande%20d'enregistrement.pdf"
+    },
+    {
+      "name": "Damassine",
+      "type": "AOP",
+      "decision": "2007-08-16",
+      "lang": "fr",
+      "drink_category": "fruit-spirit",
+      "cahier_url": "https://www.blw.admin.ch/dam/fr/sd-web/lLINbmNmzXLt/Damassine%20Cahier%20des%20charges.pdf",
+      "resume_url": "https://www.blw.admin.ch/dam/fr/sd-web/6EUNWUcLGC7-/Damassine%20R%C3%A9sum%C3%A9%20de%20la%20demande%20d'enregistrement.pdf"
+    },
+    {
+      "name": "Eau-de-vie de poire du Valais",
+      "type": "AOP",
+      "decision": "2001-11-07",
+      "lang": "fr",
+      "drink_category": "fruit-spirit",
+      "cahier_url": "https://www.blw.admin.ch/dam/fr/sd-web/GWpeEiqwlExQ/Eau-de-vie%20de%20poire%20du%20Valais%20Cahier%20des%20charges.pdf",
+      "resume_url": "https://www.blw.admin.ch/dam/fr/sd-web/mBelBv5UTv4v/Eau-de-vie%20de%20poire%20du%20Valais%20R%C3%A9sum%C3%A9%20de%20la%20demande%20d'enregistrement.pdf"
+    },
+    {
+      "name": "Zuger Kirsch / Rigi Kirsch",
+      "type": "AOP",
+      "decision": "2013-05-02",
+      "lang": "de",
+      "drink_category": "fruit-spirit",
+      "cahier_url": "https://www.blw.admin.ch/dam/de/sd-web/Q9MYqbHjA-PO/Zuger%20Kirsch%20PH%20d_2025.pdf",
+      "resume_url": "https://www.blw.admin.ch/dam/de/sd-web/3p0Ipy9S9SkD/Zuger%20Kirsch%20-%20Rigi%20Kirsch%20Zusammenfassung%20des%20Eintragungsgesuchs.pdf"
+    }
+  ]
+}

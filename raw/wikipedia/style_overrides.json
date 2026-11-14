@@ -43,7 +43,23 @@
     "methode-traditionnelle",
     "methode-charmat",
     "methode-dioise",
-    "skin-contact-white"
+    "skin-contact-white",
+    "drinks",
+    "aniseed",
+    "aromatised-wine",
+    "bitter",
+    "brandy",
+    "cider",
+    "cider-spirit",
+    "fruit-spirit",
+    "grain-spirit",
+    "grape-marc",
+    "juniper",
+    "liqueur",
+    "other-spirit",
+    "rum",
+    "whisky",
+    "wine-spirit"
   ],
   "fr": {
     "red": "Vin rouge",
@@ -80,7 +96,21 @@
     "methode-traditionnelle": "Méthode traditionnelle",
     "methode-charmat": "Méthode Charmat",
     "methode-dioise": "Clairette de Die",
-    "skin-contact-white": "Vin orange"
+    "skin-contact-white": "Vin orange",
+    "drinks": "Spiritueux",
+    "wine-spirit": "Eau-de-vie de vin",
+    "brandy": "Brandy",
+    "grape-marc": "Marc (eau-de-vie)",
+    "fruit-spirit": "Eau-de-vie de fruit",
+    "cider-spirit": "Eau-de-vie de cidre",
+    "rum": "Rhum",
+    "whisky": "Whisky",
+    "liqueur": "Liqueur",
+    "aromatised-wine": "Vin aromatisé",
+    "cider": "Cidre",
+    "juniper": "Genièvre (eau-de-vie)",
+    "aniseed": "Boisson anisée",
+    "bitter": "Amer (boisson)"
   },
   "en": {
     "red": "Red wine",
@@ -120,7 +150,20 @@
     "methode-ancestrale": "Ancestral method",
     "methode-traditionnelle": "Traditional method",
     "methode-charmat": "Charmat process",
-    "skin-contact-white": "Orange wine"
+    "skin-contact-white": "Orange wine",
+    "drinks": "Liquor",
+    "wine-spirit": "Brandy",
+    "brandy": "Brandy",
+    "grape-marc": "Pomace brandy",
+    "fruit-spirit": "Fruit brandy",
+    "rum": "Rum",
+    "whisky": "Whisky",
+    "liqueur": "Liqueur",
+    "aromatised-wine": "Aromatized wine",
+    "cider": "Cider",
+    "juniper": "Jenever",
+    "bitter": "Bitters",
+    "aniseed": "Anise drinks"
   },
   "es": {
     "red": "Vino tinto",
@@ -157,7 +200,16 @@
     "palo-cortado": "Palo cortado",
     "icewine": "Vino de hielo",
     "vin-santo": "Vin Santo",
-    "skin-contact-white": "Vino brisado"
+    "skin-contact-white": "Vino brisado",
+    "drinks": "Bebida espirituosa",
+    "brandy": "Brandy",
+    "grape-marc": "Orujo (bebida)",
+    "rum": "Ron",
+    "whisky": "Whisky",
+    "liqueur": "Licor",
+    "aromatised-wine": "Vino aromatizado",
+    "cider": "Sidra",
+    "aniseed": "Anís (licor)"
   },
   "nl": {
     "red": "Rode wijn",
@@ -175,6 +227,14 @@
     "vin-jaune": "Vin jaune",
     "icewine": "IJswijn",
     "vin-santo": "Vin Santo",
-    "skin-contact-white": "Oranje wijn"
+    "skin-contact-white": "Oranje wijn",
+    "drinks": "Gedistilleerde drank",
+    "brandy": "Brandy",
+    "fruit-spirit": "Eau de vie",
+    "rum": "Rum (drank)",
+    "whisky": "Whisky",
+    "liqueur": "Likeur",
+    "cider": "Cider",
+    "juniper": "Jenever"
   }
 }

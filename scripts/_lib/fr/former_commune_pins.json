@@ -1,0 +1,31 @@
+{
+  "_doc": "Obsolete commune codes of INAO's aires-communes rows that INSEE's movements table (events since 1943) does not know: communes that ceased before 1943, which INAO's own table still flags Actual = 3 (commune périmée). code -> the commune that took its ground (`today`, followed through INSEE's table to the commune of today), with the public source read. Read by scripts/_lib/fr/former_communes.py; a pinned code is drawn like any former commune: covered when the aire lists its commune of today, named on the card when it does not.",
+  "01220": {
+    "name": "Lompnes",
+    "today": "01185",
+    "reason": "« La commune fut formée le 31 juillet 1942 par la réunion d'Hauteville et de Lompnes » (Hauteville-Lompnes, code commune 01185; Plateau d'Hauteville since 2019).",
+    "source": "https://fr.wikipedia.org/wiki/Hauteville-Lompnes",
+    "verified": "2026-11-13"
+  },
+  "01459": {
+    "name": "Hauteville-Lompnés",
+    "today": "01185",
+    "reason": "INAO's row names it « Hauteville-Lompnés » beside 01185 « Hauteville-Lompnes »: the same commune under a code INSEE's tables do not carry. « La commune fut formée le 31 juillet 1942 par la réunion d'Hauteville et de Lompnes » (code commune 01185).",
+    "source": "https://fr.wikipedia.org/wiki/Hauteville-Lompnes",
+    "verified": "2026-11-13"
+  },
+  "66131": {
+    "name": "Palalda",
+    "today": "66003",
+    "reason": "Amélie-les-Bains-Palalda (code commune 66003) « est une commune française créée en 1942 par la fusion des anciennes communes d'Amélie-les-Bains et de Palalda »; the arrêté « rattache, le 1er novembre 1942, la commune de Palalda à celle d'Amélie-les-Bains ».",
+    "source": "https://fr.wikipedia.org/wiki/Am%C3%A9lie-les-Bains-Palalda",
+    "verified": "2026-11-13"
+  },
+  "66235": {
+    "name": "Amélie-les-Bains",
+    "today": "66003",
+    "reason": "Amélie-les-Bains-Palalda (code commune 66003) « est une commune française créée en 1942 par la fusion des anciennes communes d'Amélie-les-Bains et de Palalda ».",
+    "source": "https://fr.wikipedia.org/wiki/Am%C3%A9lie-les-Bains-Palalda",
+    "verified": "2026-11-13"
+  }
+}

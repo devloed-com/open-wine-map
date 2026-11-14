@@ -42,6 +42,7 @@ from _lib.aires import (
     load_aires,
     load_aires_departements,
     lookup_departements,
+    register_product_names,
 )
 from _lib.aires import lookup as lookup_aire
 from _lib.aoc_translations import (
@@ -54,6 +55,7 @@ from _lib.at.gemeinde import ATCommuneIndex
 from _lib.at.geometry import ATPolygonIndex
 from _lib.at.region import derive_bundesland as derive_at_bundesland
 from _lib.augment._shared import (
+    _AT_PRODUKTSPEZIFIKATION_BY_SLUG,
     _BG_NATIONAL_SPEC_BY_SLUG,
     _CY_NATIONAL_SPEC_BY_SLUG,
     _CZ_CHZO_BY_SLUG,
@@ -77,6 +79,7 @@ from _lib.augment._shared import (
     NATIONAL_SPECS_CZ,
     NATIONAL_SPECS_HU,
 )
+from _lib.augment.at import augment_at_records_with_produktspezifikation
 from _lib.augment.bg import augment_bg_records_with_national_specs
 from _lib.augment.cy import augment_cy_records_with_national_specs
 from _lib.augment.cz import augment_cz_records_with_national_specs
@@ -112,6 +115,9 @@ from _lib.cz.geometry import CZPolygonIndex
 from _lib.cz.region import derive_region as derive_cz_region
 from _lib.de.geometry import DEPolygonIndex
 from _lib.de.region import derive_region as derive_de_region
+from _lib.drinks.geometry import DrinksGeometry
+from _lib.drinks.geometry import localise as localise_drinks_geom
+from _lib.drinks.region import derive_region as derive_drinks_region
 from _lib.env import load_dotenv
 from _lib.es.geometry import ESPolygonIndex
 from _lib.es.national_term import es_term_for
@@ -126,6 +132,10 @@ from _lib.es.region import (
 )
 from _lib.es.sigpac import SigpacIndex
 from _lib.es.zones import MAPA_ZONES_FILE, ESZoneIndex
+from _lib.fr.cross_border import load as load_fr_cross_border
+from _lib.fr.former_communes import FORMER_GEOJSON, MOVEMENTS_CSV
+from _lib.fr.former_communes import load as load_former_communes
+from _lib.fr.seat_communes import narrowed_seats
 from _lib.fr_wine_region import FR_WINE_REGIONS
 from _lib.fr_wine_region import derive_wine_region as derive_fr_wine_region
 from _lib.gb.geometry import GBPolygonIndex
@@ -208,6 +218,8 @@ from _lib.parcellaire_gaps import (
 from _lib.parcellaire_gaps import (
     load_coverage as load_parcel_coverage,
 )
+from _lib.product_class import drink_category as _drink_category
+from _lib.product_class import product_class as _product_class
 from _lib.pt.area_units import parse_area_units as parse_pt_area_units
 from _lib.pt.commune_list import parse_commune_list as parse_pt_commune_list
 from _lib.pt.freguesias import apply_overrides as apply_pt_freguesia_overrides
@@ -233,6 +245,8 @@ from _lib.si.region import derive_region as derive_si_region
 from _lib.site_root_files import copy_site_root_files
 from _lib.sk.geometry import SKPolygonIndex
 from _lib.sk.region import derive_region as derive_sk_region
+from _lib.style_overrides import disclosure as style_disclosure
+from _lib.style_overrides import load_style_overrides, style_additions
 from _lib.style_taxonomy import FACET_BUCKET_ORDER
 from _lib.style_taxonomy import (
     all_slugs as _taxonomy_all_slugs,
@@ -266,10 +280,13 @@ from _lib.vineyard_envelope import (
 from _lib.vineyard_envelope import envelope as vineyard_envelope
 from _lib.wine_categories import declares_still, liqueur_only, sparkling_only
 from shapely.geometry import mapping, shape
+from shapely.ops import unary_union
 from tqdm import tqdm
 from unidecode import unidecode as _unidecode
 
 GRAPE_DISPLAY_OVERRIDES = load_grape_display_overrides()
+# styles a curator read where the reader has no rule yet (cited, self-retiring)
+STYLE_OVERRIDES = load_style_overrides()
 
 ROOT = Path(__file__).resolve().parent.parent
 EXTRACTED = ROOT / "raw" / "inao" / "cahier-extracted"
@@ -307,6 +324,10 @@ EXTRACTED_BE = ROOT / "raw" / "be" / "dokumenten-extracted"
 EXTRACTED_NL = ROOT / "raw" / "nl" / "dokumenten-extracted"
 EXTRACTED_MT = ROOT / "raw" / "mt" / "dokumente-extracted"
 EXTRACTED_GB = ROOT / "raw" / "gb" / "specs-extracted"
+# The spirit-drink, aromatised-wine and cider GIs of the EU register
+# (scripts/drinks/): one directory for every country, each record carrying
+# its own `country`.
+EXTRACTED_DRINKS = ROOT / "raw" / "drinks" / "extracted"
 NL_NUTS_GEOJSON = ROOT / "raw" / "nl" / "nuts" / "NUTS_RG_03M_2024_4326_LEVL_2.geojson"
 COMMUNES_GEOJSON = ROOT / "raw" / "ign" / "communes.geojson"
 WIKI = ROOT / "wiki"
@@ -381,6 +402,20 @@ _IT_MENZIONI_BY_SLUG: dict[str, list] = {}
 # derived and read in emit_html() by the interprofession fallback
 # (appellation_urls.resolve keys the cider body on the comité).
 _FR_COMITE_BY_SLUG: dict[str, str] = {}
+# The body behind a drink's national document, as the card names it, and the
+# document's own term (the footer's "DEFRA product specification").
+_DRINKS_ORG_LABEL = {"defra": "DEFRA", "ofag": "OFAG / BLW"}
+_DRINKS_SPEC_DOC = {"defra": "product specification", "ofag": "cahier des charges"}
+
+# Slug → what a drinks record's polygon was drawn from (geom source, the
+# units with their display labels, the pin's quote) — the card's area line.
+_DRINKS_GEOM_BY_SLUG: dict[str, dict] = {}
+# The French record names by product class, as registered with the aire
+# resolver's spirit guard (aires.register_product_names). The emitter looks
+# aires up too (the region aliases), so a --shell-only run must register the
+# same names: without them a spirit took a wine's aire by a contained name and
+# its region aliases differed from the full build's (2026-11-13).
+_FR_PRODUCT_NAMES: dict[str, list[str]] = {}
 # Slug → the record's `grapes.details` as main() built its feature (after the
 # national-spec augmentations and the IT sottozona synthesis, which the
 # on-disk record never sees), read by emit_html() for the pill spellings.
@@ -788,6 +823,35 @@ def _check_envelope(slug: str, parcels, footprint) -> None:
         )
 
 
+# The border as IGN's communes draw it and as Eurostat's NUTS units draw it
+# are two digitisations: their union leaves a string of sliver holes along
+# the seam (223 on Génépi des Alpes). A hole under ~1.5 km² that touches the
+# foreign part is such a sliver and is closed; a real hole is kept (the
+# Treviño enclave inside Álava is 280 km², a commune left out of an aire does
+# not touch the foreign units).
+_SEAM_HOLE_MAX_DEG2 = 2e-4
+
+
+def _fill_seam_holes(geom, foreign):
+    from shapely.geometry import MultiPolygon, Polygon
+
+    polys = list(getattr(geom, "geoms", [geom]))
+    out = []
+    for poly in polys:
+        if poly.geom_type != "Polygon":
+            continue
+        keep = []
+        for ring in poly.interiors:
+            hole = Polygon(ring)
+            if hole.area < _SEAM_HOLE_MAX_DEG2 and hole.distance(foreign) < 1e-9:
+                continue
+            keep.append(ring)
+        out.append(Polygon(poly.exterior, keep))
+    if not out:
+        return geom
+    return out[0] if len(out) == 1 else MultiPolygon(out)
+
+
 def communes_containing(needle, insee_idx: dict[str, dict]) -> set[str]:
     """Return the INSEE codes of every IGN commune intersecting `needle`.
 
@@ -836,11 +900,14 @@ def main() -> int:
     if args.shell_only:
         return _shell_only(args)
 
-    commune_idx, insee_idx, insee_name_idx = load_commune_index(COMMUNES_GEOJSON)
+    commune_idx, insee_idx, insee_name_idx = load_commune_index(COMMUNES_GEOJSON, FORMER_GEOJSON, MOVEMENTS_CSV)
     print(
         f"[load] commune index: {len(commune_idx)} (name) / {len(insee_idx)} (INSEE) entries",
         file=sys.stderr,
     )
+    # communes merged since INAO wrote its rows: drawn by their own outline
+    # where the merger kept one (scripts/_lib/fr/former_communes.py)
+    former_communes = load_former_communes(insee_idx)
 
     aires_by_app = load_aires(supplements=False)
     aire_supplements = apply_supplements(aires_by_app)
@@ -853,11 +920,16 @@ def main() -> int:
         file=sys.stderr,
     )
     for row in aire_supplements:
-        state = "UNBOUND" if row["unbound"] else "STALE" if row["stale"] else "applied"
+        stale = row["stale"] or row.get("stale_remove")
+        state = "UNBOUND" if row["unbound"] else "STALE" if stale else "applied"
         print(
             f"[geo] aires supplement {row['slug']}: {state} — {len(row['added'])} commune(s) "
             f"added from the cahier"
-            + (f", {len(row['stale'])} already in the CSV: re-verify the pin" if row["stale"] else ""),
+            + (f", {len(row['removed'])} row(s) the cahier does not list removed"
+               if row.get("removed") else "")
+            + (f", {len(row['stale'])} already in the CSV: re-verify the pin" if row["stale"] else "")
+            + (f", {len(row['stale_remove'])} row(s) to remove no longer in the CSV: re-verify the pin"
+               if row.get("stale_remove") else ""),
             file=sys.stderr,
         )
 
@@ -901,6 +973,9 @@ def main() -> int:
     coverage: list[tuple[str, int, int]] = []
     parcel_hits = aires_hits = commune_hits = 0
     dgc_hits: Counter[str] = Counter()
+    former_hits: Counter[str] = Counter()
+    former_elsewhere: dict[str, int] = {}
+    seats_narrowed: dict[str, list[str]] = {}
     village_aires_hits = village_commune_hits = village_skipped = 0
     # Geometry-outlier clips (curator-reviewed spurious parts dropped from
     # resolved polygons). Every applied clip and every stale override is
@@ -928,6 +1003,14 @@ def main() -> int:
         if json_path.name == "_index.json":
             continue
         extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # A spirit named after a wine region (Marc de Champagne, Ratafia
+    # champenois) must not take that wine's aire by the contained-name step.
+    _FR_PRODUCT_NAMES.clear()
+    _FR_PRODUCT_NAMES.update(
+        spirit=sorted({r["name"] for r in extracted_records if r.get("name") and _product_class(r) == "spirit"}),
+        wine=sorted({r["name"] for r in extracted_records if r.get("name") and _product_class(r) == "wine"}),
+    )
+    register_product_names(_FR_PRODUCT_NAMES["spirit"], _FR_PRODUCT_NAMES["wine"])
     # Multi-country: also iterate ES extracted records (raw/es/pliegos-
     # extracted/). Stubs are skipped at the geometry-resolution step
     # (no commune list / no Figshare polygon) but kept in the AOCS
@@ -1095,6 +1178,13 @@ def main() -> int:
             if json_path.name == "_index.json":
                 continue
             extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
+    # The drinks pipeline: spirit drinks, aromatised wines and ciders of the
+    # EU register, every country in one directory (`pipeline: "drinks"`).
+    if EXTRACTED_DRINKS.exists():
+        for json_path in sorted(EXTRACTED_DRINKS.glob("*.json")):
+            if json_path.name == "_index.json":
+                continue
+            extracted_records.append(json.loads(json_path.read_text(encoding="utf-8")))
     # Augment ES records with national-pliego sidecar data — adds the
     # accessory varieties that the EU-OJ documento único omits. The
     # sidecar carries provenance (URL + sha256 + fetched_at) which
@@ -1150,6 +1240,17 @@ def main() -> int:
     if n_aug_de:
         print(
             f"[load] DE BLE-Produktspezifikation augmentation: {n_aug_de} Anbaugebiete enriched",
+            file=sys.stderr,
+        )
+    # AT Produktspezifikation augmentation — the EU Einziges Dokument names
+    # the main varieties only; the BML national specification's section f)
+    # lists the whole authorised roster (Wachau: 2 → 16). EU varieties keep
+    # their role; the rest join as the sidecar's role, tagged with the source.
+    n_aug_at = augment_at_records_with_produktspezifikation(extracted_records)
+    if n_aug_at:
+        print(
+            f"[load] AT BML-Produktspezifikation augmentation: {n_aug_at} records carry the "
+            f"national specification",
             file=sys.stderr,
         )
     # CZ national-spec augmentation — every Czech wine inherits the
@@ -1273,7 +1374,12 @@ def main() -> int:
     # Process parents first, DGCs second — lets DGCs reuse the parent
     # geometry that was just resolved (same logic for FR DGCs and ES
     # subzonas).
-    extracted_records.sort(key=lambda r: (bool(r.get("is_sub_denomination")), r["name"].lower()))
+    # Parents first, and among them the drinks records last: a drink can take
+    # the polygon of the wine appellation it shares its delimitation with
+    # (`ref:` units of drinks/areas.json), which must be resolved before it.
+    extracted_records.sort(key=lambda r: (
+        bool(r.get("is_sub_denomination")), r.get("pipeline") == "drinks", r["name"].lower(),
+    ))
 
     # Pre-load ES geometry indexes once. ~3 sec; reused across every
     # ES record's resolution.
@@ -1605,6 +1711,11 @@ def main() -> int:
     )
     mt_hits: Counter[str] = Counter()
     gb_polygons = GBPolygonIndex()
+    drinks_polygons = DrinksGeometry()
+    # French records whose area crosses the border: the foreign part
+    fr_cross_border = load_fr_cross_border()
+    drinks_hits: Counter[str] = Counter()
+    region_by_slug: dict[str, str] = {}
     print(
         f"[load] GB polygons: {gb_polygons.n_countries} ONS countries, "
         f"{gb_polygons.n_counties} ONS counties/UAs",
@@ -1711,11 +1822,37 @@ def main() -> int:
         _emit_nl_features = False
         _emit_mt_features = False
         _emit_gb_features = False
+        _emit_drinks_features = False
+        drinks_geom = None
 
+        # Drinks branch — a record of the drinks pipeline, whatever its
+        # country: a curator pin of the units its area text names, else the
+        # NUTS units of its technical file (scripts/_lib/drinks/geometry.py).
+        if record.get("pipeline") == "drinks":
+            sib_v_geom = sib_name = sib_slug = None
+            cadastre_match = None
+            drinks_geom = drinks_polygons.resolve(record, parent_geom_by_slug)
+            geom, geom_source = drinks_geom.geom, drinks_geom.source
+            stats = {"matched": len(drinks_geom.units), "unmatched": len(drinks_geom.unresolved)}
+            drinks_hits[geom_source] += 1
+            if geom is None:
+                print(
+                    f"[drinks-geom] {record['slug']}: not drawn"
+                    + (f" (unresolved: {'; '.join(drinks_geom.unresolved[:6])})"
+                       if drinks_geom.unresolved else " (no pin, no NUTS field)"),
+                    file=sys.stderr,
+                )
+            v_geom = geom
+            v_source = geom_source
+            v_stats = stats
+            if geom is not None and not geom.is_empty:
+                parent_geom_by_slug[record["slug"]] = geom
+                parent_village_geom_by_slug[record["slug"]] = geom
+            _emit_drinks_features = True
         # ES branch — Figshare PDO polygon → GISCO commune-union → parent
         # fallback. Stubs (`stub: True`) skip geometry; they appear in the
         # AOCS sidebar but not as polygons.
-        if country == "es":
+        elif country == "es":
             geom = None
             stats = {"matched": 0, "unmatched": 0}
             geom_source = "none"
@@ -2598,7 +2735,7 @@ def main() -> int:
                 or _emit_sk_features or _emit_cz_features
                 or _emit_ch_features or _emit_lu_features
                 or _emit_be_features or _emit_nl_features
-                or _emit_mt_features or _emit_gb_features):
+                or _emit_mt_features or _emit_gb_features or _emit_drinks_features):
             # Geometry already resolved above; skip the FR-specific chain.
             pass
         elif is_sub_denomination:
@@ -2611,6 +2748,8 @@ def main() -> int:
                 lieu_dit_index=lieu_dit_index,
                 parent_geom_by_slug=parent_geom_by_slug,
                 sibling_geom_by_id_app=sibling_geom_by_id_app,
+                former=former_communes,
+                insee_names=insee_name_idx,
             )
             geom = dgc_result.geom
             geom_source = dgc_result.source
@@ -2631,21 +2770,54 @@ def main() -> int:
                 cahier_hint = cahier_insee(record, commune_idx)
                 insee_codes = lookup_aire(aires_by_app, record["name"], cahier_hint)
                 if insee_codes:
-                    geom, stats = union_from_insee(insee_codes, insee_idx)
+                    geom, stats = union_from_insee(
+                        insee_codes, insee_idx, former_communes,
+                        narrowed_seats(record, set(insee_codes), insee_name_idx, former_communes),
+                    )
                     if geom is not None and not geom.is_empty:
                         geom_source = "aires-csv"
                         aires_hits += 1
                     else:
-                        geom, stats = union_for_appellation(record, commune_idx)
+                        geom, stats = union_for_appellation(record, commune_idx, insee_idx)
                         geom_source = "communes"
                         commune_hits += 1 if geom is not None and not geom.is_empty else 0
                 else:
-                    geom, stats = union_for_appellation(record, commune_idx)
+                    geom, stats = union_for_appellation(record, commune_idx, insee_idx)
                     geom_source = "communes"
                     commune_hits += 1 if geom is not None and not geom.is_empty else 0
         if geom_source in ("parcellaire", "parcellaire-dgc"):
             geom = _fill_parcel_gaps(record, geom, geom_source)
         coverage.append((record["name"], stats["matched"], stats["unmatched"]))
+        # a French record whose area crosses the border (the Maasvallei rule:
+        # one record, one polygon): the foreign units join the French communes
+        shared = fr_cross_border.get(record["slug"]) if (record.get("country") or "fr") == "fr" else None
+        fr_foreign_geom = None
+        if shared and shared.get("units") and geom is not None and not geom.is_empty:
+            foreign = drinks_polygons.resolve_units(shared["units"])
+            if foreign.geom is None:
+                print(f"[geo] cross-border {record['slug']}: units unresolved "
+                      f"{foreign.unresolved} — the foreign part is not drawn", file=sys.stderr)
+            else:
+                fr_foreign_geom = foreign.geom
+                geom = _fill_seam_holes(unary_union([geom, fr_foreign_geom]), fr_foreign_geom)
+                _DRINKS_GEOM_BY_SLUG[record["slug"]] = {
+                    "source": geom_source,
+                    "units": [{**u, "label": drinks_polygons.unit_label(u)} for u in foreign.units],
+                    **({"disclose": shared["disclose"]} if shared.get("disclose") else {}),
+                }
+                print(f"[geo] cross-border {record['slug']}: +{len(foreign.units)} unit(s) "
+                      f"({', '.join(shared['units'])})", file=sys.stderr)
+        # former communes of the aire with no outline anywhere: named on the card
+        if (stats.get("former_undrawn") and geom is not None
+                and geom_source in ("aires-csv", "aires-csv-dgc", "dgc-village-override")):
+            _GEOM_UNITS_DISCLOSURE_BY_SLUG.setdefault(record["slug"], {})[
+                "geom_units_former_undrawn"] = list(stats["former_undrawn"])
+        if stats.get("former_drawn"):
+            former_hits[geom_source] += stats["former_drawn"]
+        if stats.get("former_elsewhere"):
+            former_elsewhere[record["slug"]] = stats["former_elsewhere"]
+        if stats.get("seats_narrowed") and geom_source in ("aires-csv", "aires-csv-dgc"):
+            seats_narrowed[record["slug"]] = list(stats["seats_narrowed"])
 
         # Village geometry: always commune-level (skip parcellaire), so the
         # simplified default view matches the wine-wiki choice — wider
@@ -2662,7 +2834,7 @@ def main() -> int:
                 or _emit_sk_features or _emit_cz_features
                 or _emit_ch_features or _emit_lu_features
                 or _emit_be_features or _emit_nl_features
-                or _emit_mt_features or _emit_gb_features):
+                or _emit_mt_features or _emit_gb_features or _emit_drinks_features):
             pass
         elif is_sub_denomination:
             # Prefer DGC's own parcellaire polygon as the village geometry —
@@ -2719,13 +2891,16 @@ def main() -> int:
                 if narrowed and len(narrowed) < len(v_insee_codes):
                     v_insee_codes = narrowed
             if v_insee_codes:
-                v_geom, v_stats = union_from_insee(v_insee_codes, insee_idx)
+                v_geom, v_stats = union_from_insee(
+                    v_insee_codes, insee_idx, former_communes,
+                    narrowed_seats(record, set(v_insee_codes), insee_name_idx, former_communes),
+                )
                 v_source = "aires-csv"
                 if v_geom is None or v_geom.is_empty:
-                    v_geom, v_stats = union_for_appellation(record, commune_idx)
+                    v_geom, v_stats = union_for_appellation(record, commune_idx, insee_idx)
                     v_source = "communes"
             else:
-                v_geom, v_stats = union_for_appellation(record, commune_idx)
+                v_geom, v_stats = union_for_appellation(record, commune_idx, insee_idx)
                 v_source = "communes"
             # Guard: a cahier-text aire that dwarfs the parcellaire polygon is
             # an extraction artefact (an aire de proximité list read as the
@@ -2769,6 +2944,10 @@ def main() -> int:
         # they are the same object, so one clip covers both. A stale override
         # (no longer matches) is kept in the ledger and logged loudly below —
         # the geometry is left untouched, never silently altered.
+        # the foreign part of a cross-border French record joins the
+        # village-level geometry too (it was unioned into `geom` above)
+        if fr_foreign_geom is not None and v_geom is not None and not v_geom.is_empty:
+            v_geom = unary_union([v_geom, fr_foreign_geom])
         _pre_clip_geom = geom
         clip_res = geom_overrides.clip(record["slug"], geom, geom_source)
         geom = clip_res.geom
@@ -2848,20 +3027,45 @@ def main() -> int:
         principal, accessory, observation = _grape_role_lists(grapes)
         _GRAPE_DETAILS_BY_SLUG[record["slug"]] = list(grapes.get("details") or [])
         all_grapes = sorted(set(principal) | set(accessory) | set(observation))
-        styles = _canonical_styles(record.get("styles") or [])
-        # Augment with unambiguous special-style mentions in the prose
-        # (icewine / vin-santo / fondillón corpus-wide; ES category rancio) —
-        # the rendering-layer half of the style-alias pattern.
-        text_styles = _styles_from_source_text(record)
-        # Sparkling-method tags require the wine to be sparkling (drops the
-        # Armagnac "méthode traditionnelle" = distillation false positive etc.).
-        if not (set(styles) & _SPARKLING_BASE_STYLES):
-            text_styles -= _SPARKLING_METHOD_SLUGS
-        if text_styles:
-            styles = _canonical_styles(list(styles) + sorted(text_styles))
-        # Classification tiers (aging / Prädikat / selection) — a facet parallel
-        # to styles, detected from prose with per-term gating.
-        classifications = sorted(_aging_tiers_from_text(record))
+        # Wine, spirit drink, aromatised wine or cider (`_lib/product_class`):
+        # the record's own field, an FR record of before the field from its
+        # SIQO categorie, anything else a wine. `is_wine` is the flag the
+        # paint, the Spirits legend pill, the query core and the audits key
+        # on; the map hides a non-wine record until that pill is on.
+        pclass = _product_class(record)
+        dcat = _drink_category(record)
+        is_wine = "1" if pclass == "wine" else "0"
+        if pclass == "wine":
+            styles = _canonical_styles(record.get("styles") or [])
+            # Augment with unambiguous special-style mentions in the prose
+            # (icewine / vin-santo / fondillón corpus-wide; ES category rancio) —
+            # the rendering-layer half of the style-alias pattern.
+            text_styles = _styles_from_source_text(record)
+            # Sparkling-method tags require the wine to be sparkling (drops the
+            # Armagnac "méthode traditionnelle" = distillation false positive etc.).
+            if not (set(styles) & _SPARKLING_BASE_STYLES):
+                text_styles -= _SPARKLING_METHOD_SLUGS
+            if text_styles:
+                styles = _canonical_styles(list(styles) + sorted(text_styles))
+            # A curator's cited reading where the reader has no rule for the
+            # sentence yet (Porto's sweetness table, a mistelle's method) —
+            # _lib/style_overrides.py; a sub-denomination takes its parent's.
+            style_override_key, style_override_add = style_additions(
+                STYLE_OVERRIDES, record["slug"], record.get("parent_slug"), set(styles)
+            )
+            if style_override_add:
+                styles = _canonical_styles(list(styles) + style_override_add)
+            # Classification tiers (aging / Prädikat / selection) — a facet parallel
+            # to styles, detected from prose with per-term gating.
+            classifications = sorted(_aging_tiers_from_text(record))
+        else:
+            # A drink's one style is its category — the leaf of the `drinks`
+            # bucket — whatever a wine reader made of its text (a cider read
+            # "dry, sparkling, sweet"; the ageing scan would tag Brandy de
+            # Jerez "Reserva" and Armagnac "Hors d'âge" as wine tiers).
+            styles = [dcat] if dcat else []
+            classifications = []
+            style_override_key = ""
         categories = record.get("categories") or []
         categorie = record.get("categorie", "") or ""
         # Records extracted via the manual-override / mirror path carry an
@@ -2870,19 +3074,6 @@ def main() -> int:
         # back so the wine/non-wine split doesn't mis-flag them.
         if not categorie and categories:
             categorie = categories[0]
-        # Wine vs. non-wine split: every INAO `categorie` value beginning with
-        # "Vin" (Vin tranquille, Vin mousseux, Vin de liqueur, Vin doux
-        # naturel) is a wine. Spirits (Eaux-de-vie, Rhum, Calvados,
-        # Pommeau, etc.) and ciders fall outside that set. The map hides
-        # non-wine appellations by default — the "Include spirits" checkbox
-        # in the sidebar's scope row (`showSpirits` in app.js) shows them.
-        # ES + PT + IT + AT + SI records have no `categorie` — every entry
-        # is filtered to productType=WINE upstream in stage 00, so they're
-        # all wines.
-        if record.get("country") in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "cy", "sk", "cz", "ch", "lu", "be", "nl", "mt", "gb"):
-            is_wine = "1"
-        else:
-            is_wine = "1" if categorie.startswith("Vin") else "0"
         # Grape-colour style floor: many regulator specs enumerate varieties but
         # describe colour as prose ("colore giallo paglierino") instead of the
         # keyword, or are stubs whose grapes are merged only here — so the
@@ -2938,11 +3129,14 @@ def main() -> int:
         # the AOC/IGP label here for the map's filter and panel header.
         # EDV (eau-de-vie) is layout-only and is preserved as-is.
         raw_kind = record.get("kind", "AOC")
-        if raw_kind == "EDV":
+        sfr = (record.get("signe_fr") or "").strip().upper()
+        sue = (record.get("signe_ue") or "").strip().upper()
+        if raw_kind == "EDV" or sue == "IG" or (pclass == "spirit" and raw_kind in ("STUB", "")):
+            # A spirit drink, whatever layout its cahier printed: an IG-only
+            # spirit whose cahier parsed as "IGP" would sit behind the PGI
+            # pill and tier as a PGI in the overlap audit.
             mvt_kind = "EDV"
         else:
-            sfr = (record.get("signe_fr") or "").strip().upper()
-            sue = (record.get("signe_ue") or "").strip().upper()
             if sfr == "AOC" or sue == "AOP":
                 mvt_kind = "AOC"
             elif sue == "IGP":
@@ -2966,7 +3160,15 @@ def main() -> int:
         # text + curated overrides (see scripts/_lib/es/region.py). For ES
         # subzonas (DGCs), inherit the parent's CCAA — looked up from the
         # already-resolved parent geometry's slug.
-        if record.get("country") == "es":
+        if record.get("pipeline") == "drinks":
+            # A drink is filed under the region of the wine record it shares
+            # its area with, the administrative region its units lie in, or
+            # the country (scripts/_lib/drinks/region.py).
+            region_value = derive_drinks_region(
+                record, drinks_geom.units if drinks_geom else [],
+                drinks_geom.pin if drinks_geom else None, region_by_slug,
+            )
+        elif record.get("country") == "es":
             if is_sub_denomination:
                 # Subzonas inherit parent CCAA (already computed when parent
                 # was processed earlier in the loop, since records are
@@ -3171,6 +3373,18 @@ def main() -> int:
                     "fr_wine_region._SLUG_BUCKET",
                     file=sys.stderr,
                 )
+        region_by_slug[record["slug"]] = region_value
+        if drinks_geom is not None:
+            _DRINKS_GEOM_BY_SLUG[record["slug"]] = {
+                "source": geom_source,
+                "units": [
+                    {**u, "label": drinks_polygons.unit_label(u)} for u in drinks_geom.units
+                ],
+                **({"unresolved": drinks_geom.unresolved} if drinks_geom.unresolved else {}),
+                # what the pin's reading departs from the letter by, per locale
+                **({"disclose": drinks_geom.pin["disclose"]}
+                   if drinks_geom.pin and drinks_geom.pin.get("disclose") else {}),
+            }
         common_props = {
             "country": record.get("country") or "fr",
             "source_lang": record.get("source_lang") or "",
@@ -3191,6 +3405,9 @@ def main() -> int:
             "region": region_value,
             "categorie": categorie,
             "is_wine": is_wine,
+            # sparse: a wine feature carries neither
+            **({"product_class": pclass, "drink_category": dcat} if pclass != "wine" else {}),
+            **({"pipeline": "drinks"} if record.get("pipeline") == "drinks" else {}),
             "is_sub_denomination": "1" if is_sub_denomination else "0",
             "parent_slug": record.get("parent_slug") or "",
             "parent_name": record.get("parent_name") or "",
@@ -3203,6 +3420,7 @@ def main() -> int:
             "styles": _join_set(styles),
             **({"styles_inferred": _join_set(styles_inferred)} if styles_inferred else {}),
             **({"styles_floor_off": styles_floor_off} if styles_floor_off else {}),
+            **({"styles_override": style_override_key} if style_override_key else {}),
             "classifications": _join_set(classifications),
             "grapes_principal": _join_set(principal),
             "grapes_accessory": _join_set(accessory),
@@ -3427,6 +3645,31 @@ def main() -> int:
         f"skipped={dgc_hits['none']}",
         file=sys.stderr,
     )
+    if former_hits:
+        print(
+            "[geo] former communes drawn (merged since INAO's rows): "
+            + ", ".join(f"{k}={v}" for k, v in sorted(former_hits.items()))
+            + f"; {sum(1 for d in _GEOM_UNITS_DISCLOSURE_BY_SLUG.values() if d.get('geom_units_former_undrawn'))}"
+            " record(s) name some with no outline",
+            file=sys.stderr,
+        )
+    if former_elsewhere:
+        print(
+            "[geo] dead codes of communes that left their département before the cahiers, "
+            "not drawn: "
+            + ", ".join(f"{k} ({v})" for k, v in sorted(former_elsewhere.items())),
+            file=sys.stderr,
+        )
+    if seats_narrowed:
+        print(
+            f"[geo] seats of communes nouvelles drawn as the cahier names them, not whole: "
+            f"{sum(len(v) for v in seats_narrowed.values())} in {len(seats_narrowed)} record(s) — "
+            + "; ".join(f"{k} ({len(v)})" for k, v in sorted(seats_narrowed.items())),
+            file=sys.stderr,
+        )
+        for slug, rows in sorted(seats_narrowed.items()):
+            for row in rows:
+                print(f"[geo]   {slug}: {row}", file=sys.stderr)
 
     # Top 10 worst commune coverage as a quick QA hint.
     coverage.sort(key=lambda c: (-c[2], c[0]))
@@ -3531,6 +3774,8 @@ def _shell_state() -> dict[str, dict]:
     return {
         "_IT_MENZIONI_BY_SLUG": _IT_MENZIONI_BY_SLUG,
         "_FR_COMITE_BY_SLUG": _FR_COMITE_BY_SLUG,
+        "_DRINKS_GEOM_BY_SLUG": _DRINKS_GEOM_BY_SLUG,
+        "_FR_PRODUCT_NAMES": _FR_PRODUCT_NAMES,
         "_GRAPE_DETAILS_BY_SLUG": _GRAPE_DETAILS_BY_SLUG,
         # geom_chain's provenance of the ES parish / SIGPAC resolvers, read by
         # _sources_for() — the first shell-only run lost the Galician records'
@@ -3543,6 +3788,7 @@ def _shell_state() -> dict[str, dict]:
         "_REGISTER_FICHE_ROSTER_BY_SLUG": _REGISTER_FICHE_ROSTER_BY_SLUG,
         "_CZ_NATIONAL_SPEC_BY_SLUG": _CZ_NATIONAL_SPEC_BY_SLUG,
         "_DE_PRODUKTSPEZIFIKATION_BY_SLUG": _DE_PRODUKTSPEZIFIKATION_BY_SLUG,
+        "_AT_PRODUKTSPEZIFIKATION_BY_SLUG": _AT_PRODUKTSPEZIFIKATION_BY_SLUG,
         "_ES_NATIONAL_PLIEGO_BY_SLUG": _ES_NATIONAL_PLIEGO_BY_SLUG,
         "_GEOM_UNITS_DISCLOSURE_BY_SLUG": _GEOM_UNITS_DISCLOSURE_BY_SLUG,
         "_GR_NATIONAL_SPEC_BY_SLUG": _GR_NATIONAL_SPEC_BY_SLUG,
@@ -3615,6 +3861,7 @@ def _shell_only(args) -> int:
     missing = restore_state(snap["state"], _shell_state())
     for name in missing:
         print(f"[shell-only] warn: snapshot carries no {name} — emitting with it empty", file=sys.stderr)
+    register_product_names(_FR_PRODUCT_NAMES.get("spirit", ()), _FR_PRODUCT_NAMES.get("wine", ()))
     print(
         f"[shell-only] re-emitting from the snapshot of {snap['created_at']} "
         f"({len(snap['features'])} features, {snap['source_type']} sources)",
@@ -3643,6 +3890,44 @@ def _sources_for_base(record: dict) -> dict:
     eAmbrosia publication URL; PT records carry the IVV caderno PDF URL.
     The UI branches on `country` to render the right attribution wording."""
     src = record.get("source") or {}
+    if record.get("pipeline") == "drinks":
+        # A drink GI of the EU register: the technical file (the application
+        # language, and the Commission's English copy where the register
+        # serves one), or the OJ single document, or a pinned national
+        # specification — never an EUR-Lex key for an attachment-sourced
+        # record. The member state's own specification link, when the
+        # register gives one, rides the national-spec row.
+        national = src.get("national_spec") or {}
+        spec_link = (src.get("product_specification_link") or "").strip()
+        en = next((t for t in src.get("translations") or [] if t.get("lang") == "en"), {})
+        kind = src.get("kind") or ""
+        return {
+            "country": record.get("country") or "",
+            "source_lang": record.get("source_lang") or "",
+            "file_number": record.get("file_number") or "",
+            "id_eambrosia": record.get("id_eambrosia") or "",
+            "fetched_at": src.get("fetched_at") or "",
+            **({"technical_file_url": src.get("attachment_url") or "",
+                "technical_file_ref": src.get("ref") or "",
+                "pdf_sha256": src.get("sha256") or ""}
+               if kind == "eambrosia-register-technical-file" else {}),
+            **({"technical_file_en_url": en["attachment_url"]} if en.get("attachment_url") else {}),
+            **({"eur_lex_url": src.get("final_url") or src.get("source_url") or "",
+                "eu_oj_publication_url": src.get("source_url") or ""}
+               if kind == "eur-lex-single-document" else {}),
+            **({"national_spec_url": national.get("url") or spec_link,
+                "national_spec_source_org": _DRINKS_ORG_LABEL.get(
+                    national.get("source_org") or "", national.get("source_org") or "")}
+               if (national.get("url") or spec_link.startswith("http")) else {}),
+            # the national document is the record's only one (a UK product
+            # specification, a Swiss cahier des charges): the footer names it
+            **({"drinks_spec_doc": _DRINKS_SPEC_DOC.get(national.get("source_org") or "", "product specification")}
+               if kind == "national-specification" and national.get("url") else {}),
+            **({"national_link_url": (src.get("national_link") or {}).get("url")}
+               if (src.get("national_link") or {}).get("url") else {}),
+            **({"gov_uk_register_url": src.get("register_url") or ""}
+               if src.get("register") == "gov-uk" and src.get("register_url") else {}),
+        }
     if record.get("country") == "pt":
         return {
             "country": "pt",
@@ -3697,6 +3982,13 @@ def _sources_for_base(record: dict) -> dict:
     if record.get("country") == "at":
         # Austria: every wine carries an EUR-Lex Einziges-Dokument URL —
         # no national-pliego fallback layer (unlike ES / IT).
+        # The BML Produktspezifikation (stage 02f sidecar) — the national
+        # specification whose section f) lists the whole authorised roster
+        # where the EU document names the main varieties only; the card's
+        # Sources row carries the link and the count of varieties it added.
+        at_spec = record.get("produktspezifikation") or _AT_PRODUKTSPEZIFIKATION_BY_SLUG.get(
+            record.get("slug", ""), {}
+        )
         return {
             "country": "at",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
@@ -3705,6 +3997,11 @@ def _sources_for_base(record: dict) -> dict:
             "fetched_at": src.get("fetched_at") or "",
             "file_number": record.get("file_number") or "",
             "id_eambrosia": record.get("id_eambrosia") or "",
+            "bml_produktspezifikation_url": at_spec.get("url", ""),
+            "bml_produktspezifikation_sha256": at_spec.get("sha256", ""),
+            "bml_produktspezifikation_fetched_at": at_spec.get("fetched_at", ""),
+            "bml_produktspezifikation_added_slugs": list(at_spec.get("added_slugs") or []),
+            "bml_role_rule": at_spec.get("role_rule", ""),
         }
     if record.get("country") == "de":
         # Germany: 27 of 46 wines carry a fetchable EUR-Lex Einziges
@@ -4532,7 +4829,7 @@ def emit_html(
         # are globally unique across countries (see each stage 02's slug
         # derivation), so at most one path matches.
         country = p.get("country") or "fr"
-        ext_dir = {
+        ext_dir = EXTRACTED_DRINKS if p.get("pipeline") == "drinks" else {
             "es": EXTRACTED_ES,
             "pt": EXTRACTED_PT,
             "it": EXTRACTED_IT,
@@ -4594,6 +4891,7 @@ def emit_html(
                 (country == "it" and slug in _IT_MASAF_BY_SLUG)
                 or (country == "es" and slug in _ES_NATIONAL_PLIEGO_BY_SLUG)
                 or (country == "de" and slug in _DE_PRODUKTSPEZIFIKATION_BY_SLUG)
+                or (country == "at" and slug in _AT_PRODUKTSPEZIFIKATION_BY_SLUG)
                 or (country == "si" and slug in _SI_SPECIFIKACIJA_BY_SLUG)
                 or (country == "hr" and slug in _HR_SPECIFIKACIJA_BY_SLUG)
                 or (country == "gr" and slug in _GR_NATIONAL_SPEC_BY_SLUG)
@@ -4673,6 +4971,8 @@ def emit_html(
             if d.get("source") == "section-4-type" and d.get("slug") in set(principal)
         ]
         styles_inferred = [x for x in (p.get("styles_inferred") or "").split(";") if x]
+        # a style read from the production method says so on the card
+        styles_note = style_disclosure(STYLE_OVERRIDES, p.get("styles_override") or "")
         # the Wikipedia article behind a wiki-marked bullet joins the Sources
         if terroir_facts and terroir_facts.get("wiki_source_url") and any(
             f.get("provenance") == "wiki" or f.get("wiki_part")
@@ -4682,7 +4982,10 @@ def emit_html(
 
         aocs[slug] = {
             "country": p.get("country") or "fr",
-            "country_aliases": _CROSS_BORDER_COUNTRY_ALIASES.get(file_number, []),
+            "country_aliases": (
+                [c for c in (rec.get("country_aliases") or []) if c != (p.get("country") or "fr")]
+                or _CROSS_BORDER_COUNTRY_ALIASES.get(file_number, [])
+            ),
             "source_lang": p.get("source_lang") or "",
             "name": p["name"],
             "name_latin": name_latin,
@@ -4692,6 +4995,15 @@ def emit_html(
             "class_key": p.get("class_key") or "",
             "region": p["region"],
             "is_wine": p.get("is_wine", "1") == "1",
+            **({"product_class": p["product_class"], "drink_category": p.get("drink_category") or ""}
+               if p.get("product_class") else {}),
+            **({"pipeline": "drinks"} if p.get("pipeline") == "drinks" else {}),
+            # the Commission's own English translation of a technical file
+            # (panel payload): shown on the English card in place of a machine
+            # translation, and attributed as official
+            **({"official_en": {"summary": rec["translations"]["en"].get("summary", "")}}
+               if p.get("pipeline") == "drinks"
+               and ((rec.get("translations") or {}).get("en") or {}).get("summary") else {}),
             "is_sub_denomination": p.get("is_sub_denomination", "0") == "1",
             "parent_slug": p.get("parent_slug", "") or "",
             "parent_name": p.get("parent_name", "") or "",
@@ -4703,6 +5015,8 @@ def emit_html(
             # Closing radius of the low-zoom footprint (panel payload; the
             # card prints it). None for a record without a footprint.
             "geom_lod_radius_m": _LOD_RADIUS_BY_SLUG.get(slug),
+            # a drinks record: the units its polygon is the union of (sparse)
+            **({"geom_drinks": _DRINKS_GEOM_BY_SLUG[slug]} if slug in _DRINKS_GEOM_BY_SLUG else {}),
             # Only a record with a parcellaire gap fill carries the two keys.
             **(_PARCEL_FILL_BY_SLUG.get(slug) or {}),
             # GR / PT unit-resolver disclosure (panel payload, not the tile props):
@@ -4722,6 +5036,14 @@ def emit_html(
                 {"geom_units_partial": list(
                     _GEOM_UNITS_DISCLOSURE_BY_SLUG[slug]["geom_units_partial"])}
                 if _GEOM_UNITS_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_partial")
+                else {}
+            ),
+            # FR: former communes of the aire, merged since, that no public
+            # layer carries an outline for — sparse, like the partial units
+            **(
+                {"geom_units_former_undrawn": list(
+                    _GEOM_UNITS_DISCLOSURE_BY_SLUG[slug]["geom_units_former_undrawn"])}
+                if _GEOM_UNITS_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_former_undrawn")
                 else {}
             ),
             "geom_units_boundary": list(
@@ -4757,6 +5079,7 @@ def emit_html(
             **({"grape_roles_by_colour": roles_by_colour} if roles_by_colour else {}),
             **({"grapes_section4": section4_names} if section4_names else {}),
             **({"styles_inferred": styles_inferred} if styles_inferred else {}),
+            **({"styles_note": styles_note} if styles_note else {}),
             "dulok": dulok,
             "menzioni": _IT_MENZIONI_BY_SLUG.get(slug, []),
             "note": appellation_notes.get(slug),
@@ -5014,9 +5337,15 @@ def emit_html(
         # cahier, so no marker.
         aocs_for_lang = {}
         lang_labels = build_labels(load_translations(lang).gettext)
+        lang_country_labels = build_country_labels(load_translations(lang).gettext)
+        drinks_ref_names = {s: (r.get("name") or s) for s, r in aocs.items()}
         for slug, rec in aocs.items():
             rec_country = rec.get("country")
-            if rec_country in ("ch", "be"):
+            if rec.get("pipeline") == "drinks":
+                # a technical file is written in the language its `source_lang`
+                # records (three Dutch ones are in English)
+                src_lang = rec.get("source_lang") or "en"
+            elif rec_country in ("ch", "be"):
                 # CH + BE source-language is per-record (per canton for
                 # CH; per language community for BE — Flemish=nl,
                 # Walloon=fr).
@@ -5032,7 +5361,20 @@ def emit_html(
                 # LU's country code is "lu" but its source language is "fr" — fall through to the "fr" default.
                 src_lang = rec_country if rec_country in ("es", "pt", "it", "at", "de", "si", "hr", "hu", "ro", "bg", "gr", "cy", "sk", "cz") else "fr"
             t = translations.get(slug)
-            if not t:
+            official = rec.get("official_en") if (lang == "en" and src_lang != "en") else None
+            if official and official.get("summary") and rec.get("summary"):
+                # the Commission's English copy of the technical file
+                new_rec = {
+                    **rec,
+                    "summary": official["summary"],
+                    "summary_translation": {
+                        "translator": "European Commission",
+                        "official": True,
+                        "source_pdf_url": (rec.get("sources") or {}).get("technical_file_en_url", ""),
+                        "source_pdf_filename": "",
+                    },
+                }
+            elif not t:
                 new_rec = rec
             else:
                 new_rec = {**rec, "summary": t["summary"]}
@@ -5063,6 +5405,16 @@ def emit_html(
                     rec.get("national_term") or "", rec.get("eu_scheme") or "", lang_labels
                 ),
             }
+            if rec.get("styles_note"):
+                # the disclosure of a style read from the method, in this locale
+                by_locale = rec["styles_note"]
+                new_rec["styles_note"] = by_locale.get(lang) or by_locale.get("en") or ""
+            if rec.get("geom_drinks"):
+                # a drink's drawn units, named in this locale
+                new_rec["geom_drinks"] = localise_drinks_geom(
+                    rec["geom_drinks"], lang, lang_country_labels, drinks_ref_names,
+                    lang_labels["geom_drinks_ref"],
+                )
             aocs_for_lang[slug] = new_rec
         # Overlay translated terroir-fact bullets only for records whose
         # source language differs from the current locale (canonical bullets
@@ -5075,6 +5427,8 @@ def emit_html(
             def _src_lang_for(slug: str) -> str:
                 rec = aocs.get(slug, {}) or {}
                 c = rec.get("country")
+                if rec.get("pipeline") == "drinks":
+                    return rec.get("source_lang") or "en"
                 if c in ("ch", "be"):
                     return rec.get("source_lang") or "fr"
                 if c == "nl":

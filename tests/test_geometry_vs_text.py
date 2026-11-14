@@ -97,3 +97,14 @@ def test_fr_token_cuts_a_partial_commune_qualifier():
     assert agt.fr_token("Mercurol-Veaunes pour le seul territoire de la commune déléguée de Mercurol") == ("Mercurol-Veaunes", True)
     assert agt.fr_token("Kaysersberg Vignoble pour le territoire des communes déléguées de Kientzheim et de Sigolsheim") == ("Kaysersberg Vignoble", True)
     assert agt.fr_token("Tain-l’Hermitage") == ("Tain-l’Hermitage", False)
+
+
+def test_a_curated_drink_area_is_pinned_unless_a_named_unit_is_missing():
+    extra_only = {"missing": [], "extra": ["a", "b", "c"]}
+    assert agt.curated_area_bucket("SUSPECT", "drinks-area-pin", extra_only) == "PINNED"
+    assert agt.curated_area_bucket("SUSPECT", "gisco-nuts-union", extra_only) == "PINNED"
+    # a name the parser read that the polygon lacks is still a finding
+    assert agt.curated_area_bucket("SUSPECT", "drinks-area-pin", {"missing": ["x"], "extra": []}) == "SUSPECT"
+    # every other source keeps its verdict, and so does a verdict that is not SUSPECT
+    assert agt.curated_area_bucket("SUSPECT", "aires-csv", extra_only) == "SUSPECT"
+    assert agt.curated_area_bucket("OK", "drinks-area-pin", extra_only) == "OK"

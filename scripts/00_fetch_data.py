@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -32,6 +33,11 @@ from _lib.aires import lookup as lookup_aire
 
 DATAGOUV_API = "https://www.data.gouv.fr/api/1/datasets/{slug}/"
 GEO_API = "https://geo.api.gouv.fr/communes"
+GEO_API_FORMER = "https://geo.api.gouv.fr/communes_associees_deleguees"
+# INSEE, "Code officiel géographique au 1er janvier 2026"
+# (https://www.insee.fr/fr/information/8740222): every change of commune since
+# 1943 — mergers, communes nouvelles, code changes. Licence Ouverte 2.0.
+COG_MOVEMENTS_URL = "https://www.insee.fr/fr/statistiques/fichier/8740222/v_mvt_commune_2026.csv"
 CADASTRE_LIEUX_DITS_URL = (
     "https://cadastre.data.gouv.fr/data/etalab-cadastre/latest/"
     "geojson/communes/{dept}/{insee}/cadastre-{insee}-lieux_dits.json.gz"
@@ -139,6 +145,54 @@ def fetch_communes(dest: Path) -> dict:
         "features": len(features),
         "sha256": sha256(dest),
         "path": str(dest.relative_to(ROOT)),
+    }
+
+
+def fetch_former_communes(dest: Path) -> dict:
+    """One GeoJSON of the communes associées and déléguées: the former communes
+    a merger kept as a unit inside the commune that absorbed them, each with
+    the INSEE code it had and its own outline (geo.api.gouv.fr, IGN
+    AdminExpress under the hood, Licence Ouverte 2.0).
+
+    INAO's aires CSV keeps the commune codes of the day each row was written;
+    a commune merged since is no longer in the commune layer, and without
+    this one it is not drawn (a quarter of the Calvados aire). Properties:
+    {code, nom, chefLieu (the commune that holds it today), type,
+    codeDepartement}.
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    features: list[dict] = []
+    for dept in tqdm(ALL_DEPTS, desc="former communes by dept", leave=False):
+        params = {
+            "codeDepartement": dept,
+            "fields": "code,nom,chefLieu,type,codeDepartement",
+            "format": "geojson",
+            "geometry": "contour",
+        }
+        for attempt in range(4):
+            try:
+                r = requests.get(GEO_API_FORMER, params=params, timeout=60)
+                r.raise_for_status()
+                break
+            except requests.RequestException:
+                if attempt == 3:
+                    raise
+                time.sleep(2 * (attempt + 1))
+        features.extend(f for f in r.json().get("features", []) if f.get("geometry"))
+
+    merged = {"type": "FeatureCollection", "features": features}
+    tmp = dest.with_suffix(dest.suffix + ".part")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(merged, f)
+    tmp.rename(dest)
+
+    return {
+        "source": GEO_API_FORMER,
+        "departments": len(ALL_DEPTS),
+        "features": len(features),
+        "sha256": sha256(dest),
+        "path": str(dest.relative_to(ROOT)),
+        "fetched_at": time.strftime("%Y-%m-%d"),
     }
 
 
@@ -261,6 +315,28 @@ def main() -> int:
     else:
         print(f"[fetch] geo.api.gouv.fr communes → {communes_dest.relative_to(ROOT)}", file=sys.stderr)
         manifest["ign-communes"] = fetch_communes(communes_dest)
+
+    movements_dest = RAW / "insee" / "v_mvt_commune.csv"
+    if movements_dest.exists() and manifest.get("insee-commune-movements", {}).get("url") == COG_MOVEMENTS_URL:
+        print(f"[cache] {movements_dest.relative_to(ROOT)}", file=sys.stderr)
+    else:
+        print(f"[fetch] INSEE commune movements → {movements_dest.relative_to(ROOT)}", file=sys.stderr)
+        movements_dest.parent.mkdir(parents=True, exist_ok=True)
+        download(COG_MOVEMENTS_URL, movements_dest)
+        manifest["insee-commune-movements"] = {
+            "url": COG_MOVEMENTS_URL,
+            "sha256": sha256(movements_dest),
+            "path": str(movements_dest.relative_to(ROOT)),
+            "fetched_at": time.strftime("%Y-%m-%d"),
+        }
+
+    former_dest = RAW / "ign" / "communes-associees-deleguees.geojson"
+    if former_dest.exists() and "ign-former-communes" in manifest:
+        print(f"[cache] {former_dest.relative_to(ROOT)}", file=sys.stderr)
+    else:
+        print(f"[fetch] geo.api.gouv.fr former communes → {former_dest.relative_to(ROOT)}",
+              file=sys.stderr)
+        manifest["ign-former-communes"] = fetch_former_communes(former_dest)
 
     cadastre_dest = RAW / "cadastre" / "lieux-dits"
     cadastre_insee = collect_cadastre_communes()

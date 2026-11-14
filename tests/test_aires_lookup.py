@@ -64,3 +64,48 @@ def test_record_inside_a_longer_csv_name_binds_only_as_an_alias_part():
     finally:
         mod._CSV_ALIAS_KEYS.clear()
         mod._CSV_ALIAS_KEYS.update(saved)
+
+
+def test_a_spirit_named_after_a_wine_region_does_not_take_the_wines_aire():
+    """Marc de Champagne and Ratafia champenois have no CSV row; the
+    contained-name step used to hand them the wine Champagne's 635 communes.
+    A contained CSV name that is no wine's stays a bind — the CSV cuts its
+    labels at 70 characters, so a long rum name finds its own truncated row,
+    and Marc d'Alsace Gewurztraminer finds "Marc d'Alsace"."""
+    import _lib.aires as mod
+
+    aires = {
+        "champagne": {"1": {"51001"}},
+        "marcdalsace": {"2": {"67001"}},
+        "languedoc": {"3": {"34001"}},
+        "eaudeviedevinoriginairedulanguedocoufinedulanguedocou": {"4": {"34002"}},
+    }
+    saved = (set(mod._SPIRIT_KEYS), set(mod._WINE_KEYS))
+    try:
+        # the guard alone: the cited references (aire_references.json, which
+        # bind the Champagne spirits to the Champagne aire on purpose) are off
+        mod._AIRE_REFERENCES = {}
+        mod.register_product_names(
+            ["Marc de Champagne ou Marc champenois ou Eau-de-vie de marc champenois",
+             "Ratafia de Champagne ou Ratafia champenois",
+             "Marc d'Alsace Gewurztraminer",
+             "Eau-de-vie de vin originaire du Languedoc ou Fine du Languedoc ou "
+             "Eau-de-vie de vin du Languedoc"],
+            ["Champagne", "Languedoc", "Alsace ou Vin d'Alsace"],
+        )
+        assert lookup(aires, "Marc de Champagne ou Marc champenois ou "
+                             "Eau-de-vie de marc champenois") is None
+        assert lookup(aires, "Ratafia de Champagne ou Ratafia champenois") is None
+        assert lookup(aires, "Marc d'Alsace Gewurztraminer") == {"67001"}
+        # with the wine "Languedoc" out of the running, its own cut row is the
+        # one candidate left
+        assert lookup(aires, "Eau-de-vie de vin originaire du Languedoc ou Fine du "
+                             "Languedoc ou Eau-de-vie de vin du Languedoc") == {"34002"}
+        # a wine keeps the contained-name step
+        assert lookup(aires, "Champagne grand cru") == {"51001"}
+    finally:
+        mod._AIRE_REFERENCES = None
+        mod._SPIRIT_KEYS.clear()
+        mod._SPIRIT_KEYS.update(saved[0])
+        mod._WINE_KEYS.clear()
+        mod._WINE_KEYS.update(saved[1])

@@ -299,8 +299,13 @@ def render_page(record: dict) -> str:
     parent_name = record.get("parent_name") or ""
 
     is_igp = record.get("kind") == "IGP"
+    # The sign the referentiel gives: AOC (wines and the spirits INAO signs
+    # AOC), IGP, or IG — the EU sign of a spirit drink without the national
+    # AOC (Fine Bordeaux), which is neither an AOC nor an AOP.
+    sue = (record.get("signe_ue", "") or "").strip()
     sec_type = ("AOC" if "AOC" in record.get("signe_fr", "") else None) or (
-        "IGP" if "IGP" in (record.get("signe_ue", "") + record.get("signe_fr", "")) else "AOC/AOP"
+        "IGP" if "IGP" in (sue + record.get("signe_fr", ""))
+        else "IG" if sue == "IG" else "AOC/AOP"
     )
 
     if is_igp:

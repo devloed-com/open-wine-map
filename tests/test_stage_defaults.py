@@ -29,7 +29,7 @@ def test_stage_defaults_are_the_decided_configuration():
 
 def test_every_02d_script_asks_for_the_02d_stage_default():
     paths = [ROOT / "scripts" / "02d_extract_terroir_facts.py"] + sorted(ROOT.glob("scripts/*/02d_extract_terroir_facts.py"))
-    assert len(paths) == 21
+    assert len(paths) == 22
     for p in paths:
         src = p.read_text(encoding="utf-8")
         assert 'batch.default_model(args.provider, stage="02d")' in src, p
@@ -49,7 +49,7 @@ def test_every_02e_script_resolves_its_model_through_the_02e_stage():
     # change to STAGE_DEFAULTS["02e"] changes nothing (2026-09-15).
     scripts = [ROOT / "scripts" / "02e_translate_terroir_facts.py"] + sorted(
         (ROOT / "scripts").glob("*/02e_translate_terroir_facts.py"))
-    assert len(scripts) == 21
+    assert len(scripts) == 22
     for p in scripts:
         src = p.read_text(encoding="utf-8")
         assert src.count('stage="02e"') == 2, p

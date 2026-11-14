@@ -341,3 +341,48 @@ A flag, not two pipelines: one resolver per country with the chain
 ordered top-down, and a `--geom-tier=simple` cut-over that short-circuits
 to the figshare branch. Worth considering when the next country lands
 or when one of the advanced sources gets retired / changes licence.
+
+## France — former communes (2026-11-13)
+
+INAO's aires-communes rows keep pre-merger commune codes; two public tables
+turn them back into ground (`scripts/_lib/fr/former_communes.py`, CLAUDE.md
+"Former French communes"):
+
+| Layer | Source | Licence | Fetched by | Used for |
+|---|---|---|---|---|
+| Communes associées and déléguées — 2,576 former communes with their old INSEE code, the commune that holds them (`chefLieu`) and their own outline | `https://geo.api.gouv.fr/communes_associees_deleguees?codeDepartement=<DD>&fields=code,nom,chefLieu,type,codeDepartement&format=geojson&geometry=contour` (IGN AdminExpress under the hood), per département | Licence Ouverte 2.0 (Etalab) — IGN / INSEE | `scripts/00_fetch_data.py` → `raw/ign/communes-associees-deleguees.geojson`, sha in `raw/manifest.json` (`ign-former-communes`) | the exact outline of a merged commune a row still lists (1,992 codes the commune layer lacks, 1,999 with the codes a change of département replaced); the name of a former commune a cahier still names |
+| Commune movements since 1943 — mergers, communes nouvelles, code changes | INSEE, "Code officiel géographique au 1er janvier 2026", `https://www.insee.fr/fr/statistiques/fichier/8740222/v_mvt_commune_2026.csv` (page https://www.insee.fr/fr/information/8740222) | Licence Ouverte 2.0 — INSEE | `scripts/00_fetch_data.py` → `raw/insee/v_mvt_commune.csv` (`insee-commune-movements`) | the commune of today each former code ended in: whether a former commune without an outline lies inside a commune the aire already draws; the day a code's ground left its département |
+
+A former commune fused without trace into a commune the aire does not list
+has no outline in either table and is not drawn; the card names it. A code
+whose ground left its département before any cahier in force was written
+(the 24 communes Isère lost to the Rhône in 1967, six of the Ain, Frettes)
+is in INAO's table and not in the aire the cahier delimits by département:
+neither drawn nor named. The four codes of communes that ceased before 1943
+are pinned in `scripts/_lib/fr/former_commune_pins.json` (source: the French
+Wikipedia article of the commune that took them, CC BY-SA 4.0 — the fact
+read is the merger and the INSEE code, no text is reused).
+Update the INSEE URL each January (the page id changes with the edition).
+
+The same layer serves the mirror case since 2026-11-14: it carries the seat
+of a commune nouvelle as a commune déléguée under the commune's own code (584
+outlines). Where the cahier names the seat by its former name, restricts the
+commune of today "pour le seul territoire de la commune déléguée de …", or
+names a commune that kept its name in a list dated before the merger, that
+outline is drawn in place of the commune of today
+(`scripts/_lib/fr/seat_communes.py`; the legal basis — a merger never moves
+an aire — is quoted in CLAUDE.md, "Former French communes"). INSEE's table
+gives the merger dates.
+
+## Spirit drinks, aromatised wines and ciders (2026-11-12)
+
+A drink GI is delimited by administrative units far more often than a wine: "the whole national territory", a region, a province, a handful of municipalities, or the area of the wine appellation it is distilled from. Its polygon is therefore a union of units of layers the corpus already holds — no new zone layer ([scripts/_lib/drinks/geometry.py](scripts/_lib/drinks/geometry.py)):
+
+| layer | used for | licence |
+|---|---|---|
+| GISCO NUTS 2024, levels 2 and 3 (`raw/nl/nuts`, `raw/gr/nuts`; level 1 and countries are unions by code prefix) | the technical file's own NUTS rows (`gisco-nuts-union`) and `nuts:` / `country:` pin units | © EuroGeographics / Eurostat GISCO, reuse with attribution |
+| GISCO LAU 2024 (`raw/es/gisco/LAU_RG_01M_2024_3035.shp.zip`) | `lau:` and `lauid:` pin units — municipalities by name, Greek δήμοι and Portuguese municípios by id prefix; Switzerland's communes are in the layer | same |
+| ONS Open Geography, Countries and Counties & Unitary Authorities, December 2025, BGC (`raw/drinks/ons/`, the units the UK pins name) | the UK's drinks — GISCO's 2024 layers no longer carry the United Kingdom | Open Government Licence v3.0 |
+| the wine record's own polygon (`ref:` units) | a drink whose text cites a wine appellation's delimitation (Douro, Vinho Verde, Alentejo, Bairrada, DoTejo, Murfatlar, Segarcea) | that record's source |
+
+Not available, and why eight records are not drawn: no layer of Samtgemeinden (DE), járás (HU) or okresy (SK); a boundary traced in prose (Dolenjski sadjevec); a 60 km radius (Steinfelder Magenbitter); the Dyfi biosphere reserve (Dovey gin). The queue with the source that would close each is in [CURATOR_TODO.md](CURATOR_TODO.md).

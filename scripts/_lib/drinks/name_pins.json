@@ -1,0 +1,7 @@
+{
+  "_README": "A GI registered under several language forms takes the first as its record name (scripts/_lib/drinks/index.py). Where the first form is not in the owner country's language, the form that is — one of the registered aliases, never a translation — is pinned here by file number, with the reason. The other aliases stay search keys.",
+  "PGI-NL+BE+DE-01994": {
+    "name": "Vruchtenjenever",
+    "reason": "Registered as 'Genièvre aux fruits / Vruchtenjenever / Jenever met vruchten / Fruchtgenever'; the record is the Netherlands' (first country of the file number), whose form is the Dutch one."
+  }
+}

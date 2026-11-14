@@ -1,0 +1,101 @@
+# Redacted excerpt — BML Produktspezifikation Wachau (Austria), raw/at/produktspezifikationen/wachau.pdf
+# via `pdftotext -layout`. Public, licence-clear: amtliches Werk (§ 7 UrhG), bmluk.gv.at Weinherkunft page.
+# Trimmed to e) yield, f) the Hauptsorten sentence + the Gebietswein / Ortswein / Riedenwein lists
+# (the Ortswein list is cut by a page break), g) the terroir title + first paragraph, the h) title.
+e)   Höchstertrag je Hektar:
+     Die Hektarhöchstmenge beträgt ab dem Erntejahr 2020 10.000 kg Weintrauben oder
+     7.500 l Wein je ha.
+
+f)   Angabe der Keltertraubensorte oder -sorten, aus denen die Weine gewonnen wer-
+     den:
+     Die Hauptsorten der Wachau sind Grüner Veltliner und Riesling. Je nach Herkunfts-
+     bezeichnung der Weine gelten die folgenden Regelungen:
+
+     Wein mit der Verkehrsbezeichnung „Wachau“ ohne Angabe einer Gemeinde oder
+     Ried (Gebietswein) muss aus einer oder einem Verschnitt der nachfolgenden Reb-
+     sorten gewonnen werden: „Grüner Veltliner“, „Riesling“, „Weißer Burgunder“,
+     „Grauer Burgunder“, „Chardonnay“, „Neuburger“, „Muskateller“, „Sauvignon blanc“,
+     „Traminer“, „Frühroter Veltliner“, „Müller-Thurgau“, „Muskat Ottonel“, „Roter Velt-
+     liner“, „Gemischter Satz“, „Blauer Burgunder“, „St. Laurent“ und „Zweigelt“. Ein
+     darüberhinausgehender bezeichnungsunschädlicher Verschnitt mit anderen Quali-
+     tätsweinrebsorten (max. 15 %) ist zu tolerieren.
+
+     Wein mit der Verkehrsbezeichnung „Wachau“ und der Angabe einer Gemeinde
+     („Ortswein“) muss aus den Qualitätsweinrebsorten „Grüner Veltliner“, „Riesling“,
+
+     „Weißer Burgunder“, „Grauer Burgunder“, „Chardonnay“, „Neuburger“, „Muskatel-
+     ler“, „Sauvignon blanc“ oder „Traminer“ bereitet worden sein. Ein darüber hinaus ge-
+     hender bezeichnungsunschädlicher Verschnitt mit anderen Qualitätsweinrebsorten
+     (max. 15 %) ist zu tolerieren.
+
+     Wein mit der Verkehrsbezeichnung „Wachau“ und der Angabe einer Ried („Rieden-
+     wein“) muss aus den Qualitätsweinrebsorten „Grüner Veltliner“ oder „Riesling“ be-
+     reitet worden sein.
+
+
+
+g)   Angaben über Güte und Eigenschaften, welche die eine überwiegend oder aus-
+     schließlich den geografischen Verhältnissen einschließlich der natürlichen und
+     menschlichen Verhältnisse verdanken:
+
+     -   Angaben zum geografischen Gebiet:
+
+     In Jahrmillionen hat sich die Donau ihren windungsreichen Weg durch den Gföhler
+     Gneis gegraben, dabei entstanden Urgesteinsverwitterungsböden. In der Nacheiszeit
+     setzte sich im Windschatten der Berge Flugsand ab, sodass sich an den Ostseiten der
+     Urgesteinshänge vielfach Lössauflagen bildeten. Diese geologischen Geländeverhält-
+     nisse stehen in Verbindung mit den bereits im Mittelalter angelegten Steinterrassen
+     zur besseren Bewirtschaftung der Steillagen an der Donau und prägen darüber hin-
+     aus markante Bild der Wachauer Landschaft.
+
+     Spannungsreich ist auch das Klima, denn hier treffen zwei starke Einflüsse aufeinan-
+     der – nicht frontal, sondern eng verzahnt: Das westlich-atlantische und das östlich-
+     pannonische Klima. Je nach Hanglage, Exposition, Geländeformation sowie durch
+     wärmespeichernde Mauern und Felsen der Terrassen werden Kleinstklimazonen
+     wirksam. Die heißen, trockenen Sommer und die strengen Winter werden durch die
+     große Wasserfläche der Donau ausgeglichen. Die kühlen Fallwinde aus dem nördli-
+     chen Waldviertel sorgen speziell in den Monaten vor der Ernte für große Schwan-
+     kungen zwischen Tag- und Nachttemperatur.
+
+     Die Produktionsstruktur in der Wachau ist geprägt von familienbetrieblich organi-
+     sierten Winzern, die zum überwiegenden Teil Trauben aus eigener Produktion verar-
+     beiten und vielfach auch in der Direktvermarktung ab Hof verkaufen. Es besteht ein
+     starker Zusammenhang zwischen dem ausgeprägten Tourismus in der Wachau und
+     der Weinwirtschaft. Einige wenige große Betriebe (Kellereien und Winzergenossen-
+     schaften) ergänzen die familienbetriebliche Struktur.
+
+     Die Weinstöcke werden praktisch ausschließlich in Hochkultur am Drahtrahmen ge-
+     zogen; auf den Terrassen ist vielfach eine Bewässerungsanlage errichtet.
+
+
+
+
+     -   Angaben zu Qualität und Eigenschaften des Erzeugnisses:
+
+     In der Wachau werden vorwiegend Weißweine (ca. 85 % der Weinbaufläche) er-
+     zeugt, die Hauptsorten sind Grüner Veltliner und Riesling. Die vorherrschende Orga-
+     noleptik der Weine kann als fruchtig, trocken, aromatisch und kraftvoll charakteri-
+     siert werden. Bei Rotwein dominiert die Sorte Zweigelt, ebenfalls in trockener und
+     fruchtiger Ausprägung. Bei Ortswein und Riedenwein, darf der Wein keinen oder ei-
+     nen nur kaum merkbaren Holzton aufweisen.
+
+     -   Beschreibung es kausalen Zusammenhangs:
+
+     Die in der Wachau vorherrschenden Urgesteinsverwitterungsböden der Terrassenla-
+     gen sind sehr gut geeignet für die Produktion von Riesling; die Lössböden bilden die
+     Grundlage für die Produktion von kräftigen und gehaltvollen Grüne Veltliner Weinen.
+     Die vielfach ausgeprägten Kleinklimate, die wärmespeichernden Mauern und Felsen
+     sowie die heißen, trockenen Sommer und die strengen Winter sorgen für eine aus-
+     geprägte Sortenaromatik der Wachauer Weine. Verstärkt wird diese Sortenaromatik
+     noch durch speziell in den Monaten vor der Ernte auftretende große Schwankungen
+     zwischen Tag- und Nachttemperatur.
+
+     Durch die überwiegend familienbetriebliche Winzerstruktur erfolgt überdies eine ge-
+     nerationenübergreifende Weitergabe des traditionellen Stils der Weinbereitung,
+     was zusätzlich zum ausgeprägten Charakter der Wachauer Weine beiträgt.
+
+h)   Geltende Anforderungen gemäß gemeinschaftlicher oder nationaler Rechtsvor-
+     schriften, oder – sofern von den Mitgliedstaaten vorgesehen – von Organisatio-
+     nen, die geschützte Ursprungsbezeichnungen oder geografische Angaben verwal-
+     ten, wobei darauf zu achten ist, dass diese Anforderungen objektiv und nichtdiskri-
+     minierend sowie mit dem Gemeinschaftsrecht vereinbar sind:

@@ -76,5 +76,10 @@ def test_stage04_is_wired_to_the_snapshot() -> None:
     # The shared augmenter caches the emitter reads are all in the state map.
     for name in ("_ES_NATIONAL_PLIEGO_BY_SLUG", "_GEOM_UNITS_DISCLOSURE_BY_SLUG", "_LOD_RADIUS_BY_SLUG",
                  "_PARCEL_FILL_BY_SLUG", "_PT_AREA_ACT_BY_SLUG", "_IT_MASAF_BY_SLUG", "_GRAPE_DETAILS_BY_SLUG",
-                 "_IT_MENZIONI_BY_SLUG", "_FR_COMITE_BY_SLUG", "_ES_PARROQUIAS_BY_SLUG", "_ES_SIGPAC_BY_SLUG"):
+                 "_IT_MENZIONI_BY_SLUG", "_FR_COMITE_BY_SLUG", "_ES_PARROQUIAS_BY_SLUG", "_ES_SIGPAC_BY_SLUG",
+                 "_DRINKS_GEOM_BY_SLUG", "_FR_PRODUCT_NAMES"):
         assert f'"{name}": {name},' in STAGE04, name
+    # The emitter looks aires up (the region aliases), and the lookup's spirit
+    # guard is module state of _lib/aires.py: both paths register the same names.
+    assert 'register_product_names(_FR_PRODUCT_NAMES["spirit"], _FR_PRODUCT_NAMES["wine"])' in STAGE04
+    assert 'register_product_names(_FR_PRODUCT_NAMES.get("spirit", ()), _FR_PRODUCT_NAMES.get("wine", ()))' in STAGE04

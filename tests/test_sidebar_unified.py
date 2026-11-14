@@ -88,7 +88,11 @@ def test_tree_rows_keep_button_and_label_as_siblings() -> None:
 
 
 def test_facet_bucket_order_is_the_chip_order() -> None:
-    assert FACET_BUCKET_ORDER == ("white", "rose", "red", "sparkling", "sweet", "oxidative", "other")
+    # the wine buckets in legend order, then the class of the spirit drinks,
+    # aromatised wines and ciders (a drink's one style is its category)
+    assert FACET_BUCKET_ORDER == (
+        "white", "rose", "red", "sparkling", "sweet", "fortified", "oxidative", "other", "drinks",
+    )
     assert set(FACET_BUCKET_ORDER) == set(BUCKETS)
     order = taxonomy_dfs_order(roots=FACET_BUCKET_ORDER)
     assert [slug for slug, _, depth in order if depth == 0] == list(FACET_BUCKET_ORDER)
@@ -145,10 +149,12 @@ def test_only_the_appellation_tree_starts_open() -> None:
 def test_legend_pills_are_the_scope_control_with_scheme_hints() -> None:
     # The review's mockups: one pill per scheme on the map, each a checkbox
     # and an ⓘ that opens the scheme definition the card's pills already carry
-    # (TERMS_INFO keys pdo / pgi / spirit-gi), by hover, focus or a tap.
+    # (TERMS_INFO keys pdo / pgi), by hover, focus or a tap. The third pill is
+    # the class of the spirit drinks, aromatised wines and ciders — no single
+    # scheme — so its ⓘ opens the class definition (TERMS_INFO key drinks).
     assert "pill('aoc', 'show-pdo', LABELS.scheme_pdo, LABELS.show_pdo_label, 'pdo', LABELS.scope_hint_pdo)" in APP_JS
     assert "pill('igp', 'show-igp', LABELS.scheme_pgi, LABELS.show_igp_label, 'pgi', LABELS.scope_hint_pgi)" in APP_JS
-    assert "pill('spirit', 'show-spirits', LABELS.legend_spirits_label, LABELS.show_spirits_label, 'spirit-gi', LABELS.scope_hint_spirits)" in APP_JS
+    assert "pill('spirit', 'show-spirits', LABELS.legend_spirits_label, LABELS.show_spirits_label, 'drinks', LABELS.scope_hint_spirits)" in APP_JS
     assert 'class="scope-hint gi-scheme has-info" data-key="${hintKey}"' in APP_JS
     assert "const scopeRow = legendControl._el || null;" in APP_JS
     assert "scopeRow.addEventListener('click'" in APP_JS
@@ -162,6 +168,11 @@ def test_legend_pills_are_the_scope_control_with_scheme_hints() -> None:
     # gate all know the third scheme.
     assert "if (!showPdo) parts.push(['any', ['==', ['get', 'is_wine'], '0'], ['==', ['get', 'kind'], 'IGP']]);" in APP_JS
     assert APP_JS.count("if (!showPdo && isPdoRec(rec)) return false;") == 2
+    # The three pills partition the records: the PGI pill is a wine pill, so a
+    # cider or aromatised-wine PGI sits behind the drinks pill alone.
+    assert "const isIgpRec = rec => rec.is_wine !== false && (rec.kind || 'AOC') === 'IGP';" in APP_JS
+    assert "if (!showIgp) parts.push(['any', ['==', ['get', 'is_wine'], '0'], ['!=', ['get', 'kind'], 'IGP']]);" in APP_JS
+    assert APP_JS.count("&& isIgpRec(rec)) return false;") == 2
     assert "if (gates.includes('pdo')) showPdo = true;" in APP_JS
 
 
@@ -232,6 +243,9 @@ def test_start_view_fits_the_corpus_and_nothing_is_restored() -> None:
     assert "center: [2.6, 46.5], zoom: 5.4" not in APP_JS
     # The Atlantic islands are left out of the fit, not off the map.
     assert "if (!b || b[2] < -12) continue;" in APP_JS
+    # Nor do the drinks widen it: they are off by default, and the overseas
+    # rums would stretch the frame from Guadeloupe to La Réunion.
+    assert "if (AOCS[slug].is_wine === false) continue;" in APP_JS
     # The last open card is no longer reopened; the stored key is removed once.
     assert APP_JS.count("'selected_slugs'") == 1
     assert "localStorage.removeItem('selected_slugs')" in APP_JS
