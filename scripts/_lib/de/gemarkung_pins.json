@@ -1,0 +1,12 @@
+{
+  "__doc__": "A Gemarkung number a delimitation prints that the Baden-Württemberg land register (LGL, ALKIS layer nora:v_al_gemarkung) does not carry, bound to the Gemarkung the printed name means. Keyed by GI file number, then by the printed number. A pin whose printed number the layer carries, or whose target it lacks, is STALE: nothing is drawn for it, stage 04 says so and tests/test_de_gemarkung.py fails. The card names every pin applied.",
+  "PDO-DE-A1276": {
+    "761": {
+      "number": 768,
+      "printed": "Stetten",
+      "reason": "The single document (OJ C/2025/5177, section 6) and the BLE Produktspezifikation (§ 4.1) both print «Stetten (761)»; the land register has no Gemarkung 761. Stetten am Heuchelberg, Gemeinde Schwaigern (Landkreis Heilbronn), is Gemarkung 768, and the list names its neighbours of the same Gemeinde, Schwaigern (765) and Niederhofen (767). The list's other Stetten is Stetten im Remstal (1441, Kernen im Remstal), printed with its own number.",
+      "source": "LGL-BW ALKIS-Gemarkungen (gemarkung_id 768, gemarkung_name Stetten, gemeinde_name Schwaigern, kreis_name Heilbronn; ids 761–764 absent), read 2026-11-17",
+      "verified": "2026-11-17"
+    }
+  }
+}

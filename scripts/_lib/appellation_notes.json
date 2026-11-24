@@ -149,5 +149,49 @@
         "url": "https://ec.europa.eu/agriculture/eambrosia/geographical-indications-register/"
       }
     ]
+  },
+  "champagne": {
+    "note": {
+      "en": "The wine is made within the Champagne viticole of the law of 22 July 1927, 635 communes in five départements as INAO counts them. The grapes come from the parcel area the specification delimits, which lies in 319 of them (INAO); the map draws those communes, as INAO's inventory of delimitation plans lists them. INAO publishes the parcels themselves only as scanned plans, so the map cannot show which part of a commune holds the vineyard.",
+      "fr": "Le vin est élaboré dans la Champagne viticole de la loi du 22 juillet 1927, 635 communes de cinq départements selon le décompte de l'INAO. Les raisins proviennent de l'aire parcellaire délimitée par le cahier des charges, répartie sur 319 d'entre elles (INAO) ; la carte trace ces communes, telles que les liste l'inventaire des plans de délimitation de l'INAO. L'INAO ne publie les parcelles elles-mêmes que sous forme de plans scannés ; la carte ne peut donc pas montrer quelle partie d'une commune porte le vignoble.",
+      "es": "El vino se elabora dentro de la Champagne viticole de la ley de 22 de julio de 1927, 635 municipios de cinco departamentos según el recuento del INAO. La uva procede del área parcelaria que delimita el pliego de condiciones, repartida en 319 de ellos (INAO); el mapa traza esos municipios, tal como los enumera el inventario de planos de delimitación del INAO. El INAO solo publica las parcelas como planos escaneados, por lo que el mapa no puede mostrar qué parte de un municipio tiene el viñedo.",
+      "nl": "De wijn wordt gemaakt binnen de Champagne viticole van de wet van 22 juli 1927, 635 gemeenten in vijf departementen volgens de telling van het INAO. De druiven komen uit het perceelsgebied dat het productdossier afbakent, verdeeld over 319 daarvan (INAO); de kaart tekent die gemeenten, zoals de inventaris van afbakeningsplannen van het INAO ze opsomt. Het INAO publiceert de percelen zelf alleen als gescande plannen, dus de kaart kan niet tonen welk deel van een gemeente de wijngaard draagt."
+    },
+    "sources": [
+      {
+        "label": "INAO, AOC Champagne: « L'aire Géographique ou Champagne Viticole … concerne au total 635 communes » ; « L'aire de production du raisin (ou aire délimitée parcellaire) est répartie sur 319 communes au sein de l'aire géographique » (read 2026-11-23)",
+        "url": "https://www.inao.gouv.fr/node/9132"
+      },
+      {
+        "label": "Cahier des charges AOC Champagne (BO Agri, 7 août 2025), chapitre I, IV",
+        "url": "https://info.agriculture.gouv.fr/boagri/document_administratif-677d59b2-d392-4220-9fa3-e65dbc723244/telechargement"
+      },
+      {
+        "label": "INAO, portail des plans officiels de délimitation — inventaire de l'état de la délimitation (inventaire_etat_de_la_delimitation.xlsx, read 2026-11-23)",
+        "url": "https://www.inao.gouv.fr/portail-plans-delimitation"
+      }
+    ]
+  },
+  "coteaux-champenois": {
+    "note": {
+      "en": "The wine is made within the Champagne viticole of the law of 22 July 1927, 635 communes in five départements as INAO counts them. The grapes come from the parcel area the specification delimits, which lies in 319 of them (INAO); the map draws those communes, as INAO's inventory of delimitation plans lists them. INAO publishes the parcels themselves only as scanned plans, so the map cannot show which part of a commune holds the vineyard. The specification delimits the parcel area as Champagne's does, word for word, so the map draws Champagne's list: the inventory's own list for Coteaux champenois is shorter (278 communes) and leaves out communes of the Côte des Bar.",
+      "fr": "Le vin est élaboré dans la Champagne viticole de la loi du 22 juillet 1927, 635 communes de cinq départements selon le décompte de l'INAO. Les raisins proviennent de l'aire parcellaire délimitée par le cahier des charges, répartie sur 319 d'entre elles (INAO) ; la carte trace ces communes, telles que les liste l'inventaire des plans de délimitation de l'INAO. L'INAO ne publie les parcelles elles-mêmes que sous forme de plans scannés ; la carte ne peut donc pas montrer quelle partie d'une commune porte le vignoble. Le cahier des charges délimite l'aire parcellaire dans les mêmes termes que celui du Champagne ; la carte trace donc la liste du Champagne, la liste propre aux Coteaux champenois dans l'inventaire étant plus courte (278 communes) et sans plusieurs communes de la Côte des Bar.",
+      "es": "El vino se elabora dentro de la Champagne viticole de la ley de 22 de julio de 1927, 635 municipios de cinco departamentos según el recuento del INAO. La uva procede del área parcelaria que delimita el pliego de condiciones, repartida en 319 de ellos (INAO); el mapa traza esos municipios, tal como los enumera el inventario de planos de delimitación del INAO. El INAO solo publica las parcelas como planos escaneados, por lo que el mapa no puede mostrar qué parte de un municipio tiene el viñedo. El pliego de condiciones delimita el área parcelaria en los mismos términos que el del Champagne, por lo que el mapa traza la lista del Champagne: la lista propia de Coteaux champenois en el inventario es más corta (278 municipios) y omite municipios de la Côte des Bar.",
+      "nl": "De wijn wordt gemaakt binnen de Champagne viticole van de wet van 22 juli 1927, 635 gemeenten in vijf departementen volgens de telling van het INAO. De druiven komen uit het perceelsgebied dat het productdossier afbakent, verdeeld over 319 daarvan (INAO); de kaart tekent die gemeenten, zoals de inventaris van afbakeningsplannen van het INAO ze opsomt. Het INAO publiceert de percelen zelf alleen als gescande plannen, dus de kaart kan niet tonen welk deel van een gemeente de wijngaard draagt. Het productdossier bakent het perceelsgebied woord voor woord af zoals dat van de Champagne, dus de kaart tekent de lijst van de Champagne: de eigen lijst van Coteaux champenois in de inventaris is korter (278 gemeenten) en mist gemeenten van de Côte des Bar."
+    },
+    "sources": [
+      {
+        "label": "INAO, AOC Coteaux champenois: « … concerne au total 635 communes » ; « … est répartie sur 319 communes au sein de l'aire géographique » (read 2026-11-23)",
+        "url": "https://www.inao.gouv.fr/node/9063"
+      },
+      {
+        "label": "Cahier des charges AOC Coteaux champenois (BO Agri, 7 août 2025), chapitre I, IV",
+        "url": "https://info.agriculture.gouv.fr/boagri/document_administratif-d012f672-717a-4deb-a062-bfbdca83d46c/telechargement"
+      },
+      {
+        "label": "INAO, portail des plans officiels de délimitation — inventaire de l'état de la délimitation (inventaire_etat_de_la_delimitation.xlsx, read 2026-11-23)",
+        "url": "https://www.inao.gouv.fr/portail-plans-delimitation"
+      }
+    ]
   }
 }

@@ -71,6 +71,8 @@ IT_EXTRACTED = ROOT / "raw" / "it" / "disciplinari-extracted"
 IT_MASAF_EXTRACTED = ROOT / "raw" / "it" / "masaf-disciplinari-extracted"
 AT_EXTRACTED = ROOT / "raw" / "at" / "dokumente-extracted"
 DE_EXTRACTED = ROOT / "raw" / "de" / "dokumente-extracted"
+# the BLE sidecars: a variety only a stub region lists (Chardonel, Kolor …)
+DE_SPEC_EXTRACTED = ROOT / "raw" / "de" / "produktspezifikationen-extracted"
 SI_EXTRACTED = ROOT / "raw" / "si" / "dokumenti-extracted"
 SI_SPEC_EXTRACTED = ROOT / "raw" / "si" / "specifikacije-extracted"
 HR_EXTRACTED = ROOT / "raw" / "hr" / "dokumenti-extracted"
@@ -120,7 +122,7 @@ def _record_files() -> list[Path]:
               HU_EXTRACTED, BG_EXTRACTED, GR_EXTRACTED, SK_EXTRACTED, CZ_EXTRACTED,
               CH_EXTRACTED, MT_EXTRACTED, CY_EXTRACTED, NL_EXTRACTED, BE_EXTRACTED,
               LU_EXTRACTED, CY_SPEC_EXTRACTED, BG_SPEC_EXTRACTED, GR_SPEC_EXTRACTED,
-              SK_SPEC_EXTRACTED, RO_SPEC_EXTRACTED):
+              SK_SPEC_EXTRACTED, RO_SPEC_EXTRACTED, DE_SPEC_EXTRACTED):
         if not d.exists():
             continue
         out.extend(jp for jp in d.glob("*.json") if not jp.name.startswith("_"))
@@ -132,8 +134,11 @@ def collect_grape_slugs() -> dict[str, str]:
     slugs: dict[str, str] = {}
     for jp in _record_files():
         rec = json.loads(jp.read_text(encoding="utf-8"))
-        for d in (rec.get("grapes") or {}).get("details") or []:
-            s = d.get("slug")
+        grapes = rec.get("grapes") or {}
+        # a BLE sidecar's `grapes` is the list itself
+        details = grapes if isinstance(grapes, list) else grapes.get("details") or []
+        for d in details:
+            s = d.get("slug") if isinstance(d, dict) else None
             if s:
                 slugs.setdefault(s, d.get("name", s))
     return slugs

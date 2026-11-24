@@ -28,7 +28,7 @@ from _lib.content_block import (
     render_content_block,
     to_title_case,
 )
-from _lib.contributors import contributor_names
+from _lib.contributors import contributor_credits
 from _lib.env import (
     carto_basemap_key,
     carto_basemap_keys,
@@ -37,6 +37,7 @@ from _lib.env import (
     webmcp_origin_trial_token,
 )
 from _lib.i18n import load_translations
+from _lib.script_display import native_html
 from _lib.wikidata import wikidata_url
 
 
@@ -201,6 +202,34 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "Aire approchée — réunion des {n} commune(s) de l'aire délimitée "
             "(INAO) ; pas de délimitation parcellaire pour cette dénomination."
         ),
+        # the same union for a record whose cahier sets a parcel area of its
+        # own (`fr.parcel_area`, the record's `geom_parcel_area`): absent from
+        # INAO's published parcel data (Champagne, Cassis, Bellet: "unpublished"),
+        # or published in a resource the build does not read yet (the Martinique
+        # rum: "apart" — what is drawn, nothing more)
+        "geom_approx_aires_union_parcels": _(
+            "Aire approchée — réunion des {n} commune(s) de l'aire géographique "
+            "(INAO) ; le cahier des charges délimite le vignoble à la parcelle, "
+            "délimitation absente des données parcellaires publiées par l'INAO."
+        ),
+        # drawn as the communes holding the parcel area, not the aire
+        # géographique (`plan_inventory`: Champagne, Coteaux champenois from
+        # INAO's inventory of delimitation plans; Rosé des Riceys from its
+        # cahier; the record's `geom_parcel_area` communes-inventory / -cahier)
+        "geom_approx_parcel_area_inventory": _(
+            "Aire approchée — réunion des {n} commune(s) où se trouve l'aire "
+            "parcellaire délimitée, d'après l'inventaire des plans de délimitation "
+            "de l'INAO ; les parcelles elles-mêmes sont absentes des données "
+            "parcellaires publiées par l'INAO."
+        ),
+        "geom_approx_parcel_area_cahier": _(
+            "Aire approchée — réunion des {n} commune(s) où le cahier des charges "
+            "situe l'aire parcellaire délimitée ; les parcelles elles-mêmes sont "
+            "absentes des données parcellaires publiées par l'INAO."
+        ),
+        "geom_approx_aires_union_plain": _(
+            "Aire approchée — réunion des {n} commune(s) de l'aire géographique (INAO)."
+        ),
         "geom_lod_footprint": _(
             "Vue d'ensemble : silhouette du vignoble, généralisée à {radius} m "
             "à partir de la délimitation parcellaire INAO — pas la délimitation "
@@ -238,6 +267,66 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "geom_src_admin_union": _(
             "Aire approchée — réunion des unités administratives nommées dans "
             "le document (limites Eurostat GISCO ou cadastre national)."
+        ),
+        # The document lists no unit and describes the area in prose
+        # (Regensburger Landwein): the communes are our reading of it.
+        "geom_src_admin_reading": _(
+            "Aire approchée — notre lecture de la description que donne le "
+            "document, dessinée en communes entières (limites Eurostat GISCO)."
+        ),
+        # Baden and Württemberg: the union of the Gemarkungen (cadastral
+        # districts) the document lists by land-register number, from the
+        # LGL Baden-Württemberg layer — scripts/_lib/de/gemarkung.py, the
+        # record's `geom_gemarkungen` panel-payload field. {source}: the
+        # layer's attribution, linked to the publisher and the licence.
+        "geom_src_gemarkungen": _(
+            "Aire approchée — réunion des {n} Gemarkungen (districts "
+            "cadastraux) que le document énumère par leur numéro ; limites "
+            "réunies et généralisées d'après {source}."
+        ),
+        # A Landwein PGI drawn as the union of member appellations that are
+        # themselves drawn from their Gemarkungen; the second sentence when
+        # other members are still Bétard polygons.
+        "geom_src_pdo_union_gemarkungen": _(
+            "Aire approchée — réunion des aires des appellations membres, "
+            "tracées d'après les Gemarkungen (districts cadastraux) que leurs "
+            "documents énumèrent ; limites d'après {source}."
+        ),
+        "geom_src_pdo_union_mixed": _(
+            "Les autres appellations membres : polygones du jeu de données "
+            "Bétard 2022, à la résolution des communes."
+        ),
+        "geom_gemarkung_gemeinden": _(
+            "S'y ajoutent les communes bavaroises nommées sans numéro "
+            "(limites Eurostat GISCO) : {names}."
+        ),
+        "geom_gemarkung_pinned": _(
+            "Numéro(s) absent(s) du registre foncier, lu(s) comme le district "
+            "du même nom : {names}."
+        ),
+        # The other Länder (scripts/_lib/de/area_units.py): Saale-Unstrut
+        # and Mittelrhein's part in Nordrhein-Westfalen name their
+        # Gemarkungen without a number; {source}: one credit per Land's
+        # layer. A Gemeinde the same text names whole (Jena, Erfurt), and a
+        # name no layer carries as such, read through a cited pin.
+        "geom_src_gemarkungen_named": _(
+            "Aire approchée — réunion des {n} Gemarkungen (districts "
+            "cadastraux) que le document nomme ; limites réunies et "
+            "généralisées d'après {source}."
+        ),
+        "geom_gemarkung_whole": _(
+            "S'y ajoutent les communes que le document nomme entières "
+            "(limites Eurostat GISCO) : {names}."
+        ),
+        "geom_gemarkung_pinned_names": _(
+            "Unité(s) lue(s) autrement qu'imprimée(s), sur preuve citée : "
+            "{names}."
+        ),
+        # … and where the whole Gemeinden are too many to name (Rheinhessen:
+        # 117 beside the Gemarkungen of the 16 that print their districts)
+        "geom_gemarkung_whole_n": _(
+            "S'y ajoutent les {n} communes que le document nomme entières "
+            "(limites Eurostat GISCO)."
         ),
         # A Portuguese sub-região the caderno names but does not delimit,
         # drawn from the national act's table ({act}: the act, linked) —
@@ -358,12 +447,14 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "src_jorf": _("JORF"),
         "src_show_texte": _("Texte officiel INAO (show_texte)"),
         "src_product": _("Fiche produit INAO"),
+        "src_inao_plans": _("Plans officiels de délimitation (INAO)"),
         "src_syndicate": _("Site officiel de l'interprofession"),
         "src_eur_lex": _("Cahier des charges (EUR-Lex, document unique)"),
         "src_national_pliego": _("Pliego de condiciones (national, PDF)"),
         "src_national_pliego_added": _("variétés ajoutées"),
         "src_national_spec": _("Cahier des charges national (PDF)"),
         "src_bml_produktspezifikation": _("Cahier des charges national (BML, PDF)"),
+        "src_ble_produktspezifikation": _("Cahier des charges national (BLE, PDF)"),
         "src_register_fiche": _("Cahier des charges (registre GI de l'UE, document unique, PDF)"),
         # A spirit drink's technical file (Reg. (EC) 110/2008 Art. 20) as the
         # EU register serves it, and the Commission's English copy of it.
@@ -432,6 +523,19 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "{names} est affiché comme cépage principal : le document unique le nomme comme "
             "type de vin de cépage (section 4, au moins 85 % du cépage), non dans sa liste "
             "des cépages (section 7)."
+        ),
+        # CH: a roster taken from the act an ordinance delegates to, where the
+        # card shows less than the list prints — rosterCoverageLine /
+        # _roster_coverage_line, panel field `grapes_roster_coverage`
+        # {resolved} + the entries of {rest} = {n}; several entries can be one
+        # variety (a synonym, a colour form), hence "en {shown} variétés".
+        "grapes_roster_coverage": _(
+            "{resolved} des {n} entrées de la liste du régulateur sont affichées, "
+            "en {shown} variétés ; non affichés : {rest}."
+        ),
+        "grapes_roster_codes": _("{n} code(s) d'obtenteur"),
+        "grapes_roster_unknown": _(
+            "{n} nom(s) de variété absent(s) de notre référentiel de cépages"
         ),
         "grapes_section4_many": _(
             "{names} sont affichés comme cépages principaux : le document unique les nomme "
@@ -601,8 +705,17 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         ),
         "about_contrib_html": _("Suggestions et pull requests bienvenues sur {github}."),
         "about_thanks_h": _("Merci"),
+        "about_thanks_ux_html": _(
+            "À {designful}, pour ses retours sur le design et l'ergonomie de la carte."
+        ),
         "about_thanks_html": _(
             "À celles et ceux dont les signalements ont amélioré la carte : {names}."
+        ),
+        "about_thanks_anon_html": _(
+            "Et aux nombreuses personnes qui ont envoyé un signalement sans laisser "
+            "de nom. Jusqu'en novembre 2026, un signalement ne pouvait pas porter de "
+            "nom : si vous en avez envoyé un avant et souhaitez que votre nom figure "
+            "ici, écrivez-nous par {email}."
         ),
         "about_privacy_credit_html": _(
             "Seule exception : le nom ou pseudonyme que vous choisissez d'ajouter à un "
@@ -937,6 +1050,10 @@ _PUBLISHER_JSONLD = {"@type": "Organization", "name": "devloed.com", "url": _DEV
 _BLUESKY_HANDLE = "openwinemap.com"
 _BLUESKY_URL = f"https://bsky.app/profile/{_BLUESKY_HANDLE}"
 _PLAUSIBLE_POLICY_URL = "https://plausible.io/data-policy"
+# Thanked in the About dialog for the UX review of 2026-10-18 (a curator's
+# acknowledgement, not a visitor credit: a contributors.json link is only the
+# public profile a person is known by, set by the curator).
+_DESIGNFUL_URL = "https://designful.be/"
 # The Bluesky butterfly (Simple Icons, CC0). Brand blue; sized to the text.
 _BLUESKY_SVG = (
     '<svg class="bsky-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
@@ -1080,14 +1197,22 @@ def _build_about_dialog(
         inner = lead_html + "".join(f"<p>{p}</p>" for p in paragraphs)
         return f"<section><h3>{labels[heading_key]}</h3>{inner}</section>"
 
-    # The thanks list appears with its first name (contributors.json).
-    thanks = []
-    names = contributor_names()
-    if names:
-        thanks.append(section(
-            "about_thanks_h",
-            [labels["about_thanks_html"].format(names=", ".join(esc(n) for n in names))],
-        ))
+    # Designful's UX review, the visitors credited by name (contributors.json),
+    # then everyone who reported without a name.
+    thanks_lines = [
+        labels["about_thanks_ux_html"].format(
+            designful=_ext_link(_DESIGNFUL_URL, "designful.be")
+        )
+    ]
+    credited = contributor_credits()
+    if credited:
+        thanks_lines.append(labels["about_thanks_html"].format(names=", ".join(
+            _ext_link(esc(url), esc(name)) if url else esc(name) for name, url in credited
+        )))
+    thanks_lines.append(labels["about_thanks_anon_html"].format(
+        email=_feedback_email_anchor(labels["feedback_email_label"])
+    ))
+    thanks = [section("about_thanks_h", thanks_lines)]
 
     credit = _made_by_html(labels)
     body = "\n      ".join([
@@ -1596,7 +1721,12 @@ def _build_grape_search_index(
             continue
         seen_canonicals.add(canon)
         info = grapes_info.get(canon) or {}
-        label = info.get("name") or canon.replace("-", " ")
+        # Interface text leads with the Latin form of a Greek or Cyrillic
+        # spelling (`name_latin`); the regulator's own stays searchable and is
+        # shown beside it (`native`), and so are the slug's words, which were
+        # the label until 2026-11-17 ("Early Melnik", "Akheloi").
+        native = info.get("name") if info.get("name_latin") else ""
+        label = info.get("name_latin") or info.get("name") or canon.replace("-", " ")
         siblings = [s for s in vivc_groups.get(info.get("vivc_id"), []) if s != canon]
         aliases = _collect_aliases(
             canon=canon, siblings=siblings, label=label, grapes_info=grapes_info,
@@ -1606,7 +1736,12 @@ def _build_grape_search_index(
         if canonical_name and canonical_name.casefold() != label.casefold() \
                 and canonical_name not in aliases:
             aliases.insert(0, canonical_name)
-        index.append({
+        folded = {a.casefold() for a in aliases} | {label.casefold()}
+        for extra in (native, canon.replace("-", " ")):
+            if extra and extra.casefold() not in folded:
+                aliases.append(extra)
+                folded.add(extra.casefold())
+        entry = {
             "slug": canon,
             "label": label,
             "canonical": canonical_name,
@@ -1614,7 +1749,10 @@ def _build_grape_search_index(
             "count": counts["all"].get(canon, 0),
             "count_principal": counts["principal"].get(canon, 0),
             "count_accessory": counts["accessory"].get(canon, 0),
-        })
+        }
+        if native and native != label:
+            entry["native"] = native
+        index.append(entry)
     index.sort(key=lambda e: (-e["count"], e["label"].casefold(), e["slug"]))
     return index
 
@@ -1737,6 +1875,12 @@ def _entity_grape_names(
         cahier = (rec.get("grape_names") or {}).get(g) or ""
         if cahier and not _NON_LATIN_RE.search(cahier):
             return cahier
+        # A Greek or Cyrillic spelling yields to the Latin form the rest of
+        # the interface leads with (`name_latin`: the catalogue's name, else
+        # the national standard — "Aheloy", not the slug's "akheloi").
+        latin = (grapes_info.get(g) or {}).get("name_latin")
+        if latin:
+            return latin
         # Without a Latin cahier spelling: the slug's words — the slug is the
         # corpus's canonical Latin form (albana, savatiano, mavrud), whereas the
         # lexicon's `name` may be a VIVC prime that disambiguates it
@@ -2490,7 +2634,7 @@ def _render_browse_page(*, locale, labels, country_labels, aocs, index_slugs) ->
         flag = _COUNTRY_FLAG_EMOJI.get(cc, "")
         heading = f"{flag} {esc(_country_name(cc))} ({len(entries)})".strip()
         items = "\n".join(
-            f'<li><a href="{_entity_path(locale, slug)}">{esc(name)}</a>'
+            f'<li><a href="{_entity_path(locale, slug)}">{native_html(name)}</a>'
             + (f" <small>{esc(kind)}</small>" if kind else "")
             + "</li>"
             for name, slug, kind in entries
@@ -2949,8 +3093,11 @@ def render(
         "format_version": QUERY_CONTEXT_FORMAT,
         "locale": locale,
         "aocs": startup_aocs,
+        # the label and, for a Greek or Cyrillic one, the Latin form an
+        # answer leads with (grapeName / grapeNative in the query core)
         "grapes_info": {
-            slug: {"name": info["name"]}
+            slug: ({"name": info["name"], "name_latin": info["name_latin"]}
+                   if info.get("name_latin") else {"name": info["name"]})
             for slug, info in sorted((grapes_info or {}).items())
             if isinstance(info, dict) and info.get("name")
         },

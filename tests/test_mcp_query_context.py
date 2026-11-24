@@ -57,4 +57,7 @@ def test_built_context(locale):
     text = Path(blob).read_text(encoding="utf-8")
     startup = json.loads(text[text.index("{"):text.rindex("}") + 1])["aocs"]
     assert ctx["aocs"] == startup
-    assert all(set(v) == {"name"} for v in ctx["grapes_info"].values())
+    # the label, and the Latin form of a Greek or Cyrillic one (sparse)
+    assert all({"name"} <= set(v) <= {"name", "name_latin"} for v in ctx["grapes_info"].values())
+    assert ctx["grapes_info"]["mavrud"] == {"name": "Мавруд", "name_latin": "Mavrud"}
+    assert "name_latin" not in ctx["grapes_info"]["semillon"]

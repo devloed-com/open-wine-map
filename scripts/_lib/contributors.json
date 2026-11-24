@@ -1,13 +1,42 @@
 {
   "_doc": [
-    "People thanked in the About dialog's thanks list (map_template.contributor_names).",
-    "A name enters only as the visitor gave it to be credited: the `credit` of a",
+    "People thanked in the About dialog's thanks list (map_template.contributor_credits).",
+    "A name enters only as the person gave it to be credited: the `credit` of a",
     "`Feedback Note` (scripts/feedback_report.py lists them under 'Credits offered'),",
-    "or an e-mail that asks for it. Added at triage when the report was acted on",
-    "(fixed, or confirmed and queued). Not added: a name that is offensive, impersonates",
-    "someone, or carries contact details or a link. Removed on request, no questions.",
-    "Fields: name (as given, at most 60 characters), added (ISO date), via (card | email),",
-    "slugs (the appellations the report concerned), report (one line: what it led to)."
+    "an e-mail that asks for it, or the handle of a GitHub comment or pull request.",
+    "Added at triage when the report was acted on (fixed, or confirmed and queued).",
+    "Not added: a name that is offensive, impersonates someone, or carries contact",
+    "details or a link. Removed on request, no questions.",
+    "Fields: name (as given, at most 60 characters), added (ISO date), via (card | email |",
+    "github), slugs (the appellations the report concerned), report (one line: what it",
+    "led to), url (optional, set by the curator, never typed by a visitor: the https",
+    "address of the public profile the person is known by — a GitHub handle's",
+    "https://github.com/<handle>; the name links to it)."
   ],
-  "contributors": []
+  "contributors": [
+    {
+      "name": "Tom Van Oppens",
+      "added": "2026-11-23",
+      "via": "card",
+      "slugs": [
+        "coteaux-champenois"
+      ],
+      "report": "Champagne's boundaries: the map draws the 635-commune aire géographique while the vineyard's parcels lie in 319 communes and INAO publishes no parcel layer — the card now says so; a better drawing is queued."
+    },
+    {
+      "name": "Reinier Broeks",
+      "added": "2026-11-24",
+      "via": "email",
+      "slugs": [],
+      "report": "Feedback by chat and e-mail (credit confirmed to Boris): his Druivenatlas grape links showed that a filtered view could not be shared — the view now lives in the URL, with a share dialog and an embed (2026-10-22) — and that grape labels carried colour codes and line breaks («Barbera N.», «Cabernet- Sauvignon»), now a vote over the regulators' spellings (2026-10-23)."
+    },
+    {
+      "name": "wayne530",
+      "url": "https://github.com/wayne530",
+      "added": "2026-11-24",
+      "via": "github",
+      "slugs": [],
+      "report": "Comment on pull request #19 (2026-09-23), the AU / US work: US AVAs set no grape rules, only the varietal labelling rule (75-85-95), and TTB's AVA polygons are the official ones and differ from UC Davis's — queued for the US geometry and roster model."
+    }
+  ]
 }

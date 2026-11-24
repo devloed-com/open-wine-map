@@ -37,8 +37,9 @@ different agency drafting eras). The parser tries each template in turn:
   - **Template D** (Baden multi-Bereich):
     §3.2.X with multiple regional Bereich subsections, each containing
     bullet-form `- VarietyName1, VarietyName2 ... 8,X % vol und YY°Oe`
-    tiered by Mostgewicht. The first (lowest) tier per colour names the
-    lead varieties → PRINCIPAL. Used by: Baden.
+    tiered by Mostgewicht. The table tiers some fifty-five varieties and
+    singles out none, so Baden has no role split (2026-11-17); its roster
+    is the flat §8. Used by: Baden.
 
 The output shape is uniform across templates:
 
@@ -57,6 +58,9 @@ import re
 import subprocess
 from pathlib import Path
 
+BASIS_MUST_WEIGHT = "must-weight"
+BASIS_PLANTINGS = "plantings"
+
 # ─────────────────────────────────────────────────────  Template A  ──
 
 # Template A: numbered "8 Zugelassene Keltertraubensorten" — the post-2022
@@ -69,8 +73,12 @@ _SECTION_3_2_RE = re.compile(
     r"^\s*3\.2\s+(?:\.\s+)?Natürliche?r?\s+Mindest(?:alkohol|most)",
     re.M,
 )
+# "9 Angaben, aus denen …" — Baden, Franken, Sachsen and Württemberg print
+# "9. Angaben": until 2026-11-17 the dot was not read, their § 8 ran to the
+# end of the document and the link text's phrases were kept as "unmatched
+# names" (Baden: 141).
 _SECTION_END_RE = re.compile(
-    r"^\s*9\s+(?:\.\s+)?Angaben",
+    r"^\s*9\s*\.?\s+Angaben",
     re.M,
 )
 _SECTION_3_3_RE = re.compile(
@@ -442,31 +450,33 @@ def _parse_template_c_authorised(text: str) -> dict[str, list[str]]:
     return out
 
 
-def _parse_template_c_principal(text: str) -> list[str]:
-    """Template C principals from three signals:
-      - 'insbes. {variety} mit rd. X %' inline (Rheingau-style)
+def _parse_template_c_principal(text: str) -> list[tuple[str, str]]:
+    """Template C principals from three signals, each tagged with its basis:
+      - 'insbes. {variety} mit rd. X %' inline (Rheingau-style) → plantings
       - §5.1.X named-Mostgewicht rows ('Spätburgunder Rotwein 8,4 66°')
+        → must-weight
       - 'vorwiegend die Rebsorten {V1} (X %), {V2} (Y %) sowie {V3} (Z %)
-        angebaut' (Hessische-Bergstraße cultivation-statistics inline).
+        angebaut' (Hessische-Bergstraße cultivation-statistics inline)
+        → plantings.
     """
-    out: list[str] = []
+    out: list[tuple[str, str]] = []
     seen: set[str] = set()
 
-    def _add(name: str) -> None:
+    def _add(name: str, basis: str) -> None:
         nm = name.strip()
         if nm and nm not in seen:
-            out.append(nm)
+            out.append((nm, basis))
             seen.add(nm)
 
     blob = _slice_template_c_section_7(text)
     if blob:
         for m in _TEMPLATE_C_INSBES_RE.finditer(blob):
-            _add(m.group(1))
+            _add(m.group(1), BASIS_PLANTINGS)
     for m in _TEMPLATE_C_NAMED_MOST_RE.finditer(text):
         name = m.group(1).strip()
         if name.lower().startswith(("sonstige", "weißwein", "rotwein", "alle")):
             continue
-        _add(name)
+        _add(name, BASIS_MUST_WEIGHT)
     # Cultivation-statistics fallback — only fires when §3.2/§5.1 didn't
     # yield enough. Hessische-Bergstraße's only Riesling signal is here.
     for m in _TEMPLATE_C_VORWIEGEND_RE.finditer(text):
@@ -475,7 +485,7 @@ def _parse_template_c_principal(text: str) -> list[str]:
             name = vm.group(1).strip().rstrip(",").rstrip(".")
             # Strip leading "sowie " or "und " connectors.
             name = re.sub(r"^(?:sowie|und)\s+", "", name)
-            _add(name)
+            _add(name, BASIS_PLANTINGS)
     return out
 
 
@@ -484,13 +494,18 @@ def _parse_template_c_principal(text: str) -> list[str]:
 
 def _parse_template_d(text: str) -> tuple[list[str], dict[str, list[str]]]:
     """Baden-style: multi-Bereich §3.2.X with tiered Mostgewicht rows.
-    Returns (principal_names, {"white": [...], "red": [...]}).
+    Returns (lowest_tier_names, {"white": [...], "red": [...]}).
 
-    For each (Bereich, colour) sub-block, the rows are tiered by ascending
-    threshold. The lowest-threshold row(s) name the Leitsorten → principal.
-    Higher-tier rows + "alle übrigen Rebsorten" → accessory. We union all
-    principal sets across Bereiche (Baden authorises varieties from each
-    Bereich union)."""
+    Only the colour lists are used, as the roster fallback when the flat
+    § 8 is missing. The lowest-tier names are NOT a role signal and no
+    longer make a split (2026-11-17, `principal_names_with_basis`): the
+    table tiers some fifty-five varieties over two Bereich groups and six
+    quality levels — "Tempranillo, Trollinger 8,0 % vol", "Deckrot,
+    Tauberschwarz 8,4 % vol" — and Spätburgunder, a third of Baden's
+    vineyard, falls under "alle übrigen Rebsorten". Read row by row with
+    names wrapped over several lines, the old split made nineteen
+    principals of it (Tempranillo, Merzling, Baron …) and an accessory of
+    Blauer Spätburgunder; the card validator graded the card for it."""
     bereich_starts = list(_TEMPLATE_D_BEREICH_RE.finditer(text))
     if not bereich_starts:
         return [], {"white": [], "red": []}
@@ -569,32 +584,47 @@ def _detect_template(text: str) -> str:
     return max(scores, key=lambda k: len(scores[k]["white"]) + len(scores[k]["red"]))
 
 
-def parse_section_3_2_principal_names(text: str) -> list[str]:
-    """Public API. Template-dispatch + accumulate principals from
-    multiple sub-template heuristics (Sachsen §5.1.X named subsections
-    are detected independently of the variety-list template choice)."""
+def principal_names_with_basis(text: str) -> list[tuple[str, str]]:
+    """The varieties a specification singles out, each with the signal that
+    does so. Reference data only since 2026-11-17 (`raw_section_3_2_principal`
+    in the sidecar): the specification draws no principal / accessory line
+    and the card no longer reads one from these signals:
+
+      * `must-weight` — named with a minimum must weight of its own
+        ("Rebsorte Weißer Riesling 6,7 % vol und 55° Öchsle" beside "alle
+        übrigen Rebsorten 7,5 % vol"; Sachsen's "5.1.1. Weißwein - Ruländer,
+        Traminer, Weißburgunder"): Template A, Sachsen, the named red row of
+        Template C;
+      * `plantings` — named with its share of the vineyard ("insbes. Weißer
+        Riesling mit rd. 80 % auf der Rebfläche", "vorwiegend die Rebsorten
+        Weißer Riesling (47,5 % der Rebfläche), …"): Template C.
+
+    Template D (Baden) yields none — see `_parse_template_d`."""
     template = _detect_template(text)
-    out: list[str] = []
+    out: list[tuple[str, str]] = []
     seen: set[str] = set()
 
-    def _add(names: list[str]) -> None:
-        for n in names:
-            if n and n not in seen:
-                out.append(n)
-                seen.add(n)
+    def _add(pairs: list[tuple[str, str]]) -> None:
+        for name, basis in pairs:
+            if name and name not in seen:
+                out.append((name, basis))
+                seen.add(name)
 
     if template == "A":
-        _add(_parse_template_a_principal(text))
+        _add([(n, BASIS_MUST_WEIGHT) for n in _parse_template_a_principal(text)])
     elif template == "C":
         _add(_parse_template_c_principal(text))
-    elif template == "D":
-        principal, _ = _parse_template_d(text)
-        _add(principal)
     # Sachsen §5.1.X always tried — independent of template selection,
     # because some Template-B docs (Sachsen) DO carry the named
     # subsection while others (Ahr) do not.
-    _add(_parse_template_b_principal_sachsen(text))
+    if template != "D":
+        _add([(n, BASIS_MUST_WEIGHT) for n in _parse_template_b_principal_sachsen(text)])
     return out
+
+
+def parse_section_3_2_principal_names(text: str) -> list[str]:
+    """Public API: the names of `principal_names_with_basis`."""
+    return [name for name, _basis in principal_names_with_basis(text)]
 
 
 def parse_section_8_authorised(text: str) -> dict[str, list[str]]:
@@ -698,12 +728,14 @@ def extract(pdf_path: Path) -> dict:
     """
     text = pdf_to_text(pdf_path)
     template = _detect_template(text)
-    principal = parse_section_3_2_principal_names(text)
+    with_basis = principal_names_with_basis(text)
+    principal = [name for name, _basis in with_basis]
     section_8 = parse_section_8_authorised(text)
     zusammenhang = extract_terroir_text(text)
     return {
         "template": template,
         "section_3_2_principal_names": principal,
+        "principal_basis": dict(with_basis),
         "section_8_white_names": section_8["white"],
         "section_8_red_names": section_8["red"],
         "zusammenhang_text": zusammenhang,

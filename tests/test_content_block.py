@@ -49,13 +49,30 @@ _LABELS = {
     "geom_approx_cadastre_source_label": "cadastre.data.gouv.fr",
     "geom_approx_pdo_plan": "Approx area — reconstructed from the plan.",
     "geom_approx_aires_union": "Approx area — union of the {n} commune(s), water included.",
+    "geom_approx_aires_union_parcels": "Approx area — union of the {n} commune(s); parcels unpublished.",
+    "geom_approx_aires_union_plain": "Approx area — union of the {n} commune(s) only.",
+    "geom_approx_parcel_area_inventory": "Approx area — the {n} commune(s) of the parcel area (inventory).",
+    "geom_approx_parcel_area_cahier": "Approx area — the {n} commune(s) of the parcel area (cahier).",
     "geom_lod_footprint_static": "At overview zooms drawn as a footprint generalised at {radius} m.",
     "geom_src_geoportal": "Official production zone from the geoportal ({region}).",
     "geom_src_mapa": "Official MAPA production zone.",
     "geom_src_betard": "Approx area — Bétard 2022 polygon, municipality resolution.",
     "geom_src_pdo_union": "Approx area — union of the member PDO polygons.",
     "geom_src_admin_union": "Approx area — union of the named administrative units.",
+    "geom_src_admin_reading": "Approx area — our reading of the document's description, whole communes.",
+    "geom_drinks_units": "Units drawn: {units}.",
     "geom_src_national_act": "Area: the units {act} lists for this sub-region, on CAOP 2025.",
+    "geom_src_gemarkungen": "Approx area — union of the {n} Gemarkungen the document lists; boundaries {source}.",
+    "geom_src_pdo_union_gemarkungen": "Approx area — union of members drawn from their Gemarkungen; boundaries {source}.",
+    "geom_src_pdo_union_mixed": "Other members: Bétard 2022.",
+    "geom_gemarkung_gemeinden": "Plus the Bavarian municipalities: {names}.",
+    "geom_gemarkung_pinned": "Number(s) read as the district of the same name: {names}.",
+    "geom_src_gemarkungen_named": "Approx area — union of the {n} Gemarkungen the document names; boundaries {source}.",
+    "geom_gemarkung_whole": "Plus the municipalities named whole: {names}.",
+    "geom_gemarkung_pinned_names": "Unit(s) read otherwise than printed, on cited evidence: {names}.",
+    "geom_gemarkung_whole_n": "Plus the {n} municipalities named whole.",
+    "geom_units_partial": "Included only in part, drawn whole: {names}.",
+    "geom_units_unmatched": "Named in the document, not drawn: {names}.",
     "boundary_notes_h": "About this boundary",
     "meta_geom_approx": "approximate area",
     "related_all_in": "All appellations in {name}",
@@ -85,6 +102,7 @@ _LABELS = {
     "src_jorf": "JORF",
     "src_show_texte": "INAO text",
     "src_product": "INAO product",
+    "src_inao_plans": "INAO delimitation plans",
     "src_eur_lex": "EUR-Lex",
     "src_national_pliego": "National pliego",
     "src_national_pliego_added": "varieties added",
@@ -96,6 +114,15 @@ _LABELS = {
     "src_eambrosia": "eAmbrosia",
     "src_eambrosia_id": "file",
     "src_syndicate": "Producer body",
+    "src_cantonal_reglement": "Cantonal wine ordinance",
+    "src_ble_produktspezifikation": "National product specification (BLE, PDF)",
+    "src_gov_uk_spec": "Product specification (GOV.UK, PDF)",
+    "src_gov_uk_register": "UK GI register",
+    "src_cahier_eu_register": "Specification (EU GI register, PDF)",
+    "src_ofag_repertoire": "Swiss AOC register (OFAG/BLW)",
+    "grapes_roster_coverage": "{resolved} of the {n} entries are shown, as {shown} varieties; not shown: {rest}.",
+    "grapes_roster_codes": "{n} breeder code(s)",
+    "grapes_roster_unknown": "{n} name(s) not held",
     "fr_marker": "(French)",
     "fr_marker_aria": "Source in French",
     "es_marker": "(Spanish)",
@@ -353,8 +380,37 @@ def test_summary_shown_when_no_facts() -> None:
 
 
 def test_name_with_latin() -> None:
-    out = _render({"name": "Мавруд", "kind": "DOP", "country": "gr", "name_latin": "Mavrud"})
-    assert '<h1>Мавруд <span class="latin">(Mavrud)</span></h1>' in out
+    """The card's name quotes the regulator: the original first, language-
+    tagged (WCAG 3.1.2), its Latin form in brackets."""
+    out = _render({"name": "Мавруд", "kind": "DOP", "country": "bg", "name_latin": "Mavrud"})
+    assert '<h1><span lang="bg">Мавруд</span> <span class="latin">(Mavrud)</span></h1>' in out
+    greek = _render({"name": "Νάουσα", "kind": "DOP", "country": "gr", "name_latin": "Naoussa",
+                     "region": "Μακεδονία"})
+    assert '<h1><span lang="el">Νάουσα</span> <span class="latin">(Naoussa)</span></h1>' in greek
+    assert ' · <span lang="el">Μακεδονία</span>' in greek
+    # a Latin name carries no tag
+    assert "<h1>Mercurey</h1>" in _render({"name": "Mercurey", "kind": "AOC", "country": "fr"})
+
+
+def test_grape_labels_lead_with_latin_and_pills_quote_the_regulator() -> None:
+    """Interface text (the label helper: chips, prose) leads with the Latin
+    form of a Greek or Cyrillic grape; the pill shows the record's own
+    spelling, tagged, with the Latin form in brackets (rules of 2026-11-17)."""
+    from _lib.content_block import grape_name
+    ctx = _ctx("en")
+    ctx.grapes_info["akheloi"] = {"name": "Ахелой", "name_latin": "Aheloy"}
+    ctx.grapes_info["zumic"] = {"name": "Žumić"}
+    assert grape_name("akheloi", ctx) == "Aheloy"
+    assert grape_name("zumic", ctx) == "Žumić"
+    assert grape_name("no-entry", ctx) == "No Entry"
+    out = render_content_block(
+        {"name": "Черноморски район", "kind": "DOP", "country": "bg", "name_latin": "Chernomorski rayon",
+         "grapes_principal": ["akheloi"], "grape_names": {"akheloi": "Ахелой"}}, "x", ctx)
+    assert '<span lang="bg">Ахелой</span> <span class="canon">(Aheloy)</span>' in out
+    js = (ROOT / "scripts" / "_lib" / "assets" / "app.js").read_text(encoding="utf-8")
+    core = (ROOT / "scripts" / "_lib" / "assets" / "query_core.mjs").read_text(encoding="utf-8")
+    assert "function nativeHtml(s)" in js and "const NATIVE_RUN_RES" in js
+    assert "info.name_latin || info.name" in core and "function grapeNative(slug)" in core
 
 
 def test_subappellations_section_rendered_when_children_passed() -> None:
@@ -541,6 +597,26 @@ def test_commune_union_line_names_count_and_water() -> None:
     assert "union of the 3 commune(s)" in html
 
 
+def test_commune_union_of_an_aoc_with_an_unpublished_parcel_area() -> None:
+    """Champagne, Cassis, Bellet: the cahier sets a parcel area INAO publishes
+    no layer for — the line must not say none exists (visitor note on Coteaux
+    champenois, 2026-11-22)."""
+    html = _render(_geom_rec(geom_source="aires-csv", communes_matched=617,
+                             geom_parcel_area="unpublished"))
+    assert "union of the 617 commune(s); parcels unpublished" in html
+    assert "water included" not in html
+
+
+def test_commune_union_of_a_record_whose_parcels_inao_publishes_apart() -> None:
+    """The Martinique rum: INAO publishes its parcel area in a resource of its
+    own the build does not read yet — the card says what is drawn, nothing
+    about parcels (second look, 2026-11-23)."""
+    html = _render(_geom_rec(geom_source="aires-csv", communes_matched=34,
+                             geom_parcel_area="apart"))
+    assert "union of the 34 commune(s) only" in html
+    assert "parcels unpublished" not in html
+
+
 def _meta(html: str) -> str:
     return html.split('<div class="meta">')[1].split("</div>")[0]
 
@@ -650,6 +726,88 @@ def test_at_produktspezifikation_sources_row_counts_the_added_varieties() -> Non
     assert f'<li><a href="{url}" target="_blank" rel="noopener">National product specification (BML, PDF)</a></li>' in html
 
 
+def test_gemarkung_union_line_names_the_count_the_layer_and_what_was_read() -> None:
+    """Baden / Württemberg, drawn from the Gemarkungen their documents list
+    (2026-11-17): the line gives the count and the layer's attribution with
+    its licence, the Bavarian Gemeinden beside them and a number read through
+    a pin; the town drawn whole for two of its Gemarkungen goes to the shared
+    partial line; the fold says "approximate". Mirrors gemarkungLine in app.js."""
+    att = "LGL-BW (2026) Datenlizenz Deutschland – Namensnennung – Version 2.0, www.lgl-bw.de"
+    html = _render(_geom_rec(
+        country="de", kind="DOP", geom_source="lgl-gemarkung-union",
+        geom_gemarkungen={"n": 275, "listed": 275, "source_kind": "eu-single-document",
+                          "attribution": att, "gemeinden": ["Nonnenhorn", "Bodolz"],
+                          "pinned": ["Stetten (761) → 768 Stetten (Schwaigern)"]},
+        geom_units_partial=["Lindau (Bodensee) (Hoyren, Aeschach)"]))
+    assert "union of the 275 Gemarkungen the document lists" in html
+    assert f'<a href="https://www.lgl-bw.de" target="_blank" rel="noopener">{att}</a>' in html
+    assert '<a href="https://www.govdata.de/dl-de/by-2-0" target="_blank" rel="noopener">dl-de/by-2-0</a>' in html
+    assert "Plus the Bavarian municipalities: Nonnenhorn, Bodolz." in html
+    assert "read as the district of the same name: Stetten (761) → 768 Stetten (Schwaigern)." in html
+    assert "Lindau (Bodensee) (Hoyren, Aeschach)" in html
+    assert "approximate area" in html
+    # Baden: no Bavarian unit, no pin — the first sentence alone.
+    html = _render(_geom_rec(country="de", kind="DOP", geom_source="lgl-gemarkung-union",
+                             geom_gemarkungen={"n": 353, "attribution": att}))
+    assert "union of the 353 Gemarkungen" in html and "Bavarian" not in html and "read as" not in html
+
+
+def test_gemarkungen_of_the_other_laender_credit_each_layer() -> None:
+    """Saale-Unstrut names its Gemarkungen (no number) in three Länder, each
+    with its own layer and licence; Jena and Erfurt are named whole; a name
+    the register does not carry is read through a pin. Mirrors gemarkungLine
+    in app.js."""
+    credits = [
+        {"text": "© GeoBasis-DE / LVermGeo ST (2026)",
+         "url": "https://www.lvermgeo.sachsen-anhalt.de",
+         "licence": "dl-de/by-2-0", "licence_url": "https://www.govdata.de/dl-de/by-2-0"},
+        {"text": "© GDI-Th (2026)", "url": "https://www.geoportal-th.de",
+         "licence": "CC BY 4.0", "licence_url": "https://creativecommons.org/licenses/by/4.0/deed.de"},
+    ]
+    html = _render(_geom_rec(
+        country="de", kind="DOP", geom_source="alkis-gemarkung-union",
+        geom_gemarkungen={"n": 99, "listed": 100, "source_kind": "eu-single-document",
+                          "credits": credits, "named": True, "whole": ["Jena", "Erfurt"],
+                          "pinned": ["Kromsdorf → Großkromsdorf, Kleinkromsdorf"]},
+        geom_units_unmatched=["Graitschen"]))
+    assert "union of the 99 Gemarkungen the document names" in html
+    assert ('<a href="https://www.lvermgeo.sachsen-anhalt.de" target="_blank" rel="noopener">'
+            "© GeoBasis-DE / LVermGeo ST (2026)</a>") in html
+    assert ('<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" '
+            'rel="noopener">CC BY 4.0</a>') in html
+    assert "lgl-bw.de" not in html
+    assert "Plus the municipalities named whole: Jena, Erfurt." in html
+    assert "on cited evidence: Kromsdorf → Großkromsdorf, Kleinkromsdorf." in html
+    assert "Graitschen" in html and "approximate area" in html
+    # the Rhineland prints numbers: the numbered lead, the layer's own credit
+    html = _render(_geom_rec(country="de", kind="DOP", geom_source="alkis-gemarkung-union",
+                             geom_gemarkungen={"n": 101, "credits": credits[:1]}))
+    assert "union of the 101 Gemarkungen the document lists" in html and "named whole" not in html
+    # Rheinhessen: 117 whole Gemeinden are counted, not named
+    html = _render(_geom_rec(country="de", kind="DOP", geom_source="alkis-gemarkung-union",
+                             geom_gemarkungen={"n": 58, "credits": credits[:1], "named": True,
+                                               "whole_n": 117}))
+    assert "union of the 58 Gemarkungen the document names" in html
+    assert "Plus the 117 municipalities named whole." in html
+
+
+def test_landwein_union_of_gemarkung_members_says_so() -> None:
+    """A Landwein drawn as the union of Baden and / or Württemberg no longer
+    unions Bétard polygons: its line says what its members are drawn from,
+    and names Bétard only for the members that still are."""
+    att = "LGL-BW (2026)"
+    pure = _render(_geom_rec(country="de", kind="IGP", geom_source="region-pdo-union",
+                             geom_gemarkungen={"member_union": True, "mixed": False, "attribution": att}))
+    assert "members drawn from their Gemarkungen" in pure and "Bétard" not in pure
+    assert "member PDO polygons" not in pure
+    mixed = _render(_geom_rec(country="de", kind="IGP", geom_source="region-pdo-union",
+                              geom_gemarkungen={"member_union": True, "mixed": True, "attribution": att}))
+    assert "members drawn from their Gemarkungen" in mixed and "Other members: Bétard 2022." in mixed
+    # every other member union keeps its line
+    assert "member PDO polygons" in _render(_geom_rec(country="de", kind="IGP",
+                                                      geom_source="region-pdo-union"))
+
+
 def test_pdo_plan_line() -> None:
     html = _render(_geom_rec(country="gb", geom_source="pdo-plan-parcel-hull-approx"))
     assert "reconstructed from the plan" in html
@@ -698,6 +856,32 @@ def test_boundary_notes_without_approximation_for_an_official_zone() -> None:
     assert "sub" not in summary
 
 
+def test_units_the_document_does_not_list_are_called_a_reading() -> None:
+    """Regensburger Landwein: its specification lists no commune, so the card
+    must not say "the units named in the document" — it says the communes are
+    our reading, names them and prints the entry's sentence. Mirrors
+    geomSourceLine / drinksUnitsText in app.js."""
+    rec = _geom_rec(
+        country="de", geom_source="gisco-commune-union", communes_matched=6,
+        geom_drinks={"source": "gisco-commune-union", "reading": True,
+                     "units": [{"kind": "lau", "label": "Regensburg"},
+                               {"kind": "lau", "label": "Tegernheim"}],
+                     "precision": "The specification lists no communes."},
+    )
+    html = _render(rec)
+    assert "our reading of the document" in html
+    assert "union of the named administrative units" not in html
+    assert "Units drawn: Regensburg, Tegernheim." in html
+    assert "The specification lists no communes." in html
+    # a listed union keeps the other line
+    listed = _render(_geom_rec(country="de", geom_source="gisco-commune-union",
+                               communes_matched=18))
+    assert "union of the named administrative units" in listed
+    assert "our reading" not in listed
+    js = (ROOT / "scripts" / "_lib" / "assets" / "app.js").read_text(encoding="utf-8")
+    assert "LABELS.geom_src_admin_reading" in js and "geom_drinks || {}).reading" in js
+
+
 def test_boundary_notes_absent_without_lines() -> None:
     html = _render(_geom_rec(country="es", geom_source="sigpac-hybrid-pliego"))
     assert "boundary-notes" not in html
@@ -727,3 +911,116 @@ def test_parish_line_names_the_whole_municipios_of_the_redraw() -> None:
     html = _render(_geom_rec(country="es", geom_source="iet-parroquia-union",
                              communes_matched=1, sources=without))
     assert "Whole as well" not in html
+
+
+def test_swiss_card_lists_its_regulator_sources_like_the_browser_card() -> None:
+    """The server-rendered Swiss card listed the trade body alone (card
+    validator, 2026-11-17): the ordinance, the act that holds the roster, the
+    area rulings and the federal register were rows of the browser card only."""
+    out = _render({"name": "Schwyz", "kind": "AOC", "country": "ch", "sources": {
+        "cantonal_reglement_url": "http://sz/312.711.pdf",
+        "cantonal_reglement_label": "SRSZ 312.711",
+        "cantonal_roster_url": "http://sz/verfuegung.pdf",
+        "cantonal_roster_label": "Allgemeinverfügung vom 28. Juli 2025",
+        "cantonal_roster_applied_by": "Ziff. 2.4 <Anhang>",
+        "cantonal_area_rulings": [{"url": "http://zh/v.pdf", "label": "Verfügung ALN"}],
+        "ofag_repertoire_url": "http://blw/rep.pdf",
+        "syndicate": {"url": "http://bdw", "label": "BDW"},
+        "canton": "sz", "canton_name": "Schwyz", "source_lang": "de"}})
+    rows = [
+        '<a href="http://sz/312.711.pdf" target="_blank" rel="noopener">Cantonal wine ordinance</a> — SRSZ 312.711',
+        '<a href="http://sz/verfuegung.pdf" target="_blank" rel="noopener">Cantonal wine ordinance</a>'
+        ' — Allgemeinverfügung vom 28. Juli 2025 · Ziff. 2.4 &lt;Anhang&gt;',
+        '<a href="http://zh/v.pdf" target="_blank" rel="noopener">Cantonal wine ordinance</a> — Verfügung ALN',
+        '<a href="http://blw/rep.pdf" target="_blank" rel="noopener">Swiss AOC register (OFAG/BLW)</a>',
+        '<a href="http://bdw" target="_blank" rel="noopener">Producer body</a> — BDW',
+    ]
+    at = [out.index(r) for r in rows]
+    assert at == sorted(at)  # the browser card's order
+
+
+def test_every_source_row_of_the_browser_card_is_on_the_server_rendered_card() -> None:
+    """A Sources row added to renderSources in app.js and never to
+    render_sources: the Swiss ordinance, roster act and register rows, the UK
+    specification and register rows, and the EU register's cahier were rows of
+    the browser card only until 2026-11-17 (card validator: "the card cites
+    only the trade body"). Every `sources.<key>` the JS function reads, the
+    Python one reads."""
+    import re
+
+    js = (ROOT / "scripts" / "_lib" / "assets" / "app.js").read_text(encoding="utf-8")
+    py = (ROOT / "scripts" / "_lib" / "content_block.py").read_text(encoding="utf-8")
+    start = js.index("function renderSources(slug, sources)")
+    body = js[start:js.index("\n  }\n", start)]
+    js_keys = set(re.findall(r"\bsources\.([a-z_0-9]+)", body)) - {"length", "map"}
+    start = py.index("def render_sources(")
+    py_body = py[start:py.index("\ndef ", start + 10)]
+    py_keys = set(re.findall(r'sources(?:\.get\(|\[)"([a-z_0-9]+)"', py_body))
+    assert len(js_keys) > 40  # the function was found whole
+    assert js_keys - py_keys == set()
+
+
+def test_uk_card_lists_its_specification_and_register() -> None:
+    out = _render({"name": "Sussex", "kind": "DOP", "country": "gb", "sources": {
+        "gov_uk_spec_url": "http://gov.uk/sussex.docx", "spec_format": "docx",
+        "gov_uk_register_url": "http://gov.uk/sussex", "file_number": "PDO-GB-02350"}})
+    assert ('<a href="http://gov.uk/sussex.docx" target="_blank" rel="noopener">'
+            "Product specification (GOV.UK, PDF)</a> — DOCX") in out
+    assert ('<a href="http://gov.uk/sussex" target="_blank" rel="noopener">'
+            "UK GI register</a> — PDO-GB-02350") in out
+
+
+def test_register_cahier_stands_in_for_bo_agri() -> None:
+    reg = _render({"name": "L'Étoile", "kind": "AOC", "country": "fr",
+                   "sources": {"eu_register_cahier": "http://ec/cdc.pdf"}})
+    assert ('<a href="http://ec/cdc.pdf" target="_blank" rel="noopener">'
+            "Specification (EU GI register, PDF)</a>") in reg
+    both = _render({"name": "X", "kind": "AOC", "country": "fr",
+                    "sources": {"boagri": "http://bo/x.pdf", "eu_register_cahier": "http://ec/x.pdf"}})
+    assert 'href="http://bo/x.pdf"' in both and "http://ec/x.pdf" not in both
+
+
+def test_german_card_lists_the_ble_specification() -> None:
+    """Baden's roster, link text and — since the Gemarkung redraw — its area
+    come from the BLE Produktspezifikation; the Sources list never named it."""
+    out = _render({"name": "Baden", "kind": "DOP", "country": "de",
+                   "sources": {"eur_lex_url": "http://eurlex/x",
+                               "ble_produktspezifikation_url": "http://ble/baden.pdf"}})
+    assert ('<a href="http://ble/baden.pdf" target="_blank" rel="noopener">'
+            "National product specification (BLE, PDF)</a>") in out
+    js = (ROOT / "scripts" / "_lib" / "assets" / "app.js").read_text(encoding="utf-8")
+    assert "LABELS.src_ble_produktspezifikation" in js
+
+
+def test_roster_coverage_line_says_what_the_card_leaves_out() -> None:
+    """A Swiss roster from the act the ordinance delegates to: where the card
+    shows fewer varieties than the list has entries, it says how many and why."""
+    rec = {"name": "Schwyz", "kind": "AOC", "country": "ch", "grapes_principal": ["merlot"],
+           "grapes_roster_coverage": {"entries": 132, "varieties": 100, "codes": 9, "unknown": 20}}
+    out = _render(rec)
+    # 103 + 9 + 20 = 132: the figures add up to the list; several entries can be one variety
+    assert ("103 of the 132 entries are shown, as 100 varieties; not shown: 9 breeder code(s), "
+            "20 name(s) not held.") in out
+    assert out.index("<h2>Principal grapes</h2>") < out.index("entries are shown")
+    assert "entries are shown" not in _render({**rec, "grapes_roster_coverage": {}})
+    # a part with nothing in it is not named
+    no_codes = _render({**rec, "grapes_roster_coverage": {"entries": 61, "varieties": 54,
+                                                         "codes": 0, "unknown": 6}})
+    assert "55 of the 61 entries are shown, as 54 varieties; not shown: 6 name(s) not held." in no_codes
+    # no roster, no line
+    assert "entries are shown" not in _render({**rec, "grapes_principal": []})
+    js = (ROOT / "scripts" / "_lib" / "assets" / "app.js").read_text(encoding="utf-8")
+    assert "function rosterCoverageLine(r)" in js and "LABELS.grapes_roster_coverage" in js
+    assert "section4VarietalLine(r) + rosterCoverageLine(r)" in js
+
+
+def test_commune_union_of_the_communes_holding_the_parcel_area() -> None:
+    """Champagne and Coteaux champenois are drawn as the communes INAO's
+    inventory of delimitation plans lists, Rosé des Riceys as the commune its
+    cahier names (2026-11-23)."""
+    html = _render(_geom_rec(geom_source="aires-csv", communes_matched=321,
+                             geom_parcel_area="communes-inventory"))
+    assert "the 321 commune(s) of the parcel area (inventory)" in html
+    html = _render(_geom_rec(geom_source="aires-csv", communes_matched=1,
+                             geom_parcel_area="communes-cahier"))
+    assert "the 1 commune(s) of the parcel area (cahier)" in html

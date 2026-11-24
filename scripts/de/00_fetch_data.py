@@ -38,7 +38,24 @@ Sources:
    02f parses these for the principal/accessory variety split that the
    EU Einziges Dokument doesn't carry.
 
+5. **LGL Baden-Württemberg Gemarkungen** — the cadastral districts Baden
+   and Württemberg are delimited in (ALKIS layer `nora:v_al_gemarkung`,
+   dl-de/by-2-0), paged from the state survey's WFS into
+   `raw/de/lgl/gemarkungen.gpkg`. Refreshed daily upstream, so not
+   sha-pinned; `--refresh-lgl` re-reads it.
+
+6. **Gemarkungen of the other Länder** — Nordrhein-Westfalen, Brandenburg,
+   Sachsen-Anhalt, Thüringen and Rheinland-Pfalz publish theirs as open
+   data too (scripts/_lib/de/katasterbezirk.py: the ALKIS `KatasterBezirk`
+   layer, Rheinland-Pfalz's `gemarkungen_rlp`). Mittelrhein, Saale-Unstrut,
+   Mosel, Nahe, Pfalz and their Landweine name Gemarkungen, not Gemeinden.
+   Read for the Kreise the texts name into
+   `raw/de/katasterbezirke/<land>.gpkg`; `--refresh-katasterbezirke`
+   re-reads them.
+
 Outputs:
+- raw/de/lgl/gemarkungen.gpkg + manifest.json — the Gemarkung layer
+- raw/de/katasterbezirke/{nw,bb,st,th,rp}.gpkg + manifest.json — the other Länder's
 - raw/de/eambrosia/index.json — filtered DE-wine list with derived slug + kind
 - raw/de/eambrosia/manifest.json — fetch metadata for the eAmbrosia call
 
@@ -299,9 +316,62 @@ def _annotate_einzellagen(projected: list[dict]) -> int:
     return n
 
 
+LGL_DIR = ROOT / "raw" / "de" / "lgl"
+LGL_GEMARKUNGEN = LGL_DIR / "gemarkungen.gpkg"
+
+
+def fetch_lgl_gemarkungen(refresh: bool = False) -> dict:
+    """The Baden-Württemberg Gemarkung layer (LGL, ALKIS, dl-de/by-2-0) that
+    Baden and Württemberg are drawn from — their documents list the
+    Gemarkungen by land-register number (scripts/_lib/de/gemarkung.py). The
+    service is refreshed daily, so a cached file is kept unless `refresh`."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from _lib.de import gemarkung
+
+    manifest_path = LGL_DIR / "manifest.json"
+    if LGL_GEMARKUNGEN.exists() and manifest_path.exists() and not refresh:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        print(f"[lgl] cached {LGL_GEMARKUNGEN.relative_to(ROOT)} "
+              f"({manifest.get('n_gemarkungen')} Gemarkungen, {manifest.get('fetched_at')})",
+              file=sys.stderr)
+        return manifest
+    return gemarkung.fetch_layer(
+        LGL_GEMARKUNGEN, manifest_path, user_agent=UA,
+        log=lambda msg: print(msg, file=sys.stderr),
+    )
+
+
+KATASTERBEZIRKE_DIR = ROOT / "raw" / "de" / "katasterbezirke"
+
+
+def fetch_katasterbezirke(refresh: bool = False) -> dict:
+    """The Gemarkung layers of the Länder outside Baden-Württemberg whose
+    Gemarkungen a German delimitation names (scripts/_lib/de/katasterbezirk.py).
+    One GeoPackage per Land; a cached one is kept unless `refresh`."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from _lib.de import katasterbezirk
+
+    manifest_path = KATASTERBEZIRKE_DIR / "manifest.json"
+    manifest = (json.loads(manifest_path.read_text(encoding="utf-8"))
+                if manifest_path.exists() else {})
+    for code in katasterbezirk.SERVICES:
+        dest = KATASTERBEZIRKE_DIR / f"{code}.gpkg"
+        if dest.exists() and code in manifest and not refresh:
+            print(f"[katasterbezirk] cached {dest.relative_to(ROOT)} "
+                  f"({manifest[code].get('n_gemarkungen')} Gemarkungen, "
+                  f"{manifest[code].get('fetched_at')})", file=sys.stderr)
+            continue
+        manifest[code] = katasterbezirk.fetch_land(
+            code, KATASTERBEZIRKE_DIR, GISCO_LAU_PATH,
+            log=lambda msg: print(msg, file=sys.stderr))
+    return manifest
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     assert_shared_artifacts()
+    fetch_lgl_gemarkungen(refresh="--refresh-lgl" in sys.argv)
+    fetch_katasterbezirke(refresh="--refresh-katasterbezirke" in sys.argv)
     full, etag = fetch_list()
     de_wines_all = [
         g for g in full

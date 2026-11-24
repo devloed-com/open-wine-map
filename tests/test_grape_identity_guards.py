@@ -190,3 +190,72 @@ def test_a_bare_colour_word_is_not_a_grape(token):
 def test_a_variety_named_like_a_colour_still_resolves(token, slug):
     m = match_variety(token)
     assert m is not None and m.slug == slug
+
+
+# ── the Cornalin identity pass and the Swiss lists (2026-11-17) ───────────
+
+@pytest.mark.parametrize("token, slug", [
+    ("Cornalin du Valais", "rouge-du-pays"),
+    ("Rouge du Pays", "rouge-du-pays"),
+    ("Landroter", "rouge-du-pays"),
+    ("Humagne rouge", "humagne-rouge"),
+    ("Humagne blanc", "humagne-blanc"),
+    ("Humagne blanche", "humagne-blanc"),
+    ("Rèze", "reze"),
+    ("Petit rouge", "petit-rouge"),
+    ("Vidal blanc", "vidal-blanc"),
+    ("Seibel 9110", "verdelet"),
+    ("Verdelet", "verdelet"),
+    ("Millot-Foch", "millot-foch"),
+    ("De Chaunac", "de-chaunac"),
+    ("Salomé", "sirame"),
+])
+def test_a_swiss_list_name_binds_its_own_variety(token, slug):
+    hit = match_variety(token)
+    assert hit and hit.slug == slug and hit.method == "exact", (token, hit)
+
+
+@pytest.mark.parametrize("token", ["Cornalin", "Humagne", "Seibel"])
+def test_a_name_of_two_cultivars_binds_nothing_bare(token):
+    """VIVC lists the bare CORNALIN under ROUGE DU PAYS #10240 and CORNALIN
+    D'AOSTE #2838, the bare HUMAGNE under #2838 and HUMAGNE BLANCHE #5450."""
+    assert match_variety(token) is None
+
+
+def test_the_swiss_readers_read_cornalin_as_the_valais_variety():
+    """"Le Cornalin, respectivement le Rouge du Pays, est un vin AOC du
+    Valais issu du cépage Cornalin du Valais" (OVV art. 56); the Italian
+    readers, which take the shared matcher, still bind nothing."""
+    from _lib.ch.reglement import list_varieties, swiss_match, table_varieties
+
+    hit = swiss_match(match_variety)("Cornalin")
+    assert (hit.slug, hit.name) == ("rouge-du-pays", "Cornalin")
+    assert swiss_match(match_variety)("Humagne") is None
+    assert [(v["slug"], v["name"]) for v in table_varieties("Cornalin / Landroter", match_variety)] \
+        == [("rouge-du-pays", "Cornalin")]
+    assert [v["slug"] for v in list_varieties("Cornalin, Humagne rouge", match_variety)] \
+        == ["rouge-du-pays", "humagne-rouge"]
+
+
+def test_a_roster_cell_binds_a_breeder_code_only_exactly():
+    from _lib.ch.reglement import table_varieties
+
+    assert [(v["slug"], v["name"]) for v in table_varieties("VB 91-26-29", match_variety)] \
+        == [("satin-noir", "VB 91-26-29")]
+    for code in ("VB 91-26-26", "CAL 1-28", "VB 32-8"):
+        assert table_varieties(code, match_variety) == [], code
+
+
+@pytest.mark.parametrize("token, slug", [
+    # VIVC #8238 MUSCAT A PETITS GRAINS NOIRS (BLAUER MUSKATELLER, MUSKATELLER
+    # BLAU) is a passport of its own beside the red #8248: the six German
+    # lists that print both rows had shown one pill (feedback triage
+    # 2026-11-24).
+    ("Blauer Muskateller", "muscat-a-petits-grains-noirs"),
+    ("Muskateller blau", "muscat-a-petits-grains-noirs"),
+    ("Roter Muskateller", "muscat-a-petits-grains-rouges"),
+    ("Gelber Muskateller", "muscat-a-petits-grains"),
+])
+def test_the_coloured_muskatellers_bind_their_own_passports(token, slug):
+    hit = match_variety(token)
+    assert hit and hit.slug == slug, (token, hit)

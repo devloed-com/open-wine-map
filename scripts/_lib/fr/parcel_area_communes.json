@@ -1,0 +1,30 @@
+{
+  "_comment": "French records drawn as the communes holding their parcel area instead of their aire géographique, where INAO's parcellaire shapefile has no row for them. source 'inao-plan-inventory': the communes whose «Délimitation parcellaire attendu» reads oui for `appellation` in INAO's inventory of delimitation plans (scripts/_lib/fr/plan_inventory.py, fetched by stage 00); source 'cahier': the communes the record's cahier places its vines in, quoted. Read by stage 04 (FR parent geometry) and the card line `geom_approx_aires_union_parcel_communes`. Triage of 2026-11-23, Boris's choice (a).",
+  "champagne": {
+    "source": "inao-plan-inventory",
+    "appellation": "champagne",
+    "reason": "INAO's product page: «L'aire Géographique ou Champagne Viticole … concerne au total 635 communes» and «L'aire de production du raisin (ou aire délimitée parcellaire) est répartie sur 319 communes au sein de l'aire géographique». The aires-communes rows are the 635; the parcellaire shapefile has no Champagne row; the inventory names the 319 (321 codes of today on 2026-11-23).",
+    "source_url": "https://www.inao.gouv.fr/node/9132",
+    "verified": "2026-11-23"
+  },
+  "coteaux-champenois": {
+    "source": "inao-plan-inventory",
+    "appellation": "champagne",
+    "reason": "The Coteaux champenois cahier's section IV is word for word Champagne's (the territories of article 17 of the law of 6 May 1919, the same parcel-area approvals, the same 16 communes «aucune parcelle n'a été retenue»), and INAO's product page gives both «319 communes»: the parcel area is Champagne's, drawn from Champagne's inventory list. The inventory's own Coteaux champenois list (278 communes, as its plan folders) lacks 17 Côte des Bar communes and the 31 whose Champagne plan is «en cours d'élaboration» — read as incomplete (2026-11-23).",
+    "source_url": "https://www.inao.gouv.fr/node/9063",
+    "verified": "2026-11-23"
+  },
+  "rose-des-riceys": {
+    "source": "cahier",
+    "communes": {
+      "10317": "Les Riceys"
+    },
+    "evidence": {
+      "file": "raw/inao/cahier-extracted/rose-des-riceys.json",
+      "field": "sections.IV",
+      "quote": "Les vins sont issus exclusivement des vignes situées sur la commune des Riceys dans l’aire parcellaire délimitée de l’appellation d’origine contrôlée “Champagne “"
+    },
+    "reason": "The aire géographique (IV 1°) is 8 communes — harvest in Les Riceys (a), vinification also in 7 others (b) — while the parcel area (IV 2°) lies in Les Riceys alone. INAO's inventory marks all 8 «Aucune parcelle classée» for Rosé des Riceys (its parcels are Champagne's), so the cahier is the source.",
+    "verified": "2026-11-23"
+  }
+}

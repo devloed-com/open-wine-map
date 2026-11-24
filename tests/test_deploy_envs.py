@@ -256,3 +256,63 @@ def test_settle_gives_up_at_the_timeout():
     left = deploy.settle(["a"], lambda rel: False, lambda rel: None, timeout_s=0,
                          interval_s=60, sleep=lambda s: None)
     assert left == ["a"]
+
+
+class _Resp:
+    def __init__(self, status_code, content, total):
+        self.status_code = status_code
+        self.content = content
+        self.headers = {"Content-Range": f"bytes 0-{len(content) - 1}/{total}"} if total else {}
+
+
+class _Site:
+    """The CDN as a stand-in: it answers a ranged request from `body`."""
+
+    def __init__(self, body: bytes, status_code: int = 206):
+        self.body, self.status_code, self.ranges = body, status_code, []
+
+    def get(self, url, headers=None, timeout=None):
+        rng = (headers or {}).get("Range", "")
+        self.ranges.append(rng)
+        end = int(rng.rpartition("-")[2]) + 1 if rng else len(self.body)
+        return _Resp(self.status_code, self.body[:end], len(self.body) if rng else None)
+
+
+def test_large_stable_files_are_checked_on_their_own():
+    """2026-11-14: the 52 MB overview tileset was re-cached stale after the
+    purge — no probe is that large, so nothing noticed."""
+    deploy = _load("deploy")
+    assert deploy.is_large_stable_file("map-data/appellations-overview.pmtiles", 52_009_977)
+    assert deploy.is_large_stable_file("sitemap.xml", 4_757_934)
+    assert deploy.is_large_stable_file("data/mcp/en.json", 3_983_557)
+    assert not deploy.is_large_stable_file("data/d/en/kos.json", 9_000)        # a probe's job
+    assert not deploy.is_large_stable_file("data/aocs.en.abcdef0123.js", 4_000_000)  # hashed: a new path
+    # every large file is beyond the probe set, none is in both
+    assert not deploy.is_probe_candidate("sitemap.xml", 4_757_934)
+
+
+def test_cdn_head_check_compares_size_and_leading_bytes(tmp_path):
+    deploy = _load("deploy")
+    new = bytes(range(256)) * 400            # 102,400 bytes: longer than the head
+    local = tmp_path / "tiles.pmtiles"
+    local.write_bytes(new)
+
+    fresh = _Site(new)
+    assert deploy.cdn_head_is_fresh(fresh, "h", "tiles.pmtiles", local)
+    assert fresh.ranges == [f"bytes=0-{deploy._LARGE_HEAD_BYTES - 1}"]   # never the whole file
+
+    assert not deploy.cdn_head_is_fresh(_Site(new[:-9]), "h", "tiles.pmtiles", local)       # the old, shorter file
+    assert not deploy.cdn_head_is_fresh(_Site(b"x" + new[1:]), "h", "tiles.pmtiles", local)  # same size, other bytes
+    assert not deploy.cdn_head_is_fresh(_Site(new, status_code=200), "h", "tiles.pmtiles", local)
+
+
+def test_a_large_text_file_is_compared_whole(tmp_path):
+    deploy = _load("deploy")
+    body = b"<urlset>" + b"u" * 3_000_000 + b"</urlset>"
+    local = tmp_path / "sitemap.xml"
+    local.write_bytes(body)
+    sha = hashlib.sha256(body).hexdigest()
+    assert deploy.large_file_is_fresh(_Site(body, status_code=200), "h", "sitemap.xml", local, sha)
+    # the same leading bytes and another tail: only the whole body tells
+    other = body[:-10] + b"X" * 10
+    assert not deploy.large_file_is_fresh(_Site(other, status_code=200), "h", "sitemap.xml", local, sha)

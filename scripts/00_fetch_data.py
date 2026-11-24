@@ -4,6 +4,9 @@ Sources:
 - INAO SIQO referentiel + INAO parcellaire viticole (data.gouv.fr, slug-resolved)
 - French commune polygons via geo.api.gouv.fr (IGN AdminExpress under the hood),
   fetched per-département and merged into a single GeoJSON.
+- INAO's inventory of delimitation plans (the public share of INAO's «portail
+  des plans officiels de délimitation»): the communes holding each
+  appellation's parcel area — scripts/_lib/fr/plan_inventory.py.
 - Cadastre Etalab lieux-dits (cadastre.data.gouv.fr) for a curated set of
   parent appellations whose DGCs sit as named cadastral parcels inside the
   parent's communes (Chablis premier-cru climats, Givry premier cru,
@@ -30,6 +33,7 @@ RAW = ROOT / "raw"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _lib.aires import load_aires  # noqa: E402
 from _lib.aires import lookup as lookup_aire
+from _lib.fr import plan_inventory  # noqa: E402
 
 DATAGOUV_API = "https://www.data.gouv.fr/api/1/datasets/{slug}/"
 GEO_API = "https://geo.api.gouv.fr/communes"
@@ -337,6 +341,19 @@ def main() -> int:
         print(f"[fetch] geo.api.gouv.fr former communes → {former_dest.relative_to(ROOT)}",
               file=sys.stderr)
         manifest["ign-former-communes"] = fetch_former_communes(former_dest)
+
+    # INAO's plan inventory is rewritten in place on the share: re-read on
+    # every run (14 MB), like the parcellaire's weekly resource.
+    print(f"[fetch] INAO plan inventory → {plan_inventory.DEST_DIR.relative_to(ROOT)}",
+          file=sys.stderr)
+    try:
+        manifest["inao-plan-inventory"] = {
+            **plan_inventory.fetch(requests.Session()),
+            "fetched_at": time.strftime("%Y-%m-%d"),
+        }
+    except Exception as exc:
+        print(f"[skip] INAO plan inventory: {exc} — stage 04 keeps the last copy on disk",
+              file=sys.stderr)
 
     cadastre_dest = RAW / "cadastre" / "lieux-dits"
     cadastre_insee = collect_cadastre_communes()

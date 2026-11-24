@@ -28,16 +28,12 @@ Writes:
   raw/de/produktspezifikationen-extracted/_index.json
   raw/de/produktspezifikationen-extracted/manifest.json
 
-Role split logic:
-  - principal = varieties named with their own Mindestmostgewicht
-    threshold in §3.2 of the Produktspezifikation
-    (de-facto principal — same pattern as ES MAPA / IT MASAF where the
-    regulator's production-rules section is the role-split signal)
-  - accessory = all other varieties from §8 (Zugelassene
-    Keltertraubensorten), section/colour-tagged
-  - When §3.2 is absent or parses empty (older PDF templates), fall back
-    to: everything in §8 is principal. Record `role_split_method` so the
-    UI knows which Anbaugebiete have an authoritative split.
+Roles: none. No BLE specification draws a principal / accessory line, so
+every authorised variety of § 8 is listed alike (`role_split_method` is
+always `section-8-flat-no-split` since 2026-11-17). The varieties § 3.2
+singles out — a minimum must weight of their own, a planting share — are
+kept as `raw_section_3_2_principal` for reference; they had been shown as
+principal, which the card validator graded misleading.
 
 Re-runnable per slug or in sweep mode:
   .venv/bin/python scripts/de/02f_extract_produktspezifikation.py --slug mosel
@@ -48,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -56,14 +53,23 @@ from tqdm import tqdm
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+from _lib.de import area_units, ble_styles, gemarkung, gemeinde_list  # noqa: E402
+from _lib.de.grape_pins import german_match  # noqa: E402
 from _lib.de.landwein_spezifikation import extract as parse_landwein_pdf  # noqa: E402
 from _lib.de.produktspezifikation import extract as parse_anbaugebiet_pdf  # noqa: E402
+from _lib.de.produktspezifikation import pdf_to_text  # noqa: E402
 from _lib.extract_index import write_index  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
+    exact_match,
     flush_unknowns_queue,
+    is_curated_surface,
     match_variety,
     set_pliego_context,
 )
+
+# «Roter Muskateller» is another passport in Germany than in Austria
+match_variety = german_match(match_variety)
+exact_match = german_match(exact_match)
 
 PDF_DIR = ROOT / "raw" / "de" / "produktspezifikationen"
 MANIFEST = PDF_DIR / "manifest.json"
@@ -85,6 +91,57 @@ def _slug_match(name: str) -> dict | None:
     return {"slug": m.slug, "name": name, "colour": m.colour or ""}
 
 
+_INWORD_HYPHEN = re.compile(r"(?<=[a-zäöüß])-(?=[a-zäöüß])")
+
+
+def _matches(name: str) -> list[dict]:
+    """The variety a roster name states — or the two it states where the
+    list lost a comma: Mosel's § 8 prints "Findling Gelber Kleinberger,
+    Gelber Muskateller" (2026-11-17). Tried only on a name that matched
+    nothing whole, and both halves must be exact names the lexicon vouches
+    for (the ES reader's rule), so a name the lexicon lacks is never cut
+    into two lucky halves."""
+    # A hyphen set inside a word: Badischer Landwein and Landwein Oberrhein
+    # print "Blauer Spät-burgunder". The matcher split it at the hyphen and
+    # read "burgunder" — a VIVC synonym of Blaufränkisch, already on the list
+    # as «Blauer Limberger» — so neither card had Pinot noir (card validator,
+    # 2026-11-17). The closed form is tried first; "Müller-Thurgau" and
+    # "Riesling-Silvaner" have a capital after the hyphen and are untouched.
+    closed = _INWORD_HYPHEN.sub("", name)
+    if closed != name:
+        hit = exact_match(closed)
+        if hit is not None:
+            return [{"slug": hit.slug, "name": closed, "colour": hit.colour or ""}]
+    d = _slug_match(name)
+    if d is not None:
+        return [d]
+    words = name.strip(" .,;:()").split()
+    if len(words) < 2:
+        return []
+    if len(words) <= 6:
+        for i in range(1, len(words)):
+            left, right = " ".join(words[:i]), " ".join(words[i:])
+            a, b = exact_match(left), exact_match(right)
+            if (a and b and a.slug != b.slug
+                    and is_curated_surface(left) and is_curated_surface(right)):
+                return [{"slug": a.slug, "name": left, "colour": a.colour or ""},
+                        {"slug": b.slug, "name": right, "colour": b.colour or ""}]
+    # The last name of a list that ran into what follows it — the sentence
+    # after the roster, a page footer: Sachsen's "… Regent, Saint Laurent ⏎ Die
+    # in Anbaueignungsprüfungen angestellten Rebsorten sind ebenfalls …",
+    # Hessische Bergstraße's "Blauer Zweigelt. Seite 6 von 10", Württemberg's
+    # "Tauberschwarz. In diese Listen können weitere Rebsorten aufgenommen
+    # werden". Neither card had the variety (card validator on Sachsen,
+    # 2026-11-17). Its leading words are the name when they are an exact
+    # name the lexicon vouches for and at least two words of prose follow.
+    for i in range(min(4, len(words) - 2), 0, -1):
+        head = " ".join(words[:i]).rstrip(".,;:")
+        hit = exact_match(head)
+        if hit is not None and is_curated_surface(head):
+            return [{"slug": hit.slug, "name": head, "colour": hit.colour or ""}]
+    return []
+
+
 def _resolve_names(names: list[str], default_role: str) -> tuple[list[dict], list[str]]:
     """Resolve raw variety names → list of {slug,name,colour,role}. Returns
     (resolved, unmatched_names)."""
@@ -92,15 +149,15 @@ def _resolve_names(names: list[str], default_role: str) -> tuple[list[dict], lis
     unmatched: list[str] = []
     seen_slugs: set[str] = set()
     for raw_name in names:
-        d = _slug_match(raw_name)
-        if d is None:
+        hits = _matches(raw_name)
+        if not hits:
             unmatched.append(raw_name)
-            continue
-        if d["slug"] in seen_slugs:
-            continue
-        seen_slugs.add(d["slug"])
-        d["role"] = default_role
-        resolved.append(d)
+        for d in hits:
+            if d["slug"] in seen_slugs:
+                continue
+            seen_slugs.add(d["slug"])
+            d["role"] = default_role
+            resolved.append(d)
     return resolved, unmatched
 
 
@@ -113,34 +170,27 @@ def _build_record(slug: str, pdf_meta: dict, parsed: dict) -> dict:
     all_white = parsed["section_8_white_names"]
     all_red = parsed["section_8_red_names"]
 
+    # No role split (Boris, 2026-11-17): no BLE specification draws a
+    # principal / accessory line, so every authorised variety is listed
+    # alike — as the EU single documents list them. Until then the varieties
+    # § 3.2 singles out (a minimum must weight of their own, a planting
+    # share) were shown as principal and the rest as accessory; the card
+    # validator graded that misleading with and without a disclosure line
+    # (Mosel: Spätburgunder and Chardonnay accessory, and "Riesling" /
+    # "Elbling" of § 3.2 read as the white variety only; Sachsen: Riesling
+    # and Müller-Thurgau accessory; Baden: an artefact of wrapped rows).
+    # The names § 3.2 singles out stay in the sidecar for reference
+    # (`raw_section_3_2_principal`); they lead the list.
     principal_resolved, prin_unmatched = _resolve_names(principal_raw, "principal")
-    principal_slugs = {d["slug"] for d in principal_resolved}
 
     all_resolved: list[dict] = list(principal_resolved)
     section_8_unmatched: list[str] = []
-    if principal_slugs:
-        # Real role split: §3.2 principal, everything else from §8 = accessory.
-        role_split_method = "section-3.2-principal"
-        for name in (*all_white, *all_red):
-            d = _slug_match(name)
-            if d is None:
-                section_8_unmatched.append(name)
-                continue
-            if d["slug"] in principal_slugs:
-                continue
-            if d["slug"] in {x["slug"] for x in all_resolved}:
-                continue
-            d["role"] = "accessory"
-            all_resolved.append(d)
-    else:
-        # No §3.2 principal split — everything in §8 = principal, no
-        # accessory. Records the limitation so the UI can attribute.
-        role_split_method = "section-8-flat-no-split"
-        for name in (*all_white, *all_red):
-            d = _slug_match(name)
-            if d is None:
-                section_8_unmatched.append(name)
-                continue
+    role_split_method = "section-8-flat-no-split"
+    for name in (*all_white, *all_red):
+        hits = _matches(name)
+        if not hits:
+            section_8_unmatched.append(name)
+        for d in hits:
             if d["slug"] in {x["slug"] for x in all_resolved}:
                 continue
             d["role"] = "principal"
@@ -200,6 +250,41 @@ def _process_slug(slug: str, pdf_meta: dict) -> dict | None:
         print(f"  {slug}: parse error: {e}", file=sys.stderr)
         return None
     record = _build_record(slug, pdf_meta, parsed)
+    # § 4 "Abgrenzung des Gebiets" where it lists the Gemarkungen by their
+    # land-register number (Baden, Württemberg: scripts/_lib/de/gemarkung.py)
+    # or the Bavarian Gemeinden by Regierungsbezirk and Kreis (Franken,
+    # Landwein Main: scripts/_lib/de/gemeinde_list.py): stage 04 draws the
+    # record from them. Only those sidecars carry the key.
+    text = pdf_to_text(pdf_path)
+    area_text = gemarkung.section_4(text)
+    n_units = len(gemarkung.parse_area(area_text).units)
+    n_gemeinden = gemeinde_list.n_names(gemeinde_list.parse_lists(area_text))
+    if n_units >= gemarkung.MIN_UNITS:
+        record["area_text"] = area_text
+        record["n_gemarkungen"] = n_units
+    elif n_gemeinden >= gemeinde_list.MIN_NAMES:
+        record["area_text"] = area_text
+        record["n_gemeinden"] = n_gemeinden
+    else:
+        # The other layouts (scripts/_lib/de/area_units.py): a Gemeinde list
+        # in prose (Rheingau § 3, Ahr, Hessische Bergstraße), Gemarkungen by
+        # Kreis (Mitteldeutscher Landwein), the Rhineland's numbered
+        # Gemarkungen (Landwein Rhein).
+        section = area_units.area_section(text)
+        n_named = len(area_units.parse(section))
+        if n_named >= area_units.MIN_UNITS:
+            record["area_text"] = section
+            record["n_area_units"] = n_named
+    # The wine types the specification states (scripts/_lib/de/ble_styles.py):
+    # the styles of a record with no EU single document to state them, each
+    # with its sentence; `description_text` is what was read, for the card
+    # validator.
+    stated = ble_styles.stated_styles(text)
+    if stated:
+        record["styles_stated"] = sorted(stated)
+        record["styles_evidence"] = stated
+        record["description_text"] = re.sub(r"\n\s*\n+", "\n\n",
+                                            ble_styles.readable_text(text)).strip()
     if record["n_total"] == 0:
         # Older PDF template — no varieties extracted. Skip the sidecar
         # so the EU-document data (already loaded in stage 04) stays

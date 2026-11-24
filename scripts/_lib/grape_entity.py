@@ -225,6 +225,13 @@ _BANNED_SURFACES = frozenset({
     # verano", read into its variety section) put Sciacarello on the Valencia
     # card and its four subzonas (found 2026-10-24).
     "verano", "veranos",
+    # Two cultivars each, by country (the Cornalin identity pass of
+    # 2026-11-17): VIVC lists the bare CORNALIN under ROUGE DU PAYS #10240
+    # (the Valais "Cornalin du Valais") and under CORNALIN D'AOSTE #2838
+    # (the Valais "Humagne rouge", the Valle d'Aosta "Cornalin"), and the bare
+    # HUMAGNE under #2838 and HUMAGNE BLANCHE #5450. The qualified names bind;
+    # the bare ones would bind whichever passport was read first.
+    "cornalin", "humagne",
 })
 
 

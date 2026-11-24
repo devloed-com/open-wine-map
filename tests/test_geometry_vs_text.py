@@ -108,3 +108,53 @@ def test_a_curated_drink_area_is_pinned_unless_a_named_unit_is_missing():
     # every other source keeps its verdict, and so does a verdict that is not SUSPECT
     assert agt.curated_area_bucket("SUSPECT", "aires-csv", extra_only) == "SUSPECT"
     assert agt.curated_area_bucket("OK", "drinks-area-pin", extra_only) == "OK"
+
+
+def _de_layer():
+    layer = agt.Layer("de")
+    rows = [("DE_06439003", "Eltville am Rhein, Stadt"), ("DE_06439009", "Kiedrich"),
+            ("DE_06412000", "Frankfurt am Main, Stadt"), ("DE_06414000", "Wiesbaden, Landeshauptstadt"),
+            ("DE_06439010", "Lorch, Stadt"), ("DE_08116004", "Lorch, Stadt"),
+            ("DE_09679194", "Sommerhausen, M"), ("DE_09679175", "Randersacker, M")]
+    for i, (uid, name) in enumerate(rows):
+        layer.add(uid, name, box(i * 10, 0, i * 10 + 10, 10), cntr="DE")
+    layer.build()
+    return layer
+
+
+def test_de_reader_names_the_gemeinden_of_a_prose_list(monkeypatch, tmp_path):
+    """The German reader (2026-11-24): the Rheingau's § 3, read from the
+    sidecar's `area_text` where the record has no EU document — Frankfurt
+    am Main is named, and a homonym in another Land (Lorch, Württemberg) is
+    not the text's."""
+    monkeypatch.setattr(agt, "_DE", {})
+    monkeypatch.setattr(agt, "DE_SIDECARS", tmp_path)
+    (tmp_path / "rheingau.json").write_text(
+        '{"area_text": "Zur geschützten Ursprungsbezeichnung gehören die Rebflächen der Städte und Ge-\\n'
+        'meinden Eltville am Rhein, Frankfurt am Main, Kiedrich, Lorch und der Landeshauptstadt Wiesbaden '
+        'des Bundeslandes Hessen.\\nDie Herstellung muss im Anbaugebiet erfolgen."}', encoding="utf-8")
+    out = agt.named_units("de", "rheingau", {"file_number": "PDO-DE-A1273"}, {}, {}, _de_layer(),
+                          geom=box(0, 0, 10, 10))
+    assert out["ids"] == {"DE_06439003", "DE_06412000", "DE_06439009", "DE_06439010", "DE_06414000"}
+    assert not out["unresolved"] and not out["partial"]
+    assert out["method"] == "de-area-units (ble)" and out["has_text"]
+
+
+def test_de_reader_reads_nothing_from_prose_and_says_it_had_a_text(monkeypatch, tmp_path):
+    monkeypatch.setattr(agt, "_DE", {})
+    monkeypatch.setattr(agt, "DE_SIDECARS", tmp_path)
+    rec = {"section_roles": {"geo_area": "Das Gebiet umfasst die Südhänge des Bayerischen Waldes "
+                                         "entlang der Donau zwischen Naab und Großer Laaber."}}
+    out = agt.named_units("de", "x", rec, {}, {}, _de_layer(), geom=box(0, 0, 10, 10))
+    assert not out["ids"] and out["has_text"] and out["method"] == "de-none"
+
+
+def test_gemarkung_unions_are_judged_as_unions_of_parts():
+    """A record drawn from Gemarkungen covers its communes in part by
+    construction: no finding; a whole commune it draws that the text does not
+    name still is one."""
+    named = {f"c{i}" for i in range(20)}
+    bucket, _ = agt.classify("alkis-gemarkung-union", named, set(), named, named_above=[])
+    assert bucket == "OK"
+    bucket, detail = agt.classify("lgl-gemarkung-union", named, {"x1", "x2"}, named, named_above=[])
+    assert bucket == "SUSPECT" and detail["extra"] == ["x1", "x2"]

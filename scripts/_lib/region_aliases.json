@@ -139,10 +139,6 @@
       "country": "cy", "regions": ["Λευκωσία"],
       "evidence": [{"file": "raw/cy/national-specs-extracted/pitsilia.json", "field": "section_roles.geo_area", "quote": "Λαγουδερά"}],
       "reason": "Its villages straddle the Limassol and Nicosia districts (Lagoudera, Palaichori, Fikardou, Farmakas are Nicosia district): 237 of its 354 km² lie in the Λευκωσία PGI.", "verified": "2026-10-25"
-    },
-    "bayerischer-bodensee-landwein": {
-      "country": "de", "regions": [],
-      "reason": "No alias: its member table draws it as the whole Baden Anbaugebiet (PDO-DE-A1264, 13,231 km²) for a Landwein of the Lindau shore, so the derived Baden alias would repeat a geometry defect (CURATOR_TODO).", "verified": "2026-10-25"
     }
   },
   "rejected": {
@@ -150,13 +146,6 @@
     "civitella-d-agliano": {"Umbria": "Viterbo (Lazio) only; the overlap is Orvieto's Lazio part (Orvieto is filed under Umbria)."},
     "lefkosia": {"Λεμεσός": "The Nicosia district only; the overlap is Pitsilia's Nicosia-district villages (Pitsilia is filed under Λεμεσός)."},
     "clairette-de-bellegarde": {"VALLEE DU RHÔNE": "One commune, Bellegarde, which the Costières de Nîmes aire also holds — a shared commune, not an appellation spanning two regions."},
-    "bayerischer-bodensee-landwein": {"Baden": "Its member table draws the whole Baden Anbaugebiet for a Landwein of the Lindau shore (geometry defect, CURATOR_TODO); the alias is suppressed in `entries`.", "Württemberg": "The Baden polygon's Bétard overlap with Württemberg; see baden."},
-    "baden": {"Württemberg": "Bétard polygons of Baden and Württemberg overlap by 4,157 km²; the two Anbaugebiete are disjoint (CURATOR_TODO)."},
-    "badischer-landwein": {"Württemberg": "Drawn as the Baden polygon; see baden."},
-    "landwein-oberrhein": {"Württemberg": "Drawn as the Baden polygon; see baden."},
-    "wurttemberg": {"Baden": "Bétard overlap; see baden."},
-    "schwabischer-landwein": {"Baden": "Drawn as the Württemberg polygon; see baden."},
-    "landwein-neckar": {"Baden": "Drawn as the Württemberg polygon; see baden."},
     "mittelrhein": {"Mosel": "Bétard overlap of neighbouring Anbaugebiete (106 km²)."},
     "etyek-buda": {"Felső-Magyarország": "Bétard overlap with Mátra (526 km²; CURATOR_TODO).", "Pannon": "Bétard overlap of neighbouring districts."},
     "matra": {"Felső-Pannon": "Bétard overlap with Etyek-Buda; see etyek-buda."},

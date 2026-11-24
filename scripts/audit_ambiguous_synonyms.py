@@ -12,7 +12,10 @@ That failure is silent: the wrong variety simply appears on the panel.
 This audit makes it visible. It intersects the ambiguous surfaces with
 the surfaces the corpora actually use, and buckets each finding:
 
-  PINNED      a GRAPE_ALIAS entry decides the binding — curator-reviewed.
+  PINNED      a GRAPE_ALIAS entry decides the binding — curator-reviewed;
+              or the shared matcher binds nothing to the bare surface
+              (`_BANNED_SURFACES`) and a country reader's own pin decides
+              (the Swiss «Cornalin» is Rouge du Pays, `_CH_NAME_PINS`).
   UNREVIEWED  no pin; the binding is iteration order. The risk bucket.
 
 A finding is not automatically a bug: many ambiguous names resolve to the
@@ -35,6 +38,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from _lib.grape_entity import (  # noqa: E402
+    _BANNED_SURFACES,
     _normalise,
     _slug_to_search_surface,
     _vivc_canonical_by_id,
@@ -119,7 +123,7 @@ def main() -> int:
 
     claims = claimants_by_surface()
     used = corpus_surfaces()
-    alias_keys = {_normalise(k) for k in GRAPE_ALIAS}
+    alias_keys = {_normalise(k) for k in GRAPE_ALIAS} | set(_BANNED_SURFACES)
 
     findings = []
     for key, entry in used.items():

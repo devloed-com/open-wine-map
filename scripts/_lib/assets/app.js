@@ -96,6 +96,12 @@
     ch: 'règlement cantonal',
   };
   const GRAPES_INFO = (window.__OWM_DATA && window.__OWM_DATA.grapes_info) || {};
+  // Greek and Cyrillic runs, for nativeHtml (defined beside escapeHtml; the
+  // table sits here because the sidebar is rendered before that line runs).
+  const NATIVE_RUN_RES = [
+    ['el', /[\u0370-\u03FF\u1F00-\u1FFF](?:[\u0370-\u03FF\u1F00-\u1FFF\s0-9\u0300-\u036F\u2019.\-]*[\u0370-\u03FF\u1F00-\u1FFF])?/g],
+    ['bg', /[\u0400-\u04FF](?:[\u0400-\u04FF\s0-9\u0300-\u036F\u2019.\-]*[\u0400-\u04FF])?/g],
+  ];
   // Slug -> siblings sharing the same VIVC variety id. Used to make the
   // grape filter synonym-aware: toggling Cot also matches AOCs that
   // list Malbec / Auxerrois / any other regulatory spelling of vivc_id
@@ -187,7 +193,7 @@
   });
   const {
     searchScore, searchableText, regionSearchForms, expandGrapeSet,
-    grapeName, regionLabel, countryLabel,
+    grapeName, grapeNative, regionLabel, countryLabel,
   } = QC;
 
   // The view the URL asks for — the query core's reading of the query string
@@ -303,7 +309,7 @@
   }
 
   function nameWithLatin(rec) {
-    const native = escapeHtml((rec && rec.name) || '');
+    const native = nativeHtml((rec && rec.name) || '');
     const latin = latinBracket(rec);
     if (!latin) return native;
     return native + ' <span class="latin">(' + escapeHtml(latin) + ')</span>';
@@ -1439,7 +1445,7 @@
         // via `.region-group-wrap`'s flex rule — checkbox + disclosure
         // sit in the same row. Both levels carry `data-country`: a region
         // name is only unique within its country.
-        regionHtml.push(`<div class="region-group-wrap" data-country="${safeCountry}" data-region="${safeRegion}"><input type="checkbox" class="region-select" data-country="${safeCountry}" data-region="${safeRegion}" aria-label="${selectAllAria(regionLabel(region))}"><details class="region-group" data-country="${safeCountry}" data-region="${safeRegion}"><summary><span class="name">${escapeHtml(regionLabel(region))}</span><span class="count" data-parents="${parentCount}" data-subs="${slugs.length - parentCount}"></span></summary><div class="region-items">${items}</div></details></div>`);
+        regionHtml.push(`<div class="region-group-wrap" data-country="${safeCountry}" data-region="${safeRegion}"><input type="checkbox" class="region-select" data-country="${safeCountry}" data-region="${safeRegion}" aria-label="${selectAllAria(regionLabel(region))}"><details class="region-group" data-country="${safeCountry}" data-region="${safeRegion}"><summary><span class="name">${nativeHtml(regionLabel(region))}</span><span class="count" data-parents="${parentCount}" data-subs="${slugs.length - parentCount}"></span></summary><div class="region-items">${items}</div></details></div>`);
       }
       if (!regionHtml.length) continue;
       const flag = COUNTRY_FLAG_EMOJI[cc] || '';
@@ -1771,7 +1777,7 @@
     for (const k of filters.styles) chips.push({ kind: 'style', key: k, label: FACET_STYLE_LABELS[k] || k });
     for (const k of filters.classifications) chips.push({ kind: 'classification', key: k, label: CLASS_LABELS[k] || k });
     for (const k of filters.appellationType) chips.push({ kind: 'appellationType', key: k, label: TERM_LABELS[k] || k });
-    for (const k of filters.grapesAll) chips.push({ kind: 'grapeAll', key: k, label: grapeName(k) });
+    for (const k of filters.grapesAll) chips.push({ kind: 'grapeAll', key: k, label: grapeName(k), native: grapeNative(k) });
     // The scope toggle rides with the grape chips: a grape picked in the
     // search box gets a "main grape only" checkbox right after it.
     if (filters.grapesAll.size) chips.push({ kind: 'mainGrapeToggle', key: '1', label: LABELS.main_grape_only_label });
@@ -1796,7 +1802,9 @@
       const bulk = c.kind === 'region' || c.kind === 'country';
       const cls = bulk ? 'filter-chip region-chip' : 'filter-chip';
       const removeAria = fmt(LABELS.remove_filter_aria, { label: c.label });
-      return `<span class="${cls}" data-kind="${escapeAttr(c.kind)}" data-key="${escapeAttr(c.key)}" data-country="${escapeAttr(c.country || '')}"><span>${escapeHtml(c.label)}</span><button type="button" aria-label="${escapeAttr(removeAria)}">×</button></span>`;
+      // a chip is tight: the Latin form alone, the original in the tooltip
+      const nativeTitle = c.native ? ` title="${escapeAttr(c.native)}"` : '';
+      return `<span class="${cls}" data-kind="${escapeAttr(c.kind)}" data-key="${escapeAttr(c.key)}" data-country="${escapeAttr(c.country || '')}"${nativeTitle}><span>${nativeHtml(c.label)}</span><button type="button" aria-label="${escapeAttr(removeAria)}">×</button></span>`;
     }).join('');
   }
 
@@ -2003,7 +2011,10 @@
     const grapes = rankGrapeSuggestions(query, grapeRole, perGroup).map(s => ({
       type: 'grape', key: s.entry.slug,
       name: toTitleCase(s.matched || s.entry.label),
-      sub: (s.matched && s.matched.toLowerCase() !== s.entry.label.toLowerCase()) ? toTitleCase(s.entry.label) : '',
+      // the label beside a matched synonym; else the regulator's own
+      // spelling where the label is its Latin form ("Mavrud" · "Мавруд")
+      sub: (s.matched && s.matched.toLowerCase() !== s.entry.label.toLowerCase())
+        ? toTitleCase(s.entry.label) : (s.entry.native || ''),
       count: filters.mainGrapeOnly ? (s.entry.count_principal || 0) : s.entry.count,
       score: s.score,
     }));
@@ -2197,13 +2208,13 @@
     function clearActiveDescendant() { input.removeAttribute('aria-activedescendant'); }
 
     function suggestionHtml(it, idx) {
-      const sub = it.sub ? ` <span class="sub">${escapeHtml(it.sub)}</span>` : '';
+      const sub = it.sub ? ` <span class="sub">${nativeHtml(it.sub)}</span>` : '';
       const count = (it.count != null) ? `<span class="count">${it.count}</span>` : '';
       const badge = it.type === 'appellation' ? cancelledBadge(AOCS[it.key], true) + promotedBadge(AOCS[it.key], true) : '';
       const hidden = it.hidden
         ? ` <span class="sub hidden-hint">${escapeHtml(it.hidden === 'igp' ? LABELS.omni_hidden_igp : it.hidden === 'pdo' ? LABELS.omni_hidden_pdo : LABELS.omni_hidden_spirit)}</span>`
         : '';
-      return `<div class="suggestion" id="omni-opt-${idx}" role="option" aria-selected="false" data-idx="${idx}" data-type="${escapeAttr(it.type)}" data-key="${escapeAttr(it.key)}"><span class="name">${escapeHtml(it.name)}</span>${badge}${sub}${hidden}${count}</div>`;
+      return `<div class="suggestion" id="omni-opt-${idx}" role="option" aria-selected="false" data-idx="${idx}" data-type="${escapeAttr(it.type)}" data-key="${escapeAttr(it.key)}"><span class="name">${nativeHtml(it.name)}</span>${badge}${sub}${hidden}${count}</div>`;
     }
     // Build the grouped markup for the given {group: items} map; group headers
     // keep a fixed visual order. Resets `items` to the flattened, index-aligned
@@ -2394,6 +2405,10 @@
     if (sources.product) {
       links.push(`<li><a href="${escapeAttr(sources.product)}" target="_blank" rel="noopener">${LABELS.src_product}</a></li>`);
     }
+    if (sources.inao_plans) {
+      // the record is drawn from INAO's inventory of delimitation plans
+      links.push(`<li><a href="${escapeAttr(sources.inao_plans)}" target="_blank" rel="noopener">${LABELS.src_inao_plans}</a></li>`);
+    }
     if (sources.eur_lex_url) {
       links.push(`<li><a href="${escapeAttr(sources.eur_lex_url)}" target="_blank" rel="noopener">${LABELS.src_eur_lex}</a></li>`);
     }
@@ -2407,6 +2422,11 @@
       const added = (sources.bml_produktspezifikation_added_slugs || []).length;
       const note = added ? ' — +' + added + ' ' + LABELS.src_national_pliego_added : '';
       links.push(`<li><a href="${escapeAttr(sources.bml_produktspezifikation_url)}" target="_blank" rel="noopener">${LABELS.src_bml_produktspezifikation}</a>${note}</li>`);
+    }
+    if (sources.ble_produktspezifikation_url) {
+      // the DE national specification: roles, a grandfathered region's link
+      // text, and since 2026-11-17 Baden's Gemarkung list
+      links.push(`<li><a href="${escapeAttr(sources.ble_produktspezifikation_url)}" target="_blank" rel="noopener">${LABELS.src_ble_produktspezifikation}</a></li>`);
     }
     if (sources.national_spec_url) {
       const org = sources.national_spec_source_org ? ' — ' + escapeHtml(sources.national_spec_source_org) : '';
@@ -2801,7 +2821,11 @@
     }
     if (gs === 'mapa-zone') return escapeHtml(LABELS.geom_src_mapa);
     if (gs === 'figshare-pdo' || gs === 'figshare-pdo-alias') return escapeHtml(LABELS.geom_src_betard);
-    if (gs === 'region-pdo-union') return escapeHtml(LABELS.geom_src_pdo_union);
+    if (gs === 'region-pdo-union') {
+      return (r.geom_gemarkungen || {}).member_union
+        ? gemarkungLine(r) : escapeHtml(LABELS.geom_src_pdo_union);
+    }
+    if (gs === 'lgl-gemarkung-union' || gs === 'alkis-gemarkung-union') return gemarkungLine(r);
     const sources = r.sources || {};
     if (gs.startsWith('caop-') && sources.area_act_url) {
       // A Portuguese sub-região drawn from the national act's table, which
@@ -2810,7 +2834,10 @@
       return fmt(LABELS.geom_src_national_act, { act: act });
     }
     if (/^(gisco-|caop-|swissboundaries-|ons-)/.test(gs) || gs === 'nuts2-province' || gs === 'geometry-research-municipios' || gs === 'drinks-area-pin') {
-      return escapeHtml(LABELS.geom_src_admin_union) + drinksUnitsText(r);
+      // units the document does not list: our reading of its description
+      const lead = (r.geom_drinks || {}).reading
+        ? LABELS.geom_src_admin_reading : LABELS.geom_src_admin_union;
+      return escapeHtml(lead) + drinksUnitsText(r);
     }
     return '';
   }
@@ -2912,6 +2939,19 @@
     const key = names.length === 1 ? 'grapes_section4_one' : 'grapes_section4_many';
     return `<div class="approx-line role-conflict">${fmt(LABELS[key], { names: escapeHtml(names.join(', ')) })}</div>`;
   }
+  // A Swiss roster read from the act its ordinance delegates to, where the
+  // card shows less than the list prints. Mirrored by _roster_coverage_line
+  // in content_block.py.
+  function rosterCoverageLine(r) {
+    const cov = r.grapes_roster_coverage || {};
+    const codes = cov.codes || 0, unknown = cov.unknown || 0;
+    if (!(codes || unknown)) return '';
+    const rest = [['grapes_roster_codes', codes], ['grapes_roster_unknown', unknown]]
+      .filter(p => p[1]).map(p => fmt(LABELS[p[0]], { n: p[1] })).join(', ');
+    const entries = cov.entries || 0;
+    const line = fmt(LABELS.grapes_roster_coverage, { resolved: entries - codes - unknown, n: entries, shown: cov.varieties || 0, rest: rest });
+    return `<div class="approx-line role-conflict">${escapeHtml(line)}</div>`;
+  }
   function roleConflictLine(r) {
     const names = (r.sources || {}).register_fiche_roles_yield_conflict || [];
     if (!names.length) return '';
@@ -2922,6 +2962,36 @@
   function joinUnits(list) {
     const items = list.map(n => escapeHtml(String(n)));
     return items.join(items.some(n => n.includes(', ')) ? '; ' : ', ');
+  }
+
+  // A record drawn from the Gemarkungen its document lists (Baden,
+  // Württemberg). Mirrored by _gemarkung_line in content_block.py.
+  function gemarkungLine(r) {
+    const gg = r.geom_gemarkungen || {};
+    // The other Länder: one credit per layer, each with its own licence.
+    const source = (gg.credits || []).length
+      ? gg.credits.map((c) => `<a href="${escapeHtml(c.url || '')}" target="_blank" rel="noopener">${escapeHtml(c.text || '')}</a>`
+        + (c.licence_url ? ` · <a href="${escapeHtml(c.licence_url)}" target="_blank" rel="noopener">${escapeHtml(c.licence || '')}</a>` : '')).join('; ')
+      : `<a href="https://www.lgl-bw.de" target="_blank" rel="noopener">${escapeHtml(gg.attribution || 'LGL-BW')}</a> · <a href="https://www.govdata.de/dl-de/by-2-0" target="_blank" rel="noopener">dl-de/by-2-0</a>`;
+    if (gg.member_union) {
+      return fmt(escapeHtml(LABELS.geom_src_pdo_union_gemarkungen), { source: source })
+        + (gg.mixed ? ' ' + escapeHtml(LABELS.geom_src_pdo_union_mixed) : '');
+    }
+    const lead = gg.named ? LABELS.geom_src_gemarkungen_named : LABELS.geom_src_gemarkungen;
+    let out = fmt(escapeHtml(lead), { n: gg.n || 0, source: source });
+    if ((gg.gemeinden || []).length) {
+      out += ' ' + escapeHtml(fmt(LABELS.geom_gemarkung_gemeinden, { names: gg.gemeinden.join(', ') }));
+    }
+    if ((gg.whole || []).length) {
+      out += ' ' + escapeHtml(fmt(LABELS.geom_gemarkung_whole, { names: gg.whole.join(', ') }));
+    } else if (gg.whole_n) {
+      out += ' ' + escapeHtml(fmt(LABELS.geom_gemarkung_whole_n, { n: gg.whole_n }));
+    }
+    if ((gg.pinned || []).length) {
+      const pinned = (gg.credits || []).length ? LABELS.geom_gemarkung_pinned_names : LABELS.geom_gemarkung_pinned;
+      out += ' ' + escapeHtml(fmt(pinned, { names: gg.pinned.join('; ') }));
+    }
+    return out;
   }
 
   function unitsLine(r) {
@@ -2967,7 +3037,8 @@
     if (!gs) return false;
     if (['sibling-dgc', 'parent-appellation', 'aires-csv-dgc', 'pdo-plan-parcel-hull-approx',
       'aires-csv', 'dgc-village-override', 'communes', 'figshare-pdo', 'figshare-pdo-alias',
-      'region-pdo-union', 'nuts2-province', 'geometry-research-municipios'].includes(gs)) return true;
+      'region-pdo-union', 'nuts2-province', 'geometry-research-municipios',
+      'lgl-gemarkung-union', 'alkis-gemarkung-union'].includes(gs)) return true;
     return /^(gisco-|caop-|swissboundaries-)/.test(gs);
   }
   // Geometry sources whose polygon is the union of the units communes_matched
@@ -3016,7 +3087,7 @@
     const links = [];
     const cc = r.country || '';
     for (const reg of [r.region, ...(r.region_aliases || [])].filter(Boolean)) {
-      links.push(`<a href="#" class="scope-link" data-scope="region" data-country="${escapeAttr(cc)}" data-region="${escapeAttr(reg)}">${escapeHtml(fmt(LABELS.related_all_in, { name: regionLabel(reg) }))}</a>`);
+      links.push(`<a href="#" class="scope-link" data-scope="region" data-country="${escapeAttr(cc)}" data-region="${escapeAttr(reg)}">${nativeHtml(fmt(LABELS.related_all_in, { name: regionLabel(reg) }))}</a>`);
     }
     if (cc) links.push(`<a href="#" class="scope-link" data-scope="country" data-country="${escapeAttr(cc)}">${escapeHtml(fmt(LABELS.related_all_in, { name: countryLabel(cc) }))}</a>`);
     if (links.length) out += `<p class="related-links">${links.join(' · ')}</p>`;
@@ -3064,8 +3135,8 @@
         || (info && info.name_latin)
         || '';
       const labelInner = canon && !canonicalEqualsCahier(canon, cahierName)
-        ? `${escapeHtml(cahierName)} <span class="canon">(${escapeHtml(canon)})</span>`
-        : escapeHtml(cahierName);
+        ? `${nativeHtml(cahierName)} <span class="canon">(${escapeHtml(canon)})</span>`
+        : nativeHtml(cahierName);
       return `<a class="${cls2}" data-slug="${escapeAttr(g)}"${roleAttrs} href="${escapeAttr(grapeUrl(g))}" target="_blank" rel="noopener">${labelInner}</a>`;
     };
     const principal = (r.grapes_principal || []).map(g => grapePill(g, '')).join('');
@@ -3080,7 +3151,7 @@
       ? `<div class="role-disclaimer">${escapeHtml(LABELS.pt_role_disclaimer)}</div>`
       : '';
     const roleConflict = principal ? roleConflictLine(r) : '';
-    const section4Line = principal ? section4VarietalLine(r) : '';
+    const section4Line = principal ? section4VarietalLine(r) + rosterCoverageLine(r) : '';
     const inferredLine = (r.styles_inferred && r.styles_inferred.length)
       ? `<div class="approx-line styles-inferred">${escapeHtml(LABELS.styles_inferred_line)}</div>` : '';
     // A style read from the production method, not a stated level
@@ -3105,7 +3176,7 @@
       metaTail += ' · ' + fmt(LABELS.meta_parishes, { n: parishCount });
     }
     const region = [r.region, ...(r.region_aliases || [])].filter(Boolean).map(regionLabel).join(', ');
-    const regionSeg = region ? ` · ${escapeHtml(region)}` : '';
+    const regionSeg = region ? ` · ${nativeHtml(region)}` : '';
     const countryChip = countryChipHtml(r.country, r.country_aliases);
     const countrySeg = countryChip ? `${countryChip} · ` : '';
     const dgcLine = r.is_sub_denomination && r.parent_slug
@@ -3130,13 +3201,23 @@
       const src = `<a href="https://cadastre.data.gouv.fr/" target="_blank" rel="noopener">${escapeHtml(LABELS.geom_approx_cadastre_source_label)}</a>`;
       approxLine = `<div class="approx-line">${fmt(LABELS.geom_approx_cadastre, { lieu_dit: escapeHtml(r.cadastre_lieu_dit), commune: escapeHtml(r.cadastre_commune || ''), source: src })}</div>`;
     } else if (r.geom_source === 'aires-csv' || r.geom_source === 'dgc-village-override' || r.geom_source === 'communes') {
-      // A commune union: say what the polygon is and that no parcel
-      // delimitation exists for this record (every French IGP and Champagne
-      // draw this way) — nothing more; a reader does not take a commune-wide
-      // area for vineyard.
+      // A commune union: say what the polygon is and whether a parcel
+      // delimitation exists for this record — none for a French IGP; for an
+      // record whose cahier sets one of its own, absent from INAO's published
+      // parcel data (Champagne, Cassis: `geom_parcel_area` "unpublished"), or
+      // published apart and not drawn yet ("apart": the union alone) — nothing
+      // more; a reader does not take a commune-wide area for vineyard.
       // (a French record whose area crosses the border also names the
       // foreign units drawn beside its communes)
-      approxLine = `<div class="approx-line">${escapeHtml(fmt(LABELS.geom_approx_aires_union, { n: r.communes_matched || 0 }))}${drinksUnitsText(r)}</div>`;
+      // drawn as the communes holding the parcel area (Champagne:
+      // 'communes-inventory'; Rosé des Riceys: 'communes-cahier')
+      const unionLabel = ({
+        'unpublished': LABELS.geom_approx_aires_union_parcels,
+        'apart': LABELS.geom_approx_aires_union_plain,
+        'communes-inventory': LABELS.geom_approx_parcel_area_inventory,
+        'communes-cahier': LABELS.geom_approx_parcel_area_cahier,
+      })[r.geom_parcel_area] || LABELS.geom_approx_aires_union;
+      approxLine = `<div class="approx-line">${escapeHtml(fmt(unionLabel, { n: r.communes_matched || 0 }))}${drinksUnitsText(r)}</div>`;
     } else {
       const src = geomSourceLine(r);
       if (src) approxLine = `<div class="approx-line">${src}</div>`;
@@ -3565,7 +3646,7 @@
     const rows = slugs.map(s => {
       const r = AOCS[s];
       const sub = [r.class_label || r.kind || '', r.region ? regionLabel(r.region) : ''].filter(Boolean).join(' · ');
-      return `<li><button type="button" class="stack-row" data-slug="${escapeAttr(s)}"><span class="name">${nameWithLatin(r)}</span>${sub ? `<span class="sub">${escapeHtml(sub)}</span>` : ''}</button></li>`;
+      return `<li><button type="button" class="stack-row" data-slug="${escapeAttr(s)}"><span class="name">${nameWithLatin(r)}</span>${sub ? `<span class="sub">${nativeHtml(sub)}</span>` : ''}</button></li>`;
     }).join('');
     return `<h2 class="stack-others-h">${escapeHtml(LABELS.stack_others_h)}</h2><ul class="stack-list">${rows}</ul>`;
   }
@@ -3656,6 +3737,21 @@
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // A Greek or Cyrillic name inside a Latin-language page is language-tagged
+  // (WCAG 3.1.2: a screen reader switches voice, the browser picks the right
+  // font and casing rules). The corpus has two such scripts and one language
+  // each: Greek (Greece, Cyprus) and Bulgarian. A run is the script's letters
+  // and what stands between them, ending on a letter: "Мелник 82" tags
+  // "Мелник", "Naoussa (Νάουσα)" the bracket's content. Mirrored by
+  // native_html in scripts/_lib/script_display.py.
+  function nativeHtml(s) {
+    let out = escapeHtml(s == null ? '' : s);
+    for (const [lang, re] of NATIVE_RUN_RES) {
+      out = out.replace(re, m => `<span lang="${lang}">${m}</span>`);
+    }
+    return out;
   }
 
   // ----- selection highlight + persistence (across reload / language switch) -----
@@ -4505,7 +4601,7 @@ __OWM_source_block__
       const r = AOCS[s];
       const meta = [r.class_label || r.kind || '', r.region ? regionLabel(r.region) : '', countryLabel(r.country || 'fr')].filter(Boolean).join(' · ');
       return '<a href="' + escapeAttr(window.location.origin + SLUG_BASE + encodeURIComponent(s)) + '" target="_blank" rel="noopener" data-slug="' + escapeAttr(s) + '">'
-        + '<span class="n">' + escapeHtml(r.name) + '</span><span class="m">' + escapeHtml(meta) + '</span></a>';
+        + '<span class="n">' + nativeHtml(r.name) + '</span><span class="m">' + nativeHtml(meta) + '</span></a>';
     }).join('');
     const more = slugs.length > shown.length ? '<span class="more">' + escapeHtml(fmt(LABELS.related_more, { n: slugs.length - shown.length })) + '</span>' : '';
     embedPopup.setLngLat(lngLat).setHTML('<div class="rows">' + rows + more + '</div>').addTo(map);

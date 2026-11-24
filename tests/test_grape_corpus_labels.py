@@ -144,3 +144,35 @@ def test_collect_grape_slugs_reads_a_record_set(monkeypatch, tmp_path):
     assert corpus["cot"] == {"name": "côt", "by_lang": {"fr": 2}}
     assert corpus["barbera"] == {"name": "Barbera", "by_lang": {"it": 1}}
     assert grape_corpus.per_slug_dominant_lang(corpus)["cabernet-sauvignon"] == "fr"
+
+
+def test_a_sidecar_roster_counts_once_and_may_be_a_list(monkeypatch, tmp_path):
+    """The German BLE sidecars carry `grapes` as a list, and a region with an
+    EU document has both files: a variety the EU record lists is counted
+    there; one only the sidecar lists (Chardonel on Baden, a stub) joins the
+    corpus — until 2026-11-17 it was in none, and the tooltip translation
+    skipped it without a word."""
+    import json
+
+    from _lib import grape_corpus
+
+    eu, ble = tmp_path / "eu", tmp_path / "ble"
+    eu.mkdir()
+    ble.mkdir()
+    (eu / "mosel.json").write_text(json.dumps({"grapes": {"details": [
+        {"slug": "riesling", "name": "Riesling"}]}}), encoding="utf-8")
+    (eu / "baden.json").write_text(json.dumps({"grapes": {"details": []}}), encoding="utf-8")
+    (ble / "mosel.json").write_text(json.dumps({"grapes": [
+        {"slug": "riesling", "name": "Riesling"}, {"slug": "kolor", "name": "Kolor"}]}),
+        encoding="utf-8")
+    (ble / "baden.json").write_text(json.dumps({"grapes": [
+        {"slug": "riesling", "name": "Riesling"}, {"slug": "chardonel", "name": "Chardonel"}]}),
+        encoding="utf-8")
+    (ble / "manifest.json").write_text(json.dumps({"generated_at": "x"}), encoding="utf-8")
+    monkeypatch.setattr(grape_corpus, "_SOURCES", (("de", eu), ("de", ble)))
+    monkeypatch.setattr(grape_corpus, "_SUPPLEMENT_OF", {ble: eu})
+    out = grape_corpus.collect_grape_slugs()
+    assert set(out) == {"riesling", "kolor", "chardonel"}
+    # Mosel's EU record and Baden's sidecar: two records, not three votes
+    assert out["riesling"]["by_lang"] == {"de": 2}
+    assert out["chardonel"]["name"] == "Chardonel"

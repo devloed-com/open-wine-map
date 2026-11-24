@@ -18,6 +18,7 @@
     "adelfraenkisch": "Adelfränkisch",
     "biancu-gentile": "Biancu Gentile",
     "blauer-gaensfusser": "Gänsfüßer",
+    "blauer-gelbholzer": "Gelbhölzer",
     "blauer-wildbacher": "Blauer Wildbacher",
     "blaufrankisch": "Blaufränkisch",
     "blutenmuskateller": "Blütenmuskateller",
@@ -39,7 +40,9 @@
     "garonnet": "Garonnet",
     "gelber-orleans": "Orleans (Rebsorte)",
     "gruner-veltliner": "Grüner Veltliner",
+    "grunfrankisch": "Grünfränkisch",
     "holder": "Hölder (Rebsorte)",
+    "mohrenkonigin": "Mohrenkönigin",
     "monarch": "Monarch (Rebsorte)",
     "nero-buono": "Nero buono di Cori",
     "orangentraube": "Orangetraube",
@@ -48,8 +51,10 @@
     "precoce-bousquet": "Honigler",
     "prinzipal": "Prinzipal (Rebsorte)",
     "prior": "Prior (Rebsorte)",
+    "reselle": "Réselle",
     "riesel": "Riesel (Rebsorte)",
     "roter-elbling": "Roter Elbling",
+    "roter-muller-thurgau": "Roter Müller-Thurgau",
     "sankt-laurent": "Sankt Laurent",
     "saphira": "Saphira (Rebsorte)",
     "sauvignac": "Sauvignac (Rebsorte)",
@@ -264,7 +269,10 @@
     "xarello": "Xarel·lo",
     "zeta": "Zéta",
     "zierfandler": "Zierfandler",
-    "zlahtina": null
+    "zlahtina": null,
+    "grunfrankisch": null,
+    "blauer-gelbholzer": null,
+    "aurora": null
   },
   "es": {
     "agiorgitiko": "Agiorgítiko",
@@ -488,7 +496,8 @@
     "verdejo-negro": "Trousseau",
     "verdelho": "Verdelho blanc",
     "villard": "Villard noir",
-    "xarel-lo": "Xarel·lo"
+    "xarel-lo": "Xarel·lo",
+    "rouge-du-pays": "Cornalin"
   },
   "hr": {
     "blatina": "Blatina",

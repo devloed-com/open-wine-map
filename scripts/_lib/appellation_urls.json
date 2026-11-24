@@ -3571,10 +3571,7 @@
       "url": "https://cair.gr/en/",
       "label": "CAIR — Agricultural Cooperative of Rhodes"
     },
-    "naoussa": {
-      "url": "https://www.vaeni-naoussa.com/en/",
-      "label": "VAENI Naoussa — Cooperative Winery of Naoussa"
-    },
+    "naoussa": null,
     "nemea": {
       "url": "https://nemeawineland.com/",
       "label": "Σύνδεσμος Οινοποιών ΠΟΠ Νεμέας — Nemea PDO Winemakers"
@@ -4487,7 +4484,37 @@
     "cotes-du-forez": null,
     "cote-roannaise": null,
     "saint-pourcain": null,
-    "cassis-de-saintonge": null
+    "cassis-de-saintonge": null,
+    "neuchatel": {
+      "url": "https://neuchatel-vins-terroir.ch/",
+      "label": "Neuchâtel Vins et Terroir"
+    },
+    "bayerischer-bodensee-landwein": {
+      "url": "https://www.wuerttemberger-weingaertner.de/",
+      "label": "Weinbauverband Württemberg e.V."
+    },
+    "vully": {
+      "url": "https://vully.ch/",
+      "label": "Interprofession des Vins du Vully (AIVV)"
+    },
+    "bern-berne": {
+      "url": "https://www.bernerwein.ch/",
+      "label": "Berner Wein — Rebgesellschaft Bielersee und Rebgesellschaft Thunersee-Bern"
+    },
+    "bielersee-lac-de-bienne": {
+      "url": "https://www.bielerseewein.ch/",
+      "label": "Rebgesellschaft Bielersee"
+    },
+    "thunersee": {
+      "url": "https://www.thunerseewein.ch/",
+      "label": "Rebgesellschaft Thunersee-Bern"
+    },
+    "jura": {
+      "url": "https://www.avjura.ch/",
+      "label": "Association des vignerons jurassiens (AVJ)"
+    },
+    "cheyres": null,
+    "regensburger-landwein": null
   },
   "by_bassin": {
     "BOURGOGNE": {
@@ -4666,6 +4693,10 @@
       "url": "https://www.deutscheweine.de/",
       "label": "Deutsches Weininstitut (DWI)"
     },
+    "Baden-Württemberg": {
+      "url": "https://www.deutscheweine.de/",
+      "label": "Deutsches Weininstitut (DWI)"
+    },
     "Deutschland": {
       "url": "https://www.deutscheweine.de/",
       "label": "Deutsches Weininstitut (DWI)"
@@ -4685,10 +4716,6 @@
     "Ticino": {
       "url": "https://ticinowine.ch/",
       "label": "Ticinowine"
-    },
-    "Trois-Lacs": {
-      "url": "https://neuchatel-vins-terroir.ch/",
-      "label": "Neuchâtel Vins et Terroir"
     },
     "Deutschschweiz": {
       "url": "https://deutschschweizerwein.ch/",

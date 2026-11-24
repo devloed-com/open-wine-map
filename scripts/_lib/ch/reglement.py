@@ -230,6 +230,36 @@ def extract_section_body(text: str, lang: str, kind: str) -> str:
     return text[span[0]:span[1]]
 
 
+# A bare name that is one variety in Switzerland and another across the
+# border. VIVC files the bare CORNALIN under ROUGE DU PAYS #10240 — flagged
+# its official name in Switzerland — and under CORNALIN D'AOSTE #2838 (the
+# Valais «Humagne rouge», the Valle d'Aosta «Cornalin»), so the shared matcher
+# binds it to neither. The Swiss texts mean the Valais variety: "Le Cornalin,
+# respectivement le Rouge du Pays, est un vin AOC du Valais issu du cépage
+# Cornalin du Valais" (OVV art. 56). Normalised surface -> the name read in
+# its place; the entry keeps the name as printed.
+_CH_NAME_PINS = {"cornalin": "Cornalin du Valais"}
+
+
+def swiss_match(match_fn):
+    """`match_fn` with the Swiss readings of `_CH_NAME_PINS`."""
+    if getattr(match_fn, "_swiss", False):
+        return match_fn
+
+    def match(token, *args, **kwargs):
+        pinned = _CH_NAME_PINS.get(_surface_norm(token or ""))
+        if not pinned:
+            return match_fn(token, *args, **kwargs)
+        hit = match_fn(pinned, *args, **kwargs)
+        try:
+            return replace(hit, name=token.strip()) if hit else hit
+        except TypeError:
+            return hit
+
+    match._swiss = True
+    return match
+
+
 def _surface_norm(s: str) -> str:
     """Lowercase + diacritic-strip + keep letters only — for matching a
     candidate chunk against `_CH_STOP_SURFACES`.
@@ -259,6 +289,7 @@ def extract_varieties(text: str, lang: str, match_fn, commune_index=None) -> lis
     `commune_index` (a `CHCommuneIndex`, optional) is the place-name
     guard: a chunk that is itself a Swiss commune is area-of-application
     prose (Genève, Sion, Cortaillod, …), not a grape, and is skipped."""
+    match_fn = swiss_match(match_fn)
     # The lexicon is robust at matching grape names, but a whole-document
     # scan also feeds it thousands of prose words, so we guard against the
     # two false-positive modes a règlement produces (see the module-level
@@ -302,7 +333,10 @@ def extract_varieties(text: str, lang: str, match_fn, commune_index=None) -> lis
                        flags=re.IGNORECASE)
         chunk = re.sub(r"\s*\(.*$", "", chunk)
         chunk = re.sub(r"[*†‡]+\s*$", "", chunk)
-        chunk = chunk.strip(" .;:)(")
+        chunk = chunk.strip(" .;:)(,")
+        # a footnote number set against the last word ("Cornalin du Valais4",
+        # the Valais ordinance): the pill had carried it
+        chunk = re.sub(r"(?<=[a-zà-ÿ])\d{1,2}$", "", chunk)
         if 2 <= len(chunk) <= 60 and re.search(r"[A-Za-zÀ-ÿ]", chunk):
             candidates.add(chunk)
         # Must-weight lines name the variety before its threshold
@@ -487,6 +521,7 @@ def list_varieties(block: str, match_fn) -> list[dict]:
     gros Rhin), …;4", "la Bondola, il Cabernet Franc, … e la Syrah"): lines
     joined, footnote numbers dropped, split on the separators, articles and
     synonym parentheses stripped; an exact or near-exact match only."""
+    match_fn = swiss_match(match_fn)
     text = re.sub(r"\s+", " ", _LIST_FOOTNOTE.sub(" ", block or ""))
     text = _LIST_HEAD.sub(" ", text)
     out: dict[str, dict] = {}
@@ -528,8 +563,12 @@ def annex_roster_block(text: str) -> str:
 
 def table_varieties(block: str, match_fn) -> list[dict]:
     """The varieties of a roster table, one per cell: a cell's first name
-    that matches exactly or near-exactly; synonyms, breeder codes and
-    bracketed glosses only help it match."""
+    that matches exactly or near-exactly; synonyms and bracketed glosses
+    only help it match. A breeder code is a variety only where the lexicon
+    holds it exactly — VIVC files «VB 91-26-29» as a synonym of Satin noir,
+    «VB 32-7» of Ravel blanc (Jura's Annexe 1 prints the codes); every other
+    code is skipped."""
+    match_fn = swiss_match(match_fn)
     rows = [[(m.start(), m.group(0)) for m in _TABLE_CELL.finditer(line)]
             for line in (block or "").splitlines()
             if not re.search(r"Gilt ab|Stand \d|Die f[üu]r die Weinherstellung", line)]
@@ -546,11 +585,19 @@ def table_varieties(block: str, match_fn) -> list[dict]:
             continue
         for part in _CELL_NAMES.split(cell):
             part = part.strip(" .:-")
-            if not part or _BREEDER_CODE.match(part):
+            if not part:
                 continue
             hit = match_fn(part)
             if hit is None or (hit.method.startswith("fuzzy")
                                and int(hit.method.split(":")[1]) < _CH_FUZZY_FLOOR):
+                continue
+            if _BREEDER_CODE.match(part) and hit.method != "exact":
+                continue
+            # A cell is one variety: half of a hyphenated name is not it.
+            # «Millot-Foch» (the Léon Millot × Maréchal Foch crossing the
+            # German-Swiss lists print beside both parents) had read as Léon
+            # Millot through the matcher's hyphen split.
+            if hit.method == "exact-after-hyphen-split":
                 continue
             if hit.slug not in out:
                 out[hit.slug] = {"slug": hit.slug, "name": part, "colour": hit.colour,

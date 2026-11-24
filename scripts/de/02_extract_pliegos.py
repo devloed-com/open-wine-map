@@ -51,6 +51,7 @@ from _lib.de.einziges_dokument import (  # noqa: E402
     SECTION_ROLE_KEYWORDS,
     STYLE_MARKERS,
 )
+from _lib.de.grape_pins import german_match  # noqa: E402
 from _lib.de.region import derive_region  # noqa: E402
 from _lib.extract_index import is_partial, write_index  # noqa: E402
 from _lib.grape_entity import (  # noqa: E402
@@ -58,6 +59,9 @@ from _lib.grape_entity import (  # noqa: E402
     match_variety,
     set_pliego_context,
 )
+
+# «Roter Muskateller» is another passport in Germany than in Austria
+match_variety = german_match(match_variety)
 
 INDEX_IN = ROOT / "raw" / "de" / "eambrosia" / "index.json"
 OJ_DIR = ROOT / "raw" / "de" / "oj-pages"
@@ -246,7 +250,25 @@ def parse_styles(sections: dict[str, str], titles: dict[str, str]) -> list[str]:
     found |= {colour for line in PRODUCT_LINE_RE.findall(blob)
               for pattern, colour in PRODUCT_COLOUR_WORDS if pattern.search(line)}
     found |= {slug for pattern, slug in STYLE_MARKERS if _stated(pattern, blob)}
+    # Württemberg's single document (C/2025/5177) numbers one sub-section of
+    # the description per wine type and names the type in its title — "4.2
+    # Wein, rot", "4.3 Wein, rosé", "4.12 Qualitätsschaumwein, rot", "4.10
+    # Prädikatswein Eiswein" — with no product line in the body: the card of
+    # a mostly red region showed White alone (2026-11-17). The title is the
+    # type; the body under it (appearance, analytical values) is not read.
+    for line in wine_type_titles(titles):
+        found |= {colour for pattern, colour in PRODUCT_COLOUR_WORDS if pattern.search(line)}
+        found |= {slug for pattern, slug in STYLE_MARKERS if pattern.search(line)}
     return sorted(found)
+
+
+def wine_type_titles(titles: dict[str, str]) -> list[str]:
+    """The titles of the numbered sub-sections of the wine description
+    ("Beschreibung des Weins / der Weine"), each naming one wine type."""
+    parents = {num for num, title in titles.items()
+               if "." not in num and "beschreibung des wein" in title.lower()}
+    return [title for num, title in titles.items()
+            if "." in num and num.split(".", 1)[0] in parents]
 
 
 def _stated(pattern: re.Pattern, blob: str) -> bool:

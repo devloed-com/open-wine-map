@@ -186,6 +186,13 @@ def exonym_hits(bullet: str, lang: str, *, gi_forms: frozenset[str] = frozenset(
                     or _IN_PROPER_NAME.search(bullet[max(0, m.start() - 40): m.start()]) \
                     or _in_quotes(bullet, m.start(), m.end()):
                 continue
+            # the source form glossed in brackets after its own exonym —
+            # "le nord de la Bavière (Bayern)" — the gloss rule the detector
+            # applies to common nouns ("lieu-dit (dűlő)"); 2026-11-24
+            before = bullet[:m.start()].rstrip()
+            if before.endswith("(") and bullet[m.end():].lstrip().startswith(")") \
+                    and before[:-1].rstrip().lower().endswith(targets[lang].lower()):
+                continue
             out.append(form)
             break
     return out

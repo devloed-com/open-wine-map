@@ -65,10 +65,30 @@ def test_member_table_umbrella_takes_its_members_regions() -> None:
         _rec("pfalz", "Pfalz", "de", fn="PDO-2"),
         _rec("rheinhessen", "Rheinland-Pfalz", "de", fn="PDO-3"),
         # a PGI drawn another way keeps its members out
-        _rec("other", "Bayern", "de", "IGP", fn="PGI-2", geom_source="gisco-commune-union"),
+        _rec("other", "Bayern", "de", "IGP", fn="PGI-2", geom_source="figshare-pdo"),
+        _rec("drugo", "Podravje", "si", "IGP", fn="PGI-3", geom_source="gisco-commune-union"),
+        _rec("stajerska", "Štajerska", "si", fn="PDO-4"),
     ]
-    tables = {"de": {"PGI-1": ("PDO-1", "PDO-2", "PDO-3"), "PGI-2": ("PDO-1",)}}
+    tables = {"de": {"PGI-1": ("PDO-1", "PDO-2", "PDO-3"), "PGI-2": ("PDO-1",)},
+              "si": {"PGI-3": ("PDO-4",)}}
     assert ra.member_aliases(recs, tables) == {"landwein-rhein": ["Mosel", "Pfalz"]}
+
+
+def test_a_german_landwein_drawn_from_its_own_list_keeps_its_member_regions() -> None:
+    """Landwein der Saar is drawn from the 19 Gemarkungen its own text
+    prints, no longer as the union of its member row — and is still listed
+    under the Mosel."""
+    recs = [
+        _rec("landwein-der-saar", "Rheinland-Pfalz", "de", "IGP", fn="PGI-1",
+             geom_source="alkis-gemarkung-union"),
+        _rec("rheingauer-landwein", "Hessen", "de", "IGP", fn="PGI-2",
+             geom_source="gisco-commune-union"),
+        _rec("mosel", "Mosel", "de", fn="PDO-1"),
+        _rec("rheingau", "Rheingau", "de", fn="PDO-2"),
+    ]
+    tables = {"de": {"PGI-1": ("PDO-1",), "PGI-2": ("PDO-2",)}}
+    assert ra.member_aliases(recs, tables) == {
+        "landwein-der-saar": ["Mosel"], "rheingauer-landwein": ["Rheingau"]}
 
 
 def test_fr_aire_rule_uses_bucket_cores_without_umbrellas() -> None:

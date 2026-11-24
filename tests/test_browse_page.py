@@ -128,7 +128,9 @@ def test_dom_for_machines_is_unchanged() -> None:
         assert f'<section class="browse-country" id="c-{cc}">' in page
         assert f"{label} (1)</h2>" in page
     assert '<li><a href="/en/mercurey">Mercurey</a> <small>AOC (PDO)</small></li>' in page
-    assert '<li><a href="/en/naoussa">Naoussa (Νάουσα)</a> <small>PDO</small></li>' in page
+    # the hub leads with the Latin form; the original is language-tagged
+    assert ('<li><a href="/en/naoussa">Naoussa (<span lang="el">Νάουσα</span>)</a> '
+            '<small>PDO</small></li>') in page
     assert '<link rel="canonical" href="https://www.openwinemap.com/en/appellations/">' in page
     assert 'hreflang="x-default" href="https://www.openwinemap.com/en/appellations/"' in page
     ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page).group(1))

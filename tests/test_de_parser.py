@@ -25,11 +25,11 @@ CLAUDE.md and the module docstrings):
       C  "7. Rebsorten" (NOT §8) + "• Rebsorten für Weißwein" bullets
          and inline "insbes. {variety} mit rd. X %" / §5.1 named-
          Mostgewicht principals. Rheingau, Hessische Bergstraße.
-      D  Baden multi-Bereich §3.2.X tiered Mostgewicht rows (lowest tier
-         = Leitsorten → principal), with a flat §8 the Template-A parser
-         harvests for the full authorised set.
-    The 02f role-split tag is `section-3.2-principal` when §3.2 names
-    per-variety principals, else `section-8-flat-no-split`.
+      D  Baden multi-Bereich §3.2.X tiered Mostgewicht rows, with a flat
+         §8 the Template-A parser harvests for the full authorised set.
+    Stage 02f lists every § 8 variety alike (`section-8-flat-no-split`,
+    2026-11-17): no specification draws a principal / accessory line. The
+    names § 3.2 singles out are still parsed, as reference data.
 
 Fixtures are short redacted excerpts of public, licence-clear regulator
 documents (BLE Produktspezifikationen = Amtliches Werk §5 UrhG; EU-OJ
@@ -203,6 +203,40 @@ def test_style_detection_white_only(fixture_text):
     assert styles == ["blanc"]
 
 
+def test_wine_type_sub_section_titles_state_the_types():
+    """Württemberg's single document (C/2025/5177) numbers one sub-section
+    of the description per wine type and names it in the title; the bodies
+    carry no product line. Until 2026-11-17 the card of a mostly red region
+    showed White alone. The title is read; the body under it is not."""
+    titles = {
+        "3": "Kategorien von Weinbauerzeugnissen",
+        "4": "Beschreibung des Weins / der Weine",
+        "4.1": "Wein, weiß", "4.2": "Wein, rot", "4.3": "Wein, rosé", "4.4": "Weißherbst",
+        "4.6": "Wein, Schillerwein", "4.7": "Wein, Rotling",
+        "4.9": "Prädikatswein, Beerenauslese und Trockenbeerenauslese",
+        "4.10": "Prädikatswein Eiswein",
+        "4.12": "Qualitätsschaumwein, rot", "4.16": "Perlwein, rosé", "4.19": "Likörwein, rot",
+        "5": "Weinbereitungsverfahren", "5.1": "Spezifische önologische Verfahren",
+        "8": "Beschreibung des zusammenhangs bzw. der zusammenhänge",
+    }
+    sections = {num: "" for num in titles}
+    sections["4.2"] = "KURZE TEXTBESCHREIBUNG\nAussehen: Sortenbedingt von hellrot bis schwarz"
+    sections["5.1"] = "Für Strohwein gilt geltendes Recht."      # not a description sub-section
+    assert extract.wine_type_titles(titles) == [
+        "Wein, weiß", "Wein, rot", "Wein, rosé", "Weißherbst", "Wein, Schillerwein",
+        "Wein, Rotling", "Prädikatswein, Beerenauslese und Trockenbeerenauslese",
+        "Prädikatswein Eiswein", "Qualitätsschaumwein, rot", "Perlwein, rosé", "Likörwein, rot"]
+    styles = extract.parse_styles(sections, titles)
+    # ("Qualitätsschaumwein" is no hit of the `\\bschaumwein\\b` marker; the
+    # record's Sparkling comes from its categories section.)
+    assert {"blanc", "noir", "rose", "semi-sparkling", "vin-de-liqueur",
+            "grains-nobles", "vendanges-tardives"} <= set(styles)
+    assert "vin-de-paille" not in styles
+    # Schillerwein and Rotling are categories of their own, not a rosé.
+    assert extract.parse_styles({k: "" for k in ("4", "4.6", "4.7")},
+                                {"4": titles["4"], "4.6": titles["4.6"], "4.7": titles["4.7"]}) == []
+
+
 # ==========================================================================
 # BLE Produktspezifikation — Template A (Mosel)
 # ==========================================================================
@@ -242,20 +276,17 @@ def test_ble_template_a_section_8_white_red_split_mosel(fixture_text):
         assert "Angaben" not in name and "Zusammenhang" not in name
 
 
-def test_ble_template_a_role_split_method_principal(fixture_text):
-    """Template-A wines with a §3.2 per-variety list produce the
-    `section-3.2-principal` split: §3.2 names are principal, every other
-    §8 name is accessory. This mirrors stage 02f's _build_record."""
+def test_ble_template_a_lists_every_variety_alike(fixture_text):
+    """No BLE specification draws a principal / accessory line, so stage 02f
+    lists every authorised variety alike (2026-11-17). Until then the names
+    § 3.2 gives a must weight of their own were principal and the rest
+    accessory — Mosel's card had four principals and Spätburgunder among the
+    accessories."""
     text = fixture_text("de_ble_templateA_mosel.txt")
     role_split_method, principal_slugs, accessory_slugs = _role_split(text)
-    assert role_split_method == "section-3.2-principal"
-    # §3.2 principals resolve to slugs.
-    assert {"elbling", "riesling", "muller-thurgau", "dornfelder"} <= principal_slugs
-    # A §8-only white (not in §3.2) lands in accessory.
-    assert "scheurebe" in accessory_slugs
-    assert "scheurebe" not in principal_slugs
-    # No slug is both principal and accessory.
-    assert principal_slugs.isdisjoint(accessory_slugs)
+    assert role_split_method == "section-8-flat-no-split"
+    assert {"elbling", "riesling", "muller-thurgau", "dornfelder", "scheurebe"} <= principal_slugs
+    assert not accessory_slugs
 
 
 def test_regression_ble_kellertraubensorten_typo_tolerated():
@@ -364,16 +395,12 @@ def test_ble_template_c_principal_two_signals_rheingau(fixture_text):
     assert "Spätburgunder" in principal     # §5.1 named-Mostgewicht row
 
 
-def test_ble_template_c_role_split_method_principal_rheingau(fixture_text):
+def test_ble_template_c_lists_every_variety_alike_rheingau(fixture_text):
     text = fixture_text("de_ble_templateC_rheingau.txt")
     role_split_method, principal_slugs, accessory_slugs = _role_split(text)
-    assert role_split_method == "section-3.2-principal"
-    # The two named principals resolve.
-    assert "riesling" in principal_slugs
-    assert "pinot-noir" in principal_slugs
-    # A §7-only white not named as principal lands in accessory.
-    assert "chardonnay" in accessory_slugs
-    assert principal_slugs.isdisjoint(accessory_slugs)
+    assert role_split_method == "section-8-flat-no-split"
+    assert {"riesling", "pinot-noir", "chardonnay"} <= principal_slugs
+    assert not accessory_slugs
 
 
 # ==========================================================================
@@ -387,20 +414,16 @@ def test_ble_template_d_detected_baden(fixture_text):
     assert ps._detect_template(text) == "D"
 
 
-def test_ble_template_d_lowest_tier_is_principal_baden(fixture_text):
-    """Inside each (Bereich, colour) block the rows are tiered by ascending
-    Mostgewicht; the LOWEST-threshold row names the Leitsorten → principal.
-    Higher tiers + "alle übrigen Rebsorten" + "als Versuch angebaute" rows
-    are NOT principal."""
+def test_ble_template_d_singles_out_no_variety_baden(fixture_text):
+    """Baden's § 3.2 tiers some fifty-five varieties over two Bereich groups
+    and six quality levels and puts Spätburgunder, a third of its vineyard,
+    under "alle übrigen Rebsorten": no row singles out a lead variety, so the
+    table makes no role split (2026-11-17 — the lowest-tier reading had made
+    principals of Tempranillo and Trollinger, and of Merzling and Baron on
+    the full PDF)."""
     text = fixture_text("de_ble_templateD_baden.txt")
-    principal = ps.parse_section_3_2_principal_names(text)
-    # Lowest tier (8,0): Gutedel, Riesling (white) + Tempranillo, Trollinger (red).
-    assert set(principal) == {"Gutedel", "Riesling", "Tempranillo", "Trollinger"}
-    # A higher-tier white (8,4 row: Merzling) is authorised but NOT principal.
-    assert "Merzling" not in principal
-    # The accessory/skip rows never become principal.
-    assert not any("übrigen" in n for n in principal)
-    assert not any("Versuch" in n for n in principal)
+    assert ps.parse_section_3_2_principal_names(text) == []
+    assert ps.principal_names_with_basis(text) == []
 
 
 def test_ble_template_d_section_8_falls_back_to_flat_list_baden(fixture_text):
@@ -419,16 +442,23 @@ def test_ble_template_d_section_8_falls_back_to_flat_list_baden(fixture_text):
     assert "Tempranillo" in section_8["red"]
 
 
-def test_ble_template_d_role_split_method_principal_baden(fixture_text):
+def test_ble_template_d_role_split_method_flat_baden(fixture_text):
     text = fixture_text("de_ble_templateD_baden.txt")
     role_split_method, principal_slugs, accessory_slugs = _role_split(text)
-    assert role_split_method == "section-3.2-principal"
-    # Leitsorten are principal (Gutedel → chasselas, Trollinger → schiava-grossa).
-    assert "chasselas" in principal_slugs
-    assert "schiava-grossa" in principal_slugs
-    # A §8-only white lands in accessory.
-    assert "pinot-blanc" in accessory_slugs  # Weißburgunder
-    assert principal_slugs.isdisjoint(accessory_slugs)
+    assert role_split_method == "section-8-flat-no-split"
+    # every authorised variety is listed, none demoted: Spätburgunder too
+    assert {"chasselas", "schiava-grossa", "pinot-blanc", "pinot-noir"} <= principal_slugs
+    assert not accessory_slugs
+
+
+def test_ble_principal_basis_names_the_signal(fixture_text):
+    """The parser still reports which varieties a specification singles out
+    and how (reference data in the sidecar, `raw_section_3_2_principal`); the
+    card reads no role from it."""
+    mosel = dict(ps.principal_names_with_basis(fixture_text("de_ble_templateA_mosel.txt")))
+    assert mosel and set(mosel.values()) == {ps.BASIS_MUST_WEIGHT}
+    rheingau = dict(ps.principal_names_with_basis(fixture_text("de_ble_templateC_rheingau.txt")))
+    assert rheingau.get("Weißer Riesling") == ps.BASIS_PLANTINGS
 
 
 # ==========================================================================
@@ -462,37 +492,20 @@ def test_terroir_text_empty_when_no_numbered_header_ahr(fixture_text):
 # ==========================================================================
 
 def _role_split(text: str) -> tuple[str, set[str], set[str]]:
-    """Mirror scripts/de/02f_extract_produktspezifikation.py:_build_record's
-    role-split logic over already-text-extracted Produktspezifikation
-    content. Returns (role_split_method, principal_slugs, accessory_slugs).
-
-    §3.2 principal names → principal; every other §8 name → accessory.
-    When §3.2 is empty, everything in §8 is principal (flat-no-split)."""
-    principal_raw = ps.parse_section_3_2_principal_names(text)
+    """Mirror scripts/de/02f_extract_produktspezifikation.py:_build_record
+    over already-text-extracted Produktspezifikation content. Returns
+    (role_split_method, principal_slugs, accessory_slugs): every § 8 variety
+    is listed alike, the names § 3.2 singles out first."""
+    names = [*ps.parse_section_3_2_principal_names(text)]
     section_8 = ps.parse_section_8_authorised(text)
-    all_names = [*section_8["white"], *section_8["red"]]
-
+    names += [*section_8["white"], *section_8["red"]]
     principal_slugs: set[str] = set()
-    for name in principal_raw:
+    for name in names:
         m = match_variety(name)
         if m is not None:
             principal_slugs.add(m.slug)
-
+    role_split_method = "section-8-flat-no-split"
     accessory_slugs: set[str] = set()
-    if principal_slugs:
-        role_split_method = "section-3.2-principal"
-        for name in all_names:
-            m = match_variety(name)
-            if m is None or m.slug in principal_slugs:
-                continue
-            accessory_slugs.add(m.slug)
-    else:
-        role_split_method = "section-8-flat-no-split"
-        for name in all_names:
-            m = match_variety(name)
-            if m is not None:
-                principal_slugs.add(m.slug)
-
     return role_split_method, principal_slugs, accessory_slugs
 
 
@@ -559,6 +572,82 @@ def test_regression_taubertaler_landwein_is_a_commune_union_not_wurttemberg():
     assert stats["gemeinden"] == len(gemeinden) == 18
     assert stats["unmatched"] == 0
     assert not geom.intersects(bodensee)
+
+
+def test_regensburger_landwein_is_a_disclosed_reading_of_its_own_text():
+    """Decision of 2026-11-24. PGI-DE-A1296 was drawn as Franken, 150 km off.
+    Its specification lists no Gemeinde (nor did Bavarian law ever: the
+    Untergebiet Donau is one sentence since 1983), so the six north-bank
+    communes from Regensburg to Wörth are a reading — every sentence read is
+    in the cached PDF, the card says it is a reading, and the wine is no
+    longer a union of any Anbaugebiet."""
+    import re
+    import subprocess
+    from pathlib import Path
+
+    from _lib.de.geometry import (
+        _DE_KREIS_AGS,
+        DE_LANDWEIN_AREA,
+        DE_PGI_MEMBER_PDOS,
+        DEPolygonIndex,
+        _de_norm,
+    )
+    from shapely.geometry import box
+
+    fn = "PGI-DE-A1296"
+    assert fn not in DE_PGI_MEMBER_PDOS
+    area = DE_LANDWEIN_AREA[fn]
+    assert not area.get("landkreise") and not area.get("kreisfreie")
+    names = [g["name"] for g in area["gemeinden"]]
+    assert names == ["Regensburg", "Tegernheim", "Donaustauf", "Bach a.d.Donau",
+                     "Wiesent", "Wörth a.d.Donau"]
+    reading = area["reading"]
+    assert set(reading["disclose"]) == {"en", "fr", "es", "nl"}
+    assert all(s.strip() for s in reading["disclose"].values())
+
+    # resolves as a commune union whatever the Franken polygon is
+    idx = DEPolygonIndex(figshare_gpkg=Path("/nonexistent.gpkg"))
+    franken = box(9.0, 49.5, 10.8, 50.5)
+    idx._pdo_polygons["PDO-DE-A1267"] = franken
+    for i, g in enumerate(area["gemeinden"]):
+        kreis = _DE_KREIS_AGS[_de_norm(g["kreis"])]
+        idx._commune_by_kreis_name[(kreis, _de_norm(g["name"]))] = box(
+            12.0 + i * 0.1, 48.95, 12.1 + i * 0.1, 49.05)
+    geom, source, stats = idx.resolve(fn)
+    assert source == "gisco-commune-union"
+    assert stats["gemeinden"] == 6 and stats["unmatched"] == 0
+    assert not geom.intersects(franken)
+    assert stats["reading"]["units"] == [
+        "Regensburg", "Tegernheim", "Donaustauf", "Bach a.d. Donau", "Wiesent",
+        "Wörth a.d. Donau"]
+    assert stats["reading"]["disclose"] is reading["disclose"]
+    # an entry that lists its communes carries no reading
+    assert "reading" not in DE_LANDWEIN_AREA["PGI-DE-A1280"]
+
+    # every sentence the reading rests on is in the specification as cached
+    pdf = (Path(__file__).resolve().parent.parent
+           / "raw/de/produktspezifikationen/regensburger-landwein.pdf")
+    if pdf.exists():
+        text = subprocess.run(["pdftotext", "-layout", str(pdf), "-"],
+                              capture_output=True, text=True, check=True).stdout
+        flat = re.sub(r"\s+", " ", re.sub(r"-\n\s*", "", text))
+        for quote in reading["evidence"]:
+            assert re.sub(r"\s+", " ", quote) in flat, quote
+        # and § 3 still lists nothing: the frame is followed by the sentence
+        frame = flat.index("der folgenden Gemeinden, wenn ihre Eignung")
+        assert "Das Landweingebiet Regensburg umfasst" in flat[frame:frame + 260]
+
+    # the six are real communes of the city and the Landkreis in GISCO
+    gisco = next((Path(__file__).resolve().parent.parent / "raw/es/gisco").glob(
+        "LAU_RG_01M_2024_3035*.zip"), None)
+    if gisco is not None:
+        real = DEPolygonIndex(figshare_gpkg=Path("/nonexistent.gpkg"), gisco_lau_zip=gisco)
+        geom, source, stats = real.resolve(fn)
+        assert source == "gisco-commune-union" and stats["unmatched"] == 0, stats
+        assert stats["gemeinden"] == 6
+        assert geom.geom_type == "Polygon"          # one contiguous row along the river
+        lon0, lat0, lon1, lat1 = geom.bounds
+        assert 11.9 < lon0 < lon1 < 12.6 and 48.9 < lat0 < lat1 < 49.15
 
 
 def test_landwein_region_facet_follows_the_anbaugebiet_or_bundesland_rule():

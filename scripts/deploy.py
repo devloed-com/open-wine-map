@@ -268,6 +268,48 @@ def cdn_is_fresh(session: requests.Session, site_host: str, rel: str, expected: 
     return r.status_code == 200 and hashlib.sha256(r.content).hexdigest() == expected
 
 
+# The probes are small text files, and replication is per file: on 2026-11-14
+# the 52 MB overview tileset reached a replica hours after the probes had
+# settled, so the purge let the shield re-cache the previous tileset for the
+# 30-day max-age — production drew, below the parcel zoom, only the drinks the
+# old tiles held (the French ones) while the data and the detail tiles were
+# current. Every uploaded stable-URL file too large to be a probe — the
+# tilesets, the sitemap, the MCP context — is therefore checked on its own,
+# before the purge and after it.
+_LARGE_HEAD_BYTES = 65_536
+_FULL_SHA_MAX_BYTES = 16_000_000
+
+
+def is_large_stable_file(rel: str, size: int) -> bool:
+    return size > _PROBE_MAX_BYTES and not _HASHED_PATH_RE.search(rel)
+
+
+def cdn_head_is_fresh(session: requests.Session, site_host: str, rel: str,
+                      path: pathlib.Path) -> bool:
+    """The size and the leading bytes the CDN serves against the local file —
+    a ranged request, so a 100 MB tileset costs 64 KiB. A tileset's header and
+    root directory sit there and change with its content."""
+    try:
+        r = session.get(f"https://{site_host}/{rel}",
+                        headers={"Range": f"bytes=0-{_LARGE_HEAD_BYTES - 1}",
+                                 "Accept-Encoding": "identity"}, timeout=60)
+    except requests.RequestException:
+        return False
+    total = (r.headers.get("Content-Range") or "").rpartition("/")[2]
+    with path.open("rb") as f:
+        head = f.read(_LARGE_HEAD_BYTES)
+    return r.status_code == 206 and total == str(path.stat().st_size) and r.content == head
+
+
+def large_file_is_fresh(session: requests.Session, site_host: str, rel: str,
+                        path: pathlib.Path, expected: str) -> bool:
+    """The whole body for a file a request can carry (the sitemap, the MCP
+    context), size and leading bytes for a tileset."""
+    if path.stat().st_size <= _FULL_SHA_MAX_BYTES:
+        return cdn_is_fresh(session, site_host, rel, expected)
+    return cdn_head_is_fresh(session, site_host, rel, path)
+
+
 def purge_url(api_key: str, site_host: str, rel: str) -> None:
     url = urllib.parse.quote(f"https://{site_host}/{rel}", safe="")
     try:
@@ -1027,17 +1069,22 @@ def main() -> int:
     site = requests.Session()
     site.headers["User-Agent"] = "owm-deploy (winemap@devloed.com)"
 
+    large = [] if args.no_replication_wait else [
+        rel for rel in uploaded if is_large_stable_file(rel, sizes[rel])]
+
     def is_fresh(rel: str) -> bool:
+        if rel in large:
+            return large_file_is_fresh(site, env["host"], rel, root / rel, local[rel])
         return cdn_is_fresh(site, env["host"], rel, local[rel])
 
     def purge_one(rel: str) -> None:
         purge_url(api_key, env["host"], rel)
 
-    probes = [] if args.no_replication_wait else pick_probes(uploaded, sizes)
+    probes = [] if args.no_replication_wait else pick_probes(uploaded, sizes) + large
     still_stale: list[str] = []
     if probes:
-        print(f"waiting for storage replication ({len(probes)} probe files, up to "
-              f"{args.replication_timeout:g} min) ...", file=sys.stderr)
+        print(f"waiting for storage replication ({len(probes)} probe files, {len(large)} of "
+              f"them large, up to {args.replication_timeout:g} min) ...", file=sys.stderr)
         late = settle(probes, is_fresh, purge_one, args.replication_timeout * 60)
         if late:
             print(f"  warn: {len(late)} probe file(s) still stale after "
@@ -1047,8 +1094,8 @@ def main() -> int:
     print("purging cache ...", file=sys.stderr)
     purge_zone(api_key, pullzone)
 
-    if probes and args.verify_sample > 0:
-        candidates = [rel for rel in uploaded if is_probe_candidate(rel, sizes[rel])]
+    candidates = [rel for rel in uploaded if is_probe_candidate(rel, sizes[rel])]
+    if probes and candidates and args.verify_sample > 0:
         sample = random.Random(len(uploaded)).sample(
             candidates, min(args.verify_sample, len(candidates)))
         with cf.ThreadPoolExecutor(max_workers=workers) as ex:
@@ -1059,6 +1106,16 @@ def main() -> int:
             still_stale = settle(stale, is_fresh, purge_one, args.replication_timeout * 60)
             print("purging cache again ...", file=sys.stderr)
             purge_zone(api_key, pullzone)
+
+    # every large file, not a sample: the shield may refetch each from another
+    # replica once the zone is purged
+    if large:
+        stale_large = [rel for rel in large if not is_fresh(rel)]
+        print(f"  CDN check: {len(large) - len(stale_large)}/{len(large)} large files "
+              f"(tilesets, sitemap, MCP context) match the upload", file=sys.stderr)
+        if stale_large:
+            still_stale += settle(stale_large, is_fresh, purge_one,
+                                  args.replication_timeout * 60)
 
     if not env["indexable"]:
         print(f"indexnow: skipped ({args.env} is not indexable)", file=sys.stderr)
@@ -1098,7 +1155,7 @@ def main() -> int:
     if env["apex"]:
         check_apex_redirect()
     if still_stale:
-        print(f"\ndeployed, but {len(still_stale)} sampled file(s) were still stale at the CDN: "
+        print(f"\ndeployed, but {len(still_stale)} checked file(s) were still stale at the CDN: "
               f"{', '.join(still_stale[:10])} — purge again once the replicas catch up "
               f"(POST https://api.bunny.net/pullzone/{pullzone}/purgeCache).", file=sys.stderr)
         return 3

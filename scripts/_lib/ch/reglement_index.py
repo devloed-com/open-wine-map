@@ -210,10 +210,14 @@ CANTON_REGLEMENT_URLS: dict[str, ReglementEntry] = {
         "note": "Wine integrated into the general agriculture ordinance; no standalone Weinverordnung.",
     },
     "ur": {
-        "url": "https://www.lexfind.ch/dtah/82713/2/60-3231.pdf",
-        "shelf": "RB 60.3231", "lang": "de", "format": "pdf",
-        "source": "Weinreglement — Kanton Uri",
-        "license": "Kanton Uri, official (via lexfind mirror)",
+        # The LexFind link (lexfind.ch/dtah/82713/2/60-3231.pdf) answers with
+        # its app shell, which was cached as the règlement until 2026-11-17;
+        # the canton's own Rechtsbuch is a LexWork portal stage 01 resolves.
+        "url": "https://rechtsbuch.ur.ch/app/de/texts_of_law/60.3231",
+        "shelf": "RB 60.3231", "lang": "de", "format": "html",
+        "source": "Reglement über den Rebbau und die kontrollierte Ursprungsbezeichnung "
+                  "für Weine (Weinreglement) — Kanton Uri",
+        "license": "Kanton Uri, official",
         "note": "~5.7 ha vines, very small corpus.",
     },
     "zg": {
@@ -226,9 +230,13 @@ CANTON_REGLEMENT_URLS: dict[str, ReglementEntry] = {
     "zh": {
         "url": "https://www.zh.ch/de/politik-staat/gesetze-beschluesse/gesetzessammlung/zhlex-ls/erlass-916_51-1980_11_19-1980_01_01-062.html",
         "shelf": "LS 916.51", "lang": "de", "format": "html",
-        "source": "Verordnung über den Rebbau — Kanton Zürich",
+        # ZH-Lex prints "Aufhebungsdatum 01.01.2018": the card must not list
+        # it as if in force (card validator, 2026-11-17). The requirements are
+        # the ALN ruling of 26 June 2020 (roster_rulings.json).
+        "source": "Verordnung über den Rebbau — Kanton Zürich (aufgehoben per 1. Januar 2018)",
         "license": "Kanton Zürich, ZH-Lex — official",
-        "note": "19.11.1980. ALN issues operational Verfügung as supplement.",
+        "note": "19.11.1980, repealed 1 January 2018. The ALN ruling of 26 June 2020 "
+                "sets the AOC requirements.",
     },
 }
 

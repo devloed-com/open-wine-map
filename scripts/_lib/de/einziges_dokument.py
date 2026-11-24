@@ -61,6 +61,12 @@ SECTION_ROLE_KEYWORDS: dict[str, tuple[str, ...]] = {
     ),
     "geo_area": (
         "knappe beschreibung der abgegrenzten",
+        # the 2024/1143 template: "9. Kurzbeschreibung der Abgrenzung des
+        # geografischen Gebiets" (13 records had no area section until
+        # 2026-11-24: Franken, Mosel, Pfalz, Nahe, Rheinhessen, Mittelrhein
+        # and seven Landweine)
+        "kurzbeschreibung der abgrenzung",
+        "abgrenzung des geografischen gebiet",
         "abgegrenztes geografisches gebiet",
         "abgegrenztes gebiet",
         "geografisches gebiet",
@@ -161,8 +167,11 @@ NEGATION_RE = re.compile(r"\bkein\w*\b", re.I)
 # Auslese / Beerenauslese / Trockenbeerenauslese / Eiswein) — same
 # botrytis / straw-wine alignment as AT.
 STYLE_MARKERS: tuple[tuple[re.Pattern, str], ...] = (
-    (re.compile(r"\b(sekt|schaumwein)\b", re.I), "sparkling"),
-    (re.compile(r"\bperlwein\b", re.I), "semi-sparkling"),
+    # The category names are compounds as often as not: "5. Qualitätsschaumwein"
+    # (Franken's category list, no Sparkling until 2026-11-17), "Für
+    # Qualitätsperlwein b. A. …" (Saale-Unstrut, no Semi-sparkling).
+    (re.compile(r"\b(sekt|(?:qualitäts)?schaumwein)\b", re.I), "sparkling"),
+    (re.compile(r"\b(?:qualitäts)?perlwein\b", re.I), "semi-sparkling"),
     (re.compile(r"\bstrohwein\b", re.I), "vin-de-paille"),
     (re.compile(r"\btrockenbeerenauslese\b", re.I), "grains-nobles"),
     (re.compile(r"\bbeerenauslese\b", re.I), "grains-nobles"),

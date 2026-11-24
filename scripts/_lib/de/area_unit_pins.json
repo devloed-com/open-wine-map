@@ -1,0 +1,81 @@
+{
+  "__doc": "Names a German delimitation prints that no layer carries under that name, bound to the units they name (scripts/_lib/de/area_units.py). Keyed by the record's file number, then by the unit as the resolver labels it. `units`: Gemarkungen as {land, schluessel} of raw/de/katasterbezirke/<land>.gpkg, or a GISCO commune as {gemeinde}. A pin whose Gemarkung the layer no longer carries is reported stale and draws nothing.",
+  "PDO-DE-A1275": {
+    "Stedten": {
+      "units": [
+        {
+          "land": "st",
+          "schluessel": "152129"
+        }
+      ],
+      "reason": "The single document files Stedten under «im Landkreis Saalekreis». Sachsen-Anhalt's land register has no Gemarkung Stedten in the Saalekreis; its one Gemarkung of the name in the five Kreise the text names is 152129, in the Gemeinde Seegebiet Mansfelder Land (Landkreis Mansfeld-Südharz) — the lake villages the same text lists under Mansfeld-Südharz (Seeburg, Lüttchendorf, Unterrißdorf).",
+      "source": "LVermGeo Sachsen-Anhalt, ALKIS Gemarkungen (WFS Gemarkung_Flur_OpenData), read 2026-11-24",
+      "verified": "2026-11-24"
+    },
+    "Kromsdorf": {
+      "units": [
+        {
+          "land": "th",
+          "schluessel": "165350"
+        },
+        {
+          "land": "th",
+          "schluessel": "165352"
+        }
+      ],
+      "reason": "«Kromsdorf … im Landkreis Weimarer Land» is the former Gemeinde; the land register keeps its two Gemarkungen, Großkromsdorf and Kleinkromsdorf (Gemeinde Ilmtal-Weinstraße), and none called Kromsdorf.",
+      "source": "TLBG Thüringen, ALKIS Gemarkungen (WFS adv_alkis_wfs), read 2026-11-24",
+      "verified": "2026-11-24"
+    },
+    "Dorndorf-Steudnitz": {
+      "units": [
+        {
+          "land": "th",
+          "schluessel": "163023"
+        },
+        {
+          "land": "th",
+          "schluessel": "163025"
+        }
+      ],
+      "reason": "«Dorndorf-Steudnitz … im Landkreis Saale-Holzland-Kreis» is the former Gemeinde; the land register keeps its two Gemarkungen, Dorndorf and Steudnitz (Gemeinde Dornburg-Camburg).",
+      "source": "TLBG Thüringen, ALKIS Gemarkungen (WFS adv_alkis_wfs), read 2026-11-24",
+      "verified": "2026-11-24"
+    }
+  },
+  "PGI-DE-A1291": {
+    "same_as": "PDO-DE-A1275"
+  },
+  "PDO-DE-A1270": {
+    "Oberperl (3560)": {
+      "units": [
+        {
+          "gemeinde": "DE_10042115"
+        }
+      ],
+      "partial": true,
+      "reason": "«der Gemeinde/Ortsteile Perl (3570), Oberperl (3560), Perl/Nennig (3540), Perl/Sehndorf (3580)»: Oberperl is a Gemarkung of the Gemeinde Perl, as the three beside it are. No open Saarland Gemarkung layer is read, so the Gemeinde is drawn whole for the four.",
+      "source": "the single document's own sentence; GISCO LAU 2024 (Perl, DE_10042115)",
+      "verified": "2026-11-24"
+    }
+  },
+  "PGI-DE-A1283": {
+    "same_as": "PDO-DE-A1270"
+  },
+  "PDO-DE-A1269": {
+    "Breitscheid (0261)": {
+      "units": [
+        {
+          "land": "rp",
+          "schluessel": "073501"
+        }
+      ],
+      "reason": "«Breitscheid (Landkreis Mainz-Bingen) (0261)»: the name and its Kreis are Gemarkung 3501 (Gemeinde Breitscheid, Landkreis Mainz-Bingen, beside Steeg 3502 and Bacharach 3503, which the same list prints); 0261 is the Gemarkung Breitscheid of the Landkreis Neuwied, on the Westerwald. The Kreis the text itself gives decides; the number is read as a slip.",
+      "source": "LVermGeo Rheinland-Pfalz, Gemarkungen (vermkv:gemarkungen_rlp: gmkgnr 73501 and 70261), read 2026-11-24",
+      "verified": "2026-11-24"
+    }
+  },
+  "PGI-DE-A1298": {
+    "same_as": "PDO-DE-A1269"
+  }
+}

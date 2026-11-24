@@ -61,3 +61,12 @@ def test_a_form_inside_the_records_own_name_is_the_label_whatever_the_apostrophe
     # the region on its own is still read as a place
     assert exonym_hits("Los viñedos de Alsace se extienden al pie de los Vosgos.", "es",
                        own_names=("Kirsch d’Alsace",)) == ["Alsace"]
+
+
+def test_a_source_form_glossed_after_its_exonym_is_not_flagged():
+    # Franken, 2026-11-24: the exonym is there, the source name glossed.
+    assert exonym_hits("dans le nord de la Bavière (Bayern) et", "fr") == []
+    assert exonym_hits("en el norte de Baviera (Bayern) y", "es") == []
+    # the source form alone, or in brackets after something else, still is
+    assert exonym_hits("dans le nord de la Bayern", "fr") == ["Bayern"]
+    assert exonym_hits("dans le nord (Bayern) et", "fr") == ["Bayern"]

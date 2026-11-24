@@ -58,6 +58,11 @@ def load_table(path: Path = TABLE) -> dict:
     return {"entries": raw.get("entries") or {}, "rejected": raw.get("rejected") or {}}
 
 
+# A record with a member row that is drawn from its own unit list
+# (scripts/_lib/de/area_units.py, gemeinde_list.py).
+OWN_LIST_SOURCES = ("alkis-gemarkung-union", "gisco-commune-union")
+
+
 def member_tables() -> dict[str, dict[str, tuple[str, ...]]]:
     out: dict[str, dict[str, tuple[str, ...]]] = {}
     for cc in MEMBER_TABLE_COUNTRIES:
@@ -80,9 +85,12 @@ def member_aliases(records: Iterable[dict], tables: dict[str, dict] | None = Non
             region_by_fn[(r["country"], r["file_number"])] = r.get("region") or ""
     out: dict[str, list[str]] = {}
     for r in parents:
-        if r.get("geom_source") != "region-pdo-union":
-            continue
         members = (tables.get(r["country"]) or {}).get(r.get("file_number") or "")
+        # a German Landwein drawn from the list its own text prints is still
+        # the Landwein of the Anbaugebiete its member row names
+        own_list = r.get("country") == "de" and r.get("geom_source") in OWN_LIST_SOURCES
+        if r.get("geom_source") != "region-pdo-union" and not own_list:
+            continue
         if not members:
             continue
         regions = {region_by_fn.get((r["country"], fn), "") for fn in members}

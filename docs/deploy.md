@@ -75,6 +75,28 @@ affected.
    same way and purges again. If any is still stale it says so, names the
    files and exits 3 once the IndexNow and config steps have run. The upload
    is done at that point; purge again once the replicas catch up.
+4. **Large files.** A probe is a small text file, and replication is per
+   file. On 2026-11-14 the 52 MB `appellations-overview.pmtiles` reached a
+   replica hours after the probes had settled; the purge let the shield
+   re-cache the 9 November tileset for the 30-day max-age, and production
+   drew only the drinks the old tiles held — the French ones — at every zoom
+   below the parcels, while the data and the detail tiles were current. Every
+   uploaded stable-URL file over 2 MB (the two tilesets, the sitemap, the MCP
+   context) therefore waits with the probes before the purge and is checked
+   again after it, each one and not a sample: the whole body up to 16 MB,
+   above that the size and the first 64 KiB through a ranged request
+   (`large_file_is_fresh`). A stale one is settled like a sampled file and
+   counts towards exit 3.
+
+To check a tileset by hand, compare its size with the build's:
+
+    curl -sI https://www.openwinemap.com/map-data/appellations-overview.pmtiles | grep -i -E 'content-length|last-modified'
+    ls -l wiki/map-data/appellations-overview.pmtiles
+
+The CDN ignores the query string in its cache key, so the `?v=` fingerprint
+changes what a browser keeps, not what the CDN serves: a stale copy is fixed
+by purging the file's URL (`POST https://api.bunny.net/purge?url=…`), never by
+a rebuild.
 
 IndexNow is submitted after these steps, so a crawler is never sent to a
 stale copy. `--no-replication-wait` restores the old purge-at-once

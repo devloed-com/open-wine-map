@@ -1355,7 +1355,6 @@ GRAPE_ALIAS = {
     "muller-thurgau": "muller-thurgau",           # VIVC #8141 MÜLLER-THURGAU (Riesling × Madeleine Royale)
     "mueller-thurgau": "muller-thurgau",
     "rivaner": "muller-thurgau",                  # luxembourgish / DE synonym
-    "roter-muller-thurgau": "muller-thurgau",     # colour mutation, same cultivar (VIVC #8141)
     # VIVC #1459 BLAUFRAENKISCH had two slugs — `blaufrankisch` (HU, HR, SK, CZ,
     # GB) and `lemberger` (RO, SI, DE, AT, GB, BE, PT, ES; the AT and DE
     # documents that spell it Blaufränkisch bound here through the VIVC
@@ -1399,7 +1398,14 @@ GRAPE_ALIAS = {
     "cabernet-cantor": "cabernet-cantor",          # VIVC #2017 CABERNET CANTOR (Bronner × Cab Sauv)
     "cabernet-jura": "cabernet-jura",              # Valentin Blattner CH crossing (Cab Sauv x resistant)
     "cabaret-noir": "cabaret-noir",                # VIVC interspecific red
-    "cabernet-bordo": "cabernet-franc",            # eastern-European Cab Franc synonym
+    # A German variety of its own, not a synonym of Cabernet franc: VIVC #22814
+    # CABERNET BORDO (noir, Germany, breeder Strecker; passport read live
+    # 2026-11-17), and the BLE's list of classified varieties has "45 Cabernet
+    # Bordo" and "54 Cabernet Franc" as two rows. Folded into cabernet-franc
+    # until then ("eastern-European Cab Franc synonym", from memory): the six
+    # German lists that print both showed one pill, "Cabernet Bordo (Cabernet
+    # Franc)", and no Cabernet Franc (card validator on Mosel).
+    "cabernet-bordo": "cabernet-bordo",
     "bacchus": "bacchus",                          # VIVC #908 BACCHUS (Silvaner × Riesling × Müller-Thurgau)
     "faberrebe": "faberrebe",                      # VIVC #3917 FABER — Geisenheim crossing
     "faber": "faberrebe",
@@ -1470,7 +1476,15 @@ GRAPE_ALIAS = {
     "muskateller": "muscat-a-petits-grains",       # German Muscat (VIVC #8193)
     "gelber-muskateller": "muscat-a-petits-grains",  # Gelber Muskateller = Muscat à petits grains blancs
     "roter-muskateller": "muscat-a-petits-grains-rouges",
-    "blauer-muskateller": "muscat-a-petits-grains-rouges",
+    # Blauer Muskateller is MUSCAT A PETITS GRAINS NOIRS #8238 (NOIR; synonyms
+    # BLAUER MUSKATELLER, MUSKATELLER BLAU), a passport of its own beside the
+    # red #8248 (live VIVC, 2026-11-24). Until then it folded into the red
+    # slug, and on the six German cards that list both (Franken, Landwein
+    # Main, Pfalz, Pfälzer and Rheinischer Landwein, Rheinhessen) the two
+    # rows became one pill — card validator, feedback triage 2026-11-24.
+    "blauer-muskateller": "muscat-a-petits-grains-noirs",
+    "muskateller-blau": "muscat-a-petits-grains-noirs",
+    "muscat-a-petits-grains-noirs": "muscat-a-petits-grains-noirs",
     "muskat-ottonel": "muscat-ottonel",            # already present
     "morio": "morio-muskat",
     "morio-muscat": "morio-muskat",
@@ -1480,11 +1494,10 @@ GRAPE_ALIAS = {
     "blauer-gaensfusser": "blauer-gaensfusser",     # VIVC GÄNSFÜSSER — Pfalz heritage red
     "blauer-gansfusser": "blauer-gaensfusser",
     "gelber-orleans": "gelber-orleans",            # VIVC #4622 ORLEANS — historical Rheingau white
-    "weisser-rauschling": "raeuschling",            # VIVC #9742 RÄUSCHLING — historical Rheinland white
+    "weisser-rauschling": "raeuschling",            # VIVC #9874 RAEUSCHLING WEISS (Switzerland; pinned 2026-11-17) — the Zürichsee white
     "weisser-raeuschling": "raeuschling",
     "rauschling": "raeuschling",
     "raeuschling": "raeuschling",
-    "roter-rauschling": "raeuschling",              # colour mutation of Räuschling, same cultivar
     "kleinberger": "kleinberger",                  # VIVC #6113 KLEINBERGER — Mosel heritage
     "gelber-kleinberger": "kleinberger",
     "donauriesling": "donauriesling",              # AT/DE interspecific white
@@ -1500,7 +1513,7 @@ GRAPE_ALIAS = {
     "pinot-iskra": "pinot-iskra",                  # CH/DE interspecific red
     "pinot-kors": "pinot-kors",                    # CH/DE interspecific red
     "accent": "accent",                            # interspecific red crossing
-    "adelfraenkisch": "adelfraenkisch",             # historical Franken red — kept as own slug
+    "adelfraenkisch": "adelfraenkisch",             # VIVC #23324 ADELFRAENKISCH (blanc; pinned 2026-11-17) — a white: the BLE lists print it under the white varieties
     "adelfrankisch": "adelfraenkisch",
     "gruner-adelfraenkisch": "adelfraenkisch",
     "gruener-adelfraenkisch": "adelfraenkisch",
@@ -1552,10 +1565,7 @@ GRAPE_ALIAS = {
     "muscabona": "muscabona",                      # heritage aromatic
     "mucabona": "muscabona",
     "orangentraube": "orangentraube",              # heritage white
-    "vogelfraenkisch": "vogelfraenkisch",          # historical Franken red
-    "burgunder-fraenkisch-kleiner": "vogelfraenkisch",
-    "kleiner-fraenkischer-burgunder": "vogelfraenkisch",
-    "kleiner-fraenkischer": "vogelfraenkisch",
+    "vogelfraenkisch": "vogelfraenkisch",          # VIVC #24640 VOGELFRAENKISCHE (blanc; pinned 2026-11-17) — Franken lists it under the white varieties
     "carillon": "carillon",                        # heritage variety
     "savilon": "savilon",                          # heritage variety
     "sulmer": "sulmer",                            # heritage variety
@@ -2266,6 +2276,134 @@ GRAPE_ALIAS = {
     # a pill of the debris, bracketed with the right variety).
     "suivie-de-la-manseng": "petit-manseng",
     "gris-pineau-d-aunis": "pineau-d-aunis",
+    # 2026-11-17, the German BLE sidecars and the Swiss roster acts (card
+    # validator on Baden; the seven cantonal rosters of the same day). Every
+    # id was read on the live VIVC passport that day.
+    #
+    # German specifications — names the lexicon lacked, which had fuzzy-matched
+    # a look-alike on the card (sweep of all 28 sidecars): «Chardonel» read as
+    # Chardonnay (88) on Baden, whose list prints both; «Grünfränkisch» as
+    # Sylvaner (92) on seven lists that print «Grüner Silvaner» too; «Cantaro»
+    # as Ugni blanc (85); «Cabernet Eidos» as Cabernet Dorsa (85); «Sauvignon
+    # Rytos» as Sauvignon (89); «Blauer Gelbhölzer» and «Blauer Kölner» as
+    # Trollinger (97, 96); «Färbertraube» as Gamay de Chaudenay (96);
+    # «Mohrenkönigin» as Pinot noir (96); «Blauer Elbling» as Roter Elbling
+    # (100, the VIVC synonym ELBLING BLAUER); «Kleiner Fränkischer Burgunder»
+    # as Vogelfränkisch — an alias written from memory in May, and a white.
+    "findling": "bouvier",  # VIVC lists FINDLING only as a synonym of BOUVIER #1625; the key makes the German lists' name a curated surface (it bound the same slug through the passport)
+    "chardonel": "chardonel",  # VIVC #16072 CHARDONEL (blanc; Seyval blanc × Chardonnay, Geneva NY)
+    "grunfrankisch": "grunfrankisch",  # VIVC #25041 GRUENFRAENKISCH (blanc), a prime of its own; the name is also a synonym of SILVANER GRUEN #11805, which the lists print beside it
+    "gruenfraenkisch": "grunfrankisch",
+    "zahringer": "zahringer",  # VIVC #13367 ZAEHRINGER (rose; Gewürztraminer × Riesling, Freiburg 1939)
+    "zaehringer": "zahringer",
+    "muskat-gutedel": "muskat-gutedel",  # VIVC #25043 MUSKATGUTEDEL (blanc), a prime of its own beside #25041; CHASSELAS MUSQUE #2489 lists the name too
+    "muskatgutedel": "muskat-gutedel",
+    "ruling": "ruling",  # VIVC #10381 RULING (blanc; Weinsberg S 385)
+    "kolor": "kolor",  # VIVC #6388 KOLOR (noir; Pinot noir × Teinturier, Freiburg 1939)
+    "rabner": "rabaner",  # Baden's § 8 prints «Rabner»; VIVC has no such name, Rabaner is #9856
+    "cabernet-eidos": "cabernet-eidos",  # VIVC #24896 (noir; Udine)
+    "cantaro": "cantaro",  # VIVC #2065 CANTARO (blanc; Würzburg B 55-8-53) — #2064 is a Spanish homonym
+    "sauvignon-rytos": "sauvignon-rytos",  # VIVC #24883 (blanc; Udine)
+    "blauer-gelbholzer": "blauer-gelbholzer",  # VIVC #16158 GELBHOELZER BLAU (noir)
+    "blauer-gelbhoelzer": "blauer-gelbholzer",
+    "gelbholzer-blau": "blauer-gelbholzer",
+    "blauer-elbling": "blauer-elbling",  # VIVC #12651 ELBLING BLAU (noir), BLAUER ELBLING its official German name
+    "elbling-blau": "blauer-elbling",
+    # No bracket (pinned false): a name VIVC files under several primes, or
+    # under none.
+    "farbertraube": "farbertraube",  # FAERBERTRAUBE is a synonym of TEINTURIER #12304, FARBFRAENKISCH #4053 and GAMAY TEINTURIER DE CHAUDENAY #4380
+    "faerbertraube": "farbertraube",
+    "blauer-kolner": "blauer-kolner",  # KOELNER BLAUER sits under KOELNER BLAU #6344, KAVCINA CRNA #6047 (Žametovka) and SCHIAVA GROSSA #10823
+    "blauer-koelner": "blauer-kolner",
+    "mohrenkonigin": "mohrenkonigin",  # under MOHRENKOENIG #26375, CEP ROUGE #5184 and PINOT NOIR #9279
+    "mohrenkoenigin": "mohrenkonigin",
+    "kleiner-frankischer-burgunder": "kleiner-frankischer-burgunder",  # no VIVC name; FRAENKISCHER BURGUNDER and KLEINER BURGUNDER are synonyms of FERIDAC #24242 — a lead, not a pin
+    "kleiner-fraenkischer-burgunder": "kleiner-frankischer-burgunder",
+    "burgunder-fraenkisch-kleiner": "kleiner-frankischer-burgunder",
+    # the spellings the lists print (ä / ü folded to a / u by the matcher;
+    # the keys above carry VIVC's ae / ue)
+    "vogelfrankisch": "vogelfraenkisch",
+    "gruner-adelfrankisch": "adelfraenkisch",
+    # One passport per berry colour (the muscat rule of 2026-10-23): VIVC files
+    # the red mutations apart, and the German and German-Swiss lists print
+    # them as rows beside the white variety.
+    "roter-muller-thurgau": "roter-muller-thurgau",  # VIVC #24686 MUELLER THURGAU ROT; folded into muller-thurgau #8141 until 2026-11-17
+    "muller-thurgau-rot": "roter-muller-thurgau",
+    "roter-raeuschling": "roter-raeuschling",  # VIVC #24627 RAEUSCHLING ROT; folded into raeuschling until 2026-11-17
+    "roter-rauschling": "roter-raeuschling",
+    "raeuschling-rot": "roter-raeuschling",
+    # The Swiss roster acts (Schwyz, Zürichsee, Zürich, Glarus, Jura, both
+    # Appenzells) — varieties the lists print that no entry resolved.
+    "buffalo": "buffalo",  # VIVC #1796 (noir; USA)
+    "cabernello": "cabernello",  # VIVC #25981 (noir; the lists' «Cabernello (MRAC 40)»)
+    "cornarello": "cornarello",  # VIVC #25982 (noir; MRAC 1626)
+    "gamarello": "gamarello",  # VIVC #25983 (noir; MRAC 1099)
+    "merello": "merello",  # VIVC #25984 (noir; MRAC 1087)
+    "nerolo": "nerolo",  # VIVC #25985 (noir)
+    "chancellor": "chancellor",  # VIVC #2446 (noir; Seibel 7053)
+    "charmont": "charmont",  # VIVC #15832 (blanc; Chasselas × Chardonnay, Pully)
+    "de-chaunac": "de-chaunac",  # VIVC #3469 (noir; Seibel 9549); Ausserrhoden prints «DeChaunac»
+    "dechaunac": "de-chaunac",
+    "millot-foch": "millot-foch",  # VIVC #25055 MILLOT FOCH (noir; VB 85-1), the crossing the lists print beside both parents
+    "pinorico": "pinorico",  # VIVC #24042 (noir)
+    "reselle": "reselle",  # VIVC #19058 RESELLE (blanc)
+    "sirame": "sirame",  # VIVC #25268 SIRAME (noir)
+    "salome": "sirame",  # its VIVC synonym SALOME; Aargau's list prints «Salomé/Siramé»
+    # Breeder codes VIVC files as a synonym of a named variety, which Jura's
+    # Annexe 1 prints in the name's place (keys, so the reading does not wait
+    # for the passport cache)
+    "vb-32-7": "sauvignon-soyhieres",  # RAVEL BLANC #22331
+    "vb-85-1": "millot-foch",  # MILLOT FOCH #25055 — «VB 85-1 (Léon Millot x Maréchal Foch)»
+    "vb-91-26-29": "satin-noir",  # SATIN NOIR #23826
+    "vidal-blanc": "vidal-blanc",  # VIVC #13047 VIDAL BLANC (Vidal 256); a bare "Vidal" is a Merlot synonym and stays one
+    "verdelet": "verdelet",  # VIVC #12952 VERDELET (blanc) — Ausserrhoden's «Seibel 9110»; "Verdelet" had fuzzy-matched Godello (87)
+    "seibel-9110": "verdelet",
+    # … and without a bracket (pinned false):
+    "aurora": "aurora",  # three AURORA primes (#40845, #782 Italy, #17009 Brazil) and a synonym of AURORE #784 (Seibel 5279); all four are white
+    "ontario": "ontario",  # two ONTARIO primes — #8776 white (USA), #20353 black — and a synonym of UNION VILLAGE #12776; no colour
+    "magliasino": "magliasino",  # no VIVC name; MAGLIASINA is a synonym of HARTFORD #5315 — a lead, not a pin
+    "cabernet-soyhieres": "cabernet-soyhieres",  # no VIVC name (SAUVIGNON SOYHIERES is Ravel blanc #22331); Glarus prints «Soyhiäres»
+    "caberneuf": "caberneuf",  # no VIVC name
+    "merlotin": "merlotin",  # no VIVC name
+    "muscatin": "muscatin",  # no VIVC name
+    "rudelin": "rudelin",  # VIVC has only numbered Rudelin selections; Ausserrhoden's yield table files it under «Weisse Sorten»
+    # The Cornalin identity pass (2026-11-17). The Valais ordinance settles
+    # it for Switzerland: "Cornalin du Valais (Rouge du Pays)", "Le Cornalin,
+    # respectivement le Rouge du Pays, est un vin AOC du Valais issu du cépage
+    # Cornalin du Valais" (OVV art. 56), with «Humagne rouge» a row of its
+    # own. VIVC: ROUGE DU PAYS #10240 (CORNALIN DU VALAIS), CORNALIN D'AOSTE
+    # #2838 (HUMAGNE ROUGE), HUMAGNE BLANCHE #5450, REZE #10045. VIVC lists
+    # the bare CORNALIN and LANDROTER under both #10240 and #2838: the bare
+    # "cornalin" and "humagne" bind nothing (`_BANNED_SURFACES`), and
+    # "Landroter" — the German of "Rouge du Pays", printed «Cornalin /
+    # Landroter» by the German-Swiss lists — is the Valais variety.
+    # Petit rouge, the Valle d'Aosta variety (VIVC #9200 PETIT ROUGE): #2838
+    # lists PETIT ROUGE among its synonyms, and without an entry of its own
+    # the Valle d'Aosta disciplinare's «Petit rouge» read as Humagne rouge.
+    "petit-rouge": "petit-rouge",
+    "rouge-du-pays": "rouge-du-pays",
+    "cornalin-du-valais": "rouge-du-pays",
+    "landroter": "rouge-du-pays",
+    "humagne-rouge": "humagne-rouge",
+    "humagne-blanc": "humagne-blanc",
+    "humagne-blanche": "humagne-blanc",
+    "reze": "reze",
+    # «Traminer» / «Roter Traminer» printed beside «Gewürztraminer» (Appenzell
+    # Innerrhoden's Anhang 1; Baden's § 8 and Badischer Landwein) is one
+    # variety under two names, by both countries' own registers (read
+    # 2026-11-17): the Swiss Sortenverordnung, SR 916.151.6, Anhang 8 —
+    # "Gewürztraminer RS | Roter Traminer/Savagnin rose aromatique/Traminer",
+    # with «Savagnin rose RS» (Klevner de Heiligenstein) a row of its own and
+    # «Weisser Traminer» a synonym of Savagnin blanc; the Bundessortenamt's
+    # Beschreibende Sortenliste Reben 2024 — one registered variety, "Roter
+    # Traminer" RBE 516, Gewürztraminer and Traminer its synonyms; the BLE's
+    # list of classified varieties (31 August 2026) row 228 likewise. The two
+    # Baden rows reproduce Baden-Württemberg's classification annex of 2005
+    # ("Gewürztraminer Rs" / "Roter Traminer R"), which the amendment of
+    # 7 November 2025 (GBl. 2025 Nr. 110, Anlage 1) replaced by "Roter
+    # Traminer — Gewürztraminer, Traminer". The key makes the binding the
+    # lexicon's own instead of the VIVC synonym tier's.
+    "roter-traminer": "gewurztraminer",
 }
 
 # Default colour for each well-known variety. When the parser extracts a
@@ -2280,6 +2418,47 @@ GRAPE_ALIAS = {
 # canonical, and the distinct mutations (`-blanc`, `-gris`) stay separate
 # because their suffix ≠ the default.
 DEFAULT_COLOUR: dict[str, str] = {
+    # --- 2026-11-17 (German BLE sidecars, Swiss roster acts; see GRAPE_ALIAS) ---
+    "cabernet-bordo": "noir",
+    "chardonel": "blanc",           # VIVC #16072
+    "grunfrankisch": "blanc",       # VIVC #25041
+    "zahringer": "rose",            # VIVC #13367 ROSE; Baden lists it under the white varieties
+    "muskat-gutedel": "blanc",      # VIVC #25043
+    "ruling": "blanc",              # VIVC #10381
+    "kolor": "noir",                # VIVC #6388
+    "cabernet-eidos": "noir",       # VIVC #24896
+    "cantaro": "blanc",             # VIVC #2065
+    "sauvignon-rytos": "blanc",     # VIVC #24883
+    "blauer-gelbholzer": "noir",    # VIVC #16158
+    "blauer-elbling": "noir",       # VIVC #12651
+    "farbertraube": "noir",         # every candidate passport is black; the BLE lists print it under the red varieties
+    "blauer-kolner": "noir",        # every candidate passport is black
+    "mohrenkonigin": "noir",        # every candidate passport is black
+    "kleiner-frankischer-burgunder": "noir",  # the BLE lists print it under the red varieties
+    "roter-muller-thurgau": "rose",  # VIVC #24686 ROUGE — a red-skinned mutation vinified white (the roter-riesling precedent)
+    "roter-raeuschling": "rose",    # VIVC #24627 ROUGE — the same
+    "buffalo": "noir",              # VIVC #1796
+    "cabernello": "noir",           # VIVC #25981
+    "cornarello": "noir",           # VIVC #25982
+    "gamarello": "noir",            # VIVC #25983
+    "merello": "noir",              # VIVC #25984
+    "nerolo": "noir",               # VIVC #25985
+    "chancellor": "noir",           # VIVC #2446
+    "charmont": "blanc",            # VIVC #15832
+    "de-chaunac": "noir",           # VIVC #3469
+    "millot-foch": "noir",          # VIVC #25055
+    "pinorico": "noir",             # VIVC #24042
+    "reselle": "blanc",             # VIVC #19058
+    "sirame": "noir",               # VIVC #25268
+    "vidal-blanc": "blanc",         # VIVC #13047
+    "verdelet": "blanc",            # VIVC #12952
+    "aurora": "blanc",              # every candidate passport is white
+    "rudelin": "blanc",             # bGS 920.161 Art. 2: «Weisse Sorten … Rudelin»
+    "petit-rouge": "noir",          # VIVC #9200
+    "rouge-du-pays": "noir",        # VIVC #10240
+    "humagne-rouge": "noir",        # VIVC #2838 CORNALIN D'AOSTE
+    "humagne-blanc": "blanc",       # VIVC #5450 HUMAGNE BLANCHE
+    "reze": "blanc",                # VIVC #10045
     # --- 2026-10-25 (phase H findings; see GRAPE_ALIAS) -----------------
     "piros-bakator": "rose",        # VIVC #905 BAKATOR ROZ
     "verdoncho": "blanc",           # MAPA "Verdoncho (B.)"
@@ -2892,7 +3071,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "pinot-iskra": "noir",
     "pinot-kors": "noir",
     "accent": "noir",
-    "adelfraenkisch": "noir",         # historical Franken red
+    "adelfraenkisch": "blanc",        # VIVC #23324; "noir" until 2026-11-17, from memory
     "blauer-hangling": "noir",
     "bettlertraube": "noir",
     "geisdutte": "blanc",
@@ -2920,7 +3099,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "wildmuskat": "blanc",
     "muscabona": "blanc",
     "orangentraube": "blanc",
-    "vogelfraenkisch": "noir",
+    "vogelfraenkisch": "blanc",       # VIVC #24640; "noir" until 2026-11-17, from memory
     "carillon": "blanc",
     "savilon": "blanc",
     "sulmer": "noir",
@@ -3284,6 +3463,7 @@ DEFAULT_COLOUR: dict[str, str] = {
     "rosa": "noir",  # VIVC #22422
     "muscat-a-petits-grains-roses": "rose",  # VIVC #8186
     "muscat-a-petits-grains-rouges": "rouge",  # VIVC #8248; INAO's Rg
+    "muscat-a-petits-grains-noirs": "noir",  # VIVC #8238 BLAUER MUSKATELLER
 }
 
 # Slugs that are pure boilerplate after stop-word filtering and should be
@@ -3464,8 +3644,15 @@ def _clause_colours(text: str, offset: int) -> set[str]:
         return set()
     words = last.group(1).lower()
     return {slug for stem, slug in _CLAUSE_COLOUR_SLUG if stem in words}
-_ADDON_VARIETIES_RE = re.compile(r"\bet\s+(?:des|les)\s+vari[ée]t[ée]s\b", re.IGNORECASE)
-_CONVENTION_END_RE = re.compile(r"sous\s+r[ée]serve\s+de\s+la\s+signature[^.]*\.(?=\s)", re.IGNORECASE)
+_ADDON_VARIETIES_RE = re.compile(
+    r"\bet\s+(?:des|les|la|de\s+la)\s+"
+    # a two-column table label pdftotext sets inside the phrase (Languedoc:
+    # "et les AOC « Languedoc » (Vins rouges) variétés suivantes")
+    r"(?:AOC\s*«[^»]{1,60}»\s*\([^)]{1,40}\)\s*)?"
+    r"vari[ée]t[ée](?P<plural>s)?\b",
+    re.IGNORECASE,
+)
+_CONVENTION_END_RE = re.compile(r"sous\s+r[ée]serve\s+de\s+la\s+signature[^.]*\.(?=\s|$)", re.IGNORECASE)
 _TRAILING_ACCESSORY_RE = re.compile(r"[^.]*\ben\s+tant\s+que\s+c[ée]pages?\s+accessoires?\b", re.IGNORECASE)
 
 
@@ -3747,24 +3934,46 @@ def parse_grapes(section_v: str) -> dict:
     # that differ across colours (2026-11-07)
     by_colour: dict[str, dict[str, str]] = {}
     for role, start, body in chunks:
+        # "- et les variétés aligoté B, melon B, sacy B, sous réserve de la
+        # signature … d'une convention conforme à la convention cadre …"
+        # (Meursault, the Bordeaux / Jura / Languedoc rosters): a variety
+        # admitted only under the INAO convention — the mechanism of the
+        # Alsace "variétés d'intérêt à fin d'adaptation" — is neither the
+        # chunk's principal nor its accessory; it is read as observation up
+        # to the end of the convention sentence (2026-11-23: Meursault's card
+        # showed aligoté, melon and sacy as principal). The singular form
+        # ("et la variété césar N", "et de la variété enfariné N") counts
+        # only when the convention sentence follows.
         addon = _ADDON_VARIETIES_RE.search(body)
-        parts = [(body[: addon.start()], True), (body[addon.start():], False)] if addon else [(body, True)]
+        close = _CONVENTION_END_RE.search(body, addon.end()) if addon else None
+        if addon and close is None and not addon.group("plural"):
+            addon = None
+        if addon is None:
+            parts = [(body, role, True)]
+        elif close is None:
+            parts = [(body[: addon.start()], role, True), (body[addon.start():], role, False)]
+        else:
+            parts = [
+                (body[: addon.start()], role, True),
+                (body[addon.start(): close.end()], "observation", False),
+                (body[close.end():], role, False),
+            ]
         colours = _clause_colours(text, start) if start < dgc_at else set()
-        for part, may_promote in parts:
+        for part, part_role, may_promote in parts:
             may_promote = may_promote and start < dgc_at
             for tok in _tokenise_role_chunk(part):
                 if colours and may_promote:
                     per = by_colour.setdefault(tok["slug"], {})
                     for c in colours:
-                        if c not in per or rank[role] < rank[per[c]]:
-                            per[c] = role
+                        if c not in per or rank[part_role] < rank[per[c]]:
+                            per[c] = part_role
                 had = seen.get(tok["slug"])
-                if had is not None and (not may_promote or rank[had] <= rank[role]):
+                if had is not None and (not may_promote or rank[had] <= rank[part_role]):
                     continue
                 if had is not None:
                     by_role[had] = [t for t in by_role[had] if t["slug"] != tok["slug"]]
-                seen[tok["slug"]] = role
-                by_role[role].append(tok)
+                seen[tok["slug"]] = part_role
+                by_role[part_role].append(tok)
 
     flat = (
         [{**t, "role": "principal"} for t in by_role["principal"]]

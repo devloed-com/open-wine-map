@@ -73,8 +73,18 @@ def dgc_keys(dgc_name: str, parent_name: str) -> set[str]:
         out |= _variants(k)
         for pf in prefixes:
             if pf and k.startswith(pf + " "):
-                out |= _variants(k[len(pf):].strip())
+                rest = k[len(pf):].strip()
+                out |= _variants(rest)
+                # a climat row names the climat alone: « La Jeunellotte » for
+                # "Meursault premier cru La Jeunellotte" (2026-11-23: no
+                # premier-cru climat of a Burgundy village ever matched its row)
+                m = _MENTION_PREFIX.match(rest)
+                if m and rest[m.end():].strip():
+                    out |= _variants(rest[m.end():].strip())
     return out
+
+
+_MENTION_PREFIX = re.compile(r"(?:premier|grand)\s+cru\s+")
 
 
 def _variants(k: str) -> set[str]:

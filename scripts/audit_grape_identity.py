@@ -115,13 +115,17 @@ def colour_coded_unknowns() -> list[dict]:
 
 
 def _record_details(rec: object) -> list:
-    """A record's grape details — `grapes.details`, or the flat `varieties`
-    list of the ES national-pliego sidecars."""
+    """A record's grape details — `grapes.details`, the list-shaped `grapes`
+    of the German BLE and Austrian BML sidecars (not swept until 2026-11-17:
+    Baden's «Chardonel», bound to Chardonnay at 88, never showed in the fuzzy
+    list), or the flat `varieties` list of the ES national-pliego sidecars."""
     if not isinstance(rec, dict):
         return []
     grapes = rec.get("grapes")
     if isinstance(grapes, dict) and grapes.get("details"):
         return grapes["details"]
+    if isinstance(grapes, list):
+        return grapes
     return rec["varieties"] if isinstance(rec.get("varieties"), list) else []
 
 

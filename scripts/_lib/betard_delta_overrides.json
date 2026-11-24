@@ -2,5 +2,30 @@
   "_example-slug": {
     "reason": "Curator confirmed the post-snapshot amendment did not move the boundary (e.g. a name/variety change, not a perimeter change).",
     "source": "https://public-source-url"
+  },
+  "rheinhessen": {
+    "reason": "Feedback triage 2026-11-24 (Ahr boundary flag, sibling sweep): the area section of the single document in force lists 133 Gemeinden, the same names as § 4 of the BLE Produktspezifikation, and every one of them is a GISCO LAU 2024 commune the Bétard polygon covers; it covers no other commune. The post-snapshot amendments did not move the boundary at commune resolution.",
+    "source": "http://data.europa.eu/eli/C/2026/1820/oj",
+    "verified": "2026-11-24"
+  },
+  "mosel": {
+    "reason": "Feedback triage 2026-11-24 (Ahr boundary flag, sibling sweep): the area section of the single document in force lists 135 Gemeinden, the same names as § 4 of the BLE Produktspezifikation, and every one of them is a GISCO LAU 2024 commune the Bétard polygon covers; it covers no other commune. The post-snapshot amendments did not move the boundary at commune resolution. Burgen and Urbar are listed twice (two Kreise), Perl's Ortsteile in the Saarland under Perl.",
+    "source": "http://data.europa.eu/eli/C/2026/1628/oj",
+    "verified": "2026-11-24"
+  },
+  "nahe": {
+    "reason": "Feedback triage 2026-11-24 (Ahr boundary flag, sibling sweep): the area section of the single document in force lists 91 Gemeinden, the same names as § 4 of the BLE Produktspezifikation, and every one of them is a GISCO LAU 2024 commune the Bétard polygon covers; it covers no other commune. The post-snapshot amendments did not move the boundary at commune resolution.",
+    "source": "http://data.europa.eu/eli/C/2026/1289/oj",
+    "verified": "2026-11-24"
+  },
+  "pfalz": {
+    "reason": "Feedback triage 2026-11-24 (Ahr boundary flag, sibling sweep): the area section of the single document in force lists 141 Gemeinden, the same names as § 4 of the BLE Produktspezifikation, and every one of them is a GISCO LAU 2024 commune the Bétard polygon covers; it covers no other commune. The post-snapshot amendments did not move the boundary at commune resolution.",
+    "source": "http://data.europa.eu/eli/C/2026/898/oj",
+    "verified": "2026-11-24"
+  },
+  "mittelrhein": {
+    "reason": "Feedback triage 2026-11-24 (Ahr boundary flag, sibling sweep): the Rhineland-Palatinate list of the single document in force (§ 4.1 of the BLE Produktspezifikation, the same names) is exactly the Rhineland-Palatinate GISCO LAU 2024 communes the Bétard polygon covers (Urbar listed twice, for its two Kreise). The North Rhine-Westphalia part names three Gemarkungen (Ober- and Niederdollendorf and Königswinter, Honnef with Rhöndorf, Bonn-Kessenich) and the polygon draws the three cities whole — a resolution question, queued in CURATOR_TODO, not a moved boundary.",
+    "source": "http://data.europa.eu/eli/C/2026/738/oj",
+    "verified": "2026-11-24"
   }
 }

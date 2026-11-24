@@ -99,7 +99,24 @@ ciders with a protected name — see "Spirits and other alcoholic drinks".
     label `wiki_lang_hu`) — `grape_overrides.json["hu"]` pins 24 more
     Hungarian titles that have not been fetched. 02b builds its title
     candidates from the ASCII slug and Title-Cased VIVC synonyms, capped at
-    20, so an article such as fr "Perle de Csaba" is found only by a pin.
+    20, so an article such as fr "Perle de Csaba" is found only by a pin —
+    and so is any title with an umlaut or an accent: de «Gelbhölzer»,
+    «Grünfränkisch», «Mohrenkönigin», «Réselle», «Roter Müller-Thurgau»
+    (pinned 2026-11-17, each lead read against the passport; a title pin on
+    a cached miss needs `--refresh --only`). **The slug corpus is
+    `grape_corpus._SOURCES`** (02g keeps its own `_record_files`): a slug in
+    neither is skipped by the corpus sweeps and — without a word — by the
+    translation stage even under `--only`. Until 2026-11-17 neither read the
+    BLE sidecars (`raw/de/produktspezifikationen-extracted`, whose `grapes`
+    is a list), so the eight varieties only the German stub regions list
+    (Chardonel, Kolor, Ruling, Zähringer, Blauer Gelbhölzer, Cantaro, Muskat
+    Gutedel, Serena) were in no corpus; a sidecar whose record also has an
+    EU file counts a variety once (`_SUPPLEMENT_OF`), which made thirty
+    slugs' dominant corpus German (Grüner Veltliner's fr / es tooltips are
+    translated from the German article since). The corpus label
+    (`grapes_info[slug].name`) had been set only on a slug with a tooltip;
+    every corpus slug carries it since the same day (see "Greek and
+    Cyrillic names on screen").
   Cahier text, commune lists, region names, and INAO category codes continue to
   come exclusively from INAO/JORF. Each Wikipedia entry caches `revision`,
   `fetched_at`, `page_url`, and `license`; the UI must render attribution
@@ -329,7 +346,8 @@ ciders with a protected name — see "Spirits and other alcoholic drinks".
   « Kirsch d’Alsace », the Spanish bullet writes "el Kirsch d'Alsace", a
   Dutch one "de marc d'Alsace Gewurztraminer"; nine rows on the re-run French
   spirits),
-  a source term glossed in brackets after its translation ("lieu-dit (dűlő)")
+  a source term glossed in brackets after its translation ("lieu-dit (dűlő)"; a
+  place name after its exonym, "la Bavière (Bayern)", since 2026-11-24)
   and a capitalised term opening a name ("Podgoria Crucilor"). A record named
   after the region alone still reads it as a place ("Upper Kärnten").
 - **Per-record review feedback is a constraint layer for the next
@@ -1278,6 +1296,107 @@ null-`insee` rows, three of which duplicate a climat's existing row (the
 union does not move; CURATOR_TODO). The newest
 `<date>_delim-parcellaire-aoc-shp.shp` under `raw/inao/parcellaire/` is the
 release built (`resolve_shapefile`).
+
+### Communes holding the parcel area (INAO's plan inventory)
+
+Some AOCs have no row in the parcellaire shapefile, and their aires-communes
+rows are the aire géographique, not the vineyard. Champagne's 635 rows are the
+Champagne viticole of the law of 1927, while its parcel area lies in 319
+communes (INAO's product page). A visitor flagged Coteaux champenois on
+2026-11-22 (triage of 2026-11-23, Boris's choice (a)).
+
+The list comes from INAO's **portal of official delimitation plans**
+(https://www.inao.gouv.fr/portail-plans-delimitation, the «ici» under every
+product page's map). It is a public Nextcloud share, readable over WebDAV; INAO
+calls its plans the only legally binding delimitation documents. Beside the
+scanned plans (one TIF per cadastral sheet) it carries
+`inventaire_etat_de_la_delimitation.xlsx`: one row per (appellation,
+commune), «Délimitation parcellaire attendu» oui / non, and the plan's state.
+
+[scripts/_lib/fr/plan_inventory.py](scripts/_lib/fr/plan_inventory.py) reads
+it with no xlsx library. Stage 00 re-reads it on every run into
+`raw/inao/plans-portal/` and keeps the oui rows of every appellation as
+`parcel-area-communes.json`: 1,280 appellations, file last modified 9 May
+2026.
+
+The checked-in
+[scripts/_lib/fr/parcel_area_communes.json](scripts/_lib/fr/parcel_area_communes.json)
+says which records are drawn as those communes instead of their aire, and
+from which source:
+
+- `inao-plan-inventory`: a commune counts when any of its rows reads oui. The
+  inventory writes a commune of today once per former commune, its codes lose
+  the leading zero, and its names are mojibake.
+- `cahier`: the communes the cahier places the vines in, quoted.
+
+| record | drawn as | source |
+|---|---|---|
+| Champagne | 321 communes of today | inventory |
+| Coteaux champenois | Champagne's list | inventory, read as incomplete |
+| Rosé des Riceys | Les Riceys | cahier |
+
+Coteaux champenois takes Champagne's list because its cahier's section IV is
+Champagne's word for word and INAO's page gives both 319. The inventory's own
+Coteaux champenois list (278) lacks 17 Côte des Bar communes. Rosé des Riceys:
+its aire géographique is 8 communes, and its vines are in Les Riceys alone
+(IV 2°). The inventory marks all 8 «Aucune parcelle classée», since its parcels
+are Champagne's.
+
+**The inventory can be incomplete or wrong.** Seen so far:
+- Cassis reads «non» although its cahier sets an approved area;
+- Champagne grand cru omits Verzenay and Verzy, which its cahier names.
+
+So an entry is a cited decision, never a rule over the whole corpus.
+
+**Stage 04** (`_parcel_area_codes`) draws a tabled record from the list,
+checked against its aire (a code outside the aire is logged and not drawn). If
+the source is not on disk, it draws the aire and says so. The feature carries
+`parcel_area_communes`. The card line is `geom_approx_parcel_area_inventory`
+or `geom_approx_parcel_area_cahier` (panel `geom_parcel_area`
+communes-inventory / communes-cahier), and an inventory record gets a Sources
+row linking the plans portal (`src_inao_plans`).
+
+**Other consumers:**
+- The village geometry and `audit_geometry_vs_text.py` read the same list.
+- The three Champagne spirits keep the aire géographique, which is where they
+  may be made.
+
+**The card line of every other French commune union**
+([scripts/_lib/fr/parcel_area.py](scripts/_lib/fr/parcel_area.py)):
+- «aire parcellaire délimitée» approved by INAO's committee and not in INAO's
+  published parcel data (Cassis, Bellet, the Champagne spirits) →
+  `geom_approx_aires_union_parcels`;
+- an area INAO publishes in a resource the build does not read (the Martinique
+  rum's own zip in the parcellaire dataset, `PUBLISHED_APART`) → the union
+  alone, `geom_approx_aires_union_plain`;
+- a parcel *identification* (Armagnac, Corrèze, Duché d'Uzès) or another
+  AOC's parcel area (a marc, Fine Bordeaux) → the old line, which says no
+  parcel delimitation exists for the denomination.
+
+`tests/test_fr_plan_inventory.py`, `tests/test_fr_parcel_area.py`.
+
+**The cross-check of the whole French corpus** against the inventory and the
+plans is [scripts/audit_plan_inventory.py](scripts/audit_plan_inventory.py)
+(read-only; logic in `_lib/fr/plan_inventory_audit.py`, the share's Depth-1
+WebDAV listings cached under `raw/cache/inao-plans-portal/` by
+`_lib/fr/plans_portal.py`, `--fetch` to list what the cache lacks). Run of
+2026-11-23: [docs/review-plan-inventory-2026-11-23.md](docs/review-plan-inventory-2026-11-23.md),
+rows in CURATOR_TODO. Before trusting the inventory again:
+- Its «oui» bleeds across products in a commune: 20 Jurançon communes read
+  «oui, plan disponible» under Ossau-Iraty and every Comté Tolosan IGP. So a
+  parcel area the shapefile lacks counts only when the appellation's own folder
+  holds plan sheets; folders can be empty.
+- Its commune lists follow INAO's commune table, not the cahier: our cited
+  supplements (Cévennes, Maures, Côtes de Thau, Calvados) are missing from it as
+  from the CSV.
+- One name of one sign is one appellation (Valençay: the wine and the cheese).
+- Of the parcellaire-gap queue's 3,308 aire communes it marks 3,271 «non».
+
+The plan folders are per denomination. Their files carry the SIQO
+`id_denomination_geo` (`…_AOC_0055_DF.tif`); most are PDFs. A plan states its
+approval («… en sa séance du 12/02/2026», Ladoix in Magny-lès-Villers), so one
+newer than the cahier marks a delimitation the build's text predates.
+`tests/test_plan_inventory_audit.py`.
 
 ## The FR corpus follows INAO's catalogue, not the export's vintage
 
@@ -2279,6 +2398,78 @@ one case of four failure modes, swept corpus-wide the same day:
   name wraps inside its cell ("PRT52915 Moscatel- Branco ⏎ GalegoBranco").
   `audit_grape_identity.py` lists the class from the build (`shared`, report
   only); a pair the table does not rule is `review`.
+- **The national-spec sidecars were outside the sweep (2026-11-17).** The
+  card validator found Baden's pill "Chardonel (Chardonnay Blanc)" — the BLE
+  § 8 lists «Chardonel» and «Chardonnay», the first had fuzzy-matched the
+  second at 88 and swallowed it. `audit_grape_identity.py` read only records
+  with `grapes.details`; the German BLE and the Austrian BML sidecars carry a
+  list and were never swept (`_record_details` reads both now). The sweep of
+  the 28 German sidecars found eleven look-alikes on 13 sidecars and 13 EU
+  records: «Grünfränkisch» → Sylvaner (seven lists that print «Grüner
+  Silvaner» too), «Cantaro» → Ugni blanc, «Cabernet Eidos» → Cabernet Dorsa,
+  «Sauvignon Rytos» → Sauvignon, «Blauer Gelbhölzer» and «Blauer Kölner» →
+  Trollinger, «Färbertraube» → Gamay de Chaudenay, «Mohrenkönigin» → Pinot
+  noir, «Blauer Elbling» → Roter Elbling (VIVC's synonym ELBLING BLAUER; the
+  official German name is on ELBLING BLAU #12651), «Kleiner Fränkischer
+  Burgunder» → Vogelfränkisch — an alias written from memory in May, and the
+  wrong colour: Vogelfränkisch (#24640) and Adelfränkisch (#23324) are
+  whites, as the lists print them; the lexicon had both "noir". Each has its
+  own entry, read on the live passport (15 new German slugs; Zähringer,
+  Muskat Gutedel, Ruling and Kolor had matched nothing); a name under several
+  primes or under none is pinned `false` (Färbertraube, Blauer Kölner,
+  Mohrenkönigin, Kleiner Fränkischer Burgunder). «Rabner» is Rabaner
+  (`GRAPE_ALIAS`); a roster name that lost its comma is two varieties when
+  both halves are curated exact names (`_matches` in `de/02f`: Mosel's
+  "Findling Gelber Kleinberger"); § 8 ends at "9. Angaben" whatever its dot
+  (Baden's had run to the end of the document, 141 "unmatched names"). **One
+  passport per berry colour, again**: MUELLER THURGAU ROT #24686 and
+  RAEUSCHLING ROT #24627 are passports of their own, so `roter-muller-thurgau`
+  and `roter-raeuschling` are slugs (colour `rose`, the roter-riesling
+  precedent: a red-skinned mutation vinified white) and no longer fold into
+  the white variety. **The Cornalin identity pass**: the Valais ordinance
+  settles it for Switzerland — "Cornalin du Valais (Rouge du Pays)", "Le
+  Cornalin, respectivement le Rouge du Pays, est un vin AOC du Valais issu du
+  cépage Cornalin du Valais" (OVV art. 56), «Humagne rouge» a row of its own
+  — and VIVC agrees: ROUGE DU PAYS #10240 (CORNALIN its official Swiss name),
+  CORNALIN D'AOSTE #2838 (HUMAGNE ROUGE its official Swiss name), HUMAGNE
+  BLANCHE #5450, REZE #10045. VIVC lists the bare CORNALIN and LANDROTER
+  under both #10240 and #2838, so the bare "cornalin" and "humagne" are
+  `_BANNED_SURFACES`; the Swiss readers read a bare «Cornalin» as the Valais
+  variety (`swiss_match` / `_CH_NAME_PINS` in `_lib/ch/reglement.py`), the
+  Valle d'Aosta «Cornalin» still binds nothing (an IT context pin, CURATOR_TODO).
+  The #2838 passport lists PETIT ROUGE too: `petit-rouge` (#9200) got its own
+  entry the same hour, or the Valle d'Aosta disciplinare's «Petit rouge»
+  would have read as Humagne rouge — **the bindings diff caught it**
+  (every surface the corpus has met, matched before and after: 51 changed,
+  one unintended). The Swiss names are under "Rosters in an act the ordinance
+  delegates to". **Cabernet Bordo** (the same evening, card validator on
+  Mosel) is VIVC #22814, a German variety of its own, and the BLE's list of
+  classified varieties has it beside Cabernet Franc (rows 45 and 54): the
+  alias that folded it into Cabernet franc ("eastern-European synonym", from
+  memory) had left six German lists with one pill, "Cabernet Bordo (Cabernet
+  Franc)", and no Cabernet Franc. Whether two rows of a list are one variety
+  is the register's call, row by row: Roter Traminer and Gewürztraminer are
+  one (below), Cabernet Bordo and Cabernet Franc are two. 49 pins, 37 on a
+  passport; `tests/test_de_ble_styles.py`,
+  `tests/test_grape_identity_guards.py`.
+- **One name, two passports by country (2026-11-24).** VIVC flags ROTER
+  MUSKATELLER as the official name *in Germany* on MUSCAT A PETITS GRAINS
+  ROSES #8186 and *in Austria* on MUSCAT A PETITS GRAINS ROUGES #8248 (both
+  passports read live that day). The lexicon's alias is the red one, so
+  every German list that prints «Roter Muskateller» — among its white-wine
+  varieties, beside Roter Riesling and Roter Traminer — showed the red
+  Muscat (card validator on Franken). A country's reading is a reader's pin,
+  never a lexicon fold (the Swiss «Cornalin»):
+  [scripts/_lib/de/grape_pins.py](scripts/_lib/de/grape_pins.py)
+  (`german_match`, `DE_NAME_PINS`) wraps the matcher in `de/02` and `de/02f`.
+  DE run against a snapshot: 15 EU records and 26 BLE sidecars, that one
+  binding each (rouge → rose). Austria binds none — its documents list
+  «Muskateller – Roter Muskateller» as one variety under its first name (the
+  "4 AT records" of the first note were that row). The four Swiss lists that
+  print the name (Glarus, Schwyz, Zürich, Zürichsee) keep #8248: the federal
+  list's one coloured small-berried Muscat is «Muscat rouge à petits grains
+  N — Muscat rouge» (Sortenverordnung SR 916.151.6, Anhang 8, Stand 1
+  December 2025), a name VIVC lists on #8248. `tests/test_de_grape_pins.py`.
 
 Against the cards of the morning, the sweep changed the grape roster of 358
 cards in 17 countries (IT 175, DE 36, GR 36, CH 29, HU 17, NL 15); every
@@ -2709,7 +2900,7 @@ appellation names.
 
 | Script | Reads | Writes |
 |---|---|---|
-| 00_fetch_data.py | (network) | raw/inao/siqo-referentiel.csv, raw/ign/communes.geojson, raw/ign/communes-associees-deleguees.geojson, raw/insee/v_mvt_commune.csv, raw/inao/parcellaire/*.shp, raw/cadastre/lieux-dits/*.json.gz |
+| 00_fetch_data.py | (network) | raw/inao/siqo-referentiel.csv, raw/ign/communes.geojson, raw/ign/communes-associees-deleguees.geojson, raw/insee/v_mvt_commune.csv, raw/inao/parcellaire/*.shp, raw/inao/plans-portal/{inventaire_etat_de_la_delimitation.xlsx,parcel-area-communes.json}, raw/cadastre/lieux-dits/*.json.gz |
 | 01_scrape_cahiers.py | raw/inao/siqo-referentiel.csv + scripts/_lib/fr/siqo_supplements.json + raw/inao/cahiers/manual_overrides.json + raw/inao/register/resolved.json | raw/inao/cahiers/*.pdf, raw/inao/cahiers/manifest.json, raw/inao/register/{cahiers/*.pdf,manifest.json} |
 | 01d_resolve_register.py | raw/inao/cahiers/manifest.json (or raw/inao/siqo-referentiel.csv + scripts/_lib/fr/siqo_supplements.json) + raw/eambrosia-register/gi-index.json + scripts/_lib/fr/register_overrides.json | raw/inao/register/{resolved,unresolved}.json |
 | 02_extract_cahiers.py | raw/inao/cahiers/*.pdf + raw/inao/siqo-referentiel.csv + scripts/_lib/fr/siqo_supplements.json (+ the previous _index.json for the drop guard) | raw/inao/cahier-extracted/*.json + _index.json |
@@ -2737,6 +2928,7 @@ appellation names.
 | 03_generate_wiki.py | raw/inao/cahier-extracted/*.json + raw/terroir-facts/ | wiki/*.md, wiki/_index.json |
 | audit_grape_wikipedia.py | raw/wikipedia/grapes/<lang>/*.json + raw/vivc/by-slug/ + raw/vivc/slug_overrides.json + the extracted corpora (grape slugs) | (stdout — grape tooltips whose article is not the pill's: STALE-PASSPORT / OTHER-CULTIVAR / UNVERIFIED, report only; `--langs`, `--all`, `--json PATH`) |
 | audit_empty_grapes.py | wiki/data/aocs.en.*.js + wiki/data/d/en/*.json + scripts/_lib/empty_grapes_overrides.json | (stdout — FLAGGED / INHERIT / REVIEWED / STUB / NON-WINE buckets; `--strict`, `--json PATH`) |
+| audit_plan_inventory.py | raw/inao/plans-portal/inventaire_etat_de_la_delimitation.xlsx + raw/cache/inao-plans-portal/ (the share's WebDAV listings; `--fetch` fills it) + raw/inao/cahier-extracted/*.json + raw/inao/aoc-aop-aires-communes.csv + igp-aires-communes.csv + scripts/_lib/aires_supplements.json + raw/cache/parcellaire-coverage/ + scripts/_lib/parcellaire_gap_fills.json + scripts/_lib/fr/parcel_area_communes.json + wiki/data/aocs.en.*.js (geom_source) + raw/ign/communes.geojson + communes-associees-deleguees.geojson + raw/insee/v_mvt_commune.csv | (stdout — per French record against INAO's inventory and plans: checks 1–6, buckets CONFLICT-OURS / CONFLICT-INVENTORY / UNDETERMINED / INTERNAL / REVISION, the parcellaire-gap queue read against the inventory, unbound records and folders; `--only`, `--all`, `--json PATH`, `--strict`) |
 | audit_aires_vs_cahier.py | raw/inao/cahier-extracted/*.json (zone sections) + raw/inao/aoc-aop-aires-communes.csv + igp-aires-communes.csv + scripts/_lib/aires_supplements.json + raw/ign/communes.geojson + communes-associees-deleguees.geojson + raw/insee/v_mvt_commune.csv | (stdout — per French parent: communes the cahier lists that INAO's rows lack, classed whole / partial / unclear; rows the zone text does not name; neighbouring codes; OK / PINNED / NEW / UNCLEAR; `--drinks`, `--bare`, `--emit-pins PATH`, `--strict`, `--json PATH`) |
 | audit_parcellaire_gaps.py | raw/inao/parcellaire/*.shp (attribute table, cached to raw/cache/parcellaire-coverage/) + scripts/_lib/parcellaire_carry_forward.json (+ its extracts) + raw/inao/aoc-aop-aires-communes.csv + raw/ign/communes.geojson + raw/inao/cahier-extracted/*.json + scripts/_lib/parcellaire_gap_fills.json | (stdout — aire communes without a parcel row per parcellaire record, classed; gap-fill pins and carried-forward rows APPLIED / STALE; `--strict`, `--json PATH`) |
 | extract_parcellaire_carry_forward.py | raw/inao/parcellaire/<release>_delim-parcellaire-aoc-shp.shp | scripts/_lib/parcellaire_carry_forward/<label>-<release>.geojson.gz (rows of one appellation or denomination, unchanged) |
@@ -5639,7 +5831,7 @@ Anbaugebiete.
 
 | Script | Reads | Writes |
 |---|---|---|
-| de/00_fetch_data.py | (network: eAmbrosia + BLE Produktspezifikationen) | raw/de/eambrosia/index.json + manifest.json, raw/de/produktspezifikationen/*.pdf + manifest.json |
+| de/00_fetch_data.py (`--refresh-lgl`, `--refresh-katasterbezirke`: re-read the Gemarkung layers) | (network: eAmbrosia + BLE Produktspezifikationen + the LGL Baden-Württemberg WFS + the Gemarkung services of NRW, Brandenburg, Sachsen-Anhalt, Thüringen and Rheinland-Pfalz) | raw/de/eambrosia/index.json + manifest.json, raw/de/produktspezifikationen/*.pdf + manifest.json, raw/de/lgl/gemarkungen.gpkg + manifest.json, raw/de/katasterbezirke/{nw,bb,st,th,rp}.gpkg + manifest.json |
 | de/01_fetch_pliegos.py | raw/de/eambrosia/index.json + raw/de/oj-pages/manual_overrides.json | raw/de/oj-pages/*.html + manifest.json |
 | de/01b_solve_waf.py | raw/de/oj-pages/manifest.json | raw/de/oj-pages/*.html (WAF-blocked subset, via headless Chromium) |
 | de/02_extract_pliegos.py | raw/de/oj-pages/*.html | raw/de/dokumente-extracted/*.json + _index.json |
@@ -5679,6 +5871,73 @@ DE-specific notes:
   "Wichtigste Keltertrauben"; `DOC_ANCHOR_RE` accepts the class and the role
   table the heading, so the Einzellage left its May stub (eight varieties,
   its own link text) instead of inheriting Franken's card.
+  The third (2026-11-17, found on the Württemberg card while triaging its
+  boundary flag): Württemberg's single document (C/2025/5177) numbers one
+  sub-section of the description per wine type and names the type in the
+  **title** — "4.2 Wein, rot", "4.3 Wein, rosé", "4.9 Prädikatswein,
+  Beerenauslese und Trockenbeerenauslese", "4.19 Likörwein, rot" — with no
+  product line in the body, so the card of a mostly red region showed White
+  alone; `wine_type_titles` (de/02) gives `parse_styles` those titles, read
+  with the product-colour words and the style markers (the body under a
+  title is not read; "Schillerwein" and "Rotling" are categories of their
+  own and add no rosé). And the sparkling markers match the compound
+  category names — "5. Qualitätsschaumwein" (Franken's category list had
+  given no Sparkling), "Qualitätsperlwein b. A." (Saale-Unstrut, no
+  Semi-sparkling). Full DE run against a snapshot, twice: three records,
+  styles only (Württemberg + noir, rose, grains-nobles, vendanges-tardives;
+  Franken + sparkling; Saale-Unstrut + semi-sparkling).
+- **Wine types of a record with no EU statement come from the BLE
+  specification (2026-11-17).** Five Anbaugebiete (Ahr, Baden, Hessische
+  Bergstraße, Rheingau, Sachsen) and fourteen Landweine are stubs, and
+  Saale-Unstrut's single document is an amendment that names its sparkling
+  categories only: twenty cards showed the berry-colour floor and "the
+  regulator's text names no colour" — untrue, the national specification
+  states them (card validator on Baden). [scripts/_lib/de/ble_styles.py](scripts/_lib/de/ble_styles.py)
+  `stated_styles(text)` reads the specification without its area section, its
+  roster and what follows the roster, plus the "Kategorien von Erzeugnissen"
+  block of the link text: **colours** from the wine words — "Weißweine",
+  "Rot- und Roséweine" (an elided compound read whole; a line-break hyphen
+  closed, an elision at a line end kept), "Weißherbst", a bare "Rosé", "Blanc
+  de Noirs" where no white wine is named — never in an analytical limit
+  ("150 mg/l bei Rotwein", "11,5 % vol bei Weiß- und Roséwein" restate
+  ceilings the law sets per colour whatever the region makes); **categories
+  and Prädikate** from the EU reader's `STYLE_MARKERS`, negation-aware and
+  without the sweetness words (the EU labelling terms here), first in a
+  statement with no figure (the title block, § 2 "Kategorie von
+  Weinbauerzeugnissen", the traditional terms), then in the region's own
+  minimum must weights ("5.1.2.4. Beerenauslese alle Rebsorten 15,3%vol"),
+  never in a legal ceiling. Stage 02f stores `styles_stated`,
+  `styles_evidence` (the sentence per style) and `description_text` (what was
+  read — the card validator's packet) on all 28 sidecars; the augmenter
+  merges them only into a record whose own styles carry no colour, so a
+  region whose EU document states its types keeps them (the BLE reading of
+  those seven agrees with the EU one, type for type). The six regions gain
+  White, Red, Rosé, Sparkling, Semi-sparkling, Late harvest and Sélection de
+  grains nobles (Baden and Sachsen Liqueur wine too), the Landweine their
+  three colours; the floor line goes with it. Rotling, Schieler and Badisch
+  Rotgold have no node in the taxonomy and add nothing, nor does the
+  category "teilweise gegorener Traubenmost" (Federweißer). **An ice wine is
+  not a late harvest here**: the EU reader's table files Eiswein under the
+  late-harvest marker and leaves the ice-wine pill to stage 04's scan of the
+  record's sections, which a stub does not have, so the BLE reading maps
+  Eiswein to `icewine` itself (the card validator found Baden listing the
+  Prädikat with no pill). `tests/test_de_ble_styles.py`.
+- **A hyphen set inside a roster name is closed before the matcher sees it**
+  (`_matches` in `de/02f`, 2026-11-17): Badischer Landwein and Landwein
+  Oberrhein print "Blauer Spät-burgunder"; the matcher split at the hyphen,
+  read "burgunder" — a VIVC synonym of Blaufränkisch, on the list already as
+  «Blauer Limberger» — and the dedupe swallowed it, so neither card had Pinot
+  noir (card validator: "do-not-trust"). The closed form is tried first when
+  both sides of the hyphen are lower case ("Müller-Thurgau" is untouched).
+- **The last name of a BLE roster is cut from what follows it** (`_matches`,
+  2026-11-17, card validator on Sachsen): "… Regent, Saint Laurent ⏎ Die in
+  Anbaueignungsprüfungen angestellten Rebsorten sind ebenfalls …", "Blauer
+  Zweigelt. Seite 6 von 10", "Tauberschwarz. In diese Listen können weitere
+  Rebsorten aufgenommen werden" — the item matched nothing and the variety
+  was missing (Sachsen's Saint Laurent, Hessische Bergstraße's Blauer
+  Zweigelt). Its leading words are the name when they are an exact curated
+  lexicon name and prose follows; a breeder code or a sentence that opens on
+  no variety stays unread.
 - The section-7 body lists varieties one per line as `Canonical name -
   Synonym, …` (e.g. `Spätburgunder - Pinot Noir, Blauburgunder`). The
   German wine corpus has the most prolific set of **breeding-station
@@ -5710,28 +5969,26 @@ DE-specific notes:
   law) and the BLE Weinlagen-Verzeichnis. v1 omits them; Phase 2 adds a
   per-source parser branch (mirrors the IT MASAF / ES MAPA pattern) to
   emit Großlagen as parent/sub records. See [CURATOR_TODO.md](CURATOR_TODO.md).
-- **Principal vs accessory grape split** — the EU Einziges Dokument's
-  section 7 is a flat list (no role split for German wines, same as
-  IT/PT). Stage 02f
+- **The BLE Produktspezifikation roster — no principal / accessory split.**
+  The EU Einziges Dokument's section 7 is a flat list, and so is § 8 of the
+  national specification. Stage 02f
   ([scripts/de/02f_extract_produktspezifikation.py](scripts/de/02f_extract_produktspezifikation.py))
-  derives a principal/accessory split from the **BLE Produktspezifikation
-  PDF** per Anbaugebiet — the national specification document published
-  by the Bundesanstalt für Landwirtschaft und Ernährung as *Amtliches
-  Werk §5 UrhG*. The federal Weinverordnung's variety Anlagen (formerly
-  the canonical source) were *repealed* in the 2022 wine-law reform;
-  the BLE Produktspezifikation is the post-2022 canonical source. URL
-  pattern: `https://www.ble.de/SharedDocs/Downloads/DE/Ernaehrung-
+  reads the **BLE Produktspezifikation PDF** per Anbaugebiet — the national
+  specification document published by the Bundesanstalt für Landwirtschaft
+  und Ernährung as *Amtliches Werk §5 UrhG*. The federal Weinverordnung's
+  variety Anlagen (formerly the canonical source) were *repealed* in the
+  2022 wine-law reform; the BLE Produktspezifikation is the post-2022
+  canonical source. URL pattern:
+  `https://www.ble.de/SharedDocs/Downloads/DE/Ernaehrung-
   Lebensmittel/EU-Qualitaetskennzeichen/Wein/Antraege/Bestimmte_Anbau-
   gebiete/01_Produktspezifiaktion_Anbaugebiete/Produktspezifikation_<REGION>.pdf`
   (with the Hessische-Bergstraße filename truncated to `_Hessisch.pdf`).
   Parser in
   [scripts/_lib/de/produktspezifikation.py](scripts/_lib/de/produktspezifikation.py).
-  Strategy: §3.2 (Mindestmostgewicht) names individual varieties with
-  their own threshold (Mosel → Riesling, Elbling, Müller Thurgau,
-  Dornfelder); those are PRINCIPAL. Everything else in §8 (Zugelassene
-  Keltertraubensorten) is "alle übrigen Rebsorten" → ACCESSORY. Same
-  pattern as ES MAPA / IT MASAF where the regulator's production-rules
-  section yields the de-facto principal varieties.
+  Until 2026-11-17 the varieties § 3.2 names with a must weight of their
+  own (Mosel → Riesling, Elbling, Müller Thurgau, Dornfelder) were shown as
+  principal and the rest of § 8 as accessory — a house reading the
+  specification does not make; it is gone (see "No role split" below).
 
   Coverage: all 13 BLE PDFs parse via one of four template branches in
   [scripts/_lib/de/produktspezifikation.py](scripts/_lib/de/produktspezifikation.py):
@@ -5742,35 +5999,61 @@ DE-specific notes:
     typo handled by the regex).
   - **Template B**: "Zugelassene Keltertraubensorten:" un-numbered +
     bullet `• Weißwein` / `• Rot- und Roséwein`. Ahr, Sachsen. Sachsen
-    additionally has §5.1.X named-principal subsections ("5.1.1.
-    Weißwein - Ruländer, Traminer, Weißburgunder") that yield an
-    explicit split; Ahr's §5.1 is flat-by-colour so no principal.
+    additionally has §5.1.X subsections naming varieties ("5.1.1.
+    Weißwein - Ruländer, Traminer, Weißburgunder"); Ahr's §5.1 is
+    flat-by-colour.
   - **Template C**: §7. Rebsorten with bullet markers `• Rebsorten für
     Weißwein` (Rheingau) or `Weißweinsorten:` (Hessische Bergstraße).
-    Principal heuristics: inline "insbes. {variety} mit rd. X %"
+    Varieties singled out: inline "insbes. {variety} mit rd. X %"
     (Rheingau), tabular "Spätburgunder Rotwein 8,4 66°" §5.1.X named-
     Mostgewicht rows, and "vorwiegend die Rebsorten X (NN % der
     Rebfläche), Y (NN %)" cultivation statistics (Hessische
     Bergstraße).
   - **Template D** (Baden): multi-Bereich §3.2.X with tiered Mostgewicht
-    rows. The lowest-threshold row per (Bereich, colour) names the
-    Leitsorten → principal. Baden also has a flat §8 with the
-    comprehensive authorised list — the parser combines: Template D
-    for the principal/accessory split, Template A's §8 for the full
-    variety roster.
+    rows, and a flat §8 with the comprehensive authorised list, which is
+    the roster. The table makes **no role split** since 2026-11-17: it
+    tiers some fifty-five varieties over two Bereich groups and six
+    quality levels ("Tempranillo, Trollinger 8,0 % vol", "Deckrot,
+    Tauberschwarz 8,4 % vol") and Spätburgunder, a third of Baden's
+    vineyard, falls under "alle übrigen Rebsorten" — it singles out no
+    lead variety. The old "lowest tier = Leitsorten" reading, run over
+    rows whose names wrap across lines, had made nineteen principals
+    (Tempranillo, Merzling, Baron …) and an accessory of Blauer
+    Spätburgunder (card validator). No template yields a split any more
+    (below).
 
-  Of the 13: 9 produce a `section-3.2-principal` role split (Mosel,
-  Pfalz, Nahe, Mittelrhein, Rheinhessen, Baden, Rheingau, Hessische
-  Bergstraße, Sachsen); 4 use `section-8-flat-no-split` because their
-  §3.2 / §5.1 doesn't enumerate per-variety (Ahr, Franken, Württemberg,
-  Saale-Unstrut).
+  **No role split (2026-11-17).** No BLE specification draws a principal /
+  accessory line, and every authorised variety of § 8 is listed alike
+  (`role_split_method` is always `section-8-flat-no-split`), as the EU single
+  documents list them. Until that day nine regions were split by what § 3.2
+  singles out — a minimum must weight of its own ("Rebsorte Weißer Riesling
+  6,7 % vol und 55° Öchsle" beside "alle übrigen Rebsorten 7,5 % vol"), a
+  planting share ("insbes. Weißer Riesling mit rd. 80 % auf der Rebfläche")
+  — and the rest read accessory. The card validator graded it `wrong-role`
+  on Baden; Boris first chose to disclose it (an amber line under the pills,
+  built and removed the same evening), and the validator still graded the
+  split itself misleading on Mosel (Spätburgunder and Chardonnay accessory;
+  § 3.2's "Riesling" and "Elbling" read as the white variety alone) and
+  defective on Sachsen (Riesling and Müller-Thurgau accessory). Reading the
+  nine had already shown Baden's split to be an artefact (rows wrapped over
+  lines). **A house reading of roles that the regulator's text does not make
+  is not rescued by a disclosure line** — list the varieties as the text
+  does. `principal_names_with_basis` still reports the names § 3.2 singles
+  out and how (`must-weight` / `plantings`); the sidecar keeps them as
+  `raw_section_3_2_principal`, reference data only.
 
   `augment_de_records_with_produktspezifikation()` in
   [scripts/04_build_maps.py](scripts/04_build_maps.py) merges the
-  sidecar's role split into the in-memory parent-Anbaugebiet record at
+  sidecar's roster into the in-memory parent-Anbaugebiet record at
   load time; the on-disk dokumente-extracted JSON stays immutable.
   `_sources_for()` surfaces `ble_produktspezifikation_*` provenance for
-  the panel. Einzellage sub-denominations and Landwein PGIs are not
+  the panel, and since 2026-11-17 the card's Sources list carries the PDF
+  as "National product specification (BLE, PDF)"
+  (`src_ble_produktspezifikation`, both renderers): until then the
+  specification was named only in the provenance line, which a card with
+  facts does not print, so Baden — whose roster, link text and Gemarkung
+  list all come from it — cited EUR-Lex, eAmbrosia and its trade body
+  (card validator). Einzellage sub-denominations and Landwein PGIs are not
   augmented (the sidecar's variety list is for the parent Anbaugebiet
   only).
 
@@ -5862,19 +6145,169 @@ Per DE record, in priority order (`geom_source` records the choice):
    per-vineyard cadastral parcels, the honest precision is parent-
    Anbaugebiet-level. (`DE_EINZELLAGE_PARENT_PDO` in
    [scripts/_lib/de/geometry.py](scripts/_lib/de/geometry.py).)
-2. **`figshare-pdo`** — exact `file_number` (`PDO-DE-*`) → `PDOid`
-   match against Bétard 2022 EU\_PDO.gpkg. Covers all 13 traditional
-   Anbaugebiete + a handful of newer regional PDOs. The shared
-   `raw/es/figshare/EU_PDO.gpkg` — no new fetch in stage 00.
-3. **`region-pdo-union`** — most of the 27 DE Landwein PGIs are NOT
-   in Bétard (PDO-only dataset). Where the PGI's territory is
-   coextensive with one Anbaugebiet (Badischer Landwein → Baden,
-   Pfälzer Landwein → Pfalz, Sächsischer Landwein → Sachsen, …) or
-   the union of several (Landwein Rhein = Mosel + Mittelrhein + Nahe +
-   Pfalz + Rheingau + Rheinhessen + Ahr; Rheinischer Landwein =
-   Rheinhessen + Nahe + Pfalz + Mittelrhein), we use the union of the
-   member-PDO Figshare polygons (the SI / HU / BG pattern). Mappings
-   in `DE_PGI_MEMBER_PDOS` in [scripts/_lib/de/geometry.py](scripts/_lib/de/geometry.py).
+2. **`lgl-gemarkung-union`** — Baden and Württemberg (2026-11-17, a
+   visitor's boundary flag on Württemberg). Bétard draws eleven
+   Anbaugebiete at municipality resolution and these two as whole
+   Landkreise: Württemberg 10,757 km² with all of the Rhein-Neckar-Kreis
+   and the Neckar-Odenwald-Kreis (the delimitation names Neckarzimmern
+   there and nothing else) and without Leonberg, Ravensburg, Taldorf or
+   Oberderdingen, which it names; Baden 13,231 km²; the two overlapping on
+   4,157 km². Both delimitations list their **Gemarkungen** (cadastral
+   districts) with the land-register number — "Abstatt (835), Adolzfurt
+   (371) …": Württemberg's EU single document (section 6, 275) and Baden's
+   BLE Produktspezifikation (§ 4, 353 by Bereich; stage 02f keeps the
+   section as the sidecar's `area_text`, on those two sidecars only) — and
+   that number is the `gemarkung_id` of the state survey's ALKIS layer
+   (LGL Baden-Württemberg, `nora:v_al_gemarkung`, dl-de/by-2-0; stage 00
+   pages the 3,380 Gemarkungen from the WFS into
+   `raw/de/lgl/gemarkungen.gpkg`, not sha-pinned — the service changes
+   daily). [scripts/_lib/de/gemarkung.py](scripts/_lib/de/gemarkung.py)
+   reads the lists (`parse_area`: every "Gemeinden (Gemarkungen) und deren
+   Ortsteile:" list, the Bereich a block is headed by, and the Bavarian
+   units Württemberg names without a number), `load_areas` takes the
+   record's own EU document when it lists ten numbered units or more, else
+   the sidecar; `DEPolygonIndex._draw_gemarkung_areas` unions the
+   Gemarkungen and puts the result in the place of the Bétard polygon, so
+   the seven Landwein PGIs that are unions of the two follow (their card
+   line says what the members are drawn from — `geom_gemarkungen.
+   member_union`, `geom_src_pdo_union_gemarkungen`, with the Bétard
+   sentence only where other members still are). A unit is drawn when the
+   layer carries its number **and the printed name agrees with the layer's
+   Gemarkung or Gemeinde name for it** (`name_agreement` ≥ 0.8; Baden
+   prints the Gemeinde beside each number) — the guard against a mistyped
+   number; a record is redrawn only when 95 % of its units are, so Saxony's
+   Landwein, which prints its own register's numbers the same way, is left
+   alone (0 of 43 agree). A number the register lacks is pinned with its
+   evidence in [scripts/_lib/de/gemarkung_pins.json](scripts/_lib/de/gemarkung_pins.json)
+   («Stetten (761)», printed by both documents, is Gemarkung 768, Stetten
+   am Heuchelberg; a pin whose printed number the layer carries, or whose
+   target it lacks, is STALE). The Bavarian part: the Gemeinden Nonnenhorn,
+   Wasserburg and Bodolz (the document writes "Bodholz") from GISCO, found
+   inside the Landkreis of the town whose Gemarkungen the text names;
+   Lindau is drawn whole for Hoyren and Aeschach and listed under
+   `geom_units_partial`. Result: Württemberg 2,758 km² in 21 parts
+   (275 / 275 units), Baden 3,607 km² in 45 (353 / 353). The card
+   (`_gemarkung_line` / `gemarkungLine`, panel field `geom_gemarkungen`):
+   "Approximate area — the union of the 275 Gemarkungen (cadastral
+   districts) the document lists by number; boundaries merged and
+   generalised from LGL-BW (2026) … · dl-de/by-2-0", then the Bavarian
+   Gemeinden and any pinned number; the source is in
+   `_APPROX_GEOM_SOURCES` (the delimitation itself is the vineyard parcels
+   inside those Gemarkungen). `tests/test_de_gemarkung.py`.
+   **Three Landwein tables the whole-Landkreis polygons had hidden**
+   (same day; the detached-part audit listed the new lobes, and each
+   Landwein's own BLE § 3 / § 4 was read before any was whitelisted):
+   Landwein Main lists Bavarian towns and Gemeinden only — it had been
+   Franken plus all of Baden and Württemberg, now Franken; Landwein
+   Rhein-Neckar lists Baden's and Württemberg's places in one alphabetical
+   run and none of Rheinhessen or the Pfalz — now those two, and its region
+   is Baden-Württemberg, not Rheinland-Pfalz; Bayerischer Bodensee-Landwein
+   is "Die Gemarkungen Hoyren und Aeschach der Großen Kreisstadt Lindau,
+   die Gemeinden Nonnenhorn und Wasserburg" — it had been all of Baden, now
+   a `DE_LANDWEIN_AREA` entry of three communes (Lindau `partial`, listed on
+   the card). Badischer Landwein and Landwein Oberrhein list the whole of
+   Baden (Tauberfranken and the Bodensee included), Landwein Neckar and
+   Schwäbischer Landwein the whole of Württemberg: those unions stand, and
+   their lobes are whitelisted in `geometry_outlier_overrides.json` with the
+   § 4 evidence. **A member table is a claim about a specification: read
+   the specification's own area section before trusting it.**
+2a. **`gisco-commune-union` from a Bavarian Gemeinde list** (2026-11-24,
+   triage of the Ahr flag — Ahr itself matched its seven Gemeinden).
+   Franken's single document (C/2025/6794 § 9) and Landwein Main's BLE § 4
+   list "Regierungsbezirk X: / Kreisfreie Städte: … / Landkreis Y: a, b, c";
+   [scripts/_lib/de/gemeinde_list.py](scripts/_lib/de/gemeinde_list.py)
+   binds each name to one GISCO commune inside its Regierungsbezirk (the AGS
+   digit) and the Kreis most of the group falls in (Bavarian abbreviations
+   folded: "Sand a.Main", "Königsberg i.Bay., St"), drawn at ≥ 95 % bound;
+   a PDO's union replaces its Bétard polygon in the index, so the
+   Einzellagen follow. Bétard drew Franken before the amendment
+   PDO-DE-A1267-AM01 (8 October 2025) removed fifteen Gemeinden and added
+   three (3,925 → 3,617 km²); Landwein Main, drawn as Franken until then,
+   lists Franken's 127 plus exactly those fifteen. The same day the German
+   reader learnt the 2024/1143 area heading («Kurzbeschreibung der
+   Abgrenzung des geografischen Gebiets»): thirteen records had carried no
+   area section. A one-off sweep of the other Bétard-drawn Anbaugebiete
+   against their lists (Ahr, Hessische Bergstraße, Rheinhessen, Pfalz, Mosel,
+   Nahe: identical; Rheingau lacks Frankfurt am Main, Mittelrhein draws the
+   NRW Gemarkungen' cities whole) is in
+   [docs/feedback-triage-2026-11-24.md](docs/feedback-triage-2026-11-24.md);
+   those rows were closed the same evening (step 2b) and
+   `audit_geometry_vs_text.py` has its German reader since. Regensburger
+   Landwein — the union of "Franken" in `DE_PGI_MEMBER_PDOS` until that day,
+   150 km from its ground — is step 4's `reading` entry.
+   `tests/test_de_gemeinde_list.py`.
+2b. **`alkis-gemarkung-union` / `gisco-commune-union` from the record's own
+   list in any other layout** (2026-11-24, the three German rows the Ahr
+   triage had queued). [scripts/_lib/de/area_units.py](scripts/_lib/de/area_units.py)
+   reads four ways a text names its area — the Rhineland's **numbered
+   Gemarkungen** ("Bacharach (Bacharach (3503), Steeg (3502)), Bad Ems
+   (0950)", "Urbar (1355, 1839)": Mittelrhein, Mosel, Nahe, Pfalz), **a
+   town with its Gemarkungen** ("der Stadt Bonn mit der Gemarkung Kessenich",
+   Mittelrhein in Nordrhein-Westfalen), **Gemarkungen by Kreis** ("…
+   Zeuchfeld und Zscheiplitz im Landkreis Burgenlandkreis, Quedlinburg und
+   Westerhausen im Landkreis Harz … des Landes Sachsen-Anhalt", with "Weimar
+   Ortsteil Schöndorf" and "die kreisfreien Städte Jena und Erfurt":
+   Saale-Unstrut) and **Gemeinden in prose** ("der Städte und Gemeinden
+   Eltville am Rhein, … Frankfurt am Main, … und der Landeshauptstadt
+   Wiesbaden des Bundeslandes Hessen": Rheingau, Ahr, Hessische Bergstraße,
+   Rheinhessen, the Saarland) — from the EU document's area section, else
+   the "Abgrenzung des Gebiet(e)s" section stage 02f keeps as the sidecar's
+   `area_text` (`area_section`: number 3 or 4, to the next higher top-level
+   heading; a PDF's hard-wrapped lines are unwrapped). A Gemarkung is drawn
+   from its Land's open layer ([scripts/_lib/de/katasterbezirk.py](scripts/_lib/de/katasterbezirk.py):
+   NRW, Brandenburg, Sachsen-Anhalt and Thüringen through the AdV `ave:KatasterBezirk`
+   WFS, Rheinland-Pfalz through `vermkv:gemarkungen_rlp`; stage 00 →
+   `raw/de/katasterbezirke/<land>.gpkg`, `--refresh-katasterbezirke`; licences
+   and credits per Land in GEOMETRY_SOURCES.md), a Gemeinde from GISCO.
+   **Nothing is bound by guessing**: a number only when the printed name
+   agrees with the register's name for it *and with the Kreis the text
+   glosses it with* (Mittelrhein prints "Breitscheid (Landkreis Mainz-Bingen)
+   (0261)" and 0261 is the Breitscheid of the Landkreis Neuwied — the Kreis
+   decides, the right Gemarkung is 3501, pinned); a name only when it names
+   one unit inside the Land and the Kreis or Gemeinde the text gives
+   (`KREIS_AGS`; an exact spelling beats a folded one — "Bärweiler" is not
+   Barweiler); a Land the text does not name is the one most of the list's
+   names are communes of. A Gemeinde that prints its own districts in a
+   bracket is those Gemarkungen ("Bingen am Rhein (Bingen, Büdesheim, …
+   Sponsheim)" — not Bingerbrück, which the Nahe lists; "mit Ausnahme X" is
+   the Gemeinde without X). A name no layer carries as such is pinned with
+   its evidence in [scripts/_lib/de/area_unit_pins.json](scripts/_lib/de/area_unit_pins.json)
+   (Saale-Unstrut's Stedten, Kromsdorf, Dorndorf-Steudnitz; Mosel's Oberperl
+   → the Gemeinde Perl, drawn whole for its four Saarland Gemarkungen, no
+   Saarland layer being read); one that binds nothing is not drawn and named
+   on the card (Saale-Unstrut's «Graitschen»: the Kreis has two). Drawn when
+   ≥ 95 % of the units bind; a PDO's polygon replaces its Bétard one in the
+   index. Result: Rheingau 601 → 850 km² (Frankfurt am Main, as the text
+   lists it), Mittelrhein 949 → 601 (66 Gemarkungen; Bonn's 141 km² had stood
+   for Kessenich), Saale-Unstrut 3,274 → 1,330 (99 Gemarkungen, Jena, Erfurt),
+   Mosel 1,698 → 1,549, Nahe 800 → 697, Pfalz 1,644 → 1,480, Rheinhessen
+   1,326 → 1,273; Ahr and Hessische Bergstraße keep their shape. **A Landwein
+   with a list of its own is drawn from it, ahead of its member row** — six
+   rows did not match their lists: Landwein der Saar (19 Gemarkungen,
+   147 km²) and der Ruwer (11, 50 km²) had been all of the Mosel, Rheinischer
+   Landwein is Rheinhessen's list alone, Rheinburgen-Landwein Mittelrhein's
+   without the Ahr, Mitteldeutscher Landwein Saale-Unstrut's without Saxony,
+   Landwein Rhein also holds the Hessische Bergstraße; Saarländischer
+   Landwein (24 Gemeinden by Landkreis) had no polygon and was on neither
+   the map nor the sidebar. The card: `geom_gemarkungen` with one `credits`
+   entry per Land's layer (publisher and licence linked), `named` where the
+   text prints names, not numbers (`geom_src_gemarkungen_named`), the
+   Gemeinden named whole (`whole`, or `whole_n` above twelve), a pin
+   (`geom_gemarkung_pinned_names`); a Gemeinde drawn whole for a part and a
+   name not drawn ride the shared unit lines. `tests/test_de_area_units.py`.
+2c. **`figshare-pdo`** — exact `file_number` (`PDO-DE-*`) → `PDOid`
+   match against Bétard 2022 EU\_PDO.gpkg: Sachsen, whose text is boundary
+   prose, and any record above when its layer is missing or under 95 % of
+   its units bind. The shared `raw/es/figshare/EU_PDO.gpkg`.
+3. **`region-pdo-union`** — a Landwein PGI whose own text does not bind
+   (Bétard is PDO-only): the union of its member Anbaugebiete — Badischer
+   Landwein, Landwein Oberrhein, Landwein Neckar, Schwäbischer Landwein and
+   Landwein Rhein-Neckar (Baden and / or Württemberg, whose lists carry no
+   numbers), Sächsischer Landwein (Sachsen). Mappings in `DE_PGI_MEMBER_PDOS`
+   in [scripts/_lib/de/geometry.py](scripts/_lib/de/geometry.py); a row is
+   also the fallback of a Landwein drawn from its own list and what its
+   region aliases are read from (`region_aliases.OWN_LIST_SOURCES`), so each
+   row names the Anbaugebiete the Landwein's own list covers.
 4. **`gisco-commune-union`** — for multi-Bundesland Landwein PGIs that
    are NOT coextensive with one Anbaugebiet (so step 3 can't union a
    parent PDO) and aren't in Bétard (PDO-only). The area is transcribed
@@ -5891,6 +6324,37 @@ Per DE record, in priority order (`geom_source` records the choice):
    commune-list fallback; extend `DE_LANDWEIN_AREA` for the other
    multi-Bundesland Landweine (Mitteldeutscher, Mecklenburger,
    Schleswig-Holsteinischer) as they're transcribed.
+   **A `reading` entry — Regensburger Landwein (PGI-DE-A1296, Boris's
+   decision of 2026-11-24).** Its specification § 3 opens «… der folgenden
+   Gemeinden, wenn ihre Eignung … festgestellt wird» and lists none, then
+   «Das Landweingebiet Regensburg umfasst die Südhänge des Bayerischen Waldes
+   entlang der Donau zwischen Naab und Großer Laaber». No list was lost: that
+   sentence is how Bavarian law has defined the Untergebiet Donau since the
+   name was created — Erste Verordnung zur Durchführung des Weingesetzes of
+   21 March 1983 (GVBl S. 116) § 2 (3); BayWeinRAV of 31 August 1995 (GVBl
+   S. 667) § 2 (1), where Main and Lindau take the commune lists of Anlage 1
+   and the Danube none (still so in the last version before the 2020 repeal:
+   Anlage 1 and the contents page in the Wayback Machine's session-token
+   captures) — and the BayWeinRAV of 2020 leaves a PGI's area to its
+   specification. BLE and the EU register hold the 2011 text only. What the
+   specification does name is in § 7, the link: «im Raum der Stadt und des
+   Landkreises Regensburg», «Stadt Regensburg, Ortsteil Winzer», the
+   «Weinbaugemeinden Tegernheim, Bach a.d. Donau, Kruckenberg und Stadt Wörth
+   a.d. Donau». Drawn: the north-bank communes from the Naab to Wörth inside
+   the city and Landkreis — Regensburg, Tegernheim, Donaustauf, Bach a.d.
+   Donau, Wiesent (Kruckenberg), Wörth a.d. Donau, 195 km² in one polygon;
+   Pettendorf (at the Naab mouth) and Kirchroth (Landkreis Straubing-Bogen,
+   where § 3's reach ends and § 7 no longer applies) are left out. The entry
+   carries `reading`: `evidence` (the four sentences, checked verbatim
+   against the cached PDF by `tests/test_de_parser.py`) and `disclose` (one
+   sentence per UI language). Stage 04 hands both to the units line of a
+   curated pin (`_DRINKS_GEOM_BY_SLUG`, `reading: true`), and the card says
+   "Approximate area — our reading of the description the document gives,
+   drawn as whole communes", names the six and prints the sentence
+   (`geom_src_admin_reading`, both renderers) — never "the units named in the
+   document", which they are not. **A specification whose area section lists
+   nothing: read its other sections, and the national act that created the
+   name, in the gazette of that year, before calling a list missing.**
 5. **`stub-no-geometry`** — last resort; no longer hit for Brandenburger.
 
 ### Curator workflow for DE wines without an OJ publication
@@ -5956,8 +6420,8 @@ and re-fetches the canonical PDF via the API at
 | Script | Reads | Writes |
 |---|---|---|
 | ch/00_fetch_data.py | (network: OFAG + swisstopo + SITG GE) | raw/ch/ofag/repertoire-aoc-2026.pdf, raw/ch/swisstopo/swissboundaries3d_2026-01_2056_5728.gpkg, raw/ch/geoportals/sitg-vit-vignoble-ao.geojson |
-| ch/01_fetch_reglements.py | scripts/_lib/ch/reglement_index.py + raw/ch/reglements/manual_overrides.json | raw/ch/reglements/<canton>/reglement.{pdf,html} + manifest.json |
-| ch/02_extract_reglements.py | raw/ch/ofag/repertoire-aoc-2026.pdf + raw/ch/reglements/<canton>/reglement.* + raw/ch/swisstopo/*.gpkg | raw/ch/dokumente-extracted/*.json + _index.json + raw/ch/dokumente-extracted-manifest.json + raw/ch/extraction-unknowns.json |
+| ch/01_fetch_reglements.py | scripts/_lib/ch/reglement_index.py + raw/ch/reglements/manual_overrides.json + scripts/_lib/ch/roster_rulings.json | raw/ch/reglements/<canton>/reglement.{pdf,html} + manifest.json, raw/ch/rulings/<slug>.pdf (+ <slug>.types.pdf: the ruling whose clauses name wine types, where the roster annex is published apart) + manifest.json |
+| ch/02_extract_reglements.py | raw/ch/ofag/repertoire-aoc-2026.pdf + raw/ch/reglements/<canton>/reglement.* + raw/ch/swisstopo/*.gpkg + scripts/_lib/ch/roster_rulings.json | raw/ch/dokumente-extracted/*.json + _index.json + raw/ch/dokumente-extracted-manifest.json + raw/ch/extraction-unknowns.json |
 | ch/02d_extract_terroir_facts.py | raw/ch/dokumente-extracted/*.json + raw/wikipedia/aocs/{fr,de,it}/ | raw/terroir-facts/*.json (country="ch") + manifest-ch.json |
 | ch/02e_translate_terroir_facts.py | raw/terroir-facts/*.json (country="ch") | raw/translations/terroir-facts/<en\|fr\|es\|nl>/*.json |
 | ch/03_generate_wiki.py | raw/ch/dokumente-extracted/*.json | wiki/<slug>.md (per CH record) + merges CH entries into wiki/_index.json |
@@ -6006,9 +6470,12 @@ CH-specific notes:
   (`a) Blauburgunder 19,4 °Brix`). The Swiss Agroscope crossings +
   natives the scan surfaces (Garanoir, Mara, Galotta, Doral, Divico,
   Carminoir, Diolinoir, Bondola, Completer, Gouais→heunisch) live in
-  the shared `grape_lexicon.py`; Cornalin / Humagne are deliberately
-  NOT folded yet (Valais Cornalin = Rouge du Pays vs Humagne Rouge =
-  Cornalin d'Aoste is an identity tangle that needs a VIVC pass).
+  the shared `grape_lexicon.py`; so do the Valais natives since the
+  Cornalin identity pass of 2026-11-17 (Cornalin du Valais = Rouge du Pays,
+  Humagne rouge = Cornalin d'Aoste, Humagne blanc, Rèze — see "Grape
+  identity"): a bare «Cornalin» is the Valais variety in a Swiss text only
+  (`swiss_match`). A footnote number set against a name ("Cornalin du
+  Valais4") and a trailing comma are stripped from a candidate.
   Commune extraction stays section-scoped because
   whole-document commune scans generate huge false-positive lists.
   Variety extraction recall (post-2026-06 FP cleanup — counts dropped
@@ -6017,15 +6484,172 @@ CH-specific notes:
   real lists): 11 cantons return non-zero cantonale-tier varieties;
   AG (65), GE (51), VS (44), VD (38), LU (25), TI (22), NE (15), BL (7),
   SG (4), OW (4), GR (2). The other cantons (AI, AR, BE, BS, GL, JU, NW,
-  SH, SO, SZ, TG, UR, ZG, ZH) now return 0 at the cantonale tier:
-  some defer to federal OVin without cataloguing varieties locally
-  (AI/AR/BS/NW/SZ/UR; BS defers to BL via inter-cantonal Vereinbarung;
-  tiny corpora ~5 ha each), and the rest (BE, GL, JU, SH, SO, TG, ZG,
-  ZH) DO grow wine but either publish a règlement too sparse to parse
-  (ZH/SO are ~3 KB with no variety list) or enumerate varieties in a
-  Mostgewicht / annex form the scan doesn't yet recover — a known
-  recall gap, not a regression (their prior non-zero counts were
-  entirely prose/place false positives now removed).
+  SH, SO, SZ, TG, UR, ZG, ZH) return 0 from their ordinance: none
+  enumerates a variety (their prior non-zero counts were prose / place
+  false positives). **That an ordinance names no variety does not mean the
+  regulator names none** — it says who does, and the list sits in another
+  act (below). Read 2026-11-17, text by text (the earlier note "AI / AR /
+  NW / SZ / UR defer to the federal OVin" was written without the texts,
+  and Uri's cached "règlement" was LexFind's app shell): the roster is
+  **another canton's** (BS, SO → BL), **a sibling act's on the same
+  portal** (JU, AI, AR, GL), **an administrative ruling's** (SZ, ZH),
+  **a list an office keeps and does not publish as an act** (SH § 12
+  Landwirtschaftsamt, TG § 37 Fachstelle Rebbau SH-TG-ZH, UR Art. 10 Amt
+  für Landwirtschaft — not found), or **the federal variety list by
+  reference** (NW § 5 and ZG § 4 Rebsortenverordnung, BE Art. 6
+  Richtsortiment). `scripts/_lib/empty_grapes_overrides.json` holds the
+  clause for the seven still roster-less (BE, NW, SH, TG, UR, ZG and
+  Vlaamse landwijn).
+  **Rosters in an act the ordinance delegates to (2026-11-17, visitor flags
+  on Schwyz and Jura).** Seven cantonal cards showed no grape, five of
+  them pinned "the regulator names no variety". The checked-in
+  [scripts/_lib/ch/roster_rulings.json](scripts/_lib/ch/roster_rulings.json)
+  (slug → the act, URL, sha256, the delegating and the applying clause,
+  the list as printed) holds each roster,
+  [scripts/_lib/ch/roster_rulings.py](scripts/_lib/ch/roster_rulings.py)
+  reads it through the roster-table cell rule, stage 01 fetches the PDFs
+  into `raw/ch/rulings/` (a LexWork portal page resolved to its PDF; a
+  changed sha256 is STALE) and stage 02 gives a record with no roster of
+  its own the act's, with a `cantonal-reglement-roster` source (the card's
+  second règlement row):
+  - **Jura** — the ordinance (RSJU 916.141) names none: Art. 12 authorises
+    "les cépages répertoriés pour la Suisse sur la liste de l'OIV" and
+    those in the cadastre for five years. Its Art. 24 lets the Département
+    issue directives, and the *Directives* of 11 April 2019 (RSJU
+    **916.141.1**) say "Les cépages admis pour l'obtention de l'appellation
+    d'origine contrôlée «AOC Jura» figurent à l'annexe 1" (Art. 10): 19
+    white and 26 red entries, 29 varieties on the card. The first triage
+    pass called the card text-silent and added a note saying so; Boris
+    asked whether the grapes might sit "in an unexpected or wrong place",
+    and they did. **Before pinning a record roster-less, read the
+    delegating clause and look for the act it delegates to — the next
+    systematic number on the same portal first.**
+  - **Appenzell Innerrhoden** — Weinverordnung GS 916.610 Art. 9 "Die
+    Standeskommission bezeichnet …" → Standeskommissionsbeschluss GS
+    **916.611** of 5 July 2022, Art. 3 + Anhang 1 (a comma list, 67
+    entries, 63 varieties).
+  - **Appenzell Ausserrhoden** — kWeinV bGS 920.16 Art. 7 → Verordnung
+    über zugelassene Rebsorten bGS **920.161** of 19 February 2013, Art. 1
+    (61 entries, 54 varieties).
+  - **Glarus** — Weinbauverordnung GS IX D/621/1 Art. 9 → Verordnung über
+    die kontrollierten Ursprungsbezeichnungen für Weine GS **IX D/621/2**
+    of 10 November 2020, Art. 2 + Anhang 2 (121 entries, 92 varieties).
+  - **Schwyz, Zürichsee** — SRSZ 312.711 leaves the AOC requirements to
+    the Amt für Landwirtschaft (§ 1 Abs. 2 Bst. i, § 7); its
+    Allgemeinverfügungen of 28 July 2025, one per AOC, say "dürfen nur die
+    im Anhang aufgeführten Rebsorten angebaut werden" (Ziff. 2.4) and
+    carry the same 132-entry annex — scans, so the list is transcribed
+    (`same_annex_as`); 100 varieties each.
+  - **Zürich** — no wine ordinance since 2018 (LS 916.51 repealed): the
+    ALN ruling of 26 June 2020 says "Zugelassen sind die Traubensorten
+    gemäss Anhang 2" (Ziff. IV) and Strickhof publishes that annex apart
+    (`GetDokument?id=7122`, "Kanton Zürich (Sept. 2022)", 130 entries, 98
+    varieties). Zürichsee keeps the Schwyz annex — the ruling says its
+    list covers both AOCs and Weinverordnung Art. 21 Abs. 3 holds the two
+    cantons to the same requirements; Zürich's 2022 list is the older one
+    and differs by six entries.
+  **The same acts state wine types (2026-11-17).** The Schwyz rulings' Ziff.
+  2.2 "Auch Schaum-, Perl- und Likörweine können die kontrollierte
+  Ursprungsbezeichnung «AOC Schwyz» tragen", Ziff. 2.9 (the Réserve rule's
+  "Rotweine" and "Weissweine", "Spätlese", "Beerenauslese") and Ziff. 2.10
+  ("Roséwein … mit Weisswein verschnitten"), the Zürich ruling's Ziff. III,
+  VII and VIII with the same wording — and the three cards showed the
+  berry-colour floor with "the regulator's text names no colour". The
+  clauses are transcribed under `wine_types` (clause, quote, `pages`; Zürich's
+  sit in the ruling itself, `document`, fetched as `zurich.types.pdf` — its
+  roster is the annex published apart); `roster_rulings.styles` reads them
+  with `ble_styles.clause_styles` (the German colour words and the category
+  words in any number and in an elided compound; a ceiling the law sets,
+  "35 Milliäquivalent pro Liter bei Eiswein", names no type), stage 02 stores
+  `styles` + `styles_evidence`, and Zürich's card lists the ruling as a second
+  source row (`cantonal-ruling`). White, Red, Rosé, Sparkling, Semi-sparkling,
+  Liqueur wine, Late harvest and Sélection de grains nobles on the three; the
+  Jura directives and the Appenzell and Glarus acts name no wine type (floor
+  and line stand). The test reads every clause on its pages of the cached PDF.
+  Zürich's repealed ordinance (ZH-Lex: "Aufhebungsdatum 01.01.2018") is still
+  the card's first source row — its summary comes from it — and says so
+  since the same day: "… (aufgehoben per 1. Januar 2018)" (`reglement_index`;
+  the label reaches the record through stage 01's manifest).
+  The list keeps the act's print; a misprint is read through `read_as`
+  (Glarus's «Läon Millot», «Marächal Foch», «Siramä»; Ausserrhoden's
+  «Pinotblanc», «Pinotgris», «Maréchalfoch»; «Gallota» for Galotta in both
+  Appenzells), and an entry that states two varieties through a list
+  («Elbling (rot und weiss)» → "Elbling weiss", "Elbling rot": the white
+  Elbling and its red mutation; read whole, the gloss was dropped and the
+  card showed the white one alone). Not shown: breeder codes (CAL 1-28, VB
+  91-26-26, Lac 1/02-05-35 …, by design) and, until the lexicon pass of
+  2026-11-17, some 25 named varieties (below). **The card says what it leaves
+  out** (the card validator graded all seven "misleading" for showing 99 of
+  132 entries without a word): `roster_rulings.coverage` counts, per act,
+  the printed entries, the varieties shown, the breeder codes (a digit and
+  no word of four letters beyond a station's acronym — `_is_breeder_code`)
+  and the names no entry resolves; stage 02 stores it as the record's
+  `roster_coverage` where anything is left out, the panel payload carries
+  `grapes_roster_coverage`, and both renderers print one amber line under
+  the grape pills — "102 of the 132 entries of the regulator's list are
+  shown, as 100 varieties; not shown: 9 breeder code(s), 21 variety name(s)
+  our grape reference does not hold yet." (`_roster_coverage_line` /
+  `rosterCoverageLine`; labels `grapes_roster_coverage`,
+  `grapes_roster_codes`, `grapes_roster_unknown`, a part with nothing in it
+  left out). The first figure is entries − codes − unknown, so the line adds
+  up to the list; "as 100 varieties" covers the entries that share a pill —
+  «Heida» and «Savagnin blanc», «Blaufränkisch» and «Lemberger», and the
+  folds the lexicon makes: «Roter Müller-Thurgau» and «Roter Räuschling»
+  into the white variety, Innerrhoden's «Traminer» into Gewürztraminer and
+  «Muskat» into Muskat blanc (the first wording, "63 varieties shown for the
+  67 entries …; not shown: 1 …, 1 …", left two entries unexplained and the
+  re-grade said so). **The lexicon pass of the same day** (live VIVC, 28
+  new slugs) left one or two names per list: Schwyz and Zürichsee show 122
+  varieties of 132 entries, Zürich 121 of 130, Glarus 113 of 121, Jura 34 of
+  45, Ausserrhoden 59 of 61, Innerrhoden 63 of 67 — what remains is the
+  breeder codes and «VB Cabernet» / «Cabernet VB», «VB Jura 25», a bare
+  «Seibel», «Muskat Tramin». On a passport: Buffalo, Chancellor, De Chaunac,
+  Charmont, Réselle, Siramé (Aargau prints «Salomé/Siramé»), Pinorico,
+  Millot-Foch, Vidal blanc, the Agroscope crossings Cabernello, Cornarello,
+  Gamarello, Merello, Nerolo, and «Seibel 9110» as Verdelet (#12952). No
+  bracket (`false`): Aurora and Ontario (several primes of the name),
+  Magliasino (VIVC has MAGLIASINA under Hartford — a lead), Cabernet
+  Soyhières, Caberneuf, Merlotin, Muscatin, Rudelin (no passport; Rudelin is
+  white by Ausserrhoden's yield table). The red mutations are rows of their
+  own (`roter-muller-thurgau`, `roter-raeuschling`); «Cornalin / Landroter» is
+  Rouge du Pays. **A breeder code VIVC files under a named variety is that
+  variety**: Jura's «VB 32-7» (Ravel blanc), «VB 85-1 (Léon Millot x Maréchal
+  Foch)» (Millot-Foch) and «VB 91-26-29» (Satin noir) are pills named by the
+  code, the VIVC prime in brackets — a roster cell tries an exact match on a
+  code before skipping it, `coverage` likewise; Glarus's «Weinsberg (WE
+  88-101-13)» is read as Sauvitage, which Zürich's later annex prints with
+  the same number. Innerrhoden's «Traminer» beside «Gewürztraminer» shares
+  its pill **by the registers' own reading** (read 2026-11-17): the Swiss
+  Sortenverordnung (SR 916.151.6, Anhang 8) has "Gewürztraminer RS" with the
+  synonyms "Roter Traminer/Savagnin rose aromatique/Traminer" — «Savagnin
+  rose RS» a row of its own, «Weisser Traminer» a synonym of Savagnin blanc
+  — and the German registers have one variety, "Roter Traminer" (RBE 516 in
+  the Bundessortenamt's Beschreibende Sortenliste 2024; row 228 of the BLE's
+  list of classified varieties, 31 August 2026), Gewürztraminer and Traminer
+  its synonyms. Baden's two rows («Gewürztraminer», «Roter Traminer») copy
+  Baden-Württemberg's classification annex of 2005, which the amendment of
+  7 November 2025 (GBl. 2025 Nr. 110) replaced by one entry. A bare «Muskat»
+  beside «Muskat blanc» names no variety of its own — the federal list has
+  four Muscat varieties and no bare name — and shares the Muskat blanc pill
+  (in the BLE's list «Muskat» is Gelber Muskateller, the same variety); the
+  ruling's `note` says both and the card packet hands it to the judge. The
+  Rebsortenverordnung SR 916.151.7 and the Rebsortenverzeichnis SR 916.140.1
+  are repealed (2016, 2025); the fedlex filestore PDFs are readable where
+  the site itself is a JavaScript app. The same
+  entries reached sixty Swiss records, the cantons whose own ordinance
+  prints the names (Aargau + 12, the Vaud AOCs + 8, Fribourg's + 10, the
+  Valais Grand Crus + 4). A roster cell is one
+  variety: `table_varieties` refuses the matcher's hyphen split, which had
+  read «Millot-Foch» — the crossing the lists print beside both parents —
+  as Léon Millot. `tests/test_ch_roster_rulings.py` checks
+  each list against the cached PDF (entry by entry, both directions:
+  tesseract for the two scans, pdftotext for the rest; `layout` table or
+  prose). The card validator's packet carries the ordinance text and the
+  act's list for a Swiss record. Stage 01 refuses a `.pdf` that is not one
+  (`_is_pdf`) and refetches a cached one: Uri's LexFind link had answered
+  with its app shell since May, and the card cited a text nobody had read
+  — Uri now reads the canton's own Rechtsbuch (rechtsbuch.ur.ch, a LexWork
+  portal).
   **Roster annex and rosters by reference (2026-10-13, visitor flag on
   Basel-Stadt).** Basel-Landschaft's Verordnung über den Pflanzenbau
   (SGS 516.31) keeps its AOC roster in a two-column "Anhang 1 –
@@ -6042,9 +6666,7 @@ CH-specific notes:
   gives them BL's roster with a `cantonal-reglement-roster` source that
   carries the applying clause; the panel lists it as a second règlement
   row (`cantonal_roster_*`). Before, both cards showed no grape and the
-  empty-grapes audit had pinned them REVIEWED. AI / AR / GL / TG delegate
-  their roster to a separate act (Standeskommission, Regierungsrat,
-  Fachstelle list) that is not fetched — the remaining recall gap. VIVC
+  empty-grapes audit had pinned them REVIEWED. VIVC
   lists HEIDA and PAÏEN on both Savagnin blanc and Gewürztraminer; the
   Swiss texts mean Savagnin blanc (Valais OVV "Savagnin blanc (Païen ou
   Heida)"), pinned in `GRAPE_ALIAS`.
@@ -6140,9 +6762,8 @@ CH-specific notes:
   | Visperterminen | Visperterminen Grand Cru | n/a | to-verify |
 
   Their roster is OVV art. 88's ("L'appellation Grand Cru est réservée aux
-  cépages suivants": ten whites, five reds — Amigne, Humagne blanc, Rèze,
-  Cornalin du Valais and Humagne rouge are not in the grape lexicon yet,
-  pending a VIVC pass), not the Valais AOC list; a communal règlement may
+  cépages suivants": ten whites, five reds, all fifteen on the card since the
+  Cornalin identity pass of 2026-11-17), not the Valais AOC list; a communal règlement may
   narrow it again. Each entry resolves to a single-commune polygon via
   swissBOUNDARIES3D `BFS_NUMMER`. Per OVV Art. 86, each commune
   homologates its own communal Grand Cru règlement — the OVV itself
@@ -8357,6 +8978,72 @@ after the Άγιο Όρος / "agio oros" case):
   reversal — 329 of 1,327 omnisearch queries returned nothing as of
   2026-09-24, text unknown); a fuzzy "did you mean" fallback.
 
+## Greek and Cyrillic names on screen
+
+Rules Boris set on 2026-11-17 ("remember these best practices in general
+for this project"), for every name in another script — appellations,
+grapes, regions, and whatever comes next
+([scripts/_lib/script_display.py](scripts/_lib/script_display.py)):
+
+- **Two kinds of surface.** *Interface text* — a filter chip, a search row, a
+  prose line, a title, a description, a browse list, an MCP answer — leads
+  with the Latin form and keeps the original in brackets where there is
+  room: "Mavrud (Мавруд)". A surface that *quotes the regulator* — the card's
+  name, the sidebar row, a grape pill showing the document's spelling —
+  keeps the original first with the Latin form in brackets: "Мавруд
+  (Mavrud)". In a tight space (a chip) the Latin form stands alone and the
+  original is the tooltip.
+- **Which Latin form.** The catalogue's name where one exists — a grape's
+  VIVC prime (Sultanina, Rkatsiteli, Yiannoudhi), an appellation's EU-register
+  transcription — else the national standard: ELOT 743 for Greek, the
+  Streamlined System for Bulgarian (`_lib/romanise.py`). Never a mechanical
+  ASCII fold: unidecode writes "Akheloi" for Ахелой (Aheloy) and "Atheri B"
+  for Αθήρι Β (Athiri — the regulator's colour code is a code, not a letter).
+- **The original is language-tagged** wherever it is written into a page
+  (`lang="el"` / `lang="bg"`, WCAG 3.1.2): `native_html` in Python,
+  `nativeHtml` in app.js, the same run-by-run rule (a run is the script's
+  letters and what stands between them, so "Naoussa (Νάουσα)" tags the
+  bracket's content and "Мелник 82" the word). The corpus has two such
+  scripts and one language each — Greek (Greece, Cyprus) and Bulgarian;
+  `tests/test_script_display.py` fails when a build carries a Greek or
+  Cyrillic name from another country, and runs the Python and JavaScript
+  tagging on the same cases.
+- **Sort and search by the Latin form**; search matches both.
+- No Latin title-casing rule or CSS `text-transform` on untagged Greek, no
+  italics on Cyrillic; one font stack for the three scripts (the system
+  stack covers them); look-alike characters folded
+  (`romanise.fold_confusables`).
+
+**Grapes** (implemented the same day). 63 varieties have a Greek or Cyrillic
+regulator label (23 + 40). `build_grapes_info` gives **every** corpus slug
+its label (`name`, the corpus vote) and, for those 63, `name_latin` — until
+then the label was set only beside a tooltip, so 221 filter and search
+labels were the title-cased slug ("Zahringer" for Zähringer, "Roussette D
+Ayze", "Dimyat" beside a Cyrillic "Мавруд") and 118 varieties with neither a
+VIVC record nor an article were not in the grape search at all (1,656 →
+1,774 entries; the MCP context's grape table carries `name` and, sparse,
+`name_latin`). `grapeName` / `grape_name` — chips, prose lines, the share
+subject, MCP answers, the description's grape clause — return the Latin
+form; `grapeNative` the original, which a grape search row shows beside it
+and a chip keeps as its tooltip; the search index entry carries `native` and
+keeps the original and the slug's words as aliases ("Early Melnik" still
+finds Ранна мелнишка лоза). The pill is unchanged in order — the record's
+spelling, tagged, then the Latin form in brackets — but its bracket for a
+variety without a VIVC record is the national standard now
+(`_latin_form_or_empty`, which had also returned an ASCII fold for every
+accented Latin name).
+
+**Appellations and regions** keep the order of 2026-09-25 (the regulator's
+string first on the card, the sidebar and the search rows; the Latin form
+first in titles, descriptions, the browse hub and llms.txt —
+`seo_display_name`); they are language-tagged now in the sidebar, the card,
+the stack and related rows, the search rows, the active-filter chips, the
+embed popup and the browse hub. A Greek or Bulgarian **region label** is
+still the native string alone in the sidebar, the card's meta line and the
+region search row (the exonyms of `region_exonyms.json` reach titles only):
+by these rules the sidebar would lead with the exonym — queued in
+CURATOR_TODO, it touches the region-label rule.
+
 ## Data bundle: startup blob + lazy panel detail
 
 The map's per-appellation data ships in two tiers so the front page is light
@@ -8958,7 +9645,33 @@ author / editorial dates for a generated page).
   wrong body is worse than none: a region with no interprofession
   (LORRAINE, ILE-DE-FRANCE) has no entry, the Centre-Loire AOCs carry the
   BIVC by slug, and the Auvergne / Forez / Roannaise / Saint-Pourçain AOCs
-  an explicit `null`.
+  an explicit `null`. A region key is for a body of the whole region
+  (2026-11-17, card validator on Jura): "Trois-Lacs" had handed Neuchâtel
+  Vins et Terroir to Bern, Cheyres, Jura and Vully — it is `by_slug`
+  `neuchatel` now, and the four have their own since the same day, each
+  site read: Vully the Interprofession des Vins du Vully, Bern «Berner Wein»
+  (the joint site of the Rebgesellschaften Bielersee and Thunersee-Bern —
+  Boris: fine where that is how the bodies present themselves), Bielersee
+  and Thunersee each their own Rebgesellschaft (thunerseewein.ch answers 403
+  to scripts; its Impressum, read in a browser, names the Rebgesellschaft
+  Thunersee–Bern),
+  Jura the Association des vignerons jurassiens; Cheyres has none (a
+  cooperative cellar is not a trade body) and is pinned `null`, as is
+  Regensburger Landwein, which had Franken's through "Bayern";
+  Bayerischer Bodensee-Landwein took Franken's through "Bayern" and carries
+  Württemberg's by slug (its ground is that Anbaugebiet's, single document
+  § 6); a Landwein over several Anbaugebiete takes the national body
+  ("Baden-Württemberg" → DWI, as Hessen and Rheinland-Pfalz).
+- **The Sources list is one list in two renderers** (`renderSources` in
+  app.js, `render_sources` in content_block.py). Until 2026-11-17 the
+  server-rendered card — what a crawler and a no-JS visitor read, and what
+  the card validator grades — lacked rows the browser card had: the Swiss
+  cantonal ordinance, roster act, area rulings and federal register (every
+  Swiss card cited its trade body alone), the UK specification and register
+  rows (6 wines, 16 drinks) and the EU register's cahier for a French record
+  pinned `prefer_cahier`. `test_every_source_row_of_the_browser_card_is_on_
+  the_server_rendered_card` reads every `sources.<key>` of the JS function
+  and fails on one the Python function does not read: add a row to both.
 - `<title>` (`_entity_title`, mirrored by `docTitleFor` in app.js) is kept
   within 65 characters — Bing's "Title too long" (7 of the crawled pages;
   491 of 1,659 EN index titles were over) — by progressive shortening, and
@@ -9096,6 +9809,16 @@ static link layer (all in [scripts/_lib/map_template.py](scripts/_lib/map_templa
   serving `http://www.openwinemap.com/` as 200) and `ensure_custom_404`
   (resolve storage zone by name, set `Custom404FilePath=/404.html`). Apex→www
   301 stays a manual dashboard rule (smoke-checked by `check_apex_redirect`).
+  The replication wait covers the large files too (2026-11-15): a probe is a
+  small text file, and on 2026-11-14 the 52 MB overview tileset was re-cached
+  stale after the purge — production drew only the French drinks below the
+  parcel zoom while the data and the detail tiles were current. Every
+  uploaded stable-URL file over 2 MB (the tilesets, the sitemap, the MCP
+  context) waits with the probes and is checked again after the purge
+  (`is_large_stable_file` / `large_file_is_fresh`: the whole body up to
+  16 MB, else size and first 64 KiB by a ranged request). The CDN's cache
+  key ignores the query string, so a stale tileset is fixed by purging its
+  URL, not by a new `?v=`.
   IndexNow receives only pages whose *content* changed: every page is
   fingerprinted on its content — title, description / robots / Open Graph
   metas, canonical and hreflang links, JSON-LD, the server-rendered card and
@@ -9241,9 +9964,17 @@ out — it credits that card's flags), never a chip tap; the browser remembers i
 site only through the checked-in [scripts/_lib/contributors.json](scripts/_lib/contributors.json)
 (`_lib/contributors.py`), added at triage for a report that was acted on —
 never an offensive name, an impersonation, contact details or a link; removed
-on request. The About dialog shows a "Thanks" section once the table has a
-name, and its privacy paragraph states the exception (kept to thank you,
-removed by e-mail). A blocked tracker — localhost included — falls back to the
+on request. A report from GitHub (a comment or pull request, `via: github`) is
+credited under the handle, and the curator's optional `url` — an https profile
+address, never typed by a visitor (`URL_RE`) — makes the name a link
+(`contributor_credits`): wayne530 → https://github.com/wayne530, for the
+US AVA advice on PR #19. The About dialog's "Thanks" section (2026-11-24) thanks
+designful.be for the UX review (linked; a curator's line in map_template.py,
+`_DESIGNFUL_URL`, not a table entry), then the names of the table, then the
+people who reported without a name — a report could carry no name before the
+credit field went live (31 October 2026), and the line says "until November
+2026": whoever sent one before then and wants their name added writes in. Its privacy paragraph states the exception
+(kept to thank you, removed by e-mail). A blocked tracker — localhost included — falls back to the
 prefilled e-mail link (chip shown pressed, nothing persisted), and `track()` echoes events
 to the console; a dev site keyed on `localhost` in `PLAUSIBLE_SITES` makes
 local testing land in a dashboard. The stub card's "help us find it" opens the same row on
@@ -9314,7 +10045,12 @@ review is copied to a dated `docs/review-*.md`.
   the one polygon-vs-**text** check: the units the delimitation names (FR:
   INAO aires CSV + cahier section IV; CH: BFS communes; RO / BG / HU / GR / CY:
   the record's parsed `geo_communes`; IT / AT: `parse_geo_area`; GR / PT: the
-  stage-04 disclosure fields; `--llm`: an independent model reading, cached
+  stage-04 disclosure fields; DE, since 2026-11-24: the three readers stage 04
+  draws from — `gemeinde_list`, `gemarkung` + the LGL layer, `area_units` +
+  the Länder's Gemarkung layers — over the EU area section, else the
+  sidecar's `area_text`, a commune reached only through a Gemarkung or an
+  Ortsteil counting as named in part (`_de_named`); `--llm`: an independent
+  model reading, cached
   per text sha) against the units the resolved polygon covers whole (≥ 95 %)
   or in part (> 5 %), reverse-geocoded on GISCO LAU, IGN communes,
   swissBOUNDARIES, CAOP or ONS. An FR aire token with a partial-commune

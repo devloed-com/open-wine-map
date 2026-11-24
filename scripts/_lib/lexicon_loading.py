@@ -10,9 +10,8 @@ import json
 import re
 from pathlib import Path
 
-from unidecode import unidecode
-
 from _lib.grape_wiki_identity import passport_match_is_stale
+from _lib.script_display import latin_name, romanise_name
 from _lib.wiki import is_grape_summary
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -244,26 +243,29 @@ def _corpus_name_for(slug: str) -> str | None:
 
 
 def _latin_form_or_empty(name: str) -> str:
-    # Cyrillic / Greek / other non-Latin display strings get an
-    # informational ASCII transliteration so the grape-pill renderer can
-    # fall back to it when no VIVC canonical name is available (e.g.
-    # native BG varieties like `mavrud` that VIVC hasn't catalogued).
-    latin = unidecode(name or "").strip()
-    return latin if latin and latin != (name or "").strip() else ""
+    """The Latin form of a Greek or Cyrillic spelling, for the pill's bracket:
+    the national standard — ELOT 743, the Bulgarian Streamlined System — with
+    the regulator's colour code dropped; "" for a name in Latin script. Until
+    2026-11-17 this was unidecode, a mechanical ASCII fold ("Atheri B" for
+    Αθήρι Β, "Akheloi" for Ахелой), returned for every accented Latin name
+    too (`_lib/script_display.py` has the rules)."""
+    return romanise_name(name)
 
 
 def _override_name_with_corpus(entry: dict, slug: str) -> None:
-    """Replace `entry['name']` (which after `_load_native_grape` is the
-    Wikipedia article title) with the regulator's cahier spelling when
-    one exists. Keeps `wikipedia_title` intact for the tooltip header so
-    attribution stays accurate."""
+    """Give `entry` the regulator's spelling as `name` — after
+    `_load_native_grape` it is the Wikipedia article title, which stays in
+    `wikipedia_title` for the tooltip header — and, for a Greek or Cyrillic
+    spelling, the Latin form interface text leads with as `name_latin`: the
+    catalogue's name (the VIVC prime) where one is resolved, else the national
+    standard."""
     cahier = _corpus_name_for(slug)
     if not cahier:
         return
     if "wikipedia_title" not in entry and entry.get("name"):
         entry["wikipedia_title"] = entry["name"]
     entry["name"] = cahier
-    latin = _latin_form_or_empty(cahier)
+    latin = latin_name(cahier, entry.get("canonical_name") or "")
     if latin:
         entry["name_latin"] = latin
 
@@ -297,8 +299,15 @@ def build_grapes_info(target_locale: str) -> dict:
     # appear in the FR/ES/PT extracted JSONs (e.g. `tempranillo-cencibel`
     # after the ES EU-OJ splitter fix) otherwise leak into GRAPES_INFO
     # and reappear in the chip-filter index as ghost entries.
-    corpus_slugs = set(_corpus_grape_names().keys()) | set(vivc.keys())
+    corpus_names = set(_corpus_grape_names().keys())
+    corpus_slugs = corpus_names | set(vivc.keys())
     slugs &= corpus_slugs
+    # Every slug a record carries is in the table with its label, tooltip or
+    # not: until 2026-11-17 the label was set only beside a tooltip, so 221
+    # filter and search labels were the title-cased slug ("Zahringer",
+    # "Roussette D Ayze", "Dimyat") and 118 varieties with neither a VIVC
+    # record nor an article could not be found by the grape search at all.
+    slugs |= corpus_names
 
     out: dict[str, dict] = {}
     for slug in slugs:
@@ -325,8 +334,10 @@ def build_grapes_info(target_locale: str) -> dict:
             _override_name_with_corpus(entry, slug)
             out[slug] = entry
             continue
-        if vivc_fields:
-            out[slug] = {**vivc_fields, "is_translated": False, "source_lang": None}
+        entry = {**vivc_fields, "is_translated": False, "source_lang": None}
+        _override_name_with_corpus(entry, slug)
+        if vivc_fields or entry.get("name"):
+            out[slug] = entry
     return out
 
 

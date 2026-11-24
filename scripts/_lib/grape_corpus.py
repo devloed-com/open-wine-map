@@ -76,7 +76,29 @@ _SOURCES: tuple[tuple[str, Path], ...] = (
     ("gr", ROOT / "raw" / "gr" / "national-specs-extracted"),
     ("sk", ROOT / "raw" / "sk" / "national-specs-extracted"),
     ("ro", ROOT / "raw" / "ro" / "national-specs-extracted"),
+    # The BLE Produktspezifikation sidecars (their `grapes` is a list, not
+    # {details}). Six Anbaugebiete and fourteen Landweine are stubs whose
+    # whole roster comes from them, so a variety only those list — Chardonel,
+    # Kolor, Ruling, Zähringer, Blauer Gelbhölzer, Cantaro, Muskat Gutedel,
+    # Serena — was in no corpus: 02b / 02g saw it only through `--only`, and
+    # the grape-tooltip translation skipped it without a word (2026-11-17).
+    ("de", ROOT / "raw" / "de" / "produktspezifikationen-extracted"),
 )
+
+# A sidecar directory whose records also have a primary file of the same
+# name: a variety the primary file lists is counted there, so a region with
+# an EU document and a BLE sidecar does not vote twice.
+_SUPPLEMENT_OF: dict[Path, Path] = {
+    ROOT / "raw" / "de" / "produktspezifikationen-extracted":
+        ROOT / "raw" / "de" / "dokumente-extracted",
+}
+
+
+def _details(rec: dict) -> list[dict]:
+    """A record's grape details, whichever shape its `grapes` has."""
+    grapes = rec.get("grapes") or {}
+    details = grapes if isinstance(grapes, list) else grapes.get("details") or []
+    return [d for d in details if isinstance(d, dict)]
 
 
 # The corpus-wide label of a slug: what the filter chips, the search
@@ -227,9 +249,14 @@ def collect_grape_slugs() -> dict[str, dict]:
             if jp.name.startswith("_"):
                 continue
             rec = json.loads(jp.read_text(encoding="utf-8"))
-            for d in (rec.get("grapes") or {}).get("details") or []:
+            primary = _SUPPLEMENT_OF.get(src)
+            counted: set[str] = set()
+            if primary is not None and (primary / jp.name).exists():
+                counted = {d.get("slug") for d in _details(
+                    json.loads((primary / jp.name).read_text(encoding="utf-8")))}
+            for d in _details(rec):
                 s = d.get("slug")
-                if not s:
+                if not s or s in counted:
                     continue
                 entry = out.setdefault(s, {"name": s, "by_lang": Counter()})
                 entry["by_lang"][lang] += 1

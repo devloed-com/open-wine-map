@@ -10,6 +10,10 @@ import json
 
 from ._shared import _DE_PRODUKTSPEZIFIKATION_BY_SLUG, PRODUKTSPEZIFIKATION_DE
 
+# the colour words a DE record's styles carry (the EU reader's) and the
+# taxonomy slugs they become
+_COLOUR_STYLES = frozenset({"blanc", "noir", "rose", "white", "red"})
+
 
 def augment_de_records_with_produktspezifikation(records: list[dict]) -> int:
     """In-place merge of BLE-Produktspezifikation sidecar data into DE
@@ -180,6 +184,21 @@ def augment_de_records_with_produktspezifikation(records: list[dict]) -> int:
             grapes["accessory"] = accessory
             grapes["details"] = new_details
             record["grapes"] = grapes
+
+        # The wine types the specification states, for a record whose EU
+        # text states no colour — the six Anbaugebiete and the Landweine with
+        # no single document, and Saale-Unstrut, whose single document is an
+        # amendment that names its sparkling categories only. A record whose
+        # EU document states its colours keeps them: the registered text is
+        # the card's source.
+        stated = sidecar.get("styles_stated") or []
+        own = list(record.get("styles") or [])
+        if stated and not _COLOUR_STYLES.intersection(own):
+            added = [s for s in stated if s not in own]
+            record["styles"] = sorted({*own, *stated})
+            provenance["styles_stated"] = added
+            provenance["styles_evidence"] = {
+                s: (sidecar.get("styles_evidence") or {}).get(s, "") for s in added}
 
         record["produktspezifikation"] = provenance
         _DE_PRODUKTSPEZIFIKATION_BY_SLUG[slug] = provenance

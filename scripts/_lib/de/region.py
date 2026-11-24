@@ -125,10 +125,15 @@ _REGION_BY_FILE_NUMBER: dict[str, str] = {
     "PGI-DE-A1284": "Württemberg",               # Landwein Neckar
     "PGI-DE-A1285": "Baden",                     # Landwein Oberrhein
     "PGI-DE-A1286": "Rheinland-Pfalz",           # Landwein Rhein
-    "PGI-DE-A1287": "Rheinland-Pfalz",           # Landwein Rhein-Neckar
+    # Landwein Rhein-Neckar: § 4 of its BLE specification lists Baden's and
+    # Württemberg's places and none of Rheinland-Pfalz (2026-11-17).
+    "PGI-DE-A1287": "Baden-Württemberg",         # Landwein Rhein-Neckar
     "PGI-DE-A1283": "Rheinland-Pfalz",           # Landwein der Mosel
     "PGI-DE-A1288": "Rheinland-Pfalz",           # Landwein der Ruwer
-    "PGI-DE-A1289": "Saarland",                  # Landwein der Saar
+    # Landwein der Saar: the river, not the Land — its 19 Gemarkungen (Ayl,
+    # Kanzem, Konz, Ockfen, Saarburg, Serrig, Wiltingen …) are all in the
+    # Landkreis Trier-Saarburg (filed under "Saarland" until 2026-11-24)
+    "PGI-DE-A1289": "Rheinland-Pfalz",           # Landwein der Saar
     "PGI-DE-A1290": "Mecklenburg-Vorpommern",    # Mecklenburger Landwein
     "PGI-DE-A1291": "Sachsen-Anhalt",            # Mitteldeutscher Landwein
     "PGI-DE-A1293": "Rheinland-Pfalz",           # Nahegauer Landwein

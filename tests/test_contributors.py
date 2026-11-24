@@ -16,7 +16,9 @@ import _lib.map_template as mt  # noqa: E402
 from _lib.contributors import (  # noqa: E402
     CONTRIBUTORS_PATH,
     NAME_MAX,
+    URL_RE,
     VIA,
+    contributor_credits,
     contributor_names,
     load_contributors,
 )
@@ -37,6 +39,9 @@ def test_table_entries_are_well_formed() -> None:
         assert row["via"] in VIA, row
         assert isinstance(row.get("slugs", []), list), row
         assert row.get("report", "").strip(), f"{name}: say what the report led to"
+        # A link only as the curator's url: an https profile address.
+        if "url" in row:
+            assert URL_RE.fullmatch(row["url"]), row
     assert "_doc" in json.loads(CONTRIBUTORS_PATH.read_text(encoding="utf-8"))
 
 
@@ -49,10 +54,35 @@ def test_names_are_deduped_collapsed_and_sorted(tmp_path: Path) -> None:
     assert contributor_names(tmp_path / "missing.json") == []
 
 
+def test_credits_keep_a_plain_https_url_and_drop_anything_else(tmp_path: Path) -> None:
+    p = tmp_path / "c.json"
+    p.write_text(json.dumps({"contributors": [
+        {"name": "wayne530", "url": "https://github.com/wayne530"},
+        {"name": "Anna"},
+        {"name": "Bob", "url": "javascript:alert(1)"},
+        {"name": "Cy", "url": 'https://x.org/" onmouseover="x'},
+        {"name": "Anna", "url": "https://example.org/anna"},
+    ]}), encoding="utf-8")
+    assert contributor_credits(p) == [
+        ("Anna", "https://example.org/anna"),
+        ("Bob", None),
+        ("Cy", None),
+        ("wayne530", "https://github.com/wayne530"),
+    ]
+
+
+def test_github_handles_link_to_their_profile() -> None:
+    for row in load_contributors():
+        if row["via"] == "github":
+            assert row.get("url") == f"https://github.com/{row['name']}", row
+
+
 def _labels() -> defaultdict:
     return defaultdict(str, {
         "about_thanks_h": "Thanks",
+        "about_thanks_ux_html": "To {designful}, for the UX.",
         "about_thanks_html": "To the people: {names}.",
+        "about_thanks_anon_html": "And the anonymous; get in touch by {email}.",
         "about_privacy_h": "Privacy",
         "about_privacy_html": "No personal data.",
         "about_privacy_credit_html": "Except a name, removed by {email}.",
@@ -60,16 +90,31 @@ def _labels() -> defaultdict:
     })
 
 
-def test_about_has_no_thanks_section_without_names(monkeypatch) -> None:
-    monkeypatch.setattr(mt, "contributor_names", lambda: [])
-    html = mt._build_about_dialog(_labels())
-    assert "<h3>Thanks</h3>" not in html
+def _thanks(html: str) -> str:
+    return html.split("<h3>Thanks</h3>")[1].split("</section>")[0]
 
 
-def test_about_thanks_section_escapes_names(monkeypatch) -> None:
-    monkeypatch.setattr(mt, "contributor_names", lambda: ["Anna", "<b>x</b>"])
+def test_about_thanks_without_names_keeps_designful_and_the_anonymous(monkeypatch) -> None:
+    monkeypatch.setattr(mt, "contributor_credits", lambda: [])
     html = mt._build_about_dialog(_labels())
-    assert "<section><h3>Thanks</h3><p>To the people: Anna, &lt;b&gt;x&lt;/b&gt;.</p></section>" in html
+    body = _thanks(html)
+    assert '<p>To <a href="https://designful.be/" target="_blank" rel="noopener">designful.be</a>, for the UX.</p>' in body
+    assert "To the people" not in body
+    assert "And the anonymous; get in touch by " in body and 'class="feedback-mail"' in body
+
+
+def test_about_thanks_section_escapes_names_and_links_a_profile(monkeypatch) -> None:
+    monkeypatch.setattr(mt, "contributor_credits", lambda: [
+        ("Anna", None), ("<b>x</b>", None), ("wayne530", "https://github.com/wayne530"),
+    ])
+    html = mt._build_about_dialog(_labels())
+    body = _thanks(html)
+    assert (
+        "<p>To the people: Anna, &lt;b&gt;x&lt;/b&gt;, "
+        '<a href="https://github.com/wayne530" target="_blank" rel="noopener">wayne530</a>.</p>'
+    ) in body
+    # Designful first, the named people, then the anonymous.
+    assert body.index("designful.be") < body.index("To the people") < body.index("anonymous")
     # After the contribute section, before the maker's credit line.
     assert html.index("<h3>Thanks</h3>") < html.index('class="about-credit"')
 
@@ -85,7 +130,8 @@ def test_every_locale_translates_the_credit_strings() -> None:
 
     compile_catalogs()
     keys = ("feedback_credit_label", "feedback_credit_hint", "feedback_sent_credit",
-            "about_thanks_h", "about_thanks_html", "about_privacy_credit_html")
+            "about_thanks_h", "about_thanks_html", "about_privacy_credit_html",
+            "about_thanks_ux_html", "about_thanks_anon_html")
     fr = mt.build_labels(lambda s: s)
     for lang in ("en", "es", "nl"):
         built = mt.build_labels(load_translations(lang).gettext)

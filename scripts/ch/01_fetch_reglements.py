@@ -82,6 +82,99 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _is_pdf(body: bytes) -> bool:
+    return body.lstrip()[:5] == b"%PDF-"
+
+
+def fetch_roster_rulings() -> int:
+    """The administrative rulings that carry a canton's roster
+    (scripts/_lib/ch/roster_rulings.json) into raw/ch/rulings/<slug>.pdf,
+    each checked against the sha256 its transcription was read from.
+    Returns the number of rulings that could not be fetched or changed."""
+    from _lib.ch import roster_rulings
+
+    out_dir = roster_rulings.RULINGS_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    entries: dict[str, dict] = {}
+    bad = 0
+    for slug, entry in roster_rulings.load().items():
+        dest = out_dir / f"{slug}.pdf"
+        if dest.exists() and _is_pdf(dest.read_bytes()):
+            body, status = dest.read_bytes(), "ok-cached"
+        else:
+            try:
+                lexwork = _resolve_lexwork(entry["url"])
+                body = _fetch(lexwork[0] if lexwork else entry["url"])
+            except requests.RequestException as e:
+                print(f"[01-ch] ruling {slug}: fetch failed — {e}", file=sys.stderr)
+                entries[slug] = {"status": "fetch-failed", "url": entry["url"], "error": str(e)}
+                bad += 1
+                continue
+            if not _is_pdf(body):
+                print(f"[01-ch] ruling {slug}: {entry['url']} did not return a PDF",
+                      file=sys.stderr)
+                entries[slug] = {"status": "not-a-pdf", "url": entry["url"]}
+                bad += 1
+                continue
+            dest.write_bytes(body)
+            status = "ok-fetched"
+        sha = _sha256(body)
+        if sha != entry.get("sha256"):
+            status = "sha-mismatch"
+            bad += 1
+            print(f"[01-ch] ruling {slug}: STALE — the PDF changed since its roster was "
+                  f"transcribed (sha256 {sha[:12]}… ≠ pinned {str(entry.get('sha256'))[:12]}…); "
+                  "re-read scripts/_lib/ch/roster_rulings.json", file=sys.stderr)
+        entries[slug] = {
+            "status": status, "url": entry["url"], "ruling": entry["ruling"],
+            "sha256": sha, "bytes": len(body), "filename": dest.name,
+            "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        print(f"[01-ch] ruling {slug}: {status} ({len(body):,} bytes)", file=sys.stderr)
+        # The wine-type clauses of a ruling whose roster annex is published
+        # apart (Zürich): the ruling itself, as <slug>.types.pdf.
+        doc = (entry.get("wine_types") or {}).get("document")
+        if doc:
+            types_dest = out_dir / f"{slug}.types.pdf"
+            if types_dest.exists() and _is_pdf(types_dest.read_bytes()):
+                types_body, types_status = types_dest.read_bytes(), "ok-cached"
+            else:
+                try:
+                    types_body = _fetch(doc["url"])
+                except requests.RequestException as e:
+                    print(f"[01-ch] ruling {slug} (wine types): fetch failed — {e}",
+                          file=sys.stderr)
+                    entries[slug]["wine_types"] = {"status": "fetch-failed", "url": doc["url"]}
+                    bad += 1
+                    continue
+                if not _is_pdf(types_body):
+                    print(f"[01-ch] ruling {slug} (wine types): {doc['url']} did not return "
+                          "a PDF", file=sys.stderr)
+                    entries[slug]["wine_types"] = {"status": "not-a-pdf", "url": doc["url"]}
+                    bad += 1
+                    continue
+                types_dest.write_bytes(types_body)
+                types_status = "ok-fetched"
+            types_sha = _sha256(types_body)
+            if types_sha != doc.get("sha256"):
+                types_status = "sha-mismatch"
+                bad += 1
+                print(f"[01-ch] ruling {slug} (wine types): STALE — the PDF changed since its "
+                      "clauses were transcribed; re-read scripts/_lib/ch/roster_rulings.json",
+                      file=sys.stderr)
+            entries[slug]["wine_types"] = {
+                "status": types_status, "url": doc["url"], "sha256": types_sha,
+                "bytes": len(types_body), "filename": types_dest.name,
+            }
+            print(f"[01-ch] ruling {slug} (wine types): {types_status} "
+                  f"({len(types_body):,} bytes)", file=sys.stderr)
+    (out_dir / "manifest.json").write_text(json.dumps({
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "by_slug": entries,
+    }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    return bad
+
+
 def _load_overrides() -> dict:
     if OVERRIDES.exists():
         try:
@@ -176,6 +269,12 @@ def main() -> int:
         canton_dir.mkdir(parents=True, exist_ok=True)
         dest = canton_dir / f"reglement.{effective_fmt}"
 
+        if dest.exists() and effective_fmt == "pdf" and not _is_pdf(dest.read_bytes()):
+            # A portal's app shell saved under .pdf (Uri's LexFind link, until
+            # 2026-11-17): the "cached règlement" was never a document.
+            print(f"[01-ch] {canton}: cached {dest.relative_to(ROOT)} is not a PDF — refetching",
+                  file=sys.stderr)
+            dest.unlink()
         if dest.exists() and not overrides.get(canton):
             body = dest.read_bytes()
             print(f"[01-ch] {canton}: cached {dest.relative_to(ROOT)} "
@@ -191,6 +290,14 @@ def main() -> int:
                     "status": "fetch-failed",
                     "url": effective_url,
                     "error": str(e),
+                }
+                n_fail += 1
+                continue
+            if effective_fmt == "pdf" and not _is_pdf(body):
+                print(f"[01-ch] {canton}: {effective_url} did not return a PDF "
+                      f"({body[:40]!r}) — not saved", file=sys.stderr)
+                results[canton] = {
+                    "canton": canton, "status": "not-a-pdf", "url": effective_url,
                 }
                 n_fail += 1
                 continue
@@ -257,12 +364,14 @@ def main() -> int:
         "by_canton": results,
     }, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
 
+    n_rulings_bad = fetch_roster_rulings()
+
     print(
         f"[done] 01-ch: ok={n_ok} failed={n_fail} no_url={n_unknown} "
-        f"overridden={n_overridden} → {MANIFEST.relative_to(ROOT)}",
+        f"overridden={n_overridden} rulings_bad={n_rulings_bad} → {MANIFEST.relative_to(ROOT)}",
         file=sys.stderr,
     )
-    return 0 if n_fail == 0 else 1
+    return 0 if n_fail == 0 and n_rulings_bad == 0 else 1
 
 
 if __name__ == "__main__":

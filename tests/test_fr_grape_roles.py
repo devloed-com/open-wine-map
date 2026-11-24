@@ -3,7 +3,8 @@
 The card shows one role per grape. A grape accessory in one of the record's
 own colour clauses and principal in another is principal; a DGC's rows and the
 convention add-on ("et des variétés … sous réserve de la signature … d'une
-convention") never promote. Excerpts follow the cahiers in force: Crozes-Hermitage
+convention") never promote, and a convention variety is read as a variety of
+interest (observation), never as its clause's principal or accessory. Excerpts follow the cahiers in force: Crozes-Hermitage
 (BO du MASAF, 19 décembre 2024), Arbois (15 septembre 2022), Bordeaux, Touraine
 (11 septembre 2025).
 """
@@ -48,8 +49,67 @@ def test_the_convention_add_on_never_promotes():
         "merlot N, cot N - Et des variétés marselan N, sous réserve de la signature d'une convention."
     )
     roles = _roles(v)
-    assert roles["marselan"] == "accessory"
+    assert roles["marselan"] == "observation"
     assert roles["cot"] == "principal"
+
+
+def test_a_convention_variety_after_the_principal_header_is_not_principal():
+    # visitor flags on Meursault (2026-11-22, card validator): aligoté, melon
+    # and sacy read as principal; the cahier (BO Agri, 11 juin 2026) admits
+    # them only under the INAO convention, capped at 10 % and 1 ha
+    v = (
+        "1°- Encépagement a) - Les vins blancs sont issus des cépages suivants : "
+        "- cépages principaux : chardonnay B et pinot blanc B. "
+        "- et les variétés aligoté B, melon B, sacy B, sous réserve de la signature entre l’INAO, "
+        "l’ODG, l’opérateur habilité concerné et l’opérateur-vinificateur d’une convention conforme "
+        "à la convention cadre approuvée par le comité national compétent. "
+        "b) - Les vins rouges sont issus des cépages suivants : - cépage principal : pinot noir N ; "
+        "- cépages accessoires : chardonnay B, pinot blanc B, pinot gris G, "
+        "- et la variété césar N, sous réserve de la signature entre l’INAO, l’ODG, l’opérateur "
+        "habilité concerné et l’opérateur-vinificateur d’une convention conforme à la convention "
+        "cadre approuvée par le comité national compétent. "
+        "2°- Règles de proportion à l’exploitation La proportion d’aligoté B, melon B, sacy B et "
+        "césar N est limitée à 10 % de l’encépagement."
+    )
+    roles = _roles(v)
+    assert {roles[g] for g in ("chardonnay", "pinot-blanc", "pinot-noir")} == {"principal"}
+    assert roles["pinot-gris"] == "accessory"
+    assert {roles[g] for g in ("aligote", "melon", "sacy", "cesar")} == {"observation"}
+
+
+def test_an_unheaded_list_with_a_convention_add_on():
+    # Haut-Médoc: no role header; the four convention varieties had read as
+    # principal with the six varieties before them
+    v = (
+        "1° - Encépagement Les vins sont issus des cépages suivants : - cabernet franc N, "
+        "cabernet-sauvignon N, merlot N et petit verdot N. - et des variétés arinarnoa N, castets N, "
+        "marselan N et touriga nacional N, sous réserve de la signature entre l’INAO, l’ODG et les "
+        "opérateurs habilités concernés, d’une convention conforme à la convention cadre approuvée "
+        "par le comité national compétent les 2 et 3 Juin 2021."
+    )
+    roles = _roles(v)
+    assert roles["merlot"] == "principal"
+    assert {roles[g] for g in ("arinarnoa", "castets", "marselan", "touriga-nacional")} == {"observation"}
+
+
+def test_a_table_label_inside_the_add_on_phrase():
+    # Languedoc (BO Agri, 20 août 2026): pdftotext sets the row label between
+    # "et les" and "variétés"
+    v = (
+        "- cépages principaux : grenache N, syrah N ; - cépages accessoires : carignan N, cinsaut N, "
+        "et les AOC « Languedoc » (Vins rouges) variétés suivantes : agiorgitiko N, marselan N, "
+        "sous réserve de la signature entre l’INAO, l’ODG et l’opérateur habilité concerné, d’une "
+        "convention conforme à la convention cadre approuvée par le comité national compétent le 6 "
+        "septembre 2018."
+    )
+    roles = _roles(v)
+    assert roles["carignan"] == "accessory"
+    assert roles["agiorgitiko"] == roles["marselan"] == "observation"
+
+
+def test_a_singular_variety_without_a_convention_is_read_as_before():
+    v = "- cépages principaux : chardonnay B et la variété pinot blanc B."
+    assert _roles(v) == {"chardonnay": "principal", "pinot-blanc": "principal"}
 
 
 def test_a_dgc_row_never_promotes_the_parents_grape():

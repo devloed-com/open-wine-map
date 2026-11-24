@@ -78,6 +78,7 @@ from _lib.augment._shared import (
     _SK_NATIONAL_SPEC_BY_SLUG,
     NATIONAL_SPECS_CZ,
     NATIONAL_SPECS_HU,
+    PRODUKTSPEZIFIKATION_DE,
 )
 from _lib.augment.at import augment_at_records_with_produktspezifikation
 from _lib.augment.bg import augment_bg_records_with_national_specs
@@ -113,6 +114,9 @@ from _lib.cy.geometry import CYPolygonIndex
 from _lib.cy.region import derive_region as derive_cy_region
 from _lib.cz.geometry import CZPolygonIndex
 from _lib.cz.region import derive_region as derive_cz_region
+from _lib.de import area_units as de_area_units
+from _lib.de import gemarkung as de_gemarkung
+from _lib.de import gemeinde_list as de_gemeinde_list
 from _lib.de.geometry import DEPolygonIndex
 from _lib.de.region import derive_region as derive_de_region
 from _lib.drinks.geometry import DrinksGeometry
@@ -135,6 +139,8 @@ from _lib.es.zones import MAPA_ZONES_FILE, ESZoneIndex
 from _lib.fr.cross_border import load as load_fr_cross_border
 from _lib.fr.former_communes import FORMER_GEOJSON, MOVEMENTS_CSV
 from _lib.fr.former_communes import load as load_former_communes
+from _lib.fr import parcel_area as fr_parcel_area
+from _lib.fr import plan_inventory
 from _lib.fr.seat_communes import narrowed_seats
 from _lib.fr_wine_region import FR_WINE_REGIONS
 from _lib.fr_wine_region import derive_wine_region as derive_fr_wine_region
@@ -304,6 +310,9 @@ EXTRACTED_IT = ROOT / "raw" / "it" / "disciplinari-extracted"
 EXTRACTED_AT = ROOT / "raw" / "at" / "dokumente-extracted"
 AT_STATISTIK_DIR = ROOT / "raw" / "at" / "statistik"
 EXTRACTED_DE = ROOT / "raw" / "de" / "dokumente-extracted"
+DE_GEMARKUNG_GPKG = ROOT / "raw" / "de" / "lgl" / "gemarkungen.gpkg"
+# the other Länder's Gemarkung layers (scripts/_lib/de/katasterbezirk.py)
+DE_KATASTERBEZIRKE_DIR = ROOT / "raw" / "de" / "katasterbezirke"
 EXTRACTED_SI = ROOT / "raw" / "si" / "dokumenti-extracted"
 EXTRACTED_HR = ROOT / "raw" / "hr" / "dokumenti-extracted"
 EXTRACTED_HU = ROOT / "raw" / "hu" / "dokumentumok-extracted"
@@ -1501,12 +1510,28 @@ def main() -> int:
     # The 6 Einzellage PDOs inherit the parent Anbaugebiet polygon
     # (parent/sub model). Most Landwein PGIs union the regional
     # Anbaugebiet polygons that make up their territory.
+    # Baden and Württemberg list their Gemarkungen by land-register number
+    # (the EU single document, else § 4 of the BLE Produktspezifikation):
+    # those two are drawn from the LGL Gemarkung layer instead of Bétard's
+    # whole Landkreise, and the Landwein PGIs that union them follow.
     de_polygons = DEPolygonIndex(
         figshare_gpkg=ES_FIGSHARE_GPKG,
         gisco_lau_zip=ES_GISCO_LAU_ZIP,
+        gemarkung_gpkg=DE_GEMARKUNG_GPKG,
+        gemarkung_areas=de_gemarkung.load_areas(EXTRACTED_DE, PRODUKTSPEZIFIKATION_DE),
+        gemarkung_pins=de_gemarkung.load_pins(),
+        gemeinde_areas=de_gemeinde_list.load_areas(EXTRACTED_DE, PRODUKTSPEZIFIKATION_DE),
+        # every other record whose own text lists its units: Gemeinden in
+        # prose (Rheingau), Gemarkungen by Kreis (Saale-Unstrut), the
+        # Rhineland's numbered Gemarkungen (Mittelrhein, Mosel, Nahe, Pfalz)
+        unit_areas=de_area_units.load_areas(EXTRACTED_DE, PRODUKTSPEZIFIKATION_DE),
+        unit_pins=de_area_units.load_pins(),
+        katasterbezirke_dir=DE_KATASTERBEZIRKE_DIR,
+        log=lambda msg: print(msg, file=sys.stderr),
     )
     print(
-        f"[load] DE polygons: {de_polygons.n_pdo_polygons} Figshare DE-PDOs",
+        f"[load] DE polygons: {de_polygons.n_pdo_polygons} Figshare DE-PDOs, "
+        f"{de_polygons.n_gemarkung_records} redrawn from their Gemarkungen (LGL-BW)",
         file=sys.stderr,
     )
     de_hits: Counter[str] = Counter()
@@ -2496,6 +2521,65 @@ def main() -> int:
                 record.get("file_number") or ""
             )
             de_hits[geom_source] += 1
+            if geom_source in ("lgl-gemarkung-union", "alkis-gemarkung-union"):
+                # Panel payload: how many Gemarkungen the polygon is the union
+                # of and whose boundaries they are, the Bavarian Gemeinden
+                # drawn beside them, a number read through a pin; a town
+                # drawn whole for some of its Gemarkungen and a unit the
+                # layer does not carry go to the shared unit lines. Outside
+                # Baden-Württemberg (`alkis-…`): one credit per Land's layer,
+                # whether the text prints numbers or names, and the Gemeinden
+                # it names whole beside its Gemarkungen (Jena, Erfurt).
+                disclosure = {"geom_gemarkungen": {
+                    "n": stats["gemarkungen"],
+                    "listed": stats["gemarkungen_listed"],
+                    "source_kind": stats["source_kind"],
+                    **({"attribution": stats["attribution"]} if stats.get("attribution") else {}),
+                    **({"credits": list(stats["credits"])} if stats.get("credits") else {}),
+                    **({"named": True} if stats.get("credits") and not stats.get("by_number") else {}),
+                    **({"whole": list(stats["whole"])}
+                       if 0 < len(stats.get("whole") or []) <= 12 else {}),
+                    **({"whole_n": len(stats["whole"])}
+                       if len(stats.get("whole") or []) > 12 else {}),
+                    **({"gemeinden": list(stats["gemeinden"])} if stats.get("gemeinden") else {}),
+                    **({"pinned": list(stats["pinned"])} if stats.get("pinned") else {}),
+                }}
+                if stats.get("partial"):
+                    disclosure["geom_units_partial"] = list(stats["partial"])
+                if stats.get("names_unmatched"):
+                    disclosure["geom_units_unmatched"] = list(stats["names_unmatched"])
+                _GEOM_UNITS_DISCLOSURE_BY_SLUG[record["slug"]] = disclosure
+            elif geom_source == "gisco-commune-union" and (
+                    stats.get("partial") or stats.get("unmatched_names")):
+                # Bayerischer Bodensee-Landwein: Lindau drawn whole for the
+                # two Gemarkungen its specification names; a listed Gemeinde
+                # GISCO does not carry (Franken, Landwein Main) is named.
+                disclosure = {}
+                if stats.get("partial"):
+                    disclosure["geom_units_partial"] = list(stats["partial"])
+                if stats.get("unmatched_names"):
+                    disclosure["geom_units_unmatched"] = list(stats["unmatched_names"])
+                _GEOM_UNITS_DISCLOSURE_BY_SLUG[record["slug"]] = disclosure
+            if geom_source == "gisco-commune-union" and stats.get("reading"):
+                # Regensburger Landwein: the specification lists no commune,
+                # the union is our reading of its prose. The card names the
+                # communes and says so (the units line of a curated pin).
+                _DRINKS_GEOM_BY_SLUG[record["slug"]] = {
+                    "source": geom_source,
+                    "reading": True,
+                    "units": [{"kind": "lau", "label": n}
+                              for n in stats["reading"]["units"]],
+                    "disclose": stats["reading"]["disclose"],
+                }
+            if geom_source == "region-pdo-union" and stats.get("gemarkung_members"):
+                # A Landwein drawn as the union of Baden and / or Württemberg:
+                # its members are no longer Bétard polygons.
+                _GEOM_UNITS_DISCLOSURE_BY_SLUG[record["slug"]] = {"geom_gemarkungen": {
+                    "member_union": True,
+                    "mixed": stats["gemarkung_members"] < stats.get("resolved", 0),
+                    "attribution": stats["attribution"],
+                    **({"credits": list(stats["credits"])} if stats.get("credits") else {}),
+                }}
             v_geom = geom
             v_source = geom_source
             v_stats = stats
@@ -2728,6 +2812,7 @@ def main() -> int:
             sib_v_geom = sib_name = sib_slug = None
             cadastre_match = None
 
+        parcel_area_source = ""
         if (_emit_es_features or _emit_pt_features or _emit_it_features
                 or _emit_at_features or _emit_si_features or _emit_hr_features
                 or _emit_hu_features or _emit_ro_features or _emit_bg_features
@@ -2769,6 +2854,10 @@ def main() -> int:
             else:
                 cahier_hint = cahier_insee(record, commune_idx)
                 insee_codes = lookup_aire(aires_by_app, record["name"], cahier_hint)
+                pa_codes = (_parcel_area_codes(record, insee_codes, insee_idx, former_communes)
+                            if insee_codes else None)
+                if pa_codes:
+                    insee_codes = pa_codes
                 if insee_codes:
                     geom, stats = union_from_insee(
                         insee_codes, insee_idx, former_communes,
@@ -2777,6 +2866,8 @@ def main() -> int:
                     if geom is not None and not geom.is_empty:
                         geom_source = "aires-csv"
                         aires_hits += 1
+                        if pa_codes:
+                            parcel_area_source = plan_inventory.table()[record["slug"]]["source"]
                     else:
                         geom, stats = union_for_appellation(record, commune_idx, insee_idx)
                         geom_source = "communes"
@@ -2864,6 +2955,9 @@ def main() -> int:
             v_insee_codes = lookup_aire(
                 aires_by_app, record["name"], cahier_insee(record, commune_idx)
             )
+            if parcel_area_source:
+                # the communes holding the parcel area, as the record is drawn
+                v_insee_codes = insee_codes
             # When parcellaire is available, narrow the aires-CSV commune
             # set to communes that actually contain parcels. Most AOCs are
             # unaffected (every aires-CSV commune holds parcels), but for
@@ -3431,6 +3525,9 @@ def main() -> int:
             "communes_matched": counted_units(geom_source, stats["matched"]),
             "communes_unmatched": stats["unmatched"],
             "geom_source": geom_source,
+            # the communes holding the parcel area, not the aire géographique
+            # (`plan_inventory`, Champagne); sparse
+            **({"parcel_area_communes": parcel_area_source} if parcel_area_source else {}),
             "area": area_deg2,
             "bbox": ",".join(f"{v:.5f}" for v in bbox),
         }
@@ -4013,7 +4110,7 @@ def _sources_for_base(record: dict) -> dict:
         de_spec = record.get("produktspezifikation") or _DE_PRODUKTSPEZIFIKATION_BY_SLUG.get(
             record.get("slug", ""), {}
         )
-        return {
+        de_sources = {
             "country": "de",
             "eur_lex_url": src.get("final_url") or src.get("source_url") or "",
             "eu_oj_publication_url": src.get("source_url") or "",
@@ -4028,6 +4125,7 @@ def _sources_for_base(record: dict) -> dict:
             "ble_n_principal": de_spec.get("n_principal", 0),
             "ble_n_accessory": de_spec.get("n_accessory", 0),
         }
+        return de_sources
     if record.get("country") == "si":
         # Slovenia: only Cviček carries a fetchable EUR-Lex single
         # document. The other 16 are content-stubs whose canonical
@@ -4337,10 +4435,13 @@ def _sources_for_base(record: dict) -> dict:
             "cantonal_roster_url": roster.get("url", ""),
             "cantonal_roster_label": roster.get("label", ""),
             "cantonal_roster_applied_by": roster.get("applied_by", ""),
-            # An intercantonal AOC's area, as each canton's ruling delimits it (Zürichsee).
+            # An intercantonal AOC's area, as each canton's ruling delimits it
+            # (Zürichsee), and a ruling whose body states the wine types while
+            # its roster annex is published apart (Zürich).
             **({"cantonal_area_rulings": rulings} if (rulings := [
                 {"url": s.get("url", ""), "label": s.get("label", "")}
-                for s in sources_list if s.get("kind") == "cantonal-area-ruling"]) else {}),
+                for s in sources_list
+                if s.get("kind") in ("cantonal-area-ruling", "cantonal-ruling")]) else {}),
         }
     if record.get("country") == "be":
         # Belgium: EU-OJ ENIG DOCUMENT (Flemish) or DOCUMENT UNIQUE
@@ -4723,6 +4824,41 @@ def _fingerprint(url: str, file: Path) -> str:
     return f"{url}?v={h.hexdigest()[:8]}"
 
 
+# A French record drawn as a commune union whose cahier sets a parcel area of
+# its own (`fr.parcel_area`) says so on the card (`geom_parcel_area`):
+# "unpublished" — the delimitation exists and is not in INAO's published
+# parcel data (Champagne, Cassis, Bellet); "apart" — INAO publishes it in a
+# resource the build does not read yet (the Martinique rum), and the card says
+# what is drawn and nothing more. Until 2026-11-23 the line said that no parcel
+# delimitation existed (visitor note on Coteaux champenois, 2026-11-22).
+_FR_COMMUNE_UNION_SOURCES = frozenset({"aires-csv", "dgc-village-override", "communes"})
+
+
+def _parcel_area_codes(record: dict, aire_codes, insee_idx: dict, former) -> list[str] | None:
+    """The communes holding a record's parcel area, for a record of
+    `parcel_area_communes.json` (Champagne: 321 of the aire's 617 communes of
+    today), checked against its aire géographique; None otherwise, or when the
+    source is not on disk (then the aire is drawn, said loudly)."""
+    slug = record["slug"]
+    entry = plan_inventory.table().get(slug)
+    if not entry:
+        return None
+    communes = plan_inventory.communes_for(slug)
+    if not communes:
+        print(f"[geo] parcel-area communes {slug}: {entry['source']} not on disk — "
+              "drawn as its aire géographique", file=sys.stderr)
+        return None
+    aire = set(aire_codes)
+    today = {c if c in insee_idx else former.commune_of_today(c) for c in aire}
+    outside = sorted(c for c in communes if c not in aire and c not in today)
+    kept = sorted(c for c in communes if c in aire or c in today)
+    print(f"[geo] parcel-area communes {slug}: {len(kept)} of the aire's {len(today)} "
+          f"communes of today ({entry['source']})"
+          + (f"; not in the aire, not drawn: {', '.join(outside)}" if outside else ""),
+          file=sys.stderr)
+    return kept or None
+
+
 def emit_html(
     features: list[dict],
     overview_features: list[dict],
@@ -4865,6 +5001,7 @@ def emit_html(
         is_stub = False
         parent_slug_for_facts = p.get("parent_slug", "") or ""
         file_number = ""
+        parcel_area_note = None
         # Dűlők (HU named single-vineyards) live in the national-spec
         # sidecar (parsed by stage 02f); the on-disk extracted record is
         # immutable, so read the sidecar directly here (Tokaj → 427).
@@ -4879,8 +5016,17 @@ def emit_html(
         if ext_path.exists():
             rec = json.loads(ext_path.read_text(encoding="utf-8"))
             file_number = rec.get("file_number") or ""
+            if country == "fr" and p.get("geom_source") in _FR_COMMUNE_UNION_SOURCES:
+                parcel_area_note = fr_parcel_area.parcel_area_note(slug, rec.get("sections"))
+                # drawn as the communes holding the parcel area (Champagne)
+                if p.get("parcel_area_communes") == "inao-plan-inventory":
+                    parcel_area_note = "communes-inventory"
+                elif p.get("parcel_area_communes") == "cahier":
+                    parcel_area_note = "communes-cahier"
             summary = derive_summary(rec)
             sources = _sources_for(rec)
+            if parcel_area_note == "communes-inventory":
+                sources = {**sources, "inao_plans": plan_inventory.PORTAL_URL}
             # IT records augmented via MASAF and ES records augmented via
             # the national pliego have an effective source document — the
             # disciplinare di produzione / pliego de condiciones — even
@@ -4970,6 +5116,10 @@ def emit_html(
             for d in rec_grapes.get("details") or []
             if d.get("source") == "section-4-type" and d.get("slug") in set(principal)
         ]
+        # CH: what the card shows of the roster act's list (sparse)
+        roster_cov = rec.get("roster_coverage") or {}
+        roster_coverage = ({k: roster_cov[k] for k in ("entries", "varieties", "codes", "unknown")}
+                           if roster_cov and all_grapes else {})
         styles_inferred = [x for x in (p.get("styles_inferred") or "").split(";") if x]
         # a style read from the production method says so on the card
         styles_note = style_disclosure(STYLE_OVERRIDES, p.get("styles_override") or "")
@@ -5015,6 +5165,9 @@ def emit_html(
             # Closing radius of the low-zoom footprint (panel payload; the
             # card prints it). None for a record without a footprint.
             "geom_lod_radius_m": _LOD_RADIUS_BY_SLUG.get(slug),
+            # FR: a commune union whose cahier sets a parcel area INAO does
+            # not publish (sparse)
+            **({"geom_parcel_area": parcel_area_note} if parcel_area_note else {}),
             # a drinks record: the units its polygon is the union of (sparse)
             **({"geom_drinks": _DRINKS_GEOM_BY_SLUG[slug]} if slug in _DRINKS_GEOM_BY_SLUG else {}),
             # Only a record with a parcellaire gap fill carries the two keys.
@@ -5036,6 +5189,14 @@ def emit_html(
                 {"geom_units_partial": list(
                     _GEOM_UNITS_DISCLOSURE_BY_SLUG[slug]["geom_units_partial"])}
                 if _GEOM_UNITS_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_units_partial")
+                else {}
+            ),
+            # DE: a record drawn from the Gemarkungen its document lists
+            # (Baden, Württemberg) — sparse
+            **(
+                {"geom_gemarkungen": dict(
+                    _GEOM_UNITS_DISCLOSURE_BY_SLUG[slug]["geom_gemarkungen"])}
+                if _GEOM_UNITS_DISCLOSURE_BY_SLUG.get(slug, {}).get("geom_gemarkungen")
                 else {}
             ),
             # FR: former communes of the aire, merged since, that no public
@@ -5078,6 +5239,7 @@ def emit_html(
             # colours the grape-colour floor inferred.
             **({"grape_roles_by_colour": roles_by_colour} if roles_by_colour else {}),
             **({"grapes_section4": section4_names} if section4_names else {}),
+            **({"grapes_roster_coverage": roster_coverage} if roster_coverage else {}),
             **({"styles_inferred": styles_inferred} if styles_inferred else {}),
             **({"styles_note": styles_note} if styles_note else {}),
             "dulok": dulok,

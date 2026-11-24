@@ -1761,8 +1761,12 @@ def _apply_dgc_rules(dgc: dict, parent: dict, dgc_names: list[str]) -> None:
     allowed. A DGC its cahier never singles out keeps the parent's fields."""
     roles = parent.get("section_roles") or {}
     covered_dgc = set().union(*(dgc_rules.dgc_keys(n, parent["name"]) for n in dgc_names))
-    covered = covered_dgc | {dgc_rules.key(a) for a in shared_cahier.aliases(parent["name"])}
-    want = dgc_rules.dgc_keys(dgc["name"], parent["name"])
+    parent_keys = {dgc_rules.key(a) for a in shared_cahier.aliases(parent["name"])}
+    covered = covered_dgc | parent_keys
+    # a DGC alias that is the parent's own name ("Meursault ou Meursault Côte
+    # de Beaune") names the parent's rows, never the DGC's own (2026-11-23:
+    # the red-only « Côte de Beaune » had taken the parent's white)
+    want = dgc_rules.dgc_keys(dgc["name"], parent["name"]) - parent_keys
     own_iii = dgc_rules.dgc_text(roles.get("couleur") or "", want, covered,
                                  dgc_rules.RESERVATION)
     applied: dict[str, str] = {}

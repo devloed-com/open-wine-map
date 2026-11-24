@@ -36,6 +36,8 @@ from datetime import date as _date
 
 from babel.dates import format_date as _format_date
 
+from _lib.script_display import native_html
+
 # Per-jurisdiction regulator-published specification document name, in the
 # regulator's own language — mirrors STUB_DOC_NAMES in map_template.py's JS.
 STUB_DOC_NAMES = {
@@ -150,8 +152,12 @@ def fmt(tpl: str, variables: dict) -> str:
 # ---------------------------------------------------------------- name helpers
 
 def grape_name(slug: str, ctx: RenderCtx) -> str:
-    info = ctx.grapes_info.get(slug)
-    raw = info["name"] if info and info.get("name") else slug.replace("-", " ")
+    """The label interface text gives a grape: the regulator's spelling, and
+    for a Greek or Cyrillic one the Latin form that leads there (`name_latin`).
+    The pill shows the record's own spelling. Mirrors grapeName in
+    query_core.mjs."""
+    info = ctx.grapes_info.get(slug) or {}
+    raw = info.get("name_latin") or info.get("name") or slug.replace("-", " ")
     return to_title_case(raw)
 
 
@@ -236,7 +242,7 @@ def region_label(region: str, ctx: RenderCtx) -> str:
 
 
 def name_with_latin(rec: dict) -> str:
-    native = esc(rec.get("name") or "")
+    native = native_html(rec.get("name") or "")
     latin = rec.get("name_latin") or ""
     if not latin or latin == rec.get("name"):
         return native
@@ -448,16 +454,20 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
     sources = sources or {}
     lab = ctx.labels
     links: list[str] = []
-    if sources.get("boagri"):
+    # BO Agri's cahier, else the EU register's attachment of it (the records
+    # pinned `prefer_cahier`); the browser card's rule, renderSources in app.js.
+    cahier_href = sources.get("boagri") or sources.get("eu_register_cahier")
+    if cahier_href:
         homo = (
             f' — {lab["src_homologated"]} {esc(sources["homologation_date"])}'
             if sources.get("homologation_date")
             else ""
         )
         jorf = f', {lab["src_jorf"]} {esc(sources["jorf_date"])}' if sources.get("jorf_date") else ""
+        cahier_label = lab["src_cahier"] if sources.get("boagri") else lab["src_cahier_eu_register"]
         links.append(
-            f'<li><a href="{esc(sources["boagri"])}" target="_blank" rel="noopener">'
-            f'{lab["src_cahier"]}</a>{homo}{jorf}</li>'
+            f'<li><a href="{esc(cahier_href)}" target="_blank" rel="noopener">'
+            f'{cahier_label}</a>{homo}{jorf}</li>'
         )
     if sources.get("show_texte"):
         links.append(
@@ -468,6 +478,12 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
         links.append(
             f'<li><a href="{esc(sources["product"])}" target="_blank" rel="noopener">'
             f'{lab["src_product"]}</a></li>'
+        )
+    if sources.get("inao_plans"):
+        # the record is drawn from INAO's inventory of delimitation plans
+        links.append(
+            f'<li><a href="{esc(sources["inao_plans"])}" target="_blank" rel="noopener">'
+            f'{lab["src_inao_plans"]}</a></li>'
         )
     if sources.get("eur_lex_url"):
         links.append(
@@ -488,6 +504,13 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
         links.append(
             f'<li><a href="{esc(sources["bml_produktspezifikation_url"])}" target="_blank" rel="noopener">'
             f'{lab["src_bml_produktspezifikation"]}</a>{note}</li>'
+        )
+    if sources.get("ble_produktspezifikation_url"):
+        # the DE national specification: roles, a grandfathered region's link
+        # text, and since 2026-11-17 Baden's Gemarkung list — never a row until then
+        links.append(
+            f'<li><a href="{esc(sources["ble_produktspezifikation_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_ble_produktspezifikation"]}</a></li>'
         )
     if sources.get("national_spec_url"):
         org = (
@@ -597,6 +620,49 @@ def render_sources(sources: dict | None, ctx: RenderCtx) -> str:
         links.append(
             f'<li><a href="{esc(eambrosia_url)}" target="_blank" rel="noopener">'
             f'{lab["src_eambrosia"]}</a>{file_num}</li>'
+        )
+    # Switzerland: the cantonal ordinance, the act that holds the roster, the
+    # rulings that delimit an intercantonal area and the federal register —
+    # in the browser card since the CH build; the server-rendered card listed
+    # the trade body alone until 2026-11-17.
+    if sources.get("cantonal_reglement_url"):
+        tail = (f' — {esc(sources["cantonal_reglement_label"])}'
+                if sources.get("cantonal_reglement_label") else "")
+        links.append(
+            f'<li><a href="{esc(sources["cantonal_reglement_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_cantonal_reglement"]}</a>{tail}</li>'
+        )
+    if sources.get("cantonal_roster_url"):
+        tail = (f' — {esc(sources["cantonal_roster_label"])}'
+                if sources.get("cantonal_roster_label") else "")
+        via = (f' · {esc(sources["cantonal_roster_applied_by"])}'
+               if sources.get("cantonal_roster_applied_by") else "")
+        links.append(
+            f'<li><a href="{esc(sources["cantonal_roster_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_cantonal_reglement"]}</a>{tail}{via}</li>'
+        )
+    for ruling in sources.get("cantonal_area_rulings") or []:
+        links.append(
+            f'<li><a href="{esc(ruling.get("url") or "")}" target="_blank" rel="noopener">'
+            f'{lab["src_cantonal_reglement"]}</a> — {esc(ruling.get("label") or "")}</li>'
+        )
+    if sources.get("gov_uk_spec_url"):
+        fmt_tail = (f' — {esc(str(sources["spec_format"]).upper())}'
+                    if sources.get("spec_format") else "")
+        links.append(
+            f'<li><a href="{esc(sources["gov_uk_spec_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_gov_uk_spec"]}</a>{fmt_tail}</li>'
+        )
+    if sources.get("gov_uk_register_url"):
+        file_num = f' — {esc(sources["file_number"])}' if sources.get("file_number") else ""
+        links.append(
+            f'<li><a href="{esc(sources["gov_uk_register_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_gov_uk_register"]}</a>{file_num}</li>'
+        )
+    if sources.get("ofag_repertoire_url"):
+        links.append(
+            f'<li><a href="{esc(sources["ofag_repertoire_url"])}" target="_blank" rel="noopener">'
+            f'{lab["src_ofag_repertoire"]}</a></li>'
         )
     syndicate = sources.get("syndicate")
     if syndicate and syndicate.get("url"):
@@ -831,6 +897,25 @@ def _section4_line(rec: dict, lab: dict) -> str:
             f'{fmt(lab[key], {"names": esc(", ".join(names))})}</div>')
 
 
+def _roster_coverage_line(rec: dict, lab: dict) -> str:
+    """A Swiss roster read from the act its ordinance delegates to, where the
+    card shows less than the list prints: how many varieties for how many
+    entries, and what is left out. Mirrors rosterCoverageLine in app.js."""
+    cov = rec.get("grapes_roster_coverage") or {}
+    codes, unknown = cov.get("codes", 0), cov.get("unknown", 0)
+    if not (codes or unknown):
+        return ""
+    rest = ", ".join(
+        fmt(lab[key], {"n": n})
+        for key, n in (("grapes_roster_codes", codes), ("grapes_roster_unknown", unknown)) if n
+    )
+    entries = cov.get("entries", 0)
+    line = fmt(lab["grapes_roster_coverage"], {
+        "resolved": entries - codes - unknown, "n": entries,
+        "shown": cov.get("varieties", 0), "rest": rest})
+    return f'<div class="approx-line role-conflict">{esc(line)}</div>'
+
+
 def _grape_pill(g: str, cls: str, rec: dict, ctx: RenderCtx) -> str:
     info = ctx.grapes_info.get(g)
     role_note = _role_by_colour_text((rec.get("grape_roles_by_colour") or {}).get(g), ctx.labels)
@@ -845,9 +930,9 @@ def _grape_pill(g: str, cls: str, rec: dict, ctx: RenderCtx) -> str:
         or ""
     )
     if canon and not canonical_equals_cahier(canon, cahier_name):
-        label_inner = f'{esc(cahier_name)} <span class="canon">({esc(canon)})</span>'
+        label_inner = f'{native_html(cahier_name)} <span class="canon">({esc(canon)})</span>'
     else:
-        label_inner = esc(cahier_name)
+        label_inner = native_html(cahier_name)
     return (
         f'<a class="{cls2}" data-slug="{esc(g)}"{role_attrs} href="{esc(grape_url(g, ctx))}" '
         f'target="_blank" rel="noopener">{label_inner}</a>'
@@ -1073,7 +1158,11 @@ def _geom_source_line(rec: dict, lab: dict) -> str:
     if gs in ("figshare-pdo", "figshare-pdo-alias"):
         return esc(lab["geom_src_betard"])
     if gs == "region-pdo-union":
+        if (rec.get("geom_gemarkungen") or {}).get("member_union"):
+            return _gemarkung_line(rec, lab)
         return esc(lab["geom_src_pdo_union"])
+    if gs in ("lgl-gemarkung-union", "alkis-gemarkung-union"):
+        return _gemarkung_line(rec, lab)
     sources = rec.get("sources") or {}
     if gs.startswith("caop-") and sources.get("area_act_url"):
         act = (
@@ -1084,8 +1173,57 @@ def _geom_source_line(rec: dict, lab: dict) -> str:
     if gs.startswith(_ADMIN_UNION_PREFIXES) or gs in (
         "nuts2-province", "geometry-research-municipios", "drinks-area-pin",
     ):
-        return esc(lab["geom_src_admin_union"]) + _drinks_units_text(rec, lab)
+        # units the document does not list: our reading of its description
+        reading = (rec.get("geom_drinks") or {}).get("reading")
+        lead = lab["geom_src_admin_reading"] if reading else lab["geom_src_admin_union"]
+        return esc(lead) + _drinks_units_text(rec, lab)
     return ""
+
+
+LGL_URL = "https://www.lgl-bw.de"
+DL_DE_BY_URL = "https://www.govdata.de/dl-de/by-2-0"
+
+
+def _gemarkung_line(rec: dict, lab: dict) -> str:
+    """A record drawn from the Gemarkungen its document lists (Baden,
+    Württemberg): how many, whose boundaries, the Bavarian Gemeinden beside
+    them and any number read through a pin — or a Landwein drawn as the
+    union of such members. Mirrors ``gemarkungLine`` in app.js."""
+    gg = rec.get("geom_gemarkungen") or {}
+    if gg.get("credits"):
+        # the other Länder: one credit per layer, each with its own licence
+        source = "; ".join(
+            f'<a href="{esc(c.get("url") or "")}" target="_blank" rel="noopener">'
+            f'{esc(c.get("text") or "")}</a>'
+            + (f' · <a href="{esc(c["licence_url"])}" target="_blank" rel="noopener">'
+               f'{esc(c.get("licence") or "")}</a>' if c.get("licence_url") else "")
+            for c in gg["credits"]
+        )
+    else:
+        source = (
+            f'<a href="{LGL_URL}" target="_blank" rel="noopener">'
+            f'{esc(gg.get("attribution") or "LGL-BW")}</a> · '
+            f'<a href="{DL_DE_BY_URL}" target="_blank" rel="noopener">dl-de/by-2-0</a>'
+        )
+    if gg.get("member_union"):
+        out = fmt(esc(lab["geom_src_pdo_union_gemarkungen"]), {"source": source})
+        if gg.get("mixed"):
+            out += " " + esc(lab["geom_src_pdo_union_mixed"])
+        return out
+    lead = lab["geom_src_gemarkungen_named"] if gg.get("named") else lab["geom_src_gemarkungen"]
+    out = fmt(esc(lead), {"n": gg.get("n") or 0, "source": source})
+    if gg.get("gemeinden"):
+        out += " " + esc(fmt(lab["geom_gemarkung_gemeinden"],
+                             {"names": ", ".join(gg["gemeinden"])}))
+    if gg.get("whole"):
+        out += " " + esc(fmt(lab["geom_gemarkung_whole"],
+                             {"names": ", ".join(gg["whole"])}))
+    elif gg.get("whole_n"):
+        out += " " + esc(fmt(lab["geom_gemarkung_whole_n"], {"n": gg["whole_n"]}))
+    if gg.get("pinned"):
+        pinned = lab["geom_gemarkung_pinned_names"] if gg.get("credits") else lab["geom_gemarkung_pinned"]
+        out += " " + esc(fmt(pinned, {"names": "; ".join(gg["pinned"])}))
+    return out
 
 
 def _drinks_units_text(rec: dict, lab: dict) -> str:
@@ -1282,7 +1420,12 @@ def _approx_line(rec: dict, ctx: RenderCtx) -> str:
             },
         )
     elif gs in ("aires-csv", "dgc-village-override", "communes"):
-        line = esc(fmt(lab["geom_approx_aires_union"], {"n": rec.get("communes_matched") or 0}))
+        key = {"unpublished": "geom_approx_aires_union_parcels",
+               "apart": "geom_approx_aires_union_plain",
+               "communes-inventory": "geom_approx_parcel_area_inventory",
+               "communes-cahier": "geom_approx_parcel_area_cahier"}.get(
+                   rec.get("geom_parcel_area") or "", "geom_approx_aires_union")
+        line = esc(fmt(lab[key], {"n": rec.get("communes_matched") or 0}))
         # a French record whose area crosses the border: the foreign units
         line += _drinks_units_text(rec, lab)
     else:
@@ -1306,6 +1449,7 @@ _APPROX_GEOM_SOURCES = frozenset({
     "sibling-dgc", "parent-appellation", "aires-csv-dgc", "pdo-plan-parcel-hull-approx",
     "aires-csv", "dgc-village-override", "communes", "figshare-pdo", "figshare-pdo-alias",
     "region-pdo-union", "nuts2-province", "geometry-research-municipios",
+    "lgl-gemarkung-union", "alkis-gemarkung-union",
 })
 _APPROX_GEOM_PREFIXES = ("gisco-", "caop-", "swissboundaries-")
 
@@ -1408,7 +1552,7 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
         else ""
     )
     role_conflict = _role_conflict_line(rec, lab) if principal else ""
-    section4_line = _section4_line(rec, lab) if principal else ""
+    section4_line = (_section4_line(rec, lab) + _roster_coverage_line(rec, lab)) if principal else ""
     inferred_line = (
         f'<div class="approx-line styles-inferred">{esc(lab["styles_inferred_line"])}</div>'
         if rec.get("styles_inferred") else ""
@@ -1422,7 +1566,7 @@ def render_content_block(rec: dict, slug: str, ctx: RenderCtx, children=None) ->
 
     # every region the record is listed under (_lib/region_aliases.py)
     region = ", ".join(region_label(r, ctx) for r in [rec.get("region"), *(rec.get("region_aliases") or [])] if r)
-    region_seg = f" · {esc(region)}" if region else ""
+    region_seg = f" · {native_html(region)}" if region else ""
     country_chip = country_chip_html(country, rec.get("country_aliases"), ctx)
     country_seg = f"{country_chip} · " if country_chip else ""
     meta_tail = _meta_tail(rec, ctx)

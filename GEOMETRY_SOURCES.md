@@ -261,6 +261,132 @@ single document itself; no separate national / regional layer needed.
 
 ---
 
+## Germany — Baden and Württemberg from their Gemarkungen (2026-11-17)
+
+Bétard 2022 draws eleven of the thirteen Anbaugebiete at municipality
+resolution and the two of Baden-Württemberg as whole Landkreise: Württemberg
+10,757 km² (326 of its 373 communes in 13 whole Kreise — all of the
+Rhein-Neckar-Kreis and the Neckar-Odenwald-Kreis, where the delimitation
+names Neckarzimmern alone — and no Leonberg, Ravensburg, Taldorf or
+Oberderdingen, which it does name), Baden 13,231 km² (374 of 398 in 15 whole
+Kreise), the two overlapping on 4,157 km². A visitor flagged Württemberg's
+boundary on 2026-11-16.
+
+Both delimitations are written in **Gemarkungen** (cadastral districts) with
+their land-register number — Württemberg's EU single document (OJ
+C/2025/5177, section 6: 275) and Baden's BLE Produktspezifikation (§ 4: 353,
+by Bereich) list "die Rebflächen folgender Gemeinden (Gemarkungen) und deren
+Ortsteile: Abstatt (835), Adolzfurt (371) …" — and the state survey
+publishes exactly that unit:
+
+| Source | Used by | Licence |
+|---|---|---|
+| **LGL Baden-Württemberg — ALKIS Verwaltungs- und Katasterbezirksgrenzen, Gemarkungen** — WFS `owsproxy.lgl-bw.de/owsproxy/wfs/WFS_LGL-BW_ALKIS_VGr_KatGr_E`, layer `nora:v_al_gemarkung` (3,380 Gemarkungen, EPSG:25832, refreshed daily; attributes `gemarkung_id`, `gemarkung_name`, `gemeinde_id`, `gemeinde_name`, `kreis_name`) | `lgl-gemarkung-union` — Baden, Württemberg, and through them the seven Landwein PGIs drawn as unions of the two | **Datenlizenz Deutschland – Namensnennung – Version 2.0** (dl-de/by-2-0, https://www.govdata.de/dl-de/by-2-0). Attribution as the service states it: "LGL-BW (year of retrieval) Datenlizenz Deutschland – Namensnennung – Version 2.0, www.lgl-bw.de" — printed on the card's area line with the licence link and the word that the boundaries are merged and generalised |
+| Eurostat GISCO LAU 2024 | The Bavarian units Württemberg names without a number — the Gemeinden Nonnenhorn, Wasserburg and Bodolz, and Lindau, drawn whole for its Gemarkungen Hoyren and Aeschach (disclosed as partial) | Open data |
+| Bétard 2022 EU_PDO.gpkg | The other eleven Anbaugebiete; Baden / Württemberg only when under 95 % of their numbers resolve | CC0 |
+
+The layer's `gemarkung_id` **is** the number the documents print (Oberstenfeld
+920, Gronau 921), so the join needs no name matching; the printed name is
+checked against the layer's Gemarkung or Gemeinde name for each number, as a
+guard against a mistyped number (0 disagreements in 628 units; Saxony's
+Landwein prints its own register's numbers the same way and none agrees, so
+it is left alone). One number is absent from the register — «Stetten (761)»,
+Stetten am Heuchelberg, which is 768 — and is pinned with its evidence in
+`scripts/_lib/de/gemarkung_pins.json`; the card names the pin. Stage 00
+(`scripts/de/00_fetch_data.py`) pages the whole layer into
+`raw/de/lgl/gemarkungen.gpkg` (42 MB; not sha-pinned — the service changes
+daily — the manifest records the retrieval time and the count).
+
+Result: Württemberg 2,758 km² in 21 parts, Baden 3,607 km² in 45; the true
+delimitation is the vineyard parcels inside those Gemarkungen ("Die genaue
+Abgrenzung ergibt sich aus den Karten mit den parzellenmäßig abgegrenzten
+Rebflächen"), so the card still says "approximate area".
+
+The Landweine: Badischer Landwein and Landwein Oberrhein list the whole of
+Baden by name (no numbers), Landwein Neckar and Schwäbischer Landwein the
+whole of Württemberg, Landwein Rhein-Neckar both — they are drawn as the
+union of the region(s), so they follow. Reading each specification's own area
+section showed three member rows that did not match it: Landwein Main is
+Franken's ground only (Bavarian communes), Landwein Rhein-Neckar has no place
+of Rheinhessen or the Pfalz, and Bayerischer Bodensee-Landwein is three
+communes of the Lindau shore, not Baden — corrected the same day
+(`DE_PGI_MEMBER_PDOS`, `DE_LANDWEIN_AREA`).
+
+Not done: the Bavarian Gemarkungen Hoyren and Aeschach (the LDBV publishes
+Gemarkungen as open data; Lindau is drawn whole meanwhile, disclosed); the
+Landweine's unnumbered lists bound name by name through the layer's
+`gemarkung_name`; Saxony prints register numbers the same way. Rheinland-Pfalz
+followed on 2026-11-24 (next section).
+
+## Germany — the other Länder's Gemarkungen and the Gemeinde lists (2026-11-24)
+
+Three queued rows of the Ahr triage — the Rheingau without Frankfurt am Main,
+Mittelrhein's part in Nordrhein-Westfalen drawn as three whole cities,
+Saale-Unstrut never checked — had one cause: Bétard draws municipalities, the
+texts name other units, and no German polygon had been read against its own
+text. Every Land concerned publishes its Gemarkung boundaries as open data
+(services read 2026-11-24; `scripts/_lib/de/katasterbezirk.py`, stage 00 →
+`raw/de/katasterbezirke/<land>.gpkg`, one schema, a manifest entry per Land):
+
+| Land | Layer | Read | Licence, credit |
+|---|---|---|---|
+| Nordrhein-Westfalen | Geobasis NRW, WFS `wfs_nw_alkis_vereinfacht`, `ave:KatasterBezirk` (AdV "ALKIS vereinfacht" 2.0; `art` = Gemarkung, never the Fluren) | Bonn and the Rhein-Sieg-Kreis, 162 Gemarkungen | dl-de/zero-2-0 — "Geobasis NRW" |
+| Rheinland-Pfalz | LVermGeo, OGC API Features collection `vermkv:gemarkungen_rlp` (`gmkgnr` = 07 + the number the specifications print) | the whole Land, 3,111 | dl-de/by-2-0 — "© GeoBasis-DE / LVermGeoRP" |
+| Sachsen-Anhalt | LVermGeo, WFS `ST_LVermGeo_ALKIS_WFS_Gemarkung_Flur_OpenData`, `ave:KatasterBezirk` | Burgenlandkreis, Harz, Mansfeld-Südharz, Saalekreis, Salzlandkreis, 658 | dl-de/by-2-0 — "© GeoBasis-DE / LVermGeo ST" (Nutzungsbedingungen of 1 March 2024, Nr. 2) |
+| Thüringen | TLBG, WFS `adv_alkis_wfs`, `ave:KatasterBezirk` in schema 1.0 (no Gemeinde key: the Gemeinde is the GISCO commune the Gemarkung's inner point falls in) | the whole Land, 2,704 | CC BY 4.0 — "© GDI-Th" |
+| Brandenburg | LGB, WFS `alkis_vereinf_wfs`, `ave:KatasterBezirk` | Potsdam-Mittelmark, 193 | dl-de/by-2-0 — "© GeoBasis-DE/LGB" |
+
+(Hessen publishes the same layer; the Rheingau and the Hessische Bergstraße
+list Städte and Gemeinden, so it is not read. The Saarland's was not found:
+Mosel's four Gemarkungen of Perl are drawn as the Gemeinde, disclosed.)
+
+`scripts/_lib/de/area_units.py` reads the layouts outside Baden-Württemberg
+and Bavaria and binds each unit, never by guessing — a number only when the
+printed name agrees with the register's name for it and with the Kreis the
+text glosses it with, a name only when it names one unit inside the Land and
+the Kreis or Gemeinde the text gives:
+
+| Record | The text names | Bétard drew | Now |
+|---|---|---|---|
+| Rheingau | 12 Städte and Gemeinden of Hessen (BLE § 3), Frankfurt am Main among them | 11, 601 km² | the 12, 850 km² (`gisco-commune-union`) |
+| Mittelrhein | 61 numbered Gemarkungen of Rheinland-Pfalz; in Nordrhein-Westfalen "der Stadt Königswinter mit den Gemarkungen Oberdollendorf, Niederdollendorf und Königswinter, der Stadt Bad Honnef mit der Gemarkung Honnef (Rhöndorf) und der Stadt Bonn mit der Gemarkung Kessenich" | 52 whole municipalities, 949 km² (Bonn 141 km² for Kessenich) | the 66 Gemarkungen, 601 km² |
+| Saale-Unstrut | 96 Gemarkungen by Kreis in Sachsen-Anhalt, Thüringen and Brandenburg, two Ortsteile of Weimar, "die kreisfreien Städte Jena und Erfurt" | 48 whole municipalities, 3,274 km²; six communes holding a named Gemarkung not whole | 99 Gemarkungen and the two cities, 1,330 km² |
+| Mosel, Nahe, Pfalz | 201 / 101 / 187 numbered Gemarkungen (the queued "all Rhineland-Palatinate regions" row) | 1,698 / 800 / 1,644 km² | 1,549 / 697 / 1,480 km² |
+| Rheinhessen | 133 Gemeinden, 16 of them with their districts in a bracket ("Bingen am Rhein (Bingen, Büdesheim, … Sponsheim)" — not Bingerbrück, which the Nahe lists) | 1,326 km² | 117 Gemeinden and 58 Gemarkungen, 1,273 km² |
+| Ahr, Hessische Bergstraße | 7 / 9 Gemeinden | the same communes | unchanged in shape, drawn from the text |
+
+What the numbers showed: all 546 numbers the four Rhineland regions print
+are Gemarkungen of that name in the Land's register but one — Mittelrhein's
+"Breitscheid (Landkreis Mainz-Bingen) (0261)", where 0261 is the Breitscheid
+of the Landkreis Neuwied and the Kreis the text gives is Gemarkung 3501,
+beside Steeg 3502 and Bacharach 3503. The Kreis decides; pinned with its
+evidence (`scripts/_lib/de/area_unit_pins.json`, as are three names of
+Saale-Unstrut the register carries otherwise: Stedten, which the text files
+under the wrong Kreis, and the former Gemeinden Kromsdorf and
+Dorndorf-Steudnitz, each two Gemarkungen today). One name is not drawn and is
+named on the card: Saale-Unstrut's «Graitschen … im Saale-Holzland-Kreis»,
+where the Kreis has Graitschen auf der Höhe and Graitschen bei Bürgel.
+
+**The Landweine have lists of their own**, and six were drawn from a member
+table that did not match them: Landwein der Saar (19 Gemarkungen,
+147 km²) and Landwein der Ruwer (11, 50 km²) had been all of the Mosel;
+Rheinischer Landwein is Rheinhessen's list, not Rheinhessen + Nahe + Pfalz +
+Mittelrhein; Rheinburgen-Landwein is Mittelrhein's, without the Ahr;
+Mitteldeutscher Landwein is Saale-Unstrut's Gemarkungen of Sachsen-Anhalt and
+Thüringen, without Saxony; Landwein Rhein's 578 units include the Hessische
+Bergstraße. Saarländischer Landwein — 24 Gemeinden by Landkreis — had no
+polygon and so was on neither the map nor the sidebar. A record with a list
+that binds is drawn from it, ahead of its member row; the rows were corrected
+to what each list covers (they remain the fallback and the source of the
+region aliases).
+
+Not done: Sachsen and Sächsischer Landwein (boundary prose; postcodes),
+Mecklenburger and Schleswig-Holsteinischer Landwein (prose), the eight names
+of Landwein Rhein that bind nothing (three misprints, three communes merged
+since, Urbar twice in the Land), a Saarland Gemarkung layer.
+
+---
+
 ## Slovenia — for completeness
 
 SI is Bétard-PDO + region-union-for-IGP only.

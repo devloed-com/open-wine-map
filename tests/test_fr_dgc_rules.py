@@ -360,3 +360,52 @@ def test_a_heading_scope_ends_at_the_next_dgc_row():
     assert slugs(dgc_text(SAVOIE_V, savoie_keys("Vin de Savoie Chignin-Bergeron"), savoie_covered())) == {"roussanne"}
     assert slugs(dgc_text(SAVOIE_V, savoie_keys("Vin de Savoie Crépy"), savoie_covered())) == {
         "chasselas", "aligote", "gringet"}
+
+
+# ---- Meursault (BO Agri, 11 juin 2026): a colour row per premier-cru climat
+
+MEURSAULT = "Meursault"
+MEURSAULT_III = """APPELLATION D’ORIGINE CONTRÔLÉE,
+                                                                          COULEUR ET TYPE DE
+       MENTION, NOM DE CLIMAT, DENOMINATION
+                                                                               PRODUIT
+          GEOGRAPHIQUE COMPLEMENTAIRE
+AOC « Meursault »                                                      Vins tranquilles blancs ou rouges
+
+AOC « Meursault » complétée par la mention « premier cru »              Vins tranquilles blancs ou rouges
+
+
+                                    « Blagny »                          Vins tranquilles blancs
+                                    « Charmes »                         Vins tranquilles blancs ou rouges
+                                    « La Jeunellotte »                  Vins tranquilles blancs
+                                    « Les Santenots du Milieu »         Vins tranquilles blancs
+                                    « Perrières »                       Vins tranquilles blancs ou rouges
+
+Dénomination géographique complémentaire « Côte de Beaune »             Vins tranquilles rouges
+"""
+MEURSAULT_DGCS = [
+    "Meursault premier cru", "Meursault premier cru Blagny", "Meursault premier cru Charmes",
+    "Meursault premier cru La Jeunellotte", "Meursault premier cru Les Santenots du Milieu",
+    "Meursault premier cru Perrières", "Meursault ou Meursault Côte de Beaune",
+]
+
+
+def _meursault_colours(name: str) -> set[str]:
+    parent_keys = {"meursault"}
+    covered = set().union(*(dgc_keys(n, MEURSAULT) for n in MEURSAULT_DGCS)) | parent_keys
+    want = dgc_keys(name, MEURSAULT) - parent_keys  # as stage 02 builds it
+    text = dgc_text(MEURSAULT_III, want, covered, RESERVATION)
+    return colours(text) if text is not None else set()
+
+
+def test_a_premier_cru_climat_matches_its_row_by_the_climat_name():
+    # visitor flags on Meursault 2026-11-22 (card validator): every climat
+    # had shown red and white; ten are white only
+    assert "la jeunellotte" in dgc_keys("Meursault premier cru La Jeunellotte", MEURSAULT)
+    assert _meursault_colours("Meursault premier cru La Jeunellotte") == {"white"}
+    assert _meursault_colours("Meursault premier cru Les Santenots du Milieu") == {"white"}
+    assert _meursault_colours("Meursault premier cru Charmes") == {"white", "red"}
+
+
+def test_an_alias_equal_to_the_parent_name_does_not_take_the_parents_row():
+    assert _meursault_colours("Meursault ou Meursault Côte de Beaune") == {"red"}

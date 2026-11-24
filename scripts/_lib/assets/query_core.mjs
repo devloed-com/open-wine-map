@@ -171,10 +171,22 @@ export function createQueryCore(ctx) {
     return out;
   }
 
+  // The label interface text gives a grape — a filter chip, a search row, a
+  // prose line, an MCP answer: the regulator's spelling, and for a Greek or
+  // Cyrillic one the Latin form that leads there (`name_latin`: the
+  // catalogue's name, else the national standard). The card's pill shows the
+  // record's own spelling instead. Mirrored by grape_name in content_block.py.
   function grapeName(slug) {
     const info = (ctx.grapesInfo || {})[slug];
-    const raw = (info && info.name) ? info.name : slug.replace(/-/g, ' ');
+    const raw = (info && (info.name_latin || info.name)) || slug.replace(/-/g, ' ');
     return toTitleCase(raw);
+  }
+
+  // The regulator's own spelling where it is in another script ("Мавруд" for
+  // the label "Mavrud"), else ''. Shown in brackets where there is room.
+  function grapeNative(slug) {
+    const info = (ctx.grapesInfo || {})[slug];
+    return (info && info.name_latin && info.name && info.name !== info.name_latin) ? info.name : '';
   }
 
   // Every region a record is listed under: its own and, for one spanning
@@ -241,7 +253,8 @@ export function createQueryCore(ctx) {
     }
     if (!hits.size) for (const slug in (ctx.grapesInfo || {})) {
       const info = ctx.grapesInfo[slug] || {};
-      if (searchNormalize(slug) === nq || searchNormalize(info.name) === nq) hits.add(slug);
+      if (searchNormalize(slug) === nq || searchNormalize(info.name) === nq
+          || (info.name_latin && searchNormalize(info.name_latin) === nq)) hits.add(slug);
     }
     if (!hits.size) for (const k in aocs) {
       for (const s of aocs[k].grapes_all || []) if (searchNormalize(s) === nq) hits.add(s);
@@ -283,7 +296,8 @@ export function createQueryCore(ctx) {
     for (const e of grapeIndexNorm) if (e.aliasesN.includes(nq)) return e.entry.slug;
     for (const slug in (ctx.grapesInfo || {})) {
       const info = ctx.grapesInfo[slug] || {};
-      if (searchNormalize(slug) === nq || searchNormalize(info.name) === nq) return slug;
+      if (searchNormalize(slug) === nq || searchNormalize(info.name) === nq
+          || (info.name_latin && searchNormalize(info.name_latin) === nq)) return slug;
     }
     return null;
   }
@@ -579,7 +593,7 @@ export function createQueryCore(ctx) {
 
   return {
     searchForms, searchScore, searchableText, regionSearchForms, expandGrapeSet,
-    grapeName, regionLabel, countryLabel, brief, search, filter, full, facets,
+    grapeName, grapeNative, regionLabel, countryLabel, brief, search, filter, full, facets,
     grapeKeyFor, styleKeyFor, regionKeyFor, viewFromQuery, queryFromView, VIEW_KEYS,
   };
 }

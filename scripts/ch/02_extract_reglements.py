@@ -70,6 +70,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from _lib.ch import roster_rulings  # noqa: E402
 from _lib.ch.canton import CANTON_CAPITAL, canton_name, source_lang_for_canton  # noqa: E402
 from _lib.ch.geometry import CHCommuneIndex  # noqa: E402
 from _lib.ch.ofag_register import slugify  # noqa: E402
@@ -121,6 +122,9 @@ ROSTER_BY_REFERENCE: dict[str, tuple[str, str]] = {
     "so": ("bl", "BGS 516.34 § 1 Abs. 2: «Es gelten im Kanton Solothurn die Bestimmungen der "
                  "Verordnung über den Pflanzenbau des Kantons Basel-Landschaft, Kapitel C. Weinbau»"),
 }
+
+
+ROSTER_RULINGS = roster_rulings.load()
 
 
 def _load_reglement_manifest() -> dict:
@@ -317,6 +321,19 @@ def _build_record(entry, parents_by_canton, canton_data, ofag_source):
         grapes = ref["varieties"]
         sources.append({**ref["source"], "kind": "cantonal-reglement-roster",
                         "applied_by": applied_by})
+    # A roster the ordinance leaves to an administrative ruling (Schwyz: the
+    # Amt für Landwirtschaft's Allgemeinverfügungen for «AOC Schwyz» and
+    # «AOC Zürichsee», each with a variety annex).
+    ruling = ROSTER_RULINGS.get(slug)
+    roster_coverage: dict = {}
+    if not grapes and ruling:
+        set_pliego_context(f"ch::{slug}::ruling")
+        grapes = roster_rulings.varieties(ruling, match_variety)
+        if grapes:
+            sources.append(roster_rulings.source(ruling))
+            cov = roster_rulings.coverage(ruling, match_variety)
+            if cov["codes"] or cov["unknown"]:
+                roster_coverage = cov
     styles: list[str] = []
     by_colour = (extract.get("colour_varieties") if extract else {}) or {}
     if by_colour.get("red") and by_colour.get("white"):
@@ -329,6 +346,17 @@ def _build_record(entry, parents_by_canton, canton_data, ofag_source):
             grapes = by_colour["white" if tier == "white" else "red"]
         else:
             grapes = by_colour["red"] + by_colour["white"]
+    # The wine types the roster act's own clauses name (Schwyz, Zürichsee,
+    # Zürich: "Auch Schaum-, Perl- und Likörweine können die kontrollierte
+    # Ursprungsbezeichnung tragen", the Réserve rule's Rotweine and
+    # Weissweine, Spätlese, Beerenauslese, Roséwein).
+    styles_evidence: dict = {}
+    if ruling and not styles:
+        styles_evidence = roster_rulings.styles(ruling)
+        styles = sorted(styles_evidence)
+        types_source = roster_rulings.types_source(ruling)
+        if styles and types_source:
+            sources.append(types_source)
     # Per-AOC carving (multi-AOC cantons VD/BE/FR): if the canton's
     # extract has a per-AOC commune list for this slug, that wins over
     # the canton-wide commune list. Sub-AOCs WITHOUT a specific carved
@@ -373,7 +401,11 @@ def _build_record(entry, parents_by_canton, canton_data, ofag_source):
             "link_to_terroir": "",
         },
         "grapes": {"details": grapes},
+        # the list of the roster act where the card shows less than it prints
+        # (breeder codes, names the lexicon lacks) — the card says so
+        **({"roster_coverage": roster_coverage} if roster_coverage else {}),
         **({"styles": styles} if styles else {}),
+        **({"styles_evidence": styles_evidence} if styles_evidence else {}),
         "geo_communes": communes,
         "n_grapes": len(grapes),
         "n_communes": len(communes),

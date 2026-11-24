@@ -278,6 +278,20 @@
         "terras-do-dao"
       ],
       "reason": "Cedrim and Couto de Esteves (Sever do Vouga), in both IGP texts: Beira Atlântico takes 'O distrito de Aveiro, com exceção dos municípios de Arouca, Castelo de Paiva e Vale de Cambra e, do município de Oliveira de Azeméis, a freguesia de Ossela', which keeps all of Sever do Vouga; Terras do Dão takes 'no município de Sever do Vouga e da União de Freguesias de Cedrim e Paradela, apenas a freguesia de Cedrim' and, for its sub-região Terras de Lafões, 'no município de Sever do Vouga, a freguesia Couto de Esteves e da União de Freguesias de Cedrim e Paradela, apenas a freguesia de Cedrim' (2026-10-13)."
+    },
+    {
+      "pair": [
+        "mittelrhein",
+        "mosel"
+      ],
+      "reason": "The Gemarkung Koblenz (land-register number 1401, 25.4 km² — the city's own Gemarkung at the confluence, on both rivers) is in both delimitations: Mittelrhein's single document (C/2026/738) lists «Koblenz (Ehrenbreitstein (1416), Koblenz (1401), Niederberg (1413))», the Mosel's (C/2026/1628) «Koblenz (Güls (1405), Koblenz (1401), Lay (1403), Metternich (1407), Moselweiß (1402))». The overlap is that one Gemarkung, drawn from LVermGeo Rheinland-Pfalz's layer for both since 2026-11-24 (scripts/_lib/de/area_units.py): the regulator's double listing, not a border commune assigned twice by us."
+    },
+    {
+      "pair": [
+        "landwein-der-mosel",
+        "rheinburgen-landwein"
+      ],
+      "reason": "The Gemarkung Koblenz (land-register number 1401, 25.4 km² — the city's own Gemarkung at the confluence, on both rivers) is in both delimitations: Mittelrhein's single document (C/2026/738) lists «Koblenz (Ehrenbreitstein (1416), Koblenz (1401), Niederberg (1413))», the Mosel's (C/2026/1628) «Koblenz (Güls (1405), Koblenz (1401), Lay (1403), Metternich (1407), Moselweiß (1402))». The overlap is that one Gemarkung, drawn from LVermGeo Rheinland-Pfalz's layer for both since 2026-11-24 (scripts/_lib/de/area_units.py): the regulator's double listing, not a border commune assigned twice by us. The two Landweine print their Anbaugebiet's list, Koblenz (1401) included."
     }
   ]
 }

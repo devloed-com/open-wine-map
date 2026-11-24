@@ -108,6 +108,7 @@ WIKI_LANG_BY_COUNTRY = {
 # Text-bearing keys of an extracted record or a sidecar, in the order the
 # judge should read them. Dict-valued keys are joined section by section.
 _TEXT_KEYS = ("summary", "description_text", "geo_area", "geo_area_brief", "geo_area_text",
+              "area_text",
               "section_text", "link_to_terroir_full", "link_to_terroir", "zusammenhang_text",
               "region_terroir_text", "max_yields", "demarcation")
 _SECTION_DICT_KEYS = ("sections", "article_bodies")
@@ -381,6 +382,32 @@ def source_documents(country: str, slug: str, *, source_lang: str | None = None,
             if side and (not region or side.get("region") == region):
                 push("national-spec", "SZPI CHZO specification (region)", p, side.get("source_url") or "",
                      text_blocks(side, label="SZPI CHZO specification"))
+    if country == "ch":
+        # A Swiss record keeps one paragraph of its ordinance; the judge needs
+        # the text (Jura's note quotes Art. 12) and, where the roster is an
+        # administrative ruling's annex, the annex as transcribed.
+        canton = (rec or {}).get("canton") or ""
+        manifest = load_json(RAW / "ch" / "reglements" / "manifest.json") or {}
+        entry = (manifest.get("by_canton") or {}).get(canton) or {}
+        path = RAW / "ch" / "reglements" / canton / (entry.get("filename") or "")
+        if canton and path.is_file():
+            from _lib.ch.reglement import extract_plaintext
+            push("regulator", f"Cantonal ordinance — {entry.get('source') or canton.upper()}", path,
+                 entry.get("url") or "", [("full text", extract_plaintext(path))], cap=40_000)
+        from _lib.ch import roster_rulings
+        ruling = roster_rulings.load().get(slug)
+        if ruling:
+            # the clauses of the act that name wine types, as transcribed
+            types = "\n".join(f"{c['clause']}: {c['quote']}"
+                              for c in (ruling.get("wine_types") or {}).get("clauses") or [])
+            push("national-spec", ruling["ruling"], roster_rulings.RULINGS_DIR / f"{slug}.pdf",
+                 ruling["url"],
+                 [("delegation", ruling["delegation"]), ("clause", ruling["clause"]),
+                  (ruling["annex"], "\n".join(ruling["varieties"])),
+                  *([("wine types", types)] if types else []),
+                  # how two rows of the list were read, with the public
+                  # register the reading cites (Innerrhoden's «Traminer»)
+                  *([("reading note", ruling["note"])] if ruling.get("note") else [])])
     wiki = wikipedia_record(country, slug, source_lang)
     if wiki:
         push("wikipedia", f"Wikipedia ({wiki.get('lang')}) «{wiki.get('page_title')}»", None,

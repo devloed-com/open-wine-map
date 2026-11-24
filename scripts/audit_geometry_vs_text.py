@@ -77,7 +77,10 @@ WHOLE, GRAZE = 0.95, 0.05
 LAU_CC = {"es": "ES", "it": "IT", "at": "AT", "de": "DE", "be": "BE", "nl": "NL", "lu": "LU", "hu": "HU", "ro": "RO",
           "bg": "BG", "gr": "EL", "cy": "CY", "sk": "SK", "cz": "CZ", "si": "SI", "hr": "HR", "mt": "MT", "pt": "PT"}
 COMMUNE_UNION_SOURCES = ("gisco-", "aires-csv", "communes", "swissboundaries-", "caop-", "iet-parroquia-union",
-                         "dgc-village-override", "ons-", "nuts2-province", "region-pdo-union", "gisco-nuts-region")
+                         "dgc-village-override", "ons-", "nuts2-province", "region-pdo-union", "gisco-nuts-region",
+                         "lgl-gemarkung-union", "alkis-gemarkung-union")
+# unions of units below the commune: a commune drawn in part is the rule, not a finding
+SUB_COMMUNE_UNION_SOURCES = ("caop-freguesia", "iet-", "dgc-village", "lgl-gemarkung-union", "alkis-gemarkung-union")
 PARCEL_OR_ZONE_SOURCES = ("parcellaire", "mapa-zone", "geoportal-", "figshare-pdo", "sigpac-", "cadastre-lieu-dit",
                           "ivv-commune-vineyard", "pdo-plan-parcel-hull-approx", "geometry-research-municipios")
 # the drinks pipeline's two sources: a quote-checked pin, the technical file's NUTS rows
@@ -426,6 +429,89 @@ def _fr_commune_of_today(code: str, current: set[str]) -> str | None:
     return end if end in current else None
 
 
+_DE: dict = {}
+DE_SIDECARS = ROOT / "raw" / "de" / "produktspezifikationen-extracted"
+
+
+def _de_named(slug: str, rec: dict, layer: Layer) -> dict:
+    """The German reader: the record's area text — the EU single document's
+    section, else the "Abgrenzung des Gebiets" section the stage-02f sidecar
+    keeps — through the three readers stage 04 draws from: the Bavarian
+    Regierungsbezirk lists (`gemeinde_list`), Baden-Württemberg's numbered
+    Gemarkungen (`gemarkung`, the LGL layer) and the other layouts
+    (`area_units`, the Länder's Gemarkung layers). A commune the text names
+    whole is named; one it reaches only through a Gemarkung or an Ortsteil
+    is named in part."""
+    from _lib.de import area_units, gemeinde_list, katasterbezirk
+    from _lib.de import gemarkung as de_gemarkung
+
+    out = {"ids": set(), "unresolved": [], "above_commune": [], "far": [], "method": "de-none", "partial": set()}
+    if not _DE:
+        rows = [(layer.ids[i], layer.names[i], layer.geoms[i]) for i in range(len(layer.ids))
+                if layer.extra[i].get("cntr") == "DE"]
+        _DE.update(communes=area_units.CommuneRows(rows),
+                   bavaria=[(gid, name) for gid, name, _g in rows if gid.startswith("DE_09")],
+                   gemarkungen=katasterbezirk.Gemarkungen(ROOT / "raw" / "de" / "katasterbezirke", "EPSG:3035"),
+                   lgl=de_gemarkung.GemarkungLayer(ROOT / "raw" / "de" / "lgl" / "gemarkungen.gpkg", "EPSG:3035"),
+                   pins=area_units.load_pins(), lgl_pins=de_gemarkung.load_pins())
+    side = card_packet.load_json(DE_SIDECARS / f"{slug}.json") or {}
+    fn = rec.get("file_number") or ""
+    for text, kind in (((rec.get("section_roles") or {}).get("geo_area") or "", "eu"),
+                       (side.get("area_text") or "", "ble")):
+        if not text.strip():
+            continue
+        out["has_text"] = True
+        lists = gemeinde_list.parse_lists(text)
+        if gemeinde_list.n_names(lists) >= gemeinde_list.MIN_NAMES:
+            res = gemeinde_list.resolve(lists, _DE["bavaria"])
+            out["ids"] = {gid for _n, gid, _l in res.drawn}
+            out["unresolved"] = list(res.unmatched)
+            out["method"] = f"de-gemeinde-list ({kind})"
+            return out
+        area = de_gemarkung.parse_area(text)
+        if len(area.units) >= de_gemarkung.MIN_UNITS and _DE["lgl"].available:
+            pins = _DE["lgl_pins"].get(fn, {})
+            rows = _DE["lgl"].rows({u.number for u in area.units} | {p["number"] for p in pins.values()})
+            ids, missed = set(), []
+            for u in area.units:
+                row = rows.get(int(pins[u.number]["number"])) if u.number in pins else rows.get(u.number)
+                if row is not None and (u.number in pins or de_gemarkung.name_agreement(
+                        u.name, row["name"], row["gemeinde"]) >= de_gemarkung.NAME_MATCH_MIN):
+                    ids.add(f"DE_{int(row['gemeinde_id']):08d}")
+                else:
+                    missed.append(f"{u.name} ({u.number})")
+            if len(missed) <= 0.05 * len(area.units):
+                # the Bavarian units Württemberg names without a number
+                whole = set()
+                for name in area.by_gemeinden:
+                    hits = _DE["communes"].find("09", name)
+                    if len(hits) == 1:
+                        whole.add(hits[0][0])
+                    else:
+                        missed.append(name)
+                for town, _marks in area.by_partial:
+                    hits = _DE["communes"].find("09", town)
+                    if len(hits) == 1:
+                        ids.add(hits[0][0])
+                out["ids"] = ids | whole
+                out["partial"] = ids - whole
+                out["unresolved"] = missed
+                out["method"] = f"de-gemarkung-lgl ({kind})"
+                return out
+        units = area_units.parse(text)
+        if len(units) >= area_units.MIN_UNITS:
+            res = area_units.resolve(units, _DE["gemarkungen"], _DE["communes"], _DE["pins"].get(fn))
+            if res.share >= 0.5:
+                whole = {b.lau_id for b in res.bound if b.how == "gemeinde"}
+                part = {b.lau_id for b in res.bound if b.how != "gemeinde" and b.lau_id} - whole
+                out["ids"] = whole | part
+                out["partial"] = part
+                out["unresolved"] = list(res.unmatched)
+                out["method"] = f"de-area-units ({kind})"
+                return out
+    return out
+
+
 def named_units(country: str, slug: str, rec: dict, startup: dict, payload: dict, layer: Layer | None,
                 fr_aires=None, dept_codes: dict | None = None, geom=None) -> dict:
     """{ids, unresolved, above_commune, far, method} — the units the text
@@ -487,6 +573,16 @@ def named_units(country: str, slug: str, rec: dict, startup: dict, payload: dict
             out["partial"] |= set(narrowed_seats(
                 rec, set(insee), dict(zip(layer.ids, layer.names)), _fr_former(current)["former"]))
             out["method"] = "inao-aires-csv"
+        # a record drawn as the communes holding its parcel area, not its aire
+        # géographique (`scripts/_lib/fr/parcel_area_communes.json`: Champagne,
+        # Coteaux champenois, Rosé des Riceys) is compared with that list
+        from _lib.fr import plan_inventory
+        parcel_area = plan_inventory.communes_for(slug)
+        if parcel_area:
+            keep = {c for c in parcel_area if c in set(layer.ids)}
+            out["ids"], out["partial"] = keep, out["partial"] & keep
+            out["method"] = f"parcel-area:{plan_inventory.table()[slug]['source']}"
+            return out
         out["ids"] |= cahier_ids
         # a commune the curator's pin records as named in part, or named and
         # excluded (`not_drawn` in aires_supplements.json — Pommeau de
@@ -498,6 +594,8 @@ def named_units(country: str, slug: str, rec: dict, startup: dict, payload: dict
         for d in (rec.get("aire") or {}).get("aire_departements") or rec.get("aire_departements") or []:
             out["above_commune"].append(d)
         return out
+    if country == "de":
+        return _de_named(slug, rec, layer)
     if country == "ch":
         for gc in rec.get("geo_communes") or []:
             if isinstance(gc, dict) and gc.get("bfs_id") is not None:
@@ -730,7 +828,7 @@ def classify(geom_source: str, named: set[str], drawn_whole: set[str], drawn_par
         bad = miss + extra
         if bad and ((bad >= 2 and bad / n >= 0.03) or bad >= 6):
             return "SUSPECT", detail
-        if part and part / n > 0.3 and not gs.startswith(("caop-freguesia", "iet-", "dgc-village")):
+        if part and part / n > 0.3 and not gs.startswith(SUB_COMMUNE_UNION_SOURCES):
             return "SUSPECT", detail
         return "OK", detail
     # parcel / zone sources: parts are expected; whole extra units are the signal
@@ -884,7 +982,7 @@ def main() -> int:
         detail["unresolved"] = nu["unresolved"][:20]
         detail["far_homonyms"] = nu.get("far", [])[:10]
         detail["above_commune"] = nu["above_commune"][:10]
-        if not area_text(cc, rec) and cc not in ("fr", "ch") and not nu["ids"]:
+        if not area_text(cc, rec) and not nu.get("has_text") and cc not in ("fr", "ch") and not nu["ids"]:
             bucket = "NO-TEXT"
         if args.llm and provider is not None:
             text = area_text(cc, rec) if cc != "fr" else ((rec.get("section_roles") or {}).get("aire") or "")
