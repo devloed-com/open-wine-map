@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  open-wine-map\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-24 18:43+0100\n"
+"POT-Creation-Date: 2026-11-25 09:38+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: fr\n"
@@ -174,7 +174,7 @@ msgstr "Cépages principaux"
 msgid "Cépages accessoires"
 msgstr "Cépages accessoires"
 
-#: scripts/_lib/map_template.py:108 scripts/_lib/map_template.py:746
+#: scripts/_lib/map_template.py:108 scripts/_lib/map_template.py:752
 msgid "Cépages"
 msgstr "Cépages"
 
@@ -344,11 +344,11 @@ msgid "Variétés d'intérêt"
 msgstr "Variétés d'intérêt"
 
 #: scripts/_lib/map_template.py:148 scripts/_lib/map_template.py:665
-#: scripts/_lib/map_template.py:749
+#: scripts/_lib/map_template.py:755
 msgid "Sources"
 msgstr "Sources"
 
-#: scripts/_lib/map_template.py:149 scripts/_lib/map_template.py:747
+#: scripts/_lib/map_template.py:149 scripts/_lib/map_template.py:753
 msgid "Terroir"
 msgstr "Terroir"
 
@@ -1415,21 +1415,32 @@ msgstr ""
 msgid "Suggestions et pull requests bienvenues sur {github}."
 msgstr "Suggestions et pull requests bienvenues sur {github}."
 
-#: scripts/_lib/map_template.py:707
+#: scripts/_lib/map_template.py:709
+msgid "Nous écrire"
+msgstr ""
+
+#: scripts/_lib/map_template.py:711
+#, python-brace-format
+msgid ""
+"Une question, une suggestion, une collaboration ? Écrivez-nous par "
+"{email}."
+msgstr ""
+
+#: scripts/_lib/map_template.py:713
 msgid "Merci"
 msgstr "Merci"
 
-#: scripts/_lib/map_template.py:709
+#: scripts/_lib/map_template.py:715
 #, python-brace-format
 msgid "À {designful}, pour ses retours sur le design et l'ergonomie de la carte."
 msgstr ""
 
-#: scripts/_lib/map_template.py:712
+#: scripts/_lib/map_template.py:718
 #, python-brace-format
 msgid "À celles et ceux dont les signalements ont amélioré la carte : {names}."
 msgstr "À celles et ceux dont les signalements ont amélioré la carte : {names}."
 
-#: scripts/_lib/map_template.py:715
+#: scripts/_lib/map_template.py:721
 #, python-brace-format
 msgid ""
 "Et aux nombreuses personnes qui ont envoyé un signalement sans laisser de"
@@ -1438,7 +1449,7 @@ msgid ""
 " écrivez-nous par {email}."
 msgstr ""
 
-#: scripts/_lib/map_template.py:721
+#: scripts/_lib/map_template.py:727
 #, python-brace-format
 msgid ""
 "Seule exception : le nom ou pseudonyme que vous choisissez d'ajouter à un"
@@ -1449,7 +1460,7 @@ msgstr ""
 " signalement, conservé pour vous remercier publiquement et retiré sur "
 "simple demande par {email}."
 
-#: scripts/_lib/map_template.py:726
+#: scripts/_lib/map_template.py:732
 #, python-brace-format
 msgid ""
 "La fréquentation est mesurée avec une instance {plausible} auto-hébergée,"
@@ -1460,20 +1471,20 @@ msgid ""
 "de bandeau de consentement."
 msgstr ""
 
-#: scripts/_lib/map_template.py:733
+#: scripts/_lib/map_template.py:739
 #, python-brace-format
 msgid "Suivez les mises à jour sur {bluesky}."
 msgstr "Suivez les mises à jour sur {bluesky}."
 
-#: scripts/_lib/map_template.py:734
+#: scripts/_lib/map_template.py:740
 msgid "e-mail"
 msgstr "e-mail"
 
-#: scripts/_lib/map_template.py:735
+#: scripts/_lib/map_template.py:741
 msgid "E-mail copié dans le presse-papiers"
 msgstr "E-mail copié dans le presse-papiers"
 
-#: scripts/_lib/map_template.py:737
+#: scripts/_lib/map_template.py:743
 #, python-brace-format
 msgid ""
 "Carte générée automatiquement — des erreurs sont possibles. Signalez-les "
@@ -1482,44 +1493,44 @@ msgstr ""
 "Carte générée automatiquement — des erreurs sont possibles. Signalez-les "
 "depuis la fiche de l'appellation, ou par {email}."
 
-#: scripts/_lib/map_template.py:743
+#: scripts/_lib/map_template.py:749
 msgid "Signaler une erreur"
 msgstr "Signaler une erreur"
 
-#: scripts/_lib/map_template.py:744
+#: scripts/_lib/map_template.py:750
 msgid "Un clic nous dit quoi vérifier — sans compte."
 msgstr "Un clic nous dit quoi vérifier — sans compte."
 
-#: scripts/_lib/map_template.py:745
+#: scripts/_lib/map_template.py:751
 msgid "Aire / contour"
 msgstr "Aire / contour"
 
-#: scripts/_lib/map_template.py:748
+#: scripts/_lib/map_template.py:754
 msgid "Nom / type"
 msgstr "Nom / type"
 
-#: scripts/_lib/map_template.py:750
+#: scripts/_lib/map_template.py:756
 msgid "Autre"
 msgstr "Autre"
 
-#: scripts/_lib/map_template.py:751
+#: scripts/_lib/map_template.py:757
 #, python-brace-format
 msgid "Merci, c'est noté : {aspect}."
 msgstr "Merci, c'est noté : {aspect}."
 
-#: scripts/_lib/map_template.py:753
+#: scripts/_lib/map_template.py:759
 msgid "Précisez si vous voulez (facultatif, sans données personnelles)"
 msgstr "Précisez si vous voulez (facultatif, sans données personnelles)"
 
-#: scripts/_lib/map_template.py:755
+#: scripts/_lib/map_template.py:761
 msgid "Envoyer"
 msgstr "Envoyer"
 
-#: scripts/_lib/map_template.py:759
+#: scripts/_lib/map_template.py:765
 msgid "Votre nom ou pseudonyme (facultatif)"
 msgstr "Votre nom ou pseudonyme (facultatif)"
 
-#: scripts/_lib/map_template.py:761
+#: scripts/_lib/map_template.py:767
 msgid ""
 "Public : si votre signalement nous aide, nous vous remercierons sous ce "
 "nom dans « À propos ». Laissez vide pour rester anonyme."
@@ -1527,29 +1538,23 @@ msgstr ""
 "Public : si votre signalement nous aide, nous vous remercierons sous ce "
 "nom dans « À propos ». Laissez vide pour rester anonyme."
 
-#: scripts/_lib/map_template.py:764
+#: scripts/_lib/map_template.py:770
 #, python-brace-format
 msgid "Envoyé, merci {name} !"
 msgstr "Envoyé, merci {name} !"
 
-#: scripts/_lib/map_template.py:767
-msgid "Géométrie"
-msgstr "Géométrie"
-
-#: scripts/_lib/map_template.py:768
+#: scripts/_lib/map_template.py:771
 msgid "Envoyé, merci !"
 msgstr "Envoyé, merci !"
 
-#: scripts/_lib/map_template.py:770
+#: scripts/_lib/map_template.py:775
 #, python-brace-format
 msgid ""
-"{aspect} — votre navigateur bloque notre outil de mesure, envoyez plutôt "
-"un {email}."
+"{aspect} — votre navigateur bloque notre outil de mesure : écrivez-nous "
+"plutôt par {email}, en nommant l'appellation."
 msgstr ""
-"{aspect} — votre navigateur bloque notre outil de mesure, envoyez plutôt "
-"un {email}."
 
-#: scripts/_lib/map_template.py:774
+#: scripts/_lib/map_template.py:779
 #, python-brace-format
 msgid ""
 "{c} pays européens cartographiés ({n} fiches : {parents} appellations et "
@@ -1558,15 +1563,15 @@ msgid ""
 "l'UE, de la Suisse et du Royaume-Uni."
 msgstr ""
 
-#: scripts/_lib/map_template.py:779
+#: scripts/_lib/map_template.py:784
 msgid "Toutes les appellations"
 msgstr "Toutes les appellations"
 
-#: scripts/_lib/map_template.py:780
+#: scripts/_lib/map_template.py:785
 msgid "Toutes les appellations de vins et de spiritueux — Open Wine Map"
 msgstr ""
 
-#: scripts/_lib/map_template.py:782
+#: scripts/_lib/map_template.py:787
 #, python-brace-format
 msgid ""
 "Liste des {n} appellations de vins, de spiritueux et d'autres boissons "
@@ -1574,7 +1579,7 @@ msgid ""
 "géographiques de l'UE, AOC et AOP suisses et IG britanniques."
 msgstr ""
 
-#: scripts/_lib/map_template.py:787
+#: scripts/_lib/map_template.py:792
 #, python-brace-format
 msgid ""
 "Les {n} appellations ci-dessous sont classées par pays. Retour à la "
@@ -1583,33 +1588,33 @@ msgstr ""
 "Les {n} appellations ci-dessous sont classées par pays. Retour à la "
 "{map_link}."
 
-#: scripts/_lib/map_template.py:790
+#: scripts/_lib/map_template.py:795
 msgid "carte interactive"
 msgstr "carte interactive"
 
-#: scripts/_lib/map_template.py:791
+#: scripts/_lib/map_template.py:796
 msgid "Liste des appellations par pays"
 msgstr "Liste des appellations par pays"
 
-#: scripts/_lib/map_template.py:792
+#: scripts/_lib/map_template.py:797
 msgid "Appellation parente"
 msgstr "Appellation parente"
 
-#: scripts/_lib/map_template.py:793
+#: scripts/_lib/map_template.py:798
 msgid "Dénominations rattachées"
 msgstr "Dénominations rattachées"
 
-#: scripts/_lib/map_template.py:795
+#: scripts/_lib/map_template.py:800
 #, python-brace-format
 msgid "Parcourir la liste complète des appellations : {browse_link}."
 msgstr "Parcourir la liste complète des appellations : {browse_link}."
 
-#: scripts/_lib/map_template.py:797
+#: scripts/_lib/map_template.py:802
 #, python-brace-format
 msgid "Données mises à jour le {date}."
 msgstr "Données mises à jour le {date}."
 
-#: scripts/_lib/map_template.py:799
+#: scripts/_lib/map_template.py:804
 #, python-brace-format
 msgid ""
 "Votre navigateur parle déjà {webmcp} ? Chaque page de la carte lui "
@@ -1620,43 +1625,43 @@ msgstr ""
 "propose les mêmes outils. Sinon, aucune importance : c'est le serveur MCP"
 " ci-dessus que votre assistant IA sait utiliser."
 
-#: scripts/_lib/map_template.py:803
+#: scripts/_lib/map_template.py:808
 msgid "Copier"
 msgstr "Copier"
 
-#: scripts/_lib/map_template.py:804
+#: scripts/_lib/map_template.py:809
 msgid "Copié"
 msgstr "Copié"
 
-#: scripts/_lib/map_template.py:807
+#: scripts/_lib/map_template.py:812
 msgid "Partager"
 msgstr "Partager"
 
-#: scripts/_lib/map_template.py:808
+#: scripts/_lib/map_template.py:813
 msgid "Partager cette vue"
 msgstr "Partager cette vue"
 
-#: scripts/_lib/map_template.py:809
+#: scripts/_lib/map_template.py:814
 msgid "La carte telle qu'affichée"
 msgstr "La carte telle qu'affichée"
 
-#: scripts/_lib/map_template.py:810
+#: scripts/_lib/map_template.py:815
 msgid "Lien"
 msgstr "Lien"
 
-#: scripts/_lib/map_template.py:811
+#: scripts/_lib/map_template.py:816
 msgid "Copier le lien"
 msgstr "Copier le lien"
 
-#: scripts/_lib/map_template.py:812
+#: scripts/_lib/map_template.py:817
 msgid "Partager…"
 msgstr "Partager…"
 
-#: scripts/_lib/map_template.py:813
+#: scripts/_lib/map_template.py:818
 msgid "Intégrer sur votre site"
 msgstr "Intégrer sur votre site"
 
-#: scripts/_lib/map_template.py:815
+#: scripts/_lib/map_template.py:820
 msgid ""
 "Collez ce code dans votre page : la carte reste interactive, et un clic "
 "sur une appellation l'ouvre sur Open Wine Map."
@@ -1664,28 +1669,28 @@ msgstr ""
 "Collez ce code dans votre page : la carte reste interactive, et un clic "
 "sur une appellation l'ouvre sur Open Wine Map."
 
-#: scripts/_lib/map_template.py:818
+#: scripts/_lib/map_template.py:823
 msgid "Copier le code d'intégration"
 msgstr "Copier le code d'intégration"
 
-#: scripts/_lib/map_template.py:821
+#: scripts/_lib/map_template.py:826
 #, python-brace-format
 msgid "{what} sur Open Wine Map"
 msgstr "{what} sur Open Wine Map"
 
-#: scripts/_lib/map_template.py:823
+#: scripts/_lib/map_template.py:828
 msgid "Ouvrir sur Open Wine Map"
 msgstr "Ouvrir sur Open Wine Map"
 
-#: scripts/_lib/map_template.py:825
+#: scripts/_lib/map_template.py:830
 msgid "Thème de la carte intégrée"
 msgstr "Thème de la carte intégrée"
 
-#: scripts/_lib/map_template.py:827
+#: scripts/_lib/map_template.py:832
 msgid "Paramètres d'URL (utilisateurs avancés)"
 msgstr "Paramètres d'URL (utilisateurs avancés)"
 
-#: scripts/_lib/map_template.py:829
+#: scripts/_lib/map_template.py:834
 msgid ""
 "Chaque paramètre peut s'écrire à la main dans l'adresse de la carte ; "
 "plusieurs valeurs se séparent par des virgules."
@@ -1693,67 +1698,71 @@ msgstr ""
 "Chaque paramètre peut s'écrire à la main dans l'adresse de la carte ; "
 "plusieurs valeurs se séparent par des virgules."
 
-#: scripts/_lib/map_template.py:832
+#: scripts/_lib/map_template.py:837
 msgid "Cépage : identifiant, nom ou synonyme VIVC."
 msgstr "Cépage : identifiant, nom ou synonyme VIVC."
 
-#: scripts/_lib/map_template.py:833
+#: scripts/_lib/map_template.py:838
 msgid "Cépage principal uniquement."
 msgstr "Cépage principal uniquement."
 
-#: scripts/_lib/map_template.py:834
+#: scripts/_lib/map_template.py:839
 msgid "Style ou catégorie de boisson : identifiant ou libellé."
 msgstr ""
 
-#: scripts/_lib/map_template.py:835
+#: scripts/_lib/map_template.py:840
 msgid "Pays entier coché."
 msgstr "Pays entier coché."
 
-#: scripts/_lib/map_template.py:836
+#: scripts/_lib/map_template.py:841
 msgid "Région (code pays:clé)."
 msgstr "Région (code pays:clé)."
 
-#: scripts/_lib/map_template.py:837
+#: scripts/_lib/map_template.py:842
 msgid "Appellations cochées."
 msgstr "Appellations cochées."
 
-#: scripts/_lib/map_template.py:838
+#: scripts/_lib/map_template.py:843
 msgid "Ouvre ces appellations : fiche, surbrillance, cadrage."
 msgstr "Ouvre ces appellations : fiche, surbrillance, cadrage."
 
-#: scripts/_lib/map_template.py:839
+#: scripts/_lib/map_template.py:844
 msgid "AOP masquées (affichées par défaut)."
 msgstr "AOP masquées (affichées par défaut)."
 
-#: scripts/_lib/map_template.py:840
+#: scripts/_lib/map_template.py:845
 msgid "IGP affichées (masquées par défaut)."
 msgstr "IGP affichées (masquées par défaut)."
 
-#: scripts/_lib/map_template.py:842
+#: scripts/_lib/map_template.py:847
 msgid "Spiritueux et autres boissons affichés (masqués par défaut)."
 msgstr ""
 
-#: scripts/_lib/map_template.py:844
+#: scripts/_lib/map_template.py:849
 msgid "Carte seule, à intégrer dans une page."
 msgstr "Carte seule, à intégrer dans une page."
 
-#: scripts/_lib/map_template.py:845
+#: scripts/_lib/map_template.py:850
 msgid "Thème sombre de la carte intégrée."
 msgstr "Thème sombre de la carte intégrée."
 
-#: scripts/_lib/map_template.py:846
+#: scripts/_lib/map_template.py:851
 msgid "Zone à cadrer : ouest,sud,est,nord en degrés."
 msgstr "Zone à cadrer : ouest,sud,est,nord en degrés."
 
-#: scripts/_lib/map_template.py:847
+#: scripts/_lib/map_template.py:852
 msgid "Zoom/latitude/longitude ; l'emporte sur bbox."
 msgstr "Zoom/latitude/longitude ; l'emporte sur bbox."
 
-#: scripts/_lib/map_template.py:848
+#: scripts/_lib/map_template.py:853
 msgid "Copier l'adresse du serveur MCP"
 msgstr "Copier l'adresse du serveur MCP"
 
-#: scripts/_lib/map_template.py:850
+#: scripts/_lib/map_template.py:854
+msgid "Copier l'adresse e-mail"
+msgstr ""
+
+#: scripts/_lib/map_template.py:856
 #, python-brace-format
 msgid ""
 "Les assistants IA peuvent interroger les appellations avec les mêmes "
@@ -1764,187 +1773,187 @@ msgstr ""
 "outils de recherche que la carte, via le serveur MCP {mcp_link} (sans "
 "authentification ; à ajouter comme connecteur personnalisé)."
 
-#: scripts/_lib/map_template.py:871
+#: scripts/_lib/map_template.py:877
 msgid "BOURGOGNE"
 msgstr "Bourgogne"
 
-#: scripts/_lib/map_template.py:872
+#: scripts/_lib/map_template.py:878
 msgid "BEAUJOLAIS"
 msgstr "Beaujolais"
 
-#: scripts/_lib/map_template.py:873
+#: scripts/_lib/map_template.py:879
 msgid "JURA"
 msgstr "Jura"
 
-#: scripts/_lib/map_template.py:874
+#: scripts/_lib/map_template.py:880
 msgid "SAVOIE"
 msgstr "Savoie"
 
-#: scripts/_lib/map_template.py:875
+#: scripts/_lib/map_template.py:881
 msgid "BUGEY"
 msgstr "Bugey"
 
-#: scripts/_lib/map_template.py:876
+#: scripts/_lib/map_template.py:882
 msgid "ALSACE"
 msgstr "Alsace"
 
-#: scripts/_lib/map_template.py:877
+#: scripts/_lib/map_template.py:883
 msgid "LORRAINE"
 msgstr "Lorraine"
 
-#: scripts/_lib/map_template.py:878
+#: scripts/_lib/map_template.py:884
 msgid "VAL DE LOIRE"
 msgstr "Val de Loire"
 
-#: scripts/_lib/map_template.py:879
+#: scripts/_lib/map_template.py:885
 msgid "BORDEAUX"
 msgstr "Bordeaux"
 
-#: scripts/_lib/map_template.py:880
+#: scripts/_lib/map_template.py:886
 msgid "SUD-OUEST"
 msgstr "Sud-Ouest"
 
-#: scripts/_lib/map_template.py:881
+#: scripts/_lib/map_template.py:887
 msgid "VALLEE DU RHÔNE"
 msgstr "Vallée du Rhône"
 
-#: scripts/_lib/map_template.py:882
+#: scripts/_lib/map_template.py:888
 msgid "LANGUEDOC"
 msgstr "Languedoc"
 
-#: scripts/_lib/map_template.py:883
+#: scripts/_lib/map_template.py:889
 msgid "ROUSSILLON"
 msgstr "Roussillon"
 
-#: scripts/_lib/map_template.py:884
+#: scripts/_lib/map_template.py:890
 msgid "PROVENCE"
 msgstr "Provence"
 
-#: scripts/_lib/map_template.py:885
+#: scripts/_lib/map_template.py:891
 msgid "CORSE"
 msgstr "Corse"
 
-#: scripts/_lib/map_template.py:886
+#: scripts/_lib/map_template.py:892
 msgid "CHAMPAGNE"
 msgstr "Champagne"
 
-#: scripts/_lib/map_template.py:887
+#: scripts/_lib/map_template.py:893
 msgid "ILE-DE-FRANCE"
 msgstr "Île-de-France"
 
-#: scripts/_lib/map_template.py:888
+#: scripts/_lib/map_template.py:894
 msgid "NORMANDIE"
 msgstr "Normandie"
 
-#: scripts/_lib/map_template.py:889
+#: scripts/_lib/map_template.py:895
 msgid "BRETAGNE"
 msgstr "Bretagne"
 
-#: scripts/_lib/map_template.py:890
+#: scripts/_lib/map_template.py:896
 msgid "MAINE"
 msgstr "Maine"
 
-#: scripts/_lib/map_template.py:891
+#: scripts/_lib/map_template.py:897
 msgid "COGNAC"
 msgstr "Cognac"
 
-#: scripts/_lib/map_template.py:892
+#: scripts/_lib/map_template.py:898
 msgid "ARMAGNAC"
 msgstr "Armagnac"
 
-#: scripts/_lib/map_template.py:893
+#: scripts/_lib/map_template.py:899
 msgid "RHUM"
 msgstr "Rhum"
 
-#: scripts/_lib/map_template.py:894
+#: scripts/_lib/map_template.py:900
 msgid "NORD"
 msgstr "Nord"
 
-#: scripts/_lib/map_template.py:938
+#: scripts/_lib/map_template.py:944
 msgid "France"
 msgstr "France"
 
-#: scripts/_lib/map_template.py:939
+#: scripts/_lib/map_template.py:945
 msgid "Espagne"
 msgstr "Espagne"
 
-#: scripts/_lib/map_template.py:940
+#: scripts/_lib/map_template.py:946
 msgid "Portugal"
 msgstr "Portugal"
 
-#: scripts/_lib/map_template.py:941
+#: scripts/_lib/map_template.py:947
 msgid "Italie"
 msgstr "Italie"
 
-#: scripts/_lib/map_template.py:942
+#: scripts/_lib/map_template.py:948
 msgid "Autriche"
 msgstr "Autriche"
 
-#: scripts/_lib/map_template.py:943
+#: scripts/_lib/map_template.py:949
 msgid "Slovénie"
 msgstr "Slovénie"
 
-#: scripts/_lib/map_template.py:944
+#: scripts/_lib/map_template.py:950
 msgid "Croatie"
 msgstr "Croatie"
 
-#: scripts/_lib/map_template.py:945
+#: scripts/_lib/map_template.py:951
 msgid "Hongrie"
 msgstr "Hongrie"
 
-#: scripts/_lib/map_template.py:946
+#: scripts/_lib/map_template.py:952
 msgid "Roumanie"
 msgstr "Roumanie"
 
-#: scripts/_lib/map_template.py:947
+#: scripts/_lib/map_template.py:953
 msgid "Bulgarie"
 msgstr "Bulgarie"
 
-#: scripts/_lib/map_template.py:948
+#: scripts/_lib/map_template.py:954
 msgid "Grèce"
 msgstr "Grèce"
 
-#: scripts/_lib/map_template.py:949
+#: scripts/_lib/map_template.py:955
 msgid "Allemagne"
 msgstr "Allemagne"
 
-#: scripts/_lib/map_template.py:950
+#: scripts/_lib/map_template.py:956
 msgid "Slovaquie"
 msgstr "Slovaquie"
 
-#: scripts/_lib/map_template.py:951
+#: scripts/_lib/map_template.py:957
 msgid "Suisse"
 msgstr "Suisse"
 
-#: scripts/_lib/map_template.py:952
+#: scripts/_lib/map_template.py:958
 msgid "Tchéquie"
 msgstr "Tchéquie"
 
-#: scripts/_lib/map_template.py:953
+#: scripts/_lib/map_template.py:959
 msgid "Luxembourg"
 msgstr "Luxembourg"
 
-#: scripts/_lib/map_template.py:954
+#: scripts/_lib/map_template.py:960
 msgid "Belgique"
 msgstr "Belgique"
 
-#: scripts/_lib/map_template.py:955
+#: scripts/_lib/map_template.py:961
 msgid "Pays-Bas"
 msgstr "Pays-Bas"
 
-#: scripts/_lib/map_template.py:956
+#: scripts/_lib/map_template.py:962
 msgid "Malte"
 msgstr "Malte"
 
-#: scripts/_lib/map_template.py:957
+#: scripts/_lib/map_template.py:963
 msgid "Chypre"
 msgstr "Chypre"
 
-#: scripts/_lib/map_template.py:958
+#: scripts/_lib/map_template.py:964
 msgid "Royaume-Uni"
 msgstr "Royaume-Uni"
 
-#: scripts/_lib/map_template.py:959
+#: scripts/_lib/map_template.py:965
 msgid "Irlande"
 msgstr ""
 
@@ -2371,4 +2380,16 @@ msgstr "cidre ou poiré"
 #~ "porte pas tel(s) quel(s), lu(s) comme"
 #~ " : {names}."
 #~ msgstr ""
+
+#~ msgid "Géométrie"
+#~ msgstr "Géométrie"
+
+#~ msgid ""
+#~ "{aspect} — votre navigateur bloque notre"
+#~ " outil de mesure, envoyez plutôt un"
+#~ " {email}."
+#~ msgstr ""
+#~ "{aspect} — votre navigateur bloque notre"
+#~ " outil de mesure, envoyez plutôt un"
+#~ " {email}."
 

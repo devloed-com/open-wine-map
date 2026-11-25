@@ -585,49 +585,35 @@
   const shareDialog = document.getElementById('share-dialog');
   wireDialog(shareDialog);
 
-  // Defeat naive scrapers: the address never appears as a contiguous
-  // string in rendered HTML. We arm the anchor's href on first
-  // interaction (mousedown/focus/touchstart, all of which fire before
-  // the click that actually navigates), so the browser handles the
-  // mailto: protocol natively. We also copy the address to the
-  // clipboard on click so the link still works for users without a
-  // configured mailto handler (Firefox silently drops navigation in
-  // that case).
-  // The e-mail channel. Card feedback goes to Plausible (see renderFeedback);
-  // this link is the human channel for anything a chip can't carry, and the
-  // fallback the card offers when the tracker is blocked.
-  document.querySelectorAll('a[data-feedback]').forEach(a => {
-    a.addEventListener('click', () => track('Feedback Clicked', { channel: a.dataset.feedback, locale: LANG }));
-  });
-  // `subject` / `body` are pre-encoded query values; the sidebar link has none.
-  function armFeedbackMail(a, subject, body) {
-    const address = () => a.dataset.u + '@' + a.dataset.d;
-    const arm = () => {
-      if (a.dataset.u && a.dataset.d) {
-        a.href = 'mailto:' + address() + '?subject=' + (subject || 'open%20wine%20map')
-          + (body ? '&body=' + body : '');
-      }
-    };
-    a.addEventListener('mousedown', arm);
-    a.addEventListener('focus', arm);
-    a.addEventListener('touchstart', arm, { passive: true });
-    a.addEventListener('click', () => {
-      const addr = address();
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(addr).catch(() => {});
-      }
-      const toast = document.createElement('span');
-      toast.className = 'feedback-copied';
-      toast.textContent = LABELS.feedback_copied_label;
-      a.insertAdjacentElement('afterend', toast);
-      requestAnimationFrame(() => toast.classList.add('visible'));
-      setTimeout(() => {
-        toast.classList.remove('visible');
-        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-      }, 1800);
-    });
+  // The e-mail channel: card feedback goes to Plausible (see renderFeedback);
+  // the address is the human channel for anything a chip can't carry, and
+  // the fallback the card offers when the tracker is blocked. Copy only, no
+  // mailto: link (2026-11-25), and never one string in the HTML: the page
+  // holds its two halves (data-u / data-d), joined on click by every
+  // "e-mail" button (`.mail-copy`: sidebar footer, About sentences, the
+  // card's blocked-tracker line).
+  const mailOf = el => el.dataset.u + '@' + el.dataset.d;
+  // The "copied" note beside an e-mail button, gone after 1.8 s.
+  function showMailCopied(el) {
+    const toast = document.createElement('span');
+    toast.className = 'feedback-copied';
+    toast.textContent = LABELS.feedback_copied_label;
+    el.insertAdjacentElement('afterend', toast);
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+    }, 1800);
   }
-  document.querySelectorAll('a.feedback-mail').forEach(a => armFeedbackMail(a, '', ''));
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('button.mail-copy');
+    if (!b || !b.dataset.u || !b.dataset.d) return;
+    track('Feedback Clicked', { channel: b.dataset.feedback || 'about', locale: LANG });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(mailOf(b)).catch(() => {});
+    }
+    showMailCopied(b);
+  });
 
   // The Simple / Advanced view mode is gone (2026-10): one sidebar for
   // everyone. Drop the key it persisted so nothing stale lingers in storage.
@@ -3333,26 +3319,20 @@
   function aspectsHtml(aspects) {
     return `<strong class="fb-aspect">${escapeHtml(aspects.map(a => LABELS['feedback_aspect_' + a] || a).join(', '))}</strong>`;
   }
-  function feedbackMailParams(slug, aspects, note) {
-    const r = AOCS[slug] || {};
-    const url = location.origin + '/' + LANG + '/' + slug;
-    const subject = encodeURIComponent('[' + (r.name || slug) + '] ' + aspects.join(', '));
-    const geom = r.geom_source ? '\n' + LABELS.feedback_mail_geometry_label + ': ' + r.geom_source : '';
-    const body = encodeURIComponent((note ? note + '\n\n' : '') + url + geom);
-    return { subject, body };
-  }
+  // The address button the sidebar footer carries, copied into the line: it
+  // copies the address on click (no mailto:, so nothing is prefilled — the
+  // line asks the visitor to name the appellation).
   function renderBlockedFeedback(box, slug, aspects) {
-    const mail = document.querySelector('#sidebar-disclaimer a.feedback-mail');
-    const a = document.createElement('a');
-    a.href = '#'; a.className = 'feedback-mail';
-    a.textContent = LABELS.feedback_email_label;
-    if (mail) { a.dataset.u = mail.dataset.u; a.dataset.d = mail.dataset.d; }
-    const p = feedbackMailParams(slug, aspects, '');
-    armFeedbackMail(a, p.subject, p.body);
+    const mail = document.querySelector('#sidebar-disclaimer button.mail-copy');
+    const b = mail ? mail.cloneNode(true) : document.createElement('button');
+    b.type = 'button';
+    b.className = 'mail-copy';
+    b.dataset.feedback = 'card';
+    b.textContent = LABELS.feedback_email_label;
     box.innerHTML = '';
     const span = document.createElement('span');
-    span.innerHTML = fmt(LABELS.feedback_blocked_html, { aspect: aspectsHtml(aspects), email: '<a></a>' });
-    span.querySelector('a').replaceWith(a);
+    span.innerHTML = fmt(LABELS.feedback_blocked_html, { aspect: aspectsHtml(aspects), email: '<b></b>' });
+    span.querySelector('b:empty').replaceWith(b);
     box.appendChild(span);
     box.hidden = false;
   }

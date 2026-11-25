@@ -9975,10 +9975,19 @@ people who reported without a name — a report could carry no name before the
 credit field went live (31 October 2026), and the line says "until November
 2026": whoever sent one before then and wants their name added writes in. Its privacy paragraph states the exception
 (kept to thank you, removed by e-mail). A blocked tracker — localhost included — falls back to the
-prefilled e-mail link (chip shown pressed, nothing persisted), and `track()` echoes events
+e-mail address, asking the visitor to name the appellation (chip shown pressed, nothing persisted), and `track()` echoes events
 to the console; a dev site keyed on `localhost` in `PLAUSIBLE_SITES` makes
 local testing land in a dashboard. The stub card's "help us find it" opens the same row on
-`sources`. The sidebar's GitHub-issue link is gone (clicks, no issues). The
+`sources`. The sidebar's GitHub-issue link is gone (clicks, no issues). **The
+e-mail address is copy-only (Boris, 2026-11-25): no mailto: link anywhere.** The
+sidebar footer, the About dialog's sentences (its "Get in touch" section
+included) and the card's blocked-tracker line carry an "e-mail" button
+(`button.mail-copy`, `_mail_copy_button`) that copies the address and shows
+"E-mail copied". A value box with a Copy button is for what a visitor pastes
+into a configuration (the MCP address, the share link and embed code), not for
+an address. The page holds only its two halves (`data-u` / `data-d`), joined by
+app.js on click, so a scraper reading the HTML finds no address; each copy is
+`Feedback Clicked {channel: email | about | card}`. The
 curation view is [scripts/feedback_report.py](scripts/feedback_report.py)
 (`PLAUSIBLE_API_KEY` in the repo-root `.env`): net flags per
 appellation × aspect against panel opens, every note verbatim with its credit,

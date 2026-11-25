@@ -704,6 +704,12 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "le même contour à tous les zooms."
         ),
         "about_contrib_html": _("Suggestions et pull requests bienvenues sur {github}."),
+        # {email}: the "e-mail" button that copies the address, as in the
+        # privacy and thanks sentences (no mailto: link).
+        "about_contact_h": _("Nous écrire"),
+        "about_contact_html": _(
+            "Une question, une suggestion, une collaboration ? Écrivez-nous par {email}."
+        ),
         "about_thanks_h": _("Merci"),
         "about_thanks_ux_html": _(
             "À {designful}, pour ses retours sur le design et l'ergonomie de la carte."
@@ -762,13 +768,12 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
             "ce nom dans « À propos ». Laissez vide pour rester anonyme."
         ),
         "feedback_sent_credit": _("Envoyé, merci {name} !"),
-        # Labels the geom_source token in the prefilled e-mail body so a
-        # visitor doesn't delete an unexplained `mapa-zone` before sending.
-        "feedback_mail_geometry_label": _("Géométrie"),
         "feedback_sent": _("Envoyé, merci !"),
+        # {email}: a button that copies the address (no mailto:, so nothing is
+        # prefilled — hence "name the appellation").
         "feedback_blocked_html": _(
-            "{aspect} — votre navigateur bloque notre outil de mesure, "
-            "envoyez plutôt un {email}."
+            "{aspect} — votre navigateur bloque notre outil de mesure : "
+            "écrivez-nous plutôt par {email}, en nommant l'appellation."
         ),
         "about_roadmap_html": _(
             "{c} pays européens cartographiés ({n} fiches : {parents} appellations "
@@ -846,6 +851,7 @@ def build_labels(_: Callable[[str], str]) -> dict[str, str]:
         "share_param_bbox": _("Zone à cadrer : ouest,sud,est,nord en degrés."),
         "share_param_hash": _("Zoom/latitude/longitude ; l'emporte sur bbox."),
         "copy_mcp_aria": _("Copier l'adresse du serveur MCP"),
+        "copy_mail_aria": _("Copier l'adresse e-mail"),
         "about_mcp_html": _(
             "Les assistants IA peuvent interroger les appellations avec les mêmes outils "
             "de recherche que la carte, via le serveur MCP {mcp_link} (sans "
@@ -1080,15 +1086,24 @@ def _ext_link(url: str, label: str) -> str:
     return f'<a href="{url}" target="_blank" rel="noopener">{label}</a>'
 
 
-def _feedback_email_anchor(label: str) -> str:
+_MAIL_HALVES = f'data-u="{_FEEDBACK_USER}" data-d="{_FEEDBACK_DOMAIN}"'
+
+
+def _mail_copy_button(labels: dict[str, str], channel: str = "about") -> str:
+    """The word "e-mail" inside a sentence, as a button that copies the
+    address (app.js: button.mail-copy) — no mailto: link anywhere on the site
+    (2026-11-25). The page holds only the address's two halves; app.js joins
+    them on click, so a scraper reading the HTML finds no address. `channel` is the `Feedback Clicked` prop: `email` for the
+    sidebar footer, `about` for the About dialog (app.js gives the card's
+    blocked-tracker line `card`)."""
     return (
-        f'<a href="#" class="feedback-mail" data-feedback="email" '
-        f'data-u="{_FEEDBACK_USER}" data-d="{_FEEDBACK_DOMAIN}">{label}</a>'
+        f'<button type="button" class="mail-copy" data-feedback="{channel}" {_MAIL_HALVES} '
+        f'aria-label="{esc(labels["copy_mail_aria"])}">{esc(labels["feedback_email_label"])}</button>'
     )
 
 
 def _build_sidebar_disclaimer(labels: dict[str, str]) -> str:
-    email = _feedback_email_anchor(labels["feedback_email_label"])
+    email = _mail_copy_button(labels, "email")
     return (
         f'<div id="sidebar-disclaimer">'
         f'{labels["sidebar_disclaimer_html"].format(email=email)}'
@@ -1178,7 +1193,7 @@ def _build_about_dialog(
     privacy = [
         labels["about_privacy_html"].format(plausible=_ext_link(_PLAUSIBLE_POLICY_URL, "Plausible"))
         + " " + labels["about_privacy_credit_html"].format(
-            email=_feedback_email_anchor(labels["feedback_email_label"])
+            email=_mail_copy_button(labels)
         )
     ]
 
@@ -1210,7 +1225,7 @@ def _build_about_dialog(
             _ext_link(esc(url), esc(name)) if url else esc(name) for name, url in credited
         )))
     thanks_lines.append(labels["about_thanks_anon_html"].format(
-        email=_feedback_email_anchor(labels["feedback_email_label"])
+        email=_mail_copy_button(labels)
     ))
     thanks = [section("about_thanks_h", thanks_lines)]
 
@@ -1226,6 +1241,9 @@ def _build_about_dialog(
         section("about_ai_h", ai),
         section("about_privacy_h", privacy),
         section("about_contrib_h", contrib),
+        section("about_contact_h", [labels["about_contact_html"].format(
+            email=_mail_copy_button(labels)
+        )]),
         *thanks,
         f'<p class="about-credit">{credit}</p>',
     ])
@@ -3763,7 +3781,7 @@ _TEMPLATE = """<!doctype html>
   #panel .fb-credit-hint {{ display:block; margin:0 0 6px; font-size:var(--fs-xs); line-height:1.4; color:var(--n-600) }}
   #panel .fb-status {{ color:#5a6b3a; font-weight:600 }}
   #panel .fb-more .fb-aspect {{ color:var(--c-accent); font-weight:600 }}
-  #panel .fb-more a {{ color:var(--c-accent); text-decoration:underline; text-underline-offset:2px }}
+  #panel .fb-more a, #panel .fb-more .mail-copy {{ color:var(--c-accent); text-decoration:underline; text-underline-offset:2px }}
   #panel .facts-sub-h {{ font-size:var(--fs-xs); font-weight:600; color:var(--n-600); margin:8px 0 2px; text-transform:none; letter-spacing:0 }}
   #panel ul.facts {{ margin:0 0 6px; padding-left:18px; font-size:var(--fs-md); color:var(--n-850) }}
   #panel ul.facts li {{ margin:2px 0 }}
@@ -3878,6 +3896,8 @@ _TEMPLATE = """<!doctype html>
   #sidebar-disclaimer {{ padding:0 4px 10px; margin-bottom:10px; border-bottom:1px solid var(--side-border); font-size:var(--fs-xs); line-height:1.5; color:var(--side-text-3) }}
   #sidebar-disclaimer a {{ color:var(--side-text-2); text-decoration:underline; text-underline-offset:2px }}
   #sidebar-disclaimer a:hover {{ color:var(--side-text) }}
+  #sidebar-disclaimer .mail-copy {{ color:var(--side-text-2) }}
+  #sidebar-disclaimer .mail-copy:hover {{ color:var(--side-text) }}
   .feedback-copied {{ display:inline-block; margin-left:6px; padding:2px 6px; border-radius:3px; background:var(--c-accent); color:var(--n-0); font-size:var(--fs-2xs); opacity:0; transform:translateY(-1px); transition:opacity 180ms ease, transform 180ms ease; pointer-events:none }}
   .feedback-copied.visible {{ opacity:1; transform:translateY(0) }}
   #about-dialog, #share-dialog {{ width:520px; max-width:calc(100vw - 32px); padding:0; border:1px solid #ccc; border-radius:6px; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:var(--n-0); color:var(--n-850) }}
@@ -3904,6 +3924,9 @@ _TEMPLATE = """<!doctype html>
   #about-dialog .about-credit .heart {{ color:var(--c-accent) }}
   #about-dialog a {{ color:var(--c-accent) }}
   #about-dialog a.bsky {{ white-space:nowrap }}
+  button.mail-copy {{ font:inherit; padding:0; border:0; background:none; color:inherit; text-decoration:underline; text-underline-offset:2px; cursor:pointer }}
+  #about-dialog .mail-copy {{ color:var(--c-accent) }}
+  html.theme-dark #about-dialog .mail-copy {{ color:var(--c-accent-ink-dark) }}
   #about-dialog .bsky-logo {{ width:1.05em; height:1.05em; vertical-align:-0.16em; margin-right:0.3em; fill:#1185fe }}
   #grape-tooltip {{ position:fixed; max-width:340px; background:var(--n-0); color:var(--n-850); border:1px solid var(--n-200); border-radius:4px; padding:10px 12px; font-size:var(--fs-sm); line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:1000; display:none }}
   #grape-tooltip .ext {{ margin:0 0 6px }}
@@ -4148,7 +4171,7 @@ _TEMPLATE = """<!doctype html>
   html.theme-dark #panel .fb-credit-hint {{ color:#b5b5b5 }}
   html.theme-dark #panel .fb-status {{ color:#a7c48a }}
   html.theme-dark #panel .fb-more .fb-aspect {{ color:#e6a0b6 }}
-  html.theme-dark #panel .fb-more a {{ color:#e6a0b6 }}
+  html.theme-dark #panel .fb-more a, html.theme-dark #panel .fb-more .mail-copy {{ color:#e6a0b6 }}
   html.theme-dark #panel .verbatim-badge {{ background:#33280f; color:#e6b86a; border-color:#5a4a1e }}
   html.theme-dark #panel details.menzioni .pill.menzione {{ background:#2c2a20; color:#d8c89a; border-color:#3e3a2c }}
 </style>
